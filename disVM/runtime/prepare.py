@@ -126,6 +126,9 @@ def main():
         "Sys_fildes",
         "Sys_create",
         "Sys_seek",
+        "Sys_stat",
+        "Sys_fstat",
+        "Sys_dirread",
     }
     source = '#include "lib9.h"\n#include "kernel.h"\nextern void error(char *);\n'
     for name in sorted(functions - implemented):

@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1650: native filesystem metadata and bounded directory cursors live in OS-selected ports. DisVM maps stat/fstat/dirread without OS headers; [EN](../../disVM/runtime/FILESYSTEM.md) / [RU](../../disVM/runtime/FILESYSTEM.ru.md). Windows/macOS/Android native acceptance remains open; no Flash compatibility stage closes.
+
 Workspace checkpoint v0.1565: reviewed Inferno Rune/Type guards and channel-owned Unicode source clipboard run in the experimental matched Dis/FlashVM host. Path transaction growth preserves public semantics. [Clipboard contract](../../ide/dis/CLIPBOARD.md). This does not close any of the nine Flash compatibility stages or physical/platform acceptance.
 
 Checkpoint v0.1563: public path append stages transformed source fragments and reserves destination growth geometrically. Allocation/transform failures preserve commands and contour state; no compatibility stage closes. [EN](PATH_APPEND_GROWTH.md) / [RU](PATH_APPEND_GROWTH.ru.md).

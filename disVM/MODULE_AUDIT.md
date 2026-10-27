@@ -11,12 +11,12 @@ It is not a claim that every module in Inferno has been ported.
 | Area | Useful existing code | FlashVM DisVM state / next concrete use |
 | --- | --- | --- |
 | Dis core, heap, stack, channels | RC/GC roots, frames, ALT cancellation, guarded native leaves | Retained and executed; keep typed NC64 adapters separate from the standard ABI. |
-| `$Sys` | Formatting, UTF helpers and native I/O contracts | Hosted read/write/create/seek and standard descriptors work. Metadata, dirread, process and namespace/network exports still have explicit unsupported paths. |
+| `$Sys` | Formatting, UTF helpers and native I/O contracts | Hosted read/write/create/seek and standard descriptors work. [stat/fstat/dirread](runtime/FILESYSTEM.md) use OS-selected ports. Process and namespace/network exports still have unsupported paths. |
 | `$Loader` | Instruction/type/link introspection | Builtin already registered and exercised. Useful for an IDE disassembly view; dynamic construction exports need broader acceptance. |
 | `Dis` | Object decoder, opcode names and source-path metadata | Already source-built. Its object parser is classic-format code; do not feed NC64 images to it as if the formats matched. |
 | `Debug`, `Exception`, `Profile` | Symbols, stack/control protocols and profiling models | Debug is packaged; `/prog`, process controls and profiling devices remain the main integration work. A declaration is not a running debugger. |
 | `Bufio`, `String`, `Arg` | Rune-aware buffers, text/numeric parsing and argument handling | Already packaged and exercised. Reuse these helpers rather than duplicating text code in IDE services. |
-| `Readdir` | Directory sorting/filtering | Library exists; real enumeration needs the missing Sys directory interface. |
+| `Readdir` | Directory sorting/filtering | Actual enumeration and sorting are exercised through hosted Sys.dirread and OS ports. |
 | `Regex` | Ordinary Limbo regexp parser and finite-state execution | Added to the selected source-built libraries in this series; actual rune/capture regression runs on DisVM. Useful for IDE search and later explicit regexp-slice lowering. |
 | `Lock` | A channel-backed semaphore | Useful as a reference for service serialization. It is not an owner-aware reentrant object mutex and must not replace the existing table lease protocol blindly. |
 | `Styx`, `Styxservers` | 9P2000 wire codec and server helpers | Packaged codec is useful for transport work. A codec alone is not a mounted namespace, cancellable transport or automatic remote object lifetime registry. |

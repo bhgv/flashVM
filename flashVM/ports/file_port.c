@@ -3,6 +3,7 @@
  */
 
 #include "file_port.h"
+#include "filesystem_native.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,6 +26,7 @@
 struct FVM_PortFile
 {
     FILE *stream;        /* Owned binary stream; standard descriptors use separate borrowed APIs. */
+    char *path;          /* Owned UTF-8 display path; metadata never reopens it. */
     long read_position;  /* Logical next read offset, independent of appending writes. */
     long write_position; /* Logical next write offset checked against native long capacity. */
     int readable;        /* Whether this handle admits ordinary file reads. */
@@ -34,47 +36,11 @@ struct FVM_PortFile
 };
 
 
-/* Open path. */
-static FILE *open_path(const char *path, const char *mode)
-{
-#ifdef _WIN32
-    wchar_t *wide;
-    wchar_t wide_mode[4];
-    FILE *stream;
-    int count, i;
-    count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, 0, 0);
-    if (!count)
-    {
-        errno = EINVAL;
-        return 0;
-    }
-    wide = (wchar_t *)malloc((size_t)count * sizeof(*wide));
-    if (!wide)
-    {
-        errno = ENOMEM;
-        return 0;
-    }
-    if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, path, -1, wide, count))
-    {
-        free(wide);
-        errno = EINVAL;
-        return 0;
-    }
-    for (i = 0; mode[i] && i < 3; ++i)
-    {
-        wide_mode[i] = (wchar_t)mode[i];
-    }
-    wide_mode[i] = 0;
-    stream = _wfopen(wide, wide_mode);
-    free(wide);
-    return stream;
-#else
-    return fopen(path, mode);
-#endif
-}
-
-
-/* Open port file. */
+/* Open borrowed UTF-8 path in r, w or rw mode (NULL means rw).
+ * out receives an owned file or NULL; close it with fvm_port_file_close.
+ * Validate path/mode and allocate state before destructive creation.
+ * Native I/O blocks; invalid/unsupported paths, allocation and OS failures
+ * return explicit status. External synchronization is required. */
 FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile **out)
 {
 
@@ -82,6 +48,7 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
     FVM_PortFile *file;
     FILE *stream;
     int read, write;
+    FVM_Result path_status;
     if (!out)
     {
         return FVM_INVALID_ARGUMENT;
@@ -90,6 +57,11 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
     if (!path || !*path)
     {
         return FVM_INVALID_ARGUMENT;
+    }
+    path_status = fvm_fs_native_path(path);
+    if (path_status != FVM_OK)
+    {
+        return path_status;
     }
     if (!mode)
     {
@@ -110,13 +82,21 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
     {
         return FVM_OUT_OF_MEMORY;
     }
-    stream = open_path(path, read ? (write ? "r+b" : "rb") : "wb");
+    file->path = (char *)malloc(strlen(path) + 1);
+    if (!file->path)
+    {
+        free(file);
+        return FVM_OUT_OF_MEMORY;
+    }
+    strcpy(file->path, path);
+    stream = (FILE *)fvm_fs_native_open(path, read ? (write ? "r+b" : "rb") : "wb");
     if (!stream && read && write && errno == ENOENT)
     {
-        stream = open_path(path, "w+b");
+        stream = (FILE *)fvm_fs_native_open(path, "w+b");
     }
     if (!stream)
     {
+        free(file->path);
         free(file);
         return FVM_ERROR;
     }
@@ -129,6 +109,7 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
     if (write && (fseek(stream, 0, SEEK_END) || (file->write_position = ftell(stream)) < 0))
     {
         fclose(stream);
+        free(file->path);
         free(file);
         return FVM_ERROR;
     }
@@ -145,6 +126,7 @@ void fvm_port_file_close(FVM_PortFile *file)
         return;
     }
     fclose(file->stream);
+    free(file->path);
     free(file);
 }
 
@@ -403,4 +385,16 @@ FVM_Result fvm_port_stdio_write(int descriptor, const void *bytes, size_t size, 
     }
     *written = (size_t)count;
     return FVM_OK;
+}
+
+
+/* Query an actual open stream through the selected OS port. Borrow file/output;
+ * metadata success does not change logical file positions or release ownership. */
+FVM_Result fvm_port_file_info(FVM_PortFile *file, FVM_FileInfo *output)
+{
+    if (!file || !output)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    return fvm_fs_native_stream(file->stream, file->path, output);
 }

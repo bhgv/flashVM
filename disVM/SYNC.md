@@ -1,4 +1,16 @@
-# Module review, reverse Regex fix and bootstrap optimizer refresh
+# Filesystem ports and incoming heap validation — v0.1650
+
+Current pin: **ff21d3ceaa3a0d19aa9d1359bb2d1a71a89678ef**.
+Exact selections: **636 core/reference/library files + 207 bootstrap files**.
+Incoming 90caf9d validates construction/clone spans before metadata/owner access.
+The original heap-preflight, clone and packed-record regressions are retained.
+Hosted filesystem ports remain FlashVM-specific. Reverse commit **ff21d3c**
+corrects the aliased nil/H branch oracle and missing arithmetic/CALL fixture
+dependencies. Actual production emitters are unchanged. The local parser fixture
+also now extracts the production signed-word decoder.
+[EN filesystem](runtime/FILESYSTEM.md) · [RU](runtime/FILESYSTEM.ru.md).
+
+## Previous checkpoint: module review, reverse Regex fix and bootstrap optimizer refresh
 
 Final pin: **320e6581e425c014f8a9ba313352b664925a709f**.
 Exact selections: **633 core/reference/library files + 207 bootstrap files**.

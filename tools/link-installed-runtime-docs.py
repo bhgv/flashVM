@@ -14,6 +14,11 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "disVM/runtime/FILESYSTEM.md": package / "FILESYSTEM.md",
+        root / "disVM/runtime/FILESYSTEM.ru.md": package / "FILESYSTEM.ru.md",
+        root / "disVM/examples/filesystem/README.md": package / "examples/filesystem/README.md",
+        root / "disVM/examples/filesystem/README.ru.md": package / "examples/filesystem/README.ru.md",
+        root / "disVM/examples/filesystem/main.b": package / "examples/filesystem/main.b",
         root / "disVM/runtime/README.md": package / "README-FIRSTSTEPS.md",
         root / "disVM/libraries/README.md": package / "STANDARD-MODULES.md",
         root

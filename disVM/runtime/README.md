@@ -1,5 +1,7 @@
 # Experimental runnable Dis and IDE services (NC64)
 
+Runtime **0.26.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
+
 Use `python3 build_menu.py`, select `all` or `disvm-runtime`, and accept the
 defaults. After building, choose **4** for the Dis channel example or **5** for
 IDE workspace services. Installed commands also work independently:
@@ -310,3 +312,9 @@ positive/negative completion under the same production policy implementation.
 полной нативной реализации всех состояний opcode. C-обработчики сохраняют своё
 владение, выделение памяти, блокировки и исключения. Расширения языка компилятора
 и адаптация хоста остаются в FlashVM.
+
+## OS filesystem services — v0.1650
+
+[English contract](FILESYSTEM.md) · [Русский контракт](FILESYSTEM.ru.md) · [Executable tutorial](../examples/filesystem/README.md).
+
+Sys stat/fstat/dirread and actual Readdir now run through selected platform ports.

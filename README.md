@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1649**. [Русская версия](README.ru.md).
+Development version: **0.1650**. [Русская версия](README.ru.md).
 
-Current series: [v0.1649](docs/releases/v0.1649.md): relative indexes and inclusive negative-end copies for hybrid tables, Unicode strings and native Dis arrays.
+Current series: [v0.1650](docs/releases/v0.1650.md): OS filesystem ports, real stat/fstat/dirread, Readdir and incoming Inferno heap validation.
 
 ## Browse documentation
 

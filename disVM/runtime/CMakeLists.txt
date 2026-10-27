@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.25.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.26.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -55,7 +55,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
-add_executable(disvm main.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 target_compile_definitions(disvm PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
 target_compile_options(disvm PRIVATE -fno-strict-aliasing)
@@ -798,4 +798,24 @@ if(DVM_RUNTIME_TESTS)
       "${CMAKE_CURRENT_BINARY_DIR}/regex-check.dis" "${mode}")
     set_tests_properties(disvm_regex_unicode_${mode} PROPERTIES TIMEOUT 60)
   endforeach()
+endif()
+
+# Actual filesystem records and retained Readdir execute through OS-selected ports.
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_sys_filesystem_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_filesystem.py" "$<TARGET_FILE:limbo-bootstrap>"
+      "$<TARGET_FILE:disvm>" "${u}/module" "${root}/disVM/examples/filesystem/main.b"
+      "${CMAKE_CURRENT_BINARY_DIR}/readdir.dis" "${mode}")
+    set_tests_properties(disvm_sys_filesystem_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Standalone C89 port contract, independent of either VM heap.
+if(DVM_RUNTIME_TESTS)
+  add_executable(disvm_filesystem_port_test test_filesystem_port.c)
+  target_link_libraries(disvm_filesystem_port_test PRIVATE disvm_shared_ports)
+  add_test(NAME disvm_shared_filesystem COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_filesystem_port.py" "$<TARGET_FILE:disvm_filesystem_port_test>")
+  set_tests_properties(disvm_shared_filesystem PROPERTIES TIMEOUT 60)
 endif()

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1649**. [English](README.md).
+Версия разработки: **0.1650**. [English](README.md).
 
-Текущая серия: [v0.1649](docs/releases/v0.1649.md): отрицательные индексы и срезы-копии таблиц, Unicode-строк и нативных Dis-массивов.
+Текущая серия: [v0.1650](docs/releases/v0.1650.md): файловые OS-порты, настоящие stat/fstat/dirread, Readdir и проверки кучи из Inferno.
 
 ## Просмотр документации
 

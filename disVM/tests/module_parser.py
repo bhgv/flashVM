@@ -61,6 +61,7 @@ def main():
             [
                 ("operand", "static int"),
                 ("disw", "static ulong"),
+                ("dissignedword", "static WORD"),
                 ("canontod", "double"),
                 ("brpatch", "int"),
                 ("freemod", "void"),

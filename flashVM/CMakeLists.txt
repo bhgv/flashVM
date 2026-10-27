@@ -34,7 +34,7 @@ list(REMOVE_ITEM FVM_CORE_SOURCES ${PROJECT_SOURCE_DIR}/src/capi/sqlite_c.cpp)
 add_library(flashvm_srecord STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/sadapt.c src/protocol/smeasure.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c)
 target_include_directories(flashvm_srecord PUBLIC ${PROJECT_SOURCE_DIR}/include)
 add_library(flashvm STATIC src/protocol/srecord.c src/protocol/sbindings.c src/protocol/sstream.c src/protocol/sslot.c src/protocol/scontrol.c src/protocol/smedia.c src/protocol/sadapt.c src/protocol/smeasure.c src/protocol/rdispatch.c src/protocol/rwire.c src/protocol/rheartbeat.c src/protocol/rfs.c src/protocol/r9p.c ${FVM_CORE_SOURCES} src/render/raster_c.cpp
-  ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/network/resolver.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
+  ports/code_port.c ports/mac/code_arm64.cpp ports/file_port.c ports/${FVM_PORT}/filesystem.c ports/network/resolver.c ports/calendar_port.c ports/${FVM_PORT}/clock.c ports/${FVM_PORT}/monotonic.c ports/${FVM_PORT}/thread.c ports/${FVM_PORT}/channel_sync.c
   external/mini_regex/mini_regex.c)
 target_include_directories(flashvm PUBLIC ${PROJECT_SOURCE_DIR}/include ${FVM_GENERATED_INCLUDE}
   PRIVATE ${PROJECT_SOURCE_DIR}/ports ${PROJECT_SOURCE_DIR}/external/mini_regex)

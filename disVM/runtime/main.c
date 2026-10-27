@@ -12,6 +12,7 @@
 #include "owned.h"
 #include "disvm/native_process.h"
 #include "file_port.h"
+#include "filesystem_sys.h"
 #include <stdio.h>
 #include <stddef.h>
 #include <limits.h>
@@ -21,7 +22,6 @@
 #ifdef DVM_RUNTIME_EDITOR
 #include "editor_view.h"
 #include "thread_port.h"
-
 
 
 /* Initialize, poll and release the UI channel boundary on this sole native owner. */
@@ -46,15 +46,12 @@ struct Pool
 extern void dvm_srv_initialize(void);
 
 
-
 /* Register retained Srv exports for this exclusive owner. No arguments or result. */
 extern void srvmodinit(void);
 
 
-
 /* Register retained Loader exports/types. No arguments/result; requires initialized heap. */
 extern void loadermodinit(void);
-
 
 
 /* Register hosted Math exports. No arguments/result; requires initialized heap and Sys. */
@@ -63,6 +60,7 @@ extern void mathmodinit(void);
 
 /* Register hosted scalar hybrid tables after the VM allocator is initialized. */
 extern void dvm_bigtable_initialize(void);
+
 
 /* Copy live scalar table/snapshot counts for explicit diagnostic statistics. */
 extern void dvm_bigtable_owners(unsigned long *, unsigned long *);
@@ -93,13 +91,14 @@ static int instruction_boundary_error;  /* A budget rejection happens before fet
 static int show_stats;                  /* Emit actual instruction counts on explicit request. */
 static int scheduler_quantum = PQUANTA; /* Instructions per scheduler turn; adjustable for GC/boundary testing. */
 static int quantum_selected;            /* Reject duplicate quantum options rather than silently overriding them. */
-static int inspect_reals;       /* Interpret the explicitly requested scalar range as binary64, not native words. */
-static int inspect_requested;   /* Explicit read-only post-execution module-data inspection. */
-static size_t inspect_offset;   /* Requested byte offset, aligned to the NC64 word width. */
-static size_t inspect_count;    /* Requested native words, bounded to 4096 before execution. */
-static uchar *inspect_data;     /* [GC:] Registered native MP root; only verified scalar cells are reported. */
-static int test_control;        /* Explicit isolated-test halt capability; disabled for normal applications. */
-static FVM_PortFile *files[32]; /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
+static int inspect_reals;     /* Interpret the explicitly requested scalar range as binary64, not native words. */
+static int inspect_requested; /* Explicit read-only post-execution module-data inspection. */
+static size_t inspect_offset; /* Requested byte offset, aligned to the NC64 word width. */
+static size_t inspect_count;  /* Requested native words, bounded to 4096 before execution. */
+static uchar *inspect_data;   /* [GC:] Registered native MP root; only verified scalar cells are reported. */
+static int test_control;      /* Explicit isolated-test halt capability; disabled for normal applications. */
+static FVM_PortDirectory *directories[32]; /* Owned OS-port cursors; share the descriptor quota with files. */
+static FVM_PortFile *files[32];            /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
 
 
 /* Print copied instruction/native counters only for an explicit --stats request.
@@ -589,7 +588,7 @@ void Sys_print(void *frame)
 }
 
 
-/* Sys string-only functions are provided by retained runt.c; FD services are unavailable. */
+/* Retained runt.c provides string services; hosted FD services use platform ports. */
 static void free_fd(Heap *heap, int swept)
 {
     Sys_FD *fd = H2D(Sys_FD *, heap);
@@ -652,8 +651,18 @@ static int open_file(const char *path, const char *mode)
     int index;
     for (index = 3; index < 32; index++)
     {
-        if (!files[index])
+        if (!files[index] && !directories[index])
         {
+            FVM_FileInfo metadata;
+            if (!strcmp(mode, "r") && fvm_port_path_info(path, &metadata) == FVM_OK && metadata.directory)
+            {
+                if (fvm_port_directory_open(path, &directories[index]) == FVM_OK)
+                {
+                    return index;
+                }
+                kwerrstr("cannot open directory: %s", path);
+                return -1;
+            }
             if (fvm_port_file_open(path, mode, &files[index]) == FVM_OK)
             {
                 return index;
@@ -679,7 +688,8 @@ static const char *bundled_module_path(const char *path)
                                   "debug.dis",
                                   "dis.dis",
                                   "styx.dis",
-                                  "styxservers.dis"}; /* Bundled module allowlist. */
+                                  "styxservers.dis",
+                                  "regex.dis"}; /* Bundled module allowlist. */
     size_t index;
     if (strncmp(path, "/dis/lib/", 9) != 0)
     {
@@ -746,12 +756,14 @@ long kread(int fd, void *bytes, long size)
 /* Close exactly the module handle owned by the loader. */
 int kclose(int fd)
 {
-    if (fd < 0 || fd >= 32 || !files[fd])
+    if (fd < 3 || fd >= 32 || (!files[fd] && !directories[fd]))
     {
         return -1;
     }
     fvm_port_file_close(files[fd]);
+    fvm_port_directory_close(directories[fd]);
     files[fd] = nil;
+    directories[fd] = nil;
     return 0;
 }
 
@@ -1007,6 +1019,7 @@ int main(int argc, char **argv)
     arena_init();
     opinit();
     sysmodinit();
+    dvm_filesystem_initialize();
     loadermodinit();
     mathmodinit();
     dvm_bigtable_initialize();
@@ -1191,7 +1204,7 @@ ulong msize(void *value)
 
 /* Validate language path contents before converting to a native NUL-terminated name.
  * name is borrowed; returns the UTF-8 path or NULL with a visible error. */
-static char *file_path(String *name)
+char *dvm_runtime_file_path(String *name)
 {
     int index;
     if (name == H || name == nil)
@@ -1232,7 +1245,7 @@ void Sys_open(void *frame)
     Sys_FD *old;
     Sys_FD *result;
     int descriptor;
-    char *path = file_path(call->s);
+    char *path = dvm_runtime_file_path(call->s);
     if (!path)
     {
         Sys_FD *empty = H;
@@ -1245,6 +1258,8 @@ void Sys_open(void *frame)
     {
         error(exNilref);
     }
+    result = H2D(Sys_FD *, heapz(TFD));
+    result->fd = -1;
     if (test_control && strcmp(path, "/dev/sysctl") == 0 && call->mode == 1)
     {
         descriptor = -2;
@@ -1261,11 +1276,14 @@ void Sys_open(void *frame)
             kwerrstr("unsupported file open mode");
         }
     }
-    result = H;
     if (descriptor >= 0 || descriptor == -2)
     {
-        result = H2D(Sys_FD *, heapz(TFD));
         result->fd = descriptor;
+    }
+    else
+    {
+        destroy(result);
+        result = H;
     }
     memmove(&old, call->ret, sizeof(old));
     memmove(call->ret, &result, sizeof(result));
@@ -1470,7 +1488,7 @@ void Sys_create(void *frame)
     F_Sys_create *call = frame;
     Sys_FD *result = H;
     int descriptor;
-    char *path = file_path(call->s);
+    char *path = dvm_runtime_file_path(call->s);
     if (!path)
     {
         publish_descriptor(call->ret, H);
@@ -1574,4 +1592,30 @@ void Sys_fprint(void *frame)
         kwerrstr("formatted descriptor write failed");
     }
     memmove(call->ret, &result, sizeof(result));
+}
+
+
+/* Borrow metadata for one live runtime slot; native APIs remain in OS ports. */
+FVM_Result dvm_runtime_fd_info(int descriptor, FVM_FileInfo *output)
+{
+    if (descriptor < 3 || descriptor >= 32)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (files[descriptor])
+    {
+        return fvm_port_file_info(files[descriptor], output);
+    }
+    if (directories[descriptor])
+    {
+        return fvm_port_directory_info(directories[descriptor], output);
+    }
+    return FVM_INVALID_ARGUMENT;
+}
+
+
+/* Borrow a directory cursor only for the current serial owner call. */
+FVM_PortDirectory *dvm_runtime_directory(int descriptor)
+{
+    return descriptor >= 3 && descriptor < 32 ? directories[descriptor] : nil;
 }

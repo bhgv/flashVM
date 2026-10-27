@@ -7,6 +7,7 @@ import shutil
 import shlex
 import re
 import subprocess
+import sys
 import tempfile
 
 
@@ -206,13 +207,28 @@ def table_packages(prefix, work, environment):
     regex_work.mkdir()
     run([native / "limbo-native", "-I", native / "include/limbo", "-o", regex_work / "regex.dis",
          native / "source/libraries/regex.b"], work, environment)
+    # Exercise the standard resource PATH, not only a caller-supplied filename.
+    regex_client = regex_work / "check.b"
+    regex_client.write_text((native / "examples/regex-unicode.b").read_text().replace(
+        'load Regex "regex.dis"', 'load Regex Regex->PATH'))
     run([native / "limbo-native", "-I", native / "include/limbo", "-o", regex_work / "check.dis",
-         native / "examples/regex-unicode.b"], work, environment)
+         regex_client], work, environment)
     for mode in ("--jit", "--no-jit"):
         for quantum in (1, 2048):
             result = run([runtime, mode, "--quantum", quantum, regex_work / "check.dis"], work, environment)
             if "PASS regex Unicode: 85 rune/capture/class checks" not in result or "FAIL" in result:
                 raise RuntimeError("relocated Regex Unicode module differs")
+
+
+    # Compile and run the shipped filesystem tutorial from a relocated SDK.
+    # The driver owns native temp files and checks both GC scheduling quanta.
+    for mode in ("jit", "interpreter"):
+        result = run([sys.executable, native / "examples/filesystem/run.py",
+                      native / "limbo-native", runtime, native / "include/limbo",
+                      native / "examples/filesystem/main.b", native / "readdir.dis", mode],
+                     work, environment)
+        if "PASS hosted Sys filesystem" not in result:
+            raise RuntimeError("relocated filesystem example differs")
 
 
 

@@ -369,6 +369,10 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
             copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
             copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
+            copy_tree "$ROOT/disVM/examples/filesystem" "$destination/examples/filesystem"
+            copy_file "$ROOT/disVM/runtime/test_filesystem.py" "$destination/examples/filesystem/run.py"
+            copy_file "$ROOT/disVM/runtime/FILESYSTEM.md" "$destination/FILESYSTEM.md"
+            copy_file "$ROOT/disVM/runtime/FILESYSTEM.ru.md" "$destination/FILESYSTEM.ru.md"
             copy_tree "$ROOT/disVM/examples/relative-sequences" "$destination/examples/relative-sequences"
             copy_tree "$ROOT/disVM/examples/hybrid-table" "$destination/examples/hybrid-table"
             copy_tree "$ROOT/disVM/examples/table-guards" "$destination/examples/table-guards"
@@ -394,6 +398,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
+            copy_file "$ROOT/disVM/upstream/module/readdir.m" "$destination/include/limbo/readdir.m"
             copy_file "$ROOT/disVM/upstream/module/regex.m" "$destination/include/limbo/regex.m"
             copy_file "$ROOT/disVM/upstream/appl/lib/tests/regex-unicode.b" "$destination/examples/regex-unicode.b"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
@@ -430,7 +435,7 @@ EOF
             copy_tree "$ROOT/disVM/include" "$destination/include"
             # Export the public header closure required by flashvm_host.h.
             copy_tree "$ROOT/flashVM/include" "$destination/include"
-            for file in thread_port.h channel_sync.h file_port.h network/socket.h network/resolver.h; do
+            for file in thread_port.h channel_sync.h file_port.h filesystem_port.h network/socket.h network/resolver.h; do
                 copy_file "$ROOT/flashVM/ports/$file" "$destination/include/$file"
             done
             copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"
