@@ -94,7 +94,7 @@ def main():
             ('i := big 0; while (i < 1) {continue; i += 1;} return 42;', 'unreachable'),
             ('i := big 0; while (i < 1) {if (i == 0) {break;} else {continue;} i += 1;} return 42;', 'unreachable'),
             ('i := big 0; while (i < 1) {x: big; if (i == 0) {x = 42;} i += 1;} return 42;', 'conditional assignment'),
-            ('i := big 0; while (i < 1) {s := "a"; if (i == 0) {s = "b";} i += 1;} return 42;', 'conditional assignment'),
+            ('i := big 0; while (i < 1) {s: string; if (i == 0) {s = "b";} i += 1;} return 42;', 'conditional assignment'),
             ('i := big 0; while (i < 1) {if (i == 0) {part := big 42;} i += part;} return 42;', 'initialized'),
         ]
         # Mixed nested controls must consume the shared parser/scope budget.

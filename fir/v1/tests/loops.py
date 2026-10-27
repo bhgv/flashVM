@@ -67,9 +67,8 @@ def main():
                         if values!=wanted or 'tables_live=0 keys_live=0' not in result.stdout+result.stderr:
                             raise RuntimeError('native loop result/root mismatch: '+body+'\n'+result.stdout+result.stderr)
 
-        # Loop-carried reference rebindings need future typed cells; reject them now.
+        # Outer uninitialized bindings and invalid traversal remain rejected.
         invalid=[
-            ('t := table of big; while (len t < 1) {t = table of big {42};} return 42;', 'loop-carried'),
             ('x: big; i := big 0; while (i < 1) {x = 42; i += 1;} return x;', 'loop-carried'),
             ('t := table of big; for (k,k in t) {} return 42;', 'distinct'),
             ('t := table of big; for (k,v in t) {} return v;', 'initialized'),

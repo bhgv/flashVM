@@ -294,7 +294,7 @@ static unsigned cells(FirModule *module, int value)
         const FirInstruction *in = location(module, value);
         return in && module->values[in->b].type == T_TABLE_KEY ? 3U : 2U;
     }
-    return type == T_BIG_RANGE || type == T_TABLE_KEY ? 2U : 1U;
+    return type == T_BIG_RANGE || type == T_TABLE_KEY || type == T_KEY_CELL ? 2U : 1U;
 }
 
 
@@ -320,7 +320,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         FirType type = module->values[i].type;
         e->offsets[i] = offset;
         if (type == T_TABLE_BIG || type == T_KEYS || type == T_STRING || type == T_TABLE_KEY || type == T_TABLE_RANGE ||
-            type == T_STRING_RANGE)
+            type == T_STRING_RANGE || (type >= T_STRING_CELL && type <= T_KEY_CELL))
         {
             root(e->frame_map, offset);
         }
@@ -381,7 +381,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_BIG_STORE) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_REF_STORE) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -568,6 +568,16 @@ static void body(Emitter *e, FirModule *module, int measure)
              * can replace only that root, preserving all original string aliases. */
             instruction(e, MOVP, FP, a, FP, d, 0, -1);
             arithmetic(e, SLICEC, MIDDLE_FRAME, b + CELL, b, d);
+            break;
+        case O_REF_LOCAL:
+        case O_REF_LOAD:
+            /* [GC:] Both the cell and returned SSA payload have independent roots.
+             * MOVP retains first, then releases any previous destination owner. */
+            copy_value(e, module, in->result, in->a);
+            break;
+        case O_REF_STORE:
+            /* [GC:] A captured old value remains rooted even when its cell changes. */
+            copy_value(e, module, in->a, in->b);
             break;
         case O_BIG_LOCAL:
             instruction(e, MOVL, IMM, 0, FP, d, 0, -1);

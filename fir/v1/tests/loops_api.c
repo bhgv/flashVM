@@ -24,9 +24,9 @@ static int compile_loop(FirModule *module, int invalid)
     fputs(invalid == 1 ? "sum := big 0; for (i := big 0; i < 3; extra := 42) {sum += i;} return sum;"
           : invalid == 2
               ? "sum := big 0; for (i := big 0; i < 3; i++"
-              : "sum := big 0; running := 1 == 1; i := int 0; while (running) {sum += 14; i++; "
-                "if (i == int 3) {running = 1 == 0;}} for (k,r in \"Я😀\") {sum += big k;} "
-                "for (j,key in keysof table of big {a=1}) {sum -= j;} return sum-1;",
+              : "t := table of big {20}; old := t; i := int 0; while (i < int 1) {t = table of big {22}; i++;} "
+                "s := \"a\"; while (len s < int 2) {s = s+\"😀\";} keys := keysof t; key := keys[0]; "
+                "i = int 0; while (i < int 1) {key = keys[0]; i++;} return old[0]+t[key];",
           input);
     fputs("}", input);
     rewind(input);

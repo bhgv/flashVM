@@ -204,3 +204,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Typed loop tutorial](typed-loops.b): int counters, bool stop flags, Unicode runes and independent key snapshots. [Guide](../../doc/TYPED_LOOPS.md).
+
+
+[Retained-loop tutorial](retained-loops.b): reference rebinding, stable aliases and captured traversal. [Guide](../../doc/RETAINED_LOOPS.md).

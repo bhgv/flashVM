@@ -203,3 +203,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Пример типизированных циклов](typed-loops.b): счётчики int, флаги bool, Unicode-руны и независимые снимки ключей. [Руководство](../../doc/TYPED_LOOPS.ru.md).
+
+
+[Пример ссылочных циклов](retained-loops.b): переназначение ссылок, сохранение алиасов и захват получателя обхода. [Руководство](../../doc/RETAINED_LOOPS.ru.md).

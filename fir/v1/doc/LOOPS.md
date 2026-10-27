@@ -35,11 +35,11 @@ Bodies contain assignments, declarations, deletion and nested loops. Compiler
 0.37 adds [if/else, break/continue and return](LOOP_CONTROL.md) inside them.
 Compiler 0.38 adds [classic three-clause for and postfix updates](COUNTED_FOR.md).
 Compiler 0.39 adds [int/bool loop cells and string/key traversal](TYPED_LOOPS.md).
-String/table reference rebindings remain separate work.
+Compiler 0.40 adds [retained reference cells](RETAINED_LOOPS.md).
 An outer uninitialized declaration cannot become definitely initialized merely
 because an assignment appeared in a possibly zero-iteration body. Such cases
 are rejected rather than silently using a body-only SSA definition after exit.
-Mutating table elements is supported; rebinding the outer table handle is not.
+Both mutating table elements and rebinding initialized table handles are supported.
 
 ## Snapshot table traversal
 
@@ -100,3 +100,6 @@ The reference prints 42. Native runs show `DATA 0 42`, `DATA 8 0`, `DATA 16 1`,
 `DATA 24 0`: the second terminal arm was not executed. Final table/key counts
 are zero. Installed SDK checks rebuild a C99 compiler client and run this same
 shipped source. This FlashVM language extension is not copied into Inferno.
+
+
+Compiler 0.40 adds retained reference cells for initialized string/table/snapshot/key rebindings. [Guide / Руководство](RETAINED_LOOPS.md).

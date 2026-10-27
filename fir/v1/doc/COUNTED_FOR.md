@@ -31,7 +31,7 @@ redeclared in its body. An assignment to an already declared outer big variable
 continues to update that variable. Body-local declarations may be reassigned
 normally; loop-carried initialized big locals keep their existing frame cells.
 [Compiler 0.39](TYPED_LOOPS.md) adds int/bool cells and int postfix updates;
-reference rebindings across loop iterations still need future retained cells.
+[compiler 0.40](RETAINED_LOOPS.md) adds retained cells for reference rebindings.
 
 Statement-only postfix `name++`, `name--`, `table[index]++` and dotted/snapshot-key
 forms now work for big payloads. Receiver and key are captured once. Table updates
@@ -82,3 +82,6 @@ counts finish at zero. Tests cover both optimization states, both VM modes and
 quanta, missing clauses, nested loop kinds, unused failing steps, high-bit/wrapped
 big updates, single key evaluation, scope errors and complete debug-event IDs.
 Installed SDK acceptance compiles the same source through a freshly linked C99 client.
+
+
+Compiler 0.40 adds retained reference cells. [Guide / Руководство](RETAINED_LOOPS.md).

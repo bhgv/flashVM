@@ -336,7 +336,7 @@ int source_string_rune(int value);
  * Borrowed strings emit nothing; generated entry may suspend or throw. */
 void source_table_lease(int receiver, int acquire);
 
-/* Start a bounded while CFG, promoting initialized scalar locals; return its ID. */
+/* Start a bounded while CFG, promoting initialized typed locals; return its ID. */
 int source_loop_begin(void);
 
 
@@ -381,7 +381,7 @@ void source_loop_statement(void);
 void source_loop_transfer(int is_continue);
 
 
-/* Promote join-carried scalar locals before parsing a loop-if condition. */
+/* Promote join-carried typed locals before parsing a loop-if condition. */
 SourceLoopChoice source_loop_if_begin(void);
 
 

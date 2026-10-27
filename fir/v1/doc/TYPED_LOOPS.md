@@ -41,8 +41,8 @@ Nested loops reuse an already dominating cell. Sibling terminal arms restore
 incoming cell identities before compiling the other arm. A body-local scalar may
 be promoted within its iteration; its initializer still runs on each entry.
 Uninitialized outer declarations are not made definitely initialized by a body
-which might execute zero times. String/table/snapshot handle rebindings across
-joins remain rejected until typed retained-reference cells exist.
+which might execute zero times. [Compiler 0.40](RETAINED_LOOPS.md) adds retained string/table/snapshot/key cells
+for handle rebindings across joins.
 
 ## for-in types and lifetime
 

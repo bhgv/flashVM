@@ -1,6 +1,7 @@
 # Direct Dis backend, FIR implementation 0.17.0
 
-[Typed table Dis extension / Таблицы и нативные вызовы](TABLES_DIS.md) · [Русский](TABLES_DIS.ru.md). The scalar CFG contract below remains separate from the single-block hosted table path.
+[Typed table Dis extension / Таблицы и нативные вызовы](TABLES_DIS.md) · [Русский](TABLES_DIS.ru.md). The scalar CFG contract below describes the numeric path. The hosted table path
+also supports [source loops and retained locals](RETAINED_LOOPS.md).
 
 
 [Русский](DIS_BACKEND.ru.md) · [Compiler implementation](../compiler/dis.c) ·
@@ -31,10 +32,11 @@ Consequently no phi/join environment is silently invented. Source limits remain
 The existing numeric-only AS1/2/3 adapters now also reach this Dis backend through
 explicit f64 operations; their source profile metadata remains intact. Dynamic
 AS coercion (`as.add`, `as.to_number`), strings/channels, imports and function
-exports remain unsupported and fail preflight. General Limbo functions, mutable
-source loops, SSA phi and Dis SBL remain separate work.
-Manual FIR cycles can execute but need an explicit runtime instruction limit;
-this does not claim source while/for lowering or loop-carried SSA support.
+exports remain unsupported on this numeric path and fail preflight. General
+Limbo functions, explicit SSA phi and Dis SBL remain separate work. The big/table
+profile now lowers source while, counted for and for-in with typed local cells;
+see [loops](LOOPS.md) and [retained references](RETAINED_LOOPS.md). Manual FIR
+cycles can also execute with an explicit runtime instruction limit.
 
 ## Console pipeline
 

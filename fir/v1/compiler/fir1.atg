@@ -259,13 +259,19 @@ PRODUCTIONS
         | "table.range"
         | "string.range"
         | "i64.slot"
+        | "string.cell"
+        | "table.cell"
+        | "keys.cell"
+        | "key.cell"
     )
                                                                         (. capture(B_TYPE); .)
   .
 
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-    "i32.div.signed" (. fir_build_op(O_I32_DIV); .) A "," B
+    "ref.local" (. fir_build_op(O_REF_LOCAL); .) A
+    | "ref.load" (. fir_build_op(O_REF_LOAD); .) A
+    | "i32.div.signed" (. fir_build_op(O_I32_DIV); .) A "," B
     | "i32.mod.signed" (. fir_build_op(O_I32_MOD); .) A "," B
     | "i32.shl.checked" (. fir_build_op(O_I32_SHL); .) A "," B
     | "i32.shr.checked" (. fir_build_op(O_I32_SHR); .) A "," B
@@ -377,7 +383,8 @@ PRODUCTIONS
 
   /* Statements without SSA results; if has true target followed by false target. */
   Effect =
-    "big.store" (. fir_build_op(O_BIG_STORE); .) A "," B
+    "ref.store" (. fir_build_op(O_REF_STORE); .) A "," B
+    | "big.store" (. fir_build_op(O_BIG_STORE); .) A "," B
     | "table.lock" (. fir_build_op(O_TABLE_LOCK); .) A
     | "table.unlock" (. fir_build_op(O_TABLE_UNLOCK); .) A
     | "bool.store" (. fir_build_op(O_BOOL_STORE); .) A "," B

@@ -38,7 +38,7 @@ static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; siblin
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
 static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
-static int table_cells[256];        /* Per-binding scalar cell identities, -1 until loop promotion. */
+static int table_cells[256];        /* Per-binding typed cell identities, -1 until loop promotion. */
 static int loop_serial;             /* Unique loop labels in the translation. */
 static int loop_depth;              /* Active loop count, bounded with parser nesting. */
 static int loop_id[65];             /* Active innermost transfer target IDs. */
@@ -332,7 +332,28 @@ int source_name(void)
 }
 
 
-/* Resolve borrowed binding name to its current SSA value or promoted scalar-cell
+/* [GC:] Select a private retained cell for one copied source payload type.
+ * Return T_VOID for scalar/unsupported inputs. No runtime object is read or
+ * retained here; generated Dis MOVP instructions establish actual ownership. */
+static FirType source_reference_cell(FirType type)
+{
+    switch (type)
+    {
+    case T_STRING:
+        return T_STRING_CELL;
+    case T_TABLE_BIG:
+        return T_TABLE_CELL;
+    case T_KEYS:
+        return T_KEYS_CELL;
+    case T_TABLE_KEY:
+        return T_KEY_CELL;
+    default:
+        return T_VOID;
+    }
+}
+
+
+/* Resolve borrowed binding name to its current SSA value or promoted typed-cell
  * load. Return zero on a sticky initialization/resource error. This emits staged
  * FIR/debug records only; it never reads runtime variables or acquires owners. */
 int source_read(int name)
@@ -346,7 +367,11 @@ int source_read(int name)
     value = bindings[name];
     if (!failed && table_cells[name] >= 0)
     {
-        if (table_bindings[name] == T_BOOL)
+        if (source_reference_cell(table_bindings[name]) != T_VOID)
+        {
+            value = table_operation(table_bindings[name], "ref.load", table_cells[name], -1);
+        }
+        else if (table_bindings[name] == T_BOOL)
         {
             value = table_operation(T_BOOL, "bool.load", table_cells[name], -1);
         }
@@ -787,7 +812,11 @@ static int table_operation(FirType type, const char *spelling, int a, int b)
                                         "bool.slot",
                                         "table.range",
                                         "string.range",
-                                        "i64.slot"};
+                                        "i64.slot",
+                                        "string.cell",
+                                        "table.cell",
+                                        "keys.cell",
+                                        "key.cell"};
     int result = table_value(type);
     if (!failed)
     {
@@ -1466,12 +1495,12 @@ void source_table_bind(int name, int value, int type, int declaration)
     }
     if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && table_cells[name] < 0)
     {
-        reject("loop-carried assignment requires an initialized scalar local");
+        reject("loop-carried assignment requires an initialized local");
     }
     if (!declaration && conditional_depth && binding_scope[name] <= conditional_scope[conditional_depth - 1] &&
         table_cells[name] < 0)
     {
-        reject("conditional assignment requires an initialized scalar local");
+        reject("conditional assignment requires an initialized local");
     }
     if (!failed)
     {
@@ -1482,7 +1511,11 @@ void source_table_bind(int name, int value, int type, int declaration)
             if (table_cells[name] >= 0)
             {
                 const char *operation = "big.store";
-                if (actual == T_BOOL)
+                if (source_reference_cell(actual) != T_VOID)
+                {
+                    operation = "ref.store";
+                }
+                else if (actual == T_BOOL)
                 {
                     operation = "bool.store";
                 }
@@ -1562,31 +1595,40 @@ void source_table_lease(int receiver, int acquire)
 }
 
 
-/* Promote active initialized big/int/bool bindings into dominating scalar cells.
- * No source value changes type: int storage sign-extends to an existing big cell
- * and narrows on load; bool uses its native cell. Names and cells remain private
- * to this serial compiler request. Unsupported reference bindings stay SSA. */
-static void source_promote_scalars(void)
+/* [GC:] Promote initialized active locals into dominating typed frame cells.
+ * Scalars retain their existing bool/big storage; int widens on store and narrows
+ * on load. Reference cells initialize from a live SSA payload and hold an
+ * independent rooted owner. Cells never escape this serial compiler request's
+ * function; unsupported transient locations/ranges remain SSA-only. */
+static void source_promote_locals(void)
 {
     int name;
     for (name = 0; name < name_count && !failed; name++)
     {
         FirType type = table_bindings[name];
-        if (active[name] && (type == T_I64 || type == T_I32 || type == T_BOOL) &&
+        FirType reference = source_reference_cell(type);
+        if (active[name] && (type == T_I64 || type == T_I32 || type == T_BOOL || reference != T_VOID) &&
             bindings[name] >= 0 && table_cells[name] < 0)
         {
-            int cell = table_operation(type == T_BOOL ? T_BOOL_SLOT : T_BIG_SLOT,
-                                       type == T_BOOL ? "bool.local" : "big.local", -1, -1);
-            int value = bindings[name];
-            table_cells[name] = cell;
-            if (type == T_I32)
+            if (reference != T_VOID)
             {
-                value = source_table_convert(value, 0);
+                table_cells[name] = table_operation(reference, "ref.local", bindings[name], -1);
             }
-            if (!failed)
+            else
             {
-                fprintf(destination, "    %s %%v%d, %%v%d\n",
-                        type == T_BOOL ? "bool.store" : "big.store", cell, value);
+                int cell = table_operation(
+                    type == T_BOOL ? T_BOOL_SLOT : T_BIG_SLOT, type == T_BOOL ? "bool.local" : "big.local", -1, -1);
+                int value = bindings[name];
+                table_cells[name] = cell;
+                if (type == T_I32)
+                {
+                    value = source_table_convert(value, 0);
+                }
+                if (!failed)
+                {
+                    fprintf(
+                        destination, "    %s %%v%d, %%v%d\n", type == T_BOOL ? "bool.store" : "big.store", cell, value);
+                }
             }
         }
     }
@@ -1594,7 +1636,7 @@ static void source_promote_scalars(void)
 
 
 /* Begin a while continuation before parsing its condition. Promote initialized
- * active scalar bindings into dominating frame cells so each iteration reads the
+ * active initialized bindings into dominating frame cells so each iteration reads the
  * current values. Return the unique loop ID. Sticky limits prevent publication;
  * no runtime storage is allocated by this compiler function. */
 int source_loop_begin(void)
@@ -1605,7 +1647,7 @@ int source_loop_begin(void)
         reject("loop nesting/block limit exceeded");
         return loop;
     }
-    source_promote_scalars();
+    source_promote_locals();
     loop_id[loop_depth] = loop;
     loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
     loop_names[loop_depth++] = name_count;
@@ -1622,7 +1664,7 @@ int source_loop_begin(void)
 
 /* Branch from a while test to its statement body or continuation. loop is the
  * parser-owned ID; condition is a checked bool/inversion pair. No bindings are
- * merged: loop-carried scalar values reside in their dominating scalar cells. */
+ * merged: loop-carried values reside in their dominating scalar cells. */
 void source_loop_condition(int loop, SourceCondition condition)
 {
     if (!failed)
@@ -1808,7 +1850,7 @@ void source_loop_transfer(int is_continue)
 
 
 /* Prepare a loop-body conditional before its condition executes. Capture the
- * current lexical join scope, promote scalar locals, and return a parser-owned
+ * current lexical join scope, promote typed locals, and return a parser-owned
  * label/closure record. Bounds/type errors remain sticky; no VM is executed. */
 SourceLoopChoice source_loop_if_begin(void)
 {
@@ -1820,7 +1862,7 @@ SourceLoopChoice source_loop_if_begin(void)
         reject("loop conditional nesting/block limit exceeded");
         return choice;
     }
-    source_promote_scalars();
+    source_promote_locals();
     conditional_scope[conditional_depth++] = scope_depth;
     blocks_used += 3;
     return choice;
@@ -1829,7 +1871,7 @@ SourceLoopChoice source_loop_if_begin(void)
 
 /* Emit a checked conditional's true/false edges and true block. choice and
  * condition are borrowed parser values. No binding is rebound by this emitter;
- * shared scalar cells carry runtime state across whichever arm actually executes. */
+ * shared typed cells carry runtime state across whichever arm actually executes. */
 void source_loop_if_test(SourceLoopChoice choice, SourceCondition condition)
 {
     if (!failed)

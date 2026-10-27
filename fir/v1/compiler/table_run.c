@@ -135,7 +135,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_BIG_STORE) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_REF_STORE) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -340,6 +340,43 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             break;
         }
+        case O_REF_LOCAL:
+        case O_REF_STORE:
+        {
+            RuntimeValue *target = in->op == O_REF_LOCAL ? result : a;
+            RuntimeValue *payload = in->op == O_REF_LOCAL ? a : b;
+            FirType type = module->values[in->op == O_REF_LOCAL ? in->a : in->b].type;
+            if (type == T_STRING)
+            {
+                char *text;
+                /* [GC:] The oracle's numeric text buffers are reusable SSA storage.
+                 * Snapshot their bytes on publication, independently of Dis GC. */
+                if (text_count == FIR_LIMIT || payload->text_size == SIZE_MAX)
+                {
+                    status = FHT_NOMEM;
+                    break;
+                }
+                text = malloc(payload->text_size + 1);
+                if (!text)
+                {
+                    status = FHT_NOMEM;
+                    break;
+                }
+                memcpy(text, payload->text, payload->text_size);
+                text[payload->text_size] = 0;
+                texts[text_count++] = text;
+                *target = *payload;
+                target->text = text;
+            }
+            else
+            {
+                *target = *payload;
+            }
+            break;
+        }
+        case O_REF_LOAD:
+            *result = *a;
+            break;
         case O_BIG_LOCAL:
         case O_BOOL_LOCAL:
             result->big = 0;

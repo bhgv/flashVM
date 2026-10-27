@@ -74,7 +74,11 @@ typedef enum
     T_BOOL_SLOT,    /* Function-local scalar bool cell; no pointer, copy or escape. */
     T_TABLE_RANGE,  /* Captured table owner and absolute exclusive slice bounds. */
     T_STRING_RANGE, /* Captured immutable string and absolute rune bounds. */
-    T_BIG_SLOT      /* Function-local mutable signed-big cell; no copy or escape. */
+    T_BIG_SLOT,     /* Function-local mutable signed-big cell; no copy or escape. */
+    T_STRING_CELL,  /* [GC:] Private retained string cell; initialized, noncopyable. */
+    T_TABLE_CELL,   /* [GC:] Private retained table-of-big cell; initialized, noncopyable. */
+    T_KEYS_CELL,    /* [GC:] Private retained key-sequence cell; initialized, noncopyable. */
+    T_KEY_CELL      /* [GC:] Private retained snapshot-key cell; owner plus scalar position. */
 } FirType;
 
 typedef enum
@@ -158,7 +162,10 @@ typedef enum
     O_TABLE_UNLOCK,      /* Release one process-owned retained table level. */
     O_BIG_LOCAL,         /* Create a zero-initialized function-local big cell. */
     O_BIG_LOAD,          /* Read a function-local big cell. */
-    O_BIG_STORE          /* Write a function-local big cell. */
+    O_BIG_STORE,         /* Write a function-local big cell. */
+    O_REF_LOCAL,         /* Initialize a typed retained frame cell from its payload. */
+    O_REF_LOAD,          /* Retain the current typed payload in a distinct SSA value. */
+    O_REF_STORE          /* Retain replacement before releasing the previous cell payload. */
 } FirOp;
 
 

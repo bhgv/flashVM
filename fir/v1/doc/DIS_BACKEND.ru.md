@@ -1,6 +1,7 @@
 # Прямой Dis-backend, реализация FIR 0.17.0
 
-[Typed table Dis extension / Таблицы и нативные вызовы](TABLES_DIS.md) · [Русский](TABLES_DIS.ru.md). The scalar CFG contract below remains separate from the single-block hosted table path.
+[Typed table Dis extension / Таблицы и нативные вызовы](TABLES_DIS.md) · [Русский](TABLES_DIS.ru.md). Ниже описан числовой путь. Hosted table backend также поддерживает
+[исходные циклы и удерживаемые локальные ссылки](RETAINED_LOOPS.ru.md).
 
 
 [English](DIS_BACKEND.md) · [Реализация C99](../compiler/dis.c) ·
@@ -30,9 +31,11 @@ Phi и слияние окружений не подменяются эврис�
 
 Числовые AS1/2/3 теперь также доходят до Dis через явные операции f64; профиль
 исходного языка сохраняется. Динамические `as.add`/`as.to_number`, строки, каналы,
-импорты и экспорты функций не поддержаны и отклоняются до записи. Общий Limbo,
-изменяемые исходные циклы, SSA phi и SBL остаются отдельной работой. FIR-циклы идут
-с явным лимитом инструкций; это не lowering исходных while/for или loop-carried SSA.
+импорты и экспорты функций в этом числовом пути отклоняются до записи. Общие
+функции Limbo, явные SSA phi и SBL остаются отдельной работой. Профиль big/table
+уже поддерживает исходные while, трёхчастный for и for-in с типизированными
+ячейками: [циклы](LOOPS.ru.md), [ссылочные переменные](RETAINED_LOOPS.ru.md).
+Ручные FIR-циклы также исполняются с явным лимитом инструкций.
 
 ## Консольный запуск
 
