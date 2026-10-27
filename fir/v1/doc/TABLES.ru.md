@@ -76,3 +76,5 @@ build/fir/fir1_table_run tables.opt.fir
 [Точная арифметика big и приоритет префиксов](BIG_ARITHMETIC.ru.md).
 
 [FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).
+
+Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md), [гибридные конструкторы](TABLE_LITERALS.ru.md).

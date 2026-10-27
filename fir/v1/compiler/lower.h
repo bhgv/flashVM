@@ -178,6 +178,10 @@ int source_table_text(int quoted);
 int source_table_new(void);
 
 
+/* Emit a fresh big positional constructor key; position is nonnegative. */
+int source_table_position(int position);
+
+
 /* Compare borrowed same-typed operands and return a normalized bool SSA value.
  * relation selects a source comparator; unsupported kinds make errors sticky. */
 int source_table_relation(int left, int right, SourceRelation relation);

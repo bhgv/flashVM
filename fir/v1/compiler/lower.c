@@ -765,6 +765,23 @@ int source_table_new(void)
     return table_operation(T_TABLE_BIG, "table.new", -1, -1);
 }
 
+
+/* Emit a constructor's nonnegative positional key without borrowing token text.
+ * position is a parser-local sequence index. Return a fresh big SSA identity;
+ * sticky resource errors prevent publication. No table owner is allocated;
+ * output is written to the translation-owned staged FIR/debug streams. */
+int source_table_position(int position)
+{
+    int result = table_value(T_I64);
+    if (!failed)
+    {
+        fprintf(destination, "    %%v%d: i64 = const.i64 %d\n", result, position);
+        source_debug_event("constant", result, "constructor-index", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return result;
+}
+
+
 /* Count all entries of a borrowed typed table; sequence length remains separate. */
 int source_table_count(int table)
 {

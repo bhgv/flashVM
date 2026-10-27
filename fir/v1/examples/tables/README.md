@@ -153,3 +153,17 @@ Each step is commented. Expected traces: 42/0; execution flags: 1/0.
 relations, strict decimal big parsing before signed32 narrowing, ownership,
 errors and limits. Relocated SDK acceptance relinks fresh source/FIR C99 clients
 and executes original/optimized IR in interpreter and JIT modes.
+
+## Hybrid constructors and editor-style settings (0.31)
+
+[constructors.b](constructors.b) combines two positional entries, named scalar
+settings and explicit text/numeric keys. It verifies a numeric-prefix length of
+two and six total keys. A numeric slice stays independent when a shared table
+alias mutates the original. The source comments explain every field and step.
+Expected trace cells: 42/0; execution flags: 1/0. Settings are example data, not
+a change to the live IDE's preferences.
+
+[The detailed guide](../../doc/TABLE_LITERALS.md) contains commands, collision
+examples, key-before-RHS evaluation, type/limit rules and parser/service ownership.
+Installed SDK acceptance relinks fresh C99 source/FIR clients and executes the
+original/optimized tutorial in interpreter and JIT modes.

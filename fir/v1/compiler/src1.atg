@@ -19,10 +19,10 @@ static void capture(void)
 static int depth; /* Bounded parser recursion; reset for every source module. */
 
 
-/* Recognize the numeric operand after a sign without consuming scanner input.
- * Returns a boolean. Borrows scanner bytes, skips comments and whitespace, and
- * does not allocate or block; general unary expressions use the shared depth cap. */
-static int LiteralAhead(void)
+/* Find the next nontrivia byte after the current lookahead token.
+ * Return a borrowed scanner position; never consume tokens or allocate. The
+ * generated scanner remains responsible for reporting malformed comments. */
+static long AfterToken(void)
 {
     long pos = S_NextPos + S_NextLen;
     for (;;)
@@ -49,15 +49,44 @@ static int LiteralAhead(void)
             }
             if (!S_CurrentCh(pos))
             {
-                return 0;
+                return pos;
             }
             pos += 2;
         }
         else
         {
-            return (ch >= '0' && ch <= '9') || (ch == '.' && next >= '0' && next <= '9');
+            return pos;
         }
     }
+}
+
+
+/* Recognize a numeric operand after a sign without consuming scanner input.
+ * Return boolean; ordinary unary expressions keep the shared recursion bound. */
+static int LiteralAhead(void)
+{
+    long pos = AfterToken();
+    int ch = S_CurrentCh(pos);
+    int next = S_CurrentCh(pos + 1);
+    return (ch >= '0' && ch <= '9') || (ch == '.' && next >= '0' && next <= '9');
+}
+
+
+/* Resolve a constructor's bare-name field without treating == as assignment.
+ * Return boolean using borrowed scanner bytes; the expression grammar still
+ * parses every key/value and evaluates ordinary identifier expressions. */
+static int NamedFieldAhead(void)
+{
+    long pos = AfterToken();
+    return S_CurrentCh(pos) == '=' && S_CurrentCh(pos + 1) != '=';
+}
+
+
+/* Distinguish a separator from one trailing comma, including intervening trivia.
+ * Return boolean; an empty/repeated field remains a generated-parser error. */
+static int MoreFieldsAhead(void)
+{
+    return S_CurrentCh(AfterToken()) != '}';
 }
 
 CHARACTERS
@@ -904,6 +933,52 @@ PRODUCTIONS
     | IF(depth >= 64) ident (. source_scope_limit(); *result = 0; .)
   .
 
+  /* Constructors lower directly to existing new/index/store FIR. Positional
+   * numbering starts at zero and advances only for positional fields. Each
+   * captured location is checked before its value expression is parsed. */
+  TableConstructor<int *result> =
+    (. int position = 0; .)
+    "table" (. capture(); .) "of" "big" (. *result = source_table_new(); .)
+    [ "{"
+      [ TableField<*result,&position>
+        { IF(Sym==CommaSym && MoreFieldsAhead()) "," TableField<*result,&position> }
+        [ "," ]
+      ]
+      "}"
+    ]
+  .
+
+  /* Key expressions run once, then location validation precedes the RHS.
+   * Bare names become copied string keys; bracket keys retain their exact type.
+   * The parser restores each key origin when publishing the final store. */
+  TableField<int owner, int *position> =
+    (.
+        int key = 0;
+        int slot = 0;
+        int value = 0;
+        SourceMark origin;
+    .)
+    (
+        IF(Sym==identSym && NamedFieldAhead())
+        ident (. capture(); origin = source_mark(); key = source_table_text(0);
+                 slot = source_table_index(owner, key); .)
+        "=" TableExpression<&value>
+        | "[" (. capture(); origin = source_mark(); .)
+          TableExpression<&key> "]"
+          (. source_restore(origin); slot = source_table_index(owner, key); .)
+          "=" TableExpression<&value>
+        | IF(!(Sym==identSym && NamedFieldAhead()))
+          (.
+              source_token("", S_NextLine, S_NextPos, (size_t)S_NextLen, 0);
+              origin = source_mark();
+              key = source_table_position((*position)++);
+              slot = source_table_index(owner, key);
+          .)
+          TableExpression<&value>
+    )
+    (. source_restore(origin); source_table_store(slot, value); .)
+  .
+
   /* Numeric literals are exact big constants. Limbo big/string casts and typeof
    * retain their own operator span while recursively parsing a bounded operand. */
   TablePrefix<int *result> =
@@ -949,7 +1024,7 @@ PRODUCTIONS
           (. source_restore(operation); *result = source_table_keys(*result); .)
         | (
             Name<&name> (. *result = source_read(name); .)
-            | "table" (. capture(); .) "of" "big" (. *result = source_table_new(); .)
+            | TableConstructor<result>
             | textlit (. capture(); *result = source_table_text(1); .)
             | numeral
               (. capture(); *result = source_table_constant(0); .)

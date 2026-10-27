@@ -90,3 +90,5 @@ remains pending. No new Dis opcode or Inferno extension is used.
 [Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).
 
 [FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).
+
+Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md), [гибридные конструкторы](TABLE_LITERALS.ru.md).

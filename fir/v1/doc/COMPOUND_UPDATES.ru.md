@@ -95,3 +95,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 Версия 0.28: [конкатенация/равенство строк и побитовые int](TEXT_BITS.ru.md).
 
 Версия 0.29: [проверяемые int-сдвиги и составные обновления](INT_SHIFTS.ru.md).
+
+Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md), [гибридные конструкторы](TABLE_LITERALS.ru.md).

@@ -64,3 +64,6 @@ Live checked shifts are Dis/reference-only; homogeneous int/AS source profiles a
 
 Compiler 0.30 / Компилятор 0.30: [ordered strings and checked int casts](TEXT_VALUES.md),
 [порядок строк и проверяемые int-cast](TEXT_VALUES.ru.md), in the typed big/table source profile.
+
+Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md),
+[конструкторы гибридных таблиц](TABLE_LITERALS.ru.md), ordered named/bracket/positional fields in the big/table profile.

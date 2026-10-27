@@ -96,3 +96,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 Compiler 0.28: [string concatenation/equality and int bit operations](TEXT_BITS.md).
 
 Compiler 0.29: [checked int shifts and compound updates](INT_SHIFTS.md).
+
+Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md), [гибридные конструкторы](TABLE_LITERALS.ru.md).
