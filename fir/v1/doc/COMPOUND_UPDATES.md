@@ -89,3 +89,6 @@ VM modes. Tests cover all ten operators on locals/numeric/text/snapshot location
 signed extrema, aliases, side-effecting keys/RHS, lazy RHS, eager error priority,
 static rejection and exact UTF-8 source spans. Physical ARM64 and complete
 IDE compiler/debugger integration remain separate acceptance work.
+
+Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
+[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.

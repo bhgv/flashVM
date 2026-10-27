@@ -67,6 +67,12 @@ static int text_position(const RuntimeValue *value, int64_t wanted, size_t *offs
     return wanted <= count;
 }
 
+/* Interpret low 32 bits as signed int while retaining int64 storage for reference values. */
+static int64_t int_bits(uint32_t bits)
+{
+    return bits <= INT32_MAX ? (int64_t)bits : -1 - (int64_t)(UINT32_MAX - bits);
+}
+
 /* Convert wrapped bits to a signed big without relying on implementation-defined
  * out-of-range casts. This scalar helper allocates nothing and never blocks. */
 static int64_t big_bits(uint64_t bits)
@@ -93,8 +99,9 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_STRING_SLICE) || in->op == O_I32 || in->op == O_BOOL ||
-            in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
+        if ((in->op >= O_I64 && in->op <= O_I32_MOD) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+            in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
+            in->op == O_RETURN)
         {
             continue;
         }
@@ -173,6 +180,33 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         }
         switch (in->op)
         {
+        case O_ADD:
+        case O_SUB:
+        case O_MUL:
+        case O_I32_DIV:
+        case O_I32_MOD:
+            if ((in->op == O_I32_DIV || in->op == O_I32_MOD) && !b->big)
+            {
+                status = FHT_INVALID;
+            }
+            else
+            {
+                uint32_t left = (uint32_t)(uint64_t)a->big;
+                uint32_t right = (uint32_t)(uint64_t)b->big;
+                uint32_t bits = in->op == O_ADD   ? left + right
+                                : in->op == O_SUB ? left - right
+                                : in->op == O_MUL
+                                    ? left * right
+                                    : (uint32_t)(uint64_t)(in->op == O_I32_DIV ? a->big / b->big : a->big % b->big);
+                result->big = int_bits(bits);
+            }
+            break;
+        case O_LT:
+            result->big = a->big < b->big;
+            break;
+        case O_EQ:
+            result->big = a->big == b->big;
+            break;
         case O_STRING_LEN:
         case O_STRING_AT:
         {
@@ -496,12 +530,13 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
                      capacity,
                      "line %d: table operation failed: %s",
                      in->line,
-                     (in->op == O_BIG_SHL || in->op == O_BIG_SHR)   ? "invalid argument"
-                     : (in->op == O_BIG_DIV || in->op == O_BIG_MOD) ? "zero divide"
-                     : in->op == O_TO_BIG                           ? "invalid big conversion"
-                     : status == FHT_MISSING                        ? "missing key"
-                     : status == FHT_NOMEM                          ? "allocation failure"
-                                                                    : "invalid key/range");
+                     (in->op == O_BIG_SHL || in->op == O_BIG_SHR) ? "invalid argument"
+                     : (in->op == O_BIG_DIV || in->op == O_BIG_MOD || in->op == O_I32_DIV || in->op == O_I32_MOD)
+                         ? "zero divide"
+                     : in->op == O_TO_BIG    ? "invalid big conversion"
+                     : status == FHT_MISSING ? "missing key"
+                     : status == FHT_NOMEM   ? "allocation failure"
+                                             : "invalid key/range");
             goto done;
         }
         i = next;

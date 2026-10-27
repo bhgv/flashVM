@@ -16,7 +16,7 @@ frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
 | `;` | empty statement | empty statement |
 | Nested `{ ... }` | rejected | lexical scope and shadowing |
 
-Precedence: unary, then */ (AS division only), then +/-. Binary operators associate left-to-right.
+Precedence: unary, then */% (integer remainder only), then +/-. Binary operators associate left-to-right.
 A signed literal admits i32 minimum; minus on groups/variables lowers as multiply
 by -1, preserving AS signed zero. ++/-- are rejected, never interpreted as two
 unary signs. The Limbo profile remains i32; big/real are not implemented. Range,
@@ -34,7 +34,7 @@ with old tutorials; # is the native comment. Limits: 64 KiB, 256 names, 1000 SSA
 values, 64 block/group/unary levels, 255-byte tokens.
 
 AS additionally supports / and /=, with multiplication precedence and left
-associativity. The Limbo i32 profile explicitly rejects them. Tests cover -0
+associativity. Compiler 0.27 supports signed int / and % plus /= and %=; live integer division/remainder is currently Dis-only. Tests cover -0
 divisors, NaN and preservation through optimization. Source compilation writes
 matched source_language/source_semantics fields, retained across round trips and
 optimization. Division requires SWL >=0.3.2.
@@ -82,3 +82,6 @@ The `limbo_tables` profile, exact `i64` constants and typed table/location/range
 [Compiler 0.25: captured compound updates / Составные обновления](COMPOUND_UPDATES.md).
 
 [Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.md).
+
+Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
+[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.

@@ -99,7 +99,7 @@ def main():
         if not (result.returncode == 1 and json.loads(result.stderr)["kind"] == "argument"):
             raise AssertionError("condition check failed: fir/v1/tests/source_json.py:83")
         # A multiline RHS must not move an operator error to the last literal.
-        limbo = "implement Op; Op: module { value: fn(): int; }; value(): int { return 8 /\n2; }"
+        limbo = "implement Op; Op: module { value: fn(): real; }; value(): real { return 8.0 %\n2.0; }"
         source.write_text(limbo)
         result = subprocess.run(
             [compiler, "limbo", "--input", str(source), str(output), "--diagnostics-json"],
@@ -110,7 +110,7 @@ def main():
         if not (result.returncode == 1 and item["kind"] == "semantic"):
             raise AssertionError("condition check failed: fir/v1/tests/source_json.py:93")
         if not (
-            limbo.encode()[item["byte_offset"] : item["byte_offset"] + item["byte_length"]] == b"/"
+            limbo.encode()[item["byte_offset"] : item["byte_offset"] + item["byte_length"]] == b"%"
         ):
             raise AssertionError(item)
         source.unlink()

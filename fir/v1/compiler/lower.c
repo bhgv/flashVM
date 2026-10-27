@@ -206,9 +206,9 @@ int source_constant(int negative)
 int source_binary(int left, int right, int op)
 {
     int result = serial++;
-    if (integer_mode && op == '/')
+    if (!integer_mode && op == '%')
     {
-        reject("division is not available in the i32 source profile");
+        reject("remainder requires the Limbo int source profile");
     }
     if (serial > 1000)
     {
@@ -224,8 +224,9 @@ int source_binary(int left, int right, int op)
                 op == '+'   ? "add"
                 : op == '-' ? "sub"
                 : op == '/' ? "div"
+                : op == '%' ? "mod"
                             : "mul",
-                integer_mode ? ".wrap" : "",
+                integer_mode ? ((op == '/' || op == '%') ? ".signed" : ".wrap") : "",
                 left,
                 right);
     }
@@ -991,7 +992,7 @@ int source_table_len(int value)
 
 /* Lower one compound update after capturing its old value and evaluating RHS.
  * current/right are borrowed SSA identities; op selects an existing big operation
- * or checked shift. Return a new big identity. No owner is reacquired, expression
+ * or checked shift. Return a new same-type int/big identity. No owner is reacquired, expression
  * reevaluated or store published here; the parser commits only after success. */
 int source_table_update(int current, int right, int op)
 {
@@ -1011,6 +1012,35 @@ int source_table_update(int current, int right, int op)
 int source_table_binary(int left, int right, int op)
 {
     const char *spelling = "big.add";
+    if (failed)
+    {
+        return 0;
+    }
+    if (table_values[left] == T_I32 && table_values[right] == T_I32)
+    {
+        switch (op)
+        {
+        case '+':
+            spelling = "i32.add.wrap";
+            break;
+        case '-':
+            spelling = "i32.sub.wrap";
+            break;
+        case '*':
+            spelling = "i32.mul.wrap";
+            break;
+        case '/':
+            spelling = "i32.div.signed";
+            break;
+        case '%':
+            spelling = "i32.mod.signed";
+            break;
+        default:
+            reject("int arithmetic supports only +, -, *, / and % in this profile");
+            return 0;
+        }
+        return table_operation(T_I32, spelling, left, right);
+    }
     if (table_values[left] != T_I64 || table_values[right] != T_I64)
     {
         reject("big arithmetic requires two big operands");
@@ -1052,6 +1082,30 @@ int source_table_binary(int left, int right, int op)
  * the exact token span; no implicit string conversion or owner call occurs. */
 int source_table_unary(int value, int op)
 {
+    if (failed)
+    {
+        return 0;
+    }
+    if (table_values[value] == T_I32)
+    {
+        int zero;
+        if (op == '+')
+        {
+            return table_operation(T_I32, "copy", value, -1);
+        }
+        if (op != '-')
+        {
+            reject("int unary arithmetic supports only + and -");
+            return 0;
+        }
+        zero = table_value(T_I32);
+        if (!failed)
+        {
+            fprintf(destination, "    %%v%d: i32 = const.i32 0\n", zero);
+            source_debug_event("constant", zero, "", debug_scopes[scope_depth], scope_depth, location);
+        }
+        return table_operation(T_I32, "i32.sub.wrap", zero, value);
+    }
     if (table_values[value] != T_I64)
     {
         reject("big unary arithmetic requires big");

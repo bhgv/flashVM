@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.26.0 LANGUAGES C)
+project(fir1 VERSION 0.27.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -311,4 +311,17 @@ if(BUILD_TESTING)
   add_executable(fir1_string_api tests/string_api.c)
   target_link_libraries(fir1_string_api PRIVATE fir1_ir)
   add_test(NAME fir1_string_api COMMAND fir1_string_api)
+endif()
+
+# Int arithmetic must normalize every result before reuse as Unicode indexes or casts.
+if(BUILD_TESTING)
+  if(FIR_TABLE_CORE_ROOT)
+    add_test(NAME fir1_int_arithmetic COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/int_arithmetic.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_table_run>)
+  else()
+    add_test(NAME fir1_int_arithmetic COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/int_arithmetic.py" $<TARGET_FILE:fir1_source>
+      $<TARGET_FILE:fir1> -)
+  endif()
 endif()

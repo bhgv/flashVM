@@ -242,7 +242,9 @@ with tempfile.TemporaryDirectory() as directory:
     inp.write_text(module("%x: i32 = const.i32 0x80000000\nreturn"))
     call(TOOL, "check", inp, good=False)
     inp.write_text("implement V; V: module { value: fn(): int; }; value(): int { return 4/2; }")
-    call(SOURCE, "limbo", "--input", inp, opt, good=False)
+    call(SOURCE, "limbo", "--input", inp, opt)
+    if "i32.div.signed" not in opt.read_text():
+        raise RuntimeError("Limbo int division did not retain its typed checked operation")
 
     # Full-width integer products catch double precision loss and shift mistakes.
     random.seed(611)

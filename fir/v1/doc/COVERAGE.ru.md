@@ -54,3 +54,6 @@ are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-09
 [Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).
 
 [Compiler 0.23: comparison values / Сравнения как значения](COMPARISON_VALUES.ru.md).
+
+Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
+[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.

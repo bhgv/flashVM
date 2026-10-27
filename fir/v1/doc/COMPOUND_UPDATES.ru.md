@@ -88,3 +88,6 @@ build/runtime/disvm --no-jit --quantum 1 --inspect-words 0 4 build/compound.dis
 побочные эффекты ключа/RHS, ленивая RHS, приоритет ошибок, отказы типов и точные
 UTF-8-позиции. Аппаратное исполнение ARM64 и полная интеграция IDE/отладчика
 остаются отдельной работой.
+
+Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
+[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.

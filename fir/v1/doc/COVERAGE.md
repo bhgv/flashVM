@@ -9,7 +9,7 @@
 | Verifier | SSA uniqueness, dominance, types, targets, reachability, terminators | Interprocedural analysis |
 | AS1/AS2/AS3 numeric adapters | trace, initialized var, AS3 const, reads/assignments, AS2/3 Number annotations | Objects, strings, source branches/loops/functions, hoisting, general language semantics |
 | Limbo numeric adapter | value(): int tutorial, initialized int/inferred names, lexical blocks/shadowing, reads/assignments, terminal if/else returns | General module ABI, functions/imports, source channels, alt/spawn, big/real |
-| Expressions | Numeric literals, groups, bounded unary +/-, + - *, compound assignments; AS / and /= | Limbo division, general boolean expressions/joins, broader types |
+| Expressions | Numeric literals, groups, bounded unary +/-, + - *, compound assignments; AS / and /= | general boolean expressions/joins, broader types |
 | FIR channels | Create/send/receive/close through existing FlashVM extensions | Source Limbo channel lowering, typed module graphs |
 | Source diagnostics | First-failure C99 struct and opt-in schema-1 JSON with original byte spans | Multiple diagnostics, general AST maps, reentrant parser |
 | SWF backend | SWO1 AVM1 objects; separate SWL links SWF8 | ABC/AVM2, function imports/relocations, exceptions |
@@ -55,3 +55,6 @@ are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-09
 [Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).
 
 [Compiler 0.23: comparison values / Сравнения как значения](COMPARISON_VALUES.md).
+
+Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
+[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.

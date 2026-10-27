@@ -27,6 +27,8 @@ enum
     DIS_MOVW = 45,       /* Existing Dis instruction numbers, not new opcodes. */
     DIS_ADDW = 58,       /* Native-word addition; followed by explicit i32 normalization. */
     DIS_SUBW = 61,       /* Native-word subtraction with middle minus source ordering. */
+    DIS_DIVW = 67,       /* Native signed quotient, followed by int normalization. */
+    DIS_MODW = 69,       /* Native signed remainder, followed by int normalization. */
     DIS_MULW = 64,       /* Native-word multiplication; followed by explicit i32 normalization. */
     DIS_ANDW = 72,       /* Retain the low 32 result bits. */
     DIS_XORW = 76,       /* Bias the sign bit before signed-i32 normalization. */
@@ -196,6 +198,8 @@ static int supported(
         case O_FDIV:
             (*count)++;
             break;
+        case O_I32_DIV:
+        case O_I32_MOD:
         case O_ADD:
         case O_SUB:
         case O_MUL:
@@ -362,10 +366,16 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
                         destination,
                         -1);
             break;
+        case O_I32_DIV:
+        case O_I32_MOD:
         case O_ADD:
         case O_SUB:
         case O_MUL:
-            opcode = current->op == O_ADD ? DIS_ADDW : current->op == O_SUB ? DIS_SUBW : DIS_MULW;
+            opcode = current->op == O_ADD       ? DIS_ADDW
+                     : current->op == O_SUB     ? DIS_SUBW
+                     : current->op == O_MUL     ? DIS_MULW
+                     : current->op == O_I32_DIV ? DIS_DIVW
+                                                : DIS_MODW;
             instruction(output, opcode, DIS_FP, slot(current->b), DIS_FP, destination, (int)slot(current->a));
             /* NC64 words are wider than FIR i32. Normalize every arithmetic result, including
              * intermediate values: ((value & 0xffffffff) ^ 0x80000000) - 0x80000000. */

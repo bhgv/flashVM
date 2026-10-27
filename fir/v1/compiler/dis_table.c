@@ -15,12 +15,17 @@ enum
     SHRL = 128,            /* Checked arithmetic big right shift. */
     ANDW = 72,             /* Low-32-bit normalization mask operation. */
     XORW = 76,             /* Bias the normalized int sign bit. */
+    ADDW = 58,             /* Native addition followed by signed-int normalization. */
+    MULW = 64,             /* Native multiplication followed by signed-int normalization. */
+    DIVW = 67,             /* Native quotient; normalized int operands cannot overflow WORD64. */
+    MODW = 69,             /* Native signed remainder. */
     SUBW = 61,             /* Restore the normalized signed int. */
     LOAD = 8,              /* Load a signature-checked module instance. */
     MCALL = 9,             /* Invoke the prepared module function. */
     MFRAME = 11,           /* Allocate a typed native call frame. */
     JMP = 13,              /* Existing direct instruction-PC branch. */
     BLTL = 130,            /* Signed big less-than branch. */
+    BLTW = 95,             /* Signed normalized-int less-than branch. */
     BEQW = 93,             /* Compare normalized bool against immediate one. */
     BEQL = 134,            /* Exact full-width big equality branch. */
     RET = 12,              /* Return from the entry harness. */
@@ -349,7 +354,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_STRING_SLICE))
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_I32_MOD) && in->op != O_ADD &&
+                 in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -427,6 +433,21 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     }
 }
 
+/* Normalize one native-word result to exact signed i32 without signed C overflow.
+ * source/destination are scalar frame offsets; constants are unmapped module cells.
+ * This emits no helper/owner calls and never changes a pointer root. */
+static void normalize_int(Emitter *e, unsigned source, unsigned destination)
+{
+    arithmetic(e, ANDW, MIDDLE_MODULE, e->int_mask, source, destination);
+    arithmetic(e, XORW, MIDDLE_MODULE, e->int_sign, destination, destination);
+    octet(e->body, SUBW);
+    octet(e->body, MIDDLE_FRAME | (MP << 3) | FP);
+    operand(e->body, destination);
+    operand(e->body, e->int_sign);
+    operand(e->body, destination);
+    e->count++;
+}
+
 /* Lower one verified straight-line body using only existing Dis operations and builtin ABI calls.
  * Entry/callee root maps hold references during allocation; paired slots never encode native addresses. */
 static void body(Emitter *e, FirModule *module, int measure)
@@ -482,21 +503,32 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_BOOL_LOAD:
             instruction(e, MOVW, FP, a, FP, d, 0, -1);
             break;
+        case O_ADD:
+        case O_SUB:
+        case O_MUL:
+        case O_I32_DIV:
+        case O_I32_MOD:
+            arithmetic(e,
+                       in->op == O_ADD       ? ADDW
+                       : in->op == O_SUB     ? SUBW
+                       : in->op == O_MUL     ? MULW
+                       : in->op == O_I32_DIV ? DIVW
+                                             : MODW,
+                       MIDDLE_FRAME,
+                       a,
+                       b,
+                       d);
+            normalize_int(e, d, d);
+            break;
         case O_TO_INT:
-            arithmetic(e, ANDW, MIDDLE_MODULE, e->int_mask, a, d);
-            arithmetic(e, XORW, MIDDLE_MODULE, e->int_sign, d, d);
-            /* SUBW is middle minus source: normalized frame value minus the MP sign bias. */
-            octet(e->body, SUBW);
-            octet(e->body, MIDDLE_FRAME | (MP << 3) | FP);
-            operand(e->body, d);
-            operand(e->body, e->int_sign);
-            operand(e->body, d);
-            e->count++;
+            normalize_int(e, a, d);
             break;
         case O_BIG_SHL:
         case O_BIG_SHR:
             arithmetic(e, in->op == O_BIG_SHL ? SHLL : SHRL, MIDDLE_FRAME, a, b, d);
             break;
+        case O_LT:
+        case O_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
         {
@@ -504,7 +536,7 @@ static void body(Emitter *e, FirModule *module, int measure)
             instruction(e, MOVW, IMM, 0, FP, d, 0, -1);
             /* Read both big cells before writing the bool. Middle mode is FP; the
              * branch destination is an instruction PC rather than an address/byte offset. */
-            octet(e->body, in->op == O_BIG_LT ? BLTL : BEQL);
+            octet(e->body, in->op == O_BIG_LT ? BLTL : in->op == O_BIG_EQ ? BEQL : in->op == O_LT ? BLTW : BEQW);
             octet(e->body, MIDDLE_FRAME | (FP << 3) | IMM);
             operand(e->body, b);
             operand(e->body, a);

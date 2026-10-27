@@ -15,8 +15,8 @@ half-open slicing. Types follow Inferno's string operations:
 Literal numbers in this profile are big, so bounds require `int 1`, an int local,
 or another int expression such as `len text`. Table/key snapshot lengths stay big
 and table indices retain their existing big/text/key rules. Implicit int/big
-mixing and general int arithmetic are not introduced; use explicit casts where
-needed. This is a bounded profile, not complete Limbo/AS string coverage.
+mixing remains rejected. Compiler 0.27 adds same-type int + - * / %; use
+explicit casts where needed. This is a bounded profile, not complete Limbo/AS string coverage.
 
 ## Unicode and aliases
 

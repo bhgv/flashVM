@@ -107,3 +107,10 @@ updates are not atomic transactions. [Contract and commands](../../doc/COMPOUND_
 source alias preservation, then parses a numeric slice to return 42. String lengths
 and indexes are int; table/key lengths stay big. Combining marks count separately.
 [Detailed semantics and commands](../../doc/UNICODE_STRINGS.md).
+
+## Int arithmetic and computed string bounds
+
+[int-arithmetic.b](int-arithmetic.b) computes a Unicode window using all five int
+arithmetic operators and parses the resulting slice as 42. Every result wraps
+to signed int32 on the NC64 target; literals require explicit int in this profile.
+[Semantics and commands](../../doc/INT_ARITHMETIC.md).

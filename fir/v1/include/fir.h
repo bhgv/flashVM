@@ -132,7 +132,9 @@ typedef enum
     O_BOOL_LOAD,    /* Read a local cell into a new immutable bool SSA value. */
     O_STRING_LEN,   /* Count Unicode scalars in a string, returning int. */
     O_STRING_AT,    /* Read one Unicode scalar at an int index, returning int. */
-    O_STRING_SLICE  /* Copy a half-open string range without changing the source. */
+    O_STRING_SLICE, /* Copy a half-open string range without changing the source. */
+    O_I32_DIV,      /* Signed truncating int division; zero raises, MIN/-1 wraps. */
+    O_I32_MOD       /* Signed int remainder; zero raises, MIN%-1 is zero. */
 } FirOp;
 
 /* Conservative operation effects. Unknown opcodes have every flag set. */
