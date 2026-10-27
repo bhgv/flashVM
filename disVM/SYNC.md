@@ -1,3 +1,22 @@
+# Module transitions and compiler 0.39
+
+Inferno `experiment` is pinned to **45370abd78dd8b9339c962a544d2a933663139f1**.
+The selected snapshots contain **606 core/reference + 206 bootstrap files**.
+Incoming shared fixes capture LOAD destinations/module context across callbacks,
+restore builtin MCALL cleanup from its captured frame and reject malformed
+SPAWN/MSPAWN operands before allocation/publication. New upstream native C/RX
+regressions are retained byte-for-byte and registered in core CTest.
+[Upstream contract](upstream/libinterp/tests/README.module-transitions.md).
+
+The outgoing comparison found no new shared defect requiring a reverse commit.
+Compiler 0.39's int/bool cells, int postfix updates and string/key-snapshot
+for-in remain FlashVM-only source features, using existing FIR/Dis operations.
+[English](../fir/v1/doc/TYPED_LOOPS.md) / [Русский](../fir/v1/doc/TYPED_LOOPS.ru.md).
+Native regression execution here is on the available AMD64 host; retaining ARM64
+compiler/tail tests does not claim a complete native VM ABI port.
+
+---
+
 # Host extensions / Расширения хоста — v0.1649
 
 Pinned Inferno remains **637d618e40fb6efb69cb0c147efb81981ee95c63**, unchanged.

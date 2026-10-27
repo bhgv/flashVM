@@ -333,6 +333,8 @@ if(BUILD_TESTING)
       return-jit
       mcall-jit
       mapped-copy-jit
+      module-transition-native
+      spawn-preflight
     )
       add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
       set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 240
