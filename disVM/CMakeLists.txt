@@ -82,6 +82,8 @@ if(BUILD_TESTING)
     array-slot-native
     mapped-preflight-native
     buffered-transfer-native
+    jit-dispatch-native
+    jit-dispatch-coverage
     arithmetic-slot-native
     transfer-slot-native
     integer-slot-native
@@ -275,6 +277,7 @@ if(BUILD_TESTING)
       array-slot-jit
       mapped-preflight-jit
       buffered-transfer-jit
+      jit-dispatch-jit
       mapped-copy-edges-jit
       raw-copy-edges-jit
       transfer-slot-jit
