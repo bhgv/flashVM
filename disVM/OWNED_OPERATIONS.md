@@ -38,3 +38,8 @@ Diagnostics/debugger queries can report waiting-for-lock or paused-owner state
 without acquiring the target lock. Debug pause does not forcibly release a live
 operation's guard. Integrating these owner tokens into array/table/projection
 operations and real thread contention tests remains required implementation work.
+
+
+POSIX implementation / реализация POSIX: [common/owned](../common/owned/README.md).
+This implements the guard primitive, not VM payload integration.
+Реализован примитив блокировки; интеграция с объектами VM ещё требуется.
