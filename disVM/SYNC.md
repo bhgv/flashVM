@@ -1,3 +1,23 @@
+# Exception destination validation refresh
+
+Tested Inferno experiment pin: **d229914a31f9d92bc7fb114033bcce6a869cd898**.
+Exact selections contain **621 core/reference + 206 bootstrap files**. Explicit
+and default exception destinations are validated before diagnostics, frame
+unwinding or owner publication. Invalid destinations do not hide later valid
+handlers. Interpreted targets require a complete instruction; compiled targets
+retain byte offsets and reject address wrap/H without claiming an allocation
+extent that the module does not record.
+
+The owning-repository emu/os WORD32/WORD64 fixtures pass **2,104,000 cases** under
+ASan/UBSan with NDEBUG. [Contract and commands](upstream/libinterp/tests/README.exception-frames.md).
+The earlier reverse fix **51d44da** remains upstream; no additional reverse defect
+was found in this refresh. Compiler 0.43 source initialization semantics remain
+FlashVM-only. The complete 179-test runtime pass precedes this refresh; the
+new snapshot is rebuilt and checked separately for exception/publication,
+generated-runtime freshness and compiler execution paths.
+
+---
+
 # Final RAISE publication refresh
 
 Final tested pin: **4c94e2af2e8e2a927fdbb06c800ce5dd6453784f**, including incoming
