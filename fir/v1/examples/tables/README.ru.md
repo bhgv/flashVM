@@ -216,3 +216,5 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 [Первое присваивание в цикле — 0.43](../../doc/LOOP_INITIALIZATION.ru.md): типизированные внешние переменные, безопасное чтение в теле и границы фактов на выходе. [Комментированный пример](loop-initialization.b).
 
 [Шаг for в порядке исполнения — 0.44](../../doc/DEFERRED_STEP.ru.md): доказательство инициализации по всем входящим путям, включая continue. [Пример](deferred-step.b).
+
+[Устранение скалярных загрузок — 0.45](../../doc/SCALAR_FORWARDING.ru.md): приватные ячейки в одном блоке, сохранение записей, границ CFG и барьеров эффектов.

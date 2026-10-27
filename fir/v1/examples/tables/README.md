@@ -217,3 +217,5 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 [First initialization inside loops — 0.43](../../doc/LOOP_INITIALIZATION.md): typed outer declarations, safe body reads and conservative exit facts. [Commented tutorial](loop-initialization.b).
 
 [Deferred for steps — 0.44](../../doc/DEFERRED_STEP.md): initialization proof over every incoming path, including continue. [Tutorial](deferred-step.b).
+
+[Private scalar forwarding — 0.45](../../doc/SCALAR_FORWARDING.md): block-local cells, preserved stores, CFG boundaries and effect barriers.

@@ -155,7 +155,7 @@ def table_packages(prefix, work, environment):
          prefix / "fir/examples/dis/main.c", *source_archives, "-lm", "-o", source_host], work, environment)
     # Tutorials may have several early returns; count emitted result/flag sites.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control", "counted-for", "typed-loops", "retained-loops", "function-flow", "join-initialization", "loop-initialization", "deferred-step"):
+    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control", "counted-for", "typed-loops", "retained-loops", "function-flow", "join-initialization", "loop-initialization", "deferred-step", "scalar-forwarding"):
         tutorial_source = prefix / "fir/examples/tables" / (tutorial + ".b")
         tutorial_fir = work / ("table-" + tutorial + ".fir")
         tutorial_opt = work / ("table-" + tutorial + "-opt.fir")

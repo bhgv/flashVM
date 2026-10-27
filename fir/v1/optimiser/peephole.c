@@ -148,6 +148,63 @@ static int fold_constant_cell_loads(FirModule *module)
     return changed;
 }
 
+
+/* Forward private scalar loads from the latest same-block store or load.
+ * module is borrowed and verified: scalar cell handles cannot alias or escape.
+ * Return whether loads became copies, retaining every constructor/store. Reset
+ * facts at block boundaries and unmodelled writes/suspensions; typed scalar
+ * writes update only their exact cell. Never forward reference owners, table
+ * elements or across backedges. No VM allocation, wait or native pointer occurs. */
+static int forward_scalar_loads(FirModule *module)
+{
+    int known[FIR_LIMIT]; /* Payload SSA IDs, -1 until this block establishes a value. */
+    int block = -1;       /* Current linear basic block; facts never cross an edge. */
+    int changed = 0;
+    int index;
+    for (index = 0; index < module->count; index++)
+    {
+        FirInstruction *in = &module->instructions[index];
+        if (in->removed)
+        {
+            continue;
+        }
+        if (in->block != block)
+        {
+            memset(known, -1, sizeof(known));
+            block = in->block;
+        }
+        if (in->op == O_BIG_LOCAL || in->op == O_BOOL_LOCAL)
+        {
+            known[in->result] = -1;
+        }
+        else if (in->op == O_BIG_STORE || in->op == O_BOOL_STORE)
+        {
+            known[in->a] = in->b;
+        }
+        else if (in->op == O_BIG_LOAD || in->op == O_BOOL_LOAD)
+        {
+            int cell = in->a;
+            if (known[cell] >= 0)
+            {
+                in->op = O_COPY;
+                in->a = known[cell];
+                in->b = -1;
+                changed = 1;
+            }
+            else
+            {
+                known[cell] = in->result;
+            }
+        }
+        else if (fir_effects(in->op) & (FIR_WRITES_MEMORY | FIR_MAY_SUSPEND))
+        {
+            memset(known, -1, sizeof(known));
+        }
+    }
+    return changed;
+}
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -159,6 +216,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
     do
     {
         changed = fold_constant_cell_loads(m);
+        changed |= forward_scalar_loads(m);
         for (i = 0; i < m->count; ++i)
         {
             FirInstruction *in = &m->instructions[i];
