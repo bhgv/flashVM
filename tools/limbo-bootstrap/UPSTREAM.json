@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "6512eeacc3e07504f5cae2b80e0d59461bbd16b6",
+  "revision": "da7e0622f56a294abd081a86144f735bb29d1639",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -47,15 +47,16 @@
     "include/fcall.h",
     "libmath/FPcontrol-Linux.c",
     "limbo/tests/*.c",
-    "limbo/tests/optimizer-ranges.py"
+    "limbo/tests/optimizer-ranges.py",
+    "lib9/tests/native-output-spans.py"
   ],
   "exclude": [
     "lib9/*-Nt.c",
     "lib9/*-Plan9.c",
     "lib9/getcallerpc-*.c",
     "lib9/setfcr-*.c",
-    "lib9/tests/*",
-    "frames/cplus2/*"
+    "frames/cplus2/*",
+    "lib9/tests/*.c"
   ],
   "files": {
     "upstream/Linux/arm/include/lib9.h": "d50391ec45a5167cbf2e4ca43c35bfdd75ea02073519de627a7dbb348d62addb",
@@ -106,7 +107,7 @@
     "upstream/lib9/convM2D.c": "4bbfd3abf96dfe683d60317cffda45bb98ec13d19a700014f5ba0692804f8e5b",
     "upstream/lib9/convM2S.c": "d82a267e5f3e79478c80458caa954029ec9180fd14bdaf6b56f4ea6fe78e6617",
     "upstream/lib9/convS2M.c": "d397f6a0960e55af81de362e8d80a5ed3c60c74fde11dcd20e87dcf938bd6003",
-    "upstream/lib9/create.c": "cd31c6196566d7b1b1546cc521ef9b4125ffdba12b48cca7ab2d6b69440d1997",
+    "upstream/lib9/create.c": "f96c7519f9e23593c53341ef5331d23753ca899dca585b7bc382e35cee6cdf4c",
     "upstream/lib9/dirstat-posix.c": "a229a9338157c193931076482ac864d6c5ffd89b854046255e04db65f566c316",
     "upstream/lib9/dirwstat.c": "537f7a7853f675c023c9d2c69aa5bef10fa5353366241e9c698726b85891973c",
     "upstream/lib9/dofmt.c": "06b8a448b9cbe4b466ce98ef063af8b3cee44c56a3a1f0a31a8fa36a28c5057f",
@@ -152,12 +153,13 @@
     "upstream/lib9/seprint.c": "bc680aeb1c9a7b53e95bbd7ea4eabdf8aef03eb6cba26183fe79d31546bc4128",
     "upstream/lib9/smprint.c": "de64cc93cf01048fcb9fdb70cf6acebf160f55f55ad78f17bec66a6938525db8",
     "upstream/lib9/snprint.c": "1f1afc5cb5924c2d20b08763c676636f74dde394a22b9df5659521305533adf4",
-    "upstream/lib9/sprint.c": "58d6ef4548b1bdef8aa320c14b3e40f538816a99344354282a0def233cbbfb82",
+    "upstream/lib9/sprint.c": "06f1124706cc6ab20578d9fe96a014efef7a76dc8715d6d00597c88bff813b22",
     "upstream/lib9/strdup.c": "5ecf31fb2b6fa718c2768314185a9fcd686476bc950d4c24f02fcc5057564c51",
     "upstream/lib9/strecpy.c": "3de0badb10c7a75812e21640d1b1fcb8eed3a0902d1d34519aa48acfcc7e498c",
     "upstream/lib9/strtoll.c": "1730f84f8786e6d304e84d6ad0c64f39287797b2b2a98cc0ff615587662dd29c",
     "upstream/lib9/strtoull.c": "d9145c1a02a389038f519099c78e038af0d33372bff59c587c62574e707a1859",
     "upstream/lib9/sysfatal.c": "9c5f727b1cad655bd7373e47b9ece380647983325bf21f8fa12d96975b21cb5a",
+    "upstream/lib9/tests/native-output-spans.py": "01472911eca66668e17643943bf1ed5d6f6b6e7f076503b51d32f33416de629d",
     "upstream/lib9/tokenize.c": "aa5b65a548f02a01bdacc2477e72aeed35307d72c74339a10c1340b61b7924f8",
     "upstream/lib9/u16.c": "a31333f104d72874eab6dde899da77647b048e8f7935a95fa61bc166749e94e5",
     "upstream/lib9/u32.c": "f0fd985bfd3a104adc8b5e8e1faac850ac7e06923aee98dae0abd685da7efa02",
@@ -168,9 +170,9 @@
     "upstream/lib9/utfrrune.c": "ca231420f08ad5668ab0507e139a5f7ad65450d3f384f0673f10d25c046bbf43",
     "upstream/lib9/utfrune.c": "3a23b4dc45270c158c1447c2c16b19a1c82cf16c9a81861e1e7e30545ec539db",
     "upstream/lib9/vfprint.c": "b92db3cb99d45b7a83f98f70fd38470a6d6911adcd5e9caab3174e1094b46b6f",
-    "upstream/lib9/vseprint.c": "13b9d800640f277495b38c80d47a01e20e1499dae9a679befb23f064cb5efecc",
+    "upstream/lib9/vseprint.c": "2204ac840b4e9bf6a2f21c02048071fca84341edfd01753bea9112c4e384438b",
     "upstream/lib9/vsmprint.c": "8d1f44265da413f53376adae63459f99c0225ca710cce54b8620feb7d07a83b3",
-    "upstream/lib9/vsnprint.c": "9ad638cb2705c8daec644d767d6df658c5cf61af4003891c39f1f9a1fedf1e54",
+    "upstream/lib9/vsnprint.c": "bfbdb5a641f5b54eecd02f673a0c59d3ca1006e4c2e2d97d4b663ec1379894d1",
     "upstream/libbio/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
     "upstream/libbio/bbuffered.c": "57c3978ecf04b7ca18440226e5a3a04759fffc6cf8eff582904317a8072487e5",
     "upstream/libbio/bfildes.c": "c8fa5e98e3e86b4e207304cc8a5ce5ffbc0834fa82cc88084d3bbc2f276a9d93",

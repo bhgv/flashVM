@@ -237,3 +237,12 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_optimizer_ranges PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Imported native-width formatter span guards use production lib9 formatters.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_native_output_spans COMMAND "${Python3_EXECUTABLE}"
+    "${u}/lib9/tests/native-output-spans.py")
+  # The retained neutral POSIX lib9 declarations live under Linux/arm here.
+  set_tests_properties(limbo_bootstrap_native_output_spans PROPERTIES TIMEOUT 60
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-I${u}/Linux/arm/include -O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
