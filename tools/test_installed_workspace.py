@@ -125,7 +125,7 @@ def table_packages(prefix, work, environment):
             raise RuntimeError("relocated table DAG compiler client result differs")
     # Branching tutorials have two trace cells followed by their two execution flags.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons"):
+    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit"):
         tutorial_fir = work / ("table-" + tutorial + ".fir")
         tutorial_opt = work / ("table-" + tutorial + "-opt.fir")
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input",
