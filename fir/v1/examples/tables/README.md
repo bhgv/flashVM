@@ -210,3 +210,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Function-flow tutorial](function-flow.b): conditional updates, lexical blocks, early guards and nested loop transfers. [Guide](../../doc/FUNCTION_FLOW.md).
+
+
+[Join-initialization tutorial](join-initialization.b): initialize scalar/reference declarations in both arms, then use them safely. [Guide](../../doc/JOIN_INITIALIZATION.md).

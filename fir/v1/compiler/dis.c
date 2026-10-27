@@ -308,9 +308,8 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
               !(in->op == O_TO_BIG && (module->values[in->a].type == T_I64 || module->values[in->a].type == T_I32 ||
                                        module->values[in->a].type == T_BOOL))) ||
              (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) ||
-             (in->op >= O_TABLE_RANGE && in->op <= O_REF_STORE) ||
-             (in->op >= O_STRING_LEN && in->op <= O_STRING_SLICE) || in->op == O_STRING_CONCAT ||
-             in->op == O_STRING_EQ || in->op == O_STRING_LT ||
+             (in->op >= O_TABLE_RANGE && in->op <= O_REF_NIL) || (in->op >= O_STRING_LEN && in->op <= O_STRING_SLICE) ||
+             in->op == O_STRING_CONCAT || in->op == O_STRING_EQ || in->op == O_STRING_LT ||
              (module->source_semantics == FIR_LIMBO_TABLES && in->type == T_STRING) ||
              (in->type >= T_TABLE_BIG && in->type != T_BOOL_SLOT)))
         {

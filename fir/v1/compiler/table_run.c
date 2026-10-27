@@ -135,7 +135,7 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_REF_STORE) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if ((in->op >= O_I64 && in->op <= O_REF_NIL) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -340,6 +340,11 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             }
             break;
         }
+        case O_REF_NIL:
+            /* Only the verifier-approved store/load sequence can expose a payload. */
+            memset(result, 0, sizeof(*result));
+            result->text = "";
+            break;
         case O_REF_LOCAL:
         case O_REF_STORE:
         {

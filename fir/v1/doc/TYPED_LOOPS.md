@@ -110,3 +110,6 @@ frontend and final source-to-Dis SBL relocation remain separate work.
 
 
 [Compiler 0.41](FUNCTION_FLOW.md) extends structured conditions and blocks to function scope.
+
+
+[Compiler 0.42](JOIN_INITIALIZATION.md) adds all-path initialization and independently verified `ref.nil` storage.

@@ -146,8 +146,8 @@ static const char *const ops[] = {"const.i32",
                                   "big.store",
                                   "ref.local",
                                   "ref.load",
-                                  "ref.store"};
-
+                                  "ref.store",
+                                  "ref.nil"};
 
 /* Map a private retained-cell type to its exact source payload type.
  * cell is a copied enum; return T_VOID for unsupported/noncell types. No owner,
@@ -188,6 +188,149 @@ static int lease_owner(const FirModule *module, int value)
     return value;
 }
 
+
+/* Update one reference-cell initialization vector using a verified instruction.
+ * indices maps SSA cells to compact state bytes; state is caller-owned. check
+ * enables load diagnostics in error/capacity. Return zero only for an unsafe
+ * load. No VM object, allocator callback or runtime reference count is touched. */
+static int reference_step(
+    const FirInstruction *in, const int *indices, unsigned char *state, int check, char *error, size_t capacity)
+{
+    int cell = -1;
+    if (in->op == O_REF_NIL)
+    {
+        state[indices[in->result]] = 0;
+    }
+    else if (in->op == O_REF_STORE)
+    {
+        cell = indices[in->a];
+        if (cell >= 0)
+        {
+            state[cell] = 1;
+        }
+    }
+    else if (check && in->op == O_REF_LOAD)
+    {
+        cell = indices[in->a];
+        if (cell >= 0 && !state[cell])
+        {
+            return fail(error, capacity, "line %d: reference cell read before initialization", in->line);
+        }
+    }
+    return 1;
+}
+
+
+/* Prove a store on every normal path to each load of a nil-created cell.
+ * module/first/last/edge are borrowed verified CFG inputs; error/capacity receive
+ * diagnostics. Return one after a descending must-analysis fixed point and a
+ * separate ordered load check. Entry starts empty, other states start at top;
+ * intersections handle joins/backedges and each ref.nil kills previous writes.
+ * Own and free all temporary vectors on every path. No source-only facts or VM
+ * heap pointers are trusted by this verifier, including for hand-authored FIR. */
+static int reference_init_flow(const FirModule *module,
+                               const int *first,
+                               const int *last,
+                               unsigned char edge[FIR_BLOCKS][FIR_BLOCKS],
+                               char *error,
+                               size_t capacity)
+{
+    int indices[FIR_LIMIT];
+    unsigned char state[FIR_LIMIT];
+    unsigned char *incoming = NULL;
+    unsigned char *outgoing = NULL;
+    int cells = 0;
+    int index;
+    int block;
+    int changed;
+    int ok = 0;
+    size_t bytes;
+    memset(indices, -1, sizeof(indices));
+    for (index = 0; index < module->count; index++)
+    {
+        const FirInstruction *in = &module->instructions[index];
+        if (!in->removed && in->op == O_REF_NIL)
+        {
+            indices[in->result] = cells++;
+        }
+    }
+    if (!cells)
+    {
+        return 1;
+    }
+    bytes = (size_t)module->block_count * (size_t)cells;
+    incoming = malloc(bytes);
+    outgoing = malloc(bytes);
+    if (!incoming || !outgoing)
+    {
+        fail(error, capacity, "reference initialization workspace allocation failed");
+        goto done;
+    }
+    memset(incoming, 1, bytes);
+    memset(outgoing, 1, bytes);
+    do
+    {
+        changed = 0;
+        for (block = 0; block < module->block_count; block++)
+        {
+            int predecessor;
+            int found = 0;
+            unsigned char *input = incoming + (size_t)block * cells;
+            unsigned char *output = outgoing + (size_t)block * cells;
+            memset(state, 1, (size_t)cells);
+            if (block != module->instructions[0].block)
+            {
+                for (predecessor = 0; predecessor < module->block_count; predecessor++)
+                {
+                    if (edge[predecessor][block])
+                    {
+                        int cell;
+                        found = 1;
+                        for (cell = 0; cell < cells; cell++)
+                        {
+                            state[cell] &= outgoing[(size_t)predecessor * cells + cell];
+                        }
+                    }
+                }
+            }
+            if (!found)
+            {
+                memset(state, 0, (size_t)cells);
+            }
+            memcpy(input, state, (size_t)cells);
+            for (index = first[block]; index <= last[block]; index++)
+            {
+                const FirInstruction *in = &module->instructions[index];
+                if (!in->removed)
+                {
+                    reference_step(in, indices, state, 0, error, capacity);
+                }
+            }
+            if (memcmp(output, state, (size_t)cells))
+            {
+                memcpy(output, state, (size_t)cells);
+                changed = 1;
+            }
+        }
+    } while (changed);
+    for (block = 0; block < module->block_count; block++)
+    {
+        memcpy(state, incoming + (size_t)block * cells, (size_t)cells);
+        for (index = first[block]; index <= last[block]; index++)
+        {
+            const FirInstruction *in = &module->instructions[index];
+            if (!in->removed && !reference_step(in, indices, state, 1, error, capacity))
+            {
+                goto done;
+            }
+        }
+    }
+    ok = 1;
+done:
+    free(incoming);
+    free(outgoing);
+    return ok;
+}
 
 /* Validate retained ownership on every normal CFG path of a verified module.
  * first/last and edge are borrowed validated block metadata. Each known block
@@ -371,7 +514,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_REF_STORE || (unsigned)in->type > T_KEY_CELL || in->block < 0 ||
+        if ((unsigned)in->op > O_REF_NIL || (unsigned)in->type > T_KEY_CELL || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -688,6 +831,13 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             }
             expected = T_STRING;
             break;
+        case O_REF_NIL:
+            if (reference_payload(in->type) == T_VOID)
+            {
+                goto bad_type;
+            }
+            expected = in->type;
+            break;
         case O_REF_LOCAL:
             if (reference_payload(in->type) != a || a == T_VOID)
             {
@@ -936,6 +1086,10 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         continue;
     bad_type:
         return fail(error, cap, "line %d: operand/result type mismatch", in->line);
+    }
+    if (!reference_init_flow(m, first, last, edge, error, cap))
+    {
+        return 0;
     }
     return lease_flow(m, first, last, edge, error, cap);
 }

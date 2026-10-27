@@ -140,6 +140,7 @@ typedef struct
     unsigned int_mask;           /* Plain MP byte offset of 0xffffffff. */
     unsigned int_sign;           /* Plain MP byte offset of 0x80000000. */
     unsigned plain_cells;        /* Unmapped numeric module data cells before strings. */
+    unsigned nil_reference;      /* [GC:] Mapped canonical nil module cell, zero when not required. */
     unsigned traces;             /* Scalar capture count; executed flags follow the values. */
     unsigned char frame_map[MAP_BYTES];     /* [GC:] Only genuine entry-frame heap references are marked. */
     unsigned char data_map[2U * MAP_BYTES]; /* [GC:] Module path and live constant String roots. */
@@ -305,6 +306,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
     unsigned offset = MODULE_SLOT + CELL;
     unsigned strings = 1; /* The imported module path is always the first String root. */
     int i;
+    unsigned nil_roots = 0;
     if (module->channels || !fir_verify(module, error, capacity))
     {
         if (module->channels)
@@ -366,6 +368,10 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         {
             e->import_count = (unsigned)(sizeof(imports) / sizeof(imports[0]));
         }
+        if (in->op == O_REF_NIL)
+        {
+            nil_roots = 1;
+        }
         if (in->op == O_STRING)
         {
             strings++;
@@ -381,7 +387,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_REF_STORE) && in->op != O_ADD &&
+                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -405,7 +411,12 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             offset += CELL;
         }
     }
-    e->data_size = (e->plain_cells + strings) * CELL;
+    if (nil_roots)
+    {
+        e->nil_reference = offset;
+        root(e->data_map, offset);
+    }
+    e->data_size = (e->plain_cells + strings + nil_roots) * CELL;
     return 1;
 }
 
@@ -568,6 +579,15 @@ static void body(Emitter *e, FirModule *module, int measure)
              * can replace only that root, preserving all original string aliases. */
             instruction(e, MOVP, FP, a, FP, d, 0, -1);
             arithmetic(e, SLICEC, MIDDLE_FRAME, b + CELL, b, d);
+            break;
+        case O_REF_NIL:
+            /* [GC:] The loader initializes the mapped source to canonical nil.
+             * Retaining MOVP also releases an old owner on repeated execution. */
+            instruction(e, MOVP, MP, e->nil_reference, FP, d, 0, -1);
+            if (in->type == T_KEY_CELL)
+            {
+                instruction(e, MOVL, IMM, 0, FP, d + CELL, 0, -1);
+            }
             break;
         case O_REF_LOCAL:
         case O_REF_LOAD:

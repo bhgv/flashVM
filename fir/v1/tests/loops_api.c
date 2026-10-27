@@ -21,10 +21,11 @@ static int compile_loop(FirModule *module, int invalid)
         goto done;
     }
     fputs("implement M; M: module {value: fn(): big;}; value(): big {", input);
-    fputs(invalid == 3   ? "x: big; if (1 == 1) {x = 42;} return 42;"
+    fputs(invalid == 3   ? "x: big; if (1 == 1) {x = 42;} return x;"
           : invalid == 1 ? "sum := big 0; for (i := big 0; i < 3; extra := 42) {sum += i;} return sum;"
           : invalid == 2 ? "sum := big 0; for (i := big 0; i < 3; i++"
-                         : "t := table of big {20}; old := t; i := int 0; if (i == int 0) {t = table of big {22};} "
+                         : "t: table of big; old := table of big {20}; i := int 0; "
+                           "if (i == int 0) {t = table of big {22};} else {t = table of big {7};} "
                            "s := \"a\"; while (len s < int 2) {s = s+\"😀\";} keys := keysof t; key := keys[0]; "
                            "i = int 0; while (i < int 1) {key = keys[0]; i++;} return old[0]+t[key];",
           input);
@@ -40,7 +41,7 @@ static int compile_loop(FirModule *module, int invalid)
     {
         ok = !compiled &&
              (invalid == 1   ? strstr(error, "step cannot declare") != NULL
-              : invalid == 3 ? strstr(error, "joined paths") != NULL
+              : invalid == 3 ? strstr(error, "initialized") != NULL
                              : diagnostic.kind == FIR_DIAG_SYNTAX) &&
              ftell(fir) == 3 && ftell(debug) == 3;
     }

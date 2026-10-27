@@ -209,3 +209,6 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 
 
 [Пример операторов функции](function-flow.b): условные обновления, лексические блоки, ранние возвраты и переходы цикла. [Руководство](../../doc/FUNCTION_FLOW.ru.md).
+
+
+[Пример инициализации через ветви](join-initialization.b): объявление скаляров/ссылок, присваивание в обеих ветвях и безопасное чтение. [Руководство](../../doc/JOIN_INITIALIZATION.ru.md).

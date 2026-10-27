@@ -165,7 +165,8 @@ typedef enum
     O_BIG_STORE,         /* Write a function-local big cell. */
     O_REF_LOCAL,         /* Initialize a typed retained frame cell from its payload. */
     O_REF_LOAD,          /* Retain the current typed payload in a distinct SSA value. */
-    O_REF_STORE          /* Retain replacement before releasing the previous cell payload. */
+    O_REF_STORE,         /* Retain replacement before releasing the previous cell payload. */
+    O_REF_NIL            /* Clear a private reference cell; load requires a subsequent definite store. */
 } FirOp;
 
 

@@ -51,11 +51,11 @@ if (failed) {
 return answer;
 ```
 
-The example's `failed` is an already initialized bool. If both arms continue,
-initialize outer variables before the condition. This profile still rejects
-first initialization across two joining paths rather than inventing a phi or a
-nil/untyped reference cell. Assignments on paths which return do not initialize
-a surviving sibling. A possibly empty loop also cannot prove initialization.
+The example's `failed` is an already initialized bool. Since
+[compiler 0.42](JOIN_INITIALIZATION.md), both continuing arms may initialize an
+outer declaration using typed cells and independent FIR verification. Partial
+assignments do not make a later read valid. Assignments on returning paths do not
+initialize a surviving sibling. A possibly empty loop cannot prove initialization.
 The previous all-terminal decision-tree behavior remains accepted, including
 independent arm-local declarations and first assignments before each return.
 

@@ -20,7 +20,8 @@ static char token[256];
 static int integer_mode, serial, failed, profile;
 static char module_name[256];
 
-/* Flat translation-unit bindings. source_config resets the live prefix. */
+/* Last-write SSA hints and initialization facts; cell-backed hints are never
+ * emitted directly. source_config resets the live translation-unit prefix. */
 static char names[256][256];
 static int bindings[256], immutable[256], name_count, source_line;
 
@@ -48,9 +49,10 @@ static int path_closed;             /* Current loop statement path already ends 
 static int conditional_serial;      /* Unique structured loop-if labels. */
 static int conditional_depth;       /* Active loop-if lexical join contexts. */
 static int conditional_scope[65];   /* Outer lexical scope of each structured join. */
-static int loop_names[65];          /* Binding prefix present before each active loop body. */
-static int terminal;                /* The last emitted arm already terminates and needs no footer return. */
-
+static unsigned char loop_initialized[65][256]; /* Entry initialization facts for outer bindings. */
+static int loop_entry_cells[65][256];           /* Entry cell IDs; body-only cells cannot escape. */
+static int loop_names[65];                      /* Binding prefix present before each active loop body. */
+static int terminal; /* The last emitted arm already terminates and needs no footer return. */
 
 /* Saved incoming/true-arm environments for a structured choice. No runtime
  * owners are held here: IDs name private SSA payloads/cells in staged FIR. */
@@ -1507,14 +1509,9 @@ void source_table_bind(int name, int value, int type, int declaration)
     {
         reject("table-profile binding type mismatch");
     }
-    if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && table_cells[name] < 0)
+    if (!declaration && loop_depth && name < loop_names[loop_depth - 1] && !loop_initialized[loop_depth - 1][name])
     {
         reject("loop-carried assignment requires an initialized local");
-    }
-    if (!declaration && loop_depth && conditional_depth &&
-        binding_scope[name] <= conditional_scope[conditional_depth - 1] && table_cells[name] < 0)
-    {
-        reject("conditional assignment requires an initialized local");
     }
     if (!failed)
     {
@@ -1613,13 +1610,13 @@ void source_table_lease(int receiver, int acquire)
     }
 }
 
-
-/* [GC:] Promote initialized active locals into dominating typed frame cells.
- * Scalars retain their existing bool/big storage; int widens on store and narrows
- * on load. Reference cells initialize from a live SSA payload and hold an
+/* [GC:] Promote active locals into dominating typed frame cells.
+ * include_uninitialized reserves zero/nil storage for declared locals at joins,
+ * without marking them readable. Scalars keep bool/big storage; int widens on
+ * store and narrows on load. Initialized reference cells hold an
  * independent rooted owner. Cells never escape this serial compiler request's
  * function; unsupported transient locations/ranges remain SSA-only. */
-static void source_promote_locals(void)
+static void source_promote_locals(int include_uninitialized)
 {
     int name;
     for (name = 0; name < name_count && !failed; name++)
@@ -1627,11 +1624,12 @@ static void source_promote_locals(void)
         FirType type = table_bindings[name];
         FirType reference = source_reference_cell(type);
         if (active[name] && (type == T_I64 || type == T_I32 || type == T_BOOL || reference != T_VOID) &&
-            bindings[name] >= 0 && table_cells[name] < 0)
+            (bindings[name] >= 0 || include_uninitialized) && table_cells[name] < 0)
         {
             if (reference != T_VOID)
             {
-                table_cells[name] = table_operation(reference, "ref.local", bindings[name], -1);
+                table_cells[name] =
+                    table_operation(reference, bindings[name] < 0 ? "ref.nil" : "ref.local", bindings[name], -1);
             }
             else
             {
@@ -1639,11 +1637,11 @@ static void source_promote_locals(void)
                     type == T_BOOL ? T_BOOL_SLOT : T_BIG_SLOT, type == T_BOOL ? "bool.local" : "big.local", -1, -1);
                 int value = bindings[name];
                 table_cells[name] = cell;
-                if (type == T_I32)
+                if (type == T_I32 && value >= 0)
                 {
                     value = source_table_convert(value, 0);
                 }
-                if (!failed)
+                if (!failed && value >= 0)
                 {
                     fprintf(
                         destination, "    %s %%v%d, %%v%d\n", type == T_BOOL ? "bool.store" : "big.store", cell, value);
@@ -1666,9 +1664,17 @@ int source_loop_begin(void)
         reject("loop nesting/block limit exceeded");
         return loop;
     }
-    source_promote_locals();
+    source_promote_locals(0);
     loop_id[loop_depth] = loop;
     loop_iteration[loop_depth] = loop_continues[loop_depth] = 0;
+    {
+        int name;
+        for (name = 0; name < name_count; name++)
+        {
+            loop_initialized[loop_depth][name] = bindings[name] >= 0;
+            loop_entry_cells[loop_depth][name] = table_cells[name];
+        }
+    }
     loop_names[loop_depth++] = name_count;
     path_closed = 0;
     blocks_used += 3;
@@ -1701,6 +1707,26 @@ void source_loop_condition(int loop, SourceCondition condition)
 }
 
 
+/* Retire one loop's compiler context without promoting body-only initialization.
+ * No arguments or runtime work. Restore uninitialized entry bindings and their
+ * dominating cell IDs; a potentially empty body cannot export a new cell/value. */
+static void source_loop_leave(void)
+{
+    if (loop_depth)
+    {
+        int name;
+        int depth = --loop_depth;
+        for (name = 0; name < loop_names[depth]; name++)
+        {
+            if (!loop_initialized[depth][name])
+            {
+                bindings[name] = -1;
+                table_cells[name] = loop_entry_cells[depth][name];
+            }
+        }
+    }
+}
+
 /* Close a while body after its lexical locals have retired. Emit the backedge
  * and continuation for loop, then pop one parser loop context. No native mutex
  * spans the backedge unless explicit FIR ownership has been balanced there. */
@@ -1715,10 +1741,7 @@ void source_loop_end(int loop)
         fprintf(destination, "^loop%d_end:\n", loop);
         source_debug_event("while-end", -1, "", debug_scopes[scope_depth], scope_depth, location);
     }
-    if (loop_depth)
-    {
-        loop_depth--;
-    }
+    source_loop_leave();
     path_closed = 0;
 }
 
@@ -1885,7 +1908,7 @@ SourceChoice source_choice_begin(void)
         reject("conditional nesting/block limit exceeded");
         return choice;
     }
-    source_promote_locals();
+    source_promote_locals(1);
     state = &choices[choice.choice];
     state->names = name_count;
     memcpy(state->incoming, bindings, (size_t)name_count * sizeof(bindings[0]));
@@ -1943,9 +1966,9 @@ void source_choice_else(SourceChoice *choice)
 
 
 /* Merge open exits of a copied choice and reserve a join only when reachable.
- * One surviving arm may contribute initialized SSA/cells because it dominates
- * that join. Two open arms require previously initialized outer locals; no phi
- * or implicit initialization is invented. Terminal sibling environments stay
+ * One surviving arm contributes its initialization facts. Two open arms meet
+ * those facts and use the same dominating typed cell. No SSA value from one
+ * predecessor is emitted on the other path. Terminal sibling environments stay
  * independent. Errors discard the entire staged request, including debug data. */
 void source_choice_end(SourceChoice choice)
 {
@@ -1959,17 +1982,13 @@ void source_choice_end(SourceChoice choice)
         {
             for (name = 0; name < state->names; name++)
             {
-                if (state->incoming_cells[name] < 0 &&
-                    (state->yes[name] != state->incoming[name] || bindings[name] != state->incoming[name] ||
-                     state->yes_cells[name] != state->incoming_cells[name] ||
-                     table_cells[name] != state->incoming_cells[name]))
-                {
-                    reject("conditional assignment requires an initialized local on joined paths");
-                    break;
-                }
+                /* Both open paths must initialize an incoming uninitialized local.
+                 * The value ID is a last-write hint only; reads use its common cell. */
+                bindings[name] = state->incoming[name] >= 0                     ? state->incoming[name]
+                                 : state->yes[name] >= 0 && bindings[name] >= 0 ? state->yes[name]
+                                                                                : -1;
+                table_cells[name] = state->incoming_cells[name];
             }
-            memcpy(bindings, state->incoming, bytes);
-            memcpy(table_cells, state->incoming_cells, bytes);
         }
         else if (!choice.yes_closed)
         {
@@ -2184,10 +2203,7 @@ void source_for_end(SourceFor control)
         reject("cannot close staged for step");
     }
     context->step = NULL;
-    if (loop_depth)
-    {
-        loop_depth--;
-    }
+    source_loop_leave();
     path_closed = 0;
 }
 
