@@ -100,3 +100,10 @@ the compiler uses checked scalar frame cells and ordinary Dis MOVW.
 table alias, a captured snapshot key and a big local, returning 42. Shift counts
 are explicit int. Locations and old values are captured before RHS evaluation;
 updates are not atomic transactions. [Contract and commands](../../doc/COMPOUND_UPDATES.md).
+
+## Unicode string primitives
+
+[unicode.b](unicode.b) checks seven Unicode scalars, a slice containing emoji and
+source alias preservation, then parses a numeric slice to return 42. String lengths
+and indexes are int; table/key lengths stay big. Combining marks count separately.
+[Detailed semantics and commands](../../doc/UNICODE_STRINGS.md).

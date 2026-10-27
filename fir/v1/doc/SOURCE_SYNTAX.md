@@ -80,3 +80,5 @@ The `limbo_tables` profile, exact `i64` constants and typed table/location/range
 [Reflection and standard Limbo big/string cast syntax](TYPE_REFLECTION.md).
 
 [Compiler 0.25: captured compound updates / Составные обновления](COMPOUND_UPDATES.md).
+
+[Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.md).

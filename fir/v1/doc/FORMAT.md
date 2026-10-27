@@ -193,3 +193,5 @@ pointer in the IR; native layouts, effects and GC are specified in
 [Exact big arithmetic and unary precedence](BIG_ARITHMETIC.md).
 
 [Checked big division and bit operations](BIG_BITWISE.md).
+
+[Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.md).

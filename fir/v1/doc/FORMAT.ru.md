@@ -172,3 +172,5 @@ checking or an implicit conversion instruction.
 их числовые значения enum сохранены. Для нового варианта нужен новый reader.
 
 [Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).
+
+[Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.ru.md).
