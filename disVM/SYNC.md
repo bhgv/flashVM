@@ -1,3 +1,16 @@
+# Packed GC map synchronization
+
+Inferno experiment is pinned to **381ecd2f8162bc02d9bda6cedfde9aad9fb8bbe6**.
+Snapshots contain **610 core/reference + 206 bootstrap files**. Packed Type maps
+and record slots now use byte-safe reads in GC/owner cleanup; saved RET frames
+are span-checked in C and AMD64/ARM64 emitters. New GC graph/map and real builtin
+cleanup regressions are retained exactly.
+[Upstream contract](upstream/libinterp/tests/README.gc-packed-maps.md).
+Selected GC/map/module/control-transfer/readiness checks and hosted reference
+regressions passed. No new shared reverse fix was confirmed.
+
+---
+
 # CALL/MCALL target synchronization
 
 Pinned Inferno experiment: **51227cb0629bc6fd755d4d6ecad44f055ea56690**.

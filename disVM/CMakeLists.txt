@@ -103,6 +103,7 @@ if(BUILD_TESTING)
     loader-snapshots
     loader-runtime
     pointer-maps
+    gc-maps
     vm-widths
     dis-layout
     array-indices
