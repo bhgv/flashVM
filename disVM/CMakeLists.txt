@@ -81,6 +81,7 @@ if(BUILD_TESTING)
     array-spans-native
     string-capture-native
     dis-numeric-literals
+    decoded-addresses
     frame-allocation-native
     arm64-dispatch-compiler
     shift-slot-native

@@ -33,7 +33,7 @@ def main():
             raise RuntimeError("native source generation compounded a prior adaptation")
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
-        critical = ("string.c", "xec.c", "comp-leaf64.h", "leaf64-ops.h",
+        critical = ("string.c", "xec.c", "dec.c", "dec-addr.h", "comp-leaf64.h", "leaf64-ops.h",
                     "amd64-emit.h", "arm64-emit.h", "riscv-emit.h")
         stale = [name for name in critical if not (actual / name).is_file()
                  or (actual / name).read_bytes() != second[name]]
@@ -49,10 +49,13 @@ def main():
         step = dispatch.index(b"dvm_runtime_step();")
         inline = dispatch.index(b"dvm_runtime_instructions++;")
         translated = dispatch.index(b"if(DVM_R.M->m->cstep != nil")
-        decode = dispatch.index(b"dec[DVM_R.PC->add]();", translated)
-        if not poll < guard < step < inline < translated < decode:
+        pc_guard = dispatch.index(b"if(DVM_R.PC == nil || DVM_R.PC == H ||", translated)
+        decode = dispatch.index(b"dec[((uchar*)DVM_R.PC)[O(Inst, add)]]();", pc_guard)
+        if not poll < guard < step < inline < translated < pc_guard < decode:
             raise RuntimeError("quota must follow the GC safepoint and precede both execution paths")
-    print("PASS byte-identical native source regeneration and one quota/count boundary")
+        if b"memmove(pc, DVM_R.PC, sizeof(*pc));" not in second["dec-addr.h"]:
+            raise RuntimeError("native decoder instruction capture bypassed TLS registers")
+    print("PASS byte-identical native source regeneration, decoder TLS and one quota/count boundary")
 
 
 if __name__ == "__main__":
