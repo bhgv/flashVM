@@ -1,3 +1,15 @@
+# CALL/MCALL target synchronization
+
+Pinned Inferno experiment: **51227cb0629bc6fd755d4d6ecad44f055ea56690**.
+Snapshots: **607 core/reference + 206 bootstrap files**. Incoming C and AMD64/ARM64
+fast-path fixes validate CALL/MCALL bytecode target spans before publication,
+preserve opaque legacy compiled PC tokens and validate emitter layouts.
+[Contract and regressions](upstream/libinterp/tests/README.call-targets.md).
+Native control-transfer, priority-architecture guest and readiness checks passed.
+No new shared outgoing fix was confirmed; FlashVM source extensions stay separate.
+
+---
+
 # Module transitions and compiler 0.39
 
 Inferno `experiment` is pinned to **45370abd78dd8b9339c962a544d2a933663139f1**.
