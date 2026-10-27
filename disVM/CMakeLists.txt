@@ -79,6 +79,7 @@ if(BUILD_TESTING)
     cons-slots-native
     record-slots-native
     array-spans-native
+    string-capture-native
     frame-allocation-native
     arm64-dispatch-compiler
     shift-slot-native
@@ -288,6 +289,7 @@ if(BUILD_TESTING)
       control-transfer-jit
       cons-slots-jit
       array-spans-jit
+      string-capture-jit
       frame-allocation-jit
       mapped-copy-edges-jit
       raw-copy-edges-jit
