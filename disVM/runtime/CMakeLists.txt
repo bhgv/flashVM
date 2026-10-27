@@ -502,3 +502,13 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_fir_table_arms_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+# Run comparison values and eager checked operands on both actual VM dispatch modes.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_table_comparisons_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/table_comparisons.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_table_comparisons_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
