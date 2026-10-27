@@ -79,3 +79,12 @@ needs only its own recursive guard.
 The additional native contention test runs 40,000 read-modify-write transactions
 on a real table through nested owner callbacks. Core table tests additionally
 inject allocation failures into self-splice and check contents and live blocks.
+
+## Executable tutorial
+
+`example_splice.c` is a fully commented owner-lifetime example. Build the default
+target, then run `build/owned/owned_splice_example`. It populates `[1, 9, 4]`
+under one operation, inserts the original prefix into itself under another, and
+checks `[1, 1, 9, 4, 9, 4]`. Both callbacks release the guard on ordinary error
+returns. Native cancellation is restored only after retiring the table. The
+example is also run by CTest; it demonstrates the C host API, not Limbo syntax.

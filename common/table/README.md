@@ -1,5 +1,7 @@
 # Hybrid scalar table core
 
+[Transactional splice](SPLICE.md) · [Guarded native owner](../owned/README.md)
+
 [Русский](README.ru.md)
 
 This standalone C99 library owns dynamically growing `big`/int64 values under
