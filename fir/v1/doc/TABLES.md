@@ -92,3 +92,5 @@ remains pending. No new Dis opcode or Inferno extension is used.
 [FIR 0.19: acyclic table CFG / Ациклический CFG таблиц](TABLE_CFG.md) · [Русский](TABLE_CFG.ru.md).
 
 Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md), [гибридные конструкторы](TABLE_LITERALS.ru.md).
+
+Compiler 0.32 / Компилятор 0.32: [relative positions](RELATIVE_SEQUENCES.md), [отрицательные позиции](RELATIVE_SEQUENCES.ru.md).

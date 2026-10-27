@@ -74,7 +74,7 @@ def main():
         execute('s := ""; safe := (len s == int 0) || (s[int 0] == int 1); return big safe + 41;', 42)
 
         # Runtime errors remain eager when an index/slice result is unused.
-        for body in ('s := "abc"; unused := s[int -1]; return 42;',
+        for body in ('s := "abc"; unused := s[int -4]; return 42;',
                      's := "abc"; unused := s[int 3]; return 42;',
                      's := "abc"; unused := s[int 0:int 4]; return 42;',
                      's := "abc"; unused := s[int 2:int 1]; return 42;'):

@@ -92,3 +92,5 @@ build/runtime/disvm --no-jit --quantum 1 --inspect-words 0 4 build/unicode.dis
 Аппаратное исполнение ARM64 и загрузка всей Inferno этим не подтверждаются.
 
 Версия 0.28: [конкатенация/равенство строк и побитовые int](TEXT_BITS.ru.md).
+
+Compiler 0.32 / Компилятор 0.32: [relative positions](RELATIVE_SEQUENCES.md), [отрицательные позиции](RELATIVE_SEQUENCES.ru.md).

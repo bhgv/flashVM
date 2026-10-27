@@ -188,14 +188,10 @@ void Bigtable_slice(void *frame)
     Fht *source = table_value(call->tab);
     TableOwner *owner;
     FhtStatus status;
-    if (call->first < 0 || call->end < 0)
-    {
-        error("invalid big table slice");
-    }
     owner = H2D(TableOwner *, heapz(table_type));
     destroy(*call->ret);
     *call->ret = (Bigtable_Handle *)owner;
-    status = fht_slice(source, call->first, call->end, &owner->table);
+    status = fht_slice_relative(source, call->first, call->end, &owner->table);
     if (status != FHT_OK)
     {
         error(status == FHT_NOMEM ? exNomem : "invalid big table slice");
@@ -399,6 +395,19 @@ void Bigtable_requireok(void *frame)
     }
 }
 
+/* Capture a canonical numeric key before RHS effects can change prefix length.
+ * frame is borrowed; invalid relative bounds raise without result publication. */
+void Bigtable_resolveindex(void *frame)
+{
+    F_Bigtable_resolveindex *call = frame;
+    FhtKey resolved;
+    if (fht_resolve(table_value(call->tab), numeric_key(call->key), &resolved) != FHT_OK)
+    {
+        error("invalid key/range");
+    }
+    *call->ret = resolved.index;
+}
+
 /* Validate a borrowed numeric key before capturing a FIR location; return normally for nonnegative keys. */
 void Bigtable_indexcheck(void *frame)
 {
@@ -413,7 +422,7 @@ void Bigtable_indexcheck(void *frame)
 void Bigtable_rangecheck(void *frame)
 {
     F_Bigtable_rangecheck *call = frame;
-    if (call->first < 0 || call->end < call->first)
+    if (call->first >= 0 && call->end >= 0 && call->end < call->first)
     {
         error("invalid key/range");
     }

@@ -1,6 +1,7 @@
 /* Independent reference execution for typed table FIR; deliberately not Dis/JIT execution. */
 #include "fir_table.h"
 #include "table.h"
+#include "relative.h"
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -254,8 +255,10 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             size_t offset;
             int64_t scalar;
             int64_t length;
-            if (!text_position(a, in->op == O_STRING_LEN ? 0 : b->big, &offset, &scalar, &length) ||
-                (in->op == O_STRING_AT && scalar < 0))
+            uint64_t index = 0;
+            if (!text_position(a, 0, &offset, &scalar, &length) ||
+                (in->op == O_STRING_AT && (!fvm_relative_index((uint64_t)length, b->big, &index) ||
+                                           !text_position(a, (int64_t)index, &offset, &scalar, &length) || scalar < 0)))
             {
                 status = FHT_INVALID;
             }
@@ -271,8 +274,12 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             size_t end;
             int64_t scalar;
             int64_t length;
-            if (b->end < b->first || !text_position(a, b->first, &first, &scalar, &length) ||
-                !text_position(a, b->end, &end, &scalar, &length))
+            uint64_t start_index;
+            uint64_t end_index;
+            if (!text_position(a, 0, &first, &scalar, &length) ||
+                !fvm_relative_range((uint64_t)length, b->first, b->end, &start_index, &end_index) ||
+                !text_position(a, (int64_t)start_index, &first, &scalar, &length) ||
+                !text_position(a, (int64_t)end_index, &end, &scalar, &length))
             {
                 status = FHT_INVALID;
             }
@@ -416,10 +423,7 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             {
                 result->key.kind = FHT_INDEX;
                 result->key.index = b->big;
-                if (b->big < 0)
-                {
-                    status = FHT_INVALID;
-                }
+                status = fht_resolve(a->table, result->key, &result->key);
             }
             else if (module->values[in->b].type == T_TABLE_KEY)
             {
@@ -466,13 +470,13 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_BIG_RANGE:
             result->first = a->big;
             result->end = b->big;
-            if (a->big < 0 || b->big < a->big)
+            if (a->big >= 0 && b->big >= 0 && b->big < a->big)
             {
                 status = FHT_INVALID;
             }
             break;
         case O_TABLE_SLICE:
-            status = fht_slice(a->table, (uint64_t)b->first, (uint64_t)b->end, &result->table);
+            status = fht_slice_relative(a->table, b->first, b->end, &result->table);
             if (status == FHT_OK)
             {
                 tables[table_count++] = result->table;

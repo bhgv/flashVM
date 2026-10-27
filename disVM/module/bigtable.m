@@ -62,8 +62,9 @@ Bigtable: module
 
     # Compiler helpers preserve eager errors while using existing Dis module-call instructions.
     requireok: fn(status: int); # Raise on a rejected get/set result; successful zero remains silent.
+    resolveindex: fn(tab: ref Handle, key: big): big; # Capture a relative numeric key before RHS.
     indexcheck: fn(key: big); # Reject a negative numeric key before an unused location can escape.
-    rangecheck: fn(first: big, end: big); # Reject negative/reversed bounds independently of slice use.
+    rangecheck: fn(first: big, end: big); # Check absolute ordering; relative bounds resolve at the receiver.
 
     # Normalize presence/deletion statuses: Ok -> 1, Missing -> 0; other errors raise.
     present: fn(status: int): int;

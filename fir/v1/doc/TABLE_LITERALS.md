@@ -51,8 +51,7 @@ for a named key.
 
 The existing array/dictionary rules are unchanged: len counts only the contiguous
 numeric prefix, countof counts all entries, keysof captures independent keys,
-aliases share an owner and numeric slices are independent copies. Explicit numeric
-keys must be nonnegative; quoted negative text keys retain the string namespace.
+aliases share an owner and numeric slices are independent copies. Compiler 0.32 adds negative numeric positions relative to the dense prefix; quoted negative text keys retain the string namespace.
 
 ## Evaluation and failures
 
@@ -117,3 +116,5 @@ hybrid keys, a two-element numeric prefix, an independent slice and unchanged
 editor-style settings after mutation through an alias. Existing AMD64/ARM64 JIT
 availability remains 166 guarded fast paths and 173 complete decoded entries;
 this compiler feature does not add a native fast path.
+
+Compiler 0.32 / Компилятор 0.32: [relative positions](RELATIVE_SEQUENCES.md), [отрицательные позиции](RELATIVE_SEQUENCES.ru.md).

@@ -93,37 +93,25 @@ enum
     DEL_INDEX,     /* Delete a numeric location. */
     DEL_TEXT,      /* Delete a copied text location. */
     DEL_KEY,       /* Delete through a snapshot-owned key. */
-    PRESENT        /* Convert get/delete statuses to a normalized bool. */
+    PRESENT,       /* Convert get/delete statuses to a normalized bool. */
+    RESOLVE_INDEX  /* Capture negative numeric indexes against prefix length. */
 };
 
-static const Import imports[] =
-    {
-        {"create", UINT32_C(0xf9bff31f)},
-        {"getindex", UINT32_C(0xd03b2e8c)},
-        {"gettext", UINT32_C(0x7a1ec3e7)},
-        {"indexcheck", UINT32_C(0x93504811)},
-        {"keylen", UINT32_C(0x6c3299de)},
-        {"keysof", UINT32_C(0xa4157ed7)},
-        {"length", UINT32_C(0x6c3299de)},
-        {"rangecheck", UINT32_C(0xd039b06a)},
-        {"requireok", UINT32_C(0xb1f25db6)},
-        {"setindex", UINT32_C(0xe420e8cf)},
-        {"settext", UINT32_C(0xb244346a)},
-        {"keycheck", UINT32_C(0x6c3c4973)},
-        {"getkey", UINT32_C(0x420ebc79)},
-        {"setkey", UINT32_C(0x9ea8730a)},
-        {"bigfromtext", UINT32_C(0xbb695870)},
-        {"textfrombig", UINT32_C(0x72c1d264)},
-        {"keybig", UINT32_C(0xa56b6949)},
-        {"keytext", UINT32_C(0x85cca8a1)},
-        {"typename", UINT32_C(0xa9b8ab85)},
-        {"keytype", UINT32_C(0x85cca8a1)},
-        {"slice", UINT32_C(0x71c4132a)},
-        {"count", UINT32_C(0x6c3299de)},
-        {"delindex", UINT32_C(0xfff0be39)},
-        {"deltext", UINT32_C(0x9cbcf924)},
-        {"delkey", UINT32_C(0x3c90594b)},
-        {"present", UINT32_C(0xe67bf126)}}; /* Loader checks every signature before any generated native call can run. */
+static const Import imports[] = {
+    {"create", UINT32_C(0xf9bff31f)},      {"getindex", UINT32_C(0xd03b2e8c)},
+    {"gettext", UINT32_C(0x7a1ec3e7)},     {"indexcheck", UINT32_C(0x93504811)},
+    {"keylen", UINT32_C(0x6c3299de)},      {"keysof", UINT32_C(0xa4157ed7)},
+    {"length", UINT32_C(0x6c3299de)},      {"rangecheck", UINT32_C(0xd039b06a)},
+    {"requireok", UINT32_C(0xb1f25db6)},   {"setindex", UINT32_C(0xe420e8cf)},
+    {"settext", UINT32_C(0xb244346a)},     {"keycheck", UINT32_C(0x6c3c4973)},
+    {"getkey", UINT32_C(0x420ebc79)},      {"setkey", UINT32_C(0x9ea8730a)},
+    {"bigfromtext", UINT32_C(0xbb695870)}, {"textfrombig", UINT32_C(0x72c1d264)},
+    {"keybig", UINT32_C(0xa56b6949)},      {"keytext", UINT32_C(0x85cca8a1)},
+    {"typename", UINT32_C(0xa9b8ab85)},    {"keytype", UINT32_C(0x85cca8a1)},
+    {"slice", UINT32_C(0x71c4132a)},       {"count", UINT32_C(0x6c3299de)},
+    {"delindex", UINT32_C(0xfff0be39)},    {"deltext", UINT32_C(0x9cbcf924)},
+    {"delkey", UINT32_C(0x3c90594b)},      {"present", UINT32_C(0xe67bf126)},
+    {"resolveindex", UINT32_C(0xa56b6949)}}; /* Loader checks every signature before any generated native call can run. */
 
 typedef struct
 {
@@ -341,7 +329,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if (in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE)
+        if ((in->op >= O_TABLE_COUNT && in->op <= O_TABLE_DELETE) || in->op == O_TABLE_INDEX)
         {
             e->import_count = (unsigned)(sizeof(imports) / sizeof(imports[0]));
         }
@@ -642,20 +630,24 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_TABLE_INDEX:
             if (module->values[in->b].type == T_I64)
             {
-                call_begin(e, INDEX_CHECK);
-                argument(e, MOVL, b, 0);
-                call_end(e, INDEX_CHECK, -1);
+                call_begin(e, RESOLVE_INDEX);
+                argument(e, MOVP, a, 0);
+                argument(e, MOVL, b, 1);
+                call_end(e, RESOLVE_INDEX, (int)(d + CELL));
             }
             instruction(e, MOVP, FP, a, FP, d, 0, -1);
-            instruction(e,
-                        module->values[in->b].type == T_STRING || module->values[in->b].type == T_TABLE_KEY ? MOVP
-                                                                                                            : MOVL,
-                        FP,
-                        b,
-                        FP,
-                        d + CELL,
-                        0,
-                        -1);
+            if (module->values[in->b].type != T_I64)
+            {
+                instruction(e,
+                            module->values[in->b].type == T_STRING || module->values[in->b].type == T_TABLE_KEY ? MOVP
+                                                                                                                : MOVL,
+                            FP,
+                            b,
+                            FP,
+                            d + CELL,
+                            0,
+                            -1);
+            }
             if (module->values[in->b].type == T_TABLE_KEY)
             {
                 instruction(e, MOVL, FP, b + CELL, FP, d + 2U * CELL, 0, -1);

@@ -7,6 +7,15 @@ import subprocess
 import sys
 
 
+# Apply exactly one reviewed relative-sequence source adaptation; reject drift.
+# source/before/after are owned strings, count is the required single occurrence.
+# Return replaced text or raise before publishing an incomplete generated view.
+def relative_replace(source, before, after, count=1):
+    if count != 1 or source.count(before) != 1:
+        raise ValueError("relative sequence boundary changed: " + before[:80])
+    return source.replace(before, after, 1)
+
+
 # Generate paired headers from the same compiler used for native-cell modules.
 # CLI supplies compiler, Sys interface and owned build output. Returns zero on success.
 def main():
@@ -135,6 +144,60 @@ def main():
                 "Dis integer arguments occupy four bytes, even on LP64 hosts.",
                 "NC64 arguments occupy the explicitly selected native cell width.",
             )
+        path.write_text(code)
+    # Relative indexes are host language extensions, kept outside the snapshot.
+    for filename in ("xec.c", "string.c"):
+        path = args.output / filename
+        code = path.read_text()
+        code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include <stdint.h>', 1)
+        # Insert helpers after all includes/macros but before the first operation.
+        point = code.index("OP(indc)" if filename == "string.c" else "OP(runt)")
+        code = code[:point] + '/* RELATIVE_SEQUENCE_HELPERS */\n' + code[point:]
+        helpers = Path(__file__).with_name("relative_sequence.c").read_text()
+        code = relative_replace(code, "/* RELATIVE_SEQUENCE_HELPERS */", helpers)
+        if filename == "xec.c":
+            code = relative_replace(code, 'array == H || array == nil || index < 0 ||', 'array == H || array == nil ||', 1)
+            needle = 'memmove(&length, (uchar*)array+offsetof(Array, len), sizeof(length));'
+            if code.count(needle) != 1:
+                raise ValueError("array indexing preflight changed")
+            code = relative_replace(code, needle, needle + '\n\tindex = dvm_relative_index(length, index);', 1)
+            # A relative-bound array slice copies first, then applies the original
+            # validated view machinery to that independent backing owner.
+            start = code.index('OP(slicea)')
+            finish = code.index('OP(slicela)', start)
+            part = code[start:finish]
+            part = relative_replace(part, 'WORD v, n, start;', 'WORD v, n, start;\n\tint relative;\n\tArray *copy;')
+            part = relative_replace(part, 'if(ds == H || ds == nil){',
+                'relative = start < 0 || v < 0;\n\tif(ds == H && start == 0 && v == -1) return;\n\tif(ds == H || ds == nil){', 1)
+            part = relative_replace(part, 'if(start < 0 || v < start || v > ds->len)',
+                'if(relative) dvm_relative_bounds(ds->len, &start, &v);\n\tif(start < 0 || v < start || v > ds->len)', 1)
+            needle = 'data = arrayspan(ds, t, start, n);'
+            if part.count(needle) != 1:
+                raise ValueError("array slice preflight changed")
+            part = relative_replace(part, needle, needle + '\n\tif(relative){\n\t\tcopy = arraycpy(ds);\n\t\tmemmove(DVM_R.d, &copy, sizeof(copy));\n\t\tdestroy(ds);\n\t\tds = copy;\n\t\tt = ds->t;\n\t\tdata = arrayspan(ds, t, start, n);\n\t}', 1)
+            code = code[:start] + part + code[finish:]
+            needle = 'if(dl < 0 || dl > ds->len || ss->len < 0 || ss->len > ds->len-dl)'
+            if code.count(needle) != 1:
+                raise ValueError("array slice-store boundary changed")
+            code = relative_replace(code, needle, 'dl = dvm_relative_index(ds->len, dl);\n\t' + needle, 1)
+        else:
+            needle = 'if(index < 0 || index >= length)'
+            if code.count(needle) != 1:
+                raise ValueError("string index boundary changed")
+            code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
+            needle = 'if(index < 0 || index > length)'
+            if code.count(needle) != 1:
+                raise ValueError("string store boundary changed")
+            code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
+            start = code.index('OP(slicec)')
+            finish = code.index('void\ncvtup', start)
+            part = code[start:finish]
+            part = relative_replace(part, 'if(start < 0 || end < start || (uvlong)end > 0x7fffffff)',
+                'if(start >= 0 && end >= 0 && (end < start || (uvlong)end > 0x7fffffff))', 1)
+            part = relative_replace(part, 'if(end > length)', 'dvm_relative_bounds(length, &start, &end);\n\t\tif(end > length)', 1)
+            part = relative_replace(part, 'result = slicer((ulong)start, (ulong)end, old);',
+                'if(old == H) dvm_relative_bounds(0, &start, &end);\n\tresult = slicer((ulong)start, (ulong)end, old);', 1)
+            code = code[:start] + part + code[finish:]
         path.write_text(code)
     path = args.output / "load.c"
     code = path.read_text().replace("*(WORD*)si = disw(isp);", "*(WORD*)si = (int)disw(isp);")

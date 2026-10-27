@@ -165,3 +165,19 @@ trace: 42/0, флаги исполнения: 1/0.
 коллизий, порядок ключа/RHS, типы, лимиты и владение в сервисе компиляции. Приёмка
 SDK заново линкует C99-клиенты source/FIR и выполняет исходный/оптимизированный
 пример в интерпретаторе и JIT.
+
+## Relative positions / Отрицательные позиции (0.32)
+
+[relative.b](relative.b) reads the last dense-prefix elements, copies `[0:-1]`,
+mutates the source and verifies copy independence. Unicode negative bounds
+extract `42` from `Ж42😀`. Sparse/string keys do not affect negative numeric
+positions. Every step is commented; expected trace cells: 42/0, flags: 1/0.
+
+Пример читает хвост плотного префикса и проверяет независимость копии после
+изменения источника. Отрицательная правая граница включается; положительная
+остаётся исключающей. Позиции Unicode считаются скалярами.
+
+[EN guide and commands](../../doc/RELATIVE_SEQUENCES.md) /
+[RU: руководство и команды](../../doc/RELATIVE_SEQUENCES.ru.md).
+Installed SDK checks use fresh C99 source/FIR clients, original/optimized IR
+and both actual VM modes. The native array tutorial is linked from the guide.

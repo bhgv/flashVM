@@ -45,7 +45,7 @@ file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include
 add_custom_command(OUTPUT "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
@@ -597,5 +597,39 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${root}/fir/v1/tests/table_literals.py" "${DVM_FIR_SOURCE_COMPILER}"
       "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_table_literals_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Relative sequence indexes and copies survive one-instruction GC quanta.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_relative_sequences_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/relative_sequences.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_relative_sequences_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Reference-compiled native arrays cover every indexed element width and mapped GC owners.
+if(DVM_RUNTIME_TESTS)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/relative-test.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module" -o "${CMAKE_CURRENT_BINARY_DIR}/relative-test.dis"
+      "${root}/disVM/examples/relative-sequences/main.b"
+    DEPENDS limbo-bootstrap "${root}/disVM/examples/relative-sequences/main.b" VERBATIM)
+  add_custom_target(disvm_relative_arrays ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/relative-test.dis")
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_relative_arrays_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/relative-test.dis" "${mode}")
+    set_tests_properties(disvm_relative_arrays_${mode} PROPERTIES TIMEOUT 60)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_relative_native_bounds_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_relative_bounds.py" "$<TARGET_FILE:limbo-bootstrap>"
+      "$<TARGET_FILE:disvm>" "${u}/module" "${mode}")
+    set_tests_properties(disvm_relative_native_bounds_${mode} PROPERTIES TIMEOUT 90)
   endforeach()
 endif()

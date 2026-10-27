@@ -1,4 +1,4 @@
-# FIR 0.31.0 compiler and C API
+# FIR 0.32.0 compiler and C API
 
 The compiler produces `.swo` objects, never SWF containers. Linking belongs to
 independent [SWL](../../../linker/README.md). Optimization runs separately or
@@ -49,3 +49,5 @@ Compiler 0.29 / Компилятор 0.29: [checked signed32 shifts](../doc/INT_
 Compiler 0.30 / Компилятор 0.30: [ordered strings and checked int casts](../doc/TEXT_VALUES.md), [русское руководство](../doc/TEXT_VALUES.ru.md).
 
 Compiler 0.31 / Компилятор 0.31: [hybrid table constructors](../doc/TABLE_LITERALS.md), [русское руководство](../doc/TABLE_LITERALS.ru.md).
+
+Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](../doc/RELATIVE_SEQUENCES.md), [русское руководство](../doc/RELATIVE_SEQUENCES.ru.md).
