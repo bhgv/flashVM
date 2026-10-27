@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "6945acafa0df51c7ee3e591b1665ddb40d9a27bb",
+  "revision": "5b9bdcfd188cd16846f8935b5c7d9074dcc89ee5",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -833,7 +833,7 @@
     "upstream/libinterp/tests/leaf-mapped-cons-stub.h": "e376d390a9cd5ab0dc3304a75d179903127e1d1da8b943675f6d66a07c33edab",
     "upstream/libinterp/tests/leaf-plain-stubs.h": "694c49f8ddd001e41e93d3e9b8d7c8c70d21a39605c969737483e9c642344cdb",
     "upstream/libinterp/tests/leaf-transfer-stub.h": "0431068fd4e6f9bcff179fadfbfde9a6b7f37a413ad5452fa9f176ab747ee8a6",
-    "upstream/libinterp/tests/leaf64-jit.py": "0eea4a676ba94710186171bcae8bdb9bfe09ef73c30c662c788c8a8656e6825c",
+    "upstream/libinterp/tests/leaf64-jit.py": "ff06a2bf8d2610f651610071d6066d4196cf7493b69e858b029c22a99307408e",
     "upstream/libinterp/tests/leaf64-runtime.py": "a7d71af6f45252097c0baa94b5ab5571358d2ad549b8bb059391c8db1b939da2",
     "upstream/libinterp/tests/list-length-jit.py": "893650a9b79e2e97bf0f5d64245b744db9ab433915246c4d844f57ee90bf2f60",
     "upstream/libinterp/tests/list-length-layouts.py": "4cbdd0290ceca84a21aec138a249dd8d4a86981197be13253835499f5dfcae1e",
