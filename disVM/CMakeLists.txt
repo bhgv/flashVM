@@ -142,6 +142,7 @@ if(BUILD_TESTING)
     append-span-c
     append-layouts
     raise-slots
+    raise-native
     string-slots
     sys-print
     sys-tokenize

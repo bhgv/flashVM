@@ -1,3 +1,14 @@
+# Final RAISE publication refresh
+
+Final tested pin: **4c94e2af2e8e2a927fdbb06c800ce5dd6453784f**, including incoming
+RAISE metadata preflight and safe exception-owner transfer in emu/os. Exact
+snapshots contain **620 core/reference + 206 bootstrap files**.
+[Exception contract](upstream/libinterp/tests/README.exception-publication.md).
+The reverse diagnostic fix **51d44da** remains included and acknowledged upstream.
+This refresh changes no FlashVM language/FIR semantics.
+
+---
+
 # Direct target synchronization and reverse diagnostic fix
 
 Inferno experiment is pinned to **51d44da4670567c7d38820ca0b1dfd8e3e4d895d**.
