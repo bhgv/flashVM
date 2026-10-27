@@ -382,6 +382,8 @@ EOF
             copy_tree "$ROOT/common/table" "$destination/source/hybrid-table-core"
             copy_file "$ROOT/LICENSE" "$destination/source/hybrid-table-core/LICENSE"
             copy_file "$ROOT/disVM/libraries/README.md" "$destination/STANDARD-MODULES.md"
+            copy_file "$ROOT/disVM/MODULE_AUDIT.md" "$destination/MODULE_AUDIT.md"
+            copy_file "$ROOT/disVM/MODULE_AUDIT.ru.md" "$destination/MODULE_AUDIT.ru.md"
             for file in "$base/native/libraries/"*.b; do
                 copy_file "$file" "$destination/source/libraries/$(basename "$file")"
             done
@@ -392,6 +394,8 @@ EOF
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
+            copy_file "$ROOT/disVM/upstream/module/regex.m" "$destination/include/limbo/regex.m"
+            copy_file "$ROOT/disVM/upstream/appl/lib/tests/regex-unicode.b" "$destination/examples/regex-unicode.b"
             copy_file "$ROOT/ide/dis/idecore.m" "$destination/include/limbo/idecore.m"
             copy_file "$ROOT/disVM/module/uibridge.m" "$destination/include/limbo/uibridge.m"
             copy_file "$ROOT/disVM/module/bigtable.m" "$destination/include/limbo/bigtable.m"

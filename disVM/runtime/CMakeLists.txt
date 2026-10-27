@@ -77,7 +77,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection)
+set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -93,7 +93,8 @@ set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworksp
   "${root}/ide/dis/bridge/idefileops.b" "${root}/ide/dis/bridge/idesearch.b"
   "${root}/disVM/examples/decimal-append/main.b" "${root}/ide/dis/bridge/ideclipboard.b" "${root}/ide/dis/bridge/idefield.b"
   "${root}/ide/dis/examples/graphical-editor/field-demo.b" "${root}/disVM/broker/brokerdiag.b" "${root}/ide/dis/bridge/ideprojection.b"
-  "${root}/ide/dis/examples/projection/main.b" "${root}/ide/dis/bridge/ideinspect.b" "${root}/ide/dis/bridge/idevalue.b" "${root}/ide/dis/bridge/idedocprojection.b")
+  "${root}/ide/dis/examples/projection/main.b" "${root}/ide/dis/bridge/ideinspect.b" "${root}/ide/dis/bridge/idevalue.b" "${root}/ide/dis/bridge/idedocprojection.b"
+  "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
 list(LENGTH module_names module_count)
@@ -776,5 +777,25 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${root}/fir/v1/tests/scalar_stores.py" "${DVM_FIR_SOURCE_COMPILER}"
       "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_scalar_stores_${mode} PROPERTIES TIMEOUT 90)
+  endforeach()
+endif()
+
+# Execute Coco/R one-name traversal before/after optimization in both modes.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_value_iteration_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/value_iteration.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" - "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_value_iteration_${mode} PROPERTIES TIMEOUT 90)
+  endforeach()
+endif()
+
+# Actual selected Regex library covers the full Unicode scalar tag boundary.
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_regex_unicode_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/regex-check.dis" "${mode}")
+    set_tests_properties(disvm_regex_unicode_${mode} PROPERTIES TIMEOUT 60)
   endforeach()
 endif()

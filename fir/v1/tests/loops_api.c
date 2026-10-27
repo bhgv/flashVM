@@ -24,12 +24,14 @@ static int compile_loop(FirModule *module, int invalid)
     }
     fputs("implement M; M: module {value: fn(): big;}; value(): big {", input);
     body_offset = ftell(input);
-    fputs(invalid == 4   ? "x: string; for (i := int 0; i < int 2; x = x+\"2\") {i++;} return 42;"
+    fputs(invalid == 5   ? "for (item in table of big {42}"
+          : invalid == 4 ? "x: string; for (i := int 0; i < int 2; x = x+\"2\") {i++;} return 42;"
           : invalid == 3 ? "x: big; if (1 == 1) {x = 42;} return x;"
           : invalid == 1 ? "sum := big 0; for (i := big 0; i < 3; extra := 42) {sum += i;} return sum;"
           : invalid == 2
               ? "sum := big 0; for (i := big 0; i < 3; i++"
               : "t: table of big; old := table of big {20}; i := int 0; "
+                "for (amount in old) {old[0] = amount;} "
                 "if (i == int 0) {t = table of big {22};} else {t = table of big {7};} "
                 "s := \"a\"; while (len s < int 2) {s = s+\"😀\";} keys := keysof t; key := keys[0]; "
                 "i = int 0; while (i < int 1) {key = keys[0]; i++;} "
@@ -103,9 +105,15 @@ int main(void)
     {
         return 1;
     }
-    for (round = 0; round < 9; round++)
+    for (round = 0; round < 11; round++)
     {
-        if (!compile_loop(module, round == 1 ? 1 : round == 3 ? 2 : round == 5 ? 3 : round == 7 ? 4 : 0))
+        if (!compile_loop(module,
+                          round == 1   ? 1
+                          : round == 3 ? 2
+                          : round == 5 ? 3
+                          : round == 7 ? 4
+                          : round == 9 ? 5
+                                       : 0))
         {
             free(module);
             return 1;

@@ -155,7 +155,7 @@ def table_packages(prefix, work, environment):
          prefix / "fir/examples/dis/main.c", *source_archives, "-lm", "-o", source_host], work, environment)
     # Tutorials may have several early returns; count emitted result/flag sites.
     # Relinked C99 clients exercise both original/optimized IR and native VM modes.
-    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control", "counted-for", "typed-loops", "retained-loops", "function-flow", "join-initialization", "loop-initialization", "deferred-step", "scalar-forwarding", "scalar-stores"):
+    for tutorial in ("shifts", "division", "mutation", "arms", "comparisons", "short-circuit", "compound", "unicode", "int-arithmetic", "text-bits", "int-shifts", "text-values", "constructors", "relative", "splice", "loops", "loop-control", "counted-for", "typed-loops", "retained-loops", "function-flow", "join-initialization", "loop-initialization", "deferred-step", "scalar-forwarding", "scalar-stores", "value-iteration"):
         tutorial_source = prefix / "fir/examples/tables" / (tutorial + ".b")
         tutorial_fir = work / ("table-" + tutorial + ".fir")
         tutorial_opt = work / ("table-" + tutorial + "-opt.fir")
@@ -199,6 +199,20 @@ def table_packages(prefix, work, environment):
         result = run([runtime, mode, "--quantum", 1, "--stats", guard_image], work, environment, include_stderr=True)
         if "PASS table guards" not in result or "tables_live=0 keys_live=0" not in result:
             raise RuntimeError("relocated guarded table exception recovery differs")
+
+    # Recompile shipped Regex and its regression using relocated headers only.
+    # This proves the selected library is usable without the source checkout.
+    regex_work = work / "regex-library"
+    regex_work.mkdir()
+    run([native / "limbo-native", "-I", native / "include/limbo", "-o", regex_work / "regex.dis",
+         native / "source/libraries/regex.b"], work, environment)
+    run([native / "limbo-native", "-I", native / "include/limbo", "-o", regex_work / "check.dis",
+         native / "examples/regex-unicode.b"], work, environment)
+    for mode in ("--jit", "--no-jit"):
+        for quantum in (1, 2048):
+            result = run([runtime, mode, "--quantum", quantum, regex_work / "check.dis"], work, environment)
+            if "PASS regex Unicode: 85 rune/capture/class checks" not in result or "FAIL" in result:
+                raise RuntimeError("relocated Regex Unicode module differs")
 
 
 

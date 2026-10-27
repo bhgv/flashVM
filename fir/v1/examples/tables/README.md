@@ -221,3 +221,5 @@ and both actual VM modes. The native array tutorial is linked from the guide.
 [Private scalar forwarding — 0.45](../../doc/SCALAR_FORWARDING.md): block-local cells, preserved stores, CFG boundaries and effect barriers.
 
 [Overwritten scalar stores — 0.46](../../doc/SCALAR_STORES.md): remove unobserved private writes while preserving final state and exception/ownership boundaries.
+
+[One-name value iteration — 0.47](../../doc/VALUE_ITERATION.md): tables, string runes and snapshot keys with existing capture, scope and control semantics.

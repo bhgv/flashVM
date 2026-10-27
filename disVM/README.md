@@ -7,7 +7,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-1bd39b084006caabda0b712d3b011975c5241814; every imported file has a manifest hash.
+320e6581e425c014f8a9ba313352b664925a709f; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -166,3 +166,5 @@ entry independently of C whitespace. [Evidence](../docs/releases/v0.1565.md).
 
 [Native table guards and exception recovery](PAYLOAD_GUARDS.md) ·
 [Блокировки таблиц и обработка исключений](PAYLOAD_GUARDS.ru.md).
+
+[Module review and Unicode Regex](MODULE_AUDIT.md): packaged library, confirmed reverse fix and Sys/Debug/Dis boundaries.

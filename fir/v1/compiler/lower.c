@@ -1855,17 +1855,21 @@ void source_iteration_end(SourceIteration iteration)
 }
 
 
-/* Bind this iteration's key capability and copied value after scope entry.
- * iteration/key/value are compiler IDs; marks identify their authored names.
- * Reject duplicate names before emitting declarations. No runtime work occurs. */
+/* Bind iteration values after scope entry; key=-1 omits the optional key name.
+ * iteration/key/value are compiler IDs; marks identify authored names. A single
+ * value keeps its existing big/rune/key type, without a synthetic source binding.
+ * Reject duplicate pair names before declarations. No runtime work occurs. */
 void source_iteration_bind(SourceIteration iteration, int key, int value, SourceMark keymark, SourceMark valuemark)
 {
     if (key == value)
     {
         reject("for-in requires distinct key and value names");
     }
-    source_restore(keymark);
-    source_table_bind(key, iteration.key, 0, 1);
+    if (key >= 0)
+    {
+        source_restore(keymark);
+        source_table_bind(key, iteration.key, 0, 1);
+    }
     source_restore(valuemark);
     source_table_bind(value, iteration.value, 0, 1);
 }

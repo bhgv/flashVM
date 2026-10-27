@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "1bd39b084006caabda0b712d3b011975c5241814",
+  "revision": "320e6581e425c014f8a9ba313352b664925a709f",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -218,7 +218,7 @@
     "upstream/limbo/limbo.y": "18f4955c38b2f6ee902f4c56e8ed0184883481e1a430d416e5f282c3d4c219a8",
     "upstream/limbo/nodes.c": "5dcda3dc4f0d395af53c391fdbf1c881ec503253a5148dcfc000a3703d35a163",
     "upstream/limbo/optab.c": "3d31a907813b5663f591ccb9446813ba5503e379b182ef76395ad98447be2475",
-    "upstream/limbo/optim.c": "5a1576a9ce3d8a0c9cd60de6ff41f45b829fc8308719b5f31af464a677bee781",
+    "upstream/limbo/optim.c": "00cb7e4d1d6335b60e4dc065d02eb135da317cebb5a6477f74001e6ff7a82615",
     "upstream/limbo/sbl.c": "c6394b9d1a20b692525990447e96ab3badc356d95e75c4830faa7c6c3e28ee64",
     "upstream/limbo/stubs.c": "a31bed1aabb5017bc6f7a55437a93c30a99b5994eb635804829aa34aea131ef4",
     "upstream/limbo/tests/asm-roundtrip.c": "af54f1e15b1036116084b2e6cb0ff6a6371fd8681f5cc8fe6d54d2d7b37a123c",
@@ -244,6 +244,7 @@
     "upstream/limbo/tests/lexer-strings.c": "a7c5f1c18c938a1e5f7779b6d1d9c96b9585786b092bb06365b10886af69b953",
     "upstream/limbo/tests/native-stubs.c": "4b6b5d5a623f7e2a6e57b69bcdd40e9a3f951993dcee2b834faf4592942d275f",
     "upstream/limbo/tests/numeric-lexer.c": "05273621e3597c7948dd59de211197c12e3146ee9fb016765ed50c406cd0c21c",
+    "upstream/limbo/tests/optimizer-graphs.c": "6c97ed7cd88486a6a6c27fe3e84b8de1ee7bb52a4f08c4aefee0967d6911371e",
     "upstream/limbo/tests/optimizer-ranges.c": "3adb038b8828151ea9e78061500ee3ae4e7c104e1e22a800745640a711adab45",
     "upstream/limbo/tests/optimizer-ranges.py": "c81e3275b71433f4d7f57110cacdf6e002b116c8af8532388b9299e1257c0dfe",
     "upstream/limbo/tests/raises.c": "1401afa6c89688081de56626c0f226a3ea9570a0cbc6c0df2dff822f83828ad3",

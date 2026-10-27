@@ -23,7 +23,7 @@ file(GLOB headers "${DVM_LIBRARY_SOURCE_ROOT}/module/*.m")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${sources}
   "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py")
 set(products)
-foreach(name bufio string arg readdir debug dis styx styxservers)
+foreach(name bufio string arg readdir debug dis styx styxservers regex)
   add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${name}.dis" "${CMAKE_CURRENT_BINARY_DIR}/${name}.sbl"
     COMMAND "${LIMBO_EXECUTABLE}" -g -I "${DVM_LIBRARY_SOURCE_ROOT}/module"
       -o "${CMAKE_CURRENT_BINARY_DIR}/${name}.dis" "${prepared}/${name}.b"

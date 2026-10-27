@@ -61,12 +61,19 @@ static long AfterToken(void)
 }
 
 
-/* Select snapshot for-in only when the first header name is followed by a comma.
- * Scanner trivia/bytes are borrowed; Coco/R parses every actual header token. */
+/* Select snapshot for-in after one name followed by comma or the keyword in.
+ * Borrow scanner trivia/bytes without consuming them; distinguish in from an
+ * identifier prefix such as inbox. Coco/R parses every actual header token. */
 static int ForInAhead(int token)
 {
+    long pos = AfterToken();
+    int boundary = S_CurrentCh(pos + 2);
+    int namebyte = (boundary >= 'A' && boundary <= 'Z') ||
+                   (boundary >= 'a' && boundary <= 'z') ||
+                   (boundary >= '0' && boundary <= '9') || boundary == '_';
     return (token == identSym || token == valueSym || token == realSym) &&
-           S_CurrentCh(AfterToken()) == ',';
+           (S_CurrentCh(pos) == ',' ||
+            (S_CurrentCh(pos) == 'i' && S_CurrentCh(pos + 1) == 'n' && !namebyte));
 }
 
 
@@ -845,7 +852,8 @@ PRODUCTIONS
     ( IF(ForInAhead(Sym)) TableForIn<operation> | TableCountedFor<operation> )
   .
 
-  /* Snapshot form retains its existing key/value lexical body scope. */
+  /* One name binds the value; two bind key and value. Receiver evaluation still
+   * precedes the shared lexical body scope, so outer names remain visible there. */
   TableForIn<SourceMark operation> =
     (.
         int key = 0;
@@ -856,7 +864,14 @@ PRODUCTIONS
         SourceMark valuemark;
     .)
     Name<&key> (. keymark = source_mark(); .)
-    "," Name<&value> (. valuemark = source_mark(); .)
+    (
+        "," Name<&value> (. valuemark = source_mark(); .)
+        | (.
+            value = key;
+            valuemark = keymark;
+            key = -1;
+        .)
+    )
     "in" TableExpression<&table> ")"
     (.
         source_restore(operation);

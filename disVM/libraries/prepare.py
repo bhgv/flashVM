@@ -4,7 +4,7 @@ import argparse
 import re
 from pathlib import Path
 
-MODULES = ("bufio", "string", "arg", "readdir", "debug", "dis", "styx", "styxservers")
+MODULES = ("bufio", "string", "arg", "readdir", "debug", "dis", "styx", "styxservers", "regex")
 
 
 # source is pristine Styx source. Return guarded decoders for request/response packets;

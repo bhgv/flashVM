@@ -37,8 +37,10 @@ def fir_pairs(root, package):
 # Map copied files locally; omitted repository guides keep public GitHub links.
 def runtime_pairs(root, package):
     pairs = {}
-    for name in ("PAYLOAD_GUARDS.md", "PAYLOAD_GUARDS.ru.md"):
+    for name in ("PAYLOAD_GUARDS.md", "PAYLOAD_GUARDS.ru.md", "MODULE_AUDIT.md", "MODULE_AUDIT.ru.md"):
         pairs[root / "disVM" / name] = package / name
+    pairs[root / "disVM/libraries/README.md"] = package / "STANDARD-MODULES.md"
+    pairs[root / "disVM/runtime/README.md"] = package / "README-FIRSTSTEPS.md"
     groups = ((root / "common/owned", package / "source/owned"),
               (root / "common/table", package / "source/table"),
               (root / "disVM/examples", package / "examples"),

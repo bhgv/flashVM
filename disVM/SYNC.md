@@ -1,3 +1,28 @@
+# Module review, reverse Regex fix and bootstrap optimizer refresh
+
+Final pin: **320e6581e425c014f8a9ba313352b664925a709f**.
+Exact selections: **633 core/reference/library files + 207 bootstrap files**.
+Incoming cfb91bc bounds optimizer graph stack use and widens bitmap use/def
+counters. Its graph and WORD32/64 bitmap regressions are retained and registered.
+
+The module review reproduced a genuine Unicode collision in Regex: internal
+tags and the input sentinel overlapped U+10000…U+1000B. The fix was tested and
+published back to Inferno as **320e658** with bhgv author/committer, then imported
+exactly. Regex is now built as an ordinary Limbo library in native and standalone
+library configurations; runtime/editor SDKs include source, header, bytecode and
+symbols. Relocated SDK checks compile the actual library/client and execute both
+modes at quanta 1/2048. [Review](MODULE_AUDIT.md) ·
+[Upstream regression](upstream/appl/lib/tests/README.regex-unicode.md).
+
+The unmodified preceding library fails at U+10000; the fixed library passes 85
+Unicode literal/capture/class checks in each of four runs. This is not a new
+regexp-slice frontend syntax, dedicated regexp JIT or completed /prog debugger.
+Compiler 0.47 one-name iteration remains a separate FlashVM Coco/R extension.
+Native host execution is AMD64; physical ARM64/full standard ABI acceptance
+remains separate. Both snapshots include the earlier reverse fixes.
+
+---
+
 # ALT bounds and communication-error registration cleanup
 
 Final pin: **1bd39b084006caabda0b712d3b011975c5241814**.

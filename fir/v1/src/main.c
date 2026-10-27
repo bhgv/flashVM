@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     int ok, check, optimise, compile, dis;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.46.0 (FIR 1.0; SWO1; NC64 Dis private scalar store elimination, typed cells and captured traversal)");
+        puts("fir1 0.47.0 (FIR 1.0; SWO1; NC64 Dis typed value iteration, typed cells and captured traversal)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))

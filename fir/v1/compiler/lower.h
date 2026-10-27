@@ -363,7 +363,7 @@ SourceIteration source_iteration_begin(int table);
 /* Advance the private cursor and emit its backedge after retiring body locals. */
 void source_iteration_end(SourceIteration iteration);
 
-/* Declare distinct iteration bindings at their authored marks in the body scope. */
+/* Declare iteration value and optional key (-1 omits it) at authored body-scope marks. */
 void source_iteration_bind(SourceIteration iteration, int key, int value, SourceMark keymark, SourceMark valuemark);
 
 

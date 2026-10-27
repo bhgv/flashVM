@@ -16,6 +16,7 @@ Private build views contain reviewed NC64/host adaptations and explicit bug fixe
 | Loader | Actual instruction, type-descriptor and link snapshots of a loaded module | Dynamic newmod/ext/dnew/compile exports are retained but not comprehensively accepted by this series. |
 | Bufio | In-memory Unicode/non-BMP read, pushback, newline and EOF | Full file/filler/stream matrix remains open. |
 | String | Case conversion, Unicode prefix and numeric parsing | Full language/string conformance is not claimed. |
+| Regex | Unicode literals, escaped forms, classes, alternatives and captured rune offsets, including U+10000…U+1000B and U+10FFFF | Library API is available; editor regexp UI and regexp-slice source syntax remain separate work. |
 | Arg | Real option/argument parsing and consuming argv ownership | No shell or command-process runner is implied. |
 | Styx | Actual 9P2000 Read pack/unpack with offset above 2 GiB; truncation, NOFID/Qid version widths and impossible-header rejection | This codec is not a mounted namespace or live distributed filesystem. |
 | Styxservers | Initialization and bounded readbytes/EOF helper | Live server lifecycle needs Sys process/FD/namespace and transport work. |
@@ -50,7 +51,7 @@ sources, headers, this guide and the heavily commented tutorial.
 
 Standalone library-only builds use this directory's CMakeLists.txt with explicit
 LIMBO_EXECUTABLE, DVM_LIBRARY_SOURCE_ROOT and matching DVM_LIBRARY_CELL_BYTES
-(4 classic or 8 NC64). Target disvm_libraries produces the eight libraries and
+(4 classic or 8 NC64). Target disvm_libraries produces the nine libraries and
 symbols. No emu, C compiler, UI SDK or sibling source checkout is assumed by
 that project. Choosing a compiler with a different ABI is unsupported; ordinary
 menu builds choose the matching native compiler automatically.
@@ -74,7 +75,7 @@ these fixes were still absent at the checked experiment revision.
 
 Перенесены выборочные модули, а не вся ОС. В меню запуска **7** — настоящая
 проверочная программа на Dis; **5** — редактор. Srv/Math/Loader зарегистрированы
-как встроенные модули, восемь Limbo-библиотек собираются из закреплённых исходников.
+как встроенные модули, девять Limbo-библиотек собираются из закреплённых исходников.
 В таблице выше явно разделены исполненные функции и ещё не готовые службы.
 Наличие debug.dis не означает работающий отладчик: устройство /prog пока отсутствует.
 Наличие Styx-кодека не означает готовые mount/export, namespace либо сетевой сервер.
@@ -85,3 +86,5 @@ these fixes were still absent at the checked experiment revision.
 ожидаемые места изменений и останавливается при неожиданном обновлении upstream.
 
 [Sys and selected module audit / Проверка модулей](MODULE_AUDIT.md).
+
+[Module review / Обзор модулей](../MODULE_AUDIT.md) · [Русский](../MODULE_AUDIT.ru.md). Regex is now source-built and shipped; its Unicode tag collision was fixed upstream as 320e658.

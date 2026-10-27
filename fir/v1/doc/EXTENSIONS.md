@@ -9,7 +9,7 @@ remains a separate temporary tool for the ordinary Limbo IDE modules.
 
 | Feature | Source → typed FIR → native Dis | Current boundary |
 | --- | --- | --- |
-| `table of big` | Implemented | Acyclic terminal `value(): big` profile |
+| `table of big` | Implemented | Typed `value(): big` profile with blocks, decisions and loops |
 | Checked big shifts, explicit int counts | Implemented | [64-bit/i32 contract](BIG_SHIFTS.md) |
 | Big arithmetic +, -, *, unary signs | Implemented | [Modulo-64/native contract](BIG_ARITHMETIC.md) |
 | Numeric/string keys and `t.k` | Implemented | Distinct key namespaces; big values |
@@ -74,3 +74,5 @@ No table-language extension from this series is exported to Inferno.
 
 
 [Resized assignments / присваивание срезам](SLICE_ASSIGNMENT.md).
+
+[One-name iteration 0.47](VALUE_ITERATION.md) uses the existing FIR/Dis value traversal contracts.

@@ -512,3 +512,13 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND AND
   set_tests_properties(disvm_channel_queues_complete_jit PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;QUEUE_JIT_ROUTE=1")
 endif()
+
+# Retained bootstrap optimizer graph/bit proofs use their actual selected source.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  foreach(driver optimizer-bits optimizer-graphs)
+    add_test(NAME disvm_limbo_${driver} COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/upstream/limbo/tests/${driver}.py")
+    set_tests_properties(disvm_limbo_${driver} PROPERTIES TIMEOUT 120
+      ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  endforeach()
+endif()
