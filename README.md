@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1642**. [Русская версия](README.ru.md).
+Development version: **0.1643**. [Русская версия](README.ru.md).
 
-Current series: [v0.1642](docs/releases/v0.1642.md): compiler 0.25 captured compound big/table updates and Inferno mapped VM/channel copy preflight.
+Current series: [v0.1643](docs/releases/v0.1643.md): compiler 0.26 Unicode string length/index/slices, strict C99 IR UTF-8 validation and verified Inferno synchronization.
 
 ## Browse documentation
 

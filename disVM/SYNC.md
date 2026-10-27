@@ -1,3 +1,22 @@
+# Current synchronization — v0.1643
+
+Experiment remains dd0f5d6440de8364a182c8c8eca0976d63e7d485. Both directions
+were checked; no incoming commit followed the prior series and earlier reverse
+fixes remain in history. Snapshot verification retains 545 core/reference and
+174 bootstrap files. No shared native defect requiring a new reverse patch
+was confirmed; native source and module ABI are unchanged.
+
+Compiler 0.26 adds Unicode string len/index/slices through three append-only
+FIR operations and existing Dis LENC/INDC/SLICEC. String lengths/indexes/results
+use int; hybrid table/key lengths remain big. Strict UTF-8 validation now also
+covers caller-constructed live string constants in the C99 FIR API.
+These frontend/FIR fixes remain FlashVM-only.
+[Contract and tutorial](../fir/v1/doc/UNICODE_STRINGS.md).
+Native availability remains AMD64/ARM64 164/173 with partial operand coverage.
+This series validates generated host Dis, not physical ARM64/full Inferno boot.
+
+---
+
 # Current synchronization — v0.1642
 
 Experiment dd0f5d6440de8364a182c8c8eca0976d63e7d485 is imported byte-for-byte:
