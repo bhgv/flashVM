@@ -121,6 +121,7 @@ if(BUILD_TESTING)
     string-branches
     channels
     stack-lifecycle
+    stack-spans
     exception-frames
     stack-unwind
     stack-startup

@@ -33,7 +33,7 @@ def main():
             raise RuntimeError("native source generation compounded a prior adaptation")
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
-        critical = ("string.c", "xec.c", "dec.c", "dec-addr.h", "comp-leaf64.h", "leaf64-ops.h",
+        critical = ("string.c", "xec.c", "stack.c", "dec.c", "dec-addr.h", "comp-leaf64.h", "leaf64-ops.h",
                     "amd64-emit.h", "arm64-emit.h", "riscv-emit.h")
         stale = [name for name in critical if not (actual / name).is_file()
                  or (actual / name).read_bytes() != second[name]]
