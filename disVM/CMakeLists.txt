@@ -80,6 +80,7 @@ if(BUILD_TESTING)
     numeric-slot-native
     fixed-slot-native
     array-slot-native
+    mapped-preflight-native
     arithmetic-slot-native
     transfer-slot-native
     integer-slot-native
@@ -271,6 +272,7 @@ if(BUILD_TESTING)
       numeric-slot-jit
       fixed-slot-jit
       array-slot-jit
+      mapped-preflight-jit
       mapped-copy-edges-jit
       raw-copy-edges-jit
       transfer-slot-jit
