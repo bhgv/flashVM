@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.16.0 (numeric and typed-table subsets; diagnostic schema 1)");
+        puts("fir1_source 0.17.0 (numeric and typed-table subsets; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -80,9 +80,10 @@ int main(int argc, char **argv)
              "                   [--module NAME] [--diagnostics-json] [-g DEBUG.json]\n"
              "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
              "Limbo value(): big: typed table of big, dotted/string/numeric keys, len/keysof and explicit slices.\n"
+             "Limbo type aliases: forward file/module prefix, cycle checks and checked alias casts.\n"
              "AS3 const; Limbo lexical blocks and terminal if/else decisions in the value(): int tutorial ABI.\n"
              "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
-             "Limits: 64 KiB, 255-byte tokens, 256 names, 1000 SSA values, depth 64.\n"
+             "Limits: 64 KiB, 255-byte tokens, 256 names, 128 type aliases, 1000 SSA values, depth 64.\n"
              "JSON: one schema-1 stderr record on failure; original UTF-8 byte spans.\n"
              "Options may appear in either order; duplicates are rejected.\n"
              "Exit: 0 success, 1 translation/output failure, 2 CLI/setup failure.\n"

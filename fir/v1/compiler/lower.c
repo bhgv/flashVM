@@ -22,19 +22,23 @@ static int integer_mode, serial, failed, profile;
 static char module_name[256];
 
 
-/* One sequential source-profile alias already bound to a canonical FIR type. */
+/* One bounded source-profile declaration, with a canonical type or named edge. */
 typedef struct
 {
-    char name[256]; /* Copied bounded scanner token, never an input pointer. */
-    FirType type;   /* Resolved primitive/string/table type; no deferred edges. */
-    int scope;      /* File scope 0 or implementing-module scope 1. */
+    char name[256];    /* Copied bounded scanner token, never an input pointer. */
+    FirType type;      /* Canonical type, or T_VOID until its named edge resolves. */
+    char target[256];  /* Copied RHS identifier; empty for a primitive target. */
+    SourceMark origin; /* Exact RHS token for missing-name/cycle diagnostics. */
+    int scope;         /* File scope 0 or implementing-module scope 1. */
 } SourceAlias;
 
-static SourceAlias aliases[SOURCE_ALIAS_MAX]; /* Owner-local bounded declaration prefix. */
-static unsigned int alias_count;              /* Initialized aliases in this translation unit. */
-static int alias_scope;                       /* Current file/module declaration environment. */
-static char alias_header[256];                /* Pending declaration name, independent of RHS capture. */
-static SourceMark alias_origin;               /* Diagnostic location of the pending header. */
+static SourceAlias aliases[SOURCE_ALIAS_MAX]; /* Parser-owned bounded declaration prefix. */
+static unsigned int alias_count;             /* Initialized aliases in this translation unit. */
+static int alias_scope;                      /* Current file/module declaration environment. */
+static char alias_header[256];               /* Pending declaration name, independent of RHS capture. */
+static char alias_target[256];               /* Pending RHS token; cleared at every declaration header. */
+static SourceMark alias_target_origin;       /* Source position of the pending named edge. */
+static SourceMark alias_origin;              /* Diagnostic location of the pending header. */
 
 
 /* Last-write SSA hints and initialization facts; cell-backed hints are never
@@ -116,6 +120,7 @@ void source_config(FILE *out, int language)
     alias_count = 0;
     alias_scope = 0;
     alias_header[0] = 0;
+    alias_target[0] = 0;
     location.line = 0;
     location.offset = -1;
     location.length = 0;
@@ -567,6 +572,7 @@ void source_module(int first)
 void source_alias_header(void)
 {
     strcpy(alias_header, token);
+    alias_target[0] = 0;
     alias_origin = location;
 }
 
@@ -589,30 +595,118 @@ void source_alias_scope(int module)
 }
 
 
-/* Resolve an earlier canonical alias in the current file/implementing-module scope. */
-FirType source_alias_type(void)
+/* Find a borrowed name in lexical scope (file=0, module=1); return -1 on a miss.
+ * Search declaration identities only. No allocation, source scanning or mutation. */
+static int source_alias_find(const char *name, int scope)
 {
     unsigned int index = alias_count;
-    if (profile != FIR_LIMBO)
-    {
-        reject("type aliases require Limbo profile");
-        return T_VOID;
-    }
-    if (alias_header[0] && !strcmp(alias_header, token))
-    {
-        reject("self-referential source type alias");
-        return T_VOID;
-    }
     while (index)
     {
         index--;
-        if (aliases[index].scope <= alias_scope && !strcmp(aliases[index].name, token))
+        if (aliases[index].scope <= scope && !strcmp(aliases[index].name, name))
         {
-            return aliases[index].type;
+            return (int)index;
         }
     }
-    reject("unknown or forward source type alias");
+    return -1;
+}
+
+
+/* Resolve index through declaration-scoped edges without recursive C frames.
+ * Return canonical type or T_VOID with a sticky diagnostic at the failing RHS.
+ * Cache only successful paths; fixed work holds at most the bounded catalog size. */
+static FirType source_alias_resolve(int index)
+{
+    unsigned int path[SOURCE_ALIAS_MAX]; /* Borrowed catalog identities on this path. */
+    unsigned int count = 0;
+    unsigned int prior;
+    FirType type;
+    while (aliases[index].type == T_VOID)
+    {
+        source_restore(aliases[index].origin);
+        for (prior = 0; prior < count; prior++)
+        {
+            if (path[prior] == (unsigned int)index)
+            {
+                reject("cyclic source type alias");
+                return T_VOID;
+            }
+        }
+        if (count == SOURCE_ALIAS_MAX)
+        {
+            reject("source type alias resolution limit");
+            return T_VOID;
+        }
+        path[count++] = (unsigned int)index;
+        index = source_alias_find(aliases[index].target, aliases[index].scope);
+        if (index < 0)
+        {
+            reject("unknown source type alias target");
+            return T_VOID;
+        }
+    }
+    type = aliases[index].type;
+    while (count)
+    {
+        aliases[path[--count]].type = type;
+    }
+    return type;
+}
+
+
+/* Capture a named RHS edge before later scanner tokens replace it. Return T_VOID
+ * as an unresolved marker, not an error. The complete prefix is validated later. */
+FirType source_alias_target(void)
+{
+    strcpy(alias_target, token);
+    alias_target_origin = location;
     return T_VOID;
+}
+
+
+/* Validate every declaration before body emission, including unused aliases.
+ * Restore the caller's mark on success; failing RHS locations remain authoritative. */
+void source_alias_validate(void)
+{
+    unsigned int index;
+    SourceMark mark = location;
+    for (index = 0; index < alias_count && !failed; index++)
+    {
+        source_alias_resolve((int)index);
+    }
+    if (!failed)
+    {
+        source_restore(mark);
+    }
+}
+
+
+/* Query a copied scanner identifier for cast disambiguation. name is borrowed;
+ * return boolean without consuming input, emitting IR or reporting a diagnostic. */
+int source_alias_named(const char *name)
+{
+    return profile == FIR_LIMBO && source_alias_find(name, alias_scope) >= 0;
+}
+
+
+/* Resolve the current consumed type token; report a miss at that use site.
+ * Successful queries preserve that authored token mark for lowering/debug records. */
+FirType source_alias_type(void)
+{
+    SourceMark mark = location;
+    FirType type;
+    int index = source_alias_find(token, alias_scope);
+    if (profile != FIR_LIMBO || index < 0)
+    {
+        reject("unknown source type alias");
+        return T_VOID;
+    }
+    type = source_alias_resolve(index);
+    if (!failed)
+    {
+        source_restore(mark);
+    }
+    return type;
 }
 
 
@@ -649,6 +743,8 @@ void source_alias_declare(FirType type)
     }
     strcpy(aliases[alias_count].name, alias_header);
     aliases[alias_count].type = type;
+    strcpy(aliases[alias_count].target, alias_target);
+    aliases[alias_count].origin = alias_target[0] ? alias_target_origin : alias_origin;
     aliases[alias_count++].scope = alias_scope;
     alias_header[0] = 0;
 }
@@ -694,6 +790,28 @@ FirType source_table_alias(void)
         return T_VOID;
     }
     return type;
+}
+
+
+/* Lower a cast whose target was resolved before its operand. value is an SSA ID,
+ * target is canonical and copied by the parser. Return an SSA ID or sticky error.
+ * Numeric profiles admit identity casts only; table profiles reuse checked existing
+ * int/big/string conversions. No object cloning, runtime RPC or new FIR operation. */
+int source_alias_cast(int value, FirType target)
+{
+    if (source_table_profile())
+    {
+        if (target == T_I32 || target == T_I64 || target == T_STRING)
+        {
+            return source_table_convert(value, target == T_I32 ? 2 : target == T_STRING ? 1 : 0);
+        }
+        reject("source alias cast requires int, big or string in table profile");
+    }
+    else if (target != (integer_mode ? T_I32 : T_F64))
+    {
+        reject("numeric alias cast must match homogeneous result profile");
+    }
+    return value;
 }
 
 

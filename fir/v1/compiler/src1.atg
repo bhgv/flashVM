@@ -16,6 +16,20 @@ static void capture(void)
     source_token(text, S_Line, S_Pos, (size_t)S_Len, S_Len >= 256);
 }
 
+/* Ask the semantic catalog about exactly one scanner-produced lookahead token.
+ * Return boolean without consuming input or scanning source syntax a second time. */
+static int AliasAhead(void)
+{
+    char text[256] = "";
+    if (S_NextLen >= 256)
+    {
+        return 0;
+    }
+    S_GetString(S_NextPos, S_NextLen, text, 255);
+    return source_alias_named(text);
+}
+
+
 static int depth; /* Bounded parser recursion; reset for every source module. */
 
 
@@ -382,7 +396,7 @@ PRODUCTIONS
     /* Stop after the module header; requiring an identifier guarantees EOF progress. */
     { IF(!header && Sym==identSym) LimboHeader<&header> }
     (. source_alias_module(header); .)
-    "{" { LimboAlias } "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
+    "{" { LimboAlias } (. source_alias_validate(); .) "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
     "}" ";" "value" "(" ")" ":" ResultType<0> "{"
     (
         IF(source_table_profile()) TableBody
@@ -415,15 +429,14 @@ PRODUCTIONS
     (. source_alias_declare((FirType)type); .)
   .
 
-  /* This executable profile binds only earlier aliases; the full interface
-   * resolver separately supports forward/cyclic declaration graphs. */
+  /* Save named edges; the completed prefix resolves forward references and cycles. */
   AliasTarget<int *type> =
     "int" (. *type = T_I32; .)
     | "real" (. *type = T_F64; .)
     | "big" (. *type = T_I64; .)
     | "string" (. *type = T_STRING; .)
     | "table" "of" "big" (. *type = T_TABLE_BIG; .)
-    | ident (. capture(); *type = source_alias_type(); .)
+    | ident (. capture(); *type = source_alias_target(); .)
   .
 
   /* The interface records the numeric result type; the definition must match it.
@@ -615,9 +628,15 @@ PRODUCTIONS
     }
   .
 
-  /* Signed literal branches preserve INT32_MIN; other unary chains are bounded. */
+  /* Signed literal branches preserve INT32_MIN; other unary chains are bounded.
+   * An exact catalog alias selects a prefix cast before the ordinary value-name arm.
+   * The alias resolver also requires depth<64, sharing the group/unary budget. */
   Unary<int *result> =
-                                                                        (. int negative = 0; .)
+    (.
+        int negative = 0;
+        FirType cast = T_VOID;
+        SourceMark operation;
+    .)
     IF(Sym==MinusSym && LiteralAhead()) "-" Literal<result,1>
     | IF(Sym==PlusSym && LiteralAhead()) "+" Literal<result,0>
     | IF((Sym==PlusSym || Sym==MinusSym) && depth<64)
@@ -631,6 +650,20 @@ PRODUCTIONS
                                                                             if (negative)
                                                                                 *result = source_negate(*result);
                                                                         .)
+    | IF(Sym==identSym && AliasAhead() && depth<64)
+      ident
+      (.
+          capture();
+          operation = source_mark();
+          cast = source_alias_type();
+          ++depth;
+      .)
+      Unary<result>
+      (.
+          --depth;
+          source_restore(operation);
+          *result = source_alias_cast(*result, cast);
+      .)
     | Primary<result>
   .
 
@@ -1383,6 +1416,7 @@ PRODUCTIONS
        SourceMark operation;
        SourceMark literal;
        SourceMark access;
+       FirType cast = T_VOID;
     .)
     (
         IF(Sym==MinusSym && LiteralAhead()) "-" (. capture(); operation = source_mark(); .)
@@ -1406,6 +1440,19 @@ PRODUCTIONS
           (. source_restore(operation); *result = source_table_count(*result); .)
         | "len" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_len(*result); .)
+        /* Prefer a catalog type name to a value expression; no local may shadow it. */
+        | IF(Sym==identSym && AliasAhead())
+          ident
+          (.
+              capture();
+              operation = source_mark();
+              cast = source_alias_type();
+          .)
+          TableUnary<result>
+          (.
+              source_restore(operation);
+              *result = source_alias_cast(*result, cast);
+          .)
         | "int" (. capture(); operation = source_mark(); .) TableUnary<result>
           (. source_restore(operation); *result = source_table_convert(*result, 2); .)
         | "big" (. capture(); operation = source_mark(); .) TableUnary<result>

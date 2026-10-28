@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1658**. [Русская версия](README.ru.md).
+Development version: **0.1659**. [Русская версия](README.ru.md).
 
-Current series: [v0.1658](docs/releases/v0.1658.md): executable Limbo aliases → FIR; bidirectional Inferno Sys/compiler/JIT synchronization.
+Current series: [v0.1659](docs/releases/v0.1659.md): forward alias binding and checked alias casts in executable Limbo → FIR.
 
 ## Browse documentation
 

@@ -41,9 +41,28 @@ typedef struct
 } SourceLogic;
 
 /* Alias bridges execute only inside the serialized source parser. They borrow its
- * current token/mark, perform no I/O or runtime operations, and never transfer ownership.
+ * current token/mark and may emit FIR to borrowed staging streams. They perform no
+ * runtime operations or ownership transfer.
  * Rejections set the existing sticky diagnostic; callers must not publish failed output. */
 #define SOURCE_ALIAS_MAX 128U /* Bounded source-profile aliases per translation unit. */
+
+
+/* Capture the consumed named RHS and return its unresolved T_VOID marker. */
+FirType source_alias_target(void);
+
+
+/* Resolve all declarations after the prefix; missing/cyclic unused aliases also fail. */
+void source_alias_validate(void);
+
+
+/* Return whether borrowed scanner spelling name denotes a visible source alias.
+ * This read-only predicate neither consumes tokens nor changes diagnostics. */
+int source_alias_named(const char *name);
+
+
+/* Cast compiler SSA value to the previously resolved target; see lower.c for
+ * profile restrictions. Returns SSA ID; sticky errors prevent publication. */
+int source_alias_cast(int value, FirType target);
 
 
 /* Capture the current identifier/mark as a pending module or alias header. */
@@ -58,8 +77,8 @@ void source_alias_module(int found);
 void source_alias_scope(int module);
 
 
-/* Resolve a previously declared alias at the current token; return canonical type.
- * Unknown/self references are sticky semantic errors. No source reparsing or I/O. */
+/* Resolve a declared alias at the current token; return canonical type.
+ * Unknown/cyclic references are sticky semantic errors. No source reparsing or I/O. */
 FirType source_alias_type(void);
 
 

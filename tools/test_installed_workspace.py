@@ -81,9 +81,9 @@ def table_packages(prefix, work, environment):
             result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2, image], work, environment)
             if "DATA 0 42\nDATA 8 1\n" not in result:
                 raise RuntimeError("relocated generated table Dis result differs")
-    # Compile both shipped alias tutorials using only relocated compiler/runtime files.
+    # Compile shipped forward-alias/cast tutorials using only relocated compiler/runtime files.
     # These examples must retain their actual result through optimization and GC-at-each-step.
-    for example in ("main.b", "table.b"):
+    for example in ("main.b", "table.b", "casts.b"):
         alias_source = prefix / "fir/examples/type-aliases" / example
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", alias_source, fir], work, environment)
         run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)

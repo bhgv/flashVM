@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1658**. [English](README.md).
+Версия разработки: **0.1659**. [English](README.md).
 
-Текущая серия: [v0.1658](docs/releases/v0.1658.md): исполняемые псевдонимы Limbo → FIR; двусторонняя синхронизация Sys, компилятора и JIT Inferno.
+Текущая серия: [v0.1659](docs/releases/v0.1659.md): опережающее связывание типов и приведения через псевдонимы в исполняемом Limbo → FIR.
 
 ## Просмотр документации
 

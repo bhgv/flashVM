@@ -1,3 +1,13 @@
+# v0.1659 — Source binding integration and verified upstream head
+
+Inferno experiment was fetched again and remains **2bd9f3cdcfbe21d39b6829d6440dc86662d2c951**. Both reverse corrections from the previous series (b151e32d occurs traversal and 2bd9f3c cold ARM64 fixture identity) are present in its history. Both manifests still verify **699 Dis / 216 bootstrap files** byte-for-byte. No additional shared defect was confirmed in this pass, so no duplicate upstream commit was created.
+
+FlashVM-owned executable source aliases now resolve forward references and cycles before FIR generation, and alias casts execute through existing Dis conversion operations. These frontend extensions remain in FlashVM. No upstream opcode, native frame ABI or selected JIT source is changed by this series. Both interpreter/JIT acceptance and relocated compiler/runtime SDK checks exercise the new source path.
+
+[Release](../docs/releases/v0.1659.md) · [EN contract](../fir/v1/doc/SOURCE_ALIASES.md) / [RU](../fir/v1/doc/SOURCE_ALIASES.ru.md).
+
+## Previous checkpoints
+
 # v0.1658 — Sys capture, bounded AST queries and JIT synchronization
 
 Current pin: **2bd9f3cdcfbe21d39b6829d6440dc86662d2c951**, **699 selected Dis files**; the independent source bootstrap selects **216 files** at the same revision. Manifests retain individual SHA-256 hashes and imported files remain byte-for-byte upstream.
