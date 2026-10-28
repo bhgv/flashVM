@@ -78,7 +78,7 @@ int main(void)
             fclose(bad);
             src = input(
                 j == FIR_LIMBO
-                    ? "implement A; A: module { value: fn(): int; }; value(): int { x: int = 6; i:=0; while(i<1){x+=0;i+=1;} if(x<7){return x*7;}else{return 0;} }"
+                    ? "implement A; A: module { value: fn(): int; }; value(): int { x: int = 6; for(i:=0;i<1;i++){x+=0;} if(x<7){return x*7;}else{return 0;} }"
                     : "var x = 6; trace(x * 7);");
             if (!src || !fir_source(src, fir, (FirLanguage)j, "valid", error, sizeof(error)))
             {

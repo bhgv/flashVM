@@ -586,14 +586,6 @@ PRODUCTIONS
   * opening brace unconsumed in the enclosing statement repetition.
   * No arbitrary module loader ABI is implied. */
   LimboStatement =
-    (.
-        int name = 0;
-        int value = 0;
-        int op = 0;
-        int type = T_VOID;
-        SourceMark target;
-        SourceMark operation;
-    .)
     ";"
     | IF(Sym==LbraceSym && depth>=64) "{"
       (.
@@ -601,33 +593,54 @@ PRODUCTIONS
           source_scope_limit();
       .)
     | IF(Sym==LbraceSym && depth<64) LimboBlock
-    | BindingHead (. target = source_mark(); .)
-      (
-          ":"
+    | NumericBinding<1> ";"
+  .
+
+  /* Delimiter-free numeric binding shared by statements and counted headers.
+   * Header aliases reject; staged step declarations reject in the binding API. */
+  NumericBinding<int allow_alias> =
+    (.
+        int name = 0;
+        int value = 0;
+        int op = 0;
+        int direction = 0;
+        int type = T_VOID;
+        SourceMark target;
+        SourceMark operation;
+    .)
+    BindingHead (. target = source_mark(); .)
+    (
+        ":"
+        (
+            "type" AliasTarget<&type>
+            (. source_alias_local((FirType)type, allow_alias); .)
+            | (. name = source_alias_value_name(); .)
+              BindingType "=" Expression<&value>
+              (.
+                  source_restore(target);
+                  source_bind(name, value, 1);
+              .)
+        )
+        | (. name = source_alias_value_name(); .)
           (
-              "type" AliasTarget<&type> ";"
-              (. source_alias_local((FirType)type, 1); .)
-              | (. name = source_alias_value_name(); .)
-                BindingType "=" Expression<&value> ";"
+              ":=" Expression<&value>
+              (.
+                  source_restore(target);
+                  source_bind(name, value, 1);
+              .)
+              | TableIncrementOperator<&direction>
                 (.
+                    operation = source_mark();
                     source_restore(target);
-                    source_bind(name, value, 1);
+                    source_numeric_increment(name, direction, operation);
                 .)
+              | AssignmentOperator<&op> (. operation = source_mark(); .) Expression<&value>
+              (.
+                  source_restore(target);
+                  source_assign_at(name, value, op, operation);
+              .)
           )
-          | (. name = source_alias_value_name(); .)
-            (
-                ":=" Expression<&value> ";"
-                (.
-                    source_restore(target);
-                    source_bind(name, value, 1);
-                .)
-                | AssignmentOperator<&op> (. operation = source_mark(); .) Expression<&value> ";"
-                (.
-                    source_restore(target);
-                    source_assign_at(name, value, op, operation);
-                .)
-            )
-      )
+    )
   .
 
   /* Limbo braces delimit lexical bindings; writes to outer bindings persist.
@@ -1081,7 +1094,10 @@ PRODUCTIONS
   /* Loops re-evaluate conditions and carry typed locals through private cells.
    * Body-local declarations are retired before continuation. No implicit return. */
   TableWhile =
-    IF(Sym==whileSym && depth>=64) "while" (. capture(); source_scope_limit(); .)
+    IF(Sym==whileSym && depth>=64) "while" (.
+          capture();
+          source_scope_limit();
+      .)
     | IF(Sym==whileSym && depth<64)
     (.
         int loop = 0;
@@ -1118,7 +1134,10 @@ PRODUCTIONS
   /* FlashVM extension: one immutable key snapshot, live typed values per pass.
    * Bindings shadow only after the receiver has evaluated in the outer scope. */
   TableFor =
-    IF(Sym==forSym && depth>=64) "for" (. capture(); source_scope_limit(); .)
+    IF(Sym==forSym && depth>=64) "for" (.
+          capture();
+          source_scope_limit();
+      .)
     | IF(Sym==forSym && depth<64)
     (. SourceMark operation; .)
     "for"
@@ -1174,7 +1193,8 @@ PRODUCTIONS
   .
 
 
-  /* Header and body share one loop-local scope; the step is staged, not run early. */
+  /* Counted headers own a loop-local scope. Numeric bodies nest one lexical
+   * scope; table bodies preserve their established scope. Steps are staged. */
   TableCountedFor<SourceMark operation> =
     (.
         SourceFor control;
@@ -1182,12 +1202,12 @@ PRODUCTIONS
         int has_condition = 0;
     .)
     (. source_enter_scope(); .)
-    [ TableForClause ] ";"
+    [ FlowForClause ] ";"
     (.
         source_restore(operation);
         control = source_for_begin();
     .)
-    [ TableCondition<&condition> (. has_condition = 1; .) ] ";"
+    [ FlowCondition<&condition> (. has_condition = 1; .) ] ";"
     (.
         source_restore(operation);
         if (!has_condition)
@@ -1198,15 +1218,54 @@ PRODUCTIONS
         source_loop_condition(control.loop, condition);
         source_for_step_begin(control);
     .)
-    [ TableForClause ] ")"
+    [ FlowForClause ] ")"
     (. source_for_step_end(control); .)
-    "{" FlowBody "}"
+    "{"
+    (.
+        if (!source_table_profile())
+        {
+            capture();
+            source_enter_scope();
+        }
+    .)
+    FlowBody
+    "}"
+    (.
+        if (!source_table_profile())
+        {
+            capture();
+            source_leave_scope();
+        }
+    .)
     (.
         source_restore(operation);
         source_for_end(control);
         source_leave_scope();
         --depth;
     .)
+  .
+
+  /* Numeric for has a counted header only; table snapshot iteration stays typed.
+   * A consumed keyword guarantees progress at the shared parser depth limit. */
+  NumericFor =
+    IF(Sym==forSym && depth>=64) "for" (.
+          capture();
+          source_scope_limit();
+      .)
+    | IF(Sym==forSym && depth<64)
+    (. SourceMark operation; .)
+    "for"
+    (.
+        capture();
+        operation = source_mark();
+    .)
+    "(" TableCountedFor<operation>
+  .
+
+  /* The immutable profile chooses one clause parser without rescanning input. */
+  FlowForClause =
+    IF(source_table_profile()) TableForClause
+    | NumericBinding<0>
   .
 
   /* Ordinary lexical blocks share the parser's nesting budget and path state. */
@@ -1237,8 +1296,7 @@ PRODUCTIONS
     | NumericFlowBody
   .
 
-  /* Separate repetition FIRST sets prevent unsupported numeric for syntax from
-   * entering an error arm that cannot consume it. The profile is immutable. */
+  /* Separate profile FIRST sets keep statement recovery bounded and consuming. */
   TableFlowBody =
     {
         (. source_statement(); .)
@@ -1267,6 +1325,7 @@ PRODUCTIONS
   NumericStatement =
     LimboStatement
     | TableWhile
+    | NumericFor
     | LoopTransfer
   .
 

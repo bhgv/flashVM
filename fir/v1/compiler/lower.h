@@ -245,6 +245,11 @@ void source_assign(int, int, int);
 void source_assign_at(int name, int value, int op, SourceMark operation);
 
 
+/* Update a numeric local name by exact one in direction +/-1, using the copied
+ * operator span. Statement-only; sticky errors prevent output publication. */
+void source_numeric_increment(int name, int direction, SourceMark operation);
+
+
 void source_hash_comment(void);
 
 

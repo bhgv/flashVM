@@ -18,7 +18,9 @@ def call(argv, success=True):
     if (result.returncode == 0) != success:
         raise RuntimeError(str(argv) + "\n" + result.stdout + result.stderr)
     if "runtime error:" in result.stderr or "ERROR: AddressSanitizer" in result.stderr:
-        raise RuntimeError("sanitizer failure cannot count as accepted/rejected compilation")
+        raise RuntimeError(
+            "sanitizer failure cannot count as accepted/rejected compilation\n" + result.stderr
+        )
     return result
 
 
@@ -125,6 +127,34 @@ def main():
                 4.0,
             ),
         ]
+        cases += [
+            ("int", "x:=0;for(i:=0;i<7;i+=1){x+=6;}return x;", 42),
+            ("real", "x:=0.0;for(i:=0.0;i<5.0;i+=1.0){x+=8.5;}return x;", 42.5),
+            (
+                "int",
+                "x:=0;for(i:=0;i<10;i+=1){if(i==3){continue;}if(i==8){break;}x+=i;}return x;",
+                25,
+            ),
+            ("int", "x:=42;for(;;){break;}return x;", 42),
+            ("int", "x:=0;i:=0;for(;i<7;){x+=6;i+=1;}return x;", 42),
+            ("int", "x:=0;for(i:=0;i<3;i+=1){for(j:=0;j<7;j+=1){x+=2;}}return x;", 42),
+            ("int", "x:=42;for(i:=0;i<0;i/=0){x=-7;}return x;", 42),
+            ("int", "for(i:=0;i<2;i/=0){return 42;}return -7;", 42),
+            ("int", "i:=42;for(i:=0;i<3;i+=1){}return i;", 42),
+            ("real", "x:=-0.0;for(i:=0.0;i<0.0;i+=1.0){x=1.0;}return x;", -0.0),
+            (
+                "real",
+                "x:=0.0;for(i:=0.0;i<3.0;i+=1.0){for(j:=0.0;j<7.0;j+=1.0){x+=2.0;}}return x;",
+                42.0,
+            ),
+        ]
+        cases += [
+            ("int", "x:=0;for(i:=7;i>0;i--){x+=6;}return x;", 42),
+            ("int", "x:=0;for(i:=0;i<7;i++){i:=6;x+=i;}return x;", 42),
+            ("int", "x:=2147483647;x++;x--;return x;", 2147483647),
+            ("real", "x:=0.0;for(i:=0.0;i<7.0;i++){x+=6.0;}return x;", 42.0),
+            ("real", "x:=-0.0;x++;x--;return x;", 0.0),
+        ]
         for kind, body, expected in cases:
             source.write_text(
                 "# π😀 structured flow\nimplement M; M: module {value: fn(): "
@@ -140,6 +170,7 @@ def main():
             encoded = source.read_bytes()
             for token, kinds in (
                 (b"while", ("while-test",)),
+                (b"for", ("while-test",)),
                 (b"break", ("break",)),
                 (b"continue", ("continue",)),
                 (b"return", ("return", "loop-return")),
@@ -152,7 +183,16 @@ def main():
                         for event in events
                     ):
                         raise RuntimeError("structured transfer lost its authored UTF-8 span")
-            execute(expected, kind)
+            for match in re.finditer(rb"\+\+|--", encoded):
+                if not any(
+                    event["kind"] == "binary"
+                    and event["byte_offset"] == match.start()
+                    and event["byte_length"] == 2
+                    for event in events
+                ):
+                    raise RuntimeError("postfix update lost its authored UTF-8 operator span")
+            # Checked integer division is a Dis-only backend capability.
+            execute(expected, kind, swf="i/=0" not in body)
 
         # Exhaustive small signed loop bounds distinguish zero iterations from
         # backedge state, with independent Python integer/float expectations.
@@ -182,6 +222,34 @@ def main():
                 )
                 call([source_cli, "limbo", "--input", source, raw])
                 execute(count * (count + 1) // 2, kind)
+
+        # A separate counted-loop matrix proves continue executes exactly one
+        # staged step, including zero iterations and a nonzero initial index.
+        for kind in ("int", "real"):
+            for count in range(9):
+                literal = lambda n: str(n) + (".0" if kind == "real" else "")
+                body = (
+                    "sum:="
+                    + literal(0)
+                    + ";for(i:="
+                    + literal(2)
+                    + ";i<"
+                    + literal(count + 2)
+                    + ";i++){if(i=="
+                    + literal(4)
+                    + "){continue;}sum+=i;}return sum;"
+                )
+                source.write_text(
+                    "implement M;M:module{value:fn():"
+                    + kind
+                    + ";};value():"
+                    + kind
+                    + "{"
+                    + body
+                    + "}"
+                )
+                call([source_cli, "limbo", "--input", source, raw])
+                execute(sum(i for i in range(2, count + 2) if i != 4), kind)
 
         # Cell handles remain private: defaults, snapshots, same-cell updates
         # and distinct cells use native types and are never converted to owners.
@@ -286,25 +354,55 @@ def main():
             )
             execute(expected, "int", swf=False)
 
+        # Ship exactly the authored tutorials exercised here, including their
+        # comments, nested scopes and multi-site return capture layout.
+        for tutorial, kind, expected in (
+            ("numeric-for-int.b", "int", 42),
+            ("numeric-for-real.b", "real", 42.5),
+            ("numeric-for-nested.b", "int", 42),
+        ):
+            source.write_text(
+                (Path(__file__).resolve().parents[1] / "examples/dis" / tutorial).read_text()
+            )
+            call([source_cli, "limbo", "--input", source, raw])
+            execute(expected, kind)
+
         for body in (
             "x:=0;while(x<1){x+=1;}",
+            "for(i:=0;i<1;i+=1){}return i;",
+            "for(i:=0;i<1;i+=1){i:=2;}return i;",
+            "for(T:type int;;){break;}return 1;",
+            "for(i:=0;i;i+=1){}return 1;",
+            "for(i:=0;i<1;i+=1.0){}return 1;",
+            "for(i in x){}return 1;",
+            "x:=1;return x++;",
+            "x:=1;++x;return x;",
+            "x++;return 1;",
+            "for(i:=0;i<1;i++){x:=1;}return x;",
+            "for(;;){break;return 1;}return 1;",
+            "for(;;){" * 70 + "break;" + "}" * 70 + "return 1;",
+            "for(i:=0;i<1;i++ {break;}return 1;",
             "break;return 1;",
             "continue;return 1;",
             "return 1;x:=2;",
             "x:=1;while(x<2){continue;x+=1;}return x;",
             "x:=1;while(x<2){y:=1;x+=1;}return y;",
             "x:=1;if(x<2){x=1.0;}return x;",
-            "x:=1;for(;;){x+=1;}return x;",
+            "x:=1;for(;;z:=1){break;}return x;",
         ):
             source.write_text("implement M;M:module{value:fn():int;};value():int{" + body + "}")
             raw.write_text("OLD")
+            debug = root / "prior.debug.json"
+            debug.write_text("OLD DEBUG")
             result = call(
-                [source_cli, "limbo", "--input", source, raw, "--diagnostics-json"], False
+                [source_cli, "limbo", "--input", source, raw, "-g", debug, "--diagnostics-json"],
+                False,
             )
             if (
                 result.returncode != 1
                 or json.loads(result.stderr)["kind"] not in ("syntax", "semantic", "limit")
                 or raw.read_text() != "OLD"
+                or debug.read_text() != "OLD DEBUG"
             ):
                 raise RuntimeError("structured-flow rejection lost diagnostics or prior output")
     print("PASS numeric flow: cells, joins, loops, transfer, shadowing, errors, Dis and SWF")

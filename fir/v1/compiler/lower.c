@@ -586,6 +586,12 @@ static int local_declaration(int name)
  * Nondeclaration writes keep targeting the nearest active outer binding. */
 void source_bind(int name, int value, int declaration)
 {
+    if (declaration && for_step_context >= 0)
+    {
+        reject("for step cannot declare bindings");
+        return;
+    }
+
     if (!source_table_profile())
     {
         source_numeric_identity(value);
@@ -1047,6 +1053,23 @@ void source_assign_at(int name, int value, int op, SourceMark operation)
 }
 
 
+/* Apply a statement-only numeric postfix update to a borrowed local ID.
+ * direction selects addition/subtraction of exact one; operation is its source
+ * span. Preserve the binding read/write spans and homogeneous type. No value
+ * escapes as an expression result; failures discard staged FIR/debug output. */
+void source_numeric_increment(int name, int direction, SourceMark operation)
+{
+    SourceMark target = location;
+    int value = source_read(name);
+    int one;
+    source_restore(operation);
+    one = table_operation(integer_mode ? T_I32 : T_F64, integer_mode ? "const.i32 1" : "const.f64 1", -1, -1);
+    value = source_binary(value, one, direction > 0 ? '+' : '-');
+    source_restore(target);
+    source_bind(name, value, 0);
+}
+
+
 /* Preserve the existing unmarked AS caller contract; target location is borrowed. */
 void source_assign(int name, int value, int op)
 {
@@ -1064,9 +1087,20 @@ void source_hash_comment(void)
 }
 
 
-/* Enter a lexical Limbo owner; parser nesting independently bounds recursion. */
+/* Enter one bounded lexical scope independently of parser recursion depth.
+ * No arguments/ownership transfer. A sticky failure freezes scope state until
+ * source_config resets it, so recovery cannot index an unadmitted scope. */
 void source_enter_scope(void)
 {
+    if (failed)
+    {
+        return;
+    }
+    if (scope_depth >= 64)
+    {
+        reject("lexical scope nesting limit exceeded");
+        return;
+    }
     ++scope_depth;
     alias_floor[scope_depth] = alias_count;
     alias_scope = 2 + scope_depth;
@@ -1075,10 +1109,21 @@ void source_enter_scope(void)
 }
 
 
-/* Retire only local names; values assigned to outer names remain current. */
+/* Retire only current-scope names; outer writes remain current. No arguments
+ * or owned streams. Freeze after failure, since recovery may close a scope whose
+ * opener was rejected. The next source_config resets the bounded scope state. */
 void source_leave_scope(void)
 {
     int i;
+    if (failed)
+    {
+        return;
+    }
+    if (scope_depth <= 0)
+    {
+        reject("cannot leave root lexical scope");
+        return;
+    }
     for (i = 0; i < name_count; ++i)
     {
         if (active[i] && binding_scope[i] == scope_depth)

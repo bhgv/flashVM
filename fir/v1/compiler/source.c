@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.24.0 (numeric and typed-table subsets; diagnostic schema 1)");
+        puts("fir1_source 0.25.0 (numeric and typed-table subsets; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
@@ -82,7 +82,7 @@ int main(int argc, char **argv)
             "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
             "Limbo value(): big: typed table of big, dotted/string/numeric keys, len/keysof and explicit slices.\n"
             "Limbo type aliases: forward file/module prefix; sequential block aliases; checked alias casts.\n"
-            "AS3 const; Limbo lexical blocks and structured if/else and while in homogeneous int/real tutorial functions.\n"
+            "AS3 const; Limbo lexical blocks and structured if/else, while/for and postfix ++/-- in homogeneous int/real functions.\n"
             "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
             "Limbo int/real: grouped relations, bool predicate equality, lazy &&/|| and unary !.\n"
             "Limbo int: &, |, ^, ~ and checked <<, >>; matching compound updates.\n"
