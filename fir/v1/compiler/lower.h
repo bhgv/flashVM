@@ -127,6 +127,16 @@ int source_logic_end(SourceLogic logic, int right);
 SourceCondition source_compare(int left, int right, SourceRelation relation);
 
 
+/* Require a borrowed SSA value to be numeric in the homogeneous profile.
+ * Return the same identity or zero after sticky rejection; no runtime effects. */
+int source_numeric_identity(int value);
+
+
+/* Compare borrowed numeric values or bool equality with exact source provenance.
+ * Return a fresh bool identity. Invalid kinds/profile reject staged publication. */
+int source_numeric_relation(int left, int right, SourceRelation relation);
+
+
 /* Materialize copied relation/inversion as bool for lazy numeric conditions.
  * Return SSA identity; sticky errors retire staging. No storage is transferred. */
 int source_condition_value(SourceCondition condition);

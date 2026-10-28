@@ -515,7 +515,7 @@ PRODUCTIONS
     (.
         int value = 0;
     .)
-    NumericLogicalOr<&value>
+    Expression<&value>
     (.
         *condition = source_table_truth(value);
     .)
@@ -551,7 +551,7 @@ PRODUCTIONS
         SourceLogic logic;
         SourceMark operation;
     .)
-    NumericPredicate<result>
+    NumericBitOr<result>
     {
         "&&"
         (.
@@ -559,7 +559,7 @@ PRODUCTIONS
             operation = source_mark();
             logic = source_logic_begin(*result, 0);
         .)
-        NumericPredicate<&right>
+        NumericBitOr<&right>
         (.
             source_restore(operation);
             *result = source_logic_end(logic, right);
@@ -567,58 +567,58 @@ PRODUCTIONS
     }
   .
 
-  /* Negation requires an explicitly grouped condition, matching ! precedence.
-   * The IF resolvers consume an exhausted ! without recursion or stale output.
-   * Ordinary parentheses remain arithmetic groups in the relation operands. */
-  NumericPredicate<int *result> =
+  /* Equality binds below ordering and above bitwise AND, as in Limbo.
+   * Bool equality is admitted only between normalized intermediate conditions. */
+  NumericEquality<int *result> =
     (.
-        int left = 0;
         int right = 0;
-        SourceRelation relation = SOURCE_LESS;
-        SourceCondition condition;
-        SourceMark target;
+        SourceRelation relation = SOURCE_EQUAL;
+        SourceMark operation;
     .)
-    IF(Sym==BangSym && depth>=64) "!"
-    (.
-        capture();
-        source_scope_limit();
-        *result = 0;
-    .)
-    | IF(Sym==BangSym && depth<64) "!"
-    (.
-        capture();
-        target = source_mark();
-        ++depth;
-    .)
-    "(" NumericLogicalOr<result> ")"
-    (.
-        --depth;
-        source_restore(target);
-        *result = source_table_not(*result);
-    .)
-    | IntegerShift<&left> Relation<&relation>
-    (.
-        target = source_mark();
-    .)
-    IntegerShift<&right>
-    (.
-        source_restore(target);
-        condition = source_compare(left, right, relation);
-        *result = source_condition_value(condition);
-    .)
+    NumericOrdering<result>
+    {
+        (
+            "==" (. relation = SOURCE_EQUAL; .)
+            | "!=" (. relation = SOURCE_NOT_EQUAL; .)
+        )
+        (.
+            capture();
+            operation = source_mark();
+        .)
+        NumericOrdering<&right>
+        (.
+            source_restore(operation);
+            *result = source_numeric_relation(*result, right, relation);
+        .)
+    }
   .
 
-  /* Native Limbo comparisons; real <=/>= retain ordered predicates for NaN safety. */
-  Relation<SourceRelation *relation> =
-    (
-        "<"                                                             (. *relation = SOURCE_LESS; .)
-        | "=="                                                          (. *relation = SOURCE_EQUAL; .)
-        | ">"                                                           (. *relation = SOURCE_GREATER; .)
-        | "!="                                                          (. *relation = SOURCE_NOT_EQUAL; .)
-        | "<="                                                          (. *relation = SOURCE_LESS_EQUAL; .)
-        | ">="                                                          (. *relation = SOURCE_GREATER_EQUAL; .)
-    )
-                                                                        (. capture(); .)
+  /* Ordered comparisons retain exact numeric types and source operand order.
+   * Chained comparisons parse normally; an ordered bool operand rejects later. */
+  NumericOrdering<int *result> =
+    (.
+        int right = 0;
+        SourceRelation relation = SOURCE_LESS;
+        SourceMark operation;
+    .)
+    IntegerShift<result>
+    {
+        (
+            "<" (. relation = SOURCE_LESS; .)
+            | ">" (. relation = SOURCE_GREATER; .)
+            | "<=" (. relation = SOURCE_LESS_EQUAL; .)
+            | ">=" (. relation = SOURCE_GREATER_EQUAL; .)
+        )
+        (.
+            capture();
+            operation = source_mark();
+        .)
+        IntegerShift<&right>
+        (.
+            source_restore(operation);
+            *result = source_numeric_relation(*result, right, relation);
+        .)
+    }
   .
 
   /* Limbo inferred declarations and initialized int declarations stay distinct
@@ -689,9 +689,14 @@ PRODUCTIONS
                                                                         .)
   .
 
-  /* Addition/subtraction bind less tightly than multiplication, left to right. */
-  /* Union is the lowest bit level; each operand evaluates once, left to right. */
+  /* Every parenthesized expression uses this same precedence hierarchy.
+   * Semantic guards keep intermediate bools out of numeric bindings/results. */
   Expression<int *result> =
+    NumericLogicalOr<result>
+  .
+
+  /* Union is the lowest bit level; each operand evaluates once, left to right. */
+  NumericBitOr<int *result> =
     (.
         int right = 0;
         SourceMark operation;
@@ -738,14 +743,14 @@ PRODUCTIONS
         int right = 0;
         SourceMark operation;
     .)
-    IntegerShift<result>
+    NumericEquality<result>
     {
         "&"
         (.
             capture();
             operation = source_mark();
         .)
-        IntegerShift<&right>
+        NumericEquality<&right>
         (.
             source_restore(operation);
             *result = source_integer_bits(*result, right, '&');
@@ -851,11 +856,15 @@ PRODUCTIONS
         "+"
         | "-"                                                           (. negative = 1; .)
     )
-                                                                        (. ++depth; .)
+    (.
+        capture();
+        operation = source_mark();
+        ++depth;
+    .)
     Unary<result>                                                       (.
                                                                             --depth;
-                                                                            if (negative)
-                                                                                *result = source_negate(*result);
+                                                                            source_restore(operation);
+                                                                            *result = negative ? source_negate(*result) : source_numeric_identity(*result);
                                                                         .)
     | IF(Sym==identSym && AliasAhead() && depth>=64)
       ident
@@ -891,6 +900,24 @@ PRODUCTIONS
           *result = source_integer_not(*result);
       .)
     | IF(Sym==TildeSym && depth>=64) "~" (. capture(); source_scope_limit(); *result = 0; .)
+    | IF(Sym==BangSym && depth>=64) "!"
+    (.
+        capture();
+        source_scope_limit();
+        *result = 0;
+    .)
+    | IF(Sym==BangSym && depth<64) "!"
+    (.
+        capture();
+        operation = source_mark();
+        ++depth;
+    .)
+    Unary<result>
+    (.
+        --depth;
+        source_restore(operation);
+        *result = source_table_not(*result);
+    .)
     | Primary<result>
   .
 

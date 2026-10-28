@@ -15,10 +15,10 @@ retains its existing richer expression grammar.
 | `a < b || c < d && e < f` | Conjunction binds above disjunction |
 | `(a + b) < c` | Parentheses in arithmetic operands keep their ordinary meaning |
 
-This bounded profile requires parentheses immediately after logical negation.
-Bare `!a` and ordinary boolean grouping without `!` are not admitted yet. It adds
-no numeric truthiness, bool source locals, int/real coercions, nonterminal numeric
-joins or complete module ABI. Every relation retains its homogeneous operand types.
+FIR 0.56 also admits ordinary boolean groups, repeated unary negation and bool
+predicate equality. Numeric bindings/results still reject intermediate bools;
+AS profiles keep their arithmetic subset. See [grouped conditions](GROUPED_CONDITIONS.md)
+for the complete precedence and strict typing contract.
 
 ## Evaluation and ownership
 

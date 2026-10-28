@@ -63,7 +63,7 @@ static int branch_bindings[FIR_BLOCKS / 2][256]; /* Incoming SSA bindings, isola
 static int branch_cells[FIR_BLOCKS / 2][256];    /* Incoming scalar-cell identities isolated per terminal arm. */
 static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; sibling locals are never reused. */
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
-static FirType table_values[1001];  /* Per-SSA static types in the bounded table profile. */
+static FirType table_values[1001];  /* Per-SSA types for bounded numeric and table profiles. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
 static int table_cells[256];        /* Per-binding typed cell identities, -1 until loop promotion. */
 static int loop_serial;             /* Unique loop labels in the translation. */
@@ -244,6 +244,19 @@ static int32_t integer_literal(const char *text, int negative)
 }
 
 
+/* Validate borrowed SSA value before a numeric binding, result or operand.
+ * Return its unchanged SSA identity. Errors are sticky and retire staging; values
+ * own no runtime storage here. Calls share the serialized source-parser state. */
+int source_numeric_identity(int value)
+{
+    if (!failed && table_values[value] != (integer_mode ? T_I32 : T_F64))
+    {
+        reject("numeric context requires a homogeneous int/real value, not bool");
+    }
+    return failed ? 0 : value;
+}
+
+
 /* Lower numeric spelling in the selected homogeneous profile; Limbo real requires
  * decimal fraction/exponent literals so inferred integer arithmetic cannot be silently changed. */
 int source_constant(int negative)
@@ -283,6 +296,7 @@ int source_constant(int negative)
     }
     if (!failed)
     {
+        table_values[result] = integer_mode ? T_I32 : T_F64;
         fprintf(destination,
                 "    %%v%d: %s = const.%s ",
                 result,
@@ -313,6 +327,8 @@ int source_binary(int left, int right, int op)
     {
         return source_integer_bits(left, right, op);
     }
+    source_numeric_identity(left);
+    source_numeric_identity(right);
     result = serial++;
     if (!integer_mode && op == '%')
     {
@@ -324,6 +340,7 @@ int source_binary(int left, int right, int op)
     }
     if (!failed)
     {
+        table_values[result] = integer_mode ? T_I32 : T_F64;
         fprintf(destination,
                 "    %%v%d: %s = %s.%s%s %%v%d, %%v%d\n",
                 result,
@@ -357,6 +374,8 @@ int source_integer_bits(int left, int right, int op)
                            : op == '<' ? "i32.shl.checked"
                                        : "i32.shr.checked";
     int result = serial++;
+    source_numeric_identity(left);
+    source_numeric_identity(right);
     if (op != '&' && op != '|' && op != '^' && op != '<' && op != '>')
     {
         reject("unknown homogeneous int bit operator");
@@ -371,6 +390,7 @@ int source_integer_bits(int left, int right, int op)
     }
     if (!failed)
     {
+        table_values[result] = T_I32;
         fprintf(destination, "    %%v%d: i32 = %s %%v%d, %%v%d\n", result, spelling, left, right);
         source_debug_event("binary", result, "", debug_scopes[scope_depth], scope_depth, location);
     }
@@ -389,6 +409,7 @@ int source_integer_not(int value)
     }
     if (!failed)
     {
+        table_values[minus] = T_I32;
         fprintf(destination, "    %%v%d: i32 = const.i32 -1\n", minus);
         source_debug_event("constant", minus, "", debug_scopes[scope_depth], scope_depth, location);
     }
@@ -561,6 +582,10 @@ static int local_declaration(int name)
  * Nondeclaration writes keep targeting the nearest active outer binding. */
 void source_bind(int name, int value, int declaration)
 {
+    if (!source_table_profile())
+    {
+        source_numeric_identity(value);
+    }
     if (declaration)
     {
         name = local_declaration(name);
@@ -937,7 +962,7 @@ int source_alias_cast(int value, FirType target)
         }
         reject("source alias cast requires int, big or string in table profile");
     }
-    else if (target != (integer_mode ? T_I32 : T_F64))
+    else if (target != (integer_mode ? T_I32 : T_F64) || (!failed && table_values[value] != target))
     {
         reject("numeric alias cast must match homogeneous result profile");
     }
@@ -965,6 +990,7 @@ int source_negate(int value)
     }
     if (!failed)
     {
+        table_values[minus] = integer_mode ? T_I32 : T_F64;
         fprintf(destination,
                 "    %%v%d: %s = const.%s -1\n",
                 minus,
@@ -1145,6 +1171,37 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
 }
 
 
+/* Compare typed intermediates in homogeneous numeric Limbo expressions.
+ * left/right/relation are copied parser values. Return normalized bool SSA,
+ * retaining relation origin and evaluating neither operand again. Bool accepts
+ * equality only; numeric operands must retain the declared homogeneous kind. */
+int source_numeric_relation(int left, int right, SourceRelation relation)
+{
+    int equality = relation == SOURCE_EQUAL || relation == SOURCE_NOT_EQUAL;
+    if (failed)
+    {
+        return 0;
+    }
+    if (profile != FIR_LIMBO || source_table_profile())
+    {
+        reject("numeric condition expressions require the Limbo int/real profile");
+        return 0;
+    }
+    if (table_values[left] == T_BOOL && table_values[right] == T_BOOL && equality)
+    {
+        int value = table_operation(T_BOOL, "bool.eq", left, right);
+        return relation == SOURCE_NOT_EQUAL ? source_table_not(value) : value;
+    }
+    source_numeric_identity(left);
+    source_numeric_identity(right);
+    if (failed)
+    {
+        return 0;
+    }
+    return source_condition_value(source_compare(left, right, relation));
+}
+
+
 /* Materialize a copied terminal condition for lazy composition. The parser restores
  * the authored relation span before calling. Return a normalized scalar SSA identity;
  * inversion emits bool.not once. Sticky failures return zero without ownership. */
@@ -1209,6 +1266,10 @@ void source_else(int choice)
  * value is a parser-owned SSA index. No caller stream or source binding is acquired. */
 void source_return(int value)
 {
+    if (!source_table_profile())
+    {
+        source_numeric_identity(value);
+    }
     source_trace(value);
     if (!failed)
     {
@@ -1579,9 +1640,9 @@ int source_table_relation(int left, int right, SourceRelation relation)
 SourceCondition source_table_truth(int value)
 {
     SourceCondition condition;
-    condition.value = value;
+    condition.value = failed ? 0 : value;
     condition.invert = 0;
-    if (table_values[value] != T_BOOL)
+    if (!failed && table_values[value] != T_BOOL)
     {
         reject("table condition requires a comparison or membership bool");
     }

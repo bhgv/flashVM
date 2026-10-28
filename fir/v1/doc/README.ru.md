@@ -13,3 +13,5 @@
 [Рабочий source-синтаксис](SOURCE_SYNTAX.ru.md).
 
 [Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).
+
+[Grouped numeric conditions / Группировка числовых условий — FIR 0.56](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).

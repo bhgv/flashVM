@@ -419,7 +419,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # Terminal real conditions must survive relocation and direct source-library embedding.
-    for tutorial in ("real-conditions.b", "numeric-logic.b"):
+    for tutorial in ("real-conditions.b", "numeric-logic.b", "grouped-conditions.b"):
         real_condition = component / "examples/dis" / tutorial
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", real_condition, fir,
              "--module", "dis_example"], work, environment)

@@ -83,3 +83,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 [русское руководство](INT_ARITHMETIC.ru.md). [Current homogeneous int bits/shifts](INT_BITS.md) / [актуальные биты/сдвиги](INT_BITS.ru.md).
 
 [Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).
+
+[Grouped numeric conditions / Группировка числовых условий — FIR 0.56](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).

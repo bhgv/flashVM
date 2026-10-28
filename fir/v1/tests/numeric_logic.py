@@ -67,6 +67,15 @@ def main():
                         for event in events
                     ):
                         raise RuntimeError("lazy operator lost its original UTF-8 byte span")
+            for match in re.finditer(rb"!(?!=)", text.encode()):
+                if not any(
+                    event["kind"] == "table-operation"
+                    and event["name"] == "bool.not"
+                    and event["byte_offset"] == match.start()
+                    and event["byte_length"] == 1
+                    for event in events
+                ):
+                    raise RuntimeError("unary negation lost its original UTF-8 byte span")
             call([compiler, "opt", fir, optimized])
             wanted = float(yes if expected else no)
             for selected in (fir, optimized):
@@ -137,12 +146,22 @@ def main():
                     (pa + " && " + pb + " || " + pc, (a and b) or c),
                     ("!(" + pa + " || " + pb + ") && !(" + pc + ")", not (a or b) and not c),
                     ("!(!(" + pa + ")) || " + pb, a or b),
+                    ("(" + pa + " || " + pb + ") && " + pc, (a or b) and c),
+                    (pa + " && (" + pb + " || " + pc + ")", a and (b or c)),
+                    ("((" + pa + ")) || ((" + pb + ") && (" + pc + "))", a or (b and c)),
+                    ("!!(" + pa + ") && !!!(" + pb + ")", a and not b),
+                    ("(" + pa + ") == (" + pb + ")", a == b),
+                    ("(" + pa + ") != (" + pb + ") || " + pc, (a != b) or c),
+                    ("(" + pa + " || " + pb + ") == (" + pc + ")", (a or b) == c),
+                    ("((" + pa + ") == (" + pb + ")) != (" + pc + ")", (a == b) != c),
                 ):
                     execute(kind, condition, expected)
 
         # Checked integer errors distinguish skipped from executed RHS code.
         execute("int", "1 == 1 || 1 / 0 == 0", True, swf=False)
         execute("int", "0 == 1 && 1 / 0 == 0", False, swf=False)
+        execute("int", "(1 == 1 || (1 / 0 == 0)) && !!(2 < 3)", True, swf=False)
+        execute("int", "(0 == 1 && (1 / 0 == 0)) == (2 > 3)", True, swf=False)
         for condition in ("0 == 1 || 1 / 0 == 0", "1 == 1 && 1 / 0 == 0"):
             source.write_text(
                 "implement M; M: module {value: fn(): int;}; value(): int {if("
@@ -163,6 +182,15 @@ def main():
         execute("real", "!(0.0 / 0.0 <= 1.0) && (1.0 + 2.0) == 3.0", True)
         execute("real", "0.0 / 0.0 == 0.0 / 0.0 || -0.0 == 0.0", True)
         execute("int", "(1 + 2) == 3 && !(4 < 2)", True)
+        execute("int", "((1 | 2) == 3) == (8 > 4 + 2)", True)
+        execute("int", "(1 < 2) == (3 < 4) && ((8 & 3) == 0)", True)
+        execute("real", "((0.0/0.0 <= 1.0) == (2.0 > 3.0)) && !!(4.0 >= 4.0)", True)
+        execute("real", "((1.0+2.0)*3.0 < 10.0 || (0.0/0.0 == 1.0)) && !(2.0>3.0)", True)
+
+        # Coco/R must own grouping even when comments contain unmatched delimiters.
+        execute("int", "( /* ) phantom ( */ (1 < 2) || (3 > 4)) && !!(5 == 5)", True)
+        execute("int", "( # ) phantom (\n (1 < 2) && (3 < 4))", True)
+        execute("real", "((1.0 < 2.0) // ) phantom\n == !!(3.0 > 2.0))", True)
 
         # Syntax, typing and shared recursion/block budgets fail transactionally.
         for condition in (
@@ -170,6 +198,19 @@ def main():
             "!1 == 0",
             "1 == 1 && 2",
             "1 == 1 || 1.0 < 2.0",
+            "(1 < 2) == 1",
+            "(1 < 2) < (3 < 4)",
+            "1 < 2 < 3",
+            "(1 < 2) + 3 == 4",
+            "+(1 < 2)",
+            "-(1 < 2)",
+            "(~(1 < 2)) == 0",
+            "(1 < 2) & (3 < 4)",
+            "1 | 2 == 3",
+            "(" * 70 + "1 < 2" + ")" * 70,
+            "!" * 70 + "(1 < 2)",
+            " + ".join(["1"] * 600),
+            " + ".join(["1"] * 600) + " < 2",
             "!(" * 70 + "1 == 1" + ")" * 70,
             " || ".join(["1 == 1"] * 150),
         ):
@@ -179,9 +220,44 @@ def main():
                 + "){return 42;}else{return -7;}}"
             )
             fir.write_text("OLD")
-            call([source_cli, "limbo", "--input", source, fir], False)
+            rejected = call(
+                [source_cli, "limbo", "--input", source, fir, "--diagnostics-json"], False
+            )
+            diagnostic = json.loads(rejected.stderr)
+            if rejected.returncode != 1 or diagnostic["kind"] not in (
+                "syntax",
+                "semantic",
+                "limit",
+            ):
+                raise RuntimeError("negative fixture did not produce a compiler diagnostic")
             if fir.read_text() != "OLD":
                 raise RuntimeError("rejected numeric logic replaced prior output")
+        for body in (
+            "flag := (1 < 2); return 42;",
+            "flag: int = (1 < 2); return 42;",
+            "n := 1; n = (1 < 2); return n;",
+            "return (1 < 2);",
+            "T: type int; return T (1 < 2);",
+            "return 1 + (1 < 2);",
+            "return (1 < 2) << 1;",
+        ):
+            source.write_text(
+                "implement M; M: module {value: fn(): int;}; value(): int {" + body + "}"
+            )
+            fir.write_text("OLD")
+            rejected = call(
+                [source_cli, "limbo", "--input", source, fir, "--diagnostics-json"], False
+            )
+            diagnostic = json.loads(rejected.stderr)
+            if rejected.returncode != 1 or diagnostic["kind"] not in (
+                "syntax",
+                "semantic",
+                "limit",
+            ):
+                raise RuntimeError("negative fixture did not produce a compiler diagnostic")
+            if fir.read_text() != "OLD":
+                raise RuntimeError("bool escaped numeric binding/result boundary")
+
     print("PASS numeric logic: truth tables, lazy errors, NaN, provenance and staged rejection")
 
 

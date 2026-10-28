@@ -173,3 +173,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [Real conditions EN](../../doc/REAL_CONDITIONS.md) / [RU](../../doc/REAL_CONDITIONS.ru.md) explains [real-conditions.b](real-conditions.b) (42.5 through source → FIR → Dis/SWF) and [real-unordered.fir](real-unordered.fir) (three false IEEE predicates). Every nonblank source line is commented. / Подробное руководство объясняет типы, вычисление ветвей, NaN и команды проверки; каждая непустая строка прокомментирована.
 
 [Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](../../doc/NUMERIC_LOGIC.md) · [Русский](../../doc/NUMERIC_LOGIC.ru.md).
+
+[Grouped numeric conditions / Группировка числовых условий — FIR 0.56](../../doc/GROUPED_CONDITIONS.md) · [Русский](../../doc/GROUPED_CONDITIONS.ru.md).

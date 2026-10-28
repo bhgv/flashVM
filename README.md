@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1666**. [Русская версия](README.ru.md).
+Development version: **0.1667**. [Русская версия](README.ru.md).
 
-Current series: [v0.1666](docs/releases/v0.1666.md): lazy numeric Limbo conditions through FIR/Dis/SWF and seven Inferno GC/I/O/compiler updates.
+Current series: [v0.1667](docs/releases/v0.1667.md): grouped typed conditions, numeric boundary guards, checked Inferno compiler uses and portable IDE directory fixtures.
 
 ## Browse documentation
 
