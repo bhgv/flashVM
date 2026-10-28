@@ -264,4 +264,8 @@ if(BUILD_TESTING)
     "${u}/limbo/tests/node-transforms.py")
   set_tests_properties(limbo_bootstrap_node_transforms PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME limbo_bootstrap_inline_graphs COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/inline-graphs.py")
+  set_tests_properties(limbo_bootstrap_inline_graphs PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()

@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "2bd9f3cdcfbe21d39b6829d6440dc86662d2c951",
+  "revision": "c1494cdc5f20cb5399c4dcdffddd03701bd8644b",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -57,7 +57,10 @@
     "limbo/tests/node-queries.py",
     "limbo/tests/node-transforms.py",
     "limbo/tests/node-transforms.c",
-    "limbo/tests/README.node-transforms.md"
+    "limbo/tests/README.node-transforms.md",
+    "limbo/tests/inline-graphs.py",
+    "limbo/tests/inline-graphs.c",
+    "limbo/tests/README.inline-graphs.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -215,7 +218,7 @@
     "upstream/libsec/port/md5block.c": "34ebbc6ecc220a28d1bba63c23dbace736b99e60e1395050d26bb7bbb983b35c",
     "upstream/limbo/NOTICE": "8583a4d98e76ad23cb22cea5da3fd54a8a7309213ae280378b9bd95e258e0946",
     "upstream/limbo/asm.c": "bf2f1d84e97c4442fbfdfcb529c4922fb2af20af9966629d7d570320663af90f",
-    "upstream/limbo/com.c": "a7e862576a332febc29802211d12c28ac0185af37aeb1124e727320ed88d5edc",
+    "upstream/limbo/com.c": "cd685111de167d7bb337f47c23ae351daff7f1992271790d01661d68b5312ddd",
     "upstream/limbo/decls.c": "70196edfb67467a46f98fe1fe0aff659b4c184266fbf801aa5ec6fdd1575fde9",
     "upstream/limbo/dis.c": "472d6dc804722e8c8fe3d106bae7b8445b50670245c16dbd001132c2de00d58c",
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
@@ -230,6 +233,7 @@
     "upstream/limbo/optim.c": "00cb7e4d1d6335b60e4dc065d02eb135da317cebb5a6477f74001e6ff7a82615",
     "upstream/limbo/sbl.c": "c6394b9d1a20b692525990447e96ab3badc356d95e75c4830faa7c6c3e28ee64",
     "upstream/limbo/stubs.c": "a31bed1aabb5017bc6f7a55437a93c30a99b5994eb635804829aa34aea131ef4",
+    "upstream/limbo/tests/README.inline-graphs.md": "2d784785c8f8e794bf3d8dbf85d43479d2a01f8b9d1364fccbf4af56465c8fc5",
     "upstream/limbo/tests/README.node-chains.md": "e3a7a58d2098dea5ed7ac68806a62ac54461714c85defd5d1cf36fe3bbcd0924",
     "upstream/limbo/tests/README.node-queries.md": "17f6835b0c0d764498adbb5dec6b39c2cd9367fc3122de350db70bfc0d3383f0",
     "upstream/limbo/tests/README.node-transforms.md": "c9bf4093e6ea5918059bc55e2686fe1f073c6f8c249b16e49263b071cbc87509",
@@ -251,6 +255,8 @@
     "upstream/limbo/tests/fold-string-length.c": "840f5687629ca224c293463b7d2793a8793d2331e031b8a4bd72d4b3f86f06ac",
     "upstream/limbo/tests/fold-strings.c": "c1d84791836c91c14fec8ad581f03162c534b046d3e70abfb8249b6e91b6934a",
     "upstream/limbo/tests/fold-traps.c": "3ff2fd4410a4e66fe9762cc856980f1967135da463a6b83b214f3af1465a4af9",
+    "upstream/limbo/tests/inline-graphs.c": "b5fcda0a44d4eb9656de374c744a0df4a8d4bf79b768f317796040d11ac20a1f",
+    "upstream/limbo/tests/inline-graphs.py": "6caab2490dfb53249bfa245db5474e027969fde60d2f6a53a9ba2b89489c1fb5",
     "upstream/limbo/tests/layout-bounds.c": "84ceab48027ef79572d999c099c637ca300e864554b0621427701cb369aa1323",
     "upstream/limbo/tests/lexer-paths.c": "4dcde93cd8e3d3b4bc8fd0db5b30d7dd8099e4e617a398973227c6f2a1f9f1f3",
     "upstream/limbo/tests/lexer-strings.c": "a7c5f1c18c938a1e5f7779b6d1d9c96b9585786b092bb06365b10886af69b953",

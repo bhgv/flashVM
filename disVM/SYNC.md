@@ -1,3 +1,17 @@
+# v0.1660 — JIT GC geometry and shared inline dependency graphs
+
+Current pin: **c1494cdc5f20cb5399c4dcdffddd03701bd8644b**; **703 selected Dis / 219 bootstrap files**. Both snapshots retain exact imported bytes and manifest hashes.
+
+Incoming 139ef17 shares nonoverlapping Heap.ref/Heap.color and complete disjoint GC-cell preflight across AMD64/ARM64 owner leaves, and rejects invalid builtin type sentinels for formatting/byte conversion. Incoming 6dcfe7b removes recursive inline-dependency traversal and refuses active candidate cycles while restoring temporary flags.
+
+Our reverse [c1494cd](https://github.com/bhgv/Inferno-OS-bhgv/commit/c1494cdc5f20cb5399c4dcdffddd03701bd8644b) bounds repeated expansion of shared successful inline candidates. A compact 256-candidate diamond previously took exponential work; an old-source replay compiled successfully but exceeded the execution alarm. The fixed checker caches successful bodies only inside one query and restores active/completed flags on acceptance, rejection and successful retry. Ordinary shared AST child edges are not memoized. Allocation/storage exhaustion remains fatal; the pass is single-threaded.
+
+Native/emulated owner fixtures, complete dispatch, emitter layouts, deep/shared inline graphs and source bootstrap checks cover the imported code. The FlashVM-only alias-typed GC tutorial exercises formatting, narrowing, deleted-key snapshots and table mutations through our Coco/R → FIR → Dis path, with real GC scheduling and both dispatch modes. It does not substitute for hardware ARM64 acceptance or a complete ABI migration. Flash-specific table/any/projection extensions stay out of upstream.
+
+[Release EN/RU](../docs/releases/v0.1660.md) · [Tutorial EN](../fir/v1/examples/type-aliases/README.md) / [RU](../fir/v1/examples/type-aliases/README.ru.md).
+
+## Previous checkpoints
+
 # v0.1659 — Source binding integration and verified upstream head
 
 Inferno experiment was fetched again and remains **2bd9f3cdcfbe21d39b6829d6440dc86662d2c951**. Both reverse corrections from the previous series (b151e32d occurs traversal and 2bd9f3c cold ARM64 fixture identity) are present in its history. Both manifests still verify **699 Dis / 216 bootstrap files** byte-for-byte. No additional shared defect was confirmed in this pass, so no duplicate upstream commit was created.

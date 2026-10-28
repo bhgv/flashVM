@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.32.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.32.1 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -943,5 +943,15 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${root}/fir/v1/tests/limbo_aliases.py" "${DVM_FIR_SOURCE_COMPILER}"
       "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_limbo_aliases_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Alias-typed string/key/table lifetimes must survive real native GC backedges.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_alias_owners_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/alias_owners.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_alias_owners_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

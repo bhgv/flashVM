@@ -26,3 +26,19 @@ Compilation resolves aliases before FIR emission. It does not allocate alias obj
 [casts.b](casts.b) demonstrates a forward result alias and module alias casts. Repeat the Dis commands with this source; both modes return 42. `I digits` parses signed64 and narrows to -1, then Result widens it before addition. A malformed decimal still raises even when its result is unused; optimization preserves that effect. Numeric int/real casts through aliases are identity-only in their homogeneous profiles. The big/table profile’s string/int/big casts reuse the existing typed conversion contract; a table object cannot be cloned by spelling a table alias as a cast.
 
 The module/file shadow in main.b is a FlashVM lexical extension; native Inferno rejects that redeclaration. The common unshadowed scalar oracle is described in the contract.
+
+## GC owner lifetime tutorial — runtime 0.32.1
+
+[gc-owners.b](gc-owners.b) keeps a deleted string key in an independent snapshot while 64 loop iterations allocate formatted strings, narrow them to int, copy keys into a table and delete them again. The observable sum is 1952 and the retained key converts to 42. `countof`, rather than dense `len`, verifies that no dictionary entries remain. Every nonblank line is commented.
+
+```sh
+export TMPDIR="$PWD/build/tmp"
+mkdir -p "$TMPDIR"
+build/fir/fir1_source limbo --input fir/v1/examples/type-aliases/gc-owners.b build/gc-owners.fir -g build/gc-owners.json
+build/fir/fir1 opt build/gc-owners.fir build/gc-owners.opt.fir
+build/fir/fir1 dis build/gc-owners.opt.fir build/gc-owners.dis
+build/runtime/disvm --jit --quantum 1 --stats --inspect-words 0 4 build/gc-owners.dis
+build/runtime/disvm --no-jit --quantum 1 --stats --inspect-words 0 4 build/gc-owners.dis
+```
+
+Expected DATA words at offsets 0/8/16/24: **42, 0, 1, 0**. The last two are the selected/unselected return flags. Stats must report `tables_live=0 keys_live=0`; the acceptance test also checks repeated GC at quantum 1 and actual native dispatch counters. Run raw and optimized images, then repeat with quantum 2048. The installed SDK performs the same owner/result checks after relocation. This is a Dis-only table program; the scalar SWF path is covered by the earlier examples. These counters establish host table/key teardown, not a separate count of every native String allocation.

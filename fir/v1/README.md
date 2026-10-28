@@ -166,3 +166,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [AS globals/property stores through the common pipeline](doc/AS_PROPERTIES.md) · [Русский](doc/AS_PROPERTIES.ru.md).
 
 [Executable type aliases / Исполняемые псевдонимы](doc/SOURCE_ALIASES.md) · [Tutorial / Пример](examples/type-aliases/README.md)
+
+[GC owner lifetime / Время жизни владельцев](examples/type-aliases/README.md) — runtime 0.32.1, source aliases and real Dis GC backedges.

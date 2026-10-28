@@ -92,6 +92,16 @@ def table_packages(prefix, work, environment):
             result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 2, image], work, environment)
             if "DATA 0 42\nDATA 8 1\n" not in result:
                 raise RuntimeError("relocated source alias tutorial result differs")
+    # Retain a deleted key snapshot across loop-local string churn and native GC.
+    owner_source = prefix / "fir/examples/type-aliases/gc-owners.b"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", owner_source, fir], work, environment)
+    run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+    for selected in (fir, optimized):
+        run([program(prefix, "fir", "fir1"), "dis", selected, image], work, environment)
+        for mode in ("--jit", "--no-jit"):
+            result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 4, image],
+                         work, environment, include_stderr=True)
+            check_table_capture(result, 2, "alias owner lifetime")
     # Additional modules cover native big arithmetic and checked division/bit operations.
     for example in ("arithmetic.b", "bitwise.b"):
         arithmetic_source = prefix / "fir/examples/tables" / example
