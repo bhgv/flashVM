@@ -1,3 +1,13 @@
+# v0.1664 — Bounded AST diagnostics and typed predicate targets
+
+Current pin: **4f54d7f1569b8b596ce01f036e683f7866c8aeb5**, **703 Dis / 239 bootstrap files**. Incoming Limbo diagnostic printing replaces recursive AST descent with an ordered action stack, checked growth and bounded-buffer termination. Additional 4f54d7f replaces recursive descriptor/zero-initialization Type walks with checked continuations. Its map, zero and rejection fixtures cover pointer-slot widths 4 and 8; the existing descriptor-map oracle is registered too. Imported shallow-reference, quoting and deep-expression/debug-dump fixtures are registered in the source-built bootstrap. Selected files remain byte-for-byte upstream with manifest hashes.
+
+Earlier outbound corrections, including c1494cd, remain ancestors. No additional confirmed shared defect requires a reverse commit. Direct int predicates and new strict bool FIR operations are FlashVM compiler work; they do not add Dis instructions, shared heaps or Flash-specific extensions to Inferno.
+
+[Release EN/RU](../docs/releases/v0.1664.md) · [Typed predicate contract EN](../fir/v1/doc/TYPED_PREDICATES.md) / [RU](../fir/v1/doc/TYPED_PREDICATES.ru.md).
+
+## Previous checkpoints
+
 # v0.1663 — Rune providers and direct typed int complement
 
 Current pin: **467f52d416357088597ee4fad9b8a98ca0b8c57c**, **703 Dis / 231 bootstrap files**. Incoming Rune formatter providers restore bounded and allocated public entry points, checked growth, cursor retention and caller ownership. The bootstrap links a new public-provider fixture against its actual lib9 archive; upstream lib9/libkern moving-allocation fixtures run independently.

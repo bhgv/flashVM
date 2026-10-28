@@ -42,6 +42,8 @@ unsigned fir_effects(FirOp op)
     case O_BIG_LOAD:
     case O_BOOL_LOAD:
         return FIR_READS_MEMORY;
+    case O_BOOL_NOT:
+    case O_BOOL_EQ:
     case O_I32_AND:
     case O_I32_OR:
     case O_I32_XOR:

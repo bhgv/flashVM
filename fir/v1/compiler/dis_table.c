@@ -388,7 +388,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && in->op != O_I32_AND && in->op != O_I32_OR && in->op != O_I32_XOR &&
+                 in->op != O_RETURN && in->op != O_BOOL_NOT && in->op != O_BOOL_EQ && in->op != O_I32_AND &&
+                 in->op != O_I32_OR && in->op != O_I32_XOR &&
                  !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
@@ -619,6 +620,9 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_BOOL_LOAD:
             instruction(e, MOVW, FP, a, FP, d, 0, -1);
             break;
+        case O_BOOL_NOT:
+            arithmetic(e, XORW, MIDDLE_IMMEDIATE, 1U, a, d);
+            break;
         case O_ADD:
         case O_SUB:
         case O_MUL:
@@ -653,6 +657,7 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_BIG_SHR:
             arithmetic(e, in->op == O_BIG_SHL ? SHLL : SHRL, MIDDLE_FRAME, a, b, d);
             break;
+        case O_BOOL_EQ:
         case O_LT:
         case O_EQ:
         case O_BIG_LT:

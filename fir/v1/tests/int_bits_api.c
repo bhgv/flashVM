@@ -21,7 +21,7 @@ int main(void)
         goto done;
     }
     if (O_I32_AND != O_AS_MEMBER_SET + 1 || O_I32_OR != O_I32_AND + 1 || O_I32_XOR != O_I32_OR + 1 ||
-        fir_effects((FirOp)(O_I32_XOR + 1)) != FIR_ALL_EFFECTS)
+        fir_effects((FirOp)(O_BOOL_EQ + 1)) != FIR_ALL_EFFECTS)
     {
         goto done;
     }

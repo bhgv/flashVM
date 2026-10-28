@@ -181,6 +181,7 @@ static int supported(
             }
             (*count)++;
             break;
+        case O_BOOL_NOT:
         case O_BOOL_LOCAL:
         case O_BOOL_STORE:
         case O_BOOL_LOAD:
@@ -219,6 +220,7 @@ static int supported(
         case O_ADD:
         case O_SUB:
         case O_MUL:
+        case O_BOOL_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
         case O_LT:
@@ -351,6 +353,10 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         }
         switch (current->op)
         {
+        case O_BOOL_NOT:
+            /* The verifier admits only normalized bools; xor with one stays normalized. */
+            instruction(output, DIS_XORW, DIS_IMMEDIATE, 1, DIS_FP, destination, (int)slot(current->a));
+            break;
         case O_BOOL_LOCAL:
             instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
             break;
@@ -486,6 +492,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
                                              : DIS_DIVF;
             instruction(output, opcode, DIS_FP, slot(current->b), DIS_FP, destination, (int)slot(current->a));
             break;
+        case O_BOOL_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
         case O_LT:

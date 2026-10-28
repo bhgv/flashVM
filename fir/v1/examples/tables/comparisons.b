@@ -28,7 +28,7 @@ value(): big
     consistent := ascending == !descending;
 
     # Explicit int casts remain typed: both operands have the same static type.
-    # The comparison widens signed int exactly and never routes through float.
+    # The comparison uses signed32 directly and never routes through float.
     signed_order := int -2147483648 < int 2147483647;
 
     # Membership is also bool and can be negated or compared with another bool.

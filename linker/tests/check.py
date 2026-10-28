@@ -397,6 +397,16 @@ with tempfile.TemporaryDirectory() as bits_directory:
     call("link", bit_movie, bit_object)
     if [body for tag, body in tags(bit_movie.read_bytes()) if tag == 12] != [code]:
         raise RuntimeError("linker changed or rejected standard AVM1 BitXor")
+# Standard Not must preserve normalized bool actions exactly through independent linking.
+with tempfile.TemporaryDirectory() as boolean_directory:
+    boolean_root = Path(boolean_directory)
+    boolean_object = boolean_root / "bool.swo"
+    boolean_movie = boolean_root / "bool.swf"
+    code = b"\x96\x02\x00\x05\x01\x12\x26\x00"
+    boolean_object.write_bytes(object("boolean_not", code))
+    call("link", boolean_movie, boolean_object)
+    if [body for tag, body in tags(boolean_movie.read_bytes()) if tag == 12] != [code]:
+        raise RuntimeError("linker changed or rejected standard AVM1 Not")
 print(f"{checks} total checks including inspection")
 
 # Stage options affect real SWF header fields, independent of the bit writer.

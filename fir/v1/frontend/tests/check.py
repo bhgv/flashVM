@@ -9,6 +9,8 @@ prefix = "FIR 1.0\nmodule @sample\n"
 function = "func @main() -> void {\n^entry:\nreturn\n}\n"
 good = [
     prefix + function,
+    "FIR 1.0 // π version comment\nmodule @sample\n" + function,
+    "FIR 1.0\t// version comment\r\nmodule @sample\r\n" + function,
     prefix
     + 'file !1 "a.as"\nloc !10 !1:12:5\nrequires @limbo.channels version 1\n'
     + "func @increment(%value:any)->any {\n^entry:\n%one:any=const.any number 1\n"
@@ -43,6 +45,9 @@ bad = [
     "// comment\n" + prefix + function,
     "\ufeff" + prefix + function,
     "FIR 1.0",
+    "FIR 1.0 // unterminated physical line",
+    "FIR 1.0// no separator\nmodule @sample\n" + function,
+    "FIR 1.0 /* not a line comment */\nmodule @sample\n" + function,
     "FIR 1.0 \nmodule @m\n",
     prefix + "func @x(%v:)->void {^entry:return}",
     prefix + "func @x()->void {}",

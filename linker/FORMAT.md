@@ -27,3 +27,5 @@ DoAction per object, then ShowFrame and End. Intra-object jumps need no changes.
 SWL 0.3.2 also accepts AVM1 Divide (0x0d), used by FIR f64.div.
 
 Standard AVM1 BitXor (0x62) is accepted alongside BitAnd/BitOr for signed32 FIR output; SWO1/SWF8 formats are unchanged. Стандартный BitXor принимается без изменения форматов.
+
+SWL 0.3.13 accepts standard AVM1 Not (0x12) for strict FIR bool.not. SWO1/SWF8 formats are unchanged; validation preserves exact action bytes. / Стандартный Not принимается без изменения форматов; байты действий сохраняются.

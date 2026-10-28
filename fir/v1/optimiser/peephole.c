@@ -297,6 +297,38 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->a = in->b = -1;
                 changed = 1;
             }
+            else if ((in->op == O_BOOL_NOT || in->op == O_BOOL_EQ) && a->op == O_BOOL &&
+                     (in->op == O_BOOL_NOT || b->op == O_BOOL))
+            {
+                in->integer = in->op == O_BOOL_NOT ? !a->integer : a->integer == b->integer;
+                in->op = O_BOOL;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_BOOL_NOT && a->op == O_BOOL_NOT)
+            {
+                /* Both nodes are pure; keep the original borrowed bool and its producer effects. */
+                in->op = O_COPY;
+                in->a = a->a;
+                in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_BOOL_EQ && in->a == in->b)
+            {
+                in->op = O_BOOL;
+                in->integer = 1;
+                in->a = in->b = -1;
+                changed = 1;
+            }
+            else if (in->op == O_BOOL_EQ && (a->op == O_BOOL || b->op == O_BOOL))
+            {
+                FirInstruction *constant = a->op == O_BOOL ? a : b;
+                int operand = a->op == O_BOOL ? in->b : in->a;
+                in->op = constant->integer ? O_COPY : O_BOOL_NOT;
+                in->a = operand;
+                in->b = -1;
+                changed = 1;
+            }
             else if ((in->op == O_STRING_EQ || in->op == O_STRING_LT) && a->op == O_STRING && b->op == O_STRING)
             {
                 /* Valid UTF-8 byte ordering matches Unicode scalar ordering. No locale,
@@ -444,7 +476,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
-            if ((in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
+            if ((in->op == O_BOOL_NOT || in->op == O_BOOL_EQ || in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
                  (in->op >= O_BIG_ADD && in->op <= O_TO_INT)) &&
                 !fir_effects(in->op))
             {

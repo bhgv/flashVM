@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.52.1 LANGUAGES C)
+project(fir1 VERSION 0.53.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -571,4 +571,15 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/int_bits.py" $<TARGET_FILE:fir1_source>
     $<TARGET_FILE:fir1> ${counted_for_reference})
   set_tests_properties(fir1_int_bits PROPERTIES TIMEOUT 120)
+endif()
+
+# Strict bool primitives and direct typed int comparisons share public CLI/C API validation.
+if(BUILD_TESTING)
+  add_executable(fir1_typed_predicates_api tests/typed_predicates_api.c)
+  target_link_libraries(fir1_typed_predicates_api PRIVATE fir1_ir)
+  add_test(NAME fir1_typed_predicates_api COMMAND fir1_typed_predicates_api)
+  add_test(NAME fir1_typed_predicates COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/typed_predicates.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${counted_for_reference})
+  set_tests_properties(fir1_typed_predicates PROPERTIES TIMEOUT 120)
 endif()

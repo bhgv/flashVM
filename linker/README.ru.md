@@ -1,4 +1,4 @@
-# Линкер SWL 0.3.12
+# Линкер SWL 0.3.13
 
 Рабочий независимый C99-компонент. FIR компилируется в `.swo`, SWL связывает
 объекты и библиотеки `.swa` в SWF8. Компилятор больше не создаёт SWF.
@@ -63,3 +63,5 @@ build/linker/swl inspect library.swa
 [Каталог примеров](examples/README.ru.md).
 
 Standard AVM1 BitXor (0x62) is accepted alongside BitAnd/BitOr for signed32 FIR output; SWO1/SWF8 formats are unchanged. Стандартный BitXor принимается без изменения форматов.
+
+SWL 0.3.13 accepts standard AVM1 Not (0x12) for strict FIR bool.not. SWO1/SWF8 formats are unchanged; validation preserves exact action bytes. / Стандартный Not принимается без изменения форматов; байты действий сохраняются.

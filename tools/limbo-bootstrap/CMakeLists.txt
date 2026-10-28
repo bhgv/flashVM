@@ -304,3 +304,23 @@ if(BUILD_TESTING)
   target_link_libraries(limbo_bootstrap_rune_providers PRIVATE limbo_bootstrap_lib9)
   add_test(NAME limbo_bootstrap_rune_providers COMMAND limbo_bootstrap_rune_providers)
 endif()
+
+# Compare ordered diagnostic output with a shallow oracle and bound deep AST traversal.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_diagnostic_print COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/diagnostic-print.py")
+  set_tests_properties(limbo_bootstrap_diagnostic_print PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+# Verify pointer maps and zero-initialization walks for classic and native slot widths.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_type_walks COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/type-walks.py")
+  set_tests_properties(limbo_bootstrap_type_walks PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME limbo_bootstrap_descriptor_maps COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/descriptor-maps.py")
+  set_tests_properties(limbo_bootstrap_descriptor_maps PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()

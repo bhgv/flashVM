@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1663**. [English](README.md).
+Версия разработки: **0.1664**. [English](README.md).
 
-Текущая серия: [v0.1663](docs/releases/v0.1663.md): прямое дополнение типизированного int, пример с таблицей в SDK и восстановленные Rune-форматтеры Inferno.
+Текущая серия: [v0.1664](docs/releases/v0.1664.md): прямые сравнения int, строгие bool-операции FIR, Dis/SWF-бэкенды и защищённая печать AST Inferno.
 
 ## Просмотр документации
 

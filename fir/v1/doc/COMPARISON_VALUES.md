@@ -59,16 +59,11 @@ intended operation. Membership retains its documented low-precedence extension
 level: negate it as `!(key in table)`. Equality associates left; chained ordered
 comparisons fail once they attempt to compare bool with a numeric operand.
 Compiler 0.24 adds [short-circuit `&&`/`||`](SHORT_CIRCUIT.md).
-General mixed-type comparisons and source loops remain unimplemented. This is not full Limbo or AS expression coverage.
+General mixed-type comparisons remain rejected; current typed loops are documented in [coverage](COVERAGE.md). This is not full Limbo or AS expression coverage.
 
 ## FIR, Dis, optimization and diagnostics
 
-The compiler uses existing signed `big.lt.signed`, `big.eq`, scalar conversions
-and constants. Same-type int operands widen exactly to big. Bool equality widens
-normalized values; inverse comparisons and `!` compare that value with zero.
-There are no new FIR operation IDs, native opcodes or Bigtable imports. Existing
-Dis BLTL/BEQL paths materialize normalized bool cells; no floating conversion is
-used for adjacent integers above 2^53 or signed extrema.
+Current FIR 0.53 uses direct i32.lt.signed/i32.eq for int, bool.eq for bool equality and bool.not for inverse relations and logical negation. Big keeps big.lt.signed/big.eq; strings retain their content comparisons. No new Dis opcode or Bigtable import is required. See the [current typed predicate contract](TYPED_PREDICATES.md) for the two append-only FIR IDs, optimizer and SWF lowering. Full-width big comparisons retain exact values beyond 2^53.
 
 Pure comparisons can fold or be reused. Checked conversions and memory mutations
 retain their effects and order. Exact authored comparison bytes remain in source

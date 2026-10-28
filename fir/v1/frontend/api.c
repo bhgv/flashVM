@@ -89,6 +89,39 @@ static int valid_utf8(const unsigned char *text, size_t n)
 }
 
 
+/* Validate the physical FIR version line, optionally followed by a // comment.
+ * data/size borrow already validated UTF-8 bytes. Return one only for an exact
+ * version plus LF/CRLF; bare trailing spaces, BOM and preceding lines fail.
+ * No allocation, parser state or caller storage is acquired or changed. */
+static int valid_header(const unsigned char *data, size_t size)
+{
+    size_t cursor = 7;
+    if (size < 8 || memcmp(data, "FIR 1.0", 7))
+    {
+        return 0;
+    }
+    if (data[cursor] == '\n' || (data[cursor] == '\r' && size > 8 && data[cursor + 1] == '\n'))
+    {
+        return 1;
+    }
+    while (cursor < size && (data[cursor] == ' ' || data[cursor] == '\t'))
+    {
+        cursor++;
+    }
+    if (cursor == 7 || size - cursor < 2 || data[cursor] != '/' || data[cursor + 1] != '/')
+    {
+        return 0;
+    }
+    cursor += 2;
+    while (cursor < size && data[cursor] != '\r' && data[cursor] != '\n')
+    {
+        cursor++;
+    }
+    return cursor < size && (data[cursor] == '\n' ||
+           (data[cursor] == '\r' && size - cursor > 1 && data[cursor + 1] == '\n'));
+}
+
+
 /* Parse borrowed bytes synchronously; reset generated state on every invocation. */
 int firsyn_check(const void *data, size_t size, FirSyntaxDiagnostic *diagnostic)
 {
@@ -105,9 +138,7 @@ int firsyn_check(const void *data, size_t size, FirSyntaxDiagnostic *diagnostic)
         snprintf(diagnostic->message, sizeof(diagnostic->message), "invalid UTF-8/NUL or input exceeds 2 MiB");
         return 0;
     }
-    if (size < 8 || memcmp(data, "FIR 1.0", 7) ||
-        (((const unsigned char *)data)[7] != 10 &&
-         !(((const unsigned char *)data)[7] == 13 && size > 8 && ((const unsigned char *)data)[8] == 10)))
+    if (!valid_header((const unsigned char *)data, size))
     {
         diagnostic->code = 1401;
         snprintf(diagnostic->message, sizeof(diagnostic->message), "first line must be FIR 1.0");

@@ -1,4 +1,4 @@
-# Current coverage — FIR tools 0.52
+# Current coverage — FIR tools 0.53
 
 [Русский](COVERAGE.ru.md) · [Source grammar](../compiler/src1.atg) · [Public API](../include/fir.h) · [Compiler architecture](../../../compiler/README.md)
 
@@ -27,3 +27,5 @@ This page describes executable FIR adapters, separately from the broader standal
 The current source limits are 64 KiB input, 255-byte tokens, 256 admitted value names, 128 type declarations, 1000 SSA values and shared depth 64. Limits include retired declarations where documented. Rejected source preserves existing FIR/debug output; a later host I/O copy failure is not a rollback transaction.
 
 The teaching wrapper calls/traces value(); it is not Inferno's general init ABI. The native Dis runtime/IDE also uses an explicit source-built bootstrap for ordinary service modules until our own compiler covers those languages. Runtime channel/projection libraries and raw FIR channel operations do not imply source channel/alt/spawn lowering in this adapter. ARM64 emission/emulation is separate from physical-device execution.
+
+[Typed predicates EN](TYPED_PREDICATES.md) / [RU](TYPED_PREDICATES.ru.md): direct int comparisons, strict bool.not/bool.eq, optimizer rewrites, scalar SWF and table-backed Dis examples.

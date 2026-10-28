@@ -172,7 +172,9 @@ typedef enum
     O_AS_MEMBER_SET,     /* Set a named member on a captured AS object value. */
     O_I32_AND,           /* Exact signed32 bit intersection; append-only ID. */
     O_I32_OR,            /* Exact signed32 bit union; append-only ID. */
-    O_I32_XOR            /* Exact signed32 exclusive-or; append-only ID. */
+    O_I32_XOR,           /* Exact signed32 exclusive-or; append-only ID. */
+    O_BOOL_NOT,          /* Invert one normalized bool; append-only ID. */
+    O_BOOL_EQ            /* Compare two normalized bools; append-only ID. */
 } FirOp;
 
 

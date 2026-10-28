@@ -21,6 +21,12 @@ int main(void)
         {
             return 2;
         }
+        if (!firsyn_check("FIR 1.0 // annotated header\nmodule @m\nfunc @f()->void {^entry:return}\n",
+                          strlen("FIR 1.0 // annotated header\nmodule @m\nfunc @f()->void {^entry:return}\n"),
+                          &diagnostic))
+        {
+            return 6;
+        }
         if (firsyn_check(NULL, 1, &diagnostic))
         {
             return 3;

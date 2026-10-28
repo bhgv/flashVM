@@ -153,7 +153,9 @@ static const char *const ops[] = {"const.i32",
                                   "as.member_set",
                                   "i32.and",
                                   "i32.or",
-                                  "i32.xor"};
+                                  "i32.xor",
+                                  "bool.not",
+                                  "bool.eq"};
 
 /* Map a private retained-cell type to its exact source payload type.
  * cell is a copied enum; return T_VOID for unsupported/noncell types. No owner,
@@ -520,7 +522,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_I32_XOR || (unsigned)in->type > T_KEY_CELL || in->block < 0 ||
+        if ((unsigned)in->op > O_BOOL_EQ || (unsigned)in->type > T_KEY_CELL || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -545,7 +547,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         {
             return fail(error, cap, "invalid constant payload");
         }
-        unary = in->op == O_AS_GLOBAL_SET || in->op == O_REF_LOCAL || in->op == O_REF_LOAD ||
+        unary = in->op == O_BOOL_NOT || in->op == O_AS_GLOBAL_SET || in->op == O_REF_LOCAL || in->op == O_REF_LOAD ||
                 in->op == O_BIG_LOAD || in->op == O_TABLE_LOCK ||
                 in->op == O_TABLE_UNLOCK || in->op == O_RUNE_TEXT || in->op == O_STRING_LEN || in->op == O_BOOL_LOAD ||
                 in->op == O_TABLE_COUNT || in->op == O_TABLE_HAS || in->op == O_TABLE_DELETE || in->op == O_COPY ||
@@ -553,7 +555,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN || in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN ||
                 in->op == O_VALUE_TYPE || in->op == O_TO_BIG || in->op == O_TO_INT || in->op == O_TO_TEXT ||
                 in->op == O_BIG_NEG || in->op == O_BIG_NOT;
-        binary = in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR ||
+        binary = in->op == O_BOOL_EQ || in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR ||
                  in->op == O_AS_MEMBER_SET || in->op == O_REF_STORE || in->op == O_BIG_STORE ||
                  in->op == O_STRING_LT || in->op == O_I32_SHL ||
                  in->op == O_I32_SHR || in->op == O_STRING_EQ || in->op == O_STRING_CONCAT || in->op == O_I32_DIV ||
@@ -1008,6 +1010,14 @@ int fir_verify(FirModule *m, char *error, size_t cap)
                 goto bad_type;
             }
             expected = a;
+            break;
+        case O_BOOL_NOT:
+        case O_BOOL_EQ:
+            if (a != T_BOOL || (in->op == O_BOOL_EQ && c != T_BOOL))
+            {
+                goto bad_type;
+            }
+            expected = T_BOOL;
             break;
         case O_I32_SHL:
         case O_I32_SHR:

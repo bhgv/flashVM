@@ -15,8 +15,7 @@ structured operands; const.any has explicit number/string/bool/null/undefined
 forms. Unknown operation names are syntactically legal and must be accepted or
 rejected by a later verifier. Success here never authorizes optimization or SWO.
 
-The exact first physical line remains FIR 1.0 with LF/CRLF, without BOM or a
-preceding comment. Input is UTF-8 without NUL, at most 2 MiB. Comments are // and
+The first physical line is FIR 1.0 with LF/CRLF, optionally followed by whitespace and a // line comment. Bare trailing spaces, BOM and preceding comments remain rejected. The generated Coco/R parser still reads the whole input. Input is UTF-8 without NUL, at most 2 MiB. Comments are // and
 /* ... */; string/escape spellings match the existing FIR reader. Coordinates
 are bytes. No source-expression precedence is invented: FIR uses explicit operations.
 

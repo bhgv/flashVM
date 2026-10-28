@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1663**. [Русская версия](README.ru.md).
+Development version: **0.1664**. [Русская версия](README.ru.md).
 
-Current series: [v0.1663](docs/releases/v0.1663.md): direct typed int complement, table-backed SDK tutorial and restored Inferno Rune formatters.
+Current series: [v0.1664](docs/releases/v0.1664.md): direct int comparisons, strict FIR bool operations, Dis/SWF lowering and bounded Inferno AST diagnostics.
 
 ## Browse documentation
 

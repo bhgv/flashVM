@@ -1495,13 +1495,11 @@ int source_logic_end(SourceLogic logic, int right)
 }
 
 
-/* Negate a borrowed bool with existing scalar FIR operations. The zero is a
- * compiler-owned big literal, not a parsed token or runtime owner. Return a new
- * normalized bool identity; invalid operands prevent staged output publication. */
+/* Negate a borrowed normalized bool without widening or reevaluating its producer.
+ * value is an SSA identity; return a fresh bool identity. Invalid source kinds
+ * make staged publication fail. No owner or native resource is acquired here. */
 int source_table_not(int value)
 {
-    int number;
-    int zero;
     if (failed)
     {
         return 0;
@@ -1509,21 +1507,15 @@ int source_table_not(int value)
     if (table_values[value] != T_BOOL)
     {
         reject("logical negation requires bool; use an explicit comparison");
+        return 0;
     }
-    number = source_table_convert(value, 0);
-    zero = table_value(T_I64);
-    if (!failed)
-    {
-        fprintf(destination, "    %%v%d: i64 = const.i64 0\n", zero);
-        source_debug_event("constant", zero, "", debug_scopes[scope_depth], scope_depth, location);
-    }
-    return table_operation(T_BOOL, "big.eq", number, zero);
+    return table_operation(T_BOOL, "bool.not", value, -1);
 }
 
 
 /* Materialize a source comparison with Inferno precedence and exact operand types.
  * left/right are evaluated SSA values, relation is a copied parser enum. Same-type
- * int operands widen exactly; strings admit scalar ordering, bool equality only.
+ * int operands compare directly; strings admit scalar ordering, bool equality only.
  * Inverted relations use normalized scalar negation, never extra owner reads
  * or duplicate expressions. */
 int source_table_relation(int left, int right, SourceRelation relation)
@@ -1548,10 +1540,15 @@ int source_table_relation(int left, int right, SourceRelation relation)
     {
         reject("comparison requires same-type big/int operands or bool equality");
     }
-    if (!failed && kind != T_I64)
+    if (!failed && (kind == T_I32 || kind == T_BOOL))
     {
-        left = source_table_convert(left, 0);
-        right = source_table_convert(right, 0);
+        int swap = relation == SOURCE_GREATER || relation == SOURCE_LESS_EQUAL;
+        int invert = relation == SOURCE_NOT_EQUAL || relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL;
+        int compared = table_operation(T_BOOL,
+                                       kind == T_BOOL ? "bool.eq" : equality ? "i32.eq" : "i32.lt.signed",
+                                       swap ? right : left,
+                                       swap ? left : right);
+        return invert ? source_table_not(compared) : compared;
     }
     condition = source_compare(left, right, relation);
     if (failed)

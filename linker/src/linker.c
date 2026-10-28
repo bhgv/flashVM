@@ -180,6 +180,7 @@ static int actions(const unsigned char *p, size_t n)
         {
             switch (op)
             {
+            case 0x12: /* Not emitted by verified normalized bool inversion. */
             case 0x1c:
             case 0x1d:
             case 0x4f: /* SetMember emitted by verified FIR dynamic AS stores. */
