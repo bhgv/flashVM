@@ -159,3 +159,11 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [Big source if/else / Исходные решения big](../../doc/BIG_DECISIONS.md) · [Комментированный Limbo](big-decisions.b).
 
 [Signed32 bit operations / Побитовые операции int](../../doc/INT_BITS.ru.md) — FIR 0.52, SWL 0.3.12.
+
+[int-complement.b](int-complement.b): runtime table load → explicit int narrowing → direct signed32 complement → big result 42. Every source line is commented. / Загрузка из таблицы → явное сужение в int → прямое дополнение signed32 → результат big 42. Каждая строка исходника прокомментирована.
+
+### Дополнение значения из таблицы
+
+`int-complement.b` возвращает big, выбирая профиль с типизированными таблицами. Таблица хранит -43 как big; явное преобразование Number сужает загруженное значение до int. Псевдоним Number не создаёт отдельный объект. Дополнение работает прямо над signed32: -43 xor -1 даёт 42. Обратно в big расширяется только результат функции. Загрузка из таблицы не даёт обычной свёртке констант скрыть проверяемый путь выполнения.
+
+Компиляция: `build/fir/fir1_source limbo --input fir/v1/examples/dis/int-complement.b build/complement.fir -g build/complement.json`, затем `build/fir/fir1 dis build/complement.fir build/complement.dis`. Выполните `build/runtime/disvm --jit --quantum 1 --stats --inspect-words 0 2 build/complement.dis` и повторите с `--no-jit`. Слоты результата должны содержать 42 и 1: второй подтверждает выполнение trace. В FIR должна быть i32.xor и не должно быть big.not. Повторите после `fir1 opt`. Проверка со сборкой мусора на каждом шаге должна завершиться без удержанных таблиц и снимков ключей. Этот пример с таблицей предназначен для Dis; для SWF используйте int-bits.b.

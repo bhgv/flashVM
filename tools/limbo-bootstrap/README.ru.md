@@ -89,3 +89,5 @@ IYACC_ROOT="$PWD/build/workspace/iyacc" \
 [Патч](patches/0002-use-32-bit-dtoa-limbs.patch). Настоящие компилятор и Dis
 проверяют 134 binary64-константы, включая граничные случаи, также под UBSan.
 Прямая сборка свежего iyacc-парсера теперь тоже использует общую защиту sentinel.
+
+[Rune provider integration test](tests/rune_providers.c) links the public bounded/allocated wrappers and Fmt builder against the actual selected archive. It checks zero-capacity nonmutation, Unicode scalar truncation, multi-growth cursor retention and caller-owned flush/free. / Проверка публичных Rune-функций связывается с настоящим архивом библиотеки: нулевая ёмкость, обрезка по рунам, рост буфера и сохранение владения после flush.

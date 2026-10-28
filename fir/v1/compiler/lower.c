@@ -1754,9 +1754,13 @@ int source_table_unary(int value, int op)
         }
         if (op == '~')
         {
-            int wide = source_table_convert(value, 0);
-            int complemented = table_operation(T_I64, "big.not", wide, -1);
-            return source_table_convert(complemented, 2);
+            int mask = table_value(T_I32);
+            if (!failed)
+            {
+                fprintf(destination, "    %%v%d: i32 = const.i32 -1\n", mask);
+                source_debug_event("constant", mask, "", debug_scopes[scope_depth], scope_depth, location);
+            }
+            return table_operation(T_I32, "i32.xor", value, mask);
         }
         if (op != '-')
         {

@@ -94,6 +94,23 @@ def main():
             raise RuntimeError('typed source did not use the direct signed32 primitive')
         execute(-2147483606)
 
+        # Loaded operands force exact int complement through the hosted backend without folding.
+        # Nested complement must retain signed endpoints and evaluate its checked input once.
+        for value in values:
+            for expression, expected in [('~(int t.a)', signed(~value)),
+                                         ('~~(int t.a)', value),
+                                         ('(~(int t.a)) ^ (int t.a)', -1)]:
+                source.write_text('implement M; M: module {value: fn(): big;}; value(): big {'
+                                  't := table of big {a = big ' + str(value) + '};'
+                                  'return big (' + expression + ');}')
+                call([source_cli, 'limbo', '--input', source, fir])
+                text = fir.read_text()
+                if ' = i32.xor ' not in text or ' = big.not ' in text:
+                    raise RuntimeError('typed complement retained its widening sandwich')
+                if text.count(' = table.load ') != expression.count('t.a'):
+                    raise RuntimeError('typed complement reevaluated a borrowed operand')
+                execute(expected)
+
         # A real table load prevents folding and forces the hosted Dis emitter for the new ops.
         for op in ('and', 'or', 'xor'):
             fir.write_text('''FIR 1.0
@@ -133,10 +150,10 @@ func @main() -> void {
 
         # Direct pure bits may die, but a checked producer must still throw exactly before trace.
         source.write_text('implement M; M: module {value: fn(): big;}; value(): big {'
-                          'parsed := int "bad"; unused := parsed & int 0; return big 42;}')
+                          'parsed := int "bad"; unused := ~(parsed & int 0); return big 42;}')
         call([source_cli, 'limbo', '--input', source, fir])
         call([compiler, 'opt', fir, optimized])
-        if ' = i32.and ' in optimized.read_text():
+        if ' = i32.and ' in optimized.read_text() or ' = i32.xor ' in optimized.read_text():
             raise RuntimeError('unused pure bit operation was not removed')
         for selected in (fir, optimized):
             if reference:
@@ -185,6 +202,20 @@ func @main() -> void {
         for token in (b'&=', b'^=', b'<<=', b'>>='):
             if (text.encode().index(token), len(token)) not in spans:
                 raise RuntimeError('compound bit lowering lost authored operator position')
+        # The hosted profile must also retain the exact unary token after UTF-8 source text.
+        text = '# π\nimplement M; M: module {value: fn(): big;}; value(): big {' \
+               't := table of big {x = big -43}; return big (~(int t.x));}'
+        source.write_text(text)
+        call([source_cli, 'limbo', '--input', source, fir, '-g', debug])
+        events = json.loads(debug.read_text())['events']
+        complement = re.search(r'%v(\d+): i32 = i32.xor ', fir.read_text())
+        if not complement:
+            raise RuntimeError('typed complement omitted direct xor')
+        position = text.encode().index(b'~')
+        if not any(event['kind'] == 'table-operation' and event['name'] == 'i32.xor' and
+                   event['value'] == int(complement[1]) and event['byte_offset'] == position and
+                   event['byte_length'] == 1 for event in events):
+            raise RuntimeError('typed complement lost its authored UTF-8 token span')
     print('PASS signed32 bits: endpoints, raw/opt, both Dis emitters, SWF, scope and debug spans')
 
 

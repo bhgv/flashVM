@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1662**. [Русская версия](README.ru.md).
+Development version: **0.1663**. [Русская версия](README.ru.md).
 
-Current series: [v0.1662](docs/releases/v0.1662.md): signed32 FIR primitives, Limbo bit operations → Dis/SWF and Inferno formatted-output fixes.
+Current series: [v0.1663](docs/releases/v0.1663.md): direct typed int complement, table-backed SDK tutorial and restored Inferno Rune formatters.
 
 ## Browse documentation
 

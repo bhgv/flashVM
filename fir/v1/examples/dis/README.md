@@ -159,3 +159,11 @@ without a third argument: type selection belongs to the grammar, not the filenam
 [Big source if/else / Исходные решения big](../../doc/BIG_DECISIONS.md) · [Комментированный Limbo](big-decisions.b).
 
 [Signed32 bit operations / Побитовые операции int](../../doc/INT_BITS.md) — FIR 0.52, SWL 0.3.12.
+
+[int-complement.b](int-complement.b): runtime table load → explicit int narrowing → direct signed32 complement → big result 42. Every source line is commented. / Загрузка из таблицы → явное сужение в int → прямое дополнение signed32 → результат big 42. Каждая строка исходника прокомментирована.
+
+### Table-backed complement
+
+`int-complement.b` deliberately returns big to select the typed table profile. The table stores -43 as big; the explicit Number cast narrows the loaded value to int. The alias Number adds no runtime object. Unary complement then operates directly on signed32 bits: -43 xor -1 is 42. Only the exported result widens back to big. A table load prevents ordinary constant folding from hiding the runtime path.
+
+Compile it with `build/fir/fir1_source limbo --input fir/v1/examples/dis/int-complement.b build/complement.fir -g build/complement.json`, then emit with `build/fir/fir1 dis build/complement.fir build/complement.dis`. Run both `build/runtime/disvm --jit --quantum 1 --stats --inspect-words 0 2 build/complement.dis` and the same command with `--no-jit`. The result slots must be 42 and 1; the latter records that the trace ran. Inspect FIR for i32.xor and no big.not. Repeat after `fir1 opt`. GC-at-each-step acceptance must finish without live table/key owners. This hosted-table example targets Dis; use int-bits.b for SWF.

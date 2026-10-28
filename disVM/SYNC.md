@@ -1,3 +1,13 @@
+# v0.1663 — Rune providers and direct typed int complement
+
+Current pin: **467f52d416357088597ee4fad9b8a98ca0b8c57c**, **703 Dis / 231 bootstrap files**. Incoming Rune formatter providers restore bounded and allocated public entry points, checked growth, cursor retention and caller ownership. The bootstrap links a new public-provider fixture against its actual lib9 archive; upstream lib9/libkern moving-allocation fixtures run independently.
+
+Earlier outbound corrections, including c1494cd, remain ancestors. Review and tests found no new shared defect requiring an outbound commit. Direct typed int complement and its table-backed tutorial are FlashVM-specific compiler changes and remain here. Both selected manifests retain exact upstream bytes; no table/any/projection extension is exported.
+
+[Release EN/RU](../docs/releases/v0.1663.md) · [Integer contract EN](../fir/v1/doc/INT_BITS.md) / [RU](../fir/v1/doc/INT_BITS.ru.md).
+
+## Previous checkpoints
+
 # v0.1662 — Formatted output and signed32 FIR target paths
 
 Current pin: **e72c8da2f89af849209d53d161a5b290d5a85827**, **703 Dis / 231 bootstrap files**. Incoming Bio/descriptor formatter fixes validate active output geometry before dispatch, retain compacted suffixes on failure and check native long write results before narrowing. The real-dofmt 153,618-case fixture is imported and registered in the source bootstrap.

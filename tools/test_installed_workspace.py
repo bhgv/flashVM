@@ -384,7 +384,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # New scalar bits and checked shifts must survive relocation and C99 relinking.
-    for example in ("int-bits.b", "int-shifts.b"):
+    for example in ("int-bits.b", "int-shifts.b", "int-complement.b"):
         bit_source = component / "examples/dis" / example
         optimized = work / "bits-opt.fir"
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", bit_source, fir, "--module", "dis_example"], work, environment)

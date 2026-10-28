@@ -297,3 +297,10 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_allocated_format PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};ALLOC_FMT_LIBRARIES=lib9;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Resolve public Rune wrappers against the actual archive, not text-included test bodies.
+if(BUILD_TESTING)
+  add_executable(limbo_bootstrap_rune_providers tests/rune_providers.c)
+  target_link_libraries(limbo_bootstrap_rune_providers PRIVATE limbo_bootstrap_lib9)
+  add_test(NAME limbo_bootstrap_rune_providers COMMAND limbo_bootstrap_rune_providers)
+endif()

@@ -35,3 +35,11 @@ build/swf-linker/swl link build/bits.swf build/bits.swo
 Оба Dis-режима возвращают DATA 0 42 и DATA 8 1; второе слово подтверждает выполнение trace. Проверьте также оптимизированный вариант. SWF выдаёт 42 через trace в соответствующем хосте; открытое окно само по себе не проверяет результат. Для int-shifts.b повторите Dis-команды с отдельными именами файлов: результат тоже 42. Каждая непустая строка примеров прокомментирована. Установленный SDK компилирует оба примера, перелинковывает C99-клиент и исполняет исходный/оптимизированный Dis в обоих режимах.
 
 Проверяются 192 сочетания границ/знаков/операторов, приоритеты, псевдонимы, составные операции, PC ветвлений, оба бэкенда Dis, загруженные табличные операнды, ошибки и пропуск сдвигов, границы профилей, позиции UTF-8 и сохранение выходных файлов. C API проверяет ID, эффекты и девять поддельных сигнатур. Счётчики подтверждают фактическую диспетчеризацию; физический ARM64 проверяется отдельно.
+
+## Loaded int complement / Дополнение загруженного int
+
+[Line-commented example / Пример с комментарием каждой строки](../examples/dis/int-complement.b).
+
+Typed int `~x` emits an i32 constant -1 and one pure i32.xor. It no longer widens the operand to big, complements big and narrows again. The operand is evaluated once; checked conversion failures remain observable even if the complement result is unused. Big complement is unchanged. Compile this table-backed example through the Dis commands above; raw and optimized execution return 42. Hosted tables are outside SWF coverage.
+
+Типизированное `~x` для int генерирует константу i32 -1 и одну чистую операцию i32.xor. Расширение в big, дополнение big и обратное сужение больше не нужны. Операнд вычисляется один раз. Ошибка проверяемого преобразования сохраняется даже при неиспользуемом результате. Дополнение big не меняется. Пример с таблицей выполняется через Dis: исходный и оптимизированный код возвращают 42. Таблицы этого профиля не поддерживаются SWF-бэкендом.

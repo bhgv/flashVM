@@ -99,3 +99,5 @@ binary64 constants with independent bit patterns, including overflow, subnormal,
 maximum finite and signed zero, under UBSan as well as the normal runtime.
 The shared Python [parser preparation](prepare_parser.py) also gives freshly
 regenerated iyacc parsers their real sentinel slot in direct builds.
+
+[Rune provider integration test](tests/rune_providers.c) links the public bounded/allocated wrappers and Fmt builder against the actual selected archive. It checks zero-capacity nonmutation, Unicode scalar truncation, multi-growth cursor retention and caller-owned flush/free. / Проверка публичных Rune-функций связывается с настоящим архивом библиотеки: нулевая ёмкость, обрезка по рунам, рост буфера и сохранение владения после flush.
