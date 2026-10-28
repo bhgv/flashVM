@@ -1,9 +1,12 @@
 # Experimental runnable Dis and IDE services (NC64)
 
+[Captured Sys calls and result ownership](SYS_CAPTURE.md) / [RU](SYS_CAPTURE.ru.md):
+fixed native frames, packed result spans and callback-safe operands.
+
 Graphical editor rasterization now runs on a detached background native worker.
 [Ownership and async behavior](../../flashVM/doc/RENDER_ASYNC.md) / [RU](../../flashVM/doc/RENDER_ASYNC.ru.md).
 
-Runtime **0.31.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
+Runtime **0.32.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
 
 Use `python3 build_menu.py`, select `all` or `disvm-runtime`, and accept the
 defaults. After building, choose **4** for the Dis channel example or **5** for

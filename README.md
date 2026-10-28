@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1655**. [Русская версия](README.ru.md).
+Development version: **0.1656**. [Русская версия](README.ru.md).
 
-Current series: [v0.1655](docs/releases/v0.1655.md): background editor rasterization with bounded latest-frame ownership; native C symbol collision checks.
+Current series: [v0.1656](docs/releases/v0.1656.md): bidirectional Inferno synchronization, Sys.pipe element preflight and captured Sys host frames/results.
 
 ## Browse documentation
 

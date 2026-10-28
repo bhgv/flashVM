@@ -349,6 +349,8 @@ EOF
             source="$ROOT/disVM"
             mkdir -p "$destination"
             copy_tree "$ROOT/disVM/examples/native-module" "$destination/examples/native-module"
+            copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.md" "$destination/SYS_CAPTURE.md"
+            copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.ru.md" "$destination/SYS_CAPTURE.ru.md"
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.md" "$destination/NATIVE_MODULES.md"
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.ru.md" "$destination/NATIVE_MODULES.ru.md"
             copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/docs/limbo/NATIVE_C.md"

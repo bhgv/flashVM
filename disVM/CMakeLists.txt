@@ -146,6 +146,12 @@ if(BUILD_TESTING)
     raise-native
     string-slots
     sys-print
+    sys-print-io
+    sys-status-capture
+    sys-query-capture
+    sys-stream-directory-capture
+    sys-multi-capture
+    sys-pipe-types
     sys-print-spans
     string-owner-preflight
     string-codec-owners
@@ -204,6 +210,10 @@ if(BUILD_TESTING)
   # Guard new byte-addressed Sys tuples and native argument bounds under UBSan.
   set_tests_properties(disvm_sys-status-slots disvm_sys-stat-slots PROPERTIES
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  set_tests_properties(disvm_sys-print-io disvm_sys-status-capture disvm_sys-query-capture
+    disvm_sys-stream-directory-capture disvm_sys-multi-capture disvm_sys-pipe-types PROPERTIES
+    TIMEOUT 300
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;FD_OWNER_FRAME=0;FD_OWNER_ARRAY_SHIFT=0")
   add_test(NAME disvm_fixed_zero_div COMMAND "${Python3_EXECUTABLE}"
     "${u}/limbo/tests/fixed-zero-div.py")
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120

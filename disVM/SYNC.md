@@ -1,3 +1,22 @@
+# v0.1656 — Bidirectional Sys capture and pipe-layout synchronization
+
+Current pin: **9ee638bbfaff421164e2e7fb1d68e01089720c39**, **677 selected files**.
+Six incoming Sys commits since 9a87d74 are imported with their tests. Our confirmed
+pipe element-layout correction is published back to experiment as
+[9ee638bb](https://github.com/bhgv/Inferno-OS-bhgv/commit/9ee638bbfaff421164e2e7fb1d68e01089720c39).
+It prevents pointer-sized owner access in a non-pointer array, in emu and os.
+No Flash any/table/projection extensions were exported. No incoming JIT backend
+changes occur in this range; selected existing native/compiler checks pass.
+
+The independent NC64 host separately captures twelve Sys builtin boundaries and
+validates packed complete results/old owners. Runtime 216/216, final focused 26/26,
+10 upstream Sys drivers and 5 JIT/compiler drivers pass; guard and new pipe
+harnesses pass ASan/UBSan (unsupported LSan process inspection disabled).
+[EN contract](runtime/SYS_CAPTURE.md) / [RU](runtime/SYS_CAPTURE.ru.md) ·
+[Release](../docs/releases/v0.1656.md).
+
+## Previous checkpoints
+
 # v0.1653 — Sys frames/owners and mapped capture refresh
 
 Current pin / Текущий снимок: **9a87d74eb4f47cf7b8ea35c804f86c7c20e40d36**.

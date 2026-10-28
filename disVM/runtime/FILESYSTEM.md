@@ -1,5 +1,8 @@
 # Native files and directories — v0.1650
 
+[Captured frames, packed tuples and old-owner validation](SYS_CAPTURE.md) now apply
+to the native metadata adapters; OS filesystem behavior stays in ports.
+
 [Русский](FILESYSTEM.ru.md) · [Runtime](README.md) · [Runnable example](../examples/filesystem/README.md)
 
 `Sys.stat`, `Sys.fstat` and `Sys.dirread` now use the C89

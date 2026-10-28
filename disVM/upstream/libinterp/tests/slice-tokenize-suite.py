@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 CORE = [
+    'libinterp/tests/sys-pipe-types.py',
     'libinterp/tests/raise-native.py',
     'libinterp/tests/direct-target-native.py',
     'libinterp/tests/pc-target-boundary.py',
@@ -135,6 +136,12 @@ CORE = [
     'libinterp/tests/sys-print.py',
     'libinterp/tests/sys-print-spans.py',
     'libinterp/tests/sys-print-public.py',
+    'libinterp/tests/sys-print-io.py',
+    'libinterp/tests/sys-io.py',
+    'libinterp/tests/sys-status-capture.py',
+    'libinterp/tests/sys-query-capture.py',
+    'libinterp/tests/sys-multi-capture.py',
+    'libinterp/tests/sys-stream-directory-capture.py',
     'libinterp/tests/sys-utf.py',
     'libinterp/tests/sys-utf-spans.py',
     'libinterp/tests/heap-clones.py',

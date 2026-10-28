@@ -8,6 +8,7 @@
 #include "interp.h"
 #include "runt.h"
 #include "kernel.h"
+#include "raise.h"
 
 /*
  * here because Sys_FileIO is not public
@@ -164,15 +165,16 @@ connectionresultslot(void *result)
 	return (uchar*)result + ((uchar*)&frame.ret->t1-layout.bytes);
 }
 
-/* Clear all connection fields together, including an earlier directory string. */
+
+/* Clear the original connection before releasing its captured previous owners. */
 static void
-clearconnection(void *slot)
+clearconnection(void *slot, const Sys_Connection *previous)
 {
 	Sys_Connection old, empty;
 	char saved[ERRMAX];
 
 	memmove(saved, up->env->errstr, sizeof(saved));
-	memmove(&old, slot, sizeof(old));
+	old = *previous;
 	empty.dfd = empty.cfd = H;
 	empty.dir = H;
 	memmove(slot, &empty, sizeof(empty));
@@ -182,13 +184,15 @@ clearconnection(void *slot)
 	memmove(up->env->errstr, saved, sizeof(saved));
 }
 
-/* Build a complete connection before replacing any of the previous managed owners. */
+
+/* Build a complete connection before replacing the captured previous result. */
 static void
-makeconnection(int datafd, int controlfd, char *directory, void *slot)
+makeconnection(int datafd, int controlfd, char *directory, void *slot, const Sys_Connection *previous)
 {
 	volatile FDResult result;
 	Sys_Connection old, replacement;
 
+	old = *previous;
 	result.raw[0] = datafd;
 	result.raw[1] = controlfd;
 	result.handle[0] = result.handle[1] = H;
@@ -201,7 +205,6 @@ makeconnection(int datafd, int controlfd, char *directory, void *slot)
 	result.handle[1] = takefd(&result.raw[1]);
 	result.directory = c2string(directory, strlen(directory));
 	poperror();
-	memmove(&old, slot, sizeof(old));
 	replacement.dfd = result.handle[0];
 	replacement.cfd = result.handle[1];
 	replacement.dir = result.directory;
@@ -235,31 +238,168 @@ syserr(char *s, char *es, Prog *p)
 	return s + strlen(s);
 }
 
-/* Publish a complete scalar result without assuming VM return-slot alignment. */
+
+/* Reject high VM argument bits before a native int parameter can silently wrap. */
+static int
+sysnativeint(WORD value)
+{
+	return value >= -0x7fffffff-1 && value <= 0x7fffffff;
+}
+
+
+/* Capture a packed FD number and reject narrowing before releasing the VM. */
+static int
+sysiofd(Sys_FD *handle, int *descriptor)
+{
+	WORD number;
+
+	if(handle == (Sys_FD*)H)
+		number = -1;
+	else {
+		if(handle == nil)
+			error(exNilref);
+		if((uintptr)handle > (uintptr)-1-(O(Sys_FD, fd)+sizeof(number)))
+			error(exBounds);
+		memmove(&number, (uchar*)handle+O(Sys_FD, fd), sizeof(number));
+	}
+	if(!sysnativeint(number)) {
+		seterror(Ebadarg);
+		return 0;
+	}
+	*descriptor = (int)number;
+	return 1;
+}
+
+
+/* Copy fixed builtin operands and validate their complete original result cell. */
+static void
+sysstatusframe(void *fp, void *copy, uintptr size, uintptr retoffset, uintptr resultbytes)
+{
+	void *ret;
+
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-size)
+		error(exBounds);
+	memmove(copy, fp, size);
+	memmove(&ret, (uchar*)copy+retoffset, sizeof(ret));
+	if(ret == nil || ret == H)
+		error(exNilref);
+	if((uintptr)ret > (uintptr)-1-resultbytes)
+		error(exBounds);
+}
+
+
+/* Validate an old result owner before callbacks can make its destruction unsafe. */
+static void*
+sysresultowner(void *slot)
+{
+	void *old;
+	uintptr address;
+	ulong references;
+
+	memmove(&old, slot, sizeof(old));
+	if(old == nil)
+		error(exNilref);
+	if(old != H) {
+		address = (uintptr)old;
+		if(address <= sizeof(Heap) || (address-sizeof(Heap))%sizeof(void*) != 0)
+			error(exHeap);
+		memmove(&references, (uchar*)old-sizeof(Heap)+O(Heap, ref), sizeof(references));
+		if(references == 0)
+			error(exHeap);
+	}
+	return old;
+}
+
+
+/* Validate captured multi-owner results before any native call or partial construction. */
+static void
+sysfdresultowners(void *slots, int count)
+{
+	void *owners[3];
+	ulong references;
+	int i, j, copies;
+
+	if(count < 1 || count > 3)
+		error(exBounds);
+	for(i = 0; i < count; i++)
+		owners[i] = sysresultowner((uchar*)slots+i*sizeof(void*));
+	for(i = 0; i < count; i++) {
+		if(owners[i] == H)
+			continue;
+		copies = 0;
+		for(j = 0; j < count; j++)
+			if(owners[j] == owners[i])
+				copies++;
+		memmove(&references, (uchar*)owners[i]-sizeof(Heap)+O(Heap, ref), sizeof(references));
+		if(references < copies)
+			error(exHeap);
+	}
+}
+
+
+/* Check every directory owner, including the references consumed by duplicate slots. */
+static void
+sysdirowners(void *slot)
+{
+	void *owners[4];
+	uintptr offsets[4];
+	ulong references;
+	int i, j, copies;
+
+	offsets[0] = O(Sys_Dir, name);
+	offsets[1] = O(Sys_Dir, uid);
+	offsets[2] = O(Sys_Dir, gid);
+	offsets[3] = O(Sys_Dir, muid);
+	for(i = 0; i < 4; i++)
+		owners[i] = sysresultowner((uchar*)slot+offsets[i]);
+	for(i = 0; i < 4; i++) {
+		if(owners[i] == H)
+			continue;
+		copies = 0;
+		for(j = 0; j < 4; j++)
+			if(owners[j] == owners[i])
+				copies++;
+		memmove(&references, (uchar*)owners[i]-sizeof(Heap)+O(Heap, ref), sizeof(references));
+		if(references < copies)
+			error(exHeap);
+	}
+}
+
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_millisec(void *fp)
 {
-	F_Sys_millisec *f;
+	F_Sys_millisec local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_millisec, ret), sizeof(*local.ret));
+	f = &local;
 	result = TK2MS(MACHP(0)->ticks);
 	memmove(f->ret, &result, sizeof(result));
 }
 
-/* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
+
+/* Snapshot creation operands and the original owner slot before finalization callbacks. */
 void
 Sys_open(void *fp)
 {
 	int fd;
-	F_Sys_open *f;
+	F_Sys_open local, *f;
 	Sys_FD *old, *result;
 
-	f = fp;
-	memmove(&old, f->ret, sizeof(old));
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_open, ret), sizeof(*local.ret));
+	f = &local;
+	old = sysresultowner(f->ret);
 	result = H;
 	memmove(f->ret, &result, sizeof(result));
 	destroy(old);
+	if(!sysnativeint(f->mode)) {
+		seterror(Ebadarg);
+		return;
+	}
 	release();
 	fd = kopen(string2c(f->s), f->mode);
 	acquire();
@@ -270,25 +410,43 @@ Sys_open(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
-/* Replace both pipe ends only after both descriptor owners have been constructed. */
+
+/* Capture packed pipe operands and both old owners before constructing replacements. */
 void
 Sys_pipe(void *fp)
 {
-	Array *a;
+	Array *a, view;
+	Type element;
 	int fd[2], status;
 	WORD outcome;
 	uchar *slots;
 	Sys_FD *old[2], *next[2];
-	F_Sys_pipe *f;
+	F_Sys_pipe local, *f;
 	volatile FDResult result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_pipe, ret), sizeof(*local.ret));
+	f = &local;
 	outcome = -1;
-	memmove(f->ret, &outcome, sizeof(outcome));
 	a = f->fds;
-	if(a == H || a == nil || a->len < 2 || a->data == nil || a->data == H ||
-	   (uintptr)a->data > (uintptr)-1-2*sizeof(Sys_FD*))
-		return;
+	if(a == H || a == nil)
+		goto Empty;
+	if((uintptr)a < sizeof(void*) || (uintptr)a > (uintptr)-1-sizeof(view))
+		error(exBounds);
+	memmove(&view, a, sizeof(view));
+	if(view.len < 2 || view.data == nil || view.data == H ||
+	   (uintptr)view.data > (uintptr)-1-2*sizeof(Sys_FD*))
+		goto Empty;
+	/* [GC:] A byte or scalar array cannot own two pointer-sized replacement slots. */
+	if(view.t == nil || view.t == (Type*)H ||
+	   (uintptr)view.t < sizeof(void*) || (uintptr)view.t > (uintptr)-1-sizeof(element))
+		goto Empty;
+	memmove(&element, view.t, sizeof(element));
+	if(element.size != sizeof(Sys_FD*) || element.np != 1 || element.map[0] != 0x80)
+		goto Empty;
+	slots = view.data;
+	memmove(old, slots, sizeof(old));
+	sysfdresultowners(old, 2);
+	memmove(f->ret, &outcome, sizeof(outcome));
 	release();
 	status = kpipe(fd);
 	acquire();
@@ -305,36 +463,30 @@ Sys_pipe(void *fp)
 	result.handle[0] = takefd(&result.raw[0]);
 	result.handle[1] = takefd(&result.raw[1]);
 	poperror();
-	slots = a->data;
-	memmove(old, slots, sizeof(old));
 	next[0] = result.handle[0];
 	next[1] = result.handle[1];
 	memmove(slots, next, sizeof(next));
 	destroy(old[0]);
 	destroy(old[1]);
 	outcome = 0;
+Empty:
 	memmove(f->ret, &outcome, sizeof(outcome));
 }
 
-/* Reject high VM argument bits before a native int parameter can silently wrap. */
-static int
-sysnativeint(WORD value)
-{
-	return value >= -0x7fffffff-1 && value <= 0x7fffffff;
-}
 
-/* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
+/* Snapshot creation operands and the original owner slot before finalization callbacks. */
 void
 Sys_fildes(void *fp)
 {
-	F_Sys_fildes *f;
+	F_Sys_fildes local, *f;
 	Sys_FD *old, *result;
 	WORD source;
 	int fd;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_fildes, ret), sizeof(*local.ret));
+	f = &local;
 	source = f->fd;
-	memmove(&old, f->ret, sizeof(old));
+	old = sysresultowner(f->ret);
 	result = H;
 	memmove(f->ret, &result, sizeof(result));
 	destroy(old);
@@ -351,14 +503,16 @@ Sys_fildes(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_dup(void *fp)
 {
-	F_Sys_dup *f;
+	F_Sys_dup local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_dup, ret), sizeof(*local.ret));
+	f = &local;
 	if(!sysnativeint(f->old) || !sysnativeint(f->new)){
 		seterror(Ebadarg);
 		result = -1;
@@ -371,19 +525,25 @@ Sys_dup(void *fp)
 	acquire();
 }
 
-/* Clear an unaligned owner slot before finalization and publish only a constructed FD. */
+
+/* Snapshot creation operands and the original owner slot before finalization callbacks. */
 void
 Sys_create(void *fp)
 {
 	int fd;
-	F_Sys_create *f;
+	F_Sys_create local, *f;
 	Sys_FD *old, *result;
 
-	f = fp;
-	memmove(&old, f->ret, sizeof(old));
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_create, ret), sizeof(*local.ret));
+	f = &local;
+	old = sysresultowner(f->ret);
 	result = H;
 	memmove(f->ret, &result, sizeof(result));
 	destroy(old);
+	if(!sysnativeint(f->mode)) {
+		seterror(Ebadarg);
+		return;
+	}
 	release();
 	fd = kcreate(string2c(f->s), f->mode, f->perm);
 	acquire();
@@ -394,120 +554,163 @@ Sys_create(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_remove(void *fp)
 {
-	F_Sys_remove *f;
+	F_Sys_remove local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_remove, ret), sizeof(*local.ret));
+	f = &local;
 	release();
 	result = kremove(string2c(f->s));
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_seek(void *fp)
 {
-	F_Sys_seek *f;
+	F_Sys_seek local, *f;
 	LONG result;
+	int fd;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_seek, ret), sizeof(*local.ret));
+	f = &local;
 	if(!sysnativeint(f->start)){
 		seterror(Ebadarg);
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
+	if(!sysiofd(f->fd, &fd)) {
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	result = kseek(fdchk(f->fd), f->off, f->start);
+	result = kseek(fd, f->off, f->start);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_unmount(void *fp)
 {
-	F_Sys_unmount *f;
+	F_Sys_unmount local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_unmount, ret), sizeof(*local.ret));
+	f = &local;
 	release();
 	result = kunmount(string2c(f->s1), string2c(f->s2));
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Clamp full VM counts before narrowing and before releasing the interpreter. */
+
+/* Capture a borrowed byte-array view without typed reads from packed headers. */
 static int
-sysiocount(Array *a, WORD count)
+sysiocount(Array *a, WORD count, uchar **data)
 {
-	if(a == nil || D2H(a)->t != &Tarray || a->t != &Tbyte ||
-	   a->len < 0 || (uvlong)a->len > 0x7fffffff || (a->len != 0 && a->data == nil)){
-		seterror(Ebadarg);
-		return -1;
-	}
-	if(count > a->len)
-		count = a->len;
+	Heap owner;
+	Array view;
+	uintptr address;
+
+	address = (uintptr)a;
+	if(a == nil || address <= sizeof(Heap) ||
+	   address > (uintptr)-1-sizeof(view))
+		goto Invalid;
+	memmove(&owner, (uchar*)a-sizeof(Heap), sizeof(owner));
+	if(owner.t != &Tarray)
+		goto Invalid;
+	memmove(&view, a, sizeof(view));
+	if(view.t != &Tbyte || view.len < 0 ||
+	   (uvlong)view.len > 0x7fffffff ||
+	   (view.len != 0 && (view.data == nil || view.data == H ||
+	   (uintptr)view.data > (uintptr)-1-(uintptr)view.len)))
+		goto Invalid;
+	if(count > view.len)
+		count = view.len;
+	*data = view.data;
 	return (int)count;
+
+Invalid:
+	seterror(Ebadarg);
+	return -1;
 }
 
-/* Validate native I/O spans and copy results without assuming VM slot alignment. */
+
+/* Validate complete frame and result spans before touching native I/O operands. */
+static void
+sysioframe(void *fp, void *copy, uintptr size, uintptr retoffset)
+{
+	sysstatusframe(fp, copy, size, retoffset, sizeof(WORD));
+}
+
+
+/* Snapshot I/O operands before callbacks and publish to the original result cell. */
 void
 Sys_read(void *fp)
 {
-	int n;
-	F_Sys_read *f;
+	F_Sys_read local, *f;
+	uchar *data;
+	int fd, n;
 	WORD result;
 
-	f = fp;
+	sysioframe(fp, &local, sizeof(local), O(F_Sys_read, ret));
+	f = &local;
 	if(f->buf == (Array*)H || f->n < 0) {
 		result = 0;
 		memmove(f->ret, &result, sizeof(result));
-		return;		
+		return;
 	}
-	n = sysiocount(f->buf, f->n);
-	if(n < 0){
+	n = sysiocount(f->buf, f->n, &data);
+	if(n < 0 || !sysiofd(f->fd, &fd)) {
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	result = kread(fdchk(f->fd), f->buf->data, n);
+	result = kread(fd, data, n);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Validate native I/O spans and copy results without assuming VM slot alignment. */
+
+/* Snapshot I/O operands before callbacks and publish to the original result cell. */
 void
 Sys_readn(void *fp)
 {
-	int fd, m, n, t;
-	F_Sys_readn *f;
+	F_Sys_readn local, *f;
+	uchar *data;
+	int fd, n, m, t;
 	WORD result;
 
-	f = fp;
+	sysioframe(fp, &local, sizeof(local), O(F_Sys_readn, ret));
+	f = &local;
 	if(f->buf == (Array*)H || f->n < 0) {
 		result = 0;
 		memmove(f->ret, &result, sizeof(result));
-		return;		
+		return;
 	}
-	n = sysiocount(f->buf, f->n);
-	if(n < 0){
+	n = sysiocount(f->buf, f->n, &data);
+	if(n < 0 || !sysiofd(f->fd, &fd)) {
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
-	fd = fdchk(f->fd);
 
 	release();
 	for(t = 0; t < n; t += m){
-		m = kread(fd, (char*)f->buf->data+t, n-t);
+		m = kread(fd, data+t, n-t);
 		if(m <= 0){
 			if(t == 0)
 				t = m;
@@ -519,97 +722,108 @@ Sys_readn(void *fp)
 	acquire();
 }
 
-/* Validate native I/O spans and copy results without assuming VM slot alignment. */
+
+/* Snapshot I/O operands before callbacks and publish to the original result cell. */
 void
 Sys_pread(void *fp)
 {
-	int n;
-	F_Sys_pread *f;
+	F_Sys_pread local, *f;
+	uchar *data;
+	int fd, n;
 	WORD result;
 
-	f = fp;
+	sysioframe(fp, &local, sizeof(local), O(F_Sys_pread, ret));
+	f = &local;
 	if(f->buf == (Array*)H || f->n < 0) {
 		result = 0;
 		memmove(f->ret, &result, sizeof(result));
-		return;		
+		return;
 	}
-	n = sysiocount(f->buf, f->n);
-	if(n < 0){
+	n = sysiocount(f->buf, f->n, &data);
+	if(n < 0 || !sysiofd(f->fd, &fd)) {
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	result = kpread(fdchk(f->fd), f->buf->data, n, f->off);
+	result = kpread(fd, data, n, f->off);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_chdir(void *fp)
 {
-	F_Sys_chdir *f;
+	F_Sys_chdir local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_chdir, ret), sizeof(*local.ret));
+	f = &local;
 	release();
 	result = kchdir(string2c(f->path));
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Validate native I/O spans and copy results without assuming VM slot alignment. */
+
+/* Snapshot I/O operands before callbacks and publish to the original result cell. */
 void
 Sys_write(void *fp)
 {
-	int n;
-	F_Sys_write *f;
+	F_Sys_write local, *f;
+	uchar *data;
+	int fd, n;
 	WORD result;
 
-	f = fp;
+	sysioframe(fp, &local, sizeof(local), O(F_Sys_write, ret));
+	f = &local;
 	if(f->buf == (Array*)H || f->n < 0) {
 		result = 0;
 		memmove(f->ret, &result, sizeof(result));
-		return;		
+		return;
 	}
-	n = sysiocount(f->buf, f->n);
-	if(n < 0){
+	n = sysiocount(f->buf, f->n, &data);
+	if(n < 0 || !sysiofd(f->fd, &fd)) {
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	result = kwrite(fdchk(f->fd), f->buf->data, n);
+	result = kwrite(fd, data, n);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Validate native I/O spans and copy results without assuming VM slot alignment. */
+
+/* Snapshot I/O operands before callbacks and publish to the original result cell. */
 void
 Sys_pwrite(void *fp)
 {
-	int n;
-	F_Sys_pwrite *f;
+	F_Sys_pwrite local, *f;
+	uchar *data;
+	int fd, n;
 	WORD result;
 
-	f = fp;
+	sysioframe(fp, &local, sizeof(local), O(F_Sys_pwrite, ret));
+	f = &local;
 	if(f->buf == (Array*)H || f->n < 0) {
 		result = 0;
 		memmove(f->ret, &result, sizeof(result));
-		return;		
+		return;
 	}
-	n = sysiocount(f->buf, f->n);
-	if(n < 0){
+	n = sysiocount(f->buf, f->n, &data);
+	if(n < 0 || !sysiofd(f->fd, &fd)) {
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
 
 	release();
-	result = kpwrite(fdchk(f->fd), f->buf->data, n, f->off);
+	result = kpwrite(fd, data, n, f->off);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
@@ -686,23 +900,33 @@ packdir(void *slot)
 	return d;
 }
 
-/* Keep partial directory ownership valid while publishing unaligned status and fields. */
+
+/* Capture query operands and validate old owners before native or allocation callbacks. */
 void
 Sys_fstat(void *fp)
 {
 	Dir *d;
-	F_Sys_fstat *f;
+	F_Sys_fstat local, *f;
 	F_Sys_fstat layout;
-	union { uvlong align; uchar bytes[sizeof(*f->ret)]; } scratch;
+	union {
+		uvlong align; // Align only the scratch layout used to compute tuple offsets.
+		uchar bytes[sizeof(*f->ret)]; // Preserve the generated tuple's complete extent.
+	} scratch;
 	uchar *recordslot;
 	WORD status;
 	int fd;
 
-	f = fp;
-	fd = fdchk(f->fd);
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_fstat, ret), sizeof(*local.ret));
+	f = &local;
 	/* Generated return tuples can contain explicit padding beyond native alignment. */
 	layout.ret = (void*)scratch.bytes;
 	recordslot = (uchar*)f->ret+((uchar*)&layout.ret->t1-scratch.bytes);
+	if(!sysiofd(f->fd, &fd)) {
+		status = -1;
+		memmove(f->ret, &status, sizeof(status));
+		return;
+	}
+	sysdirowners(recordslot);
 	status = -1;
 	memmove(f->ret, &status, sizeof(status));
 	release();
@@ -719,23 +943,29 @@ Sys_fstat(void *fp)
 	free(d);
 }
 
-/* Keep partial directory ownership valid while publishing unaligned status and fields. */
+
+/* Capture query operands and validate old owners before native or allocation callbacks. */
 void
 Sys_stat(void *fp)
 {
 	Dir *d;
-	F_Sys_stat *f;
+	F_Sys_stat local, *f;
 	F_Sys_stat layout;
-	union { uvlong align; uchar bytes[sizeof(*f->ret)]; } scratch;
+	union {
+		uvlong align; // Align only the scratch layout used to compute tuple offsets.
+		uchar bytes[sizeof(*f->ret)]; // Preserve the generated tuple's complete extent.
+	} scratch;
 	uchar *recordslot;
 	WORD status;
 	String *path;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_stat, ret), sizeof(*local.ret));
+	f = &local;
 	path = f->s;
 	/* Generated return tuples can contain explicit padding beyond native alignment. */
 	layout.ret = (void*)scratch.bytes;
 	recordslot = (uchar*)f->ret+((uchar*)&layout.ret->t1-scratch.bytes);
+	sysdirowners(recordslot);
 	status = -1;
 	memmove(f->ret, &status, sizeof(status));
 	release();
@@ -752,21 +982,25 @@ Sys_stat(void *fp)
 	free(d);
 }
 
-/* Clear the string owner before finalization and retain the native path until conversion ends. */
+
+/* Capture query operands and validate old owners before native or allocation callbacks. */
 void
 Sys_fd2path(void *fp)
 {
-	F_Sys_fd2path *f;
+	F_Sys_fd2path local, *f;
 	char *s;
 	String *old, *empty;
-	int fd;
+	int fd, valid;
 
-	f = fp;
-	fd = fdchk(f->fd);
-	memmove(&old, f->ret, sizeof(old));
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_fd2path, ret), sizeof(*local.ret));
+	f = &local;
+	valid = sysiofd(f->fd, &fd);
+	old = sysresultowner(f->ret);
 	empty = H;
 	memmove(f->ret, &empty, sizeof(empty));
 	destroy(old);
+	if(!valid)
+		return;
 	release();
 	s = kfd2path(fd);
 	acquire();
@@ -777,34 +1011,44 @@ Sys_fd2path(void *fp)
 	free(s);
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_mount(void *fp)
 {
-	F_Sys_mount *f;
+	F_Sys_mount local, *f;
 	WORD result;
+	int fd, afd;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_mount, ret), sizeof(*local.ret));
+	f = &local;
 	if(!sysnativeint(f->flags)){
 		seterror(Ebadarg);
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
+	if(!sysiofd(f->fd, &fd) || !sysiofd(f->afd, &afd)) {
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	result = kmount(fdchk(f->fd), fdchk(f->afd), string2c(f->on), f->flags, string2c(f->spec));
+	result = kmount(fd, afd, string2c(f->on), f->flags, string2c(f->spec));
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_bind(void *fp)
 {
-	F_Sys_bind *f;
+	F_Sys_bind local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_bind, ret), sizeof(*local.ret));
+	f = &local;
 	if(!sysnativeint(f->flags)){
 		seterror(Ebadarg);
 		result = -1;
@@ -817,15 +1061,17 @@ Sys_bind(void *fp)
 	acquire();
 }
 
-/* Publish a complete scalar result without assuming VM return-slot alignment. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_wstat(void *fp)
 {
 	Dir *d;
-	F_Sys_wstat *f;
+	F_Sys_wstat local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_wstat, ret), sizeof(*local.ret));
+	f = &local;
 	d = packdir(&f->d);
 	release();
 	result = kdirwstat(string2c(f->s), d);
@@ -834,24 +1080,33 @@ Sys_wstat(void *fp)
 	free(d);
 }
 
-/* Publish a complete scalar result without assuming VM return-slot alignment. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_fwstat(void *fp)
 {
 	Dir *d;
-	F_Sys_fwstat *f;
+	F_Sys_fwstat local, *f;
 	WORD result;
+	int fd;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_fwstat, ret), sizeof(*local.ret));
+	f = &local;
+	if(!sysiofd(f->fd, &fd)) {
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	d = packdir(&f->d);
 	release();
-	result = kdirfwstat(fdchk(f->fd), d);
+	result = kdirfwstat(fd, d);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 	free(d);
 }
 
-/* Stage the scalar status before publishing to an unaligned VM result slot. */
+
+/* Capture the original format/result before releasing the VM for output. */
 void
 Sys_print(void *fp)
 {
@@ -859,75 +1114,139 @@ Sys_print(void *fp)
 	Prog *p;
 	Chan *c;
 	char buf[1024], *b = buf;
-	F_Sys_print *f;
+	String *format;
+	void *ret, *args;
 	WORD result;
 
-	f = fp;
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-O(F_Sys_print, vargs))
+		error(exBounds);
+	memmove(&ret, (uchar*)fp+O(F_Sys_print, ret), sizeof(ret));
+	memmove(&format, (uchar*)fp+O(F_Sys_print, s), sizeof(format));
+	args = (uchar*)fp+O(F_Sys_print, vargs);
+	if(ret == nil || ret == H)
+		error(exNilref);
+	if((uintptr)ret > (uintptr)-1-sizeof(result))
+		error(exBounds);
 	c = up->env->fgrp->fd[1];
 	if(c == nil){
 		result = -1;
-		memmove(f->ret, &result, sizeof(result));
+		memmove(ret, &result, sizeof(result));
 		return;
 	}
 	p = currun();
 
 	release();
-	n = xprint(p, f, &f->vargs, f->s, buf, sizeof(buf));
+	n = xprint(p, fp, args, format, buf, sizeof(buf));
 	if (n >= sizeof(buf)-UTFmax-2)
-		n = bigxprint(p, f, &f->vargs, f->s, &b, sizeof(buf));
+		n = bigxprint(p, fp, args, format, &b, sizeof(buf));
 	result = kwrite(1, b, n);
-	memmove(f->ret, &result, sizeof(result));
+	memmove(ret, &result, sizeof(result));
 	if (b != buf)
 		free(b);
 	acquire();
 }
 
-/* Stage the scalar status before publishing to an unaligned VM result slot. */
+
+/* Validate the native FD and capture packed operands before output side effects. */
 void
 Sys_fprint(void *fp)
 {
 	int n;
 	Prog *p;
 	char buf[1024], *b = buf;
-	F_Sys_fprint *f;
-	WORD result;
+	String *format;
+	void *ret, *args;
+	WORD result, number;
+	Sys_FD *handle;
+	int descriptor;
 
-	f = fp;
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-O(F_Sys_fprint, vargs))
+		error(exBounds);
+	memmove(&ret, (uchar*)fp+O(F_Sys_fprint, ret), sizeof(ret));
+	memmove(&format, (uchar*)fp+O(F_Sys_fprint, s), sizeof(format));
+	args = (uchar*)fp+O(F_Sys_fprint, vargs);
+	if(ret == nil || ret == H)
+		error(exNilref);
+	if((uintptr)ret > (uintptr)-1-sizeof(result))
+		error(exBounds);
+	memmove(&handle, (uchar*)fp+O(F_Sys_fprint, fd), sizeof(handle));
+	if(handle == (Sys_FD*)H)
+		number = -1;
+	else {
+		if(handle == nil)
+			error(exNilref);
+		if((uintptr)handle > (uintptr)-1-(O(Sys_FD, fd)+sizeof(number)))
+			error(exBounds);
+		memmove(&number, (uchar*)handle+O(Sys_FD, fd), sizeof(number));
+	}
+	if(!sysnativeint(number)) {
+		seterror(Ebadarg);
+		result = -1;
+		memmove(ret, &result, sizeof(result));
+		return;
+	}
+	descriptor = (int)number;
 	p = currun();
 	release();
-	n = xprint(p, f, &f->vargs, f->s, buf, sizeof(buf));
+	n = xprint(p, fp, args, format, buf, sizeof(buf));
 	if (n >= sizeof(buf)-UTFmax-2)
-		n = bigxprint(p, f, &f->vargs, f->s, &b, sizeof(buf));
-	result = kwrite(fdchk(f->fd), b, n);
-	memmove(f->ret, &result, sizeof(result));
+		n = bigxprint(p, fp, args, format, &b, sizeof(buf));
+	result = kwrite(descriptor, b, n);
+	memmove(ret, &result, sizeof(result));
 	if (b != buf)
 		free(b);
 	acquire();
 }
 
-/* Stage the scalar status before publishing to an unaligned VM result slot. */
+
+/* Validate and capture both error-text and scalar result publication addresses. */
 void
 Sys_werrstr(void *fp)
 {
-	F_Sys_werrstr *f;
+	String *source;
+	void *ret;
+	char *text, *destination;
 	WORD result;
 
-	f = fp;
-	kstrcpy(up->env->errstr, string2c(f->s), ERRMAX);
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-(O(F_Sys_werrstr, s)+sizeof(source)))
+		error(exBounds);
+	memmove(&ret, (uchar*)fp+O(F_Sys_werrstr, ret), sizeof(ret));
+	memmove(&source, (uchar*)fp+O(F_Sys_werrstr, s), sizeof(source));
+	if(ret == nil || ret == H)
+		error(exNilref);
+	if((uintptr)ret > (uintptr)-1-sizeof(result))
+		error(exBounds);
+	/* Conversion may allocate; keep both original output addresses authoritative. */
+	destination = up->env->errstr;
+	text = string2c(source);
+	kstrcpy(destination, text, ERRMAX);
 	result = 0;
-	memmove(f->ret, &result, sizeof(result));
+	memmove(ret, &result, sizeof(result));
 }
 
-/* Adopt both dial descriptors as one result, closing them on conversion failure. */
+
+/* Capture the complete frame and previous connection before native and owner callbacks. */
 void
 Sys_dial(void *fp)
 {
 	int datafd, controlfd;
 	char dir[NETPATHLEN], *address, *local;
-	F_Sys_dial *f;
+	F_Sys_dial localframe, *f;
+	Sys_Connection previous;
+	uchar *resultslot;
 	WORD status;
 
-	f = fp;
+	sysstatusframe(fp, &localframe, sizeof(localframe), O(F_Sys_dial, ret), sizeof(*localframe.ret));
+	f = &localframe;
+	resultslot = connectionresultslot(f->ret);
+	memmove(&previous, resultslot, sizeof(previous));
+	sysfdresultowners(&previous, 3);
 	address = string2c(f->addr);
 	local = string2c(f->local);
 	release();
@@ -936,24 +1255,31 @@ Sys_dial(void *fp)
 	status = -1;
 	memmove(f->ret, &status, sizeof(status));
 	if(datafd < 0){
-		clearconnection(connectionresultslot(f->ret));
+		clearconnection(resultslot, &previous);
 		return;
 	}
-	makeconnection(datafd, controlfd, dir, connectionresultslot(f->ret));
+	makeconnection(datafd, controlfd, dir, resultslot, &previous);
 	status = 0;
 	memmove(f->ret, &status, sizeof(status));
 }
 
-/* Adopt the announce control descriptor only after the complete result is ready. */
+
+/* Capture the complete frame and previous connection before native and owner callbacks. */
 void
 Sys_announce(void *fp)
 {
 	char dir[NETPATHLEN], *address;
 	int fd;
-	F_Sys_announce *f;
+	F_Sys_announce localframe, *f;
+	Sys_Connection previous;
+	uchar *resultslot;
 	WORD status;
 
-	f = fp;
+	sysstatusframe(fp, &localframe, sizeof(localframe), O(F_Sys_announce, ret), sizeof(*localframe.ret));
+	f = &localframe;
+	resultslot = connectionresultslot(f->ret);
+	memmove(&previous, resultslot, sizeof(previous));
+	sysfdresultowners(&previous, 3);
 	address = string2c(f->addr);
 	release();
 	fd = kannounce(address, dir);
@@ -961,24 +1287,31 @@ Sys_announce(void *fp)
 	status = -1;
 	memmove(f->ret, &status, sizeof(status));
 	if(fd < 0){
-		clearconnection(connectionresultslot(f->ret));
+		clearconnection(resultslot, &previous);
 		return;
 	}
-	makeconnection(-1, fd, dir, connectionresultslot(f->ret));
+	makeconnection(-1, fd, dir, resultslot, &previous);
 	status = 0;
 	memmove(f->ret, &status, sizeof(status));
 }
 
-/* Keep earlier connection owners valid until the new listening result is complete. */
+
+/* Capture the complete frame and previous connection before native and owner callbacks. */
 void
 Sys_listen(void *fp)
 {
-	F_Sys_listen *f;
+	F_Sys_listen localframe, *f;
+	Sys_Connection previous;
+	uchar *resultslot;
 	WORD status;
 	char dir[NETPATHLEN], *directory;
 	int fd;
 
-	f = fp;
+	sysstatusframe(fp, &localframe, sizeof(localframe), O(F_Sys_listen, ret), sizeof(*localframe.ret));
+	f = &localframe;
+	resultslot = connectionresultslot(f->ret);
+	memmove(&previous, resultslot, sizeof(previous));
+	sysfdresultowners(&previous, 3);
 	directory = string2c(f->c.dir);
 	release();
 	fd = klisten(directory, dir);
@@ -986,22 +1319,24 @@ Sys_listen(void *fp)
 	status = -1;
 	memmove(f->ret, &status, sizeof(status));
 	if(fd < 0){
-		clearconnection(connectionresultslot(f->ret));
+		clearconnection(resultslot, &previous);
 		return;
 	}
-	makeconnection(-1, fd, dir, connectionresultslot(f->ret));
+	makeconnection(-1, fd, dir, resultslot, &previous);
 	status = 0;
 	memmove(f->ret, &status, sizeof(status));
 }
 
-/* Define the no-sleep result and copy it only after regaining the interpreter lock. */
+
+/* Capture fixed operands and complete result slots before native and allocation callbacks. */
 void
 Sys_sleep(void *fp)
 {
-	F_Sys_sleep *f;
+	F_Sys_sleep local, *f;
 	WORD result = 0;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_sleep, ret), sizeof(*local.ret));
+	f = &local;
 	if(!sysnativeint(f->period)){
 		seterror(Ebadarg);
 		result = -1;
@@ -1021,39 +1356,50 @@ Sys_sleep(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
+
 /* Complete short stream writes and count only bytes acknowledged by the destination. */
 static int
 sysstreamwrite(int fd, uchar *buf, int n, UWORD *total)
 {
-	int done, wrote;
+	int done;
+	long wrote;
 
 	for(done = 0; done < n; done += wrote){
 		wrote = kwrite(fd, buf+done, n-done);
-		if(wrote <= 0)
+		if(wrote <= 0 || wrote > n-done)
 			return -1;
 		*total += (UWORD)wrote;
 	}
 	return 0;
 }
 
-/* Preserve stream progress and copy the VM-width result into any slot alignment. */
+
+/* Capture fixed operands and complete result slots before native and allocation callbacks. */
 void
 Sys_stream(void *fp)
 {
 	Prog *p;
 	uchar *buf;
-	int src, dst, size, t, n;
+	int src, dst, size, t;
+	long n;
 	UWORD nbytes;
-	F_Sys_stream *f;
+	F_Sys_stream local, *f;
 	WORD result;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_stream, ret), sizeof(*local.ret));
+	f = &local;
 	if(f->bufsiz <= 0 || (uvlong)f->bufsiz > 0x7fffffff){
 		seterror(Ebadarg);
 		result = -1;
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
+	if(!sysiofd(f->src, &src) || !sysiofd(f->dst, &dst)) {
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
+	p = currun();
 	size = (int)f->bufsiz;
 	buf = malloc(size);
 	if(buf == nil){
@@ -1062,16 +1408,13 @@ Sys_stream(void *fp)
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
-	src = fdchk(f->src);
-	dst = fdchk(f->dst);
-	p = currun();
 
 	release();
 	t = 0;
 	nbytes = 0;
 	while(p->kill == nil){
 		n = kread(src, buf+t, size-t);
-		if(n <= 0)
+		if(n <= 0 || n > size-t)
 			break;
 		t += n;
 		if(t == size){
@@ -1094,16 +1437,24 @@ Sys_stream(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
-/* Capture the native export status before publishing an unaligned VM result. */
+
+/* Capture fixed operands and complete result slots before native and allocation callbacks. */
 void
 Sys_export(void *fp)
 {
-	F_Sys_export *f;
+	F_Sys_export local, *f;
 	WORD result;
+	int fd;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_export, ret), sizeof(*local.ret));
+	f = &local;
+	if(!sysiofd(f->c, &fd)) {
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	result = export(fdchk(f->c), string2c(f->dir), f->flag&Sys_EXPASYNC);
+	result = export(fd, string2c(f->dir), f->flag&Sys_EXPASYNC);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
@@ -1298,32 +1649,49 @@ Sys_pctl(void *fp)
 	memmove(f->ret, &result, sizeof(result));
 }
 
-/* Retain ownership of native entries and publish tuple fields without alignment assumptions. */
+
+/* Capture fixed operands and complete result slots before native and allocation callbacks. */
 void
 Sys_dirread(void *fp)
 {
 	Dir *entries;
 	Sys_Dir *record;
-	F_Sys_dirread *f;
-	volatile struct { Heap *array; } result;
-	struct { WORD status; Array *array; } layout;
+	F_Sys_dirread local, *f;
+	volatile struct {
+		Heap *array; // Own only the partially constructed VM result during cleanup.
+	} result;
+	struct {
+		WORD status; // Match the generated leading status field.
+		Array *array; // Match the generated pointer-aligned array field.
+	} layout;
 	Array *old, *published;
 	uchar *arrayslot;
 	WORD status;
-	int i, count, fd;
+	int i, count, fd, valid;
+	long received;
 
-	f = fp;
-	fd = fdchk(f->fd);
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_dirread, ret), sizeof(*local.ret));
+	f = &local;
+	valid = sysiofd(f->fd, &fd);
 	arrayslot = (uchar*)f->ret+((uchar*)&layout.array-(uchar*)&layout);
 	status = -1;
-	memmove(&old, arrayslot, sizeof(old));
+	old = sysresultowner(arrayslot);
 	published = H;
 	memmove(f->ret, &status, sizeof(status));
 	memmove(arrayslot, &published, sizeof(published));
 	destroy(old);
+	if(!valid)
+		return;
 	release();
-	count = kdirread(fd, &entries);
+	entries = nil;
+	received = kdirread(fd, &entries);
 	acquire();
+	if(received < -0x7fffffff-1 || received > 0x7fffffff) {
+		seterror(Ebadarg);
+		free(entries);
+		return;
+	}
+	count = (int)received;
 	if(count <= 0){
 		status = count;
 		memmove(f->ret, &status, sizeof(status));
@@ -1396,16 +1764,24 @@ Sys_fversion(void *fp)
 	}
 }
 
-/* Capture the native status before copying into a possibly unaligned VM return slot. */
+
+/* Capture fixed operands before callbacks and retain the original scalar result cell. */
 void
 Sys_iounit(void *fp)
 {
-	F_Sys_iounit *f;
+	F_Sys_iounit local, *f;
 	WORD result;
+	int fd;
 
-	f = fp;
+	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_iounit, ret), sizeof(*local.ret));
+	f = &local;
+	if(!sysiofd(f->fd, &fd)) {
+		result = -1;
+		memmove(f->ret, &result, sizeof(result));
+		return;
+	}
 	release();
-	result = kiounit(fdchk(f->fd));
+	result = kiounit(fd);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }

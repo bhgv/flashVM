@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1656: six incoming Inferno Sys commits plus our published pipe element-layout correction pin the selected core at 9ee638bb. The NC64 host captures twelve Sys builtin frames/results and validates previous owners. [EN](../../disVM/runtime/SYS_CAPTURE.md) / [RU](../../disVM/runtime/SYS_CAPTURE.ru.md). Full Sys/native platform and Flash compatibility milestones remain open.
+
 Checkpoint v0.1655: detached editor paths render on a persistent background worker; latest-frame queue bounds stale work. Layout/AS/GC and SDL remain owner-only. [EN](RENDER_ASYNC.md) / [RU](RENDER_ASYNC.ru.md). Full SWF async rendering and physical platform acceptance remain open.
 
 Checkpoint v0.1524 / Контрольная точка v0.1524: tiny public round-stroke queries avoid squared-distance underflow. Seventeen new fixtures; 360 no-graphics Release and 182 no-graphics ASan/UBSan executables pass. All nine stages and reference/device acceptance remain open. [EN](PUBLIC_ROUND_SCALE.md) / [RU](PUBLIC_ROUND_SCALE.ru.md).
