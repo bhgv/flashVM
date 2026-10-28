@@ -103,3 +103,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Graphical file browser](dis/GRAPHICAL-BROWSER.md) / [Графический браузер файлов](dis/GRAPHICAL-BROWSER.ru.md).
 
 [AS2 → FIR → SWO → SWF view](../compiler/as2/view/README.md) · [Русский](../compiler/as2/view/README.ru.md).
+
+[Dis channels, AS and parallel native rendering](RENDER_OWNERS.md) / [Русский](RENDER_OWNERS.ru.md).

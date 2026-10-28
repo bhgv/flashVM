@@ -99,6 +99,11 @@ frontend() {
     libraries "$base" "$destination"
     copy_file "$ROOT/compiler/$language/frontend/frontend.h" "$destination/include/frontend.h"
     if [[ "$language" == limbo ]]; then
+        for header in interface.h signature.h native.h; do
+            copy_file "$ROOT/compiler/limbo/frontend/$header" "$destination/include/$header"
+        done
+        copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/NATIVE_C.md"
+        copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.ru.md" "$destination/NATIVE_C.ru.md"
         sample=Syntax.b
         for tool in limbo_tree limbo_interface limbo_bindings; do
             install_program "$base" "$tool" "$destination"
@@ -142,7 +147,7 @@ EOF
 # Package one requested component with actual products and honest runtime status.
 # Parameters: component name. Returns: installation failure propagates to the builder.
 install_component() {
-    local component=$1 base="$BUILD/$1" destination="$OUT/$1" source="$ROOT/$1" profile graphics display variant file sdk_cache
+    local component=$1 base="$BUILD/$1" destination="$OUT/$1" source="$ROOT/$1" profile graphics display variant file sdk_cache native_demo_enabled
     case "$component" in
         compilers)
             for language in as1 as2 as3 limbo; do
@@ -343,6 +348,25 @@ EOF
         disvm-runtime | disvm-editor)
             source="$ROOT/disVM"
             mkdir -p "$destination"
+            copy_tree "$ROOT/disVM/examples/native-module" "$destination/examples/native-module"
+            copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.md" "$destination/NATIVE_MODULES.md"
+            copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.ru.md" "$destination/NATIVE_MODULES.ru.md"
+            copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/docs/limbo/NATIVE_C.md"
+            copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.ru.md" "$destination/docs/limbo/NATIVE_C.ru.md"
+            copy_file "$ROOT/ide/RENDER_OWNERS.md" "$destination/docs/ide/RENDER_OWNERS.md"
+            copy_file "$ROOT/ide/RENDER_OWNERS.ru.md" "$destination/docs/ide/RENDER_OWNERS.ru.md"
+            copy_file "$ROOT/disVM/examples/native-module/nativedemo.m" "$destination/include/limbo/nativedemo.m"
+            native_demo_enabled=OFF
+            if [[ -f "$base/CMakeCache.txt" ]] && grep -q '^DVM_RUNTIME_NATIVE_DEMO:BOOL=ON$' "$base/CMakeCache.txt"; then
+                native_demo_enabled=ON
+            fi
+            printf 'Nativedemo=%s\n' "$native_demo_enabled" >"$destination/NATIVE-MODULES.txt"
+            if [[ "$native_demo_enabled" == ON ]]; then
+                copy_file "$base/native/nativedemo_native.h" "$destination/examples/native-module/nativedemo_native.h"
+            else
+                # Retire only these installer-owned products when an existing package is switched off.
+                rm -f -- "$destination/native-demo.dis" "$destination/native-demo.sbl" "$destination/examples/native-module/nativedemo_native.h"
+            fi
             install_program "$base" disvm "$destination"
             if [[ "$component" == disvm-editor ]]; then
                 install_program "$base" disvm-editor "$destination"
@@ -371,6 +395,9 @@ EOF
             copy_file "$file" "$destination/limbo-native" 755
             copy_file "$base/bootstrap/target-abi.json" "$destination/ABI.json"
             for file in "$base"/*.dis "$base"/*.sbl; do
+                if [[ "$native_demo_enabled" != ON && ( "$(basename "$file")" == native-demo.dis || "$(basename "$file")" == native-demo.sbl ) ]]; then
+                    continue
+                fi
                 if [[ -f "$file" ]]; then
                     copy_file "$file" "$destination/$(basename "$file")"
                 fi

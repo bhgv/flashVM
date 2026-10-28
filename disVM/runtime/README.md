@@ -1,6 +1,6 @@
 # Experimental runnable Dis and IDE services (NC64)
 
-Runtime **0.29.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
+Runtime **0.30.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
 
 Use `python3 build_menu.py`, select `all` or `disvm-runtime`, and accept the
 defaults. After building, choose **4** for the Dis channel example or **5** for
@@ -328,3 +328,5 @@ Sys stat/fstat/dirread and actual Readdir now run through selected platform port
 [Channel-owned directory browsing, console commands and lifecycle](../../ide/dis/DIRECTORIES.md) / [RU](../../ide/dis/DIRECTORIES.ru.md).
 
 [Graphical selected-entry browser and checked UI requests](../../ide/dis/GRAPHICAL-BROWSER.md) / [RU](../../ide/dis/GRAPHICAL-BROWSER.ru.md).
+
+[Native C modules: ABI, GC, errors, workers](NATIVE_MODULES.md) · [Русский](NATIVE_MODULES.ru.md) · [Runnable every-line-commented example](../examples/native-module/README.md).

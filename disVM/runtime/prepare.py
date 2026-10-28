@@ -25,6 +25,8 @@ def main():
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--idehost", type=Path)
+    parser.add_argument("--native-demo", type=Path)
+    parser.add_argument("--native-bindings", type=Path)
     args = parser.parse_args()
     subprocess.run(
         [sys.executable, str(Path(__file__).with_name("prepare_exception.py")),
@@ -63,6 +65,11 @@ def main():
         with (args.output / "runt.h").open("a") as declarations:
             declarations.write(host[:host_at])
         (args.output / "idehostmod.h").write_text(host[host_at:])
+    if args.native_demo is not None:
+        if args.native_bindings is None:
+            raise ValueError("native module tutorial requires our Coco/R limbo_bindings")
+        subprocess.run([str(args.native_bindings), "--format", "native-c-nc64", str(args.native_demo),
+                        str(args.output / "nativedemo_native.h")], check=True)
     # Generate the hosted-only table ABI from the same native-cell compiler.
     table_interface = Path(__file__).resolve().parents[1] / "module/bigtable.m"
     table = subprocess.check_output(

@@ -60,6 +60,10 @@ extern void mathmodinit(void);
 
 /* Register hosted scalar hybrid tables after the VM allocator is initialized. */
 extern void dvm_bigtable_initialize(void);
+#ifdef DVM_RUNTIME_NATIVE_DEMO
+/* Register the optional teaching module on this owner after heap initialization. */
+extern void dvm_nativedemo_initialize(void);
+#endif
 
 
 /* Copy live scalar table/snapshot counts for explicit diagnostic statistics. */
@@ -1023,6 +1027,9 @@ int main(int argc, char **argv)
     loadermodinit();
     mathmodinit();
     dvm_bigtable_initialize();
+#ifdef DVM_RUNTIME_NATIVE_DEMO
+    dvm_nativedemo_initialize();
+#endif
     excinit();
     dvm_srv_initialize();
     srvmodinit();

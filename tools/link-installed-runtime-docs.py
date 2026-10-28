@@ -14,6 +14,12 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "disVM/runtime/NATIVE_MODULES.md": package / "NATIVE_MODULES.md",
+        root / "disVM/runtime/NATIVE_MODULES.ru.md": package / "NATIVE_MODULES.ru.md",
+        root / "compiler/limbo/frontend/NATIVE_C.md": package / "docs/limbo/NATIVE_C.md",
+        root / "compiler/limbo/frontend/NATIVE_C.ru.md": package / "docs/limbo/NATIVE_C.ru.md",
+        root / "ide/RENDER_OWNERS.md": package / "docs/ide/RENDER_OWNERS.md",
+        root / "ide/RENDER_OWNERS.ru.md": package / "docs/ide/RENDER_OWNERS.ru.md",
         root / "compiler/as2/view/README.md": package / "docs/as2/VIEW.md",
         root / "compiler/as2/view/README.ru.md": package / "docs/as2/VIEW.ru.md",
         root / "fir/v1/doc/AS_PROPERTIES.md": package / "docs/fir/AS_PROPERTIES.md",
@@ -98,7 +104,14 @@ def main():
         for source in (root / "ide/assets/fonts").iterdir():
             if source.is_file():
                 pairs[source] = package / "fonts" / source.name
+    for source in (root / "disVM/examples/native-module").iterdir():
+        if source.is_file():
+            pairs[source] = package / "examples/native-module" / source.name
+    # Only installed files are local link targets. Console packages omit optional GUI guides.
+    pairs = {source: destination for source, destination in pairs.items() if destination.is_file()}
     for source, destination in list(pairs.items()) + aliases:
+        if not destination.is_file():
+            continue
         if source.suffix != ".md":
             continue
 

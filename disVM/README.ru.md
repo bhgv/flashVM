@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 3760fc951987915d4c823ba30f56f07386e98b18. Каждый файл имеет
+Текущий снимок фиксирует 9a87d74eb4f47cf7b8ea35c804f86c7c20e40d36. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -155,3 +155,5 @@ Dis. [Проверки серии](../docs/releases/v0.1561.md).
 [Hosted hybrid big tables / Гибридные таблицы big](examples/hybrid-table/README.md): scalar C core and real Dis interpreter/JIT adapter; language lowering remains pending.
 
 [Обзор модулей и Unicode Regex](MODULE_AUDIT.ru.md): перенесённая библиотека, подтверждённое обратное исправление и границы Sys/Debug/Dis.
+
+[Writing native C modules](runtime/NATIVE_MODULES.md) · [Русский](runtime/NATIVE_MODULES.ru.md) · [Commented tutorial](examples/native-module/README.md).

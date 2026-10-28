@@ -1,6 +1,6 @@
 # LIMBO
 
-Версия 0.8.0. [English](README.md).
+Версия 0.9.0. [English](README.md).
 
 Независимый проект компилятора на C99. Сейчас реализован синтаксический
 фронтенд: [грамматика, сборка и ограничения](frontend/README.ru.md).
@@ -90,3 +90,5 @@ Include-файлы не раскрываются; cast по именованно
 [Наш числовой Limbo→FIR→Dis](../../fir/v1/doc/DIS_BACKEND.ru.md) уже исполняется
 на DisVM без bootstrap-emitter. Это отдельный узкий профиль; этот синтаксический
 фронтенд не стал полным семантическим компилятором.
+
+[Native C interfaces from .m](frontend/NATIVE_C.md) / [Русский](frontend/NATIVE_C.ru.md).

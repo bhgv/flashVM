@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.8.0. [Русский](README.ru.md).
+Version 0.9.0. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend with owned concrete production trees: [grammar and build](frontend/README.md),
@@ -89,3 +89,5 @@ This partial declaration pass does not resolve imports/types or emit native C.
 [Our numeric Limbo→FIR→Dis pipeline](../../fir/v1/doc/DIS_BACKEND.md) now executes
 on DisVM without a bootstrap emitter. It is a separate narrow profile; this
 syntax frontend has not become a full semantic compiler.
+
+[Native C interfaces from .m](frontend/NATIVE_C.md) / [Русский](frontend/NATIVE_C.ru.md).

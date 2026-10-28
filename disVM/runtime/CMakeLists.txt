@@ -1,10 +1,11 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.29.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.30.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
 endif()
+option(DVM_RUNTIME_NATIVE_DEMO "Build the documented native module tutorial" OFF)
 option(DVM_RUNTIME_EDITOR "Build the Dis-controlled FlashVM graphical editor" OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS ON)
@@ -42,11 +43,20 @@ if(DVM_RUNTIME_EDITOR)
   set(host_prepare_args --idehost "${root}/ide/dis/bridge/idehost.m")
   set(host_prepare_products "${view}/idehostmod.h")
 endif()
+if(DVM_RUNTIME_NATIVE_DEMO)
+  set(native_demo_root "${root}/disVM/examples/native-module")
+  set(DVM_LIMBO_BINDINGS "" CACHE FILEPATH "Our Coco/R Limbo C-interface generator")
+  if(NOT EXISTS "${DVM_LIMBO_BINDINGS}")
+    message(FATAL_ERROR "Native tutorial requires DVM_LIMBO_BINDINGS")
+  endif()
+  list(APPEND host_prepare_args --native-demo "${native_demo_root}/nativedemo.m" --native-bindings "${DVM_LIMBO_BINDINGS}")
+  list(APPEND host_prepare_products "${view}/nativedemo_native.h")
+endif()
 file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h")
 add_custom_command(OUTPUT "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
@@ -57,6 +67,10 @@ endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
 add_executable(disvm main.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
+if(DVM_RUNTIME_NATIVE_DEMO)
+  target_sources(disvm PRIVATE "${native_demo_root}/native.c")
+  target_compile_definitions(disvm PRIVATE DVM_RUNTIME_NATIVE_DEMO=1)
+endif()
 target_compile_definitions(disvm PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
 target_compile_options(disvm PRIVATE -fno-strict-aliasing)
 target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${root}/common/table" "${view}" "${root}/disVM/host/include" "${u}/Linux/arm/include"
@@ -283,6 +297,9 @@ if(DVM_RUNTIME_EDITOR)
   add_executable(disvm-editor ${runtime_sources} editor_host.c editor_view.c
     "${root}/disVM/host/dis_ui_channel.c")
   add_dependencies(disvm-editor disvm_runtime_sources)
+  if(DVM_RUNTIME_NATIVE_DEMO)
+    target_compile_definitions(disvm-editor PRIVATE DVM_RUNTIME_NATIVE_DEMO=1)
+  endif()
   set(DVM_AS_VIEW_COMPILER "" CACHE FILEPATH "Source-built Coco/R AS2 display-profile compiler")
   if(NOT EXISTS "${DVM_AS_VIEW_COMPILER}")
     message(FATAL_ERROR "Build compiler/as2/view with Coco/R, then supply DVM_AS_VIEW_COMPILER")
@@ -873,4 +890,21 @@ if(DVM_RUNTIME_TESTS AND DVM_RUNTIME_EDITOR)
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${mode}")
     set_tests_properties(disvm_graphical_browser_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
+endif()
+
+# Optional executable tutorial uses the same generated native ABI and both real dispatch modes.
+if(DVM_RUNTIME_NATIVE_DEMO)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis" "${CMAKE_CURRENT_BINARY_DIR}/native-demo.sbl"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g -I "${u}/module" -I "${native_demo_root}"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis" "${native_demo_root}/main.b"
+    DEPENDS limbo-bootstrap "${native_demo_root}/nativedemo.m" "${native_demo_root}/main.b" VERBATIM)
+  add_custom_target(disvm_native_module_tutorial ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis")
+  if(DVM_RUNTIME_TESTS)
+    foreach(mode jit interpreter)
+      add_test(NAME disvm_native_module_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_native_module.py" "$<TARGET_FILE:disvm>"
+        "${CMAKE_CURRENT_BINARY_DIR}/native-demo.dis" "${mode}")
+      set_tests_properties(disvm_native_module_${mode} PROPERTIES TIMEOUT 60)
+    endforeach()
+  endif()
 endif()

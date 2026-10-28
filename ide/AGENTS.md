@@ -1,8 +1,10 @@
 # IDE development rules
 
-- The target IDE application and complex widget logic are written in Limbo and
-  run in embedded Dis inside FlashVM. AS1/AS2 components and a later AS port
-  are permitted through the shared module/channel interfaces. Python here is
+- Application/document/broker coordination lives in Limbo/Dis. Complex visual
+  composition and widget behavior may run in AS inside FlashVM; C supplies native
+  extensions and rendering/OS primitives. Preserve the direct typed-channel route
+  from DisVM to Flash content; AS is not a mandatory relay for every operation.
+  Separate context/heap owners from parallel immutable raster jobs. Python is
   host development tooling.
 - All application UI control uses typed channels, including local operations.
   Add missing channel capabilities instead of adding a direct UI access shortcut.

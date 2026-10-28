@@ -7,11 +7,11 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-3760fc951987915d4c823ba30f56f07386e98b18; every imported file has a manifest hash.
+9a87d74eb4f47cf7b8ea35c804f86c7c20e40d36; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
-Current v0.1652: [executable selected modules](libraries/README.md),
+Current v0.1654: [executable selected modules](libraries/README.md),
 [fully commented tutorial](examples/standard-modules/README.md),
 [native runtime](runtime/README.md). Menu launch 7 runs the actual modules;
 module availability and missing /prog/VFS services are documented separately.
@@ -170,3 +170,5 @@ entry independently of C whitespace. [Evidence](../docs/releases/v0.1565.md).
 [Блокировки таблиц и обработка исключений](PAYLOAD_GUARDS.ru.md).
 
 [Module review and Unicode Regex](MODULE_AUDIT.md): packaged library, confirmed reverse fix and Sys/Debug/Dis boundaries.
+
+[Writing native C modules](runtime/NATIVE_MODULES.md) · [Русский](runtime/NATIVE_MODULES.ru.md) · [Commented tutorial](examples/native-module/README.md).

@@ -95,6 +95,20 @@ class FrontendTests(unittest.TestCase):
             if ("SDK_BOOTSTRAP" in log) != (sdl == "ON"):
                 self.fail("Dis graphical SDK selection ignored the explicit no-player choice")
 
+    def test_console_docs_omit_optional_graphical_guides(self):
+        """A console package rewrites only installed documents and falls back to public source links."""
+        with tempfile.TemporaryDirectory(prefix="Console guide links ") as temporary:
+            package = Path(temporary)
+            guide = package / "NATIVE_MODULES.md"
+            guide.write_bytes((ROOT / "disVM/runtime/NATIVE_MODULES.md").read_bytes())
+            result = subprocess.run([os.environ.get("PYTHON", "python3"),
+                                     str(ROOT / "tools/link-installed-runtime-docs.py"),
+                                     str(ROOT), str(package)], capture_output=True, text=True)
+            if result.returncode or (package / "docs/as2/VIEW.md").exists():
+                self.fail("console guide linking required or synthesized an absent GUI guide: " + result.stderr)
+            if "https://github.com/bhgv/flashVM/blob/master/compiler/limbo/frontend/NATIVE_C.md" not in guide.read_text():
+                self.fail("omitted native compiler guide was not linked to its public source")
+
     def test_installer_selects_actual_graphical_executable(self):
         """The generic flashvm command must copy the player, keeping a separate console command."""
         for graphical in (False, True):

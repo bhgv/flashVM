@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1653**. [Русская версия](README.ru.md).
+Development version: **0.1654**. [Русская версия](README.ru.md).
 
-Current series: [v0.1653](docs/releases/v0.1653.md): shared AS2 compiler/library emits executed IDE AVM1; multiline Limbo browsing with native mouse selection and refreshed Inferno Sys/record ownership.
+Current series: [v0.1654](docs/releases/v0.1654.md): our Coco/R Limbo compiler generates native C frames/signatures/maps; runnable commented tutorial and explicit Dis/AS/parallel-render ownership.
 
 ## Browse documentation
 

@@ -239,6 +239,14 @@ def table_packages(prefix, work, environment):
         if "PASS directory service and IDE browser" not in result:
             raise RuntimeError("relocated directory browser differs")
 
+    # Optional native tutorial must work after relocation without its build tools.
+    if (native / "native-demo.dis").is_file():
+        for dispatch in ("--jit", "--no-jit"):
+            result = run([runtime, dispatch, "--quantum", "1", "--max-instructions", "1000000",
+                          native / "native-demo.dis"], work, environment)
+            if "PASS native module: wrap=ok sum=42 strings=2048 caught=1 shutdown=ok" not in result:
+                raise RuntimeError("relocated native module tutorial differs")
+
     if component == "disvm-editor":
         # Replay the actual packaged graphical browser with its bundled font only.
         graphical = program(prefix, component, "disvm-editor")

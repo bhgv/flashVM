@@ -1,6 +1,7 @@
 /* External module scaffolds from the existing Coco/R declaration catalog.
  * This pass never reparses Limbo types or guesses Dis/native frame layouts. */
 #include "signature.h"
+#include "native.h"
 #include <stdlib.h>
 #include <string.h>
 #include "bindings_as_runtime.h"
@@ -414,7 +415,7 @@ int main(int argc, char **argv)
     int result = 2;
     if ((argc != 5 && argc != 7) || strcmp(argv[1], "--format") || (argc == 7 && strcmp(argv[5], "--prefix")) ||
         !valid_prefix(prefix) ||
-        (strcmp(argv[2], "json") && strcmp(argv[2], "c") && strcmp(argv[2], "python") && strcmp(argv[2], "as") &&
+        (strcmp(argv[2], "native-c-nc64") && strcmp(argv[2], "native-c-classic32") && strcmp(argv[2], "json") && strcmp(argv[2], "c") && strcmp(argv[2], "python") && strcmp(argv[2], "as") &&
          strcmp(argv[2], "as1") && strcmp(argv[2], "as2") && strcmp(argv[2], "as3") && strcmp(argv[2], "as-module") &&
          strcmp(argv[2], "as1-module") && strcmp(argv[2], "as2-module") && strcmp(argv[2], "as3-module") &&
          strcmp(argv[2], "as-proxy") && strcmp(argv[2], "as1-proxy") && strcmp(argv[2], "as2-proxy") &&
@@ -422,7 +423,7 @@ int main(int argc, char **argv)
         !strcmp(argv[3], argv[4]))
     {
         fputs(
-            "usage: limbo_bindings --format json|c|python|as-module|as-proxy|as1|as2|as3 INPUT.m OUTPUT [--prefix NAME]\n",
+            "usage: limbo_bindings --format native-c-nc64|native-c-classic32|json|c|python|as-module|as-proxy|as1|as2|as3 INPUT.m OUTPUT [--prefix NAME]\n",
             stderr);
         return 2;
     }
@@ -449,12 +450,33 @@ int main(int argc, char **argv)
         result = 1;
         goto done;
     }
+    if (!strncmp(argv[2], "native-c-", 9))
+    {
+        char error[256];
+        unsigned cell = !strcmp(argv[2], "native-c-nc64") ? 8 : 4;
+        if (argc != 5 || !limbo_native_header(NULL, catalog, cell, error, sizeof(error)))
+        {
+            fprintf(stderr, "native interface: %s\n", argc != 5 ? "--prefix is not accepted by native ABI profiles" : error);
+            result = 1;
+            goto done;
+        }
+    }
     output = fopen(argv[4], "wb");
     if (!output)
     {
         goto done;
     }
-    if (!strcmp(argv[2], "json"))
+    if (!strncmp(argv[2], "native-c-", 9))
+    {
+        char error[256];
+        if (!limbo_native_header(output, catalog, !strcmp(argv[2], "native-c-nc64") ? 8 : 4, error, sizeof(error)))
+        {
+            fprintf(stderr, "native interface: %s\n", error);
+            result = 1;
+            goto done;
+        }
+    }
+    else if (!strcmp(argv[2], "json"))
     {
         manifest(output, catalog);
     }
