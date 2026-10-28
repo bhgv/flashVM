@@ -6,6 +6,9 @@
 
 extern FILE *fir_temporary(void);
 
+
+/* Copy borrowed source text into a private temporary stream at position zero.
+ * Return ownership to the caller, or NULL after allocation/write/seek failure. */
 static FILE *input(const char *text)
 {
     FILE *f = fir_temporary();
@@ -21,6 +24,9 @@ static FILE *input(const char *text)
     return f;
 }
 
+
+/* Borrow an optimization snapshot and increment caller-owned callback count.
+ * Return zero on wrong order/empty IR; do not retain the module or call parsers. */
 static int snapshots(void *user, const char *phase, const FirModule *m)
 {
     int *count = (int *)user;
@@ -32,6 +38,9 @@ static int snapshots(void *user, const char *phase, const FirModule *m)
     return 1;
 }
 
+
+/* Reject a borrowed pipeline snapshot regardless of the three callback inputs.
+ * Return zero without acquiring resources or retaining any module pointer. */
 static int cancel(void *user, const char *phase, const FirModule *module)
 {
     (void)user;
@@ -69,7 +78,7 @@ int main(void)
             fclose(bad);
             src = input(
                 j == FIR_LIMBO
-                    ? "implement A; A: module { value: fn(): int; }; value(): int { x: int = 6; if(x<7){return x*7;}else{return 0;} }"
+                    ? "implement A; A: module { value: fn(): int; }; value(): int { x: int = 6; i:=0; while(i<1){x+=0;i+=1;} if(x<7){return x*7;}else{return 0;} }"
                     : "var x = 6; trace(x * 7);");
             if (!src || !fir_source(src, fir, (FirLanguage)j, "valid", error, sizeof(error)))
             {
@@ -78,12 +87,13 @@ int main(void)
             fclose(src);
             if (j == FIR_LIMBO)
             {
-                char generated[2048];
+                char generated[8192];
                 size_t length;
                 rewind(fir);
                 length = fread(generated, 1, sizeof(generated) - 1, fir);
                 generated[length] = 0;
-                if (!strstr(generated, "^choose1_yes:") || strstr(generated, "^choose2_yes:"))
+                if (!strstr(generated, "^loopif1_yes:") || strstr(generated, "^loopif2_yes:") ||
+                    !strstr(generated, "^loop1_test:") || strstr(generated, "^loop2_test:"))
                 {
                     return 11; /* Every failed/accepted call must restart the decision-label namespace. */
                 }

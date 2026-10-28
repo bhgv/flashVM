@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.56.0 LANGUAGES C)
+project(fir1 VERSION 0.57.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -604,4 +604,15 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/numeric_logic.py" $<TARGET_FILE:fir1_source>
     $<TARGET_FILE:fir1> ${counted_for_reference})
   set_tests_properties(fir1_numeric_logic PROPERTIES TIMEOUT 120)
+endif()
+
+# Exact scalar cell semantics and structured numeric Limbo paths use public libraries.
+if(BUILD_TESTING)
+  add_executable(fir1_numeric_cells_api tests/numeric_cells_api.c)
+  target_link_libraries(fir1_numeric_cells_api PRIVATE fir1_ir)
+  add_test(NAME fir1_numeric_cells_api COMMAND fir1_numeric_cells_api)
+  add_test(NAME fir1_numeric_flow COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/numeric_flow.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${counted_for_reference})
+  set_tests_properties(fir1_numeric_flow PROPERTIES TIMEOUT 120)
 endif()

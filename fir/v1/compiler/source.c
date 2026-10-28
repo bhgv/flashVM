@@ -71,25 +71,26 @@ int main(int argc, char **argv)
     memset(&diagnostic, 0, sizeof(diagnostic));
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1_source 0.23.0 (numeric and typed-table subsets; diagnostic schema 1)");
+        puts("fir1_source 0.24.0 (numeric and typed-table subsets; diagnostic schema 1)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))
     {
-        puts("usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir\n"
-             "                   [--module NAME] [--diagnostics-json] [-g DEBUG.json]\n"
-             "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
-             "Limbo value(): big: typed table of big, dotted/string/numeric keys, len/keysof and explicit slices.\n"
-             "Limbo type aliases: forward file/module prefix; sequential block aliases; checked alias casts.\n"
-             "AS3 const; Limbo lexical blocks and terminal if/else in homogeneous int/real tutorial functions.\n"
-             "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
-             "Limbo int/real: grouped relations, bool predicate equality, lazy &&/|| and unary !.\n"
-             "Limbo int: &, |, ^, ~ and checked <<, >>; matching compound updates.\n"
-             "Limits: 64 KiB, 255-byte tokens, 256 names, 128 type aliases, 1000 SSA values, depth 64.\n"
-             "JSON: one schema-1 stderr record on failure; original UTF-8 byte spans.\n"
-             "Options may appear in either order; duplicates are rejected.\n"
-             "Exit: 0 success, 1 translation/output failure, 2 CLI/setup failure.\n"
-             "See doc/SOURCE_DIAGNOSTICS.md and doc/SOURCE_SYNTAX.md.");
+        puts(
+            "usage: fir1_source as1|as2|as3|limbo --input SOURCE OUTPUT.fir\n"
+            "                   [--module NAME] [--diagnostics-json] [-g DEBUG.json]\n"
+            "Numeric profiles: initialized names, unary +/-, + - *, groups; AS / and /=.\n"
+            "Limbo value(): big: typed table of big, dotted/string/numeric keys, len/keysof and explicit slices.\n"
+            "Limbo type aliases: forward file/module prefix; sequential block aliases; checked alias casts.\n"
+            "AS3 const; Limbo lexical blocks and structured if/else and while in homogeneous int/real tutorial functions.\n"
+            "Not full AS/Limbo languages; AS3 emits AVM1 compatibility, not ABC.\n"
+            "Limbo int/real: grouped relations, bool predicate equality, lazy &&/|| and unary !.\n"
+            "Limbo int: &, |, ^, ~ and checked <<, >>; matching compound updates.\n"
+            "Limits: 64 KiB, 255-byte tokens, 256 names, 128 type aliases, 1000 SSA values, depth 64.\n"
+            "JSON: one schema-1 stderr record on failure; original UTF-8 byte spans.\n"
+            "Options may appear in either order; duplicates are rejected.\n"
+            "Exit: 0 success, 1 translation/output failure, 2 CLI/setup failure.\n"
+            "See doc/SOURCE_DIAGNOSTICS.md and doc/SOURCE_SYNTAX.md.");
         return 0;
     }
     if (argc < 5 || strcmp(argv[2], "--input"))

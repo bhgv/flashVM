@@ -416,16 +416,10 @@ PRODUCTIONS
     (. source_alias_module(header); .)
     "{" { LimboAlias } (. source_alias_validate(); .) "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
     "}" ";" "value" "(" ")" ":" ResultType<0> "{" (. source_alias_body(); .)
-    (
-        IF(source_table_profile()) TableBody
-        | { LimboStatement } LimboResult
-    ) "}"
+    FlowBody "}"
     (.
-        if (source_table_profile())
-        {
-            capture();
-            source_flow_finish();
-        }
+        capture();
+        source_flow_finish();
     .)
   .
 
@@ -472,41 +466,6 @@ PRODUCTIONS
     "int"                                                               (. capture(); source_binding_type(0); .)
     | "real"                                                            (. capture(); source_binding_type(1); .)
     | ident (. capture(); source_binding_alias(); .)
-  .
-
-  /* A terminal decision tree avoids unimplemented SSA joins: every arm returns.
-  * Resolver arms consume an over-budget if without descending; accepted decisions
-  * share the existing 64-level source recursion budget with groups and lexical blocks. */
-  LimboResult =
-                                                                        (.
-                                                                            int value = 0, choice = 0;
-                                                                            SourceCondition condition;
-                                                                            SourceMark branch;
-                                                                        .)
-    "return" Expression<&value> ";"                                     (. source_return(value); .)
-    | IF(Sym==ifSym && depth>=64) "if"                                  (.
-                                                                            capture();
-                                                                            source_scope_limit();
-                                                                        .)
-    | IF(Sym==ifSym && depth<64) "if"                                   (.
-                                                                            capture();
-                                                                            branch = source_mark();
-                                                                        .)
-    "(" LimboCondition<&condition> ")"                                  (.
-                                                                            ++depth;
-                                                                            source_restore(branch);
-                                                                            choice = source_branch(condition);
-                                                                        .)
-    LimboArm "else"                                                    (. source_else(choice); .)
-    LimboArm                                                            (. --depth; .)
-  .
-
-  /* Homogeneous numeric arms share the lexical declaration rules of ordinary blocks.
-   * Every arm still returns; sibling parsing starts from the incoming bindings. */
-  LimboArm =
-    "{" (. capture(); source_enter_scope(); .)
-    { LimboStatement } LimboResult
-    "}" (. capture(); source_leave_scope(); .)
   .
 
   /* Numeric conditions compose strict relations lazily. && binds above ||;
@@ -679,9 +638,7 @@ PRODUCTIONS
                                                                             capture();
                                                                             source_enter_scope();
                                                                         .)
-    {
-        LimboStatement
-    }
+    FlowBody
     "}"                                                                 (.
                                                                             capture();
                                                                             source_leave_scope();
@@ -943,11 +900,6 @@ PRODUCTIONS
     | Literal<result,0>
   .
 
-  /* The big-result profile shares function/loop statements and checks total return. */
-  TableBody =
-    FlowBody
-  .
-
   /* Conditions borrow an already normalized expression result; no implicit truthiness. */
   TableCondition<SourceCondition *condition> =
     (. int value = 0; .)
@@ -1126,7 +1078,7 @@ PRODUCTIONS
     )
   .
 
-  /* Loops re-evaluate conditions and carry initialized big locals through cells.
+  /* Loops re-evaluate conditions and carry typed locals through private cells.
    * Body-local declarations are retired before continuation. No implicit return. */
   TableWhile =
     IF(Sym==whileSym && depth>=64) "while" (. capture(); source_scope_limit(); .)
@@ -1142,7 +1094,7 @@ PRODUCTIONS
         operation = source_mark();
         loop = source_loop_begin();
     .)
-    "(" TableCondition<&condition> ")"
+    "(" FlowCondition<&condition> ")"
     (.
         source_restore(operation);
         ++depth;
@@ -1281,10 +1233,41 @@ PRODUCTIONS
 
   /* A transfer closes its path. No unreachable block is fabricated for suffixes. */
   FlowBody =
+    IF(source_table_profile()) TableFlowBody
+    | NumericFlowBody
+  .
+
+  /* Separate repetition FIRST sets prevent unsupported numeric for syntax from
+   * entering an error arm that cannot consume it. The profile is immutable. */
+  TableFlowBody =
     {
         (. source_statement(); .)
         ( FlowIf | FlowReturn | TableStatement )
     }
+  .
+
+  /* A numeric body admits scalar statements, while and structured transfers.
+   * Unsupported statement starters remain outside this repetition's FIRST set. */
+  NumericFlowBody =
+    {
+        (. source_statement(); .)
+        ( FlowIf | FlowReturn | NumericStatement )
+    }
+  .
+
+  /* Both scalar and table profiles use the same structured branch/loop helpers.
+   * Arithmetic parsing remains profile-owned; no expression is parsed twice. */
+  FlowCondition<SourceCondition *condition> =
+    IF(source_table_profile()) TableCondition<condition>
+    | LimboCondition<condition>
+  .
+
+  /* Numeric locals retain their existing strict initialized declaration syntax.
+   * While and innermost transfers now share full function-level flow handling. */
+  NumericStatement =
+    LimboStatement
+    | TableWhile
+    | LoopTransfer
   .
 
   /* A source return exits the function; it is not a jump to a loop continuation. */
@@ -1298,7 +1281,7 @@ PRODUCTIONS
         capture();
         operation = source_mark();
     .)
-    TableExpression<&value> ";"
+    ( IF(source_table_profile()) TableExpression<&value> | Expression<&value> ) ";"
     (.
         source_restore(operation);
         source_flow_return(value);
@@ -1341,7 +1324,7 @@ PRODUCTIONS
         operation = source_mark();
         choice = source_choice_begin();
     .)
-    "(" TableCondition<&condition> ")"
+    "(" FlowCondition<&condition> ")"
     (.
         source_restore(operation);
         ++depth;

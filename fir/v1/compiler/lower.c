@@ -56,12 +56,8 @@ static int binding_scope[256], active[256], scope_depth;
 
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
-static int logic_serial;  /* Logical expression label identities, reset per translation. */
-static int blocks_used;   /* Entry plus all terminal/logical CFG blocks, bounded by FIR_BLOCKS. */
-static int branch_serial; /* Total terminal decisions; two new blocks per decision. */
-static int branch_bindings[FIR_BLOCKS / 2][256]; /* Incoming SSA bindings, isolated per decision. */
-static int branch_cells[FIR_BLOCKS / 2][256];    /* Incoming scalar-cell identities isolated per terminal arm. */
-static int branch_names[FIR_BLOCKS / 2];         /* Saved binding prefix; sibling locals are never reused. */
+static int logic_serial;            /* Logical expression label identities, reset per translation. */
+static int blocks_used;             /* Entry plus all terminal/logical CFG blocks, bounded by FIR_BLOCKS. */
 static int result_real;             /* Interface return type, checked against the definition before expressions. */
 static FirType table_values[1001];  /* Per-SSA types for bounded numeric and table profiles. */
 static FirType table_bindings[256]; /* Declared/inferred local types, reset for each translation. */
@@ -134,7 +130,7 @@ void source_config(FILE *out, int language)
     integer_mode = language == 4;
     serial = failed = name_count = scope_depth = debug_scope_serial = 0;
     debug_scopes[0] = 0;
-    branch_serial = terminal = logic_serial = 0;
+    terminal = logic_serial = 0;
     blocks_used = 1;
     result_real = 0;
     loop_serial = loop_depth = 0;
@@ -531,6 +527,14 @@ int source_read(int name)
         {
             value = table_operation(table_bindings[name], "ref.load", table_cells[name], -1);
         }
+        else if (table_bindings[name] == T_F64)
+        {
+            value = table_operation(T_F64, "f64.load", table_cells[name], -1);
+        }
+        else if (table_bindings[name] == T_I32 && !source_table_profile())
+        {
+            value = table_operation(T_I32, "i32.load", table_cells[name], -1);
+        }
         else if (table_bindings[name] == T_BOOL)
         {
             value = table_operation(T_BOOL, "bool.load", table_cells[name], -1);
@@ -603,6 +607,18 @@ void source_bind(int name, int value, int declaration)
         reject("assignment before declaration");
     }
     bindings[name] = value;
+    if (!failed && !source_table_profile())
+    {
+        table_bindings[name] = table_values[value];
+        if (table_cells[name] >= 0)
+        {
+            fprintf(destination,
+                    "    %s.store %%v%d, %%v%d\n",
+                    table_bindings[name] == T_F64 ? "f64" : "i32",
+                    table_cells[name],
+                    value);
+        }
+    }
     if (!failed)
     {
         source_debug_access(declaration ? "declare" : "assign",
@@ -1215,53 +1231,6 @@ int source_condition_value(SourceCondition condition)
 }
 
 
-/* Publish the two edges and first label of a terminal decision; return its scalar identity.
- * condition is a copied bool/inversion pair. Bounds leave room for the entry plus two blocks
- * per decision. No assignment environment is merged: each accepted arm must return. */
-int source_branch(SourceCondition condition)
-{
-    int choice = ++branch_serial;
-    if (branch_serial > (FIR_BLOCKS - 1) / 2 || blocks_used + 2 > FIR_BLOCKS)
-    {
-        reject("terminal decision block limit exceeded");
-    }
-    if (!failed)
-    {
-        blocks_used += 2;
-        branch_names[choice] = name_count;
-        memcpy(branch_bindings[choice], bindings, (size_t)name_count * sizeof(bindings[0]));
-        memcpy(branch_cells[choice], table_cells, (size_t)name_count * sizeof(table_cells[0]));
-        fprintf(destination,
-                "    if %%v%d, ^choose%d_%s, ^choose%d_%s\n^choose%d_yes:\n",
-                condition.value,
-                choice,
-                condition.invert ? "no" : "yes",
-                choice,
-                condition.invert ? "yes" : "no",
-                choice);
-        source_debug_event("branch", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
-    }
-    terminal = 0;
-    return choice;
-}
-
-
-/* Begin the source-false arm with the decision's original SSA environment.
- * choice is parser-local. The true arm has terminated and retired its lexical
- * locals. Restore outer scalar/owner bindings, not mutable table contents: effects
- * execute only in the selected runtime arm. No phi or continuation is introduced. */
-void source_else(int choice)
-{
-    if (!failed)
-    {
-        memcpy(bindings, branch_bindings[choice], (size_t)branch_names[choice] * sizeof(bindings[0]));
-        memcpy(table_cells, branch_cells[choice], (size_t)branch_names[choice] * sizeof(table_cells[0]));
-        fprintf(destination, "^choose%d_no:\n", choice);
-    }
-    terminal = 0;
-}
-
-
 /* Return the tutorial value through its existing trace harness, then terminate this FIR arm.
  * value is a parser-owned SSA index. No caller stream or source binding is acquired. */
 void source_return(int value)
@@ -1355,9 +1324,9 @@ static int table_value(FirType type)
 static int table_operation(FirType type, const char *spelling, int a, int b)
 {
     static const char *const types[] = {
-        "void",        "i32",          "f64",        "bool",        "string",     "any",       "channel",
-        "i64",         "table.big",    "table.slot", "big.range",   "keys",       "table.key", "bool.slot",
-        "table.range", "string.range", "i64.slot",   "string.cell", "table.cell", "keys.cell", "key.cell",
+        "void",      "i32",         "f64",        "bool",      "string",    "any",       "channel",     "i64",
+        "table.big", "table.slot",  "big.range",  "keys",      "table.key", "bool.slot", "table.range", "string.range",
+        "i64.slot",  "string.cell", "table.cell", "keys.cell", "key.cell",  "i32.slot",  "f64.slot",
     };
     int result = table_value(type);
     if (!failed)
@@ -2135,8 +2104,8 @@ void source_table_lease(int receiver, int acquire)
 
 /* [GC:] Promote active locals into dominating typed frame cells.
  * include_uninitialized reserves zero/nil storage for declared locals at joins,
- * without marking them readable. Scalars keep bool/big storage; int widens on
- * store and narrows on load. Initialized reference cells hold an
+ * without marking them readable. Numeric profiles keep exact i32/f64 cells;
+ * the table profile retains its established int-to-big cell model. Reference cells hold an
  * independent rooted owner. Cells never escape this serial compiler request's
  * function; unsupported transient locations/ranges remain SSA-only. */
 static void source_promote_locals(int include_uninitialized)
@@ -2146,7 +2115,8 @@ static void source_promote_locals(int include_uninitialized)
     {
         FirType type = table_bindings[name];
         FirType reference = source_reference_cell(type);
-        if (active[name] && (type == T_I64 || type == T_I32 || type == T_BOOL || reference != T_VOID) &&
+        if (active[name] &&
+            (type == T_I64 || type == T_I32 || type == T_F64 || type == T_BOOL || reference != T_VOID) &&
             (bindings[name] >= 0 || include_uninitialized) && table_cells[name] < 0)
         {
             if (reference != T_VOID)
@@ -2156,18 +2126,32 @@ static void source_promote_locals(int include_uninitialized)
             }
             else
             {
-                int cell = table_operation(
-                    type == T_BOOL ? T_BOOL_SLOT : T_BIG_SLOT, type == T_BOOL ? "bool.local" : "big.local", -1, -1);
+                int numeric_int = type == T_I32 && !source_table_profile();
+                FirType cell_type = type == T_BOOL  ? T_BOOL_SLOT
+                                    : type == T_F64 ? T_F64_SLOT
+                                    : numeric_int   ? T_I32_SLOT
+                                                    : T_BIG_SLOT;
+                const char *operation = type == T_BOOL ? "bool" : type == T_F64 ? "f64" : numeric_int ? "i32" : "big";
+                char constructor[32];
+                int cell;
+                snprintf(constructor, sizeof(constructor), "%s.local", operation);
+                cell = table_operation(cell_type, constructor, -1, -1);
                 int value = bindings[name];
                 table_cells[name] = cell;
-                if (type == T_I32 && value >= 0)
+                if (type == T_I32 && !numeric_int && value >= 0)
                 {
                     value = source_table_convert(value, 0);
                 }
                 if (!failed && value >= 0)
                 {
-                    fprintf(
-                        destination, "    %s %%v%d, %%v%d\n", type == T_BOOL ? "bool.store" : "big.store", cell, value);
+                    fprintf(destination,
+                            "    %s %%v%d, %%v%d\n",
+                            type == T_BOOL  ? "bool.store"
+                            : type == T_F64 ? "f64.store"
+                            : numeric_int   ? "i32.store"
+                                            : "big.store",
+                            cell,
+                            value);
                 }
             }
         }
@@ -2568,13 +2552,20 @@ void source_choice_end(SourceChoice choice)
 }
 
 
-/* Return a borrowed big SSA result from any structured function path. The ordinary function
+/* Return a borrowed declared numeric SSA result from any structured function path. The ordinary function
  * return emitter owns trace/type rules; mark this path closed so loop/if cleanup
  * emits no trailing edge. No native owner escapes and no partial statement runs. */
 void source_flow_return(int value)
 {
     source_statement();
-    source_table_return(value);
+    if (source_table_profile())
+    {
+        source_table_return(value);
+    }
+    else
+    {
+        source_return(value);
+    }
     if (!failed)
     {
         source_debug_event(
@@ -2584,14 +2575,14 @@ void source_flow_return(int value)
 }
 
 
-/* Require every reachable function exit to return a big value. No parameters,
+/* Require every reachable function exit to return its declared numeric value. No parameters,
  * owners or runtime calls. A potentially zero-iteration loop never proves total
  * return by itself; a missing return rejects staged FIR/debug publication. */
 void source_flow_finish(void)
 {
     if (!failed && !path_closed)
     {
-        reject("function may finish without returning big");
+        reject("function may finish without returning its declared numeric value");
     }
     if (!failed)
     {

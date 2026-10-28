@@ -142,14 +142,6 @@ int source_numeric_relation(int left, int right, SourceRelation relation);
 int source_condition_value(SourceCondition condition);
 
 
-/* Start a terminal decision and return its private label identity; errors retire staged output. */
-int source_branch(SourceCondition condition);
-
-
-/* Start the other arm of one terminal decision; choice is the value returned by source_branch. */
-void source_else(int choice);
-
-
 /* Emit a terminal trace/return without changing the caller's source binding environment. */
 void source_return(int value);
 
