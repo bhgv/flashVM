@@ -304,7 +304,12 @@ int source_constant(int negative)
 /* Emit a three-address instruction; source operators are left associative. */
 int source_binary(int left, int right, int op)
 {
-    int result = serial++;
+    int result;
+    if (op == '&' || op == '|' || op == '^' || op == '<' || op == '>')
+    {
+        return source_integer_bits(left, right, op);
+    }
+    result = serial++;
     if (!integer_mode && op == '%')
     {
         reject("remainder requires the Limbo int source profile");
@@ -334,6 +339,53 @@ int source_binary(int left, int right, int op)
         source_debug_event("binary", result, "", debug_scopes[scope_depth], scope_depth, location);
     }
     return result;
+}
+
+
+/* Emit pure signed32 bits or an eager checked shift. Borrow SSA IDs left/right;
+ * op selects &, |, ^, < or >. Return the new ID; sticky errors prevent output.
+ * This is compile-time lowering only, with no runtime owner or implicit coercion. */
+int source_integer_bits(int left, int right, int op)
+{
+    const char *spelling = op == '&' ? "i32.and" : op == '|' ? "i32.or" : op == '^' ? "i32.xor"
+                           : op == '<' ? "i32.shl.checked" : "i32.shr.checked";
+    int result = serial++;
+    if (op != '&' && op != '|' && op != '^' && op != '<' && op != '>')
+    {
+        reject("unknown homogeneous int bit operator");
+    }
+    if (profile != FIR_LIMBO || !integer_mode)
+    {
+        reject("bit operations require the homogeneous Limbo int profile");
+    }
+    if (serial > 1000)
+    {
+        reject("expression size limit exceeded");
+    }
+    if (!failed)
+    {
+        fprintf(destination, "    %%v%d: i32 = %s %%v%d, %%v%d\n", result, spelling, left, right);
+        source_debug_event("binary", result, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return result;
+}
+
+
+/* Complement a borrowed int SSA value without signed C arithmetic or reevaluation.
+ * Return xor(value,-1); compiler staging owns the generated constant and debug site. */
+int source_integer_not(int value)
+{
+    int minus = serial++;
+    if (profile != FIR_LIMBO || !integer_mode || serial > 1000)
+    {
+        reject("int complement requires the Limbo int profile within the expression limit");
+    }
+    if (!failed)
+    {
+        fprintf(destination, "    %%v%d: i32 = const.i32 -1\n", minus);
+        source_debug_event("constant", minus, "", debug_scopes[scope_depth], scope_depth, location);
+    }
+    return source_integer_bits(value, minus, '^');
 }
 
 
@@ -929,14 +981,27 @@ void source_declare(int name, int value, int constant)
 }
 
 
-/* Lower compound assignment before updating the visible lexical binding. */
-void source_assign(int name, int value, int op)
+/* Lower a captured local update. name/value are compiler IDs, op is zero for a
+ * plain assignment, operation is the authored operator span. Keep read/write sites
+ * at the saved target and arithmetic at its operator. No runtime RPC is issued. */
+void source_assign_at(int name, int value, int op, SourceMark operation)
 {
+    SourceMark target = location;
     if (op)
     {
-        value = source_binary(source_read(name), value, op);
+        int left = source_read(name);
+        source_restore(operation);
+        value = source_binary(left, value, op);
     }
+    source_restore(target);
     source_bind(name, value, 0);
+}
+
+
+/* Preserve the existing unmarked AS caller contract; target location is borrowed. */
+void source_assign(int name, int value, int op)
+{
+    source_assign_at(name, value, op, location);
 }
 
 
@@ -1605,14 +1670,11 @@ int source_table_binary(int left, int right, int op)
     }
     if (table_values[left] == T_I32 && table_values[right] == T_I32)
     {
-        /* Widen signed ints exactly, reuse pure full-width bit operations,
-         * then narrow modulo 2^32. Inputs are evaluated only once by the parser. */
+        /* Typed int operands already carry exact signed32 values. Emit one pure
+         * operation instead of two widenings, a big operation and narrowing. */
         if (op == '&' || op == '|' || op == '^')
         {
-            int wide_left = source_table_convert(left, 0);
-            int wide_right = source_table_convert(right, 0);
-            int wide_result = source_table_binary(wide_left, wide_right, op);
-            return source_table_convert(wide_result, 2);
+            return table_operation(T_I32, op == '&' ? "i32.and" : op == '|' ? "i32.or" : "i32.xor", left, right);
         }
         switch (op)
         {

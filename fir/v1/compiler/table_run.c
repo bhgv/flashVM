@@ -135,7 +135,8 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if ((in->op >= O_I64 && in->op <= O_REF_NIL) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
+        if (in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR ||
+            (in->op >= O_I64 && in->op <= O_REF_NIL) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
             in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
             in->op == O_RETURN)
         {
@@ -237,6 +238,9 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_ADD:
         case O_SUB:
         case O_MUL:
+        case O_I32_AND:
+        case O_I32_OR:
+        case O_I32_XOR:
         case O_I32_DIV:
         case O_I32_MOD:
             if ((in->op == O_I32_DIV || in->op == O_I32_MOD) && !b->big)
@@ -247,7 +251,10 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             {
                 uint32_t left = (uint32_t)(uint64_t)a->big;
                 uint32_t right = (uint32_t)(uint64_t)b->big;
-                uint32_t bits = in->op == O_ADD   ? left + right
+                uint32_t bits = in->op == O_I32_AND ? left & right
+                                : in->op == O_I32_OR ? left | right
+                                : in->op == O_I32_XOR ? left ^ right
+                                : in->op == O_ADD   ? left + right
                                 : in->op == O_SUB ? left - right
                                 : in->op == O_MUL
                                     ? left * right

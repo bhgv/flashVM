@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "6a307e5d23697d62d7bcb841fbddc1c80d0fd975",
+  "revision": "e72c8da2f89af849209d53d161a5b290d5a85827",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -1186,7 +1186,7 @@
     "upstream/libinterp/tests/shift-slot-native.c": "821e7dbfc23d58b7dfdb31399ec9d40fd8b2e2c7472ad30ae4f4d968d29a2c97",
     "upstream/libinterp/tests/shift-slot-native.py": "409f4ce8956e79b1ba662c3f99922c1ceb2446474878d3fe10a156fa1330216a",
     "upstream/libinterp/tests/slice-copy-native.c": "1743785750abea8e6ab45ca23c73364947d9e667d7b6dd38b8bb3872bf9d40f8",
-    "upstream/libinterp/tests/slice-tokenize-suite.py": "a5d4e3704a542d44a2f92b4ec47568ec801494d32e9b149404f46999f1a0fd04",
+    "upstream/libinterp/tests/slice-tokenize-suite.py": "6a3aefb067214abf5663eaef301b0abe5448b430177b6cc85aad7099b24b151d",
     "upstream/libinterp/tests/spawn-preflight.c": "e41e72956364eec8aa8f503691dd0fbbae528fa454737e417e783c13be8d1956",
     "upstream/libinterp/tests/spawn-preflight.py": "b0f293bdb39d8d01bd9ba26182f0ae0053b6352c4abc5f513fc8710497b456c4",
     "upstream/libinterp/tests/srv-results.c": "3003cdc259fa6d0b2e9ab9639a696f100c71bbf7bce3d9b4540cbbb028ede115",

@@ -396,6 +396,18 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->a = in->b = -1;
                 changed = 1;
             }
+            else if ((in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR) &&
+                     a->op == O_I32 && b->op == O_I32)
+            {
+                uint32_t left = (uint32_t)a->integer;
+                uint32_t right = (uint32_t)b->integer;
+                uint32_t bits = in->op == O_I32_AND ? left & right
+                                : in->op == O_I32_OR ? left | right : left ^ right;
+                in->integer = signed_bits(bits);
+                in->op = O_I32;
+                in->a = in->b = -1;
+                changed = 1;
+            }
             else if ((in->op == O_I32_DIV || in->op == O_I32_MOD) && a->op == O_I32 && b->op == O_I32 &&
                      b->integer != 0)
             {

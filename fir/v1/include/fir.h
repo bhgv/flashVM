@@ -169,7 +169,10 @@ typedef enum
     O_REF_NIL,           /* Clear a private reference cell; load requires a subsequent definite store. */
     O_AS_GLOBAL_GET,     /* Read a named dynamic AVM1 global; may execute user accessors. */
     O_AS_GLOBAL_SET,     /* Assign a named AVM1 global; never a Dis heap address. */
-    O_AS_MEMBER_SET      /* Set a named member on a captured AS object value. */
+    O_AS_MEMBER_SET,     /* Set a named member on a captured AS object value. */
+    O_I32_AND,           /* Exact signed32 bit intersection; append-only ID. */
+    O_I32_OR,            /* Exact signed32 bit union; append-only ID. */
+    O_I32_XOR            /* Exact signed32 exclusive-or; append-only ID. */
 } FirOp;
 
 

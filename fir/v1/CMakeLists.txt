@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.51.0 LANGUAGES C)
+project(fir1 VERSION 0.52.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -560,4 +560,15 @@ if(BUILD_TESTING)
   add_test(NAME fir1_limbo_aliases COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/limbo_aliases.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
   set_tests_properties(fir1_limbo_aliases PROPERTIES TIMEOUT 60)
+endif()
+
+# Append-only signed32 bit operations are tested through the same public CLI/library path.
+if(BUILD_TESTING)
+  add_executable(fir1_int_bits_api tests/int_bits_api.c)
+  target_link_libraries(fir1_int_bits_api PRIVATE fir1_ir)
+  add_test(NAME fir1_int_bits_api COMMAND fir1_int_bits_api)
+  add_test(NAME fir1_int_bits COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/int_bits.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${counted_for_reference})
+  set_tests_properties(fir1_int_bits PROPERTIES TIMEOUT 120)
 endif()

@@ -17,6 +17,7 @@ enum
     SHLL = 127,            /* Checked big left shift by an int count. */
     SHRL = 128,            /* Checked arithmetic big right shift. */
     ANDW = 72,             /* Low-32-bit normalization mask operation. */
+    ORW = 74,              /* Native-word bit union before signed32 normalization. */
     XORW = 76,             /* Bias the normalized int sign bit. */
     ADDW = 58,             /* Native addition followed by signed-int normalization. */
     MULW = 64,             /* Native multiplication followed by signed-int normalization. */
@@ -387,7 +388,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD &&
+                 in->op != O_RETURN && in->op != O_I32_AND && in->op != O_I32_OR && in->op != O_I32_XOR &&
+                 !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD &&
                  in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
@@ -620,10 +622,16 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_ADD:
         case O_SUB:
         case O_MUL:
+        case O_I32_AND:
+        case O_I32_OR:
+        case O_I32_XOR:
         case O_I32_DIV:
         case O_I32_MOD:
             arithmetic(e,
-                       in->op == O_ADD       ? ADDW
+                       in->op == O_I32_AND ? ANDW
+                       : in->op == O_I32_OR ? ORW
+                       : in->op == O_I32_XOR ? XORW
+                       : in->op == O_ADD       ? ADDW
                        : in->op == O_SUB     ? SUBW
                        : in->op == O_MUL     ? MULW
                        : in->op == O_I32_DIV ? DIVW

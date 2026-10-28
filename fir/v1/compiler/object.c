@@ -245,6 +245,13 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
         case O_COPY:
             load(&actions, m, in->a);
             break;
+        case O_I32_AND:
+        case O_I32_OR:
+        case O_I32_XOR:
+            load(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, in->op == O_I32_AND ? 0x60 : in->op == O_I32_OR ? 0x61 : 0x62);
+            break;
         case O_MUL:
             multiply(&actions, m, in->a, in->b);
             break;

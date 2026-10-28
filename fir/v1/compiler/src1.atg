@@ -359,12 +359,20 @@ PRODUCTIONS
 
   /* Homogeneous Limbo int supports checked /= and %=; AS remainder stays rejected. */
   AssignmentOperator<int *op> =
-    "="                                                                 (. *op = 0; .)
-    | "+="                                                              (. *op = '+'; .)
-    | "-="                                                              (. *op = '-'; .)
-    | "*="                                                              (. *op = '*'; .)
-    | "/="                                                              (. *op = '/'; .)
-    | "%="                                                              (. *op = '%'; .)
+    (
+        "=" (. *op = 0; .)
+        | "+=" (. *op = '+'; .)
+        | "-=" (. *op = '-'; .)
+        | "*=" (. *op = '*'; .)
+        | "/=" (. *op = '/'; .)
+        | "%=" (. *op = '%'; .)
+        | "&=" (. *op = '&'; .)
+        | "|=" (. *op = '|'; .)
+        | "^=" (. *op = '^'; .)
+        | "<<=" (. *op = '<'; .)
+        | ">>=" (. *op = '>'; .)
+    )
+    (. capture(); .)
   .
 
   /* Intern a source identifier separately from reading its current binding. */
@@ -501,7 +509,8 @@ PRODUCTIONS
     "}" (. capture(); source_leave_scope(); .)
   .
 
-  /* Compare complete numeric expressions once; bool is internal, never coerced from an int.
+  /* Compare arithmetic/shift operands once; bit expressions require explicit groups.
+  * bool is internal, never coerced from an int.
   * Restore the operator's original byte span after parsing the right-hand expression. */
   LimboCondition<SourceCondition *condition> =
                                                                         (.
@@ -509,8 +518,8 @@ PRODUCTIONS
                                                                             SourceRelation relation = SOURCE_LESS;
                                                                             SourceMark target;
                                                                         .)
-    Expression<&left> Relation<&relation>                               (. target = source_mark(); .)
-    Expression<&right>                                                  (.
+    IntegerShift<&left> Relation<&relation>                               (. target = source_mark(); .)
+    IntegerShift<&right>                                                  (.
                                                                             source_restore(target);
                                                                             *condition = source_compare(left, right, relation);
                                                                         .)
@@ -541,6 +550,7 @@ PRODUCTIONS
         int op = 0;
         int type = T_VOID;
         SourceMark target;
+        SourceMark operation;
     .)
     ";"
     | IF(Sym==LbraceSym && depth>=64) "{"
@@ -569,10 +579,10 @@ PRODUCTIONS
                     source_restore(target);
                     source_bind(name, value, 1);
                 .)
-                | AssignmentOperator<&op> Expression<&value> ";"
+                | AssignmentOperator<&op> (. operation = source_mark(); .) Expression<&value> ";"
                 (.
                     source_restore(target);
-                    source_assign(name, value, op);
+                    source_assign_at(name, value, op, operation);
                 .)
             )
       )
@@ -597,7 +607,93 @@ PRODUCTIONS
   .
 
   /* Addition/subtraction bind less tightly than multiplication, left to right. */
+  /* Union is the lowest bit level; each operand evaluates once, left to right. */
   Expression<int *result> =
+    (.
+        int right = 0;
+        SourceMark operation;
+    .)
+    IntegerXor<result>
+    {
+        "|"
+        (.
+            capture();
+            operation = source_mark();
+        .)
+        IntegerXor<&right>
+        (.
+            source_restore(operation);
+            *result = source_integer_bits(*result, right, '|');
+        .)
+    }
+  .
+
+  /* Exclusive-or binds more tightly than union and associates left. */
+  IntegerXor<int *result> =
+    (.
+        int right = 0;
+        SourceMark operation;
+    .)
+    IntegerAnd<result>
+    {
+        "^"
+        (.
+            capture();
+            operation = source_mark();
+        .)
+        IntegerAnd<&right>
+        (.
+            source_restore(operation);
+            *result = source_integer_bits(*result, right, '^');
+        .)
+    }
+  .
+
+  /* Intersection binds more tightly than exclusive-or; shifts bind above it. */
+  IntegerAnd<int *result> =
+    (.
+        int right = 0;
+        SourceMark operation;
+    .)
+    IntegerShift<result>
+    {
+        "&"
+        (.
+            capture();
+            operation = source_mark();
+        .)
+        IntegerShift<&right>
+        (.
+            source_restore(operation);
+            *result = source_integer_bits(*result, right, '&');
+        .)
+    }
+  .
+
+  /* Shifts bind below sums; runtime counts must be int 0..31 on every VM. */
+  IntegerShift<int *result> =
+    (.
+        int right = 0;
+        int direction = 0;
+        SourceMark operation;
+    .)
+    NumericSum<result>
+    {
+        ( "<<" (. direction = '<'; .) | ">>" (. direction = '>'; .) )
+        (.
+            capture();
+            operation = source_mark();
+        .)
+        NumericSum<&right>
+        (.
+            source_restore(operation);
+            *result = source_integer_bits(*result, right, direction);
+        .)
+    }
+  .
+
+  /* Sums associate left and retain the existing arithmetic semantics. */
+  NumericSum<int *result> =
                                                                         (.
                                                                             int right = 0, op = 0;
                                                                             SourceMark operator;
@@ -699,6 +795,19 @@ PRODUCTIONS
           source_restore(operation);
           *result = source_alias_cast(*result, cast);
       .)
+    | IF(Sym==TildeSym && depth<64) "~"
+      (.
+          capture();
+          operation = source_mark();
+          ++depth;
+      .)
+      Unary<result>
+      (.
+          --depth;
+          source_restore(operation);
+          *result = source_integer_not(*result);
+      .)
+    | IF(Sym==TildeSym && depth>=64) "~" (. capture(); source_scope_limit(); *result = 0; .)
     | Primary<result>
   .
 

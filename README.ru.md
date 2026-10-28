@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1661**. [English](README.md).
+Версия разработки: **0.1662**. [English](README.md).
 
-Текущая серия: [v0.1661](docs/releases/v0.1661.md): локальные псевдонимы типов в исполняемом Limbo → FIR и синхронизация границ Bio из Inferno.
+Текущая серия: [v0.1662](docs/releases/v0.1662.md): примитивы signed32 в FIR, побитовые операции Limbo → Dis/SWF и исправления форматированного вывода Inferno.
 
 ## Просмотр документации
 

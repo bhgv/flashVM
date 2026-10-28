@@ -383,6 +383,23 @@ def fir_dis_packages(prefix, work, environment):
             raise RuntimeError("relocated FIR/Dis execution produced the wrong i32 result")
 
 
+    # New scalar bits and checked shifts must survive relocation and C99 relinking.
+    for example in ("int-bits.b", "int-shifts.b"):
+        bit_source = component / "examples/dis" / example
+        optimized = work / "bits-opt.fir"
+        run([program(prefix, "fir", "fir1_source"), "limbo", "--input", bit_source, fir, "--module", "dis_example"], work, environment)
+        run([executable, bit_source, embedded], work, environment)
+        run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
+        if embedded.read_bytes() != binary.read_bytes():
+            raise RuntimeError("relocated bit/shift C99 client differs from CLI emission")
+        run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+        for selected in (fir, optimized):
+            run([program(prefix, "fir", "fir1"), "dis", selected, binary], work, environment)
+            for mode in ("--jit", "--no-jit"):
+                result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 2, binary], work, environment)
+                if "DATA 0 42\nDATA 8 1\n" not in result:
+                    raise RuntimeError("relocated scalar bit/shift example failed")
+
     # A second input proves that the shipped source library and emitter support terminal CFG,
     # and that an unvisited first slot cannot masquerade as the selected return value.
     decision = component / "examples/dis/decision.b"

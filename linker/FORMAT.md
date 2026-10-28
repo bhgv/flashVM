@@ -25,3 +25,5 @@ initializers; function-call relocations are not defined yet. SWF8 contains one
 DoAction per object, then ShowFrame and End. Intra-object jumps need no changes.
 
 SWL 0.3.2 also accepts AVM1 Divide (0x0d), used by FIR f64.div.
+
+Standard AVM1 BitXor (0x62) is accepted alongside BitAnd/BitOr for signed32 FIR output; SWO1/SWF8 formats are unchanged. Стандартный BitXor принимается без изменения форматов.

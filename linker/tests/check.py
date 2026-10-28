@@ -386,6 +386,17 @@ with tempfile.TemporaryDirectory() as tmp:
         result = subprocess.run([EXE, *map(str, args)], capture_output=True, timeout=15)
         if not (result.returncode == 2 and result.stdout == b""):
             raise AssertionError("condition check failed: linker/tests/check.py:336")
+# Keep the independent opcode fixture in its own live temporary directory.
+with tempfile.TemporaryDirectory() as bits_directory:
+    bit_root = Path(bits_directory)
+    bit_object = bit_root / "bits.swo"
+    bit_movie = bit_root / "bits.swf"
+    payload = b"\x07" + struct.pack("<i", -1) + b"\x07" + struct.pack("<i", 42)
+    code = b"\x96" + struct.pack("<H", len(payload)) + payload + b"\x62\x26\0"
+    bit_object.write_bytes(object("signed_bits", code))
+    call("link", bit_movie, bit_object)
+    if [body for tag, body in tags(bit_movie.read_bytes()) if tag == 12] != [code]:
+        raise RuntimeError("linker changed or rejected standard AVM1 BitXor")
 print(f"{checks} total checks including inspection")
 
 # Stage options affect real SWF header fields, independent of the bit writer.

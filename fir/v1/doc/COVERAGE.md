@@ -1,70 +1,29 @@
-# Coverage and boundaries
+# Current coverage — FIR tools 0.52
 
-[Русский](COVERAGE.ru.md) · [Exact numeric syntax](SOURCE_SYNTAX.md) ·
-[Lexical scopes](LEXICAL_SCOPES.md) · [Diagnostics](SOURCE_DIAGNOSTICS.md)
+[Русский](COVERAGE.ru.md) · [Source grammar](../compiler/src1.atg) · [Public API](../include/fir.h) · [Compiler architecture](../../../compiler/README.md)
 
-| Component | Implemented | Not implemented |
+This page describes executable FIR adapters, separately from the broader standalone syntax frontends and native bootstrap. A recognized syntax tree alone does not establish lowering or execution.
+
+| Component/profile | Executable coverage | Boundary |
 | --- | --- | --- |
-| FIR reader | Coco/R, UTF-8, comments, exact FIR 1.0 | Future versions, binary encoding |
-| Verifier | SSA uniqueness, dominance, types, targets, reachability, terminators | Interprocedural analysis |
-| AS1/AS2/AS3 numeric adapters | trace, initialized var, AS3 const, reads/assignments, AS2/3 Number annotations | Objects, strings, source branches/loops/functions, hoisting, general language semantics |
-| Limbo numeric adapter | value(): int tutorial, initialized int/inferred names, lexical blocks/shadowing, reads/assignments, terminal if/else returns | General module ABI, functions/imports, source channels, alt/spawn, big/real |
-| Expressions | Numeric literals, groups, bounded unary +/-, + - *, compound assignments; AS / and /= | general boolean expressions/joins, broader types |
-| FIR channels | Create/send/receive/close through existing FlashVM extensions | Source Limbo channel lowering, typed module graphs |
-| Source diagnostics | First-failure C99 struct and opt-in schema-1 JSON with original byte spans | Multiple diagnostics, general AST maps, reentrant parser |
-| SWF backend | SWO1 AVM1 objects; separate SWL links SWF8 | ABC/AVM2, function imports/relocations, exceptions |
+| FIR reader/verifier | Coco/R FIR 1.0, UTF-8, SSA, dominance, types, control-flow targets and terminators | No binary FIR or interprocedural analysis |
+| AS1/2/3 source adapter | Numeric trace, initialized bindings, AS3 const, numeric annotations, arithmetic | Teaching AVM1 compatibility; no complete AS/ABC source compiler |
+| Limbo homogeneous int | Signed32 arithmetic/division/remainder, bit operations, checked shifts, aliases, blocks and terminal comparisons | No implicit bool/int mixing or general source module ABI |
+| Limbo homogeneous real | Binary64 arithmetic, initialized typed locals, aliases and lexical blocks | No mixed numeric conversion or general real CFG |
+| Limbo typed big/table | Exact big/int arithmetic, bool comparisons/logical values, Unicode strings, hybrid tables, key snapshots, constructors, mutation/slices and typed loops | Restricted value() teaching entry; no arbitrary composite/type/function compiler |
+| Type aliases | Forward file/module prefix, sequential body/block/branch/loop aliases, canonical casts and scope retirement | 128 declarations per request; no imports/qualified/generic types or local forwards |
+| Optimizer | Verified explicit optimization, constant folds, CFG simplification, conservative memory/exception effects | Not a whole-program optimizer; effectful producer errors remain observable |
+| Dis targets | Direct scalar and hosted NC64 emission with original/optimized execution checks | General Dis linking, source channel lowering and a complete compiler/runtime ABI migration remain separate |
+| SWF target | SWO1 objects, separate SWL/SWA1/resources to SWF8; numeric bits and raw FIR AS properties | No ABC/AVM2 or live checked-shift exceptions; extensions require their explicit target contract |
+| C99 libraries/debug origins | CLI/library paths, staged source rejection and original UTF-8 byte spans | Generated parser remains serialized; no complete IDE debugger attachment |
 
-AS uses binary64, including division, NaN and signed-zero behavior. Limbo uses
-checked signed i32 literals and wrapping + - *; unary minus on groups/variables
-is supported. AS accepts hex and decimal/exponent spellings; Limbo accepts bases
-2..36. ++/-- are rejected rather than read as two unary signs. Exact syntax and
-precedence remain documented separately, with the Coco/R grammar authoritative.
+## Contracts and tutorials
 
-AS bindings are flat and initialized left-to-right, without hoisting. Limbo
-blocks retire local names and restore outer bindings while retaining assignments
-to outer names. Limits: 64 KiB input, 255-byte tokens, 256 total admitted names,
-1000 SSA values, shared depth 64 for blocks/groups/unary recursion. Rejected
-translations do not overwrite existing output. The final I/O copy is not a
-rollback transaction on arbitrary output failure.
+- [Exact source syntax](SOURCE_SYNTAX.md), [lexical value scopes](LEXICAL_SCOPES.md), [alias scopes](SOURCE_ALIASES.md) and [diagnostics](SOURCE_DIAGNOSTICS.md).
+- [Signed32 bit primitives and shifts](INT_BITS.md), [int arithmetic](INT_ARITHMETIC.md), [typed int shifts](INT_SHIFTS.md) and [text/key conversion](TEXT_VALUES.md).
+- [Hybrid constructors](TABLE_LITERALS.md), [table ownership](TABLES_DIS.md), [Unicode strings](UNICODE_STRINGS.md) and [slice replacement](SLICE_ASSIGNMENT.md).
+- [Dynamic any status](DYNAMIC_VALUES.md), [Dis backend](DIS_BACKEND.md) and [commented examples](../examples/README.md).
 
-The Limbo tutorial harness traces value() instead of implementing the Inferno
-loader ABI. AS3 here is AVM1 arithmetic compatibility; full AS3 needs an ABC
-backend. The independent [syntax frontends](../../../compiler/README.md) recognize
-broader syntax but do not thereby lower or execute the full languages.
+The current source limits are 64 KiB input, 255-byte tokens, 256 admitted value names, 128 type declarations, 1000 SSA values and shared depth 64. Limits include retired declarations where documented. Rejected source preserves existing FIR/debug output; a later host I/O copy failure is not a rollback transaction.
 
-FIR writes objects only. The [linker](../../../linker/README.md) combines
-self-contained objects/libraries/resources; optimization remains explicit.
-Source positions and diagnostic checks do not establish embedded Dis/JIT,
-complete debugging, cross-module function calls or native backend coverage.
-
-[NC64 Dis target 0.9.0](DIS_BACKEND.md): scalar CFG, i32/bool/f64 const/copy, signed i32 comparison/wrap and binary64 arithmetic, value+executed captures/return.
-Our C99 emitter writes Dis directly; full Limbo ABI, phi, channels, SBL and Dis linking remain unimplemented.
-
-Numeric Limbo now admits six comparisons in terminal if/else; every arm
-returns. SSA joins and mutable source loops are not implemented.
-
-Our Coco/R Limbo adapter now additionally admits a homogeneous `value(): real`
-profile: decimal real constants, typed/inferred real locals, lexical scopes,
-assignments, + - * / and return. No mixed types/casts or real comparisons/CFG
-are implied. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
-
-Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
-обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
-[Комментированный пример](../examples/dis/README.ru.md#вещественный-limbo).
-
-[Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).
-
-[Compiler 0.23: comparison values / Сравнения как значения](COMPARISON_VALUES.md).
-
-Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
-[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.
-
-Compiler 0.29 / Компилятор 0.29: [checked int shifts](INT_SHIFTS.md),
-[проверяемые int-сдвиги](INT_SHIFTS.ru.md), big/table source profile and raw FIR.
-Live checked shifts are Dis/reference-only; homogeneous int/AS source profiles are unchanged.
-
-Compiler 0.30 / Компилятор 0.30: [ordered strings and checked int casts](TEXT_VALUES.md),
-[порядок строк и проверяемые int-cast](TEXT_VALUES.ru.md), in the typed big/table source profile.
-
-Compiler 0.31 / Компилятор 0.31: [hybrid constructors](TABLE_LITERALS.md),
-[конструкторы гибридных таблиц](TABLE_LITERALS.ru.md), ordered named/bracket/positional fields in the big/table profile.
+The teaching wrapper calls/traces value(); it is not Inferno's general init ABI. The native Dis runtime/IDE also uses an explicit source-built bootstrap for ordinary service modules until our own compiler covers those languages. Runtime channel/projection libraries and raw FIR channel operations do not imply source channel/alt/spawn lowering in this adapter. ARM64 emission/emulation is separate from physical-device execution.

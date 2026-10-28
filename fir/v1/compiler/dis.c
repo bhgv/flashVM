@@ -31,6 +31,7 @@ enum
     DIS_MODW = 69,       /* Native signed remainder, followed by int normalization. */
     DIS_MULW = 64,       /* Native-word multiplication; followed by explicit i32 normalization. */
     DIS_ANDW = 72,       /* Retain the low 32 result bits. */
+    DIS_ORW = 74,        /* Native-word bit union followed by signed32 normalization. */
     DIS_XORW = 76,       /* Bias the sign bit before signed-i32 normalization. */
     DIS_RET = 12,        /* Existing Dis return, including normal entry-process termination. */
     DIS_JMP = 13,        /* Existing Dis branch to a verified program index. */
@@ -210,6 +211,9 @@ static int supported(
         case O_FDIV:
             (*count)++;
             break;
+        case O_I32_AND:
+        case O_I32_OR:
+        case O_I32_XOR:
         case O_I32_DIV:
         case O_I32_MOD:
         case O_ADD:
@@ -382,12 +386,18 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
                         destination,
                         -1);
             break;
+        case O_I32_AND:
+        case O_I32_OR:
+        case O_I32_XOR:
         case O_I32_DIV:
         case O_I32_MOD:
         case O_ADD:
         case O_SUB:
         case O_MUL:
-            opcode = current->op == O_ADD       ? DIS_ADDW
+            opcode = current->op == O_I32_AND ? DIS_ANDW
+                     : current->op == O_I32_OR ? DIS_ORW
+                     : current->op == O_I32_XOR ? DIS_XORW
+                     : current->op == O_ADD       ? DIS_ADDW
                      : current->op == O_SUB     ? DIS_SUBW
                      : current->op == O_MUL     ? DIS_MULW
                      : current->op == O_I32_DIV ? DIS_DIVW

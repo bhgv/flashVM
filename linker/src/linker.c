@@ -190,6 +190,7 @@ static int actions(const unsigned char *p, size_t n)
             case 0x0a:
             case 0x63:
             case 0x61:
+            case 0x62: /* BitXor emitted by verified signed32 FIR operations. */
             case 0x0b:
             case 0x48:
             case 0x49:

@@ -1,3 +1,15 @@
+# v0.1662 — Formatted output and signed32 FIR target paths
+
+Current pin: **e72c8da2f89af849209d53d161a5b290d5a85827**, **703 Dis / 231 bootstrap files**. Incoming Bio/descriptor formatter fixes validate active output geometry before dispatch, retain compacted suffixes on failure and check native long write results before narrowing. The real-dofmt 153,618-case fixture is imported and registered in the source bootstrap.
+
+Additional incoming e438394 preserves complete Bio pushback windows and checks native I/O replies before narrowing. e72c8da fixes allocated formatter ownership and geometric growth. The bootstrap selects lib9 and its moving-allocation oracle explicitly; full upstream lib9/libkern formatter tests also run independently, without importing a kernel runtime. Top-level lib9 C sources are listed explicitly so a blanket test exclusion cannot hide the selected fixture.
+
+Earlier reverse fixes, including c1494cd, remain ancestors. No additional shared defect was confirmed in this series. New FIR int bits and SWL BitXor acceptance are FlashVM toolchain work and are not exported to Inferno. Native file writes remain behind the existing host/port boundaries.
+
+[Release](../docs/releases/v0.1662.md) · [EN integer contract](../fir/v1/doc/INT_BITS.md) / [RU](../fir/v1/doc/INT_BITS.ru.md).
+
+## Previous checkpoints
+
 # v0.1661 — Bio bounds and executable local type scopes
 
 Current pin: **6a307e5d23697d62d7bcb841fbddc1c80d0fd975**, **703 Dis / 222 bootstrap files**. Incoming Bio corrections bound byte/rune pushback before state mutation, widen buffered/position arithmetic, and propagate failed logical-position queries before relative seeking. The source bootstrap imports the actual library bodies and new 35,658-case sanitizer fixture. The Dis core does not link an unrelated Bio service; its selected checkpoint reference advances with the same source pin.

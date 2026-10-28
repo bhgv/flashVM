@@ -157,3 +157,5 @@ without a third argument: type selection belongs to the grammar, not the filenam
 [Full-width big CFG / Полноразрядный big CFG](../../doc/BIG_CFG.md) · [FIR](big-cfg.fir).
 
 [Big source if/else / Исходные решения big](../../doc/BIG_DECISIONS.md) · [Комментированный Limbo](big-decisions.b).
+
+[Signed32 bit operations / Побитовые операции int](../../doc/INT_BITS.md) — FIR 0.52, SWL 0.3.12.

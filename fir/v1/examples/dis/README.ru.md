@@ -157,3 +157,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [Full-width big CFG / Полноразрядный big CFG](../../doc/BIG_CFG.md) · [FIR](big-cfg.fir).
 
 [Big source if/else / Исходные решения big](../../doc/BIG_DECISIONS.md) · [Комментированный Limbo](big-decisions.b).
+
+[Signed32 bit operations / Побитовые операции int](../../doc/INT_BITS.ru.md) — FIR 0.52, SWL 0.3.12.

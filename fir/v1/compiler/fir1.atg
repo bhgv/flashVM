@@ -269,7 +269,10 @@ PRODUCTIONS
 
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-    "ref.nil" (. fir_build_op(O_REF_NIL); .)
+    "i32.and" (. fir_build_op(O_I32_AND); .) A "," B
+    | "i32.or" (. fir_build_op(O_I32_OR); .) A "," B
+    | "i32.xor" (. fir_build_op(O_I32_XOR); .) A "," B
+    | "ref.nil" (. fir_build_op(O_REF_NIL); .)
     | "ref.local" (. fir_build_op(O_REF_LOCAL); .) A
     | "ref.load" (. fir_build_op(O_REF_LOAD); .) A
     | "i32.div.signed" (. fir_build_op(O_I32_DIV); .) A "," B

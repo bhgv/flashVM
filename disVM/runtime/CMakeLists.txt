@@ -955,3 +955,13 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_fir_alias_owners_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+# Actual interpreter/native dispatch must agree on every signed32 bit boundary.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_int_bits_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/int_bits.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "-" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_int_bits_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()

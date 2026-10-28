@@ -179,6 +179,17 @@ int source_constant(int);
 int source_binary(int, int, int);
 
 
+/* Emit homogeneous Limbo int bit operations or checked shifts. left/right are
+ * borrowed SSA IDs; op selects &, |, ^, < or >. Return ID; failures are sticky. */
+int source_integer_bits(int left, int right, int op);
+
+
+/* Complement one borrowed int SSA ID once using a generated -1 and xor.
+ * Return ID; parser owns recursion depth, compiler owns staging/debug output. */
+int source_integer_not(int value);
+
+
+
 int source_name(void);
 
 
@@ -221,6 +232,12 @@ void source_declare(int, int, int);
 
 
 void source_assign(int, int, int);
+
+
+/* Emit a local update with a copied operator mark; current location is the target.
+ * name/value are SSA binding/value IDs; op zero means plain assignment. */
+void source_assign_at(int name, int value, int op, SourceMark operation);
+
 
 
 void source_hash_comment(void);

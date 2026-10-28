@@ -1,5 +1,7 @@
 # Working numeric source profile 0.9.0
 
+This page retains baseline/versioned syntax notes. See [current coverage](COVERAGE.md), [RU](COVERAGE.ru.md) and [signed32 bits](INT_BITS.md) for implementation 0.52.
+
 This profile actually lowers into FIR, separately from the broader syntax
 frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
 
@@ -19,7 +21,7 @@ frontends. [Grammar](../compiler/src1.atg), [C99 lowering](../compiler/lower.c).
 Precedence: unary, then */% (integer remainder only), then +/-. Binary operators associate left-to-right.
 A signed literal admits i32 minimum; minus on groups/variables lowers as multiply
 by -1, preserving AS signed zero. ++/-- are rejected, never interpreted as two
-unary signs. The Limbo profile remains i32; big/real are not implemented. Range,
+unary signs. This baseline describes i32; the separate big/table and real profiles are summarized in current coverage. Range,
 radix digits, const assignment and AS1/AS2 const declarations are checked without
 overwriting an existing destination on failure. Declarations bind left-to-right,
 without hoisting or implicit globals.
@@ -84,4 +86,4 @@ The `limbo_tables` profile, exact `i64` constants and typed table/location/range
 [Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.md).
 
 Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_ARITHMETIC.md),
-[русское руководство](INT_ARITHMETIC.ru.md). Int bitwise/shift operations remain unsupported.
+[русское руководство](INT_ARITHMETIC.ru.md). [Current homogeneous int bits/shifts](INT_BITS.md) / [актуальные биты/сдвиги](INT_BITS.ru.md).

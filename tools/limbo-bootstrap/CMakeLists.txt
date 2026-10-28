@@ -277,3 +277,23 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_bio_boundaries PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Link real format dispatch to deterministic native-write/state fixtures.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_bio_print_state COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libbio/tests/print-state.py")
+  set_tests_properties(limbo_bootstrap_bio_print_state PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+# Check complete unread windows and moving ownership in the selected source libraries.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_bio_refill_windows COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libbio/tests/refill-windows.py")
+  set_tests_properties(limbo_bootstrap_bio_refill_windows PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME limbo_bootstrap_allocated_format COMMAND "${Python3_EXECUTABLE}"
+    "${u}/lib9/tests/allocated-format.py")
+  set_tests_properties(limbo_bootstrap_allocated_format PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};ALLOC_FMT_LIBRARIES=lib9;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
