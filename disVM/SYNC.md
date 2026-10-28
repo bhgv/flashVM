@@ -1,3 +1,25 @@
+# v0.1667 final pin — Iterative communications and tuple alias queries
+
+Final pin: **10590495858d4c3c4dca907e2e321c9f74ffa6b9**, **748 Dis / 266 bootstrap files**.
+This second reviewed update arrived before publication and follows the checked
+reference-use update below. Communication rewriting now uses checked continuation
+storage, retaining historical preorder callbacks and captured subtree return values.
+Pending operand cells are read only when visited, including initially nil children
+filled by an earlier callback. Tuple/name alias queries retain left-before-right
+search and early completion while releasing private work storage.
+
+The selected frozen shallow oracle, independent mutation/order cases and
+100,000-level deep fixtures cover both WORD32/WORD64 with native host pointers.
+The source bootstrap registers comm-alias-walks; its complete suite passes 23/23.
+Full core/runtime and relocated SDK results are recorded in the release report.
+The tested final pin is fixed for this series; later upstream commits are separate
+work. No additional shared defect required an outbound patch. Imported source
+remains byte-for-byte, with no Flash-only language extension sent to Inferno.
+
+[Release](../docs/releases/v0.1667.md) · [Upstream test contract](upstream/limbo/tests/README.comm-alias-walks.md).
+
+## Earlier pin in this series
+
 # v0.1667 — Checked compiler uses and temporary holds
 
 Current pin: **11e277299395ec75ea331c6ed1f93016b9c059c2**, **744 Dis / 262 bootstrap files**.

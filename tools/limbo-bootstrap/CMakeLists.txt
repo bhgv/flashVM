@@ -327,7 +327,7 @@ endif()
 
 # Retain deep traversal and native-width metadata acceptance from experiment.
 if(BUILD_TESTING)
-  foreach(driver type-parent type-print stub-print declaration-walks reference-sort reference-uses)
+  foreach(driver type-parent type-print stub-print declaration-walks reference-sort reference-uses comm-alias-walks)
     add_test(NAME limbo_bootstrap_${driver} COMMAND "${Python3_EXECUTABLE}"
       "${u}/limbo/tests/${driver}.py")
     set_tests_properties(limbo_bootstrap_${driver} PROPERTIES TIMEOUT 180
