@@ -11,3 +11,5 @@
 [Сборка и полный цикл](PIPELINE.ru.md).
 
 [Рабочий source-синтаксис](SOURCE_SYNTAX.ru.md).
+
+[Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).

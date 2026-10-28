@@ -363,6 +363,7 @@ PRODUCTIONS
     (
         "void"
         | "bool"
+        | "bool.slot" /* Private normalized boolean cell; verifier controls escape. */
         | "i8"
         | "u8"
         | "i32"

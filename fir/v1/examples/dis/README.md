@@ -171,3 +171,5 @@ Compile it with `build/fir/fir1_source limbo --input fir/v1/examples/dis/int-com
 [Typed predicates EN](../../doc/TYPED_PREDICATES.md) / [RU](../../doc/TYPED_PREDICATES.ru.md) describes [typed-predicates.b](typed-predicates.b) (table-backed Dis result 42) and [booleans.fir](booleans.fir) (scalar Dis/SWF bool result 1). Every nonblank source line is commented. / Каждая непустая строка прокомментирована; руководство объясняет типы, команды и проверку результата.
 
 [Real conditions EN](../../doc/REAL_CONDITIONS.md) / [RU](../../doc/REAL_CONDITIONS.ru.md) explains [real-conditions.b](real-conditions.b) (42.5 through source → FIR → Dis/SWF) and [real-unordered.fir](real-unordered.fir) (three false IEEE predicates). Every nonblank source line is commented. / Подробное руководство объясняет типы, вычисление ветвей, NaN и команды проверки; каждая непустая строка прокомментирована.
+
+[Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](../../doc/NUMERIC_LOGIC.md) · [Русский](../../doc/NUMERIC_LOGIC.ru.md).

@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.54.0 LANGUAGES C)
+project(fir1 VERSION 0.55.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -593,4 +593,15 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/real_conditions.py" $<TARGET_FILE:fir1_source>
     $<TARGET_FILE:fir1> ${counted_for_reference})
   set_tests_properties(fir1_real_conditions PROPERTIES TIMEOUT 120)
+endif()
+
+# Numeric lazy decisions share CLI/library grammar and every selected backend.
+if(BUILD_TESTING)
+  add_executable(fir1_numeric_logic_api tests/numeric_logic_api.c)
+  target_link_libraries(fir1_numeric_logic_api PRIVATE fir1_source_api fir1_ir)
+  add_test(NAME fir1_numeric_logic_api COMMAND fir1_numeric_logic_api)
+  add_test(NAME fir1_numeric_logic COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/numeric_logic.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${counted_for_reference})
+  set_tests_properties(fir1_numeric_logic PROPERTIES TIMEOUT 120)
 endif()

@@ -121,9 +121,9 @@ def main():
         execute([0, 1, 0], True)
         unsupported_object = work / 'unchanged.swo'
         unsupported_object.write_text('PRIOR OBJECT')
-        call([compiler, 'object', fir, unsupported_object], work, False)
-        if unsupported_object.read_text() != 'PRIOR OBJECT':
-            raise RuntimeError('unsupported SWF cell lowering replaced caller object')
+        call([compiler, 'object', fir, unsupported_object], work)
+        if not unsupported_object.read_bytes().startswith(b'SWO1'):
+            raise RuntimeError('scalar bool-cell lowering did not publish a verified object')
         for operation in ('%bad: bool = bool.local', '%bad: bool.slot = copy %cell',
                           'trace %cell', 'bool.store %cell, %cell', '%bad: bool = bool.load %yes'):
             fir.write_text(header + '%cell: bool.slot = bool.local\n%yes: bool = const.bool true\n' +

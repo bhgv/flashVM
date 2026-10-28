@@ -60,7 +60,7 @@ Memory effects prevent local initialization from being CSE'd and loads from bein
 reused across stores. Known branch predicates can remove unreachable RHS blocks,
 including throwing operations that are truly skipped. Selected calls/conversions
 remain observable. This is not a general phi/environment-join implementation,
-atomic remote update or source-loop implementation. The SWF object backend rejects cell operations without replacing caller output;
+atomic remote update or source-loop implementation. FIR 0.55 lowers scalar bool cells through SWO/SWL using private object-local variables; table/big owners still require their capable backend. See [numeric logic](NUMERIC_LOGIC.md).
 full AS/SWF short-circuit lowering and full IDE Build/Run/Debug panels remain separate work.
 
 ## Limits, origins and acceptance

@@ -59,7 +59,7 @@ def main():
             record = json.loads(debug.read_text())
             definitions = set(re.findall(r"%v([0-9]+):", fir.read_text()))
             origins = {str(event["value"]) for event in record["events"]
-                       if event["kind"] in ("constant", "binary", "compare")}
+                       if event["kind"] in ("constant", "binary", "compare", "table-operation")}
             if definitions != origins:
                 raise RuntimeError("decision SSA definitions lack unique source origins")
             comparisons = [event for event in record["events"] if event["kind"] == "compare"]

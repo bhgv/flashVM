@@ -1127,6 +1127,7 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
     }
     if (!failed)
     {
+        table_values[condition.value] = T_BOOL;
         fprintf(destination,
                 "    %%v%d: bool = %s.%s %%v%d, %%v%d\n",
                 condition.value,
@@ -1141,6 +1142,19 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
         source_debug_event("compare", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
     }
     return condition;
+}
+
+
+/* Materialize a copied terminal condition for lazy composition. The parser restores
+ * the authored relation span before calling. Return a normalized scalar SSA identity;
+ * inversion emits bool.not once. Sticky failures return zero without ownership. */
+int source_condition_value(SourceCondition condition)
+{
+    if (failed)
+    {
+        return 0;
+    }
+    return condition.invert ? source_table_not(condition.value) : condition.value;
 }
 
 

@@ -419,31 +419,32 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # Terminal real conditions must survive relocation and direct source-library embedding.
-    real_condition = component / "examples/dis/real-conditions.b"
-    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", real_condition, fir,
-         "--module", "dis_example"], work, environment)
-    run([executable, real_condition, embedded], work, environment)
-    run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
-    if embedded.read_bytes() != binary.read_bytes():
-        raise RuntimeError("relocated real condition C99 client differs from CLI emission")
-    optimized_real = work / "real-condition-opt.fir"
-    run([program(prefix, "fir", "fir1"), "opt", fir, optimized_real], work, environment)
-    expected_bits = struct.unpack(">q", struct.pack(">d", 42.5))[0]
-    for selected in (fir, optimized_real):
-        traces = len(re.findall(r"^\s*trace ", selected.read_text(), re.MULTILINE))
-        run([program(prefix, "fir", "fir1"), "dis", selected, binary], work, environment)
-        for mode in ("--jit", "--no-jit"):
-            result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2 * traces, binary],
-                         work, environment, include_stderr=True)
-            words = [int(value) for value in re.findall(r"^DATA \d+ (-?\d+)$", result, re.MULTILINE)]
-            flags = words[traces:]
-            stats = re.search(r"instructions=(\d+) native=(\d+)", result)
-            if len(words) != 2 * traces or flags.count(1) != 1 or any(flag not in (0, 1) for flag in flags):
-                raise RuntimeError("relocated real condition capture flags differ")
-            if words[flags.index(1)] != expected_bits or any(word for word, flag in zip(words[:traces], flags) if not flag):
-                raise RuntimeError("relocated real condition lost its exact binary64 result")
-            if not stats or int(stats[1]) == 0 or (int(stats[2]) > 0) != (mode == "--jit"):
-                raise RuntimeError("relocated real condition dispatch differs")
+    for tutorial in ("real-conditions.b", "numeric-logic.b"):
+        real_condition = component / "examples/dis" / tutorial
+        run([program(prefix, "fir", "fir1_source"), "limbo", "--input", real_condition, fir,
+             "--module", "dis_example"], work, environment)
+        run([executable, real_condition, embedded], work, environment)
+        run([program(prefix, "fir", "fir1"), "dis", fir, binary], work, environment)
+        if embedded.read_bytes() != binary.read_bytes():
+            raise RuntimeError("relocated real condition C99 client differs from CLI emission")
+        optimized_real = work / "real-condition-opt.fir"
+        run([program(prefix, "fir", "fir1"), "opt", fir, optimized_real], work, environment)
+        expected_bits = struct.unpack(">q", struct.pack(">d", 42.5))[0]
+        for selected in (fir, optimized_real):
+            traces = len(re.findall(r"^\s*trace ", selected.read_text(), re.MULTILINE))
+            run([program(prefix, "fir", "fir1"), "dis", selected, binary], work, environment)
+            for mode in ("--jit", "--no-jit"):
+                result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2 * traces, binary],
+                             work, environment, include_stderr=True)
+                words = [int(value) for value in re.findall(r"^DATA \d+ (-?\d+)$", result, re.MULTILINE)]
+                flags = words[traces:]
+                stats = re.search(r"instructions=(\d+) native=(\d+)", result)
+                if len(words) != 2 * traces or flags.count(1) != 1 or any(flag not in (0, 1) for flag in flags):
+                    raise RuntimeError("relocated real condition capture flags differ")
+                if words[flags.index(1)] != expected_bits or any(word for word, flag in zip(words[:traces], flags) if not flag):
+                    raise RuntimeError("relocated real condition lost its exact binary64 result")
+                if not stats or int(stats[1]) == 0 or (int(stats[2]) > 0) != (mode == "--jit"):
+                    raise RuntimeError("relocated real condition dispatch differs")
 
     # A numeric AS3 input reaches the same installed C99 libraries, now including binary64 Dis.
     # The relinked client selects its profile explicitly; no build-checkout headers are available.

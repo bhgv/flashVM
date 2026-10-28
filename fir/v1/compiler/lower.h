@@ -127,6 +127,11 @@ int source_logic_end(SourceLogic logic, int right);
 SourceCondition source_compare(int left, int right, SourceRelation relation);
 
 
+/* Materialize copied relation/inversion as bool for lazy numeric conditions.
+ * Return SSA identity; sticky errors retire staging. No storage is transferred. */
+int source_condition_value(SourceCondition condition);
+
+
 /* Start a terminal decision and return its private label identity; errors retire staged output. */
 int source_branch(SourceCondition condition);
 
@@ -189,7 +194,6 @@ int source_integer_bits(int left, int right, int op);
 int source_integer_not(int value);
 
 
-
 int source_name(void);
 
 
@@ -237,7 +241,6 @@ void source_assign(int, int, int);
 /* Emit a local update with a copied operator mark; current location is the target.
  * name/value are SSA binding/value IDs; op zero means plain assignment. */
 void source_assign_at(int name, int value, int op, SourceMark operation);
-
 
 
 void source_hash_comment(void);
@@ -291,7 +294,11 @@ SourceCondition source_table_truth(int value);
 
 /* Emit memory-observing table count, location membership and deleting mutation. */
 int source_table_count(int table);
+
+
 int source_table_has(int table, int key);
+
+
 int source_table_delete(int slot);
 
 
@@ -492,6 +499,8 @@ int source_table_increment(int value, int direction);
 
 /* Defer step origins by private context ID, then resume ordinary debug emission. */
 void source_debug_defer_begin(int context);
+
+
 void source_debug_defer_end(void);
 
 

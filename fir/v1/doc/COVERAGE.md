@@ -31,3 +31,5 @@ The teaching wrapper calls/traces value(); it is not Inferno's general init ABI.
 [Typed predicates EN](TYPED_PREDICATES.md) / [RU](TYPED_PREDICATES.ru.md): direct int comparisons, strict bool.not/bool.eq, optimizer rewrites, scalar SWF and table-backed Dis examples.
 
 [Real conditions EN](REAL_CONDITIONS.md) / [RU](REAL_CONDITIONS.ru.md): ordered binary64 predicates, finite subnormal literals and NaN-safe Dis/SWF lowering.
+
+[Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).

@@ -206,8 +206,10 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     for (i = 0; i < m->count; i++)
     {
         if (!m->instructions[i].removed &&
-            ((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) ||
-             m->instructions[i].type > T_CHANNEL))
+            (((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) &&
+              m->instructions[i].op != O_BOOL_LOCAL && m->instructions[i].op != O_BOOL_STORE &&
+              m->instructions[i].op != O_BOOL_LOAD) ||
+             (m->instructions[i].type > T_CHANNEL && m->instructions[i].type != T_BOOL_SLOT)))
         {
             snprintf(error, cap, "table/big operations require a table-capable backend");
             return 0;
@@ -265,6 +267,21 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             break;
         case O_F64:
             real(&actions, in->real);
+            break;
+        case O_BOOL_LOCAL:
+            /* Private frame cell: its object-local variable holds the bool directly. */
+            byte(&actions, 0x96);
+            word(&actions, 2);
+            byte(&actions, 5);
+            byte(&actions, 0);
+            break;
+        case O_BOOL_STORE:
+            variable(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, 0x1d);
+            break;
+        case O_BOOL_LOAD:
+            load(&actions, m, in->a);
             break;
         case O_BOOL:
             byte(&actions, 0x96);

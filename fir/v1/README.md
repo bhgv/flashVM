@@ -174,3 +174,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Typed predicates EN](doc/TYPED_PREDICATES.md) / [RU](doc/TYPED_PREDICATES.ru.md): direct int comparisons, strict bool.not/bool.eq and line-commented Dis/SWF tutorials.
 
 [Real conditions EN](doc/REAL_CONDITIONS.md) / [RU](doc/REAL_CONDITIONS.ru.md): ordered binary64 terminal branches, NaN-safe SWF lowering and fully line-commented examples.
+
+[Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](doc/NUMERIC_LOGIC.md) · [Русский](doc/NUMERIC_LOGIC.ru.md).

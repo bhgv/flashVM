@@ -11,3 +11,5 @@
 [Build and complete workflow](PIPELINE.md).
 
 [Working source syntax](SOURCE_SYNTAX.md).
+
+[Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).

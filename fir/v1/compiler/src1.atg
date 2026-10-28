@@ -509,20 +509,103 @@ PRODUCTIONS
     "}" (. capture(); source_leave_scope(); .)
   .
 
-  /* Compare arithmetic/shift operands once; bit expressions require explicit groups.
-  * bool is internal, never coerced from an int.
-  * Restore the operator's original byte span after parsing the right-hand expression. */
+  /* Numeric conditions compose strict relations lazily. && binds above ||;
+   * bool values never become numeric source bindings or implicit truthiness. */
   LimboCondition<SourceCondition *condition> =
-                                                                        (.
-                                                                            int left = 0, right = 0;
-                                                                            SourceRelation relation = SOURCE_LESS;
-                                                                            SourceMark target;
-                                                                        .)
-    IntegerShift<&left> Relation<&relation>                               (. target = source_mark(); .)
-    IntegerShift<&right>                                                  (.
-                                                                            source_restore(target);
-                                                                            *condition = source_compare(left, right, relation);
-                                                                        .)
+    (.
+        int value = 0;
+    .)
+    NumericLogicalOr<&value>
+    (.
+        *condition = source_table_truth(value);
+    .)
+  .
+
+  /* Guard each disjunction RHS before emitting its arithmetic or comparisons. */
+  NumericLogicalOr<int *result> =
+    (.
+        int right = 0;
+        SourceLogic logic;
+        SourceMark operation;
+    .)
+    NumericLogicalAnd<result>
+    {
+        "||"
+        (.
+            capture();
+            operation = source_mark();
+            logic = source_logic_begin(*result, 1);
+        .)
+        NumericLogicalAnd<&right>
+        (.
+            source_restore(operation);
+            *result = source_logic_end(logic, right);
+        .)
+    }
+  .
+
+  /* Guard each conjunction RHS and retain exact authored operator provenance. */
+  NumericLogicalAnd<int *result> =
+    (.
+        int right = 0;
+        SourceLogic logic;
+        SourceMark operation;
+    .)
+    NumericPredicate<result>
+    {
+        "&&"
+        (.
+            capture();
+            operation = source_mark();
+            logic = source_logic_begin(*result, 0);
+        .)
+        NumericPredicate<&right>
+        (.
+            source_restore(operation);
+            *result = source_logic_end(logic, right);
+        .)
+    }
+  .
+
+  /* Negation requires an explicitly grouped condition, matching ! precedence.
+   * The IF resolvers consume an exhausted ! without recursion or stale output.
+   * Ordinary parentheses remain arithmetic groups in the relation operands. */
+  NumericPredicate<int *result> =
+    (.
+        int left = 0;
+        int right = 0;
+        SourceRelation relation = SOURCE_LESS;
+        SourceCondition condition;
+        SourceMark target;
+    .)
+    IF(Sym==BangSym && depth>=64) "!"
+    (.
+        capture();
+        source_scope_limit();
+        *result = 0;
+    .)
+    | IF(Sym==BangSym && depth<64) "!"
+    (.
+        capture();
+        target = source_mark();
+        ++depth;
+    .)
+    "(" NumericLogicalOr<result> ")"
+    (.
+        --depth;
+        source_restore(target);
+        *result = source_table_not(*result);
+    .)
+    | IntegerShift<&left> Relation<&relation>
+    (.
+        target = source_mark();
+    .)
+    IntegerShift<&right>
+    (.
+        source_restore(target);
+        condition = source_compare(left, right, relation);
+        *result = source_condition_value(condition);
+    .)
   .
 
   /* Native Limbo comparisons; real <=/>= retain ordered predicates for NaN safety. */

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1665**. [English](README.md).
+Версия разработки: **0.1666**. [English](README.md).
 
-Текущая серия: [v0.1665](docs/releases/v0.1665.md): упорядоченные real-условия через FIR/Dis/SWF, субнормальные литералы и синхронизация AMD64/ARM64-эмиттеров.
+Текущая серия: [v0.1666](docs/releases/v0.1666.md): ленивые числовые условия Limbo через FIR/Dis/SWF и семь обновлений GC/I/O/компилятора Inferno.
 
 ## Просмотр документации
 
