@@ -1,3 +1,26 @@
+# v0.1667 — Checked compiler uses and temporary holds
+
+Current pin: **11e277299395ec75ea331c6ed1f93016b9c059c2**, **744 Dis / 262 bootstrap files**.
+The experiment update after 577940f exports the checked declaration-count helper
+across the compiler and replaces the remaining direct Decl.refs and temporary
+Decl.tref adjustments in declaration, node, expression, type and code-generation
+producers. Existing fatal/zeroing/reuse policy remains unchanged; partial metadata
+updates before a compiler fatal are not described as transactional rollback.
+
+The new reference-uses production fixture is selected in both snapshots and
+registered in the source bootstrap. Updated node-chain, declaration-walk and
+reference-sort fixtures retain their actual production helper dependency. Both
+manifests verify byte-for-byte upstream source and SHA-256. Core **202/202** and
+bootstrap **22/22** pass; reference-use/lifetime fixtures run under sanitizers.
+No ABI/JIT opcode or whole-OS/GUI/security import is introduced.
+
+No additional shared defect was confirmed for reverse publication. Earlier
+outbound fixes remain ancestors. Numeric grouping/static SSA guards and IDE
+fixture isolation are FlashVM-owned work, so experiment remains unchanged here.
+[Release](../docs/releases/v0.1667.md) · [Grouped conditions EN](../fir/v1/doc/GROUPED_CONDITIONS.md) / [RU](../fir/v1/doc/GROUPED_CONDITIONS.ru.md).
+
+## Previous checkpoints
+
 # v0.1666 — GC/I/O bounds and iterative Limbo metadata
 
 Current pin: **577940fa699d42593db7c680c5a0aeceeeb04e09**, **741 Dis / 259 bootstrap files**.
