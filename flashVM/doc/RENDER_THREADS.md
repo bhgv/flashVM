@@ -1,47 +1,48 @@
 # Render jobs / Потоки отрисовки
 
+[Background queue, EN](RENDER_ASYNC.md) · [Фоновая очередь, RU](RENDER_ASYNC.ru.md) ·
+[Runnable tutorial](../examples/embedding/parallel_render/README.md)
+
 ## English
 
-`fvm_render_jobs_run(job_count, workers, callback, userdata)` distributes
-independent host-provided rendering jobs over native worker threads. It blocks
-until all jobs complete. `workers=0` runs synchronously. Jobs may run in any
-order. A return value of `-1` means invalid input, allocation failure, or
-thread creation failure; any successfully started jobs are still joined.
+`fvm_render_jobs_run(job_count, workers, callback, userdata)` distributes independent
+native jobs and **waits** for completion. workers=0 runs on the caller. Callback
+inputs must remain alive until return; outputs must be disjoint or synchronized.
+No live AVM1 object mutation or throwing through the C boundary is allowed.
+Return 0 on success, -1 for invalid input, allocation or thread creation failure.
+All partitions are initialized before launch. A partial launch completes unstarted
+partitions synchronously, joins started workers, then reports failure.
 
-The OS bridge is selected at build time from `ports/windows` (Win32 threads),
-`ports/linux`, `ports/mac`, or `ports/android` (POSIX threads). Disable with
-`-DFVM_ENABLE_RENDER_JOBS=OFF` for unsupported targets. This API is C89-compatible
-and does not require C++11 or STL in public headers.
+[`fvm_render_queue_create`](../include/flashvm/render_queue.h#L32) supplies a separate persistent asynchronous queue.
+Submit returns without waiting for raster work; nonblocking take publishes only
+the newest result. The editor uses it for detached native paths/private pixels.
+See the [full ownership, bounds and shutdown contract](RENDER_ASYNC.md).
+Neither executor by itself implements an entire Flash SWF display renderer.
 
-**Important:** this is a parallel job executor, not yet a MovieClip rasterizer.
-The current FlashVM does not have a complete display list or Cairo/AGG renderer.
-The host must prepare immutable snapshots of scene geometry, divide work into
-independent pixel regions or off-screen surfaces, and composite results in
-Flash display-list order. Never call AVM1 or mutate Flash objects from workers.
-Each callback must write to disjoint memory (or synchronize externally).
-Callbacks must not throw exceptions. The caller must keep userdata alive until
-completion. See `examples/embedding/parallel_render/`.
+Both APIs use the selected `ports/windows`, `ports/linux`, `ports/mac` or
+`ports/android` adapter. Select RENDER_JOBS / NO_RENDER_JOBS in DEFS.txt;
+CMake does not silently override that selection with an unrelated cache switch.
+The public ABI is C89-compatible; no C++11 or STL is required.
 
 ## Русский
 
-`fvm_render_jobs_run(количество, потоки, функция, данные)` распределяет
-независимые задания отрисовки между рабочими потоками и ждёт их завершения.
-При `потоки=0` выполнение синхронное. Порядок заданий не гарантируется.
-Код `-1` означает неверные аргументы, ошибку выделения памяти или запуска
-потока; уже запущенные потоки обязательно дожидаются завершения.
+[`fvm_render_jobs_run`](../include/flashvm/render_jobs.h#L25) распределяет независимые нативные задания и **ждёт**
+завершения. workers=0 выполняет их на вызывающем потоке. Данные живут до возврата;
+выходные области не пересекаются без синхронизации. Запрещены изменение живых
+объектов AVM1 и исключения через C-границу. Возврат: 0 при успехе, -1 при неверных
+аргументах, ошибке памяти или запуска потока. Все участки инициализируются заранее.
+При частичном отказе незапущенные выполняются синхронно, запущенные завершаются
+через join, после чего возвращается ошибка.
 
-Переходники находятся в `ports/windows` (Win32), `ports/linux`, `ports/mac`
-и `ports/android` (POSIX). Выключение: `-DFVM_ENABLE_RENDER_JOBS=OFF`.
-Публичный интерфейс совместим с C89, ядро — с C++98.
+[`fvm_render_queue_create`](../include/flashvm/render_queue.h#L32) предоставляет отдельную постоянную асинхронную очередь.
+Submit не ждёт растеризации; опрос без ожидания возвращает только последний
+готовый кадр. Редактор передаёт туда отделённые контуры и собственные пиксели:
+[полный контракт владения, ограничений и остановки](RENDER_ASYNC.ru.md).
+Полный рендерер Flash SWF сам по себе ни одним исполнителем не реализуется.
 
-**Ограничение:** это исполнитель параллельных задач, а не готовый растеризатор
-MovieClip. Display list и рендерер Cairo/AGG ещё не готовы. Хост должен
-создать неизменяемый снимок сцены, разделить отрисовку на независимые области
-или отдельные поверхности и объединить их в порядке слоёв Flash.
-Нельзя обращаться к AVM1 и менять объекты Flash из рабочих потоков.
-Память вывода заданий не должна пересекаться без синхронизации.
-Данные должны оставаться действительными до возврата функции.
-Пример: `examples/embedding/parallel_render/`.
+Платформа выбирает ports/windows, linux, mac либо android. Возможность включается
+ключом RENDER_JOBS / NO_RENDER_JOBS в DEFS.txt. Публичный ABI совместим с C89,
+C++11 и STL не требуются.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -53,4 +54,5 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../include/flashvm/render_jobs.h#L25) |
+| `fvm_render_queue_create` | function | [include/flashvm/render_queue.h:32](../include/flashvm/render_queue.h#L32) |
 <!-- source-links:end -->

@@ -92,6 +92,11 @@ def main():
             'Bad: module { value: fn(x: int, *): int; };',
             'Bad: module { value: fn(register: int): int; };',
             'Bad: module { value: fn(x: int) raises Problem; };',
+            'Bad: module { native_abi: fn(); };',
+            'Bad: module { NativeExport: fn(); };',
+            'Bad: module { add: fn(); add_frame_size: fn(); };',
+            'Bad: module { add: fn(x: int); add_offset_0: fn(); };',
+            'F: module { add: fn(); F_add: fn(); };',
         ]
         output = work / 'unchanged.h'
         for text in unsupported:
@@ -100,6 +105,11 @@ def main():
             run([generator,'--format','native-c-nc64',source,output],success=False)
             if output.read_text() != 'previous valid interface\n':
                 raise RuntimeError('unsupported ABI profile overwrote an existing C interface')
+        # A suffix alone is legal: reject real symbol collisions, not whole name families.
+        source.write_text('Good: module { add_frame_size: fn(); add_offset_0: fn(); };')
+        run([generator, '--format', 'native-c-nc64', source, output])
+        if set(records(output.read_text())) != {'add_frame_size', 'add_offset_0'}:
+            raise RuntimeError('noncolliding suffix exports were incorrectly rejected')
     print('PASS Coco/R native C: classic32/NC64 signatures, frame layout, GC maps, host guards and rejection')
 
 

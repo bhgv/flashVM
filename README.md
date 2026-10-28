@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1654**. [Русская версия](README.ru.md).
+Development version: **0.1655**. [Русская версия](README.ru.md).
 
-Current series: [v0.1654](docs/releases/v0.1654.md): our Coco/R Limbo compiler generates native C frames/signatures/maps; runnable commented tutorial and explicit Dis/AS/parallel-render ownership.
+Current series: [v0.1655](docs/releases/v0.1655.md): background editor rasterization with bounded latest-frame ownership; native C symbol collision checks.
 
 ## Browse documentation
 

@@ -147,6 +147,56 @@ static int parameter_name(const char *name)
     return 1;
 }
 
+/* Compare two owned, terminated C spellings for qsort; neither input is changed. */
+static int compare_symbol(const void *left, const void *right)
+{
+    return strcmp((const char *)left, (const char *)right);
+}
+
+/* Check every ordinary C identifier emitted for a module before publication.
+ * module/functions are borrowed validated names; error/capacity are optional output.
+ * Return 1 on success, 0 for allocation failure or a callback/typedef/global collision.
+ * Temporary names are freed here; no parser globals, streams or VM state are touched. */
+static int
+validate_symbols(const char *module, const NativeFunction *functions, unsigned count, char *error, size_t capacity)
+{
+    char (*names)[160] = calloc(4 + count * 19, sizeof(*names));
+    size_t used = 0;
+    size_t index;
+    int valid = 1;
+    if (!names)
+    {
+        return fail(error, capacity, "native symbol-check allocation failure");
+    }
+    snprintf(names[used++], sizeof(*names), "%s_native_abi", module);
+    snprintf(names[used++], sizeof(*names), "%s_NativeExport", module);
+    snprintf(names[used++], sizeof(*names), "%smodtab", module);
+    snprintf(names[used++], sizeof(*names), "%smodlen", module);
+    for (index = 0; index < count; index++)
+    {
+        const NativeFunction *function = &functions[index];
+        unsigned parameter;
+        snprintf(names[used++], sizeof(*names), "%s_%s", module, function->name);
+        snprintf(names[used++], sizeof(*names), "F_%s_%s", module, function->name);
+        snprintf(names[used++], sizeof(*names), "%s_%s_frame_size", module, function->name);
+        for (parameter = 0; parameter < function->count; parameter++)
+        {
+            snprintf(names[used++], sizeof(*names), "%s_%s_offset_%u", module, function->name, parameter);
+        }
+    }
+    qsort(names, used, sizeof(*names), compare_symbol);
+    for (index = 1; index < used; index++)
+    {
+        if (!strcmp(names[index - 1], names[index]))
+        {
+            valid = fail(error, capacity, "generated native C symbol collision: %s", names[index]);
+            break;
+        }
+    }
+    free(names);
+    return valid;
+}
+
 /* Emit validated metadata and compile-time C layout checks; stream/catalog remain caller-owned. */
 int limbo_native_header(FILE *output, const LimboInterface *catalog, unsigned cell, char *error, size_t capacity)
 {
@@ -298,6 +348,10 @@ int limbo_native_header(FILE *output, const LimboInterface *catalog, unsigned ce
         goto done;
     }
     qsort(functions, count, sizeof(*functions), compare);
+    if (!validate_symbols(module_name, functions, count, error, capacity))
+    {
+        goto done;
+    }
     if (!output)
     {
         success = 1;

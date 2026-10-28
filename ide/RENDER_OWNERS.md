@@ -1,5 +1,9 @@
 # Dis channels, AS presentation and parallel native rendering
 
+Current implementation: the graphical editor prepares detached paths on its owner
+and rasterizes them on one persistent background worker. Only the latest result
+is presented. Layout/AS/GC and SDL remain on their owners. [Queue contract](../flashVM/doc/RENDER_ASYNC.md).
+
 [Русский](RENDER_OWNERS.ru.md) · [Native C modules](../disVM/runtime/NATIVE_MODULES.md) ·
 [AS2 → FIR → SWF](../compiler/as2/view/README.md) ·
 [Native render-job API](../flashVM/include/flashvm/render_jobs.h)

@@ -65,7 +65,7 @@
     - [image_codecs_loading](#example-embedding-image_codecs_loading) — <small><em>C89: атомарная замена PNG, GC, RGBA и очистка без SDL</em></small>
     - [media](#example-embedding-media) — <small><em>Подключение звука и видео — AS-эскиз</em></small>
     - [movieclip](#example-embedding-movieclip) — <small><em>Бюджеты ticks/ActionCall/init, глубины и отрисовка</em></small>
-    - [parallel_render](#example-embedding-parallel_render) — <small><em>Независимые задания рендеринга в потоках</em></small>
+    - [parallel_render](#example-embedding-parallel_render) — <small><em>Синхронные задания и фоновая очередь кадров</em></small>
     - [stage_quality](#example-embedding-stage_quality) — <small><em>ToggleQuality и края треугольника LOW/HIGH</em></small>
     - [stroke_styles](#example-embedding-stroke_styles) — <small><em>C89: торцы, round/линейные кривые и bounds</em></small>
   - [input](#group-embedding-input)
@@ -841,7 +841,7 @@ C89 host останавливает однокадровый MovieClip, реги
 
 **Тип:** C/C++ — собираемый пример. **README:** [embedding/parallel_render/README.md](embedding/parallel_render/README.md).
 
-Передаёт независимые render jobs исполнителю, используя вызывающий поток для одного задания и native-потоки для остальных. Показывает разделение callback/userdata и синхронное завершение пакета работ.
+Показывает пакет с ожиданием и постоянную фоновую очередь, передачу владения снимком и получение готовых пикселей. [Подробно по-русски](embedding/parallel_render/README.ru.md).
 
 **Файлы:** [example.as](embedding/parallel_render/example.as), [main.c](embedding/parallel_render/main.c).
 

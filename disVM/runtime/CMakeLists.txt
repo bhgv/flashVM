@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.30.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.31.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -292,10 +292,21 @@ if(DVM_RUNTIME_EDITOR)
   set(FVM_BUILD_TESTS OFF CACHE BOOL "Editor owns focused integration checks" FORCE)
   set(FVM_BUILD_EXAMPLES OFF CACHE BOOL "Build only the embedded FlashVM" FORCE)
   add_subdirectory("${DVM_FLASHVM_SOURCE_ROOT}" flashvm)
+  get_target_property(editor_flashvm_definitions flashvm COMPILE_DEFINITIONS)
+  list(FIND editor_flashvm_definitions RENDER_JOBS editor_render_jobs_index)
+  if(editor_render_jobs_index EQUAL -1)
+    message(FATAL_ERROR "The graphical editor requires RENDER_JOBS in the selected FlashVM DEFS")
+  endif()
   get_target_property(runtime_sources disvm SOURCES)
   get_target_property(runtime_includes disvm INCLUDE_DIRECTORIES)
-  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_view.c
+  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_view.c editor_raster.c
     "${root}/disVM/host/dis_ui_channel.c")
+  if(DVM_RUNTIME_TESTS)
+    add_executable(disvm_editor_raster_test test_editor_raster.c editor_raster.c)
+    target_link_libraries(disvm_editor_raster_test PRIVATE flashvm)
+    add_test(NAME disvm_editor_detached_raster COMMAND disvm_editor_raster_test)
+    set_tests_properties(disvm_editor_detached_raster PROPERTIES TIMEOUT 30)
+  endif()
   add_dependencies(disvm-editor disvm_runtime_sources)
   if(DVM_RUNTIME_NATIVE_DEMO)
     target_compile_definitions(disvm-editor PRIVATE DVM_RUNTIME_NATIVE_DEMO=1)
@@ -375,6 +386,10 @@ if(DVM_RUNTIME_EDITOR AND NOT DVM_EDITOR_TEST_FONT)
 endif()
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
+    add_test(NAME disvm_editor_async_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_async_editor.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_editor_async_${mode} PROPERTIES TIMEOUT 60)
     add_test(NAME disvm_graphical_editor_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_editor.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")

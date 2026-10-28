@@ -65,3 +65,7 @@ The matched bootstrap remains the temporary full-module compiler for this runtim
 its classic/NC64 headers must never be interchanged. Extend this semantic backend
 through authoritative type resolution and independent ABI tests, not another
 handwritten parser or guessed C structures.
+
+Generated callback, frame typedef, size/offset check and registration names are
+checked together before output opens. Collisions (including native_abi, NativeExport
+or add/add_frame_size) preserve the old file; suffix names alone remain legal.

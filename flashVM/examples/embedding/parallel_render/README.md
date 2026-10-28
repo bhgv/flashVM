@@ -1,44 +1,55 @@
-# Parallel rendering / Параллельная отрисовка
+# Joined and asynchronous native rendering
 
-English: `main.c` is a C89 embedding example that fills 64 RGBA pixels using
-four native workers. The callback receives a pixel index and writes only to
-that pixel. Compile using the CMake target `flashvm_examples_embedding_parallel_render_main`.
-This is a host-side demonstration, not Flash MovieClip rasterization.
+[Русский](README.ru.md) · [Every-line-commented C89 source](main.c) ·
+[Queue guide](../../../doc/RENDER_ASYNC.md) · [Joined batches](../../../doc/RENDER_THREADS.md)
 
-Русский: `main.c` — пример встраивания на C89. Четыре потока заполняют
-64 пикселя RGBA, каждый поток пишет в независимые ячейки буфера.
-Сборка: цель CMake `flashvm_examples_embedding_parallel_render_main`.
-Это пример задач хоста, а не полноценная отрисовка Flash MovieClip.
+This executable demonstrates two different host contracts. First four native
+workers fill 64 independent pixels and [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h#L25) joins them. Then a
+persistent background worker fills a separately allocated image: submit returns
+without waiting, the owner continues, and an explicit final take waits only because
+this console tutorial must check output before exiting. An interactive host uses
+wait=0 and continues its VM/event loop on [FVM_NOT_FOUND](../../../include/flashvm/flashvm.h#L49).
 
-## ActionScript 1/2 note / Примечание для ActionScript 1/2
+This is a queue/ownership tutorial, not a complete MovieClip renderer. The current
+IDE's actual native path rasterization uses the same queue; see the guide for its
+frame bounds, hit-geometry barrier, replay/capture behavior and platform limits.
+The companion [example.as](example.as) illustrates ordinary owner-thread script
+updates; it does not start threads or replace the C executable.
 
-Flash ActionScript does not control worker threads directly. An ordinary SWF
-might update `_root.clip._x` in its frame script; after AVM1 advances, the host
-must snapshot the display state before scheduling parallel rasterization.
+## Build and run
 
-ActionScript не управляет потоками напрямую. Скрипт SWF может изменять
-`_root.clip._x`; после выполнения AVM1 хост должен создать снимок состояния
-сцены и только затем запустить параллельную растеризацию.
+Use a configured FlashVM build with RENDER_JOBS selected in DEFS.txt and examples
+enabled. See [workspace preparation](../../../../README-FIRSTSTEPS.md) for SDK setup.
 
-<!-- example-catalog-api:start -->
-## Назначение и особенности
+```sh
+cmake --build /path/to/flashvm-build --target flashvm_examples_embedding_parallel_render_main
+/path/to/flashvm-build/flashvm_examples_embedding_parallel_render_main
+```
 
-Передаёт независимые render jobs исполнителю, используя вызывающий поток для одного задания и native-потоки для остальных. Показывает разделение callback/userdata и синхронное завершение пакета работ.
+Expected output:
 
-**Текущая CMake-цель:** `flashvm_examples_embedding_parallel_render_main`.
+```text
+Owner continues after submit; native raster may still be running.
+PASS joined batch and asynchronous native snapshot
+```
 
+## API and cleanup
 
-## Демонстрируемые функции C API
-
-Имена ведут к публичным декларациям. Во второй колонке указан файл руководства
-и раздел с контрактом; общие функции setup/cleanup включены для воспроизводимости.
-
-| Функция | Где читать подробнее |
+| Function | Contract demonstrated |
 | --- | --- |
-| [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h#L25) | [RENDER_THREADS.md#русский](../../../doc/RENDER_THREADS.md#русский) — Параллельные задания рендеринга. |
+| [`fvm_render_jobs_run`](../../../include/flashvm/render_jobs.h#L25) | Borrow the stack image only until joined return; each callback owns disjoint pixel indices. |
+| [`fvm_render_queue_create`](../../../include/flashvm/render_queue.h#L32) | Own one persistent queue/worker; callbacks stay valid until destroy returns. |
+| [`fvm_render_queue_submit`](../../../include/flashvm/render_queue.h#L40) | Transfer a heap snapshot only on success; keep and free it yourself on failure. |
+| [`fvm_render_queue_take`](../../../include/flashvm/render_queue.h#L47) | Return a completed allocation to the owner, separately reporting the worker status. A returned failure result still needs disposal. |
+| [`fvm_render_queue_destroy`](../../../include/flashvm/render_queue.h#L54) | Join workers and dispose untaken jobs before dependencies are destroyed. |
 
-[Описание в общем каталоге](../../README.md#example-embedding-parallel_render).
-<!-- example-catalog-api:end -->
+Callbacks only access private native bytes. They may not enter either VM, access
+SDL/font state, throw or reenter the queue. `release` is safe on worker and owner.
+The sample nulls the transferred pointer, and its single cleanup block frees only
+caller-owned pending/completed storage. Queued storage belongs to destroy or take,
+never both. No physical window or device is required.
+
+[Example catalog](../../README.md#example-embedding-parallel_render).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -49,5 +60,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../../../include/flashvm/flashvm.h#L49) |
 | `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../../../include/flashvm/render_jobs.h#L25) |
+| `fvm_render_queue_create` | function | [include/flashvm/render_queue.h:32](../../../include/flashvm/render_queue.h#L32) |
+| `fvm_render_queue_destroy` | function | [include/flashvm/render_queue.h:54](../../../include/flashvm/render_queue.h#L54) |
+| `fvm_render_queue_submit` | function | [include/flashvm/render_queue.h:40](../../../include/flashvm/render_queue.h#L40) |
+| `fvm_render_queue_take` | function | [include/flashvm/render_queue.h:47](../../../include/flashvm/render_queue.h#L47) |
 <!-- source-links:end -->

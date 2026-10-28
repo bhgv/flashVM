@@ -353,6 +353,8 @@ EOF
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.ru.md" "$destination/NATIVE_MODULES.ru.md"
             copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/docs/limbo/NATIVE_C.md"
             copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.ru.md" "$destination/docs/limbo/NATIVE_C.ru.md"
+            copy_file "$ROOT/flashVM/doc/RENDER_ASYNC.md" "$destination/docs/ide/RENDER_ASYNC.md"
+            copy_file "$ROOT/flashVM/doc/RENDER_ASYNC.ru.md" "$destination/docs/ide/RENDER_ASYNC.ru.md"
             copy_file "$ROOT/ide/RENDER_OWNERS.md" "$destination/docs/ide/RENDER_OWNERS.md"
             copy_file "$ROOT/ide/RENDER_OWNERS.ru.md" "$destination/docs/ide/RENDER_OWNERS.ru.md"
             copy_file "$ROOT/disVM/examples/native-module/nativedemo.m" "$destination/include/limbo/nativedemo.m"

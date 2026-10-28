@@ -1,6 +1,9 @@
 # Experimental runnable Dis and IDE services (NC64)
 
-Runtime **0.30.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
+Graphical editor rasterization now runs on a detached background native worker.
+[Ownership and async behavior](../../flashVM/doc/RENDER_ASYNC.md) / [RU](../../flashVM/doc/RENDER_ASYNC.ru.md).
+
+Runtime **0.31.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
 
 Use `python3 build_menu.py`, select `all` or `disvm-runtime`, and accept the
 defaults. After building, choose **4** for the Dis channel example or **5** for

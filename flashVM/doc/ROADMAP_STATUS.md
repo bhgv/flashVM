@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1655: detached editor paths render on a persistent background worker; latest-frame queue bounds stale work. Layout/AS/GC and SDL remain owner-only. [EN](RENDER_ASYNC.md) / [RU](RENDER_ASYNC.ru.md). Full SWF async rendering and physical platform acceptance remain open.
+
 Checkpoint v0.1524 / Контрольная точка v0.1524: tiny public round-stroke queries avoid squared-distance underflow. Seventeen new fixtures; 360 no-graphics Release and 182 no-graphics ASan/UBSan executables pass. All nine stages and reference/device acceptance remain open. [EN](PUBLIC_ROUND_SCALE.md) / [RU](PUBLIC_ROUND_SCALE.ru.md).
 
 Checkpoint v0.1504 / Контрольная точка v0.1504: nearby translated Bezier controls retain extrema through exact local subtraction. Seventeen new fixtures; fresh no-graphics Release 149 and no-graphics ASan/UBSan 149 pass. Earlier native AGG/JIT 395 passed before workspace maintenance; interrupted text-JIT sanitizer run is not counted. All nine stages and physical/reference acceptance remain open. [EN](TRANSLATED_CURVE_EXTREMA.md) / [RU](TRANSLATED_CURVE_EXTREMA.ru.md).

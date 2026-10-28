@@ -1,5 +1,9 @@
 # Каналы Dis, представление AS и параллельный native-рендер
 
+Текущее исполнение: графический редактор готовит независимые контуры у владельца
+и растеризует их на одном постоянном фоновом потоке. Показывается только последний
+результат; раскладка/AS/GC и SDL остаются у своих владельцев. [Контракт очереди](../flashVM/doc/RENDER_ASYNC.ru.md).
+
 [English](RENDER_OWNERS.md) · [Нативные C-модули](../disVM/runtime/NATIVE_MODULES.ru.md) ·
 [AS2 → FIR → SWF](../compiler/as2/view/README.ru.md) ·
 [API заданий рендера](../flashVM/include/flashvm/render_jobs.h)

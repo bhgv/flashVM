@@ -6,6 +6,8 @@
 #include "flashvm/function.h"
 #include "flashvm/gc.h"
 #include "flashvm/path.h"
+#include "flashvm/render_queue.h"
+#include "editor_raster.h"
 #include "flashvm/utf8.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,7 +42,7 @@
 #define EDITOR_WIDTH_MIN 240U            /* Bounded minimum native surface width. */
 #define EDITOR_HEIGHT_MIN 160U           /* Bounded minimum native surface height. */
 #define EDITOR_EXTENT_MAX 2048U          /* Bound each dimension and the RGBA allocation to 16 MiB. */
-#define EDITOR_GUTTER 65563UL             /* Dis-owned line-number visibility, copied per completed view. */
+#define EDITOR_GUTTER 65563UL            /* Dis-owned line-number visibility, copied per completed view. */
 #define EDITOR_QUIT 65539UL              /* Dis controller's dirty-checked close operation. */
 
 #define EDITOR_CLIP_FIELD_WRITE 65561UL  /* Copy Dis-authorized modal field bytes, excluding the label. */
@@ -87,10 +89,11 @@ static FVM_Font *layout_font;          /* Owned same-face layout for Dis selecti
 static long caret;                     /* Last Dis Unicode scalar caret, presentation only. */
 static long anchor;                    /* Last Dis Unicode scalar selection anchor. */
 static FVM_Object *panel_field;        /* [GC:] Pinned display-only field; input policy remains in Dis. */
-static unsigned long panel_mode;       /* Dis panel mode: 0 file, 1..6 edit, 7 inspect, 8 close, 9 browser, 10 directory path. */
-static unsigned long panel_revision;   /* Expected content revision for the pending panel. */
-static long panel_caret;               /* Copied Unicode field caret, excluding its native label prefix. */
-static long panel_anchor;              /* Copied Unicode field selection anchor. */
+static unsigned long
+    panel_mode; /* Dis panel mode: 0 file, 1..6 edit, 7 inspect, 8 close, 9 browser, 10 directory path. */
+static unsigned long panel_revision;           /* Expected content revision for the pending panel. */
+static long panel_caret;                       /* Copied Unicode field caret, excluding its native label prefix. */
+static long panel_anchor;                      /* Copied Unicode field selection anchor. */
 static unsigned long panel_selection_revision; /* Expected source revision of the pending field endpoints. */
 static FVM_TextLayout *panel_layout;           /* Owned same-contract glyph layout for the current completed field. */
 static double panel_horizontal;                /* Effective native field scroll, never a source/text authority. */
@@ -100,34 +103,38 @@ static char panel_text[1024];                  /* Copied counted UTF-8 prompt/pa
 static size_t panel_size;                      /* Active panel bytes, never implicitly strlen-decoded. */
 static FVM_Object *field;                      /* [GC:] Pinned display object until destroy. */
 static unsigned char *pixels;                  /* Owned RGBA8 raster storage. */
-static char *snapshot;                         /* Owned assembly storage, independent of both VM heaps. */
-static size_t assembled;                       /* Next expected UTF-8 byte offset. */
-static size_t extent;                          /* Total expected snapshot bytes. */
-static unsigned long revision;                 /* Dis revision of the pending/published snapshot. */
-static unsigned long status;                   /* Dis status published with that snapshot. */
-static long saved;                             /* Dis saved revision, used only for display. */
-static unsigned long view_ticket;              /* Monotonic Dis view identity, independent of content revision. */
-static unsigned long view_revision;            /* Expected content revision for viewport metadata. */
-static unsigned long view_total;               /* Expected document Unicode scalar count. */
-static int initial_line_numbers = 1;      /* Startup preference only, read once by Dis. */
-static int line_numbers;                  /* Admitted Dis view preference; no native shortcut changes it. */
-static unsigned long gutter_revision;     /* Revision that authorizes this view's gutter state. */
-static unsigned int gutter_width;         /* Measured native pixels reserved beside source text. */
-static unsigned long view_top;                 /* Zero-based logical top line chosen by Dis. */
-static long view_first;                        /* Dis-selected source scalar at display start. */
-static long view_last;                         /* Dis-selected source scalar after display end. */
-static size_t display_start;                   /* Native byte translation of the admitted source scalar start. */
-static size_t display_size;                    /* Current display UTF-8 byte length, at most 4096. */
-static FVM_TextLayout *hit_layout;             /* Owned actual glyph layout for the completed view. */
-static double horizontal;                      /* Renderer pixel translation, never a document coordinate. */
-static int complete;                           /* A selection frame completed the current view. */
-static int system_clipboard_events; /* Explicit SDL clipboard replay check; ordinary replay remains isolated. */
-static int window_replay;           /* Explicit SDL upload check with deterministic input. */
-static int assembling;              /* A document snapshot is being assembled. */
+static FVM_RenderQueue *raster_queue;          /* Owned persistent native raster worker, joined before VM teardown. */
+static DVM_EditorFrame *recording_frame;       /* Owner-only frame builder; workers never read this global. */
+static int raster_pending;            /* Owner-only input geometry barrier until the latest frame is presented. */
+
+static char *snapshot;                /* Owned assembly storage, independent of both VM heaps. */
+static size_t assembled;              /* Next expected UTF-8 byte offset. */
+static size_t extent;                 /* Total expected snapshot bytes. */
+static unsigned long revision;        /* Dis revision of the pending/published snapshot. */
+static unsigned long status;          /* Dis status published with that snapshot. */
+static long saved;                    /* Dis saved revision, used only for display. */
+static unsigned long view_ticket;     /* Monotonic Dis view identity, independent of content revision. */
+static unsigned long view_revision;   /* Expected content revision for viewport metadata. */
+static unsigned long view_total;      /* Expected document Unicode scalar count. */
+static int initial_line_numbers = 1;  /* Startup preference only, read once by Dis. */
+static int line_numbers;              /* Admitted Dis view preference; no native shortcut changes it. */
+static unsigned long gutter_revision; /* Revision that authorizes this view's gutter state. */
+static unsigned int gutter_width;     /* Measured native pixels reserved beside source text. */
+static unsigned long view_top;        /* Zero-based logical top line chosen by Dis. */
+static long view_first;               /* Dis-selected source scalar at display start. */
+static long view_last;                /* Dis-selected source scalar after display end. */
+static size_t display_start;          /* Native byte translation of the admitted source scalar start. */
+static size_t display_size;           /* Current display UTF-8 byte length, at most 4096. */
+static FVM_TextLayout *hit_layout;    /* Owned actual glyph layout for the completed view. */
+static double horizontal;             /* Renderer pixel translation, never a document coordinate. */
+static int complete;                  /* A selection frame completed the current view. */
+static int system_clipboard_events;   /* Explicit SDL clipboard replay check; ordinary replay remains isolated. */
+static int window_replay;             /* Explicit SDL upload check with deterministic input. */
+static int assembling;                /* A document snapshot is being assembled. */
 #ifdef DVM_EDITOR_SDL
-static SDL_Window *window;          /* Main-thread-only native window. */
-static SDL_Renderer *renderer;      /* Main-thread presentation owner. */
-static SDL_Texture *texture;        /* RGBA8 upload target. */
+static SDL_Window *window;            /* Main-thread-only native window. */
+static SDL_Renderer *renderer;        /* Main-thread presentation owner. */
+static SDL_Texture *texture;          /* RGBA8 upload target. */
 #endif
 
 
@@ -163,7 +170,6 @@ int dvm_editor_line_numbers(void)
 {
     return initial_line_numbers;
 }
-
 
 /* Store a known CLI option without copying argv; returns whether it was recognized. */
 int dvm_editor_option(const char *name, const char *value)
@@ -621,7 +627,8 @@ int dvm_editor_create(void)
     }
     pixels = malloc(canvas_width * canvas_height * 4U);
     snapshot = malloc(EDITOR_SOURCE_MAX + 1U);
-    if (!pixels || !snapshot)
+    if (!pixels || !snapshot ||
+        fvm_render_queue_create(1, dvm_editor_frame_render, dvm_editor_frame_destroy, &raster_queue) != FVM_OK)
     {
         return 0;
     }
@@ -671,8 +678,9 @@ int dvm_editor_create(void)
     return 1;
 }
 
-/* Draw a clipped rectangle through FlashVM's raster backend; no document mutation.
- * Coordinates are pixels, color is copied. Returns one on actual raster success. */
+/* Record a clipped rectangle in the owner-held frame without document mutation.
+ * surface supplies only pixel bounds; color is copied. Return one on admitted
+ * geometry (including offscreen no-op), zero on contour allocation/budget failure. */
 static int rectangle(FVM_RasterSurface *surface, double x, double y, double width, double height, FVM_RasterColor color)
 {
     if (width < 0)
@@ -711,7 +719,31 @@ static int rectangle(FVM_RasterSurface *surface, double x, double y, double widt
     points[2].y = y + height;
     points[3].x = x;
     points[3].y = y + height;
-    return fvm_raster_fill_polygon(surface, points, 4, color) == FVM_OK;
+    {
+        FVM_Path *path = NULL;
+        FVM_PathCommand command;
+        unsigned int index;
+        FVM_Result result = fvm_path_create(&path);
+        memset(&command, 0, sizeof(command));
+        for (index = 0; index < 4 && result == FVM_OK; index++)
+        {
+            command.verb = index ? FVM_PATH_LINE : FVM_PATH_MOVE;
+            command.x[0] = points[index].x;
+            command.y[0] = points[index].y;
+            result = fvm_path_add(path, &command);
+        }
+        command.verb = FVM_PATH_CLOSE;
+        if (result == FVM_OK)
+        {
+            result = fvm_path_add(path, &command);
+        }
+        if (result == FVM_OK && dvm_editor_frame_path(recording_frame, path, color))
+        {
+            return 1;
+        }
+        fvm_path_destroy(path);
+        return 0;
+    }
 }
 
 /* Map borrowed valid UTF-8 scalar positions to bounded preview byte offsets.
@@ -1177,7 +1209,14 @@ static FVM_Result draw_visible(const FVM_Path *path, FVM_RasterSurface *surface,
     }
     if (result == FVM_OK)
     {
-        result = fvm_path_draw(visible, surface, color, 0, 0);
+        if (dvm_editor_frame_path(recording_frame, visible, color))
+        {
+            visible = NULL;
+        }
+        else
+        {
+            result = FVM_OUT_OF_MEMORY;
+        }
     }
     fvm_path_destroy(visible);
     return result;
@@ -1275,8 +1314,7 @@ static int render_panel(FVM_RasterSurface *surface)
         return 0;
     }
     fvm_value_number(&value, height);
-    if (fvm_set_global(context, "idePanelHeight", &value) != FVM_OK ||
-        fvm_swf_execute_actions(context) != FVM_OK)
+    if (fvm_set_global(context, "idePanelHeight", &value) != FVM_OK || fvm_swf_execute_actions(context) != FVM_OK)
     {
         return 0;
     }
@@ -1419,7 +1457,8 @@ static int measure_gutter(void)
             FVM_Path *path = 0;
             double advance = 0;
             double vertical = 0;
-            if (fvm_font_glyph(layout_font, fvm_font_char(layout_font, '0' + digit), &path, &advance, &vertical) != FVM_OK)
+            if (fvm_font_glyph(layout_font, fvm_font_char(layout_font, '0' + digit), &path, &advance, &vertical) !=
+                FVM_OK)
             {
                 return 0;
             }
@@ -1439,7 +1478,6 @@ static int measure_gutter(void)
     return fvm_object_set(context, field, "_width", &value) == FVM_OK;
 }
 
-
 /* Paint logical numbers at the actual source layout baselines, covering scrolled source ink.
  * surface is borrowed, layout contains only the acknowledged viewport. No source parsing/mutation. */
 static int render_gutter(FVM_RasterSurface *surface)
@@ -1454,8 +1492,7 @@ static int render_gutter(FVM_RasterSurface *surface)
     {
         return 1;
     }
-    if (fvm_font_metrics(layout_font, &font) != FVM_OK ||
-        fvm_text_layout_metrics(hit_layout, &metrics) != FVM_OK)
+    if (fvm_font_metrics(layout_font, &font) != FVM_OK || fvm_text_layout_metrics(hit_layout, &metrics) != FVM_OK)
     {
         return 0;
     }
@@ -1483,8 +1520,8 @@ static int render_gutter(FVM_RasterSurface *surface)
             break;
         }
         snprintf(label, sizeof(label), "%lu", view_top + index + 1);
-        result = fvm_font_shape_configured(layout_font, label, strlen(label), FVM_TEXT_LTR, 0,
-                                          FVM_FONT_SHAPE_NO_KERNING, &run);
+        result = fvm_font_shape_configured(
+            layout_font, label, strlen(label), FVM_TEXT_LTR, 0, FVM_FONT_SHAPE_NO_KERNING, &run);
         if (result == FVM_OK)
         {
             result = fvm_text_run_path(layout_font, run, &path, &advance, &vertical);
@@ -1512,10 +1549,10 @@ static int render_gutter(FVM_RasterSurface *surface)
     return 1;
 }
 
-
-/* Render only a complete document through actual FlashVM contours and rasterization.
- * No parameters; returns one on success, zero on backend/file/presentation failure. */
-static int render(void)
+/* Prepare a complete owner-only document view as detached native paint commands.
+ * recording_frame is borrowed and receives owned paths. Return one on success or
+ * zero on layout/geometry/allocation failure; no pixels, files or SDL are touched. */
+static int prepare_frame(void)
 {
     FVM_Value value;
     FVM_Path *path = 0;
@@ -1537,8 +1574,7 @@ static int render(void)
     {
         return 0;
     }
-    memset(pixels, 255, canvas_width * canvas_height * 4U);
-    surface.pixels = pixels;
+    surface.pixels = NULL; /* Geometry only: worker owns the detached destination. */
     surface.width = canvas_width;
     surface.height = canvas_height;
     surface.stride = canvas_width * 4U;
@@ -1569,6 +1605,14 @@ static int render(void)
     {
         return 0;
     }
+    return 1;
+}
+
+
+/* Present only completed native pixels on the UI owner; SDL and capture stay here.
+ * No VM state enters the raster worker. Returns zero on SDL/file failure. */
+static int present_pixels(void)
+{
 #ifdef DVM_EDITOR_SDL
     if (texture)
     {
@@ -1619,7 +1663,65 @@ static int render(void)
             return 0;
         }
     }
-    return fvm_gc_collect(context, 0) == FVM_OK;
+    return 1;
+}
+
+
+/* Collect the newest detached raster result; owner-only, wait is explicit capture mode.
+ * Return one for ready or idle, zero on native failure. Never publish a stale-size frame. */
+static int collect_frame(int wait)
+{
+    void *job = NULL;
+    FVM_Result rendered;
+    FVM_Result result = fvm_render_queue_take(raster_queue, &job, &rendered, wait);
+    const FVM_RasterSurface *surface;
+    int ok = 1;
+    if (result == FVM_NOT_FOUND)
+    {
+        return 1;
+    }
+    if (result != FVM_OK)
+    {
+        return 0;
+    }
+    surface = dvm_editor_frame_surface(job);
+    raster_pending = 0;
+    if (rendered != FVM_OK)
+    {
+        fprintf(stderr, "editor background raster failed: %d\n", rendered);
+        ok = 0;
+    }
+    else if (surface->width == canvas_width && surface->height == canvas_height)
+    {
+        memcpy(pixels, surface->pixels, (size_t)canvas_width * canvas_height * 4);
+        ok = present_pixels();
+    }
+    dvm_editor_frame_destroy(job);
+    return ok;
+}
+
+
+/* Prepare independent native geometry and submit without waiting for rasterization.
+ * [GC:] All VM/font queries and collection remain on this owner. Worker paths have
+ * no heap references. Capture deliberately waits; replay input advances only after owner presentation. */
+static int render(void)
+{
+    DVM_EditorFrame *frame = dvm_editor_frame_create(canvas_width, canvas_height);
+    int prepared;
+    if (!frame)
+    {
+        return 0;
+    }
+    recording_frame = frame;
+    prepared = prepare_frame();
+    recording_frame = NULL;
+    if (!prepared || fvm_gc_collect(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
+    {
+        dvm_editor_frame_destroy(frame);
+        return 0;
+    }
+    raster_pending = 1;
+    return collect_frame(capture_path != NULL);
 }
 
 /* Assemble ordered Dis snapshot fragments, publishing TextField only at selection boundary.
@@ -1662,8 +1764,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
     }
     if (message->code == EDITOR_GUTTER)
     {
-        if (assembling || message->flags != style_revision || message->size || message->second ||
-            message->first < 0 || message->first > 1)
+        if (assembling || message->flags != style_revision || message->size || message->second || message->first < 0 ||
+            message->first > 1)
         {
             return 0;
         }
@@ -1684,8 +1786,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
     }
     if (message->code == EDITOR_PANEL)
     {
-        if (assembling || message->first < 0 || message->first > EDITOR_PANEL_BROWSE_PATH || message->second < 0 || message->second > 1 ||
-            message->size > sizeof(panel_text))
+        if (assembling || message->first < 0 || message->first > EDITOR_PANEL_BROWSE_PATH || message->second < 0 ||
+            message->second > 1 || message->size > sizeof(panel_text))
         {
             return 0;
         }
@@ -2096,6 +2198,14 @@ static unsigned int keycode(SDL_Keycode key)
  * message receives a value only on one. Replay truncation/EOF without Quit returns minus one. */
 int dvm_editor_event(DVM_UIMessage *message)
 {
+    if (!collect_frame(0))
+    {
+        return -1;
+    }
+    if (raster_pending)
+    {
+        return 0; /* Keep OS input queued until displayed pixels match owner hit geometry. */
+    }
     if (!complete)
     {
         return 0;
@@ -2161,8 +2271,8 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             return 0;
         }
-        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED &&
-            window && event.window.windowID == SDL_GetWindowID(window))
+        if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED && window &&
+            event.window.windowID == SDL_GetWindowID(window))
         {
             return render() ? 0 : -1; /* Restore cached presentation without asking Dis to edit/rebuild a view. */
         }
@@ -2299,6 +2409,9 @@ int dvm_editor_event(DVM_UIMessage *message)
 /* Tear down only after scheduler/channel routing is quiescent; null resources are allowed. */
 void dvm_editor_destroy(void)
 {
+    /* [GC:] Join all native callbacks before destroying fonts or either VM. */
+    fvm_render_queue_destroy(raster_queue);
+    raster_queue = NULL;
 #ifdef DVM_EDITOR_SDL
     if (texture)
     {

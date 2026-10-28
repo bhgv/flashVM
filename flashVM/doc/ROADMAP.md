@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1655: detached editor paths render on a persistent background worker; latest-frame queue bounds stale work. Layout/AS/GC and SDL remain owner-only. [EN](RENDER_ASYNC.md) / [RU](RENDER_ASYNC.ru.md). Full SWF async rendering and physical platform acceptance remain open.
+
 Checkpoint v0.1654: our Coco/R Limbo compiler emits checked native C frames/signatures/maps for an explicit scalar classic32/NC64 profile. A runnable, every-line-commented C/Limbo module tutorial verifies GC, errors and channel ownership. Direct Dis channels remain available alongside AS presentation and parallel native raster jobs. [EN](../../disVM/runtime/NATIVE_MODULES.md) / [RU](../../disVM/runtime/NATIVE_MODULES.ru.md). Composite ABI types, complete AS/widget migration and physical platform acceptance remain open; no Flash compatibility stage closes.
 
 Checkpoint v0.1653: the limited AS2 IDE view now follows frontend → FIR → peepholes → SWO → SWL → SWF and executes in FlashVM; browser policy stays in Limbo with multiline/mouse/parent actions. Current-run zoom/caret formatting is synchronized. [EN](../../compiler/as2/view/README.md) / [RU](../../compiler/as2/view/README.ru.md). Full AS2, all widget migration, file trees and complete debugging remain open; no Flash compatibility stage closes.
