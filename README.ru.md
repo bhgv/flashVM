@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1657**. [English](README.md).
+Версия разработки: **0.1658**. [English](README.md).
 
-Текущая серия: [v0.1657](docs/releases/v0.1657.md): связывание алиасов Coco/R и канонические C-интерфейсы; двусторонняя синхронизация dial/file2chan Inferno.
+Текущая серия: [v0.1658](docs/releases/v0.1658.md): исполняемые псевдонимы Limbo → FIR; двусторонняя синхронизация Sys, компилятора и JIT Inferno.
 
 ## Просмотр документации
 

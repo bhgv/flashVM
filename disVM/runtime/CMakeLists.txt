@@ -935,3 +935,13 @@ if(DVM_RUNTIME_NATIVE_DEMO)
     endforeach()
   endif()
 endif()
+
+# Run the new source aliases through our FIR backend and actual native Dis dispatch.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_limbo_aliases_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/limbo_aliases.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_limbo_aliases_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()

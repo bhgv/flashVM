@@ -72,13 +72,19 @@ int main(void)
     const char *real = "implement A; A: module {value: fn(): real;}; value(): real {return 7.5 / 2.0;}";
     const char *bad = "implement A; A: module {value: fn(): real;}; value(): int {return 2;}";
     const char *integer = "implement A; A: module {value: fn(): int;}; value(): int {return 42;}";
+    const char *aliased =
+        "implement A; Base: type int; Chain: type Base; "
+        "A: module {Base: type real; value: fn(): Chain;}; "
+        "value(): Chain {x: Chain = 42; return x;}";
+    const char *unbound = "implement A; A: module {value: fn(): Chain;}; value(): Chain {return 42;}";
     FirModule *module = malloc(sizeof(*module));
     int cycle;
     int ok = module != NULL;
     for (cycle = 0; cycle < 8 && ok; cycle++)
     {
-        ok = check(real, FIR_LIMBO, FIR_LIMBO_REAL, module) && check(bad, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) &&
-             check(integer, FIR_LIMBO, FIR_LIMBO_I32, module) &&
+        ok = check(aliased, FIR_LIMBO, FIR_LIMBO_I32, module) &&
+             check(unbound, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(real, FIR_LIMBO, FIR_LIMBO_REAL, module) &&
+             check(bad, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(integer, FIR_LIMBO, FIR_LIMBO_I32, module) &&
              check("trace(2.5);", FIR_AS3, FIR_AVM1_NUMERIC, module);
     }
     free(module);

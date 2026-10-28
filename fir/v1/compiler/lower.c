@@ -8,25 +8,44 @@
 #include <inttypes.h>
 
 
-
 /* Borrowed output stream and copied source position; released after parsing. */
 static FILE *destination;
 static SourceMark location;
 
+
 /* Complete consumed spelling; overlong input is rejected before copying. */
 static char token[256];
+
 
 /* Numeric mode, next SSA number, sticky first-error state and selected language. */
 static int integer_mode, serial, failed, profile;
 static char module_name[256];
+
+
+/* One sequential source-profile alias already bound to a canonical FIR type. */
+typedef struct
+{
+    char name[256]; /* Copied bounded scanner token, never an input pointer. */
+    FirType type;   /* Resolved primitive/string/table type; no deferred edges. */
+    int scope;      /* File scope 0 or implementing-module scope 1. */
+} SourceAlias;
+
+static SourceAlias aliases[SOURCE_ALIAS_MAX]; /* Owner-local bounded declaration prefix. */
+static unsigned int alias_count;              /* Initialized aliases in this translation unit. */
+static int alias_scope;                       /* Current file/module declaration environment. */
+static char alias_header[256];                /* Pending declaration name, independent of RHS capture. */
+static SourceMark alias_origin;               /* Diagnostic location of the pending header. */
+
 
 /* Last-write SSA hints and initialization facts; cell-backed hints are never
  * emitted directly. source_config resets the live translation-unit prefix. */
 static char names[256][256];
 static int bindings[256], immutable[256], name_count, source_line;
 
+
 /* Retired lexical bindings are never reused during one bounded translation unit. */
 static int binding_scope[256], active[256], scope_depth;
+
 
 /* Debug owners are unique across sibling blocks, unlike lexical depth. */
 static int debug_scopes[65], debug_scope_serial;
@@ -54,6 +73,7 @@ static int loop_entry_cells[65][256];           /* Entry cell IDs; body-only cel
 static int loop_for_context[65];                /* Counted-for step context, -1 for while/snapshot loops. */
 static int loop_names[65];                      /* Binding prefix present before each active loop body. */
 static int terminal; /* The last emitted arm already terminates and needs no footer return. */
+
 
 /* Saved incoming/true-arm environments for a structured choice. No runtime
  * owners are held here: IDs name private SSA payloads/cells in staged FIR. */
@@ -93,6 +113,9 @@ static int table_operation(FirType type, const char *spelling, int a, int b);
 void source_config(FILE *out, int language)
 {
     source_release();
+    alias_count = 0;
+    alias_scope = 0;
+    alias_header[0] = 0;
     location.line = 0;
     location.offset = -1;
     location.length = 0;
@@ -329,10 +352,22 @@ void source_token(const char *text, int line, long offset, size_t length, int ov
 int source_name(void)
 {
     int i;
-    if (profile == FIR_LIMBO && !strcmp(token, "real"))
+    if (profile == FIR_LIMBO && (!strcmp(token, "real") || !strcmp(token, "type")))
     {
-        reject("real is a Limbo type keyword, not a binding name");
+        reject("Limbo type keyword is not a binding name");
         return 0;
+    }
+    if (profile == FIR_LIMBO)
+    {
+        unsigned int alias;
+        for (alias = 0; alias < alias_count; alias++)
+        {
+            if (!strcmp(token, aliases[alias].name))
+            {
+                reject("source-profile local cannot shadow a type alias");
+                return 0;
+            }
+        }
     }
     for (i = name_count - 1; i >= 0; --i)
     {
@@ -528,6 +563,140 @@ void source_module(int first)
 }
 
 
+/* Save a header before its RHS captures another scanner token; owner-only. */
+void source_alias_header(void)
+{
+    strcpy(alias_header, token);
+    alias_origin = location;
+}
+
+
+/* Require a real module header even when the alias-prefix repetition is empty. */
+void source_alias_module(int found)
+{
+    if (!found)
+    {
+        reject("source module declaration required");
+    }
+}
+
+
+/* Keep module aliases visible to its implementing body; no nested declarations here. */
+void source_alias_scope(int module)
+{
+    alias_header[0] = 0;
+    alias_scope = module != 0;
+}
+
+
+/* Resolve an earlier canonical alias in the current file/implementing-module scope. */
+FirType source_alias_type(void)
+{
+    unsigned int index = alias_count;
+    if (profile != FIR_LIMBO)
+    {
+        reject("type aliases require Limbo profile");
+        return T_VOID;
+    }
+    if (alias_header[0] && !strcmp(alias_header, token))
+    {
+        reject("self-referential source type alias");
+        return T_VOID;
+    }
+    while (index)
+    {
+        index--;
+        if (aliases[index].scope <= alias_scope && !strcmp(aliases[index].name, token))
+        {
+            return aliases[index].type;
+        }
+    }
+    reject("unknown or forward source type alias");
+    return T_VOID;
+}
+
+
+/* Publish a canonical alias only after RHS success; duplicate/limit errors keep old bindings. */
+void source_alias_declare(FirType type)
+{
+    unsigned int index;
+    source_restore(alias_origin);
+    if (failed)
+    {
+        alias_header[0] = 0;
+        return;
+    }
+    if (!alias_scope && !strcmp(alias_header, module_name))
+    {
+        reject("file type alias conflicts with implementing module");
+        alias_header[0] = 0;
+        return;
+    }
+    for (index = 0; index < alias_count; index++)
+    {
+        if (aliases[index].scope == alias_scope && !strcmp(aliases[index].name, alias_header))
+        {
+            reject("duplicate source type alias");
+            alias_header[0] = 0;
+            return;
+        }
+    }
+    if (alias_count == SOURCE_ALIAS_MAX)
+    {
+        reject("source type alias limit");
+        alias_header[0] = 0;
+        return;
+    }
+    strcpy(aliases[alias_count].name, alias_header);
+    aliases[alias_count].type = type;
+    aliases[alias_count++].scope = alias_scope;
+    alias_header[0] = 0;
+}
+
+
+/* Resolve and map only executable tutorial result types; no new backend semantics. */
+void source_result_alias(int declaration)
+{
+    FirType type = source_alias_type();
+    if (type == T_I32 || type == T_F64 || type == T_I64)
+    {
+        source_result_type(type == T_I32 ? 0 : type == T_F64 ? 1 : 2, declaration);
+    }
+    else if (!failed)
+    {
+        reject("source result alias requires int, real or big");
+    }
+}
+
+
+/* Preserve homogeneous local typing after alias canonicalization. */
+void source_binding_alias(void)
+{
+    FirType type = source_alias_type();
+    if (type == T_I32 || type == T_F64)
+    {
+        source_binding_type(type == T_F64);
+    }
+    else if (!failed)
+    {
+        reject("numeric local alias requires int or real");
+    }
+}
+
+
+/* Admit only already implemented table-profile annotation kinds. */
+FirType source_table_alias(void)
+{
+    FirType type = source_alias_type();
+    if (type != T_I32 && type != T_I64 && type != T_STRING && type != T_TABLE_BIG && !failed)
+    {
+        reject("unsupported table-profile type alias");
+        return T_VOID;
+    }
+    return type;
+}
+
+
 /* Reject a parsed source family that disagrees with the requested profile. */
 void source_language(int limbo)
 {
@@ -637,6 +806,7 @@ void source_restore(SourceMark mark)
     location = mark;
     source_line = mark.line;
 }
+
 
 /* Release owned step streams/deferred origins after every translation, including
  * failure; retire the borrowed root output without closing the caller stream. */
@@ -833,27 +1003,29 @@ static int table_value(FirType type)
 /* Emit one typed unary/binary table operation with copied source provenance. */
 static int table_operation(FirType type, const char *spelling, int a, int b)
 {
-    static const char *const types[] = {"void",
-                                        "i32",
-                                        "f64",
-                                        "bool",
-                                        "string",
-                                        "any",
-                                        "channel",
-                                        "i64",
-                                        "table.big",
-                                        "table.slot",
-                                        "big.range",
-                                        "keys",
-                                        "table.key",
-                                        "bool.slot",
-                                        "table.range",
-                                        "string.range",
-                                        "i64.slot",
-                                        "string.cell",
-                                        "table.cell",
-                                        "keys.cell",
-                                        "key.cell"};
+    static const char *const types[] = {
+        "void",
+        "i32",
+        "f64",
+        "bool",
+        "string",
+        "any",
+        "channel",
+        "i64",
+        "table.big",
+        "table.slot",
+        "big.range",
+        "keys",
+        "table.key",
+        "bool.slot",
+        "table.range",
+        "string.range",
+        "i64.slot",
+        "string.cell",
+        "table.cell",
+        "keys.cell",
+        "key.cell",
+    };
     int result = table_value(type);
     if (!failed)
     {
@@ -1627,6 +1799,7 @@ void source_table_lease(int receiver, int acquire)
     }
 }
 
+
 /* [GC:] Promote active locals into dominating typed frame cells.
  * include_uninitialized reserves zero/nil storage for declared locals at joins,
  * without marking them readable. Scalars keep bool/big storage; int widens on
@@ -1745,6 +1918,7 @@ static void source_loop_leave(void)
         }
     }
 }
+
 
 /* Close a while body after its lexical locals have retired. Emit the backedge
  * and continuation for loop, then pop one parser loop context. No native mutex
@@ -1873,6 +2047,7 @@ void source_iteration_bind(SourceIteration iteration, int key, int value, Source
     source_restore(valuemark);
     source_table_bind(value, iteration.value, 0, 1);
 }
+
 
 /* Admit one new function/block/loop statement on a still-open compiler CFG path. This
  * translation-only check preserves the first error; it emits no runtime code. */
@@ -2090,6 +2265,7 @@ void source_flow_finish(void)
         terminal = 1;
     }
 }
+
 
 /* Allocate a compiler-private step stream after initializer emission. Return a
  * copied parser continuation; failures keep context=-1 and prevent publication.

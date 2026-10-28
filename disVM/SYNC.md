@@ -1,3 +1,19 @@
+# v0.1658 — Sys capture, bounded AST queries and JIT synchronization
+
+Current pin: **2bd9f3cdcfbe21d39b6829d6440dc86662d2c951**, **699 selected Dis files**; the independent source bootstrap selects **216 files** at the same revision. Manifests retain individual SHA-256 hashes and imported files remain byte-for-byte upstream.
+
+Incoming 56e3f67 captures Sys.pctl frames and validates packed FD lists before owner access, including malformed/cyclic input. 3523d0d removes deep varinit/caselist/right-occurs recursion. fac323c bounds JIT layout arithmetic and ARM64 INDC capacity. Later aea8343 bounds further compiler tree queries; f77c625 rejects unaligned ARM64 JIT-to-C targets and expands dispatch fixtures. Incoming 8410b0b bounds additional node/typecheck transforms; 38ed47e validates six runtime callback identities and corrects foreign ARM64 fixture alignment.
+
+Our reverse [b151e32d](https://github.com/bhgv/Inferno-OS-bhgv/commit/b151e32daa309b3f6030363a39717091a430d642) removes remaining left/mixed occurs recursion with an inline worklist and checked heap growth. A 100000-node left tree reproduced ASan stack overflow with the previous code under a 256 KiB stack. Tests preserve per-edge DAG counts, terminal name handling and read-only input. This is not a claim that all compiler traversals accept arbitrary cyclic graphs. The reverse fix is already an ancestor of the final incoming pin.
+
+Our second reverse [2bd9f3c](https://github.com/bhgv/Inferno-OS-bhgv/commit/2bd9f3cdcfbe21d39b6829d6440dc86662d2c951) explicitly aligns the cold cjitexec fixture identity for foreign ARM64 publication. Both WORD widths now pass with unsanitized -O1 and UBSan, without weakening the production target guard.
+
+Selected pctl fixtures run UBSan in bounded frame/node configurations; node-chain/query fixtures exercise extracted real compiler bodies under ASan/UBSan. LSan process inspection is unavailable in this sandbox and explicitly disabled by these fixtures. Emitter/dispatch fixtures do not constitute execution on ARM64 hardware. Flash-specific table/any/projection/compiler extensions stay in FlashVM.
+
+[Release EN/RU](../docs/releases/v0.1658.md) · [Executable aliases EN](../fir/v1/doc/SOURCE_ALIASES.md) / [RU](../fir/v1/doc/SOURCE_ALIASES.ru.md).
+
+## Previous checkpoints
+
 # v0.1657 — Dial/file2chan synchronization and outer alias binding
 
 Current pin: **0ac9d293660a718cb3dbc3472e9c40d6b31cca8e**, **683 selected files**.

@@ -1,0 +1,13 @@
+# Source aliases → canonical FIR (0.49)
+
+[Русский](SOURCE_ALIASES.ru.md) · [Runnable tutorial](../examples/type-aliases/README.md) · [Interface resolver](../../../compiler/limbo/frontend/ALIASES.md)
+
+The executable source adapter uses the authoritative [Coco/R grammar](../compiler/src1.atg) and [lowering library](../compiler/lower.c). Both CLI and serialized C API accept file aliases between implement and the module declaration, and implementing-module aliases before the value export. A declaration uses `Name: type int;`, `Name: type real;`, `Name: type big;`, `Name: type string;`, `Name: type table of big;` or a previously bound alias.
+
+Binding is sequential and canonical in the declaring lexical scope. An earlier file alias remains unchanged when its source name is shadowed inside the module. The implementing body sees module aliases. Numeric results accept int/real/big aliases. Numeric int/real locals remain homogeneous; the big/table profile accepts int, big, string and table-of-big annotations. String/table results and general composite type expressions are unsupported. Aliases emit no FIR instructions: tests require byte-identical FIR to direct canonical annotations.
+
+The adapter bounds aliases to 128 per translation unit and names to the existing 255-byte token buffer. Duplicate/self/unknown/forward aliases and value locals shadowing aliases are semantic errors. Local type declarations, qualified/generic types, includes and alias-name casts are not implemented. The separate interface resolver supports forward binding/cycle diagnostics; its capabilities must not be confused with this executable profile. This is not a complete typed-body compiler.
+
+State resets for every library request. Syntax/semantic failures preserve existing staged FIR and debug outputs. Malformed `implement ;` and a missing module stop with diagnostics; the prefix repetition explicitly requires an identifier to guarantee parser progress at EOF. Debug origins continue to refer to the original source snapshot. Adding the type keyword preserves AS1/2/3 variables named type and table fields such as t.type.
+
+Tests compile int/real/big/table aliases, compare canonical FIR, optimize and emit real Dis images, then execute both interpreter and JIT paths with quantum 1 and 2048 and inspect results/dispatch counters. Optional SWF acceptance compiles numeric FIR to SWO, links SWF and inspects FlashVM trace; hybrid tables remain Dis-only. Existing direct Dis emission is reused. This work introduces no new runtime opcode, cross-heap pointer or native module ABI. The tutorial's value() entry is a teaching wrapper, not Inferno's general init interface.

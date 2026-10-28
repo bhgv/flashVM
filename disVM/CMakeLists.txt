@@ -179,6 +179,8 @@ if(BUILD_TESTING)
     sys-stat-slots
     lists
     sys-pctl
+    sys-pctl-capture
+    emitter-layouts
     sys-packdir
     srv-results
     jit-unknown-kind
@@ -220,12 +222,16 @@ if(BUILD_TESTING)
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   set_tests_properties(disvm_sys-file2chan-capture PROPERTIES TIMEOUT 180
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;FILE2CHAN_FRAME=0")
+  set_tests_properties(disvm_sys-pctl-capture PROPERTIES TIMEOUT 180
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;PCTL_FRAME=0;PCTL_NODE=0")
+  set_tests_properties(disvm_emitter-layouts PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   add_test(NAME disvm_fixed_zero_div COMMAND "${Python3_EXECUTABLE}"
     "${u}/limbo/tests/fixed-zero-div.py")
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   # Retain production fixed-point selection and constant-folding regressions.
-  foreach(driver fixed-ops fold-casts fold-strings case-cell-layouts asm-roundtrip optimizer-ranges)
+  foreach(driver fixed-ops fold-casts fold-strings case-cell-layouts asm-roundtrip optimizer-ranges node-chains node-queries node-transforms)
     add_test(NAME disvm_compiler_${driver} COMMAND "${Python3_EXECUTABLE}"
       "${u}/limbo/tests/${driver}.py")
     set_tests_properties(disvm_compiler_${driver} PROPERTIES TIMEOUT 120

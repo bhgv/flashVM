@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.48.0 LANGUAGES C)
+project(fir1 VERSION 0.49.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -553,4 +553,11 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME fir1_as_properties COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/as_properties.py" $<TARGET_FILE:fir1> $<TARGET_FILE:fir1_opt>)
+endif()
+
+# Source aliases are annotations in the bounded executable Limbo profile.
+if(BUILD_TESTING)
+  add_test(NAME fir1_limbo_aliases COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/limbo_aliases.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_limbo_aliases PROPERTIES TIMEOUT 60)
 endif()

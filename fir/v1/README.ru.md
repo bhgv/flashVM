@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.48.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.49.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -165,3 +165,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Обход значений с одним именем — 0.47](doc/VALUE_ITERATION.ru.md): таблицы, руны строк и ключи снимков; прежние захват, области имён и управление.
 
 [AS globals/property stores through the common pipeline](doc/AS_PROPERTIES.md) · [Русский](doc/AS_PROPERTIES.ru.md).
+
+[Executable type aliases / Исполняемые псевдонимы](doc/SOURCE_ALIASES.ru.md) · [Tutorial / Пример](examples/type-aliases/README.ru.md)

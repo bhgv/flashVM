@@ -97,3 +97,5 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 Compiler 0.41 keeps these API signatures and serial-request rules while adding
 [scoped function flow](../doc/FUNCTION_FLOW.md) to the Limbo big/table profile.
 The reused C99 service also verifies recovery after a joined-path initialization error.
+
+[Source aliases / Псевдонимы исходника](../doc/SOURCE_ALIASES.md): FIR 0.49, serialized request-local binding.

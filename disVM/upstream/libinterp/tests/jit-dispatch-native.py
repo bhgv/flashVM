@@ -65,6 +65,10 @@ with tempfile.TemporaryDirectory(prefix='jit-dispatch-native-') as temporary:
     source = td/'fixture.c'
     source.write_text(unit)
     command = shlex.split(os.environ.get('CC','cc'))+shlex.split(os.environ.get('CFLAGS','-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all'))
+    # Foreign ARM64 emission borrows host function identities, never host code.
+    # AMD64 O1 functions may be byte-aligned; model real AArch64 target alignment.
+    if backend == 'arm64':
+        command += ['-falign-functions=4']
     widths = tuple(map(int, os.environ.get("BRIDGE_WORD_BITS", "32 64").split()))
     if not widths or any(width not in (32,64) for width in widths):
         raise ValueError("BRIDGE_WORD_BITS must select 32 and/or 64")
@@ -75,6 +79,12 @@ with tempfile.TemporaryDirectory(prefix='jit-dispatch-native-') as temporary:
         if wb==32:
             header = re.sub(r'typedef long\s+WORD;','typedef int WORD;',header,count=1)
             header = re.sub(r'typedef unsigned long\s+UWORD;','typedef unsigned int UWORD;',header,count=1)
+        # GCC may leave cold aborting stubs byte-aligned despite -falign-functions.
+        # Foreign emission encodes these identities as AArch64 call targets.
+        if backend == 'arm64':
+            for name in ('cons', 'cconsmappedtype', 'cnewcscalar', 'cnewcraw', 'cnewcmapped', 'cchanleaf'):
+                header = re.sub(r'(extern[^\n]*\b'+name+r'\([^;\n]*\));',
+                                r'\1 __attribute__((aligned(4)));', header)
         (model/'interp.h').write_text(header)
         includes = ['-I'+str(model)]+['-I'+str(ROOT/p) for p in ('Linux/arm/include','emu/port','include','libinterp')]
         binary = td/('word'+str(wb))

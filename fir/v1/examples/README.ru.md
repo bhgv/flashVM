@@ -4,6 +4,7 @@
 
 | Папка | Что показывает |
 | --- | --- |
+| [type-aliases](type-aliases/README.ru.md) | Limbo aliases → canonical FIR → Dis / numeric SWF |
 | [as1](as1/README.ru.md) | Числовой исходник, приоритеты, ожидаемый FIR |
 | [as2](as2/README.ru.md) | Скобки и умножение |
 | [as3](as3/README.ru.md) | Ограниченный числовой профиль, дроби |
@@ -28,3 +29,5 @@ Source-примеры содержат также ожидаемый читае�
 [Исходник гибридной таблицы](tables/main.b) · [Контракт](../doc/TABLES.ru.md) · [English](../doc/TABLES.md). Пример проходит наш путь Coco/R → FIR и эталонный C-исполнитель; [исполнение через Dis](../doc/TABLES_DIS.ru.md) тоже поддерживается; SWF ещё предстоит.
 
 [Сквозная реализация расширений Limbo: таблицы, проекции и any](../doc/EXTENSIONS.ru.md).
+
+[Executable source aliases / Исполняемые псевдонимы](type-aliases/README.ru.md) — FIR 0.49.

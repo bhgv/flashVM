@@ -358,6 +358,7 @@ PRODUCTIONS
     (
         ident
         | "real"
+        | "type"
         | "value"
     )
                                                                         (.
@@ -369,6 +370,7 @@ PRODUCTIONS
   /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
   LimboProgram =
                                                                         (.
+                                                                            int header = 0;
                                                                             depth = 0;
                                                                             source_language(1);
                                                                         .)
@@ -376,11 +378,11 @@ PRODUCTIONS
                                                                             capture();
                                                                             source_module(1);
                                                                         .)
-    ";" ident                                                           (.
-                                                                            capture();
-                                                                            source_module(0);
-                                                                        .)
-    ":" "module" "{" "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
+    ";"
+    /* Stop after the module header; requiring an identifier guarantees EOF progress. */
+    { IF(!header && Sym==identSym) LimboHeader<&header> }
+    (. source_alias_module(header); .)
+    "{" { LimboAlias } "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
     "}" ";" "value" "(" ")" ":" ResultType<0> "{"
     (
         IF(source_table_profile()) TableBody
@@ -395,18 +397,49 @@ PRODUCTIONS
     .)
   .
 
+  /* A factored header distinguishes earlier file aliases from the module without
+   * rescanning bytes or adding recursive C frames per declaration. */
+  LimboHeader<int *module> =
+    (. int type = T_VOID; .)
+    ident (. capture(); source_alias_header(); .) ":"
+    (
+        "type" AliasTarget<&type> ";" (. source_alias_declare((FirType)type); .)
+        | "module" (. source_module(0); source_alias_scope(1); *module = 1; .)
+    )
+  .
+
+  /* Module aliases precede value() and remain visible to its implementing body. */
+  LimboAlias =
+    (. int type = T_VOID; .)
+    ident (. capture(); source_alias_header(); .) ":" "type" AliasTarget<&type> ";"
+    (. source_alias_declare((FirType)type); .)
+  .
+
+  /* This executable profile binds only earlier aliases; the full interface
+   * resolver separately supports forward/cyclic declaration graphs. */
+  AliasTarget<int *type> =
+    "int" (. *type = T_I32; .)
+    | "real" (. *type = T_F64; .)
+    | "big" (. *type = T_I64; .)
+    | "string" (. *type = T_STRING; .)
+    | "table" "of" "big" (. *type = T_TABLE_BIG; .)
+    | ident (. capture(); *type = source_alias_type(); .)
+  .
+
   /* The interface records the numeric result type; the definition must match it.
   * Keeping this choice in Coco/R avoids scanning source text for type keywords. */
   ResultType<int declaration> =
     "int"                                                               (. capture(); source_result_type(0, declaration); .)
     | "real"                                                            (. capture(); source_result_type(1, declaration); .)
     | "big" (. capture(); source_result_type(2, declaration); .)
+    | ident (. capture(); source_result_alias(declaration); .)
   .
 
   /* Locals stay homogeneous: explicit int/real conversions are not implemented. */
   BindingType =
     "int"                                                               (. capture(); source_binding_type(0); .)
     | "real"                                                            (. capture(); source_binding_type(1); .)
+    | ident (. capture(); source_binding_alias(); .)
   .
 
   /* A terminal decision tree avoids unimplemented SSA joins: every arm returns.
@@ -1094,6 +1127,7 @@ PRODUCTIONS
     | "big" (. *type = T_I64; .)
     | "string" (. *type = T_STRING; .)
     | "table" "of" "big" (. *type = T_TABLE_BIG; .)
+    | ident (. capture(); *type = source_table_alias(); .)
   .
 
   /* Assignment-only selector. Range bounds run once and are captured before RHS.
@@ -1101,7 +1135,7 @@ PRODUCTIONS
   TableWriteKey<int *key, int *end, int *slice, SourceMark *access> =
     (. *slice = 0; .)
     (
-        "." (ident | "value") (. capture(); *access = source_mark(); *key = source_table_text(0); .)
+        "." (ident | "value" | "type") (. capture(); *access = source_mark(); *key = source_table_text(0); .)
         | "[" (. capture(); *access = source_mark(); .) TableExpression<key>
           [ ":" TableExpression<end> (. *slice = 1; .) ] "]"
     )
@@ -1109,7 +1143,7 @@ PRODUCTIONS
 
   /* Dotted identifiers are literal string keys, not lookups of a local binding with that name. */
   TableKey<int *key> =
-    "." (ident | "value") (. capture(); *key = source_table_text(0); .)
+    "." (ident | "value" | "type") (. capture(); *key = source_table_text(0); .)
     | "[" TableExpression<key> "]"
   .
 
@@ -1319,15 +1353,15 @@ PRODUCTIONS
         SourceMark origin;
     .)
     (
-        IF((Sym==identSym || Sym==valueSym) && NamedFieldAhead())
-        (ident | "value") (. capture(); origin = source_mark(); key = source_table_text(0);
+        IF((Sym==identSym || Sym==valueSym || Sym==typeSym) && NamedFieldAhead())
+        (ident | "value" | "type") (. capture(); origin = source_mark(); key = source_table_text(0);
                  slot = source_table_index(owner, key); .)
         "=" TableExpression<&value>
         | "[" (. capture(); origin = source_mark(); .)
           TableExpression<&key> "]"
           (. source_restore(origin); slot = source_table_index(owner, key); .)
           "=" TableExpression<&value>
-        | IF(!((Sym==identSym || Sym==valueSym) && NamedFieldAhead()))
+        | IF(!((Sym==identSym || Sym==valueSym || Sym==typeSym) && NamedFieldAhead()))
           (.
               source_token("", S_NextLine, S_NextPos, (size_t)S_NextLen, 0);
               origin = source_mark();
@@ -1391,7 +1425,7 @@ PRODUCTIONS
             | "(" TableExpression<result> ")"
           )
           {
-              "." (ident | "value") (. capture(); key = source_table_text(0);
+              "." (ident | "value" | "type") (. capture(); key = source_table_text(0);
                             *result = source_table_load(source_table_index(*result, key)); .)
               | "[" (. capture(); access = source_mark(); .) TableExpression<&key>
                 (. slice = 0; .)

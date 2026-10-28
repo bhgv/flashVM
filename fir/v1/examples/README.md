@@ -4,6 +4,7 @@
 
 | Folder | Demonstrates |
 | --- | --- |
+| [type-aliases](type-aliases/README.md) | Limbo aliases → canonical FIR → Dis / numeric SWF |
 | [as1](as1/README.md) | Numeric source, precedence, expected FIR |
 | [as2](as2/README.md) | Parentheses and multiplication |
 | [as3](as3/README.md) | Restricted numeric profile, fractional values |
@@ -30,3 +31,5 @@ index; the workspace viewer includes the same files.
 [Typed hybrid table source](tables/main.b) · [Contract](../doc/TABLES.md) · [Русский](../doc/TABLES.ru.md). This example uses our Coco/R → FIR pipeline and a hosted C reference runner, and [native Dis table execution](../doc/TABLES_DIS.md). SWF is not supported for these tables.
 
 [Executable Limbo extension status: tables, projections and any](../doc/EXTENSIONS.md).
+
+[Executable source aliases / Исполняемые псевдонимы](type-aliases/README.md) — FIR 0.49.

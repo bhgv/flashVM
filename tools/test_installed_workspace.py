@@ -81,6 +81,17 @@ def table_packages(prefix, work, environment):
             result = run([runtime, mode, "--quantum", 1, "--stats", "--inspect-words", 0, 2, image], work, environment)
             if "DATA 0 42\nDATA 8 1\n" not in result:
                 raise RuntimeError("relocated generated table Dis result differs")
+    # Compile both shipped alias tutorials using only relocated compiler/runtime files.
+    # These examples must retain their actual result through optimization and GC-at-each-step.
+    for example in ("main.b", "table.b"):
+        alias_source = prefix / "fir/examples/type-aliases" / example
+        run([program(prefix, "fir", "fir1_source"), "limbo", "--input", alias_source, fir], work, environment)
+        run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+        run([program(prefix, "fir", "fir1"), "dis", optimized, image], work, environment)
+        for mode in ("--jit", "--no-jit"):
+            result = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 2, image], work, environment)
+            if "DATA 0 42\nDATA 8 1\n" not in result:
+                raise RuntimeError("relocated source alias tutorial result differs")
     # Additional modules cover native big arithmetic and checked division/bit operations.
     for example in ("arithmetic.b", "bitwise.b"):
         arithmetic_source = prefix / "fir/examples/tables" / example

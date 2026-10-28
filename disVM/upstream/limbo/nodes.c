@@ -252,45 +252,141 @@ elemsort(Node *e)
 	return recelemsort(e, n);
 }
 
+
+/* Compare in left-to-right order without depth-proportional host recursion.
+ * Constants remain terminal and pointer-identical nodes remain immediately equal.
+ * Pending node pairs are borrowed; all private work storage is released on return. */
 int
 sametree(Node *n1, Node *n2)
 {
-	if(n1 == n2)
-		return 1;
-	if(n1 == nil || n2 == nil)
-		return 0;
-	if(n1->op != n2->op || n1->ty != n2->ty)
-		return 0;
-	if(n1->op == Oconst){
-		switch(n1->ty->kind){
-		case Tbig:
-		case Tbyte:
-		case Tint:
-			return n1->val == n2->val;
-		case Treal:
-			return n1->rval == n2->rval;
-		case Tfix:
-			return n1->val == n2->val && tequal(n1->ty, n2->ty);
-		case Tstring:
-			return n1->decl->sym == n2->decl->sym;
+	enum { InlineNodes = 64 }; // Pointer slots for pending right-child pairs.
+	Node *inlinework[InlineNodes], **work, **next;
+	ulong used, capacity;
+	int same;
+
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	same = 1;
+	for(;;){
+		for(;;){
+			if(n1 == n2)
+				break;
+			if(n1 == nil || n2 == nil || n1->op != n2->op || n1->ty != n2->ty){
+				same = 0;
+				goto done;
+			}
+			if(n1->op == Oconst){
+				switch(n1->ty->kind){
+				case Tbig:
+				case Tbyte:
+				case Tint:
+					same = n1->val == n2->val;
+					break;
+				case Treal:
+					same = n1->rval == n2->rval;
+					break;
+				case Tfix:
+					same = n1->val == n2->val && tequal(n1->ty, n2->ty);
+					break;
+				case Tstring:
+					same = n1->decl->sym == n2->decl->sym;
+					break;
+				default:
+					same = 0;
+					break;
+				}
+				if(!same)
+					goto done;
+				break;
+			}
+			if(n1->decl != n2->decl){
+				same = 0;
+				goto done;
+			}
+			if(n1->right != n2->right){
+				if(used == capacity){
+					if(capacity > (ulong)-1/2/sizeof(*work))
+						fatal("tree comparison storage overflow");
+					next = malloc(2*capacity*sizeof(*work));
+					if(next == nil)
+						fatal("out of memory comparing trees");
+					memmove(next, work, used*sizeof(*work));
+					if(work != inlinework)
+						free(work);
+					work = next;
+					capacity *= 2;
+				}
+				work[used++] = n1->right;
+				work[used++] = n2->right;
+			}
+			n1 = n1->left;
+			n2 = n2->left;
 		}
-		return 0;
+		if(used == 0)
+			break;
+		n2 = work[--used];
+		n1 = work[--used];
 	}
-	return n1->decl == n2->decl && sametree(n1->left, n2->left) && sametree(n1->right, n2->right);
+done:
+	if(work != inlinework)
+		free(work);
+	return same;
 }
 
+
+/* Count uses with bounded C stack for either association and mixed trees.
+ * Nodes/Decl are borrowed and never changed; Oname remains terminal even if it
+ * has populated child metadata. Temporary work storage is released on success.
+ * Allocation, storage-size or signed-count exhaustion is a compiler fatal. */
 int
 occurs(Decl *d, Node *n)
 {
-	if(n == nil)
-		return 0;
-	if(n->op == Oname){
-		if(d == n->decl)
-			return 1;
-		return 0;
+	enum { InlineNodes = 64 };
+	Node *inlinework[InlineNodes], **work, **next;
+	ulong used, capacity;
+	int count;
+
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	count = 0;
+	for(;;){
+		while(n != nil){
+			if(n->op == Oname){
+				if(d == n->decl){
+					if(count == 0x7fffffff)
+						fatal("declaration use count overflow");
+					count++;
+				}
+				break;
+			}
+			if(n->right != nil){
+				if(used == capacity){
+					if(capacity > (ulong)-1/2/sizeof(*work))
+						fatal("declaration traversal storage overflow");
+					next = malloc(2*capacity*sizeof(*work));
+					if(next == nil)
+						fatal("out of memory counting declaration uses");
+					memmove(next, work, used*sizeof(*work));
+					if(work != inlinework)
+						free(work);
+					work = next;
+					capacity *= 2;
+				}
+				work[used++] = n->right;
+			}
+			n = n->left;
+		}
+		if(used == 0)
+			break;
+		n = work[--used];
 	}
-	return occurs(d, n->left) + occurs(d, n->right);
+	if(work != inlinework)
+		free(work);
+	return count;
 }
+
 
 /* Preserve IEEE values and boolean normalization in same-tree identities. */
 Node*
@@ -615,50 +711,196 @@ efold(Node *n)
 	return n;
 }
 
-/*
- * Include run-time errors as observable effects, as well as calls and mutation.
- */
+
+/* Find observable effects, including traps in strict mode, in preorder.
+ * Borrow all nodes unchanged; use checked heap storage for pending right edges. */
 int
 hasside(Node *n, int strict)
 {
-	for(; n != nil; n = n->right){
-		if(sideeffect[n->op] && (strict || n->op != Oadr && n->op != Oind))
-			return 1;
-		if(hasside(n->left, strict))
-			return 1;
+	enum { InlineNodes = 64 }; // Pending branches kept on the fixed host stack.
+	Node *inlinework[InlineNodes], **work, **next;
+	ulong used, capacity;
+	int result;
+
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	result = 0;
+	for(;;){
+		while(n != nil){
+			if(sideeffect[n->op] && (strict || n->op != Oadr && n->op != Oind)){
+				result = 1;
+				goto done;
+			}
+			if(n->right != nil){
+				if(used == capacity){
+					if(capacity > (ulong)-1/2/sizeof(*work))
+						fatal("node traversal storage overflow");
+					next = malloc(2*capacity*sizeof(*work));
+					if(next == nil)
+						fatal("out of memory traversing nodes");
+					memmove(next, work, used*sizeof(*work));
+					if(work != inlinework)
+						free(work);
+					work = next;
+					capacity *= 2;
+				}
+				work[used++] = n->right;
+			}
+			n = n->left;
+		}
+		if(used == 0)
+			break;
+		n = work[--used];
 	}
-	return 0;
+done:
+	if(work != inlinework)
+		free(work);
+	return result;
 }
 
+
+/* Find calls or spawns without growing the host stack with AST depth.
+ * Borrow all nodes unchanged; use checked heap storage for pending right edges. */
 int
 hascall(Node *n)
 {
-	for(; n != nil; n = n->right){
-		if(n->op == Ocall || n->op == Ospawn)
-			return 1;
-		if(hascall(n->left))
-			return 1;
+	enum { InlineNodes = 64 }; // Pending branches kept on the fixed host stack.
+	Node *inlinework[InlineNodes], **work, **next;
+	ulong used, capacity;
+	int result;
+
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	result = 0;
+	for(;;){
+		while(n != nil){
+			if(n->op == Ocall || n->op == Ospawn){
+				result = 1;
+				goto done;
+			}
+			if(n->right != nil){
+				if(used == capacity){
+					if(capacity > (ulong)-1/2/sizeof(*work))
+						fatal("node traversal storage overflow");
+					next = malloc(2*capacity*sizeof(*work));
+					if(next == nil)
+						fatal("out of memory traversing nodes");
+					memmove(next, work, used*sizeof(*work));
+					if(work != inlinework)
+						free(work);
+					work = next;
+					capacity *= 2;
+				}
+				work[used++] = n->right;
+			}
+			n = n->left;
+		}
+		if(used == 0)
+			break;
+		n = work[--used];
 	}
-	return 0;
+done:
+	if(work != inlinework)
+		free(work);
+	return result;
 }
 
+
+/* Find consumed expressions, preserving call and nothing exceptions.
+ * Borrow all nodes unchanged; use checked heap storage for pending right edges. */
 int
 hasasgns(Node *n)
 {
-	if(n == nil)
-		return 0;
-	if(n->op != Ocall && isused[n->op] && n->op != Onothing)
-		return 1;
-	return hasasgns(n->left) || hasasgns(n->right);
+	enum { InlineNodes = 64 }; // Pending branches kept on the fixed host stack.
+	Node *inlinework[InlineNodes], **work, **next;
+	ulong used, capacity;
+	int result;
+
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	result = 0;
+	for(;;){
+		while(n != nil){
+			if(n->op != Ocall && isused[n->op] && n->op != Onothing){
+				result = 1;
+				goto done;
+			}
+			if(n->right != nil){
+				if(used == capacity){
+					if(capacity > (ulong)-1/2/sizeof(*work))
+						fatal("node traversal storage overflow");
+					next = malloc(2*capacity*sizeof(*work));
+					if(next == nil)
+						fatal("out of memory traversing nodes");
+					memmove(next, work, used*sizeof(*work));
+					if(work != inlinework)
+						free(work);
+					work = next;
+					capacity *= 2;
+				}
+				work[used++] = n->right;
+			}
+			n = n->left;
+		}
+		if(used == 0)
+			break;
+		n = work[--used];
+	}
+done:
+	if(work != inlinework)
+		free(work);
+	return result;
 }
 
+
+/* Count tree edges, including repeated DAG visits, with checked arithmetic.
+ * Borrow all nodes unchanged; use checked heap storage for pending right edges. */
 int
 nodes(Node *n)
 {
-	if(n == nil)
-		return 0;
-	return 1+nodes(n->left)+nodes(n->right);
+	enum { InlineNodes = 64 }; // Pending branches kept on the fixed host stack.
+	Node *inlinework[InlineNodes], **work, **next;
+	ulong used, capacity;
+	int result;
+
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	result = 0;
+	for(;;){
+		while(n != nil){
+			if(result == 0x7fffffff)
+				fatal("node count overflow");
+			result++;
+			if(n->right != nil){
+				if(used == capacity){
+					if(capacity > (ulong)-1/2/sizeof(*work))
+						fatal("node traversal storage overflow");
+					next = malloc(2*capacity*sizeof(*work));
+					if(next == nil)
+						fatal("out of memory traversing nodes");
+					memmove(next, work, used*sizeof(*work));
+					if(work != inlinework)
+						free(work);
+					work = next;
+					capacity *= 2;
+				}
+				work[used++] = n->right;
+			}
+			n = n->left;
+		}
+		if(used == 0)
+			break;
+		n = work[--used];
+	}
+	if(work != inlinework)
+		free(work);
+	return result;
 }
+
 
 /* Canonicalize a Limbo int using widened arithmetic instead of signed shifts. */
 static Long
@@ -1224,16 +1466,31 @@ foldr(Node *n)
 	return n;
 }
 
+
+/* Build right-associated declaration assignments without one C frame per name. */
 Node*
 varinit(Decl *d, Node *e)
 {
-	Node *n;
+	Node *names, *name, *result;
 
-	n = mkdeclname(&e->src, d);
-	if(d->next == nil)
-		return mkbin(Oas, n, e);
-	return mkbin(Oas, n, varinit(d->next, e));
+	/* Private name links retain the recursive constructor's allocation order. */
+	names = nil;
+	do{
+		name = mkdeclname(&e->src, d);
+		name->right = names;
+		names = name;
+		d = d->next;
+	}while(d != nil);
+	result = e;
+	while(names != nil){
+		name = names;
+		names = name->right;
+		name->right = nil;
+		result = mkbin(Oas, name, result);
+	}
+	return result;
 }
+
 
 /*
  * given: an Oseq list with left == next or the last child
@@ -1259,20 +1516,22 @@ rotater(Node *e)
 	return e;
 }
 
-/*
- * reverse the case labels list
- */
+
+/* Reverse label links iteratively, retaining any existing suffix and node metadata. */
 Node*
 caselist(Node *s, Node *nr)
 {
-	Node *r;
+	Node *next;
 
-	r = s->right;
-	s->right = nr;
-	if(r == nil)
-		return s;
-	return caselist(r, s);
+	do{
+		next = s->right;
+		s->right = nr;
+		nr = s;
+		s = next;
+	}while(s != nil);
+	return nr;
 }
+
 
 /*
  * e is a seq of expressions; make into cons's to build a list
@@ -1300,21 +1559,70 @@ etolist(Node *e)
 	return e;
 }
 
+
+typedef struct NodeCopy NodeCopy;
+
+/* Pending source edges and private output slots for preorder tree copying. */
+struct NodeCopy {
+	Node *source; // Borrowed subtree copied when earlier left branches finish.
+	Node **destination; // Child cell belonging to an already allocated copy.
+};
+
+
+/* Duplicate every tree edge in the original allocation order with bounded C stack.
+ * Type/Decl and other metadata remain borrowed, and source positions are optional.
+ * Shared subtrees are duplicated per edge, preserving the recursive contract. */
 Node*
 dupn(int resrc, Src *src, Node *n)
 {
-	Node *nn;
+	enum { InlineNodes = 64 }; // Pending right subtrees on the fixed host stack.
+	NodeCopy inlinework[InlineNodes], *work, *next;
+	Node *root, *nn, **destination;
+	ulong used, capacity;
 
-	nn = allocmem(sizeof *nn);
-	*nn = *n;
-	if(resrc)
-		nn->src = *src;
-	if(nn->left != nil)
-		nn->left = dupn(resrc, src, nn->left);
-	if(nn->right != nil)
-		nn->right = dupn(resrc, src, nn->right);
-	return nn;
+	root = nil;
+	destination = &root;
+	work = inlinework;
+	used = 0;
+	capacity = InlineNodes;
+	for(;;){
+		nn = allocmem(sizeof(*nn));
+		*nn = *n;
+		if(resrc)
+			nn->src = *src;
+		*destination = nn;
+		if(n->right != nil){
+			if(used == capacity){
+				if(capacity > (ulong)-1/2/sizeof(*work))
+					fatal("node copy storage overflow");
+				next = malloc(2*capacity*sizeof(*work));
+				if(next == nil)
+					fatal("out of memory copying nodes");
+				memmove(next, work, used*sizeof(*work));
+				if(work != inlinework)
+					free(work);
+				work = next;
+				capacity *= 2;
+			}
+			work[used].source = n->right;
+			work[used++].destination = &nn->right;
+		}
+		if(n->left != nil){
+			n = n->left;
+			destination = &nn->left;
+			continue;
+		}
+		if(used == 0)
+			break;
+		used--;
+		n = work[used].source;
+		destination = work[used].destination;
+	}
+	if(work != inlinework)
+		free(work);
+	return root;
 }
+
 
 Node*
 mkn(int op, Node *left, Node *right)

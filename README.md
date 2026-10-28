@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1657**. [Русская версия](README.ru.md).
+Development version: **0.1658**. [Русская версия](README.ru.md).
 
-Current series: [v0.1657](docs/releases/v0.1657.md): Coco/R outer-alias binding and canonical C interfaces; bidirectional Inferno dial/file2chan synchronization.
+Current series: [v0.1658](docs/releases/v0.1658.md): executable Limbo aliases → FIR; bidirectional Inferno Sys/compiler/JIT synchronization.
 
 ## Browse documentation
 

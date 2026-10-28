@@ -99,3 +99,5 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 добавляя [операторы и области функции](../doc/FUNCTION_FLOW.ru.md) в профиль Limbo
 big/table. Повторные запросы C99 проверяют восстановление после ошибки
 инициализации на сходящихся путях.
+
+[Source aliases / Псевдонимы исходника](../doc/SOURCE_ALIASES.ru.md): FIR 0.49, serialized request-local binding.

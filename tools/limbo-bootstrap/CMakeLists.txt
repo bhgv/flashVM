@@ -246,3 +246,22 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_native_output_spans PROPERTIES TIMEOUT 60
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-I${u}/Linux/arm/include -O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Verify the selected declaration/label/occurrence traversals, including both deep associations.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_node_chains COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/node-chains.py")
+  set_tests_properties(limbo_bootstrap_node_chains PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_node_queries COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/node-queries.py")
+  set_tests_properties(limbo_bootstrap_node_queries PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME limbo_bootstrap_node_transforms COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/node-transforms.py")
+  set_tests_properties(limbo_bootstrap_node_transforms PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
