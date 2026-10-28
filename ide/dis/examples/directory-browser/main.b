@@ -13,6 +13,7 @@ files: Idefiles; # Actual channel-owned implementation shared with the IDE.
 commands: chan of Idefiles->DirectoryRequest; # Endpoint scopes all cursor identities.
 nextid := 1; # Correlate each synchronous exchange independently of cursor IDs.
 root: con FIXTURE_ROOT; # The driver substitutes a quoted, private Unicode fixture path.
+largefile: con FIXTURE_LARGE; # Keep sparse-file metadata outside the exact enumeration fixture.
 
 
 # Fail on an evaluated oracle mismatch, including optimized execution.
@@ -55,7 +56,7 @@ init() # Complete this checked declaration, expression or ownership step.
     check(missing.status == files->Stale && missing.entries == nil, "unknown cursor"); # Require this stated oracle; fail visibly on mismatch.
     info := exchange(files->StatPath, big 0, root+"/данные😀.bin"); # Consume one correlated response before the next request.
     check(info.status == files->Ok && info.metadata.length == big 4, "copied file metadata"); # Require this stated oracle; fail visibly on mismatch.
-    large := exchange(files->StatPath, big 0, root+"/large.bin"); # Consume one correlated response before the next request.
+    large := exchange(files->StatPath, big 0, largefile); # Consume one correlated response before the next request.
     check(large.status == files->Ok && large.metadata.length == big 4294967303, "big file length"); # Require this stated oracle; fail visibly on mismatch.
     ordinary := exchange(files->OpenDir, big 0, root+"/данные😀.bin"); # Consume one correlated response before the next request.
     check(ordinary.status == files->Failed && ordinary.cursor == big 0, "ordinary file is not a cursor"); # Require this stated oracle; fail visibly on mismatch.
@@ -121,7 +122,7 @@ init() # Complete this checked declaration, expression or ownership step.
         total += len part.entries; # Advance the bounded count or copied presentation value.
         batches++; # Advance the bounded count or copied presentation value.
     } # Finish this scope and its temporary values.
-    check(total == 74 && batches == 3, "all entries across three batches"); # Require this stated oracle; fail visibly on mismatch.
+    check(total == 73 && batches == 3, "all entries across three batches"); # Require this stated oracle; fail visibly on mismatch.
     ended := exchange(files->NextDir, first.cursor, ""); # Consume one correlated response before the next request.
     check(ended.status == files->End, "stable EOF without native reread"); # Require this stated oracle; fail visibly on mismatch.
     closed = exchange(files->CloseDir, first.cursor, ""); # Consume one correlated response before the next request.

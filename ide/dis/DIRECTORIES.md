@@ -90,7 +90,7 @@ UI/stdin progress. It is not a wall-clock timeout or cancellation of blocked I/O
 ## Verification
 
 The executable tutorial uses real files: Unicode, embedded binary NUL, a sparse
-4294967303-byte file and 74 directory entries. It checks three batches, array
+separate 4294967303-byte file and 73 directory entries. It checks three batches, array
 independence, metadata retention, empty/error directories, EOF, quota, invalid
 requests, retired-ID rejection, repeated close/open and 32 terminal owner cycles.
 Both modes run at quanta 1/2048. Console replay additionally checks document

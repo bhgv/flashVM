@@ -32,8 +32,11 @@ argument. Expected final driver output: `PASS directory service and IDE browser
 jit`. Each mode executes the Limbo client at quantum 1 and 2048, verifies actual
 native dispatch counters, and then replays terminal IDE commands.
 
-The fixture contains 74 entries, including Unicode names, a four-byte binary file,
-an empty directory, a sparse 4294967303-byte file and a control-character name.
+The enumeration fixture contains exactly 73 entries: 70 ordinary files, a Unicode
+four-byte binary file, an empty directory and a control-character name. A separate
+sibling sparse file checks the exact 4294967303-byte metadata value. Keeping it
+outside the enumerated directory prevents filesystem staging siblings from
+changing the exact 32/32/9 batch oracle; no unexpected entry is ignored.
 Sparse-file support and native metadata capacity are required. A separate invalid
 UTF-8 directory checks error retirement without partial publication.
 
