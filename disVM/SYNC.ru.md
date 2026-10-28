@@ -1,3 +1,11 @@
+# v0.1668 — Проверяемые области видимости
+
+Pinned experiment revision: **36d5228f5e46a594a8b983429e16fb69eb07a7e9**, **752 Dis / 270 bootstrap files**.
+
+Imported exact upstream lexical-scope bounds, label-growth guards and iterative global binding, including the frozen reference and scope-binding regression. Bootstrap registers the new test: **24/24** pass. Both manifests retain per-file hashes. No additional shared defect was found requiring an outbound Inferno patch; FlashVM-specific FIR/source changes remain here. Later upstream revisions are separate work.
+
+[Release](../docs/releases/v0.1668.md) · [Scope test contract](upstream/limbo/tests/README.scope-binding.md).
+
 # v0.1667: итоговый pin — коммуникации и tuple aliases
 
 Итоговый pin: **10590495858d4c3c4dca907e2e321c9f74ffa6b9**, **748 файлов Dis / 266 bootstrap**.

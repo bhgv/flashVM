@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "10590495858d4c3c4dca907e2e321c9f74ffa6b9",
+  "revision": "36d5228f5e46a594a8b983429e16fb69eb07a7e9",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -189,7 +189,11 @@
     "limbo/tests/README.comm-alias-walks.md",
     "limbo/tests/comm-alias-reference.c",
     "limbo/tests/comm-alias-walks.c",
-    "limbo/tests/comm-alias-walks.py"
+    "limbo/tests/comm-alias-walks.py",
+    "limbo/tests/README.scope-binding.md",
+    "limbo/tests/scope-binding-reference.c",
+    "limbo/tests/scope-binding.c",
+    "limbo/tests/scope-binding.py"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -359,7 +363,7 @@
     "upstream/limbo/NOTICE": "8583a4d98e76ad23cb22cea5da3fd54a8a7309213ae280378b9bd95e258e0946",
     "upstream/limbo/asm.c": "bf2f1d84e97c4442fbfdfcb529c4922fb2af20af9966629d7d570320663af90f",
     "upstream/limbo/com.c": "170c8048638c17d279a24e67b2cafd3f6363acefff61e57057438a4a59bea897",
-    "upstream/limbo/decls.c": "ec1dcae3d50af470c5b11e605c621d822accf0c044713adb4cd1f878b5505213",
+    "upstream/limbo/decls.c": "cc7dc4663947506bae7cc4f89156cf81627d7775332b27f8de37b48796f2474f",
     "upstream/limbo/dis.c": "472d6dc804722e8c8fe3d106bae7b8445b50670245c16dbd001132c2de00d58c",
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
     "upstream/limbo/ecom.c": "058c3a958be21677eda8fd02f6a0d43856c3c90a3746d6e0985014c77d6480fe",
@@ -382,6 +386,7 @@
     "upstream/limbo/tests/README.node-transforms.md": "c9bf4093e6ea5918059bc55e2686fe1f073c6f8c249b16e49263b071cbc87509",
     "upstream/limbo/tests/README.reference-sort.md": "a0b6a592d7a1c7f74512e6041630027c64e4a0e98b253338c8cbd20314cb5e91",
     "upstream/limbo/tests/README.reference-uses.md": "7b2d236cf8bac495da4b23d51e3f34d201338db0b5b0e2e0a4c8af2e37b872fc",
+    "upstream/limbo/tests/README.scope-binding.md": "c0c2b21dc797697c09f2665dea14d04d2ebe301ed6bca8f2544bb44cea03d7d6",
     "upstream/limbo/tests/README.stub-print.md": "2c14db36eeea6e5475ac0330d9269a0d93658ae74b0de60075cb4dadeee436d0",
     "upstream/limbo/tests/README.type-parent.md": "e0a7a430f2d074558024537c0fb1ef9f05f18e69fa06715658bf9db9324a554d",
     "upstream/limbo/tests/README.type-print.md": "2c92be2afe70e0f9c5cce63d3c2abfe79346592dee1a7949d6b5d7140b8de8ad",
@@ -436,6 +441,9 @@
     "upstream/limbo/tests/reference-sort.py": "4eceb38b0cea2159b0f53a1fb3ad46329a4d60164cd54f943642c5d822be3840",
     "upstream/limbo/tests/reference-uses.c": "762452f87ba680441c1457ce9b482a47f29f776ad96b998d579687d51ee8f5ed",
     "upstream/limbo/tests/reference-uses.py": "688399cd548653a1263d8a441dd029e1e8836fb8b67cf6a576c6881b1387c48b",
+    "upstream/limbo/tests/scope-binding-reference.c": "9db1d524761bf8a71135184da83d9883fcfb2b1c080cccbeb2662150f410a088",
+    "upstream/limbo/tests/scope-binding.c": "a8c51cf8cdaa8807cce344223d69a1198b82f0b20692ca9e84a9de491b2922b2",
+    "upstream/limbo/tests/scope-binding.py": "05935d481ad45563454b33572b12337c2bf03a105f178e13838f5348fcf4811a",
     "upstream/limbo/tests/source-history.c": "13eadba9c0f0b727d2281db0e597ebfe79bf0ec3978e74729ea3c18d9104c680",
     "upstream/limbo/tests/source-paths.c": "3c995bada2ecb4d8f1e9cae4db66bf225a45200be81f9c493d539ae4e226173a",
     "upstream/limbo/tests/startup-alloc.c": "4f552ab8cd93cdc51e850f3814f9eaa8ba2ebbfa77b5fa71e4659d7297a3c892",
@@ -452,7 +460,7 @@
     "upstream/limbo/tests/type-signatures.c": "21835155d57509192670612d236c29170d0f794de2d8bbb4249ac6ac5a67fb6c",
     "upstream/limbo/tests/type-walks.c": "7fcd58b57ab2d0e9298886803e295a2a9d69a92c259adc83ca48c10ace61fd91",
     "upstream/limbo/tests/type-walks.py": "dff854385c24458d851dd5250c08c5817b4e1d429bc008d4962099b54f8f4f5b",
-    "upstream/limbo/typecheck.c": "94ee4197c2914bd277662499ab12a1d3ce94dc74fa2fba08f6ee4cc8f15855e9",
+    "upstream/limbo/typecheck.c": "07b87f82355c9a2cff8361b268719846ee8335139a5e0f126a0443c6c22f863c",
     "upstream/limbo/types.c": "cbdfe1b57d7a2280cf1b8854ca1a8143ac9e6e85dd5968ec38c7f69840d6af47",
     "upstream/limbo/y.tab.c": "b86f9212b88edabb3c8ceb2e7596744ef99b51ba1c3e94f8370ab9b7c852c7d4",
     "upstream/limbo/y.tab.h": "68af6dd5332b1af8055000f9d6e6cc16b9a233c0ff0dc225ec64e2cfcabb8e4c",
