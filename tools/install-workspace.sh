@@ -371,6 +371,10 @@ EOF
             copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
             copy_tree "$ROOT/ide/dis/examples/directory-browser" "$destination/examples/directory-browser"
             copy_file "$ROOT/disVM/runtime/test_directory_browser.py" "$destination/examples/directory-browser/run.py"
+            copy_file "$ROOT/ide/dis/GRAPHICAL-BROWSER.md" "$destination/GRAPHICAL-BROWSER.md"
+            copy_file "$ROOT/ide/dis/GRAPHICAL-BROWSER.ru.md" "$destination/GRAPHICAL-BROWSER.ru.md"
+            copy_file "$ROOT/disVM/runtime/test_graphical_browser.py" "$destination/examples/directory-browser/graphical-check.py"
+            copy_file "$ROOT/disVM/runtime/test_graphical_editor.py" "$destination/examples/directory-browser/test_graphical_editor.py"
             copy_file "$ROOT/ide/dis/DIRECTORIES.md" "$destination/DIRECTORIES.md"
             copy_file "$ROOT/ide/dis/DIRECTORIES.ru.md" "$destination/DIRECTORIES.ru.md"
             copy_tree "$ROOT/disVM/examples/filesystem" "$destination/examples/filesystem"
@@ -416,7 +420,7 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/projection" "$destination/examples/projection"
             copy_tree "$ROOT/ide/dis/examples/document-projection" "$destination/examples/document-projection"
             copy_file "$ROOT/ide/as/projection-values.as" "$destination/as/projection-values.as"
-            for file in idevalue ideprojection ideinspect idedocprojection; do
+            for file in idevalue ideprojection ideinspect idedocprojection idebrowser; do
                 copy_file "$ROOT/ide/dis/bridge/$file.b" "$destination/source/$file.b"
             done
             copy_file "$ROOT/ide/dis/PROJECTIONS.md" "$destination/PROJECTIONS.md"

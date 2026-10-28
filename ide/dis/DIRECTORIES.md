@@ -26,7 +26,8 @@ dirclose
 ```
 
 This is an implemented console frontend and a reusable channel interface for the
-FlashVM frontend. A graphical file-tree widget is still separate work.
+FlashVM frontend. The [graphical selected-entry footer](GRAPHICAL-BROWSER.md) now uses the same
+owner; expanded file-tree widgets remain separate work.
 
 ## Protocol and ownership
 

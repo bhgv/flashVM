@@ -57,3 +57,7 @@ See the [protocol](../../DIRECTORIES.md#protocol-and-ownership) for every operat
 return status, ownership rule and scheduling limitation. Native I/O still blocks
 one VM owner; enumeration is not atomic or sorted. Graphical file-tree widgets,
 `/prog`, network leases and asynchronous cancellation remain separate work.
+
+[Graphical frontend and shared model](../../GRAPHICAL-BROWSER.md) / [Графический клиент и общая модель](../../GRAPHICAL-BROWSER.ru.md).
+
+The executable tutorial also checks Idebrowser candidate admission, full selected paths, selection bounds, label bytes, terminal request reservation and 32 model shutdown cycles. / Пример также проверяет модель Idebrowser, сохранение старого курсора при ошибке, полный путь, границы выбора/текста, резерв завершения и 32 цикла закрытия.

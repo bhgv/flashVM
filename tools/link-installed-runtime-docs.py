@@ -14,6 +14,10 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "ide/dis/GRAPHICAL-BROWSER.md": package / "GRAPHICAL-BROWSER.md",
+        root / "ide/dis/GRAPHICAL-BROWSER.ru.md": package / "GRAPHICAL-BROWSER.ru.md",
+        root / "ide/dis/bridge/idebrowser.m": package / "include/limbo/idebrowser.m",
+        root / "ide/dis/bridge/idebrowser.b": package / "source/idebrowser.b",
         root / "ide/dis/DIRECTORIES.md": package / "DIRECTORIES.md",
         root / "ide/dis/DIRECTORIES.ru.md": package / "DIRECTORIES.ru.md",
         root / "ide/dis/examples/directory-browser/README.md": package / "examples/directory-browser/README.md",

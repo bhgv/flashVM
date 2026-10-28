@@ -115,3 +115,5 @@ Synchronous I/O may block the sole native owner.
 [Clipboard / буфер обмена](../../CLIPBOARD.md).
 
 [Field editing, mouse and clipboard](../../FIELDS.md) · [Fully commented example](field-demo.b).
+
+[Ctrl+B graphical browser and channel-only model](../../GRAPHICAL-BROWSER.md) / [RU](../../GRAPHICAL-BROWSER.ru.md). Arrow/PageDown/Enter/B/R/Escape operate on copied directory metadata; selected files use the existing dirty-source guard.

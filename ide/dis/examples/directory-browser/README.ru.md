@@ -52,3 +52,7 @@ FD; их можно менять и хранить после закрытия. 
 [контракте](../../DIRECTORIES.ru.md#протокол-и-владение). Нативный I/O пока блокирует
 одного владельца VM, обход не атомарен и не сортируется. Графическое дерево,
 /prog, сетевые аренды и асинхронная отмена остаются отдельными задачами.
+
+[Graphical frontend and shared model](../../GRAPHICAL-BROWSER.md) / [Графический клиент и общая модель](../../GRAPHICAL-BROWSER.ru.md).
+
+The executable tutorial also checks Idebrowser candidate admission, full selected paths, selection bounds, label bytes, terminal request reservation and 32 model shutdown cycles. / Пример также проверяет модель Idebrowser, сохранение старого курсора при ошибке, полный путь, границы выбора/текста, резерв завершения и 32 цикла закрытия.

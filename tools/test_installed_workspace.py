@@ -239,6 +239,15 @@ def table_packages(prefix, work, environment):
         if "PASS directory service and IDE browser" not in result:
             raise RuntimeError("relocated directory browser differs")
 
+    if component == "disvm-editor":
+        # Replay the actual packaged graphical browser with its bundled font only.
+        graphical = program(prefix, component, "disvm-editor")
+        for mode in ("jit", "interpreter"):
+            result = run([sys.executable, native / "examples/directory-browser/graphical-check.py",
+                          graphical, native / "graphical-editor.dis", mode], work, environment)
+            if "PASS graphical browser:" not in result:
+                raise RuntimeError("relocated graphical browser differs")
+
 
 
 

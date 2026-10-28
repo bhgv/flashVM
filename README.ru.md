@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1651**. [English](README.md).
+Версия разработки: **0.1652**. [English](README.md).
 
-Текущая серия: [v0.1651](docs/releases/v0.1651.md): канальный браузер каталогов IDE, точная квота исполнения и новые проверки Sys из Inferno.
+Текущая серия: [v0.1652](docs/releases/v0.1652.md): графический браузер файлов на Limbo, проверяемые команды UI и обновления кодеков C/x64/ARM64 JIT из Inferno.
 
 ## Просмотр документации
 

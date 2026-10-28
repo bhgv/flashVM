@@ -8,7 +8,7 @@
 
 [Channel projection inspector and admission model](PROJECTIONS.md)
 
-Version 0.11.0. [Русский](README.ru.md).
+Version 0.12.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
@@ -153,3 +153,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Graphical IDE fields](FIELDS.md) use the separate Idefield policy; the original document core 0.5.0 is described above.
 
 [Directory owner and console browser](DIRECTORIES.md) / [Каталоги через каналы](DIRECTORIES.ru.md).
+
+[Graphical file browser](GRAPHICAL-BROWSER.md) / [Графический браузер файлов](GRAPHICAL-BROWSER.ru.md).

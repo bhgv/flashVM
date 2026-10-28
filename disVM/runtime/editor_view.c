@@ -27,6 +27,8 @@
 #define EDITOR_FONT_MIN 6                /* Bounded minimum editor pixel size. */
 #define EDITOR_FONT_MAX 48               /* Bounded maximum editor pixel size. */
 #define EDITOR_PINCH_THRESHOLD 0.015     /* Normalized SDL distance change per admitted zoom step. */
+#define EDITOR_PANEL_BROWSER 9U          /* Read-only selected directory-entry presentation. */
+#define EDITOR_PANEL_BROWSE_PATH 10U     /* Editable directory path, with caret and normal field geometry. */
 #define EDITOR_PANEL 65543UL             /* Dis-owned prompt mode, selection and counted field text. */
 #define EDITOR_VIEWPORT 65540UL          /* Dis-owned Unicode window and monotonic view ticket. */
 #define EDITOR_SCROLL 65541UL            /* Ticket/revision-bound logical scroll request. */
@@ -83,7 +85,7 @@ static FVM_Font *layout_font;          /* Owned same-face layout for Dis selecti
 static long caret;                     /* Last Dis Unicode scalar caret, presentation only. */
 static long anchor;                    /* Last Dis Unicode scalar selection anchor. */
 static FVM_Object *panel_field;        /* [GC:] Pinned display-only field; input policy remains in Dis. */
-static unsigned long panel_mode;       /* 0 document, 1 find, 2 open, 3 save-as, 4 needle, 5 replacement, 6 Go To, 7 read-only inspector. */
+static unsigned long panel_mode;       /* Dis panel mode: 0 file, 1..6 edit, 7 inspect, 8 close, 9 browser, 10 directory path. */
 static unsigned long panel_revision;   /* Expected content revision for the pending panel. */
 static long panel_caret;               /* Copied Unicode field caret, excluding its native label prefix. */
 static long panel_anchor;              /* Copied Unicode field selection anchor. */
@@ -1178,7 +1180,9 @@ static int render_panel(FVM_RasterSurface *surface)
                                    "Replacement: ",
                                    "Go to line[:column]: ",
                                    "Inspect [Esc]: ",
-                                   "Unsaved [S save / D discard / Esc cancel]: "};
+                                   "Unsaved [S save / D discard / Esc cancel]: ",
+                                   "Browse [Up/Down PgDn Enter B Esc]: ",
+                                   "Directory path [Enter/Esc]: "};
     char text[1100];
     size_t prefix = strlen(labels[panel_mode]);
     FVM_Value value;
@@ -1305,7 +1309,7 @@ static int render_panel(FVM_RasterSurface *surface)
         result = draw_visible(path, surface, ink);
     }
     fvm_path_destroy(path);
-    if (result == FVM_OK && panel_mode && panel_mode < 7)
+    if (result == FVM_OK && panel_mode && (panel_mode < 7 || panel_mode == EDITOR_PANEL_BROWSE_PATH))
     {
         FVM_RasterColor cursor = {35, 85, 170, 255};
         if (!rectangle(surface,
@@ -1608,7 +1612,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
     }
     if (message->code == EDITOR_PANEL)
     {
-        if (assembling || message->first < 0 || message->first > 8 || message->second < 0 || message->second > 1 ||
+        if (assembling || message->first < 0 || message->first > EDITOR_PANEL_BROWSE_PATH || message->second < 0 || message->second > 1 ||
             message->size > sizeof(panel_text))
         {
             return 0;

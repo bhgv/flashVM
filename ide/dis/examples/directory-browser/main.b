@@ -1,6 +1,7 @@
 implement DirectoryBrowser; # Name the executable Limbo module.
 include "sys.m"; # Use the matching SDK module declaration.
-include "idefiles.m"; # Use the matching SDK module declaration.
+include "idefiles.m"; # Use the matching typed module interface.
+include "idebrowser.m"; # Use the same exclusive browser model as the graphical controller. # Use the matching SDK module declaration.
 
 DirectoryBrowser: module # Begin this local scope/interface.
 { # Begin this local scope/interface.
@@ -170,5 +171,40 @@ init() # Complete this checked declaration, expression or ownership step.
     } # Finish this scope and its temporary values.
     stopped := exchange(files->Shutdown, big 0, ""); # Consume one correlated response before the next request.
     check(stopped.status == files->Ok, "final shutdown"); # Require this stated oracle; fail visibly on mismatch.
+    logic := load Idebrowser Idebrowser->PATH; # Load the actual shared widget policy.
+    check(logic != nil, "browser model module"); # Require this lifecycle or ownership invariant.
+    model := logic->create(files, sys); # Keep this state exclusive to the test controller.
+    check(model != nil, "browser model owner"); # Require this lifecycle or ownership invariant.
+    check(logic->open(files, model, root) == files->Ok, "model initial batch"); # Require this lifecycle or ownership invariant.
+    preserved := model.cursor; # Capture identity before candidate admission can fail.
+    check(logic->open(files, model, root+"/missing") == files->Failed && # Require this lifecycle or ownership invariant.
+          model.cursor == preserved && model.path == root, "model failed candidate preserves cursor"); # Complete this checked controller or copied-value step.
+    check(logic->open(files, model, root+"/../invalid-names") == files->Failed && # Require this lifecycle or ownership invariant.
+          model.cursor == preserved, "first batch failure preserves old cursor"); # Complete this checked controller or copied-value step.
+    check(logic->move(model, 2) == files->Invalid, "model rejects invalid selection step"); # Require this lifecycle or ownership invariant.
+    caption := logic->summary(sys, model); # Only this bounded copied label reaches the renderer.
+    check(len array of byte caption <= 1024, "renderer label byte bound"); # Require this lifecycle or ownership invariant.
+    for (entryindex := 0; entryindex < len model.entries; entryindex++) { # Complete this checked controller or copied-value step.
+        if ((model.entries[entryindex].mode & Sys->DMDIR) == 0) { # Admit only the current validated state or event.
+            model.selected = entryindex; # Exclusive controller state may select a known local record.
+            break; # Complete this checked controller or copied-value step.
+        } # Keep this controller scope explicit.
+    } # Keep this controller scope explicit.
+    (kind, target) := logic->choose(files, model); # File choice returns a path, never document I/O.
+    check(kind == logic->PickFile && target == root+"/"+model.entries[model.selected].name, # Require this lifecycle or ownership invariant.
+          "model file choice preserves full path"); # Complete this checked controller or copied-value step.
+    model.sequence = logic->MaxRequest-1; # Leave too little room for candidate admission/cleanup.
+    check(logic->open(files, model, root) == files->Invalid && model.cursor == preserved, # Require this lifecycle or ownership invariant.
+          "near-exhaustion cannot strand a candidate cursor"); # Complete this checked controller or copied-value step.
+    model.sequence = logic->MaxRequest; # Force exhaustion without billions of synthetic requests.
+    check(logic->open(files, model, root) == files->Invalid, "reserved terminal identity"); # Require this lifecycle or ownership invariant.
+    check(logic->shutdown(files, model) == files->Ok && model.endpoint == nil && # Require this lifecycle or ownership invariant.
+          model.cursor == big 0, "exhausted model can still shut down"); # Complete this checked controller or copied-value step.
+    check(logic->shutdown(files, model) == files->Ok, "model terminal acknowledgement is idempotent"); # Require this lifecycle or ownership invariant.
+    for (modelround := 0; modelround < 32; modelround++) { # Complete this checked controller or copied-value step.
+        model = logic->create(files, sys); # Each endpoint has an independent identity namespace.
+        check(logic->open(files, model, root) == files->Ok, "repeated model open"); # Require this lifecycle or ownership invariant.
+        check(logic->shutdown(files, model) == files->Ok, "repeated model shutdown closes FDs"); # Require this lifecycle or ownership invariant.
+    } # Keep this controller scope explicit.
     sys->print("PASS directory browser: channels, batches, identities, quota and shutdown\n"); # Present bounded plain text through actual Sys output.
 } # Finish this scope and its temporary values.

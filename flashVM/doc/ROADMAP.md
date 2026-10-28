@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1652: graphical selected-entry browsing runs in Limbo over the typed directory owner; ticket/revision checks and dirty-source admission precede file adoption. Renderer receives bounded labels only. [EN](../../ide/dis/GRAPHICAL-BROWSER.md) / [RU](../../ide/dis/GRAPHICAL-BROWSER.ru.md). This closes no Flash compatibility stage or complete debugger milestone.
+
 Checkpoint v0.1651: Limbo directory owners support bounded IDE browsing through typed channels and OS ports. Explicit instruction limits supersede the legacy slice budget at quantum 1. [EN](../../ide/dis/DIRECTORIES.md) / [RU](../../ide/dis/DIRECTORIES.ru.md). This adds no graphical file-tree or completed debugger milestone and closes no Flash compatibility stage.
 
 Checkpoint v0.1650: native filesystem metadata and bounded directory cursors live in OS-selected ports. DisVM maps stat/fstat/dirread without OS headers; [EN](../../disVM/runtime/FILESYSTEM.md) / [RU](../../disVM/runtime/FILESYSTEM.ru.md). Windows/macOS/Android native acceptance remains open; no Flash compatibility stage closes.

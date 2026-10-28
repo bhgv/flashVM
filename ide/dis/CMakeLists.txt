@@ -1,6 +1,6 @@
 # Independent build of the portable Limbo module; native compiler is an explicit host dependency.
 cmake_minimum_required(VERSION 3.10)
-project(flashvm_ide_dis VERSION 0.11.0 LANGUAGES NONE)
+project(flashvm_ide_dis VERSION 0.12.0 LANGUAGES NONE)
 set(LIMBO_EXECUTABLE "" CACHE FILEPATH "Explicit trusted native Limbo compiler")
 if(NOT EXISTS "${LIMBO_EXECUTABLE}")
   message(FATAL_ERROR "Provide LIMBO_EXECUTABLE; this build never downloads a compiler")
@@ -51,6 +51,16 @@ if(LIMBO_MODULE_DIR)
     DEPENDS bridge/idefiles.b bridge/idefiles.m "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
   add_custom_target(ide_file_windows ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/idefiles.dis"
     "${CMAKE_CURRENT_BINARY_DIR}/idefiles.sbl")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/idebrowser.dis"
+      "${CMAKE_CURRENT_BINARY_DIR}/idebrowser.sbl"
+    COMMAND "${LIMBO_EXECUTABLE}" -g -I "${LIMBO_MODULE_DIR}"
+      -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge" -o "${CMAKE_CURRENT_BINARY_DIR}/idebrowser.dis"
+      "${CMAKE_CURRENT_SOURCE_DIR}/bridge/idebrowser.b"
+    DEPENDS bridge/idebrowser.b bridge/idebrowser.m bridge/idefiles.m
+      "${LIMBO_MODULE_DIR}/sys.m" "${LIMBO_EXECUTABLE}" VERBATIM)
+  add_custom_target(ide_directory_browser ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/idebrowser.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/idebrowser.sbl")
+
 endif()
 
 if(BUILD_TESTING AND (LIMBO_MODULE_DIR OR EMU_EXECUTABLE))

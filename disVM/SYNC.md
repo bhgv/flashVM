@@ -1,3 +1,19 @@
+# Graphical browsing and codec owner guards — v0.1652
+
+Current pin: **3760fc951987915d4c823ba30f56f07386e98b18**.
+Exact selections: **650 core/reference/library files + 207 bootstrap files**.
+Incoming 3760fc9 encodes packed Rune exports through aligned locals and validates
+codec result owners/descriptors before side effects in C and AMD64/ARM64 JIT.
+Original codec-owner C/emitted-code regressions are selected and registered.
+
+Bidirectional review confirms this revision contains our preceding reverse
+73a6b5a reduced-address fixture fix. No additional shared defect was identified
+in this series; the new browser state/controller belongs to FlashVM IDE and is
+not copied into Inferno. OS access stays in existing ports.
+[EN](../ide/dis/GRAPHICAL-BROWSER.md) / [RU](../ide/dis/GRAPHICAL-BROWSER.ru.md).
+
+## Previous checkpoint
+
 # Directory owners and Sys format guards — v0.1651
 
 Current pin: **73a6b5a972ea8854fa8b593569c97a68da0b0748**.

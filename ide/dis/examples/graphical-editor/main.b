@@ -12,6 +12,8 @@ include "idesearch.m"; # Reuse literal document operations through typed channel
 include "ideviewport.m"; # Keep viewport decisions and bounds in a separate Dis module.
 include "idefield.m"; # Reuse single-line value/selection policy for every modal field.
 include "ideclipboard.m"; # Keep copied clipboard fragments in an exclusive Dis staging owner.
+include "idefiles.m"; # Own native directory cursors through typed requests.
+include "idebrowser.m"; # Keep browser paging/selection in exclusive Dis state.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
 GraphicalEditor: module # Parameterless entry accepted by the experimental host.
@@ -19,6 +21,8 @@ GraphicalEditor: module # Parameterless entry accepted by the experimental host.
     init: fn(); # Own the controller until acknowledged clean/forced shutdown.
 };
 
+directoryfiles: Idefiles; # Loaded directory owner, separate from document-file operations.
+browsing: Idebrowser; # Reusable Dis-only browser state and channel adapter.
 sys: Sys; # Loaded file services, exclusive to this controller's Dis process.
 core: Idecore; # Loaded document implementation; no native text authority.
 codec: Uibridge; # Shared value codec, never a native pointer transport.
@@ -187,11 +191,75 @@ gotolocation(policy: Ideinput, state: ref Ideinput->State, reply: Idecore->Reply
 }
 
 
+# Translate file-service statuses to the document/UI status namespace.
+# status is copied; EOF is successful presentation, other failures are Invalid.
+browserstatus(status: int): int
+{
+    if (status == directoryfiles->Ok || status == directoryfiles->End) {
+        return core->Ok;
+    }
+    return core->Invalid;
+}
+
+
+# Stop the private directory owner before native channel borrowing ends.
+# browser is exclusive to this controller; all three clean/forced close paths use this boundary.
+stopbrowser(browser: ref Idebrowser->State)
+{
+    if (browsing->shutdown(directoryfiles, browser) != directoryfiles->Ok) {
+        raise "fail: graphical browser shutdown";
+    }
+}
+
+
+# Navigate or load the selected entry using the same dirty/source/history policy as Open.
+# Inputs are borrowed until each channel reply. Return copied document reply, admitted
+# destination and success flag; no destination is adopted before a validated load.
+choosebrowser(browser: ref Idebrowser->State, document: chan of Idecore->Request,
+              policy: Ideinput, state: ref Ideinput->State, current: Idecore->Reply): (Idecore->Reply, string, int)
+{
+    (kind, target) := browsing->choose(directoryfiles, browser);
+    if (kind == browsing->PickDirectory) {
+        current.status = core->Ok;
+        return (current, "", 0);
+    }
+    if (kind != browsing->PickFile) {
+        current.status = core->Invalid;
+        return (current, "", 0);
+    }
+    if (current.revision != current.saved) {
+        current.status = core->Conflict;
+        return (current, "", 0);
+    }
+    (loaded, source) := readsource(target);
+    if (!loaded) {
+        current.status = core->Invalid;
+        return (current, "", 0);
+    }
+    # The loaded source is admitted before retiring the old clean document; adopt no path on conflict.
+    current = call(document, core->Close, current.revision, "");
+    if (current.status != core->Ok) {
+        return (current, "", 0);
+    }
+    current = call(document, core->Open, current.revision, source);
+    if (current.status != core->Ok) {
+        return (current, "", 0);
+    }
+    policy->observe(state, current);
+    if (browsing->clear(directoryfiles, browser) != directoryfiles->Ok) {
+        raise "fail: graphical browser cursor retirement";
+    }
+    return (current, target, 1);
+}
+
+
 # Own graphical editor policy with no Draw/Tk/AS-side document mutation.
 # No parameters; channels remain rooted on this stack through the final reply.
 init()
 {
-    sys = load Sys Sys->PATH; # Link the actual native file services.
+    sys = load Sys Sys->PATH;
+    directoryfiles = load Idefiles Idefiles->PATH;
+    browsing = load Idebrowser Idebrowser->PATH; # Link the actual native file services.
     core = load Idecore Idecore->PATH; # Link the document/history module.
     codec = load Uibridge Uibridge->PATH; # Link the common channel codec.
     files = load Idefileops Idefileops->PATH; # Link the shared checked file operations.
@@ -202,8 +270,12 @@ init()
     fields := load Idefield Idefield->PATH; # Keep modal field editing in reusable Dis logic.
     clipboard := load Ideclipboard Ideclipboard->PATH; # Load reusable bounded clipboard value staging.
     host := load Idehost Idehost->PATH; # Link only the native channel registration boundary.
-    if (sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil || clipboard == nil || fields == nil) { # Require all real modules.
+    if (directoryfiles == nil || browsing == nil || sys == nil || core == nil || codec == nil || bridge == nil || policy == nil || host == nil || viewport == nil || files == nil || search == nil || clipboard == nil || fields == nil) { # Require all real modules.
         raise "fail: graphical editor modules"; # Stop visibly on an unsupported host.
+    }
+    browser := browsing->create(directoryfiles, sys);
+    if (browser == nil) {
+        raise "fail: graphical browser owner";
     }
     input := chan of array of byte; # The native owner offers copied events here.
     output := chan of array of byte; # The native owner receives Dis-owned snapshots here.
@@ -252,6 +324,7 @@ init()
     transfer := clipboard->create(); # [GC:] Exclusive pending transaction/staging root until reset or shutdown.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
         if (closing && reply.revision == reply.saved) {
+            stopbrowser(browser);
             releaseprojection(inspector);
             call(document, core->Shutdown, reply.revision, "");
             host->detach();
@@ -297,12 +370,18 @@ init()
             if (mode == 8) {
                 paneltext = "S: save and close; D: discard; Esc: cancel";
             }
+            if (mode == browsing->Panel) {
+                paneltext = browsing->summary(sys, browser);
+            }
             if (mode == 7) {
                 paneltext = inspectdocument(inspector); # Only channel-copied fields reach the native renderer.
             }
             selected := inputfield.caret != inputfield.anchor
                 && ((inputfield.anchor == 0 && inputfield.caret == len inputfield.text)
                     || (inputfield.caret == 0 && inputfield.anchor == len inputfield.text));
+            if (mode == browsing->Panel) {
+                selected = 0;
+            }
             panel := ref Uibridge->Message(codec->View, 0, host->Panel, reply.revision, mode, selected, paneltext); # Publish prompt state by channel.
             (panelok, panelwire) := codec->encode(panel); # Validate the counted Unicode field.
             if (!panelok) { # Invalid UI state must fail visibly, not mutate native widgets directly.
@@ -311,7 +390,7 @@ init()
             output <-= panelwire; # Panel and viewport are committed together at the final selection record.
             fieldcaret := 0;
             fieldanchor := 0;
-            if (mode != 0) {
+            if (mode != 0 && mode != browsing->Panel) {
                 fieldcaret = inputfield.caret;
                 fieldanchor = inputfield.anchor;
             }
@@ -406,6 +485,7 @@ init()
         }
         if (event.kind == codec->Request && event.code == host->Quit) { # Close works even inside a modal field.
             if (reply.revision == reply.saved || event.flags == 1) {
+                stopbrowser(browser);
                 releaseprojection(inspector);
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach(); # Retire borrowed channel roots before the controller stack exits.
@@ -469,6 +549,88 @@ init()
             fielddrag = 0;
             continue;
         }
+        # A completed-view ticket binds selection actions even when document revision is unchanged.
+        if (event.kind == codec->Request && event.code >= host->Browse && event.code <= host->BrowseClose) {
+            if (event.flags != reply.revision || event.second != ticket) {
+                reply.status = core->Conflict;
+            } else if (event.code != host->BrowseMove && event.first != 0 ||
+                       event.code != host->Browse && event.text != "") {
+                reply.status = core->Invalid;
+            } else if (event.code == host->Browse) {
+                reply.status = browserstatus(browsing->open(directoryfiles, browser, event.text));
+                if (reply.status == directoryfiles->Ok) {
+                    mode = browsing->Panel;
+                    inputfield = fields->create();
+                    dragging = 0;
+                    fielddrag = 0;
+                }
+            } else if (mode != browsing->Panel) {
+                reply.status = core->Conflict;
+            } else if (event.code == host->BrowseMove) {
+                reply.status = browserstatus(browsing->move(browser, event.first));
+            } else if (event.code == host->BrowseNext) {
+                status := browsing->advance(directoryfiles, browser);
+                reply.status = core->Ok;
+                if (status != directoryfiles->Ok && status != directoryfiles->End) {
+                    reply.status = core->Invalid;
+                }
+            } else if (event.code == host->BrowseClose) {
+                reply.status = browserstatus(browsing->clear(directoryfiles, browser));
+                mode = 0;
+            } else {
+                (updated, destination, opened) := choosebrowser(browser, document, policy, state, reply);
+                reply = updated;
+                if (opened) {
+                    path = destination;
+                    mode = 0;
+                    reveal = 1;
+                }
+            }
+            continue;
+        }
+        # Read-only browsing consumes source text/clipboard/pointer events before field or edit dispatch.
+        if (mode == browsing->Panel) {
+            if (event.kind == codec->Focus || event.kind == codec->Key && (event.code == 16 || event.code == 17)) {
+                (admitted, observed) := policy->apply(core, document, state, event);
+                if (!admitted) {
+                    raise "fail: browser modifier event";
+                }
+                reply = inputreply(reply, observed.document, event);
+            } else if (event.kind == codec->Key && event.flags != 0) {
+                if (event.code == 27) {
+                    reply.status = browserstatus(browsing->clear(directoryfiles, browser));
+                    mode = 0;
+                    inputfield = fields->create();
+                } else if (event.code == 66) {
+                    mode = browsing->PathPanel;
+                    inputfield = fields->create();
+                    reply.status = fields->set(inputfield, browser.path, 1);
+                } else if (event.code == 38 || event.code == 40) {
+                    delta := 1;
+                    if (event.code == 38) {
+                        delta = -1;
+                    }
+                    reply.status = browserstatus(browsing->move(browser, delta));
+                } else if (event.code == 34) {
+                    status := browsing->advance(directoryfiles, browser);
+                    reply.status = core->Ok;
+                    if (status != directoryfiles->Ok && status != directoryfiles->End) {
+                        reply.status = core->Invalid;
+                    }
+                } else if (event.code == 82) {
+                    reply.status = browserstatus(browsing->open(directoryfiles, browser, browser.path));
+                } else if (event.code == 13) {
+                    (updated, destination, opened) := choosebrowser(browser, document, policy, state, reply);
+                    reply = updated;
+                    if (opened) {
+                        path = destination;
+                        mode = 0;
+                        reveal = 1;
+                    }
+                }
+            }
+            continue; # Browsing never forwards text, paste, delete or pointer gestures to source input.
+        }
         if (mode == 7 || mode == 8) { # Read-only inspector/confirmation never forward text or paste to the source.
             if (event.kind == codec->Key && event.flags != 0 && event.code == 27) {
                 mode = 0;
@@ -482,6 +644,7 @@ init()
                 inputfield = fields->create();
                 reply.status = core->Ok;
             } else if (mode == 8 && event.kind == codec->Key && event.flags != 0 && event.code == 68) {
+                stopbrowser(browser);
                 releaseprojection(inspector); # Explicit D confirms discard; the close button itself never does.
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach();
@@ -598,14 +761,24 @@ init()
                 }
             } else if (event.kind == codec->Text || (event.kind == codec->Key && event.flags != 0)) {
                 if (event.kind == codec->Key && event.code == 27) {
-                    mode = 0;
+                    if (mode == browsing->PathPanel && browser.cursor != big 0) {
+                        mode = browsing->Panel;
+                    } else {
+                        mode = 0;
+                    }
                     closing = 0;
                     fielddrag = 0;
                     inputfield = fields->create(); # Retire this field session without changing source or path.
                     reply.status = core->Ok;
                 } else if (event.kind == codec->Key && event.code == 13) { # Enter executes an explicitly accepted field operation.
                     fielddrag = 0; # A command cannot leave an old field drag active across a mode change.
-                    if (mode == 6) { # Go To uses bounded one-based source coordinates.
+                    if (mode == browsing->PathPanel) {
+                        reply.status = browserstatus(browsing->open(directoryfiles, browser, inputfield.text));
+                        if (reply.status == directoryfiles->Ok) {
+                            mode = browsing->Panel;
+                            inputfield = fields->create();
+                        }
+                    } else if (mode == 6) { # Go To uses bounded one-based source coordinates.
                         (line, column) := locationfield(inputfield.text); # Reject syntax/overflow without touching selection.
                         reply = gotolocation(policy, state, reply, line, column);
                         if (reply.status == core->Ok) {
@@ -668,6 +841,18 @@ init()
             continue; # A field event is never also applied to the source document.
         }
         if (event.kind == codec->Key && event.flags != 0 && state.control) { # Application shortcuts remain Dis-owned.
+            if (event.code == 66) { # Ctrl+B opens a directory path, never a source-edit shortcut.
+                mode = browsing->PathPanel;
+                inputfield = fields->create();
+                prefill := browser.path;
+                if (prefill == "") {
+                    prefill = ".";
+                }
+                reply.status = fields->set(inputfield, prefill, 1);
+                dragging = 0;
+                fielddrag = 0;
+                continue;
+            }
             if (event.code == 70 || event.code == 71 || event.code == 72 || event.code == 79 || (event.code == 83 && state.shift)) { # F/H/O/Shift+S open a field.
                 mode = 1; # Ctrl+F starts literal Find.
                 prefill := query; # Reuse the previous literal query as editable field text.

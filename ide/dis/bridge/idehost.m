@@ -10,7 +10,7 @@ Idehost: module
     Scroll: con 65541;    # Request logical-line delta in first; flags=revision, payload=ticket hex.
     Place: con 65542;     # Request source scalar in first, phase 1/2/3 in second; same revision/ticket.
 
-    Panel: con 65543;     # View prompt mode 0..8 (7 inspector, 8 dirty-close confirmation), select-all flag, counted UTF-8 text.
+    Panel: con 65543;     # View prompt mode 0..10 (9 browser, 10 directory path), select-all flag, counted UTF-8 text.
     Find: con 65544;      # Revision-bound literal FindNext request; text replaces the current query.
     SaveAs: con 65545;    # Revision-bound explicit destination; adopted only after a successful write.
     Open: con 65546;      # Revision-bound strict source load; dirty documents are never discarded.
@@ -37,6 +37,12 @@ Idehost: module
     FieldPlace: con 65562; # Request field scalar/phase 1..3 from actual glyph geometry, revision/ticket bound.
 
     Gutter: con 65563; # View-only line-number visibility in first=0/1, flags=document revision.
+
+    Browse: con 65564; # Request directory path in text; first=0, second=completed-view ticket, flags=revision.
+    BrowseMove: con 65565; # Request selected-entry delta -1/+1; second=ticket, empty text, flags=revision.
+    BrowseNext: con 65566; # Request the next native batch; first=0, second=ticket, empty text.
+    BrowseChoose: con 65567; # Navigate/open selected entry under dirty-source admission; same ticket/revision.
+    BrowseClose: con 65568; # Close the browser cursor; first=0, second=ticket, empty text.
 
     # Read the initial --line-numbers 0/1 preference; subsequent visibility belongs to Dis.
     linenumbers: fn(): int;

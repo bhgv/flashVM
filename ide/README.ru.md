@@ -1,6 +1,6 @@
 # Backend сборки для IDE
 
-Версия **0.6.0**. [English](README.md).
+Версия **0.7.0**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -100,3 +100,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Сквозная реализация расширений Limbo: таблицы, проекции и any](../fir/v1/doc/EXTENSIONS.ru.md).
 
 [IDE application on our DisVM / Приложение IDE на нашем DisVM](dis/app/README.md) · [Русский](dis/app/README.ru.md).
+
+[Graphical file browser](dis/GRAPHICAL-BROWSER.md) / [Графический браузер файлов](dis/GRAPHICAL-BROWSER.ru.md).

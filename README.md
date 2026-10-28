@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1651**. [Русская версия](README.ru.md).
+Development version: **0.1652**. [Русская версия](README.ru.md).
 
-Current series: [v0.1651](docs/releases/v0.1651.md): channel-owned IDE directory browsing, exact execution quotas and incoming Inferno Sys guards.
+Current series: [v0.1652](docs/releases/v0.1652.md): graphical Limbo file browsing, checked UI commands and incoming Inferno C/x64/ARM64 codec guards.
 
 ## Browse documentation
 

@@ -148,6 +148,7 @@ if(BUILD_TESTING)
     sys-print
     sys-print-spans
     string-owner-preflight
+    string-codec-owners
     string-view-native
     sys-tokenize
     sys-utf
@@ -288,6 +289,7 @@ if(BUILD_TESTING)
     foreach(driver
       owner-jit
       string-owner-jit
+      string-codec-owners-jit
       shift-slot-jit
       arithmetic-slot-jit
       branch-slot-jit
