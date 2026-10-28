@@ -324,3 +324,13 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_descriptor_maps PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Retain deep traversal and native-width metadata acceptance from experiment.
+if(BUILD_TESTING)
+  foreach(driver type-parent type-print stub-print declaration-walks reference-sort)
+    add_test(NAME limbo_bootstrap_${driver} COMMAND "${Python3_EXECUTABLE}"
+      "${u}/limbo/tests/${driver}.py")
+    set_tests_properties(limbo_bootstrap_${driver} PROPERTIES TIMEOUT 180
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;ASAN_OPTIONS=detect_leaks=0")
+  endforeach()
+endif()

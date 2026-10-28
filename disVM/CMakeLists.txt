@@ -104,6 +104,9 @@ if(BUILD_TESTING)
     loader-runtime
     pointer-maps
     gc-maps
+    gc-arithmetic
+    gc-idle
+    readmod-io
     pc-target-boundary
     direct-target-native
     vm-widths
@@ -208,6 +211,9 @@ if(BUILD_TESTING)
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endforeach()
+  # Boundary arithmetic fixtures retain sanitizer checks in normal CTest runs.
+  set_tests_properties(disvm_gc-arithmetic disvm_gc-idle disvm_readmod-io PROPERTIES
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;ASAN_OPTIONS=detect_leaks=0")
   set_tests_properties(disvm_type-retains disvm_byte-array-retains disvm_list-retains disvm_channel-retains disvm_module-data-retains disvm_token-capacity disvm_token-retains disvm_clone-owners disvm_heap-clones disvm_heap-preflight disvm_loader-snapshots disvm_loader-runtime disvm_srv-results disvm_module-imports PROPERTIES
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   # Guard new byte-addressed Sys tuples and native argument bounds under UBSan.
@@ -554,4 +560,12 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
     set_tests_properties(disvm_limbo_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endforeach()
+endif()
+
+# Exercise both emu/os native-long I/O boundaries without linking an OS runtime.
+if(BUILD_TESTING)
+  add_test(NAME disvm_native_io COMMAND "${Python3_EXECUTABLE}"
+    "${u}/emu/port/tests/native-io.py")
+  set_tests_properties(disvm_native_io PROPERTIES TIMEOUT 180
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;ASAN_OPTIONS=detect_leaks=0")
 endif()

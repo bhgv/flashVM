@@ -1,3 +1,38 @@
+# v0.1666 — GC/I/O bounds and iterative Limbo metadata
+
+Current pin: **577940fa699d42593db7c680c5a0aeceeeb04e09**, **741 Dis / 259 bootstrap files**.
+Seven experiment commits after 50059a3c are reviewed and selected byte-for-byte:
+
+| Commit | Imported behavior |
+| --- | --- |
+| fb53532 | Iterative, nil-safe parent-Type compatibility and lazy reconstruction |
+| f76cf21 | Native-long I/O result checks before int narrowing in emu/os and module loading |
+| 7b5f982 | Saturating GC work/feedback arithmetic and unsigned completed-epoch waiting |
+| 7970792 | Iterative Type diagnostics with complete qualified output |
+| 6649950 | Iterative C-stub Type/qualified-name printing and bounded termination |
+| 49d996b | Iterative declaration/tuple block walks and full local-group counts |
+| 577940f | Checked declaration reference propagation and native-width stable local ordering |
+
+The source bootstrap registers five new production/oracle drivers. The core registers
+GC arithmetic, idle waiters, module-read I/O and both emu/os native-I/O adapters.
+Selected OS boundary bodies support extracted fixtures; no full OS, Draw/Tk or
+security service is linked. Manifests retain exact upstream blobs and SHA-256.
+
+No additional confirmed shared defect was found for reverse publication. Earlier
+outbound corrections remain ancestors. Numeric lazy conditions, bool-cell SWO emission
+and structural FIR grammar work belong to FlashVM and are not exported to Inferno.
+The upstream experiment branch is therefore unchanged by this series.
+
+Validation: core **202/202**, source bootstrap **21/21** on Linux AMD64. Sanitizer
+fixtures distinguish WORD32/WORD64 metadata from native host pointers. Optional
+foreign-instruction emulation dependencies were absent; physical ARM64/RV64 and
+complete ABI/boot acceptance are not claimed. Runtime/editor results appear in the
+[release report](../docs/releases/v0.1666.md).
+
+[Numeric logic EN](../fir/v1/doc/NUMERIC_LOGIC.md) / [RU](../fir/v1/doc/NUMERIC_LOGIC.ru.md).
+
+## Previous checkpoints
+
 # v0.1665 — Ordered real compiler paths and native emitter publication
 
 Current pin: **50059a3c7e2bf773b440f2c4bbfedcbac38ff067**, **704 Dis / 239 bootstrap files**. Incoming AMD64/ARM64 changes snapshot complete borrowed LeafLayout metadata through checked byte copies before field access and publish staged native output only after validating its full destination span. Packed metadata/output, nil/sentinel endpoints, capacities and unchanged-buffer rejection are covered by the extended upstream emitter fixture. Its publication guide is selected explicitly. Imported sources remain byte-for-byte upstream.

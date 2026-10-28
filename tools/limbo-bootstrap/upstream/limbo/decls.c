@@ -122,21 +122,36 @@ redecl(Decl *d)
 		d, old, old->src.start);
 }
 
+
+/* Keep aggregated compiler reference counts representable before updating metadata. */
+static int
+declrefsum(int count, int delta)
+{
+	vlong total;
+
+	total = (vlong)count+delta;
+	if(total < (-0x7fffffff-1) || total > 0x7fffffff)
+		fatal("declaration reference count overflow");
+	return (int)total;
+}
+
+
+/* Propagate reference usage and diagnostics without wrapping any destination count. */
 void
 checkrefs(Decl *d)
 {
 	Decl *id, *m;
-	long refs;
+	int refs;
 
 	for(; d != nil; d = d->next){
 		if(d->das)
-			d->refs--;
+			d->refs = declrefsum(d->refs, -1);
 		switch(d->store){
 		case Dtype:
 			refs = d->refs;
 			if(d->ty->kind == Tadt){
 				for(id = d->ty->ids; id != nil; id = id->next){
-					d->refs += id->refs;
+					d->refs = declrefsum(d->refs, id->refs);
 					if(id->store != Dfn)
 						continue;
 					if(id->init == nil && id->link == nil && d->importid == nil)
@@ -147,14 +162,14 @@ checkrefs(Decl *d)
 			}
 			if(d->ty->kind == Tmodule){
 				for(id = d->ty->ids; id != nil; id = id->next){
-					refs += id->refs;
+					refs = declrefsum(refs, id->refs);
 					if(id->iface != nil)
-						id->iface->refs += id->refs;
+						id->iface->refs = declrefsum(id->iface->refs, id->refs);
 					if(id->store == Dtype){
 						for(m = id->ty->ids; m != nil; m = m->next){
-							refs += m->refs;
+							refs = declrefsum(refs, m->refs);
 							if(m->iface != nil)
-								m->iface->refs += m->refs;
+								m->iface->refs = declrefsum(m->iface->refs, m->refs);
 						}
 					}
 				}
@@ -176,7 +191,7 @@ checkrefs(Decl *d)
 			if(superwarn && !d->refs && d->sym != nil)
 				warn(d->src.start, "%K not referenced", d);
 			if(d->ty == tstring && d->init != nil)
-				d->init->decl->refs += d->refs;
+				d->init->decl->refs = declrefsum(d->init->decl->refs, d->refs);
 			break;
 		case Dfn:
 			if(d->init == nil && d->importid == nil)
@@ -190,7 +205,7 @@ checkrefs(Decl *d)
 			break;
 		}
 		if(d->das)
-			d->refs++;
+			d->refs = declrefsum(d->refs, 1);
 	}
 }
 
@@ -499,61 +514,116 @@ vars(Decl *d)
 	return d;
 }
 
-/*
- * declare variables from the left side of a := statement
- */
+/* Pending declaration lists and delayed global assignment declarations. */
+typedef struct DeclWalk DeclWalk;
+
+struct DeclWalk {
+	Node *node; // Borrowed list continuation or expression subtree.
+	int install; // Declare a saved assignment left side after its right side.
+};
+
+
+/* Grow private traversal storage without changing compiler-owned AST links. */
+static void
+declwalkpush(DeclWalk **work, DeclWalk *local, int *used, int *capacity,
+	Node *node, int install)
+{
+	DeclWalk *grown;
+
+	if(node == nil)
+		return;
+	if(*used == *capacity){
+		if(*capacity > 0x7fffffff/2/sizeof(**work))
+			fatal("declaration expression too complex");
+		*capacity *= 2;
+		grown = allocmem(*capacity*sizeof(*grown));
+		memmove(grown, *work, *used*sizeof(*grown));
+		if(*work != local)
+			free(*work);
+		*work = grown;
+	}
+	(*work)[*used].node = node;
+	(*work)[*used].install = install;
+	(*used)++;
+}
+
+
+/* Visit tuple names eagerly from left to right, retaining nil-name and nid rules. */
+static int
+decltuplewalk(Node *n, int store, int *nid, int marking)
+{
+	DeclWalk local[32], *work;
+	Node *list;
+	Decl *d, *old;
+	int used, capacity, ok;
+
+	work = local;
+	used = 0;
+	capacity = nelem(local);
+	ok = 1;
+	for(;;){
+		if(n->op == Otuple){
+			list = n->left;
+			if(list != nil){
+				declwalkpush(&work, local, &used, &capacity, list->right, 0);
+				n = list->left;
+				continue;
+			}
+		}else if(n->op == Oname){
+			if(marking){
+				n->decl->nid = *nid;
+				*nid = 0;
+			}else if(n->decl == nildecl)
+				*nid = -1;
+			else{
+				d = mkids(&n->src, n->decl->sym, nil, nil);
+				installids(store, d);
+				old = d->old;
+				if(old != nil && old->store != Dfn
+				&& old->store != Dwundef && old->store != Dundef)
+					warn(d->src.start, "redeclaration of %K, previously declared as %k on line %L",
+						d, old, old->src.start);
+				n->decl = d;
+				d->refs++;
+				d->das = 1;
+				if(*nid >= 0){
+					if(*nid == 0x7fffffff)
+						fatal("declaration name count overflow");
+					(*nid)++;
+				}
+			}
+		}else if(!marking)
+			ok = 0;
+		if(used == 0)
+			break;
+		list = work[--used].node;
+		declwalkpush(&work, local, &used, &capacity, list->right, 0);
+		n = list->left;
+	}
+	if(work != local)
+		free(work);
+	return ok;
+}
+
+
+/* Declare every tuple name even when another tuple member is invalid. */
 static int
 recdasdecl(Node *n, int store, int *nid)
 {
-	Decl *d, *old;
-	int ok;
-
-	switch(n->op){
-	case Otuple:
-		ok = 1;
-		for(n = n->left; n != nil; n = n->right)
-			ok &= recdasdecl(n->left, store, nid);
-		return ok;
-	case Oname:
-		if(n->decl == nildecl){
-			*nid = -1;
-			return 1;
-		}
-		d = mkids(&n->src, n->decl->sym, nil, nil);
-		installids(store, d);
-		old = d->old;
-		if(old != nil
-		&& old->store != Dfn
-		&& old->store != Dwundef
-		&& old->store != Dundef)
-			warn(d->src.start,  "redeclaration of %K, previously declared as %k on line %L",
-				d, old, old->src.start);
-		n->decl = d;
-		d->refs++;
-		d->das = 1;
-		if(*nid >= 0)
-			(*nid)++;
-		return 1;
-	}
-	return 0;
+	return decltuplewalk(n, store, nid, 0);
 }
 
+
+/* Put the sharing group count on the first name and zero on later names. */
 static int
 recmark(Node *n, int nid)
 {
-	switch(n->op){
-	case Otuple:
-		for(n = n->left; n != nil; n = n->right)
-			nid = recmark(n->left, nid);
-		break;
-	case Oname:
-		n->decl->nid = nid;
-		nid = 0;
-		break;
-	}
+	decltuplewalk(n, 0, &nid, 1);
 	return nid;
 }
 
+
+/* Choose storage scope and mark only successful local declaration groups. */
 int
 dasdecl(Node *n)
 {
@@ -573,22 +643,37 @@ dasdecl(Node *n)
 	return ok;
 }
 
-/*
- * declare global variables in nested := expressions
- */
+
+/* Declare nested global := expressions after their right side, without recursion. */
 void
 gdasdecl(Node *n)
 {
-	if(n == nil)
-		return;
+	DeclWalk local[32], *work, frame;
+	int used, capacity;
 
-	if(n->op == Odas){
-		gdasdecl(n->right);
-		dasdecl(n->left);
-	}else{
-		gdasdecl(n->left);
-		gdasdecl(n->right);
+	work = local;
+	used = 0;
+	capacity = nelem(local);
+	for(;;){
+		while(n != nil){
+			if(n->op == Odas){
+				declwalkpush(&work, local, &used, &capacity, n->left, 1);
+				n = n->right;
+			}else{
+				declwalkpush(&work, local, &used, &capacity, n->right, 0);
+				n = n->left;
+			}
+		}
+		if(used == 0)
+			break;
+		frame = work[--used];
+		if(frame.install)
+			dasdecl(frame.node);
+		else
+			n = frame.node;
 	}
+	if(work != local)
+		free(work);
 }
 
 Decl*
@@ -661,30 +746,25 @@ curscope(void)
 	return scopes[scope];
 }
 
-/*
- * revert to old declarations for each symbol in the currect scope.
- * remove the effects of any imported adt types
- * whenever the adt is imported from a module,
- * we record in the type's decl the module to use
- * when calling members.  the process is reversed here.
- */
+
+/* Restore symbol/import bindings and propagate checked reference counts on scope exit. */
 Decl*
 popscope(void)
 {
 	Decl *id;
 	Type *t;
 
-if (debug['X'])
-	print("popscope\n");
+	if(debug['X'])
+		print("popscope\n");
 	for(id = scopes[scope]; id != nil; id = id->next){
 		if(id->sym != nil){
-if (debug['X'])
-	print("%s : %s %d\n", id->sym->name, kindname[id->ty->kind], id->init != nil ? id->init->op : 0);
+			if(debug['X'])
+				print("%s : %s %d\n", id->sym->name, kindname[id->ty->kind], id->init != nil ? id->init->op : 0);
 			id->sym->decl = id->old;
 			id->old = nil;
 		}
 		if(id->importid != nil)
-			id->importid->refs += id->refs;
+			id->importid->refs = declrefsum(id->importid->refs, id->refs);
 		t = id->ty;
 		if(id->store == Dtype
 		&& t->decl != nil

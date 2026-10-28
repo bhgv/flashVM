@@ -7,11 +7,11 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-50059a3c7e2bf773b440f2c4bbfedcbac38ff067; every imported file has a manifest hash.
+577940fa699d42593db7c680c5a0aeceeeb04e09; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
-Current v0.1665: [executable selected modules](libraries/README.md),
+Current v0.1666: [executable selected modules](libraries/README.md),
 [fully commented tutorial](examples/standard-modules/README.md),
 [native runtime](runtime/README.md). Menu launch 7 runs the actual modules;
 module availability and missing /prog/VFS services are documented separately.
