@@ -1,3 +1,13 @@
+# v0.1661 — Bio bounds and executable local type scopes
+
+Current pin: **6a307e5d23697d62d7bcb841fbddc1c80d0fd975**, **703 Dis / 222 bootstrap files**. Incoming Bio corrections bound byte/rune pushback before state mutation, widen buffered/position arithmetic, and propagate failed logical-position queries before relative seeking. The source bootstrap imports the actual library bodies and new 35,658-case sanitizer fixture. The Dis core does not link an unrelated Bio service; its selected checkpoint reference advances with the same source pin.
+
+Both snapshots remain byte-for-byte upstream and earlier reverse corrections are retained, including c1494cd's shared-inline query cache. No additional confirmed shared defect required a reverse commit in this series. Our local type scopes are FlashVM compiler work and stay out of Inferno. OS file operations remain behind existing host ports.
+
+[Release](../docs/releases/v0.1661.md) · [Alias contract EN](../fir/v1/doc/SOURCE_ALIASES.md) / [RU](../fir/v1/doc/SOURCE_ALIASES.ru.md).
+
+## Previous checkpoints
+
 # v0.1660 — JIT GC geometry and shared inline dependency graphs
 
 Current pin: **c1494cdc5f20cb5399c4dcdffddd03701bd8644b**; **703 selected Dis / 219 bootstrap files**. Both snapshots retain exact imported bytes and manifest hashes.

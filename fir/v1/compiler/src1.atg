@@ -381,6 +381,16 @@ PRODUCTIONS
                                                                         .)
   .
 
+  /* Save a statement's head without assigning it to the value namespace.
+   * The colon branch distinguishes a local type declaration before interning. */
+  BindingHead =
+    (ident | "real" | "type" | "value")
+    (.
+        capture();
+        source_alias_header();
+    .)
+  .
+
   /* Limbo value() is a tutorial entry, not the Inferno loader ABI. */
   LimboProgram =
                                                                         (.
@@ -397,7 +407,7 @@ PRODUCTIONS
     { IF(!header && Sym==identSym) LimboHeader<&header> }
     (. source_alias_module(header); .)
     "{" { LimboAlias } (. source_alias_validate(); .) "value" ":" "fn" "(" ")" ":" ResultType<1> ";"
-    "}" ";" "value" "(" ")" ":" ResultType<0> "{"
+    "}" ";" "value" "(" ")" ":" ResultType<0> "{" (. source_alias_body(); .)
     (
         IF(source_table_profile()) TableBody
         | { LimboStatement } LimboResult
@@ -429,7 +439,8 @@ PRODUCTIONS
     (. source_alias_declare((FirType)type); .)
   .
 
-  /* Save named edges; the completed prefix resolves forward references and cycles. */
+  /* Save named edges. The complete prefix resolves forwards/cycles; a local
+   * declaration resolves its edge immediately in the current lexical scope. */
   AliasTarget<int *type> =
     "int" (. *type = T_I32; .)
     | "real" (. *type = T_F64; .)
@@ -524,31 +535,47 @@ PRODUCTIONS
   * opening brace unconsumed in the enclosing statement repetition.
   * No arbitrary module loader ABI is implied. */
   LimboStatement =
-                                                                        (.
-                                                                            int name = 0, value = 0, op = 0;
-                                                                            SourceMark target;
-                                                                        .)
+    (.
+        int name = 0;
+        int value = 0;
+        int op = 0;
+        int type = T_VOID;
+        SourceMark target;
+    .)
     ";"
-    | IF(Sym==LbraceSym && depth>=64) "{"                               (.
-                                                                            capture();
-                                                                            source_scope_limit();
-                                                                        .)
+    | IF(Sym==LbraceSym && depth>=64) "{"
+      (.
+          capture();
+          source_scope_limit();
+      .)
     | IF(Sym==LbraceSym && depth<64) LimboBlock
-    | Name<&name>                                                       (. target = source_mark(); .)
-    (
-        ":" BindingType "=" Expression<&value> ";"                      (.
-                                                                            source_restore(target);
-                                                                            source_bind(name, value, 1);
-                                                                        .)
-        | ":=" Expression<&value> ";"                                   (.
-                                                                            source_restore(target);
-                                                                            source_bind(name, value, 1);
-                                                                        .)
-        | AssignmentOperator<&op> Expression<&value> ";"                (.
-                                                                            source_restore(target);
-                                                                            source_assign(name, value, op);
-                                                                        .)
-    )
+    | BindingHead (. target = source_mark(); .)
+      (
+          ":"
+          (
+              "type" AliasTarget<&type> ";"
+              (. source_alias_local((FirType)type, 1); .)
+              | (. name = source_alias_value_name(); .)
+                BindingType "=" Expression<&value> ";"
+                (.
+                    source_restore(target);
+                    source_bind(name, value, 1);
+                .)
+          )
+          | (. name = source_alias_value_name(); .)
+            (
+                ":=" Expression<&value> ";"
+                (.
+                    source_restore(target);
+                    source_bind(name, value, 1);
+                .)
+                | AssignmentOperator<&op> Expression<&value> ";"
+                (.
+                    source_restore(target);
+                    source_assign(name, value, op);
+                .)
+            )
+      )
   .
 
   /* Limbo braces delimit lexical bindings; writes to outer bindings persist.
@@ -630,7 +657,8 @@ PRODUCTIONS
 
   /* Signed literal branches preserve INT32_MIN; other unary chains are bounded.
    * An exact catalog alias selects a prefix cast before the ordinary value-name arm.
-   * The alias resolver also requires depth<64, sharing the group/unary budget. */
+   * An over-budget alias consumes its head and reports the shared nesting limit;
+   * admitted casts require depth<64, sharing the group/unary budget. */
   Unary<int *result> =
     (.
         int negative = 0;
@@ -650,6 +678,13 @@ PRODUCTIONS
                                                                             if (negative)
                                                                                 *result = source_negate(*result);
                                                                         .)
+    | IF(Sym==identSym && AliasAhead() && depth>=64)
+      ident
+      (.
+          capture();
+          source_scope_limit();
+          *result = 0;
+      .)
     | IF(Sym==identSym && AliasAhead() && depth<64)
       ident
       (.
@@ -709,7 +744,7 @@ PRODUCTIONS
     | TableFor
     | TableWhile
     | TableDelete<&value> ";"
-    | TableBindingStatement ";"
+    | TableBindingStatement<1> ";"
     | FlowBlock
   .
 
@@ -717,10 +752,10 @@ PRODUCTIONS
   TableForClause =
     (. int value = 0; .)
     TableDelete<&value>
-    | TableBindingStatement
+    | TableBindingStatement<0>
   .
 
-  TableBindingStatement =
+  TableBindingStatement<int allow_alias> =
     (.
         int name = 0;
         int value = -1;
@@ -737,18 +772,24 @@ PRODUCTIONS
         SourceMark access;
         SourceMark operation;
     .)
+    BindingHead (. target = source_mark(); .)
     (
-        Name<&name> (. target = source_mark(); .)
+        ":"
+        (
+            "type" AliasTarget<&type> (. source_alias_local((FirType)type, allow_alias); .)
+            | (. name = source_alias_value_name(); .)
+              TableType<&type> [ "=" TableExpression<&value> ]
+              (.
+                  source_restore(target);
+                  source_table_bind(name, value, type, 1);
+              .)
+        )
+        | (. name = source_alias_value_name(); .)
         (
             ":=" TableExpression<&value>
             (.
                 source_restore(target);
                 source_table_bind(name, value, 0, 1);
-            .)
-            | ":" TableType<&type> [ "=" TableExpression<&value> ]
-            (.
-                source_restore(target);
-                source_table_bind(name, value, type, 1);
             .)
             | TableIncrementOperator<&direction>
             (.

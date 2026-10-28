@@ -1,4 +1,4 @@
-# Source aliases → canonical FIR (0.50)
+# Source aliases → canonical FIR (0.51)
 
 [Русский](SOURCE_ALIASES.ru.md) · [Runnable tutorial](../examples/type-aliases/README.md) · [Interface resolver](../../../compiler/limbo/frontend/ALIASES.md)
 
@@ -6,7 +6,7 @@ The executable source adapter uses the authoritative [Coco/R grammar](../compile
 
 The prefix stores exact named edges, then resolves all declarations iteratively before parsing the value export. Forward references bind canonically in the declaring lexical scope. An earlier file alias remains unchanged when its source name is shadowed inside the module. The implementing body sees module aliases. Numeric results accept int/real/big aliases. Numeric int/real locals remain homogeneous; the big/table profile accepts int, big, string and table-of-big annotations. String/table results and general composite type expressions are unsupported. Aliases emit no FIR instructions: tests require byte-identical FIR to direct canonical annotations.
 
-The adapter bounds aliases to 128 per translation unit and names to the existing 255-byte token buffer. Duplicate/unknown/cyclic aliases (including unused declarations) and value locals shadowing aliases are semantic errors. Local type declarations, qualified/generic types and includes are not implemented. The separate interface resolver remains the broader interface/AST service; its catalog is not substituted for this bounded executable source prefix. This is not a complete typed-body compiler.
+The adapter bounds aliases to 128 per translation unit and names to the existing 255-byte token buffer. Duplicate/unknown/cyclic aliases (including unused declarations) and value locals shadowing aliases are semantic errors. Qualified/generic types and includes are not implemented. The separate interface resolver remains the broader interface/AST service; its catalog is not substituted for this bounded executable source prefix. This is not a complete typed-body compiler.
 
 State resets for every library request. Syntax/semantic failures preserve existing staged FIR and debug outputs. Malformed `implement ;` and a missing module stop with diagnostics; the prefix repetition explicitly requires an identifier to guarantee parser progress at EOF. Debug origins continue to refer to the original source snapshot. Adding the type keyword preserves AS1/2/3 variables named type and table fields such as t.type.
 
@@ -30,3 +30,13 @@ Module/file alias shadowing in the same source is a FlashVM lexical extension: t
 export TMPDIR="$PWD/build/tmp"
 python3 fir/v1/tests/alias_oracle.py build/limbo-classic/limbo-bootstrap build/runtime/bootstrap/limbo-bootstrap
 ```
+
+## Local declarations
+
+Function bodies, nested blocks, branches and loop bodies accept `Name: type Target;`. Coco/R BindingHead saves the exact head token before the colon alternative distinguishes type from value. No second source parser or synthetic runtime variable is created for the type name.
+
+Local targets resolve immediately in the visible environment; unknown forward targets and cycles are errors even if unused. Canonical aliases do not change after a later shadow. Block exit restores the active catalog prefix; siblings fully overwrite reused slots. The request-wide limit of 128 includes retired declarations. For init/step aliases are excluded; loop bodies are supported.
+
+Tests cover int/real and typed int/big/string/table annotations, sibling type changes, branches, loops, no scope escape, existing-value collisions, 128/129 retired declarations and repeated C API requests. Canonical FIR is byte-identical to direct annotations. Eight classic32/NC64 common comparisons include local scalar declarations; these compare compilation rather than execution of another ABI. See the [source](../examples/type-aliases/local.b) and [instructions](../examples/type-aliases/README.md).
+
+The shared depth-64 budget includes lexical blocks and alias-cast operands. At the limit, an additional cast receives a nesting-limit diagnostic before consuming its operand; it is not misreported as a value-name collision.

@@ -67,4 +67,4 @@ The [native module tutorial](../../../disVM/examples/native-module/README.md)
 uses real aliases and runs calls, string GC, errors and typed channels on DisVM.
 Its generated header is byte-identical to the former direct-primitive interface.
 
-[Executable source aliases / Исполняемые псевдонимы](../../../fir/v1/doc/SOURCE_ALIASES.md) — FIR 0.50.
+[Executable source aliases / Исполняемые псевдонимы](../../../fir/v1/doc/SOURCE_ALIASES.md) — FIR 0.51.

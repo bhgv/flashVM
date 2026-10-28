@@ -47,6 +47,20 @@ typedef struct
 #define SOURCE_ALIAS_MAX 128U /* Bounded source-profile aliases per translation unit. */
 
 
+/* Enter body-local type scope after the definition result has been checked. */
+void source_alias_body(void);
+
+
+/* Intern the saved declaration head as a value name; return its compiler ID.
+ * Restore current token/mark afterwards. See lower.c for ownership and diagnostics. */
+int source_alias_value_name(void);
+
+
+/* Declare and immediately resolve a local alias to type. allowed is zero for
+ * for-header clauses. Errors are sticky; no alias escapes the current block. */
+void source_alias_local(FirType type, int allowed);
+
+
 /* Capture the consumed named RHS and return its unresolved T_VOID marker. */
 FirType source_alias_target(void);
 

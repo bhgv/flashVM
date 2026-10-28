@@ -29,6 +29,28 @@ def main():
         ('', 'B: type big; T: type table of big; S: type string;', 'B',
          't: T = table of big {type = B 1}; k: S = S "type"; t.type = B 42; return B t[k];',
          'big', 't: table of big = table of big {type = big 1}; k: string = string "type"; t.type = big 42; return big t[k];', 42),
+        ('', '', 'int',
+         'N: type int; total: N = N 0; {N: type int; x: N = N 42; total = x;} return N total;',
+         'int', 'total: int = 0; {x: int = 42; total = x;} return total;', 42),
+        ('', '', 'real',
+         'N: type real; x: N = N 85.0; {N: type real; y: N = N 2.0; x = x / y;} return N x;',
+         'real', 'x: real = 85.0; {y: real = 2.0; x = x / y;} return x;', 42.5),
+        ('', '', 'big',
+         'B: type big; sum := B 0; {B: type int; n: B = B "42"; sum = big n;}'
+         ' {B: type string; s: B = B sum; sum = big s;} return B sum;',
+         'big', 'sum := big 0; {n: int = int "42"; sum = big n;}'
+         ' {s: string = string sum; sum = big s;} return big sum;', 42),
+        ('', '', 'big',
+         'Values: type table of big; t: Values = table of big; sum := big 0;'
+         ' for (i := big 0; i < 6; i++) {Local: type big; v: Local = Local 7; sum += v; t[i] = v;}'
+         ' return sum;',
+         'big', 't: table of big = table of big; sum := big 0;'
+         ' for (i := big 0; i < 6; i++) {v: big = big 7; sum += v; t[i] = v;} return sum;', 42),
+        ('', '', 'big',
+         'sum := big 0; if (big 1 == big 1) {K: type int; n: K = K "42"; sum = big n;}'
+         ' else {K: type string; s: K = K 42; sum = big s;} return sum;',
+         'big', 'sum := big 0; if (big 1 == big 1) {n: int = int "42"; sum = big n;}'
+         ' else {s: string = string 42; sum = big s;} return sum;', 42),
     ]
     with tempfile.TemporaryDirectory(prefix='Limbo FIR aliases ') as temporary:
         root = Path(temporary)
@@ -96,6 +118,18 @@ def main():
         if fir.read_bytes() != direct.read_bytes():
             raise RuntimeError('full forward chain changed canonical FIR')
 
+        # Retired siblings free active catalog slots without resetting the total budget.
+        source.write_text('implement M; M: module {value: fn(): int;}; value(): int {' +
+                          '{A: type int;}' * 128 + 'return 42;}')
+        call([source_cli, 'limbo', '--input', source, fir])
+        call([compiler, 'check', fir])
+
+        # The last admitted lexical depth has a valid alias floor; one more is rejected below.
+        source.write_text('implement M; M: module {value: fn(): int;}; value(): int {' +
+                          '{A: type int;' * 64 + 'x: A = 42;' + '}' * 64 + 'return 42;}')
+        call([source_cli, 'limbo', '--input', source, fir])
+        call([compiler, 'check', fir])
+
         # Runtime cast effects survive optimization; skipped branches stay lazy.
         # All targets are aliases, while int narrowing and text/key parsing stay canonical.
         if runtime:
@@ -148,6 +182,26 @@ def main():
                         'M: module {value: fn(): int;}; value(): int {return 1;}')
         rejected.append('implement M; ' + ''.join('A%d: type int;' % i for i in range(129)) +
                         'M: module {value: fn(): int;}; value(): int {return 1;}')
+        # Local aliases are sequential, lexical and share the request-wide declaration budget.
+        local_bad = [
+            'A: type B; B: type int; return 42;',
+            'A: type int; A: type int; return 42;',
+            'A: type A; return 42;',
+            'x := 1; x: type int; return x;',
+            'A: type int; A := 1; return A;',
+            '{A: type int;} x: A = 42; return x;',
+            '{A: type int;} {x: A = 42;} return 42;',
+            'real: type int; return 42;',
+            '{A: type int;}' * 129 + 'return 42;',
+            '{A: type int;' * 65 + 'x: A = 42;' + '}' * 65 + 'return 42;',
+        ]
+        rejected.extend('implement M; M: module {value: fn(): int;}; value(): int {' + body + '}'
+                        for body in local_bad)
+        rejected.extend('implement M; M: module {value: fn(): big;}; value(): big {' + body + '}'
+                        for body in [
+                            'for (A: type big; big 0 == big 1;) {} return big 42;',
+                            'for (i := big 0; i < 1; A: type big) {} return big 42;',
+                        ])
         for text in rejected:
             source.write_text(text)
             fir.write_text('old FIR')
@@ -163,6 +217,12 @@ def main():
         offset = text.encode().index(b'Missing')
         if diagnostic['byte_offset'] != offset or diagnostic['byte_length'] != len('Missing'):
             raise RuntimeError('forward alias diagnostic lost exact RHS token location')
+
+        source.write_text('implement M; A: type int; M: module {value: fn(): int;};'
+                          ' value(): int {return ' + 'A ' * 65 + '42;}')
+        result = call([source_cli, 'limbo', '--input', source, fir, '--diagnostics-json'], False)
+        if 'nesting limit' not in json.loads(result.stderr)['message']:
+            raise RuntimeError('over-budget alias cast lost its resource diagnostic')
 
     print('PASS source aliases: forward binding, canonical casts, int/real/big/table FIR, scope, bounds and staged diagnostics')
 

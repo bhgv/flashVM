@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1660**. [English](README.md).
+Версия разработки: **0.1661**. [English](README.md).
 
-Текущая серия: [v0.1660](docs/releases/v0.1660.md): проверки GC-разметки JIT, ограничение общих графов inlining и сквозной тест времени жизни владельцев.
+Текущая серия: [v0.1661](docs/releases/v0.1661.md): локальные псевдонимы типов в исполняемом Limbo → FIR и синхронизация границ Bio из Inferno.
 
 ## Просмотр документации
 

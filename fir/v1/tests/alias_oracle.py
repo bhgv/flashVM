@@ -17,6 +17,10 @@ def main():
          'x: Count = Count 42; return Count x;', 'int', 'x: int = int 42; return int x;'),
         ('R: type Number; Number: type real;', 'R',
          'x: R = R 85.0; return R (x / 2.0);', 'real', 'x: real = real 85.0; return real (x / 2.0);'),
+        ('', 'int', 'Local: type int; x: Local = Local 42; return Local x;',
+         'int', 'x: int = int 42; return int x;'),
+        ('', 'real', 'Local: type real; x: Local = Local 85.0; {Divisor: type real; d: Divisor = Divisor 2.0; x = x / d;} return Local x;',
+         'real', 'x: real = real 85.0; {d: real = real 2.0; x = x / d;} return real x;'),
     ]
     with tempfile.TemporaryDirectory(prefix='Common Limbo aliases ') as directory:
         root = Path(directory)

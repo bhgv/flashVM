@@ -269,3 +269,11 @@ if(BUILD_TESTING)
   set_tests_properties(limbo_bootstrap_inline_graphs PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Exercise real Bio pushback/count/position boundaries used by the source compiler.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_bio_boundaries COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libbio/tests/boundaries.py")
+  set_tests_properties(limbo_bootstrap_bio_boundaries PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()

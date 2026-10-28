@@ -77,16 +77,19 @@ int main(void)
     const char *aliased =
         "implement A; Chain: type Base; Base: type int; "
         "A: module {Base: type real; value: fn(): Chain;}; "
-        "value(): Chain {x: Chain = Chain 42; return Chain x;}";
+        "value(): Chain {Local: type Chain; x: Local = Local 42; {Local: type int;} return Local x;}";
     const char *cyclic =
         "implement A; X: type Y; Y: type X; A: module {value: fn(): int;}; value(): int {return 1;}";
+    const char *expired =
+        "implement A; A: module {value: fn(): big;}; "
+        "value(): big {{Hidden: type int;} x: Hidden = int 1; return big x;}";
     const char *unbound = "implement A; A: module {value: fn(): Chain;}; value(): Chain {return 42;}";
     FirModule *module = malloc(sizeof(*module));
     int cycle;
     int ok = module != NULL;
     for (cycle = 0; cycle < 8 && ok; cycle++)
     {
-        ok = check(cyclic, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(aliased, FIR_LIMBO, FIR_LIMBO_I32, module) &&
+        ok = check(expired, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(cyclic, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(aliased, FIR_LIMBO, FIR_LIMBO_I32, module) &&
              check(unbound, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(real, FIR_LIMBO, FIR_LIMBO_REAL, module) &&
              check(bad, FIR_LIMBO, FIR_SEM_UNSPECIFIED, module) && check(integer, FIR_LIMBO, FIR_LIMBO_I32, module) &&
              check("var Chain = 2.5; trace(Chain);", FIR_AS3, FIR_AVM1_NUMERIC, module);

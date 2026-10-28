@@ -100,4 +100,4 @@ one process and verifies metadata, borrowed streams and direct Dis emission.
 big/table. Повторные запросы C99 проверяют восстановление после ошибки
 инициализации на сходящихся путях.
 
-[Source aliases / Псевдонимы исходника](../doc/SOURCE_ALIASES.ru.md): FIR 0.50, serialized request-local binding.
+[Source aliases / Псевдонимы исходника](../doc/SOURCE_ALIASES.ru.md): FIR 0.51, serialized request-local binding.

@@ -29,12 +29,14 @@ typedef struct
     FirType type;      /* Canonical type, or T_VOID until its named edge resolves. */
     char target[256];  /* Copied RHS identifier; empty for a primitive target. */
     SourceMark origin; /* Exact RHS token for missing-name/cycle diagnostics. */
-    int scope;         /* File scope 0 or implementing-module scope 1. */
+    int scope;         /* File=0, module=1, or a lexical body scope>=2. */
 } SourceAlias;
 
 static SourceAlias aliases[SOURCE_ALIAS_MAX]; /* Parser-owned bounded declaration prefix. */
-static unsigned int alias_count;             /* Initialized aliases in this translation unit. */
-static int alias_scope;                      /* Current file/module declaration environment. */
+static unsigned int alias_total;             /* All declarations this request, including retired blocks. */
+static unsigned int alias_floor[65];         /* Active alias prefix saved at each lexical value scope. */
+static unsigned int alias_count;             /* Active prefix; retired block entries are removed. */
+static int alias_scope;                      /* File=0, module=1, lexical body scopes>=2. */
 static char alias_header[256];               /* Pending declaration name, independent of RHS capture. */
 static char alias_target[256];               /* Pending RHS token; cleared at every declaration header. */
 static SourceMark alias_target_origin;       /* Source position of the pending named edge. */
@@ -118,6 +120,7 @@ void source_config(FILE *out, int language)
 {
     source_release();
     alias_count = 0;
+    alias_total = 0;
     alias_scope = 0;
     alias_header[0] = 0;
     alias_target[0] = 0;
@@ -587,7 +590,7 @@ void source_alias_module(int found)
 }
 
 
-/* Keep module aliases visible to its implementing body; no nested declarations here. */
+/* Select the file/module prefix; source_alias_body later establishes lexical scopes. */
 void source_alias_scope(int module)
 {
     alias_header[0] = 0;
@@ -595,7 +598,7 @@ void source_alias_scope(int module)
 }
 
 
-/* Find a borrowed name in lexical scope (file=0, module=1); return -1 on a miss.
+/* Find a borrowed name in the active lexical prefix; return -1 on a miss.
  * Search declaration identities only. No allocation, source scanning or mutation. */
 static int source_alias_find(const char *name, int scope)
 {
@@ -735,7 +738,7 @@ void source_alias_declare(FirType type)
             return;
         }
     }
-    if (alias_count == SOURCE_ALIAS_MAX)
+    if (alias_total == SOURCE_ALIAS_MAX)
     {
         reject("source type alias limit");
         alias_header[0] = 0;
@@ -746,7 +749,75 @@ void source_alias_declare(FirType type)
     strcpy(aliases[alias_count].target, alias_target);
     aliases[alias_count].origin = alias_target[0] ? alias_target_origin : alias_origin;
     aliases[alias_count++].scope = alias_scope;
+    alias_total++;
     alias_header[0] = 0;
+}
+
+
+/* Enter the function's type environment after matching both result annotations.
+ * No parameters or result. Keep prefix aliases alive; body declarations are sequential. */
+void source_alias_body(void)
+{
+    alias_scope = 2;
+    alias_floor[0] = alias_count;
+}
+
+
+/* Intern a pending statement head only after grammar distinguishes value from type.
+ * Return the existing value-name ID; preserve the parser's current token and mark.
+ * All names remain compiler-owned and sticky errors prevent staged publication. */
+int source_alias_value_name(void)
+{
+    char current[256];
+    SourceMark mark = location;
+    int name;
+    strcpy(current, token);
+    strcpy(token, alias_header);
+    source_restore(alias_origin);
+    name = source_name();
+    alias_header[0] = 0;
+    strcpy(token, current);
+    source_restore(mark);
+    return name;
+}
+
+
+/* Declare a body-local alias at the current header. type is the parsed target;
+ * allowed excludes for-header clauses. Resolve immediately so no local forward edge
+ * escapes its lexical lifetime. Reject reserved spellings and same-scope values.
+ * Return nothing; failure retains the exact header/RHS diagnostic and staged output. */
+void source_alias_local(FirType type, int allowed)
+{
+    unsigned int before = alias_count;
+    int name;
+    source_restore(alias_origin);
+    if (!allowed || alias_scope < 2)
+    {
+        reject("local type alias requires a body statement, not a for clause");
+        return;
+    }
+    if (!strcmp(alias_header, "real") || !strcmp(alias_header, "type") || !strcmp(alias_header, "value"))
+    {
+        reject("source-profile type alias requires an ordinary identifier");
+        return;
+    }
+    for (name = 0; name < name_count; name++)
+    {
+        if (active[name] && binding_scope[name] == scope_depth && !strcmp(names[name], alias_header))
+        {
+            reject("local type alias conflicts with a value in this scope");
+            return;
+        }
+    }
+    source_alias_declare(type);
+    if (!failed && alias_count > before)
+    {
+        source_alias_resolve((int)before);
+        if (!failed)
+        {
+            source_restore(alias_origin);
+        }
+    }
 }
 
 
@@ -883,6 +954,8 @@ void source_hash_comment(void)
 void source_enter_scope(void)
 {
     ++scope_depth;
+    alias_floor[scope_depth] = alias_count;
+    alias_scope = 2 + scope_depth;
     debug_scopes[scope_depth] = ++debug_scope_serial;
     source_debug_event("scope-enter", -1, "", debug_scopes[scope_depth], scope_depth, location);
 }
@@ -900,7 +973,9 @@ void source_leave_scope(void)
         }
     }
     source_debug_event("scope-leave", -1, "", debug_scopes[scope_depth], scope_depth, location);
+    alias_count = alias_floor[scope_depth];
     --scope_depth;
+    alias_scope = 2 + scope_depth;
 }
 
 
