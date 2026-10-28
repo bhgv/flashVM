@@ -209,7 +209,8 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             (((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) &&
               m->instructions[i].op != O_BOOL_LOCAL && m->instructions[i].op != O_BOOL_STORE &&
               m->instructions[i].op != O_BOOL_LOAD) ||
-             (m->instructions[i].type > T_CHANNEL && m->instructions[i].type != T_BOOL_SLOT)))
+             (m->instructions[i].type > T_CHANNEL && m->instructions[i].type != T_BOOL_SLOT &&
+              m->instructions[i].type != T_I32_SLOT && m->instructions[i].type != T_F64_SLOT)))
         {
             snprintf(error, cap, "table/big operations require a table-capable backend");
             return 0;
@@ -267,6 +268,22 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             break;
         case O_F64:
             real(&actions, in->real);
+            break;
+        case O_I32_LOCAL:
+            integer(&actions, 0);
+            break;
+        case O_F64_LOCAL:
+            real(&actions, 0.0);
+            break;
+        case O_I32_STORE:
+        case O_F64_STORE:
+            variable(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, 0x1d);
+            break;
+        case O_I32_LOAD:
+        case O_F64_LOAD:
+            load(&actions, m, in->a);
             break;
         case O_BOOL_LOCAL:
             /* Private frame cell: its object-local variable holds the bool directly. */

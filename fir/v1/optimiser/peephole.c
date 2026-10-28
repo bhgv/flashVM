@@ -176,15 +176,15 @@ static int forward_scalar_loads(FirModule *module)
             memset(known, -1, sizeof(known));
             block = in->block;
         }
-        if (in->op == O_BIG_LOCAL || in->op == O_BOOL_LOCAL)
+        if (in->op == O_I32_LOCAL || in->op == O_F64_LOCAL || in->op == O_BIG_LOCAL || in->op == O_BOOL_LOCAL)
         {
             known[in->result] = -1;
         }
-        else if (in->op == O_BIG_STORE || in->op == O_BOOL_STORE)
+        else if (in->op == O_I32_STORE || in->op == O_F64_STORE || in->op == O_BIG_STORE || in->op == O_BOOL_STORE)
         {
             known[in->a] = in->b;
         }
-        else if (in->op == O_BIG_LOAD || in->op == O_BOOL_LOAD)
+        else if (in->op == O_I32_LOAD || in->op == O_F64_LOAD || in->op == O_BIG_LOAD || in->op == O_BOOL_LOAD)
         {
             int cell = in->a;
             if (known[cell] >= 0)
@@ -233,7 +233,7 @@ static int remove_overwritten_scalar_stores(FirModule *module)
             memset(overwritten, 0, sizeof(overwritten));
             block = in->block;
         }
-        if (in->op == O_BIG_STORE || in->op == O_BOOL_STORE)
+        if (in->op == O_I32_STORE || in->op == O_F64_STORE || in->op == O_BIG_STORE || in->op == O_BOOL_STORE)
         {
             if (overwritten[in->a])
             {
@@ -242,11 +242,11 @@ static int remove_overwritten_scalar_stores(FirModule *module)
             }
             overwritten[in->a] = 1;
         }
-        else if (in->op == O_BIG_LOAD || in->op == O_BOOL_LOAD)
+        else if (in->op == O_I32_LOAD || in->op == O_F64_LOAD || in->op == O_BIG_LOAD || in->op == O_BOOL_LOAD)
         {
             overwritten[in->a] = 0;
         }
-        else if (in->op == O_BIG_LOCAL || in->op == O_BOOL_LOCAL)
+        else if (in->op == O_I32_LOCAL || in->op == O_F64_LOCAL || in->op == O_BIG_LOCAL || in->op == O_BOOL_LOCAL)
         {
             overwritten[in->result] = 0;
         }

@@ -363,6 +363,8 @@ PRODUCTIONS
     (
         "void"
         | "bool"
+        | "i32.slot" /* Private signed32 cell; semantic checks belong to verifier. */
+        | "f64.slot" /* Private binary64 cell; semantic checks belong to verifier. */
         | "bool.slot" /* Private normalized boolean cell; verifier controls escape. */
         | "i8"
         | "u8"

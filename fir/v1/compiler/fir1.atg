@@ -263,6 +263,8 @@ PRODUCTIONS
         | "table.cell"
         | "keys.cell"
         | "key.cell"
+        | "i32.slot"
+        | "f64.slot"
     )
                                                                         (. capture(B_TYPE); .)
   .
@@ -292,6 +294,10 @@ PRODUCTIONS
     | "string.slice" (. fir_build_op(O_STRING_SLICE); .) A "," B
     | "big.local" (. fir_build_op(O_BIG_LOCAL); .)
     | "big.load" (. fir_build_op(O_BIG_LOAD); .) A
+    | "i32.local" (. fir_build_op(O_I32_LOCAL); .)
+    | "i32.load" (. fir_build_op(O_I32_LOAD); .) A
+    | "f64.local" (. fir_build_op(O_F64_LOCAL); .)
+    | "f64.load" (. fir_build_op(O_F64_LOAD); .) A
     | "bool.local" (. fir_build_op(O_BOOL_LOCAL); .)
     | "bool.load" (. fir_build_op(O_BOOL_LOAD); .) A
     | "const.i64" (. fir_build_op(O_I64); .) number (. capture(B_LITERAL); .)
@@ -402,6 +408,8 @@ PRODUCTIONS
     | "big.store" (. fir_build_op(O_BIG_STORE); .) A "," B
     | "table.lock" (. fir_build_op(O_TABLE_LOCK); .) A
     | "table.unlock" (. fir_build_op(O_TABLE_UNLOCK); .) A
+    | "i32.store" (. fir_build_op(O_I32_STORE); .) A "," B
+    | "f64.store" (. fir_build_op(O_F64_STORE); .) A "," B
     | "bool.store" (. fir_build_op(O_BOOL_STORE); .) A "," B
     | "table.splice" (. fir_build_op(O_TABLE_SPLICE); .) A "," B
     | "table.store" (. fir_build_op(O_TABLE_STORE); .) A "," B

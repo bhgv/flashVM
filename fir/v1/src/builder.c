@@ -213,9 +213,9 @@ void fir_build_token(int role, const char *text, int line)
     FirModule *m = active->module;
     FirInstruction *in = &active->instruction;
     static const char *const types[] = {
-        "void",        "i32",          "f64",        "bool",        "string",     "any",       "channel",
-        "i64",         "table.big",    "table.slot", "big.range",   "keys",       "table.key", "bool.slot",
-        "table.range", "string.range", "i64.slot",   "string.cell", "table.cell", "keys.cell", "key.cell"};
+        "void",      "i32",         "f64",        "bool",      "string",    "any",       "channel",     "i64",
+        "table.big", "table.slot",  "big.range",  "keys",      "table.key", "bool.slot", "table.range", "string.range",
+        "i64.slot",  "string.cell", "table.cell", "keys.cell", "key.cell",  "i32.slot",  "f64.slot"};
     int index;
     if (active->failed)
     {
@@ -265,14 +265,14 @@ void fir_build_token(int role, const char *text, int line)
     }
     if (role == B_TYPE)
     {
-        for (index = T_I32; index <= T_KEY_CELL; ++index)
+        for (index = T_I32; index <= T_F64_SLOT; ++index)
         {
             if (!strcmp(types[index], text))
             {
                 break;
             }
         }
-        if (index > T_KEY_CELL || in->result < 0)
+        if (index > T_F64_SLOT || in->result < 0)
         {
             fir_build_error("invalid type", line);
             return;

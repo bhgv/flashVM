@@ -80,7 +80,9 @@ typedef enum
     T_STRING_CELL,  /* [GC:] Private retained string cell; initialized, noncopyable. */
     T_TABLE_CELL,   /* [GC:] Private retained table-of-big cell; initialized, noncopyable. */
     T_KEYS_CELL,    /* [GC:] Private retained key-sequence cell; initialized, noncopyable. */
-    T_KEY_CELL      /* [GC:] Private retained snapshot-key cell; owner plus scalar position. */
+    T_KEY_CELL,     /* [GC:] Private retained snapshot-key cell; owner plus scalar position. */
+    T_I32_SLOT,     /* Private mutable signed32 frame cell; no copy or escape. */
+    T_F64_SLOT      /* Private mutable binary64 frame cell; no GC pointer or escape. */
 } FirType;
 
 
@@ -180,7 +182,13 @@ typedef enum
     O_BOOL_EQ,           /* Compare two normalized bools; append-only ID. */
     O_F64_EQ,            /* IEEE binary64 equality; unordered is false. */
     O_F64_LT,            /* Ordered binary64 less-than; unordered is false. */
-    O_F64_LE             /* Ordered binary64 less-or-equal; unordered is false. */
+    O_F64_LE,            /* Ordered binary64 less-or-equal; unordered is false. */
+    O_I32_LOCAL,         /* Initialize a private signed32 cell to zero. */
+    O_I32_STORE,         /* Store one exact signed32 payload in its private cell. */
+    O_I32_LOAD,          /* Snapshot one private signed32 payload into SSA. */
+    O_F64_LOCAL,         /* Initialize a private binary64 cell to positive zero. */
+    O_F64_STORE,         /* Store a binary64 payload without retaining an owner. */
+    O_F64_LOAD           /* Snapshot a binary64 payload into immutable SSA. */
 } FirOp;
 
 

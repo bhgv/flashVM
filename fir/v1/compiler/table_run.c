@@ -137,11 +137,12 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if (in->op == O_F64 || (in->op >= O_FADD && in->op <= O_FDIV) || in->op == O_F64_EQ || in->op == O_F64_LT ||
-            in->op == O_F64_LE || in->op == O_BOOL_NOT || in->op == O_BOOL_EQ || in->op == O_I32_AND ||
-            in->op == O_I32_OR || in->op == O_I32_XOR || (in->op >= O_I64 && in->op <= O_REF_NIL) ||
-            (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING ||
-            in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
+        if ((in->op >= O_I32_LOCAL && in->op <= O_F64_LOAD) || in->op == O_F64 ||
+            (in->op >= O_FADD && in->op <= O_FDIV) || in->op == O_F64_EQ || in->op == O_F64_LT || in->op == O_F64_LE ||
+            in->op == O_BOOL_NOT || in->op == O_BOOL_EQ || in->op == O_I32_AND || in->op == O_I32_OR ||
+            in->op == O_I32_XOR || (in->op >= O_I64 && in->op <= O_REF_NIL) || (in->op >= O_ADD && in->op <= O_EQ) ||
+            in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF ||
+            in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
@@ -422,14 +423,26 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
         case O_REF_LOAD:
             *result = *a;
             break;
+        case O_F64_LOCAL:
+            result->real = 0.0;
+            break;
+        case O_F64_STORE:
+            a->real = b->real;
+            break;
+        case O_F64_LOAD:
+            result->real = a->real;
+            break;
+        case O_I32_LOCAL:
         case O_BIG_LOCAL:
         case O_BOOL_LOCAL:
             result->big = 0;
             break;
+        case O_I32_STORE:
         case O_BIG_STORE:
         case O_BOOL_STORE:
             a->big = b->big;
             break;
+        case O_I32_LOAD:
         case O_BIG_LOAD:
         case O_BOOL_LOAD:
             result->big = a->big;

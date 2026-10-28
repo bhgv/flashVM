@@ -22,7 +22,7 @@ int main(void)
         goto done;
     }
     if (O_F64_EQ != O_BOOL_EQ + 1 || O_F64_LT != O_F64_EQ + 1 || O_F64_LE != O_F64_LT + 1 ||
-        fir_effects((FirOp)(O_F64_LE + 1)) != FIR_ALL_EFFECTS)
+        fir_effects((FirOp)(O_F64_LOAD + 1)) != FIR_ALL_EFFECTS)
     {
         goto done;
     }

@@ -354,7 +354,7 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             }
         }
         else if (type != T_F64 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT &&
-                 type != T_BIG_SLOT && type != T_BIG_RANGE)
+                 type != T_I32_SLOT && type != T_F64_SLOT && type != T_BIG_SLOT && type != T_BIG_RANGE)
         {
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
@@ -400,11 +400,11 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && in->op != O_F64 && !(in->op >= O_FADD && in->op <= O_FDIV) &&
-                 in->op != O_F64_EQ && in->op != O_F64_LT && in->op != O_F64_LE && in->op != O_BOOL_NOT &&
-                 in->op != O_BOOL_EQ && in->op != O_I32_AND && in->op != O_I32_OR && in->op != O_I32_XOR &&
-                 !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD && in->op != O_SUB && in->op != O_MUL &&
-                 in->op != O_LT && in->op != O_EQ)
+                 !(in->op >= O_I32_LOCAL && in->op <= O_F64_LOAD) && in->op != O_RETURN && in->op != O_F64 &&
+                 !(in->op >= O_FADD && in->op <= O_FDIV) && in->op != O_F64_EQ && in->op != O_F64_LT &&
+                 in->op != O_F64_LE && in->op != O_BOOL_NOT && in->op != O_BOOL_EQ && in->op != O_I32_AND &&
+                 in->op != O_I32_OR && in->op != O_I32_XOR && !(in->op >= O_I64 && in->op <= O_REF_NIL) &&
+                 in->op != O_ADD && in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -483,7 +483,8 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     for (index = 0; index < cells(module, source); index++)
     {
         int pointer = index == 0 && type != T_F64 && type != T_I64 && type != T_I32 && type != T_BOOL &&
-                      type != T_BOOL_SLOT && type != T_BIG_SLOT && type != T_BIG_RANGE;
+                      type != T_BOOL_SLOT && type != T_I32_SLOT && type != T_F64_SLOT && type != T_BIG_SLOT &&
+                      type != T_BIG_RANGE;
         if (type == T_TABLE_SLOT && index == 1)
         {
             pointer = key == T_STRING || key == T_TABLE_KEY;
@@ -623,6 +624,20 @@ static void body(Emitter *e, FirModule *module, int measure)
             break;
         case O_BIG_LOAD:
             instruction(e, MOVL, FP, a, FP, d, 0, -1);
+            break;
+        case O_I32_LOCAL:
+            instruction(e, MOVW, IMM, 0, FP, d, 0, -1);
+            break;
+        case O_F64_LOCAL:
+            instruction(e, MOVL, IMM, 0, FP, d, 0, -1);
+            break;
+        case O_I32_STORE:
+        case O_F64_STORE:
+            instruction(e, in->op == O_I32_STORE ? MOVW : MOVF, FP, b, FP, a, 0, -1);
+            break;
+        case O_I32_LOAD:
+        case O_F64_LOAD:
+            instruction(e, in->op == O_I32_LOAD ? MOVW : MOVF, FP, a, FP, d, 0, -1);
             break;
         case O_BOOL_LOCAL:
             instruction(e, MOVW, IMM, 0, FP, d, 0, -1);

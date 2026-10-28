@@ -35,11 +35,17 @@ unsigned fir_effects(FirOp op)
     case O_STRING_CONCAT:
     case O_STRING_SLICE:
         return FIR_READS_MEMORY | FIR_ALLOCATES | FIR_MAY_THROW;
+    case O_I32_LOCAL:
+    case O_F64_LOCAL:
+    case O_I32_STORE:
+    case O_F64_STORE:
     case O_BIG_LOCAL:
     case O_BIG_STORE:
     case O_BOOL_LOCAL:
     case O_BOOL_STORE:
         return FIR_WRITES_MEMORY;
+    case O_I32_LOAD:
+    case O_F64_LOAD:
     case O_BIG_LOAD:
     case O_BOOL_LOAD:
         return FIR_READS_MEMORY;

@@ -185,6 +185,12 @@ static int supported(
             }
             (*count)++;
             break;
+        case O_I32_LOCAL:
+        case O_I32_LOAD:
+        case O_I32_STORE:
+        case O_F64_LOCAL:
+        case O_F64_LOAD:
+        case O_F64_STORE:
         case O_BOOL_NOT:
         case O_BOOL_LOCAL:
         case O_BOOL_STORE:
@@ -324,7 +330,7 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
              (in->op >= O_TABLE_RANGE && in->op <= O_REF_NIL) || (in->op >= O_STRING_LEN && in->op <= O_STRING_SLICE) ||
              in->op == O_STRING_CONCAT || in->op == O_STRING_EQ || in->op == O_STRING_LT ||
              (module->source_semantics == FIR_LIMBO_TABLES && in->type == T_STRING) ||
-             (in->type >= T_TABLE_BIG && in->type != T_BOOL_SLOT)))
+             (in->type >= T_TABLE_BIG && in->type != T_BOOL_SLOT && in->type != T_I32_SLOT && in->type != T_F64_SLOT)))
         {
             return fir_dis_table(output, module, error, capacity);
         }
@@ -363,6 +369,32 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         case O_BOOL_NOT:
             /* The verifier admits only normalized bools; xor with one stays normalized. */
             instruction(output, DIS_XORW, DIS_IMMEDIATE, 1, DIS_FP, destination, (int)slot(current->a));
+            break;
+        case O_I32_LOCAL:
+            instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
+            break;
+        case O_F64_LOCAL:
+            instruction(output, DIS_MOVL, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
+            break;
+        case O_I32_STORE:
+        case O_F64_STORE:
+            instruction(output,
+                        current->op == O_I32_STORE ? DIS_MOVW : DIS_MOVF,
+                        DIS_FP,
+                        slot(current->b),
+                        DIS_FP,
+                        slot(current->a),
+                        -1);
+            break;
+        case O_I32_LOAD:
+        case O_F64_LOAD:
+            instruction(output,
+                        current->op == O_I32_LOAD ? DIS_MOVW : DIS_MOVF,
+                        DIS_FP,
+                        slot(current->a),
+                        DIS_FP,
+                        destination,
+                        -1);
             break;
         case O_BOOL_LOCAL:
             instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
