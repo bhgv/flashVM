@@ -43,19 +43,20 @@ optimization. Division requires SWL >=0.3.2.
 
 [Limbo lexical blocks / Лексические блоки](LEXICAL_SCOPES.md).
 
-## Limbo terminal decisions 0.7.0
+## Structured Limbo control flow, source CLI 0.24
 
-After the prelude, accept return or `if (a relation b) { result } else { result }`,
-where each result is another terminal result. Both numeric operands are evaluated
-once; relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Compiler 0.22 admits lexical declarations/assignments inside int and big/table arms;
-[terminal-arm rules](TERMINAL_ARMS.md) retain the ban on continuation after the decision.
-The big/table profile now supports [comparison values and !](COMPARISON_VALUES.md);
-compiler 0.24 additionally supports [lazy &&/||](SHORT_CIRCUIT.md);
-no phi or merged environment is invented. Limits are shared depth 64 and at most
-127 terminal decisions within 1000 SSA values. All terminal/logical blocks
-share the 256-block budget including entry. Coco/R productions
-LimboResult/LimboCondition/Relation in [src1.atg](../compiler/src1.atg) call
-[lower.c](../compiler/lower.c). [Example and both backends](../examples/dis/README.md).
+The int/real profiles accept initialized declarations, assignments, lexical blocks,
+if/else (including omitted else and else-if), while, innermost break/continue and
+return. Open branches rejoin through explicit private numeric cells; terminal
+branches keep no fallthrough edge. A conservative loop exit requires a later
+return even when its test is constant true. Numeric for, mixed casts and source
+calls remain unsupported. [Exact flow/cell contract](NUMERIC_FLOW.md).
+
+Conditions use the shared [grouped precedence hierarchy](GROUPED_CONDITIONS.md).
+Coco/R FlowBody/FlowCondition and numeric/table repetition FIRST sets stay separate;
+unsupported statement starters reject without non-consuming recovery loops.
+Source limits remain 64 KiB, 1000 SSA values, depth 64 and 256 shared blocks.
+Synthetic cells are compiler-owned, scalar and nonescaping. [Examples](../examples/dis/README.md).
 
 ## Homogeneous Limbo real, 0.9.0
 
@@ -64,14 +65,14 @@ Coco/R ResultType/BindingType select the profile. All function values are real:
 explicit `x: real = 2.5`, inferred `x := 2.5`, assignments and lexical blocks.
 Supported operators are + - * /, unary signs and return; # remains a Limbo comment.
 Decimal literals need a fraction or exponent. Integer/radix/hex literals, int
-locals and mixed numeric casts are rejected. Ordered terminal real comparisons/decisions are supported by the [current real condition contract](REAL_CONDITIONS.md). This is a bounded
-profile, not a general Limbo type system. int functions retain the old profile.
+locals and mixed numeric casts are rejected. Grouped comparisons, if/else joins and while are supported by the [current real condition contract](REAL_CONDITIONS.md). This is a bounded
+profile, not a general Limbo type system. int functions use the same structured flow with exact i32 arithmetic.
 `real` remains a valid AS1/2/3 variable name, but is a Limbo type keyword.
 The new `limbo_real` provenance survives print/opt and reaches SWO/SWF or Dis.
 [Commented example](../examples/dis/README.md#limbo-real).
 
-Literal range errors are rejected too, including underflow when host strtod sets
-errno. This is a limitation of the current bounded numeric profile.
+Nonzero finite subnormal literals are accepted even when host strtod reports
+ERANGE. Overflow and underflow rounded to zero remain source errors.
 
 ## Typed table extension
 
@@ -91,3 +92,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 [Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).
 
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.56](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).
+
+FIR 0.57: [current numeric flow EN](NUMERIC_FLOW.md) / [текущий числовой CFG RU](NUMERIC_FLOW.ru.md).

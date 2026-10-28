@@ -68,7 +68,7 @@ Only static compiler metadata and existing scalar bool instructions are used.
 There is no new FIR opcode, Dis opcode, object/container format, frame layout,
 GC root or cross-heap pointer. The existing Dis and SWO/SWL backends execute the
 same raw/optimized CFG. This does not complete the Limbo compiler, final debug
-PC maps, nonterminal numeric CFG or IDE Build/Run/Debug panels.
+PC maps, general numeric for/calls or IDE Build/Run/Debug panels.
 
 ## Tutorials and reproducible commands
 
@@ -100,3 +100,5 @@ NaN, masking/precedence, comments, every unary/logical origin, type/limit reject
 and unchanged output. The public C99 fixture interleaves 16 successful compilations
 with 24 located transactional rejections. Runtime checks inspect actual interpreter/
 native counters, exact captures and owners. Physical ARM64/RV64 remains separate.
+
+FIR 0.57: [numeric cells/if/while EN](NUMERIC_FLOW.md) / [числовые ячейки/if/while RU](NUMERIC_FLOW.ru.md).

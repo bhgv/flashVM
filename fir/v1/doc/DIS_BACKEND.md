@@ -23,9 +23,9 @@ The Coco/R numeric Limbo adapter additionally accepts terminal decision trees:
 after its ordinary prelude, either `return expression;` or a braced
 `if (expression relation expression) { result } else { result }`, recursively.
 Relations are `<`, `==`, `>`, `!=`, `<=`, `>=`. Every arm returns. Compiler 0.22 admits lexical
-declarations/assignments inside arms; continuation after a decision remains unsupported.
+declarations/assignments inside arms; FIR 0.57 adds continuation/while via [private numeric cells](NUMERIC_FLOW.md).
 See [terminal-arm semantics](TERMINAL_ARMS.md).
-Consequently no phi/join environment is silently invented. Source limits remain
+Joins use explicit private cells, without inventing phi values. Source limits remain
 64 KiB, 1000 values, shared nesting depth 64; at most 127 decisions introduce
 255 blocks. `-g DEBUG.json` records comparison-operator and `if` keyword spans.
 
@@ -191,7 +191,7 @@ See [the numeric AS3 example](../examples/dis/README.md#binary64-as-source).
 
 Our Coco/R Limbo adapter now additionally admits a homogeneous `value(): real`
 profile: decimal real constants, typed/inferred real locals, lexical scopes,
-assignments, + - * /, return and ordered terminal real comparisons/decisions. Mixed numeric casts and nonterminal real CFG remain outside this bounded profile. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
+assignments, + - * /, return and ordered terminal real comparisons/decisions. Mixed numeric casts remain outside this bounded profile; FIR 0.57 adds [nonterminal numeric CFG](NUMERIC_FLOW.md). [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
 
 Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
 обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
@@ -205,3 +205,5 @@ assignments, + - * /, return and ordered terminal real comparisons/decisions. Mi
 [Compiler 0.41](FUNCTION_FLOW.md) extends structured conditions and blocks to function scope.
 
 [Ordered real condition contract EN](REAL_CONDITIONS.md) / [RU](REAL_CONDITIONS.ru.md) documents f64.eq/lt/le, existing Dis real branches and exact NaN-safe SWF emission.
+
+[Private numeric cells and source flow EN](NUMERIC_FLOW.md) / [RU](NUMERIC_FLOW.ru.md).

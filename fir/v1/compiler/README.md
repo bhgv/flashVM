@@ -51,3 +51,5 @@ Compiler 0.30 / Компилятор 0.30: [ordered strings and checked int cast
 Compiler 0.31 / Компилятор 0.31: [hybrid table constructors](../doc/TABLE_LITERALS.md), [русское руководство](../doc/TABLE_LITERALS.ru.md).
 
 Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](../doc/RELATIVE_SEQUENCES.md), [русское руководство](../doc/RELATIVE_SEQUENCES.ru.md).
+
+[Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](../doc/NUMERIC_FLOW.md) · [Русский](../doc/NUMERIC_FLOW.ru.md).

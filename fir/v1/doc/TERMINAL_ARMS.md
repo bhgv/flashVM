@@ -1,5 +1,7 @@
 # Lexical terminal arms — compiler 0.22
 
+This page describes the original terminal subset. FIR 0.57 additionally supports [numeric joins/while](NUMERIC_FLOW.md); the old terminal examples remain valid.
+
 [Русский](TERMINAL_ARMS.ru.md) · [Commented example](../examples/tables/arms.b) ·
 [Examples](../examples/tables/README.md) · [Table operations](TABLE_MUTATION.md)
 

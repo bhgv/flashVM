@@ -15,3 +15,5 @@
 [Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](NUMERIC_LOGIC.md) · [Русский](NUMERIC_LOGIC.ru.md).
 
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.56](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).
+
+[Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](NUMERIC_FLOW.md) · [Русский](NUMERIC_FLOW.ru.md).

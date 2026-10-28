@@ -3,7 +3,7 @@
 [English](NUMERIC_LOGIC.md) · [Упорядоченный real](REAL_CONDITIONS.ru.md) · [Покрытие](COVERAGE.ru.md) · [Limbo с построчными комментариями](../examples/dis/numeric-logic.b) · [Bool-ячейки FIR](../examples/dis/numeric-logic.fir)
 
 Однородные функции Limbo `value(): int` и `value(): real` принимают составные
-условия завершающего `if/else`. Каждая ветвь по-прежнему обязана вернуть значение.
+условия структурного `if/else`. Каждый достижимый выход функции обязан вернуть значение.
 Парсер строится из читаемой грамматики Coco/R; CLI и библиотека вызывают одни
 семантические действия. Профиль `big` сохраняет прежний расширенный синтаксис.
 
@@ -78,3 +78,5 @@ FIR_FLASHVM_RUNNER проверяется настоящий связанный 
 16 компиляций библиотеками; перенесённый SDK сравнивает CLI/library Dis и запускает
 этот учебник. Физическая ARM64, полный Limbo и панели Build/Run/Debug IDE остаются
 отдельной работой.
+
+FIR 0.57: [numeric cells/if/while EN](NUMERIC_FLOW.md) / [числовые ячейки/if/while RU](NUMERIC_FLOW.ru.md).

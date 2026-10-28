@@ -19,15 +19,13 @@ LLVM или внешнюю VM для генерации кода. Парсеры
 переносятся из идентификаторов FIR-блоков в окончательные **PC инструкций Dis**,
 включая оптимизацию и разные длины файловых операндов.
 
-Наш Coco/R-профиль числового Limbo дополнительно принимает терминальные деревья
-решений. После обычного пролога: `return expression;` либо
-`if (expression relation expression) { result } else { result }`, рекурсивно.
-Сравнения: `<`, `==`, `>`, `!=`, `<=`, `>=`. Каждая ветка возвращает значение;
-компилятор 0.22 принимает объявления/присваивания внутри ветвей, но не продолжение
-после решения. [Семантика областей](TERMINAL_ARMS.ru.md).
-Phi и слияние окружений не подменяются эвристикой. Пределы: 64 КиБ, 1000 значений,
-общая глубина 64 и до 127 решений/255 блоков. `-g DEBUG.json` отмечает байтовые
-диапазоны операторов сравнения и ключевых слов `if`.
+Наш Coco/R-профиль int/real поддерживает структурные if/else и while, включая
+слияние ветвей, break/continue ближайшего цикла и ранний return. Значения между
+рёбрами переносятся через явно типизированные приватные ячейки, без неявных phi.
+Обычные терминальные примеры остаются корректным подмножеством.
+[Числовые ячейки и CFG](NUMERIC_FLOW.ru.md). Лимиты исходника: 64 КиБ, 1000 SSA,
+общая глубина 64 и 256 блоков. `-g DEBUG.json` сохраняет исходные UTF-8-позиции
+сравнений, while и переходов; это ещё не окончательная PC-карта отладчика.
 
 Числовые AS1/2/3 теперь также доходят до Dis через явные операции f64; профиль
 исходного языка сохраняется. Динамические `as.add`/`as.to_number`, строки, каналы,
@@ -181,7 +179,7 @@ real-инструкции Dis. Константы передаются точн�
 
 Our Coco/R Limbo adapter now additionally admits a homogeneous `value(): real`
 profile: decimal real constants, typed/inferred real locals, lexical scopes,
-assignments, + - * /, return and ordered terminal real comparisons/decisions. Mixed numeric casts and nonterminal real CFG remain outside this bounded profile. [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
+assignments, + - * /, return and ordered terminal real comparisons/decisions. Mixed numeric casts remain outside this bounded profile; FIR 0.57 adds [nonterminal numeric CFG](NUMERIC_FLOW.md). [Exact grammar coverage](SOURCE_SYNTAX.md#homogeneous-limbo-real-090).
 
 Наш Limbo real — ограниченный однородный профиль с явными real-литералами;
 обычные int-функции и их терминальные ветвления сохраняют прежнюю семантику.
@@ -195,3 +193,5 @@ assignments, + - * /, return and ordered terminal real comparisons/decisions. Mi
 [Компилятор 0.41](FUNCTION_FLOW.ru.md) распространяет структурированные условия и блоки на уровень функции.
 
 [Ordered real condition contract EN](REAL_CONDITIONS.md) / [RU](REAL_CONDITIONS.ru.md) documents f64.eq/lt/le, existing Dis real branches and exact NaN-safe SWF emission.
+
+[Private numeric cells and source flow EN](NUMERIC_FLOW.md) / [RU](NUMERIC_FLOW.ru.md).

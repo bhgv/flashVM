@@ -2,8 +2,8 @@
 
 [Русский](NUMERIC_LOGIC.ru.md) · [Ordered real contract](REAL_CONDITIONS.md) · [Coverage](COVERAGE.md) · [Line-commented Limbo](../examples/dis/numeric-logic.b) · [Line-commented FIR cells](../examples/dis/numeric-logic.fir)
 
-Homogeneous Limbo int/real functions now compose terminal if/else conditions with
-lazy `&&`, `||` and `!(...)`. Each arm must still return. Coco/R owns all parsing;
+Homogeneous Limbo int/real functions now compose structured if/else conditions with
+lazy `&&`, `||` and `!(...)`. Every reachable function exit must return. Coco/R owns all parsing;
 CLI and C99 libraries invoke the same lowering actions. The big/table profile
 retains its existing richer expression grammar.
 
@@ -76,3 +76,5 @@ and FIR_FLASHVM_RUNNER enable actual linked SWF execution. A C99 client compiles
 16 times through public libraries. Relocated SDK acceptance compares CLI/library
 Dis and runs the source tutorial in both modes. Physical ARM64, complete Limbo
 and IDE Build/Run/Debug panels remain separate milestones.
+
+FIR 0.57: [numeric cells/if/while EN](NUMERIC_FLOW.md) / [числовые ячейки/if/while RU](NUMERIC_FLOW.ru.md).

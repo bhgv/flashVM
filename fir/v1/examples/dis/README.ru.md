@@ -175,3 +175,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [Lazy numeric conditions / Ленивые числовые условия — FIR 0.55](../../doc/NUMERIC_LOGIC.md) · [Русский](../../doc/NUMERIC_LOGIC.ru.md).
 
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.56](../../doc/GROUPED_CONDITIONS.md) · [Русский](../../doc/GROUPED_CONDITIONS.ru.md).
+
+[Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](../../doc/NUMERIC_FLOW.md) · [Русский](../../doc/NUMERIC_FLOW.ru.md).

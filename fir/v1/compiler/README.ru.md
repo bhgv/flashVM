@@ -39,3 +39,5 @@ SWF-цель понижает числовой AS3 в AVM1, не ABC; пряма
 [Backend Dis 0.9.0: скалярный CFG со значениями и флагами исполнения](../doc/DIS_BACKEND.ru.md).
 
 [Нативная арифметика big и точная семантика оптимизатора](../doc/BIG_ARITHMETIC.ru.md).
+
+[Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](../doc/NUMERIC_FLOW.md) · [Русский](../doc/NUMERIC_FLOW.ru.md).

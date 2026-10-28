@@ -2,7 +2,7 @@
 
 [Русский](REAL_CONDITIONS.ru.md) · [Line-commented Limbo tutorial](../examples/dis/real-conditions.b) · [Line-commented unordered FIR](../examples/dis/real-unordered.fir) · [Coverage](COVERAGE.md) · [Typed int/bool predicates](TYPED_PREDICATES.md)
 
-The homogeneous Limbo `value(): real` profile now supports terminal `if (...) { ... } else { ... }` decisions, including bounded nested decisions and arm-local aliases/bindings. Every arm still returns. Arithmetic operands remain homogeneous binary64: there is no implicit int conversion, numeric truthiness, first-class real comparison local, loop/join extension or general module-call ABI in this profile. The authoritative Coco/R source grammar invokes the same C99 semantic actions for CLI and library users.
+The homogeneous Limbo `value(): real` profile now supports terminal `if (...) { ... } else { ... }` decisions, including bounded nested decisions and arm-local aliases/bindings. The original terminal examples still return from every arm; FIR 0.57 also supports [numeric joins/while](NUMERIC_FLOW.md). Arithmetic operands remain homogeneous binary64: there is no implicit int conversion, numeric truthiness, first-class real comparison local, general module-call ABI in this profile. The authoritative Coco/R source grammar invokes the same C99 semantic actions for CLI and library users.
 
 | Source relation | FIR predicate |
 | --- | --- |

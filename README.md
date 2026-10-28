@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1667**. [Русская версия](README.ru.md).
+Development version: **0.1668**. [Русская версия](README.ru.md).
 
-Current series: [v0.1667](docs/releases/v0.1667.md): grouped typed conditions, numeric boundary guards, checked Inferno compiler uses and portable IDE directory fixtures.
+Current series: [v0.1668](docs/releases/v0.1668.md): structured numeric Limbo flow, private scalar FIR cells, Dis/SWF execution and checked Inferno scope binding.
 
 ## Browse documentation
 
