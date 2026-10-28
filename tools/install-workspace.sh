@@ -99,7 +99,9 @@ frontend() {
     libraries "$base" "$destination"
     copy_file "$ROOT/compiler/$language/frontend/frontend.h" "$destination/include/frontend.h"
     if [[ "$language" == limbo ]]; then
-        for header in interface.h signature.h native.h; do
+        copy_file "$ROOT/compiler/limbo/frontend/ALIASES.md" "$destination/ALIASES.md"
+        copy_file "$ROOT/compiler/limbo/frontend/ALIASES.ru.md" "$destination/ALIASES.ru.md"
+        for header in interface.h signature.h resolve.h native.h; do
             copy_file "$ROOT/compiler/limbo/frontend/$header" "$destination/include/$header"
         done
         copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/NATIVE_C.md"
@@ -111,6 +113,7 @@ frontend() {
         copy_file "$ROOT/compiler/limbo/examples/Syntax.b" "$destination/examples/Syntax.b"
         copy_file "$ROOT/compiler/limbo/examples/NativeExample.m" "$destination/examples/NativeExample.m"
         copy_tree "$ROOT/compiler/limbo/examples/external-modules" "$destination/examples/external-modules"
+        "${PYTHON:-python3}" "$ROOT/tools/link-installed-limbo-docs.py" "$ROOT" "$destination"
     elif [[ "$language" == as3 ]]; then
         sample=Counter.as
         copy_file "$ROOT/compiler/as3/examples/Counter.as" "$destination/examples/Counter.as"

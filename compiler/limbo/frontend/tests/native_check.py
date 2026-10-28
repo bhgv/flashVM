@@ -88,7 +88,7 @@ def main():
             run(command, success=cell == 8)
         unsupported = [
             'Bad: module { value: fn(x: array of byte): int; };',
-            'Bad: module { Alias: type int; value: fn(x: Alias): int; };',
+            'Bad: module { Alias: type array of int; value: fn(x: Alias): int; };',
             'Bad: module { value: fn(x: int, *): int; };',
             'Bad: module { value: fn(register: int): int; };',
             'Bad: module { value: fn(x: int) raises Problem; };',
@@ -105,6 +105,36 @@ def main():
             run([generator,'--format','native-c-nc64',source,output],success=False)
             if output.read_text() != 'previous valid interface\n':
                 raise RuntimeError('unsupported ABI profile overwrote an existing C interface')
+        # Canonical native ABI must be independent of alias names, lexical shadows or forward chains.
+        aliases = ('Number: type big; Forward: type Number;\n'
+                   'Bridge: module { Number: type real; Big: type Forward; Small: type byte; Text: type string;\n')
+        spellings = {'byte': 'Small', 'big': 'Big', 'real': 'Number', 'string': 'Text', 'int': 'int'}
+        for name, (parameters, result) in definitions.items():
+            aliases += name + ': fn(' + ', '.join('arg%d: %s' % (index, spellings[kind])
+                                                  for index, kind in enumerate(parameters)) + ')'
+            aliases += ': ' + spellings[result] if result else ''
+            aliases += ';\n'
+        source.write_text(aliases + '};\n')
+        for profile, oracle in (('native-c-classic32', classic), ('native-c-nc64', nc64)):
+            run([generator, '--format', profile, source, output])
+            actual = records(output.read_text())
+            reference_header = work / ('bridge%d.h' % (4 if profile.endswith('classic32') else 8))
+            if output.read_bytes() != reference_header.read_bytes():
+                raise RuntimeError('alias spelling changed the canonical emitted C header')
+            if actual != records(reference_header.read_text()):
+                raise RuntimeError('aliases changed canonical ABI layout, signature or GC map')
+            if oracle and actual != records(run([oracle, '-a', '-t', 'Bridge', source])):
+                raise RuntimeError('aliased ABI differs from selected Inferno compiler')
+        for invalid in (
+                'Bad: module { A: type B; B: type A; value: fn(x: A); };',
+                'Bad: module { A: type Missing; value: fn(x: A); };',
+                'Bad: module { A: type Foreign.Value; value: fn(x: A); };',
+                'Bad: module { A: type Foreign[int]; value: fn(x: A); };'):
+            source.write_text(invalid)
+            output.write_text('previous valid interface\n')
+            run([generator, '--format', 'native-c-nc64', source, output], success=False)
+            if output.read_text() != 'previous valid interface\n':
+                raise RuntimeError('invalid alias graph replaced an existing native header')
         # A suffix alone is legal: reject real symbol collisions, not whole name families.
         source.write_text('Good: module { add_frame_size: fn(); add_offset_0: fn(); };')
         run([generator, '--format', 'native-c-nc64', source, output])

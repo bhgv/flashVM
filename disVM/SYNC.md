@@ -1,3 +1,18 @@
+# v0.1657 — Dial/file2chan synchronization and outer alias binding
+
+Current pin: **0ac9d293660a718cb3dbc3472e9c40d6b31cca8e**, **683 selected files**.
+Incoming 275bc64 bounds dial paths/counts and fixes relative clone translation;
+3ba10d2 captures file2chan frames/results and owners. Our confirmed reverse
+[0ac9d293](https://github.com/bhgv/Inferno-OS-bhgv/commit/0ac9d293660a718cb3dbc3472e9c40d6b31cca8e)
+rejects incomplete/oversized control writes before data opens or descriptor
+ownership transfers. Both full dial port bodies run ASan/UBSan fixtures.
+
+Our Coco/R outer alias binding is FlashVM-owned compiler work. Inferno already
+supports aliases; it receives only the shared native dial correction, not our
+frontend or Flash-specific extensions. [Release](../docs/releases/v0.1657.md).
+
+## Previous checkpoints
+
 # v0.1656 — Bidirectional Sys capture and pipe-layout synchronization
 
 Current pin: **9ee638bbfaff421164e2e7fb1d68e01089720c39**, **677 selected files**.

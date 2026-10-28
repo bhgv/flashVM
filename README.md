@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1656**. [Русская версия](README.ru.md).
+Development version: **0.1657**. [Русская версия](README.ru.md).
 
-Current series: [v0.1656](docs/releases/v0.1656.md): bidirectional Inferno synchronization, Sys.pipe element preflight and captured Sys host frames/results.
+Current series: [v0.1657](docs/releases/v0.1657.md): Coco/R outer-alias binding and canonical C interfaces; bidirectional Inferno dial/file2chan synchronization.
 
 ## Browse documentation
 

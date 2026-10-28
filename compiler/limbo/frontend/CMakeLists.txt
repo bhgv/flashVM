@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.10)
-project(limbo_frontend VERSION 0.9.1 LANGUAGES C)
+project(limbo_frontend VERSION 0.10.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -124,7 +124,7 @@ if(BUILD_TESTING)
 endif()
 
 # The declaration catalog consumes the existing Coco/R tree, not a second parser.
-add_library(limbo_interfaces interface.c signature.c native.c)
+add_library(limbo_interfaces interface.c signature.c resolve.c native.c)
 target_link_libraries(limbo_interfaces PUBLIC limbo_frontend)
 target_include_directories(limbo_interfaces PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
@@ -229,4 +229,17 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME limbo_native_c_interface COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_check.py" $<TARGET_FILE:limbo_bindings>)
+endif()
+
+# Alias semantics use explicit grammar identifier nodes and immutable catalog lookup.
+if(BUILD_TESTING)
+  add_executable(limbo_resolve_test tests/resolve.c)
+  target_link_libraries(limbo_resolve_test PRIVATE limbo_interfaces)
+  add_test(NAME limbo_alias_resolution COMMAND limbo_resolve_test)
+  add_library(limbo_resolve_fault OBJECT resolve.c)
+  target_include_directories(limbo_resolve_fault PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+  target_compile_definitions(limbo_resolve_fault PRIVATE malloc=limbo_resolver_test_malloc)
+  add_executable(limbo_resolve_alloc tests/resolve_alloc.c $<TARGET_OBJECTS:limbo_resolve_fault>)
+  target_link_libraries(limbo_resolve_alloc PRIVATE limbo_interfaces)
+  add_test(NAME limbo_alias_allocation_recovery COMMAND limbo_resolve_alloc)
 endif()

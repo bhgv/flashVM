@@ -1257,15 +1257,22 @@ PRODUCTIONS
   NamedType =
                                                                         (. limbo_tree_enter("NamedType", S_NextPos); .)
     (
-        ident TypeArguments
+        TypeIdentifier TypeArguments
         {
             (
                 "->"
                 | "."
             )
-            ident TypeArguments
+            TypeIdentifier TypeArguments
         }
     )
+                                                                        (. limbo_tree_leave(S_Pos + S_Len); .)
+  .
+
+  /* Preserve exact identifier token spans for semantic alias lookup; no source reparsing. */
+  TypeIdentifier =
+                                                                        (. limbo_tree_enter("TypeIdentifier", S_NextPos); .)
+    ident
                                                                         (. limbo_tree_leave(S_Pos + S_Len); .)
   .
 

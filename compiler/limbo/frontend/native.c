@@ -1,5 +1,6 @@
 /* Explicit native scalar ABI emission from authoritative Coco/R catalog nodes. */
 #include "native.h"
+#include "resolve.h"
 #include "native_md5.h"
 #include <stdlib.h>
 #include <string.h>
@@ -72,9 +73,10 @@ static int identifier(char destination[64], const char *source, size_t length)
     return 1;
 }
 
-/* Borrow catalog/node and resolve a direct primitive for the explicit cell target.
- * Return 1 and fill caller-owned out, or 0 leaving it unchanged. No allocation or VM access. */
-static int primitive(const LimboInterface *catalog, size_t node, unsigned cell, NativeType *out)
+/* Borrow catalog/scope/node and resolve a scalar primitive for the explicit target.
+ * Return 1 and fill caller-owned out, or 0 preserving it. Alias lookup uses temporary
+ * native name storage; nothing is retained and no VM state is accessed. */
+static int primitive(const LimboInterface *catalog, size_t scope, size_t node, unsigned cell, NativeType *out)
 {
     const char *kind = limbo_interface_type_kind(catalog, node);
     NativeType type = {"void", 'n', 0, 1, 0};
@@ -83,6 +85,11 @@ static int primitive(const LimboInterface *catalog, size_t node, unsigned cell, 
         *out = type;
         return 1;
     }
+    if (!limbo_interface_resolve_type(catalog, scope, node, &node, NULL))
+    {
+        return 0;
+    }
+    kind = limbo_interface_type_kind(catalog, node);
     if (!kind)
     {
         return 0;
@@ -256,6 +263,34 @@ int limbo_native_header(FILE *output, const LimboInterface *catalog, unsigned ce
         {
             continue;
         }
+        if (declaration.kind == LIMBO_ALIAS && (declaration.scope == module || declaration.scope == SIZE_MAX))
+        {
+            size_t node;
+            size_t resolved;
+            NativeType type;
+            LimboDiagnostic diagnostic;
+            if (!limbo_interface_declared_type(catalog, index, &node))
+            {
+                fail(error, capacity, "native alias has no type at %s", declaration.name);
+                goto done;
+            }
+            if (!limbo_interface_resolve_type(catalog, declaration.scope, node, &resolved, &diagnostic))
+            {
+                fail(error,
+                     capacity,
+                     "native alias %s at byte %ld: %s",
+                     declaration.name,
+                     diagnostic.offset,
+                     diagnostic.message);
+                goto done;
+            }
+            if (!primitive(catalog, declaration.scope, resolved, cell, &type))
+            {
+                fail(error, capacity, "native alias %s requires a scalar primitive", declaration.name);
+                goto done;
+            }
+            continue;
+        }
         if (declaration.kind != LIMBO_FUNCTION || declaration.scope != module || count == 128 ||
             !limbo_interface_signature(catalog, index, &signature) || signature.variadic || signature.polymorphic ||
             signature.parameter_count > 16)
@@ -281,7 +316,7 @@ int limbo_native_header(FILE *output, const LimboInterface *catalog, unsigned ce
         }
         function = &functions[count++];
         if (!identifier(function->name, declaration.name, strlen(declaration.name)) ||
-            !primitive(catalog, signature.result_node, cell, &function->result))
+            !primitive(catalog, module, signature.result_node, cell, &function->result))
         {
             fail(error, capacity, "unsupported native result/name at %s", declaration.name);
             goto done;
@@ -295,7 +330,7 @@ int limbo_native_header(FILE *output, const LimboInterface *catalog, unsigned ce
             NativeParameter *p = &function->parameters[parameter];
             unsigned previous;
             if (!limbo_interface_parameter(catalog, index, parameter, &item) || item.self_parameter ||
-                !primitive(catalog, item.type_node, cell, &p->type) || p->type.tag == 'n')
+                !primitive(catalog, module, item.type_node, cell, &p->type) || p->type.tag == 'n')
             {
                 fail(error, capacity, "unsupported native parameter at %s", declaration.name);
                 goto done;

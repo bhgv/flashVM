@@ -1,6 +1,6 @@
 # LIMBO
 
-Version 0.9.1. [Русский](README.ru.md).
+Version 0.10.0. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend with owned concrete production trees: [grammar and build](frontend/README.md),
@@ -91,3 +91,5 @@ on DisVM without a bootstrap emitter. It is a separate narrow profile; this
 syntax frontend has not become a full semantic compiler.
 
 [Native C interfaces from .m](frontend/NATIVE_C.md) / [Русский](frontend/NATIVE_C.ru.md).
+
+[Outer alias resolution / Внешние алиасы](frontend/ALIASES.md) · [RU](frontend/ALIASES.ru.md).

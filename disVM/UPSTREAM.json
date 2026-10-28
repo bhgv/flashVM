@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "9ee638bbfaff421164e2e7fb1d68e01089720c39",
+  "revision": "0ac9d293660a718cb3dbc3472e9c40d6b31cca8e",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -642,7 +642,13 @@
     "libinterp/tests/sys-status-capture.py",
     "libinterp/tests/sys-stream-directory-capture.py",
     "libinterp/tests/sys-pipe-types.py",
-    "libinterp/tests/README.sys-pipe-types.md"
+    "libinterp/tests/README.sys-pipe-types.md",
+    "emu/port/dial.c",
+    "emu/port/tests/README.dial-paths.md",
+    "emu/port/tests/dial-paths.c",
+    "emu/port/tests/dial-paths.py",
+    "libinterp/tests/sys-file2chan-capture.py",
+    "os/port/dial.c"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -676,12 +682,16 @@
     "upstream/emu/port/dat.h": "10a4ae201c07a0015f69f013d29c0047ef8061f6cf6c4f26774b1f2dc3b72212",
     "upstream/emu/port/devprog.c": "2a26b5708d4560c0f3da6ca24b107c163f755173b77483b675c1794b589468f9",
     "upstream/emu/port/devsrv.c": "a51e34e5ca0ef95664c852b701ac92b3f3964b511e9036f8cc6322ff25a077d8",
+    "upstream/emu/port/dial.c": "5b685e3c042e4a1172a3f3e09a29caf029c85a984257af0bc56522db9734e289",
     "upstream/emu/port/dis.c": "d80187cdc55b1622013922e1600e34a2020e4f647d52553ab701e1da7becead3",
     "upstream/emu/port/error.h": "66b8a66ad9306943c463ff6e908bccc6a49948793721b46ee6a83d6b5ce053a3",
     "upstream/emu/port/exception.c": "6f517d84ceccb75fa9d8995d8513126a5f9fe4d90acdcc127058afe4d251c5cd",
     "upstream/emu/port/fns.h": "3380dcdb01db0d57358b6322e0030984e09e5fdff209376c648891e9bf1fe41b",
-    "upstream/emu/port/inferno.c": "ddea950dfd94c70a6e982f340805f036948e4ba605fd5cf27d12a670ae54c471",
+    "upstream/emu/port/inferno.c": "f1e537895877afd5278d973b4a8ae4cce52b2fd4e1cdd76a1c2fee3694890b7f",
     "upstream/emu/port/srv.c": "8694e5b35bcb8c77734eb741f82a47d5b41b659d77ae787a34ab435657a390aa",
+    "upstream/emu/port/tests/README.dial-paths.md": "c703e998232dee84d534504c4a3144b8b669fac5e840551ddd1f37ed13238ff5",
+    "upstream/emu/port/tests/dial-paths.c": "996afd164c4c5c19b396b4deafa3a5c318c896ecc270ec0db8c483e6d19dd288",
+    "upstream/emu/port/tests/dial-paths.py": "2c2296f9b80db79bb7a88b831d367fa8e0fd3440fbf75dba2ea54d5b6bda8aa6",
     "upstream/include/NOTICE": "05e1a9688b3766a57b58a8a0dd84941366572e798d14fca255fcd7d817fd800d",
     "upstream/include/arm-fp.h": "aa07f8765c49ac9dcb94543599190b94811420a99e2037cadeb999d9c39f4466",
     "upstream/include/bio.h": "62dad44e0bf7846eaea75cf97b27c9777b562a3a82cfaaeded1803cb85307dd4",
@@ -867,7 +877,7 @@
     "upstream/libinterp/tests/README.string-view-native.md": "57e01972d4924e2e413a29299f26d55cd2c7330d4dfa3723c4a58dbb3774ca6a",
     "upstream/libinterp/tests/README.sys-dirread.md": "f3d6f7d841725471d076439dd8760938c5b439dc648314bd87d9c57beee8a84e",
     "upstream/libinterp/tests/README.sys-fd-owners.md": "84f41659b1b74117055143e0891d7f3efcd85ce8ad86399c312b0cf9844342cb",
-    "upstream/libinterp/tests/README.sys-file2chan.md": "a8d5025e8b97af8e9cd3c25bf1c5d74b16b94928195c380952f191a8dc1305a4",
+    "upstream/libinterp/tests/README.sys-file2chan.md": "174963ad37b32b70abadbf10690a347522d3d7cd525fe5530ccaf6e670332f09",
     "upstream/libinterp/tests/README.sys-io.md": "2c55e94d12e94abc2632558857755cb66f59da295ad02113861f82028ed70ee3",
     "upstream/libinterp/tests/README.sys-multi-capture.md": "ca921e0059c5bd46cd772ffac248a731437a5442023db8a74564407164634b48",
     "upstream/libinterp/tests/README.sys-pipe-types.md": "2a27853510655f87914b696a88069f8b6500b46d0e368d1540382efff78b2612",
@@ -1149,7 +1159,7 @@
     "upstream/libinterp/tests/shift-slot-native.c": "821e7dbfc23d58b7dfdb31399ec9d40fd8b2e2c7472ad30ae4f4d968d29a2c97",
     "upstream/libinterp/tests/shift-slot-native.py": "409f4ce8956e79b1ba662c3f99922c1ceb2446474878d3fe10a156fa1330216a",
     "upstream/libinterp/tests/slice-copy-native.c": "1743785750abea8e6ab45ca23c73364947d9e667d7b6dd38b8bb3872bf9d40f8",
-    "upstream/libinterp/tests/slice-tokenize-suite.py": "e55077833a32a92673466b52988666de552b8b7543c517402dbfa3e74e03c3f2",
+    "upstream/libinterp/tests/slice-tokenize-suite.py": "ed7f0b8c1587d51d9d18c3e66b5f03dc0833efec115d5718c9616cb4220c04ea",
     "upstream/libinterp/tests/spawn-preflight.c": "e41e72956364eec8aa8f503691dd0fbbae528fa454737e417e783c13be8d1956",
     "upstream/libinterp/tests/spawn-preflight.py": "b0f293bdb39d8d01bd9ba26182f0ae0053b6352c4abc5f513fc8710497b456c4",
     "upstream/libinterp/tests/srv-results.c": "3003cdc259fa6d0b2e9ab9639a696f100c71bbf7bce3d9b4540cbbb028ede115",
@@ -1212,8 +1222,9 @@
     "upstream/libinterp/tests/sys-dirread.py": "3e4484d65630447015a9f9bbf8b55543910d5bee67695574cfb5247a6f64aab2",
     "upstream/libinterp/tests/sys-fd-owners.c": "bf8c7097d2e1b19a9821110c0ce6f684ba1f2168e6423dd4593769810144f3e6",
     "upstream/libinterp/tests/sys-fd-owners.py": "67a125cd66b34b36e3b17ae3cf0d63f8418c61ac0641b1ecc0a5590e5b581fff",
-    "upstream/libinterp/tests/sys-file2chan.c": "e0986c601aee0ecd3825daec427c6385ba56be46fa93a028522b225ecdfd9bb3",
-    "upstream/libinterp/tests/sys-file2chan.py": "7d0b00900074420228e476c09d3056a611de2561677d239ba74299378cfd391e",
+    "upstream/libinterp/tests/sys-file2chan-capture.py": "42d6b7ae7ec698eed7a588324b73184483ed6227da232ab61e8b8f76b7b02035",
+    "upstream/libinterp/tests/sys-file2chan.c": "234b2e17f980b846837dfca1c40181e8b1f2570039772b6f9424c6a2ada58b32",
+    "upstream/libinterp/tests/sys-file2chan.py": "241400fd8f1fb1a6cad70be74d6e3dbf0562a740d266f99be1d323510a1baa31",
     "upstream/libinterp/tests/sys-io.c": "4df383b936448be267de71a4e6038bc8bbceba5d2bfca06961ff5644b47220b7",
     "upstream/libinterp/tests/sys-io.py": "300ee2694ff292fad7eccfa8d99ecb29721e39e7553f9db4f88fccdd66d6736d",
     "upstream/libinterp/tests/sys-multi-capture.py": "cea8ec7a823d8d472436b52f8f4ca3fb3b85e79ce6ab1a20366569481812435b",
@@ -1327,8 +1338,9 @@
     "upstream/module/sys.m": "c12f63fc5d5a8a4c877df32c01acb18a5589da7e309e67908de7d0976efa87af",
     "upstream/os/port/devprog.c": "34ffcaa28edc713bb62f5b815d17d22420c6c0e25b77fa4ce10e9c0a20da4546",
     "upstream/os/port/devsrv.c": "92586ca242ef20fc3893bfd3ccfbb35178a6b322cd4fbb49f4363ce851ccbf03",
+    "upstream/os/port/dial.c": "bf5659644d141f297e719b4c63e15df68229862ce6cb9e9eb1f512cdb48e35a7",
     "upstream/os/port/dis.c": "9f00d10d4e3efd242d4df3e98e841c436b7e270c9e783d17eb961a03b6ca5f2a",
     "upstream/os/port/exception.c": "c6d17e8529369dd11e14dbd50c0220f03409ac710d039c8cc3eff52b66e0dab6",
-    "upstream/os/port/inferno.c": "c338421ab909c29719fcf07985ed99453d4ee4cf1e0298135c89fa0cbd8856a3"
+    "upstream/os/port/inferno.c": "cd81202d5cea12597716fe0dbb96d98fd4bc627d62a47d0dd3b5b666c1e40c82"
   }
 }

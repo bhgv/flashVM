@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1656**. [English](README.md).
+Версия разработки: **0.1657**. [English](README.md).
 
-Текущая серия: [v0.1656](docs/releases/v0.1656.md): двусторонняя синхронизация Inferno, проверка элементов Sys.pipe и сохранение кадров/результатов Sys нашего хоста.
+Текущая серия: [v0.1657](docs/releases/v0.1657.md): связывание алиасов Coco/R и канонические C-интерфейсы; двусторонняя синхронизация dial/file2chan Inferno.
 
 ## Просмотр документации
 

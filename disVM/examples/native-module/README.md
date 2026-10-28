@@ -1,5 +1,9 @@
 # Writing a C module for our DisVM
 
+The .m now uses Value/Text scalar aliases. Our Coco/R binding pass resolves them
+to big/string and emits the same native ABI, with no handwritten C typedefs.
+[Semantics and API](../../../compiler/limbo/frontend/ALIASES.md).
+
 [Русский](README.ru.md) · [Native API guide](../../runtime/NATIVE_MODULES.md) ·
 [Our Coco/R C-interface generator](../../../compiler/limbo/frontend/NATIVE_C.md) ·
 [Contract](nativedemo.m) · [Every-line-commented C implementation](native.c) ·

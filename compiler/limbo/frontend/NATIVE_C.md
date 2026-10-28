@@ -6,8 +6,7 @@
 `limbo_bindings --format native-c-nc64 INPUT.m OUTPUT.h` emits native Dis C
 interfaces. `native-c-classic32` explicitly selects the classic four-byte-cell ABI.
 Neither mode invokes the bootstrap compiler. They consume the owned interface
-catalog built by our Coco/R grammar, then resolve the supported direct primitive
-types, compute layouts/signatures/maps and emit checked C. The library entry is
+catalog built by our Coco/R grammar, then resolve the supported primitive types and their unqualified scalar aliases, compute layouts/signatures/maps and emit checked C. The library entry is
 `limbo_native_header` in target `limbo_interfaces`; output NULL performs preflight.
 
 The existing `--format c` remains a value/descriptor external-call scaffold; its
@@ -31,10 +30,11 @@ determine map bits. Result values are published into caller-owned return storage
 Void exports carry `noret`, never a fabricated result pointer.
 
 Supported now: one top-level module, 1–128 exports, 0–16 arguments each, direct
-byte/int/big/real/string, scalar or void result, ASCII C-safe identifiers <=63 bytes.
+byte/int/big/real/string or their scalar aliases, scalar or void result, ASCII
+C-safe export identifiers <=63 bytes.
 Module constants are tolerated but are not emitted as C defines. Nil parameters
 receive generated argument names; collisions and C/reserved frame names fail.
-Includes, aliases, ADTs, composite types, self, varargs, polymorphic or raises
+Includes, ADTs, composite types, self, varargs, polymorphic or raises
 signatures are rejected before destination opening. No approximate metadata is
 produced for a type that needs unresolved layout or signature recursion.
 
@@ -69,3 +69,7 @@ handwritten parser or guessed C structures.
 Generated callback, frame typedef, size/offset check and registration names are
 checked together before output opens. Collisions (including native_abi, NativeExport
 or add/add_frame_size) preserve the old file; suffix names alone remain legal.
+
+Scalar aliases in module/file scope now resolve through the [binding pass](ALIASES.md).
+Qualified/generic/composite aliases remain outside this native profile. Source
+alias names do not become C typedefs or alter frame/signature/map metadata.

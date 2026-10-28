@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1657: our Coco/R interface library resolves outer aliases through lexical scopes; the native C backend emits canonical primitive ABI metadata. [EN](../../compiler/limbo/frontend/ALIASES.md) / [RU](../../compiler/limbo/frontend/ALIASES.ru.md). Inferno dial/file2chan updates and our published exact-control-write correction pin the core at 0ac9d293. Full body typing/FIR lowering, composite ABI and physical platform milestones remain open.
+
 Checkpoint v0.1656: six incoming Inferno Sys commits plus our published pipe element-layout correction pin the selected core at 9ee638bb. The NC64 host captures twelve Sys builtin frames/results and validates previous owners. [EN](../../disVM/runtime/SYS_CAPTURE.md) / [RU](../../disVM/runtime/SYS_CAPTURE.ru.md). Full Sys/native platform and Flash compatibility milestones remain open.
 
 Checkpoint v0.1655: detached editor paths render on a persistent background worker; latest-frame queue bounds stale work. Layout/AS/GC and SDL remain owner-only. [EN](RENDER_ASYNC.md) / [RU](RENDER_ASYNC.ru.md). Full SWF async rendering and physical platform acceptance remain open.

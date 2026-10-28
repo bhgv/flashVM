@@ -1,6 +1,6 @@
 # LIMBO
 
-Версия 0.9.1. [English](README.md).
+Версия 0.10.0. [English](README.md).
 
 Независимый проект компилятора на C99. Сейчас реализован синтаксический
 фронтенд: [грамматика, сборка и ограничения](frontend/README.ru.md).
@@ -92,3 +92,5 @@ Include-файлы не раскрываются; cast по именованно
 фронтенд не стал полным семантическим компилятором.
 
 [Native C interfaces from .m](frontend/NATIVE_C.md) / [Русский](frontend/NATIVE_C.ru.md).
+
+[Outer alias resolution / Внешние алиасы](frontend/ALIASES.md) · [RU](frontend/ALIASES.ru.md).

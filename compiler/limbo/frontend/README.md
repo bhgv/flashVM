@@ -1,6 +1,6 @@
 # LIMBO syntax frontend
 
-Version 0.9.1. [Русская версия](README.ru.md).
+Version 0.10.0. [Русская версия](README.ru.md).
 
 The readable [limbo.atg](limbo.atg) is the authoritative scanner/parser input.
 It targets the C backend of [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -134,3 +134,5 @@ tree. [Contract, supported declarations and native-backend reference](INTERFACES
 Hybrid extension syntax: `table of T`, creation `table of T`, and `keysof`. Syntax acceptance does not yet provide semantic/FIR lowering. The hosted executable module and current boundary are documented in [hybrid tables](../../../disVM/examples/hybrid-table/README.md).
 
 [Native C interface backend](NATIVE_C.md) / [Русский](NATIVE_C.ru.md).
+
+[Outer alias resolution / Внешние алиасы](ALIASES.md) · [RU](ALIASES.ru.md).

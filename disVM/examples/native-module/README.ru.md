@@ -1,5 +1,9 @@
 # Как написать C-модуль для нашего DisVM
 
+В .m используются скалярные алиасы Value/Text. Наш проход связывания Coco/R
+разрешает их в big/string и выдаёт тот же ABI, без ручных C typedef.
+[Семантика и API](../../../compiler/limbo/frontend/ALIASES.ru.md).
+
 [English](README.md) · [Руководство по нативному API](../../runtime/NATIVE_MODULES.ru.md) ·
 [Наш генератор C-интерфейсов Coco/R](../../../compiler/limbo/frontend/NATIVE_C.ru.md) ·
 [Контракт](nativedemo.m) · [C с комментариями каждой строки](native.c) ·

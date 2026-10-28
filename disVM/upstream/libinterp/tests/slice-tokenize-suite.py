@@ -8,6 +8,8 @@ import subprocess
 import sys
 
 CORE = [
+    'libinterp/tests/sys-file2chan-capture.py',
+    'emu/port/tests/dial-paths.py',
     'libinterp/tests/sys-pipe-types.py',
     'libinterp/tests/raise-native.py',
     'libinterp/tests/direct-target-native.py',

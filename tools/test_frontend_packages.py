@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Verify installed executable identities and default GUI selection, independent of SDK availability."""
 
+import sys
 import os
 from pathlib import Path
 import subprocess
@@ -94,6 +95,21 @@ class FrontendTests(unittest.TestCase):
                 self.fail("IDE build did not reuse/build its AS2 compiler dependency")
             if ("SDK_BOOTSTRAP" in log) != (sdl == "ON"):
                 self.fail("Dis graphical SDK selection ignored the explicit no-player choice")
+
+    def test_limbo_alias_guides_use_shipped_headers(self):
+        """A relocated alias SDK guide must use its include directory and public omitted sources."""
+        with tempfile.TemporaryDirectory(prefix="Alias guide links ") as temporary:
+            package = Path(temporary)
+            (package / "include").mkdir()
+            (package / "include/resolve.h").write_bytes((ROOT / "compiler/limbo/frontend/resolve.h").read_bytes())
+            guide = package / "ALIASES.md"
+            guide.write_bytes((ROOT / "compiler/limbo/frontend/ALIASES.md").read_bytes())
+            result = subprocess.run([sys.executable, str(ROOT / "tools/link-installed-limbo-docs.py"),
+                                     str(ROOT), str(package)], capture_output=True, text=True)
+            if result.returncode or "](include/resolve.h)" not in guide.read_text():
+                self.fail("alias guide lost its shipped C API header: " + result.stderr)
+            if "https://github.com/bhgv/flashVM/blob/master/compiler/limbo/frontend/resolve.c" not in guide.read_text():
+                self.fail("omitted resolver implementation did not use its public source")
 
     def test_console_docs_omit_optional_graphical_guides(self):
         """A console package rewrites only installed documents and falls back to public source links."""

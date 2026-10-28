@@ -1,6 +1,6 @@
 # Синтаксический фронтенд LIMBO
 
-Версия 0.9.1. [English](README.md).
+Версия 0.10.0. [English](README.md).
 
 Читаемый файл [limbo.atg](limbo.atg) — исходник сканера и парсера.
 Используется C-бэкенд [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C).
@@ -137,3 +137,5 @@ C99 API и отдельная утилита `limbo_tree`. Проверен та
 Синтаксис расширения: тип `table of T`, создание `table of T`, операция `keysof`. Распознавание синтаксиса ещё не реализует семантический анализ и lowering в FIR. [Исполняемый модуль и текущие границы](../../../disVM/examples/hybrid-table/README.ru.md).
 
 [Native C interface backend](NATIVE_C.md) / [Русский](NATIVE_C.ru.md).
+
+[Outer alias resolution / Внешние алиасы](ALIASES.md) · [RU](ALIASES.ru.md).

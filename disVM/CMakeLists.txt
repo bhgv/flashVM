@@ -173,6 +173,7 @@ if(BUILD_TESTING)
     sys-stream
     sys-dirread
     sys-file2chan
+    sys-file2chan-capture
     sys-tokenize-matrix
     sys-status-slots
     sys-stat-slots
@@ -214,6 +215,11 @@ if(BUILD_TESTING)
     disvm_sys-stream-directory-capture disvm_sys-multi-capture disvm_sys-pipe-types PROPERTIES
     TIMEOUT 300
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;FD_OWNER_FRAME=0;FD_OWNER_ARRAY_SHIFT=0")
+  add_test(NAME disvm_dial_paths COMMAND "${Python3_EXECUTABLE}" "${u}/emu/port/tests/dial-paths.py")
+  set_tests_properties(disvm_dial_paths PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  set_tests_properties(disvm_sys-file2chan-capture PROPERTIES TIMEOUT 180
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;FILE2CHAN_FRAME=0")
   add_test(NAME disvm_fixed_zero_div COMMAND "${Python3_EXECUTABLE}"
     "${u}/limbo/tests/fixed-zero-div.py")
   set_tests_properties(disvm_fixed_zero_div PROPERTIES TIMEOUT 120
