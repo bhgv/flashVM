@@ -1,30 +1,41 @@
-# Graphical directory browser — v0.1652
+# Graphical directory browser — v0.1653
 
 [Русский](GRAPHICAL-BROWSER.ru.md) · [Model interface](bridge/idebrowser.m) ·
 [Model implementation](bridge/idebrowser.b) · [Dis controller](examples/graphical-editor/main.b) ·
 [Directory owner](DIRECTORIES.md) · [Tutorial](examples/directory-browser/README.md)
 
-The FlashVM-rendered IDE now presents a selected directory entry in its footer.
-Ctrl+B opens a directory path field. Accept with Enter; the browser then displays
-one selected entry from a native batch of at most 32 records. Document text,
-revision and Undo state remain independent of browsing. This uses the existing
-Idefiles directory owner, not a native file dialog or imported Inferno GUI.
+The browser displays up to eight native entries at once, with directory/file
+markers, selected-row highlighting and a clickable toolbar. Ctrl+B opens the
+path field; Enter loads a batch of up to 32 entries. Selection automatically
+moves the visible eight-row window. Source history remains independent.
+
+The controller and browser owner are **Limbo**. The shipped
+[AS source](../as/editor-view.as) is compiled by our
+[AS2 CLI/library](../../compiler/as2/view/README.md) through FIR → SWO → SWL → SWF and actually executed as AVM1
+in FlashVM for each complete view. It assigns TextField content and widget
+geometry. The native adapter still paints fonts/ranges, supplies bounded surface
+metrics and maps completed glyph positions; the complete legacy editor renderer
+has **not** yet been migrated to AS. No Inferno GUI or native file dialog is used.
 
 | Input while browsing | Result |
 | --- | --- |
+| Click row | Select that visible entry without opening or editing it. |
+| Click Open | Descend/open the selected entry under ordinary dirty-source checks. |
 | Up / Down | Clamp selection within the current batch. |
-| Page Down | Request the next native batch; EOF keeps the last entries selectable. |
+| Backspace / Up toolbar | Open the parent directory. |
+| Page Down / Next toolbar | Request the next native batch; EOF keeps the last entries selectable. |
 | Enter | Descend into a directory or request loading the selected file. |
 | B / Ctrl+B | Edit the directory path, preserving the current cursor until admission succeeds. |
-| R | Refresh from the first batch of the current path. |
-| Escape | Close the cursor and return to document input. |
+| R / Refresh toolbar | Refresh from the first batch of the current path. |
+| Escape / Close toolbar | Close the cursor and return to document input. |
 
 The path field uses the existing Unicode field policy: 256 scalars. Escape there
 returns to an existing browser, or the document if no directory is open. Native
-order is preserved; previous-page history, sorting, tree expansion and pointer-row
-selection are not provided by this selected-entry footer. Use B to enter another
-path, including a parent. The browser is read-only: text, paste, delete and pointer
-input never become document edits while it is active. Resize, zoom and window
+order is preserved. Previous-batch history, sorting, expandable trees, drag/drop,
+standard icon columns and timed double-click are still absent: this is a basic
+listing, not a complete desktop file manager. Mouse selection and the Open toolbar
+are implemented. Text/paste/delete never become document edits while browsing.
+Resize, zoom and window
 close continue through their existing checked channels.
 
 ## Ownership and admission
@@ -53,9 +64,10 @@ cleanup. Candidate open reserves room for admission, first read and close replie
 so near-exhaustion cannot strand a newly opened cursor. Directory identity remains
 endpoint-local, as documented by Idefiles; this is not a network lease protocol.
 
-`summary` returns a copied control-escaped UTF-8 label below 1024 bytes. Selection
-and name appear before the path so long absolute directories do not hide the
-selected filename. Only previews are abbreviated; path/name action values are
+`summary` returns a copied control-escaped multiline UTF-8 listing below 1024 bytes.
+The model computes scalar row ranges and resolves toolbar/row actions; native
+geometry proposes a scalar only. FieldPlace requires the exact revision/view
+ticket and press phase; stale proposals cannot select or open anything. Only previews are abbreviated; path/name action values are
 never truncated. The model supports the Idefiles 4096-byte path bound; graphical
 path fields are limited to 256 scalars and callable envelopes to 1024 UTF-8 bytes.
 Ordinary slash path joins are passed to OS ports without canonicalization; native

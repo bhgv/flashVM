@@ -14,6 +14,11 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "compiler/as2/view/README.md": package / "docs/as2/VIEW.md",
+        root / "compiler/as2/view/README.ru.md": package / "docs/as2/VIEW.ru.md",
+        root / "fir/v1/doc/AS_PROPERTIES.md": package / "docs/fir/AS_PROPERTIES.md",
+        root / "fir/v1/doc/AS_PROPERTIES.ru.md": package / "docs/fir/AS_PROPERTIES.ru.md",
+        root / "ide/as/editor-view.as": package / "source/as/editor-view.as",
         root / "ide/dis/GRAPHICAL-BROWSER.md": package / "GRAPHICAL-BROWSER.md",
         root / "ide/dis/GRAPHICAL-BROWSER.ru.md": package / "GRAPHICAL-BROWSER.ru.md",
         root / "ide/dis/bridge/idebrowser.m": package / "include/limbo/idebrowser.m",

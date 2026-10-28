@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.28.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.29.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -283,6 +283,40 @@ if(DVM_RUNTIME_EDITOR)
   add_executable(disvm-editor ${runtime_sources} editor_host.c editor_view.c
     "${root}/disVM/host/dis_ui_channel.c")
   add_dependencies(disvm-editor disvm_runtime_sources)
+  set(DVM_AS_VIEW_COMPILER "" CACHE FILEPATH "Source-built Coco/R AS2 display-profile compiler")
+  if(NOT EXISTS "${DVM_AS_VIEW_COMPILER}")
+    message(FATAL_ERROR "Build compiler/as2/view with Coco/R, then supply DVM_AS_VIEW_COMPILER")
+  endif()
+  set(DVM_FIR_COMPILER "" CACHE FILEPATH "FIR compiler CLI")
+  set(DVM_FIR_OPTIMIZER "" CACHE FILEPATH "FIR peephole optimizer CLI")
+  set(DVM_SWF_LINKER "" CACHE FILEPATH "SWL linker CLI")
+  foreach(tool DVM_FIR_COMPILER DVM_FIR_OPTIMIZER DVM_SWF_LINKER)
+    if(NOT EXISTS "${${tool}}")
+      message(FATAL_ERROR "Supply ${tool} for AS -> FIR -> SWO -> SWF")
+    endif()
+  endforeach()
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_custom_command(OUTPUT "${view}/ide_view_swf.h"
+    BYPRODUCTS "${view}/ide-view.fir" "${view}/ide-view.opt.fir" "${view}/ide-view.swo" "${view}/ide-view.swf"
+    COMMAND "${DVM_AS_VIEW_COMPILER}" "${root}/ide/as/editor-view.as" "${view}/ide-view.fir"
+    COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp"
+      "${DVM_FIR_COMPILER}" check "${view}/ide-view.fir"
+    COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp"
+      "${DVM_FIR_OPTIMIZER}" "${view}/ide-view.fir" "${view}/ide-view.opt.fir"
+    COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp"
+      "${DVM_FIR_COMPILER}" object "${view}/ide-view.opt.fir" "${view}/ide-view.swo"
+    COMMAND "${DVM_SWF_LINKER}" link "${view}/ide-view.swf" "${view}/ide-view.swo"
+    COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/embed_view.py"
+      "${view}/ide-view.swf" "${view}/ide_view_swf.h"
+    DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}"
+      "${DVM_SWF_LINKER}" "${root}/ide/as/editor-view.as" embed_view.py VERBATIM)
+  target_sources(disvm-editor PRIVATE "${view}/ide_view_swf.h")
+  if(DVM_RUNTIME_TESTS)
+    add_executable(disvm_as_view_test test_as_view.c "${view}/ide_view_swf.h")
+    target_include_directories(disvm_as_view_test PRIVATE "${view}")
+    target_link_libraries(disvm_as_view_test PRIVATE flashvm)
+    add_test(NAME disvm_as_view_execution COMMAND disvm_as_view_test)
+  endif()
   target_include_directories(disvm-editor PRIVATE ${runtime_includes} "${DVM_FLASHVM_SOURCE_ROOT}/ports")
   target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_EDITOR=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
   target_compile_options(disvm-editor PRIVATE -fno-strict-aliasing)

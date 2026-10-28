@@ -312,7 +312,7 @@ if { has vm || has disvm-editor; } && [[ "$player" != OFF ]]; then
 fi
 need_cocor=0
 need_limbo=0
-if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || has limbo; then
+if has compilers || has fir || has symbols || has as1 || has as2 || has as3 || has limbo || has disvm-editor; then
     # The selector verifies the complete frame set before touching build products.
     source "$ROOT/tools/coco-r-C/select-sdk.sh"
     select_cocor_sdk "$ROOT" "$build_root" || exit 2
@@ -458,6 +458,25 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
             args+=("-DDVM_RUNTIME_TESTS=$tests" "-DDVM_LEGACY_IMAGE=")
             args+=("-DDVM_FLASHVM_SOURCE_ROOT=$ROOT/flashVM")
             if [[ "$project" == disvm-editor ]]; then
+                # Reuse the AS2 compiler product; build it first when only the IDE was requested.
+                if has compilers; then
+                    as_view_compiler="$build_root/compilers/as2/view/as2_viewc"
+                else
+                    if ! has as2; then
+                        build_project as2 compiler/as2 "-DCOCOR_ROOT=$COCOR_ROOT" "-DCOCOR_EXECUTABLE=$COCOR_EXECUTABLE"
+                    fi
+                    as_view_compiler="$build_root/as2/view/as2_viewc"
+                fi
+                if ! has fir; then
+                    build_project fir fir/v1 "-DCOCOR_ROOT=$COCOR_ROOT" "-DCOCOR_EXECUTABLE=$COCOR_EXECUTABLE" "-DFIR_TABLE_CORE_ROOT=$ROOT/common/table"
+                fi
+                if ! has linker; then
+                    build_project linker linker
+                fi
+                args+=("-DDVM_FIR_COMPILER=$build_root/fir/fir1"
+                    "-DDVM_FIR_OPTIMIZER=$build_root/fir/fir1_opt"
+                    "-DDVM_SWF_LINKER=$build_root/linker/swl")
+                args+=("-DDVM_AS_VIEW_COMPILER=$as_view_compiler")
                 args+=(-DDVM_RUNTIME_EDITOR=ON "-DDVM_EDITOR_SDL=$player"
                     "-DDVM_EDITOR_TEST_FONT=${DVM_EDITOR_TEST_FONT:-}")
                 if [[ -n "$SDL2_SDK_DIR" ]]; then

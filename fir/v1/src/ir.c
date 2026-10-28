@@ -147,7 +147,10 @@ static const char *const ops[] = {"const.i32",
                                   "ref.local",
                                   "ref.load",
                                   "ref.store",
-                                  "ref.nil"};
+                                  "ref.nil",
+                                  "as.global_get",
+                                  "as.global_set",
+                                  "as.member_set"};
 
 /* Map a private retained-cell type to its exact source payload type.
  * cell is a copied enum; return T_VOID for unsupported/noncell types. No owner,
@@ -514,7 +517,7 @@ int fir_verify(FirModule *m, char *error, size_t cap)
     {
         FirInstruction *in = &m->instructions[i];
         int unary, binary;
-        if ((unsigned)in->op > O_REF_NIL || (unsigned)in->type > T_KEY_CELL || in->block < 0 ||
+        if ((unsigned)in->op > O_AS_MEMBER_SET || (unsigned)in->type > T_KEY_CELL || in->block < 0 ||
             in->block >= m->block_count || in->result < -1 || in->result >= m->value_count || in->a < -1 ||
             in->a >= m->value_count || in->b < -1 || in->b >= m->value_count || in->yes < -1 ||
             in->yes >= m->block_count || in->no < -1 || in->no >= m->block_count || !memchr(in->text, 0, FIR_TEXT))
@@ -525,22 +528,30 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         {
             continue;
         }
-        if (in->op == O_STRING && !fir_utf8((const unsigned char *)in->text, strlen(in->text)))
+        if ((in->op == O_STRING || in->op >= O_AS_GLOBAL_GET) &&
+            !fir_utf8((const unsigned char *)in->text, strlen(in->text)))
         {
             return fail(error, cap, "invalid UTF-8 string constant");
+        }
+        if ((in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET) &&
+            (!in->text[0] || !strncmp(in->text, "__fir1$", 7)))
+        {
+            return fail(error, cap, "empty or reserved AS global binding");
         }
         if ((in->op == O_BOOL && in->integer != 0 && in->integer != 1) || (in->op == O_F64 && !isfinite(in->real)))
         {
             return fail(error, cap, "invalid constant payload");
         }
-        unary = in->op == O_REF_LOCAL || in->op == O_REF_LOAD || in->op == O_BIG_LOAD || in->op == O_TABLE_LOCK ||
+        unary = in->op == O_AS_GLOBAL_SET || in->op == O_REF_LOCAL || in->op == O_REF_LOAD ||
+                in->op == O_BIG_LOAD || in->op == O_TABLE_LOCK ||
                 in->op == O_TABLE_UNLOCK || in->op == O_RUNE_TEXT || in->op == O_STRING_LEN || in->op == O_BOOL_LOAD ||
                 in->op == O_TABLE_COUNT || in->op == O_TABLE_HAS || in->op == O_TABLE_DELETE || in->op == O_COPY ||
                 in->op == O_NUMBER || in->op == O_RECEIVE || in->op == O_TRACE || in->op == O_CLOSE || in->op == O_IF ||
                 in->op == O_TABLE_LOAD || in->op == O_TABLE_LEN || in->op == O_TABLE_KEYS || in->op == O_KEYS_LEN ||
                 in->op == O_VALUE_TYPE || in->op == O_TO_BIG || in->op == O_TO_INT || in->op == O_TO_TEXT ||
                 in->op == O_BIG_NEG || in->op == O_BIG_NOT;
-        binary = in->op == O_REF_STORE || in->op == O_BIG_STORE || in->op == O_STRING_LT || in->op == O_I32_SHL ||
+        binary = in->op == O_AS_MEMBER_SET || in->op == O_REF_STORE || in->op == O_BIG_STORE ||
+                 in->op == O_STRING_LT || in->op == O_I32_SHL ||
                  in->op == O_I32_SHR || in->op == O_STRING_EQ || in->op == O_STRING_CONCAT || in->op == O_I32_DIV ||
                  in->op == O_I32_MOD || in->op == O_STRING_AT || in->op == O_STRING_SLICE || in->op == O_BOOL_STORE ||
                  (in->op >= O_ADD && in->op <= O_ASADD) || in->op == O_SEND || in->op == O_TABLE_INDEX ||
@@ -592,7 +603,8 @@ int fir_verify(FirModule *m, char *error, size_t cap)
         last[b] = i;
         if (((in->op < O_TRACE || (in->op > O_RETURN && in->op != O_TABLE_STORE && in->op != O_BOOL_STORE &&
                                    in->op != O_BIG_STORE && in->op != O_REF_STORE && in->op != O_TABLE_SPLICE &&
-                                   in->op != O_TABLE_LOCK && in->op != O_TABLE_UNLOCK))) != (in->result >= 0))
+                                   in->op != O_TABLE_LOCK && in->op != O_TABLE_UNLOCK &&
+                                   in->op != O_AS_GLOBAL_SET && in->op != O_AS_MEMBER_SET))) != (in->result >= 0))
         {
             return fail(error, cap, "line %d: wrong result arity", in->line);
         }
@@ -1024,6 +1036,21 @@ int fir_verify(FirModule *m, char *error, size_t cap)
             }
             expected = T_F64;
             break;
+        case O_AS_GLOBAL_GET:
+            expected = T_ANY;
+            break;
+        case O_AS_GLOBAL_SET:
+            if (!a || a > T_ANY)
+            {
+                goto bad_type;
+            }
+            break;
+        case O_AS_MEMBER_SET:
+            if (a != T_ANY || !c || c > T_ANY)
+            {
+                goto bad_type;
+            }
+            break;
         case O_ASADD:
             if (!a || !c || a > T_ANY || c > T_ANY)
             {
@@ -1240,6 +1267,19 @@ int fir_print(FILE *out, const FirModule *m)
         else if (in->op == O_BOOL)
         {
             fprintf(out, " %s", in->integer ? "true" : "false");
+        }
+        else if (in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET || in->op == O_AS_MEMBER_SET)
+        {
+            fputc(' ', out);
+            if (in->op == O_AS_MEMBER_SET)
+            {
+                fprintf(out, "%s, ", m->values[in->a].name);
+            }
+            quoted(out, in->text);
+            if (in->op != O_AS_GLOBAL_GET)
+            {
+                fprintf(out, ", %s", m->values[in->op == O_AS_GLOBAL_SET ? in->a : in->b].name);
+            }
         }
         else if (in->op == O_STRING)
         {

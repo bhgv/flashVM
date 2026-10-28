@@ -242,6 +242,13 @@ def table_packages(prefix, work, environment):
     if component == "disvm-editor":
         # Replay the actual packaged graphical browser with its bundled font only.
         graphical = program(prefix, component, "disvm-editor")
+        # Inspect the real common-pipeline products shipped beside the executable.
+        # The runtime embeds the linked SWF; no source compiler is needed after relocation.
+        if not (prefix / component / "ui/editor-view.swf").read_bytes().startswith(b"FWS"):
+            raise RuntimeError("installed IDE view is not a linked SWF product")
+        for artifact in ("fir", "opt.fir"):
+            if not (prefix / component / ("ui/editor-view." + artifact)).read_text().startswith("FIR 1.0\n"):
+                raise RuntimeError("installed IDE omitted its inspectable FIR product")
         for mode in ("jit", "interpreter"):
             result = run([sys.executable, native / "examples/directory-browser/graphical-check.py",
                           graphical, native / "graphical-editor.dis", mode], work, environment)

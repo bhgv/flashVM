@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1653: the limited AS2 IDE view now follows frontend → FIR → peepholes → SWO → SWL → SWF and executes in FlashVM; browser policy stays in Limbo with multiline/mouse/parent actions. Current-run zoom/caret formatting is synchronized. [EN](../../compiler/as2/view/README.md) / [RU](../../compiler/as2/view/README.ru.md). Full AS2, all widget migration, file trees and complete debugging remain open; no Flash compatibility stage closes.
+
 Checkpoint v0.1652: graphical selected-entry browsing runs in Limbo over the typed directory owner; ticket/revision checks and dirty-source admission precede file adoption. Renderer receives bounded labels only. [EN](../../ide/dis/GRAPHICAL-BROWSER.md) / [RU](../../ide/dis/GRAPHICAL-BROWSER.ru.md). This closes no Flash compatibility stage or complete debugger milestone.
 
 Checkpoint v0.1651: Limbo directory owners support bounded IDE browsing through typed channels and OS ports. Explicit instruction limits supersede the legacy slice budget at quantum 1. [EN](../../ide/dis/DIRECTORIES.md) / [RU](../../ide/dis/DIRECTORIES.ru.md). This adds no graphical file-tree or completed debugger milestone and closes no Flash compatibility stage.

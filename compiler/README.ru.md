@@ -39,3 +39,5 @@ fir1 компилирует его в SWO, а [SWL](../linker/README.ru.md) ли
 [Все пять C API в одном процессе](PARSER_COVERAGE.ru.md).
 
 [0.6.0: Unicode, regexp, CONFIG, Vector, generator boundary](LEXICAL_PROFILE.ru.md).
+
+[Профиль отображения AS2 → FIR → SWO → SWF](as2/view/README.ru.md): общий фронтенд, библиотека и CLI для первого исполняемого AS-представления IDE.

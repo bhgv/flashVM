@@ -2,7 +2,7 @@
 Idebrowser: module
 {
     PATH: con "idebrowser.dis"; # Reusable bytecode module, with no native UI implementation.
-    Panel: con 9; # Read-only selected-entry presentation, interpreted by the renderer.
+    Panel: con 9; # Read-only multiline listing; all actions and selection belong to Dis.
     PathPanel: con 10; # Editable directory-path field, governed by existing Idefield policy.
     PickDirectory: con 1; # Choose navigated into the selected subdirectory.
     PickFile: con 2; # Choose returned a file path; the caller still owns dirty/load policy.
@@ -46,6 +46,19 @@ Idebrowser: module
     # Return PickDirectory after navigation, PickFile with a complete native path,
     # or zero on failure. This function never reads/writes a source document.
     choose: fn(files: Idefiles, state: ref State): (int, string);
+
+
+    # Map a scalar in summary() to an entry or toolbar action, without I/O.
+    # -1 is outside; -2 parent, -3 next batch, -4 refresh, -5 path, -6 close, -7 open.
+    hit: fn(sys: Sys, state: ref State, position: int): int;
+
+
+    # Return selected row scalar bounds in summary(), or (0, 0) for no entries.
+    selection: fn(sys: Sys, state: ref State): (int, int);
+
+
+    # Navigate to the lexical parent; candidate failure preserves the current listing.
+    parent: fn(files: Idefiles, state: ref State): int;
 
 
     # Return a control-escaped UTF-8 preview below the renderer's 1024-byte bound.

@@ -202,33 +202,128 @@ preview(sys: Sys, text: string, maxbytes: int): string
 }
 
 
-# Present one selected entry and bounded path/status, never the underlying array.
-# Return only copied text; renderer bounds do not truncate the native action path.
+# Build a bounded listing of eight rows around the selected entry, plus toolbar.
+# The 1024-byte wire budget is independent of complete native names/action paths.
 summary(sys: Sys, state: ref State): string
 {
     if (state == nil) {
         return "browser unavailable";
     }
-    text := "";
-    if (len state.entries > 0 && state.selected >= 0 && state.selected < len state.entries) {
-        entry := state.entries[state.selected];
-        kind := "file ";
+    text := sys->sprint("page %d [%d/%d] ", state.page, state.selected+1, len state.entries);
+    text += preview(sys, state.path, 100)+"\n";
+    text += "[Up] [Next] [Refresh] [Path] [Close] [Open]\n";
+    start := state.selected/8*8;
+    for (index := start; index < len state.entries && index < start+8; index++) {
+        entry := state.entries[index];
+        kind := "FILE  ";
         if ((entry.mode & Sys->DMDIR) != 0) {
-            kind = "dir ";
+            kind = "DIR   ";
         }
-        text += sys->sprint("page %d [%d/%d] ", state.page, state.selected+1, len state.entries);
-        text += kind+preview(sys, entry.name, 400);
-    } else {
-        text += "empty";
+        text += kind+preview(sys, entry.name, 70)+"\n";
+    }
+    if (len state.entries == 0) {
+        text += "(empty directory)\n";
     }
     if (state.ended) {
-        text += " [end]";
+        text += "[end] ";
     }
-    if (state.message != "") {
-        text += " | "+preview(sys, state.message, 160);
-    }
-    text += " | "+preview(sys, state.path, 160);
+    text += preview(sys, state.message, 100);
     return text;
+}
+
+
+# Resolve copied scalar geometry against the exact escaped listing, never native names.
+# sys/state are borrowed. Toolbar separators and blank/status rows have no action.
+hit(sys: Sys, state: ref State, position: int): int
+{
+    text := summary(sys, state);
+    if (state == nil || position < 0 || position >= len text) {
+        return -1;
+    }
+    line := 0;
+    start := 0;
+    for (index := 0; index < position; index++) {
+        if (text[index] == '\n') {
+            line++;
+            start = index+1;
+        }
+    }
+    if (line == 1) {
+        column := position-start;
+        if (column < 4) {
+            return -2;
+        }
+        if (column >= 5 && column < 11) {
+            return -3;
+        }
+        if (column >= 12 && column < 21) {
+            return -4;
+        }
+        if (column >= 22 && column < 28) {
+            return -5;
+        }
+        if (column >= 29 && column < 36) {
+            return -6;
+        }
+        if (column >= 37 && column < 43) {
+            return -7;
+        }
+        return -1;
+    }
+    candidate := state.selected/8*8+line-2;
+    if (line >= 2 && line < 10 && candidate < len state.entries) {
+        return candidate;
+    }
+    return -1;
+}
+
+
+# Identify the selected row in the copied presentation for generic range highlighting.
+# Bounds are Unicode scalar positions, not bytes; no heap pointer crosses the bridge.
+selection(sys: Sys, state: ref State): (int, int)
+{
+    if (state == nil || len state.entries == 0) {
+        return (0, 0);
+    }
+    text := summary(sys, state);
+    wanted := 2+state.selected%8;
+    line := 0;
+    start := 0;
+    for (index := 0; index < len text; index++) {
+        if (text[index] == '\n') {
+            if (line == wanted) {
+                return (start, index);
+            }
+            line++;
+            start = index+1;
+        }
+    }
+    return (0, 0);
+}
+
+
+# Compute a lexical parent path; native filesystem admission remains in Idefiles.
+# Relative paths without separators return '.', roots remain roots. May block on open.
+parent(files: Idefiles, state: ref State): int
+{
+    if (state == nil) {
+        return Idefiles->Invalid;
+    }
+    path := state.path;
+    if (path == "." || path == "..") {
+        return open(files, state, path+"/..");
+    }
+    end := len path;
+    while (end > 1 && (path[end-1] == '/' || path[end-1] == '\\')) {
+        end--;
+    }
+    while (end > 0 && path[end-1] != '/' && path[end-1] != '\\') {
+        end--;
+    }
+    if (end == 0) {
+        return open(files, state, ".");
+    }
+    return open(files, state, path[:end]);
 }
 
 

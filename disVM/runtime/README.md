@@ -1,6 +1,6 @@
 # Experimental runnable Dis and IDE services (NC64)
 
-Runtime **0.28.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
+Runtime **0.29.0** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
 
 Use `python3 build_menu.py`, select `all` or `disvm-runtime`, and accept the
 defaults. After building, choose **4** for the Dis channel example or **5** for
@@ -163,7 +163,10 @@ cannot silently truncate a destination PC.
 
 [English tutorial](../../ide/dis/examples/graphical-editor/README.md) ·
 [Русское руководство](../../ide/dis/examples/graphical-editor/README.ru.md).
-Build `disvm-editor` with `DVM_RUNTIME_EDITOR=ON`; SDL windows additionally require
+Build [our AS2 display compiler](../../compiler/as2/view/README.md), then build
+`disvm-editor` with `DVM_RUNTIME_EDITOR=ON` and
+`DVM_AS_VIEW_COMPILER=/absolute/path/as2_viewc`, `DVM_FIR_COMPILER`,
+`DVM_FIR_OPTIMIZER` and `DVM_SWF_LINKER` paths; SDL windows additionally require
 `DVM_EDITOR_SDL=ON` and an explicit SDL2 SDK. The console `disvm` keeps its existing
 graphics-free build. `$Idehost` is registered only by the editor executable and
 borrows stack-rooted channels until Limbo explicitly detaches. No cross-heap

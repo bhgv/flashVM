@@ -34,6 +34,15 @@ class FrontendTests(unittest.TestCase):
                 'p.write_text(p.read_text()+"SDK_BOOTSTRAP\\n" if p.exists() else "SDK_BOOTSTRAP\\n")\n'
                 'print("/private SDL SDK/lib/cmake/SDL2")\n'
             )
+            if project == "disvm-editor":
+                # Dependency selection is exercised with an explicit host SDK stub;
+                # real generator/AVM1 execution has separate compiler/runtime checks.
+                sdk = root / "tools/coco-r-C"
+                sdk.mkdir()
+                (sdk / "select-sdk.sh").write_text(
+                    'select_cocor_sdk() { COCOR_ROOT="$1/sdk"; '
+                    'COCOR_EXECUTABLE="$2/cocor/cocor"; need_cocor=1; }\n'
+                )
             environment = dict(os.environ, CMAKE=str(cmake), PROBE_LOG=str(log))
             result = subprocess.run(
                 [
@@ -81,6 +90,8 @@ class FrontendTests(unittest.TestCase):
             result, log = self.probe_builder(options, "disvm-editor")
             if result.returncode or "-DDVM_RUNTIME_EDITOR=ON" not in log or "-DDVM_EDITOR_SDL=" + sdl not in log:
                 self.fail("Dis graphical project did not select its actual target/SDK mode: " + result.stderr)
+            if any(option not in log for option in ("-DDVM_AS_VIEW_COMPILER=", "-DDVM_FIR_COMPILER=", "-DDVM_FIR_OPTIMIZER=", "-DDVM_SWF_LINKER=", "compiler/as2")):
+                self.fail("IDE build did not reuse/build its AS2 compiler dependency")
             if ("SDK_BOOTSTRAP" in log) != (sdl == "ON"):
                 self.fail("Dis graphical SDK selection ignored the explicit no-player choice")
 

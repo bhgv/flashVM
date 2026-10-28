@@ -135,7 +135,7 @@ static void literal(const char *text, int line)
     FirInstruction *in = &active->instruction;
     char *end;
     errno = 0;
-    if (in->op == O_STRING)
+    if (in->op == O_STRING || in->op == O_AS_GLOBAL_GET || in->op == O_AS_GLOBAL_SET || in->op == O_AS_MEMBER_SET)
     {
         size_t i, n = 0, size = strlen(text);
         for (i = 1; i + 1 < size; ++i)

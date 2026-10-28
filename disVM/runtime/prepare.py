@@ -140,7 +140,7 @@ def main():
         path = args.output / name
         code = path.read_text()
         legacy_byte_guard = "a->t->size != 1 || a->t->np != 0" in code
-        staged_byte_guard = (name == "string.c" and "if(view.t != &Tbyte)" in code
+        staged_byte_guard = (name in ("string.c", "runt.c") and "if(view.t != &Tbyte)" in code
                              and "if(size != 1 || pointers != 0)" in code
                              and "if(owner.t != &Tarray)" in code)
         if not legacy_byte_guard and not staged_byte_guard:

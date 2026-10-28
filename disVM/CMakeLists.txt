@@ -151,6 +151,10 @@ if(BUILD_TESTING)
     string-codec-owners
     string-view-native
     sys-tokenize
+    sys-print-public
+    mapped-capture-native
+    sys-utf-spans
+    token-spans
     sys-utf
     vm-addresses
     fixed-coeff

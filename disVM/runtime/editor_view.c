@@ -1,5 +1,7 @@
 /* FlashVM TextField presentation; document/history/file policy lives in Limbo. */
 #include "editor_view.h"
+#include "flashvm/avm1.h"
+#include "ide_view_swf.h"
 #include "flashvm/standard_text.h"
 #include "flashvm/function.h"
 #include "flashvm/gc.h"
@@ -263,6 +265,31 @@ static int panel_height(double line_height)
     return height;
 }
 
+/* Measure copied multiline panel data for the AS view's bounded native surface.
+ * line_height is a trusted font metric. Return pixels; no selection/action policy lives here. */
+static int panel_extent(double line_height)
+{
+    int height = panel_height(line_height);
+    if (panel_mode == EDITOR_PANEL_BROWSER)
+    {
+        size_t index;
+        int lines = 1;
+        for (index = 0; index < panel_size; index++)
+        {
+            if (panel_text[index] == '\n')
+            {
+                lines++;
+            }
+        }
+        height = (int)ceil(lines * line_height) + 12;
+        if (height > (int)canvas_height - 48)
+        {
+            height = (int)canvas_height - 48;
+        }
+    }
+    return height;
+}
+
 /* Return the TextField baseline distance for the explicit editor TextFormat.
  * metrics is a borrowed current/proposed font record; no VM or view state changes. */
 static double line_step(const FVM_FontMetrics *metrics)
@@ -453,6 +480,16 @@ static int apply_font_size(int size)
     {
         result = fvm_object_call(context, panel_field, "setNewTextFormat", 1, &argument, &ignored);
     }
+    /* A loaded SWF retains current text runs independently of future insertion format.
+     * Update both domains so the glyph raster and admitted caret metrics scale together. */
+    if (result == FVM_OK)
+    {
+        result = fvm_object_call(context, field, "setTextFormat", 1, &argument, &ignored);
+    }
+    if (result == FVM_OK)
+    {
+        result = fvm_object_call(context, panel_field, "setTextFormat", 1, &argument, &ignored);
+    }
     fvm_gc_unpin(context, format);
     if (result != FVM_OK)
     {
@@ -512,6 +549,10 @@ int dvm_editor_create(void)
     }
     if (result == FVM_OK)
     {
+        result = fvm_load_memory(context, ide_view_swf, sizeof(ide_view_swf));
+    }
+    if (result == FVM_OK)
+    {
         result = fvm_standard_text_install(context);
     }
     if (result == FVM_OK)
@@ -568,7 +609,8 @@ int dvm_editor_create(void)
         }
     }
     fvm_value_boolean(&value, 1);
-    if (fvm_object_set(context, field, "multiline", &value) != FVM_OK)
+    if (fvm_object_set(context, panel_field, "multiline", &value) != FVM_OK ||
+        fvm_object_set(context, field, "multiline", &value) != FVM_OK)
     {
         return 0;
     }
@@ -1181,7 +1223,7 @@ static int render_panel(FVM_RasterSurface *surface)
                                    "Go to line[:column]: ",
                                    "Inspect [Esc]: ",
                                    "Unsaved [S save / D discard / Esc cancel]: ",
-                                   "Browse [Up/Down PgDn Enter B Esc]: ",
+                                   "",
                                    "Directory path [Enter/Esc]: "};
     char text[1100];
     size_t prefix = strlen(labels[panel_mode]);
@@ -1203,12 +1245,7 @@ static int render_panel(FVM_RasterSurface *surface)
     {
         return 0;
     }
-    height = panel_height(line_step(&metrics));
-    fvm_value_number(&value, height - 8);
-    if (fvm_object_set(context, panel_field, "_height", &value) != FVM_OK)
-    {
-        return 0;
-    }
+    height = panel_extent(line_step(&metrics));
     if (!rectangle(surface, 0, canvas_height - height, canvas_width, height, background))
     {
         return 0;
@@ -1216,7 +1253,30 @@ static int render_panel(FVM_RasterSurface *surface)
     memcpy(text, labels[panel_mode], prefix);
     memcpy(text + prefix, panel_text, panel_size);
     if (fvm_value_string_bytes(&value, text, prefix + panel_size) != FVM_OK ||
-        fvm_object_set(context, panel_field, "text", &value) != FVM_OK)
+        fvm_set_global(context, "idePanelText", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_undefined(&value);
+    value.type = FVM_VALUE_OBJECT;
+    value.object = panel_field;
+    if (fvm_set_global(context, "idePanel", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_number(&value, canvas_width);
+    if (fvm_set_global(context, "ideWidth", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_number(&value, canvas_height);
+    if (fvm_set_global(context, "ideHeight", &value) != FVM_OK)
+    {
+        return 0;
+    }
+    fvm_value_number(&value, height);
+    if (fvm_set_global(context, "idePanelHeight", &value) != FVM_OK ||
+        fvm_swf_execute_actions(context) != FVM_OK)
     {
         return 0;
     }
@@ -1242,7 +1302,11 @@ static int render_panel(FVM_RasterSurface *surface)
         panel_prefix = prefix;
         first = prefix + text_byte(panel_text, panel_size, panel_caret < panel_anchor ? panel_caret : panel_anchor);
         last = prefix + text_byte(panel_text, panel_size, panel_caret > panel_anchor ? panel_caret : panel_anchor);
-        if (!field_position(panel_layout, prefix + text_byte(panel_text, panel_size, panel_caret), &cursor_x))
+        if (panel_mode == EDITOR_PANEL_BROWSER)
+        {
+            panel_horizontal = 0;
+        }
+        else if (!field_position(panel_layout, prefix + text_byte(panel_text, panel_size, panel_caret), &cursor_x))
         {
             return 0;
         }
@@ -1271,8 +1335,16 @@ static int render_panel(FVM_RasterSurface *surface)
     memset(&placement, 0, sizeof(placement));
     placement.xx = 1;
     placement.yy = 1;
-    placement.x0 = 8;
-    placement.y0 = canvas_height - height + 6;
+    if (fvm_object_get(context, panel_field, "_x", &value) != FVM_OK || value.type != FVM_VALUE_NUMBER)
+    {
+        return 0;
+    }
+    placement.x0 = value.number;
+    if (fvm_object_get(context, panel_field, "_y", &value) != FVM_OK || value.type != FVM_VALUE_NUMBER)
+    {
+        return 0;
+    }
+    placement.y0 = value.number;
     if (panel_layout)
     {
         FVM_TextLayoutMetrics layout_metrics;
@@ -1811,15 +1883,30 @@ static long field_hit(double x, double y)
 {
     FVM_FontMetrics font;
     FVM_TextLayoutLine line;
+    FVM_TextLayoutMetrics layout_metrics;
     size_t byte;
     size_t index;
     long scalar = 0;
     double distance;
     if (!panel_mode || !panel_layout || fvm_font_metrics(layout_font, &font) != FVM_OK ||
-        y < canvas_height - panel_height(line_step(&font)) || y >= canvas_height ||
+        y < canvas_height - panel_extent(line_step(&font)) || y >= canvas_height ||
         fvm_text_layout_line(panel_layout, 0, &line) != FVM_OK)
     {
         return -1;
+    }
+    if (panel_mode == EDITOR_PANEL_BROWSER)
+    {
+        double local_y = y - (canvas_height - panel_extent(line_step(&font)) + 8);
+        unsigned int row;
+        if (local_y < 0 || fvm_text_layout_metrics(panel_layout, &layout_metrics) != FVM_OK)
+        {
+            return -1;
+        }
+        row = (unsigned int)floor(local_y / line_step(&font));
+        if (row >= layout_metrics.line_count || fvm_text_layout_line(panel_layout, row, &line) != FVM_OK)
+        {
+            return -1;
+        }
     }
     x += panel_horizontal - 10;
     byte = line.byte_end;

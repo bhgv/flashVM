@@ -393,16 +393,42 @@ Sys_sprint(void *fp)
 	int n;
 	char buf[256], *b = buf;
 	String *result, *old;
-	F_Sys_sprint *f;
+	String *format;
+	Prog *prog;
+	void *ret, *args;
+	uintptr address;
+	ulong references;
 
-	f = fp;
-	n = xprint(currun(), f, &f->vargs, f->s, buf, sizeof(buf));
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-O(F_Sys_sprint, vargs))
+		error(exBounds);
+	/* Retain the original frame as the packed argument alignment anchor. */
+	memmove(&ret, (uchar*)fp+O(F_Sys_sprint, ret), sizeof(ret));
+	memmove(&format, (uchar*)fp+O(F_Sys_sprint, s), sizeof(format));
+	args = (uchar*)fp+O(F_Sys_sprint, vargs);
+	if(ret == nil || ret == H)
+		error(exNilref);
+	if((uintptr)ret > (uintptr)-1-sizeof(old))
+		error(exBounds);
+	memmove(&old, ret, sizeof(old));
+	if(old == nil)
+		error(exNilref);
+	if(old != H) {
+		address = (uintptr)old;
+		if(address <= sizeof(Heap) || (address-sizeof(Heap))%sizeof(void*) != 0)
+			error(exHeap);
+		memmove(&references, (uchar*)old-sizeof(Heap)+O(Heap, ref), sizeof(references));
+		if(references == 0)
+			error(exHeap);
+	}
+	prog = currun();
+	n = xprint(prog, fp, args, format, buf, sizeof(buf));
 	if(n >= sizeof(buf)-UTFmax-2)
-		n = bigxprint(currun(), f, &f->vargs, f->s, &b, sizeof(buf));
+		n = bigxprint(prog, fp, args, format, &b, sizeof(buf));
 	b[n] = '\0';
 	result = printresult(b, n, 0, b != buf);
-	memmove(&old, f->ret, sizeof(old));
-	memmove(f->ret, &result, sizeof(result));
+	memmove(ret, &result, sizeof(result));
 	destroy(old);
 }
 
@@ -414,15 +440,41 @@ Sys_aprint(void *fp)
 	int n;
 	char buf[256], *b = buf;
 	Array *result, *old;
-	F_Sys_aprint *f;
+	String *format;
+	Prog *prog;
+	void *ret, *args;
+	uintptr address;
+	ulong references;
 
-	f = fp;
-	n = xprint(currun(), f, &f->vargs, f->s, buf, sizeof(buf));
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-O(F_Sys_aprint, vargs))
+		error(exBounds);
+	/* Retain the original frame as the packed argument alignment anchor. */
+	memmove(&ret, (uchar*)fp+O(F_Sys_aprint, ret), sizeof(ret));
+	memmove(&format, (uchar*)fp+O(F_Sys_aprint, s), sizeof(format));
+	args = (uchar*)fp+O(F_Sys_aprint, vargs);
+	if(ret == nil || ret == H)
+		error(exNilref);
+	if((uintptr)ret > (uintptr)-1-sizeof(old))
+		error(exBounds);
+	memmove(&old, ret, sizeof(old));
+	if(old == nil)
+		error(exNilref);
+	if(old != H) {
+		address = (uintptr)old;
+		if(address <= sizeof(Heap) || (address-sizeof(Heap))%sizeof(void*) != 0)
+			error(exHeap);
+		memmove(&references, (uchar*)old-sizeof(Heap)+O(Heap, ref), sizeof(references));
+		if(references == 0)
+			error(exHeap);
+	}
+	prog = currun();
+	n = xprint(prog, fp, args, format, buf, sizeof(buf));
 	if(n >= sizeof(buf)-UTFmax-2)
-		n = bigxprint(currun(), f, &f->vargs, f->s, &b, sizeof(buf));
+		n = bigxprint(prog, fp, args, format, &b, sizeof(buf));
 	result = printresult(b, n, 1, b != buf);
-	memmove(&old, f->ret, sizeof(old));
-	memmove(f->ret, &result, sizeof(result));
+	memmove(ret, &result, sizeof(result));
 	destroy(old);
 }
 
@@ -431,23 +483,27 @@ Sys_aprint(void *fp)
 static int
 tokdelim(int c, String *d)
 {
-	int l;
-	uchar *p;
-	Rune *r;
+	int length, i;
+	uchar *data;
+	Rune rune;
 
 	if(d == H)
 		return 0;
-	l = d->len;
-	if(l < 0) {
-		l = -l;
-		for(r = d->Srune; l != 0; l--)
-			if(*r++ == c)
-				return 1;
+	/* buildtokens has already validated both metadata and the complete payload. */
+	memmove(&length, (uchar*)d+offsetof(String, len), sizeof(length));
+	if(length == 0)
 		return 0;
-	}
-	for(p = (uchar*)d->Sascii; l != 0; l--)
-		if(*p++ == c)
-			return 1;
+	data = (uchar*)d+offsetof(String, data);
+	if(length < 0) {
+		for(i = 0; i < -length; i++) {
+			memmove(&rune, data+(ulong)i*sizeof(rune), sizeof(rune));
+			if(rune == (Rune)c)
+				return 1;
+		}
+	} else
+		for(i = 0; i < length; i++)
+			if(data[i] == c)
+				return 1;
 	return 0;
 }
 
@@ -458,6 +514,7 @@ struct TokenizeResult
 	String *source; // Input string retained by the caller throughout construction.
 	String *delimiters; // Delimiter set in either string representation.
 	List *words; // Partial word list owned by protected cleanup.
+	List *previous; // Captured old result, validated after input metadata and before allocation.
 	int count; // Number of complete words built before publication.
 };
 
@@ -469,39 +526,82 @@ buildtokens(void *arg)
 	TokenizeResult *result;
 	String *s, *d;
 	List **h, *nl;
-	int c, nc, first, last, srune;
+	int c, nc, first, last, srune, i, length[2], capacity;
+	String *view, *word;
+	uchar *data;
+	uintptr address;
+	uvlong bytes;
+	ulong references;
+	Rune rune;
 
 	result = arg;
 	s = result->source;
 	d = result->delimiters;
-	if(s == H)
-		return 1;
-	if(s == nil || d == nil)
+	if(s != H && (s == nil || d == nil))
 		error(exNilref);
-	/* Validate before negating rune counts or allocating partial words. */
-	if(s->len == (-0x7fffffff-1) || s->max < 0 ||
-	   (s->len < 0 ? -s->len : s->len) > s->max ||
-	   (d != H && (d->len == (-0x7fffffff-1) || d->max < 0 ||
-	   (d->len < 0 ? -d->len : d->len) > d->max)))
-		error(exInval);
+	/* Reject malformed views before scanning or publishing any partial word. */
+	length[0] = length[1] = 0;
+	for(i = 0; s != H && i < 2; i++) {
+		view = i == 0 ? s : d;
+		if(view == H)
+			continue;
+		address = (uintptr)view;
+		if(address > (uintptr)-1-(offsetof(String, max)+sizeof(capacity)))
+			error(exHeap);
+		if(i == 0) {
+			/* slicer copies an owning String and requires a valid Heap prefix. */
+			if(address <= sizeof(Heap) || (address-sizeof(Heap))%sizeof(void*) != 0)
+				error(exHeap);
+			memmove(&references, (uchar*)view-sizeof(Heap)+offsetof(Heap, ref), sizeof(references));
+			if(references == 0)
+				error(exHeap);
+		}
+		memmove(&length[i], (uchar*)view+offsetof(String, len), sizeof(length[i]));
+		memmove(&capacity, (uchar*)view+offsetof(String, max), sizeof(capacity));
+		if(length[i] == (-0x7fffffff-1) || capacity < 0 ||
+		   (length[i] < 0 ? -length[i] : length[i]) > capacity)
+			error(exInval);
+		bytes = (uvlong)(length[i] < 0 ? -length[i] : length[i])*(length[i] < 0 ? sizeof(Rune) : 1);
+		if(bytes != 0 && (address > (uintptr)-1 - offsetof(String, data) ||
+		   bytes > (uintptr)-1-(address+offsetof(String, data))))
+			error(exHeap);
+	}
+	/* Input errors retain priority over malformed old result owners. */
+	if(result->previous == nil)
+		error(exNilref);
+	if(result->previous != H) {
+		address = (uintptr)result->previous;
+		if(address <= sizeof(Heap) || (address-sizeof(Heap))%sizeof(void*) != 0)
+			error(exHeap);
+		memmove(&references, (uchar*)result->previous-sizeof(Heap)+offsetof(Heap, ref), sizeof(references));
+		if(references == 0)
+			error(exHeap);
+	}
 	h = &result->words;
 	first = 0;
-	srune = 0;
-	nc = s->len;
-	if(nc < 0){
-		nc = -nc;
-		srune = 1;
-	}
+	srune = length[0] < 0;
+	nc = srune ? -length[0] : length[0];
+	if(nc == 0)
+		return 1;
+	data = (uchar*)s+offsetof(String, data);
 	while(first < nc){
 		while(first < nc){
-			c = srune ? s->Srune[first] : (uchar)s->Sascii[first];
+			if(srune) {
+				memmove(&rune, data+(ulong)first*sizeof(rune), sizeof(rune));
+				c = rune;
+			} else
+				c = data[first];
 			if(!tokdelim(c, d))
 				break;
 			first++;
 		}
 		last = first;
 		while(last < nc){
-			c = srune ? s->Srune[last] : (uchar)s->Sascii[last];
+			if(srune) {
+				memmove(&rune, data+(ulong)last*sizeof(rune), sizeof(rune));
+				c = rune;
+			} else
+				c = data[last];
 			if(tokdelim(c, d))
 				break;
 			last++;
@@ -515,8 +615,10 @@ buildtokens(void *arg)
 		nl->t = &Tptr;
 		Tptr.ref++;
 		/* slicer can raise an error after the list node has been published. */
-		*(String**)nl->data = H;
-		*(String**)nl->data = slicer(first, last, s);
+		word = H;
+		memmove(nl->data, &word, sizeof(word));
+		word = slicer(first, last, s);
+		memmove(nl->data, &word, sizeof(word));
 		h = &nl->tail;
 		first = last;
 		result->count++;
@@ -529,27 +631,39 @@ buildtokens(void *arg)
 void
 Sys_tokenize(void *fp)
 {
-	typedef struct { WORD count; List *words; } Value;
-	F_Sys_tokenize *f;
+	typedef struct Value Value;
+
+	struct Value {
+		WORD count; // Complete token count published after construction.
+		List *words; // Old owner is replaced only after all allocations succeed.
+	};
+	F_Sys_tokenize f;
 	TokenizeResult result;
 	List *old;
 	WORD count;
 	uchar *ret;
 
-	f = fp;
-	ret = (uchar*)f->ret;
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-sizeof(f))
+		error(exHeap);
+	memmove(&f, fp, sizeof(f));
+	ret = (uchar*)f.ret;
 	if(ret == nil || ret == H)
 		error(exNilref);
-	result.source = f->s;
-	result.delimiters = f->delim;
+	if((uintptr)ret > (uintptr)-1-sizeof(Value))
+		error(exHeap);
+	memmove(&old, ret+O(Value, words), sizeof(old));
+	result.source = f.s;
+	result.delimiters = f.delim;
 	result.words = H;
+	result.previous = old;
 	result.count = 0;
 	if(!kprotect(buildtokens, &result)){
 		destroy(result.words);
 		krethrow();
 	}
 	count = result.count;
-	memmove(&old, ret+O(Value, words), sizeof(old));
 	memmove(ret+O(Value, count), &count, sizeof(count));
 	memmove(ret+O(Value, words), &result.words, sizeof(result.words));
 	destroy(old);
@@ -558,27 +672,49 @@ Sys_tokenize(void *fp)
 
 /* Validate byte-array metadata and full VM lengths before native UTF routines. */
 static int
-sysutfarray(Array *a)
+sysutfarray(Array *a, uchar **data)
 {
+	Array view;
+	Heap owner;
+	int size, pointers;
+	uintptr address, extent;
+
 	if(a == H || a == nil)
 		error(exBounds);
-	/* A compiler may emit its own pointer-free byte descriptor. */
-	if(D2H(a)->t != &Tarray ||
-	   (a->t != &Tbyte &&
-	    (a->t == nil || a->t == H || a->t->size != 1 || a->t->np != 0)))
-		error(exType);
-	if(a->len < 0 || (uvlong)a->len > 0x7fffffff || (a->len != 0 && (a->data == nil || a->data == H)))
+	address = (uintptr)a;
+	if(address <= sizeof(Heap) || address > (uintptr)-1-sizeof(view))
 		error(exBounds);
-	return (int)a->len;
+	/* Input arrays and read-only compiler descriptors may be packed. */
+	memmove(&owner, (uchar*)a-sizeof(Heap), sizeof(owner));
+	if(owner.t != &Tarray)
+		error(exType);
+	memmove(&view, a, sizeof(view));
+	if(view.t != &Tbyte) {
+		extent = offsetof(Type, size) > offsetof(Type, np) ? offsetof(Type, size) : offsetof(Type, np);
+		if(view.t == nil || view.t == H || (uintptr)view.t > (uintptr)-1-extent-sizeof(int))
+			error(exType);
+		memmove(&size, (uchar*)view.t+offsetof(Type, size), sizeof(size));
+		memmove(&pointers, (uchar*)view.t+offsetof(Type, np), sizeof(pointers));
+		if(size != 1 || pointers != 0)
+			error(exType);
+	}
+	if(view.len < 0 || (uvlong)view.len > 0x7fffffff ||
+	   (view.len != 0 && (view.data == nil || view.data == H ||
+	    (uintptr)view.data > (uintptr)-1-(uintptr)view.len)))
+		error(exBounds);
+	*data = view.data;
+	return (int)view.len;
 }
 
 
-/* Validate result slots before UTF operations can modify an aliased byte array. */
+/* Bound the complete result before encoding can modify an aliased byte array. */
 static uchar*
-sysutfresult(void *slot)
+sysutfresult(void *slot, uintptr bytes)
 {
 	if(slot == nil || slot == H)
 		error(exNilref);
+	if((uintptr)slot > (uintptr)-1-bytes)
+		error(exBounds);
 	return slot;
 }
 
@@ -590,17 +726,21 @@ Sys_utfbytes(void *fp)
 	Array *a;
 	int nbyte, length;
 	WORD result;
-	uchar *ret;
-	F_Sys_utfbytes *f;
+	uchar *ret, *data;
+	F_Sys_utfbytes f;
 
-	f = fp;
-	ret = sysutfresult(f->ret);
-	a = f->buf;
-	length = sysutfarray(a);
-	if(f->n < 0 || f->n > length)
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-sizeof(f))
+		error(exBounds);
+	memmove(&f, fp, sizeof(f));
+	ret = sysutfresult(f.ret, sizeof(result));
+	a = f.buf;
+	length = sysutfarray(a, &data);
+	if(f.n < 0 || f.n > length)
 		error(exBounds);
 
-	utfnleng((char*)a->data, (int)f->n, &nbyte);
+	utfnleng((char*)data, (int)f.n, &nbyte);
 	result = nbyte;
 	memmove(ret, &result, sizeof(result));
 }
@@ -614,21 +754,25 @@ Sys_byte2char(void *fp)
 	char *p;
 	int n, w, valid, length;
 	WORD result[3];
-	uchar *ret;
+	uchar *ret, *data;
 	Array *a;
-	F_Sys_byte2char *f;
+	F_Sys_byte2char f;
 
-	f = fp;
-	ret = sysutfresult(f->ret);
-	a = f->buf;
-	length = sysutfarray(a);
-	if(f->n < 0 || f->n >= length)
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-sizeof(f))
 		error(exBounds);
-	n = (int)f->n;
-	r = a->data[n];
+	memmove(&f, fp, sizeof(f));
+	ret = sysutfresult(f.ret, sizeof(result));
+	a = f.buf;
+	length = sysutfarray(a, &data);
+	if(f.n < 0 || f.n >= length)
+		error(exBounds);
+	n = (int)f.n;
+	r = data[n];
 	w = valid = 1;
 	if(r >= Runeself){
-		p = (char*)a->data+n;
+		p = (char*)data+n;
 		if(length-n >= UTFmax || fullrune(p, length-n)){
 			w = chartorune(&r, p);
 			valid = r != Runeerror || w != 1;
@@ -648,31 +792,35 @@ Sys_byte2char(void *fp)
 void
 Sys_char2byte(void *fp)
 {
-	F_Sys_char2byte *f;
+	F_Sys_char2byte f;
 	Array *a;
 	int n, length;
 	WORD c, result;
 	Rune r;
-	uchar *ret;
+	uchar *ret, *data;
 
-	f = fp;
-	ret = sysutfresult(f->ret);
-	a = f->buf;
-	length = sysutfarray(a);
-	c = f->c;
-	if(f->n < 0 || f->n >= length)
+	if(fp == nil || fp == H)
+		error(exNilref);
+	if((uintptr)fp > (uintptr)-1-sizeof(f))
 		error(exBounds);
-	n = (int)f->n;
+	memmove(&f, fp, sizeof(f));
+	ret = sysutfresult(f.ret, sizeof(result));
+	a = f.buf;
+	length = sysutfarray(a, &data);
+	c = f.c;
+	if(f.n < 0 || f.n >= length)
+		error(exBounds);
+	n = (int)f.n;
 	if(c < 0 || c > Runemax)
 		c = Runeerror;
 	result = 0;
 	if(c < Runeself){
-		a->data[n] = c;
+		data[n] = c;
 		result = 1;
 	}else{
 		r = c;
 		if(length-n >= UTFmax || runelen(c) <= length-n)
-			result = runetochar((char*)a->data+n, &r);
+			result = runetochar((char*)data+n, &r);
 	}
 	memmove(ret, &result, sizeof(result));
 }

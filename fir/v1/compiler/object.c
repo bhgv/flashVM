@@ -172,7 +172,9 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     }
     for (i = 0; i < m->count; i++)
     {
-        if (!m->instructions[i].removed && (m->instructions[i].op > O_RETURN || m->instructions[i].type > T_CHANNEL))
+        if (!m->instructions[i].removed &&
+            ((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) ||
+             m->instructions[i].type > T_CHANNEL))
         {
             snprintf(error, cap, "table/big operations require a table-capable backend");
             return 0;
@@ -210,6 +212,21 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
         }
         switch (in->op)
         {
+        case O_AS_GLOBAL_GET:
+            text(&actions, in->text);
+            byte(&actions, 0x1c);
+            break;
+        case O_AS_GLOBAL_SET:
+            text(&actions, in->text);
+            load(&actions, m, in->a);
+            byte(&actions, 0x1d);
+            break;
+        case O_AS_MEMBER_SET:
+            load(&actions, m, in->a);
+            text(&actions, in->text);
+            load(&actions, m, in->b);
+            byte(&actions, 0x4f);
+            break;
         case O_I32:
             integer(&actions, in->integer);
             break;

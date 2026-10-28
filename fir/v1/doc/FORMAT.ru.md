@@ -174,3 +174,5 @@ checking or an implicit conversion instruction.
 [Dynamic any: implemented status and proposed ADT boundary / Состояние any и проект ADT](DYNAMIC_VALUES.md).
 
 [Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.ru.md).
+
+[Dynamic AS globals and property stores](AS_PROPERTIES.md) / [Русский](AS_PROPERTIES.ru.md): typed FIR operations, conservative effects, AVM1 target lowering and explicit Dis rejection.

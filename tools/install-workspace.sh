@@ -115,6 +115,13 @@ frontend() {
         copy_file "$ROOT/compiler/$language/examples/Automatic.as" "$destination/examples/Automatic.as"
         copy_file "$ROOT/compiler/$language/examples/UnicodeNames.as" "$destination/examples/UnicodeNames.as"
     fi
+    if [[ "$language" == as2 && -d "$base/view" ]]; then
+        install_program "$base" as2_viewc "$destination"
+        copy_file "$ROOT/compiler/as2/view/view.h" "$destination/include/as2/view.h"
+        copy_file "$ROOT/compiler/as2/view/README.md" "$destination/VIEW.md"
+        copy_file "$ROOT/compiler/as2/view/README.ru.md" "$destination/VIEW.ru.md"
+        copy_file "$ROOT/ide/as/editor-view.as" "$destination/examples/editor-view.as"
+    fi
     notices "$destination" "$ROOT/compiler/$language"
     copy_file "$ROOT/tools/coco-r-C/upstream/read.me" "$destination/LICENSES/CocoR-README.txt"
     printf 'component=%s\nbuild=%s\nconfiguration=%s\n' "$language" "$base" "$CONFIG" >"$destination/PACKAGE.txt"
@@ -339,6 +346,16 @@ EOF
             install_program "$base" disvm "$destination"
             if [[ "$component" == disvm-editor ]]; then
                 install_program "$base" disvm-editor "$destination"
+                copy_tree "$ROOT/ide/as" "$destination/source/as"
+                copy_file "$ROOT/compiler/as2/view/README.md" "$destination/docs/as2/VIEW.md"
+                copy_file "$ROOT/compiler/as2/view/README.ru.md" "$destination/docs/as2/VIEW.ru.md"
+                copy_file "$ROOT/fir/v1/doc/AS_PROPERTIES.md" "$destination/docs/fir/AS_PROPERTIES.md"
+                copy_file "$ROOT/fir/v1/doc/AS_PROPERTIES.ru.md" "$destination/docs/fir/AS_PROPERTIES.ru.md"
+                for artifact in fir opt.fir swo swf; do
+                    if [[ -f "$base/native/ide-view.$artifact" ]]; then
+                        copy_file "$base/native/ide-view.$artifact" "$destination/ui/editor-view.$artifact"
+                    fi
+                done
                 copy_tree "$ROOT/ide/assets/fonts" "$destination/fonts"
                 for file in "$ROOT/ide/dis/"*.md; do
                     copy_file "$file" "$destination/docs/dis/$(basename "$file")"

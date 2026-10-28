@@ -8,7 +8,9 @@
 
 [Channel projection inspector and admission model](PROJECTIONS.md)
 
-Version 0.12.0. [Русский](README.ru.md).
+[AS-backed graphical file listing](GRAPHICAL-BROWSER.md) · [AS2 executable backend](../../compiler/as2/view/README.md)
+
+Version 0.13.0. [Русский](README.ru.md).
 
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
@@ -101,6 +103,8 @@ Keep source and debug data together; do not silently treat missing source as a
 successful debugger integration. [Validation](VALIDATION.md).
 
 ## Source navigation
+
+[AS-backed graphical file listing](GRAPHICAL-BROWSER.md) · [AS2 executable backend](../../compiler/as2/view/README.md)
 
 Version 0.3.1 adds revision-bound Locate/Offset queries through the same typed
 channel. Rebuild all clients: Reply now includes offset/line/column.

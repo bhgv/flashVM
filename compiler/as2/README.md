@@ -1,10 +1,11 @@
 # AS2
 
-Version 0.4.0. [Русский](README.ru.md).
+Version 0.5.0. [Русский](README.ru.md).
 
-Independent C99 compiler project. The current implementation is a syntax
-frontend: [grammar, build and limitations](frontend/README.md). Semantic
-analysis, AST construction, bytecode and SWF emission are not implemented yet.
+Independent C99 compiler project. The shared [Coco/R syntax frontend](frontend/README.md)
+now feeds the [executable display backend](view/README.md): CLI and library emit FIR,
+which the target compiler lowers to SWO and SWL links into the IDE view SWF. General AST/semantic lowering, full AS2 and direct
+SWF emission remain unfinished; the bounded display profile is documented separately.
 
 Configure this directory with the same explicit tool paths as in the frontend guide:
 

@@ -394,6 +394,9 @@ init()
                 fieldcaret = inputfield.caret;
                 fieldanchor = inputfield.anchor;
             }
+            if (mode == browsing->Panel) {
+                (fieldanchor, fieldcaret) = browsing->selection(sys, browser);
+            }
             fieldview := ref Uibridge->Message(codec->View, 0, host->PanelSelection, reply.revision,
                                               fieldcaret, fieldanchor, "");
             (fieldok, fieldwire) := codec->encode(fieldview);
@@ -596,8 +599,45 @@ init()
                     raise "fail: browser modifier event";
                 }
                 reply = inputreply(reply, observed.document, event);
+            } else if (event.kind == codec->Request && event.code == host->FieldPlace) {
+                identity := array of byte event.text;
+                (known, seen) := codec->parseword(identity, 0);
+                if (!known || len identity != 8 || seen != ticket || event.flags != reply.revision) {
+                    reply.status = core->Conflict;
+                } else if (event.second < 1 || event.second > 3) {
+                    reply.status = core->RangeError;
+                } else if (event.second == 1) {
+                    action := browsing->hit(sys, browser, event.first);
+                    if (action >= 0) {
+                        browser.selected = action;
+                        reply.status = core->Ok;
+                    } else if (action == -2) {
+                        reply.status = browserstatus(browsing->parent(directoryfiles, browser));
+                    } else if (action == -3) {
+                        reply.status = browserstatus(browsing->advance(directoryfiles, browser));
+                    } else if (action == -4) {
+                        reply.status = browserstatus(browsing->open(directoryfiles, browser, browser.path));
+                    } else if (action == -5) {
+                        mode = browsing->PathPanel;
+                        inputfield = fields->create();
+                        reply.status = fields->set(inputfield, browser.path, 1);
+                    } else if (action == -6) {
+                        reply.status = browserstatus(browsing->clear(directoryfiles, browser));
+                        mode = 0;
+                    } else if (action == -7) {
+                        (updated, destination, opened) := choosebrowser(browser, document, policy, state, reply);
+                        reply = updated;
+                        if (opened) {
+                            path = destination;
+                            mode = 0;
+                            reveal = 1;
+                        }
+                    }
+                }
             } else if (event.kind == codec->Key && event.flags != 0) {
-                if (event.code == 27) {
+                if (event.code == 8) {
+                    reply.status = browserstatus(browsing->parent(directoryfiles, browser));
+                } else if (event.code == 27) {
                     reply.status = browserstatus(browsing->clear(directoryfiles, browser));
                     mode = 0;
                     inputfield = fields->create();

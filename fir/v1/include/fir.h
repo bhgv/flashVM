@@ -166,7 +166,10 @@ typedef enum
     O_REF_LOCAL,         /* Initialize a typed retained frame cell from its payload. */
     O_REF_LOAD,          /* Retain the current typed payload in a distinct SSA value. */
     O_REF_STORE,         /* Retain replacement before releasing the previous cell payload. */
-    O_REF_NIL            /* Clear a private reference cell; load requires a subsequent definite store. */
+    O_REF_NIL,           /* Clear a private reference cell; load requires a subsequent definite store. */
+    O_AS_GLOBAL_GET,     /* Read a named dynamic AVM1 global; may execute user accessors. */
+    O_AS_GLOBAL_SET,     /* Assign a named AVM1 global; never a Dis heap address. */
+    O_AS_MEMBER_SET      /* Set a named member on a captured AS object value. */
 } FirOp;
 
 

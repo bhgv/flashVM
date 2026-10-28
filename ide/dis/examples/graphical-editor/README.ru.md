@@ -29,7 +29,9 @@ Mono/OFL включён в пакет; размер по умолчанию **11
 входным Dis, пользовательские пути — относительно cwd. Перенос пакета не требует
 исходников, сети или системного поиска шрифтов.
 
-Прямой CMake: `DVM_RUNTIME_EDITOR=ON`, для окна `DVM_EDITOR_SDL=ON` и `SDL2_DIR`.
+AS-представление компилируется и исполняется FlashVM: [backend AS2](../../../../compiler/as2/view/README.ru.md).
+Прямой CMake: `DVM_RUNTIME_EDITOR=ON`, `DVM_AS_VIEW_COMPILER=/полный/путь/as2_viewc`, `DVM_FIR_COMPILER`,
+`DVM_FIR_OPTIMIZER`, `DVM_SWF_LINKER`, для окна `DVM_EDITOR_SDL=ON` и `SDL2_DIR`.
 Консольный runtime сохраняет сборку без графического SDK. Без SDL графический
 вариант поддерживает воспроизведение и настоящую внеэкранную растеризацию.
 `--jit`/`--no-jit` выбирают реальный режим Dis; `.dis/.sbl` собираются из исходников.

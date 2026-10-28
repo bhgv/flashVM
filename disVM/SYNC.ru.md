@@ -1,3 +1,20 @@
+# v0.1653 — Sys frames/owners and mapped capture refresh
+
+Current pin / Текущий снимок: **9a87d74eb4f47cf7b8ea35c804f86c7c20e40d36**.
+Exact selections / Точные выборки: **662 core/reference/library + 207 bootstrap files**.
+Incoming changes validate complete Sys UTF/tokenizer/public-format frames, packed
+views and owners before side effects, and capture mapped-copy operands across
+destructor callbacks. Original C, complete AMD64 JIT and WORD-width tests retained.
+Full core 248/248 at 047e0dc plus final affected 9a87d74 refresh 6/6 passed.
+
+Bidirectional review / Двусторонняя сверка: experiment retains our previous
+reverse fixes, including 73a6b5a. No new shared defect was found for a reverse patch;
+AS2/FIR/IDE changes are flashVM-owned and were not copied into Inferno.
+[RU/EN release](../docs/releases/v0.1653.md) ·
+[AS2 → FIR → SWO → SWF](../compiler/as2/view/README.md).
+
+## Previous checkpoints / Предыдущие состояния
+
 # Обзор модулей, обратное исправление Regex и оптимизатор bootstrap
 
 Итоговый снимок: **320e6581e425c014f8a9ba313352b664925a709f**.

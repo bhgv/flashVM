@@ -17,7 +17,7 @@ Limbo. Python/Node, Inferno Draw/Tk and external emu are not deployed dependenci
 A separately owned FlashVM context displays pinned TextFields. Native code only
 renders complete checked channel values and converts actual glyph geometry to
 revision/ticket-bound hit proposals; Dis decides whether to apply them. SDL
-presents pixels and captures events. The existing AS worker/presentation sources
+presents pixels and captures events. The separate AS worker/presentation sources
 are not yet executed by this target.
 
 ## Build and run
@@ -36,7 +36,9 @@ system font search. Its face/license/provenance are shipped in `fonts/`.
 can be moved; module/font resources resolve beside the entry module while ordinary
 file paths retain the caller's cwd. No network/font download occurs at execution.
 
-Direct CMake builds use `DVM_RUNTIME_EDITOR=ON`; SDL windows additionally use
+The [AS display source](../../../as/editor-view.as) is compiled and executed by FlashVM.
+See the [shared AS2 backend](../../../../compiler/as2/view/README.md).
+Direct CMake builds use `DVM_RUNTIME_EDITOR=ON` and an explicit `DVM_AS_VIEW_COMPILER`; SDL windows additionally use
 `DVM_EDITOR_SDL=ON` and an explicit SDL2 SDK. The console runtime remains independent
 of graphics. Without SDL, the graphical target still supports deterministic
 replay with actual FlashVM raster output. Matching Dis/.sbl modules are built from
@@ -44,6 +46,10 @@ source. `--jit` / `--no-jit` selects real Dis dispatch.
 
 ```sh
 cmake -S disVM/runtime -B build/editor -DDVM_RUNTIME_EDITOR=ON \
+    -DDVM_AS_VIEW_COMPILER="$PWD/build/as2/view/as2_viewc" \
+    -DDVM_FIR_COMPILER="$PWD/build/fir/fir1" \
+    -DDVM_FIR_OPTIMIZER="$PWD/build/fir/fir1_opt" \
+    -DDVM_SWF_LINKER="$PWD/build/linker/swl" \
     -DDVM_EDITOR_SDL=ON -DSDL2_DIR=/absolute/path/SDL2/cmake
 cmake --build build/editor -j4
 ctest --test-dir build/editor --output-on-failure

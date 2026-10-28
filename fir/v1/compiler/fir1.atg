@@ -346,6 +346,8 @@ PRODUCTIONS
     A
     | IntegerBinary A "," B
     | FloatingBinary A "," B
+    | "as.global_get" (. fir_build_op(O_AS_GLOBAL_GET); .)
+    textlit (. capture(B_LITERAL); .)
     | "as.add"                                                          (. fir_build_op(O_ASADD); .)
     A "," B
     | "as.to_number"                                                    (. fir_build_op(O_NUMBER); .)
@@ -384,7 +386,11 @@ PRODUCTIONS
 
   /* Statements without SSA results; if has true target followed by false target. */
   Effect =
-    "ref.store" (. fir_build_op(O_REF_STORE); .) A "," B
+    "as.global_set" (. fir_build_op(O_AS_GLOBAL_SET); .)
+    textlit (. capture(B_LITERAL); .) "," A
+    | "as.member_set" (. fir_build_op(O_AS_MEMBER_SET); .)
+    A "," textlit (. capture(B_LITERAL); .) "," B
+    | "ref.store" (. fir_build_op(O_REF_STORE); .) A "," B
     | "big.store" (. fir_build_op(O_BIG_STORE); .) A "," B
     | "table.lock" (. fir_build_op(O_TABLE_LOCK); .) A
     | "table.unlock" (. fir_build_op(O_TABLE_UNLOCK); .) A

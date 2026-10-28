@@ -195,3 +195,5 @@ pointer in the IR; native layouts, effects and GC are specified in
 [Checked big division and bit operations](BIG_BITWISE.md).
 
 [Compiler 0.26: Unicode strings / Строковые операции](UNICODE_STRINGS.md).
+
+[Dynamic AS globals and property stores](AS_PROPERTIES.md) / [Русский](AS_PROPERTIES.ru.md): typed FIR operations, conservative effects, AVM1 target lowering and explicit Dis rejection.

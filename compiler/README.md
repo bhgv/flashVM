@@ -5,7 +5,7 @@ Version 0.6.0. [Русский](README.ru.md).
 | Project | Current component |
 | --- | --- |
 | [AS1](as1/README.md) | [Syntax frontend](as1/frontend/README.md) |
-| [AS2](as2/README.md) | [Syntax frontend](as2/frontend/README.md) |
+| [AS2](as2/README.md) | [Syntax frontend](as2/frontend/README.md) and [display profile → FIR](as2/view/README.md) |
 | [AS3](as3/README.md) | [Syntax frontend](as3/frontend/README.md) |
 | [Limbo](limbo/README.md) | [Syntax frontend](limbo/frontend/README.md) |
 
