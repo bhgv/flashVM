@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1668**. [Русская версия](README.ru.md).
+Development version: **0.1669**. [Русская версия](README.ru.md).
 
-Current series: [v0.1668](docs/releases/v0.1668.md): structured numeric Limbo flow, private scalar FIR cells, Dis/SWF execution and checked Inferno scope binding.
+Current series: [v0.1669](docs/releases/v0.1669.md): counted numeric Limbo loops, postfix updates, bounded lexical scopes and executable portable SDK tutorials.
 
 ## Browse documentation
 
