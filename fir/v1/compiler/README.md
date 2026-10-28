@@ -53,3 +53,5 @@ Compiler 0.31 / Компилятор 0.31: [hybrid table constructors](../doc/TA
 Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](../doc/RELATIVE_SEQUENCES.md), [русское руководство](../doc/RELATIVE_SEQUENCES.ru.md).
 
 [Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](../doc/NUMERIC_FLOW.md) · [Русский](../doc/NUMERIC_FLOW.ru.md).
+
+[Numeric counted loops / Числовой for — FIR 0.58](../doc/NUMERIC_FOR.md) · [Русский](../doc/NUMERIC_FOR.ru.md).

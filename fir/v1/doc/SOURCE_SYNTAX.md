@@ -43,13 +43,13 @@ optimization. Division requires SWL >=0.3.2.
 
 [Limbo lexical blocks / Лексические блоки](LEXICAL_SCOPES.md).
 
-## Structured Limbo control flow, source CLI 0.24
+## Structured Limbo control flow, source CLI 0.25
 
 The int/real profiles accept initialized declarations, assignments, lexical blocks,
-if/else (including omitted else and else-if), while, innermost break/continue and
+if/else (including omitted else and else-if), while, counted for, statement-only postfix updates, innermost break/continue and
 return. Open branches rejoin through explicit private numeric cells; terminal
 branches keep no fallthrough edge. A conservative loop exit requires a later
-return even when its test is constant true. Numeric for, mixed casts and source
+return even when its test is constant true. Mixed casts and source
 calls remain unsupported. [Exact flow/cell contract](NUMERIC_FLOW.md).
 
 Conditions use the shared [grouped precedence hierarchy](GROUPED_CONDITIONS.md).
@@ -94,3 +94,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.56](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).
 
 FIR 0.57: [current numeric flow EN](NUMERIC_FLOW.md) / [текущий числовой CFG RU](NUMERIC_FLOW.ru.md).
+
+[Counted numeric for / Числовой for](NUMERIC_FOR.md): header scopes, staged step, postfix updates.

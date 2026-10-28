@@ -1,4 +1,4 @@
-# Current coverage — FIR tools 0.54
+# Current coverage — FIR tools 0.58
 
 [Русский](COVERAGE.ru.md) · [Source grammar](../compiler/src1.atg) · [Public API](../include/fir.h) · [Compiler architecture](../../../compiler/README.md)
 
@@ -8,8 +8,8 @@ This page describes executable FIR adapters, separately from the broader standal
 | --- | --- | --- |
 | FIR reader/verifier | Coco/R FIR 1.0, UTF-8, SSA, dominance, types, control-flow targets and terminators | No binary FIR or interprocedural analysis |
 | AS1/2/3 source adapter | Numeric trace, initialized bindings, AS3 const, numeric annotations, arithmetic | Teaching AVM1 compatibility; no complete AS/ABC source compiler |
-| Limbo homogeneous int | Signed32 arithmetic/division/remainder, bit operations, checked shifts, aliases, typed cells, structured if/else/while, transfers and grouped conditions | No implicit bool/int mixing or general source module ABI |
-| Limbo homogeneous real | Binary64 arithmetic, typed locals/aliases, typed cells, if/else/while, early returns and grouped conditions | No implicit mixed numeric conversion, numeric for or source call ABI |
+| Limbo homogeneous int | Signed32 arithmetic/division/remainder, bit operations, checked shifts, aliases, typed cells, structured if/else/while/for, transfers and grouped conditions | No implicit bool/int mixing or general source module ABI |
+| Limbo homogeneous real | Binary64 arithmetic, typed locals/aliases, typed cells, if/else/while/for, early returns and grouped conditions | No implicit mixed numeric conversion, source call ABI |
 | Limbo typed big/table | Exact big/int arithmetic, bool comparisons/logical values, Unicode strings, hybrid tables, key snapshots, constructors, mutation/slices and typed loops | Restricted value() teaching entry; no arbitrary composite/type/function compiler |
 | Type aliases | Forward file/module prefix, sequential body/block/branch/loop aliases, canonical casts and scope retirement | 128 declarations per request; no imports/qualified/generic types or local forwards |
 | Optimizer | Verified explicit optimization, constant folds, CFG simplification, conservative memory/exception effects | Not a whole-program optimizer; effectful producer errors remain observable |
@@ -37,3 +37,5 @@ The teaching wrapper calls/traces value(); it is not Inferno's general init ABI.
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.57](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).
 
 [Structured numeric flow EN](NUMERIC_FLOW.md) / [RU](NUMERIC_FLOW.ru.md).
+
+[Numeric for EN](NUMERIC_FOR.md) / [RU](NUMERIC_FOR.ru.md).

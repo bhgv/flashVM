@@ -40,14 +40,14 @@ const в AS1/AS2 — ошибки с сохранением существующ
 содержит согласованные поля source_language/source_semantics; они сохраняются
 при round trip и оптимизации. Деление требует SWL >=0.3.2.
 
-## Структурный Limbo CFG, CLI 0.24
+## Структурный Limbo CFG, CLI 0.25
 
 Профили int/real принимают инициализированные объявления, присваивания, блоки,
-if/else (включая отсутствующий else и else-if), while, break/continue ближайшего
+if/else (включая отсутствующий else и else-if), while, счётный for, постфиксные обновления, break/continue ближайшего
 цикла и return. Открытые ветви сливаются через приватные числовые ячейки;
 терминальная ветвь не получает ребра продолжения. Консервативный анализ требует
 return после потенциального выхода цикла даже при константно истинном тесте.
-Числовой for, смешанные casts и вызовы функций пока не поддерживаются.
+Смешанные casts и вызовы функций пока не поддерживаются.
 [Точный контракт](NUMERIC_FLOW.ru.md).
 
 Условия используют общую [группированную иерархию](GROUPED_CONDITIONS.ru.md).
@@ -88,3 +88,5 @@ Compiler 0.27 / Компилятор 0.27: [int + - * / %, += -= *= /= %=](INT_A
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.56](GROUPED_CONDITIONS.md) · [Русский](GROUPED_CONDITIONS.ru.md).
 
 FIR 0.57: [current numeric flow EN](NUMERIC_FLOW.md) / [текущий числовой CFG RU](NUMERIC_FLOW.ru.md).
+
+[Counted numeric for / Числовой for](NUMERIC_FOR.ru.md): header scopes, staged step, postfix updates.

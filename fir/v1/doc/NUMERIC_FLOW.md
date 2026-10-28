@@ -1,9 +1,9 @@
-# Numeric cells and structured Limbo flow — FIR 0.57 / source CLI 0.24
+# Numeric cells and structured Limbo flow — FIR 0.58 / source CLI 0.25
 
 [Русский](NUMERIC_FLOW.ru.md) · [Coverage](COVERAGE.md) · [Grouped expressions](GROUPED_CONDITIONS.md) · [Int tutorial](../examples/dis/numeric-flow-int.b) · [Real tutorial](../examples/dis/numeric-flow-real.b) · [FIR loop](../examples/dis/numeric-cells.fir) · [Signed-zero snapshots](../examples/dis/real-cells.fir)
 
 Homogeneous Limbo int/real functions now admit ordinary structured statements:
-nonterminal if/else, optional else, else-if, while, innermost break/continue and
+nonterminal if/else, optional else, else-if, while, counted for, statement-only postfix updates, innermost break/continue and
 return from a nested block or loop. A source function still uses the existing
 bounded value() entry and trace harness. This is useful scalar control flow,
 not a general module/function-call ABI or a complete Limbo compiler.
@@ -23,13 +23,13 @@ aliases retire at lexical close and cannot escape through a post-loop read.
 The source proof conservatively treats loops as possibly empty, even for a
 constant-true test; a body return alone never proves a total function return. Every reachable function exit must return the declared numeric kind;
 unreachable statements after a transfer reject. Numeric declarations still need
-initializers. Numeric for, named transfers, bool locals, mixed int/real casts and
+initializers. Named transfers, bool locals, mixed int/real casts and
 source calls remain outside this profile. The table/big profile keeps its existing
 for/while, conversions and retained-owner cell behavior.
 
-Numeric and table statement repetitions have separate Coco/R FIRST sets. In
-particular, unsupported numeric for syntax produces a bounded compiler diagnostic
-rather than entering a repetition whose error arm cannot consume the token.
+[Counted for](NUMERIC_FOR.md) has a loop-local header, nested numeric body scope
+and a staged step reached by continue. Numeric and table statement repetitions
+have separate Coco/R FIRST sets for bounded, consuming error recovery.
 All new syntax is parsed by Coco/R; no second source scanner is introduced.
 
 ## FIR cell contract

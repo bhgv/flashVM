@@ -177,3 +177,19 @@ Compile it with `build/fir/fir1_source limbo --input fir/v1/examples/dis/int-com
 [Grouped numeric conditions / Группировка числовых условий — FIR 0.56](../../doc/GROUPED_CONDITIONS.md) · [Русский](../../doc/GROUPED_CONDITIONS.ru.md).
 
 [Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](../../doc/NUMERIC_FLOW.md) · [Русский](../../doc/NUMERIC_FLOW.ru.md).
+
+[Numeric counted loops / Числовой for — FIR 0.58](../../doc/NUMERIC_FOR.md) · [Русский](../../doc/NUMERIC_FOR.ru.md).
+
+## Numeric counted loops / Числовой for
+
+- [numeric-for-int.b](numeric-for-int.b): continue runs the staged postfix step;
+  break skips it; the continuation returns 42.
+- [numeric-for-real.b](numeric-for-real.b): six contributing passes return exact
+  binary64 42.5, with identical raw/optimized Dis and linked SWF behavior.
+- [numeric-for-nested.b](numeric-for-nested.b): independent nested steps and
+  three lexical bindings named i preserve the outer 42 and sum 21 additions.
+
+Все непустые строки этих примеров прокомментированы. Переменные заголовка
+не выходят за цикл, а тело может затенить их без изменения адресата шага.
+Подробные команды, ожидаемые capture-биты, ограничения backend и библиотечный
+путь: [English](../../doc/NUMERIC_FOR.md) / [Русский](../../doc/NUMERIC_FOR.ru.md).
