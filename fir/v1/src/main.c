@@ -13,6 +13,7 @@
 /* Validate CLI arguments, run the selected pipeline, and stage output on success. */
 extern FILE *fir_temporary(void);
 
+
 int main(int argc, char **argv)
 {
     FILE *input, *output;
@@ -20,7 +21,7 @@ int main(int argc, char **argv)
     int ok, check, optimise, compile, dis;
     if (argc == 2 && !strcmp(argv[1], "--version"))
     {
-        puts("fir1 0.53.0 (FIR 1.0; SWO1 dynamic AS properties; NC64 Dis typed values/cells/traversal)");
+        puts("fir1 0.54.0 (FIR 1.0; SWO1 dynamic AS properties; NC64 Dis typed values/cells/traversal)");
         return 0;
     }
     if (argc == 2 && !strcmp(argv[1], "--help"))

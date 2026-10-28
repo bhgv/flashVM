@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1664**. [Русская версия](README.ru.md).
+Development version: **0.1665**. [Русская версия](README.ru.md).
 
-Current series: [v0.1664](docs/releases/v0.1664.md): direct int comparisons, strict FIR bool operations, Dis/SWF lowering and bounded Inferno AST diagnostics.
+Current series: [v0.1665](docs/releases/v0.1665.md): ordered real conditions through FIR/Dis/SWF, subnormal literal fixes and AMD64/ARM64 emitter synchronization.
 
 ## Browse documentation
 

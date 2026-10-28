@@ -68,7 +68,6 @@ def main():
         rejected = [program('real := 2.5; return real;'), program('return 2;'), program('return 16rA;'), program('return 0x1e;'),
                     program('return 1e400;'), program('x: int = 2.5; return x;'),
                     program('return 2.5;', 'int', 'real'), program('return 2;', 'real', 'int'),
-                    program('if(1.0<2.0){return 1.0;}else{return 2.0;}'),
                     program('return real 2;'), program('return 1.0 + ;'), program('return 1.0;')[:-1],
                     program('x: real = 1; return x;'), program('x: real = 2; return x;', 'int', 'int')]
         for text in rejected:

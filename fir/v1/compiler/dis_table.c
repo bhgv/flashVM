@@ -6,8 +6,17 @@
 #define CELL 8U /* Explicit NC64 frame/data cell size; never derived from host pointers. */
 #define MAP_BYTES ((3U * FIR_LIMIT + 32U + 7U) / 8U) /* Maximum entry-frame map for three-cell key locations. */
 
+
 enum
 {
+    MOVF = 46,             /* Copy binary64 bits without adding a GC root. */
+    ADDF = 59,             /* Binary64 addition. */
+    SUBF = 62,             /* Binary64 subtraction. */
+    MULF = 65,             /* Binary64 multiplication. */
+    DIVF = 68,             /* Binary64 division. */
+    BEQF = 99,             /* IEEE equality, false for unordered operands. */
+    BLTF = 101,            /* Ordered binary64 less-than. */
+    BLEF = 102,            /* Ordered binary64 less-or-equal. */
     BLTC = 107,            /* Unicode scalar lexicographic string comparison. */
     BEQC = 105,            /* Compare rooted string contents, including byte/rune representations. */
     ADDC = 83,             /* Allocate a concatenated string with both source roots live. */
@@ -61,11 +70,13 @@ enum
     RETURN_ADDRESS = 32    /* Raw return-address slot in that builtin frame. */
 };
 
+
 typedef struct
 {
     const char *name;   /* Exact exported function name. */
     uint32_t signature; /* Checked structural signature from the matching bigtable.m contract. */
 } Import;
+
 
 enum
 {
@@ -125,6 +136,7 @@ static const Import imports[] = {
     {"stringsplice", UINT32_C(0xe98bc080)}, {"stringindex", UINT32_C(0x8341f3aa)},
     {"runetext", UINT32_C(0xa9b8ab85)},     {"acquire", UINT32_C(0xd5819364)},
     {"release", UINT32_C(0xd5819364)}}; /* Loader checks every signature before any generated native call can run. */
+
 
 typedef struct
 {
@@ -341,8 +353,8 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
                 root(e->frame_map, offset + CELL);
             }
         }
-        else if (type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT && type != T_BIG_SLOT &&
-                 type != T_BIG_RANGE)
+        else if (type != T_F64 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT &&
+                 type != T_BIG_SLOT && type != T_BIG_RANGE)
         {
             snprintf(error, capacity, "type outside Dis table backend coverage");
             return 0;
@@ -388,10 +400,11 @@ static int layout(Emitter *e, FirModule *module, char *error, size_t capacity)
             e->traces++;
         }
         else if (in->op != O_I32 && in->op != O_IF && in->op != O_JUMP && in->op != O_BOOL && in->op != O_COPY &&
-                 in->op != O_RETURN && in->op != O_BOOL_NOT && in->op != O_BOOL_EQ && in->op != O_I32_AND &&
-                 in->op != O_I32_OR && in->op != O_I32_XOR &&
-                 !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD &&
-                 in->op != O_SUB && in->op != O_MUL && in->op != O_LT && in->op != O_EQ)
+                 in->op != O_RETURN && in->op != O_F64 && !(in->op >= O_FADD && in->op <= O_FDIV) &&
+                 in->op != O_F64_EQ && in->op != O_F64_LT && in->op != O_F64_LE && in->op != O_BOOL_NOT &&
+                 in->op != O_BOOL_EQ && in->op != O_I32_AND && in->op != O_I32_OR && in->op != O_I32_XOR &&
+                 !(in->op >= O_I64 && in->op <= O_REF_NIL) && in->op != O_ADD && in->op != O_SUB && in->op != O_MUL &&
+                 in->op != O_LT && in->op != O_EQ)
         {
             snprintf(error, capacity, "line %d: operation outside Dis table backend coverage", in->line);
             return 0;
@@ -469,13 +482,13 @@ static void copy_value(Emitter *e, FirModule *module, int destination, int sourc
     FirType key = slot ? module->values[slot->b].type : T_VOID;
     for (index = 0; index < cells(module, source); index++)
     {
-        int pointer = index == 0 && type != T_I64 && type != T_I32 && type != T_BOOL && type != T_BOOL_SLOT &&
-                      type != T_BIG_SLOT && type != T_BIG_RANGE;
+        int pointer = index == 0 && type != T_F64 && type != T_I64 && type != T_I32 && type != T_BOOL &&
+                      type != T_BOOL_SLOT && type != T_BIG_SLOT && type != T_BIG_RANGE;
         if (type == T_TABLE_SLOT && index == 1)
         {
             pointer = key == T_STRING || key == T_TABLE_KEY;
         }
-        instruction(e, pointer ? MOVP : MOVL, FP, a + index * CELL, FP, d + index * CELL, 0, -1);
+        instruction(e, pointer ? MOVP : type == T_F64 ? MOVF : MOVL, FP, a + index * CELL, FP, d + index * CELL, 0, -1);
     }
 }
 
@@ -620,6 +633,20 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_BOOL_LOAD:
             instruction(e, MOVW, FP, a, FP, d, 0, -1);
             break;
+        case O_FADD:
+        case O_FSUB:
+        case O_FMUL:
+        case O_FDIV:
+            arithmetic(e,
+                       in->op == O_FADD   ? ADDF
+                       : in->op == O_FSUB ? SUBF
+                       : in->op == O_FMUL ? MULF
+                                          : DIVF,
+                       MIDDLE_FRAME,
+                       a,
+                       b,
+                       d);
+            break;
         case O_BOOL_NOT:
             arithmetic(e, XORW, MIDDLE_IMMEDIATE, 1U, a, d);
             break;
@@ -632,10 +659,10 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_I32_DIV:
         case O_I32_MOD:
             arithmetic(e,
-                       in->op == O_I32_AND ? ANDW
-                       : in->op == O_I32_OR ? ORW
+                       in->op == O_I32_AND   ? ANDW
+                       : in->op == O_I32_OR  ? ORW
                        : in->op == O_I32_XOR ? XORW
-                       : in->op == O_ADD       ? ADDW
+                       : in->op == O_ADD     ? ADDW
                        : in->op == O_SUB     ? SUBW
                        : in->op == O_MUL     ? MULW
                        : in->op == O_I32_DIV ? DIVW
@@ -657,6 +684,9 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_BIG_SHR:
             arithmetic(e, in->op == O_BIG_SHL ? SHLL : SHRL, MIDDLE_FRAME, a, b, d);
             break;
+        case O_F64_EQ:
+        case O_F64_LT:
+        case O_F64_LE:
         case O_BOOL_EQ:
         case O_LT:
         case O_EQ:
@@ -670,7 +700,10 @@ static void body(Emitter *e, FirModule *module, int measure)
             /* Compare rooted strings or signed scalars before publishing true. Middle mode is FP; the
              * branch destination is an instruction PC rather than an address/byte offset. */
             octet(e->body,
-                  in->op == O_STRING_LT   ? BLTC
+                  in->op == O_F64_EQ      ? BEQF
+                  : in->op == O_F64_LT    ? BLTF
+                  : in->op == O_F64_LE    ? BLEF
+                  : in->op == O_STRING_LT ? BLTC
                   : in->op == O_STRING_EQ ? BEQC
                   : in->op == O_BIG_LT    ? BLTL
                   : in->op == O_BIG_EQ    ? BEQL
@@ -712,10 +745,12 @@ static void body(Emitter *e, FirModule *module, int measure)
         case O_BIG_NEG:
             instruction(e, SUBL, FP, a, FP, d, 0, 0);
             break;
+        case O_F64:
         case O_BOOL:
         case O_I32:
         case O_I64:
-            instruction(e, MOVL, MP, (2U * e->traces + (unsigned)in->result) * CELL, FP, d, 0, -1);
+            instruction(
+                e, in->op == O_F64 ? MOVF : MOVL, MP, (2U * e->traces + (unsigned)in->result) * CELL, FP, d, 0, -1);
             break;
         case O_STRING:
             instruction(e, MOVP, MP, e->strings[in->result], FP, d, 0, -1);
@@ -967,6 +1002,8 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
     size_t size;
     char buffer[4096];
     int ok = 0;
+
+
     extern FILE *fir_temporary(void);
     if (!e)
     {
@@ -1044,8 +1081,14 @@ int fir_dis_table(FILE *output, FirModule *module, char *error, size_t capacity)
         {
             int defining = module->values[i].definition;
             FirInstruction *in = defining < 0 ? NULL : &module->instructions[defining];
+            uint64_t real_bits = 0;
+            if (in && in->op == O_F64)
+            {
+                memcpy(&real_bits, &in->real, sizeof(real_bits));
+            }
             bits(output,
-                 in && !in->removed ? (in->op == O_I64                         ? (uint64_t)in->big
+                 in && !in->removed ? (in->op == O_F64                         ? real_bits
+                                       : in->op == O_I64                       ? (uint64_t)in->big
                                        : (in->op == O_BOOL || in->op == O_I32) ? (uint64_t)(int64_t)in->integer
                                        : in->op == O_BIG_NOT                   ? UINT64_MAX
                                                                                : 0)

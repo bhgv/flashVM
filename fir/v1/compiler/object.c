@@ -8,6 +8,7 @@
 
 #define BYTE_LIMIT (2u * 1024u * 1024u)
 
+
 typedef struct
 {
     unsigned char *data;
@@ -15,11 +16,13 @@ typedef struct
     int failed;
 } Bytes;
 
+
 typedef struct
 {
     size_t at;
     int target;
 } Fixup;
+
 
 /* Append one byte, recording capacity failure without writing out of bounds. */
 static void byte(Bytes *b, unsigned x)
@@ -34,6 +37,7 @@ static void byte(Bytes *b, unsigned x)
     }
 }
 
+
 /* Append an unsigned little-endian 16-bit field. */
 static void word(Bytes *b, unsigned x)
 {
@@ -41,12 +45,14 @@ static void word(Bytes *b, unsigned x)
     byte(b, x >> 8);
 }
 
+
 /* Append an unsigned little-endian 32-bit field. */
 static void dword(Bytes *b, uint32_t x)
 {
     word(b, x);
     word(b, x >> 16);
 }
+
 
 /* Push one NUL-terminated AVM1 string with a checked FIR-bounded spelling. */
 static void text(Bytes *b, const char *s)
@@ -60,6 +66,7 @@ static void text(Bytes *b, const char *s)
     } while (*s++);
 }
 
+
 /* Push a signed i32 using the AVM1 integer constant representation. */
 static void integer(Bytes *b, int32_t x)
 {
@@ -68,6 +75,7 @@ static void integer(Bytes *b, int32_t x)
     byte(b, 7);
     dword(b, (uint32_t)x);
 }
+
 
 /* Push a binary64 constant using the SWF mixed-word byte layout. */
 static void real(Bytes *b, double x)
@@ -81,6 +89,7 @@ static void real(Bytes *b, double x)
     dword(b, (uint32_t)(bits >> 32));
     dword(b, (uint32_t)bits);
 }
+
 
 /* Encode every module-name byte as two hex digits. AVM1 variable names must
  * not reinterpret an accepted module separator as a property/target path.
@@ -106,12 +115,32 @@ static void variable(Bytes *b, const FirModule *m, int index)
     text(b, name);
 }
 
+
 /* Retrieve one SSA value from its generated object-local variable. */
 static void load(Bytes *b, const FirModule *m, int index)
 {
     variable(b, m, index);
     byte(b, 0x1c);
 }
+
+
+/* Push the ordered predicate left >= right using numeric SSA operands.
+ * b owns staged bytes; m/operand identities are borrowed verified FIR values.
+ * Less2 preserves unordered as undefined; comparing that result with false
+ * rejects NaN without relying on the loaded player's numeric NaN equality.
+ * No operand expression is reevaluated; buffer failure remains sticky in b. */
+static void ordered_not_less(Bytes *b, const FirModule *m, int left, int right)
+{
+    load(b, m, left);
+    load(b, m, right);
+    byte(b, 0x48);
+    byte(b, 0x96);
+    word(b, 2);
+    byte(b, 5);
+    byte(b, 0);
+    byte(b, 0x49);
+}
+
 
 /* Push the low unsigned 16-bit half of an i32 value. */
 static void low(Bytes *b, const FirModule *m, int index)
@@ -121,6 +150,7 @@ static void low(Bytes *b, const FirModule *m, int index)
     byte(b, 0x60); /* BitAnd */
 }
 
+
 /* Push the high signed 16-bit half of an i32 value. */
 static void high(Bytes *b, const FirModule *m, int index)
 {
@@ -128,6 +158,7 @@ static void high(Bytes *b, const FirModule *m, int index)
     integer(b, 16);
     byte(b, 0x64); /* signed shift right */
 }
+
 
 /* Full 32x32 multiplication cannot use one AVM1 double multiply: low bits
  * disappear above 2^53. Three exact 16-bit partial products preserve them. */
@@ -150,6 +181,7 @@ static void multiply(Bytes *b, const FirModule *m, int a, int c)
     byte(b, 0x61);
 }
 
+
 /* Emit an unresolved branch and return the offset-field position. */
 static size_t branch(Bytes *b, int conditional)
 {
@@ -158,6 +190,7 @@ static size_t branch(Bytes *b, int conditional)
     word(b, 0);
     return b->n - 2;
 }
+
 
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
 int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
@@ -244,6 +277,24 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             break;
         case O_COPY:
             load(&actions, m, in->a);
+            break;
+        case O_F64_LT:
+            /* Less2's unordered undefined must become a normalized false bool. */
+            load(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, 0x48);
+            byte(&actions, 0x12);
+            byte(&actions, 0x12);
+            break;
+        case O_F64_LE:
+            ordered_not_less(&actions, m, in->b, in->a);
+            break;
+        case O_F64_EQ:
+            /* Ordered >= in both directions is exact equality, including +/-0.
+             * Numeric Equals2 alone may admit a NaN pair in a loaded player. */
+            ordered_not_less(&actions, m, in->a, in->b);
+            ordered_not_less(&actions, m, in->b, in->a);
+            byte(&actions, 0x10);
             break;
         case O_BOOL_NOT:
             load(&actions, m, in->a);

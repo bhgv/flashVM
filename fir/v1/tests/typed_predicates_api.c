@@ -21,7 +21,7 @@ int main(void)
         goto done;
     }
     if (O_BOOL_NOT != O_I32_XOR + 1 || O_BOOL_EQ != O_BOOL_NOT + 1 ||
-        fir_effects((FirOp)(O_BOOL_EQ + 1)) != FIR_ALL_EFFECTS)
+        fir_effects((FirOp)(O_F64_LE + 1)) != FIR_ALL_EFFECTS)
     {
         goto done;
     }

@@ -35,7 +35,7 @@ build/fir/fir1 object fir/v1/examples/dis/booleans.fir build/booleans.swo
 build/swf-linker/swl link build/booleans.swf build/booleans.swo
 ```
 
-The Limbo example returns 42 with validity flag 1. Repeat Dis emission/execution for predicates.opt.fir. Its local table must be released; runtime stats report tables_live=0 and keys_live=0. Inspect raw FIR for direct i32 predicates and bool.not/bool.eq, then optimized FIR for eliminated double negation. The scalar FIR example traces true (1 in FlashVM's current trace conversion); run it in a trace-capable SWF host to verify execution, rather than checking only that a movie opens.
+The Limbo example returns 42 with validity flag 1. Repeat Dis emission/execution for predicates.opt.fir. Its local table must be released; runtime stats report tables_live=0 and keys_live=0. Inspect raw FIR for direct i32 predicates and bool.not/bool.eq, then optimized FIR for eliminated double negation. The scalar FIR example traces true (the trace host may print true or 1); run it in a trace-capable SWF host to verify execution, rather than checking only that a movie opens.
 
 Every nonblank line of both examples is commented. Installed SDK acceptance compiles the Limbo tutorial through both CLI and freshly linked C99 libraries, compares Dis bytes, then executes raw/optimized images with native and interpreter dispatch. The C99 source API remains serialized and blocking: an IDE should run it on its build worker and send copied results through its service channel.
 

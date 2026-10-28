@@ -1,4 +1,4 @@
-# SWL linker 0.3.13
+# SWL linker 0.3.14
 
 Working independent C99 component. FIR compiles into `.swo`; SWL combines objects
 and `.swa` libraries into SWF8. The compiler no longer creates SWF containers.
@@ -64,4 +64,4 @@ FlashVM requirements. The standalone C API continues to use `SwlOptions`.
 
 Standard AVM1 BitXor (0x62) is accepted alongside BitAnd/BitOr for signed32 FIR output; SWO1/SWF8 formats are unchanged. Стандартный BitXor принимается без изменения форматов.
 
-SWL 0.3.13 accepts standard AVM1 Not (0x12) for strict FIR bool.not. SWO1/SWF8 formats are unchanged; validation preserves exact action bytes. / Стандартный Not принимается без изменения форматов; байты действий сохраняются.
+SWL 0.3.14 accepts standard AVM1 Not (0x12) for strict FIR bool.not. SWO1/SWF8 formats are unchanged; validation preserves exact action bytes. / Стандартный Not принимается без изменения форматов; байты действий сохраняются.

@@ -47,6 +47,7 @@ typedef enum
     FIR_LIMBO
 } FirLanguage;
 
+
 typedef enum
 {
     FIR_SEM_UNSPECIFIED = 0,
@@ -55,6 +56,7 @@ typedef enum
     FIR_LIMBO_REAL,  /* Homogeneous real numeric tutorial; no implicit integer conversions. */
     FIR_LIMBO_TABLES /* Typed big-table source profile; no implicit dynamic conversions. */
 } FirSemantics;
+
 
 typedef enum
 {
@@ -80,6 +82,7 @@ typedef enum
     T_KEYS_CELL,    /* [GC:] Private retained key-sequence cell; initialized, noncopyable. */
     T_KEY_CELL      /* [GC:] Private retained snapshot-key cell; owner plus scalar position. */
 } FirType;
+
 
 typedef enum
 {
@@ -174,7 +177,10 @@ typedef enum
     O_I32_OR,            /* Exact signed32 bit union; append-only ID. */
     O_I32_XOR,           /* Exact signed32 exclusive-or; append-only ID. */
     O_BOOL_NOT,          /* Invert one normalized bool; append-only ID. */
-    O_BOOL_EQ            /* Compare two normalized bools; append-only ID. */
+    O_BOOL_EQ,           /* Compare two normalized bools; append-only ID. */
+    O_F64_EQ,            /* IEEE binary64 equality; unordered is false. */
+    O_F64_LT,            /* Ordered binary64 less-than; unordered is false. */
+    O_F64_LE             /* Ordered binary64 less-or-equal; unordered is false. */
 } FirOp;
 
 
@@ -189,6 +195,7 @@ enum
     FIR_MAY_SUSPEND = 32,
     FIR_ALL_EFFECTS = 63
 };
+
 
 unsigned fir_effects(FirOp op);
 
@@ -228,6 +235,7 @@ typedef struct
     int defined;
 } FirBlock;
 
+
 typedef struct
 {
     FirInstruction instructions[FIR_LIMIT];
@@ -239,21 +247,17 @@ typedef struct
     char module[FIR_TEXT];
 } FirModule;
 
-
 /* All functions return 1 on success and 0 with a diagnostic on failure.
      * The caller owns the module, streams and diagnostic buffer. The generated
      * parser has global state: sequential calls reset state; parsing is not thread-safe. */
-
 
 
 /* Read and construct one FIR translation unit from a binary input stream. */
 int fir_parse(FILE *input, FirModule *module, char *error, size_t capacity);
 
 
-
 /* Reject malformed control flow, invalid SSA uses, duplicate symbol spellings and incompatible types. */
 int fir_verify(FirModule *module, char *error, size_t capacity);
-
 
 
 /* Verify caller-owned IR and reject cyclic CFG. No module mutation, allocation or parser state.
@@ -261,20 +265,16 @@ int fir_verify(FirModule *module, char *error, size_t capacity);
 int fir_acyclic(FirModule *module, char *error, size_t capacity);
 
 
-
 /* Print canonical, reparsable FIR text; keep diagnostic line annotations. */
 int fir_print(FILE *output, const FirModule *module);
-
 
 
 /* Apply conservative rewrites in place and verify the result. */
 int fir_optimise(FirModule *module, char *error, size_t capacity);
 
 
-
 /* Compile verified FIR into a versioned SWO1 object, never a SWF container. */
 int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
-
 
 
 /* Emit verified i32/bool/f64/i64 CFG or the supported acyclic big-table CFG as NC64 Dis.
@@ -286,10 +286,8 @@ int fir_object(FILE *output, FirModule *module, char *error, size_t capacity);
 int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity);
 
 
-
 /* Optional caller-owned temporary stream; honors TMPDIR on POSIX. */
 FILE *fir_temporary(void);
-
 
 /* Non-console entry points; caller owns every stream and diagnostic buffer.
      * Parser calls must be serialized; sequential calls reset state after errors. */
@@ -304,7 +302,9 @@ typedef enum
     FIR_DIS /* Direct, verified scalar-CFG NC64 capture harness. */
 } FirTask;
 
+
 typedef int (*FirSnapshot)(void *user, const char *phase, const FirModule *module);
+
 
 typedef struct
 {
@@ -330,6 +330,7 @@ typedef enum
     FIR_DIAG_OUTPUT
 } FirSourceDiagnosticKind;
 
+
 typedef struct
 {
     FirSourceDiagnosticKind kind;
@@ -346,7 +347,6 @@ typedef struct
      * No borrowed source/error/stream pointer survives return. Parser calls must
      * be serialized, including calls through the legacy wrapper below. */
 int fir_source_ex(FILE *, FILE *, FirLanguage, const char *module_name, char *, size_t, FirSourceDiagnostic *);
-
 
 
 /* Compile with an optional FIRDBG1 source snapshot/value/binding sidecar.

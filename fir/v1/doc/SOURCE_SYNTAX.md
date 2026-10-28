@@ -64,7 +64,7 @@ Coco/R ResultType/BindingType select the profile. All function values are real:
 explicit `x: real = 2.5`, inferred `x := 2.5`, assignments and lexical blocks.
 Supported operators are + - * /, unary signs and return; # remains a Limbo comment.
 Decimal literals need a fraction or exponent. Integer/radix/hex literals, int
-locals, casts and real comparisons/decisions are rejected. This is a bounded
+locals and mixed numeric casts are rejected. Ordered terminal real comparisons/decisions are supported by the [current real condition contract](REAL_CONDITIONS.md). This is a bounded
 profile, not a general Limbo type system. int functions retain the old profile.
 `real` remains a valid AS1/2/3 variable name, but is a Limbo type keyword.
 The new `limbo_real` provenance survives print/opt and reaches SWO/SWF or Dis.

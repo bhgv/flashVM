@@ -5,11 +5,13 @@
 #include <stdint.h>
 #include <string.h>
 
+
 /* Interpret a modulo-2^32 result without implementation-defined unsigned casts. */
 static int32_t signed_bits(uint32_t bits)
 {
     return bits <= INT32_MAX ? (int32_t)bits : (int32_t)(-1 - (int32_t)(UINT32_MAX - bits));
 }
+
 
 /* Interpret modulo-2^64 arithmetic without implementation-defined unsigned casts.
  * bits is a scalar payload; conversion is total and has no allocation or effects. */
@@ -17,6 +19,7 @@ static int64_t signed_big_bits(uint64_t bits)
 {
     return bits <= INT64_MAX ? (int64_t)bits : -1 - (int64_t)(UINT64_MAX - bits);
 }
+
 
 /* Fold known branches, find live blocks (including cycles), and compact label
  * indices. Instruction/value indices stay stable for definition references. */
@@ -297,6 +300,16 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->a = in->b = -1;
                 changed = 1;
             }
+            else if ((in->op == O_F64_EQ || in->op == O_F64_LT || in->op == O_F64_LE) && a->op == O_F64 &&
+                     b->op == O_F64)
+            {
+                in->integer = in->op == O_F64_EQ   ? a->real == b->real
+                              : in->op == O_F64_LT ? a->real < b->real
+                                                   : a->real <= b->real;
+                in->op = O_BOOL;
+                in->a = in->b = -1;
+                changed = 1;
+            }
             else if ((in->op == O_BOOL_NOT || in->op == O_BOOL_EQ) && a->op == O_BOOL &&
                      (in->op == O_BOOL_NOT || b->op == O_BOOL))
             {
@@ -306,8 +319,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 changed = 1;
             }
             else if (in->op == O_BOOL_NOT && a->op == O_BOOL_NOT)
-            {
-                /* Both nodes are pure; keep the original borrowed bool and its producer effects. */
+            { /* Both nodes are pure; keep the original borrowed bool and its producer effects. */
                 in->op = O_COPY;
                 in->a = a->a;
                 in->b = -1;
@@ -428,13 +440,12 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
                 in->a = in->b = -1;
                 changed = 1;
             }
-            else if ((in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR) &&
-                     a->op == O_I32 && b->op == O_I32)
+            else if ((in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR) && a->op == O_I32 &&
+                     b->op == O_I32)
             {
                 uint32_t left = (uint32_t)a->integer;
                 uint32_t right = (uint32_t)b->integer;
-                uint32_t bits = in->op == O_I32_AND ? left & right
-                                : in->op == O_I32_OR ? left | right : left ^ right;
+                uint32_t bits = in->op == O_I32_AND ? left & right : in->op == O_I32_OR ? left | right : left ^ right;
                 in->integer = signed_bits(bits);
                 in->op = O_I32;
                 in->a = in->b = -1;
@@ -476,7 +487,8 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
-            if ((in->op == O_BOOL_NOT || in->op == O_BOOL_EQ || in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
+            if ((in->op == O_F64_EQ || in->op == O_F64_LT || in->op == O_F64_LE || in->op == O_BOOL_NOT ||
+                 in->op == O_BOOL_EQ || in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
                  (in->op >= O_BIG_ADD && in->op <= O_TO_INT)) &&
                 !fir_effects(in->op))
             {

@@ -1,3 +1,13 @@
+# v0.1665 — Ordered real compiler paths and native emitter publication
+
+Current pin: **50059a3c7e2bf773b440f2c4bbfedcbac38ff067**, **704 Dis / 239 bootstrap files**. Incoming AMD64/ARM64 changes snapshot complete borrowed LeafLayout metadata through checked byte copies before field access and publish staged native output only after validating its full destination span. Packed metadata/output, nil/sentinel endpoints, capacities and unchanged-buffer rejection are covered by the extended upstream emitter fixture. Its publication guide is selected explicitly. Imported sources remain byte-for-byte upstream.
+
+Earlier reverse fixes, including c1494cd, remain ancestors. No new shared defect required an outbound commit: the newly found subnormal reader issue and NaN-safe FIR-to-SWF adaptation belong to FlashVM's compiler. Dynamic loaded AVM1 equality is preserved; no Flash-specific table/any/projection extension is exported to Inferno. Existing Dis real branch semantics were checked directly against branchreal in xec.c.
+
+[Release EN/RU](../docs/releases/v0.1665.md) · [Real condition contract EN](../fir/v1/doc/REAL_CONDITIONS.md) / [RU](../fir/v1/doc/REAL_CONDITIONS.ru.md).
+
+## Previous checkpoints
+
 # v0.1664 — Bounded AST diagnostics and typed predicate targets
 
 Current pin: **4f54d7f1569b8b596ce01f036e683f7866c8aeb5**, **703 Dis / 239 bootstrap files**. Incoming Limbo diagnostic printing replaces recursive AST descent with an ordered action stack, checked growth and bounded-buffer termination. Additional 4f54d7f replaces recursive descriptor/zero-initialization Type walks with checked continuations. Its map, zero and rejection fixtures cover pointer-slot widths 4 and 8; the existing descriptor-map oracle is registered too. Imported shallow-reference, quoting and deep-expression/debug-dump fixtures are registered in the source-built bootstrap. Selected files remain byte-for-byte upstream with manifest hashes.

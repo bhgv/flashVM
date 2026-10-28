@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "4f54d7f1569b8b596ce01f036e683f7866c8aeb5",
+  "revision": "50059a3c7e2bf773b440f2c4bbfedcbac38ff067",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -668,7 +668,8 @@
     "limbo/tests/inline-graphs.py",
     "limbo/tests/inline-graphs.c",
     "limbo/tests/README.inline-graphs.md",
-    "libinterp/tests/README.owner-gc-layout.md"
+    "libinterp/tests/README.owner-gc-layout.md",
+    "libinterp/tests/README.emitter-publication.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -753,8 +754,8 @@
     "upstream/libbio/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
     "upstream/libinterp/NOTICE": "435c62d6c5f5a58b1aeb1683e5b69e172f37336f8e227d67f3fdbfc7668d7663",
     "upstream/libinterp/alt.c": "2eb707d8f7e430353d870297c1a520257e367010fa78d69af0bd3dbaa74f4dd2",
-    "upstream/libinterp/amd64-emit.h": "695f8b34e667c1757dd9571f3a0b51a6bb597e113ed44534d3055425c2c448ae",
-    "upstream/libinterp/arm64-emit.h": "2cf90eb88edb064e306178ffb4acd8b1efcf71c9e9d638d66fea52b68e73ca58",
+    "upstream/libinterp/amd64-emit.h": "070e6533497c881eb3bc4c3591bd59f2c5dec0ddf1a20b9d84763c4d04bd1840",
+    "upstream/libinterp/arm64-emit.h": "0ba59d65b3388359f88286b6e21a06fe9d1962d96302c874c33aeb939a492c6d",
     "upstream/libinterp/comp-386.c": "bcccc6b6c374e9a2d28013f653562a40b465811272778b4581ba2c3fd0aaea76",
     "upstream/libinterp/comp-amd64.c": "c0e301955fc750c415ef1a0f558eeb453e9e100ce17f55d870a1ab844366567b",
     "upstream/libinterp/comp-arm64.c": "9709aeb2e1d32d264bf21f48735d822f4e70817c969a220443d7de848c054662",
@@ -771,7 +772,7 @@
     "upstream/libinterp/heapaudit.c": "0e8cb95dc9cc664b0edec2d726e680fb1bc14039b896615f984cbc8a4c040393",
     "upstream/libinterp/jit-tables.h": "c815bb04c1a161980c674a855f9f1a5df5fd88f6b0601a4a9ef438f40c46f288",
     "upstream/libinterp/leaf-code.h": "3614af8ccb341e68a312f37ea7f0a515e0eb4ffe7f1d53ba2f6e0606d9ed9882",
-    "upstream/libinterp/leaf64-ops.h": "a6a5b2e3dee95061ebbe25bfd0bc392289e775ccfaffc404adcfddbf5c65afed",
+    "upstream/libinterp/leaf64-ops.h": "9a742d6652234dca0c1c0c32257b8cbadf807b0162ec43f6e96a000e371d9883",
     "upstream/libinterp/link.c": "2a26f8affcd58d045bd1deb6dd85f7c10b9b8df95bcbc10118e6bddd08cc43aa",
     "upstream/libinterp/load.c": "e64368febbd2fca93627fd7856dd40a22400ddb040752643dca7bb25b702a966",
     "upstream/libinterp/loader.c": "73c15fcd7da6699873eb54b7ad9549fef2bfc5f5d397909bd654a45422099038",
@@ -818,6 +819,7 @@
     "upstream/libinterp/tests/README.direct-targets.md": "b5653e4cab2e48ce0f7f86c4b79666c63cd052b9e2e254d140eef32fd835d379",
     "upstream/libinterp/tests/README.dis-numeric-cache.md": "8e45dd4b563fa21c32494b79110f84d72d829cc8be6eee29f630a287c9492873",
     "upstream/libinterp/tests/README.emitter-layouts.md": "6c146a22285679e1a1a3c8a3c1acc5a18fd0fcdf045f991acab879e107e31302",
+    "upstream/libinterp/tests/README.emitter-publication.md": "cbef3d08b05268c8161ebd473ef6268b99bd534ad6f3079b3cca21cbf78204fb",
     "upstream/libinterp/tests/README.exception-frames.md": "1340206d535082c35f05d35e124bb1ba2233d3775c1b00908d3131f72c063d12",
     "upstream/libinterp/tests/README.exception-pc.md": "69654727332af7f944adff9b39a2791d9f58d649db40dae52fe803f1c354bafa",
     "upstream/libinterp/tests/README.exception-publication.md": "a2c681ed78f9403d604b22d196c344d231f2fb9aff429da18d0fbb98ac0da51c",
@@ -1006,8 +1008,8 @@
     "upstream/libinterp/tests/dis-loader.py": "5def6056a4b90eac1d7d6aa0ed18efa76d35aa9d24d4dd6a5595b7d6217e4e8e",
     "upstream/libinterp/tests/dis-numeric-literals.c": "7548b6d3f8a90ebfff73afb5f525449606abba8e8d85a0562f15c4104e1eda7b",
     "upstream/libinterp/tests/dis-numeric-literals.py": "432989b47bb32ef6ad842dff49f24e74ca6baddf03bd432606c5ed249d49a703",
-    "upstream/libinterp/tests/emitter-layouts.c": "07c29d172ee5b7d2bd1669e483a9e374ce06e2e57c7abd06653e8e017936cc1d",
-    "upstream/libinterp/tests/emitter-layouts.py": "746b55de9e0375a2bc3190cb20ba364a7695fecaffb1460ae376af5d6abd4a97",
+    "upstream/libinterp/tests/emitter-layouts.c": "6cb5afa67616b5c91eb7b47cddbfaf327f441221b24916efa9376dba9c1d33e6",
+    "upstream/libinterp/tests/emitter-layouts.py": "142dc859478833fd131dac3e0917ff7d375d0ba1bc5ca6068efa7c68ea03fcdc",
     "upstream/libinterp/tests/exception-frames.py": "b04318de52ef851f2deee80561cf5cc4615664004f32fe32329d650ab3380b09",
     "upstream/libinterp/tests/fixed-coeff.c": "736f0b5307a6d3cafc8336bc7104574b4703ac8a323e9c49be57175bd5c8e6ef",
     "upstream/libinterp/tests/fixed-coeff.py": "7d8ae21929e57ea049553199f30a899b4fec8cf9a31225bf43da81d6d9f6b9df",

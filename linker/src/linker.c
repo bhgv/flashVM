@@ -180,6 +180,7 @@ static int actions(const unsigned char *p, size_t n)
         {
             switch (op)
             {
+            case 0x10: /* Boolean And combines ordered binary64 equality predicates. */
             case 0x12: /* Not emitted by verified normalized bool inversion. */
             case 0x1c:
             case 0x1d:

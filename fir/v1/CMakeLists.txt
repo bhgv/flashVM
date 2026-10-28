@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.53.0 LANGUAGES C)
+project(fir1 VERSION 0.54.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -582,4 +582,15 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/typed_predicates.py" $<TARGET_FILE:fir1_source>
     $<TARGET_FILE:fir1> ${counted_for_reference})
   set_tests_properties(fir1_typed_predicates PROPERTIES TIMEOUT 120)
+endif()
+
+# Ordered real predicates and terminal Limbo real CFG retain strict IEEE/type contracts.
+if(BUILD_TESTING)
+  add_executable(fir1_real_conditions_api tests/real_conditions_api.c)
+  target_link_libraries(fir1_real_conditions_api PRIVATE fir1_ir)
+  add_test(NAME fir1_real_conditions_api COMMAND fir1_real_conditions_api)
+  add_test(NAME fir1_real_conditions COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/real_conditions.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1> ${counted_for_reference})
+  set_tests_properties(fir1_real_conditions PROPERTIES TIMEOUT 120)
 endif()

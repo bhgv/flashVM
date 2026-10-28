@@ -269,7 +269,10 @@ PRODUCTIONS
 
   /* Constants, pure operations and effectful value producers. */
   ValueOperation =
-    "bool.not" (. fir_build_op(O_BOOL_NOT); .) A
+    "f64.eq" (. fir_build_op(O_F64_EQ); .) A "," B
+    | "f64.lt" (. fir_build_op(O_F64_LT); .) A "," B
+    | "f64.le" (. fir_build_op(O_F64_LE); .) A "," B
+    | "bool.not" (. fir_build_op(O_BOOL_NOT); .) A
     | "bool.eq" (. fir_build_op(O_BOOL_EQ); .) A "," B
     | "i32.and" (. fir_build_op(O_I32_AND); .) A "," B
     | "i32.or" (. fir_build_op(O_I32_OR); .) A "," B

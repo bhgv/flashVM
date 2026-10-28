@@ -3,6 +3,7 @@
  * External/dynamic operations are conservative until a narrower contract exists. */
 #include "fir.h"
 
+
 unsigned fir_effects(FirOp op)
 {
     switch (op)
@@ -42,6 +43,9 @@ unsigned fir_effects(FirOp op)
     case O_BIG_LOAD:
     case O_BOOL_LOAD:
         return FIR_READS_MEMORY;
+    case O_F64_EQ:
+    case O_F64_LT:
+    case O_F64_LE:
     case O_BOOL_NOT:
     case O_BOOL_EQ:
     case O_I32_AND:

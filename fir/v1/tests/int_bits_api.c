@@ -21,13 +21,14 @@ int main(void)
         goto done;
     }
     if (O_I32_AND != O_AS_MEMBER_SET + 1 || O_I32_OR != O_I32_AND + 1 || O_I32_XOR != O_I32_OR + 1 ||
-        fir_effects((FirOp)(O_BOOL_EQ + 1)) != FIR_ALL_EFFECTS)
+        fir_effects((FirOp)(O_F64_LE + 1)) != FIR_ALL_EFFECTS)
     {
         goto done;
     }
     if (fputs("FIR 1.0\nmodule @bits\nfunc @main() -> void {\n^entry:\n"
               "%a: i32 = const.i32 -1\n%b: i32 = const.i32 42\n%f: f64 = const.f64 0.5\n"
-              "%r: i32 = i32.and %a, %b\ntrace %r\nreturn\n}\n", input) < 0 ||
+              "%r: i32 = i32.and %a, %b\ntrace %r\nreturn\n}\n",
+              input) < 0 ||
         fseek(input, 0, SEEK_SET) || !fir_parse(input, base, error, sizeof(error)) || fputs("OLD", output) < 0)
     {
         goto done;

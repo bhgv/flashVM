@@ -501,7 +501,7 @@ PRODUCTIONS
     LimboArm                                                            (. --depth; .)
   .
 
-  /* Homogeneous int arms share the lexical declaration rules of ordinary blocks.
+  /* Homogeneous numeric arms share the lexical declaration rules of ordinary blocks.
    * Every arm still returns; sibling parsing starts from the incoming bindings. */
   LimboArm =
     "{" (. capture(); source_enter_scope(); .)
@@ -525,7 +525,7 @@ PRODUCTIONS
                                                                         .)
   .
 
-  /* Native Limbo comparisons; edge inversion implements <=, >= and != without new FIR opcodes. */
+  /* Native Limbo comparisons; real <=/>= retain ordered predicates for NaN safety. */
   Relation<SourceRelation *relation> =
     (
         "<"                                                             (. *relation = SOURCE_LESS; .)

@@ -8,11 +8,13 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <float.h>
 #include <inttypes.h>
 
 
 extern int fir_utf8(const unsigned char *, size_t);
 #define INPUT_LIMIT (2u * 1024u * 1024u)
+
 
 typedef struct
 {
@@ -194,7 +196,10 @@ static void literal(const char *text, int line)
     else
     {
         in->real = strtod(text, &end);
-        if (*end || errno || !isfinite(in->real))
+        /* strtod may report ERANGE for a representable nonzero subnormal.
+         * Keep rejecting overflow and values rounded entirely to zero. */
+        if (*end || (errno && !(errno == ERANGE && in->real != 0.0 && in->real >= -DBL_MIN && in->real <= DBL_MIN)) ||
+            !isfinite(in->real))
         {
             fir_build_error("expected finite f64 literal", line);
         }
@@ -207,27 +212,10 @@ void fir_build_token(int role, const char *text, int line)
 {
     FirModule *m = active->module;
     FirInstruction *in = &active->instruction;
-    static const char *const types[] = {"void",
-                                        "i32",
-                                        "f64",
-                                        "bool",
-                                        "string",
-                                        "any",
-                                        "channel",
-                                        "i64",
-                                        "table.big",
-                                        "table.slot",
-                                        "big.range",
-                                        "keys",
-                                        "table.key",
-                                        "bool.slot",
-                                        "table.range",
-                                        "string.range",
-                                        "i64.slot",
-                                        "string.cell",
-                                        "table.cell",
-                                        "keys.cell",
-                                        "key.cell"};
+    static const char *const types[] = {
+        "void",        "i32",          "f64",        "bool",        "string",     "any",       "channel",
+        "i64",         "table.big",    "table.slot", "big.range",   "keys",       "table.key", "bool.slot",
+        "table.range", "string.range", "i64.slot",   "string.cell", "table.cell", "keys.cell", "key.cell"};
     int index;
     if (active->failed)
     {
@@ -340,6 +328,39 @@ void fir_build_token(int role, const char *text, int line)
 }
 
 
+/* Validate the physical FIR version line, optionally followed by a // comment.
+ * data/size borrow already validated UTF-8 bytes. Return one only for an exact
+ * version plus LF/CRLF; bare trailing spaces, BOM and preceding lines fail.
+ * No allocation, parser state or caller storage is acquired or changed. */
+static int valid_header(const unsigned char *data, size_t size)
+{
+    size_t cursor = 7;
+    if (size < 8 || memcmp(data, "FIR 1.0", 7))
+    {
+        return 0;
+    }
+    if (data[cursor] == '\n' || (data[cursor] == '\r' && size > 8 && data[cursor + 1] == '\n'))
+    {
+        return 1;
+    }
+    while (cursor < size && (data[cursor] == ' ' || data[cursor] == '\t'))
+    {
+        cursor++;
+    }
+    if (cursor == 7 || size - cursor < 2 || data[cursor] != '/' || data[cursor + 1] != '/')
+    {
+        return 0;
+    }
+    cursor += 2;
+    while (cursor < size && data[cursor] != '\r' && data[cursor] != '\n')
+    {
+        cursor++;
+    }
+    return cursor < size &&
+           (data[cursor] == '\n' || (data[cursor] == '\r' && size - cursor > 1 && data[cursor + 1] == '\n'));
+}
+
+
 /* Read and validate bounded input before invoking the generated Coco/R parser. */
 int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
 {
@@ -359,7 +380,7 @@ int fir_parse(FILE *input, FirModule *m, char *error, size_t capacity)
         free(text);
         return 0;
     }
-    if (length < 8 || (memcmp(text, "FIR 1.0\n", 8) && (length < 9 || memcmp(text, "FIR 1.0\r\n", 9))))
+    if (!valid_header(text, length))
     {
         snprintf(error, capacity, "first line must be FIR 1.0");
         free(text);

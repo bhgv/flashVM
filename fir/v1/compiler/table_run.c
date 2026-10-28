@@ -11,9 +11,11 @@
 /* Borrow the shared strict validator; no VM representation is used by this oracle. */
 extern int fir_utf8(const unsigned char *, size_t);
 
+
 typedef struct
 {
-    int64_t big;      /* Exact scalar payload. */
+    int64_t big;      /* Exact integer/bool scalar payload. */
+    double real;      /* Binary64 scalar copied by value, never a heap pointer. */
     size_t text_size; /* Exact copied/borrowed byte count, including embedded zeros. */
     char digits[21];  /* Invocation-lifetime exact numeric conversion storage. */
     const char *text; /* Borrowed module/snapshot/static bytes or this value's numeric storage. */
@@ -135,15 +137,17 @@ static int coverage(FirModule *module, char *error, size_t capacity)
         {
             continue;
         }
-        if (in->op == O_BOOL_NOT || in->op == O_BOOL_EQ || in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR ||
-            (in->op >= O_I64 && in->op <= O_REF_NIL) || (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 ||
-            in->op == O_BOOL || in->op == O_STRING || in->op == O_COPY || in->op == O_IF || in->op == O_JUMP ||
-            in->op == O_RETURN)
+        if (in->op == O_F64 || (in->op >= O_FADD && in->op <= O_FDIV) || in->op == O_F64_EQ || in->op == O_F64_LT ||
+            in->op == O_F64_LE || in->op == O_BOOL_NOT || in->op == O_BOOL_EQ || in->op == O_I32_AND ||
+            in->op == O_I32_OR || in->op == O_I32_XOR || (in->op >= O_I64 && in->op <= O_REF_NIL) ||
+            (in->op >= O_ADD && in->op <= O_EQ) || in->op == O_I32 || in->op == O_BOOL || in->op == O_STRING ||
+            in->op == O_COPY || in->op == O_IF || in->op == O_JUMP || in->op == O_RETURN)
         {
             continue;
         }
-        if (in->op == O_TRACE && (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I32 ||
-                                  module->values[in->a].type == T_I64 || module->values[in->a].type == T_STRING))
+        if (in->op == O_TRACE && (module->values[in->a].type == T_F64 || module->values[in->a].type == T_BOOL ||
+                                  module->values[in->a].type == T_I32 || module->values[in->a].type == T_I64 ||
+                                  module->values[in->a].type == T_STRING))
         {
             continue;
         }
@@ -172,6 +176,8 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
     int ok = 0;
     char buffer[4096];
     size_t size;
+
+
     extern FILE *fir_temporary(void);
     if (!error)
     {
@@ -251,16 +257,37 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             {
                 uint32_t left = (uint32_t)(uint64_t)a->big;
                 uint32_t right = (uint32_t)(uint64_t)b->big;
-                uint32_t bits = in->op == O_I32_AND ? left & right
-                                : in->op == O_I32_OR ? left | right
+                uint32_t bits = in->op == O_I32_AND   ? left & right
+                                : in->op == O_I32_OR  ? left | right
                                 : in->op == O_I32_XOR ? left ^ right
-                                : in->op == O_ADD   ? left + right
-                                : in->op == O_SUB ? left - right
+                                : in->op == O_ADD     ? left + right
+                                : in->op == O_SUB     ? left - right
                                 : in->op == O_MUL
                                     ? left * right
                                     : (uint32_t)(uint64_t)(in->op == O_I32_DIV ? a->big / b->big : a->big % b->big);
                 result->big = int_bits(bits);
             }
+            break;
+        case O_F64:
+            result->real = in->real;
+            break;
+        case O_FADD:
+        case O_FSUB:
+        case O_FMUL:
+        case O_FDIV:
+            result->real = in->op == O_FADD   ? a->real + b->real
+                           : in->op == O_FSUB ? a->real - b->real
+                           : in->op == O_FMUL ? a->real * b->real
+                                              : a->real / b->real;
+            break;
+        case O_F64_EQ:
+            result->big = a->real == b->real;
+            break;
+        case O_F64_LT:
+            result->big = a->real < b->real;
+            break;
+        case O_F64_LE:
+            result->big = a->real <= b->real;
             break;
         case O_BOOL_NOT:
             result->big = !a->big;
@@ -797,8 +824,12 @@ int fir_table_run(FirModule *module, FILE *output, char *error, size_t capacity)
             result->big = (int64_t)a->keys->count;
             break;
         case O_TRACE:
-            if (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I32 ||
-                module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
+            if (module->values[in->a].type == T_F64)
+            {
+                fprintf(staged, "%.17g\n", a->real);
+            }
+            else if (module->values[in->a].type == T_BOOL || module->values[in->a].type == T_I32 ||
+                     module->values[in->a].type == T_I64 || module->values[in->a].type == T_BOOL)
             {
                 fprintf(staged, "%" PRId64 "\n", a->big);
             }

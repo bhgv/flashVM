@@ -407,6 +407,16 @@ with tempfile.TemporaryDirectory() as boolean_directory:
     call("link", boolean_movie, boolean_object)
     if [body for tag, body in tags(boolean_movie.read_bytes()) if tag == 12] != [code]:
         raise RuntimeError("linker changed or rejected standard AVM1 Not")
+# Ordered IEEE equality uses ordinary bool And; preserve its exact action sequence.
+with tempfile.TemporaryDirectory() as ordered_directory:
+    ordered_root = Path(ordered_directory)
+    ordered_object = ordered_root / "ordered.swo"
+    ordered_movie = ordered_root / "ordered.swf"
+    code = b"\x96\x04\x00\x05\x01\x05\x00\x10\x26\x00"
+    ordered_object.write_bytes(object("ordered_and", code))
+    call("link", ordered_movie, ordered_object)
+    if [body for tag, body in tags(ordered_movie.read_bytes()) if tag == 12] != [code]:
+        raise RuntimeError("linker changed or rejected standard AVM1 And")
 print(f"{checks} total checks including inspection")
 
 # Stage options affect real SWF header fields, independent of the bit writer.

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <float.h>
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -33,14 +34,14 @@ typedef struct
 } SourceAlias;
 
 static SourceAlias aliases[SOURCE_ALIAS_MAX]; /* Parser-owned bounded declaration prefix. */
-static unsigned int alias_total;             /* All declarations this request, including retired blocks. */
-static unsigned int alias_floor[65];         /* Active alias prefix saved at each lexical value scope. */
-static unsigned int alias_count;             /* Active prefix; retired block entries are removed. */
-static int alias_scope;                      /* File=0, module=1, lexical body scopes>=2. */
-static char alias_header[256];               /* Pending declaration name, independent of RHS capture. */
-static char alias_target[256];               /* Pending RHS token; cleared at every declaration header. */
-static SourceMark alias_target_origin;       /* Source position of the pending named edge. */
-static SourceMark alias_origin;              /* Diagnostic location of the pending header. */
+static unsigned int alias_total;              /* All declarations this request, including retired blocks. */
+static unsigned int alias_floor[65];          /* Active alias prefix saved at each lexical value scope. */
+static unsigned int alias_count;              /* Active prefix; retired block entries are removed. */
+static int alias_scope;                       /* File=0, module=1, lexical body scopes>=2. */
+static char alias_header[256];                /* Pending declaration name, independent of RHS capture. */
+static char alias_target[256];                /* Pending RHS token; cleared at every declaration header. */
+static SourceMark alias_target_origin;        /* Source position of the pending named edge. */
+static SourceMark alias_origin;               /* Diagnostic location of the pending header. */
 
 
 /* Last-write SSA hints and initialization facts; cell-backed hints are never
@@ -268,7 +269,10 @@ int source_constant(int negative)
         {
             value = -value;
         }
-        if (!text[0] || *end || errno || !isfinite(value))
+        /* Admit representable nonzero subnormals even when strtod sets ERANGE.
+         * Silent underflow to zero and overflow remain source errors. */
+        if (!text[0] || *end ||
+            (errno && !(errno == ERANGE && value != 0.0 && value >= -DBL_MIN && value <= DBL_MIN)) || !isfinite(value))
         {
             reject("invalid finite binary64 numeric literal");
         }
@@ -347,8 +351,11 @@ int source_binary(int left, int right, int op)
  * This is compile-time lowering only, with no runtime owner or implicit coercion. */
 int source_integer_bits(int left, int right, int op)
 {
-    const char *spelling = op == '&' ? "i32.and" : op == '|' ? "i32.or" : op == '^' ? "i32.xor"
-                           : op == '<' ? "i32.shl.checked" : "i32.shr.checked";
+    const char *spelling = op == '&'   ? "i32.and"
+                           : op == '|' ? "i32.or"
+                           : op == '^' ? "i32.xor"
+                           : op == '<' ? "i32.shl.checked"
+                                       : "i32.shr.checked";
     int result = serial++;
     if (op != '&' && op != '|' && op != '^' && op != '<' && op != '>')
     {
@@ -1085,7 +1092,7 @@ void source_release(void)
 }
 
 
-/* Lower one admitted Limbo relation to signed i32/big comparison plus edge inversion.
+/* Lower one admitted Limbo relation to exact int/big or ordered real comparison.
  * Operands/relation are parser values. Return owns no storage; source errors remain sticky.
  * The current restored source mark identifies the comparison operator, not a later operand. */
 SourceCondition source_compare(int left, int right, SourceRelation relation)
@@ -1096,9 +1103,9 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
     condition.value = serial++;
     condition.invert =
         relation == SOURCE_NOT_EQUAL || relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL;
-    if ((!integer_mode && result_real != 2) || serial > 1000)
+    if (profile != FIR_LIMBO || serial > 1000)
     {
-        reject("terminal comparisons require the bounded Limbo int or big profile");
+        reject("terminal comparisons require a bounded Limbo numeric profile");
     }
     if (result_real == 2 && !failed)
     {
@@ -1111,13 +1118,24 @@ SourceCondition source_compare(int left, int right, SourceRelation relation)
             table_values[condition.value] = T_BOOL;
         }
     }
+    if (result_real == 1)
+    {
+        /* Inverting < for >= would accept unordered values. Keep <= explicit,
+         * swap only already evaluated operands, and invert equality only for !=. */
+        swap = relation == SOURCE_GREATER || relation == SOURCE_GREATER_EQUAL;
+        condition.invert = relation == SOURCE_NOT_EQUAL;
+    }
     if (!failed)
     {
         fprintf(destination,
                 "    %%v%d: bool = %s.%s %%v%d, %%v%d\n",
                 condition.value,
-                result_real == 2 ? "big" : "i32",
-                equality ? "eq" : "lt.signed",
+                result_real == 2   ? "big"
+                : result_real == 1 ? "f64"
+                                   : "i32",
+                equality           ? "eq"
+                : result_real == 1 ? (relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL ? "le" : "lt")
+                                   : "lt.signed",
                 swap ? right : left,
                 swap ? left : right);
         source_debug_event("compare", condition.value, "", debug_scopes[scope_depth], scope_depth, location);
@@ -1262,27 +1280,9 @@ static int table_value(FirType type)
 static int table_operation(FirType type, const char *spelling, int a, int b)
 {
     static const char *const types[] = {
-        "void",
-        "i32",
-        "f64",
-        "bool",
-        "string",
-        "any",
-        "channel",
-        "i64",
-        "table.big",
-        "table.slot",
-        "big.range",
-        "keys",
-        "table.key",
-        "bool.slot",
-        "table.range",
-        "string.range",
-        "i64.slot",
-        "string.cell",
-        "table.cell",
-        "keys.cell",
-        "key.cell",
+        "void",        "i32",          "f64",        "bool",        "string",     "any",       "channel",
+        "i64",         "table.big",    "table.slot", "big.range",   "keys",       "table.key", "bool.slot",
+        "table.range", "string.range", "i64.slot",   "string.cell", "table.cell", "keys.cell", "key.cell",
     };
     int result = table_value(type);
     if (!failed)
@@ -1545,7 +1545,9 @@ int source_table_relation(int left, int right, SourceRelation relation)
         int swap = relation == SOURCE_GREATER || relation == SOURCE_LESS_EQUAL;
         int invert = relation == SOURCE_NOT_EQUAL || relation == SOURCE_LESS_EQUAL || relation == SOURCE_GREATER_EQUAL;
         int compared = table_operation(T_BOOL,
-                                       kind == T_BOOL ? "bool.eq" : equality ? "i32.eq" : "i32.lt.signed",
+                                       kind == T_BOOL ? "bool.eq"
+                                       : equality     ? "i32.eq"
+                                                      : "i32.lt.signed",
                                        swap ? right : left,
                                        swap ? left : right);
         return invert ? source_table_not(compared) : compared;

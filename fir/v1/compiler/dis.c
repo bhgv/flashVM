@@ -3,6 +3,7 @@
 #include "fir.h"
 #include <string.h>
 
+
 enum
 {
     DIS_MAGIC = 819264,  /* Explicit experimental eight-byte native-cell target. */
@@ -35,6 +36,9 @@ enum
     DIS_XORW = 76,       /* Bias the sign bit before signed-i32 normalization. */
     DIS_RET = 12,        /* Existing Dis return, including normal entry-process termination. */
     DIS_JMP = 13,        /* Existing Dis branch to a verified program index. */
+    DIS_BEQF = 99,       /* IEEE binary64 equality, false for unordered operands. */
+    DIS_BLTF = 101,      /* Ordered binary64 less-than. */
+    DIS_BLEF = 102,      /* Ordered binary64 less-or-equal. */
     DIS_BEQW = 93,       /* Signed/native equality used to materialize bool. */
     DIS_BNEW = 94,       /* Branch when a normalized bool differs from scratch zero. */
     DIS_BLEW = 96,       /* Constant 32 <= count rejection before int shifts. */
@@ -220,6 +224,9 @@ static int supported(
         case O_ADD:
         case O_SUB:
         case O_MUL:
+        case O_F64_EQ:
+        case O_F64_LT:
+        case O_F64_LE:
         case O_BOOL_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
@@ -400,10 +407,10 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         case O_ADD:
         case O_SUB:
         case O_MUL:
-            opcode = current->op == O_I32_AND ? DIS_ANDW
-                     : current->op == O_I32_OR ? DIS_ORW
+            opcode = current->op == O_I32_AND   ? DIS_ANDW
+                     : current->op == O_I32_OR  ? DIS_ORW
                      : current->op == O_I32_XOR ? DIS_XORW
-                     : current->op == O_ADD       ? DIS_ADDW
+                     : current->op == O_ADD     ? DIS_ADDW
                      : current->op == O_SUB     ? DIS_SUBW
                      : current->op == O_MUL     ? DIS_MULW
                      : current->op == O_I32_DIV ? DIS_DIVW
@@ -492,6 +499,9 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
                                              : DIS_DIVF;
             instruction(output, opcode, DIS_FP, slot(current->b), DIS_FP, destination, (int)slot(current->a));
             break;
+        case O_F64_EQ:
+        case O_F64_LT:
+        case O_F64_LE:
         case O_BOOL_EQ:
         case O_BIG_LT:
         case O_BIG_EQ:
@@ -499,7 +509,10 @@ int fir_dis(FILE *output, FirModule *module, char *error, size_t capacity)
         case O_EQ:
             instruction(output, DIS_MOVW, DIS_IMMEDIATE, 0, DIS_FP, destination, -1);
             instruction(output,
-                        current->op == O_BIG_LT   ? DIS_BLTL
+                        current->op == O_F64_EQ   ? DIS_BEQF
+                        : current->op == O_F64_LT ? DIS_BLTF
+                        : current->op == O_F64_LE ? DIS_BLEF
+                        : current->op == O_BIG_LT ? DIS_BLTL
                         : current->op == O_BIG_EQ ? DIS_BEQL
                         : current->op == O_LT     ? DIS_BLTW
                                                   : DIS_BEQW,

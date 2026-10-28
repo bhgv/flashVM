@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.53.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.54.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -173,3 +173,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Signed32 bit operations / Побитовые операции int](doc/INT_BITS.ru.md) — FIR 0.52, SWL 0.3.12.
 
 [Typed predicates EN](doc/TYPED_PREDICATES.md) / [RU](doc/TYPED_PREDICATES.ru.md): direct int comparisons, strict bool.not/bool.eq and line-commented Dis/SWF tutorials.
+
+[Real conditions EN](doc/REAL_CONDITIONS.md) / [RU](doc/REAL_CONDITIONS.ru.md): ordered binary64 terminal branches, NaN-safe SWF lowering and fully line-commented examples.
