@@ -70,6 +70,9 @@ def compiler_service_packages(prefix, work, environment):
             continue
         for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md", package / "ARTIFACT-EXPORT.md", package / "ARTIFACT-EXPORT.ru.md",
                          package / "DESKTOP.md", package / "DESKTOP.ru.md",
+                         package / "DESKTOP-LIFECYCLE.md", package / "DESKTOP-LIFECYCLE.ru.md",
+                         package / "examples/desktop-lifecycle/README.md",
+                         package / "examples/desktop-lifecycle/README.ru.md",
                          package / "examples/compiler-service/README.md",
                          package / "examples/compiler-service/README.ru.md", package / "WORKSPACE.md"):
             for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
@@ -101,6 +104,11 @@ def compiler_service_packages(prefix, work, environment):
                           package / "artifact-export.dis"], tutorial, environment)
             if "PASS artifact tutorial:" not in output:
                 raise RuntimeError("relocated explicit export tutorial did not complete")
+        for dispatch in ("--jit", "--no-jit"):
+            output = run([program(prefix, name, "disvm"), dispatch, "--quantum", "1",
+                          package / "desktop-lifecycle.dis"], work, environment)
+            if "PASS desktop lifecycle tutorial:" not in output:
+                raise RuntimeError("relocated desktop lifecycle example failed")
         if (package / "desktop-test.dis").is_file():
             for dispatch in ("--jit", "--no-jit"):
                 output = run(

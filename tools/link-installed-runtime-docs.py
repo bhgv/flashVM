@@ -54,7 +54,7 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
-    for name in ("DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
+    for name in ("DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
         pairs[root / "ide" / name] = package / name
     pairs[root / "disVM/module/fircompiler.m"] = package / "include/limbo/fircompiler.m"
     pairs[root / "disVM/compiler/compiler_engine.h"] = package / "include/native/compiler_engine.h"
@@ -66,7 +66,7 @@ def main():
     pairs[root / "ide/dis/app/desktop.b"] = package / "source/desktop.b"
     pairs[root / "ide/dis/app/desktop.m"] = package / "include/limbo/desktop.m"
     pairs[root / "ide/as/desktop-view.as"] = package / "source/as/desktop-view.as"
-    pairs[root / "ide/assets/desktop-v0.1673.png"] = package / "DESKTOP.png"
+    pairs[root / "ide/assets/desktop-v0.1674.png"] = package / "DESKTOP.png"
     # Include the portable inspector/value closure even in the headless runtime package.
     for source in (root / "disVM/examples/hybrid-table").iterdir():
         if source.is_file():
@@ -89,7 +89,7 @@ def main():
                 installed = package / "examples/broker" / source.relative_to(root / "disVM/broker")
                 if installed.is_file():
                     pairs[source] = installed
-    for example in ("desktop", "artifact-export", "build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
+    for example in ("desktop-lifecycle", "desktop", "artifact-export", "build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():
