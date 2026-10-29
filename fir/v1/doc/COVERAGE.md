@@ -1,4 +1,4 @@
-# Current coverage — FIR tools 0.58
+# Current coverage — FIR tools 0.61
 
 [Русский](COVERAGE.ru.md) · [Source grammar](../compiler/src1.atg) · [Public API](../include/fir.h) · [Compiler architecture](../../../compiler/README.md)
 
@@ -12,9 +12,9 @@ This page describes executable FIR adapters, separately from the broader standal
 | Limbo homogeneous real | Binary64 arithmetic, typed locals/aliases, typed cells, if/else/while/for, early returns and grouped conditions | No implicit mixed numeric conversion, source call ABI |
 | Limbo typed big/table | Exact big/int arithmetic, bool comparisons/logical values, Unicode strings, hybrid tables, key snapshots, constructors, mutation/slices and typed loops | Restricted value() teaching entry; no arbitrary composite/type/function compiler |
 | Type aliases | Forward file/module prefix, sequential body/block/branch/loop aliases, canonical casts and scope retirement | 128 declarations per request; no imports/qualified/generic types or local forwards |
-| Optimizer | Verified explicit optimization, constant folds, CFG simplification, conservative memory/exception effects | Not a whole-program optimizer; effectful producer errors remain observable |
+| Optimizer | Verified optimization, total integer identities, proven-total arithmetic DCE, CFG and conservative memory effects | Not a whole-program optimizer; effectful producer errors remain observable |
 | Dis targets | Direct scalar and hosted NC64 emission with original/optimized execution checks | General Dis linking, source channel lowering and a complete compiler/runtime ABI migration remain separate |
-| SWF target | SWO1 objects, separate SWL/SWA1/resources to SWF8; numeric bits and raw FIR AS properties | No ABC/AVM2 or live checked-shift exceptions; extensions require their explicit target contract |
+| SWF target | SWO1/SWL/SWA1/resources to SWF8; numeric bits, proven int32 div/mod/shifts and raw FIR AS properties | Unknown divisors/counts reject; no ABC/AVM2; extensions require their explicit contract |
 | C99 libraries/debug origins | CLI/library paths, staged source rejection and original UTF-8 byte spans | Generated parser remains serialized; no complete IDE debugger attachment |
 
 ## Contracts and tutorials
@@ -39,3 +39,5 @@ The teaching wrapper calls/traces value(); it is not Inferno's general init ABI.
 [Structured numeric flow EN](NUMERIC_FLOW.md) / [RU](NUMERIC_FLOW.ru.md).
 
 [Numeric for EN](NUMERIC_FOR.md) / [RU](NUMERIC_FOR.ru.md).
+
+[Signed SWF div/mod and total-arithmetic DCE](SWF_INT_DIVMOD.md): exact proof, C99/IDE paths, source example and rejection rules.

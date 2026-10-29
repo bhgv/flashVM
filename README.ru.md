@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1680**. [English](README.md).
+Версия разработки: **0.1681**. [English](README.md).
 
-Текущая серия: [v0.1680](docs/releases/v0.1680.md): проверяемые сдвиги SWF со счётчиком-константой, C99/IDE backend и синхронизация helpers Dis64 map8/таблиц.
+Текущая серия: [v0.1681](docs/releases/v0.1681.md): знаковые SWF div/mod, удаление безопасной неиспользуемой арифметики, общий IDE/C99 backend и синхронизация signed-Rune Inferno.
 
 ## Просмотр документации
 

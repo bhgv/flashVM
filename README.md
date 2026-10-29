@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1680**. [Русская версия](README.ru.md).
+Development version: **0.1681**. [Русская версия](README.ru.md).
 
-Current series: [v0.1680](docs/releases/v0.1680.md): checked literal-count SWF shifts, C99/IDE target admission, and synchronized Dis64 map8/table helpers.
+Current series: [v0.1681](docs/releases/v0.1681.md): signed SWF div/mod, proven-total arithmetic DCE, shared IDE/C99 targets, and synchronized Inferno signed-Rune contracts.
 
 ## Browse documentation
 
