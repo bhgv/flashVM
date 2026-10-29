@@ -83,3 +83,48 @@ execute target binaries: the installer decodes the verified sample.dis64.hex
 fixture using its existing host Python dependency. The deployed demo requires
 only its native inspector and fixture, not Python. Cross-platform runtime
 execution is separate acceptance.
+
+## Real payloads: explicit scalar pilot
+
+The [line-commented pilot example](examples/pilot.c) constructs genuine module
+metadata, complete type maps, code, default initialization and a name string pool.
+Its 180 bytes match the independently hand-written
+[pilot42 golden](../upstream/libinterp/tests/dis64/pilot42.hex). The earlier
+`main.c` and sample.dis64 remain opaque structural fixtures for compatibility.
+
+```sh
+build/envelope/dis64_pilot_example build/pilot42.dis64
+build/envelope/dis64inspect build/pilot42.dis64 --pilot
+build/envelope/dis64inspect build/pilot42.dis64 --pilot --rewrite build/checked.dis64
+```
+
+`--pilot` uses the actual shared [semantic checker](../upstream/include/dis64-pilot.h).
+It checks ordinal name/type IDs, data extent, entry/frame, complete scalar maps,
+code count, instruction modes/width/alignment/bounds and supported section policy.
+Its JSON says `scalar_pilot:true`, `envelope_only:false`, and still
+**`execution_supported:false`**. Unsupported instructions/imports/initializers
+reject; a valid envelope alone does not bypass this semantic gate. See the
+[exact upstream subset](../upstream/doc/dis64-pilot.md).
+
+The installed SDK includes `run-dis64-pilot.sh`, `pilot.c`, `pilot42.hex`,
+`pilot42.dis64`, every transitive header (including isa.h once), and inspector
+source. Rebuild outside the repository:
+
+```sh
+cc -std=c99 -Wall -Wextra -Werror -Wno-unused-function -Iinclude/dis64 \
+  examples/dis64-envelope/pilot.c -o work/pilot-example
+./work/pilot-example work/pilot42.dis64
+./dis64inspect work/pilot42.dis64 --pilot
+./run-dis64-pilot.sh
+```
+
+Unused-function suppression covers the shared static header-only entry points;
+other warnings remain enabled. Both native generated samples have host-side
+hexadecimal installer fallbacks, so cross configuration never runs target tools.
+Build-menu entry **14**, `--launch pilot`, selects this semantic demo. Entry13
+keeps the structural demo. Neither launcher invokes a Dis64 VM.
+
+The golden code is MOVW #42, MP[0]; EXIT. Upstream acceptance decodes the whole
+file and separately executes MOVW through production C and AMD64 RX handlers.
+EXIT is only decoded there; production module allocation, entry/EXIT scheduler,
+reference-result GC/unwind and physical ARM64 are future acceptance gates.

@@ -115,6 +115,9 @@ if(BUILD_TESTING)
     dis-rune
     dis-envelope
     dis-string-pool
+    dis64-payloads
+    dis64-pilot-native
+    dis64-inspect
     dis-rune-case
     array-indices
     descriptor-index

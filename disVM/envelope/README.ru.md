@@ -81,3 +81,51 @@ Native-сборка создаёт пример C99-клиентом. Cross-сб
 бинарники: installer декодирует проверенный sample.dis64.hex уже используемым
 host Python. Установленному demo нужны только native-инспектор и fixture,
 без Python. Запуск на другой платформе проверяется отдельно.
+
+## Настоящие payloads: скалярный pilot42
+
+[Пример pilot.c](examples/pilot.c), прокомментированный построчно, строит
+настоящие metadata, полные карты типов, code MOVW42/EXIT, initializer_count0
+и строковый пул имени Pilot. Результат — 180 байт, точно совпадающих с
+[независимым golden Inferno](../upstream/libinterp/tests/dis64/pilot42.hex).
+Прежние main.c/sample.dis64 остаются структурным примером с маркерами M/C/T.
+
+```sh
+build/envelope/dis64_pilot_example build/pilot42.dis64
+build/envelope/dis64inspect build/pilot42.dis64 --pilot
+build/envelope/dis64inspect build/pilot42.dis64 --pilot --rewrite build/checked.dis64
+```
+
+Режим --pilot использует общий dis64pilotcheck: проверяет name/type IDs,
+размеры data/frame, entry, карты, длины code и роли/ширины/границы операндов.
+Неподдерживаемые инструкции, imports и непустые initializers отклоняются.
+JSON сообщает scalar_pilot:true, envelope_only:false и
+**execution_supported:false**. Сам структурный envelope этих проверок не заменяет.
+Поддерживаемое подмножество описано в [контракте Inferno](../upstream/doc/dis64-pilot.md).
+
+SDK содержит run-dis64-pilot.sh, исходник pilot.c, pilot42.hex/pilot42.dis64,
+полный набор транзитивных заголовков и actual inspector source. В каталоге
+установленного пакета его можно пересобрать независимо:
+
+```sh
+cc -std=c99 -Wall -Wextra -Werror -Wno-unused-function -Iinclude/dis64 \
+  examples/dis64-envelope/pilot.c -o work/pilot-example
+./work/pilot-example work/pilot42.dis64
+./dis64inspect work/pilot42.dis64 --pilot
+./run-dis64-pilot.sh
+```
+
+Перед этим создайте каталог work. isa.h включается translation unit ровно один
+раз. Отключение unused-function касается статических функций общего
+header-only API; остальные предупреждения включены. Заимствованные views живут
+только пока неизменяемый входной буфер доступен. Память примера и поток вывода
+принадлежат main; ошибка записи не является файловой транзакцией.
+
+Оба примера имеют hex fallback при установке, без запуска target-бинарников
+на машине cross-сборки. Пункт **14** build-menu / --launch pilot запускает
+семантическую проверку; пункт13 сохраняет структурный пример. Ни один не
+запускает новую Dis64 VM.
+
+В upstream fixture production C и AMD64 RX исполняют только MOVW. EXIT пока
+декодируется; полноценные allocation/entry/EXIT/scheduler, ref-result GC/unwind
+и физический ARM64 run ещё предстоят.
