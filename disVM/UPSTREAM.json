@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "75bc786962548a96d8d121dad5ad72fd3c0705b1",
+  "revision": "573eb1337fd621b6e51b89d16dd86427c9376452",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -923,7 +923,7 @@
     "upstream/libinterp/tests/README.frame-allocation-spans.md": "b5b077f96fcfe6bb8b19adeae0e476dbc008d35f1605f4e72caad6c57dd541d1",
     "upstream/libinterp/tests/README.frame-native.md": "3fb3fd19e9ab71061e5a46a29fd5e16b95f3ed95e7ec91a2a91e693653a75313",
     "upstream/libinterp/tests/README.full-fp-fd-slots.md": "e722659ebed5a60ab0ee387ef135b63194b4db2266044d7774cd71b1bf7f3e55",
-    "upstream/libinterp/tests/README.gc-arithmetic.md": "9add334dac02217e265934c4abf6ae4acaf138ebf7d3f30c177e26b58937709c",
+    "upstream/libinterp/tests/README.gc-arithmetic.md": "fe4a7139ea7a98fbb3fd0accf4f919d8df1175c370edcd93d3eafd545c339fb9",
     "upstream/libinterp/tests/README.gc-owner-srv.md": "c501d53211e08e8040951a27e1aaadd6ec137a17fe860a016b0536348811f16f",
     "upstream/libinterp/tests/README.gc-packed-maps.md": "88887535034bee027d06fdeed8e17266b5fe49b204da0ec2d464bfde5fc66ce0",
     "upstream/libinterp/tests/README.goto-case-tables.md": "b294c617f5ab4f9aed68a431d93778282c598635b2b1afe63d0ceca84d6e9c56",
@@ -1130,7 +1130,7 @@
     "upstream/libinterp/tests/gc-arithmetic.c": "a5b31b1cf71fb5f98f359d90d59a3b80cf73526d44db2b9f6eeef2c98d0d9210",
     "upstream/libinterp/tests/gc-arithmetic.py": "9c64bc41b38697785ef47146d721e9bc450bd044fbbac2fb7bc39b3c4129a327",
     "upstream/libinterp/tests/gc-idle.c": "a95fbce8d0bab29b3f58991fd7729f842c21818597867c6f534c9099278d037c",
-    "upstream/libinterp/tests/gc-idle.py": "2e102911471d8d1a14339519af7ddae4feadffdf156936e2b861f65f8d30e98a",
+    "upstream/libinterp/tests/gc-idle.py": "3ac9d6a80bae009fa7b89988be256e5656911df528de4216c3b234283fdd7f74",
     "upstream/libinterp/tests/gc-maps.c": "8e438a7955b500c7c0486b32a66e59d151f0eed2f08fab73bca14bd5c0c449ba",
     "upstream/libinterp/tests/gc-maps.py": "5bd62f594ae94e515e92ffba807c85799910722b69950ba86f41301883b652ee",
     "upstream/libinterp/tests/goto-native.c": "0bb8d2cd921c32e335d062f9738d8ac85a99b4b4ebb432d2ee6d0bc8bbf4b883",
