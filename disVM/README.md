@@ -7,7 +7,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-15e176308adfb125d6b2e1c301e800fa7f98a3fe; every imported file has a manifest hash.
+096ef558d1e82474ecb41e72678eb371afa52eb7; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -172,3 +172,20 @@ entry independently of C whitespace. [Evidence](../docs/releases/v0.1565.md).
 [Module review and Unicode Regex](MODULE_AUDIT.md): packaged library, confirmed reverse fix and Sys/Debug/Dis boundaries.
 
 [Writing native C modules](runtime/NATIVE_MODULES.md) · [Русский](runtime/NATIVE_MODULES.ru.md) · [Commented tutorial](examples/native-module/README.md).
+
+## Explicit upstream WORD32 object probe
+
+The selected production interp.h now accepts opt-in `DIS_WORD32=1`. Default
+builds keep their previous WORD/UWORD typedefs. This is a build selection, not
+an on-disk ABI flag or a default migration of the existing NC64 host.
+
+On Linux, CTest runs upstream `word32-build.py`:18 complete core/JIT translation
+units per selection,36 objects total, native scalar/frame probes and rejection
+of invalid macro values. It uses the selected Linux/386 host declarations on
+this host, without building an i386 port or executing ARM64/RV64 instructions.
+[Exact upstream boundary](upstream/doc/dis64-runtime-build.md).
+
+Do not mix objects from the two models or pass DIS_WORD32 globally to an existing
+NC64 runtime tree. Rebuild every interface/native consumer for a chosen target;
+Frame64 maps/args/results, the new loader and actual entry/EXIT/scheduler/GC
+acceptance remain separate gates. Compiling the objects is not a full new VM run.

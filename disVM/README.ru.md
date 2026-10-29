@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 15e176308adfb125d6b2e1c301e800fa7f98a3fe. Каждый файл имеет
+Текущий снимок фиксирует 096ef558d1e82474ecb41e72678eb371afa52eb7. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -157,3 +157,20 @@ Dis. [Проверки серии](../docs/releases/v0.1561.md).
 [Обзор модулей и Unicode Regex](MODULE_AUDIT.ru.md): перенесённая библиотека, подтверждённое обратное исправление и границы Sys/Debug/Dis.
 
 [Writing native C modules](runtime/NATIVE_MODULES.md) · [Русский](runtime/NATIVE_MODULES.ru.md) · [Commented tutorial](examples/native-module/README.md).
+
+## Явная upstream-проверка WORD32
+
+Production interp.h допускает opt-in `DIS_WORD32=1`. Без переключателя прежние
+WORD/UWORD сохраняются. Это build selection, не wire ABI flag и не миграция
+нашего работающего NC64 host по умолчанию.
+
+В Linux CTest запускает upstream word32-build.py:18 полных translation units
+core/JIT для каждого выбора,36 объектов, native scalar/frame probes и отказ
+для недопустимых значений macro. Выбраны Linux/386 host declarations; это не
+новый i386 port и не запуск ARM64/RV64 machine code.
+[Точная граница доказательства](upstream/doc/dis64-runtime-build.md).
+
+Объекты двух моделей нельзя смешивать. Нельзя просто передать DIS_WORD32
+глобально старому NC64 tree. Нужна согласованная пересборка всех native/interface
+consumers. Frame64 maps/args/results, новый loader, actual entry/EXIT/scheduler
+и GC остаются отдельными gates: object compilation не является новым VM run.

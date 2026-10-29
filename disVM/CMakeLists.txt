@@ -110,6 +110,7 @@ if(BUILD_TESTING)
     pc-target-boundary
     direct-target-native
     vm-widths
+    word32-build
     dis-layout
     dis-control
     dis-rune
@@ -217,6 +218,10 @@ if(BUILD_TESTING)
     string-cell-spans-c
     utf8-view-spans-c
   )
+    # This upstream object probe deliberately uses Linux host declarations.
+    if(driver STREQUAL "word32-build" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+      continue()
+    endif()
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
