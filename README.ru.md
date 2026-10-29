@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1686**. [English](README.md).
+Версия разработки: **0.1687**. [English](README.md).
 
-Текущая серия: [v0.1686](docs/releases/v0.1686.md): точные битовые константы FIR, production WORD32 из Inferno, прямой ответ Dis64 и переносимый C99 SDK.
+Текущая серия: [v0.1687](docs/releases/v0.1687.md): переносы и заёмы FIR, точные арифметические факты, SWF/Dis, C99 SDK и прямое согласование Dis64.
 
 ## Просмотр документации
 

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1686**. [Русская версия](README.ru.md).
+Development version: **0.1687**. [Русская версия](README.ru.md).
 
-Current series: [v0.1686](docs/releases/v0.1686.md): exact FIR bit constants, production WORD32 source synchronization, direct Dis64 response and relocated compiler SDK.
+Current series: [v0.1687](docs/releases/v0.1687.md): FIR carry/borrow facts, exact arithmetic results, SWF/Dis, C99 SDK and direct Dis64 coordination.
 
 ## Browse documentation
 
