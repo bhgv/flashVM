@@ -1,3 +1,5 @@
+[Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](../../../ARTIFACT-EXPORT.ru.md)
+
 [F7 Build / F8 diagnostics](../../../BUILD-PANEL.ru.md)
 
 # Графический редактор: логика Limbo/Dis, графика FlashVM

@@ -1,3 +1,5 @@
+[Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](ARTIFACT-EXPORT.ru.md)
+
 [Revision-bound graphical Build / Панель сборки](BUILD-PANEL.ru.md)
 
 # Сервис библиотечной сборки на Dis — runtime 0.33

@@ -1,3 +1,5 @@
+[Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](../../ARTIFACT-EXPORT.md)
+
 [F7 Build / F8 diagnostics — v0.1671](../../BUILD-PANEL.md) · [Русский](../../BUILD-PANEL.ru.md)
 
 # IDE application on our DisVM
@@ -54,7 +56,7 @@ see [table-language tutorial](../../../fir/v1/doc/TABLE_MUTATION.md). The curren
 Coco/R Limbo frontend is bounded and does not compile the whole controller yet:
 a matching source-built Limbo compiler bootstraps these IDE modules. The deployed
 modules themselves execute on our own DisVM. F7 Build and F8 source diagnostics
-use the portable Dis build panel. Artifact export, Run/Debug controls, full Dis
+use the portable Dis build panel. Run/Debug controls, full Dis
 debugger connection and complete self-hosted Limbo compilation remain unfinished.
 
 ## Verification and diagnosis

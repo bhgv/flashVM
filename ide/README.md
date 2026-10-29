@@ -1,3 +1,5 @@
+[Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](ARTIFACT-EXPORT.md)
+
 [F7 Build / F8 diagnostics — v0.1671](BUILD-PANEL.md) · [Русский](BUILD-PANEL.ru.md)
 
 # FlashVM Limbo IDE and host build tools

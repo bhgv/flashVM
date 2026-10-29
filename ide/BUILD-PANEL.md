@@ -1,3 +1,5 @@
+[Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](ARTIFACT-EXPORT.md)
+
 # Build panel on Dis — v0.1671
 
 The graphical editor now builds its current document with **F7** and selects its
@@ -69,7 +71,7 @@ Native compilation blocks the sole VM owner; this is not a responsive background
 build or cancellation implementation. The graphical panel shows a bounded
 256-character diagnostic, while the service retains its full plain text. Only the
 latest attempt's selectable diagnostic and last successful artifact are retained.
-No files are written, loaded or run automatically. Artifact export, Run/Debug
+No files are written, loaded or run automatically. Run/Debug
 controls, full language/module support and final target/native PC maps remain
 future work. Replay rendering does not establish physical desktop/touch acceptance.
 

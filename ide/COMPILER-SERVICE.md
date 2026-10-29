@@ -1,3 +1,5 @@
+[Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](ARTIFACT-EXPORT.md)
+
 [Revision-bound graphical Build / Панель сборки](BUILD-PANEL.md)
 
 # Native library compiler jobs on Dis — runtime 0.33

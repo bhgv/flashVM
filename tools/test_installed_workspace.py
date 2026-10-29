@@ -68,7 +68,7 @@ def compiler_service_packages(prefix, work, environment):
         manifest = package / "NATIVE-MODULES.txt"
         if not manifest.is_file() or "Fircompiler=ON" not in manifest.read_text():
             continue
-        for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md",
+        for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md", package / "ARTIFACT-EXPORT.md", package / "ARTIFACT-EXPORT.ru.md",
                          package / "examples/compiler-service/README.md",
                          package / "examples/compiler-service/README.ru.md", package / "WORKSPACE.md"):
             for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
@@ -87,6 +87,19 @@ def compiler_service_packages(prefix, work, environment):
                           package / "buildpanel-test.dis"], work, environment)
             if "PASS compiler panel:" not in output:
                 raise RuntimeError("relocated revision-bound build panel did not complete")
+        for mode in ("jit", "interpreter"):
+            output = run([sys.executable, package / "examples/artifact-export/check.py",
+                          program(prefix, name, "disvm"), package / "artifact-test.dis", mode,
+                          program(prefix, "fir", "fir1_source"), program(prefix, "fir", "fir1"),
+                          program(prefix, "linker", "swl")], work, environment)
+            if "PASS artifact export:" not in output:
+                raise RuntimeError("relocated artifact export did not complete")
+            tutorial = work / (name + "-" + mode + "-export")
+            tutorial.mkdir()
+            output = run([program(prefix, name, "disvm"), "--jit" if mode == "jit" else "--no-jit",
+                          package / "artifact-export.dis"], tutorial, environment)
+            if "PASS artifact tutorial:" not in output:
+                raise RuntimeError("relocated explicit export tutorial did not complete")
         client = work / (name + "-compiler-client")
         run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", package / "include/native",
              package / "examples/compiler-service/client.c", "-L", package / "lib/compiler",
