@@ -213,3 +213,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 и возвращает42. Все строки прокомментированы. [Правила, API/CLI и границы](../../doc/INTEGER_PAIRS.ru.md).
 
 [integer-facts.b](integer-facts.b): known-bit dynamic shift/divisor tutorial; raw/optimized Dis and SWF return42. [Guide / Руководство](../../doc/INTEGER_FACTS.ru.md).
+
+[shift-facts.b](shift-facts.b): dynamic shift-derived proofs; raw/optimized Dis/SWF return42. [Guide / Руководство](../../doc/SHIFT_FACTS.ru.md).

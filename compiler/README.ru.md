@@ -47,3 +47,5 @@ fir1 компилирует его в SWO, а [SWL](../linker/README.ru.md) ли
 [Paired integer rules / парные целочисленные правила](../fir/v1/doc/INTEGER_PAIRS.md), [RU](../fir/v1/doc/INTEGER_PAIRS.ru.md).
 
 [Известные биты int32 и динамическая арифметика SWF](../fir/v1/doc/INTEGER_FACTS.ru.md): общий C99-анализ, сохранение ошибок и пример.
+
+[Биты после сдвигов и big DCE / Shift facts and big DCE](../fir/v1/doc/SHIFT_FACTS.ru.md).

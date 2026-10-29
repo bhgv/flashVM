@@ -54,3 +54,5 @@ channels and trace remain even when their results are unused.
 [Total integer identities — FIR 0.59](../doc/INTEGER_IDENTITIES.md) · [Русский](../doc/INTEGER_IDENTITIES.ru.md).
 
 [Known int32 bits and dynamic checked SWF arithmetic](../doc/INTEGER_FACTS.md): shared C99 proofs, preserved producer errors and source example.
+
+[Биты после сдвигов и big DCE / Shift facts and big DCE](../doc/SHIFT_FACTS.md).

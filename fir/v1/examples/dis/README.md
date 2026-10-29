@@ -212,3 +212,5 @@ Dis/SWF are supported. [Commands, precision proof and limits](../../doc/SWF_INT_
 returns42. Every line is commented. [Exact rules, API/CLI use and boundaries](../../doc/INTEGER_PAIRS.md).
 
 [integer-facts.b](integer-facts.b): known-bit dynamic shift/divisor tutorial; raw/optimized Dis and SWF return42. [Guide / Руководство](../../doc/INTEGER_FACTS.md).
+
+[shift-facts.b](shift-facts.b): dynamic shift-derived proofs; raw/optimized Dis/SWF return42. [Guide / Руководство](../../doc/SHIFT_FACTS.md).

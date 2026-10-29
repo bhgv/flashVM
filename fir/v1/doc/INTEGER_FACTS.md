@@ -1,5 +1,8 @@
 # Known int32 bits — FIR 0.63
 
+FIR0.64: [big and checked-shift facts / big и проверяемые сдвиги](SHIFT_FACTS.md) extend this original int32-only contract.
+
+
 [Русский](INTEGER_FACTS.ru.md) · [Analysis implementation](../optimiser/integer_facts.c) ·
 [Public C99 API](../include/fir.h) · [Commented Limbo example](../examples/dis/integer-facts.b) ·
 [Executable regression](../tests/integer_facts.py) · [C99 oracle](../tests/integer_facts_api.c)

@@ -47,3 +47,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [Paired integer rules / парные целочисленные правила](../fir/v1/doc/INTEGER_PAIRS.md), [RU](../fir/v1/doc/INTEGER_PAIRS.ru.md).
 
 [Known int32 bits and dynamic checked SWF arithmetic](../fir/v1/doc/INTEGER_FACTS.md): shared C99 proofs, preserved producer errors and source example.
+
+[Биты после сдвигов и big DCE / Shift facts and big DCE](../fir/v1/doc/SHIFT_FACTS.md).
