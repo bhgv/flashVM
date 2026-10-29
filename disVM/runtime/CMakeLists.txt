@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.36.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.37.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -1169,6 +1169,24 @@ if(DVM_RUNTIME_EDITOR)
       -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.dis" "${root}/ide/dis/examples/desktop/main.b"
     DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop/main.b" "${root}/ide/dis/app/desktop.m" VERBATIM)
   add_custom_target(disvm_desktop_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.dis")
+endif()
+
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-lifecycle.dis"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
+    -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-lifecycle.dis" "${root}/ide/dis/examples/desktop-lifecycle/main.b"
+  DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop-lifecycle/main.b" ${module_headers} VERBATIM)
+add_custom_target(disvm_desktop_lifecycle ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-lifecycle.dis")
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    set(dispatch --jit)
+    if(mode STREQUAL "interpreter")
+      set(dispatch --no-jit)
+    endif()
+    add_test(NAME disvm_desktop_lifecycle_${mode} COMMAND "$<TARGET_FILE:disvm>" ${dispatch}
+      --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/desktop-lifecycle.dis")
+    set_tests_properties(disvm_desktop_lifecycle_${mode} PROPERTIES TIMEOUT 60
+      PASS_REGULAR_EXPRESSION "PASS desktop lifecycle tutorial:")
+  endforeach()
 endif()
 
 if(DVM_RUNTIME_TESTS)
