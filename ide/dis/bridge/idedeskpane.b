@@ -59,10 +59,16 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
     }
     diagnostic := "";
     helpfirst := 0;
+    pointing := 0; # Active admitted pointer sequence for this document only.
+    pointanchor := 0; # Full scalar endpoint captured at pointer begin.
     for (;;) {
         request := <-requests;
         if (request.reply == nil) {
             continue;
+        }
+        if ((request.operation != Place && request.operation != Snapshot) ||
+            (request.operation == Place && request.event == nil)) {
+            pointing = 0;
         }
         status := core->Invalid;
         stop := 0;
@@ -84,6 +90,9 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 }
                 status = core->Ok;
                 stop = 1;
+            } else if (request.operation == CancelPointer) {
+                pointing = 0;
+                status = core->Ok;
             } else if (request.operation == Snapshot) {
                 status = core->Ok;
             } else if (request.operation == SetText && kind == Console && len request.text <= 4096) {
@@ -106,13 +115,41 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 }
                 status = core->Ok;
             } else if (kind == Editor) {
-                if (request.operation == Input) {
+                if (request.operation == Place && request.event != nil) {
+                    # Refresh after an earlier rejected edit/build; its status
+                    # must not make a valid unchanged-revision selection fail.
+                    current = call(document, core->Snapshot, 0, "");
+                    policy->observe(state, current);
+                    proposal := request.event;
+                    status = core->Conflict;
+                    if (proposal.kind == Uibridge->Request && proposal.flags == current.revision &&
+                        proposal.code >= 1 && proposal.code <= 3 && proposal.first >= 0 &&
+                        proposal.first <= len current.text && proposal.second >= 0 && proposal.second <= 1) {
+                        if (proposal.code == 1) {
+                            pointanchor = proposal.first;
+                            if (proposal.second) {
+                                pointanchor = state.anchor;
+                            }
+                            pointing = 1;
+                        }
+                        if (pointing && policy->select(state, current, pointanchor, proposal.first)) {
+                            status = core->Ok;
+                        }
+                        if (proposal.code == 3) {
+                            pointing = 0;
+                        }
+                    } else {
+                        pointing = 0;
+                    }
+                } else if (request.operation == Input) {
+                    pointing = 0;
                     (valid, view) := policy->apply(core, document, state, request.event);
                     if (valid) {
                         current = view.document;
                         status = current.status;
                     }
                 } else if (request.operation == Open) {
+                    pointing = 0;
                     status = core->Conflict;
                     if (current.revision == current.saved) {
                         (readstatus, source) := files->read(sys, request.text, 65536);
@@ -173,6 +210,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
         body := text;
         first := 0;
         caret := 0;
+        anchor := 0;
         if (kind == Editor) {
             (start, finish, unusedtop) := viewport->window(visible, current.text, state.caret, 1);
             first = start;
@@ -191,6 +229,13 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
             }
             body = current.text[first:last];
             caret = state.caret - first;
+            anchor = state.anchor - first;
+            if (anchor < 0) {
+                anchor = 0;
+            }
+            if (anchor > len body) {
+                anchor = len body;
+            }
         } else if (len body > 200) {
             if (kind == Help) {
                 first = helpfirst;
@@ -205,7 +250,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
             body = body[first:last];
         }
         response := Reply(request.id, status, kind, path, body, current.revision,
-                          current.saved, first, caret, diagnostic);
+                          current.saved, first, caret, anchor, diagnostic);
         request.reply <-= response;
         if (stop) {
             return;

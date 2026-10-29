@@ -38,7 +38,7 @@ call(owner: chan of Idedesktop->Request, request: Idedesktop->Request): Idedeskt
 point(owner: chan of Idedesktop->Request, ticket, x, y, phase: int): Idedesktop->Reply
 {
     return call(owner, Idedesktop->Request(1, Idedesktop->Pointer, ticket, 0,
-                x, y, phase, "", "", -1, nil));
+                x, y, phase, "", "", -1, -1, nil));
 }
 
 
@@ -74,8 +74,24 @@ init()
     pane(left, panes->Input, ref Uibridge->Message(codec->Key, 0, 17, 1, 0, 0, ""));
     undone := pane(left, panes->Input, ref Uibridge->Message(codec->Key, 0, 90, 1, 0, 0, ""));
     check(undone.body == "left" && undone.revision > changed.revision, "real undo history");
+    # Geometry is only a proposal: the document admits current-revision scalar
+    # ranges, keeps a private anchor, and cancels stale/late pointer continuations.
+    before := pane(right, panes->Snapshot, nil);
+    selected := pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 1, before.revision, 1, 0, ""));
+    selected = pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 2, before.revision, 4, 0, ""));
+    check(selected.status == 0 && selected.caret == 4 && selected.anchor == 1 && selected.body == "right",
+          "pointer selection changes no source revision");
+    stale := pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 2, before.revision - 1, 0, 0, ""));
+    check(stale.status != 0 && stale.caret == 4 && stale.anchor == 1, "stale pointer preserves selection");
+    late := pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 3, before.revision, 0, 0, ""));
+    check(late.status != 0 && late.caret == 4, "late end cannot revive cancelled gesture");
+    selected = pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 1, before.revision, 0, 1, ""));
+    check(selected.status == 0 && selected.anchor == 1 && selected.caret == 0, "shift keeps original anchor");
+    pane(right, panes->CancelPointer, nil);
+    late = pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 2, before.revision, 5, 0, ""));
+    check(late.status != 0 && late.caret == 0, "explicit pointer cancellation");
     layout := desk->start();
-    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "Left", changed.body, 0, nil);
+    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "Left", changed.body, 0, -1, nil);
     view := call(layout, request);
     check(view.status == desk->Ok, "window admission");
     mirrored := 0;
@@ -85,6 +101,26 @@ init()
         }
     }
     check(mirrored == 1, "live miniature capability reference");
+    request.operation = desk->TextHit;
+    request.ticket = view.ticket;
+    request.x = 120;
+    request.y = 100;
+    admitted := call(layout, request);
+    check(admitted.status == desk->Ok, "layout admits only actual text body");
+    request.window = 4;
+    rejectedhit := call(layout, request);
+    check(rejectedhit.status == desk->Conflict, "glyph metadata cannot name another pane");
+    request.window = 1;
+    request.ticket = view.ticket - 1;
+    rejectedhit = call(layout, request);
+    check(rejectedhit.status == desk->Conflict, "text hit needs current view ticket");
+    request.ticket = view.ticket;
+    request.y = 80;
+    rejectedhit = call(layout, request);
+    check(rejectedhit.status == desk->Conflict, "window header is never a source coordinate");
+    request.operation = desk->Activate;
+    view = call(layout, request);
+    check(view.status == desk->Ok && view.scroll == 0, "body activation preserves table offset");
     request.operation = desk->Pointer;
     request.ticket = view.ticket;
     request.x = 84;

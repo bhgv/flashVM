@@ -6,6 +6,7 @@ Window: adt
     title: string; # Immutable caption value.
     body: string; # Copied presentation, not source authority.
     caret: int; # Body-local display caret.
+    anchor: int; # Clipped body-local selection anchor.
     dx: int; # Persistent horizontal offset from the responsive grid.
     dy: int; # Persistent vertical offset from the responsive grid.
 };
@@ -69,13 +70,47 @@ stackslot(order, focus: int): int
 }
 
 
+# Admit a text-body identity from copied pixels in the same paint/hit order.
+# Borrowed windows contain presentation only. Return zero for rails, headers,
+# opaque scrolls and no hit; source kind/revision/ranges stay with the pane owner.
+texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y: int): int
+{
+    if (x < 80 || x >= width - 104 || y < 48 || y >= height) {
+        return 0;
+    }
+    left := width - 424;
+    if (left < 84) {
+        left = 84;
+    }
+    if (drawer != 0 && x >= left && x < width - 112 && y >= 72 && y < 412) {
+        return 0;
+    }
+    target := 0;
+    for (order := 0; order < len windows; order++) {
+        index := stackslot(order, focus);
+        if (windows[index] == nil) {
+            continue;
+        }
+        (x0, y0, wide, high) := position(index, width, windows[index]);
+        y0 -= scroll;
+        if (x >= x0 && x < x0 + wide && y >= y0 && y < y0 + high) {
+            target = 0;
+            if (y >= y0 + 24) {
+                target = index + 1;
+            }
+        }
+    }
+    return target;
+}
+
+
 # Build fresh scene descriptors. windows is borrowed only during this call;
 # the returned array/Items are new, and all text values are immutable Dis strings.
 scene(windows: array of ref Window, width, height, scroll, focus, drawer: int): array of ref Item
 {
     items := array[52] of ref Item;
     used := 0;
-    items[used++] = ref Item(10, 0, 0, 0, 0, width, height, 2, "", -1);
+    items[used++] = ref Item(10, 0, 0, 0, 0, width, height, 2, "", -1, -1);
     for (order := 0; order < len windows; order++) {
         index := stackslot(order, focus);
         window := windows[index];
@@ -89,20 +124,24 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer: int): 
         }
         caption := window.title + "\n" + window.body;
         caret := -1;
+        anchor := -1;
         if (focus == index + 1 && window.caret >= 0) {
             caret = len window.title + 1 + window.caret;
+            if (window.anchor >= 0) {
+                anchor = len window.title + 1 + window.anchor;
+            }
         }
-        items[used++] = ref Item(index + 1, 1, 0, x, y, wide, high, style, caption, caret);
+        items[used++] = ref Item(index + 1, 1, 0, x, y, wide, high, style, caption, caret, anchor);
         if (index != 1 && index != 2) {
-            items[used++] = ref Item(30 + index, 1, 0, x + wide - 30, y, 30, 24, 4, "x", -1);
+            items[used++] = ref Item(30 + index, 1, 0, x + wide - 30, y, 30, 24, 4, "x", -1, -1);
         }
     }
-    items[used++] = ref Item(11, 2, 0, 0, 0, 80, height, 2, "", -1);
-    items[used++] = ref Item(12, 3, 0, 0, 0, 104, height, 2, "", -1);
+    items[used++] = ref Item(11, 2, 0, 0, 0, 80, height, 2, "", -1, -1);
+    items[used++] = ref Item(12, 3, 0, 0, 0, 104, height, 2, "", -1, -1);
     for (index := 0; index < len windows; index++) {
         if (windows[index] != nil) {
             items[used++] = ref Item(20 + index, 2, index + 1, 6, 72 + index * 64, 68, 54,
-                                    index + 1 == focus, windows[index].title, -1);
+                                    index + 1 == focus, windows[index].title, -1, -1);
         }
     }
     names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close"};
@@ -111,7 +150,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer: int): 
         if (drawer == index || index == Help) {
             style = 3;
         }
-        items[used++] = ref Item(40 + index, 3, 0, 8, 56 + (index - 1) * 64, 88, 54, style, names[index], -1);
+        items[used++] = ref Item(40 + index, 3, 0, 8, 56 + (index - 1) * 64, 88, 54, style, names[index], -1, -1);
     }
     if (drawer != 0) {
         descriptions := array[] of {"", "Open a UTF-8 source file in the active editor. Unsaved edits are protected.",
@@ -130,18 +169,18 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer: int): 
         if (wide < 24) {
             wide = 24;
         }
-        items[used++] = ref Item(55, 4, 0, x, 72, wide, 340, 0, names[drawer] + "\n" + descriptions[drawer], -1);
+        items[used++] = ref Item(55, 4, 0, x, 72, wide, 340, 0, names[drawer] + "\n" + descriptions[drawer], -1, -1);
         labels := array[] of {"", "Choose file", "Save editor", "Build editor", "New editor", "Not attached", "Read Help", "Discard and close", "Discard this editor"};
         label := labels[drawer];
         if (drawer == Debugger) {
             label = "Not attached";
         }
-        items[used++] = ref Item(56, 4, 0, x + 8, 320, wide - 16, 36, 3, label, -1);
+        items[used++] = ref Item(56, 4, 0, x + 8, 320, wide - 16, 36, 3, label, -1, -1);
         if (drawer == CloseEditor) {
-            items[used++] = ref Item(58, 4, 0, x + 8, 364, wide - 16, 36, 4, "Cancel", -1);
+            items[used++] = ref Item(58, 4, 0, x + 8, 364, wide - 16, 36, 4, "Cancel", -1, -1);
         }
     }
-    items[used++] = ref Item(63, 0, 0, 0, 0, width, 48, 2, "FlashVM IDE     |     MovieClip desk     |     F1 Help", -1);
+    items[used++] = ref Item(63, 0, 0, 0, 0, width, 48, 2, "FlashVM IDE     |     MovieClip desk     |     F1 Help", -1, -1);
     return items[:used];
 }
 
@@ -187,16 +226,16 @@ serve(requests: chan of Request)
                 status = Ok;
             } else if (request.operation == Update && request.window >= 1 && request.window <= MaxWindows &&
                        len request.title <= 32 && len request.body <= 200 && request.caret >= -1 &&
-                       request.caret <= len request.body) {
+                       request.caret <= len request.body && request.anchor >= -1 && request.anchor <= len request.body) {
                 old := windows[request.window - 1];
-                changed = old == nil || old.title != request.title || old.body != request.body || old.caret != request.caret;
+                changed = old == nil || old.title != request.title || old.body != request.body || old.caret != request.caret || old.anchor != request.anchor;
                 dx := 0;
                 dy := 0;
                 if (old != nil) {
                     dx = old.dx;
                     dy = old.dy;
                 }
-                windows[request.window - 1] = ref Window(request.title, request.body, request.caret, dx, dy);
+                windows[request.window - 1] = ref Window(request.title, request.body, request.caret, request.anchor, dx, dy);
                 status = Ok;
             } else if (request.operation == Remove && request.window >= 1 && request.window <= MaxWindows &&
                        request.window != 2 && request.window != 3 && windows[request.window - 1] != nil) {
@@ -223,6 +262,19 @@ serve(requests: chan of Request)
                 pressed = 0;
                 width = request.x;
                 height = request.y;
+                changed = 1;
+                status = Ok;
+            } else if (request.operation == TextHit) {
+                status = Conflict;
+                if (request.ticket == ticket && request.window >= 1 && request.window <= MaxWindows &&
+                    texttarget(windows, width, height, scroll, focus, drawer, request.x, request.y) == request.window) {
+                    status = Ok;
+                }
+            } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
+                dragging = 0;
+                moving = 0;
+                pressed = 0;
+                focus = request.window;
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Select && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {

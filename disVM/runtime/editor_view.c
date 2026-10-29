@@ -2086,7 +2086,9 @@ static void resolve_pointer(DVM_UIMessage *message)
     }
     if (dvm_desktop_active())
     {
-        char metadata[17];
+        char metadata[33];
+        unsigned long widget = 0;
+        long position = -1;
         unsigned long phase = message->flags;
         unsigned long code = message->code;
         message->kind = DVM_UI_REQUEST;
@@ -2101,9 +2103,14 @@ static void resolve_pointer(DVM_UIMessage *message)
         message->code = DVM_DESK_POINTER;
         message->first = message->first < 0 ? -1 : message->first / 20;
         message->second = message->second < 0 ? -1 : message->second / 20;
-        snprintf(metadata, sizeof(metadata), "%08lx%08lx", phase, code);
-        memcpy(message->text, metadata, 16);
-        message->size = 16;
+        if (code == 1)
+        {
+            dvm_desktop_hit(message->first, message->second, &widget, &position);
+        }
+        snprintf(metadata, sizeof(metadata), "%08lx%08lx%08lx%08lx", phase, code, widget,
+                 position < 0 ? 0xffffffffUL : (unsigned long)position);
+        memcpy(message->text, metadata, 32);
+        message->size = 32;
         return;
     }
     if (message->code == EDITOR_RESIZE)

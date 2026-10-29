@@ -8,7 +8,7 @@ Idedesktop: module
     PointerEvent: con 65572; # Pixel/phase proposal carrying the completed view ticket.
     ResizeEvent: con 65573; # Ticket-bound native canvas proposal.
     MaxWindows: con 8; # Bounded independent window processes in this first shell.
-    View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Shutdown: con iota; # FIFO operations.
+    View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Activate, TextHit, Shutdown: con iota; # FIFO operations.
     Ok, Invalid, Conflict: con iota; # Explicit layout/input admission.
     OpenFile, SaveFile, Compile, NewEditor, Debugger, Help, Quit, CloseEditor, Focus, CancelClose: con iota + 1; # Tool/activation actions.
 
@@ -16,14 +16,15 @@ Idedesktop: module
     {
         id: int; # Nonnegative correlation identity.
         operation: int; # Operation above.
-        ticket: int; # Exact completed view for Pointer/Scroll; zero for controller updates.
-        window: int; # Update/Select/Remove: stable 1..8 ID; Tool: action above.
+        ticket: int; # Exact view for Pointer/Scroll/TextHit; zero for controller updates.
+        window: int; # Update/Select/Activate/Remove/TextHit: 1..8 ID; Tool: action.
         x: int; # Pointer pixel X; Scroll delta in pixels; Resize width.
         y: int; # Pointer pixel Y; Resize height.
         phase: int; # Pointer begin/move/end: 1/2/3.
         title: string; # Update: at most 32 Unicode scalars.
         body: string; # Update: at most 200 Unicode scalars.
         caret: int; # Update: body-relative caret, -1 hides it.
+        anchor: int; # Update: clipped body-relative anchor, -1 hides selection.
         reply: chan of Reply; # Required unique acknowledgement.
     };
 
@@ -39,6 +40,7 @@ Idedesktop: module
         style: int; # Bounded palette: paper/active/dark/help/muted.
         text: string; # Counted Unicode title/body, never script evaluated.
         caret: int; # Text-relative caret or -1; source ownership stays on Dis.
+        anchor: int; # Text-relative clipped anchor or -1; no source authority.
     };
 
     Reply: adt

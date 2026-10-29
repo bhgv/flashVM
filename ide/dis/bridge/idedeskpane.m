@@ -3,14 +3,17 @@ Idedeskpane: module
 {
     PATH: con "idedeskpane.dis"; # Matching portable window controller.
     Editor, Console, Help: con iota + 1; # Actual document owner, mutable log, immutable help.
-    Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Shutdown: con iota; # FIFO operations.
+    Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, Shutdown: con iota; # FIFO operations.
 
     Request: adt
     {
         id: int; # Nonnegative correlation identity.
         operation: int; # Operation above.
         text: string; # Open/Save path or console replacement text.
-        event: ref Uibridge->Message; # Input only: copied keyboard/text/focus observation.
+        # Place: Request kind, code begin/move/end=1/2/3, flags exact source revision,
+        # first absolute scalar offset, second Shift 0/1 (begin only). Nil rejects.
+        # CancelPointer drops the gesture without changing selection/modifiers.
+        event: ref Uibridge->Message; # Input keyboard/text/focus, or checked Place proposal.
         reply: chan of Reply; # Required unique acknowledgement.
     };
 
@@ -25,6 +28,7 @@ Idedeskpane: module
         saved: int; # Saved revision, never changed by Build or Snapshot.
         first: int; # Original source offset of body.
         caret: int; # Body-relative bounded caret.
+        anchor: int; # Body-relative clipped selection anchor; full endpoint stays private.
         diagnostic: string; # Plain build/error metadata, bounded by the caller before UI publication.
     };
 

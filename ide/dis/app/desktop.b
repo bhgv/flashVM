@@ -82,6 +82,8 @@ init()
         raise "fail: desktop modules";
     }
     windows := array[desk->MaxWindows] of chan of Idedeskpane->Request;
+    shown := array[desk->MaxWindows] of Idedeskpane->Reply;
+    pointing := 0; # Stable source slot for the admitted body selection gesture.
     path := host->path();
     source := "";
     if (path != "" && !host->fresh()) {
@@ -93,7 +95,7 @@ init()
     }
     windows[0] = panes->start(panes->Editor, path, source);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1: Help. PageUp/PageDown: help pages. F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console stay open.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[2] = panes->start(panes->Help, "", "F1: Help. PageUp/PageDown: help pages. F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console stay open.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
     windows[3] = panes->start(panes->Editor, "", "");
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -101,7 +103,7 @@ init()
         }
     }
     layout := desk->start();
-    request := Idedesktop->Request(1, desk->View, 0, 0, 0, 0, 0, "", "", -1, nil);
+    request := Idedesktop->Request(1, desk->View, 0, 0, 0, 0, 0, "", "", -1, -1, nil);
     view := deskcall(layout, request);
     input := chan of array of byte;
     output := chan of array of byte;
@@ -124,14 +126,17 @@ init()
                 continue;
             }
             snapshot := panecall(windows[index], panes->Snapshot, "", nil);
+            shown[index] = snapshot;
             dirty += snapshot.revision != snapshot.saved;
             request.operation = desk->Update;
             request.window = index + 1;
             request.title = caption(snapshot, index + 1);
             request.body = snapshot.body;
             request.caret = -1;
+            request.anchor = -1;
             if (snapshot.kind == panes->Editor) {
                 request.caret = snapshot.caret;
+                request.anchor = snapshot.anchor;
             }
             view = deskcall(layout, request);
         }
@@ -155,7 +160,7 @@ init()
             item := view.items[index];
             metadata := codec->hexword(item.parent) + codec->hexword(item.x) + codec->hexword(item.y)
                 + codec->hexword(item.width) + codec->hexword(item.height) + codec->hexword(item.style)
-                + codec->hexword(item.caret) + codec->hexword(item.mirror);
+                + codec->hexword(item.caret) + codec->hexword(item.mirror) + codec->hexword(item.anchor);
             send(codec, output, desk->ItemView, view.ticket, item.id, 0, metadata + item.text);
         }
         if (modal != 0) {
@@ -177,7 +182,8 @@ init()
             }
             send(codec, output, desk->ItemView, view.ticket, 57, 0, codec->hexword(4) + codec->hexword(x)
                 + codec->hexword(240) + codec->hexword(wide) + codec->hexword(64)
-                + codec->hexword(3) + codec->hexword(field.caret - first) + codec->hexword(0) + field.text[first:last]);
+                + codec->hexword(3) + codec->hexword(field.caret - first) + codec->hexword(0)
+                + codec->hexword(-1) + field.text[first:last]);
         }
         send(codec, output, desk->EndView, view.ticket, 0, 0, "");
         (valid, event) := codec->decode(<-input);
@@ -187,6 +193,11 @@ init()
         if ((event.kind == codec->Key && (event.flags < 0 || event.flags > 1 || event.code < 1 || event.code > 255)) ||
             (event.kind == codec->Focus && (event.flags < 0 || event.flags > 1))) {
             raise "fail: desktop input flags";
+        }
+        if (pointing != 0 && !(event.kind == codec->Request && event.code == desk->PointerEvent &&
+                              len array of byte event.text == 32)) {
+            panecall(windows[pointing - 1], panes->CancelPointer, "", nil);
+            pointing = 0;
         }
         action := 0;
         approved := 0; # Only an admitted click on the explicit discard control.
@@ -270,10 +281,12 @@ init()
             }
             continue;
         }
-        if (event.kind == codec->Request && event.code == desk->PointerEvent && len array of byte event.text == 16) {
+        if (event.kind == codec->Request && event.code == desk->PointerEvent && len array of byte event.text == 32) {
             (phaseok, phase) := codec->parseword(array of byte event.text, 0);
             (codeok, code) := codec->parseword(array of byte event.text, 8);
-            if (phaseok && codeok && (code == 1 || code == 4 || code == 5)) {
+            (hitok, hit) := codec->parseword(array of byte event.text, 16);
+            (offsetok, offset) := codec->parseword(array of byte event.text, 24);
+            if (phaseok && codeok && hitok && offsetok && (code == 1 || code == 4 || code == 5)) {
                 request.ticket = event.flags;
                 request.operation = desk->Pointer;
                 request.x = event.first;
@@ -296,6 +309,46 @@ init()
                 approved = action == desk->CloseEditor && previousdrawer == desk->CloseEditor &&
                     phase == 1 && code == 1 && event.first >= left + 8 && event.first < width - 120 &&
                     event.second >= 320 && event.second < 356;
+                # Native glyph geometry proposes an offset. Layout independently
+                # admits its pane, and that pane checks the shown source revision.
+                placed := 0;
+                if (view.status == desk->Ok && code == 1 && hit >= 1 && hit <= len windows &&
+                    windows[hit - 1] != nil && shown[hit - 1].kind == panes->Editor && closing == 0) {
+                    prefix := len caption(shown[hit - 1], hit) + 1;
+                    if (offset >= prefix && offset <= prefix + len shown[hit - 1].body &&
+                        (phase == 1 || pointing == hit)) {
+                        request.operation = desk->TextHit;
+                        request.ticket = view.ticket;
+                        request.window = hit;
+                        admitted := deskcall(layout, request);
+                        if (admitted.status == desk->Ok) {
+                            extend := shift;
+                            if (phase == 1) {
+                                if (active != hit) {
+                                    panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+                                    active = hit;
+                                    control = 0;
+                                    shift = 0;
+                                }
+                                request.operation = desk->Activate;
+                                request.window = hit;
+                                view = deskcall(layout, request);
+                                pointing = hit;
+                            }
+                            result := panecall(windows[hit - 1], panes->Place, "",
+                                ref Uibridge->Message(codec->Request, 0, phase, shown[hit - 1].revision,
+                                    shown[hit - 1].first + offset - prefix, extend, ""));
+                            placed = result.status == Idecore->Ok;
+                        }
+                    }
+                }
+                if (pointing != 0 && (!placed || phase == 3 || code != 1)) {
+                    panecall(windows[pointing - 1], panes->CancelPointer, "", nil);
+                    pointing = 0;
+                }
+                if (placed) {
+                    continue;
+                }
                 if (action == desk->Focus) {
                     panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
                     active = view.focus;
@@ -303,6 +356,9 @@ init()
                     shift = 0;
                     continue;
                 }
+            } else if (pointing != 0) {
+                panecall(windows[pointing - 1], panes->CancelPointer, "", nil);
+                pointing = 0;
             }
         } else if (event.kind == codec->Key && event.flags == 1) {
             if (event.code == 112) {

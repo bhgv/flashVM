@@ -16,7 +16,7 @@
 
 #define DESK_SLOTS 64U  /* Stable bounded widget identities, independent of VM addresses. */
 #define DESK_TEXT 1024U /* Maximum copied UTF-8 payload. */
-#define DESK_META 64U   /* parent/x/y/width/height/style/caret/mirror words. */
+#define DESK_META 72U   /* parent/x/y/width/height/style/caret/mirror/anchor words. */
 
 
 /* One immutable copied scene item and its persistent owner-local capabilities. */
@@ -30,6 +30,7 @@ typedef struct DeskItem
     unsigned long height; /* Bounded local extent. */
     unsigned long mirror; /* Optional source window snapshot in this scene. */
     unsigned long style;  /* Palette 0..4. */
+    long anchor;          /* Clipped Unicode selection endpoint, -1 hides selection. */
     long caret;           /* Unicode position, -1 disables the caret. */
     char text[DESK_TEXT]; /* Owned counted text, not evaluated. */
     size_t size;          /* Valid bytes in text. */
@@ -39,6 +40,7 @@ static FVM_Context *owner;                /* Borrowed FlashVM context; never use
 static FVM_Object *root;                  /* [GC:] Pinned MovieClip root retaining all scene children. */
 static FVM_Object *groups[5];             /* [GC:] Borrowed children of the retained root. */
 static FVM_Object *clips[DESK_SLOTS];     /* [GC:] Borrowed stable MovieClip children. */
+static FVM_Object *marks[DESK_SLOTS];     /* [GC:] Selection MovieClips retained beneath widgets. */
 static FVM_Object *cursors[DESK_SLOTS];   /* [GC:] Caret MovieClips retained beneath each widget. */
 static FVM_Object *labels[DESK_SLOTS];    /* [GC:] TextFields retained on their MovieClips. */
 static unsigned char visible[DESK_SLOTS]; /* Slots admitted in the previous complete scene. */
@@ -152,6 +154,35 @@ static int box(FVM_Object *clip, double wide, double high, unsigned long rgb)
 }
 
 
+/* Append one value rectangle to a retained MovieClip without clearing siblings.
+ * Coordinates/extents/color are copied pixels; return zero on a VM call failure.
+ * The caller owns the clip's context and serializes all managed access. */
+static int rectangle(FVM_Object *clip, double left, double top, double wide, double high)
+{
+    FVM_Value args[2];
+    FVM_Value ignored;
+    double x[5] = {left, left + wide, left + wide, left, left};
+    double y[5] = {top, top, top + high, top + high, top};
+    int index;
+    fvm_value_number(&args[0], 0x95b9d1UL);
+    fvm_value_number(&args[1], 100);
+    if (fvm_object_call(owner, clip, "beginFill", 2, args, &ignored) != FVM_OK)
+    {
+        return 0;
+    }
+    for (index = 0; index < 5; ++index)
+    {
+        fvm_value_number(&args[0], x[index]);
+        fvm_value_number(&args[1], y[index]);
+        if (fvm_object_call(owner, clip, index ? "lineTo" : "moveTo", 2, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    return fvm_object_call(owner, clip, "endFill", 0, NULL, &ignored) == FVM_OK;
+}
+
+
 /* Initialize owner-local scene state and linked AS bytecode once. The root pins
  * all child capabilities; partial startup is retired by destroy. Return success. */
 int dvm_desktop_bind(FVM_Context *context, const unsigned char *font, size_t size, int replay)
@@ -214,7 +245,7 @@ int dvm_desktop_bind(FVM_Context *context, const unsigned char *font, size_t siz
 int dvm_desktop_message(const DVM_UIMessage *message)
 {
     unsigned long count;
-    unsigned long words[8];
+    unsigned long words[9];
     unsigned int index;
     if (!message || message->kind != DVM_UI_VIEW)
     {
@@ -256,7 +287,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
     {
         return 0;
     }
-    for (index = 0; index < 8; ++index)
+    for (index = 0; index < 9; ++index)
     {
         if (!word(message->text + index * 8, &words[index]))
         {
@@ -282,7 +313,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         memset(item->text, 0, sizeof(item->text));
         memcpy(item->text, message->text + DESK_META, item->size);
         if (fvm_utf8_validate(item->text, item->size, &scalars) != FVM_UTF8_OK ||
-            (words[6] != 0xffffffffUL && words[6] > scalars))
+            (words[6] != 0xffffffffUL && words[6] > scalars) || (words[8] != 0xffffffffUL && words[8] > scalars))
         {
             return 0;
         }
@@ -294,6 +325,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         item->height = words[4];
         item->style = words[5];
         item->mirror = words[7];
+        item->anchor = words[8] == 0xffffffffUL ? -1 : (long)words[8];
         item->caret = words[6] == 0xffffffffUL ? -1 : (long)words[6];
         received++;
     }
@@ -319,6 +351,177 @@ static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *outp
     output->x0 = group.xx * local.x0 + group.xy * local.y0 + group.x0;
     output->y0 = group.yx * local.x0 + group.yy * local.y0 + group.y0;
     return 1;
+}
+
+
+/* Build the owner's uniform glyph layout shared by caret, selection and hit
+ * measurement. Inputs are borrowed copied text and required output cells.
+ * Success transfers one layout to the caller; failure clears it. No script,
+ * channel, document or raster worker is involved. Serialize mutable face access. */
+static int text_layout(const DeskItem *content,
+                       FVM_TextLayout **layout,
+                       FVM_FontMetrics *font,
+                       FVM_TextLayoutOptions *options,
+                       FVM_TextLayoutMetrics *metrics)
+{
+    *layout = NULL;
+    if (fvm_font_metrics(face, font) != FVM_OK)
+    {
+        return 0;
+    }
+    memset(options, 0, sizeof(*options));
+    options->max_width = content->width > 16 ? content->width - 16 : 1;
+    options->line_height = font->ascent + font->descent + 2;
+    options->alignment = FVM_TEXT_ALIGN_LEFT;
+    {
+        FVM_Result result;
+        if (memchr(content->text, '\t', content->size))
+        {
+            double average;
+            result = fvm_font_average_width(face, &average);
+            if (result == FVM_OK)
+            {
+                result = fvm_text_layout_create_periodic(
+                    face, content->text, content->size, options, FVM_FONT_SHAPE_NO_KERNING, 0, 0, average * 4, layout);
+            }
+        }
+        else
+        {
+            result = fvm_text_layout_create_configured(
+                face, content->text, content->size, options, FVM_FONT_SHAPE_NO_KERNING, layout);
+        }
+        if (result != FVM_OK || fvm_text_layout_metrics(*layout, metrics) != FVM_OK)
+        {
+            fvm_text_layout_destroy(*layout);
+            *layout = NULL;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* Propose one field-relative Unicode insertion offset from the last complete
+ * actual MovieClip scene. x/y are copied canvas pixels; widget/position are
+ * required output cells. Return zero for occlusion, headers, rails or failure,
+ * preserving document state. Only the VM owner may measure these managed clips;
+ * Dis must independently admit ticket, identity, revision and source range. */
+int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
+{
+    unsigned int ordinal;
+    if (!widget || !position)
+    {
+        return 0;
+    }
+    *widget = 0;
+    *position = -1;
+    if (!owner || !active || pending || !isfinite(x) || !isfinite(y) || x < 80 || x >= width - 104 || y < 48 ||
+        y >= height)
+    {
+        return 0;
+    }
+    for (ordinal = received; ordinal > 0; --ordinal)
+    {
+        DeskItem *item = &items[ordinal - 1];
+        FVM_Affine world;
+        double determinant;
+        double localx;
+        double localy;
+        if (!world_matrix(clips[item->id], item->parent, &world))
+        {
+            return 0;
+        }
+        determinant = world.xx * world.yy - world.xy * world.yx;
+        if (fabs(determinant) < 0.000001)
+        {
+            return 0;
+        }
+        localx = (world.yy * (x - world.x0) - world.xy * (y - world.y0)) / determinant;
+        localy = (-world.yx * (x - world.x0) + world.xx * (y - world.y0)) / determinant;
+        if (localx < 0 || localy < 0 || localx >= item->width || localy >= item->height)
+        {
+            continue;
+        }
+        if (item->id > 8 || item->mirror || localy < 24)
+        {
+            return 0;
+        }
+        {
+            FVM_TextLayout *layout = NULL;
+            FVM_TextLayoutMetrics metrics;
+            FVM_TextLayoutOptions options;
+            FVM_FontMetrics font;
+            FVM_TextLayoutLine line;
+            size_t index;
+            size_t selected = 0;
+            size_t byte;
+            double distance;
+            long scalar = 0;
+            if (!text_layout(item, &layout, &font, &options, &metrics) || !metrics.line_count)
+            {
+                fvm_text_layout_destroy(layout);
+                return 0;
+            }
+            localx -= 8;
+            localy -= 8;
+            for (index = 0; index < metrics.line_count; ++index)
+            {
+                if (fvm_text_layout_line(layout, index, &line) != FVM_OK)
+                {
+                    fvm_text_layout_destroy(layout);
+                    return 0;
+                }
+                selected = index;
+                if (localy < line.baseline - font.ascent + options.line_height)
+                {
+                    break;
+                }
+            }
+            if (fvm_text_layout_line(layout, selected, &line) != FVM_OK)
+            {
+                fvm_text_layout_destroy(layout);
+                return 0;
+            }
+            byte = line.byte_end;
+            distance = fabs(localx - (line.x + line.advance));
+            for (index = 0; index < line.glyph_count; ++index)
+            {
+                FVM_TextLayoutGlyph glyph;
+                double candidate;
+                if (fvm_text_layout_glyph(layout, line.glyph_start + index, &glyph) != FVM_OK)
+                {
+                    fvm_text_layout_destroy(layout);
+                    return 0;
+                }
+                candidate = fabs(localx - glyph.x);
+                if (candidate < distance)
+                {
+                    distance = candidate;
+                    byte = glyph.shaped.cluster;
+                }
+            }
+            fvm_text_layout_destroy(layout);
+            if (byte > item->size)
+            {
+                return 0;
+            }
+            for (index = 0; index < byte; ++index)
+            {
+                if (((unsigned char)item->text[index] & 0xc0U) != 0x80U)
+                {
+                    ++scalar;
+                }
+            }
+            *widget = item->id;
+            *position = scalar;
+            if (trace)
+            {
+                printf("HIT %lu %lu %ld\n", ticket, item->id, scalar);
+            }
+            return 1;
+        }
+    }
+    return 0;
 }
 
 
@@ -352,43 +555,9 @@ static int caret_clip(FVM_Object *cursor, const DeskItem *content)
         }
         ++scalar;
     }
-    if (fvm_font_metrics(face, &font) != FVM_OK)
+    if (!text_layout(content, &layout, &font, &options, &metrics))
     {
         return 0;
-    }
-    memset(&options, 0, sizeof(options));
-    options.max_width = content->width > 16 ? content->width - 16 : 1;
-    options.line_height = font.ascent + font.descent + 2;
-    options.alignment = FVM_TEXT_ALIGN_LEFT;
-    {
-        FVM_Result result;
-        if (memchr(content->text, '\t', content->size))
-        {
-            double average;
-            result = fvm_font_average_width(face, &average);
-            if (result == FVM_OK)
-            {
-                result = fvm_text_layout_create_periodic(face,
-                                                         content->text,
-                                                         content->size,
-                                                         &options,
-                                                         FVM_FONT_SHAPE_NO_KERNING,
-                                                         0,
-                                                         0,
-                                                         average * 4,
-                                                         &layout);
-            }
-        }
-        else
-        {
-            result = fvm_text_layout_create_configured(
-                face, content->text, content->size, &options, FVM_FONT_SHAPE_NO_KERNING, &layout);
-        }
-        if (result != FVM_OK || fvm_text_layout_metrics(layout, &metrics) != FVM_OK)
-        {
-            fvm_text_layout_destroy(layout);
-            return 0;
-        }
     }
     for (index = 0; index < metrics.line_count; ++index)
     {
@@ -428,11 +597,81 @@ static int caret_clip(FVM_Object *cursor, const DeskItem *content)
 }
 
 
+/* Draw selection through actual MovieClip glyph rectangles. content is borrowed
+ * copied presentation; selection is clipped to this viewport, never the source.
+ * Return zero on layout/VM failure and destroy the temporary glyph layout before
+ * returning. Combining/bidi clusters follow the same glyph contract as hit/caret. */
+static int selection_clip(FVM_Object *mark, const DeskItem *content)
+{
+    FVM_TextLayout *layout = NULL;
+    FVM_FontMetrics font;
+    FVM_TextLayoutOptions options;
+    FVM_TextLayoutMetrics metrics;
+    size_t first = 0;
+    size_t last = 0;
+    size_t index;
+    long scalar = 0;
+    long lo = content->caret < content->anchor ? content->caret : content->anchor;
+    long hi = content->caret > content->anchor ? content->caret : content->anchor;
+    int ok = 1;
+    if (lo < 0 || lo == hi)
+    {
+        return 1;
+    }
+    for (index = 0; index < content->size; ++index)
+    {
+        if (((unsigned char)content->text[index] & 0xc0U) != 0x80U)
+        {
+            if (scalar == lo)
+            {
+                first = index;
+            }
+            if (scalar == hi)
+            {
+                break;
+            }
+            ++scalar;
+        }
+    }
+    last = index;
+    if (!text_layout(content, &layout, &font, &options, &metrics))
+    {
+        return 0;
+    }
+    for (index = 0; index < metrics.glyph_count && ok; ++index)
+    {
+        FVM_TextLayoutGlyph glyph;
+        if (fvm_text_layout_glyph(layout, index, &glyph) != FVM_OK)
+        {
+            ok = 0;
+            break;
+        }
+        if (glyph.shaped.cluster >= first && glyph.shaped.cluster < last)
+        {
+            double x = glyph.x;
+            double wide = glyph.shaped.x_advance;
+            if (wide < 0)
+            {
+                x += wide;
+                wide = -wide;
+            }
+            if (wide > 0)
+            {
+                ok = rectangle(mark, 8 + x, 8 + glyph.y - font.ascent, wide, options.line_height);
+            }
+        }
+    }
+    fvm_text_layout_destroy(layout);
+    return ok;
+}
+
+
 /* Clip field ink and its genuine caret through a private bounded raster tile.
  * The tile copies existing pixels and is released before return; no unmanaged
  * buffer is shared with a VM or worker. Matrix comes from the actual MovieClip. */
 static int field_ink(FVM_Path *path,
                      FVM_Object *cursor,
+                     FVM_Object *mark,
                      const FVM_Affine *world,
                      const DeskItem *item,
                      const DeskItem *content,
@@ -488,7 +727,8 @@ static int field_ink(FVM_Path *path,
     shift.xx = shift.yy = 1;
     shift.x0 = -left;
     shift.y0 = -top;
-    ok = fvm_path_transform(path, &shift) == FVM_OK && fvm_path_draw(path, &tile, ink, 0, 0) == FVM_OK &&
+    ok = fvm_movieclip_render_view(owner, mark, &tile, &shift) == FVM_OK &&
+         fvm_path_transform(path, &shift) == FVM_OK && fvm_path_draw(path, &tile, ink, 0, 0) == FVM_OK &&
          fvm_movieclip_render_view(owner, cursor, &tile, &shift) == FVM_OK;
     if (ok)
     {
@@ -577,6 +817,11 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             return 0;
         }
         fvm_gc_unpin(owner, labels[item->id]);
+        marks[item->id] = child(clips[item->id], "selection", 900);
+        if (!marks[item->id])
+        {
+            return 0;
+        }
         cursors[item->id] = child(clips[item->id], "caret", 1000);
         if (!cursors[item->id])
         {
@@ -610,7 +855,8 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     label = labels[item->id];
     {
         FVM_Value ignored;
-        if (fvm_object_call(owner, cursors[item->id], "clear", 0, NULL, &ignored) != FVM_OK)
+        if (fvm_object_call(owner, cursors[item->id], "clear", 0, NULL, &ignored) != FVM_OK ||
+            fvm_object_call(owner, marks[item->id], "clear", 0, NULL, &ignored) != FVM_OK)
         {
             return 0;
         }
@@ -676,6 +922,10 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
                 printf("%02x", (unsigned char)value.string[byte]);
             }
             printf("\n");
+            if (item->id <= 8)
+            {
+                printf("SELECTION %lu %lu %ld %ld\n", ticket, item->id, content->caret, content->anchor);
+            }
         }
         result = fvm_movieclip_render(owner, clip, surface);
         if (result != FVM_OK)
@@ -707,8 +957,9 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             ink.g = 242;
             ink.b = 244;
         }
-        ok = caret_clip(cursors[item->id], content) && fvm_path_transform(path, &placement) == FVM_OK &&
-             field_ink(path, cursors[item->id], &world, item, content, surface, ink);
+        ok = selection_clip(marks[item->id], content) && caret_clip(cursors[item->id], content) &&
+             fvm_path_transform(path, &placement) == FVM_OK &&
+             field_ink(path, cursors[item->id], marks[item->id], &world, item, content, surface, ink);
     }
     fvm_path_destroy(path);
     return ok;
@@ -732,6 +983,7 @@ static int retire(const unsigned char *present)
                 fvm_object_set(owner, labels[id], "text", &value) != FVM_OK ||
                 fvm_object_call(owner, clips[id], "clear", 0, NULL, &ignored) != FVM_OK ||
                 fvm_object_call(owner, cursors[id], "clear", 0, NULL, &ignored) != FVM_OK ||
+                fvm_object_call(owner, marks[id], "clear", 0, NULL, &ignored) != FVM_OK ||
                 fvm_object_get(owner, labels[id], "text", &value) != FVM_OK || value.type != FVM_VALUE_STRING ||
                 fvm_value_string_size(&value) != 0)
             {
@@ -809,6 +1061,7 @@ void dvm_desktop_destroy(void)
     owner = NULL;
     active = 0;
     pending = 0;
+    memset(marks, 0, sizeof(marks));
     memset(cursors, 0, sizeof(cursors));
     memset(clips, 0, sizeof(clips));
     memset(labels, 0, sizeof(labels));

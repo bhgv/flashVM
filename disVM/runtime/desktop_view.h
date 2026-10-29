@@ -21,6 +21,10 @@ int dvm_desktop_message(const DVM_UIMessage *message);
  * VM access stays here; the caller copies the result into a detached raster job.
  * Return zero on layout, VM, allocation or protocol failure. */
 int dvm_desktop_draw(FVM_RasterSurface *surface);
+/* Owner-only glyph hit in the last completed scene. x/y are canvas pixels;
+ * widget/position are copied scalar outputs, initialized to 0/-1 on no hit.
+ * Returns zero for headers/occlusion/failure; never edits a document. */
+int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position);
 /* Return committed input/view state, or zero before any desktop scene. */
 int dvm_desktop_active(void);
 unsigned long dvm_desktop_ticket(void); /* Equality token, never a heap address. */
