@@ -1,4 +1,4 @@
-# Current coverage — FIR tools 0.65
+# Current coverage — FIR tools 0.66
 
 [Русский](COVERAGE.ru.md) · [Source grammar](../compiler/src1.atg) · [Public API](../include/fir.h) · [Compiler architecture](../../../compiler/README.md)
 
@@ -49,3 +49,6 @@ The teaching wrapper calls/traces value(); it is not Inferno's general init ABI.
 [Shift/big facts / Сдвиги и big](SHIFT_FACTS.md).
 
 [Known bit constants / Точные битовые константы](KNOWN_RESULTS.md).
+
+[FIR0.66 carry/borrow facts and exhaustive arithmetic evidence / Переносы,
+заёмы и исчерпывающие проверки](KNOWN_RESULTS.md#carry-and-borrow-facts).

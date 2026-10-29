@@ -50,4 +50,4 @@ use. Generated Coco/R code and upstream libraries are excluded.
 
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../fir/v1/doc/SHIFT_FACTS.md).
 
-[Known bit results / Известные битовые результаты](../fir/v1/doc/KNOWN_RESULTS.md).
+[Known bit and arithmetic results / Известные битовые и арифметические результаты](../fir/v1/doc/KNOWN_RESULTS.md).

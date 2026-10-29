@@ -215,4 +215,4 @@ returns42. Every line is commented. [Exact rules, API/CLI use and boundaries](..
 
 [shift-facts.b](shift-facts.b): dynamic shift-derived proofs; raw/optimized Dis/SWF return42. [Guide / Руководство](../../doc/SHIFT_FACTS.md).
 
-[known-results.b](known-results.b): exact constants from dynamic bit expressions, raw/opt Dis/SWF42. [Guide / Руководство](../../doc/KNOWN_RESULTS.md).
+[known-results.b](known-results.b): exact constants from dynamic bit/carry/borrow expressions, raw/opt Dis/SWF42. [Guide / Руководство](../../doc/KNOWN_RESULTS.md).

@@ -50,4 +50,4 @@ fir1 компилирует его в SWO, а [SWL](../linker/README.ru.md) ли
 
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../fir/v1/doc/SHIFT_FACTS.ru.md).
 
-[Known bit results / Известные битовые результаты](../fir/v1/doc/KNOWN_RESULTS.ru.md).
+[Known bit and arithmetic results / Известные битовые и арифметические результаты](../fir/v1/doc/KNOWN_RESULTS.ru.md).
