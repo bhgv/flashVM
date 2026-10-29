@@ -603,3 +603,11 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
   set_tests_properties(disvm_instrumented_loops PROPERTIES TIMEOUT 240
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Native benchmark statistics and timer conversion from the pinned owning source.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME disvm_bench_numeric COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libinterp/tests/bench-numeric.py")
+  set_tests_properties(disvm_bench_numeric PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
