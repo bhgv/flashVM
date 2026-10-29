@@ -7,7 +7,7 @@ import sys
 import tempfile
 
 from integer_identities import execute
-from integer_pairs import pair_module
+from integer_pairs import pair_module, opcode
 from table_mutation import call
 
 
@@ -36,6 +36,8 @@ def main():
                     f"%one: {kind} = const.{kind} 1\n%even: {kind} = const.{kind} -2\n"
                     f"%count: i32 = const.i32 {bits - 1}\n"
                     f"%all: {kind} = const.{kind} -1\n%extra: {kind} = const.{kind} 123\n"
+                    f"%eight: {kind} = const.{kind} -8\n%seven: {kind} = const.{kind} 7\n"
+                    f"%five: {kind} = const.{kind} 5\n"
                 )
                 forms = [
                     (
@@ -65,6 +67,30 @@ def main():
                         minimum + 123,
                     ),
                 ]
+                forms.extend(
+                    [
+                        (
+                            f"%a: {kind} = {prefix}.and %x, %eight\n%b: {kind} = {opcode(kind, 'add')} %a, %five\n%r: {kind} = {prefix}.and %b, %seven",
+                            5,
+                        ),
+                        (
+                            f"%a: {kind} = {prefix}.or %x, %seven\n%b: {kind} = {opcode(kind, 'add')} %a, %one\n%r: {kind} = {prefix}.and %b, %seven",
+                            0,
+                        ),
+                        (
+                            f"%a: {kind} = {prefix}.and %x, %eight\n%b: {kind} = {opcode(kind, 'sub')} %a, %one\n%r: {kind} = {prefix}.and %b, %seven",
+                            7,
+                        ),
+                        (
+                            f"%a: {kind} = {prefix}.or %x, %seven\n%b: {kind} = {opcode(kind, 'sub')} %a, %five\n%r: {kind} = {prefix}.and %b, %seven",
+                            2,
+                        ),
+                        (
+                            f"%a: {kind} = {prefix}.and %x, %eight\n%b: {kind} = {prefix}.and %y, %eight\n%c: {kind} = {opcode(kind, 'add')} %a, %b\n%r: {kind} = {prefix}.and %c, %seven",
+                            0,
+                        ),
+                    ]
+                )
                 for body, expected in forms:
                     raw.write_text(
                         pair_module(kind, value, 0, declarations + body + "\ntrace %r")

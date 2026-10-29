@@ -72,6 +72,11 @@ def main():
                 "%odd: i32 = i32.or %x, %one",
                 "%negative: i32 = i32.or %x, %sign",
                 "%small: i32 = i32.and %x, %seven",
+                "%added: i32 = i32.add.wrap %low, %sixteen",
+                "%one_less: i32 = i32.sub.wrap %added, %one",
+                "%evenbase: i32 = const.i32 -8",
+                "%multiple: i32 = i32.and %x, %evenbase",
+                "%carrydivisor: i32 = i32.add.wrap %multiple, %one",
                 "%nonzero: i32 = i32.xor %small, %eight",
             ]
             expected = []
@@ -80,6 +85,8 @@ def main():
                 ("copy", value & 31),
                 ("high", (value & 15) | 16),
                 ("flipped", (value & 31) ^ 31),
+                ("added", (value & 15) + 16),
+                ("one_less", (value & 15) + 15),
             ):
                 for op in ("shl", "shr"):
                     result = f"{name}_{op}"
@@ -94,6 +101,7 @@ def main():
                 ("odd", value | 1),
                 ("negative", signed(value | (1 << 31))),
                 ("nonzero", (value & 7) ^ 8),
+                ("carrydivisor", signed((value & -8) + 1)),
             ):
                 quotient, remainder = divmod32(value, divisor)
                 for op, answer in (("div", quotient), ("mod", remainder)):
@@ -142,6 +150,16 @@ def main():
                 "divisor",
             ),
             ("div.signed", "%n: i32 = copy %x", "divisor"),
+            (
+                "shl.checked",
+                "%mask: i32 = const.i32 31\n%base: i32 = i32.and %x, %mask\n%bound: i32 = const.i32 32\n%n: i32 = i32.add.wrap %base, %bound",
+                "count",
+            ),
+            (
+                "div.signed",
+                "%mask: i32 = const.i32 7\n%base: i32 = i32.and %x, %mask\n%bound: i32 = const.i32 1\n%n: i32 = i32.sub.wrap %base, %bound",
+                "divisor",
+            ),
         ):
             raw.write_text(
                 program(1, expression + f"\n%r: i32 = i32.{op} %x, %n\ntrace %r")
@@ -157,7 +175,8 @@ def main():
             program(
                 0,
                 "%bad: i32 = i32.div.signed %x, %x\n"
-                "%one: i32 = const.i32 1\n%n: i32 = i32.or %bad, %one\n"
+                "%one: i32 = const.i32 1\n%mask: i32 = const.i32 -8\n"
+                "%base: i32 = i32.and %bad, %mask\n%n: i32 = i32.add.wrap %base, %one\n"
                 "%unused: i32 = i32.div.signed %x, %n\ntrace %x",
             )
         )
