@@ -32,3 +32,18 @@ initializer_count0 означает стандартную инициализа�
 выхода. Ошибки fwrite/fclose возвращают отказ без обещания отката файла.
 Набор SDK содержит pilot42.hex и все транзитивные заголовки. Выполнение новой
 VM этим примером не заявляется: [команды и границы](../README.ru.md).
+
+## Инициализированные данные и signatures
+
+`pilot.c output --initialized` записывает общий initializer int32=40 по offset0,
+затем ADDW immediate2 с AXNON (destination также lhs). Файл совпадает с общим
+192-байтовым golden. Сам пример не применяет данные к native heap и не исполняет
+код; без флага сохраняется180-байтовая форма.
+
+[interfaces.c](interfaces.c) не принимает файлов: создаёт pool M/f, полную
+signature version1 bool(int,big) и два ordinal import alias. Общий checker
+принимает точные одинаковые signatures. Замена результата второго на int
+делает пару конфликтной, сохраняя весь прежний выход и длину written.
+Буферы отдельные, принадлежат main; resolver/callee/module не запускаются.
+Цель сборки — dis64_interfaces_example; [руководство](../README.ru.md)
+содержит команды независимой сборки из установленного SDK.

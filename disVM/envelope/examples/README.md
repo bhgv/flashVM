@@ -34,3 +34,19 @@ all supported semantic links. No input file is executed. Validation precedes
 opening output; late fwrite/fclose errors report failure without rollback.
 The SDK includes the independent pilot42.hex and every required shared header.
 Detailed commands and current execution boundary: [tool guide](../README.md#real-payloads-explicit-scalar-pilot).
+
+## Initialized data and scalar signatures
+
+`pilot.c output --initialized` uses the shared initializer writer to store int32
+40 at byte offset0, then emits ADDW immediate2 with AXNON destination-as-lhs.
+The whole image matches the192-byte shared golden. No native initialization or
+execution takes place in the example itself; the default form remains180 bytes.
+
+[interfaces.c](interfaces.c) has no file arguments. It creates a lossless pool
+for M/f, the full version1 bool(int,big) signature, then two ordinal import aliases.
+The shared contextual checker accepts their exact signatures. Changing the second
+result kind to int makes both valid records conflict as a pair; complete output
+and written length remain unchanged. All arrays are disjoint owner-local spans.
+The example checks structure and never resolves a function or runs a module.
+Build `dis64_interfaces_example` or use the installed C99 commands in the
+[tool guide](../README.md#scalar-storage-and-interfaces).

@@ -116,6 +116,7 @@ if(BUILD_TESTING)
     dis-envelope
     dis-string-pool
     dis64-payloads
+    dis64-storage
     dis64-pilot-native
     dis64-inspect
     dis-rune-case

@@ -98,7 +98,7 @@ build/envelope/dis64inspect build/pilot42.dis64 --pilot --rewrite build/checked.
 
 Режим --pilot использует общий dis64pilotcheck: проверяет name/type IDs,
 размеры data/frame, entry, карты, длины code и роли/ширины/границы операндов.
-Неподдерживаемые инструкции, imports и непустые initializers отклоняются.
+Неподдерживаемые инструкции, imports и некорректные initializers отклоняются.
 JSON сообщает scalar_pilot:true, envelope_only:false и
 **execution_supported:false**. Сам структурный envelope этих проверок не заменяет.
 Поддерживаемое подмножество описано в [контракте Inferno](../upstream/doc/dis64-pilot.md).
@@ -129,3 +129,40 @@ header-only API; остальные предупреждения включен�
 В upstream fixture production C и AMD64 RX исполняют только MOVW. EXIT пока
 декодируется; полноценные allocation/entry/EXIT/scheduler, ref-result GC/unwind
 и физический ARM64 run ещё предстоят.
+
+## Скалярные данные и интерфейсы
+
+`dis64_pilot_example output.dis64 --initialized` строит общий192-байтовый
+[golden init40/ADDW2](../upstream/libinterp/tests/dis64/pilot-init42.hex).
+Без флага сохраняются прежние180 байт MOVW42. Initializer записывает общий
+dis64initializerswrite, затем whole-pilot checker проверяет связи до открытия
+выхода. Inspector сообщает initializer_count0/1: это число проверенных записей,
+а не факт выделения heap, применения initializer или исполнения новой VM.
+
+Пункт **15** build-menu / --launch storage запускает run-dis64-storage.sh.
+Новый пример также имеет host hex fallback, без запуска target-программы при
+cross-установке. SDK включает полную новую closure scalar/data/signature/bindings
+вместе с прежними заголовками, исходниками и документацией.
+
+[Пример interfaces.c](examples/interfaces.c) подробно комментирует общий API
+scalar signatures и import bindings. Два ordinal alias для одинаковых имён и
+точной signature допускаются; конфликт типа результата отклоняется, сохраняя
+все байты и длину прежнего результата. Ни resolver, ни callee не запускаются.
+
+```sh
+cc -std=c99 -Wall -Wextra -Werror -Wno-unused-function -Iinclude/dis64 \
+  examples/dis64-envelope/interfaces.c -o work/interfaces
+./work/interfaces
+./dis64_pilot_example work/initialized.dis64 --initialized
+./dis64inspect work/initialized.dis64 --pilot
+./run-dis64-storage.sh
+```
+
+Сначала создайте work. [Контракт Inferno](../upstream/doc/dis64-storage.md)
+описывает сохранение scalar bits, запрет перекрытий/ref slots, supplied nil
+для unpublished native storage и сравнение signatures/имён по содержимому.
+Такие structural checks не доказывают dependency resolution, args offsets,
+root/safepoint coverage и call ABI. Pilot по-прежнему запрещает imports/exports.
+Production WORD32 build, allocation/entry и actual IEXIT->error/unwind/scheduler
+ещё предстоят. Native fixture применяет40 и отдельно исполняет ADDW C/RX до42;
+EXIT там только декодируется, физический ARM64 run не заявлен.

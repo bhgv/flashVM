@@ -128,3 +128,42 @@ The golden code is MOVW #42, MP[0]; EXIT. Upstream acceptance decodes the whole
 file and separately executes MOVW through production C and AMD64 RX handlers.
 EXIT is only decoded there; production module allocation, entry/EXIT scheduler,
 reference-result GC/unwind and physical ARM64 are future acceptance gates.
+
+## Scalar storage and interfaces
+
+`dis64_pilot_example output.dis64 --initialized` now builds the shared192-byte
+[init40/ADDW2 golden](../upstream/libinterp/tests/dis64/pilot-init42.hex), while
+the default argv still builds the original180-byte MOVW42. The initializer is
+written through dis64initializerswrite; the whole semantic gate checks it before
+output is opened. Inspector JSON adds `initializer_count`:0 or1 for these fixtures.
+This is a checked record count, not VM heap publication or execution evidence.
+
+Build-menu **15**, `--launch storage`, runs installed `run-dis64-storage.sh` on
+the initialized sample. Both examples have checked host hex installer fallbacks.
+All four new shared headers—scalar/data/signature/bindings—ship together with the
+previous closure. Source, source-built inspector and C99 clients rebuild from a
+relocated package with no original source paths or runtime Python dependency.
+
+The [commented interface example](examples/interfaces.c) uses actual versioned
+scalar signatures and the binding writer/reader. Two ordinal aliases for the
+same module/symbol with an exact signature are accepted; a conflicting result
+kind rejects before changing any byte or written length. The example resolves
+no native function and invokes no callee. Run `dis64_interfaces_example`, or:
+
+```sh
+cc -std=c99 -Wall -Wextra -Werror -Wno-unused-function -Iinclude/dis64 \
+  examples/dis64-envelope/interfaces.c -o work/interfaces
+./work/interfaces
+./dis64_pilot_example work/initialized.dis64 --initialized
+./dis64inspect work/initialized.dis64 --pilot
+./run-dis64-storage.sh
+```
+
+[Upstream storage contract](../upstream/doc/dis64-storage.md) details exact bits,
+no-overlap/ref-slot checks, supplied runtime nil for unpublished native storage,
+versioned signatures and content-based ambiguity. Structural imports/exports
+checks are not dependency resolution, argument layout, safepoint roots or a call
+ABI; pilot still rejects bindings sections. Production WORD32 build and actual
+allocation/entry/IEXIT->error/unwind/scheduler remain future gates. Upstream
+native acceptance initializes40 and executes actual ADDW C/RX to42 separately;
+EXIT is only decoded, and no physical ARM64 execution is claimed.

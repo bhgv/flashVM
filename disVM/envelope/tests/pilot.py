@@ -35,6 +35,13 @@ def main():
             raise RuntimeError("pilot metadata differs")
         if copied.read_bytes() != golden:
             raise RuntimeError("checked pilot rewrite changed bytes")
+        initialized = bytes.fromhex((fixture.parent / "pilot-init42.hex").read_text())
+        call([example, image, "--initialized"])
+        report_init = json.loads(call([inspector, image, "--pilot", "--rewrite", copied]).stdout)
+        if image.read_bytes() != initialized or copied.read_bytes() != initialized or report_init["initializer_count"] != 1:
+            raise RuntimeError("initialized C99 pilot differs from golden/report")
+        if report.get("initializer_count") != 0 or len(initialized) != 192:
+            raise RuntimeError("default/initialized payload extents differ")
         # Corrupt metadata name ID while preserving the structural envelope.
         broken = bytearray(golden)
         broken[report["sections"][0]["offset"] + 3] = 1
@@ -46,7 +53,7 @@ def main():
             raise RuntimeError("pilot semantic rejection overwrote destination")
         call([example], False)
     print(
-        "PASS built C99 real pilot: exact180 bytes, semantic links, checked rewrite, no VM claim"
+        "PASS built C99 real pilot: exact180/192 bytes, semantic links, checked rewrite, no VM claim"
     )
 
 
