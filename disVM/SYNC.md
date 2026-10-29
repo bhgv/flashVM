@@ -1,3 +1,22 @@
+# v0.1677 — record slices, parser guards and outgoing AMD64 staging fix
+
+Final published experiment pin: **25626d8dcc0ecac2a7438e3ae4c05949e3f2ca5e**.
+Incoming 91c7894 covers record slice/native ownership preflight; c3f4464 repairs
+parser sentinels/recovery/empty reductions. Latest shared Dis64 design documents
+are retained as requirements, not an implemented format change.
+
+Outgoing: late AMD64 branch byte fixups could bypass the bounded writer after
+private staging exhaustion (parent UBSan index 675 / capacity 512 with prefix
+500). The fix was tested/published upstream first, then imported byte-for-byte.
+7712 O1/O3 UBSan cases pass; the 3096-case public emission fingerprint is unchanged.
+Native AMD64 RX/fallback/retry/unmap and integer/fixed/scalar matrices pass.
+
+Dis **810**, bootstrap **277**, **967 unique files** match pinned Git blobs and
+SHA-256. Full core **222/222**, runtime **263/263** pass; final workspace/SDL
+acceptance adds **28/28**. MovieClip cache/input/menu and source-preparation owner
+fixes belong to this workspace. [Series](../docs/releases/v0.1677.md) ·
+[Workspace](../ide/DESKTOP-WORKSPACE.md) · [Clipboard](../ide/DESKTOP-CLIPBOARD.md).
+
 # v0.1676 — ALT metadata preflight and drained-queue finalization
 
 Experiment pin: **a67032e0136219becf692a59ab641b3f2c8bea11**.
