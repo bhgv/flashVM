@@ -642,3 +642,18 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=${entry_flags};${entry_selection}")
   endforeach()
 endif()
+
+# Real queue append/cancel/dequeue chains, including cycles and damaged tails.
+# Use UBSan for the full injected-error matrix; retain the upstream error frames.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  foreach(route c rx)
+    set(chain_route "QUEUE_JIT_ROUTE=0")
+    if(route STREQUAL "rx")
+      set(chain_route "QUEUE_JIT_ROUTE=1")
+    endif()
+    add_test(NAME disvm_queue_chain_${route} COMMAND "${Python3_EXECUTABLE}"
+      "${u}/libinterp/tests/channel-queues.py")
+    set_tests_properties(disvm_queue_chain_${route} PROPERTIES TIMEOUT 240
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;QUEUE_CASES=queue-chains queue-slots queue-pop queue-long;${chain_route}")
+  endforeach()
+endif()
