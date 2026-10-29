@@ -293,8 +293,11 @@ Our Coco/R/FIR compiler now emits [native table Dis images](../../fir/v1/doc/TAB
 
 ## IDE application entry
 
-The graphical package now ships ide.dis and run-ide.sh for the real Dis-owned
-application, with FlashVM rendering. [Application guide](../../ide/dis/app/README.md) ·
+The graphical package ships desktop-ide.dis/run-desktop-ide.sh for the actual
+multi-window MovieClip IDE (post-build menu 8). The separate ide.dis/run-ide.sh
+single-editor application remains menu 9. [Entry points](../../ide/ENTRYPOINTS.md).
+Portable lifecycle/pointer clients are menu 10/11 in editor and runtime packages.
+Both graphical applications use Dis-owned state and FlashVM rendering. [Application guide](../../ide/dis/app/README.md) ·
 [Русское руководство](../../ide/dis/app/README.ru.md). The console-only package
 keeps its original console run-ide.sh; the graphical package also supplies
 run-ide-console.sh. These entries need no external emu/Python at deployment.

@@ -1,3 +1,5 @@
+[Запуск из build-menu: 8 — MovieClip IDE, 9 — прежний редактор](ENTRYPOINTS.md)
+
 [Перемещение и Close/Cancel отдельных редакторов](DESKTOP-LIFECYCLE.ru.md)
 
 [Рабочий стол MovieClip / независимые процессы Limbo](DESKTOP.ru.md)

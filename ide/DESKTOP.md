@@ -101,3 +101,7 @@ execution are not inferred from replay or foreign-emitter checks.
 [Moving, Close/Cancel and window lifetime](DESKTOP-LIFECYCLE.md).
 
 [Glyph caret, Shift-click and selection](DESKTOP-POINTER.md).
+
+Post-build menu **8** launches this desktop; **9** keeps the older single editor.
+CLI: `python3 build-menu.py --projects disvm-editor --backend cmake --launch desktop`.
+[All entry points](ENTRYPOINTS.md).

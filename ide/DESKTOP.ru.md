@@ -85,3 +85,7 @@ Open ограничен 64 КиБ, поле пути — 256 символами.
 [Перемещение, Close/Cancel и жизненный цикл окон](DESKTOP-LIFECYCLE.ru.md).
 
 [Каретка, Shift-клик и выделение](DESKTOP-POINTER.ru.md).
+
+В конечном build-menu новый стол — пункт **8**, прежний редактор — **9**.
+CLI: `python3 build-menu.py --projects disvm-editor --backend cmake --launch desktop`.
+[Все точки запуска](ENTRYPOINTS.md).

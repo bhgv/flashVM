@@ -5,7 +5,10 @@
 
 Run `python3 build_menu.py`, enter `all`, and accept the defaults. Post-build
 choices include the real FlashVM window (2), native Dis example (4), interactive
-Dis editor (5) and IDE service demonstration (6). `inspect PATH` in the editor
+Dis editor (5), IDE service demonstration (6), the actual multi-window MovieClip
+IDE (8), the separate older single editor (9), and portable lifecycle/pointer
+examples (10/11). See [all entry points](ide/ENTRYPOINTS.md), or build and launch
+with `python3 build-menu.py --projects disvm-editor --backend cmake --launch desktop`. `inspect PATH` in the editor
 shows a read-only binary header; AS/Limbo `complete`/`hint` show declarations and
 parameter help. The executable Dis package is currently experimental Linux AMD64
 NC64; it needs no external emu. See the [editor guide](ide/dis/examples/editor-console/README.md)

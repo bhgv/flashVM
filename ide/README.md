@@ -1,3 +1,5 @@
+[Build-menu: 8 — MovieClip IDE, 9 — separate single editor](ENTRYPOINTS.md)
+
 [Moving windows and independent Close/Cancel](DESKTOP-LIFECYCLE.md)
 
 [MovieClip desktop / independent Limbo processes](DESKTOP.md)
