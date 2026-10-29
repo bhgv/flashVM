@@ -1,3 +1,21 @@
+# v0.1671 — Shared checked debugger/profiler fetch
+
+Pinned experiment: **51d18eaea7fb1aa724fcbb5e0aaa92f7c1d1a4fa**. Dis **787** files,
+bootstrap **277**; all **944 unique selected sources** match upstream Git objects
+and manifest SHA-256 values. Normal execution, emu/os debugger and coverage,
+and benchmark now share vmfetch.h. Production-decoder WORD32/64 instrumentation
+matrices retain notifications, callback yields, native handoff and reset ownership.
+
+The host generates a separate TLS view of the shared header. Checked fetch stays
+before GC poll/quota and C/AOT/JIT execution; regeneration checks real build inputs
+and CMake tracks the header. Upstream snapshots remain byte-identical.
+The reverse audit found no new common defect. The previous outbound Math fix is
+already present in experiment; no private common-source delta remains. IDE-only
+panel/NC64 integration changes stay here. Tests: core 207/207, runtime 230/230,
+bootstrap 26/26. Later upstream commits are separate reviewed work.
+
+[Release](../docs/releases/v0.1671.md) · [Instrumented loops](upstream/libinterp/tests/README.instrument-loops.md) · [Build panel](../ide/BUILD-PANEL.md).
+
 # v0.1670 — Bidirectional Math fix, checked fetch, AOT and SBL
 
 Final experiment pin: **34d019f22b80d01385db737e13b20c0ff443aa8b**, **781 Dis / 277 bootstrap files**.

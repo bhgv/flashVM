@@ -1,3 +1,21 @@
+# v0.1671 — Общая проверенная выборка для отладчика и профилирования
+
+Закреплён experiment **51d18eaea7fb1aa724fcbb5e0aaa92f7c1d1a4fa**: **787 файлов Dis**,
+**277 bootstrap**. Все **944 уникальных выбранных исходника** совпадают с Git
+Inferno и SHA-256 manifests. Обычный executor, emu/os debugger/coverage и benchmark
+используют общий vmfetch.h. WORD32/64 матрицы исполняют production decoder,
+проверяют уведомления, callback yields, native handoff и владение при reset.
+
+Host создаёт отдельное TLS-представление общего заголовка. Проверенная выборка
+предшествует GC poll/quota и исполнению C/AOT/JIT. Генерация проверяет действительные
+build inputs, CMake отслеживает заголовок. Upstream-снимки не модифицируются.
+Обратная сверка не нашла нового общего дефекта. Предыдущее исходящее исправление
+Math уже присутствует в experiment; частных расхождений общего кода нет.
+Изменения панели IDE/NC64 остаются здесь. Проверки: core 207/207, runtime 230/230,
+bootstrap 26/26. Более поздние изменения upstream требуют отдельного review.
+
+[Релиз](../docs/releases/v0.1671.md) · [Тесты циклов](upstream/libinterp/tests/README.instrument-loops.md) · [Панель сборки](../ide/BUILD-PANEL.ru.md).
+
 # v0.1670 — Двусторонняя синхронизация Math, fetch, AOT и SBL
 
 Final experiment pin: **34d019f22b80d01385db737e13b20c0ff443aa8b**, **781 Dis / 277 bootstrap files**.

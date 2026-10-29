@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1670**. [English](README.md).
+Версия разработки: **0.1671**. [English](README.md).
 
-Текущая серия: [v0.1670](docs/releases/v0.1670.md): библиотечная сборка на Dis-каналах workspace, полные FIR/Dis/SWF артефакты и двусторонняя синхронизация Inferno.
+Текущая серия: [v0.1671](docs/releases/v0.1671.md): F7-сборка и F8-диагностика в редакторе, переносимая панель на Dis и общий проверенный fetch отладчика Inferno.
 
 ## Просмотр документации
 
