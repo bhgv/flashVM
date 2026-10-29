@@ -510,7 +510,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # New scalar bits and checked shifts must survive relocation and C99 relinking.
-    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b", "integer-facts.b"):
+    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b", "integer-facts.b", "shift-facts.b"):
         bit_source = component / "examples/dis" / example
         optimized = work / "bits-opt.fir"
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", bit_source, fir, "--module", "dis_example"], work, environment)
@@ -634,7 +634,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # Prove both checked integer targets through freshly linked SDK APIs.
-    for example in ("int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b", "integer-facts.b"):
+    for example in ("int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b", "integer-facts.b", "shift-facts.b"):
         arithmetic_source = component / "examples/dis" / example
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", arithmetic_source, fir,
              "--module", "integer_identities"], work, environment)
@@ -800,6 +800,18 @@ def envelope_packages(prefix, work, environment):
         report = json.loads(run(["sh", package / "run-dis64-pilot.sh"], work, environment))
         if not report["scalar_pilot"] or report["execution_supported"]:
             raise RuntimeError("relocated semantic launcher claimed execution")
+        run([pilot_client, image, "--initialized"], work, environment)
+        initialized = bytes.fromhex((package / "examples/dis64-envelope/pilot-init42.hex").read_text())
+        if image.read_bytes() != initialized or (package / "examples/dis64-envelope/pilot-init42.dis64").read_bytes() != initialized:
+            raise RuntimeError("relocated initialized data golden differs")
+        report = json.loads(run(["sh", package / "run-dis64-storage.sh"], work, environment))
+        if report.get("initializer_count") != 1 or report["execution_supported"]:
+            raise RuntimeError("relocated initialized-data report differs")
+        interface_client = work / (name + "-interfaces-client")
+        run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-Wall", "-Wextra", "-Werror",
+             "-Wno-unused-function", "-I" + str(package / "include/dis64"),
+             package / "examples/dis64-envelope/interfaces.c", "-o", interface_client], work, environment)
+        run([interface_client], work, environment)
         # Rebuild the actual inspector source as well: all transitive headers
         # must be shipped, independent of the original build/source directory.
         rebuilt = work / (name + "-rebuilt-inspector")
