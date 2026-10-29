@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.34.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.35.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -103,9 +103,9 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
-set(module_names idecore ideworkspace idecompiler idebuildpanel workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
+set(module_names idecore ideworkspace idecompiler idebuildpanel ideartifact workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
-  "${root}/ide/dis/bridge/idecompiler.b" "${root}/ide/dis/bridge/idebuildpanel.b"
+  "${root}/ide/dis/bridge/idecompiler.b" "${root}/ide/dis/bridge/idebuildpanel.b" "${root}/ide/dis/bridge/ideartifact.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
   "${root}/ide/dis/bridge/ideinput.b" "${root}/ide/dis/bridge/idebridge.b"
@@ -1026,8 +1026,11 @@ endif()
 
 # Service tutorial and independent multi-case acceptance use actual Dis modules.
 if(DVM_RUNTIME_COMPILER)
-  foreach(example compiler-service compiler-service-check build-panel)
+  foreach(example compiler-service compiler-service-check build-panel artifact-export)
     set(source "${root}/ide/dis/examples/compiler-service/main.b")
+    if(example STREQUAL "artifact-export")
+      set(source "${root}/ide/dis/examples/artifact-export/main.b")
+    endif()
     if(example STREQUAL "build-panel")
       set(source "${root}/ide/dis/examples/build-panel/main.b")
     endif()
@@ -1107,8 +1110,34 @@ if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDI
   endforeach()
 endif()
 
+# Binary artifact admission uses real channel workers, OS-exclusive files and CLI oracles.
+if(DVM_RUNTIME_COMPILER)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/artifact-test.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/artifact-test.dis"
+      "${root}/ide/dis/tests/artifact_test.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/tests/artifact_test.b" ${module_headers} VERBATIM)
+  add_custom_target(disvm_artifact_check ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/artifact-test.dis")
+  if(DVM_RUNTIME_TESTS AND DVM_FIR_COMPILER AND DVM_FIR_SOURCE_COMPILER AND DVM_SWF_LINKER)
+    foreach(mode jit interpreter)
+      add_test(NAME disvm_artifact_export_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_artifact_export.py" "$<TARGET_FILE:disvm>"
+        "${CMAKE_CURRENT_BINARY_DIR}/artifact-test.dis" ${mode}
+        "${DVM_FIR_SOURCE_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_SWF_LINKER}")
+      set_tests_properties(disvm_artifact_export_${mode} PROPERTIES TIMEOUT 90)
+    endforeach()
+  endif()
+endif()
+
 if(DVM_RUNTIME_TESTS)
   add_test(NAME disvm_exclusive_file_port COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_exclusive_file.py" "${DVM_FLASHVM_SOURCE_ROOT}/ports")
   set_tests_properties(disvm_exclusive_file_port PROPERTIES TIMEOUT 90)
+endif()
+if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_graphical_export_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_export.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_graphical_export_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
 endif()

@@ -32,6 +32,7 @@
 #define EDITOR_FONT_MAX 48               /* Bounded maximum editor pixel size. */
 #define EDITOR_PINCH_THRESHOLD 0.015     /* Normalized SDL distance change per admitted zoom step. */
 #define EDITOR_PANEL_BROWSER 9U          /* Read-only selected directory-entry presentation. */
+#define EDITOR_PANEL_EXPORT_PATH 11U /* Editable explicit artifact destination. */
 #define EDITOR_PANEL_BROWSE_PATH 10U     /* Editable directory path, with caret and normal field geometry. */
 #define EDITOR_PANEL 65543UL             /* Dis-owned prompt mode, selection and counted field text. */
 #define EDITOR_VIEWPORT 65540UL          /* Dis-owned Unicode window and monotonic view ticket. */
@@ -1263,7 +1264,8 @@ static int render_panel(FVM_RasterSurface *surface)
                                    "Inspect [Esc]: ",
                                    "Unsaved [S save / D discard / Esc cancel]: ",
                                    "",
-                                   "Directory path [Enter/Esc]: "};
+                                   "Directory path [Enter/Esc]: ",
+                                   "Export NEW file [Enter/Esc]: "};
     char text[1100];
     size_t prefix = strlen(labels[panel_mode]);
     FVM_Value value;
@@ -1419,7 +1421,7 @@ static int render_panel(FVM_RasterSurface *surface)
         result = draw_visible(path, surface, ink);
     }
     fvm_path_destroy(path);
-    if (result == FVM_OK && panel_mode && (panel_mode < 7 || panel_mode == EDITOR_PANEL_BROWSE_PATH))
+    if (result == FVM_OK && panel_mode && (panel_mode < 7 || panel_mode == EDITOR_PANEL_BROWSE_PATH || panel_mode == EDITOR_PANEL_EXPORT_PATH))
     {
         FVM_RasterColor cursor = {35, 85, 170, 255};
         if (!rectangle(surface,
@@ -1786,7 +1788,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
     }
     if (message->code == EDITOR_PANEL)
     {
-        if (assembling || message->first < 0 || message->first > EDITOR_PANEL_BROWSE_PATH || message->second < 0 ||
+        if (assembling || message->first < 0 || message->first > EDITOR_PANEL_EXPORT_PATH || message->second < 0 ||
             message->second > 1 || message->size > sizeof(panel_text))
         {
             return 0;

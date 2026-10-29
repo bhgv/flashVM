@@ -6,6 +6,8 @@ include "ideworkspace.m";
 include "fircompiler.m";
 include "idecompiler.m";
 include "idebuildpanel.m";
+include "idefileops.m";
+include "ideartifact.m";
 
 CompilerUnavailable: module
 {
@@ -26,6 +28,11 @@ init()
         raise "fail: unavailable compiler capability";
     }
     panel := load Idebuildpanel Idebuildpanel->PATH;
+    files := load Idefileops Idefileops->PATH;
+    exporter := load Ideartifact Ideartifact->PATH;
+    if (files == nil || exporter == nil || exporter->start(sys, files, panel, nil) != nil) {
+        raise "fail: unavailable compiler exporter started";
+    }
     document := core->start();
     if (panel == nil || panel->start(core, document, workspace, worker) != nil) {
         raise "fail: unavailable compiler panel started";

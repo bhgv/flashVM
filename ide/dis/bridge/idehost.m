@@ -10,7 +10,7 @@ Idehost: module
     Scroll: con 65541;    # Request logical-line delta in first; flags=revision, payload=ticket hex.
     Place: con 65542;     # Request source scalar in first, phase 1/2/3 in second; same revision/ticket.
 
-    Panel: con 65543;     # View prompt mode 0..10 (9 browser, 10 directory path), select-all flag, counted UTF-8 text.
+    Panel: con 65543;     # View prompt mode 0..11 (9 browser, 10 directory path, 11 export path), select-all flag, counted UTF-8 text.
     Find: con 65544;      # Revision-bound literal FindNext request; text replaces the current query.
     SaveAs: con 65545;    # Revision-bound explicit destination; adopted only after a successful write.
     Open: con 65546;      # Revision-bound strict source load; dirty documents are never discarded.

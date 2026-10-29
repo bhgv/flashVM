@@ -17,6 +17,7 @@ include "idebrowser.m"; # Keep browser paging/selection in exclusive Dis state.
 include "ideworkspace.m"; # Compiler snapshots have a separate private owner.
 include "fircompiler.m"; # Select explicit library language/target values.
 include "idecompiler.m"; # Build jobs remain Limbo channel operations.
+include "ideartifact.m"; # Export policy remains an ordinary Dis channel service.
 include "idebuildpanel.m"; # Bind artifacts and diagnostics to this document revision.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
@@ -289,6 +290,21 @@ stopbuild(panel: Idebuildpanel, endpoint: chan of Idebuildpanel->Request)
 }
 
 
+# Retire the optional exporter before the borrowed build panel; endpoint is
+# terminal after its unique acknowledgement. nil owns no resources and is ignored.
+stopartifact(exports: Ideartifact, endpoint: chan of Ideartifact->Request)
+{
+    if (endpoint != nil) {
+        answers := chan of Ideartifact->Reply;
+        endpoint <-= Ideartifact->Request(1, exports->Shutdown, 0, 0, 0, "", answers);
+        stopped := <-answers;
+        if (stopped.status != exports->Ok) {
+            raise "fail: graphical artifact exporter shutdown";
+        }
+    }
+}
+
+
 # Own graphical editor policy with no Draw/Tk/AS-side document mutation.
 # No parameters; channels remain rooted on this stack through the final reply.
 init()
@@ -323,6 +339,11 @@ init()
     if (buildpanel != nil) {
         builds = buildpanel->start(core, document, workspace, compiler);
     } # Missing native compilation is an explicit optional capability.
+    artifacts := load Ideartifact Ideartifact->PATH;
+    exports: chan of Ideartifact->Request;
+    if (artifacts != nil) {
+        exports = artifacts->start(sys, files, buildpanel, builds);
+    }
     state := policy->create(); # Keep cursor/control/history policy in Dis.
     path := host->path(); # Copy the explicit host-selected destination.
     text := ""; # A new document starts empty.
@@ -366,11 +387,15 @@ init()
     transfer_stamp := 0; # A field edit/selection change retires a clipboard's captured generation.
     transfer := clipboard->create(); # [GC:] Exclusive pending transaction/staging root until reset or shutdown.
     buildmessage := ""; # Plain copied compiler status, bounded before rendering.
+    exportrevision := 0; # Exact source revision captured when opening the destination field.
+    exporttarget := 0; # Actual retained format, independent of the source path's suffix.
+    exportpart := Ideartifact->Binary; # Ctrl+Shift+F7 selects original FIRDBG1 instead.
     buildvisible := 0; # Inspector mode can show compiler output or document metadata.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
         if (closing && reply.revision == reply.saved) {
             stopbrowser(browser);
             releaseprojection(inspector);
+            stopartifact(artifacts, exports);
             stopbuild(buildpanel, builds);
             call(document, core->Shutdown, reply.revision, "");
             host->detach();
@@ -542,6 +567,7 @@ init()
             if (reply.revision == reply.saved || event.flags == 1) {
                 stopbrowser(browser);
                 releaseprojection(inspector);
+                stopartifact(artifacts, exports);
                 stopbuild(buildpanel, builds);
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach(); # Retire borrowed channel roots before the controller stack exits.
@@ -726,6 +752,41 @@ init()
         }
         if ((mode == 0 || mode == 7) && event.kind == codec->Key && event.flags == 1
             && (event.code == 118 || event.code == 119)) { # F7 Build, F8 source diagnostic.
+            if (event.code == 118 && state.control) { # Explicit export, never automatic Build output.
+                buildvisible = 1;
+                buildmessage = "Export unavailable: enable Fircompiler";
+                if (exports != nil) {
+                    answers := chan of Idebuildpanel->Reply;
+                    builds <-= Idebuildpanel->Request(1, buildpanel->Artifact, reply.revision, 0, 0, 0, answers);
+                    artifact := <-answers;
+                    buildmessage = "Export requires a current successful build; status=" + string artifact.status;
+                    if (artifact.status == buildpanel->Ok) {
+                        exportrevision = reply.revision;
+                        exporttarget = artifact.target;
+                        exportpart = Ideartifact->Binary;
+                        ending := ".dis";
+                        if (exporttarget == Fircompiler->Fir) {
+                            ending = ".fir";
+                        } else if (exporttarget == Fircompiler->Swf) {
+                            ending = ".swf";
+                        }
+                        if (state.shift) {
+                            exportpart = Ideartifact->Debug;
+                            ending = ".firdbg";
+                        }
+                        inputfield = fields->create();
+                        if (fields->set(inputfield, path + ending, 1) != fields->Ok) {
+                            inputfield = fields->create();
+                        }
+                        mode = 11; # A typed destination must be accepted with Enter.
+                        dragging = 0;
+                        fielddrag = 0;
+                        continue;
+                    }
+                }
+                mode = 7;
+                continue;
+            }
             buildvisible = 1;
             buildmessage = "Compiler unavailable: enable Fircompiler";
             if (builds != nil) {
@@ -785,6 +846,7 @@ init()
             } else if (mode == 8 && event.kind == codec->Key && event.flags != 0 && event.code == 68) {
                 stopbrowser(browser);
                 releaseprojection(inspector); # Explicit D confirms discard; the close button itself never does.
+                stopartifact(artifacts, exports);
                 stopbuild(buildpanel, builds);
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach();
@@ -919,6 +981,21 @@ init()
                             mode = browsing->Panel;
                             inputfield = fields->create();
                         }
+                    } else if (mode == 11) { # Export one immutable revision through its own channel.
+                        answers := chan of Ideartifact->Reply;
+                        exports <-= Ideartifact->Request(1, artifacts->Export, exportrevision, exporttarget,
+                                                         exportpart, inputfield.text, answers);
+                        exported := <-answers;
+                        reply.status = core->Invalid;
+                        if (exported.status == artifacts->Conflict) {
+                            reply.status = core->Conflict;
+                        }
+                        if (exported.status == artifacts->Ok) {
+                            reply.status = core->Ok;
+                            buildvisible = 1;
+                            buildmessage = "Export status=0 bytes=" + string exported.size;
+                            mode = 7;
+                        } # Errors preserve the editable destination and all document metadata.
                     } else if (mode == 6) { # Go To uses bounded one-based source coordinates.
                         (line, column) := locationfield(inputfield.text); # Reject syntax/overflow without touching selection.
                         reply = gotolocation(policy, state, reply, line, column);
