@@ -193,3 +193,9 @@ Compile it with `build/fir/fir1_source limbo --input fir/v1/examples/dis/int-com
 не выходят за цикл, а тело может затенить их без изменения адресата шага.
 Подробные команды, ожидаемые capture-биты, ограничения backend и библиотечный
 путь: [English](../../doc/NUMERIC_FOR.md) / [Русский](../../doc/NUMERIC_FOR.ru.md).
+
+## Literal-count shifts in SWF
+
+[int-shifts-swf.b](int-shifts-swf.b) is fully commented and returns 42 through
+raw/optimized Dis and SWF. A dynamic loop input is shifted by literal two;
+negative right shift preserves the sign. [Build commands and count restrictions](../../doc/SWF_INT_SHIFTS.md).

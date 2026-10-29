@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.59.0 LANGUAGES C)
+project(fir1 VERSION 0.60.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -641,3 +641,17 @@ endif()
 # Runnable installed C99 tutorial, using exactly the public source/FIR libraries.
 add_executable(fir1_integer_identities_example examples/integer-identities/main.c)
 target_link_libraries(fir1_integer_identities_example PRIVATE fir1_source_api fir1_ir)
+
+# Literal-count checks preserve FIR semantics when lowering to masked AVM1 shifts.
+if(BUILD_TESTING)
+  add_test(NAME fir1_swf_int_shifts COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/swf_int_shifts.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_swf_int_shifts PROPERTIES TIMEOUT 120)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(fir1_swf_int_shifts_api tests/swf_int_shifts_api.c)
+  target_link_libraries(fir1_swf_int_shifts_api PRIVATE fir1_ir)
+  add_test(NAME fir1_swf_int_shifts_api COMMAND fir1_swf_int_shifts_api)
+endif()

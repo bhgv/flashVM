@@ -162,8 +162,8 @@ func @main() -> void {
             if runtime and 'invalid big conversion' not in call([runtime, mode, image], False).stderr:
                 raise RuntimeError('bit DCE erased its checked producer failure')
 
-        # Live checked shifts remain outside SWF coverage and must preserve old object bytes.
-        source.write_text('implement M; M: module {value: fn(): int;}; value(): int {a := 21; return a << 1;}')
+        # Unknown shift counts remain outside SWF coverage and preserve old object bytes.
+        source.write_text('implement M; M: module {value: fn(): int;}; value(): int {a := 21; for(i:=0;i<1;i++){a+=i;} return 1 << a;}')
         call([source_cli, 'limbo', '--input', source, fir])
         obj = root / 'preserved.swo'
         obj.write_bytes(b'OLD')

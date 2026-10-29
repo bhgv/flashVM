@@ -99,3 +99,8 @@ Compiler 0.41 keeps these API signatures and serial-request rules while adding
 The reused C99 service also verifies recovery after a joined-path initialization error.
 
 [Source aliases / Псевдонимы исходника](../doc/SOURCE_ALIASES.md): FIR 0.51, serialized request-local binding.
+
+The [SWF checked-shift contract](../doc/SWF_INT_SHIFTS.md) applies equally
+to fir_object and fir_run(FIR_OBJECT). Counts must be proven literal 0…31;
+unknown or invalid counts reject before writing. Enable explicit optimization
+when a copy/computation must first expose its literal count.

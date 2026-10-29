@@ -509,7 +509,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # New scalar bits and checked shifts must survive relocation and C99 relinking.
-    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b"):
+    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b"):
         bit_source = component / "examples/dis" / example
         optimized = work / "bits-opt.fir"
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", bit_source, fir, "--module", "dis_example"], work, environment)
@@ -630,6 +630,28 @@ def fir_dis_packages(prefix, work, environment):
                       work / "identity-api.dis"], work, environment)
         if "DATA 0 42\nDATA 8 1\n" not in output:
             raise RuntimeError("relocated optimized integer tutorial differs")
+
+
+    # Prove the new literal-count SWF backend through freshly linked SDK APIs.
+    shift_source = component / "examples/dis/int-shifts-swf.b"
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", shift_source, fir,
+         "--module", "integer_identities"], work, environment)
+    run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+    for task, suffix in (("dis", ".dis"), ("object", ".swo")):
+        expected = work / ("shift-cli" + suffix)
+        embedded = work / ("shift-api" + suffix)
+        run([program(prefix, "fir", "fir1"), task, optimized, expected], work, environment)
+        run([client, shift_source, embedded, task], work, environment)
+        if expected.read_bytes() != embedded.read_bytes():
+            raise RuntimeError("relocated checked-shift CLI/C99 bytes differ")
+    movie = work / "shift.swf"
+    run([program(prefix, "linker", "swl"), "link", movie, work / "shift-api.swo"], work, environment)
+    if movie.read_bytes()[:4] != b"FWS\x08":
+        raise RuntimeError("relocated checked-shift linker did not produce SWF8")
+    for mode in ("--jit", "--no-jit"):
+        output = run([runtime, mode, "--inspect-words", 0, 2, work / "shift-api.dis"], work, environment)
+        if "DATA 0 42\nDATA 8 1\n" not in output:
+            raise RuntimeError("relocated checked-shift tutorial differs")
 
 
 # Relink the installed C99 broker example and decode its exact compiler-origin record on Dis.

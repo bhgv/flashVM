@@ -76,10 +76,11 @@ FIR adds branching trace captures after shift expansion. Original/optimized
 reference and actual interpreter/JIT execution are compared with Python integer
 oracles; forged C99 types fail before either backend writes output.
 
-Live checked int shifts remain unsupported in the SWF object backend. Full source
-loops/functions, source-level homogeneous int shifts, debugger attachment and IDE
-Build/Run/Debug panels remain separate work. Language changes stay in FlashVM;
-the Inferno snapshot is not modified for these compiler operations.
+Literal-count checked int shifts (0…31) are supported by the SWF object backend;
+unknown counts still reject. See [exact SWF admission and example](SWF_INT_SHIFTS.md).
+General cross-module functions and full source Limbo remain separate work.
+Language changes stay in FlashVM; the Inferno snapshot is not modified for these
+compiler operations.
 
 ## Run
 

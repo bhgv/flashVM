@@ -192,6 +192,19 @@ static size_t branch(Bytes *b, int conditional)
 }
 
 
+/* Prove the exact checked int32 shift count accepted by AVM1 lowering.
+ * m/in are borrowed verified IR. Return one only for a live same-type literal
+ * count in [0,31], zero for every dynamic, removed or invalid definition.
+ * AVM1 masks counts, so emitting an unproven count would erase FIR errors.
+ * No producer is evaluated, moved or removed; optimization may expose a literal
+ * before this preflight. This synchronous check owns no memory or VM state. */
+static int literal_shift_count(const FirModule *m, const FirInstruction *in)
+{
+    const FirInstruction *count = &m->instructions[m->values[in->b].definition];
+    return !count->removed && count->op == O_I32 && count->integer >= 0 && count->integer < 32;
+}
+
+
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
 int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
 {
@@ -205,10 +218,17 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     }
     for (i = 0; i < m->count; i++)
     {
+        const FirInstruction *in = &m->instructions[i];
+        if (!in->removed && (in->op == O_I32_SHL || in->op == O_I32_SHR) && !literal_shift_count(m, in))
+        {
+            snprintf(error, cap, "AVM1 checked int shift requires a proven literal count in [0,31]");
+            return 0;
+        }
         if (!m->instructions[i].removed &&
             (((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) &&
               m->instructions[i].op != O_BOOL_LOCAL && m->instructions[i].op != O_BOOL_STORE &&
-              m->instructions[i].op != O_BOOL_LOAD) ||
+              m->instructions[i].op != O_BOOL_LOAD && m->instructions[i].op != O_I32_SHL &&
+              m->instructions[i].op != O_I32_SHR) ||
              (m->instructions[i].type > T_CHANNEL && m->instructions[i].type != T_BOOL_SLOT &&
               m->instructions[i].type != T_I32_SLOT && m->instructions[i].type != T_F64_SLOT)))
         {
@@ -345,6 +365,13 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             load(&actions, m, in->a);
             load(&actions, m, in->b);
             byte(&actions, in->op == O_I32_AND ? 0x60 : in->op == O_I32_OR ? 0x61 : 0x62);
+            break;
+        case O_I32_SHL:
+        case O_I32_SHR:
+            /* Preflight proves the masked AVM1 count equals the checked FIR count. */
+            load(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, in->op == O_I32_SHL ? 0x63 : 0x64);
             break;
         case O_MUL:
             multiply(&actions, m, in->a, in->b);
