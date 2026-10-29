@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1683**. [English](README.md).
+Версия разработки: **0.1684**. [English](README.md).
 
-Текущая серия: [v0.1683](docs/releases/v0.1683.md): битовые доказательства FIR для динамической арифметики SWF, настоящие Dis64 payloads/SDK и пункт14 build-menu.
+Текущая серия: [v0.1684](docs/releases/v0.1684.md): битовые доказательства big/сдвигов FIR, Dis64 initializers/signatures, полный C99 SDK и пункт15 build-menu.
 
 ## Просмотр документации
 
