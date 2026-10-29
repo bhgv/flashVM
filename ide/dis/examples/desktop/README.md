@@ -19,7 +19,7 @@ Help, Ctrl+N creates an editor, Ctrl+O opens, Ctrl+S saves, F7 compiles, F8 sele
 a source diagnostic. Read the complete [desktop contract](../../../DESKTOP.md).
 
 This first shell uses bounded caret-following text viewports and keyboard editing.
-Full mouse selection/clipboard, graphics and attached debugger sessions are still
+Clipboard, off-pane drag capture, graphics and attached debugger sessions are still
 being integrated. A Debug scroll explicitly reports unavailable session state.
 Save writes only an explicit focused editor destination; Open protects dirty text.
 Quit requires explicit discard for unsaved editors. Merely starting the example
@@ -28,3 +28,5 @@ creates no source file and never loads/runs a compilation artifact.
 Drag a title to move its window; `x`/Ctrl+W closes only that editor. Dirty text
 requires explicit discard; Cancel/Escape keeps it. Empty space still pans the table.
 [Details](../../../DESKTOP-LIFECYCLE.md) · [Portable example](../desktop-lifecycle/README.md).
+
+[Mouse caret and selection](../../../DESKTOP-POINTER.md).
