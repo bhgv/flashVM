@@ -1,3 +1,5 @@
+[Moving windows and independent Close/Cancel](DESKTOP-LIFECYCLE.md)
+
 [MovieClip desktop / independent Limbo processes](DESKTOP.md)
 
 [Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](ARTIFACT-EXPORT.md)

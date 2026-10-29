@@ -1,6 +1,6 @@
-# MovieClip desktop — v0.1673
+# MovieClip desktop — v0.1674
 
-![Actual FlashVM desktop capture](assets/desktop-v0.1673.png)
+![Actual FlashVM desktop capture](assets/desktop-v0.1674.png)
 
 The WeTab-inspired shell has a vertically scrollable central table, live window
 miniatures on the left and expandable tool scrolls on the right. **Every window,
@@ -82,8 +82,7 @@ The older editor's detached-path raster pipeline remains independently tested.
 This is the first working multiple-window shell. It has independent keyboard
 editors, Open/Save path fields, real Build/F8, build log, paged Help, miniatures and
 empty-space panning. It does not yet embed every existing single-editor widget:
-mouse caret placement/selection, clipboard integration, arbitrary window dragging,
-per-window close/reorder, export controls, graphical document tools and attached
+mouse caret placement/selection, clipboard integration, session persistence, window resizing/reorder controls, export controls, graphical document tools and attached
 Run/Debug sessions remain work. Existing single-editor/export entries retain
 those implemented capabilities. Layout and appearance can now evolve by MovieClip
 components without replacing document owners.
@@ -98,3 +97,5 @@ execution are not inferred from replay or foreign-emitter checks.
 [Desktop channel contract](dis/bridge/idedesktop.m) · [Pane contract](dis/bridge/idedeskpane.m) ·
 [Application](dis/app/desktop.b) · [Tutorial](dis/examples/desktop/README.md) ·
 [Build service](COMPILER-SERVICE.md) · [Workspace](WORKSPACE.md).
+
+[Moving, Close/Cancel and window lifetime](DESKTOP-LIFECYCLE.md).

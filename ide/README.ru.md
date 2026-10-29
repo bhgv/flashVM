@@ -1,3 +1,5 @@
+[Перемещение и Close/Cancel отдельных редакторов](DESKTOP-LIFECYCLE.ru.md)
+
 [Рабочий стол MovieClip / независимые процессы Limbo](DESKTOP.ru.md)
 
 [Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](ARTIFACT-EXPORT.ru.md)
