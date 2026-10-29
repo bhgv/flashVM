@@ -16,7 +16,7 @@
 
 #define DESK_SLOTS 64U  /* Stable bounded widget identities, independent of VM addresses. */
 #define DESK_TEXT 1024U /* Maximum copied UTF-8 payload. */
-#define DESK_META 64U   /* parent/x/y/width/height/style/caret words. */
+#define DESK_META 64U   /* parent/x/y/width/height/style/caret/mirror words. */
 
 
 /* One immutable copied scene item and its persistent owner-local capabilities. */
@@ -41,6 +41,7 @@ static FVM_Object *groups[5];             /* [GC:] Borrowed children of the reta
 static FVM_Object *clips[DESK_SLOTS];     /* [GC:] Borrowed stable MovieClip children. */
 static FVM_Object *cursors[DESK_SLOTS];   /* [GC:] Caret MovieClips retained beneath each widget. */
 static FVM_Object *labels[DESK_SLOTS];    /* [GC:] TextFields retained on their MovieClips. */
+static unsigned char visible[DESK_SLOTS]; /* Slots admitted in the previous complete scene. */
 static unsigned long parents[DESK_SLOTS]; /* Immutable parent identity after creation. */
 static FVM_Font *face;                    /* Owner-only native face for caret geometry. */
 static DeskItem items[DESK_SLOTS];        /* Copied staged descriptors. */
@@ -245,6 +246,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         {
             return 0;
         }
+        memset(items + received, 0, (DESK_SLOTS - received) * sizeof(*items));
         pending = 0;
         active = 1;
         return 1;
@@ -277,6 +279,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         DeskItem *item = &items[received];
         unsigned long scalars;
         item->size = message->size - DESK_META;
+        memset(item->text, 0, sizeof(item->text));
         memcpy(item->text, message->text + DESK_META, item->size);
         if (fvm_utf8_validate(item->text, item->size, &scalars) != FVM_UTF8_OK ||
             (words[6] != 0xffffffffUL && words[6] > scalars))
@@ -712,12 +715,53 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
 }
 
 
+/* Retire absent scene slots on the FlashVM owner. present is a borrowed complete
+ * scene mask; return zero on a VM operation/readback failure. Empty pooled clips
+ * stay rooted for bounded reuse, while retired text and drawing are released.
+ * No document/channel ownership is changed and no raster worker invokes this. */
+static int retire(const unsigned char *present)
+{
+    unsigned int id;
+    for (id = 1; id < DESK_SLOTS; ++id)
+    {
+        if (visible[id] && !present[id])
+        {
+            FVM_Value value;
+            FVM_Value ignored;
+            if (fvm_value_string_bytes(&value, "", 0) != FVM_OK ||
+                fvm_object_set(owner, labels[id], "text", &value) != FVM_OK ||
+                fvm_object_call(owner, clips[id], "clear", 0, NULL, &ignored) != FVM_OK ||
+                fvm_object_call(owner, cursors[id], "clear", 0, NULL, &ignored) != FVM_OK ||
+                fvm_object_get(owner, labels[id], "text", &value) != FVM_OK || value.type != FVM_VALUE_STRING ||
+                fvm_value_string_size(&value) != 0)
+            {
+                return 0;
+            }
+            if (trace)
+            {
+                printf("RETIRED %lu %u\n", ticket, id);
+            }
+        }
+    }
+    return 1;
+}
+
+
 /* Execute actual FlashVM object drawing on the owner, then hand only copied
  * pixels to detached presentation. No worker accesses managed scene objects. */
 int dvm_desktop_draw(FVM_RasterSurface *surface)
 {
     unsigned int index;
+    unsigned char present[DESK_SLOTS] = {0};
     if (!root || !active || !surface || surface->width != width || surface->height != height)
+    {
+        return 0;
+    }
+    for (index = 0; index < received; ++index)
+    {
+        present[items[index].id] = 1;
+    }
+    if (!retire(present))
     {
         return 0;
     }
@@ -730,6 +774,7 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
             return 0;
         }
     }
+    memcpy(visible, present, sizeof(visible));
     if (trace)
     {
         printf("DESKTOP %lu %lu %u\n", ticket, offset, received);
@@ -767,4 +812,6 @@ void dvm_desktop_destroy(void)
     memset(cursors, 0, sizeof(cursors));
     memset(clips, 0, sizeof(clips));
     memset(labels, 0, sizeof(labels));
+    memset(visible, 0, sizeof(visible));
+    memset(items, 0, sizeof(items));
 }
