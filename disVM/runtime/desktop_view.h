@@ -4,7 +4,7 @@
 #include "disvm/ui_bridge.h"
 #include "flashvm/flashvm.h"
 #include "flashvm/path.h"
-#define DVM_DESK_BEGIN 65569UL   /* width/height plus ticket/count/scroll words. */
+#define DVM_DESK_BEGIN 65569UL   /* width/height plus ticket/count/scroll/table-scale words. */
 #define DVM_DESK_ITEM 65570UL    /* One copied bounded MovieClip descriptor. */
 #define DVM_DESK_END 65571UL     /* Commit the declared complete scene. */
 #define DVM_DESK_POINTER 65572UL /* Raw checked pixel proposal with phase/code words. */
@@ -26,6 +26,8 @@ int dvm_desktop_draw(FVM_RasterSurface *surface);
  * Returns zero for headers/occlusion/failure; never edits a document. */
 int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position);
 /* Return committed input/view state, or zero before any desktop scene. */
+/* Return one for an unobscured window header at copied canvas pixels. Owner only. */
+int dvm_desktop_header(double x, double y);
 int dvm_desktop_active(void);
 unsigned long dvm_desktop_ticket(void); /* Equality token, never a heap address. */
 /* Release pinned owner objects/font before the borrowed context is destroyed. */

@@ -1,0 +1,133 @@
+/* Isolated native SDL contact-state checks. The real editor implementation is
+ * compiled here; only the header geometry query is a named test boundary.
+ * Actual geometry, source isolation and rendering are checked by the Dis replay. */
+#define dvm_desktop_header touch_test_header
+#include "editor_view.c"
+
+
+/* Deterministic borrowed canvas-header boundary for native contact tests. */
+int touch_test_header(double x, double y)
+{
+    return x >= 84 && x < 848 && y >= 72 && y < 96;
+}
+
+
+/* Submit one native SDL contact value. Expected code/phase are independent
+ * protocol observations, zero means the contact must produce no proposal. */
+static int contact(Uint32 type,
+                   Uint32 time,
+                   SDL_TouchID device,
+                   SDL_FingerID finger,
+                   float x,
+                   float y,
+                   unsigned long code,
+                   unsigned long phase)
+{
+    SDL_TouchFingerEvent event;
+    DVM_UIMessage message;
+    int result;
+    memset(&event, 0, sizeof(event));
+    memset(&message, 0, sizeof(message));
+    event.type = type;
+    event.timestamp = time;
+    event.touchId = device;
+    event.fingerId = finger;
+    event.x = x;
+    event.y = y;
+    result = desktop_touch(&event, &message);
+    if ((code && (!result || message.code != code || message.flags != phase)) || (!code && result))
+    {
+        fprintf(stderr,
+                "contact mismatch at %u: got %d/%lu/%lu expected %lu/%lu\n",
+                time,
+                result,
+                message.code,
+                message.flags,
+                code,
+                phase);
+        return 0;
+    }
+    return 1;
+}
+
+
+/* Check actual SDL event timestamps, contact transitions, device-local IDs and
+ * zoom termination. No window, native device or document is mocked as accepted. */
+int main(void)
+{
+    DVM_UIMessage message;
+    desktop_touch(NULL, &message);
+    if (!contact(SDL_FINGERDOWN, 100, 1, 1, .12f, .125f, 1, 1) ||
+        !contact(SDL_FINGERUP, 110, 1, 1, .12f, .125f, 1, 3) ||
+        !contact(SDL_FINGERDOWN, 150, 1, 1, .12f, .125f, 10, 1) ||
+        !contact(SDL_FINGERUP, 160, 1, 1, .12f, .125f, 1, 3) || !contact(SDL_FINGERDOWN, 180, 1, 1, .12f, .125f, 1, 1))
+    {
+        return 1;
+    }
+    desktop_touch(NULL, &message);
+    if (!contact(SDL_FINGERDOWN, 200, 1, 7, .3f, .4f, 1, 1) || !contact(SDL_FINGERDOWN, 210, 2, 7, .4f, .4f, 1, 3) ||
+        !contact(SDL_FINGERMOTION, 220, 2, 7, .4f, .4f, 6, 1) ||
+        !contact(SDL_FINGERMOTION, 230, 2, 7, .5f, .4f, 8, 1) || !contact(SDL_FINGERUP, 240, 1, 7, .3f, .4f, 6, 3))
+    {
+        return 1;
+    }
+    desktop_touch(NULL, &message);
+    if (!contact(SDL_FINGERDOWN, 300, 1, 1, .3f, .4f, 1, 1) || !contact(SDL_FINGERDOWN, 310, 1, 2, .4f, .4f, 1, 3) ||
+        !contact(SDL_FINGERMOTION, 320, 1, 2, .4f, .4f, 6, 1) || !contact(SDL_FINGERDOWN, 330, 1, 3, .5f, .4f, 6, 3) ||
+        !contact(SDL_FINGERMOTION, 340, 1, 3, .5f, .4f, 7, 1) || !contact(SDL_FINGERUP, 350, 1, 3, .5f, .4f, 7, 3))
+    {
+        return 1;
+    }
+    desktop_touch(NULL, &message);
+    if (!contact(SDL_FINGERMOTION, 400, 1, 2, .4f, .4f, 0, 0))
+    {
+        return 1;
+    }
+    /* Use the actual SDL event queue to preserve a release between motions. */
+    {
+        SDL_Event first;
+        SDL_Event queued;
+        if (SDL_Init(SDL_INIT_EVENTS) != 0)
+        {
+            fprintf(stderr, "SDL events: %s\n", SDL_GetError());
+            return 1;
+        }
+        memset(&first, 0, sizeof(first));
+        first.type = SDL_MOUSEMOTION;
+        first.motion.state = SDL_BUTTON_LMASK;
+        first.motion.x = 10;
+        queued = first;
+        queued.motion.x = 20;
+        if (SDL_PushEvent(&queued) != 1)
+        {
+            return 1;
+        }
+        queued.motion.x = 30;
+        if (SDL_PushEvent(&queued) != 1)
+        {
+            return 1;
+        }
+        queued.type = SDL_MOUSEBUTTONUP;
+        if (SDL_PushEvent(&queued) != 1)
+        {
+            return 1;
+        }
+        queued = first;
+        queued.motion.x = 40;
+        if (SDL_PushEvent(&queued) != 1)
+        {
+            return 1;
+        }
+        coalesce_desktop_motion(&first);
+        if (first.motion.x != 30 || SDL_PollEvent(&queued) != 1 || queued.type != SDL_MOUSEBUTTONUP ||
+            SDL_PollEvent(&queued) != 1 || queued.type != SDL_MOUSEMOTION || queued.motion.x != 40)
+        {
+            fputs("motion coalescing lost/reordered the release boundary\n", stderr);
+            SDL_Quit();
+            return 1;
+        }
+        SDL_Quit();
+    }
+    puts("PASS native SDL contacts: double tap, pair/triple transition, device IDs, table pinch, release, focus reset");
+    return 0;
+}

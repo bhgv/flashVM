@@ -38,7 +38,7 @@ call(owner: chan of Idedesktop->Request, request: Idedesktop->Request): Idedeskt
 point(owner: chan of Idedesktop->Request, ticket, x, y, phase: int): Idedesktop->Reply
 {
     return call(owner, Idedesktop->Request(1, Idedesktop->Pointer, ticket, 0,
-                x, y, phase, "", "", -1, -1, nil));
+                x, y, phase, "", "", -1, -1, 0, nil));
 }
 
 
@@ -91,7 +91,7 @@ init()
     late = pane(right, panes->Place, ref Uibridge->Message(codec->Request, 0, 2, before.revision, 5, 0, ""));
     check(late.status != 0 && late.caret == 0, "explicit pointer cancellation");
     layout := desk->start();
-    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "Left", changed.body, 0, -1, nil);
+    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "Left", changed.body, 0, -1, 0, nil);
     view := call(layout, request);
     check(view.status == desk->Ok, "window admission");
     mirrored := 0;

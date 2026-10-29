@@ -8,6 +8,7 @@ include "idefield.m";
 include "idehost.m";
 include "idedeskpane.m";
 include "idedesktop.m";
+include "idedeskclip.m";
 DesktopIDE: module
 {
     init: fn(); # Own the MovieClip desktop and independent pane processes.
@@ -30,6 +31,17 @@ deskcall(owner: chan of Idedesktop->Request, request: Idedesktop->Request): Ided
     request.reply = chan of Idedesktop->Reply;
     owner <-= request;
     return <-request.reply;
+}
+
+
+# Exchange one private session clipboard value. owner is borrowed; text is an
+# immutable copy and expected guards writes. Consume the complete acknowledgement
+# before Cut may edit a document. No native/OS clipboard capability is acquired.
+clipcall(owner: chan of Idedeskclip->Request, operation, expected: int, text: string): Idedeskclip->Reply
+{
+    replies := chan of Idedeskclip->Reply;
+    owner <-= Idedeskclip->Request(1, operation, expected, text, replies);
+    return <-replies;
 }
 
 
@@ -77,8 +89,9 @@ init()
     desk := load Idedesktop Idedesktop->PATH;
     fields := load Idefield Idefield->PATH;
     policy := load Ideinput Ideinput->PATH;
+    clips := load Idedeskclip Idedeskclip->PATH;
     files := load Idefileops Idefileops->PATH;
-    if (sys == nil || codec == nil || host == nil || panes == nil || desk == nil || fields == nil || policy == nil || files == nil) {
+    if (sys == nil || codec == nil || host == nil || panes == nil || desk == nil || fields == nil || policy == nil || files == nil || clips == nil) {
         raise "fail: desktop modules";
     }
     windows := array[desk->MaxWindows] of chan of Idedeskpane->Request;
@@ -95,15 +108,16 @@ init()
     }
     windows[0] = panes->start(panes->Editor, path, source);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1: Help. PageUp/PageDown: help pages. F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console stay open.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Drag to the left edge to minimize. Tap/swipe a miniature right to restore; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
     windows[3] = panes->start(panes->Editor, "", "");
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
             raise "fail: desktop pane startup";
         }
     }
+    clipboard := clips->start();
     layout := desk->start();
-    request := Idedesktop->Request(1, desk->View, 0, 0, 0, 0, 0, "", "", -1, -1, nil);
+    request := Idedesktop->Request(1, desk->View, 0, 0, 0, 0, 0, "", "", -1, -1, 0, nil);
     view := deskcall(layout, request);
     input := chan of array of byte;
     output := chan of array of byte;
@@ -119,10 +133,14 @@ init()
     closing := 0; # Stable editor slot retained while its dirty-close decision is modal.
     field := fields->create();
     finished := 0;
+    refresh := 1; # Geometry-only motion reuses immutable pane snapshots.
+    dirty := 0; # Last source-authoritative dirty count, refreshed after edits.
     for (;;) {
-        dirty := 0;
+        if (refresh) {
+            dirty = 0;
+        }
         for (index = 0; index < len windows; index++) {
-            if (windows[index] == nil) {
+            if (!refresh || windows[index] == nil) {
                 continue;
             }
             snapshot := panecall(windows[index], panes->Snapshot, "", nil);
@@ -134,12 +152,15 @@ init()
             request.body = snapshot.body;
             request.caret = -1;
             request.anchor = -1;
+            request.line = 0;
             if (snapshot.kind == panes->Editor) {
+                request.line = snapshot.line;
                 request.caret = snapshot.caret;
                 request.anchor = snapshot.anchor;
             }
             view = deskcall(layout, request);
         }
+        refresh = 1;
         if (finished) {
             break;
         }
@@ -155,7 +176,7 @@ init()
             count++;
         }
         send(codec, output, desk->BeginView, 0, width, height,
-             codec->hexword(view.ticket) + codec->hexword(count) + codec->hexword(view.scroll));
+             codec->hexword(view.ticket) + codec->hexword(count) + codec->hexword(view.scroll) + codec->hexword(view.zoom));
         for (index = 0; index < len view.items; index++) {
             item := view.items[index];
             metadata := codec->hexword(item.parent) + codec->hexword(item.x) + codec->hexword(item.y)
@@ -226,6 +247,10 @@ init()
         }
         if (event.kind == codec->Key && event.code == 17) {
             control = event.flags;
+            if (!control) {
+                request.operation = desk->Cancel;
+                view = deskcall(layout, request);
+            }
         }
         if (event.kind == codec->Key && event.code == 16) {
             shift = event.flags;
@@ -286,18 +311,27 @@ init()
             (codeok, code) := codec->parseword(array of byte event.text, 8);
             (hitok, hit) := codec->parseword(array of byte event.text, 16);
             (offsetok, offset) := codec->parseword(array of byte event.text, 24);
-            if (phaseok && codeok && hitok && offsetok && (code == 1 || code == 4 || code == 5)) {
+            if (phaseok && codeok && hitok && offsetok && (code == 1 || code == 4 || code == 5 || code == 6 || code == 7 || code == 8 || code == 9 || code == 10)) {
                 request.ticket = event.flags;
                 request.operation = desk->Pointer;
                 request.x = event.first;
                 request.y = event.second;
                 request.phase = phase;
+                if (code == 6 || code == 7) {
+                    request.phase += 4 * (code - 4);
+                }
+                if (code == 8 || code == 9 || code == 10) {
+                    request.phase = code - 4;
+                }
                 if (code == 4 || code == 5) {
                     request.operation = desk->Scroll;
                     request.x = 120;
                     if (code == 4) {
                         request.x = -120;
                     }
+                }
+                if (phase == 2 && pointing == 0 && (code == 1 || code == 6 || code == 7)) {
+                    refresh = 0;
                 }
                 previousdrawer := view.drawer;
                 view = deskcall(layout, request);
@@ -385,6 +419,12 @@ init()
                 action = desk->OpenFile;
             } else if (control && event.code == 78) {
                 action = desk->NewEditor;
+            } else if (control && event.code == 67) {
+                action = desk->CopySelection;
+            } else if (control && event.code == 88) {
+                action = desk->CutSelection;
+            } else if (control && event.code == 86) {
+                action = desk->PasteSelection;
             } else if (control && event.code == 87) {
                 action = desk->CloseEditor;
             } else if (event.code == 119) {
@@ -393,7 +433,54 @@ init()
                 continue;
             }
         }
-        if (action == desk->CancelClose) {
+        if (action == desk->CopySelection || action == desk->CutSelection || action == desk->PasteSelection) {
+            current := panecall(windows[active - 1], panes->Snapshot, "", nil);
+            if (current.kind != panes->Editor) {
+                panecall(windows[1], panes->SetText, "Session clipboard: select an editor first.", nil);
+            } else {
+                stored := clipcall(clipboard, clips->Get, 0, "");
+                status := current.status;
+                note := "";
+                if (action == desk->PasteSelection) {
+                    copied := panecall(windows[active - 1], panes->PasteSelection, stored.text,
+                        ref Uibridge->Message(codec->Request, 0, 0, current.revision,
+                                             current.rangefirst, current.rangelast, ""));
+                    status = copied.status;
+                    if (stored.text == "") {
+                        note = "Session clipboard: empty; source kept unchanged.";
+                    }
+                } else {
+                    exported := panecall(windows[active - 1], panes->ExportSelection, "", nil);
+                    status = exported.status;
+                    if (exported.rangefirst == exported.rangelast) {
+                        note = "Session clipboard: no selection; previous value kept.";
+                    }
+                    if (status == Idecore->Ok && exported.rangefirst != exported.rangelast) {
+                        stored = clipcall(clipboard, clips->Put, stored.generation, exported.transfer);
+                        status = stored.status;
+                        if (stored.status == clips->Ok && action == desk->CutSelection) {
+                            cut := panecall(windows[active - 1], panes->CutSelection, "",
+                                ref Uibridge->Message(codec->Request, 0, 0, exported.revision,
+                                                     exported.rangefirst, exported.rangelast, ""));
+                            status = cut.status;
+                        }
+                    }
+                }
+                if (status != 0) {
+                    note = "Session clipboard: command rejected; no source edit. Requires a fresh selection, valid Unicode and at most 64 KiB.";
+                } else if (note == "") {
+                    verb := "Copied";
+                    if (action == desk->CutSelection) {
+                        verb = "Cut";
+                    }
+                    if (action == desk->PasteSelection) {
+                        verb = "Pasted";
+                    }
+                    note = "Session clipboard: " + verb + " " + string stored.bytes + " bytes inside this IDE.";
+                }
+                panecall(windows[1], panes->SetText, note, nil);
+            }
+        } else if (action == desk->CancelClose) {
             closing = 0;
         } else if (action == desk->CloseEditor) {
             # A title button may target an inactive window. Change focus only
@@ -485,6 +572,7 @@ init()
             }
         }
     }
+    clipcall(clipboard, clips->Shutdown, 0, "");
     request.operation = desk->Shutdown;
     stopped := deskcall(layout, request);
     if (stopped.status != desk->Ok) {

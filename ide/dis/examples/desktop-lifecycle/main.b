@@ -54,7 +54,7 @@ init()
         raise "fail: lifecycle independent documents"; # Dirty belongs only to A.
     }
     table := desk->start(); # The layout process owns no Idecore source buffer.
-    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "A", changed.body, changed.caret, -1, nil); # Slot A.
+    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "A", changed.body, changed.caret, -1, 0, nil); # Slot A.
     view := layout(table, request); # Publish copied text, never the document heap.
     request.window = 4; # Keep B's stable identity distinct from A's.
     request.title = "B"; # Caption is presentation data only.

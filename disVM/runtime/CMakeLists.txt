@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.38.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.39.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -36,7 +36,7 @@ string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}"
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
 file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern int dvm_runtime_fast(int, int (*)(REG *), REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")
 # Source-view regeneration must never silently drop reviewed local adaptations.
-file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
+file(REMOVE "${view}/prepare.stamp" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/idehostmod.h")
 
 set(host_prepare_args)
 set(host_prepare_products)
@@ -59,9 +59,13 @@ if(DVM_RUNTIME_NATIVE_DEMO)
   list(APPEND host_prepare_products "${view}/nativedemo_native.h")
 endif()
 file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h" "${u}/include/vmfetch.h" "${u}/include/vmchannel.h")
-add_custom_command(OUTPUT "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
+# One owning target prepares this mutable source view. Consumers must never
+# independently execute the same rewriting command in parallel Make subgraphs.
+add_custom_command(OUTPUT "${view}/prepare.stamp"
+ BYPRODUCTS "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
+ COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
  DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
@@ -70,7 +74,7 @@ set(sources)
 foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
-add_custom_target(disvm_runtime_sources DEPENDS "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
+add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
 add_executable(disvm main.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
@@ -103,8 +107,8 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
-set(module_names idecore ideworkspace idecompiler idebuildpanel ideartifact idedeskpane idedesktop workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
-set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
+set(module_names idedeskclip idecore ideworkspace idecompiler idebuildpanel ideartifact idedeskpane idedesktop workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
+set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/bridge/idecompiler.b" "${root}/ide/dis/bridge/idebuildpanel.b" "${root}/ide/dis/bridge/ideartifact.b" "${root}/ide/dis/bridge/idedeskpane.b" "${root}/ide/dis/bridge/idedesktop.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -404,6 +408,16 @@ if(DVM_RUNTIME_EDITOR)
       add_executable(disvm_window_events_test test_window_events.c editor_window_events.c)
       target_include_directories(disvm_window_events_test PRIVATE "${root}/disVM/include" "${DVM_FLASHVM_SOURCE_ROOT}/include")
       target_link_libraries(disvm_window_events_test PRIVATE SDL2::SDL2)
+      if(UNIX AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        add_executable(disvm_desktop_touch_test test_desktop_touch.c)
+        get_target_property(editor_includes disvm-editor INCLUDE_DIRECTORIES)
+        target_include_directories(disvm_desktop_touch_test PRIVATE ${editor_includes} "${DVM_FLASHVM_SOURCE_ROOT}/include")
+        target_compile_definitions(disvm_desktop_touch_test PRIVATE DVM_EDITOR_SDL=1)
+        target_compile_options(disvm_desktop_touch_test PRIVATE -ffunction-sections -fdata-sections)
+        target_link_options(disvm_desktop_touch_test PRIVATE -Wl,--gc-sections)
+        target_link_libraries(disvm_desktop_touch_test PRIVATE SDL2::SDL2 m)
+        add_test(NAME disvm_desktop_native_contacts COMMAND disvm_desktop_touch_test)
+      endif()
       add_test(NAME disvm_sdl_window_lifecycle COMMAND disvm_window_events_test)
       set_tests_properties(disvm_sdl_window_lifecycle PROPERTIES ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy")
     endif()
@@ -1240,5 +1254,60 @@ if(DVM_RUNTIME_TESTS)
       --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis")
     set_tests_properties(disvm_desktop_pointer_tutorial_${mode} PROPERTIES TIMEOUT 60
       PASS_REGULAR_EXPRESSION "PASS desktop pointer tutorial:")
+  endforeach()
+endif()
+
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
+    -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis" "${root}/ide/dis/examples/desktop-clipboard/main.b"
+  DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop-clipboard/main.b" ${module_headers} VERBATIM)
+add_custom_target(disvm_desktop_clipboard_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis")
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    set(dispatch --jit)
+    if(mode STREQUAL "interpreter")
+      set(dispatch --no-jit)
+    endif()
+    add_test(NAME disvm_desktop_clipboard_tutorial_${mode} COMMAND "$<TARGET_FILE:disvm>" ${dispatch}
+      --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/desktop-clipboard.dis")
+    set_tests_properties(disvm_desktop_clipboard_tutorial_${mode} PROPERTIES TIMEOUT 60
+      PASS_REGULAR_EXPRESSION "PASS desktop clipboard tutorial:")
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_clipboard_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_clipboard.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_desktop_clipboard_${mode} PROPERTIES TIMEOUT 180)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_TESTS)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/deskclip-test.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/deskclip-test.dis"
+      "${root}/ide/dis/tests/deskclip_test.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/tests/deskclip_test.b" ${module_headers} VERBATIM)
+  add_custom_target(disvm_deskclip_check ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/deskclip-test.dis")
+  foreach(mode jit interpreter)
+    set(dispatch --jit)
+    if(mode STREQUAL "interpreter")
+      set(dispatch --no-jit)
+    endif()
+    add_test(NAME disvm_desktop_clipboard_guards_${mode} COMMAND "$<TARGET_FILE:disvm>" ${dispatch}
+      --quantum 1 --max-instructions 50000000 "${CMAKE_CURRENT_BINARY_DIR}/deskclip-test.dis")
+    set_tests_properties(disvm_desktop_clipboard_guards_${mode} PROPERTIES TIMEOUT 90
+      PASS_REGULAR_EXPRESSION "PASS desktop clipboard guards:")
+  endforeach()
+endif()
+
+# Exercise normalized gestures against actual Dis policy and MovieClip pixels.
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_workspace_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_workspace.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" ${mode})
+    set_tests_properties(disvm_desktop_workspace_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

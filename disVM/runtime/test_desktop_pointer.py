@@ -34,14 +34,14 @@ def main():
     with tempfile.TemporaryDirectory(prefix="MovieClip selection ") as directory:
         work = Path(directory)
         original = "abcd\nsecond"
-        click = [mouse(117, 105), mouse(117, 105, 3)]
+        click = [mouse(145, 105), mouse(145, 105, 3)]
         text, _, _, _ = session(
             runtime, module, font, mode, work, original, click + [envelope(5, text="X")]
         )
         if text != "abXcd\nsecond":
             raise RuntimeError("glyph click did not place the source caret at scalar two")
 
-        drag = [mouse(104, 105), mouse(124, 105, 2), mouse(124, 105, 3)]
+        drag = [mouse(132, 105), mouse(152, 105, 2), mouse(152, 105, 3)]
         text, _, _, capture = session(runtime, module, font, mode, work, original, drag, False)
         trace = (work / "trace.txt").read_text()
         selections = re.findall(r"SELECTION \d+ 1 (-?\d+) (-?\d+)", trace)
@@ -57,11 +57,11 @@ def main():
             raise RuntimeError("typing did not replace the owner-admitted drag selection")
 
         shift = [
-            mouse(111, 105),
-            mouse(111, 105, 3),
+            mouse(139, 105),
+            mouse(139, 105, 3),
             envelope(4, 16, 1),
-            mouse(124, 105),
-            mouse(124, 105, 3),
+            mouse(152, 105),
+            mouse(152, 105, 3),
             envelope(4, 16, 0),
             envelope(5, text="Q"),
         ]
@@ -70,10 +70,10 @@ def main():
             raise RuntimeError("Shift click lost the document's original anchor")
 
         cancelled = [
-            mouse(104, 105),
-            mouse(124, 105, 2),
+            mouse(132, 105),
+            mouse(152, 105, 2),
             envelope(6),
-            mouse(111, 105, 3),
+            mouse(139, 105, 3),
             envelope(5, text="Q"),
         ]
         text, _, _, _ = session(runtime, module, font, mode, work, original, cancelled)
@@ -108,10 +108,10 @@ def main():
         # A request injected outside native pointer resolution still needs the
         # exact live view ticket. Stale scalar metadata cannot move the endpoint.
         stale = [
-            mouse(104, 105),
-            mouse(124, 105, 2),
+            mouse(132, 105),
+            mouse(152, 105, 2),
             envelope(1, 65572, 0, "00000002000000010000000100000000", 110, 105),
-            mouse(111, 105, 3),
+            mouse(139, 105, 3),
             envelope(5, text="Q"),
         ]
         text, _, _, _ = session(runtime, module, font, mode, work, original, stale)
@@ -119,10 +119,10 @@ def main():
             raise RuntimeError("stale view proposal changed the source selection")
 
         malformed = [
-            mouse(104, 105),
-            mouse(124, 105, 2),
+            mouse(132, 105),
+            mouse(152, 105, 2),
             envelope(1, 65572, 0, "z" * 32, 110, 105),
-            mouse(111, 105, 3),
+            mouse(139, 105, 3),
             envelope(5, text="Q"),
         ]
         text, _, _, _ = session(runtime, module, font, mode, work, original, malformed)
@@ -136,7 +136,7 @@ def main():
             mode,
             work,
             "π😀abcd\r\nnext",
-            [mouse(430, 105), mouse(430, 105, 3), envelope(5, text="X")],
+            [mouse(458, 105), mouse(458, 105, 3), envelope(5, text="X")],
         )
         if text != "π😀abcdX\r\nnext":
             raise RuntimeError("glyph byte/Unicode scalar conversion or CRLF preservation failed")
@@ -148,7 +148,7 @@ def main():
             mode,
             work,
             "a" * 400,
-            [mouse(117, 123), mouse(117, 123, 3), envelope(5, text="X")],
+            [mouse(145, 123), mouse(145, 123, 3), envelope(5, text="X")],
         )
         if len(text) != 401 or text.count("X") != 1 or not 40 <= text.index("X") <= 80:
             raise RuntimeError("wrapped glyph row was mapped to a logical-line guess")
@@ -159,7 +159,7 @@ def main():
             mode,
             work,
             "\tabcd\nnext",
-            [mouse(430, 105), mouse(430, 105, 3), envelope(5, text="X")],
+            [mouse(458, 105), mouse(458, 105, 3), envelope(5, text="X")],
         )
         if text != "\tabcdX\nnext":
             raise RuntimeError("tabbed field measurement differs from actual text layout")
@@ -168,8 +168,8 @@ def main():
             mouse(120, 80),
             mouse(220, 180, 2),
             mouse(220, 180, 3),
-            mouse(217, 205),
-            mouse(217, 205, 3),
+            mouse(245, 205),
+            mouse(245, 205, 3),
             envelope(5, text="X"),
         ]
         text, _, scrolls, _ = session(runtime, module, font, mode, work, original, moved)

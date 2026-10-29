@@ -29,7 +29,8 @@ typedef struct DeskItem
     unsigned long width;  /* Bounded local extent. */
     unsigned long height; /* Bounded local extent. */
     unsigned long mirror; /* Optional source window snapshot in this scene. */
-    unsigned long style;  /* Palette 0..4. */
+    unsigned long line;   /* One-based logical source line, zero for non-editor panes. */
+    unsigned long style;  /* Palette 0..6; line origin is decoded separately. */
     long anchor;          /* Clipped Unicode selection endpoint, -1 hides selection. */
     long caret;           /* Unicode position, -1 disables the caret. */
     char text[DESK_TEXT]; /* Owned counted text, not evaluated. */
@@ -50,12 +51,17 @@ static DeskItem items[DESK_SLOTS];        /* Copied staged descriptors. */
 static unsigned int expected;             /* Exact declared item count. */
 static unsigned int received;             /* Complete staged descriptors. */
 static unsigned long ticket;              /* Committed view token. */
+static unsigned long tablezoom = 100;     /* Uniform scale of the table MovieClip only. */
 static unsigned long offset;              /* Table scroll magnitude. */
 static unsigned int width;                /* Committed canvas pixels. */
 static unsigned int height;               /* Committed canvas pixels. */
 static int pending;                       /* A declared scene is being assembled. */
-static int trace;  /* Explicit replay diagnostic mode; ordinary windows do not dump source text. */
-static int active; /* A desktop scene has been admitted. */
+static int trace; /* Explicit replay diagnostic mode; ordinary windows do not dump source text. */
+static FVM_Path *text_paths[DESK_SLOTS];       /* Owner-local untransformed glyph outlines. */
+static DeskItem text_keys[DESK_SLOTS];         /* Immutable layout keys; position is deliberately excluded. */
+static unsigned char *drag_pixels[DESK_SLOTS]; /* Owned bounded complete window snapshots. */
+static DeskItem drag_keys[DESK_SLOTS];         /* Content/geometry keys for copied drag pixels. */
+static int active;                             /* A desktop scene has been admitted. */
 
 
 /* Decode one canonical hex word from a checked eight-byte span; output on success. */
@@ -124,16 +130,36 @@ static FVM_Object *child(FVM_Object *parent, const char *name, unsigned int dept
 
 /* Build one solid drawing using actual MovieClip drawing methods. The copied
  * palette/extent are values; output is FlashVM-managed graphics, not a C mock. */
-static int box(FVM_Object *clip, double wide, double high, unsigned long rgb)
+static int box(FVM_Object *clip, double wide, double high, unsigned long rgb, unsigned long border)
 {
-    FVM_Value args[2];
+    FVM_Value args[3];
     FVM_Value ignored;
     int index;
-    double x[5] = {0, wide, wide, 0, 0};
-    double y[5] = {0, 0, high, high, 0};
+    double radius = fmin(7, fmin(wide, high) / 4);
+    double x[25];
+    double y[25];
+    /* Six segments per corner keep the outline independent of font/raster jobs. */
+    for (index = 0; index < 25; ++index)
+    {
+        int corner = (index % 24) / 6;
+        double angle = ((index % 24) * 15.0 + 180.0) * 3.141592653589793 / 180.0;
+        double cx = corner == 0 || corner == 3 ? radius : wide - radius;
+        double cy = corner < 2 ? radius : high - radius;
+        x[index] = cx + radius * cos(angle);
+        y[index] = cy + radius * sin(angle);
+    }
     if (fvm_object_call(owner, clip, "clear", 0, NULL, &ignored) != FVM_OK)
     {
         return 0;
+    }
+    {
+        fvm_value_number(&args[0], border ? 2 : 0);
+        fvm_value_number(&args[1], border);
+        fvm_value_number(&args[2], 100);
+        if (fvm_object_call(owner, clip, "lineStyle", 3, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
     }
     fvm_value_number(&args[0], rgb);
     fvm_value_number(&args[1], 100);
@@ -141,7 +167,7 @@ static int box(FVM_Object *clip, double wide, double high, unsigned long rgb)
     {
         return 0;
     }
-    for (index = 0; index < 5; ++index)
+    for (index = 0; index < 25; ++index)
     {
         fvm_value_number(&args[0], x[index]);
         fvm_value_number(&args[1], y[index]);
@@ -254,9 +280,9 @@ int dvm_desktop_message(const DVM_UIMessage *message)
     if (message->code == DVM_DESK_BEGIN)
     {
         if (pending || message->first < 240 || message->first > 2048 || message->second < 160 ||
-            message->second > 2048 || message->size != 24 || !word(message->text, &ticket) || !ticket ||
+            message->second > 2048 || message->size != 32 || !word(message->text, &ticket) || !ticket ||
             !word(message->text + 8, &count) || count >= DESK_SLOTS || !word(message->text + 16, &offset) ||
-            offset > 4096)
+            offset > 4096 || !word(message->text + 24, &tablezoom) || tablezoom < 10 || tablezoom > 180)
         {
             return 0;
         }
@@ -294,8 +320,8 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             return 0;
         }
     }
-    if (words[0] > 4 || words[1] > 4096 || words[2] > 4096 || !words[3] || words[3] > 2048 || !words[4] ||
-        words[4] > 2048 || words[5] > 4 || words[7] >= DESK_SLOTS)
+    if (words[0] > 4 || words[1] > 65536 || words[2] > 65536 || !words[3] || words[3] > 32768 || !words[4] ||
+        words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 || words[7] >= DESK_SLOTS)
     {
         return 0;
     }
@@ -323,7 +349,8 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         item->y = words[2];
         item->width = words[3];
         item->height = words[4];
-        item->style = words[5];
+        item->style = words[5] % 8;
+        item->line = words[5] / 8;
         item->mirror = words[7];
         item->anchor = words[8] == 0xffffffffUL ? -1 : (long)words[8];
         item->caret = words[6] == 0xffffffffUL ? -1 : (long)words[6];
@@ -370,7 +397,7 @@ static int text_layout(const DeskItem *content,
         return 0;
     }
     memset(options, 0, sizeof(*options));
-    options->max_width = content->width > 16 ? content->width - 16 : 1;
+    options->max_width = content->width > (content->line ? 44U : 16U) ? content->width - (content->line ? 44 : 16) : 1;
     options->line_height = font->ascent + font->descent + 2;
     options->alignment = FVM_TEXT_ALIGN_LEFT;
     {
@@ -462,7 +489,7 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
                 fvm_text_layout_destroy(layout);
                 return 0;
             }
-            localx -= 8;
+            localx -= item->line ? 36 : 8;
             localy -= 8;
             for (index = 0; index < metrics.line_count; ++index)
             {
@@ -588,8 +615,9 @@ static int caret_clip(FVM_Object *cursor, const DeskItem *content)
                 break;
             }
         }
-        ok = ok && number(cursor, "_x", 8 + x) && number(cursor, "_y", 8 + line.baseline - font.ascent) &&
-             box(cursor, 1, options.line_height, 0x203747UL);
+        ok = ok && number(cursor, "_x", (content->line ? 36 : 8) + x) &&
+             number(cursor, "_y", 8 + line.baseline - font.ascent) &&
+             box(cursor, 1, options.line_height, 0x203747UL, 0);
         break;
     }
     fvm_text_layout_destroy(layout);
@@ -657,7 +685,8 @@ static int selection_clip(FVM_Object *mark, const DeskItem *content)
             }
             if (wide > 0)
             {
-                ok = rectangle(mark, 8 + x, 8 + glyph.y - font.ascent, wide, options.line_height);
+                ok =
+                    rectangle(mark, (content->line ? 36 : 8) + x, 8 + glyph.y - font.ascent, wide, options.line_height);
             }
         }
     }
@@ -676,7 +705,8 @@ static int field_ink(FVM_Path *path,
                      const DeskItem *item,
                      const DeskItem *content,
                      FVM_RasterSurface *surface,
-                     FVM_RasterColor ink)
+                     FVM_RasterColor ink,
+                     int header)
 {
     FVM_RasterSurface tile;
     FVM_Affine shift;
@@ -686,6 +716,10 @@ static int field_ink(FVM_Path *path,
     int bottom = (int)ceil(world->y0 + world->yy * content->height);
     int row;
     int ok;
+    if (header && bottom > (int)ceil(world->y0 + world->yy * 24))
+    {
+        bottom = (int)ceil(world->y0 + world->yy * 24);
+    }
     if (left < 0)
     {
         left = 0;
@@ -744,11 +778,100 @@ static int field_ink(FVM_Path *path,
 }
 
 
+/* Draw logical source numbers beside the copied viewport. content/world are
+ * borrowed owner values; no document is read. Wrapped continuations are blank,
+ * and clipping suppresses labels crossing the window header or lower edge. */
+static int gutter(const DeskItem *content, const FVM_Affine *world, FVM_RasterSurface *surface)
+{
+    FVM_TextLayout *layout = NULL;
+    FVM_TextLayoutOptions options;
+    FVM_TextLayoutMetrics metrics;
+    FVM_FontMetrics font;
+    FVM_RasterColor ink = {100, 111, 126, 255};
+    size_t index;
+    size_t previous = 0;
+    unsigned long number_value = content->line;
+    unsigned long last_number = 0;
+    int ok = 1;
+    if (!number_value)
+    {
+        return 1;
+    }
+    if (!text_layout(content, &layout, &font, &options, &metrics))
+    {
+        return 0;
+    }
+    for (index = 0; index < metrics.line_count && ok; ++index)
+    {
+        FVM_TextLayoutLine line;
+        FVM_TextRun *run = NULL;
+        FVM_Path *path = NULL;
+        FVM_Affine placement = *world;
+        FVM_Result result;
+        double advance = 0;
+        double vertical = 0;
+        char label[32];
+        size_t byte;
+        if (fvm_text_layout_line(layout, index, &line) != FVM_OK)
+        {
+            ok = 0;
+            break;
+        }
+        if (!index)
+        {
+            previous = line.byte_end;
+            continue; /* The first copied line is the caption, never source. */
+        }
+        for (byte = previous; byte < line.byte_start; ++byte)
+        {
+            if (content->text[byte] == '\n' && index > 1)
+            {
+                ++number_value;
+            }
+        }
+        previous = line.byte_start;
+        if (number_value == last_number)
+        {
+            continue;
+        }
+        last_number = number_value;
+        placement.x0 += world->xx * 8;
+        placement.y0 += world->yy * (line.baseline + 8);
+        if (placement.y0 - font.ascent < 48 || placement.y0 > surface->height ||
+            placement.y0 > world->y0 + world->yy * content->height - 4)
+        {
+            continue;
+        }
+        snprintf(label, sizeof(label), "%lu", number_value);
+        result =
+            fvm_font_shape_configured(face, label, strlen(label), FVM_TEXT_LTR, 0, FVM_FONT_SHAPE_NO_KERNING, &run);
+        if (result == FVM_OK)
+        {
+            result = fvm_text_run_path(face, run, &path, &advance, &vertical);
+        }
+        if (result == FVM_OK)
+        {
+            result = fvm_path_transform(path, &placement);
+        }
+        if (result == FVM_OK)
+        {
+            result = fvm_path_draw(path, surface, ink, 0, 0);
+        }
+        fvm_path_destroy(path);
+        fvm_text_run_destroy(run);
+        ok = result == FVM_OK;
+    }
+    fvm_text_layout_destroy(layout);
+    return ok;
+}
+
+
 /* Paint one retained widget. AS owns object property placement; the adapter only
  * supplies copied bindings and invokes standard MovieClip/TextField primitives. */
 static int paint(DeskItem *item, FVM_RasterSurface *surface)
 {
-    static const unsigned long colors[5] = {0xeff2f1UL, 0xd4e7f1UL, 0x26343fUL, 0xffca69UL, 0x405968UL};
+    static const unsigned long colors[7] = {
+        0xeff2f1UL, 0xeff2f1UL, 0x26343fUL, 0xffca69UL, 0x405968UL, 0xeff2f1UL, 0xeff2f1UL};
     FVM_Object *clip;
     FVM_Object *label;
     FVM_Value value;
@@ -835,7 +958,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             {
                 return 0;
             }
-            ok = number(format, "size", 11) && number(format, "leading", 2);
+            ok = number(format, "size", item->parent == 3 && item->id >= 41 ? 9 : 11) && number(format, "leading", 2);
             fvm_value_undefined(&argument);
             argument.type = FVM_VALUE_OBJECT;
             argument.object = format;
@@ -861,9 +984,17 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             return 0;
         }
     }
-    if (!box(clip, content->width, content->height, colors[content->style]))
+    if (!box(clip,
+             content->width,
+             content->height,
+             colors[content->style],
+             item->id <= 8 && (content->style == 1 || content->style == 5) ? 0x2684dbUL : 0))
     {
         fprintf(stderr, "desktop box\n");
+        return 0;
+    }
+    if (item->id <= 8 && !rectangle(clip, 2, 2, content->width - 4, 22))
+    {
         return 0;
     }
     if (!binding("ideWidget", clip) || !binding("ideLabel", label) || !binding("ideTable", groups[1]) ||
@@ -887,7 +1018,8 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     GLOBAL_NUMBER("ideWidgetWidth", content->width);
     GLOBAL_NUMBER("ideWidgetHeight", content->height);
     GLOBAL_NUMBER("ideWidgetScale", scale * 100);
-    GLOBAL_NUMBER("ideLabelWidth", content->width > 12 ? content->width - 12 : 1);
+    GLOBAL_NUMBER("ideLabelWidth",
+                  content->width > (content->line ? 40U : 12U) ? content->width - (content->line ? 40 : 12) : 1);
     GLOBAL_NUMBER("ideLabelHeight", content->height > 12 ? content->height - 12 : 1);
 #undef GLOBAL_NUMBER
     {
@@ -903,6 +1035,12 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             fprintf(stderr, "desktop AS: %d\n", result);
             return 0;
         }
+        if (!number(groups[1], "_xscale", tablezoom) || !number(groups[1], "_yscale", tablezoom) ||
+            !number(groups[1], "_x", 84.0 * (1.0 - tablezoom / 100.0)) ||
+            !number(groups[1], "_y", 48.0 * (1.0 - tablezoom / 100.0) - offset))
+        {
+            return 0;
+        }
         if (fvm_object_get(owner, label, "text", &value) != FVM_OK || value.type != FVM_VALUE_STRING ||
             fvm_value_string_size(&value) != content->size || memcmp(value.string, content->text, content->size))
         {
@@ -916,6 +1054,13 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             {
                 return 0;
             }
+            printf("GEOMETRY %lu %lu %lu %lu %lu %lu\n",
+                   ticket,
+                   item->id,
+                   content->width,
+                   content->height,
+                   content->style,
+                   content->line);
             printf("MC %lu %lu %lu %.0f %.0f ", ticket, item->id, item->parent, actual.x0, actual.y0);
             for (byte = 0; byte < content->size; ++byte)
             {
@@ -927,16 +1072,36 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
                 printf("SELECTION %lu %lu %ld %ld\n", ticket, item->id, content->caret, content->anchor);
             }
         }
+        /* A minimized pane remains a typed source for its thumbnail. Do not
+         * submit its explicit hidden origin to the raster coordinate domain. */
+        if (item->id <= 8 && item->parent == 1 && item->x == 65536 && item->y == 65536)
+        {
+            return 1;
+        }
         result = fvm_movieclip_render(owner, clip, surface);
         if (result != FVM_OK)
         {
             fprintf(stderr, "desktop movie render: %d\n", result);
             return 0;
         }
-        result = fvm_textfield_path(owner, label, &path);
-        if (result != FVM_OK)
+        /* Moving a clip must not reshape every glyph. These outlines contain
+         * no GC pointers and are invalidated by every text/extent change. */
+        if (!text_paths[item->id] || text_keys[item->id].width != content->width ||
+            text_keys[item->id].height != content->height || text_keys[item->id].size != content->size ||
+            memcmp(text_keys[item->id].text, content->text, content->size))
         {
-            fprintf(stderr, "desktop text: %d\n", result);
+            fvm_path_destroy(text_paths[item->id]);
+            text_paths[item->id] = NULL;
+            result = fvm_textfield_path(owner, label, &text_paths[item->id]);
+            if (result != FVM_OK)
+            {
+                return 0;
+            }
+            text_keys[item->id] = *content;
+        }
+        if (fvm_path_create(&path) != FVM_OK || fvm_path_append(path, text_paths[item->id], NULL) != FVM_OK)
+        {
+            fvm_path_destroy(path);
             return 0;
         }
         result = world_matrix(clip, item->parent, &placement) ? FVM_OK : FVM_ERROR;
@@ -948,8 +1113,8 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     }
     {
         FVM_Affine world = placement;
-        placement.x0 += placement.xx * 6 + placement.xy * 6;
-        placement.y0 += placement.yx * 6 + placement.yy * 6;
+        placement.x0 += placement.xx * (content->line ? 34 : 6) + placement.xy * 6;
+        placement.y0 += placement.yx * (content->line ? 34 : 6) + placement.yy * 6;
 
         if (content->style == 2 || content->style == 4)
         {
@@ -957,9 +1122,22 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             ink.g = 242;
             ink.b = 244;
         }
+        FVM_Path *caption_path = NULL;
         ok = selection_clip(marks[item->id], content) && caret_clip(cursors[item->id], content) &&
-             fvm_path_transform(path, &placement) == FVM_OK &&
-             field_ink(path, cursors[item->id], marks[item->id], &world, item, content, surface, ink);
+             fvm_path_transform(path, &placement) == FVM_OK;
+        if (ok && content->line)
+        {
+            ok = fvm_path_create(&caption_path) == FVM_OK && fvm_path_append(caption_path, path, NULL) == FVM_OK;
+        }
+        ok = ok && field_ink(path, cursors[item->id], marks[item->id], &world, item, content, surface, ink, 0);
+        if (ok && caption_path)
+        {
+            FVM_RasterColor caption_ink = {176, 36, 48, 255};
+            ok = field_ink(
+                caption_path, cursors[item->id], marks[item->id], &world, item, content, surface, caption_ink, 1);
+        }
+        fvm_path_destroy(caption_path);
+        ok = ok && gutter(content, &world, surface);
     }
     fvm_path_destroy(path);
     return ok;
@@ -989,6 +1167,12 @@ static int retire(const unsigned char *present)
             {
                 return 0;
             }
+            free(drag_pixels[id]);
+            drag_pixels[id] = NULL;
+            fvm_path_destroy(text_paths[id]);
+            text_paths[id] = NULL;
+            memset(&text_keys[id], 0, sizeof(text_keys[id]));
+            memset(&drag_keys[id], 0, sizeof(drag_keys[id]));
             if (trace)
             {
                 printf("RETIRED %lu %u\n", ticket, id);
@@ -996,6 +1180,109 @@ static int retire(const unsigned char *present)
         }
     }
     return 1;
+}
+
+
+/* Composite an unchanged complete window image, with 90% opacity during gestures.
+ * The cache owns copied pixels, never VM objects. Return one on a matching image,
+ * zero to request normal painting. Current-frame pixels supply the 10% backdrop. */
+static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
+{
+    const DeskItem *key = &drag_keys[item->id];
+    unsigned char *pixels = drag_pixels[item->id];
+    int top = (int)item->y - (int)offset;
+    int x;
+    int y;
+    if (tablezoom != 100 || item->id > 8 || item->parent != 1 || !pixels ||
+        (key->style != item->style &&
+         !((item->style == 5 && key->style == 1) || (item->style == 6 && key->style == 0))) ||
+        key->width != item->width || key->height != item->height || key->size != item->size ||
+        key->caret != item->caret || key->anchor != item->anchor || key->line != item->line ||
+        memcmp(key->text, item->text, item->size))
+    {
+        return 0;
+    }
+    if (!number(clips[item->id], "_x", item->x) || !number(clips[item->id], "_y", item->y))
+    {
+        return 0;
+    }
+    for (y = 0; y < (int)item->height; ++y)
+    {
+        if (top + y < 48 || top + y >= (int)surface->height)
+        {
+            continue;
+        }
+        for (x = 0; x < (int)item->width; ++x)
+        {
+            size_t target;
+            size_t source;
+            unsigned int channel;
+            int dx = x < 7 ? 7 - x : (x >= (int)item->width - 7 ? x - ((int)item->width - 8) : 0);
+            int dy = y < 7 ? 7 - y : (y >= (int)item->height - 7 ? y - ((int)item->height - 8) : 0);
+            if (item->x + x >= surface->width || (dx && dy && dx * dx + dy * dy > 49))
+            {
+                continue;
+            }
+            target = (size_t)(top + y) * surface->stride + (item->x + x) * 4;
+            source = ((size_t)y * item->width + x) * 4;
+            for (channel = 0; channel < 3; ++channel)
+            {
+                surface->pixels[target + channel] =
+                    (unsigned char)(((item->style == 5 || item->style == 6)
+                                         ? (pixels[source + channel] * 9 + surface->pixels[target + channel] + 5) / 10
+                                         : pixels[source + channel]));
+            }
+        }
+    }
+    if (trace)
+    {
+        size_t byte;
+        printf("DRAGCACHE %lu %lu\n", ticket, item->id);
+        printf(
+            "GEOMETRY %lu %lu %lu %lu %lu %lu\n", ticket, item->id, item->width, item->height, item->style, item->line);
+        printf("MC %lu %lu %lu %lu %d ", ticket, item->id, item->parent, item->x, top);
+        for (byte = 0; byte < item->size; ++byte)
+        {
+            printf("%02x", (unsigned char)item->text[byte]);
+        }
+        printf("\n");
+    }
+    return 1;
+}
+
+
+/* Retain a bounded complete window image before transient blending. A partial
+ * offscreen image is never mistaken for a full snapshot. Allocation failure
+ * merely disables the optimization; ordinary painting remains authoritative. */
+static void remember_window(const DeskItem *item, const FVM_RasterSurface *surface)
+{
+    int top = (int)item->y - (int)offset;
+    unsigned char *pixels;
+    unsigned int y;
+    size_t size;
+    if (tablezoom != 100 || item->id > 8 || item->parent != 1 || top < 48 || item->x + item->width > surface->width ||
+        top + item->height > surface->height)
+    {
+        return;
+    }
+    size = (size_t)item->width * item->height * 4;
+    if (size > 4U * 1024U * 1024U)
+    {
+        return;
+    }
+    pixels = realloc(drag_pixels[item->id], size);
+    if (!pixels)
+    {
+        return;
+    }
+    drag_pixels[item->id] = pixels;
+    for (y = 0; y < item->height; ++y)
+    {
+        memcpy(pixels + (size_t)y * item->width * 4,
+               surface->pixels + (top + y) * surface->stride + item->x * 4,
+               item->width * 4);
+    }
+    drag_keys[item->id] = *item;
 }
 
 
@@ -1020,18 +1307,98 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
     memset(surface->pixels, 255, surface->stride * surface->height);
     for (index = 0; index < received; ++index)
     {
-        if (!paint(&items[index], surface))
+        unsigned char *behind = NULL;
+        DeskItem *item = &items[index];
+        if (drag_image(item, surface))
         {
-            fprintf(stderr, "desktop paint slot=%lu parent=%lu\n", items[index].id, items[index].parent);
+            continue;
+        }
+        if (item->id <= 8 && (item->style == 5 || item->style == 6))
+        {
+            behind = malloc(surface->stride * surface->height);
+            if (!behind)
+            {
+                return 0;
+            }
+            memcpy(behind, surface->pixels, surface->stride * surface->height);
+        }
+        if (!paint(item, surface))
+        {
+            free(behind);
+            fprintf(stderr, "desktop paint slot=%lu parent=%lu\n", item->id, item->parent);
             return 0;
+        }
+        remember_window(item, surface);
+        if (behind)
+        {
+            /* The copied background belongs to this frame, never to a VM heap.
+             * Blend the complete dragged window by 90%; release before return. */
+            int x;
+            int y;
+            FVM_Affine world;
+            int top;
+            int left;
+            int right;
+            int bottom;
+            if (!world_matrix(clips[item->id], item->parent, &world))
+            {
+                free(behind);
+                return 0;
+            }
+            top = (int)floor(world.y0);
+            left = (int)floor(world.x0);
+            right = (int)ceil(world.x0 + world.xx * item->width);
+            bottom = (int)ceil(world.y0 + world.yy * item->height);
+            for (y = top < 48 ? 48 : top; y < bottom && y < (int)surface->height; ++y)
+            {
+                for (x = left < 0 ? 0 : left; x < right && x < (int)surface->width; ++x)
+                {
+                    size_t byte = (size_t)y * surface->stride + (size_t)x * 4;
+                    unsigned int channel;
+                    for (channel = 0; channel < 3; ++channel)
+                    {
+                        surface->pixels[byte + channel] =
+                            (unsigned char)((surface->pixels[byte + channel] * 9 + behind[byte + channel] + 5) / 10);
+                    }
+                }
+            }
+            free(behind);
         }
     }
     memcpy(visible, present, sizeof(visible));
     if (trace)
     {
+        printf("TABLEZOOM %lu %lu\n", ticket, tablezoom);
         printf("DESKTOP %lu %lu %u\n", ticket, offset, received);
     }
     return 1;
+}
+
+
+/* Hit the visible header in actual paint order. Coordinates are copied canvas
+ * pixels; no source or touch policy is acquired. Return zero for occlusion. */
+int dvm_desktop_header(double x, double y)
+{
+    unsigned int ordinal;
+    if (!active || pending || !isfinite(x) || !isfinite(y) || y < 48)
+    {
+        return 0;
+    }
+    for (ordinal = received; ordinal > 0; --ordinal)
+    {
+        DeskItem *item = &items[ordinal - 1];
+        FVM_Affine world;
+        if (!world_matrix(clips[item->id], item->parent, &world))
+        {
+            return 0;
+        }
+        if (x >= world.x0 && y >= world.y0 && x < world.x0 + world.xx * item->width &&
+            y < world.y0 + world.yy * item->height)
+        {
+            return item->id <= 8 && y < world.y0 + world.yy * 24;
+        }
+    }
+    return 0;
 }
 
 
@@ -1051,6 +1418,15 @@ unsigned long dvm_desktop_ticket(void)
  * pointers become invalid after context teardown and must never reach workers. */
 void dvm_desktop_destroy(void)
 {
+    unsigned int index;
+    for (index = 0; index < DESK_SLOTS; ++index)
+    {
+        fvm_path_destroy(text_paths[index]);
+        text_paths[index] = NULL;
+        free(drag_pixels[index]);
+        drag_pixels[index] = NULL;
+    }
+    memset(text_keys, 0, sizeof(text_keys));
     if (owner && root)
     {
         fvm_gc_unpin(owner, root);
