@@ -93,7 +93,7 @@ init()
     }
     windows[0] = panes->start(panes->Editor, path, source);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1: Help. PageUp/PageDown: help pages. F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor.\nClick a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[2] = panes->start(panes->Help, "", "F1: Help. PageUp/PageDown: help pages. F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console stay open.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
     windows[3] = panes->start(panes->Editor, "", "");
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -114,6 +114,7 @@ init()
     control := 0;
     shift := 0;
     modal := 0;
+    closing := 0; # Stable editor slot retained while its dirty-close decision is modal.
     field := fields->create();
     finished := 0;
     for (;;) {
@@ -188,11 +189,13 @@ init()
             raise "fail: desktop input flags";
         }
         action := 0;
+        approved := 0; # Only an admitted click on the explicit discard control.
         if (event.kind == codec->Request && event.code == host->Quit) {
             if (!dirty || event.flags == 1) {
                 finished = 1;
                 continue;
             }
+            closing = 0;
             request.operation = desk->Tool;
             request.window = desk->Quit;
             view = deskcall(layout, request);
@@ -221,6 +224,27 @@ init()
             shift = 0;
             request.operation = desk->Cancel;
             view = deskcall(layout, request);
+        }
+        if (closing != 0) {
+            # Only explicit close/cancel controls may resolve this decision.
+            # No keyboard edit, focus switch or new file may alter its target.
+            if (event.kind == codec->Key && event.flags == 1 && event.code == 27) {
+                closing = 0;
+                request.operation = desk->Tool;
+                request.window = 0;
+                view = deskcall(layout, request);
+                continue;
+            }
+            left := width - 424;
+            if (left < 84) {
+                left = 84;
+            }
+            if (event.kind != codec->Request || event.code != desk->PointerEvent ||
+                event.first < left + 8 || event.first >= width - 120 ||
+                !((event.second >= 320 && event.second < 356) ||
+                  (event.second >= 364 && event.second < 400))) {
+                continue;
+            }
         }
         if (modal != 0) {
             if (event.kind == codec->Key && event.flags == 1 && event.code == 27) {
@@ -262,8 +286,16 @@ init()
                         request.x = -120;
                     }
                 }
+                previousdrawer := view.drawer;
                 view = deskcall(layout, request);
                 action = view.action;
+                left := width - 424;
+                if (left < 84) {
+                    left = 84;
+                }
+                approved = action == desk->CloseEditor && previousdrawer == desk->CloseEditor &&
+                    phase == 1 && code == 1 && event.first >= left + 8 && event.first < width - 120 &&
+                    event.second >= 320 && event.second < 356;
                 if (action == desk->Focus) {
                     panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
                     active = view.focus;
@@ -297,13 +329,45 @@ init()
                 action = desk->OpenFile;
             } else if (control && event.code == 78) {
                 action = desk->NewEditor;
+            } else if (control && event.code == 87) {
+                action = desk->CloseEditor;
             } else if (event.code == 119) {
                 result := panecall(windows[active - 1], panes->Diagnostic, "", nil);
                 panecall(windows[1], panes->SetText, result.diagnostic, nil);
                 continue;
             }
         }
-        if (action == desk->OpenFile || action == desk->SaveFile) {
+        if (action == desk->CancelClose) {
+            closing = 0;
+        } else if (action == desk->CloseEditor) {
+            # A title button may target an inactive window. Change focus only
+            # after layout admission and preserve every other document owner.
+            if (view.focus != active) {
+                panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+                active = view.focus;
+            }
+            current := panecall(windows[active - 1], panes->Snapshot, "", nil);
+            if (current.kind != panes->Editor) {
+                panecall(windows[1], panes->SetText, "Help and build console stay open. Select an editor to close.", nil);
+            } else if (current.revision != current.saved && closing == 0 && !approved) {
+                closing = active;
+                panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+                request.operation = desk->Tool;
+                request.window = desk->CloseEditor;
+                view = deskcall(layout, request);
+            } else {
+                # Consume the terminal acknowledgement before reusing the slot.
+                panecall(windows[active - 1], panes->Shutdown, "", nil);
+                windows[active - 1] = nil;
+                request.operation = desk->Remove;
+                request.window = active;
+                view = deskcall(layout, request);
+                active = view.focus;
+                closing = 0;
+            }
+            control = 0;
+            shift = 0;
+        } else if (action == desk->OpenFile || action == desk->SaveFile) {
             current := panecall(windows[active - 1], panes->Snapshot, "", nil);
             if (current.kind == panes->Editor) {
                 if (action == desk->SaveFile && current.path != "" && !shift) {
