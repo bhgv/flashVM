@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.59.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.63.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -189,3 +189,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Знаковые SWF div/mod и удаление неиспользуемой безопасной арифметики](doc/SWF_INT_DIVMOD.ru.md).
 
 [Paired integer rules / парные целочисленные правила](doc/INTEGER_PAIRS.md), [RU](doc/INTEGER_PAIRS.ru.md).
+
+[Известные биты int32 и динамическая арифметика SWF](doc/INTEGER_FACTS.ru.md): общий C99-анализ, сохранение ошибок и пример.

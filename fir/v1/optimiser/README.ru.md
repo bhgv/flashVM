@@ -52,3 +52,5 @@ COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` ката�
 [Перезаписанные скаляры — 0.46](../doc/SCALAR_STORES.ru.md): удаление ненаблюдаемых приватных записей с сохранением последних значений и границ исключений/владения.
 
 [Total integer identities — FIR 0.59](../doc/INTEGER_IDENTITIES.md) · [Русский](../doc/INTEGER_IDENTITIES.ru.md).
+
+[Известные биты int32 и динамическая арифметика SWF](../doc/INTEGER_FACTS.ru.md): общий C99-анализ, сохранение ошибок и пример.

@@ -1,5 +1,7 @@
 # Проверяемые сдвиги int32 в SWF — FIR 0.60
 
+FIR0.63: [known-bit proofs / доказательства по битам](INTEGER_FACTS.ru.md) additionally admit bounded dynamic counts/nonzero divisors and literal copies. The literal-only boundary below describes the original release.
+
 [English](SWF_INT_SHIFTS.md) · [Общий контракт](INT_SHIFTS.ru.md) ·
 [Пример с комментариями](../examples/dis/int-shifts-swf.b) ·
 [Проверка C99 API](../tests/swf_int_shifts_api.c)

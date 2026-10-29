@@ -111,3 +111,5 @@ big/table. Повторные запросы C99 проверяют восста
 проверку ненулевого литерала в fir_object и fir_run(FIR_OBJECT). Неизвестный
 делитель/ноль отвергаются до записи; явная оптимизация раскрывает константы
 и убирает неиспользуемые безопасные i32/big операции, сохраняя эффекты производителей.
+
+FIR0.63 adds FirIntegerFacts and shared known-zero/one analysis. [Full contract / Полный контракт](../doc/INTEGER_FACTS.ru.md). Both fir_object and fir_run(FIR_OBJECT) accept bit-proven dynamic counts/divisors; failures still stage output. Facts are successful-evaluation properties, not producer-effect proofs.

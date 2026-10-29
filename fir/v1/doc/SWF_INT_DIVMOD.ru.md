@@ -1,5 +1,7 @@
 # Знаковые деление и остаток int32 в SWF — FIR 0.61
 
+FIR0.63: [known-bit proofs / доказательства по битам](INTEGER_FACTS.ru.md) additionally admit bounded dynamic counts/nonzero divisors and literal copies. The literal-only boundary below describes the original release.
+
 [English](SWF_INT_DIVMOD.md) · [Исходник с комментариями](../examples/dis/int-divmod-swf.b) ·
 [C99 API](../tests/swf_int_divmod_api.c) · [Арифметика int](INT_ARITHMETIC.ru.md) ·
 [Сдвиги](SWF_INT_SHIFTS.ru.md)

@@ -52,3 +52,5 @@ channels and trace remain even when their results are unused.
 [Overwritten scalar stores — 0.46](../doc/SCALAR_STORES.md): remove unobserved private writes while preserving final state and exception/ownership boundaries.
 
 [Total integer identities — FIR 0.59](../doc/INTEGER_IDENTITIES.md) · [Русский](../doc/INTEGER_IDENTITIES.ru.md).
+
+[Known int32 bits and dynamic checked SWF arithmetic](../doc/INTEGER_FACTS.md): shared C99 proofs, preserved producer errors and source example.

@@ -1,4 +1,4 @@
-# Актуальное покрытие — FIR 0.62
+# Актуальное покрытие — FIR 0.63
 
 [English](COVERAGE.md) · [Грамматика](../compiler/src1.atg) · [Публичный API](../include/fir.h) · [Архитектура компиляторов](../../../compiler/README.ru.md)
 
@@ -43,3 +43,5 @@
 [Деление/остаток SWF и DCE безопасной арифметики](SWF_INT_DIVMOD.ru.md): доказательство, C99/IDE, пример и правила отказа.
 
 [Парные целочисленные сокращения/поглощение](INTEGER_PAIRS.ru.md): точные правила с сохранением ошибок производителей.
+
+[Known int32 bits / Известные биты int32](INTEGER_FACTS.ru.md): bounded dynamic counts/nonzero values; no memory inference.

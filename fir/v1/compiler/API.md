@@ -109,3 +109,5 @@ when a copy/computation must first expose its literal count.
 in fir_object and fir_run(FIR_OBJECT). Invalid/unknown divisors reject before
 writing; explicit opt can expose literals and remove unused proven-total
 i32/big operations without discarding producer effects.
+
+FIR0.63 adds FirIntegerFacts and shared known-zero/one analysis. [Full contract / Полный контракт](../doc/INTEGER_FACTS.md). Both fir_object and fir_run(FIR_OBJECT) accept bit-proven dynamic counts/divisors; failures still stage output. Facts are successful-evaluation properties, not producer-effect proofs.

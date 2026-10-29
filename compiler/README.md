@@ -45,3 +45,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [Signed int32 SWF div/mod and proven-total arithmetic DCE](../fir/v1/doc/SWF_INT_DIVMOD.md).
 
 [Paired integer rules / парные целочисленные правила](../fir/v1/doc/INTEGER_PAIRS.md), [RU](../fir/v1/doc/INTEGER_PAIRS.ru.md).
+
+[Known int32 bits and dynamic checked SWF arithmetic](../fir/v1/doc/INTEGER_FACTS.md): shared C99 proofs, preserved producer errors and source example.

@@ -211,3 +211,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 
 [integer-pairs.b](integer-pairs.b) тремя способами восстанавливает i в цикле
 и возвращает42. Все строки прокомментированы. [Правила, API/CLI и границы](../../doc/INTEGER_PAIRS.ru.md).
+
+[integer-facts.b](integer-facts.b): known-bit dynamic shift/divisor tutorial; raw/optimized Dis and SWF return42. [Guide / Руководство](../../doc/INTEGER_FACTS.ru.md).

@@ -1,4 +1,4 @@
-# Current coverage — FIR tools 0.62
+# Current coverage — FIR tools 0.63
 
 [Русский](COVERAGE.ru.md) · [Source grammar](../compiler/src1.atg) · [Public API](../include/fir.h) · [Compiler architecture](../../../compiler/README.md)
 
@@ -43,3 +43,5 @@ The teaching wrapper calls/traces value(); it is not Inferno's general init ABI.
 [Signed SWF div/mod and total-arithmetic DCE](SWF_INT_DIVMOD.md): exact proof, C99/IDE paths, source example and rejection rules.
 
 [Paired integer cancellation/absorption](INTEGER_PAIRS.md): exact modular rules with preserved producer errors.
+
+[Known int32 bits / Известные биты int32](INTEGER_FACTS.md): bounded dynamic counts/nonzero values; no memory inference.
