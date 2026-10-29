@@ -388,6 +388,11 @@ EOF
             copy_file "$ROOT/disVM/runtime/test_compiler_service.py" "$destination/examples/artifact-export/test_compiler_service.py"
             copy_file "$ROOT/ide/ARTIFACT-EXPORT.md" "$destination/ARTIFACT-EXPORT.md"
             copy_file "$ROOT/ide/ARTIFACT-EXPORT.ru.md" "$destination/ARTIFACT-EXPORT.ru.md"
+            copy_file "$ROOT/ide/DESKTOP.md" "$destination/DESKTOP.md"
+            copy_file "$ROOT/ide/DESKTOP.ru.md" "$destination/DESKTOP.ru.md"
+            copy_file "$ROOT/ide/dis/bridge/idedesktop.b" "$destination/source/idedesktop.b"
+            copy_file "$ROOT/ide/dis/bridge/idedeskpane.b" "$destination/source/idedeskpane.b"
+            copy_file "$ROOT/ide/dis/tests/desktop_test.b" "$destination/examples/desktop-owners.b"
             copy_file "$ROOT/ide/dis/bridge/ideartifact.b" "$destination/source/ideartifact.b"
             copy_file "$ROOT/ide/dis/bridge/idefileops.b" "$destination/source/idefileops.b"
             copy_tree "$ROOT/ide/dis/examples/build-panel" "$destination/examples/build-panel"
@@ -425,12 +430,22 @@ EOF
             install_program "$base" disvm "$destination"
             if [[ "$component" == disvm-editor ]]; then
                 install_program "$base" disvm-editor "$destination"
+                copy_file "$ROOT/disVM/runtime/run-desktop-ide.sh" "$destination/run-desktop-ide.sh" 755
+                copy_tree "$ROOT/ide/dis/examples/desktop" "$destination/examples/desktop"
+                copy_file "$ROOT/ide/dis/app/desktop.b" "$destination/source/desktop.b"
+                copy_file "$ROOT/ide/dis/app/desktop.m" "$destination/include/limbo/desktop.m"
+                copy_file "$ROOT/disVM/runtime/test_desktop.py" "$destination/examples/desktop/check.py"
+                copy_file "$ROOT/disVM/runtime/test_graphical_editor.py" "$destination/examples/desktop/test_graphical_editor.py"
+                copy_file "$ROOT/ide/assets/desktop-v0.1673.png" "$destination/DESKTOP.png"
                 copy_tree "$ROOT/ide/as" "$destination/source/as"
                 copy_file "$ROOT/compiler/as2/view/README.md" "$destination/docs/as2/VIEW.md"
                 copy_file "$ROOT/compiler/as2/view/README.ru.md" "$destination/docs/as2/VIEW.ru.md"
                 copy_file "$ROOT/fir/v1/doc/AS_PROPERTIES.md" "$destination/docs/fir/AS_PROPERTIES.md"
                 copy_file "$ROOT/fir/v1/doc/AS_PROPERTIES.ru.md" "$destination/docs/fir/AS_PROPERTIES.ru.md"
                 for artifact in fir opt.fir swo swf; do
+                    if [[ -f "$base/native/desktop-view.$artifact" ]]; then
+                        copy_file "$base/native/desktop-view.$artifact" "$destination/ui/desktop-view.$artifact"
+                    fi
                     if [[ -f "$base/native/ide-view.$artifact" ]]; then
                         copy_file "$base/native/ide-view.$artifact" "$destination/ui/editor-view.$artifact"
                     fi

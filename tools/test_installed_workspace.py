@@ -69,6 +69,7 @@ def compiler_service_packages(prefix, work, environment):
         if not manifest.is_file() or "Fircompiler=ON" not in manifest.read_text():
             continue
         for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md", package / "ARTIFACT-EXPORT.md", package / "ARTIFACT-EXPORT.ru.md",
+                         package / "DESKTOP.md", package / "DESKTOP.ru.md",
                          package / "examples/compiler-service/README.md",
                          package / "examples/compiler-service/README.ru.md", package / "WORKSPACE.md"):
             for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
@@ -100,6 +101,23 @@ def compiler_service_packages(prefix, work, environment):
                           package / "artifact-export.dis"], tutorial, environment)
             if "PASS artifact tutorial:" not in output:
                 raise RuntimeError("relocated explicit export tutorial did not complete")
+        if (package / "desktop-test.dis").is_file():
+            for dispatch in ("--jit", "--no-jit"):
+                output = run(
+                    [
+                        program(prefix, name, "disvm"),
+                        dispatch,
+                        "--quantum",
+                        "1",
+                        package / "desktop-test.dis",
+                    ],
+                    work,
+                    environment,
+                )
+                if "PASS desktop owners:" not in output:
+                    raise RuntimeError("relocated independent desktop window owners failed")
+        if name == "disvm-editor" and not (package / "run-desktop-ide.sh").is_file():
+            raise RuntimeError("missing installed MovieClip desktop launcher")
         client = work / (name + "-compiler-client")
         run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", package / "include/native",
              package / "examples/compiler-service/client.c", "-L", package / "lib/compiler",
