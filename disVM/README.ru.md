@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 096ef558d1e82474ecb41e72678eb371afa52eb7. Каждый файл имеет
+Текущий снимок фиксирует 907e90896d0571bc84398efc6867830ee860af2e. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -164,13 +164,30 @@ Production interp.h допускает opt-in `DIS_WORD32=1`. Без перек�
 WORD/UWORD сохраняются. Это build selection, не wire ABI flag и не миграция
 нашего работающего NC64 host по умолчанию.
 
-В Linux CTest запускает upstream word32-build.py:18 полных translation units
-core/JIT для каждого выбора,36 объектов, native scalar/frame probes и отказ
+В Linux CTest запускает upstream word32-build.py:19 полных translation units
+core/JIT для каждого выбора,38 объектов, native scalar/frame probes и отказ
 для недопустимых значений macro. Выбраны Linux/386 host declarations; это не
 новый i386 port и не запуск ARM64/RV64 machine code.
 [Точная граница доказательства](upstream/doc/dis64-runtime-build.md).
 
 Объекты двух моделей нельзя смешивать. Нельзя просто передать DIS_WORD32
 глобально старому NC64 tree. Нужна согласованная пересборка всех native/interface
-consumers. Frame64 maps/args/results, новый loader, actual entry/EXIT/scheduler
-и GC остаются отдельными gates: object compilation не является новым VM run.
+consumers. Frame64 maps/args/results, scheduler lifecycle и GC остаются
+отдельными gates: object compilation не является новым VM run.
+
+
+## Связанный scalar runtime Dis64
+
+Выбранный upstream [load64.c](upstream/libinterp/load64.c) создаёт unpublished
+Module после общей семантической проверки и явных native admission limits.
+Linux/AMD64 [CTest fixture](upstream/libinterp/tests/dis64-runtime.py) связывает
+actual heap/descriptors, decoder/xec,43 scalar handlers, C/RX dispatch, IEXIT
+и освобождение stack/module. Удерживаемый Module owner сохраняет живой MP для
+чтения результата. Default и O3/NDEBUG UBSan дают по744 образа и1 667 800 проверок.
+
+Prog и OS/pool boundaries пока предоставляет fixture: scheduler startup,
+run queues и progexit/delprog не выполняются. Конструктор не подключён к
+работающему NC64 host. ASCII display name и ограничения Inst.reg относятся
+к адаптеру, не общему wire. Инспектор сохраняет execution_supported=false.
+[Прямой ответ INFERNO-0014](upstream/doc/dis64-flashvm-runtime-response.md)
+описывает следующий настоящий scheduler-owned этап.
