@@ -64,6 +64,45 @@ static DeskItem drag_keys[DESK_SLOTS];         /* Content/geometry keys for copi
 static int active;                             /* A desktop scene has been admitted. */
 
 
+static DVM_EditorFrame *prepared_frame; /* Borrowed owner-private capture destination during preparation. */
+static int capture_left;                /* Current inclusive canvas capture clip. */
+static int capture_top;                 /* Current inclusive canvas capture clip. */
+static int capture_right;               /* Current exclusive canvas capture clip. */
+static int capture_bottom;              /* Current exclusive canvas capture clip. */
+
+
+/* Copy a borrowed world-space contour; callback never enters either VM. */
+static FVM_Result
+capture_path(void *unused, const FVM_Path *path, FVM_RasterColor color, double width_value, int even_odd)
+{
+    (void)unused;
+    return dvm_editor_frame_command(prepared_frame,
+                                    path,
+                                    color,
+                                    width_value,
+                                    even_odd,
+                                    capture_left,
+                                    capture_top,
+                                    capture_right,
+                                    capture_bottom)
+               ? FVM_OK
+               : FVM_OUT_OF_MEMORY;
+}
+
+
+/* Capture a solid MovieClip with a copied viewport, or use legacy owner rendering.
+ * Both paths retain ordinary Flash geometry and painter ordering. */
+static FVM_Result draw_clip(FVM_Object *clip, FVM_RasterSurface *surface, const FVM_Affine *view)
+{
+    FVM_Affine identity = {1, 0, 0, 1, 0, 0};
+    if (prepared_frame)
+    {
+        return fvm_movieclip_capture_paths(owner, clip, view ? view : &identity, capture_path, NULL);
+    }
+    return view ? fvm_movieclip_render_view(owner, clip, surface, view) : fvm_movieclip_render(owner, clip, surface);
+}
+
+
 /* Decode one canonical hex word from a checked eight-byte span; output on success. */
 static int word(const char *text, unsigned long *output)
 {
@@ -744,6 +783,21 @@ static int field_ink(FVM_Path *path,
     {
         return 1;
     }
+    if (prepared_frame)
+    {
+        int ok;
+        FVM_Affine identity = {1, 0, 0, 1, 0, 0};
+        capture_left = left;
+        capture_top = top;
+        capture_right = right;
+        capture_bottom = bottom;
+        ok = draw_clip(mark, surface, &identity) == FVM_OK && capture_path(NULL, path, ink, 0, 0) == FVM_OK &&
+             draw_clip(cursor, surface, &identity) == FVM_OK;
+        capture_left = capture_top = 0;
+        capture_right = (int)surface->width;
+        capture_bottom = (int)surface->height;
+        return ok;
+    }
     tile.width = (unsigned int)(right - left);
     tile.height = (unsigned int)(bottom - top);
     tile.stride = (size_t)tile.width * 4;
@@ -855,7 +909,7 @@ static int gutter(const DeskItem *content, const FVM_Affine *world, FVM_RasterSu
         }
         if (result == FVM_OK)
         {
-            result = fvm_path_draw(path, surface, ink, 0, 0);
+            result = prepared_frame ? capture_path(NULL, path, ink, 0, 0) : fvm_path_draw(path, surface, ink, 0, 0);
         }
         fvm_path_destroy(path);
         fvm_text_run_destroy(run);
@@ -1078,7 +1132,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         {
             return 1;
         }
-        result = fvm_movieclip_render(owner, clip, surface);
+        result = draw_clip(clip, surface, NULL);
         if (result != FVM_OK)
         {
             fprintf(stderr, "desktop movie render: %d\n", result);
@@ -1375,6 +1429,80 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
 }
 
 
+/* Build detached painter commands from the complete owner-local MovieClip scene.
+ * Capture ends before returning, including failures; workers receive no VM state. */
+int dvm_desktop_prepare(DVM_EditorFrame *frame)
+{
+    FVM_RasterSurface surface;
+    unsigned char present[DESK_SLOTS] = {0};
+    unsigned int index;
+    int ok = 1;
+    if (!frame || !root || !active || pending || prepared_frame)
+    {
+        return 0;
+    }
+    surface = *dvm_editor_frame_surface(frame);
+    if (surface.width != width || surface.height != height)
+    {
+        return 0;
+    }
+    for (index = 0; index < received; ++index)
+    {
+        present[items[index].id] = 1;
+    }
+    if (!retire(present))
+    {
+        return 0;
+    }
+    prepared_frame = frame;
+    capture_left = capture_top = 0;
+    capture_right = (int)width;
+    capture_bottom = (int)height;
+    for (index = 0; index < received && ok; ++index)
+    {
+        DeskItem *item = &items[index];
+        int translucent = item->id <= 8 && (item->style == 5 || item->style == 6);
+        FVM_Affine world;
+        int left = 0;
+        int top = 0;
+        int right = 0;
+        int bottom = 0;
+        if (translucent)
+        {
+            double zoom = tablezoom / 100.0;
+            double x = item->x * zoom + 84 * (1 - zoom);
+            double y = item->y * zoom + 48 * (1 - zoom) - offset;
+            left = (int)floor(x);
+            top = (int)floor(y);
+            right = (int)ceil(x + item->width * zoom);
+            bottom = (int)ceil(y + item->height * zoom);
+            if (top < 48)
+            {
+                top = 48;
+            }
+            ok = dvm_editor_frame_group(frame, 1, left, top, right, bottom);
+        }
+        ok = ok && paint(item, &surface);
+        if (ok && translucent)
+        {
+            ok = world_matrix(clips[item->id], item->parent, &world) &&
+                 dvm_editor_frame_group(frame, 0, left, top, right, bottom);
+        }
+    }
+    prepared_frame = NULL;
+    if (ok)
+    {
+        memcpy(visible, present, sizeof(visible));
+        if (trace)
+        {
+            printf("TABLEZOOM %lu %lu\n", ticket, tablezoom);
+            printf("DESKTOP %lu %lu %u\n", ticket, offset, received);
+        }
+    }
+    return ok;
+}
+
+
 /* Hit the visible header in actual paint order. Coordinates are copied canvas
  * pixels; no source or touch policy is acquired. Return zero for occlusion. */
 int dvm_desktop_header(double x, double y)
@@ -1407,6 +1535,7 @@ int dvm_desktop_active(void)
 {
     return active;
 }
+
 
 unsigned long dvm_desktop_ticket(void)
 {

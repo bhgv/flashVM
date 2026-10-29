@@ -51,6 +51,24 @@ destroy, либо take с дальнейшим release, без двойного 
 Физическое окно или устройство не требуется.
 
 [Каталог примеров](../../README.md#example-embedding-parallel_render).
+## Использование в настоящем рабочем столе
+
+[Отрисовка по событиям](../../../doc/RENDER_ASYNC.ru.md) описывает прикладной путь.
+Владелец VM вызывает [`fvm_movieclip_capture_paths`](../../../include/flashvm/movieclip.h#L198), а калбэк копирует каждый
+заимствованный контур до возврата. Стол добавляет независимые команды текста,
+обрезки и прозрачности. Постоянный фоновый координатор вызывает параллельный
+пакет вне владельца VM. Рисуются и загружаются только изменившиеся плитки 64×64;
+перекрывающие неизменившиеся слои воспроизводятся внутри этих плиток. Кадры SWF
+не задают частоту клавиатуры и каналов.
+
+Дополнительные исполняемые примеры-проверки на C:
+[захват без живой VM](../../../../disVM/runtime/test_movieclip_capture.c) уничтожает
+VM до рисования; [сравнение плиток](../../../../disVM/runtime/test_editor_incremental.c)
+проверяет каждый пиксель относительно полной отрисовки, включая добавленный
+локальный контур. Цели `disvm_movieclip_capture_test` и
+`disvm_editor_incremental_test` входят в конфигурацию проверок графического Dis runtime.
+Расширение пока захватывает сплошные заливки и круглые штрихи, а не произвольные
+bitmap/gradient SWF. При ошибке частичный снимок освобождается целиком.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -61,6 +79,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_movieclip_capture_paths` | function | [include/flashvm/movieclip.h:198](../../../include/flashvm/movieclip.h#L198) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../../../include/flashvm/flashvm.h#L49) |
 | `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../../../include/flashvm/render_jobs.h#L25) |
 | `fvm_render_queue_create` | function | [include/flashvm/render_queue.h:32](../../../include/flashvm/render_queue.h#L32) |

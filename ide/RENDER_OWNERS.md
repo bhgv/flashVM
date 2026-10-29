@@ -1,8 +1,10 @@
 # Dis channels, AS presentation and parallel native rendering
 
-Current implementation: the graphical editor prepares detached paths on its owner
-and rasterizes them on one persistent background worker. Only the latest result
-is presented. Layout/AS/GC and SDL remain on their owners. [Queue contract](../flashVM/doc/RENDER_ASYNC.md).
+Current implementation: the desktop owner captures the MovieClip hierarchy into
+immutable native paint commands. A persistent background coordinator distributes
+only damaged 64×64 tiles among up to four native workers; only the latest result
+is presented. Native keyboard input and render submission are independent of SWF
+FPS. Layout/AS/GC and SDL remain on their owners. [Queue contract](../flashVM/doc/RENDER_ASYNC.md).
 
 [Русский](RENDER_OWNERS.ru.md) · [Native C modules](../disVM/runtime/NATIVE_MODULES.md) ·
 [AS2 → FIR → SWF](../compiler/as2/view/README.md) ·

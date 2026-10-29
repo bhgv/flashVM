@@ -77,7 +77,7 @@ children/пропусков/вложенности/насыщения. Два н
 
 ## Граф сцены и старые глубины (v0.636)
 
-[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L4004) проверяет владельца private state/таблицы и лимит
+[`fvm_movieclip_scene_children`](../src/standard/movieclip.cpp#L4024) проверяет владельца private state/таблицы и лимит
 [`FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN`](../src/standard/movieclip_constants.h#L33) до нормализации старых глубин. Выходной указатель
 публикуется только при успехе. Непустая ненормализованная таблица предварительно
 расходует единицу на child; исчерпание бюджета сохраняет прежние индексы и отсутствие
@@ -133,6 +133,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../include/flashvm/movieclip.h#L160) |
 | `FVM_MOVIECLIP_ADVANCE_MAX_CHILDREN` | macro / define | [src/standard/movieclip_constants.h:33](../src/standard/movieclip_constants.h#L33) |
 | `FVM_MOVIECLIP_MAX_SCENE_CONTROLS` | macro / define | [src/standard/movieclip_constants.h:26](../src/standard/movieclip_constants.h#L26) |
-| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:4004](../src/standard/movieclip.cpp#L4004) |
+| `fvm_movieclip_scene_children` | function | [src/standard/movieclip.cpp:4024](../src/standard/movieclip.cpp#L4024) |
 | `FVM_OUT_OF_MEMORY` | enum constant | [include/flashvm/flashvm.h:46](../include/flashvm/flashvm.h#L46) |
 <!-- source-links:end -->

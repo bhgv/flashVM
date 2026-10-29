@@ -128,6 +128,72 @@ int main(void)
         }
         SDL_Quit();
     }
+    /* A deliberately unfinished raster must not throttle queued text or keys.
+     * Use the production admission gate and real SDL FIFO, with a pointer between
+     * characters. Replay/capture must retain their original presentation barrier. */
+    {
+        SDL_Event event;
+        SDL_Event taken;
+        if (SDL_Init(SDL_INIT_EVENTS) != 0)
+        {
+            return 1;
+        }
+        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+        SDL_EventState(SDL_TEXTINPUT, SDL_ENABLE);
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_TEXTINPUT;
+        strcpy(event.text.text, "Я");
+        if (SDL_PushEvent(&event) != 1)
+        {
+            return 1;
+        }
+        event.type = SDL_MOUSEBUTTONDOWN;
+        if (SDL_PushEvent(&event) != 1)
+        {
+            return 1;
+        }
+        event.type = SDL_KEYUP;
+        if (SDL_PushEvent(&event) != 1)
+        {
+            return 1;
+        }
+        raster_pending = 1;
+        desktop_dirty = 1;
+        if (presentation_blocks_input())
+        {
+            fprintf(stderr, "typing incorrectly waits for raster completion\n");
+            return 1;
+        }
+        capture_path = "test-only capture barrier";
+        if (!presentation_blocks_input())
+        {
+            return 1;
+        }
+        capture_path = NULL;
+        events = fopen(__FILE__, "rb");
+        if (!events || !presentation_blocks_input())
+        {
+            fprintf(stderr, "replay barrier failed: stream=%p\n", (void *)events);
+            return 1;
+        }
+        fclose(events);
+        events = NULL;
+        if (SDL_PollEvent(&taken) != 1 || taken.type != SDL_TEXTINPUT || strcmp(taken.text.text, "Я") ||
+            !presentation_blocks_input() || SDL_PollEvent(&taken) != 1 || taken.type != SDL_MOUSEBUTTONDOWN ||
+            presentation_blocks_input() || SDL_PollEvent(&taken) != 1 || taken.type != SDL_KEYUP ||
+            !presentation_blocks_input())
+        {
+            fprintf(stderr, "asynchronous input broke FIFO or presentation barriers\n");
+            return 1;
+        }
+        raster_pending = 0;
+        desktop_dirty = 0;
+        if (presentation_blocks_input())
+        {
+            return 1;
+        }
+        SDL_Quit();
+    }
     puts("PASS native SDL contacts: double tap, pair/triple transition, device IDs, table pinch, release, focus reset");
     return 0;
 }

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1677**. [Русская версия](README.ru.md).
+Development version: **0.1678**. [Русская версия](README.ru.md).
 
-Current series: [v0.1677](docs/releases/v0.1677.md): cached window dragging, workspace gestures and presentation, session clipboard, and current Inferno parser/slice fixes.
+Current series: [v0.1678](docs/releases/v0.1678.md): event-driven keyboard input, immutable MovieClip commands and parallel dirty-tile desktop rendering.
 
 ## Browse documentation
 

@@ -48,7 +48,7 @@ build/vm/flashvm_examples_player_muted_stream_main \
 | [fvm_load_memory](../../../include/flashvm/flashvm.h#L90) | Копирует канонический источник в контекст; вход остаётся у вызывающего. |
 | [fvm_standard_install](../../../include/flashvm/standard.h#L22) | Готовит стандартную модель MovieClip, без аудиоустройства. |
 | [fvm_swf_stream_sound_count](../../../include/flashvm/swf_stream_sound.h#L61) | Проверяет root streams и копирует числовой счётчик. |
-| [fvm_movieclip_load_swf_ex](../../../include/flashvm/movieclip.h#L194) | Явный [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../../../include/flashvm/movieclip.h#L182); требуется совпадающий источник, выход при отказе null. |
+| [fvm_movieclip_load_swf_ex](../../../include/flashvm/movieclip.h#L216) | Явный [FVM_SWF_IMPORT_MUTE_ROOT_STREAMS](../../../include/flashvm/movieclip.h#L204); требуется совпадающий источник, выход при отказе null. |
 | [fvm_gc_pin](../../../include/flashvm/gc.h#L60) / [fvm_gc_unpin](../../../include/flashvm/gc.h#L70) | Сохраняют/освобождают корень клипа/библиотеки через сборку; владение памятью не передают. |
 | [fvm_gc_step](../../../include/flashvm/gc.h#L116) | Сборка в безопасной точке потока владельца, не внутри callback. |
 | [fvm_movieclip_advance](../../../include/flashvm/movieclip.h#L160) | Исполняет поддержанный root-кадр с отключёнными stream controls. |
@@ -78,10 +78,10 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../../../include/flashvm/flashvm.h#L90) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../../../include/flashvm/movieclip.h#L160) |
 | `fvm_movieclip_load_swf` | function | [include/flashvm/movieclip.h:129](../../../include/flashvm/movieclip.h#L129) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:194](../../../include/flashvm/movieclip.h#L194) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:216](../../../include/flashvm/movieclip.h#L216) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
 | `fvm_standard_install` | function | [include/flashvm/standard.h:22](../../../include/flashvm/standard.h#L22) |
-| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:182](../../../include/flashvm/movieclip.h#L182) |
+| `FVM_SWF_IMPORT_MUTE_ROOT_STREAMS` | macro / define | [include/flashvm/movieclip.h:204](../../../include/flashvm/movieclip.h#L204) |
 | `fvm_swf_stream_sound_count` | function | [include/flashvm/swf_stream_sound.h:61](../../../include/flashvm/swf_stream_sound.h#L61) |
 <!-- source-links:end -->

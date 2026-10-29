@@ -1,5 +1,10 @@
 # Desktop gestures and presentation
 
+The desktop now prepares immutable painting commands on its VM owner and draws
+only damaged 64×64 tiles on up to four background tile workers. Native typing
+is independent of raster completion and SWF FPS. See the ownership, scheduling,
+clipping and limitations in [event-driven rendering](../flashVM/doc/RENDER_ASYNC.md).
+
 [Русский](DESKTOP-WORKSPACE.ru.md) · [Desktop](DESKTOP.md) · [Entry points](ENTRYPOINTS.md) · [Session clipboard](DESKTOP-CLIPBOARD.md)
 
 ![Actual MovieClip workspace / Рабочий стол](assets/desktop-v0.1677.png)

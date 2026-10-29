@@ -276,7 +276,7 @@ exactly, including empty source markers. No audio device, worker or clock starts
 | [`fvm_swf_stream_output_next_frame`](../../../include/flashvm/swf_stream_output.h#L75) | Query next pending/indexed source frame without callbacks or decoding; distinguish future-frame hold from FIFO pressure. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_swf_stream_output_pump_until`](../../../include/flashvm/swf_stream_output.h#L86) | Authorize only actual root frames; future data stays untouched, no implicit backward reset. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_standard_install`](../../../include/flashvm/standard.h#L22) | Install MovieClip methods on the owner before importing the controlled timeline. Managed prototypes remain context-owned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
-| [`fvm_movieclip_load_swf_ex`](../../../include/flashvm/movieclip.h#L194) | Import exact same source with explicit stream omission; native snapshot/FIFO handle PCM separately. Returned clip is borrowed until pinned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
+| [`fvm_movieclip_load_swf_ex`](../../../include/flashvm/movieclip.h#L216) | Import exact same source with explicit stream omission; native snapshot/FIFO handle PCM separately. Returned clip is borrowed until pinned. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_gc_pin`](../../../include/flashvm/gc.h#L60) | Retain managed root/library through explicit owner GC safe points; cleanup owns one unpin. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_gc_unpin`](../../../include/flashvm/gc.h#L70) | Release only a successful clip pin before context destruction, after producer quiescence. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
 | [`fvm_movieclip_advance`](../../../include/flashvm/movieclip.h#L160) | Advance actual owner timeline; stopped ticks do not authorize later PCM. Never called from backend/worker callbacks. [Contract](../../../doc/STREAM_PCM_OUTPUT.md). |
@@ -378,7 +378,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_load_memory` | function | [include/flashvm/flashvm.h:90](../../../include/flashvm/flashvm.h#L90) |
 | `FVM_MediaOutput` | struct | [include/flashvm/multimedia.h:80](../../../include/flashvm/multimedia.h#L80) |
 | `fvm_movieclip_advance` | function | [include/flashvm/movieclip.h:160](../../../include/flashvm/movieclip.h#L160) |
-| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:194](../../../include/flashvm/movieclip.h#L194) |
+| `fvm_movieclip_load_swf_ex` | function | [include/flashvm/movieclip.h:216](../../../include/flashvm/movieclip.h#L216) |
 | `fvm_object_call` | function | [include/flashvm/value.h:184](../../../include/flashvm/value.h#L184) |
 | `fvm_object_get` | function | [include/flashvm/value.h:102](../../../include/flashvm/value.h#L102) |
 | `fvm_runtime_create` | function | [include/flashvm/flashvm.h:74](../../../include/flashvm/flashvm.h#L74) |

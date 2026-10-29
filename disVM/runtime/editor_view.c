@@ -36,6 +36,7 @@
 #define EDITOR_PANEL_EXPORT_PATH 11U     /* Editable explicit artifact destination. */
 #define EDITOR_PANEL_BROWSE_PATH 10U     /* Editable directory path, with caret and normal field geometry. */
 #define EDITOR_PANEL 65543UL             /* Dis-owned prompt mode, selection and counted field text. */
+#define EDITOR_KEYBOARD_BATCH_MS 16U     /* Owner-poll batching budget, independent of SWF timeline frequency. */
 #define EDITOR_VIEWPORT 65540UL          /* Dis-owned Unicode window and monotonic view ticket. */
 #define EDITOR_SCROLL 65541UL            /* Ticket/revision-bound logical scroll request. */
 #define EDITOR_PLACE 65542UL             /* Ticket/revision-bound glyph hit proposal. */
@@ -107,8 +108,14 @@ static size_t panel_size;                      /* Active panel bytes, never impl
 static FVM_Object *field;                      /* [GC:] Pinned display object until destroy. */
 static unsigned char *pixels;                  /* Owned RGBA8 raster storage. */
 static FVM_RenderQueue *raster_queue;          /* Owned persistent native raster worker, joined before VM teardown. */
+static DVM_EditorFrame *displayed_frame;       /* Owned completed baseline; workers never retain this frame. */
+static const DVM_EditorFrame *upload_frame;    /* Borrowed completed damage during SDL presentation only. */
 static DVM_EditorFrame *recording_frame;       /* Owner-only frame builder; workers never read this global. */
-static int raster_pending;            /* Owner-only input geometry barrier until the latest frame is presented. */
+static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
+static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
+#ifdef DVM_EDITOR_SDL
+static Uint32 desktop_dirty_since; /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
+#endif
 
 static char *snapshot;                /* Owned assembly storage, independent of both VM heaps. */
 static size_t assembled;              /* Next expected UTF-8 byte offset. */
@@ -142,6 +149,8 @@ static SDL_Texture *texture;          /* RGBA8 upload target. */
 
 
 #ifdef DVM_EDITOR_SDL
+
+
 /* Keep the latest consecutive absolute motion before painting. event belongs
  * to the SDL/main owner. Bound work to 256 updates and stop before every key,
  * button, focus or contact-identity boundary; releases must remain queued. */
@@ -1265,8 +1274,7 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
             double average;
             result = fvm_font_average_width(layout_font, &average);
             if (result == FVM_OK)
-            {
-                /* Match AS2 TextField's implicit tab interval: four average character widths. */
+            { /* Match AS2 TextField's implicit tab interval: four average character widths. */
                 result = fvm_text_layout_create_periodic(layout_font,
                                                          snapshot + display_start,
                                                          shown,
@@ -1874,6 +1882,7 @@ static int present_pixels(void)
     if (texture)
     {
         char title[256];
+        int changed = upload_frame == NULL; /* Expose forces presentation; identical snapshots do not. */
         snprintf(title,
                  sizeof(title),
                  "Dis IDE | rev %lu saved %ld status %lu | top %lu | Ctrl+S save, Ctrl+O open, Ctrl+G location%s",
@@ -1883,12 +1892,41 @@ static int present_pixels(void)
                  view_top + 1,
                  view_first != 0 || view_last != (long)view_total ? " | bounded window" : "");
         SDL_SetWindowTitle(window, title);
-        if (SDL_UpdateTexture(texture, 0, pixels, canvas_width * 4U) || SDL_RenderClear(renderer) ||
-            SDL_RenderCopy(renderer, texture, 0, 0))
+        if (upload_frame)
+        {
+            unsigned int index;
+            unsigned int tiles = ((canvas_width + DVM_EDITOR_TILE_SIZE - 1) / DVM_EDITOR_TILE_SIZE) *
+                                 ((canvas_height + DVM_EDITOR_TILE_SIZE - 1) / DVM_EDITOR_TILE_SIZE);
+            for (index = 0; index < tiles; ++index)
+            {
+                unsigned int x;
+                unsigned int y;
+                unsigned int width;
+                unsigned int height;
+                if (dvm_editor_frame_damage(upload_frame, index, &x, &y, &width, &height))
+                {
+                    changed = 1;
+                    SDL_Rect rectangle = {(int)x, (int)y, (int)width, (int)height};
+                    if (SDL_UpdateTexture(
+                            texture, &rectangle, pixels + ((size_t)y * canvas_width + x) * 4, canvas_width * 4U))
+                    {
+                        return 0;
+                    }
+                }
+            }
+        }
+        else if (SDL_UpdateTexture(texture, 0, pixels, canvas_width * 4U))
         {
             return 0;
         }
-        SDL_RenderPresent(renderer);
+        if (changed)
+        {
+            if (SDL_RenderClear(renderer) || SDL_RenderCopy(renderer, texture, 0, 0))
+            {
+                return 0;
+            }
+            SDL_RenderPresent(renderer);
+        }
     }
 #endif
     if (capture_path)
@@ -1951,7 +1989,15 @@ static int collect_frame(int wait)
     else if (surface->width == canvas_width && surface->height == canvas_height)
     {
         memcpy(pixels, surface->pixels, (size_t)canvas_width * canvas_height * 4);
+        upload_frame = job;
         ok = present_pixels();
+        upload_frame = NULL;
+        if (ok)
+        {
+            dvm_editor_frame_destroy(displayed_frame);
+            displayed_frame = job;
+            job = NULL;
+        }
     }
     dvm_editor_frame_destroy(job);
     return ok;
@@ -1980,6 +2026,52 @@ static int render(void)
     raster_pending = 1;
     return collect_frame(capture_path != NULL);
 }
+
+
+/* Paint the latest complete desktop on its sole VM owner and enqueue copied pixels.
+ * Returns one on success, zero on allocation/render failure. No managed object enters
+ * a worker; superseded snapshots are replaced before this expensive operation. */
+static int render_desktop(void)
+{
+    DVM_EditorFrame *frame = dvm_editor_frame_create(canvas_width, canvas_height);
+    if (!frame || !dvm_desktop_prepare(frame) || !dvm_editor_frame_incremental(frame, displayed_frame) ||
+        fvm_gc_collect(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
+    {
+        dvm_editor_frame_destroy(frame);
+        return 0;
+    }
+    desktop_dirty = 0;
+    raster_pending = 1;
+    return collect_frame(capture_path != NULL);
+}
+
+
+#ifdef DVM_EDITOR_SDL
+
+
+/* Inspect only the FIFO head without removing or skipping an event. Keyboard/text
+ * input uses completed Dis state rather than pixel hit geometry. Pointer, focus,
+ * resize and quit retain presentation ordering. Must run on the SDL/VM owner. */
+static int keyboard_waiting(void)
+{
+    SDL_Event event;
+    SDL_PumpEvents();
+    if (SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1)
+    {
+        return 0;
+    }
+    return event.type == SDL_TEXTINPUT || event.type == SDL_KEYDOWN || event.type == SDL_KEYUP;
+}
+
+
+/* Return whether native input must wait for matching pixels. Keyboard/text can
+ * use the latest acknowledged Dis view. Replay/capture stays deterministic, and
+ * FIFO inspection never lets a key overtake pointer, focus or lifecycle events. */
+static int presentation_blocks_input(void)
+{
+    return (desktop_dirty || raster_pending) && (events || capture_path || !keyboard_waiting());
+}
+#endif
 
 
 /* Assemble ordered Dis snapshot fragments, publishing TextField only at selection boundary.
@@ -2018,21 +2110,19 @@ int dvm_editor_present(const DVM_UIMessage *message)
         }
         if (message->code == DVM_DESK_END)
         {
-            FVM_RasterSurface surface;
-            DVM_EditorFrame *frame = dvm_editor_frame_create(canvas_width, canvas_height);
-            surface.pixels = pixels;
-            surface.width = canvas_width;
-            surface.height = canvas_height;
-            surface.stride = (size_t)canvas_width * 4;
-            if (!frame || !dvm_desktop_draw(&surface) || !dvm_editor_frame_background(frame, &surface) ||
-                fvm_gc_collect(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
-            {
-                dvm_editor_frame_destroy(frame);
-                return 0;
-            }
-            raster_pending = 1;
             complete = 1;
-            return collect_frame(capture_path != NULL);
+#ifdef DVM_EDITOR_SDL
+            if (!events && !capture_path)
+            {
+                if (!desktop_dirty)
+                {
+                    desktop_dirty_since = SDL_GetTicks();
+                }
+                desktop_dirty = 1;
+                return 1;
+            }
+#endif
+            return render_desktop();
         }
         return 1;
     }
@@ -2460,8 +2550,7 @@ static void resolve_pointer(DVM_UIMessage *message)
         }
     }
     if (message->code == EDITOR_ZOOM)
-    {
-        /* Geometry was only measured above; Dis still validates and chooses its size. */
+    { /* Geometry was only measured above; Dis still validates and chooses its size. */
     }
     else if (message->code == FVM_MOUSE_WHEEL_UP || message->code == FVM_MOUSE_WHEEL_DOWN)
     {
@@ -2493,6 +2582,8 @@ static void resolve_pointer(DVM_UIMessage *message)
 
 
 #ifdef DVM_EDITOR_SDL
+
+
 /* Translate SDL virtual keys; zero means no supported Dis key, never synthesize text. */
 static unsigned int keycode(SDL_Keycode key)
 {
@@ -2550,6 +2641,8 @@ static unsigned int keycode(SDL_Keycode key)
 
 
 /* Poll at most one event after the previous Dis view completes; never wait or edit text.
+ * Native keyboard events do not wait for raster completion. Replay and pointer
+ * events keep the pixel/geometry barrier; native desktop typing batches painting.
  * message receives a value only on one. Replay truncation/EOF without Quit returns minus one. */
 int dvm_editor_event(DVM_UIMessage *message)
 {
@@ -2557,13 +2650,25 @@ int dvm_editor_event(DVM_UIMessage *message)
     {
         return -1;
     }
-    if (raster_pending)
-    {
-        return 0; /* Keep OS input queued until displayed pixels match owner hit geometry. */
-    }
     if (!complete)
     {
         return 0;
+    }
+#ifdef DVM_EDITOR_SDL
+    if (desktop_dirty &&
+        (!keyboard_waiting() || (Uint32)(SDL_GetTicks() - desktop_dirty_since) >= EDITOR_KEYBOARD_BATCH_MS))
+    {
+        if (!render_desktop())
+        {
+            return -1;
+        }
+    }
+    if (presentation_blocks_input())
+#else
+    if (raster_pending)
+#endif
+    {
+        return 0; /* Never hit-test newer owner geometry against older displayed pixels. */
     }
     memset(message, 0, sizeof(*message));
     if (clipboard_event(message))
@@ -2636,7 +2741,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED && window &&
             event.window.windowID == SDL_GetWindowID(window))
         {
-            return render() ? 0 : -1; /* Restore cached presentation without asking Dis to edit/rebuild a view. */
+            return present_pixels() ? 0 : -1; /* Re-present cached pixels without rebuilding either VM's view. */
         }
         if (dvm_editor_window_event(&event, window, message))
         {
@@ -2791,10 +2896,12 @@ int dvm_editor_event(DVM_UIMessage *message)
 
 /* Tear down only after scheduler/channel routing is quiescent; null resources are allowed. */
 void dvm_editor_destroy(void)
-{
-    /* [GC:] Join all native callbacks before destroying fonts or either VM. */
+{ /* [GC:] Join all native callbacks before destroying fonts or either VM. */
     fvm_render_queue_destroy(raster_queue);
     raster_queue = NULL;
+    dvm_editor_frame_destroy(displayed_frame);
+    displayed_frame = NULL;
+    upload_frame = NULL;
 #ifdef DVM_EDITOR_SDL
     if (texture)
     {

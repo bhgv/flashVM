@@ -1,79 +1,99 @@
-# Background native rendering
+# Event-driven background rendering
 
-[Русский](RENDER_ASYNC.ru.md) · [Public API](../include/flashvm/render_queue.h) ·
-[Implementation](../src/render/render_queue.c) ·
-[Runnable C89 tutorial](../examples/embedding/parallel_render/README.md) ·
-[IDE frame implementation](../../disVM/runtime/editor_raster.c)
+[Русский](RENDER_ASYNC.ru.md) · [Workspace](../../ide/DESKTOP-WORKSPACE.md) ·
+[Native frame](../../disVM/runtime/editor_raster.h) ·
+[Embedding tutorial](../examples/embedding/parallel_render/README.md)
 
-[`fvm_render_queue_create`](../include/flashvm/render_queue.h#L32) starts 1–8 persistent platform workers. The graphical
-Dis/Flash editor uses **one background raster worker**. Text layout, glyph outline
-extraction, AS execution, hit geometry and GC stay with the VM owner. The worker
-receives detached native paths/colors and its own RGBA buffer. SDL texture upload,
-window operations and optional PPM capture stay on the window owner.
+The VM owner maintains the MovieClip hierarchy and executes AS/Dis operations.
+It prepares immutable native painting commands; raster workers never traverse
+managed objects or access fonts, channels, documents, GC, SDL or a VM callback.
+A SWF timeline tick is one compatibility event source. It is not the execution
+clock for native IDE input, typed-channel work or render submission. The host
+may submit snapshots more or less often than timeline frames, or after a frame.
+This does not promise that every player frontend already schedules all extensions
+independently: this checkpoint implements that separation in the Dis desktop.
 
-This moves actual editor path rasterization off the execution thread. It does
-not move layout or all display-list traversal off that thread, partition a single
-frame among multiple workers, or provide a complete asynchronous SWF player.
-The direct Dis → typed channels → Flash content route is unchanged.
+## Desktop preparation and execution
 
-## Queue contracts
+[`fvm_movieclip_capture_paths`](../include/flashvm/movieclip.h#L198) follows the ordinary protected MovieClip traversal,
+including world transforms, ancestor color, visibility and signed child depth.
+Its [`FVM_MoviePathSink`](../include/flashvm/movieclip.h#L186) receives borrowed solid contours, copied color, winding
+rule and round stroke width. Copy each contour during the callback. Capture runs
+on the VM owner; it neither advances the timeline nor rasterizes pixels.
 
-| Operation | Ownership and waiting |
-| --- | --- |
-| [`fvm_render_queue_create`](../include/flashvm/render_queue.h#L32) | Validate callbacks/worker count; return an owned queue only on success. Partial thread creation is rolled back by joining started workers. |
-| [`fvm_render_queue_submit`](../include/flashvm/render_queue.h#L40) | Transfer a distinct nonnull job on success. No wait for rasterization; discard the previous pending/ready job. Allocation failure leaves the job with its caller. |
-| [`fvm_render_queue_take`](../include/flashvm/render_queue.h#L47) | With wait=0, return NOT_FOUND until the latest job completes; outputs stay unchanged. On OK transfer the job and its separate execution status back to the owner. wait=1 is an explicit capture/test barrier. |
-| [`fvm_render_queue_destroy`](../include/flashvm/render_queue.h#L54) | Stop pending work and join executing callbacks before freeing synchronization. May block; callbacks must terminate. Null is accepted. |
-| [`FVM_RenderExecute`](../include/flashvm/render_queue.h#L19) | Borrow one exclusive native job; return its real status. Different jobs may execute concurrently. |
-| [`FVM_RenderRelease`](../include/flashvm/render_queue.h#L26) | Release only native owned storage; may run on an owner or worker. No VM/GC/SDL access, reentry or retained pointers. |
+The native desktop adapter adds copied text/gutter contours, selection/caret
+commands, explicit clipping and opacity-group boundaries. Text shaping and AS
+execution remain owner operations. Commands retain painter order derived from
+the hierarchy; no managed display-list or font handle survives in a raster job.
+An unsupported bitmap/gradient, non-round stroke or low-quality capture returns
+UNSUPPORTED. Discard partial captured work on any error. Existing synchronous
+MovieClip render APIs retain their behavior; this is not a complete arbitrary-SWF
+snapshot serializer.
 
-All public calls require one host owner, with no concurrent destroy or callback
-reentry. Internally a port mutex/condition publishes completion. Idle workers sleep
-on the condition, not a spin loop. No new OS API leaks into the core: Linux,
-Android and macOS use their existing POSIX adapters, Windows its Win32 adapter.
-Only the Linux execution is checked in this checkpoint.
+A persistent queue coordinator executes each accepted desktop snapshot off the
+owner thread. It calls [`fvm_render_jobs_run`](../include/flashvm/render_jobs.h#L25) with **up to four tile workers** and
+joins them on that background coordinator. Batch workers are created per batch;
+this is not a persistent four-thread tile pool. Jobs contain only dirty tiles,
+so clean canvas areas do not monopolize a worker partition. One dirty tile uses
+the coordinator itself; an unchanged scene starts no tile workers.
 
-The queue retains at most workers+2 jobs: executing work, one replaceable pending
-job and one ready result. Already executing obsolete jobs are allowed to finish;
-they are not forcibly interrupted. Only the newest accepted job can be taken.
-Disposal runs outside the queue lock, but can consume owner time when submit
-replaces pending/ready native storage. The API is not a hard real-time guarantee.
-The host must bound each payload and avoid creating an unbounded set of queues.
+## Damage and composition
 
-## Editor integration
+Desktop pixels are divided into 64×64 tiles. Exact contour/scalar comparisons
+against the **last displayed** snapshot identify old and new damaged bounds.
+Common text-contour prefixes/suffixes keep an appended glyph from invalidating
+all existing lines. Moving/removing paint invalidates its old location as well.
+Size changes require a complete new image. There is no collision-prone content
+hash deciding whether a region can be left unchanged.
 
-The owner completes all Dis envelopes and AS view updates before preparing a
-frame. Native paths returned by TextField/font helpers are independent of the
-VM/font after extraction. Clipped contours and selection/gutter/panel rectangles
-are transferred in painter order, not pointers to live objects. Frames are bounded
-by 2048×2048 pixels, 8192 painted paths and 262144 contour commands; budget or
-allocation failure is reported rather than queuing a partial frame.
+Each dirty tile starts with the background and replays every intersecting layer
+in original painter order, including unchanged foreground windows. Each worker
+owns its pixel buffer, temporary translated paths and result slot. Clipping,
+alpha and 90% window opacity groups are applied inside the tile. Clean tiles
+retain copied pixels from the displayed baseline. Workers never mutate that
+baseline. Superseded pending/executing snapshots cannot become an input baseline.
 
-The owner collects with wait=0 while polling the normal editor transport. A
-completed frame of an obsolete canvas size is discarded. While pixels are pending,
-native input stays in the OS queue so a click cannot use new hit geometry against
-old displayed pixels; Dis scheduling/channel polling continue. Replay input advances only after owner presentation through nonblocking polling.
-`--capture` explicitly waits for raster completion; this output barrier does not
-make ordinary interactive or uncaptured replay submissions wait. Shutdown joins workers before fonts or either VM
-are destroyed. Native raster jobs contain no managed roots or shared VM heap.
+Only dirty tile rectangles are uploaded to the SDL texture. SDL composition,
+window calls and optional PPM capture stay on the window owner. An expose event
+re-presents cached pixels without asking Dis to rebuild the desktop. Full-image
+copies still occur when establishing/transferring a baseline; this checkpoint
+reduces rasterization and texture upload, not all memory traffic or owner layout.
 
-## Verification and limits
+## Input and cadence
 
-- [Queue regression](../tests/async_render_jobs.c): two parked workers prove that
-  owner submission/nonblocking take proceed without raster progress; pending
-  replacement, stale-result disposal, failure delivery and exactly-once release.
-- [Pixel regression](../../disVM/runtime/test_editor_raster.c): real AGG pixels
-  match synchronous execution byte for byte; opaque/blended interior pixels also
-  have independently checked colors and painter ordering.
-- Existing graphical editor replays cover Unicode/caret/clipboard, resize, gutter,
-  browsing and interpreter/JIT paths. SDL dummy checks do not prove physical
-  desktop/touch performance or Android/macOS/Windows acceptance.
-- [Joined-runner failure test](../tests/render_jobs_failure.c) injects failure at
-  each launch. Every remaining initialized partition must run once before error.
+Native text and key events use the last complete acknowledged Dis state and do
+not wait for raster completion. Changes remain ordered through typed channels;
+there is no speculative native document editing and no concurrent VM callback.
+The SDL FIFO head is inspected without skipping pointer/focus/lifecycle events.
+Pointer hit testing waits until displayed pixels match the committed geometry.
 
-The existing [`fvm_render_jobs_run`](../include/flashvm/render_jobs.h#L25) remains a joined batch API. It may be used by a
-host that explicitly needs a barrier; it does not become asynchronous by creating
-threads. See [both execution models](RENDER_THREADS.md).
+Consecutive queued keyboard events can replace unpainted desktop snapshots.
+Painting is requested when that keyboard burst ends or its elapsed batching
+interval reaches 16 ms at an owner poll. This interval is independent of SWF FPS
+and is not a latency guarantee: scheduler, shaping, raster and display costs
+still apply. Explicit replay/capture retains its deterministic presentation
+barrier so existing view-by-view tests remain observable.
+
+## Ownership and acceptance
+
+[`fvm_render_queue_create`](../include/flashvm/render_queue.h#L32) starts 1–8 persistent native coordinators. The IDE uses
+one coordinator. [`fvm_render_queue_submit`](../include/flashvm/render_queue.h#L40) transfers a complete job on success and
+replaces older pending/ready work without waiting. [`fvm_render_queue_take`](../include/flashvm/render_queue.h#L47) with
+wait=0 collects the newest completed result; wait=1 is for explicit capture/tests.
+[`fvm_render_queue_destroy`](../include/flashvm/render_queue.h#L54) joins executing work before dependencies are freed.
+The queue owns at most workers+2 accepted jobs. Obsolete executing jobs finish
+normally and release their native storage; there is no forced cancellation.
+
+[Capture regression](../../disVM/runtime/test_movieclip_capture.c) compares real
+MovieClip pixels with captured solid/stroke commands after VM destruction.
+[Dirty regression](../../disVM/runtime/test_editor_incremental.c) compares every
+byte with independent full-surface drawing across tile edges, overlap, alpha,
+movement, removal, appended contours and unchanged scenes.
+[Native SDL regression](../../disVM/runtime/test_desktop_touch.c) verifies keyboard
+admission during pending raster and FIFO/pointer/replay/capture barriers. Desktop
+interpreter/JIT scenarios check real gestures, opacity and file ownership.
+Dummy SDL/replay tests do not measure physical-device typing latency or certify
+Windows/macOS/Android performance.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -84,11 +104,11 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_movieclip_capture_paths` | function | [include/flashvm/movieclip.h:198](../include/flashvm/movieclip.h#L198) |
+| `FVM_MoviePathSink` | callback typedef | [include/flashvm/movieclip.h:186](../include/flashvm/movieclip.h#L186) |
 | `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../include/flashvm/render_jobs.h#L25) |
 | `fvm_render_queue_create` | function | [include/flashvm/render_queue.h:32](../include/flashvm/render_queue.h#L32) |
 | `fvm_render_queue_destroy` | function | [include/flashvm/render_queue.h:54](../include/flashvm/render_queue.h#L54) |
 | `fvm_render_queue_submit` | function | [include/flashvm/render_queue.h:40](../include/flashvm/render_queue.h#L40) |
 | `fvm_render_queue_take` | function | [include/flashvm/render_queue.h:47](../include/flashvm/render_queue.h#L47) |
-| `FVM_RenderExecute` | callback typedef | [include/flashvm/render_queue.h:19](../include/flashvm/render_queue.h#L19) |
-| `FVM_RenderRelease` | callback typedef | [include/flashvm/render_queue.h:26](../include/flashvm/render_queue.h#L26) |
 <!-- source-links:end -->

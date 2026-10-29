@@ -178,6 +178,28 @@ FVM_API FVM_Result fvm_movieclip_render(FVM_Context *, FVM_Object *, FVM_RasterS
        Viewport applies once to every world-space node, preserving root visibility/color. */
 FVM_API FVM_Result fvm_movieclip_render_view(FVM_Context *, FVM_Object *, FVM_RasterSurface *,
                                              const FVM_Affine *viewport);
+
+
+/* Borrow one transformed solid contour during owner-side capture. Copy it before
+ * returning; path/color/width/rule contain no VM references. Return a failure to
+ * stop capture. The callback must not enter the VM or retain the borrowed path. */
+typedef FVM_Result (*FVM_MoviePathSink)(void *userdata, const FVM_Path *path,
+                                        FVM_RasterColor color, double width, int even_odd);
+
+
+/* Capture solid fills/round strokes in ordinary painter order without drawing or
+ * advancing the timeline. context/clip are owner-thread borrowed handles; view
+ * is a finite copied viewport. sink/userdata are borrowed through this call.
+ * [GC:] The ordinary render traversal/barrier protects getter-visible objects.
+ * Bitmap/gradient paint, non-round strokes and low quality return UNSUPPORTED;
+ * earlier callback work remains caller-owned and must be discarded on failure.
+ * Invalid arguments return INVALID_ARGUMENT; allocation/getter/sink errors propagate.
+ * Captured native copies may subsequently be rasterized on independent workers. */
+FVM_API FVM_Result fvm_movieclip_capture_paths(FVM_Context *context, FVM_Object *clip,
+                                               const FVM_Affine *view,
+                                               FVM_MoviePathSink sink, void *userdata);
+
+
 /* Explicit import policy; no other flag bits are accepted. */
 #define FVM_SWF_IMPORT_MUTE_ROOT_STREAMS \
     1UL /* Validate and omit root streaming sound controls.                                        \

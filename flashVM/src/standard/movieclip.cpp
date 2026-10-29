@@ -2955,7 +2955,9 @@ FVM_Result render(FVM_Context *c,
                   unsigned int depth,
                   const FVM_Affine *drawing_base = 0,
                   FVM_RasterSurface *coverage = 0,
-                  const FVM_Affine *viewport = 0)
+                  const FVM_Affine *viewport = 0,
+                  FVM_MoviePathSink sink = 0,
+                  void *sink_data = 0)
 {
     if (!o || o->owner != c || depth > FVM_MOVIECLIP_RENDER_MAX_DEPTH)
     {
@@ -3058,6 +3060,13 @@ FVM_Result render(FVM_Context *c,
 
 
         OwnedPath ownership(p);
+        if (sink && (part->properties.find("bitmap") != part->properties.end() ||
+                     part->properties.find("gradient") != part->properties.end() ||
+                     part->properties.find("lineBitmap") != part->properties.end() ||
+                     part->properties.find("lineGradient") != part->properties.end()))
+        {
+            return FVM_UNSUPPORTED;
+        }
         double fill = 0, stroke = 0, rgb = 0, a = 0, width = 0;
         r = numeric(c, part, "fill", fill);
         if (r == FVM_OK)
@@ -3088,8 +3097,13 @@ FVM_Result render(FVM_Context *c,
                 }
                 else
                 {
-                    r = fvm_path_draw_quality(
-                        p, surface, color(rgb, a, transform), 0, even_odd, c->stage_quality != FVM_STAGE_QUALITY_LOW);
+                    r = sink ? sink(sink_data, p, color(rgb, a, transform), 0, even_odd)
+                             : fvm_path_draw_quality(p,
+                                                     surface,
+                                                     color(rgb, a, transform),
+                                                     0,
+                                                     even_odd,
+                                                     c->stage_quality != FVM_STAGE_QUALITY_LOW);
                 }
                 if (r == FVM_OK && coverage)
                 {
@@ -3155,14 +3169,19 @@ FVM_Result render(FVM_Context *c,
                 }
                 else
                 {
-                    r = fvm_path_draw_quality(p,
-                                              surface,
-                                              color(rgb, a, transform),
-                                              width ? width * scale : 1,
-                                              0,
-                                              c->stage_quality != FVM_STAGE_QUALITY_LOW,
-                                              cap,
-                                              join);
+                    if (sink && (cap != FVM_STROKE_CAP_ROUND || join != FVM_STROKE_JOIN_ROUND))
+                    {
+                        return FVM_UNSUPPORTED;
+                    }
+                    r = sink ? sink(sink_data, p, color(rgb, a, transform), width ? width * scale : 1, 0)
+                             : fvm_path_draw_quality(p,
+                                                     surface,
+                                                     color(rgb, a, transform),
+                                                     width ? width * scale : 1,
+                                                     0,
+                                                     c->stage_quality != FVM_STAGE_QUALITY_LOW,
+                                                     cap,
+                                                     join);
                 }
             }
             if (r == FVM_OK && coverage)
@@ -3231,7 +3250,8 @@ FVM_Result render(FVM_Context *c,
         {
             continue;
         }
-        r = render(c, child, surface, transform, depth + 1, drawing_base ? &world : 0, coverage, viewport);
+        r = render(
+            c, child, surface, transform, depth + 1, drawing_base ? &world : 0, coverage, viewport, sink, sink_data);
         if (r != FVM_OK)
         {
             return r;
@@ -5409,6 +5429,44 @@ fvm_movieclip_render_view(FVM_Context *c, FVM_Object *clip, FVM_RasterSurface *s
         ColorAffine root_color;
         FVM_Result result = ancestor_color(c, clip, root_color);
         return result == FVM_OK ? render(c, clip, surface, root_color, 0, 0, 0, &viewport) : result;
+    }
+    catch (const std::bad_alloc &)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+}
+
+
+/* Capture native solid contours through the same protected traversal as rendering.
+ * All callback state is call-local, so nested captures cannot redirect another job. */
+extern "C" FVM_Result fvm_movieclip_capture_paths(
+    FVM_Context *c, FVM_Object *clip, const FVM_Affine *view, FVM_MoviePathSink sink, void *userdata)
+{
+    if (!c || !clip || clip->owner != c || !view || !sink || c->destroying || c->gc_collecting || c->gc_releasing)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (c->stage_quality == FVM_STAGE_QUALITY_LOW)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    const double values[FVM_MOVIECLIP_VIEW_COMPONENTS] = {view->xx, view->yx, view->xy, view->yy, view->x0, view->y0};
+    for (unsigned int i = 0; i < FVM_MOVIECLIP_VIEW_COMPONENTS; ++i)
+    {
+        if (values[i] != values[i] || values[i] > DBL_MAX || values[i] < -DBL_MAX)
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+    }
+    const FVM_Affine viewport = *view;
+    try
+    {
+
+
+        FVM_NativeCallGuard guard(c);
+        ColorAffine root_color;
+        FVM_Result result = ancestor_color(c, clip, root_color);
+        return result == FVM_OK ? render(c, clip, 0, root_color, 0, 0, 0, &viewport, sink, userdata) : result;
     }
     catch (const std::bad_alloc &)
     {

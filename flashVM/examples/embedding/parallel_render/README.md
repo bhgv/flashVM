@@ -50,6 +50,24 @@ caller-owned pending/completed storage. Queued storage belongs to destroy or tak
 never both. No physical window or device is required.
 
 [Example catalog](../../README.md#example-embedding-parallel_render).
+## Actual desktop integration
+
+The application path is described in [event-driven rendering](../../../doc/RENDER_ASYNC.md).
+The VM owner captures real MovieClip contours with
+[`fvm_movieclip_capture_paths`](../../../include/flashvm/movieclip.h#L198); the sink copies each borrowed contour before returning.
+The desktop adds immutable text, clipping and opacity commands. A persistent
+coordinator invokes the parallel batch away from the VM owner. Only damaged
+64×64 tiles are drawn and uploaded; unchanged overlapping layers are replayed
+inside damaged tiles. Timeline ticks do not pace keyboard/channel callbacks.
+
+Two runnable C regressions complement this embedding tutorial:
+[VM-independent capture](../../../../disVM/runtime/test_movieclip_capture.c) destroys
+the VM before drawing captured contours; [dirty tile comparison](../../../../disVM/runtime/test_editor_incremental.c)
+checks every pixel against full drawing, including an appended local contour.
+They are built as `disvm_movieclip_capture_test` and
+`disvm_editor_incremental_test` by the graphical Dis runtime test configuration.
+The capture extension currently supports solid fills and round strokes, not
+arbitrary SWF bitmap/gradient capture. Partial snapshots must be discarded on failure.
 
 <!-- source-links:start -->
 ## Исходники / Source declarations
@@ -60,6 +78,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
+| `fvm_movieclip_capture_paths` | function | [include/flashvm/movieclip.h:198](../../../include/flashvm/movieclip.h#L198) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../../../include/flashvm/flashvm.h#L49) |
 | `fvm_render_jobs_run` | function | [include/flashvm/render_jobs.h:25](../../../include/flashvm/render_jobs.h#L25) |
 | `fvm_render_queue_create` | function | [include/flashvm/render_queue.h:32](../../../include/flashvm/render_queue.h#L32) |
