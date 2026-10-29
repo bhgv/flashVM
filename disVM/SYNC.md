@@ -1,15 +1,20 @@
 # v0.1676 — ALT metadata preflight and drained-queue finalization
 
-Experiment pin: **95df086d0cf29ab9b471b4d057dd741f7c955794**.
+Experiment pin: **a67032e0136219becf692a59ab641b3f2c8bea11**.
 Imported 60837e4 guard validation before any registration and 95df086 blocked ALT
 cancellation after queue draining/finalization. Added fixtures and independent
-C/RX UBSan matrices. Dis **803**, bootstrap **277**, **960 unique selected files**
-match exact upstream Git blobs and manifest SHA-256. Full core **218/218** and
+C/RX UBSan matrices. Dis **804**, bootstrap **277**, **961 unique selected files**
+match exact upstream Git blobs and manifest SHA-256. Full core **221/221** and
 runtime **245/245** pass. No new common defect requiring an outgoing patch was
 found; earlier outgoing fixes remain in experiment. Menu/SDK entry integration
 is workspace-specific and stays here.
 
 [Series](../docs/releases/v0.1676.md) · [Entry points](../ide/ENTRYPOINTS.md).
+
+The final import also includes a67032e: unwind ownership cursors and resumed
+RET/extent registers survive destructor REG borrowing. Full UBSan/NDEBUG
+unwind/return/extent matrices are registered separately; rebuilt menu/SDK clients
+and all 245 runtime cases pass again on this final pin.
 
 # v0.1675 — Queue-chain validation and glyph selection
 
