@@ -1,6 +1,6 @@
 # Independent C99 library; matching compiler/linker dependencies are explicit.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_compiler_service VERSION 0.1.0 LANGUAGES C)
+project(disvm_compiler_service VERSION 0.1.1 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -36,6 +36,10 @@ if(DVM_COMPILER_TESTS)
   enable_testing()
   add_executable(disvm_compiler_api test_engine.c)
   target_link_libraries(disvm_compiler_api PRIVATE disvm_compiler_engine)
+  add_executable(disvm_compiler_canonical test_canonical.c)
+  target_include_directories(disvm_compiler_canonical PRIVATE "${DVM_COMPILER_FIR_INCLUDE}")
+  target_link_libraries(disvm_compiler_canonical PRIVATE disvm_compiler_engine)
+  add_test(NAME disvm_compiler_canonical COMMAND disvm_compiler_canonical)
   add_test(NAME disvm_compiler_api COMMAND disvm_compiler_api)
   add_test(NAME disvm_compiler_unavailable_temp COMMAND "${CMAKE_COMMAND}" -E env
     TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/absent-directory $<TARGET_FILE:disvm_compiler_api> --temp-failure)

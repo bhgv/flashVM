@@ -71,6 +71,7 @@ void dvm_compile(
     FILE *debug = NULL;
     FILE *binary = NULL;
     FILE *object = NULL;
+    FILE *canonical = NULL;
     FirModule *module = NULL;
     SwlContext *linker = NULL;
     unsigned char *swo = NULL;
@@ -133,6 +134,24 @@ void dvm_compile(
         !fir_verify(module, output->message, sizeof(output->message)))
     {
         goto done;
+    }
+    /* CLI backends consume serialized FIR. Reparse the same canonical form so
+     * removed constant temporaries cannot change value-slot allocation merely
+     * because the service emits in-process. Original FIRDBG1 remains separate. */
+    if (target != 2)
+    {
+        output->stage = DVM_COMPILE_RESOURCE;
+        canonical = fir_temporary();
+        if (!canonical || !fir_print(canonical, module) || fseek(canonical, 0, SEEK_SET))
+        {
+            goto done;
+        }
+        output->stage = DVM_COMPILE_VERIFY;
+        if (!fir_parse(canonical, module, output->message, sizeof(output->message)) ||
+            !fir_verify(module, output->message, sizeof(output->message)))
+        {
+            goto done;
+        }
     }
     output->stage = DVM_COMPILE_BACKEND;
     if (target == 1)
@@ -215,6 +234,10 @@ done:
     if (object)
     {
         fclose(object);
+    }
+    if (canonical)
+    {
+        fclose(canonical);
     }
     swl_destroy(linker);
     free(swo);

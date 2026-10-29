@@ -18,3 +18,12 @@ Do not save, execute or relabel an output unless stage is DVM_COMPILE_OK. Dispos
 any previous result before reusing its storage; input stays caller-owned.
 Both returned buffers are native-owned copies and must not be installed as a
 shared Dis/FlashVM heap object. The native binding copies them into mapped roots.
+
+## Canonical binary layout (0.1.1)
+
+Binary backends now consume reparsed canonical FIR, matching separate CLI stages.
+Constant folding can remove temporary instructions while leaving original
+in-memory value slots allocated; reparse gives the same slot layout to library
+and CLI consumers. Original FIRDBG1 stays separate. The standalone canonical
+regression compares exact Dis bytes for four languages and both options, and
+export acceptance compares all three formats with independently run tools.
