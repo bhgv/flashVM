@@ -45,6 +45,7 @@ def main():
             "arm64-emit.h",
             "riscv-emit.h",
             "math.c",
+            "alt.c",
             "vmfetch.h",
         )
         stale = [

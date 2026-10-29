@@ -611,3 +611,17 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
   set_tests_properties(disvm_bench_numeric PROPERTIES TIMEOUT 120
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
+
+# Actual ALT overlapping-publication matrices, C and native RX dispatch.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  foreach(route c rx)
+    add_test(NAME disvm_alt_publication_${route} COMMAND "${Python3_EXECUTABLE}"
+      "${u}/libinterp/tests/channel-queues.py")
+    set(route_environment "QUEUE_JIT_ROUTE=0")
+    if(route STREQUAL "rx")
+      set(route_environment "QUEUE_JIT_ROUTE=1")
+    endif()
+    set_tests_properties(disvm_alt_publication_${route} PROPERTIES TIMEOUT 240
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all;QUEUE_CASES=publication-bad-ready publication-bad-wake publication-bad-output publication-idle publication-wake publication-wake-tuple publication-result publication-payload publication-tuple;${route_environment}")
+  endforeach()
+endif()
