@@ -1,3 +1,15 @@
+# v0.1674 — Synchronization audit and independent window lifetime
+
+Experiment still points to **bfa52530021a9fbd5ca58a69e03042c89a8d9bdd**.
+No incoming selected change and no new common defect requiring an outgoing patch
+were found. Dis **797** and bootstrap **277** files retain the exact pin/hashes;
+**954 unique sources** are shared with the audited upstream Git objects. The
+workspace-only fixes concern MovieClip lifetime, Limbo layout/input and SDK clients.
+Previous outgoing fixes remain present in experiment. No empty upstream commit
+or private interpreter fork was created.
+
+[Series](../docs/releases/v0.1674.md) · [Desktop lifetime](../ide/DESKTOP-LIFECYCLE.md).
+
 # v0.1673 — ALT publication and MovieClip desktop
 
 Experiment pin: **bfa52530021a9fbd5ca58a69e03042c89a8d9bdd**. Dis **797**,

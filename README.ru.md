@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1673**. [English](README.md).
+Версия разработки: **0.1674**. [English](README.md).
 
-Текущая серия: [v0.1673](docs/releases/v0.1673.md): рабочий стол из MovieClip, независимые редакторы на Limbo, живые миниатюры и синхронизация ALT с Inferno.
+Текущая серия: [v0.1674](docs/releases/v0.1674.md): перемещаемые MovieClip-окна, закрытие/создание независимых редакторов, защита dirty-close, порядок перекрытия и проверка синхронизации Inferno.
 
 ## Просмотр документации
 
