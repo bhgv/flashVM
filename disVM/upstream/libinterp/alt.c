@@ -3,6 +3,7 @@
 #include "interp.h"
 #include "raise.h"
 #include "kernel.h"
+#include "vmchannel.h"
 
 #define OP(fn)	void fn(void) // Shared C instruction declarations.
 
@@ -65,6 +66,72 @@ altarrayvalid(Array *a)
 }
 
 
+/* Identify a channel/array only after its complete native header and heap prefix fit. */
+static int
+altobject(Channel *c)
+{
+	Type *type;
+	uintptr bytes;
+
+	if(c == nil || c == H)
+		error(exNilref);
+	if((uintptr)c <= sizeof(Heap) || (uintptr)c%sizeof(void*) != 0)
+		error(exHeap);
+	bytes = sizeof(Array) < sizeof(Channel) ? sizeof(Array) : sizeof(Channel);
+	if((uintptr)c > (uintptr)-1-bytes)
+		error(exHeap);
+	/* Reading only the preceding Type cell does not require a Channel-sized array. */
+	memmove(&type, (uchar*)c-sizeof(Heap)+offsetof(Heap, t), sizeof(type));
+	bytes = type == &Tarray ? sizeof(Array) : sizeof(Channel);
+	if((uintptr)c > (uintptr)-1-bytes)
+		error(exHeap);
+	return type == &Tarray;
+}
+
+
+/* Validate both chains before registration makes cancellation responsible for this channel. */
+static void
+altchannel(Channel *c, int receive)
+{
+	if(altobject(c))
+		error(exHeap);
+	vmchanready(c, receive);
+	vmchanend(&c->send);
+	vmchanend(&c->recv);
+}
+
+
+/* Check every guard/member before the first allocation or partial ALT registration. */
+static void
+altvalidate(Alt *a, int nsend, int nrecv)
+{
+	Channel *c, *member;
+	Array *array;
+	WORD n;
+	int guard, receive;
+
+	for(guard = 0; guard < nsend+nrecv; guard++){
+		memmove(&c, (uchar*)a+offsetof(Alt, ac)+
+			(uintptr)guard*sizeof(Altc)+offsetof(Altc, c), sizeof(c));
+		receive = guard >= nsend;
+		if(!altobject(c)){
+			altchannel(c, receive);
+			continue;
+		}
+		if(!receive)
+			error(exHeap);
+		array = (Array*)c;
+		if(!altarrayvalid(array))
+			error(exBounds);
+		for(n = 0; n < array->len; n++){
+			memmove(&member, array->data+(uintptr)n*sizeof(member), sizeof(member));
+			if(member != H)
+				altchannel(member, 1);
+		}
+	}
+}
+
+
 /*
  * Count the number of ready channels in an array of channels
  * Register the owning prog without arithmetic on an empty array data span.
@@ -116,7 +183,7 @@ struct AltSelection
 };
 
 
-/* Remove array registrations while staging the selected tuple until all guards are cancelled. */
+/* Cancel array registrations, including a queue already drained by channel finalization. */
 static void
 altunmark(Channel *c, void *ptr, Prog *p, int sr, Channel **sel, int dn, AltSelection *selected)
 {
@@ -130,7 +197,7 @@ altunmark(Channel *c, void *ptr, Prog *p, int sr, Channel **sel, int dn, AltSele
 	ca = (Channel**)a->data;
 	for(n = 0; n < a->len; n++){
 		memmove(&c, (uchar*)ca+n*sizeof(c), sizeof(c));
-		if(c != H && c != nil && c->recv->prog)
+		if(c != H && c != nil && c->recv != nil && c->recv->prog)
 			cqdelp(&c->recv, p);
 		if(sr == 1 && c != nil && c != H && *sel == c){
 			selected->array = 1;
@@ -229,7 +296,7 @@ altrdy(Alt *a, Prog *p)
 }
 
 
-/* Cancel every registration before publishing a wakeup that can overwrite guard metadata. */
+/* Cancel surviving registrations before publication; killcomm may have drained one queue. */
 void
 altdone(Alt *a, Prog *p, Channel *sel, int sr)
 {
@@ -254,7 +321,7 @@ altdone(Alt *a, Prog *p, Channel *sel, int sr)
 	while(ac < eac) {
 		memmove(&c, (uchar*)ac+offsetof(Altc, c), sizeof(c));
 		if(c != H && c != nil) {
-			if(c->send->prog)
+			if(c->send != nil && c->send->prog)
 				cqdelp(&c->send, p);
 			if(sr == 0 && c == sel) {
 				memmove(&selected.payload, (uchar*)ac+offsetof(Altc, ptr), sizeof(selected.payload));
@@ -471,6 +538,7 @@ xecalt(int block)
 		error(exBounds);
 	result = R.d;
 	altresult(result);
+	altvalidate(a, nsend, nrecv);
 	ready.alt = a;
 	ready.prog = p;
 	ready.registered = 1;

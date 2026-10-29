@@ -657,3 +657,24 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;QUEUE_CASES=queue-chains queue-slots queue-pop queue-long;${chain_route}")
   endforeach()
 endif()
+
+# ALT must preflight every guard before registration, then survive drained queues
+# during finalization. Exercise authoritative C bodies and native AMD64 RX tails.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  foreach(family metadata hangup)
+    set(alt_cases "alt-metadata")
+    if(family STREQUAL "hangup")
+      set(alt_cases "alt-hangup queue-hangup")
+    endif()
+    foreach(route c rx)
+      set(alt_route "QUEUE_JIT_ROUTE=0")
+      if(route STREQUAL "rx")
+        set(alt_route "QUEUE_JIT_ROUTE=1")
+      endif()
+      add_test(NAME disvm_alt_${family}_${route} COMMAND "${Python3_EXECUTABLE}"
+        "${u}/libinterp/tests/channel-queues.py")
+      set_tests_properties(disvm_alt_${family}_${route} PROPERTIES TIMEOUT 240
+        ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;QUEUE_CASES=${alt_cases};${alt_route}")
+    endforeach()
+  endforeach()
+endif()
