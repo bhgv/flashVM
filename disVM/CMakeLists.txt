@@ -678,3 +678,14 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
     endforeach()
   endforeach()
 endif()
+
+# Destructor callbacks may borrow the decoded register set. Execute the complete
+# owner/return/extent matrices with active predicates under UBSan and NDEBUG.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  foreach(driver stack-unwind return-native stack-lifecycle)
+    add_test(NAME disvm_stack_callbacks_${driver} COMMAND "${Python3_EXECUTABLE}"
+      "${u}/libinterp/tests/${driver}.py")
+    set_tests_properties(disvm_stack_callbacks_${driver} PROPERTIES TIMEOUT 240
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all")
+  endforeach()
+endif()
