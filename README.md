@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1672**. [Русская версия](README.ru.md).
+Development version: **0.1673**. [Русская версия](README.ru.md).
 
-Current series: [v0.1672](docs/releases/v0.1672.md): explicit Dis IDE artifact/debug export, OS-exclusive binary files, canonical compiler layout and bidirectional Inferno synchronization.
+Current series: [v0.1673](docs/releases/v0.1673.md): real MovieClip desktop, independent Limbo editor owners, live thumbnails and Inferno ALT publication synchronization.
 
 ## Browse documentation
 
