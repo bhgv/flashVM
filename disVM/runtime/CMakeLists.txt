@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.37.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.38.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -1213,5 +1213,32 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
     set_tests_properties(disvm_movieclip_desktop_${mode} PROPERTIES TIMEOUT 180)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_pointer_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_pointer.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_desktop_pointer_${mode} PROPERTIES TIMEOUT 180)
+  endforeach()
+endif()
+
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes}
+    -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis" "${root}/ide/dis/examples/desktop-pointer/main.b"
+  DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop-pointer/main.b" ${module_headers} VERBATIM)
+add_custom_target(disvm_desktop_pointer_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis")
+if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    set(dispatch --jit)
+    if(mode STREQUAL "interpreter")
+      set(dispatch --no-jit)
+    endif()
+    add_test(NAME disvm_desktop_pointer_tutorial_${mode} COMMAND "$<TARGET_FILE:disvm>" ${dispatch}
+      --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/desktop-pointer.dis")
+    set_tests_properties(disvm_desktop_pointer_tutorial_${mode} PROPERTIES TIMEOUT 60
+      PASS_REGULAR_EXPRESSION "PASS desktop pointer tutorial:")
   endforeach()
 endif()
