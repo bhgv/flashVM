@@ -113,6 +113,7 @@ if(BUILD_TESTING)
     dis-layout
     dis-control
     dis-rune
+    dis-rune-case
     array-indices
     descriptor-index
     heap-bounds
@@ -697,4 +698,10 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME disvm_dis-constants COMMAND "${Python3_EXECUTABLE}"
     "${u}/limbo/tests/dis-constants.py")
+endif()
+
+# Independent FlashVM oracle uses the selected upstream helper's actual C API.
+if(BUILD_TESTING)
+  add_test(NAME disvm_rune_order_crosscheck COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/rune_order_crosscheck.py" "${u}")
 endif()
