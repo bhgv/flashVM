@@ -424,5 +424,31 @@ class MenuTests(unittest.TestCase):
         self.assertEqual(menu.selection("2,4"), ["compilers", "linker"])
 
 
+    def test_envelope_demo_discovery_from_host_package(self):
+        """The standalone codec demo is visible even without an IDE runtime."""
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "disvm-host"
+            package.mkdir()
+            script = package / "run-dis64-envelope.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            entries = menu.product_entries(Path(directory))
+            if "13" not in entries or entries["13"][0] != "envelope" or entries["13"][3]:
+                self.fail("structural Dis64 demo missing or mislabeled graphical")
+
+    def test_envelope_launch_preserves_tool_status_without_document(self):
+        """A codec demo has no editor/font arguments and returns the real status."""
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "disvm-editor"
+            package.mkdir()
+            script = package / "run-dis64-envelope.sh"
+            script.write_text('#!/bin/sh\n[ "$#" -eq 0 ] || exit 99\nexit 17\n')
+            args = menu.argparse.Namespace(out=directory, no_install=False,
+                                          launch="envelope", document="ignored Я;$(false).b")
+            with contextlib.redirect_stdout(io.StringIO()):
+                status = menu.show_products(args, "/bin/bash", False)
+            if status != 17:
+                self.fail("codec launcher changed argv or concealed its failure")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -39,6 +39,25 @@ def fir_pairs(root, package):
     return pairs
 
 
+# Map only copied structural-codec products; no runtime or FIR package is required.
+# root/package are borrowed Paths; return source-to-installed links without I/O.
+def envelope_pairs(root, package):
+    source = root / "disVM/envelope"
+    pairs = {}
+    for suffix in ("md", "ru.md"):
+        pairs[source / ("README." + suffix)] = package / ("DIS64-ENVELOPE." + suffix)
+    for path in (source / "examples").iterdir():
+        if path.is_file():
+            pairs[path] = package / "examples/dis64-envelope" / path.name
+    for path in (root / "disVM/upstream/doc").glob("dis64-*"):
+        if path.is_file():
+            pairs[path] = package / "docs/dis64" / path.name
+    for name in ("dis64.h", "dis-rune.h", "dis-string-pool.h"):
+        pairs[root / "disVM/upstream/include" / name] = package / "include/dis64" / name
+    pairs[root / "disVM/upstream/utils/dis64inspect/dis64inspect.c"] = package / "source/dis64inspect.c"
+    return pairs
+
+
 # Native packages retain standalone C owner/table sources and executable examples.
 # Map copied files locally; omitted repository guides keep public GitHub links.
 def runtime_pairs(root, package):
@@ -59,18 +78,26 @@ def runtime_pairs(root, package):
     sibling = package.parent / "fir"
     if sibling.is_dir():
         pairs.update(fir_pairs(root, sibling))
+    if (package / "DIS64-ENVELOPE.md").is_file():
+        pairs.update(envelope_pairs(root, package))
     return pairs
 
 
 # CLI supplies root/package and optional --runtime. Rewrite copied Markdown only;
 # preserving fences, anchors, local package links and verified repository fallback.
 def main():
-    if len(sys.argv) not in (3, 4) or (len(sys.argv) == 4 and sys.argv[3] != "--runtime"):
-        raise ValueError("expected repository package [--runtime]")
+    if len(sys.argv) not in (3, 4) or (len(sys.argv) == 4 and sys.argv[3] not in ("--runtime", "--envelope")):
+        raise ValueError("expected repository package [--runtime|--envelope]")
     root, package = (Path(value).resolve() for value in sys.argv[1:3])
-    pairs = runtime_pairs(root, package) if len(sys.argv) == 4 else fir_pairs(root, package)
+    mode = sys.argv[3] if len(sys.argv) == 4 else ""
+    if mode == "--envelope":
+        pairs = envelope_pairs(root, package)
+    elif mode == "--runtime":
+        pairs = runtime_pairs(root, package)
+    else:
+        pairs = fir_pairs(root, package)
     for source, destination in pairs.items():
-        if len(sys.argv) == 4:
+        if mode == "--runtime":
             try:
                 destination.relative_to(package)
             except ValueError:
@@ -106,7 +133,7 @@ def main():
             else:
                 output.append(line)
         destination.write_text("".join(output))
-    if len(sys.argv) == 4:
+    if mode == "--runtime":
         for guide in (package / "source/table").glob("*.md"):
             legacy = package / "source/hybrid-table-core" / guide.name
             if legacy.is_file():

@@ -61,6 +61,43 @@ install_program() {
     copy_file "$source" "$destination/$name" 755
 }
 
+# Install the shared structural codecs, actual inspector and explicitly non-executable demo.
+# Parameters: tested build directory, package directory. Returns: fails on any missing product.
+install_dis64_envelope() {
+    local base=$1 destination=$2 file
+    install_program "$base" dis64inspect "$destination"
+    install_program "$base" dis64_envelope_example "$destination"
+    copy_tree "$ROOT/disVM/envelope/examples" "$destination/examples/dis64-envelope"
+    if [[ -f "$base/envelope/sample.dis64" ]]; then
+        copy_file "$base/envelope/sample.dis64" "$destination/examples/dis64-envelope/sample.dis64"
+    else
+        # Cross builds package verified bytes without executing target binaries.
+        "${PYTHON:-python3}" - "$ROOT/disVM/envelope/examples/sample.dis64.hex" "$destination/examples/dis64-envelope/sample.dis64" <<'PY'
+from pathlib import Path
+import sys
+Path(sys.argv[2]).write_bytes(bytes.fromhex(Path(sys.argv[1]).read_text()))
+PY
+    fi
+    copy_file "$ROOT/disVM/upstream/utils/dis64inspect/dis64inspect.c" "$destination/source/dis64inspect.c"
+    for file in dis64.h dis-rune.h dis-string-pool.h; do
+        copy_file "$ROOT/disVM/upstream/include/$file" "$destination/include/dis64/$file"
+    done
+    for file in "$ROOT/disVM/upstream/doc"/dis64-*.md "$ROOT/disVM/upstream/doc"/dis64-*.json; do
+        copy_file "$file" "$destination/docs/dis64/$(basename -- "$file")"
+    done
+    copy_file "$ROOT/disVM/envelope/README.md" "$destination/DIS64-ENVELOPE.md"
+    copy_file "$ROOT/disVM/envelope/README.ru.md" "$destination/DIS64-ENVELOPE.ru.md"
+    "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination" --envelope
+    cat >"$destination/run-dis64-envelope.sh" <<'EOF'
+#!/bin/sh
+# Inspect the packaged structural fixture; this launcher never executes Dis64 code.
+set -eu
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec "$here/dis64inspect" "$here/examples/dis64-envelope/sample.dis64" "$@"
+EOF
+    chmod 755 "$destination/run-dis64-envelope.sh"
+}
+
 # Preserve first-party licensing plus selected upstream notices rather than relabeling code.
 # Parameters: package directory and component source directory. Returns: copy failure propagates.
 notices() {
@@ -271,7 +308,7 @@ EOF
             copy_tree "$source/include" "$destination/include"
             copy_file "$source/compiler/dis.c" "$destination/source/dis.c"
             copy_file "$source/compiler/dis_table.c" "$destination/source/dis_table.c"
-            for file in SWF_INT_DIVMOD.md SWF_INT_DIVMOD.ru.md SWF_INT_SHIFTS.md SWF_INT_SHIFTS.ru.md INTEGER_IDENTITIES.md INTEGER_IDENTITIES.ru.md NUMERIC_FLOW.md NUMERIC_FLOW.ru.md NUMERIC_FOR.md NUMERIC_FOR.ru.md GROUPED_CONDITIONS.md GROUPED_CONDITIONS.ru.md NUMERIC_LOGIC.md NUMERIC_LOGIC.ru.md REAL_CONDITIONS.md REAL_CONDITIONS.ru.md COVERAGE.md COVERAGE.ru.md TYPED_PREDICATES.md TYPED_PREDICATES.ru.md INT_BITS.md INT_BITS.ru.md SOURCE_ALIASES.md SOURCE_ALIASES.ru.md DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md EXTENSIONS.md EXTENSIONS.ru.md TYPE_REFLECTION.md TYPE_REFLECTION.ru.md BIG_ARITHMETIC.md BIG_ARITHMETIC.ru.md BIG_BITWISE.md BIG_BITWISE.ru.md BIG_CFG.md BIG_CFG.ru.md BIG_DECISIONS.md BIG_DECISIONS.ru.md TABLE_CFG.md TABLE_CFG.ru.md TABLE_MUTATION.md TABLE_MUTATION.ru.md TERMINAL_ARMS.md TERMINAL_ARMS.ru.md COMPARISON_VALUES.md COMPARISON_VALUES.ru.md SHORT_CIRCUIT.md SHORT_CIRCUIT.ru.md COMPOUND_UPDATES.md COMPOUND_UPDATES.ru.md UNICODE_STRINGS.md UNICODE_STRINGS.ru.md INT_ARITHMETIC.md INT_ARITHMETIC.ru.md TEXT_BITS.md TEXT_BITS.ru.md INT_SHIFTS.md INT_SHIFTS.ru.md TEXT_VALUES.md TEXT_VALUES.ru.md TABLE_LITERALS.md TABLE_LITERALS.ru.md RELATIVE_SEQUENCES.md RELATIVE_SEQUENCES.ru.md SLICE_ASSIGNMENT.md SLICE_ASSIGNMENT.ru.md BIG_SHIFTS.md BIG_SHIFTS.ru.md; do
+            for file in INTEGER_PAIRS.md INTEGER_PAIRS.ru.md SWF_INT_DIVMOD.md SWF_INT_DIVMOD.ru.md SWF_INT_SHIFTS.md SWF_INT_SHIFTS.ru.md INTEGER_IDENTITIES.md INTEGER_IDENTITIES.ru.md NUMERIC_FLOW.md NUMERIC_FLOW.ru.md NUMERIC_FOR.md NUMERIC_FOR.ru.md GROUPED_CONDITIONS.md GROUPED_CONDITIONS.ru.md NUMERIC_LOGIC.md NUMERIC_LOGIC.ru.md REAL_CONDITIONS.md REAL_CONDITIONS.ru.md COVERAGE.md COVERAGE.ru.md TYPED_PREDICATES.md TYPED_PREDICATES.ru.md INT_BITS.md INT_BITS.ru.md SOURCE_ALIASES.md SOURCE_ALIASES.ru.md DIS_BACKEND.md DIS_BACKEND.ru.md TABLES.md TABLES.ru.md TABLES_DIS.md TABLES_DIS.ru.md EXTENSIONS.md EXTENSIONS.ru.md TYPE_REFLECTION.md TYPE_REFLECTION.ru.md BIG_ARITHMETIC.md BIG_ARITHMETIC.ru.md BIG_BITWISE.md BIG_BITWISE.ru.md BIG_CFG.md BIG_CFG.ru.md BIG_DECISIONS.md BIG_DECISIONS.ru.md TABLE_CFG.md TABLE_CFG.ru.md TABLE_MUTATION.md TABLE_MUTATION.ru.md TERMINAL_ARMS.md TERMINAL_ARMS.ru.md COMPARISON_VALUES.md COMPARISON_VALUES.ru.md SHORT_CIRCUIT.md SHORT_CIRCUIT.ru.md COMPOUND_UPDATES.md COMPOUND_UPDATES.ru.md UNICODE_STRINGS.md UNICODE_STRINGS.ru.md INT_ARITHMETIC.md INT_ARITHMETIC.ru.md TEXT_BITS.md TEXT_BITS.ru.md INT_SHIFTS.md INT_SHIFTS.ru.md TEXT_VALUES.md TEXT_VALUES.ru.md TABLE_LITERALS.md TABLE_LITERALS.ru.md RELATIVE_SEQUENCES.md RELATIVE_SEQUENCES.ru.md SLICE_ASSIGNMENT.md SLICE_ASSIGNMENT.ru.md BIG_SHIFTS.md BIG_SHIFTS.ru.md; do
                 copy_file "$source/doc/$file" "$destination/docs/$file"
             done
             for file in API.md API.ru.md; do
@@ -352,6 +389,7 @@ EOF
             ;;
         disvm-runtime | disvm-editor)
             source="$ROOT/disVM"
+            install_dis64_envelope "$base" "$destination"
             mkdir -p "$destination"
             copy_tree "$ROOT/disVM/examples/native-module" "$destination/examples/native-module"
             copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.md" "$destination/SYS_CAPTURE.md"
@@ -584,6 +622,7 @@ EOF
             ;;
         disvm | disvm-host)
             source="$ROOT/disVM"
+            install_dis64_envelope "$base" "$destination"
             mkdir -p "$destination"
             copy_tree "$ROOT/disVM/include" "$destination/include"
             # Export the public header closure required by flashvm_host.h.

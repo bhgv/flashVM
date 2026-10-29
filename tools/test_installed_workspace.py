@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run real installed products after relocating the whole package collection into a path with spaces."""
 import argparse
+import json
 from pathlib import Path
 import os
 import shutil
@@ -509,7 +510,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # New scalar bits and checked shifts must survive relocation and C99 relinking.
-    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b", "int-divmod-swf.b"):
+    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b"):
         bit_source = component / "examples/dis" / example
         optimized = work / "bits-opt.fir"
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", bit_source, fir, "--module", "dis_example"], work, environment)
@@ -633,7 +634,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # Prove both checked integer targets through freshly linked SDK APIs.
-    for example in ("int-shifts-swf.b", "int-divmod-swf.b"):
+    for example in ("int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b"):
         arithmetic_source = component / "examples/dis" / example
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", arithmetic_source, fir,
              "--module", "integer_identities"], work, environment)
@@ -758,12 +759,47 @@ def broker_packages(prefix, work, environment):
 
 
 
+# Rebuild the public C99 codec example against relocated headers only. Return
+# the number of admitted packages; paths/environment are borrowed, all outputs
+# are owned by the acceptance runner's temporary work directory.
+def envelope_packages(prefix, work, environment):
+    checked = 0
+    for name in ("disvm-editor", "disvm-runtime", "disvm-host", "disvm"):
+        package = prefix / name
+        if not package.is_dir():
+            continue
+        inspector = program(prefix, name, "dis64inspect")
+        sample = package / "examples/dis64-envelope/sample.dis64"
+        client = work / (name + "-envelope-client")
+        image = work / (name + "-envelope.dis64")
+        copy = work / (name + "-envelope-copy.dis64")
+        run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-Wall", "-Wextra", "-Werror",
+             "-I" + str(package / "include/dis64"), package / "examples/dis64-envelope/main.c",
+             "-o", client], work, environment)
+        run([client, image], work, environment)
+        if image.read_bytes() != sample.read_bytes():
+            raise RuntimeError("relocated header-only codec changed fixture bytes")
+        report = json.loads(run([inspector, image, "--rewrite", copy], work, environment))
+        if not report["envelope_only"] or report["execution_supported"] or copy.read_bytes() != image.read_bytes():
+            raise RuntimeError("relocated inspector changed scope or bytes")
+        report = json.loads(run(["sh", package / "run-dis64-envelope.sh"], work, environment))
+        if report["execution_supported"] or not report["envelope_only"]:
+            raise RuntimeError("installed codec demo implied VM execution")
+        for guide in ("DIS64-ENVELOPE.md", "DIS64-ENVELOPE.ru.md"):
+            if not (package / guide).is_file():
+                raise RuntimeError("missing installed codec guide")
+        checked += 1
+    return checked
+
+
 # Validate actual VM/parser/FIR/linker/native-tool behavior independently of the source build paths.
 # CLI chooses prefix/scratch. Returns via exit status; only its temporary directory is removed.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, required=True)
     parser.add_argument("--scratch", type=Path, required=True)
+    parser.add_argument("--envelope-only", action="store_true",
+                        help="Check relocated structural Dis64 inspector and header-only C99 SDK")
     parser.add_argument("--broker-only", action="store_true",
                         help="Check relocated broker C99 SDK, compiler access sites and real Dis channels")
     parser.add_argument("--fir-dis-only", action="store_true",
@@ -774,7 +810,7 @@ def main():
         help="Check relocated Dis host and IDE packages without requiring other packages",
     )
     args = parser.parse_args()
-    if sum((args.modules_only, args.fir_dis_only, args.broker_only)) > 1:
+    if sum((args.modules_only, args.fir_dis_only, args.broker_only, args.envelope_only)) > 1:
         parser.error("choose one relocated-package subset")
     args.scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
@@ -786,6 +822,12 @@ def main():
         work = base / "work"
         work.mkdir()
         environment = dict(os.environ, TMPDIR=str(work), TEMP=str(work), TMP=str(work))
+        envelope_count = envelope_packages(prefix, work, environment)
+        if args.envelope_only:
+            if not envelope_count:
+                raise RuntimeError("no installed structural Dis64 package")
+            print("PASS relocated Dis64 inspector, exact header-only C99 bytes, opaque rewrite and demo")
+            return
         if args.broker_only:
             table_packages(prefix, work, environment)
             broker_packages(prefix, work, environment)
