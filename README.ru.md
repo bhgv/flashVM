@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1685**. [English](README.md).
+Версия разработки: **0.1686**. [English](README.md).
 
-[v0.1685](docs/releases/v0.1685.md): Async.post/cancel, frame-free owner polling and batched IDE text input / внекадровые callbacks и пакетный ввод текста.
+Текущая серия: [v0.1686](docs/releases/v0.1686.md): точные битовые константы FIR, production WORD32 из Inferno, прямой ответ Dis64 и переносимый C99 SDK.
 
 ## Просмотр документации
 

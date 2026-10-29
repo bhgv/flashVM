@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1685**. [Русская версия](README.ru.md).
+Development version: **0.1686**. [Русская версия](README.ru.md).
 
-[v0.1685](docs/releases/v0.1685.md): Async.post/cancel, frame-free owner polling and batched IDE text input / внекадровые callbacks и пакетный ввод текста.
+Current series: [v0.1686](docs/releases/v0.1686.md): exact FIR bit constants, production WORD32 source synchronization, direct Dis64 response and relocated compiler SDK.
 
 ## Browse documentation
 
