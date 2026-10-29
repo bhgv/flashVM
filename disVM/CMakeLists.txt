@@ -111,6 +111,7 @@ if(BUILD_TESTING)
     direct-target-native
     vm-widths
     dis-layout
+    dis-control
     array-indices
     descriptor-index
     heap-bounds
