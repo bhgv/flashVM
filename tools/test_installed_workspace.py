@@ -510,7 +510,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # New scalar bits and checked shifts must survive relocation and C99 relinking.
-    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b"):
+    for example in ("int-bits.b", "int-shifts.b", "int-complement.b", "typed-predicates.b", "int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b", "integer-facts.b"):
         bit_source = component / "examples/dis" / example
         optimized = work / "bits-opt.fir"
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", bit_source, fir, "--module", "dis_example"], work, environment)
@@ -634,7 +634,7 @@ def fir_dis_packages(prefix, work, environment):
 
 
     # Prove both checked integer targets through freshly linked SDK APIs.
-    for example in ("int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b"):
+    for example in ("int-shifts-swf.b", "int-divmod-swf.b", "integer-pairs.b", "integer-facts.b"):
         arithmetic_source = component / "examples/dis" / example
         run([program(prefix, "fir", "fir1_source"), "limbo", "--input", arithmetic_source, fir,
              "--module", "integer_identities"], work, environment)
@@ -785,6 +785,28 @@ def envelope_packages(prefix, work, environment):
         report = json.loads(run(["sh", package / "run-dis64-envelope.sh"], work, environment))
         if report["execution_supported"] or not report["envelope_only"]:
             raise RuntimeError("installed codec demo implied VM execution")
+        # Relink the real-payload C99 example using only relocated headers.
+        pilot_client = work / (name + "-pilot-client")
+        run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-Wall", "-Wextra", "-Werror",
+             "-Wno-unused-function", "-I" + str(package / "include/dis64"),
+             package / "examples/dis64-envelope/pilot.c", "-o", pilot_client], work, environment)
+        run([pilot_client, image], work, environment)
+        golden = bytes.fromhex((package / "examples/dis64-envelope/pilot42.hex").read_text())
+        if image.read_bytes() != golden or (package / "examples/dis64-envelope/pilot42.dis64").read_bytes() != golden:
+            raise RuntimeError("relocated real-payload pilot differs from shared golden")
+        report = json.loads(run([inspector, image, "--pilot", "--rewrite", copy], work, environment))
+        if not report["scalar_pilot"] or report["envelope_only"] or report["execution_supported"] or copy.read_bytes() != golden:
+            raise RuntimeError("relocated semantic inspector changed scope/bytes")
+        report = json.loads(run(["sh", package / "run-dis64-pilot.sh"], work, environment))
+        if not report["scalar_pilot"] or report["execution_supported"]:
+            raise RuntimeError("relocated semantic launcher claimed execution")
+        # Rebuild the actual inspector source as well: all transitive headers
+        # must be shipped, independent of the original build/source directory.
+        rebuilt = work / (name + "-rebuilt-inspector")
+        run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-Wall", "-Wextra", "-Werror",
+             "-Wno-unused-function", "-I" + str(package / "include/dis64"),
+             package / "source/dis64inspect.c", "-o", rebuilt], work, environment)
+        run([rebuilt, image, "--pilot"], work, environment)
         for guide in ("DIS64-ENVELOPE.md", "DIS64-ENVELOPE.ru.md"):
             if not (package / guide).is_file():
                 raise RuntimeError("missing installed codec guide")

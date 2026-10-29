@@ -386,6 +386,11 @@ def product_entries(prefix):
                prefix / "disvm-runtime/run-dis64-envelope.sh",
                prefix / "disvm-host/run-dis64-envelope.sh",
                prefix / "disvm/run-dis64-envelope.sh"), False),)
+    rows += (("14", "pilot", "Dis64: проверка metadata/types/code pilot42 (без исполнения)",
+              (prefix / "disvm-editor/run-dis64-pilot.sh",
+               prefix / "disvm-runtime/run-dis64-pilot.sh",
+               prefix / "disvm-host/run-dis64-pilot.sh",
+               prefix / "disvm/run-dis64-pilot.sh"), False),)
     entries = {}
     for key, name, label, candidates, graphical in rows:
         script = next((path for path in candidates if path.is_file()), None)
@@ -447,7 +452,7 @@ def show_products(args, bash, interactive):
             print(
                 "Не установлен запуск "
                 + requested
-                + ". Для desktop/editor выберите disvm-editor; для примеров — disvm-runtime; для envelope также подходит disvm-host."
+                + ". Для desktop/editor выберите disvm-editor; для примеров — disvm-runtime; для envelope/pilot также подходит disvm-host."
             )
             return 2
         return launch_product(entry, args, bash, False)
@@ -553,7 +558,7 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
-    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope"),
+    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot"),
                         help="After a successful build launch an installed application; desktop is the MovieClip IDE")
     parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
