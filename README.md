@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1669**. [Русская версия](README.ru.md).
+Development version: **0.1670**. [Русская версия](README.ru.md).
 
-Current series: [v0.1669](docs/releases/v0.1669.md): counted numeric Limbo loops, postfix updates, bounded lexical scopes and executable portable SDK tutorials.
+Current series: [v0.1670](docs/releases/v0.1670.md): native compiler libraries on Dis workspace channels, complete FIR/Dis/SWF artifacts and bidirectional Inferno synchronization.
 
 ## Browse documentation
 
