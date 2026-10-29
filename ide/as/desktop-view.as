@@ -7,10 +7,11 @@ ideWidget._x = ideWidgetX;
 ideWidget._y = ideWidgetY;
 ideWidget._xscale = ideWidgetScale;
 ideWidget._yscale = ideWidgetScale;
-ideLabel.text = ideLabelText;
 ideLabel.multiline = true;
 ideLabel.wordWrap = true;
 ideLabel._x = 6;
 ideLabel._y = 6;
 ideLabel._width = ideLabelWidth;
 ideLabel._height = ideLabelHeight;
+// Configure geometry before tabbed text triggers eager layout validation.
+ideLabel.text = ideLabelText;
