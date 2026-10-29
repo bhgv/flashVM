@@ -1,6 +1,6 @@
 # Autonomous C99 linker: no compiler, Coco/R or VM dependency.
 cmake_minimum_required(VERSION 3.10)
-project(swf_linker VERSION 0.3.14 LANGUAGES C)
+project(swf_linker VERSION 0.3.15 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)

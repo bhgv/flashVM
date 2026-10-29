@@ -470,4 +470,23 @@ with tempfile.TemporaryDirectory() as tmp:
                 raise AssertionError("condition check failed: linker/tests/check.py:381")
         else:
             tags(out.read_bytes())
+    # Modulo is a one-byte standard action, preserved through object/archive
+    # linking. It adds no extension requirement and does not relax framing.
+    modulo = b"\x96\x05\x00\x07" + struct.pack("<i", -7)
+    modulo += b"\x96\x05\x00\x07" + struct.pack("<i", 3) + b"\x3f\x26\x00"
+    a.write_bytes(object("remainder", modulo))
+    call("link", out, a)
+    if [body for tag, body in tags(out.read_bytes()) if tag == 12] != [modulo]:
+        raise RuntimeError("Modulo action bytes changed during linking")
+    remainder_lib = a.parent / "remainder-only.swa"
+    call("archive", remainder_lib, a)
+    call("link", out, remainder_lib)
+    if [body for tag, body in tags(out.read_bytes()) if tag == 12] != [modulo]:
+        raise RuntimeError("Modulo action bytes changed in archive linking")
+    for invalid in (modulo[:-1], modulo + b"\x00", b"\x3e\x00"):
+        a.write_bytes(object("remainder", invalid))
+        out.write_bytes(b"preserve")
+        call("link", out, a, good=False)
+        if out.read_bytes() != b"preserve":
+            raise RuntimeError("Modulo framing rejection changed existing output")
 print(f"{checks} total checks including stage policy")

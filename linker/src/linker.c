@@ -187,6 +187,7 @@ static int actions(const unsigned char *p, size_t n)
             case 0x4f: /* SetMember emitted by verified FIR dynamic AS stores. */
             case 0x0c:
             case 0x0d:
+            case 0x3f: /* Standard Modulo emitted by proven FIR int32 remainders. */
             case 0x60:
             case 0x64:
             case 0x0a:
