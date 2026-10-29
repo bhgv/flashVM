@@ -38,7 +38,7 @@ COMPONENTS = (
     ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
     ("disvm-host", "Общие с FlashVM файлы, сеть, каналы и нативные потоки Dis"),
     ("disvm-runtime", "Dis: исполняемая VM и терминальный редактор IDE (Linux AMD64, эксперимент)"),
-    ("disvm-editor", "IDE MovieClip: несколько окон, каретка/выделение, Limbo/Dis + FlashVM/SDL2"),
+    ("disvm-editor", "IDE MovieClip: несколько окон, каретка/выделение, Limbo/Dis + FlashVM/SDL2, сессионный clipboard"),
 )
 
 
@@ -345,7 +345,7 @@ def product_entries(prefix):
         (
             "8",
             "desktop",
-            "IDE MovieClip: окна, мышиное выделение, F7/F8, Help",
+            "IDE MovieClip: окна, выделение, сессионный clipboard, F7/F8, Help",
             (prefix / "disvm-editor/run-desktop-ide.sh",),
             True,
         ),
@@ -377,6 +377,10 @@ def product_entries(prefix):
             False,
         ),
     )
+    # The clipboard client is part of the same native packages, not a Python UI.
+    rows += (("12", "clipboard", "Пример сессионного Copy/Cut/Paste между окнами",
+              (prefix / "disvm-runtime/run-desktop-clipboard.sh",
+               prefix / "disvm-editor/run-desktop-clipboard.sh"), False),)
     entries = {}
     for key, name, label, candidates, graphical in rows:
         script = next((path for path in candidates if path.is_file()), None)
@@ -544,7 +548,7 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
-    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer"),
+    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard"),
                         help="After a successful build launch an installed application; desktop is the MovieClip IDE")
     parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")

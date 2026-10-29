@@ -373,6 +373,22 @@ class MenuTests(unittest.TestCase):
             else:
                 self.fail("non-graphical launch silently accepted --document")
 
+    def test_session_clipboard_client_is_a_visible_menu_entry(self):
+        """New portable clients must be integrated with the same public launch path."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            package = prefix / "disvm-runtime"
+            package.mkdir()
+            script = package / "run-desktop-clipboard.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False)
+            with contextlib.redirect_stdout(io.StringIO()), patch("builtins.input", return_value="12"), patch.object(
+                menu.subprocess, "call", return_value=0
+            ) as run:
+                status = menu.show_products(args, "/bin/sh", True)
+            if status or run.call_args[0][0] != ["/bin/sh", str(script)]:
+                self.fail("session clipboard client was installed but hidden from menu 12")
+
     def test_menu_launches_standard_modules_without_switches(self):
         """The retained-library tutorial is available from the post-build menu."""
         with tempfile.TemporaryDirectory() as temporary:

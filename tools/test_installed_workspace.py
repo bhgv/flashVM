@@ -69,6 +69,8 @@ def compiler_service_packages(prefix, work, environment):
         if not manifest.is_file() or "Fircompiler=ON" not in manifest.read_text():
             continue
         for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md", package / "ARTIFACT-EXPORT.md", package / "ARTIFACT-EXPORT.ru.md",
+                         package / "DESKTOP-CLIPBOARD.md", package / "DESKTOP-CLIPBOARD.ru.md",
+                         package / "examples/desktop-clipboard/README.md", package / "examples/desktop-clipboard/README.ru.md",
                          package / "ENTRYPOINTS.md", package / "DESKTOP.md", package / "DESKTOP.ru.md",
                          package / "DESKTOP-LIFECYCLE.md", package / "DESKTOP-LIFECYCLE.ru.md",
                          package / "DESKTOP-POINTER.md", package / "DESKTOP-POINTER.ru.md",
@@ -115,6 +117,15 @@ def compiler_service_packages(prefix, work, environment):
             output = run(["sh", package / "run-desktop-pointer.sh", dispatch, "--quantum", "1"], work, environment)
             if "PASS desktop pointer tutorial:" not in output:
                 raise RuntimeError("relocated desktop pointer example failed")
+        for dispatch in ("--jit", "--no-jit"):
+            output = run(["sh", package / "run-desktop-clipboard.sh", dispatch, "--quantum", "1"], work, environment)
+            if "PASS desktop clipboard tutorial:" not in output:
+                raise RuntimeError("relocated clipboard service client failed")
+        if (package / "deskclip-test.dis").is_file():
+            for dispatch in ("--jit", "--no-jit"):
+                output = run([program(prefix, name, "disvm"), dispatch, "--quantum", "1", "--max-instructions", "50000000", package / "deskclip-test.dis"], work, environment)
+                if "PASS desktop clipboard guards:" not in output:
+                    raise RuntimeError("relocated clipboard guard matrix failed")
         if (package / "desktop-test.dis").is_file():
             for dispatch in ("--jit", "--no-jit"):
                 output = run(
@@ -148,6 +159,20 @@ def compiler_service_packages(prefix, work, environment):
                               package / "fonts/NotoSansMono-Regular.ttf", mode], work, environment)
                 if "PASS desktop pointer:" not in output:
                     raise RuntimeError("relocated desktop pointer replay failed")
+        if name == "disvm-editor":
+            for mode in ("jit", "interpreter"):
+                output = run([sys.executable, package / "examples/desktop/check-clipboard.py",
+                              program(prefix, name, "disvm-editor"), package / "desktop-ide.dis",
+                              package / "fonts/NotoSansMono-Regular.ttf", mode], work, environment)
+                if "PASS desktop session clipboard:" not in output:
+                    raise RuntimeError("relocated real clipboard desktop failed")
+        if name == "disvm-editor":
+            for mode in ("jit", "interpreter"):
+                output = run([sys.executable, package / "examples/desktop/check-workspace.py",
+                              program(prefix, name, "disvm-editor"), package / "desktop-ide.dis",
+                              package / "fonts/NotoSansMono-Regular.ttf", mode], work, environment)
+                if "PASS workspace gestures:" not in output:
+                    raise RuntimeError("relocated workspace gestures failed")
         client = work / (name + "-compiler-client")
         run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", package / "include/native",
              package / "examples/compiler-service/client.c", "-L", package / "lib/compiler",
@@ -155,6 +180,7 @@ def compiler_service_packages(prefix, work, environment):
              "-lfir1_io", "-L", prefix / "linker/lib", "-lswl_core", "-lm", "-o", client], work, environment)
         if "PASS compiler service C99:" not in run([client], work, environment):
             raise RuntimeError("relocated compiler library client did not complete")
+
 
 
 # Compile/verify/optimize the shipped hybrid source with relocated tools and reference execution.
