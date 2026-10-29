@@ -377,8 +377,13 @@ func @main() -> void {
                 invoke([compiler, "dis", selected, image])
                 code = []
                 header, maps = descriptors(image, code)
-                if not {130, 134}.issubset(code) or header[1] != 64:
-                    raise RuntimeError("hosted big comparisons lack existing native branch instructions")
+                # x < MIN is now proven false by the integer comparison pass;
+                # raw code still needs its native less-than, other dynamic
+                # comparisons must retain both branch instructions.
+                folded_bound = selected == optimized and right == -(1 << 63)
+                required = {134} if folded_bound else {130, 134}
+                if not required.issubset(code) or header[1] != 64 or (folded_bound and 130 in code):
+                    raise RuntimeError("hosted big comparison lowering/proven bound differs")
                 result = invoke([runtime, dispatch, "--quantum", 1, "--inspect-words", 0, 8, image])
                 values = [int(value) for value in re.findall(r"^DATA \d+ (-?\d+)$", result.stdout, re.MULTILINE)]
                 if values != [int(left < right), int(left == right)] * 2 + [1] * 4:
