@@ -1,0 +1,168 @@
+"""Check fully proven bit results, exact wide literals and retained eager errors."""
+
+from pathlib import Path
+import os
+import re
+import sys
+import tempfile
+
+from integer_identities import execute
+from integer_pairs import pair_module
+from table_mutation import call
+
+
+# Borrow explicit compiler/VM tools and own temporary artifacts. Compare the
+# original and optimized target results against fixed-width mathematical facts.
+def main():
+    source, compiler = (Path(a).resolve() for a in sys.argv[1:3])
+    runtime = Path(sys.argv[3]).resolve() if len(sys.argv) > 3 else None
+    mode = "--jit" if len(sys.argv) > 4 and sys.argv[4] == "jit" else "--no-jit"
+    host, linker = os.environ.get("FIR_FLASHVM_RUNNER"), os.environ.get("FIR_SWL")
+    checks = 0
+    with tempfile.TemporaryDirectory(prefix="known bit constants ") as directory:
+        work = Path(directory)
+        raw, opt, twice, obj, movie = (
+            work / n for n in ("raw.fir", "opt.fir", "twice.fir", "out.swo", "out.swf")
+        )
+        for kind, bits in (("i32", 32), ("i64", 64)):
+            minimum, maximum = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
+            prefix = "i32" if bits == 32 else "big"
+            shr = prefix + (".shr.checked" if bits == 32 else ".shr")
+            shl = prefix + (".shl.checked" if bits == 32 else ".shl")
+            for value in (minimum, minimum + 1, maximum, maximum - 1, -7, -1, 0, 42):
+                declarations = (
+                    f"%hi: {kind} = const.{kind} {minimum}\n"
+                    f"%max: {kind} = const.{kind} {maximum}\n"
+                    f"%one: {kind} = const.{kind} 1\n%even: {kind} = const.{kind} -2\n"
+                    f"%count: i32 = const.i32 {bits - 1}\n"
+                    f"%all: {kind} = const.{kind} -1\n%extra: {kind} = const.{kind} 123\n"
+                )
+                forms = [
+                    (
+                        f"%a: {kind} = {prefix}.and %x, %max\n%r: {kind} = {shr} %a, %count",
+                        0,
+                    ),
+                    (
+                        f"%a: {kind} = {prefix}.or %x, %hi\n%r: {kind} = {shr} %a, %count",
+                        -1,
+                    ),
+                    (
+                        f"%a: {kind} = {prefix}.or %x, %one\n%r: {kind} = {shl} %a, %count",
+                        minimum,
+                    ),
+                    (
+                        f"%a: {kind} = {prefix}.and %x, %even\n%r: {kind} = {shl} %a, %count",
+                        0,
+                    ),
+                    (
+                        f"%a: {kind} = {prefix}.or %x, %one\n%b: {kind} = {shl} %a, %count\n"
+                        f"%r: {kind} = {prefix}.xor %b, %all",
+                        maximum,
+                    ),
+                    (
+                        f"%a: {kind} = {prefix}.or %x, %one\n%b: {kind} = {shl} %a, %count\n"
+                        f"%r: {kind} = {prefix}.or %b, %extra",
+                        minimum + 123,
+                    ),
+                ]
+                for body, expected in forms:
+                    raw.write_text(
+                        pair_module(kind, value, 0, declarations + body + "\ntrace %r")
+                    )
+                    call([compiler, "opt", raw, opt], work)
+                    result = opt.read_text()
+                    if f"const.{kind} {expected}" not in result or re.search(
+                        r" = (?:i32|big)\.(?:and|or|xor|shl|shr)\b", result
+                    ):
+                        raise RuntimeError(
+                            "known bit result did not become an exact literal: "
+                            + result
+                        )
+                    call([compiler, "opt", opt, twice], work)
+                    clean = lambda text: re.sub(r" // input line \d+", "", text)
+                    if clean(result) != clean(twice.read_text()):
+                        raise RuntimeError("known-bit folding is not at a fixed point")
+                    for selected in (raw, opt):
+                        execute(compiler, runtime, mode, work, selected, [expected])
+                        if kind == "i32":
+                            call([compiler, "object", selected, obj], work)
+                            if host:
+                                if not linker:
+                                    raise RuntimeError("explicit SWF linker required")
+                                call([linker, "link", movie, obj], work)
+                                if call([host, movie], work).stdout.strip() != str(
+                                    expected
+                                ):
+                                    raise RuntimeError("known-bit SWF result differs")
+                        checks += 1
+            # A completely determined outer result cannot erase a throwing producer.
+            division = "i32.div.signed" if bits == 32 else "big.div"
+            raw.write_text(
+                pair_module(
+                    kind,
+                    42,
+                    0,
+                    f"%bad: {kind} = {division} %x, %y\n%max: {kind} = const.{kind} {maximum}\n"
+                    f"%a: {kind} = {prefix}.and %bad, %max\n%count: i32 = const.i32 {bits - 1}\n"
+                    f"%r: {kind} = {shr} %a, %count\ntrace %r",
+                )
+            )
+            call([compiler, "opt", raw, opt], work)
+            if (
+                division not in opt.read_text()
+                or f"const.{kind} 0" not in opt.read_text()
+                or shr in opt.read_text()
+            ):
+                raise RuntimeError(
+                    "known constant lost producer failure or did not fold"
+                )
+            for selected in (raw, opt):
+                call([compiler, "dis", selected, work / "trap.dis"], work)
+                if (
+                    runtime
+                    and "zero divide"
+                    not in call([runtime, mode, work / "trap.dis"], work, False).stderr
+                ):
+                    raise RuntimeError("known constant suppressed eager divide failure")
+            # Unknown/invalid count prevents the checked operation from folding.
+            for invalid in (False, True):
+                if invalid:
+                    declaration = f"%n: i32 = const.i32 {bits}\n"
+                elif kind == "i32":
+                    declaration = "%n: i32 = copy %y\n"
+                else:
+                    declaration = (
+                        "%slot: i32.slot = i32.local\njump ^tail\n^tail:\n"
+                        "%n: i32 = i32.load %slot\n"
+                    )
+                raw.write_text(
+                    pair_module(
+                        kind,
+                        42,
+                        0,
+                        declaration
+                        + f"%zero: {kind} = const.{kind} 0\n%r: {kind} = {shl} %zero, %n\ntrace %r",
+                    )
+                )
+                call([compiler, "opt", raw, opt], work)
+                if shl not in opt.read_text():
+                    raise RuntimeError("checked shift lost its count check")
+        tutorial = Path(__file__).resolve().parents[1] / "examples/dis/known-results.b"
+        call([source, "limbo", "--input", tutorial, raw], work)
+        call([compiler, "opt", raw, opt], work)
+        for selected in (raw, opt):
+            execute(compiler, runtime, mode, work, selected, [42])
+            call([compiler, "object", selected, obj], work)
+            if host:
+                call([linker, "link", movie, obj], work)
+                if call([host, movie], work).stdout.strip() != "42":
+                    raise RuntimeError("known-result source tutorial differs")
+    print(
+        "PASS known integer results:",
+        checks,
+        "exact raw/opt results, wide literals, fixed points and eager traps",
+    )
+
+
+if __name__ == "__main__":
+    main()

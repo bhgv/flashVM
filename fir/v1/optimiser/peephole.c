@@ -261,12 +261,13 @@ static int remove_overwritten_scalar_stores(FirModule *module)
 
 
 /* Replace a verified integer result with a same-type literal. in is owner-local
- * IR, wide selects i64 rather than i32. Producers are not removed here: their
+ * IR, wide selects i64 rather than i32, and value preserves the full signed
+ * payload (including the big sign bit). Producers are not removed here: their
  * throw/write/ownership effects remain visible to the ordinary DCE pass. */
-static void integer_literal(FirInstruction *in, int wide, int value)
+static void integer_literal(FirInstruction *in, int wide, int64_t value)
 {
     in->op = wide ? O_I64 : O_I32;
-    in->integer = value;
+    in->integer = wide ? 0 : (int32_t)value;
     in->big = value;
     in->a = in->b = -1;
 }
@@ -659,6 +660,43 @@ simplify_integer_pairs(const FirModule *m, FirInstruction *in, const FirInstruct
 }
 
 
+/* Materialize a fully proven integer bit result without evaluating producers.
+ * in is verified mutable IR and facts describes the equivalent current graph.
+ * Return1 on rewrite,0 otherwise. Only admitted pure bit operations and legal
+ * checked shifts qualify; each operand producer retains its own effects. */
+static int fold_known_integer_bits(FirInstruction *in, const FirIntegerFacts *facts)
+{
+    int wide = in->type == T_I64;
+    uint64_t zero;
+    uint64_t one;
+    switch (in->op)
+    {
+    case O_I32_AND:
+    case O_I32_OR:
+    case O_I32_XOR:
+    case O_I32_SHL:
+    case O_I32_SHR:
+    case O_BIG_AND:
+    case O_BIG_OR:
+    case O_BIG_XOR:
+    case O_BIG_NOT:
+    case O_BIG_SHL:
+    case O_BIG_SHR:
+        break;
+    default:
+        return 0;
+    }
+    zero = wide ? facts->big_zero[in->result] : facts->zero[in->result];
+    one = wide ? facts->big_one[in->result] : facts->one[in->result];
+    if ((zero | one) != (wide ? UINT64_MAX : UINT32_MAX))
+    {
+        return 0;
+    }
+    integer_literal(in, wide, wide ? signed_big_bits(one) : signed_bits((uint32_t)one));
+    return 1;
+}
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -673,6 +711,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
         changed = fold_constant_cell_loads(m);
         changed |= forward_scalar_loads(m);
         changed |= remove_overwritten_scalar_stores(m);
+        fir_integer_facts(m, &facts);
         for (i = 0; i < m->count; ++i)
         {
             FirInstruction *in = &m->instructions[i];
@@ -683,8 +722,8 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (simplify_integer_pairs(m, in, a, b) || simplify_integer_comparison(in, a, b) ||
-                simplify_integer_identity(in, a, b))
+            if (fold_known_integer_bits(in, &facts) || simplify_integer_pairs(m, in, a, b) ||
+                simplify_integer_comparison(in, a, b) || simplify_integer_identity(in, a, b))
             {
                 changed = 1;
             }

@@ -72,6 +72,10 @@ def main():
                 raise RuntimeError(
                     "big shifted nonzero proof did not remove unused divide"
                 )
+            if "const.i64 -9223372036854775808" not in opt.read_text():
+                raise RuntimeError(
+                    "fully known big sign bit was not preserved as an exact literal"
+                )
             expected = [0 if x == -(1 << 63) else x]
             for selected in (raw, opt):
                 execute(compiler, runtime, mode, work, selected, expected)
