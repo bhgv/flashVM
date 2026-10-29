@@ -255,6 +255,31 @@ typedef struct
     char module[FIR_TEXT];
 } FirModule;
 
+
+/* Successful-evaluation facts for immutable int32 SSA, never mutable cells.
+ * Scratch belongs to the caller; rebuild after changing live definitions or
+ * operands. Retiring unused values preserves facts about the retained graph. */
+typedef struct
+{
+    uint32_t zero[FIR_LIMIT]; /* Bits proven zero in every successful result. */
+    uint32_t one[FIR_LIMIT];  /* Bits proven one in every successful result. */
+} FirIntegerFacts;
+
+
+/* Analyze borrowed verified module into disjoint caller-owned scratch.
+ * No allocation, evaluation, callbacks or waits; producers retain their effects. */
+void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts);
+
+
+/* Query fresh facts for a verified int32 value; one means provably nonzero.
+ * Unknown/zero returns zero. No ownership or effect contract is changed. */
+int fir_integer_nonzero(const FirIntegerFacts *facts, int value);
+
+
+/* Query fresh facts for an int32 count in [0,width-1], width32/64 only.
+ * Unknown/out-of-range returns zero. No producer is evaluated or removed. */
+int fir_integer_shift_count(const FirIntegerFacts *facts, int value, unsigned width);
+
 /* All functions return 1 on success and 0 with a diagnostic on failure.
      * The caller owns the module, streams and diagnostic buffer. The generated
      * parser has global state: sequential calls reset state; parsing is not thread-safe. */

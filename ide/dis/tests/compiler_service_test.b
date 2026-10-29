@@ -67,13 +67,14 @@ init()
     worker := load Idecompiler Idecompiler->PATH;
     check(sys != nil && native != nil && core != nil && workspace != nil && worker != nil, "load modules");
     # Exercise raw/optimized checked div/mod through the actual Dis-owned worker.
-    # Literal three proves nonzero; paired identities keep the same dynamic sum.
+    # Known set/zero bits prove dynamic divisors/counts; paired identities preserve the sum.
     limbo := "# π😀 build snapshot\n" +
              "implement M;\nM: module { value: fn(): int; };\n" +
              "value(): int {\n    sum := 0;\n" +
              "    for(i := -7; i < 8; i++) {\n" +
              "        recovered := ((i + 7) - 7) + ((i ^ 3) ^ 3);\n" +
-             "        sum += (i / 3) * 3 + i % 3 + recovered - i - i;\n    }\n" +
+             "        sum += (i / (i | 1)) * (i | 1) + i % (i | 1) + recovered - i - i\n" +
+             "               + (i << (i & 31)) - (i << (i & 31));\n    }\n" +
              "    return sum + 42;\n}\n";
     action := "// π😀 build snapshot\nvar x=6;trace(x*7);";
     retained: array of byte;

@@ -475,12 +475,13 @@ static int simplify_integer_identity(FirInstruction *in, const FirInstruction *a
 
 
 /* Decide whether unused verified scalar arithmetic has no observable effects.
- * m/in are borrowed owner-local IR. Return one for statically pure operations
- * or checked integer divide/mod/shift with a live literal proving no trap.
+ * m/in are borrowed owner-local IR; facts is fresh successful-evaluation
+ * scratch for the retained graph. Return one for statically pure operations
+ * or checked integer divide/mod/shift with literal/known-bit proof of no trap.
  * Producers are never retired here: reverse DCE checks each of their own
  * effects separately. No memory, ownership, conversion, suspension or control
  * effect is narrowed; the public conservative fir_effects table is unchanged. */
-static int scalar_is_total_for_dce(const FirModule *m, const FirInstruction *in)
+static int scalar_is_total_for_dce(const FirModule *m, const FirInstruction *in, const FirIntegerFacts *facts)
 {
     const FirInstruction *right;
     unsigned effects = fir_effects(in->op);
@@ -501,16 +502,16 @@ static int scalar_is_total_for_dce(const FirModule *m, const FirInstruction *in)
     {
     case O_I32_DIV:
     case O_I32_MOD:
-        return right->op == O_I32 && right->integer != 0;
+        return fir_integer_nonzero(facts, in->b);
     case O_BIG_DIV:
     case O_BIG_MOD:
         return right->op == O_I64 && right->big != 0;
     case O_I32_SHL:
     case O_I32_SHR:
-        return right->op == O_I32 && right->integer >= 0 && right->integer < 32;
+        return fir_integer_shift_count(facts, in->b, 32);
     case O_BIG_SHL:
     case O_BIG_SHR:
-        return right->op == O_I32 && right->integer >= 0 && right->integer < 64;
+        return fir_integer_shift_count(facts, in->b, 64);
     default:
         return 0;
     }
@@ -662,6 +663,7 @@ simplify_integer_pairs(const FirModule *m, FirInstruction *in, const FirInstruct
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
     int changed, i, j;
+    FirIntegerFacts facts; /* Rebuilt after rewrites, before any DCE tombstone. */
     if (!fir_verify(m, error, cap))
     {
         return 0;
@@ -931,11 +933,12 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
         changed |= simplify_cfg(m);
         /* DCE only for operations whose total, effect-free behaviour is part
          * of this version's contract. Dynamic addition may allocate/throw. */
+        fir_integer_facts(m, &facts);
         for (i = m->count - 1; i >= 0; --i)
         {
             FirInstruction *in = &m->instructions[i];
             int used = 0;
-            if (in->removed || in->result < 0 || !scalar_is_total_for_dce(m, in))
+            if (in->removed || in->result < 0 || !scalar_is_total_for_dce(m, in, &facts))
             {
                 continue;
             }

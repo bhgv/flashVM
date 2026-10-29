@@ -69,7 +69,7 @@ int main(void)
     {
         if (!exercise("%n: i32 = const.i32 0", "%n", 0, 1) || !exercise("%n: i32 = const.i32 31", "%n", 0, 1) ||
             !exercise("%n: i32 = const.i32 -1", "%n", 0, 0) || !exercise("%n: i32 = const.i32 32", "%n", 0, 0) ||
-            !exercise("%c: i32 = const.i32 2\n%n: i32 = copy %c", "%n", 0, 0) ||
+            !exercise("%c: i32 = const.i32 2\n%n: i32 = copy %c", "%n", 0, 1) ||
             !exercise("%c: i32 = const.i32 2\n%n: i32 = copy %c", "%n", 1, 1))
         {
             return 1;

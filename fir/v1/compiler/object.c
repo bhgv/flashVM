@@ -192,35 +192,11 @@ static size_t branch(Bytes *b, int conditional)
 }
 
 
-/* Prove the exact checked int32 shift count accepted by AVM1 lowering.
- * m/in are borrowed verified IR. Return one only for a live same-type literal
- * count in [0,31], zero for every dynamic, removed or invalid definition.
- * AVM1 masks counts, so emitting an unproven count would erase FIR errors.
- * No producer is evaluated, moved or removed; optimization may expose a literal
- * before this preflight. This synchronous check owns no memory or VM state. */
-static int literal_shift_count(const FirModule *m, const FirInstruction *in)
-{
-    const FirInstruction *count = &m->instructions[m->values[in->b].definition];
-    return !count->removed && count->op == O_I32 && count->integer >= 0 && count->integer < 32;
-}
-
-
-/* Prove the nonzero int32 divisor needed by the ordinary AVM1 backend.
- * m/in are borrowed verified IR. Return one only for a live exact i32 literal
- * other than zero; dynamic and removed definitions return zero. No operand is
- * reevaluated and no producer effect is removed. This synchronous preflight
- * lets the backend avoid replacing FIR zero-divide errors by IEEE results. */
-static int literal_nonzero_divisor(const FirModule *m, const FirInstruction *in)
-{
-    const FirInstruction *divisor = &m->instructions[m->values[in->b].definition];
-    return !divisor->removed && divisor->op == O_I32 && divisor->integer != 0;
-}
-
-
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
 int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
 {
     Bytes actions, object;
+    FirIntegerFacts facts; /* Fresh successful-evaluation facts for preflight only. */
     Fixup fixes[FIR_LIMIT * 2];
     size_t labels[FIR_BLOCKS], end;
     int i, nf = 0, previous = -1, ok = 0;
@@ -228,17 +204,18 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
     {
         return 0;
     }
+    fir_integer_facts(m, &facts);
     for (i = 0; i < m->count; i++)
     {
         const FirInstruction *in = &m->instructions[i];
-        if (!in->removed && (in->op == O_I32_SHL || in->op == O_I32_SHR) && !literal_shift_count(m, in))
+        if (!in->removed && (in->op == O_I32_SHL || in->op == O_I32_SHR) && !fir_integer_shift_count(&facts, in->b, 32))
         {
-            snprintf(error, cap, "AVM1 checked int shift requires a proven literal count in [0,31]");
+            snprintf(error, cap, "AVM1 checked int shift requires a proven literal count or bit proof in [0,31]");
             return 0;
         }
-        if (!in->removed && (in->op == O_I32_DIV || in->op == O_I32_MOD) && !literal_nonzero_divisor(m, in))
+        if (!in->removed && (in->op == O_I32_DIV || in->op == O_I32_MOD) && !fir_integer_nonzero(&facts, in->b))
         {
-            snprintf(error, cap, "AVM1 signed int division/remainder requires a proven nonzero literal divisor");
+            snprintf(error, cap, "AVM1 signed int division/remainder requires a proven nonzero literal divisor or known set bit");
             return 0;
         }
         if (!m->instructions[i].removed &&
@@ -386,7 +363,7 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             break;
         case O_I32_SHL:
         case O_I32_SHR:
-            /* Preflight proves the masked AVM1 count equals the checked FIR count. */
+            /* Preflight proves the AVM1 masked count equals the checked FIR count. */
             load(&actions, m, in->a);
             load(&actions, m, in->b);
             byte(&actions, in->op == O_I32_SHL ? 0x63 : 0x64);

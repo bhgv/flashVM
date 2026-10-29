@@ -128,8 +128,8 @@ def main():
                         result = call([runtime, mode, work / "trap.dis"], work, False)
                         if "zero divide" not in result.stderr:
                             raise RuntimeError("runtime divisor trap disappeared")
-        # Explicit opt may expose a literal through copy; raw preflight does not
-        # guess through definitions. The same optimization must preserve 42.
+        # Shared bit facts follow immutable copies even without optimization.
+        # Both paths must retain the exact quotient forty-two.
         raw.write_text(
             module(
                 85,
@@ -137,10 +137,8 @@ def main():
                 "%r: i32 = i32.div.signed %x, %d\ntrace %r",
             )
         )
-        obj.write_bytes(b"KEEP")
-        call([compiler, "object", raw, obj], work, False)
-        if obj.read_bytes() != b"KEEP":
-            raise RuntimeError("raw copy-divisor rejection changed output")
+        call([compiler, "object", raw, obj], work)
+        execute(compiler, runtime, mode, work, raw, [42])
         call([compiler, "opt", raw, optimized], work)
         call([compiler, "object", optimized, obj], work)
         execute(compiler, runtime, mode, work, optimized, [42])

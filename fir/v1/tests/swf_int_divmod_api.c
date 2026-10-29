@@ -78,7 +78,7 @@ int main(void)
                 !exercise(name, "%n: i32 = const.i32 -2147483648", "%n", 0, 1) ||
                 !exercise(name, "%n: i32 = const.i32 0", "%n", 0, 0) ||
                 !exercise(name, "%n: i32 = const.i32 0", "%n", 1, 0) ||
-                !exercise(name, "%c: i32 = const.i32 2\n%n: i32 = copy %c", "%n", 0, 0) ||
+                !exercise(name, "%c: i32 = const.i32 2\n%n: i32 = copy %c", "%n", 0, 1) ||
                 !exercise(name, "%c: i32 = const.i32 2\n%n: i32 = copy %c", "%n", 1, 1))
             {
                 return 1;

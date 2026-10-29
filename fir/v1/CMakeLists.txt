@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.62.0 LANGUAGES C)
+project(fir1 VERSION 0.63.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -28,7 +28,7 @@ target_compile_definitions(fir1_generated PRIVATE CUSTOM_BUFF)
 target_include_directories(fir1_generated PRIVATE include src)
 target_include_directories(fir1_generated PUBLIC "${generated}")
 add_library(fir1_io src/input.c)
-add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c compiler/object.c compiler/dis.c compiler/dis_table.c)
+add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c optimiser/integer_facts.c compiler/object.c compiler/dis.c compiler/dis_table.c)
 # Preserve object inclusion and private generated headers on CMake 3.10.
 target_sources(fir1_ir PRIVATE $<TARGET_OBJECTS:fir1_generated>)
 target_include_directories(fir1_ir PRIVATE "${generated}")
@@ -681,4 +681,17 @@ if(BUILD_TESTING)
   add_test(NAME fir1_integer_pairs COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_pairs.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
   set_tests_properties(fir1_integer_pairs PROPERTIES TIMEOUT 120)
+endif()
+
+# Known bits admit bounded dynamic shifts/divisors through the shared public API.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME fir1_integer_facts COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_facts.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_integer_facts PROPERTIES TIMEOUT 120)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(fir1_integer_facts_api tests/integer_facts_api.c)
+  target_link_libraries(fir1_integer_facts_api PRIVATE fir1_ir)
+  add_test(NAME fir1_integer_facts_api COMMAND fir1_integer_facts_api)
 endif()
