@@ -33,32 +33,60 @@ def main():
             raise RuntimeError("native source generation compounded a prior adaptation")
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
-        critical = ("string.c", "xec.c", "stack.c", "dec.c", "dec-addr.h", "comp-leaf64.h", "leaf64-ops.h",
-                    "amd64-emit.h", "arm64-emit.h", "riscv-emit.h", "math.c")
-        stale = [name for name in critical if not (actual / name).is_file()
-                 or (actual / name).read_bytes() != second[name]]
+        critical = (
+            "string.c",
+            "xec.c",
+            "stack.c",
+            "dec.c",
+            "dec-addr.h",
+            "comp-leaf64.h",
+            "leaf64-ops.h",
+            "amd64-emit.h",
+            "arm64-emit.h",
+            "riscv-emit.h",
+            "math.c",
+            "vmfetch.h",
+        )
+        stale = [
+            name
+            for name in critical
+            if not (actual / name).is_file() or (actual / name).read_bytes() != second[name]
+        ]
         if stale:
-            raise RuntimeError("compiled native view is stale relative to pinned source: " + ", ".join(stale))
+            raise RuntimeError(
+                "compiled native view is stale relative to pinned source: " + ", ".join(stale)
+            )
         dispatch = second["xec.c"]
-        if (dispatch.count(b"dvm_runtime_step();") != 1 or
-                dispatch.count(b"dvm_runtime_instructions++;") != 1 or
-                dispatch.count(b"if(dvm_runtime_instruction_limit)") != 1):
+        if (
+            dispatch.count(b"dvm_runtime_step();") != 1
+            or dispatch.count(b"dvm_runtime_instructions++;") != 1
+            or dispatch.count(b"if(dvm_runtime_instruction_limit)") != 1
+        ):
             raise RuntimeError("instruction quota/counter must share one dispatch boundary")
         poll = dispatch.index(b"if(!dvm_native_context_poll()) abort();")
         guard = dispatch.index(b"if(dvm_runtime_instruction_limit)")
         step = dispatch.index(b"dvm_runtime_step();")
         inline = dispatch.index(b"dvm_runtime_instructions++;")
-        pc_guard = dispatch.index(b"if(base > (uintptr)-1-bytes")
-        capture = dispatch.index(b"op = ((uchar*)pc)[O(Inst, op)];", pc_guard)
+        fetch = second["vmfetch.h"]
+        pc_guard = fetch.index(b"if(base > (uintptr)-1-bytes")
+        capture = fetch.index(b"f->op = ((uchar*)f->pc)[O(Inst, op)];", pc_guard)
+        checked = dispatch.index(b"if(!vmfetch(&fetched))")
+        identity = dispatch.index(b"op = fetched.op;", checked)
+        if not pc_guard < capture or b"R.PC" in fetch.replace(b"DVM_R.PC", b""):
+            raise RuntimeError("shared checked fetch lost bounds or TLS register isolation")
         translated = dispatch.index(b"if(step != nil && step())", inline)
-        decode = dispatch.index(b"decode();", translated)
-        if not pc_guard < capture < poll < guard < step < inline < translated < decode:
-            raise RuntimeError("quota must follow checked fetch/GC and precede both execution paths")
+        decode = dispatch.index(b"vmdecode(&fetched);", translated)
+        if not checked < identity < poll < guard < step < inline < translated < decode:
+            raise RuntimeError(
+                "quota must follow checked fetch/GC and precede both execution paths"
+            )
         if dispatch.count(b"if(dvm_runtime_fast(op, fast, &DVM_R))") != 1:
             raise RuntimeError("NC64 direct policy must use the captured callback")
         if b"memmove(pc, DVM_R.PC, sizeof(*pc));" not in second["dec-addr.h"]:
             raise RuntimeError("native decoder instruction capture bypassed TLS registers")
-    print("PASS byte-identical native source regeneration, decoder TLS and one quota/count boundary")
+    print(
+        "PASS byte-identical native source regeneration, decoder TLS and one quota/count boundary"
+    )
 
 
 if __name__ == "__main__":

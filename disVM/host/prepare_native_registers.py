@@ -53,6 +53,10 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
+    # The shared fetch helpers contain active register references too. Generate
+    # this explicitly selected header beside xec.c; never modify the pinned copy.
+    fetch = args.source.parent / "include/vmfetch.h"
+    (args.output / "vmfetch.h").write_text(transform(fetch.read_text()))
     for path in sorted(args.source.iterdir()):
         if path.is_file() and path.suffix in (".c", ".h"):
             source = transform(path.read_text())

@@ -468,7 +468,7 @@ if(DVM_NATIVE_REGISTERS)
     list(APPEND native_sources "${native_dir}/${name}")
   endforeach()
   set_property(TARGET disvm_core PROPERTY SOURCES "${native_sources}")
-  file(GLOB native_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h")
+  file(GLOB native_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/vmfetch.h")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${native_inputs}
     "${CMAKE_CURRENT_SOURCE_DIR}/host/prepare_native_registers.py")
   target_compile_definitions(disvm_core PUBLIC DVM_NATIVE_REGISTERS=1)
@@ -593,5 +593,13 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
   add_test(NAME disvm_xec_fetch_native COMMAND "${Python3_EXECUTABLE}"
     "${u}/libinterp/tests/xec-fetch-native.py")
   set_tests_properties(disvm_xec_fetch_native PROPERTIES TIMEOUT 180
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+# Execute the actual debugger, coverage and benchmark loops with their shared fetch.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME disvm_instrumented_loops COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libinterp/tests/instrument-loops.py")
+  set_tests_properties(disvm_instrumented_loops PROPERTIES TIMEOUT 240
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
 endif()
