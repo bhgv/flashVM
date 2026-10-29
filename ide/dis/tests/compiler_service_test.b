@@ -75,7 +75,9 @@ init()
              "        recovered := ((i + 7) - 7) + ((i ^ 3) ^ 3);\n" +
              "        fixedzero := (i & 2147483647) >> 31;\n" +
              "        fixedminus := (i | -2147483648) >> 31;\n" +
-             "        sum += (i / ((i | 1) << 1)) * ((i | 1) << 1) + i % ((i | 1) << 1) + recovered - i - i + fixedzero + fixedminus + 1\n" +
+             "        carry := (((i | 7) + 1) & 7);\n" +
+             "        borrow := (((i & -8) - 1) & 7);\n" +
+             "        sum += (i / ((i | 1) << 1)) * ((i | 1) << 1) + i % ((i | 1) << 1) + recovered - i - i + fixedzero + fixedminus + 1 + carry + borrow - 7\n" +
              "               + (i << ((i & 127) >> 2)) - (i << ((i & 127) >> 2));\n    }\n" +
              "    return sum + 42;\n}\n";
     action := "// π😀 build snapshot\nvar x=6;trace(x*7);";
