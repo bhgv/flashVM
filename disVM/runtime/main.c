@@ -46,6 +46,11 @@ extern void dvm_srv_initialize(void);
 
 
 /* Register retained Srv exports for this exclusive owner. No arguments or result. */
+#ifdef DVM_RUNTIME_COMPILER
+/* Register the optional compiler library builtin on the sole execution owner.
+ * No parameters/result; registration failure raises before module loading. */
+extern void dvm_compiler_initialize(void);
+#endif
 extern void srvmodinit(void);
 
 
@@ -984,6 +989,9 @@ int main(int argc, char **argv)
     loadermodinit();
     mathmodinit();
     dvm_bigtable_initialize();
+#ifdef DVM_RUNTIME_COMPILER
+    dvm_compiler_initialize();
+#endif
 #ifdef DVM_RUNTIME_NATIVE_DEMO
     dvm_nativedemo_initialize();
 #endif

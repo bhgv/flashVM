@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--idehost", type=Path)
+    parser.add_argument("--fircompiler", type=Path)
     parser.add_argument("--native-demo", type=Path)
     parser.add_argument("--native-bindings", type=Path)
     args = parser.parse_args()
@@ -65,6 +66,13 @@ def main():
         with (args.output / "runt.h").open("a") as declarations:
             declarations.write(host[:host_at])
         (args.output / "idehostmod.h").write_text(host[host_at:])
+    if args.fircompiler is not None:
+        compiler = subprocess.check_output(
+            [args.compiler, "-a", "-t", "Fircompiler", str(args.fircompiler)], text=True)
+        compiler_at = compiler.index(marker)
+        with (args.output / "runt.h").open("a") as declarations:
+            declarations.write(compiler[:compiler_at])
+        (args.output / "fircompilermod.h").write_text(compiler[compiler_at:])
     if args.native_demo is not None:
         if args.native_bindings is None:
             raise ValueError("native module tutorial requires our Coco/R limbo_bindings")
@@ -90,16 +98,6 @@ def main():
     # This hosted build deliberately uses native libm for scalar IEEE operations.
     math_code = math_code.replace('#include "lib9.h"', '#include "lib9.h"\n#include <math.h>')
     math_code = math_code.replace("__ieee754_", "")
-    helper = Path(__file__).with_name("native_math_types.c").read_text()
-
-    math_code = math_code.replace(
-        "/* Check full VM lengths", helper + "\n/* Check full VM lengths", 1
-    )
-    math_code = math_code.replace(
-        "bytes->t != &Tbyte || numbers->t != type",
-        "!dvm_math_type(bytes->t, &Tbyte) || !dvm_math_type(numbers->t, type)",
-    )
-    math_code = math_code.replace("array->t != type", "!dvm_math_type(array->t, type)")
     (args.output / "math.c").write_text(math_code)
     (args.output / "srvmod.h").write_text(srv[srv_at:])
     srv_code = (args.source.parent / "emu/port/srv.c").read_text()
@@ -231,13 +229,14 @@ def main():
         '\tmemmove((uchar*)f+offsetof(Frame, lr), &DVM_R.PC, sizeof(f->lr));')
     code = code[:start] + body + code[stop:]
 
-    code = code.replace("if(!j->entry[op](&DVM_R))", "if(!dvm_runtime_leaf(j, op, &DVM_R))")
+    # Use the callback captured by checked fetch; never reread a Jit after enter.
+    code = relative_replace(code, "if(fast(&DVM_R))", "if(dvm_runtime_fast(op, fast, &DVM_R))")
     # Complete entries must retain the same NC64 table policy and fast-only counts.
     fast_boundary = "if(fast != nil && fast(r))"
     if code.count(fast_boundary) != 1:
         raise ValueError("complete JIT executor changed; review NC64 fast policy")
     code = code.replace(fast_boundary, "if(fast != nil && dvm_runtime_fast(op, fast, r))")
-    boundary = "\t\t/* A C-translated step consumes the same single scheduler instruction. */"
+    boundary = "\t\t/* Successful translated steps own their register/PC publication. */"
     if code.count(boundary) != 1:
         raise ValueError("instruction boundary changed; review runtime quota/count placement")
     # No configured quota needs no external call: keep the ordinary count inline.

@@ -1,11 +1,12 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.32.1 LANGUAGES C)
+project(disvm_runtime VERSION 0.33.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
 endif()
 option(DVM_RUNTIME_NATIVE_DEMO "Build the documented native module tutorial" OFF)
+option(DVM_RUNTIME_COMPILER "Link our C99 compiler/linker library service" OFF)
 option(DVM_RUNTIME_EDITOR "Build the Dis-controlled FlashVM graphical editor" OFF)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS ON)
@@ -39,9 +40,14 @@ file(REMOVE "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}
 
 set(host_prepare_args)
 set(host_prepare_products)
+if(DVM_RUNTIME_COMPILER)
+  add_subdirectory("${root}/disVM/compiler" compiler)
+  list(APPEND host_prepare_args --fircompiler "${root}/disVM/module/fircompiler.m")
+  list(APPEND host_prepare_products "${view}/fircompilermod.h")
+endif()
 if(DVM_RUNTIME_EDITOR)
-  set(host_prepare_args --idehost "${root}/ide/dis/bridge/idehost.m")
-  set(host_prepare_products "${view}/idehostmod.h")
+  list(APPEND host_prepare_args --idehost "${root}/ide/dis/bridge/idehost.m")
+  list(APPEND host_prepare_products "${view}/idehostmod.h")
 endif()
 if(DVM_RUNTIME_NATIVE_DEMO)
   set(native_demo_root "${root}/disVM/examples/native-module")
@@ -56,7 +62,7 @@ file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include
 add_custom_command(OUTPUT "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" native_tables.c native_math_types.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
@@ -67,6 +73,12 @@ endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c")
 add_executable(disvm main.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
+if(DVM_RUNTIME_COMPILER)
+  target_sources(disvm PRIVATE compiler_native.c)
+  target_compile_definitions(disvm PRIVATE DVM_RUNTIME_COMPILER=1)
+  target_link_libraries(disvm PRIVATE disvm_compiler_engine)
+endif()
+
 if(DVM_RUNTIME_NATIVE_DEMO)
   target_sources(disvm PRIVATE "${native_demo_root}/native.c")
   target_compile_definitions(disvm PRIVATE DVM_RUNTIME_NATIVE_DEMO=1)
@@ -91,8 +103,9 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
-set(module_names idecore ideworkspace workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
+set(module_names idecore ideworkspace idecompiler workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
+  "${root}/ide/dis/bridge/idecompiler.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
   "${root}/ide/dis/bridge/ideinput.b" "${root}/ide/dis/bridge/idebridge.b"
@@ -320,6 +333,11 @@ if(DVM_RUNTIME_EDITOR)
     set_tests_properties(disvm_editor_detached_raster PROPERTIES TIMEOUT 30)
   endif()
   add_dependencies(disvm-editor disvm_runtime_sources)
+  if(DVM_RUNTIME_COMPILER)
+    target_compile_definitions(disvm-editor PRIVATE DVM_RUNTIME_COMPILER=1)
+    target_link_libraries(disvm-editor PRIVATE disvm_compiler_engine)
+  endif()
+
   if(DVM_RUNTIME_NATIVE_DEMO)
     target_compile_definitions(disvm-editor PRIVATE DVM_RUNTIME_NATIVE_DEMO=1)
   endif()
@@ -1003,5 +1021,51 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${root}/fir/v1/tests/numeric_flow.py" "${DVM_FIR_SOURCE_COMPILER}"
       "${DVM_FIR_COMPILER}" "-" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_numeric_flow_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Service tutorial and independent multi-case acceptance use actual Dis modules.
+if(DVM_RUNTIME_COMPILER)
+  foreach(example compiler-service compiler-service-check)
+    set(source "${root}/ide/dis/examples/compiler-service/main.b")
+    if(example STREQUAL "compiler-service-check")
+      set(source "${root}/ide/dis/tests/compiler_service_test.b")
+    endif()
+    add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${example}.dis" "${CMAKE_CURRENT_BINARY_DIR}/${example}.sbl"
+      COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/${example}.dis" "${source}"
+      DEPENDS limbo-bootstrap "${source}" ${module_headers} VERBATIM)
+    add_custom_target(disvm_${example} ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${example}.dis")
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_TESTS AND DVM_FIR_COMPILER AND DVM_FIR_SOURCE_COMPILER AND DVM_SWF_LINKER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_compiler_service_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_compiler_service.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/compiler-service-check.dis" ${mode}
+      "${DVM_FIR_SOURCE_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_SWF_LINKER}")
+    set_tests_properties(disvm_compiler_service_${mode} PROPERTIES TIMEOUT 120)
+    set(dispatch --jit)
+    if(mode STREQUAL "interpreter")
+      set(dispatch --no-jit)
+    endif()
+    add_test(NAME disvm_compiler_tutorial_${mode} COMMAND "$<TARGET_FILE:disvm>"
+      ${dispatch} --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/compiler-service.dis")
+    set_tests_properties(disvm_compiler_tutorial_${mode} PROPERTIES TIMEOUT 30
+      PASS_REGULAR_EXPRESSION "PASS compiler tutorial: revision=ok artifact=ok shutdown=ok")
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_TESTS AND NOT DVM_RUNTIME_COMPILER)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compiler-unavailable.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/compiler-unavailable.dis"
+      "${root}/ide/dis/tests/compiler_unavailable_test.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/tests/compiler_unavailable_test.b" ${module_headers} VERBATIM)
+  add_custom_target(disvm_compiler_unavailable ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/compiler-unavailable.dis")
+  foreach(dispatch --jit --no-jit)
+    add_test(NAME disvm_compiler_unavailable_${dispatch} COMMAND "$<TARGET_FILE:disvm>"
+      ${dispatch} --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/compiler-unavailable.dis")
+    set_tests_properties(disvm_compiler_unavailable_${dispatch} PROPERTIES TIMEOUT 30
+      PASS_REGULAR_EXPRESSION "PASS compiler unavailable: no native fallback, worker=nil, shutdown=ok")
   endforeach()
 endif()

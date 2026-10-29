@@ -30,15 +30,18 @@ def transform(source):
     return "".join(result)
 
 
-# Insert the collector poll only at the verified full-instruction boundary.
+# Poll after checked fetch and before any instruction callback/decoder. source
+# is borrowed transformed C text. Return one copied view or reject drift; metadata
+# preflight performs no VM mutation/allocation, so previous-instruction roots stay
+# complete until this safepoint and rejected fetch metadata never reaches the collector.
 def dispatch_safepoint(source):
-    anchor = "\telse do {\n\t\t/* A C-translated step"
+    anchor = "\t\t/* Successful translated steps own their register/PC publication. */"
     if source.count(anchor) != 1:
         raise ValueError("xec dispatch boundary changed; review safepoint placement")
     return source.replace(
         anchor,
-        "\telse do {\n\t\t/* [GC:] Complete previous instruction before publishing roots. */\n"
-        "\t\tif(!dvm_native_context_poll()) abort();\n\t\t/* A C-translated step",
+        "\t\t/* [GC:] Complete previous instruction before publishing roots. */\n"
+        "\t\tif(!dvm_native_context_poll()) abort();\n" + anchor,
         1,
     )
 

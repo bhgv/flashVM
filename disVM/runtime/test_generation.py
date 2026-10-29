@@ -34,7 +34,7 @@ def main():
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
         critical = ("string.c", "xec.c", "stack.c", "dec.c", "dec-addr.h", "comp-leaf64.h", "leaf64-ops.h",
-                    "amd64-emit.h", "arm64-emit.h", "riscv-emit.h")
+                    "amd64-emit.h", "arm64-emit.h", "riscv-emit.h", "math.c")
         stale = [name for name in critical if not (actual / name).is_file()
                  or (actual / name).read_bytes() != second[name]]
         if stale:
@@ -48,11 +48,14 @@ def main():
         guard = dispatch.index(b"if(dvm_runtime_instruction_limit)")
         step = dispatch.index(b"dvm_runtime_step();")
         inline = dispatch.index(b"dvm_runtime_instructions++;")
-        translated = dispatch.index(b"if(DVM_R.M->m->cstep != nil")
-        pc_guard = dispatch.index(b"if(DVM_R.PC == nil || DVM_R.PC == H ||", translated)
-        decode = dispatch.index(b"dec[((uchar*)DVM_R.PC)[O(Inst, add)]]();", pc_guard)
-        if not poll < guard < step < inline < translated < pc_guard < decode:
-            raise RuntimeError("quota must follow the GC safepoint and precede both execution paths")
+        pc_guard = dispatch.index(b"if(base > (uintptr)-1-bytes")
+        capture = dispatch.index(b"op = ((uchar*)pc)[O(Inst, op)];", pc_guard)
+        translated = dispatch.index(b"if(step != nil && step())", inline)
+        decode = dispatch.index(b"decode();", translated)
+        if not pc_guard < capture < poll < guard < step < inline < translated < decode:
+            raise RuntimeError("quota must follow checked fetch/GC and precede both execution paths")
+        if dispatch.count(b"if(dvm_runtime_fast(op, fast, &DVM_R))") != 1:
+            raise RuntimeError("NC64 direct policy must use the captured callback")
         if b"memmove(pc, DVM_R.PC, sizeof(*pc));" not in second["dec-addr.h"]:
             raise RuntimeError("native decoder instruction capture bypassed TLS registers")
     print("PASS byte-identical native source regeneration, decoder TLS and one quota/count boundary")

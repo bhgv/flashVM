@@ -29,10 +29,10 @@ class NativeViewTests(unittest.TestCase):
 
     def test_dispatch_boundary_requires_review(self):
         """A changed upstream dispatch loop must not silently omit the safepoint."""
-        source = "\telse do {\n\t\t/* A C-translated step consumes one instruction. */"
+        source = "\t\t/* Successful translated steps own their register/PC publication. */"
         output = view.dispatch_safepoint(source)
         self.assertIn("dvm_native_context_poll()", output)
-        self.assertLess(output.index("dvm_native_context_poll"), output.index("C-translated"))
+        self.assertLess(output.index("dvm_native_context_poll"), output.index("Successful translated"))
         with self.assertRaises(ValueError):
             view.dispatch_safepoint("unrecognized upstream dispatch")
 

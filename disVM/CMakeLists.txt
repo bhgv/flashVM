@@ -569,3 +569,29 @@ if(BUILD_TESTING)
   set_tests_properties(disvm_native_io PROPERTIES TIMEOUT 180
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;ASAN_OPTIONS=detect_leaks=0")
 endif()
+
+# Retained AOT reference is independent of the NC64 compiler-service route.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME disvm_dis2c_native_slots COMMAND "${Python3_EXECUTABLE}"
+    "${u}/utils/dis2c/tests/native-slots.py")
+  add_test(NAME disvm_dis2c_reference COMMAND "${Python3_EXECUTABLE}" -O
+    "${u}/utils/dis2c/tests/test.py")
+  set_tests_properties(disvm_dis2c_native_slots disvm_dis2c_reference PROPERTIES TIMEOUT 180
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+# Shared Math primitive layouts now cover the retired host-only workaround.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME disvm_math_local_types COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libinterp/tests/math-local-types.py")
+  set_tests_properties(disvm_math_local_types PROPERTIES TIMEOUT 120
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
+
+# The shared executor validates every normal fetch before C/AOT/JIT callbacks.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME disvm_xec_fetch_native COMMAND "${Python3_EXECUTABLE}"
+    "${u}/libinterp/tests/xec-fetch-native.py")
+  set_tests_properties(disvm_xec_fetch_native PROPERTIES TIMEOUT 180
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
