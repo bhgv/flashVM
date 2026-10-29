@@ -69,7 +69,7 @@ def compiler_service_packages(prefix, work, environment):
         if not manifest.is_file() or "Fircompiler=ON" not in manifest.read_text():
             continue
         for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md", package / "ARTIFACT-EXPORT.md", package / "ARTIFACT-EXPORT.ru.md",
-                         package / "DESKTOP.md", package / "DESKTOP.ru.md",
+                         package / "ENTRYPOINTS.md", package / "DESKTOP.md", package / "DESKTOP.ru.md",
                          package / "DESKTOP-LIFECYCLE.md", package / "DESKTOP-LIFECYCLE.ru.md",
                          package / "DESKTOP-POINTER.md", package / "DESKTOP-POINTER.ru.md",
                          package / "examples/desktop-pointer/README.md",
@@ -108,13 +108,11 @@ def compiler_service_packages(prefix, work, environment):
             if "PASS artifact tutorial:" not in output:
                 raise RuntimeError("relocated explicit export tutorial did not complete")
         for dispatch in ("--jit", "--no-jit"):
-            output = run([program(prefix, name, "disvm"), dispatch, "--quantum", "1",
-                          package / "desktop-lifecycle.dis"], work, environment)
+            output = run(["sh", package / "run-desktop-lifecycle.sh", dispatch, "--quantum", "1"], work, environment)
             if "PASS desktop lifecycle tutorial:" not in output:
                 raise RuntimeError("relocated desktop lifecycle example failed")
         for dispatch in ("--jit", "--no-jit"):
-            output = run([program(prefix, name, "disvm"), dispatch, "--quantum", "1",
-                          package / "desktop-pointer.dis"], work, environment)
+            output = run(["sh", package / "run-desktop-pointer.sh", dispatch, "--quantum", "1"], work, environment)
             if "PASS desktop pointer tutorial:" not in output:
                 raise RuntimeError("relocated desktop pointer example failed")
         if (package / "desktop-test.dis").is_file():
