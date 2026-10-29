@@ -36,7 +36,7 @@ struct FVM_PortFile
 };
 
 
-/* Open borrowed UTF-8 path in r, w or rw mode (NULL means rw).
+/* Open borrowed UTF-8 path in r, w, wx or rw mode (NULL means rw).
  * out receives an owned file or NULL; close it with fvm_port_file_close.
  * Validate path/mode and allocate state before destructive creation.
  * Native I/O blocks; invalid/unsupported paths, allocation and OS failures
@@ -70,7 +70,7 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
 
     /* Computation / Вычисление и обновление состояния. */
     read = !strcmp(mode, "r") || !strcmp(mode, "rw");
-    write = !strcmp(mode, "w") || !strcmp(mode, "rw");
+    write = !strcmp(mode, "w") || !strcmp(mode, "wx") || !strcmp(mode, "rw");
     if (!read && !write)
     {
         return FVM_INVALID_ARGUMENT;
@@ -89,7 +89,7 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
         return FVM_OUT_OF_MEMORY;
     }
     strcpy(file->path, path);
-    stream = (FILE *)fvm_fs_native_open(path, read ? (write ? "r+b" : "rb") : "wb");
+    stream = (FILE *)fvm_fs_native_open(path, !strcmp(mode, "wx") ? "wbx" : (read ? (write ? "r+b" : "rb") : "wb"));
     if (!stream && read && write && errno == ENOENT)
     {
         stream = (FILE *)fvm_fs_native_open(path, "w+b");

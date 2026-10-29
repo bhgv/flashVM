@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <limits.h>
+#include <fcntl.h>
 
 
 /* One owned directory stream; a failed partial batch cannot silently resume. */
@@ -41,10 +42,31 @@ FVM_Result fvm_fs_native_path(const char *path)
 }
 
 
-/* Open a binary stdio stream in the selected POSIX backend; ownership escapes. */
+/* Open borrowed path/mode in POSIX; wbx uses O_EXCL, never a stat/open race.
+ * Return owned FILE or NULL/errno. fdopen failure closes the private descriptor
+ * but may leave the newly created empty path; existing objects are untouched. */
 void *fvm_fs_native_open(const char *path, const char *mode)
 {
-    return fopen(path, mode);
+    int descriptor;
+    int saved;
+    FILE *stream;
+    if (strcmp(mode, "wbx"))
+    {
+        return fopen(path, mode);
+    }
+    descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (descriptor < 0)
+    {
+        return NULL;
+    }
+    stream = fdopen(descriptor, "wb");
+    if (!stream)
+    {
+        saved = errno;
+        close(descriptor);
+        errno = saved;
+    }
+    return stream;
 }
 
 

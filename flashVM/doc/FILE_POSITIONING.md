@@ -15,7 +15,7 @@ channel request. It allocates no handle and never closes the borrowed file.
 | --- | --- |
 | `file` | Live borrowed file from [`fvm_port_file_open`](../ports/file_port.c#L44); nil is invalid. |
 | `offset` | Signed native `long` byte displacement; the resulting position must be nonnegative and representable. |
-| `origin` | [`FVM_FILE_SEEK_START`](../ports/file_port.h#L51) (zero), [`FVM_FILE_SEEK_CURRENT`](../ports/file_port.h#L52) (active logical cursor), or [`FVM_FILE_SEEK_END`](../ports/file_port.h#L53) (measured extent). |
+| `origin` | [`FVM_FILE_SEEK_START`](../ports/file_port.h#L55) (zero), [`FVM_FILE_SEEK_CURRENT`](../ports/file_port.h#L56) (active logical cursor), or [`FVM_FILE_SEEK_END`](../ports/file_port.h#L57) (measured extent). |
 | `position` | Required output pointer; receives the selected byte position only on success. |
 
 [`FVM_OK`](../include/flashvm/flashvm.h#L44) means the native seek succeeded and the active logical cursor moved.
@@ -60,9 +60,9 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_FILE_SEEK_CURRENT` | macro / define | [ports/file_port.h:52](../ports/file_port.h#L52) |
-| `FVM_FILE_SEEK_END` | macro / define | [ports/file_port.h:53](../ports/file_port.h#L53) |
-| `FVM_FILE_SEEK_START` | macro / define | [ports/file_port.h:51](../ports/file_port.h#L51) |
+| `FVM_FILE_SEEK_CURRENT` | macro / define | [ports/file_port.h:56](../ports/file_port.h#L56) |
+| `FVM_FILE_SEEK_END` | macro / define | [ports/file_port.h:57](../ports/file_port.h#L57) |
+| `FVM_FILE_SEEK_START` | macro / define | [ports/file_port.h:55](../ports/file_port.h#L55) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `fvm_port_file_open` | function | [ports/file_port.c:44](../ports/file_port.c#L44) |

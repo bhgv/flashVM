@@ -1484,11 +1484,11 @@ void Sys_create(void *frame)
     {
         error(exNilref);
     }
-    if (call->mode == 1 && call->perm == 0666)
+    if ((call->mode == Sys_OWRITE || call->mode == (Sys_OWRITE | Sys_OEXCL)) && call->perm == 0666)
     {
         result = H2D(Sys_FD *, heapz(TFD));
         result->fd = -1;
-        descriptor = open_file(path, "w");
+        descriptor = open_file(path, (call->mode & Sys_OEXCL) ? "wx" : "w");
         if (descriptor < 0)
         {
             destroy(result);
@@ -1501,7 +1501,7 @@ void Sys_create(void *frame)
     }
     else
     {
-        kwerrstr("create supports OWRITE and permission 0666 only");
+        kwerrstr("create supports OWRITE, optional OEXCL and permission 0666 only");
     }
     publish_descriptor(call->ret, result, old);
 }

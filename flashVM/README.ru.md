@@ -1,4 +1,6 @@
-Версия разработки: **0.1643** ([VERSION.txt](VERSION.txt)). Все стадии
+[Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
+
+Версия разработки: **0.1672** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):

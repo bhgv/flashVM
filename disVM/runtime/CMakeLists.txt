@@ -1106,3 +1106,9 @@ if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDI
     set_tests_properties(disvm_graphical_build_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+if(DVM_RUNTIME_TESTS)
+  add_test(NAME disvm_exclusive_file_port COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_exclusive_file.py" "${DVM_FLASHVM_SOURCE_ROOT}/ports")
+  set_tests_properties(disvm_exclusive_file_port PROPERTIES TIMEOUT 90)
+endif()

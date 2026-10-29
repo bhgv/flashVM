@@ -22,28 +22,11 @@ validpath(path: string): int
 # Read a bounded strict UTF-8 snapshot; ownership/status/blocking follow idefileops.m.
 read(sys: Sys, path: string, limit: int): (int, string)
 {
-    if (sys == nil || !validpath(path) || limit < 1 || limit > MaxBytes) {
-        return (Invalid, "");
+    (status, bytes) := readbytes(sys, path, limit);
+    if (status != Ok) {
+        return (status, "");
     }
-    fd := sys->open(path, Sys->OREAD);
-    if (fd == nil) {
-        return (Io, "");
-    }
-    bytes := array[limit + 1] of byte;
-    count := 0;
-    while (count < len bytes) {
-        n := sys->read(fd, bytes[count:], len bytes - count);
-        if (n < 0) {
-            return (Io, "");
-        }
-        if (n == 0) {
-            break;
-        }
-        count += n;
-    }
-    if (count > limit) {
-        return (TooLarge, "");
-    }
+    count := len bytes;
     text := string bytes[:count];
     encoded := array of byte text;
     if (len encoded != count) {
@@ -58,6 +41,37 @@ read(sys: Sys, path: string, limit: int): (int, string)
 }
 
 
+# Read binary data without UTF-8 conversion; see the public bounded I/O contract.
+# sys/path are borrowed; failure closes the local descriptor and returns nil.
+readbytes(sys: Sys, path: string, limit: int): (int, array of byte)
+{
+    if (sys == nil || !validpath(path) || limit < 1 || limit > MaxBytes) {
+        return (Invalid, nil);
+    }
+    fd := sys->open(path, Sys->OREAD);
+    if (fd == nil) {
+        return (Io, nil);
+    }
+    bytes := array[limit + 1] of byte;
+    count := 0;
+    while (count < len bytes) {
+        n := sys->read(fd, bytes[count:], len bytes - count);
+        if (n < 0) {
+            return (Io, nil);
+        }
+        if (n == 0) {
+            break;
+        }
+        count += n;
+    }
+    if (count > limit) {
+        return (TooLarge, nil);
+    }
+    return (Ok, bytes[:count]);
+}
+
+
+
 # Validate then completely write a borrowed snapshot; no descriptor/array escapes.
 # Status and failure-side-effect guarantees follow the public interface.
 write(sys: Sys, path: string, text: string): int
@@ -65,11 +79,25 @@ write(sys: Sys, path: string, text: string): int
     if (sys == nil || !validpath(path)) {
         return Invalid;
     }
-    bytes := array of byte text;
+    return writebytes(sys, path, array of byte text, 0);
+}
+
+
+# Completely write borrowed immutable bytes; validation precedes creation and
+# exclusive admission is performed by the OS port, never by a racy existence test.
+writebytes(sys: Sys, path: string, bytes: array of byte, exclusive: int): int
+{
+    if (sys == nil || !validpath(path) || (exclusive != 0 && exclusive != 1)) {
+        return Invalid;
+    }
     if (len bytes > MaxBytes) {
         return TooLarge;
     }
-    fd := sys->create(path, Sys->OWRITE, 8r666);
+    mode := Sys->OWRITE;
+    if (exclusive) {
+        mode |= Sys->OEXCL;
+    }
+    fd := sys->create(path, mode, 8r666);
     if (fd == nil) {
         return Io;
     }

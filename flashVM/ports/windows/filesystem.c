@@ -5,6 +5,8 @@
 #include <io.h>
 #include <wchar.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 
 /* A stable metadata handle and a separate native enumeration cursor. */
@@ -67,11 +69,30 @@ void *fvm_fs_native_open(const char *path, const char *mode)
     wchar_t wide_mode[4];
     FILE *stream;
     int index;
+    int descriptor;
+    int saved;
     wide = fs_wide(path);
     if (!wide)
     {
         errno = EINVAL;
         return NULL;
+    }
+    if (!strcmp(mode, "wbx"))
+    {
+        descriptor = _wopen(wide, _O_WRONLY | _O_CREAT | _O_EXCL | _O_BINARY, _S_IREAD | _S_IWRITE);
+        free(wide);
+        if (descriptor < 0)
+        {
+            return NULL;
+        }
+        stream = _fdopen(descriptor, "wb");
+        if (!stream)
+        {
+            saved = errno;
+            _close(descriptor);
+            errno = saved;
+        }
+        return stream;
     }
     for (index = 0; mode[index] && index < 3; index++)
     {

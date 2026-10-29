@@ -16,7 +16,11 @@ extern "C"
 typedef struct FVM_PortFile FVM_PortFile;
 
 
-/* Open port file. */
+/* Open borrowed UTF-8 path in r, w, wx or rw mode; NULL selects rw. wx creates
+ * exclusively, rejecting every existing path (including symlinks) without
+ * truncation. out receives an owned handle or NULL; close on the same serialized
+ * owner. Allocation precedes creation; a later I/O failure may leave a new empty
+ * file. Native filesystem operations block; no durability/atomic-write guarantee. */
 FVM_Result fvm_port_file_open(const char *, const char *, FVM_PortFile **);
 
 
