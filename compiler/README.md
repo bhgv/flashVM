@@ -41,3 +41,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [0.6.0: Unicode, regexp, CONFIG, Vector, generator boundary](LEXICAL_PROFILE.md).
 
 [Checked int32 shifts in SWF: literal-count contract and executable example](../fir/v1/doc/SWF_INT_SHIFTS.md).
+
+[Signed int32 SWF div/mod and proven-total arithmetic DCE](../fir/v1/doc/SWF_INT_DIVMOD.md).
