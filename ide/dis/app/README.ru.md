@@ -66,3 +66,5 @@ disvm_ide_application_jit/interpreter проверяют эту точку вх�
 интерфейсами и проверьте каталог модулей; установка внешнего emu не требуется.
 Миллионный replace-all после защит операндов имеет отдельный бюджет теста 90 с;
 объём данных и функциональные оракулы сохранены.
+
+[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.

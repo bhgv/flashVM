@@ -65,3 +65,5 @@ Both `.dis` and `.sbl` are shipped. If loading fails, rebuild all modules from t
 same interfaces and check the entry/module directory rather than installing emu.
 Large million-character replace-all has a separate 90-second test budget after
 operand safety checks; its data and functional oracles are unchanged.
+
+[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.

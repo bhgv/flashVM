@@ -375,6 +375,40 @@ EOF
                 # Retire only these installer-owned products when an existing package is switched off.
                 rm -f -- "$destination/native-demo.dis" "$destination/native-demo.sbl" "$destination/examples/native-module/nativedemo_native.h"
             fi
+            compiler_enabled=OFF
+            if [[ -f "$base/CMakeCache.txt" ]] && grep -q '^DVM_RUNTIME_COMPILER:BOOL=ON$' "$base/CMakeCache.txt"; then
+                compiler_enabled=ON
+            fi
+            printf 'Fircompiler=%s\n' "$compiler_enabled" >>"$destination/NATIVE-MODULES.txt"
+            copy_file "$ROOT/disVM/module/fircompiler.m" "$destination/include/limbo/fircompiler.m"
+            copy_file "$ROOT/disVM/compiler/compiler_engine.h" "$destination/include/native/compiler_engine.h"
+            copy_tree "$ROOT/ide/dis/examples/compiler-service" "$destination/examples/compiler-service"
+            copy_file "$ROOT/ide/dis/tests/compiler_service_test.b" "$destination/examples/compiler-service/acceptance.b"
+            copy_file "$ROOT/disVM/compiler/test_engine.c" "$destination/examples/compiler-service/client.c"
+            copy_file "$ROOT/disVM/runtime/test_compiler_service.py" "$destination/examples/compiler-service/check.py"
+            copy_file "$ROOT/ide/COMPILER-SERVICE.md" "$destination/COMPILER-SERVICE.md"
+            copy_file "$ROOT/ide/COMPILER-SERVICE.ru.md" "$destination/COMPILER-SERVICE.ru.md"
+            copy_file "$ROOT/ide/dis/bridge/idecompiler.b" "$destination/source/idecompiler.b"
+            copy_file "$ROOT/ide/dis/bridge/ideworkspace.b" "$destination/source/ideworkspace.b"
+            copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
+            sed -e 's|dis/bridge/ideworkspace.m|include/limbo/ideworkspace.m|g' \
+                -e 's|dis/bridge/ideworkspace.b|source/ideworkspace.b|g' \
+                -e 's|dis/examples/workspace/README.md|examples/workspace/README.md|g' \
+                -e 's|../disVM/MODULE-STORE.md|https://github.com/bhgv/flashVM/blob/master/disVM/MODULE-STORE.md|g' \
+                "$ROOT/ide/WORKSPACE.md" >"$destination/WORKSPACE.md"
+            for language in md ru.md; do
+                sed -e 's|dis/bridge/idecompiler.m|include/limbo/idecompiler.m|g' \
+                    -e 's|../disVM/module/fircompiler.m|include/limbo/fircompiler.m|g' \
+                    -e 's|../disVM/compiler/compiler_engine.h|include/native/compiler_engine.h|g' \
+                    -e 's|dis/examples/compiler-service/|examples/compiler-service/|g' \
+                    -e 's|../disVM/SYNC|https://github.com/bhgv/flashVM/blob/master/disVM/SYNC|g' \
+                    "$ROOT/ide/COMPILER-SERVICE.$language" >"$destination/COMPILER-SERVICE.$language"
+                sed 's|../../../COMPILER-SERVICE|../../COMPILER-SERVICE|g' \
+                    "$ROOT/ide/dis/examples/compiler-service/README.$language" >"$destination/examples/compiler-service/README.$language"
+            done
+            if [[ "$compiler_enabled" != ON ]]; then
+                rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a"
+            fi
             install_program "$base" disvm "$destination"
             if [[ "$component" == disvm-editor ]]; then
                 install_program "$base" disvm-editor "$destination"
@@ -404,6 +438,9 @@ EOF
             copy_file "$base/bootstrap/target-abi.json" "$destination/ABI.json"
             for file in "$base"/*.dis "$base"/*.sbl; do
                 if [[ "$native_demo_enabled" != ON && ( "$(basename "$file")" == native-demo.dis || "$(basename "$file")" == native-demo.sbl ) ]]; then
+                    continue
+                fi
+                if [[ "$compiler_enabled" != ON && ( "$(basename "$file")" == compiler-service.dis || "$(basename "$file")" == compiler-service.sbl || "$(basename "$file")" == compiler-service-check.dis || "$(basename "$file")" == compiler-service-check.sbl ) ]]; then
                     continue
                 fi
                 if [[ -f "$file" ]]; then
@@ -604,6 +641,13 @@ EOF
             ;;
     esac
     libraries "$base" "$destination"
+    if [[ "$component" == disvm-runtime || "$component" == disvm-editor ]]; then
+        # Retire this obsolete installer-owned location after copying libraries.
+        rm -f -- "$destination/lib/libdisvm_compiler_engine.a"
+        if [[ "$compiler_enabled" != ON ]]; then
+            rm -f -- "$destination/lib/compiler/libdisvm_compiler_engine.a"
+        fi
+    fi
     notices "$destination" "$source"
     printf 'component=%s\nbuild=%s\nconfiguration=%s\n' "$component" "$base" "$CONFIG" >"$destination/PACKAGE.txt"
     printf 'Installed %s -> %s\n' "$component" "$destination"

@@ -483,6 +483,20 @@ for project in vm compilers as1 as2 as3 limbo fir linker symbols disvm disvm-hos
                     args+=("-DSDL2_DIR=$SDL2_SDK_DIR")
                 fi
             fi
+            # The GUI already builds FIR/linker above; runtime-only users opt in
+            # by selecting both independent compiler projects explicitly.
+            if [[ "$project" == disvm-editor ]] || { has fir && has linker; }; then
+                args+=(-DDVM_RUNTIME_COMPILER=ON
+                    "-DDVM_COMPILER_FIR_INCLUDE=$ROOT/fir/v1/include"
+                    "-DDVM_COMPILER_FIR_LIB=$build_root/fir"
+                    "-DDVM_COMPILER_SWL_INCLUDE=$ROOT/linker/include"
+                    "-DDVM_COMPILER_SWL_LIB=$build_root/linker"
+                    "-DDVM_FIR_SOURCE_COMPILER=$build_root/fir/fir1_source"
+                    "-DDVM_FIR_COMPILER=$build_root/fir/fir1"
+                    "-DDVM_SWF_LINKER=$build_root/linker/swl")
+            else
+                args+=(-DDVM_RUNTIME_COMPILER=OFF)
+            fi
             if [[ -f "$build_root/disvm/console-check.dis" ]]; then
                 args+=("-DDVM_LEGACY_IMAGE=$build_root/disvm/console-check.dis")
             fi

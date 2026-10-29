@@ -15,8 +15,9 @@ Version 0.13.0. [Русский](README.ru.md).
 **Implemented:** a Limbo module compiled to `idecore.dis` with `idecore.sbl`,
 providing a single-document state owner through typed channels. This is the first
 executable IDE component, not a complete editor or a FlashVM-hosted application.
-There is no visual widget, file persistence, compiler/debug service, Dis embedding
-or AS bridge in this slice. The product module imports only its own interface;
+This core slice contains no visual widget, file persistence or AS bridge. The
+separate [native compiler service](../COMPILER-SERVICE.md) now coordinates real
+workspace builds; graphical panels and full debugger attachment remain pending. The product module imports only its own interface;
 it uses no Sys, Draw, Tk, Prefab, crypto or native UI API.
 
 [idecore.m](idecore.m) defines the public contract; [idecore.b](idecore.b) implements
@@ -159,3 +160,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Directory owner and console browser](DIRECTORIES.md) / [Каталоги через каналы](DIRECTORIES.ru.md).
 
 [Graphical file browser](GRAPHICAL-BROWSER.md) / [Графический браузер файлов](GRAPHICAL-BROWSER.ru.md).
+
+[Native compiler jobs / Библиотечные сборки на Dis](../COMPILER-SERVICE.md) · [Русский](../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.

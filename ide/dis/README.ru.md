@@ -150,3 +150,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Directory owner and console browser](DIRECTORIES.md) / [Каталоги через каналы](DIRECTORIES.ru.md).
 
 [Graphical file browser](GRAPHICAL-BROWSER.md) / [Графический браузер файлов](GRAPHICAL-BROWSER.ru.md).
+
+[Native compiler jobs / Библиотечные сборки на Dis](../COMPILER-SERVICE.md) · [Русский](../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.

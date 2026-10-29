@@ -336,3 +336,13 @@ Sys stat/fstat/dirread and actual Readdir now run through selected platform port
 [Graphical selected-entry browser and checked UI requests](../../ide/dis/GRAPHICAL-BROWSER.md) / [RU](../../ide/dis/GRAPHICAL-BROWSER.ru.md).
 
 [Native C modules: ABI, GC, errors, workers](NATIVE_MODULES.md) · [Русский](NATIVE_MODULES.ru.md) · [Runnable every-line-commented example](../examples/native-module/README.md).
+
+## Optional compiler library service — 0.33
+
+[Contract EN](../../ide/COMPILER-SERVICE.md) / [RU](../../ide/COMPILER-SERVICE.ru.md).
+DVM_RUNTIME_COMPILER links our explicit matching C99 FIR/SWL libraries into both
+console and graphical runners. Fircompiler returns copied full FIR/Dis/SWF and
+original debug bytes; Limbo idecompiler coordinates actual workspace tickets.
+No subprocess performs the native call; it blocks the sole VM owner and has no
+UI capability, cancellation or automatic artifact execution. Build/Run/Debug
+panels and final debugger PC maps remain future work.

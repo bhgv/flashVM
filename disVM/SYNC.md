@@ -1,3 +1,17 @@
+# v0.1670 — Bidirectional Math fix, checked fetch, AOT and SBL
+
+Final experiment pin: **34d019f22b80d01385db737e13b20c0ff443aa8b**, **781 Dis / 277 bootstrap files**.
+
+Incoming changes bound optimizer storage, make SBL Type output iterative, validate symbol metadata, and check normal C/AOT/JIT instruction fetch. The selected Dis-to-C reference includes its native-safe scalar/address tests; it is not an installed NC64 IDE execution backend.
+
+Outgoing shared fix: [Math module-local primitive descriptors](https://github.com/bhgv/Inferno-OS-bhgv/commit/34d019f22b80d01385db737e13b20c0ff443aa8b). The previous FlashVM-only Math adapter is retired. Shared guards accept compatible pointer-free local layouts, preserve wrong canonical primitive rejection (including big at equal native widths), and retain error order and full-width bounds. Parent WORD32/64 sources reproduce the rejection; new sanitizer predicates and previous codec/vector matrices pass.
+
+The host safepoint now follows checked fetch and precedes quota/AOT/decode. NC64 fast dispatch uses the captured callback, avoiding a Jit reread after enter. Source-view regeneration verifies both placements and the shared Math source. No upstream source is patched in place here.
+
+Final checks: core **206/206**, runtime **224/224**, bootstrap **26/26**. Both snapshot manifests verify, and all **938 unique selected source files** match the published Inferno commit byte-for-byte; no unpublished common delta remains.
+
+[Release](../docs/releases/v0.1670.md) · [Math contract](upstream/libinterp/tests/README.math-local-types.md) · [Checked fetch](upstream/libinterp/tests/README.xec-fetch.md) · [AOT reference](upstream/utils/dis2c/README.md).
+
 # v0.1668 — Checked scope binding
 
 Pinned experiment revision: **36d5228f5e46a594a8b983429e16fb69eb07a7e9**, **752 Dis / 270 bootstrap files**.

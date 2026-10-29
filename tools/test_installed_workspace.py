@@ -59,6 +59,38 @@ def run(argv, work, environment, input_text=None, include_stderr=False):
     return result.stdout + (result.stderr if include_stderr else "")
 
 
+# Verify an explicitly linked compiler service after relocation. Native calls
+# run without child tools; this development check separately compares CLI bytes
+# and relinks the public C99 service archive against the shipped dependencies.
+def compiler_service_packages(prefix, work, environment):
+    for name in ("disvm-editor", "disvm-runtime"):
+        package = prefix / name
+        manifest = package / "NATIVE-MODULES.txt"
+        if not manifest.is_file() or "Fircompiler=ON" not in manifest.read_text():
+            continue
+        for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md",
+                         package / "examples/compiler-service/README.md",
+                         package / "examples/compiler-service/README.ru.md", package / "WORKSPACE.md"):
+            for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
+                target = target.split("#", 1)[0]
+                if target and "://" not in target and not (document.parent / target).is_file():
+                    raise RuntimeError("broken installed compiler documentation link: " + target)
+        for mode in ("jit", "interpreter"):
+            output = run([sys.executable, package / "examples/compiler-service/check.py",
+                          program(prefix, name, "disvm"), package / "compiler-service-check.dis", mode,
+                          program(prefix, "fir", "fir1_source"), program(prefix, "fir", "fir1"),
+                          program(prefix, "linker", "swl")], work, environment)
+            if "PASS compiler service:" not in output:
+                raise RuntimeError("relocated compiler service did not complete")
+        client = work / (name + "-compiler-client")
+        run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", package / "include/native",
+             package / "examples/compiler-service/client.c", "-L", package / "lib/compiler",
+             "-ldisvm_compiler_engine", "-L", prefix / "fir/lib", "-lfir1_source_api", "-lfir1_ir",
+             "-lfir1_io", "-L", prefix / "linker/lib", "-lswl_core", "-lm", "-o", client], work, environment)
+        if "PASS compiler service C99:" not in run([client], work, environment):
+            raise RuntimeError("relocated compiler library client did not complete")
+
+
 # Compile/verify/optimize the shipped hybrid source with relocated tools and reference execution.
 # Both the reference runner and the actual native Dis path are checked with explicit tools.
 def table_packages(prefix, work, environment):
@@ -616,6 +648,7 @@ def main():
         if args.fir_dis_only:
             table_packages(prefix, work, environment)
             fir_dis_packages(prefix, work, environment)
+            compiler_service_packages(prefix, work, environment)
             print("PASS relocated our Limbo/FIR→Dis, relinked C99 SDK, interpreter and native JIT")
             return
         if args.modules_only:
@@ -669,6 +702,7 @@ def main():
             raise RuntimeError("installed AS2-to-FIR-to-SWO-to-SWF pipeline failed")
         if any((prefix / name / "disvm").is_file() for name in ("disvm-editor", "disvm-runtime")):
             fir_dis_packages(prefix, work, environment)
+            compiler_service_packages(prefix, work, environment)
         run(
             [program(prefix, "symbols", "sblmap"), prefix / "ide/modules/idecore.sbl"],
             work,

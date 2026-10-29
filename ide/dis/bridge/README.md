@@ -120,3 +120,5 @@ optional reference execution requires an explicitly matching compiler/header/VM.
 [Channel-owned any/object proxies](../../../fir/v1/doc/DYNAMIC_VALUES.md) keep
 representation and conversion in the owning VM. This is the selected design,
 not an implemented IDE bridge operation or source any lowering.
+
+[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.

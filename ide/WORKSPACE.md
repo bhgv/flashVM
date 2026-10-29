@@ -50,8 +50,9 @@ to 65536 Unicode characters. Document/history budgets remain idecore's per-docum
 limits, multiplied by the finite document count; no arbitrary project size is
 admitted. Allocation failure is still the VM's exception boundary.
 
-A host compiler bridge and automatic native-store publication are not wired into
-these channels yet. This service coordinates real jobs/results; it does not
+An optional [native compiler worker](COMPILER-SERVICE.md) now connects these
+channels to our source/FIR/SWL libraries on the actual DisVM. Automatic native-store
+publication is not wired into these channels yet. This service coordinates real jobs/results; it does not
 claim to compile arbitrary AS/Limbo or launch the complete IDE. The native byte
 store and Limbo workspace have separate owners and are not a shared native ABI.
 
@@ -60,9 +61,8 @@ store and Limbo workspace have separate owners and are not a shared native ABI.
 The production service and test execute through actual Dis rendezvous channels
 in matching external reference-runtime modes 0/1. Checks cover private document
 state, metadata/byte isolation, stale/superseded jobs, target preservation,
-failed builds, artifact/document quotas and dirty/terminal teardown. This is
-reference-runtime evidence, not execution on our unfinished embedded host or
-physical 64-bit JIT acceptance. The source bootstrap separately compiles the
+failed builds, artifact/document quotas and dirty/terminal teardown. The own DisVM now also runs workspace and compiler-service acceptance in actual
+interpreter/native JIT modes; this does not establish physical foreign-CPU acceptance. The source bootstrap separately compiles the
 service and its debug data without an installed external runtime.
 
 Normal root IDE builds include `ideworkspace.dis`, `.sbl` and the callable
@@ -78,4 +78,5 @@ compiler/header/emulator trio, as the existing IDE reference tests do.
 Поздний результат не затирает новый, а редактирование не выдаёт старый бинарник
 за текущий. Массивы копируются на входе/выходе, квоты проверяются до публикации.
 Закрытие с несохранённым текстом требует явного force. Это сервисная часть IDE;
-полный GUI, нативная привязка компиляторов и исполняемый Dis-хост ещё не завершены.
+панели полного GUI ещё не завершены. Нативный [compiler worker](COMPILER-SERVICE.ru.md)
+и workspace теперь исполняются на нашем DisVM; автоматического запуска артефактов нет.
