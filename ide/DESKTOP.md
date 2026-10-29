@@ -1,6 +1,8 @@
-# MovieClip desktop — v0.1675
+# MovieClip desktop — v0.1677
 
-![Actual FlashVM desktop capture](assets/desktop-v0.1675.png)
+[Workspace gestures / Жесты и оформление](DESKTOP-WORKSPACE.md) · [Русский](DESKTOP-WORKSPACE.ru.md)
+
+![Actual FlashVM desktop capture](assets/desktop-v0.1677.png)
 
 The WeTab-inspired shell has a vertically scrollable central table, live window
 miniatures on the left and expandable tool scrolls on the right. **Every window,
@@ -82,7 +84,7 @@ The older editor's detached-path raster pipeline remains independently tested.
 This is the first working multiple-window shell. It has independent keyboard
 editors, Open/Save path fields, real Build/F8, build log, paged Help, miniatures and
 empty-space panning. It does not yet embed every existing single-editor widget:
-clipboard integration, session persistence, window resizing/reorder controls, export controls, graphical document tools and attached
+system clipboard integration, session persistence, window resizing/reorder controls, export controls, graphical document tools and attached
 Run/Debug sessions remain work. Existing single-editor/export entries retain
 those implemented capabilities. Layout and appearance can now evolve by MovieClip
 components without replacing document owners.
@@ -105,3 +107,5 @@ execution are not inferred from replay or foreign-emitter checks.
 Post-build menu **8** launches this desktop; **9** keeps the older single editor.
 CLI: `python3 build-menu.py --projects disvm-editor --backend cmake --launch desktop`.
 [All entry points](ENTRYPOINTS.md).
+
+[Session Copy/Cut/Paste between editors](DESKTOP-CLIPBOARD.md).

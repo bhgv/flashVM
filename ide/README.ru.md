@@ -1,3 +1,7 @@
+[Сессионный clipboard, Ctrl+C/X/V и пункт 12](DESKTOP-CLIPBOARD.ru.md)
+
+[Workspace gestures / Жесты и оформление](DESKTOP-WORKSPACE.md) · [Русский](DESKTOP-WORKSPACE.ru.md)
+
 [Запуск из build-menu: 8 — MovieClip IDE, 9 — прежний редактор](ENTRYPOINTS.md)
 
 [Перемещение и Close/Cancel отдельных редакторов](DESKTOP-LIFECYCLE.ru.md)

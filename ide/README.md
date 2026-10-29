@@ -1,3 +1,7 @@
+[Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
+
+[Workspace gestures / Жесты и оформление](DESKTOP-WORKSPACE.md) · [Русский](DESKTOP-WORKSPACE.ru.md)
+
 [Build-menu: 8 — MovieClip IDE, 9 — separate single editor](ENTRYPOINTS.md)
 
 [Moving windows and independent Close/Cancel](DESKTOP-LIFECYCLE.md)

@@ -202,8 +202,6 @@ add_executable(limbo-bootstrap
   "${limbo_parser}"
 )
 target_include_directories(limbo-bootstrap PRIVATE "${u}/limbo")
-# The channel-owned desktop intentionally has deeply nested dispatch. Keep the
-# repaired upstream parser bounded while admitting these real application units.
 target_compile_definitions(limbo-bootstrap PRIVATE "INCPATH=\"${u}/module\"")
 # Repeat support archives to resolve the old mutually dependent lib9/math helpers.
 target_link_libraries(limbo-bootstrap PRIVATE limbo_bootstrap_bio limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support m)

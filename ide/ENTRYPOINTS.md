@@ -1,5 +1,7 @@
 # Запуск приложений / Application entry points
 
+[Workspace gestures / Жесты и оформление](DESKTOP-WORKSPACE.md) · [Русский](DESKTOP-WORKSPACE.ru.md)
+
 После сборки `disvm-editor` пункт **8** конечного build-menu запускает новый
 MovieClip-стол. Пункт **9** сохраняет прежний одиночный редактор. Это разные Dis
 приложения, исполняемые нашей встроенной VM. Раньше пункт 8 ссылался на старый
@@ -12,8 +14,9 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 | 9 / editor | `sh run-ide.sh` | Прежний одиночный графический редактор с его отдельными интеграциями |
 | 10 / lifecycle | `sh run-desktop-lifecycle.sh` | Переносимый пример независимых владельцев, завершения и нового документа |
 | 11 / pointer | `sh run-desktop-pointer.sh` | Переносимый пример Unicode-выделения и отклонения stale revision |
+| 12 / clipboard | `sh run-desktop-clipboard.sh` | Сессионный Copy/Cut/Paste через отдельного владельца Limbo |
 
-Пункты 10/11 доступны также в `disvm-runtime`, без графики. Они запускают настоящие
+Пункты 10/11/12 доступны также в `disvm-runtime`, без графики. Они запускают настоящие
 Dis-модули и завершаются после PASS; это не макеты GUI. Оконные launcher-скрипты
 имеются только в `disvm-editor`. Для физического окна требуется сборка с SDL2.
 Явный `--no-player` даёт headless-вариант для replay, а не окно рабочего стола.
@@ -28,7 +31,7 @@ python3 build-menu.py --projects disvm-runtime --backend cmake --launch pointer
 ```
 
 Для предыдущего редактора используйте `--launch editor`, для примера завершения —
-`--launch lifecycle`. `--document` относится только к desktop/editor. Путь передаётся
+`--launch lifecycle`, для сессионного буфера — `--launch clipboard`. `--document` относится только к desktop/editor. Путь передаётся
 отдельным argv, не исполняется shell. `--launch` требует установки и не сочетается
 с `--no-install`. В режиме `--projects` без `--launch` итоговый список всё равно
 показывает установленные launcher-скрипты. Отсутствующий общий `run-checks.sh` больше
@@ -47,13 +50,15 @@ Python/Bash/CMake — инструменты сборки из исходник�
 Post-build menu **8** now launches the actual multi-window MovieClip desktop;
 **9** keeps the separate older single-editor application. The old menu routed 8 to
 `run-ide.sh` and never discovered `run-desktop-ide.sh`. The standalone desktop and
-portable lifecycle/pointer clients are now listed in CLI and interactive results.
+portable lifecycle/pointer/clipboard clients are now listed in CLI and interactive results.
 A missing general checker no longer suppresses installed application launches.
-Use `--launch desktop|editor|lifecycle|pointer` after a successful source build;
+Use `--launch desktop|editor|lifecycle|pointer|clipboard` after a successful source build;
 `--document` is a literal path for the two graphical entries. Source builds need
 CMake for these components. Physical windows need SDL2; `--no-player` is headless.
 
 The desktop still has bounded visible text and drag selection within the body.
-Clipboard, off-body capture/autoscroll, session persistence and attached Run/Debug
+System clipboard, off-body capture/autoscroll, session persistence and attached Run/Debug
 are separate integrations. The single-editor's extra capabilities are available
 through entry 9; they are not silently claimed to be embedded in entry 8.
+
+[Сессионный clipboard](DESKTOP-CLIPBOARD.ru.md) · [Session clipboard](DESKTOP-CLIPBOARD.md).

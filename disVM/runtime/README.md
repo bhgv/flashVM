@@ -1,5 +1,7 @@
 [Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](../../ide/ARTIFACT-EXPORT.md)
 
+[Desktop gestures and rendering](../../ide/DESKTOP-WORKSPACE.md) · [Session clipboard](../../ide/DESKTOP-CLIPBOARD.md) · [Launch menu](../../ide/ENTRYPOINTS.md)
+
 [F7 Build / F8 diagnostics — v0.1671](../../ide/BUILD-PANEL.md) · [Русский](../../ide/BUILD-PANEL.ru.md)
 
 # Experimental runnable Dis and IDE services (NC64)
