@@ -39,3 +39,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [All five C APIs in one process](PARSER_COVERAGE.md).
 
 [0.6.0: Unicode, regexp, CONFIG, Vector, generator boundary](LEXICAL_PROFILE.md).
+
+[Checked int32 shifts in SWF: literal-count contract and executable example](../fir/v1/doc/SWF_INT_SHIFTS.md).
