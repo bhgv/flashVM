@@ -47,6 +47,7 @@ def main():
             "math.c",
             "alt.c",
             "vmfetch.h",
+            "vmchannel.h",
         )
         stale = [
             name
@@ -75,6 +76,14 @@ def main():
         identity = dispatch.index(b"op = fetched.op;", checked)
         if not pc_guard < capture or b"R.PC" in fetch.replace(b"DVM_R.PC", b""):
             raise RuntimeError("shared checked fetch lost bounds or TLS register isolation")
+        channel = second["vmchannel.h"]
+        if (
+            b"memmove(&saved, &DVM_R, sizeof(saved));" not in channel
+            or b"memmove(&DVM_R, &saved, sizeof(DVM_R));" not in channel
+            or b"R.s" in channel.replace(b"DVM_R.s", b"")
+            or b"R.d" in channel.replace(b"DVM_R.d", b"")
+        ):
+            raise RuntimeError("native channel entry lost protected TLS register restoration")
         translated = dispatch.index(b"if(step != nil && step())", inline)
         decode = dispatch.index(b"vmdecode(&fetched);", translated)
         if not checked < identity < poll < guard < step < inline < translated < decode:

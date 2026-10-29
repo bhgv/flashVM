@@ -116,8 +116,17 @@ def compiler_service_packages(prefix, work, environment):
                 )
                 if "PASS desktop owners:" not in output:
                     raise RuntimeError("relocated independent desktop window owners failed")
-        if name == "disvm-editor" and not (package / "run-desktop-ide.sh").is_file():
-            raise RuntimeError("missing installed MovieClip desktop launcher")
+        if name == "disvm-editor":
+            if not (package / "run-desktop-ide.sh").is_file():
+                raise RuntimeError("missing installed MovieClip desktop launcher")
+            # Exercise the application and the tutorial wrapper with the package's
+            # own font and bytecode; input replay never loads repository paths.
+            for entry, mode in (("desktop-ide.dis", "jit"), ("desktop-example.dis", "interpreter")):
+                output = run([sys.executable, package / "examples/desktop/check.py",
+                              program(prefix, name, "disvm-editor"), package / entry,
+                              package / "fonts/NotoSansMono-Regular.ttf", mode], work, environment)
+                if "PASS MovieClip desktop:" not in output:
+                    raise RuntimeError("relocated MovieClip desktop did not complete")
         client = work / (name + "-compiler-client")
         run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", package / "include/native",
              package / "examples/compiler-service/client.c", "-L", package / "lib/compiler",

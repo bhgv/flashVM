@@ -468,7 +468,7 @@ if(DVM_NATIVE_REGISTERS)
     list(APPEND native_sources "${native_dir}/${name}")
   endforeach()
   set_property(TARGET disvm_core PROPERTY SOURCES "${native_sources}")
-  file(GLOB native_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/vmfetch.h")
+  file(GLOB native_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/vmfetch.h" "${u}/include/vmchannel.h")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${native_inputs}
     "${CMAKE_CURRENT_SOURCE_DIR}/host/prepare_native_registers.py")
   target_compile_definitions(disvm_core PUBLIC DVM_NATIVE_REGISTERS=1)
@@ -623,5 +623,22 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
     endif()
     set_tests_properties(disvm_alt_publication_${route} PROPERTIES TIMEOUT 240
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all;QUEUE_CASES=publication-bad-ready publication-bad-wake publication-bad-output publication-idle publication-wake publication-wake-tuple publication-result publication-payload publication-tuple;${route_environment}")
+  endforeach()
+endif()
+
+# Exercise native entry REG borrowing and temporary receive owners with the real
+# emu/os entry bodies. Error injection uses UBSan; nonthrowing cases also use ASan.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  foreach(profile errors nonthrowing)
+    add_test(NAME disvm_native_channel_entry_${profile} COMMAND "${Python3_EXECUTABLE}"
+      "${u}/libinterp/tests/channel-transfers.py")
+    set(entry_flags "-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all")
+    set(entry_selection "")
+    if(profile STREQUAL "nonthrowing")
+      set(entry_flags "-O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all")
+      set(entry_selection "CHANNEL_TRANSFER_CASES=entry-move entry-allocate entry-destroy entry-block entry-refill;ENTRY_MODE=1")
+    endif()
+    set_tests_properties(disvm_native_channel_entry_${profile} PROPERTIES TIMEOUT 240
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=${entry_flags};${entry_selection}")
   endforeach()
 endif()

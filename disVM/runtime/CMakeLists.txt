@@ -58,7 +58,7 @@ if(DVM_RUNTIME_NATIVE_DEMO)
   list(APPEND host_prepare_args --native-demo "${native_demo_root}/nativedemo.m" --native-bindings "${DVM_LIMBO_BINDINGS}")
   list(APPEND host_prepare_products "${view}/nativedemo_native.h")
 endif()
-file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h" "${u}/include/vmfetch.h")
+file(GLOB runtime_inputs "${u}/libinterp/*.c" "${u}/libinterp/*.h" "${u}/include/isa.h" "${u}/include/interp.h" "${u}/include/vmfetch.h" "${u}/include/vmchannel.h")
 add_custom_command(OUTPUT "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
