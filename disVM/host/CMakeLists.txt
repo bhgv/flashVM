@@ -146,3 +146,8 @@ if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
     "${dvm_root}/tests/native_world.py" --flashvm-root "${fvm}" --gc-workers)
   set_tests_properties(disvm_gc_workers_with_mutators PROPERTIES TIMEOUT 40 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()
+
+# Standalone host SDKs ship the structural tools; embedded parents add them once.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+  add_subdirectory("${dvm_root}/envelope" envelope)
+endif()

@@ -113,6 +113,8 @@ if(BUILD_TESTING)
     dis-layout
     dis-control
     dis-rune
+    dis-envelope
+    dis-string-pool
     dis-rune-case
     array-indices
     descriptor-index
@@ -705,3 +707,6 @@ if(BUILD_TESTING)
   add_test(NAME disvm_rune_order_crosscheck COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/rune_order_crosscheck.py" "${u}")
 endif()
+
+# Shared structural codecs and standalone tools do not enable a new VM ABI.
+add_subdirectory(envelope)

@@ -1358,3 +1358,6 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_fir_total_arithmetic_dce_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+# Build the same structural codec tools beside the separate NC64 runtime.
+add_subdirectory("${root}/disVM/envelope" envelope)
