@@ -298,7 +298,7 @@ application, with FlashVM rendering. [Application guide](../../ide/dis/app/READM
 [Русское руководство](../../ide/dis/app/README.ru.md). The console-only package
 keeps its original console run-ide.sh; the graphical package also supplies
 run-ide-console.sh. These entries need no external emu/Python at deployment.
-F7 Build/F8 diagnostics are implemented; artifact Run/Debug controls and full Dis debugger wiring remain unfinished.
+F7 Build/F8 diagnostics are implemented; Run/Debug controls and full Dis debugger wiring remain unfinished.
 
 Compiler 0.21/runtime 0.24 table helpers are documented in
 [TABLE_MUTATION](../../fir/v1/doc/TABLE_MUTATION.md) ·

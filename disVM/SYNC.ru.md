@@ -1,3 +1,18 @@
+# v0.1672 — Числовой benchmark и исходящее исправление GC-idle fixture
+
+Итоговый pin experiment: **573eb1337fd621b6e51b89d16dd86427c9376452**. **791** файл
+Dis, **277** bootstrap, **948 уникальных выбранных файлов** совпадают с Git/hashes.
+Импортирован 75bc786: центрированная статистика, таймеры и чтение отчётов.
+Полный core воспроизвёл отсутствие настоящего tickspan в сборке gc-idle fixture.
+Исправление двух файлов сначала проверено/опубликовано в Inferno, затем импортировано
+побайтно. Новый и прежний benchmark waiter replay проходят; производственная VM/GC
+этим исходящим исправлением не меняется. Эксклюзивные файлы host, канонический FIR
+и политика IDE остаются в FlashVM. Итоговые проверки: core 208/208, runtime 235/235
+и 12/12 focused на неизменных производственных VM inputs; compiler service 3/3
+в обычной и санитайзерной сборках.
+
+[Релиз](../docs/releases/v0.1672.md) · [Числовые проверки](upstream/libinterp/tests/README.bench-numeric.md) · [GC fixture](upstream/libinterp/tests/README.gc-arithmetic.md).
+
 # v0.1671 — Общая проверенная выборка для отладчика и профилирования
 
 Закреплён experiment **51d18eaea7fb1aa724fcbb5e0aaa92f7c1d1a4fa**: **787 файлов Dis**,

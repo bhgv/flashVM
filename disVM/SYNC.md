@@ -1,3 +1,17 @@
+# v0.1672 — Benchmark numerics and outbound GC-idle fixture repair
+
+Final experiment pin: **573eb1337fd621b6e51b89d16dd86427c9376452**. Dis **791**,
+bootstrap **277**, **948 unique selected files** match published Git blobs and hashes.
+Imported 75bc786 checked centered statistics, timer scaling and logical report reads.
+Full core exposed a missing production tickspan dependency in gc-idle fixture assembly.
+The two-file fix was first tested/published in Inferno, then imported byte-for-byte;
+new and historical benchmark waiter replays pass. No production collector/VM change
+is introduced by that outbound test fix. Host-exclusive files, canonical FIR and
+IDE export policy stay in FlashVM. Final core 208/208; runtime 235/235 plus focused
+12/12 on unchanged production VM inputs; compiler service 3/3 normal/sanitized.
+
+[Release](../docs/releases/v0.1672.md) · [Numerics](upstream/libinterp/tests/README.bench-numeric.md) · [GC fixture](upstream/libinterp/tests/README.gc-arithmetic.md).
+
 # v0.1671 — Shared checked debugger/profiler fetch
 
 Pinned experiment: **51d18eaea7fb1aa724fcbb5e0aaa92f7c1d1a4fa**. Dis **787** files,
