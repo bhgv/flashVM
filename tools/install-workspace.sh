@@ -433,8 +433,17 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
+            for module in idedeskpane idedesktop desktop-lifecycle desktop-pointer; do
+                [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
+            done
+            copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
+            copy_file "$ROOT/disVM/runtime/run-desktop-pointer.sh" "$destination/run-desktop-pointer.sh" 755
+            copy_file "$ROOT/ide/ENTRYPOINTS.md" "$destination/ENTRYPOINTS.md"
             install_program "$base" disvm "$destination"
             if [[ "$component" == disvm-editor ]]; then
+                for module in desktop-ide desktop-example; do
+                    [[ -s "$base/$module.dis" ]] || fail "Missing desktop application: $base/$module.dis; build all editor targets before installation"
+                done
                 install_program "$base" disvm-editor "$destination"
                 copy_file "$ROOT/disVM/runtime/run-desktop-ide.sh" "$destination/run-desktop-ide.sh" 755
                 copy_tree "$ROOT/ide/dis/examples/desktop" "$destination/examples/desktop"
