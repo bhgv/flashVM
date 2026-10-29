@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1681**. [Русская версия](README.ru.md).
+Development version: **0.1682**. [Русская версия](README.ru.md).
 
-Current series: [v0.1681](docs/releases/v0.1681.md): signed SWF div/mod, proven-total arithmetic DCE, shared IDE/C99 targets, and synchronized Inferno signed-Rune contracts.
+Current series: [v0.1682](docs/releases/v0.1682.md): Dis64 container/string-pool tools and SDK, build-menu entry13, paired integer FIR optimization and direct Inferno payload coordination.
 
 ## Browse documentation
 

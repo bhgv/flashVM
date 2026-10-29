@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1681**. [English](README.md).
+Версия разработки: **0.1682**. [English](README.md).
 
-Текущая серия: [v0.1681](docs/releases/v0.1681.md): знаковые SWF div/mod, удаление безопасной неиспользуемой арифметики, общий IDE/C99 backend и синхронизация signed-Rune Inferno.
+Текущая серия: [v0.1682](docs/releases/v0.1682.md): Dis64-контейнер/строковый пул и SDK, пункт13 build-menu, парные целочисленные оптимизации FIR и прямое согласование с Inferno.
 
 ## Просмотр документации
 

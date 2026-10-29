@@ -43,3 +43,5 @@ fir1 компилирует его в SWO, а [SWL](../linker/README.ru.md) ли
 [Профиль отображения AS2 → FIR → SWO → SWF](as2/view/README.ru.md): общий фронтенд, библиотека и CLI для первого исполняемого AS-представления IDE.
 
 [Знаковые SWF div/mod и удаление неиспользуемой безопасной арифметики](../fir/v1/doc/SWF_INT_DIVMOD.ru.md).
+
+[Paired integer rules / парные целочисленные правила](../fir/v1/doc/INTEGER_PAIRS.md), [RU](../fir/v1/doc/INTEGER_PAIRS.ru.md).
