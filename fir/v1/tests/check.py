@@ -118,7 +118,8 @@ with tempfile.TemporaryDirectory() as directory:
     for folder in sorted((ROOT / "examples").iterdir()):
         # Structural/diagnostic/table examples have separate tests and target contracts.
         # Tables reject SWO emission; tables.py and limbo_aliases.py cover their source/runtime contracts.
-        if not folder.is_dir() or folder.name in ("structural", "diagnostics", "tables", "type-aliases"):
+        # integer_identities.py separately checks raw SWO rejection and optimized SWF execution.
+        if not folder.is_dir() or folder.name in ("structural", "diagnostics", "tables", "type-aliases", "integer-identities"):
             continue
         if folder.name in ("as1", "as2", "as3", "limbo"):
             source = folder / ("main.b" if folder.name == "limbo" else "main.as")

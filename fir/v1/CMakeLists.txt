@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.58.0 LANGUAGES C)
+project(fir1 VERSION 0.59.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -623,3 +623,21 @@ if(BUILD_TESTING)
   target_link_libraries(fir1_numeric_for_api PRIVATE fir1_source_api fir1_ir)
   add_test(NAME fir1_numeric_for_api COMMAND fir1_numeric_for_api)
 endif()
+
+# Integer identities preserve checked producer errors and existing target limits.
+if(BUILD_TESTING)
+  add_test(NAME fir1_integer_identities COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_identities.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_integer_identities PROPERTIES TIMEOUT 120)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(fir1_integer_identities_api tests/integer_identities_api.c)
+  target_link_libraries(fir1_integer_identities_api PRIVATE fir1_source_api fir1_ir)
+  add_test(NAME fir1_integer_identities_api COMMAND fir1_integer_identities_api)
+endif()
+
+# Runnable installed C99 tutorial, using exactly the public source/FIR libraries.
+add_executable(fir1_integer_identities_example examples/integer-identities/main.c)
+target_link_libraries(fir1_integer_identities_example PRIVATE fir1_source_api fir1_ir)

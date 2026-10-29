@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.54.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.59.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -183,3 +183,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Numeric cells and structured source flow / Числовые ячейки и структурный CFG — FIR 0.57](doc/NUMERIC_FLOW.md) · [Русский](doc/NUMERIC_FLOW.ru.md).
 
 [Numeric counted loops / Числовой for — FIR 0.58](doc/NUMERIC_FOR.md) · [Русский](doc/NUMERIC_FOR.ru.md).
+
+[Total integer identities — 0.59](doc/INTEGER_IDENTITIES.md) · [Русский](doc/INTEGER_IDENTITIES.ru.md) · [C99/Dis/SWF tutorial](examples/integer-identities/README.md).

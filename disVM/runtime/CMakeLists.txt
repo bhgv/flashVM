@@ -1319,3 +1319,13 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
     set_tests_properties(disvm_desktop_workspace_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+# Run raw/optimized integer identities in the actual matched Dis engines.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_integer_identities_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/integer_identities.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_integer_identities_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()

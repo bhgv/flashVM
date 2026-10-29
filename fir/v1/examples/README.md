@@ -4,6 +4,7 @@
 
 | Folder | Demonstrates |
 | --- | --- |
+| [integer-identities](integer-identities/README.md) | Exact integer rules, preserved traps, C99 embedding, Dis and optimized SWF |
 | [type-aliases](type-aliases/README.md) | Limbo aliases → canonical FIR → Dis / numeric SWF |
 | [as1](as1/README.md) | Numeric source, precedence, expected FIR |
 | [as2](as2/README.md) | Parentheses and multiplication |

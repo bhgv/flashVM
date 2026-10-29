@@ -50,3 +50,5 @@ COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` ката�
 [Устранение скалярных загрузок — 0.45](../doc/SCALAR_FORWARDING.ru.md): приватные ячейки в одном блоке, сохранение записей, границ CFG и барьеров эффектов.
 
 [Перезаписанные скаляры — 0.46](../doc/SCALAR_STORES.ru.md): удаление ненаблюдаемых приватных записей с сохранением последних значений и границ исключений/владения.
+
+[Total integer identities — FIR 0.59](../doc/INTEGER_IDENTITIES.md) · [Русский](../doc/INTEGER_IDENTITIES.ru.md).

@@ -259,6 +259,183 @@ static int remove_overwritten_scalar_stores(FirModule *module)
 }
 
 
+/* Replace a verified integer result with a same-type literal. in is owner-local
+ * IR, wide selects i64 rather than i32. Producers are not removed here: their
+ * throw/write/ownership effects remain visible to the ordinary DCE pass. */
+static void integer_literal(FirInstruction *in, int wide, int value)
+{
+    in->op = wide ? O_I64 : O_I32;
+    in->integer = value;
+    in->big = value;
+    in->a = in->b = -1;
+}
+
+
+/* Apply only total integer identities to borrowed verified IR operands. Return
+ * one after rewriting in, zero otherwise. Division/shift checks disappear only
+ * for a proven nontrapping constant divisor/count; evaluating each operand still
+ * happens in its original producer. Never apply these rules to floating values,
+ * dynamic AS addition, memory loads, reference owners or unknown zero divisors. */
+static int simplify_integer_identity(FirInstruction *in, const FirInstruction *a, const FirInstruction *b)
+{
+    int wide;
+    int left_constant;
+    int right_constant;
+    int64_t left;
+    int64_t right;
+    int copy = -1;
+    switch (in->op)
+    {
+    case O_ADD:
+    case O_SUB:
+    case O_MUL:
+    case O_I32_DIV:
+    case O_I32_MOD:
+    case O_I32_AND:
+    case O_I32_OR:
+    case O_I32_XOR:
+    case O_I32_SHL:
+    case O_I32_SHR:
+        wide = 0;
+        break;
+    case O_BIG_ADD:
+    case O_BIG_SUB:
+    case O_BIG_MUL:
+    case O_BIG_DIV:
+    case O_BIG_MOD:
+    case O_BIG_AND:
+    case O_BIG_OR:
+    case O_BIG_XOR:
+    case O_BIG_SHL:
+    case O_BIG_SHR:
+        wide = 1;
+        break;
+    default:
+        return 0;
+    }
+    left_constant = a && a->op == (wide ? O_I64 : O_I32);
+    right_constant = b && b->op == (wide ? O_I64 : O_I32);
+    left = left_constant ? (wide ? a->big : a->integer) : 0;
+    right = right_constant ? (wide ? b->big : b->integer) : 0;
+    switch (in->op)
+    {
+    case O_ADD:
+    case O_BIG_ADD:
+    case O_I32_OR:
+    case O_BIG_OR:
+    case O_I32_XOR:
+    case O_BIG_XOR:
+        if (right_constant && right == 0)
+        {
+            copy = in->a;
+        }
+        else if (left_constant && left == 0)
+        {
+            copy = in->b;
+        }
+        else if (in->a == in->b && (in->op == O_I32_XOR || in->op == O_BIG_XOR))
+        {
+            integer_literal(in, wide, 0);
+            return 1;
+        }
+        else if (in->a == in->b && (in->op == O_I32_OR || in->op == O_BIG_OR))
+        {
+            copy = in->a;
+        }
+        else if ((in->op == O_I32_OR || in->op == O_BIG_OR) &&
+                 ((left_constant && left == -1) || (right_constant && right == -1)))
+        {
+            integer_literal(in, wide, -1);
+            return 1;
+        }
+        break;
+    case O_SUB:
+    case O_BIG_SUB:
+        if (right_constant && right == 0)
+        {
+            copy = in->a;
+        }
+        else if (in->a == in->b)
+        {
+            integer_literal(in, wide, 0);
+            return 1;
+        }
+        break;
+    case O_MUL:
+    case O_BIG_MUL:
+        if ((left_constant && left == 0) || (right_constant && right == 0))
+        {
+            integer_literal(in, wide, 0);
+            return 1;
+        }
+        if (right_constant && right == 1)
+        {
+            copy = in->a;
+        }
+        else if (left_constant && left == 1)
+        {
+            copy = in->b;
+        }
+        break;
+    case O_I32_AND:
+    case O_BIG_AND:
+        if ((left_constant && left == 0) || (right_constant && right == 0))
+        {
+            integer_literal(in, wide, 0);
+            return 1;
+        }
+        if ((right_constant && right == -1) || in->a == in->b)
+        {
+            copy = in->a;
+        }
+        else if (left_constant && left == -1)
+        {
+            copy = in->b;
+        }
+        break;
+    case O_I32_DIV:
+    case O_BIG_DIV:
+        if (right_constant && right == 1)
+        {
+            copy = in->a;
+        }
+        else if (right_constant && right == -1)
+        {
+            in->op = wide ? O_BIG_MUL : O_MUL;
+            return 1; /* MIN/-1 wraps exactly like multiplication by minus one. */
+        }
+        break;
+    case O_I32_MOD:
+    case O_BIG_MOD:
+        if (right_constant && (right == 1 || right == -1))
+        {
+            integer_literal(in, wide, 0);
+            return 1;
+        }
+        break;
+    case O_I32_SHL:
+    case O_I32_SHR:
+    case O_BIG_SHL:
+    case O_BIG_SHR:
+        if (b && b->op == O_I32 && b->integer == 0)
+        {
+            copy = in->a;
+        }
+        break;
+    default:
+        return 0;
+    }
+    if (copy < 0)
+    {
+        return 0;
+    }
+    in->op = O_COPY;
+    in->a = copy;
+    in->b = -1;
+    return 1;
+}
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -282,8 +459,12 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if ((in->op == O_I32_SHL || in->op == O_I32_SHR) && a->op == O_I32 && b->op == O_I32 && b->integer >= 0 &&
-                b->integer < 32)
+            if (simplify_integer_identity(in, a, b))
+            {
+                changed = 1;
+            }
+            else if ((in->op == O_I32_SHL || in->op == O_I32_SHR) && a->op == O_I32 && b->op == O_I32 &&
+                     b->integer >= 0 && b->integer < 32)
             {
                 unsigned count = (unsigned)b->integer;
                 uint32_t bits = (uint32_t)a->integer;
@@ -488,7 +669,8 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             /* Pool exact big constants and reuse identical typed calculations within one block.
              * Operand order is preserved, including strict floating arithmetic. */
             if ((in->op == O_F64_EQ || in->op == O_F64_LT || in->op == O_F64_LE || in->op == O_BOOL_NOT ||
-                 in->op == O_BOOL_EQ || in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
+                 in->op == O_BOOL_EQ || in->op == O_I32_AND || in->op == O_I32_OR || in->op == O_I32_XOR ||
+                 in->op == O_I64 || (in->op >= O_ADD && in->op <= O_FDIV) ||
                  (in->op >= O_BIG_ADD && in->op <= O_TO_INT)) &&
                 !fir_effects(in->op))
             {

@@ -50,3 +50,5 @@ channels and trace remain even when their results are unused.
 [Private scalar forwarding — 0.45](../doc/SCALAR_FORWARDING.md): block-local cells, preserved stores, CFG boundaries and effect barriers.
 
 [Overwritten scalar stores — 0.46](../doc/SCALAR_STORES.md): remove unobserved private writes while preserving final state and exception/ownership boundaries.
+
+[Total integer identities — FIR 0.59](../doc/INTEGER_IDENTITIES.md) · [Русский](../doc/INTEGER_IDENTITIES.ru.md).

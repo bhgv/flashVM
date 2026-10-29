@@ -4,6 +4,7 @@
 
 | Папка | Что показывает |
 | --- | --- |
+| [integer-identities](integer-identities/README.md) | Exact integer rules, preserved traps, C99 embedding, Dis and optimized SWF |
 | [type-aliases](type-aliases/README.ru.md) | Limbo aliases → canonical FIR → Dis / numeric SWF |
 | [as1](as1/README.ru.md) | Числовой исходник, приоритеты, ожидаемый FIR |
 | [as2](as2/README.ru.md) | Скобки и умножение |
