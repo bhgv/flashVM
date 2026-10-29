@@ -3,7 +3,7 @@ Idedeskpane: module
 {
     PATH: con "idedeskpane.dis"; # Matching portable window controller.
     Editor, Console, Help: con iota + 1; # Actual document owner, mutable log, immutable help.
-    Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, Shutdown: con iota; # FIFO operations.
+    Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, ExportSelection, CutSelection, PasteSelection, Shutdown: con iota; # FIFO operations.
 
     Request: adt
     {
@@ -12,6 +12,9 @@ Idedeskpane: module
         text: string; # Open/Save path or console replacement text.
         # Place: Request kind, code begin/move/end=1/2/3, flags exact source revision,
         # first absolute scalar offset, second Shift 0/1 (begin only). Nil rejects.
+        # CutSelection/PasteSelection require Request kind, flags=source revision,
+        # first/second=the exact ordered full selection captured from a fresh reply.
+        # Cut follows a successful session clipboard acknowledgement; Paste text is bounded.
         # CancelPointer drops the gesture without changing selection/modifiers.
         event: ref Uibridge->Message; # Input keyboard/text/focus, or checked Place proposal.
         reply: chan of Reply; # Required unique acknowledgement.
@@ -29,6 +32,10 @@ Idedeskpane: module
         first: int; # Original source offset of body.
         caret: int; # Body-relative bounded caret.
         anchor: int; # Body-relative clipped selection anchor; full endpoint stays private.
+        rangefirst: int; # Full ordered source selection start, not a clipped viewport coordinate.
+        rangelast: int; # Full ordered source end, excluded.
+        transfer: string; # ExportSelection only: complete bounded selection; never native UI metadata.
+        line: int; # One-based logical source line containing the viewport start.
         diagnostic: string; # Plain build/error metadata, bounded by the caller before UI publication.
     };
 

@@ -10,6 +10,7 @@ include "fircompiler.m";
 include "idecompiler.m";
 include "idebuildpanel.m";
 include "idedeskpane.m";
+include "idedeskclip.m";
 
 
 # Complete one private document exchange; borrowed endpoint stays live and no
@@ -35,6 +36,28 @@ language(path: string): int
         }
     }
     return 0;
+}
+
+
+# Admit complete session clipboard text independently of the broker caller.
+# text is borrowed Unicode; return an Idecore status without changing source.
+# Keep the shared byte bound and reject values native C-string clipboards cannot
+# represent, so a direct library client cannot bypass ordinary UI admission.
+clipstatus(text: string): int
+{
+    if (len text > Idedeskclip->MaxBytes) {
+        return Idecore->TooLarge;
+    }
+    for (index := 0; index < len text; index++) {
+        value := text[index];
+        if (value <= 0 || value > 16r10ffff || (value >= 16rd800 && value <= 16rdfff)) {
+            return Idecore->Invalid;
+        }
+    }
+    if (len array of byte text > Idedeskclip->MaxBytes) {
+        return Idecore->TooLarge;
+    }
+    return Idecore->Ok;
 }
 
 
@@ -70,6 +93,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
             (request.operation == Place && request.event == nil)) {
             pointing = 0;
         }
+        transfer := "";
         status := core->Invalid;
         stop := 0;
         if (request.id >= 0) {
@@ -115,7 +139,51 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 }
                 status = core->Ok;
             } else if (kind == Editor) {
-                if (request.operation == Place && request.event != nil) {
+                if (request.operation == ExportSelection || request.operation == CutSelection ||
+                    request.operation == PasteSelection) {
+                    current = call(document, core->Snapshot, 0, "");
+                    policy->observe(state, current);
+                    first := state.anchor;
+                    last := state.caret;
+                    if (first > last) {
+                        first = state.caret;
+                        last = state.anchor;
+                    }
+                    status = core->Ok;
+                    if (request.operation == ExportSelection) {
+                        selected := current.text[first:last];
+                        status = clipstatus(selected);
+                        if (status == core->Ok) {
+                            transfer = selected;
+                        }
+                    } else {
+                        proposal := request.event;
+                        status = core->Conflict;
+                        if (proposal != nil && proposal.kind == Uibridge->Request &&
+                            proposal.flags == current.revision && proposal.first == first && proposal.second == last) {
+                            replacement := request.text;
+                            if (request.operation == CutSelection) {
+                                replacement = "";
+                            }
+                            status = core->Ok;
+                            if ((request.operation == CutSelection && first != last) ||
+                                (request.operation == PasteSelection && replacement != "")) {
+                                status = clipstatus(replacement);
+                                if (status == core->Ok) {
+                                    replies := chan of Idecore->Reply;
+                                    document <-= Idecore->Request(1, core->Replace, current.revision,
+                                        first, last, replacement, "", replies);
+                                    current = <-replies;
+                                    status = current.status;
+                                    policy->observe(state, current);
+                                    if (status == core->Ok) {
+                                        policy->select(state, current, first + len replacement, first + len replacement);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (request.operation == Place && request.event != nil) {
                     # Refresh after an earlier rejected edit/build; its status
                     # must not make a valid unchanged-revision selection fail.
                     current = call(document, core->Snapshot, 0, "");
@@ -249,8 +317,22 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
             }
             body = body[first:last];
         }
+        rangefirst := state.anchor;
+        rangelast := state.caret;
+        if (rangefirst > rangelast) {
+            rangefirst = state.caret;
+            rangelast = state.anchor;
+        }
+        line := 1;
+        if (kind == Editor) {
+            for (scalar := 0; scalar < first; scalar++) {
+                if (current.text[scalar] == '\n') {
+                    line++;
+                }
+            }
+        }
         response := Reply(request.id, status, kind, path, body, current.revision,
-                          current.saved, first, caret, anchor, diagnostic);
+                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic);
         request.reply <-= response;
         if (stop) {
             return;
