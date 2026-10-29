@@ -5,6 +5,7 @@ include "idecore.m";
 include "ideworkspace.m";
 include "fircompiler.m";
 include "idecompiler.m";
+include "idebuildpanel.m";
 
 CompilerUnavailable: module
 {
@@ -23,6 +24,17 @@ init()
     native := load Fircompiler Fircompiler->PATH;
     if (sys == nil || core == nil || workspace == nil || worker == nil || native != nil) {
         raise "fail: unavailable compiler capability";
+    }
+    panel := load Idebuildpanel Idebuildpanel->PATH;
+    document := core->start();
+    if (panel == nil || panel->start(core, document, workspace, worker) != nil) {
+        raise "fail: unavailable compiler panel started";
+    }
+    documents := chan of Idecore->Reply;
+    document <-= Idecore->Request(1, core->Shutdown, 0, 0, 0, "", "", documents);
+    retired := <-documents;
+    if (retired.status != core->Ok) {
+        raise "fail: unavailable compiler panel borrowed editor shutdown";
     }
     owner := workspace->start(core);
     if (worker->start(workspace, owner) != nil) {

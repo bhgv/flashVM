@@ -2159,6 +2159,10 @@ static unsigned int keycode(SDL_Keycode key)
         return FVM_KEY_ENTER;
     case SDLK_ESCAPE:
         return FVM_KEY_ESCAPE;
+    case SDLK_F7:
+        return FVM_KEY_F1 + 6;
+    case SDLK_F8:
+        return FVM_KEY_F1 + 7;
     case SDLK_F3:
         return FVM_KEY_F1 + 2;
     case SDLK_BACKSPACE:

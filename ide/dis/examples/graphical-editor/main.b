@@ -14,6 +14,10 @@ include "idefield.m"; # Reuse single-line value/selection policy for every modal
 include "ideclipboard.m"; # Keep copied clipboard fragments in an exclusive Dis staging owner.
 include "idefiles.m"; # Own native directory cursors through typed requests.
 include "idebrowser.m"; # Keep browser paging/selection in exclusive Dis state.
+include "ideworkspace.m"; # Compiler snapshots have a separate private owner.
+include "fircompiler.m"; # Select explicit library language/target values.
+include "idecompiler.m"; # Build jobs remain Limbo channel operations.
+include "idebuildpanel.m"; # Bind artifacts and diagnostics to this document revision.
 include "idehost.m"; # Register ordinary channels with the native window owner.
 
 GraphicalEditor: module # Parameterless entry accepted by the experimental host.
@@ -253,6 +257,38 @@ choosebrowser(browser: ref Idebrowser->State, document: chan of Idecore->Request
 }
 
 
+# Infer the bounded compiler language from an explicit lower-case source suffix.
+# path is copied configuration; zero means unsupported/unnamed and never guesses.
+compilerlanguage(path: string): int
+{
+    endings := array[] of {".as1", ".as2", ".as3", ".as", ".b"};
+    languages := array[] of {Fircompiler->AS1, Fircompiler->AS2, Fircompiler->AS3,
+                            Fircompiler->AS2, Fircompiler->Limbo};
+    for (index := 0; index < len endings; index++) {
+        ending := endings[index];
+        if (len path >= len ending && path[len path - len ending:] == ending) {
+            return languages[index];
+        }
+    }
+    return 0;
+}
+
+
+# Retire the optional build panel before the borrowed editor document. nil means
+# the compiler capability was absent. Return only after terminal acknowledgement.
+stopbuild(panel: Idebuildpanel, endpoint: chan of Idebuildpanel->Request)
+{
+    if (endpoint != nil) {
+        answers := chan of Idebuildpanel->Reply;
+        endpoint <-= Idebuildpanel->Request(1, panel->Shutdown, 0, 0, 0, 0, answers);
+        stopped := <-answers;
+        if (stopped.status != panel->Ok) {
+            raise "fail: graphical compiler panel shutdown";
+        }
+    }
+}
+
+
 # Own graphical editor policy with no Draw/Tk/AS-side document mutation.
 # No parameters; channels remain rooted on this stack through the final reply.
 init()
@@ -280,6 +316,13 @@ init()
     input := chan of array of byte; # The native owner offers copied events here.
     output := chan of array of byte; # The native owner receives Dis-owned snapshots here.
     document := core->start(); # Spawn the existing separate document owner.
+    buildpanel := load Idebuildpanel Idebuildpanel->PATH;
+    workspace := load Ideworkspace Ideworkspace->PATH;
+    compiler := load Idecompiler Idecompiler->PATH;
+    builds: chan of Idebuildpanel->Request;
+    if (buildpanel != nil) {
+        builds = buildpanel->start(core, document, workspace, compiler);
+    } # Missing native compilation is an explicit optional capability.
     state := policy->create(); # Keep cursor/control/history policy in Dis.
     path := host->path(); # Copy the explicit host-selected destination.
     text := ""; # A new document starts empty.
@@ -322,10 +365,13 @@ init()
     transfer_mode := 0; # Zero targets the source; nonzero captures the exact modal operation.
     transfer_stamp := 0; # A field edit/selection change retires a clipboard's captured generation.
     transfer := clipboard->create(); # [GC:] Exclusive pending transaction/staging root until reset or shutdown.
+    buildmessage := ""; # Plain copied compiler status, bounded before rendering.
+    buildvisible := 0; # Inspector mode can show compiler output or document metadata.
     for (;;) { # Serialize every input, file operation and document acknowledgement.
         if (closing && reply.revision == reply.saved) {
             stopbrowser(browser);
             releaseprojection(inspector);
+            stopbuild(buildpanel, builds);
             call(document, core->Shutdown, reply.revision, "");
             host->detach();
             return;
@@ -363,6 +409,9 @@ init()
             paneltext := inputfield.text; # Active input fields are Dis-owned values.
             if (mode == 0) { # An inactive panel reports the selected document path.
                 paneltext = path; # Save As only changes this path after successful output.
+                if (buildmessage != "") {
+                    paneltext += " | " + buildmessage;
+                }
                 if (len paneltext > 200) { # Bound the label without changing the actual file destination.
                     paneltext = paneltext[:200]; # Scalar slicing cannot split UTF-8.
                 }
@@ -374,7 +423,10 @@ init()
                 paneltext = browsing->summary(sys, browser);
             }
             if (mode == 7) {
-                paneltext = inspectdocument(inspector); # Only channel-copied fields reach the native renderer.
+                paneltext = buildmessage;
+                if (!buildvisible) {
+                    paneltext = inspectdocument(inspector);
+                } # Only channel-copied fields reach the native renderer.
             }
             selected := inputfield.caret != inputfield.anchor
                 && ((inputfield.anchor == 0 && inputfield.caret == len inputfield.text)
@@ -490,6 +542,7 @@ init()
             if (reply.revision == reply.saved || event.flags == 1) {
                 stopbrowser(browser);
                 releaseprojection(inspector);
+                stopbuild(buildpanel, builds);
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach(); # Retire borrowed channel roots before the controller stack exits.
                 return;
@@ -671,6 +724,52 @@ init()
             }
             continue; # Browsing never forwards text, paste, delete or pointer gestures to source input.
         }
+        if ((mode == 0 || mode == 7) && event.kind == codec->Key && event.flags == 1
+            && (event.code == 118 || event.code == 119)) { # F7 Build, F8 source diagnostic.
+            buildvisible = 1;
+            buildmessage = "Compiler unavailable: enable Fircompiler";
+            if (builds != nil) {
+                language := compilerlanguage(path);
+                if (event.code == 118 && language == 0) {
+                    buildmessage = "Save As .b, .as, .as1, .as2 or .as3 before Build";
+                } else {
+                    operation := buildpanel->Build;
+                    target := Fircompiler->Swf;
+                    if (language == Fircompiler->Limbo) {
+                        target = Fircompiler->Dis;
+                    }
+                    if (event.code == 119) {
+                        operation = buildpanel->Diagnostic;
+                    }
+                    answers := chan of Idebuildpanel->Reply;
+                    builds <-= Idebuildpanel->Request(1, operation, reply.revision,
+                                                      language, target, 1, answers);
+                    built := <-answers;
+                    buildmessage = "Build status=" + string built.status + " stage=" + string built.compiler;
+                    if (built.diagnostic != "") {
+                        buildmessage += ": " + built.diagnostic;
+                    }
+                    if (event.code == 119 && built.status == buildpanel->Ok) {
+                        reply = built.document;
+                        if (!policy->select(state, reply, reply.offset, reply.selection_end)) {
+                            raise "fail: graphical compiler diagnostic revision";
+                        }
+                        mode = 0;
+                        reveal = 1;
+                        continue;
+                    }
+                }
+            }
+            # Every Unicode scalar needs at most four UTF-8 bytes on this channel.
+            if (len buildmessage > codec->MaxText / 4) {
+                buildmessage = buildmessage[:codec->MaxText / 4];
+            }
+            mode = 7; # Read-only output; Esc returns to source without editing it.
+            dragging = 0;
+            fielddrag = 0;
+            inputfield = fields->create();
+            continue;
+        }
         if (mode == 7 || mode == 8) { # Read-only inspector/confirmation never forward text or paste to the source.
             if (event.kind == codec->Key && event.flags != 0 && event.code == 27) {
                 mode = 0;
@@ -686,6 +785,7 @@ init()
             } else if (mode == 8 && event.kind == codec->Key && event.flags != 0 && event.code == 68) {
                 stopbrowser(browser);
                 releaseprojection(inspector); # Explicit D confirms discard; the close button itself never does.
+                stopbuild(buildpanel, builds);
                 call(document, core->Shutdown, reply.revision, "");
                 host->detach();
                 return;
@@ -734,6 +834,7 @@ init()
         if (event.kind == codec->Key && event.flags != 0 && state.control) {
             if (event.code == 73) { # Ctrl+I opens a real document projection, never a native model shortcut.
                 mode = 7;
+                buildvisible = 0;
                 inputfield = fields->create();
                 dragging = 0;
                 fielddrag = 0;
