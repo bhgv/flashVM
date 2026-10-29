@@ -1,14 +1,16 @@
 # v0.1673 — ALT publication and MovieClip desktop
 
-Experiment pin: **63abd22fc86b353b0140d238811a6dd1560a658b**. Dis **793**,
-bootstrap **277**, **950 unique selected files** match upstream Git bytes and
-manifest hashes. Incoming ALT captures/cancels selection before overlapping
+Experiment pin: **bfa52530021a9fbd5ca58a69e03042c89a8d9bdd**. Dis **797**,
+bootstrap **277**, **954 unique selected files** match upstream Git bytes and
+manifest hashes. Incoming native channel entries restore borrowed REG through protected errors and
+release buffered receive/refill owners on both exits. TLS generation covers vmchannel.h.
+Incoming ALT captures/cancels selection before overlapping
 payload/output stores. Both C and RX publication matrices run under ASan/UBSan.
 The reverse audit found no new common defect requiring an outgoing patch;
 previous upstream fixes remain in experiment. Limbo desktop/pane services and
 FlashVM owner adapters are workspace-specific and stay here.
 
-Core 210/210; runtime 239/239; final focused owner/render tests 5/5.
+Core 212/212; runtime 239/239 (215 initial + 24/24 rerun with explicit TMPDIR); final focused owner/render tests 5/5.
 [Release](../docs/releases/v0.1673.md) · [ALT](upstream/libinterp/tests/README.alt-publication.md) · [Desktop](../ide/DESKTOP.md).
 
 # v0.1672 — Benchmark numerics and outbound GC-idle fixture repair
