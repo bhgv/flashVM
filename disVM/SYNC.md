@@ -1,3 +1,20 @@
+# v0.1675 — Queue-chain validation and glyph selection
+
+Experiment pin: **b27a8513e5cbae9768bf7d95d1fe25bb967a4c4b**.
+Imported full queue-chain validation before append/cancellation, constant-time
+head/successor dequeue guards and empty-head invariants in readiness/JIT preflight.
+New queue-chain fixture and C/RX UBSan matrices are included. Dis **799**, bootstrap
+**277**, **956 unique sources** match upstream Git blobs and manifest SHA-256.
+
+No new common defect requiring an outgoing patch was found in the reverse review.
+Earlier outgoing fixes remain present in experiment. Glyph measurement, Limbo
+selection admission and AS TextField initialization order are workspace UI code;
+they remain outside the byte-identical upstream interpreter snapshot.
+
+[Series](../docs/releases/v0.1675.md) · [Pointer contract](../ide/DESKTOP-POINTER.md).
+
+Final core **214/214**, runtime **245/245**, relocated SDKs and compiler-OFF clients pass interpreter/JIT.
+
 # v0.1674 — Unified channel readiness and independent window lifetime
 
 Final experiment pin: **7e4613ba27c48a556d911cd120852d9919ec0f00**.

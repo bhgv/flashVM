@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1674**. [Русская версия](README.ru.md).
+Development version: **0.1675**. [Русская версия](README.ru.md).
 
-Current series: [v0.1674](docs/releases/v0.1674.md): movable MovieClip windows, independent editor retirement/recreation, guarded dirty-close, overlap hit order and Inferno synchronization audit.
+Current series: [v0.1675](docs/releases/v0.1675.md): glyph-based desktop caret/selection, independent layout/source admission, tab-safe AS initialization and Inferno queue-chain validation.
 
 ## Browse documentation
 
