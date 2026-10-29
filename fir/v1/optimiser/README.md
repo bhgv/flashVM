@@ -56,3 +56,5 @@ channels and trace remain even when their results are unused.
 [Known int32 bits and dynamic checked SWF arithmetic](../doc/INTEGER_FACTS.md): shared C99 proofs, preserved producer errors and source example.
 
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../doc/SHIFT_FACTS.md).
+
+[Known bit results / Известные битовые результаты](../doc/KNOWN_RESULTS.md).

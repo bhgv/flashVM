@@ -1,4 +1,4 @@
-# Актуальное покрытие — FIR 0.64
+# Актуальное покрытие — FIR 0.65
 
 [English](COVERAGE.md) · [Грамматика](../compiler/src1.atg) · [Публичный API](../include/fir.h) · [Архитектура компиляторов](../../../compiler/README.ru.md)
 
@@ -47,3 +47,5 @@
 [Known int32 bits / Известные биты int32](INTEGER_FACTS.ru.md): bounded dynamic counts/nonzero values; no memory inference.
 
 [Shift/big facts / Сдвиги и big](SHIFT_FACTS.ru.md).
+
+[Known bit constants / Точные битовые константы](KNOWN_RESULTS.ru.md).

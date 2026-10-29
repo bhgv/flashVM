@@ -49,3 +49,5 @@ fir1 компилирует его в SWO, а [SWL](../linker/README.ru.md) ли
 [Известные биты int32 и динамическая арифметика SWF](../fir/v1/doc/INTEGER_FACTS.ru.md): общий C99-анализ, сохранение ошибок и пример.
 
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../fir/v1/doc/SHIFT_FACTS.ru.md).
+
+[Known bit results / Известные битовые результаты](../fir/v1/doc/KNOWN_RESULTS.ru.md).

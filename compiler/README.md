@@ -49,3 +49,5 @@ use. Generated Coco/R code and upstream libraries are excluded.
 [Known int32 bits and dynamic checked SWF arithmetic](../fir/v1/doc/INTEGER_FACTS.md): shared C99 proofs, preserved producer errors and source example.
 
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../fir/v1/doc/SHIFT_FACTS.md).
+
+[Known bit results / Известные битовые результаты](../fir/v1/doc/KNOWN_RESULTS.md).

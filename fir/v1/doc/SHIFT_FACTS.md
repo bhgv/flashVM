@@ -70,3 +70,9 @@ The C99 API fixture totals120832 sampled checks, including unsigned 64-bit
 shift/complement oracles and non-topological int32 CFGs. The previous int32
 matrix and all compiler acceptance remain enabled. Tests for one execution
 profile do not establish complete new Dis64 loader/calls/GC support.
+
+Fully determined int32/big bit-operation results are materialized as exact
+constants. Original operand producers retain their effects; big sign-bit
+literals are preserved without narrowing through host int.
+
+[FIR0.65: exact bit constants / точные битовые константы](KNOWN_RESULTS.md).

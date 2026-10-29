@@ -215,3 +215,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [integer-facts.b](integer-facts.b): known-bit dynamic shift/divisor tutorial; raw/optimized Dis and SWF return42. [Guide / Руководство](../../doc/INTEGER_FACTS.ru.md).
 
 [shift-facts.b](shift-facts.b): dynamic shift-derived proofs; raw/optimized Dis/SWF return42. [Guide / Руководство](../../doc/SHIFT_FACTS.ru.md).
+
+[known-results.b](known-results.b): exact constants from dynamic bit expressions, raw/opt Dis/SWF42. [Guide / Руководство](../../doc/KNOWN_RESULTS.ru.md).

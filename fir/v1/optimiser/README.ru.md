@@ -56,3 +56,5 @@ COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` ката�
 [Известные биты int32 и динамическая арифметика SWF](../doc/INTEGER_FACTS.ru.md): общий C99-анализ, сохранение ошибок и пример.
 
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../doc/SHIFT_FACTS.ru.md).
+
+[Known bit results / Известные битовые результаты](../doc/KNOWN_RESULTS.ru.md).
