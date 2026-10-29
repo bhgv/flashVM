@@ -26,6 +26,12 @@ int dvm_editor_frame_path(DVM_EditorFrame *frame, FVM_Path *path, FVM_RasterColo
 const FVM_RasterSurface *dvm_editor_frame_surface(const DVM_EditorFrame *frame);
 
 
+/* Copy an owner-rendered MovieClip base into an exclusively owned frame before
+ * submission. Dimensions must match; later caller mutation cannot affect it.
+ * Return zero on invalid input. No VM reference or caller pixels are retained. */
+int dvm_editor_frame_background(DVM_EditorFrame *frame, const FVM_RasterSurface *source);
+
+
 /* Queue execute callback: rasterize only this frame's contours into its private buffer.
  * Return first native draw failure. No VM, font, SDL, global view state or file I/O. */
 FVM_Result dvm_editor_frame_render(void *frame);

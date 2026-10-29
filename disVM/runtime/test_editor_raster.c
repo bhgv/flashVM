@@ -69,6 +69,28 @@ int main(void)
     FVM_Result rendered = FVM_ERROR;
     void *completed = NULL;
     int ok = 0;
+    DVM_EditorFrame *base = dvm_editor_frame_create(2, 2);
+    unsigned char copied[16] = {9, 8, 7, 255, 9, 8, 7, 255, 9, 8, 7, 255, 9, 8, 7, 255};
+    FVM_RasterSurface source;
+    source.pixels = copied;
+    source.width = 2;
+    source.height = 2;
+    source.stride = 8;
+    if (!base || !dvm_editor_frame_background(base, &source))
+    {
+        goto done;
+    }
+    memset(copied, 0, sizeof(copied));
+    if (dvm_editor_frame_render(base) != FVM_OK || dvm_editor_frame_surface(base)->pixels[0] != 9 ||
+        dvm_editor_frame_surface(base)->pixels[15] != 255)
+    {
+        goto done;
+    }
+    source.width = 1;
+    if (dvm_editor_frame_background(base, &source))
+    {
+        goto done;
+    }
     if (!reference || !candidate || dvm_editor_frame_create(0, 1) ||
         dvm_editor_frame_create(DVM_EDITOR_FRAME_EXTENT + 1, 1))
     {
@@ -91,6 +113,7 @@ int main(void)
          surface->pixels[0] == 0 && surface->pixels[1] == 0 && surface->pixels[2] == 255 && overlap[0] >= 127 &&
          overlap[0] <= 128 && overlap[1] == 0 && overlap[2] >= 127 && overlap[2] <= 128 && overlap[3] == 255;
 done:
+    dvm_editor_frame_destroy(base);
     fvm_render_queue_destroy(queue);
     dvm_editor_frame_destroy(completed);
     dvm_editor_frame_destroy(candidate);

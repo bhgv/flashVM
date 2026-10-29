@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.35.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.36.0 LANGUAGES C)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
     OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
   message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
@@ -103,9 +103,9 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
-set(module_names idecore ideworkspace idecompiler idebuildpanel ideartifact workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
+set(module_names idecore ideworkspace idecompiler idebuildpanel ideartifact idedeskpane idedesktop workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
 set(module_sources "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
-  "${root}/ide/dis/bridge/idecompiler.b" "${root}/ide/dis/bridge/idebuildpanel.b" "${root}/ide/dis/bridge/ideartifact.b"
+  "${root}/ide/dis/bridge/idecompiler.b" "${root}/ide/dis/bridge/idebuildpanel.b" "${root}/ide/dis/bridge/ideartifact.b" "${root}/ide/dis/bridge/idedeskpane.b" "${root}/ide/dis/bridge/idedesktop.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
   "${root}/ide/dis/bridge/ideinput.b" "${root}/ide/dis/bridge/idebridge.b"
@@ -369,6 +369,22 @@ if(DVM_RUNTIME_EDITOR)
     DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}"
       "${DVM_SWF_LINKER}" "${root}/ide/as/editor-view.as" embed_view.py VERBATIM)
   target_sources(disvm-editor PRIVATE "${view}/ide_view_swf.h")
+  add_custom_command(OUTPUT "${view}/desktop_view_swf.h"
+    BYPRODUCTS "${view}/desktop-view.fir" "${view}/desktop-view.opt.fir" "${view}/desktop-view.swo" "${view}/desktop-view.swf"
+    COMMAND "${DVM_AS_VIEW_COMPILER}" "${root}/ide/as/desktop-view.as" "${view}/desktop-view.fir"
+    COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp"
+      "${DVM_FIR_COMPILER}" check "${view}/desktop-view.fir"
+    COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp"
+      "${DVM_FIR_OPTIMIZER}" "${view}/desktop-view.fir" "${view}/desktop-view.opt.fir"
+    COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp"
+      "${DVM_FIR_COMPILER}" object "${view}/desktop-view.opt.fir" "${view}/desktop-view.swo"
+    COMMAND "${DVM_SWF_LINKER}" link "${view}/desktop-view.swf" "${view}/desktop-view.swo"
+    COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/embed_view.py"
+      "${view}/desktop-view.swf" "${view}/desktop_view_swf.h"
+    DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}"
+      "${DVM_SWF_LINKER}" "${root}/ide/as/desktop-view.as" embed_view.py VERBATIM)
+  target_sources(disvm-editor PRIVATE "${view}/desktop_view_swf.h")
+  target_sources(disvm-editor PRIVATE desktop_view.c)
   if(DVM_RUNTIME_TESTS)
     add_executable(disvm_as_view_test test_as_view.c "${view}/ide_view_swf.h")
     target_include_directories(disvm_as_view_test PRIVATE "${view}")
@@ -1139,5 +1155,45 @@ if(DVM_RUNTIME_COMPILER AND DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDI
       "${CMAKE_CURRENT_SOURCE_DIR}/test_graphical_export.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/graphical-editor.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
     set_tests_properties(disvm_graphical_export_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_EDITOR)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis"
+      "${root}/ide/dis/app/desktop.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/app/desktop.b" ${module_headers} VERBATIM)
+  add_custom_target(disvm_desktop_app ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis")
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -I "${root}/ide/dis/app"
+      -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.dis" "${root}/ide/dis/examples/desktop/main.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/examples/desktop/main.b" "${root}/ide/dis/app/desktop.m" VERBATIM)
+  add_custom_target(disvm_desktop_example ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-example.dis")
+endif()
+
+if(DVM_RUNTIME_TESTS)
+  add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/desktop-test.dis"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/desktop-test.dis"
+      "${root}/ide/dis/tests/desktop_test.b"
+    DEPENDS limbo-bootstrap "${root}/ide/dis/tests/desktop_test.b" ${module_headers} VERBATIM)
+  add_custom_target(disvm_desktop_check ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/desktop-test.dis")
+  foreach(mode jit interpreter)
+    set(dispatch --jit)
+    if(mode STREQUAL "interpreter")
+      set(dispatch --no-jit)
+    endif()
+    add_test(NAME disvm_desktop_owners_${mode} COMMAND "$<TARGET_FILE:disvm>" ${dispatch}
+      --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/desktop-test.dis")
+    set_tests_properties(disvm_desktop_owners_${mode} PROPERTIES TIMEOUT 60
+      PASS_REGULAR_EXPRESSION "PASS desktop owners:")
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_movieclip_desktop_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_movieclip_desktop_${mode} PROPERTIES TIMEOUT 180)
   endforeach()
 endif()

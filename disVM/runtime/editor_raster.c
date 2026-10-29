@@ -20,7 +20,9 @@ struct DVM_EditorFrame
     FramePath *first;          /* First owned path in paint order. */
     FramePath *last;           /* Borrowed tail of the same owned list. */
     size_t paths;              /* Count checked against the command budget. */
-    size_t verbs;              /* Total contour commands checked before transfer. */
+    size_t verbs;
+    int background;
+        /* Nonzero retains the immutable owner-rendered base layer. */ /* Total contour commands checked before transfer. */
 };
 
 
@@ -55,6 +57,7 @@ int dvm_editor_frame_path(DVM_EditorFrame *frame, FVM_Path *path, FVM_RasterColo
 {
     FramePath *entry;
     size_t verbs;
+    int background; /* Nonzero retains the immutable owner-rendered base layer. */
     if (!frame || !path)
     {
         return 0;
@@ -94,6 +97,26 @@ const FVM_RasterSurface *dvm_editor_frame_surface(const DVM_EditorFrame *frame)
 }
 
 
+/* Copy a complete owner base while this frame is still private; no VM access. */
+int dvm_editor_frame_background(DVM_EditorFrame *frame, const FVM_RasterSurface *source)
+{
+    unsigned int row;
+    if (!frame || !source || !source->pixels || source->width != frame->surface.width ||
+        source->height != frame->surface.height || source->stride < source->width * 4U)
+    {
+        return 0;
+    }
+    for (row = 0; row < source->height; ++row)
+    {
+        memmove(frame->surface.pixels + row * frame->surface.stride,
+                source->pixels + row * source->stride,
+                source->width * 4U);
+    }
+    frame->background = 1;
+    return 1;
+}
+
+
 /* Paint in order on a worker; every rasterizer and destination belongs to this frame. */
 FVM_Result dvm_editor_frame_render(void *value)
 {
@@ -103,7 +126,10 @@ FVM_Result dvm_editor_frame_render(void *value)
     {
         return FVM_INVALID_ARGUMENT;
     }
-    memset(frame->surface.pixels, 255, frame->surface.stride * frame->surface.height);
+    if (!frame->background)
+    {
+        memset(frame->surface.pixels, 255, frame->surface.stride * frame->surface.height);
+    }
     for (entry = frame->first; entry; entry = entry->next)
     {
         FVM_Result result = fvm_path_draw(entry->path, &frame->surface, entry->color, 0, 0);

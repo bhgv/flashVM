@@ -8,6 +8,7 @@
 #include "flashvm/path.h"
 #include "flashvm/render_queue.h"
 #include "editor_raster.h"
+#include "desktop_view.h"
 #include "flashvm/utf8.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -72,6 +73,7 @@ static int clipboard_status;             /* Copied Idecore status: 0 success, 3 
 static unsigned int canvas_width = EDITOR_WIDTH;   /* Last Dis-admitted raster/field width in pixels. */
 static unsigned int canvas_height = EDITOR_HEIGHT; /* Last Dis-admitted raster/field height in pixels. */
 static unsigned long canvas_revision;              /* Expected document revision for the pending canvas. */
+static int desktop_bound; /* Context-local desktop binding is retired before context destruction. */
 static const char *font_path;                      /* Borrowed explicit TTF/OpenType command-line path. */
 static char *default_font_path;        /* Owned relocatable sibling resource path, unless --font overrides. */
 static unsigned char *font_bytes;      /* Owned immutable face bytes for future actual size changes. */
@@ -1736,6 +1738,31 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
+    if (message->code >= DVM_DESK_BEGIN && message->code <= DVM_DESK_END)
+    {
+        if (!desktop_bound)
+        {
+            if (!dvm_desktop_bind(context, font_bytes, font_byte_count, events != NULL)) { return 0; }
+            desktop_bound = 1;
+        }
+        if (message->code == DVM_DESK_BEGIN && !apply_canvas((unsigned int)message->first, (unsigned int)message->second))
+        { return 0; }
+        if (!dvm_desktop_message(message)) { fprintf(stderr, "desktop wire code=%lu first=%ld size=%lu\n", message->code, message->first, (unsigned long)message->size); return 0; }
+        if (message->code == DVM_DESK_END)
+        {
+            FVM_RasterSurface surface;
+            DVM_EditorFrame *frame = dvm_editor_frame_create(canvas_width, canvas_height);
+            surface.pixels = pixels; surface.width = canvas_width; surface.height = canvas_height;
+            surface.stride = (size_t)canvas_width * 4;
+            if (!frame || !dvm_desktop_draw(&surface) || !dvm_editor_frame_background(frame, &surface) ||
+                fvm_gc_collect(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
+            { dvm_editor_frame_destroy(frame); return 0; }
+            raster_pending = 1;
+            complete = 1;
+            return collect_frame(capture_path != NULL);
+        }
+        return 1;
+    }
     if (message->code == EDITOR_CLIP_CONTINUE)
     {
         unsigned long ticket;
@@ -2057,6 +2084,28 @@ static void resolve_pointer(DVM_UIMessage *message)
     {
         return;
     }
+    if (dvm_desktop_active())
+    {
+        char metadata[17];
+        unsigned long phase = message->flags;
+        unsigned long code = message->code;
+        message->kind = DVM_UI_REQUEST;
+        message->id = 1;
+        message->flags = dvm_desktop_ticket();
+        if (code == EDITOR_RESIZE)
+        {
+            message->code = DVM_DESK_RESIZE;
+            message->size = 0;
+            return;
+        }
+        message->code = DVM_DESK_POINTER;
+        message->first = message->first < 0 ? -1 : message->first / 20;
+        message->second = message->second < 0 ? -1 : message->second / 20;
+        snprintf(metadata, sizeof(metadata), "%08lx%08lx", phase, code);
+        memcpy(message->text, metadata, 16);
+        message->size = 16;
+        return;
+    }
     if (message->code == EDITOR_RESIZE)
     {
         int rows = 0;
@@ -2161,6 +2210,8 @@ static unsigned int keycode(SDL_Keycode key)
         return FVM_KEY_ENTER;
     case SDLK_ESCAPE:
         return FVM_KEY_ESCAPE;
+    case SDLK_F1:
+        return FVM_KEY_F1;
     case SDLK_F7:
         return FVM_KEY_F1 + 6;
     case SDLK_F8:
@@ -2448,6 +2499,8 @@ void dvm_editor_destroy(void)
     fvm_text_layout_destroy(hit_layout);
     fvm_text_layout_destroy(panel_layout);
     fvm_font_destroy(layout_font);
+    dvm_desktop_destroy();
+    desktop_bound = 0;
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);
     free(snapshot);
