@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "a67032e0136219becf692a59ab641b3f2c8bea11",
+  "revision": "06e33807f8f95e6217039151a14bec0ccff4bc49",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -476,7 +476,7 @@
     "upstream/limbo/tests/type-walks.py": "dff854385c24458d851dd5250c08c5817b4e1d429bc008d4962099b54f8f4f5b",
     "upstream/limbo/typecheck.c": "07b87f82355c9a2cff8361b268719846ee8335139a5e0f126a0443c6c22f863c",
     "upstream/limbo/types.c": "cbdfe1b57d7a2280cf1b8854ca1a8143ac9e6e85dd5968ec38c7f69840d6af47",
-    "upstream/limbo/y.tab.c": "b86f9212b88edabb3c8ceb2e7596744ef99b51ba1c3e94f8370ab9b7c852c7d4",
+    "upstream/limbo/y.tab.c": "44afb3911fab4ae689c99f698ac6c9d48383bb3c4bf55e57ac26e61eb5a958ec",
     "upstream/limbo/y.tab.h": "68af6dd5332b1af8055000f9d6e6cc16b9a233c0ff0dc225ec64e2cfcabb8e4c",
     "upstream/module/arg.m": "e3f30053f8222acb14c4dd46923a2ea7528b43fe0139223914a54f047f88866f",
     "upstream/module/bufio.m": "4bdd9f1d0723ffb53fcf37fff961ab03a7b9ff7ec1b092a3623c093d6bf07b21",
