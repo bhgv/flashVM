@@ -8,16 +8,16 @@ Idedesktop: module
     PointerEvent: con 65572; # Pixel/phase proposal carrying the completed view ticket.
     ResizeEvent: con 65573; # Ticket-bound native canvas proposal.
     MaxWindows: con 8; # Bounded independent window processes in this first shell.
-    View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Shutdown: con iota; # FIFO operations.
+    View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Shutdown: con iota; # FIFO operations.
     Ok, Invalid, Conflict: con iota; # Explicit layout/input admission.
-    OpenFile, SaveFile, Compile, NewEditor, Debugger, Help, Quit, Focus: con iota + 1; # Tool/activation actions.
+    OpenFile, SaveFile, Compile, NewEditor, Debugger, Help, Quit, CloseEditor, Focus, CancelClose: con iota + 1; # Tool/activation actions.
 
     Request: adt
     {
         id: int; # Nonnegative correlation identity.
         operation: int; # Operation above.
         ticket: int; # Exact completed view for Pointer/Scroll; zero for controller updates.
-        window: int; # Update: stable 1..8 window ID; Tool: action above.
+        window: int; # Update/Select/Remove: stable 1..8 ID; Tool: action above.
         x: int; # Pointer pixel X; Scroll delta in pixels; Resize width.
         y: int; # Pointer pixel Y; Resize height.
         phase: int; # Pointer begin/move/end: 1/2/3.
@@ -49,10 +49,13 @@ Idedesktop: module
         scroll: int; # Nonnegative table translation magnitude.
         focus: int; # Focused window ID.
         drawer: int; # Expanded tool or zero.
-        action: int; # Admitted tool/Focus action; zero otherwise.
+        action: int; # Tool/Focus/CloseEditor/CancelClose proposal; zero otherwise.
         items: array of ref Item; # Independent scene values for MovieClip presentation.
     };
 
+    # Remove forgets presentation only after the application retires its source
+    # owner. It rejects system slots 2/3 and cancels gestures; it never sends a
+    # document Shutdown or discards source text. New Update begins at grid position.
     # Spawn a new layout/gesture owner; windows remain separately owned channels.
     # No native/AS objects are stored. Shutdown acknowledgement is terminal.
     start: fn(): chan of Request;
