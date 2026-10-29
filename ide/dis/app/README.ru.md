@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics — v0.1671](../../BUILD-PANEL.md) · [Русский](../../BUILD-PANEL.ru.md)
+
 # Приложение IDE на нашем DisVM
 
 [English](README.md) · [Комментированная точка входа](main.b) ·
@@ -52,7 +54,7 @@ SDL-повтор использует dummy-драйвер; физические
 [учебник операций таблицы](../../../fir/v1/doc/TABLE_MUTATION.ru.md). Собственный
 Coco/R-фронтенд Limbo пока ограничен и не компилирует весь контроллер: эти модули
 bootstrap-компилируются соответствующим Limbo из исходников. Исполнение готовых
-модулей идёт на нашем DisVM. GUI-панели Build/Run/Debug, полное подключение Dis-
+модулей идёт на нашем DisVM. F7 Build/F8 реализованы; экспорт, Run/Debug и полное подключение Dis-
 отладчика и полная self-hosted компиляция Limbo ещё не завершены. Наличие точки
 входа не означает готовность этих панелей.
 
@@ -67,4 +69,4 @@ disvm_ide_application_jit/interpreter проверяют эту точку вх�
 Миллионный replace-all после защит операндов имеет отдельный бюджет теста 90 с;
 объём данных и функциональные оракулы сохранены.
 
-[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.
+[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. F7 Build/F8 diagnostics now use the portable revision-bound panel; Run/Debug remain future work.

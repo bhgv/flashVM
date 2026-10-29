@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics](../../../BUILD-PANEL.md)
+
 # Graphical editor: Limbo/Dis logic, FlashVM graphics
 
 [Ctrl+I: live document projection inspector](../../LIVE-PROJECTIONS.md)

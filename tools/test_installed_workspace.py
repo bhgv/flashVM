@@ -68,7 +68,7 @@ def compiler_service_packages(prefix, work, environment):
         manifest = package / "NATIVE-MODULES.txt"
         if not manifest.is_file() or "Fircompiler=ON" not in manifest.read_text():
             continue
-        for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md",
+        for document in (package / "COMPILER-SERVICE.md", package / "COMPILER-SERVICE.ru.md", package / "BUILD-PANEL.md", package / "BUILD-PANEL.ru.md",
                          package / "examples/compiler-service/README.md",
                          package / "examples/compiler-service/README.ru.md", package / "WORKSPACE.md"):
             for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
@@ -82,6 +82,11 @@ def compiler_service_packages(prefix, work, environment):
                           program(prefix, "linker", "swl")], work, environment)
             if "PASS compiler service:" not in output:
                 raise RuntimeError("relocated compiler service did not complete")
+        for dispatch in ("--jit", "--no-jit"):
+            output = run([program(prefix, name, "disvm"), dispatch, "--quantum", "1",
+                          package / "buildpanel-test.dis"], work, environment)
+            if "PASS compiler panel:" not in output:
+                raise RuntimeError("relocated revision-bound build panel did not complete")
         client = work / (name + "-compiler-client")
         run(["cc", "-std=c99", "-Wall", "-Wextra", "-Werror", "-I", package / "include/native",
              package / "examples/compiler-service/client.c", "-L", package / "lib/compiler",

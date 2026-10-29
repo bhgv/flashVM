@@ -54,6 +54,15 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
+    for name in ("BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
+        pairs[root / "ide" / name] = package / name
+    pairs[root / "disVM/module/fircompiler.m"] = package / "include/limbo/fircompiler.m"
+    pairs[root / "disVM/compiler/compiler_engine.h"] = package / "include/native/compiler_engine.h"
+    for name in ("idecompiler", "ideworkspace"):
+        pairs[root / "ide/dis/bridge" / (name + ".b")] = package / "source" / (name + ".b")
+    for source in (root / "ide/dis/examples/compiler-service").iterdir():
+        if source.is_file():
+            pairs[source] = package / "examples/compiler-service" / source.name
     # Include the portable inspector/value closure even in the headless runtime package.
     for source in (root / "disVM/examples/hybrid-table").iterdir():
         if source.is_file():
@@ -67,7 +76,7 @@ def main():
             pairs[root / "ide/dis" / name] = package / name
     for source in (root / "ide/dis/bridge").glob("*.m"):
         pairs[source] = package / "include/limbo" / source.name
-    for name in ("idevalue", "ideprojection", "ideinspect", "idedocprojection"):
+    for name in ("idevalue", "ideprojection", "ideinspect", "idedocprojection", "idebuildpanel"):
         pairs[root / "ide/dis/bridge" / (name + ".b")] = package / "source" / (name + ".b")
     pairs[root / "ide/as/projection-values.as"] = package / "as/projection-values.as"
     if (package / "examples/broker").is_dir():
@@ -76,7 +85,7 @@ def main():
                 installed = package / "examples/broker" / source.relative_to(root / "disVM/broker")
                 if installed.is_file():
                     pairs[source] = installed
-    for example in ("workspace", "editor-console", "native-console", "projection", "document-projection"):
+    for example in ("build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():

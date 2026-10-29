@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics — v0.1671](../BUILD-PANEL.md) · [Русский](../BUILD-PANEL.ru.md)
+
 # Portable IDE document core
 
 [Window close/resize and hideable line numbers](WINDOWS-GUTTER.md)
@@ -17,7 +19,8 @@ providing a single-document state owner through typed channels. This is the firs
 executable IDE component, not a complete editor or a FlashVM-hosted application.
 This core slice contains no visual widget, file persistence or AS bridge. The
 separate [native compiler service](../COMPILER-SERVICE.md) now coordinates real
-workspace builds; graphical panels and full debugger attachment remain pending. The product module imports only its own interface;
+workspace builds; F7 Build/F8 diagnostics are connected through Idebuildpanel.
+Run/Debug controls and full debugger attachment remain pending. The product module imports only its own interface;
 it uses no Sys, Draw, Tk, Prefab, crypto or native UI API.
 
 [idecore.m](idecore.m) defines the public contract; [idecore.b](idecore.b) implements
@@ -161,4 +164,4 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 
 [Graphical file browser](GRAPHICAL-BROWSER.md) / [Графический браузер файлов](GRAPHICAL-BROWSER.ru.md).
 
-[Native compiler jobs / Библиотечные сборки на Dis](../COMPILER-SERVICE.md) · [Русский](../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.
+[Native compiler jobs / Библиотечные сборки на Dis](../COMPILER-SERVICE.md) · [Русский](../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. F7 Build/F8 diagnostics now use the portable revision-bound panel; Run/Debug remain future work.

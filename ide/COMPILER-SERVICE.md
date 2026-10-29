@@ -1,3 +1,5 @@
+[Revision-bound graphical Build / Панель сборки](BUILD-PANEL.md)
+
 # Native library compiler jobs on Dis — runtime 0.33
 
 [Русский](COMPILER-SERVICE.ru.md) · [Workspace](WORKSPACE.md) · [Worker interface](dis/bridge/idecompiler.m) · [Native interface](../disVM/module/fircompiler.m) · [C99 service](../disVM/compiler/compiler_engine.h) · [Tutorial](dis/examples/compiler-service/README.md)
@@ -9,7 +11,7 @@ document, job and publication policy. The native extension has no UI authority.
 No shell, Python, external Inferno emulator or compiler CLI process implements a
 native compile call. Python is development acceptance tooling only.
 
-This is a service foundation. The graphical Build/Run/Debug panels, automatic
+The graphical F7 Build/F8 diagnostics now use this service through Idebuildpanel. Run/Debug controls, automatic
 artifact loading/execution and full debugger connection remain unfinished.
 The bounded source compiler does not yet compile the complete Limbo IDE itself;
 complex IDE modules are still bootstrapped from the pinned compiler source.

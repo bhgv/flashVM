@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics](../../../BUILD-PANEL.ru.md)
+
 # Графический редактор: логика Limbo/Dis, графика FlashVM
 
 [Ctrl+I: живой инспектор документа](../../LIVE-PROJECTIONS.ru.md)

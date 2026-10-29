@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics — v0.1671](../../ide/BUILD-PANEL.md) · [Русский](../../ide/BUILD-PANEL.ru.md)
+
 # Experimental runnable Dis and IDE services (NC64)
 
 [Captured Sys calls and result ownership](SYS_CAPTURE.md) / [RU](SYS_CAPTURE.ru.md):
@@ -294,7 +296,7 @@ application, with FlashVM rendering. [Application guide](../../ide/dis/app/READM
 [Русское руководство](../../ide/dis/app/README.ru.md). The console-only package
 keeps its original console run-ide.sh; the graphical package also supplies
 run-ide-console.sh. These entries need no external emu/Python at deployment.
-Build/Run/Debug GUI integration and full Dis debugger wiring remain unfinished.
+F7 Build/F8 diagnostics are implemented; artifact export, Run/Debug controls and full Dis debugger wiring remain unfinished.
 
 Compiler 0.21/runtime 0.24 table helpers are documented in
 [TABLE_MUTATION](../../fir/v1/doc/TABLE_MUTATION.md) ·
@@ -344,5 +346,4 @@ DVM_RUNTIME_COMPILER links our explicit matching C99 FIR/SWL libraries into both
 console and graphical runners. Fircompiler returns copied full FIR/Dis/SWF and
 original debug bytes; Limbo idecompiler coordinates actual workspace tickets.
 No subprocess performs the native call; it blocks the sole VM owner and has no
-UI capability, cancellation or automatic artifact execution. Build/Run/Debug
-panels and final debugger PC maps remain future work.
+UI capability, cancellation or automatic artifact execution. F7 Build/F8 diagnostics are available; export, Run/Debug controls and final debugger PC maps remain future work.

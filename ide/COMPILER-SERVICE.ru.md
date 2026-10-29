@@ -1,3 +1,5 @@
+[Revision-bound graphical Build / Панель сборки](BUILD-PANEL.ru.md)
+
 # Сервис библиотечной сборки на Dis — runtime 0.33
 
 [English](COMPILER-SERVICE.md) · [Workspace](WORKSPACE.md) · [Интерфейс worker](dis/bridge/idecompiler.m) · [Нативный модуль](../disVM/module/fircompiler.m) · [C99 API](../disVM/compiler/compiler_engine.h) · [Пример](dis/examples/compiler-service/README.ru.md)
@@ -9,7 +11,7 @@ workspace, вызывает наши библиотеки Coco/R/FIR через 
 запускает shell, CLI-компиляторы, Python или внешний Inferno emu.
 Python используется только как инструмент приёмки на машине разработчика.
 
-Это фундамент сервиса, а не готовые графические панели Build/Run/Debug.
+Сервис подключён к графическим F7 Build/F8 через Idebuildpanel. Run/Debug пока не реализованы.
 Автоматическая загрузка/запуск артефакта и подключение полного отладчика остаются
 дальнейшими этапами. Ограниченный собственный frontend пока не компилирует всю
 IDE: сложные Limbo-модули собираются из закреплённого bootstrap-исходника.

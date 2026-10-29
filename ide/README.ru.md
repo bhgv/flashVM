@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics — v0.1671](BUILD-PANEL.md) · [Русский](BUILD-PANEL.ru.md)
+
 # Backend сборки для IDE
 
 Версия **0.7.1**. [English](README.md).
@@ -107,4 +109,4 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 
 [Dis channels, AS and parallel native rendering](RENDER_OWNERS.md) / [Русский](RENDER_OWNERS.ru.md).
 
-[Native compiler jobs / Библиотечные сборки на Dis](COMPILER-SERVICE.md) · [Русский](COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.
+[Native compiler jobs / Библиотечные сборки на Dis](COMPILER-SERVICE.md) · [Русский](COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. F7 Build/F8 diagnostics now use the portable revision-bound panel; Run/Debug remain future work.

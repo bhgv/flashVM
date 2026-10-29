@@ -1,3 +1,5 @@
+[F7 Build / F8 diagnostics — v0.1671](../../BUILD-PANEL.md) · [Русский](../../BUILD-PANEL.ru.md)
+
 # IDE application on our DisVM
 
 [Русский](README.ru.md) · [Commented application entry](main.b) ·
@@ -51,9 +53,9 @@ Our source compiler/FIR libraries are callable independently by CLI and C99 API;
 see [table-language tutorial](../../../fir/v1/doc/TABLE_MUTATION.md). The current
 Coco/R Limbo frontend is bounded and does not compile the whole controller yet:
 a matching source-built Limbo compiler bootstraps these IDE modules. The deployed
-modules themselves execute on our own DisVM. The Build/Run/Debug GUI panels,
-full Dis debugger connection and complete self-hosted Limbo compilation remain
-unfinished. Shipping an application entry is not a claim that those panels exist.
+modules themselves execute on our own DisVM. F7 Build and F8 source diagnostics
+use the portable Dis build panel. Artifact export, Run/Debug controls, full Dis
+debugger connection and complete self-hosted Limbo compilation remain unfinished.
 
 ## Verification and diagnosis
 
@@ -66,4 +68,4 @@ same interfaces and check the entry/module directory rather than installing emu.
 Large million-character replace-all has a separate 90-second test budget after
 operand safety checks; its data and functional oracles are unchanged.
 
-[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. GUI Build/Run/Debug panels remain separate.
+[Native compiler jobs / Библиотечные сборки на Dis](../../COMPILER-SERVICE.md) · [Русский](../../COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. F7 Build/F8 diagnostics now use the portable revision-bound panel; Run/Debug remain future work.

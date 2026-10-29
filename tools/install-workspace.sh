@@ -382,12 +382,17 @@ EOF
             printf 'Fircompiler=%s\n' "$compiler_enabled" >>"$destination/NATIVE-MODULES.txt"
             copy_file "$ROOT/disVM/module/fircompiler.m" "$destination/include/limbo/fircompiler.m"
             copy_file "$ROOT/disVM/compiler/compiler_engine.h" "$destination/include/native/compiler_engine.h"
+            copy_tree "$ROOT/ide/dis/examples/build-panel" "$destination/examples/build-panel"
             copy_tree "$ROOT/ide/dis/examples/compiler-service" "$destination/examples/compiler-service"
             copy_file "$ROOT/ide/dis/tests/compiler_service_test.b" "$destination/examples/compiler-service/acceptance.b"
             copy_file "$ROOT/disVM/compiler/test_engine.c" "$destination/examples/compiler-service/client.c"
             copy_file "$ROOT/disVM/runtime/test_compiler_service.py" "$destination/examples/compiler-service/check.py"
             copy_file "$ROOT/ide/COMPILER-SERVICE.md" "$destination/COMPILER-SERVICE.md"
             copy_file "$ROOT/ide/COMPILER-SERVICE.ru.md" "$destination/COMPILER-SERVICE.ru.md"
+            copy_file "$ROOT/ide/dis/bridge/idebuildpanel.b" "$destination/source/idebuildpanel.b"
+            copy_file "$ROOT/ide/dis/tests/buildpanel_test.b" "$destination/examples/compiler-service/buildpanel-check.b"
+            copy_file "$ROOT/ide/BUILD-PANEL.md" "$destination/BUILD-PANEL.md"
+            copy_file "$ROOT/ide/BUILD-PANEL.ru.md" "$destination/BUILD-PANEL.ru.md"
             copy_file "$ROOT/ide/dis/bridge/idecompiler.b" "$destination/source/idecompiler.b"
             copy_file "$ROOT/ide/dis/bridge/ideworkspace.b" "$destination/source/ideworkspace.b"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
@@ -407,7 +412,7 @@ EOF
                     "$ROOT/ide/dis/examples/compiler-service/README.$language" >"$destination/examples/compiler-service/README.$language"
             done
             if [[ "$compiler_enabled" != ON ]]; then
-                rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a"
+                rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl"
             fi
             install_program "$base" disvm "$destination"
             if [[ "$component" == disvm-editor ]]; then
@@ -440,7 +445,7 @@ EOF
                 if [[ "$native_demo_enabled" != ON && ( "$(basename "$file")" == native-demo.dis || "$(basename "$file")" == native-demo.sbl ) ]]; then
                     continue
                 fi
-                if [[ "$compiler_enabled" != ON && ( "$(basename "$file")" == compiler-service.dis || "$(basename "$file")" == compiler-service.sbl || "$(basename "$file")" == compiler-service-check.dis || "$(basename "$file")" == compiler-service-check.sbl ) ]]; then
+                if [[ "$compiler_enabled" != ON && ( "$(basename "$file")" == compiler-service.dis || "$(basename "$file")" == compiler-service.sbl || "$(basename "$file")" == compiler-service-check.dis || "$(basename "$file")" == compiler-service-check.sbl || "$(basename "$file")" == buildpanel-test.dis || "$(basename "$file")" == buildpanel-test.sbl || "$(basename "$file")" == build-panel.dis || "$(basename "$file")" == build-panel.sbl ) ]]; then
                     continue
                 fi
                 if [[ -f "$file" ]]; then
@@ -645,7 +650,7 @@ EOF
         # Retire this obsolete installer-owned location after copying libraries.
         rm -f -- "$destination/lib/libdisvm_compiler_engine.a"
         if [[ "$compiler_enabled" != ON ]]; then
-            rm -f -- "$destination/lib/compiler/libdisvm_compiler_engine.a"
+            rm -f -- "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl"
         fi
     fi
     notices "$destination" "$source"
