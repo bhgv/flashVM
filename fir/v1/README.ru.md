@@ -187,3 +187,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Total integer identities — 0.59](doc/INTEGER_IDENTITIES.md) · [Русский](doc/INTEGER_IDENTITIES.ru.md) · [C99/Dis/SWF tutorial](examples/integer-identities/README.md).
 
 [Знаковые SWF div/mod и удаление неиспользуемой безопасной арифметики](doc/SWF_INT_DIVMOD.ru.md).
+
+[Paired integer rules / парные целочисленные правила](doc/INTEGER_PAIRS.md), [RU](doc/INTEGER_PAIRS.ru.md).

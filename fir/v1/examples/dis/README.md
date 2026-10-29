@@ -205,3 +205,8 @@ negative right shift preserves the sign. [Build commands and count restrictions]
 [int-divmod-swf.b](int-divmod-swf.b) reconstructs every integer from -7 to 7
 as `(i/3)*3+i%3` and returns 42. Every line is commented. Both raw and optimized
 Dis/SWF are supported. [Commands, precision proof and limits](../../doc/SWF_INT_DIVMOD.md).
+
+## Paired integer operations
+
+[integer-pairs.b](integer-pairs.b) restores i three ways in a dynamic loop and
+returns42. Every line is commented. [Exact rules, API/CLI use and boundaries](../../doc/INTEGER_PAIRS.md).

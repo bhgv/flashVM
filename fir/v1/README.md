@@ -188,3 +188,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Checked int32 shifts in SWF: literal-count contract and executable example](doc/SWF_INT_SHIFTS.md).
 
 [Signed int32 SWF div/mod and proven-total arithmetic DCE](doc/SWF_INT_DIVMOD.md).
+
+[Paired integer rules / парные целочисленные правила](doc/INTEGER_PAIRS.md), [RU](doc/INTEGER_PAIRS.ru.md).

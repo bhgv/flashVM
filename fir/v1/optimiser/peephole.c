@@ -517,6 +517,147 @@ static int scalar_is_total_for_dce(const FirModule *m, const FirInstruction *in)
 }
 
 
+/* Compare borrowed integer operands without evaluating or moving producers.
+ * m is verified owner-local IR; left/right are SSA IDs. Return one for the
+ * same value or exact equal-width integer literals, zero for every other case.
+ * No computed/float/reference equivalence or memory inference is performed. */
+static int same_integer_operand(const FirModule *m, int left, int right)
+{
+    const FirInstruction *a;
+    const FirInstruction *b;
+    if (left < 0 || right < 0)
+    {
+        return 0;
+    }
+    if (left == right)
+    {
+        return 1;
+    }
+    a = &m->instructions[m->values[left].definition];
+    b = &m->instructions[m->values[right].definition];
+    if (a->removed || b->removed || a->op != b->op)
+    {
+        return 0;
+    }
+    return (a->op == O_I32 && a->integer == b->integer) || (a->op == O_I64 && a->big == b->big);
+}
+
+
+/* Cancel paired wrapping integer operations and apply bit absorption.
+ * m/in are borrowed owner-local verified IR; a/b are operand definitions.
+ * Return one after replacing in by a copy, zero without change otherwise.
+ * Exact SSA/literal equality makes these total for i32/big, including overflow.
+ * Only the outer result changes here; DCE preserves every producer's effects.
+ * No floating, dynamic coercion, reference or reassociation rule is introduced. */
+static int
+simplify_integer_pairs(const FirModule *m, FirInstruction *in, const FirInstruction *a, const FirInstruction *b)
+{
+    FirOp add, sub, bitand, bitor, bitxor;
+    int copy = -1;
+    FirOp opposite;
+    switch (in->op)
+    {
+    case O_ADD:
+    case O_SUB:
+    case O_I32_AND:
+    case O_I32_OR:
+    case O_I32_XOR:
+        add = O_ADD;
+        sub = O_SUB;
+        bitand = O_I32_AND;
+        bitor = O_I32_OR;
+        bitxor = O_I32_XOR;
+        break;
+    case O_BIG_ADD:
+    case O_BIG_SUB:
+    case O_BIG_AND:
+    case O_BIG_OR:
+    case O_BIG_XOR:
+        add = O_BIG_ADD;
+        sub = O_BIG_SUB;
+        bitand = O_BIG_AND;
+        bitor = O_BIG_OR;
+        bitxor = O_BIG_XOR;
+        break;
+    default:
+        return 0;
+    }
+    if (!a || !b)
+    {
+        return 0;
+    }
+    if (in->op == sub && a->op == add)
+    {
+        if (same_integer_operand(m, a->b, in->b))
+        {
+            copy = a->a;
+        }
+        else if (same_integer_operand(m, a->a, in->b))
+        {
+            copy = a->b;
+        }
+    }
+    else if (in->op == add)
+    {
+        if (a->op == sub && same_integer_operand(m, a->b, in->b))
+        {
+            copy = a->a;
+        }
+        else if (b->op == sub && same_integer_operand(m, b->b, in->a))
+        {
+            copy = b->a;
+        }
+    }
+    else if (in->op == bitxor)
+    {
+        if (a->op == bitxor && same_integer_operand(m, a->b, in->b))
+        {
+            copy = a->a;
+        }
+        else if (a->op == bitxor && same_integer_operand(m, a->a, in->b))
+        {
+            copy = a->b;
+        }
+        else if (b->op == bitxor && same_integer_operand(m, b->b, in->a))
+        {
+            copy = b->a;
+        }
+        else if (b->op == bitxor && same_integer_operand(m, b->a, in->a))
+        {
+            copy = b->b;
+        }
+    }
+    else if (in->op == bitand || in->op == bitor)
+    {
+        opposite = in->op == bitand? bitor : bitand;
+        if (a->op == in->op && (same_integer_operand(m, a->a, in->b) || same_integer_operand(m, a->b, in->b)))
+        {
+            copy = in->a;
+        }
+        else if (b->op == in->op && (same_integer_operand(m, b->a, in->a) || same_integer_operand(m, b->b, in->a)))
+        {
+            copy = in->b;
+        }
+        else if (a->op == opposite && (same_integer_operand(m, a->a, in->b) || same_integer_operand(m, a->b, in->b)))
+        {
+            copy = in->b;
+        }
+        else if (b->op == opposite && (same_integer_operand(m, b->a, in->a) || same_integer_operand(m, b->b, in->a)))
+        {
+            copy = in->a;
+        }
+    }
+    if (copy < 0)
+    {
+        return 0;
+    }
+    in->op = O_COPY;
+    in->a = copy;
+    in->b = -1;
+    return 1;
+}
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -540,7 +681,8 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (simplify_integer_comparison(in, a, b) || simplify_integer_identity(in, a, b))
+            if (simplify_integer_pairs(m, in, a, b) || simplify_integer_comparison(in, a, b) ||
+                simplify_integer_identity(in, a, b))
             {
                 changed = 1;
             }

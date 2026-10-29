@@ -1361,3 +1361,12 @@ endif()
 
 # Build the same structural codec tools beside the separate NC64 runtime.
 add_subdirectory("${root}/disVM/envelope" envelope)
+
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_integer_pairs_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/integer_pairs.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_integer_pairs_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
