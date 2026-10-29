@@ -124,7 +124,7 @@ def main():
             failure = call([compiler, 'check', fir], work, False)
             if 'operand/result type mismatch' not in failure.stderr:
                 raise RuntimeError('int signature fixture failed before type verification')
-        source.write_text('implement M; M: module {value: fn(): int;}; value(): int {return 4 / 2;}')
+        source.write_text('implement M; M: module {value: fn(): int;}; value(): int {return 4 / 0;}')
         call([source_compiler, 'limbo', '--input', source, fir], work)
         object_file = work / 'old.swo'
         object_file.write_text('PRIOR OBJECT')

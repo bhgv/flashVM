@@ -367,18 +367,16 @@ def main():
         for selected in (raw, optimized):
             execute(compiler, runtime, mode, work, selected, [42])
         obj, movie = work / "out.swo", work / "out.swf"
-        obj.write_bytes(b"KEEP")
-        call([compiler, "object", raw, obj], work, False)
-        if obj.read_bytes() != b"KEEP":
-            raise RuntimeError("raw target rejection replaced existing output")
-        call([compiler, "object", optimized, obj], work)
-        if os.environ.get("FIR_FLASHVM_RUNNER"):
-            call([os.environ["FIR_SWL"], "link", movie, obj], work)
-            if (
-                call([os.environ["FIR_FLASHVM_RUNNER"], movie], work).stdout.strip()
-                != "42"
-            ):
-                raise RuntimeError("linked optimized SWF differs")
+        # Proven nonzero divisors and literal shifts now admit raw SWF too.
+        for selected in (raw, optimized):
+            call([compiler, "object", selected, obj], work)
+            if os.environ.get("FIR_FLASHVM_RUNNER"):
+                call([os.environ["FIR_SWL"], "link", movie, obj], work)
+                if (
+                    call([os.environ["FIR_FLASHVM_RUNNER"], movie], work).stdout.strip()
+                    != "42"
+                ):
+                    raise RuntimeError("linked integer identity SWF differs")
         # Exercise source lowering, branch pruning and the actual SWF linker.
         tutorial = tutorial.with_name("comparisons.b")
         call([source, "limbo", "--input", tutorial, raw], work)

@@ -1339,3 +1339,22 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_fir_swf_int_shifts_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+# The same signed int32 division/remainder results must reach both actual engines.
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_swf_int_divmod_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/swf_int_divmod.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_swf_int_divmod_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+if(DVM_RUNTIME_TESTS AND DVM_FIR_COMPILER)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_fir_total_arithmetic_dce_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/total_arithmetic_dce.py" "${DVM_FIR_COMPILER}"
+      "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_total_arithmetic_dce_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()

@@ -199,3 +199,9 @@ Compile it with `build/fir/fir1_source limbo --input fir/v1/examples/dis/int-com
 [int-shifts-swf.b](int-shifts-swf.b) is fully commented and returns 42 through
 raw/optimized Dis and SWF. A dynamic loop input is shifted by literal two;
 negative right shift preserves the sign. [Build commands and count restrictions](../../doc/SWF_INT_SHIFTS.md).
+
+## Signed division and remainder in SWF
+
+[int-divmod-swf.b](int-divmod-swf.b) reconstructs every integer from -7 to 7
+as `(i/3)*3+i%3` and returns 42. Every line is commented. Both raw and optimized
+Dis/SWF are supported. [Commands, precision proof and limits](../../doc/SWF_INT_DIVMOD.md).

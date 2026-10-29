@@ -48,11 +48,11 @@ same order can share a calculation. Reversed operands are not canonicalized,
 and the proof does not cross basic blocks. Checked arithmetic with unknown
 operands is not added to the pure CSE set.
 
-A source loop containing x/1, x%1 and x<<0 can now reach SWF **after explicit
-optimization**, because those operations disappear. Raw FIR still receives
-transactional unsupported-target rejection where the SWO backend has no general
-checked operation. This does not implement dynamic SWF division/remainder/shift
-semantics. Big values still have their existing target restrictions.
+FIR 0.61 admits both raw and optimized SWO for x/1, x%1 and x<<0: their
+literal inputs satisfy the [checked SWF arithmetic proof](SWF_INT_DIVMOD.md).
+Optimization still removes the identity calculations. Unknown/invalid divisors
+and counts retain transactional rejection; general dynamic checks and big SWF
+operations remain outside the target profile.
 
 The [commented example](../examples/integer-identities/main.b) returns 42 through
 raw/optimized NC64 Dis and optimized FIR → SWO → SWL → SWF → FlashVM. Its loop
@@ -70,9 +70,9 @@ The deployed Dis IDE uses that same in-process compiler library.
 [Matrix regression](../tests/integer_identities.py) compares raw/optimized Dis
 captures, signed MIN cases, producer/unknown-divisor/shift traps, same/reversed/
 cross-block bit CSE and binary64 signed zero. It checks a stable second optimize,
-raw target output preservation and optional actual linked SWF execution.
+raw/optimized target admission and optional actual linked SWF execution.
 The C99 regression repeats source/debug compilation, before/after snapshots,
-raw rejection and optimized object/Dis emission in one process. Runtime counters
+proven raw admission and optimized object/Dis emission in one process. Runtime counters
 verify actual interpreter/JIT dispatch; native owner counts must return to zero.
 Linux execution and UBSan do not certify physical ARM64/RV64 or other platforms.
 

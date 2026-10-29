@@ -33,8 +33,8 @@ static int snapshot(void *user, const char *phase, const FirModule *module)
 }
 
 
-/* Compile one source with FIR/debug sidecars. Raw SWO rejection must leave its
- * OLD prefix unchanged; optimized object/Dis must succeed via fir_run, with
+/* Compile one source with FIR/debug sidecars. Proven raw SWO appends after an
+ * OLD prefix; optimized object/Dis must also succeed via fir_run, with
  * before/after snapshots proving the transformation occurred inside the API.
  * All streams are locally owned and calls are serialized; return zero on error. */
 static int exercise(void)
@@ -55,7 +55,8 @@ static int exercise(void)
     if (!input || !fir || !debug || !output || fputs(source, input) < 0 || fseek(input, 0, SEEK_SET) ||
         !fir_source_debug(input, fir, FIR_LIMBO, "api", error, sizeof(error), &diagnostic, debug) ||
         ftell(debug) <= 0 || fseek(fir, 0, SEEK_SET) || fputs("OLD", output) < 0 ||
-        fir_run(FIR_OBJECT, fir, output, NULL, error, sizeof(error)) || !error[0] || ftell(output) != 3)
+        !fir_run(FIR_OBJECT, fir, output, NULL, error, sizeof(error)) || ftell(output) <= 7 ||
+        fseek(output, 3, SEEK_SET) || fread(magic, 1, 4, output) != 4 || memcmp(magic, "SWO1", 4))
     {
         goto done;
     }
@@ -108,7 +109,7 @@ done:
 }
 
 
-/* Repeat library compilation/optimization/rejection without parser state leaks. */
+/* Repeat library compilation and optimization without parser state leaks. */
 int main(void)
 {
     int index;
@@ -119,6 +120,6 @@ int main(void)
             return 1;
         }
     }
-    puts("PASS integer identity C99 API: source/debug, target rejection, optimized SWO/Dis, snapshots, reset");
+    puts("PASS integer identity C99 API: source/debug, proven raw SWO, optimized SWO/Dis, snapshots, reset");
     return 0;
 }

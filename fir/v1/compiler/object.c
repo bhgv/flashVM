@@ -205,6 +205,18 @@ static int literal_shift_count(const FirModule *m, const FirInstruction *in)
 }
 
 
+/* Prove the nonzero int32 divisor needed by the ordinary AVM1 backend.
+ * m/in are borrowed verified IR. Return one only for a live exact i32 literal
+ * other than zero; dynamic and removed definitions return zero. No operand is
+ * reevaluated and no producer effect is removed. This synchronous preflight
+ * lets the backend avoid replacing FIR zero-divide errors by IEEE results. */
+static int literal_nonzero_divisor(const FirModule *m, const FirInstruction *in)
+{
+    const FirInstruction *divisor = &m->instructions[m->values[in->b].definition];
+    return !divisor->removed && divisor->op == O_I32 && divisor->integer != 0;
+}
+
+
 /* Lower a verified module, resolve all branch relocations, then write bytes. */
 int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
 {
@@ -224,11 +236,17 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             snprintf(error, cap, "AVM1 checked int shift requires a proven literal count in [0,31]");
             return 0;
         }
+        if (!in->removed && (in->op == O_I32_DIV || in->op == O_I32_MOD) && !literal_nonzero_divisor(m, in))
+        {
+            snprintf(error, cap, "AVM1 signed int division/remainder requires a proven nonzero literal divisor");
+            return 0;
+        }
         if (!m->instructions[i].removed &&
             (((m->instructions[i].op > O_RETURN && m->instructions[i].op < O_AS_GLOBAL_GET) &&
               m->instructions[i].op != O_BOOL_LOCAL && m->instructions[i].op != O_BOOL_STORE &&
               m->instructions[i].op != O_BOOL_LOAD && m->instructions[i].op != O_I32_SHL &&
-              m->instructions[i].op != O_I32_SHR) ||
+              m->instructions[i].op != O_I32_SHR && m->instructions[i].op != O_I32_DIV &&
+              m->instructions[i].op != O_I32_MOD) ||
              (m->instructions[i].type > T_CHANNEL && m->instructions[i].type != T_BOOL_SLOT &&
               m->instructions[i].type != T_I32_SLOT && m->instructions[i].type != T_F64_SLOT)))
         {
@@ -372,6 +390,16 @@ int fir_object(FILE *output, FirModule *m, char *error, size_t cap)
             load(&actions, m, in->a);
             load(&actions, m, in->b);
             byte(&actions, in->op == O_I32_SHL ? 0x63 : 0x64);
+            break;
+        case O_I32_DIV:
+        case O_I32_MOD:
+            load(&actions, m, in->a);
+            load(&actions, m, in->b);
+            byte(&actions, in->op == O_I32_DIV ? 0x0d : 0x3f);
+            /* ToInt32 truncates the quotient toward zero and wraps MIN/-1.
+             * It also canonicalizes a negative-zero remainder to integer zero. */
+            integer(&actions, 0);
+            byte(&actions, 0x61);
             break;
         case O_MUL:
             multiply(&actions, m, in->a, in->b);

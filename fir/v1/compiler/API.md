@@ -104,3 +104,8 @@ The [SWF checked-shift contract](../doc/SWF_INT_SHIFTS.md) applies equally
 to fir_object and fir_run(FIR_OBJECT). Counts must be proven literal 0…31;
 unknown or invalid counts reject before writing. Enable explicit optimization
 when a copy/computation must first expose its literal count.
+
+[SWF int32 div/mod](../doc/SWF_INT_DIVMOD.md) shares the nonzero-literal proof
+in fir_object and fir_run(FIR_OBJECT). Invalid/unknown divisors reject before
+writing; explicit opt can expose literals and remove unused proven-total
+i32/big operations without discarding producer effects.

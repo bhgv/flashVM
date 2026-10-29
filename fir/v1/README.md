@@ -186,3 +186,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Total integer identities — 0.59](doc/INTEGER_IDENTITIES.md) · [Русский](doc/INTEGER_IDENTITIES.ru.md) · [C99/Dis/SWF tutorial](examples/integer-identities/README.md).
 
 [Checked int32 shifts in SWF: literal-count contract and executable example](doc/SWF_INT_SHIFTS.md).
+
+[Signed int32 SWF div/mod and proven-total arithmetic DCE](doc/SWF_INT_DIVMOD.md).

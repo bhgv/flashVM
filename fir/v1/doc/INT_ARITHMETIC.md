@@ -44,9 +44,10 @@ Both backends apply the same three-step normalization. Normalized input ranges
 also make int MIN/-1 safe in native WORD64 division before wrapping its result.
 There is no binary64 conversion or new runtime opcode/module helper/container tag.
 
-The SWF object backend still rejects live checked int div/mod without replacing
-old output; already-folded constants may use its existing coverage. Full AS/SWF
-int division and full IDE compiler/debugger panels remain separate work.
+FIR 0.61 supports live int32 div/mod in SWF with a proven nonzero literal
+divisor; unknown/zero divisors still reject without replacing output. See
+[exact SWF proof and example](SWF_INT_DIVMOD.md). General AS/SWF dynamic
+checked division remains separate work.
 
 ## Testing and SDK use
 

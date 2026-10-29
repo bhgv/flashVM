@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.60.0 LANGUAGES C)
+project(fir1 VERSION 0.61.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -654,4 +654,25 @@ if(BUILD_TESTING)
   add_executable(fir1_swf_int_shifts_api tests/swf_int_shifts_api.c)
   target_link_libraries(fir1_swf_int_shifts_api PRIVATE fir1_ir)
   add_test(NAME fir1_swf_int_shifts_api COMMAND fir1_swf_int_shifts_api)
+endif()
+
+# Known nonzero divisors preserve checked FIR semantics on the AVM1 target.
+if(BUILD_TESTING)
+  add_test(NAME fir1_swf_int_divmod COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/swf_int_divmod.py" $<TARGET_FILE:fir1_source>
+    $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_swf_int_divmod PROPERTIES TIMEOUT 120)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(fir1_swf_int_divmod_api tests/swf_int_divmod_api.c)
+  target_link_libraries(fir1_swf_int_divmod_api PRIVATE fir1_ir)
+  add_test(NAME fir1_swf_int_divmod_api COMMAND fir1_swf_int_divmod_api)
+endif()
+
+# Narrow only the throw effect proved absent for a discarded scalar result.
+if(BUILD_TESTING)
+  add_test(NAME fir1_total_arithmetic_dce COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/total_arithmetic_dce.py" $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_total_arithmetic_dce PROPERTIES TIMEOUT 120)
 endif()

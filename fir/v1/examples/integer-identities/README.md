@@ -28,13 +28,13 @@ build/linker/swl link build/identities.swf build/identities.swo
 Dis reports DATA 0 42 and DATA 8 1, the result and executed flag. An actual
 FlashVM host such as [run_flashvm.c](../../tests/run_flashvm.c) reports 42 for
 the linked SWF; [build instructions](../../doc/TESTING.md) explain its explicit
-static dependencies. Raw FIR also executes as Dis, but raw SWO emission rejects
-the retained general checked operators without replacing existing output.
+static dependencies. FIR 0.61 also admits raw SWO for this example because its literal divisors
+and counts prove the checks safe. Unknown/invalid operands still reject.
 
 For embedding, `fir_source_debug` produces FIR plus an optional source sidecar;
 `fir_run` with optimise=1 emits FIR_OBJECT or FIR_DIS through the same pass.
 [Executable C99 client regression](../../tests/integer_identities_api.c) shows
-stream cleanup, snapshot borrowing and repeated recovery after raw rejection.
+stream cleanup, snapshot borrowing and repeated raw/optimized admission.
 The caller owns all streams. FIR module/snapshots must not escape their calls.
 There is no deployed Python requirement and no change to either VM heap or ABI.
 

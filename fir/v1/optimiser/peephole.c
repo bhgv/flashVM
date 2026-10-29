@@ -474,6 +474,49 @@ static int simplify_integer_identity(FirInstruction *in, const FirInstruction *a
 }
 
 
+/* Decide whether unused verified scalar arithmetic has no observable effects.
+ * m/in are borrowed owner-local IR. Return one for statically pure operations
+ * or checked integer divide/mod/shift with a live literal proving no trap.
+ * Producers are never retired here: reverse DCE checks each of their own
+ * effects separately. No memory, ownership, conversion, suspension or control
+ * effect is narrowed; the public conservative fir_effects table is unchanged. */
+static int scalar_is_total_for_dce(const FirModule *m, const FirInstruction *in)
+{
+    const FirInstruction *right;
+    unsigned effects = fir_effects(in->op);
+    if (effects == 0)
+    {
+        return 1;
+    }
+    if (effects != FIR_MAY_THROW || in->b < 0)
+    {
+        return 0;
+    }
+    right = &m->instructions[m->values[in->b].definition];
+    if (right->removed)
+    {
+        return 0;
+    }
+    switch (in->op)
+    {
+    case O_I32_DIV:
+    case O_I32_MOD:
+        return right->op == O_I32 && right->integer != 0;
+    case O_BIG_DIV:
+    case O_BIG_MOD:
+        return right->op == O_I64 && right->big != 0;
+    case O_I32_SHL:
+    case O_I32_SHR:
+        return right->op == O_I32 && right->integer >= 0 && right->integer < 32;
+    case O_BIG_SHL:
+    case O_BIG_SHR:
+        return right->op == O_I32 && right->integer >= 0 && right->integer < 64;
+    default:
+        return 0;
+    }
+}
+
+
 /* Run bounded local rewrites until stable, checking the IR at both boundaries. */
 int fir_optimise(FirModule *m, char *error, size_t cap)
 {
@@ -750,7 +793,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
         {
             FirInstruction *in = &m->instructions[i];
             int used = 0;
-            if (in->removed || in->result < 0 || fir_effects(in->op) != 0)
+            if (in->removed || in->result < 0 || !scalar_is_total_for_dce(m, in))
             {
                 continue;
             }
