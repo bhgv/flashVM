@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1684**. [Русская версия](README.ru.md).
+Development version: **0.1685**. [Русская версия](README.ru.md).
 
-Current series: [v0.1684](docs/releases/v0.1684.md): big/shift FIR bit proofs, Dis64 initialized storage and scalar interfaces, complete C99 SDK and build-menu entry15.
+[v0.1685](docs/releases/v0.1685.md): Async.post/cancel, frame-free owner polling and batched IDE text input / внекадровые callbacks и пакетный ввод текста.
 
 ## Browse documentation
 

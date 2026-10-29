@@ -3,6 +3,8 @@
 #include "timer_constants.h"
 #include "stage_update.hpp"
 #include "flashvm/timers.h"
+#include "flashvm/async.h"
+#include "flashvm/gc.h"
 #include "flashvm/execution.h"
 #include "../core/runtime.hpp"
 #include "../core/string_internal.hpp"
@@ -66,9 +68,9 @@ FVM_Result append(FVM_Context *c, FVM_ScheduledCall &record, const FVM_Value &va
 
 
 /* Stage a complete record before publishing its never-reused context-local identity. */
-FVM_Result schedule(FVM_Context *c, unsigned count, const FVM_Value *args, FVM_Value *out, bool repeat)
+FVM_Result schedule(FVM_Context *c, unsigned count, const FVM_Value *args, FVM_Value *out, bool repeat, bool posted = false)
 {
-    FVM_Result result = prepare(c, repeat ? FVM_TIMERS_INTERVAL_VERSION : FVM_TIMERS_TIMEOUT_VERSION, count, args, out);
+    FVM_Result result = prepare(c, posted ? 0 : (repeat ? FVM_TIMERS_INTERVAL_VERSION : FVM_TIMERS_TIMEOUT_VERSION), count, args, out);
     if (result != FVM_OK)
     {
         return result;
@@ -126,17 +128,18 @@ FVM_Result schedule(FVM_Context *c, unsigned count, const FVM_Value *args, FVM_V
             return result;
         }
         double delay = 0;
-        result = fvm_avm1_number(c, &args[offset - 1], &delay);
+        result = posted ? FVM_OK : fvm_avm1_number(c, &args[offset - 1], &delay);
         if (result != FVM_OK)
         {
             return result;
         }
         /* Unsupported timing inputs are explicit, rather than silently invented Player rules. */
-        if (!(delay >= FVM_TIMERS_MIN_DELAY && delay <= FVM_TIMERS_MAX_DELAY))
+        if (!posted && !(delay >= FVM_TIMERS_MIN_DELAY && delay <= FVM_TIMERS_MAX_DELAY))
         {
             return FVM_UNSUPPORTED;
         }
         record.delay = std::floor(delay);
+        record.posted = posted;
         record.repeat = repeat;
         record.method = method;
         if (c->scheduled_calls.size() >= FVM_TIMERS_MAX_PENDING || c->last_timer_id == FVM_TIMERS_MAX_ID)
@@ -150,7 +153,7 @@ FVM_Result schedule(FVM_Context *c, unsigned count, const FVM_Value *args, FVM_V
             return result;
         }
         record.deadline = c->timer_elapsed_ms + record.delay;
-        if (!(record.deadline > c->timer_elapsed_ms))
+        if (!posted && !(record.deadline > c->timer_elapsed_ms))
         {
             return FVM_UNSUPPORTED;
         }
@@ -452,7 +455,7 @@ extern "C" FVM_Result fvm_timers_poll(FVM_Context *c, unsigned int *delivered)
             const FVM_Value *argv = argc ? &active.values[FVM_TIMERS_ARGUMENT_OFFSET] : 0;
 
 
-            FVM_StageUpdateEventScope redraw(c, active.repeat);
+            FVM_StageUpdateEventScope redraw(c, active.repeat || active.posted);
             if (active.method)
             {
                 result = fvm_exec_call_method(c, 0, &active.values[0], &active.values[1], 0, argc, argv, &ignored);
@@ -472,4 +475,122 @@ extern "C" FVM_Result fvm_timers_poll(FVM_Context *c, unsigned int *delivered)
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+
+/* Post a borrowed same-context Function and copied args for the next owner poll.
+ * Outputs remain unchanged on failure. No movie/frame clock advancement occurs;
+ * the existing bounded scheduler supplies roots, cancellation and error handling. */
+extern "C" FVM_Result fvm_async_post(FVM_Context *c, FVM_Object *callback, unsigned count,
+                                    const FVM_Value *args, unsigned long *id)
+{
+    if (!id || count > FVM_TIMERS_MAX_ARGUMENTS || (count && !args))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    FVM_Value values[FVM_TIMERS_MAX_ARGUMENTS + FVM_TIMERS_ARGUMENT_OFFSET];
+    fvm_value_undefined(&values[0]);
+    values[0].type = FVM_VALUE_OBJECT;
+    values[0].object = callback;
+    fvm_value_number(&values[1], 0);
+    for (unsigned i = 0; i < count; ++i)
+    {
+        values[i + FVM_TIMERS_ARGUMENT_OFFSET] = args[i];
+    }
+    FVM_Value result;
+    FVM_Result status = schedule(c, count + FVM_TIMERS_ARGUMENT_OFFSET, values, &result, false, true);
+    if (status == FVM_OK)
+    {
+        *id = (unsigned long)result.number;
+    }
+    return status;
+}
+
+
+/* Cancel a shared context-local scheduled ID; missing IDs are harmless.
+ * The call is synchronous, owner-only, with no frame advancement or callbacks. */
+extern "C" FVM_Result fvm_async_cancel(FVM_Context *c, unsigned long id)
+{
+    if (id > FVM_TIMERS_MAX_ID)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    FVM_Value value;
+    FVM_Value ignored;
+    fvm_value_number(&value, (double)id);
+    return cancel(c, 1, &value, &ignored, 0);
+}
+
+
+/* Script Async.post(callback,...args); successful output is its exact numeric ID.
+ * Borrowed arguments are copied/rooted by the scheduler; no inline invocation. */
+FVM_Result fvm_builtin_async_post(FVM_Context *c, FVM_Object *, unsigned count,
+                                 const FVM_Value *args, FVM_Value *out, void *)
+{
+    FVM_Result status = prepare(c, 0, count, args, out);
+    if (status != FVM_OK || count == 0 || args[0].type != FVM_VALUE_OBJECT)
+    {
+        return status == FVM_OK ? FVM_INVALID_ARGUMENT : status;
+    }
+    unsigned long id;
+    status = fvm_async_post(c, args[0].object, count - 1, count > 1 ? args + 1 : 0, &id);
+    if (status == FVM_OK)
+    {
+        fvm_value_number(out, (double)id);
+    }
+    return status;
+}
+
+
+/* Script cancellation retains existing numeric coercion/error contracts.
+ * It shares IDs with timers but has no legacy SWF-version availability gate. */
+FVM_Result fvm_builtin_async_cancel(FVM_Context *c, FVM_Object *, unsigned count,
+                                   const FVM_Value *args, FVM_Value *out, void *)
+{
+    return cancel(c, count, args, out, 0);
+}
+
+
+/* Install an explicit Async namespace, preserving every existing own global.
+ * [GC:] Pin the unpublished object across method/global registration. Failure
+ * leaves no namespace publication before the final global assignment. Native
+ * callbacks have process-local code identity; they are not serialized closures. */
+extern "C" FVM_Result fvm_async_install(FVM_Context *c)
+{
+    if (!usable(c))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    int exists;
+    FVM_Result status = fvm_object_has_own(c, c->global, "Async", &exists);
+    if (status != FVM_OK || exists)
+    {
+        return status == FVM_OK ? FVM_INVALID_ARGUMENT : status;
+    }
+    FVM_Object *space = 0;
+    status = fvm_object_create(c, &space);
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    status = fvm_gc_pin(c, space);
+    if (status != FVM_OK)
+    {
+        return status;
+    }
+    status = fvm_object_define_method_rooted(c, space, "post", fvm_builtin_async_post, 0, 0);
+    if (status == FVM_OK)
+    {
+        status = fvm_object_define_method_rooted(c, space, "cancel", fvm_builtin_async_cancel, 0, 0);
+    }
+    if (status == FVM_OK)
+    {
+        FVM_Value value;
+        fvm_value_undefined(&value);
+        value.type = FVM_VALUE_OBJECT;
+        value.object = space;
+        status = fvm_set_global(c, "Async", &value);
+    }
+    fvm_gc_unpin(c, space);
+    return status;
 }

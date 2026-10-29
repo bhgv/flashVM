@@ -94,6 +94,7 @@ admission during pending raster and FIFO/pointer/replay/capture barriers. Deskto
 interpreter/JIT scenarios check real gestures, opacity and file ownership.
 Dummy SDL/replay tests do not measure physical-device typing latency or certify
 Windows/macOS/Android performance.
+[Frame-free Async.post/cancel and SDL text bursts / Внекадровые callbacks](ASYNC.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

@@ -19,6 +19,14 @@ FVM_Result fvm_builtin_set_timeout(FVM_Context *, FVM_Object *, unsigned int, co
 FVM_Result fvm_builtin_clear_timeout(FVM_Context *, FVM_Object *, unsigned int, const FVM_Value *, FVM_Value *, void *);
 
 
+/* Opt-in frame-free post/cancel methods; arguments use callback then user values. */
+FVM_Result fvm_builtin_async_post(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
+
+
+/* Cancel a scheduled context-local ID without legacy SWF availability gates. */
+FVM_Result fvm_builtin_async_cancel(FVM_Context *, FVM_Object *, unsigned, const FVM_Value *, FVM_Value *, void *);
+
+
 /* [GC:] Remove all retained scheduler values before object finalization at context destruction. */
 void fvm_timers_cleanup(FVM_Context *);
 
@@ -27,6 +35,7 @@ void fvm_timers_cleanup(FVM_Context *);
 inline bool fvm_timers_collector_callback(FVM_NativeFunction callback)
 {
     return callback == fvm_builtin_set_interval || callback == fvm_builtin_clear_interval ||
-           callback == fvm_builtin_set_timeout || callback == fvm_builtin_clear_timeout;
+           callback == fvm_builtin_set_timeout || callback == fvm_builtin_clear_timeout ||
+           callback == fvm_builtin_async_post || callback == fvm_builtin_async_cancel;
 }
 #endif

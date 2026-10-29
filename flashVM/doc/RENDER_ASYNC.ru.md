@@ -90,6 +90,7 @@ capture/проверок. [`fvm_render_queue_destroy`](../include/flashvm/render
 в интерпретаторе/JIT проверяют жесты, прозрачность и владельцев файлов.
 Dummy SDL и воспроизведение не измеряют задержку на физическом устройстве и не
 подтверждают производительность Windows/macOS/Android.
+[Frame-free Async.post/cancel and SDL text bursts / Внекадровые callbacks](ASYNC.md).
 
 <!-- source-links:start -->
 ## Исходники / Source declarations

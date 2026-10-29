@@ -1,6 +1,8 @@
 /* FlashVM TextField presentation; document/history/file policy lives in Limbo. */
 #include "editor_view.h"
 #include "flashvm/avm1.h"
+#include "flashvm/async.h"
+#include "flashvm/timers.h"
 #include "ide_view_swf.h"
 #include "flashvm/standard_text.h"
 #include "flashvm/function.h"
@@ -17,6 +19,7 @@
 #ifdef DVM_EDITOR_SDL
 #include <SDL.h>
 #include "editor_window_events.h"
+#include "editor_text_events.h"
 #endif
 
 #define EDITOR_WIDTH 960U                /* Initial viewport width in pixels. */
@@ -112,6 +115,8 @@ static DVM_EditorFrame *displayed_frame;       /* Owned completed baseline; work
 static const DVM_EditorFrame *upload_frame;    /* Borrowed completed damage during SDL presentation only. */
 static DVM_EditorFrame *recording_frame;       /* Owner-only frame builder; workers never read this global. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
+static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notification. */
+static int paint_due; /* Frame-free notification delivered, latest state may be prepared. */
 static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
 #ifdef DVM_EDITOR_SDL
 static Uint32 desktop_dirty_since; /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
@@ -806,6 +811,10 @@ int dvm_editor_create(void)
     if (result == FVM_OK)
     {
         result = fvm_load_memory(context, ide_view_swf, sizeof(ide_view_swf));
+        if (result == FVM_OK)
+        {
+            result = fvm_async_install(context);
+        }
     }
     if (result == FVM_OK)
     {
@@ -2074,6 +2083,49 @@ static int presentation_blocks_input(void)
 #endif
 
 
+/* Frame-free notification only. Arguments are borrowed and ignored; no managed
+ * data is retained or rendered inside this native callback. Owner-only. */
+static FVM_Result paint_ready(FVM_Context *c, FVM_Object *receiver, unsigned count,
+                              const FVM_Value *args, FVM_Value *out, void *user)
+{
+    (void)c;
+    (void)receiver;
+    (void)count;
+    (void)args;
+    (void)user;
+    paint_due = 1;
+    fvm_value_undefined(out);
+    return FVM_OK;
+}
+
+
+/* Coalesce notifications for the latest complete Dis view. Return0 on failure.
+ * [GC:] Pin a native notification until teardown; the queue separately roots it.
+ * This only posts work. No raster/layout/Dis mutation happens synchronously. */
+static int request_paint(void)
+{
+    unsigned long id;
+    if (!desktop_dirty)
+    {
+        if (!paint_callback &&
+            (fvm_function_create_native(context, paint_ready, NULL, NULL, &paint_callback) != FVM_OK ||
+             fvm_gc_pin(context, paint_callback) != FVM_OK))
+        {
+            return 0;
+        }
+        if (fvm_async_post(context, paint_callback, 0, NULL, &id) != FVM_OK)
+        {
+            return 0;
+        }
+#ifdef DVM_EDITOR_SDL
+        desktop_dirty_since = SDL_GetTicks();
+#endif
+    }
+    desktop_dirty = 1;
+    return 1;
+}
+
+
 /* Assemble ordered Dis snapshot fragments, publishing TextField only at selection boundary.
  * message is borrowed, never retained. Returns zero on malformed/stale/inconsistent framing. */
 int dvm_editor_present(const DVM_UIMessage *message)
@@ -2114,12 +2166,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
 #ifdef DVM_EDITOR_SDL
             if (!events && !capture_path)
             {
-                if (!desktop_dirty)
-                {
-                    desktop_dirty_since = SDL_GetTicks();
-                }
-                desktop_dirty = 1;
-                return 1;
+                return request_paint();
             }
 #endif
             return render_desktop();
@@ -2243,6 +2290,16 @@ int dvm_editor_present(const DVM_UIMessage *message)
         }
         caret = message->first;
         anchor = message->second;
+#ifdef DVM_EDITOR_SDL
+        if (!events && !capture_path)
+        {
+            if (!request_paint())
+            {
+                return 0;
+            }
+        }
+        else
+#endif
         if (!render())
         {
             return 0;
@@ -2646,7 +2703,8 @@ static unsigned int keycode(SDL_Keycode key)
  * message receives a value only on one. Replay truncation/EOF without Quit returns minus one. */
 int dvm_editor_event(DVM_UIMessage *message)
 {
-    if (!collect_frame(0))
+    unsigned delivered;
+    if (fvm_timers_poll(context, &delivered) != FVM_OK || !collect_frame(0))
     {
         return -1;
     }
@@ -2655,13 +2713,15 @@ int dvm_editor_event(DVM_UIMessage *message)
         return 0;
     }
 #ifdef DVM_EDITOR_SDL
-    if (desktop_dirty &&
+    if (desktop_dirty && paint_due &&
         (!keyboard_waiting() || (Uint32)(SDL_GetTicks() - desktop_dirty_since) >= EDITOR_KEYBOARD_BATCH_MS))
     {
-        if (!render_desktop())
+        if (!(dvm_desktop_active() ? render_desktop() : render()))
         {
             return -1;
         }
+        desktop_dirty = 0;
+        paint_due = 0;
     }
     if (presentation_blocks_input())
 #else
@@ -2833,9 +2893,10 @@ int dvm_editor_event(DVM_UIMessage *message)
         }
         else if (event.type == SDL_TEXTINPUT)
         {
-            message->kind = DVM_UI_TEXT;
-            message->size = strlen(event.text.text);
-            memcpy(message->text, event.text.text, message->size);
+            if (!dvm_editor_text_batch(context, &event.text, message))
+            {
+                return -1;
+            }
         }
         else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
         {
@@ -2859,8 +2920,15 @@ int dvm_editor_event(DVM_UIMessage *message)
                 state.down[code] = event.type == SDL_KEYDOWN;
                 state.last_code = code;
                 state.last_ascii = 0;
-                if (fvm_input_set_keyboard(context, &state) != FVM_OK ||
-                    dvm_ui_capture_keyboard(context, code, event.type == SDL_KEYDOWN, message) != FVM_OK)
+                if (fvm_input_set_keyboard(context, &state) != FVM_OK)
+                {
+                    return -1;
+                }
+                if (dvm_editor_plain_letter(&event.key))
+                {
+                    return 0; /* TextInput owns the edit; preserve native state without a no-op Dis view. */
+                }
+                if (dvm_ui_capture_keyboard(context, code, event.type == SDL_KEYDOWN, message) != FVM_OK)
                 {
                     return -1;
                 }
@@ -2934,6 +3002,11 @@ void dvm_editor_destroy(void)
     fvm_font_destroy(layout_font);
     dvm_desktop_destroy();
     desktop_bound = 0;
+    if (paint_callback)
+    {
+        fvm_gc_unpin(context, paint_callback);
+        paint_callback = NULL;
+    }
     fvm_context_destroy(context);
     fvm_runtime_destroy(runtime);
     free(snapshot);
