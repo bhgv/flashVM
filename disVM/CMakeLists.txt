@@ -196,6 +196,7 @@ if(BUILD_TESTING)
     byte-string-layouts
     array-create
     array-create-layouts
+    amd64-emission-budget
     newzero-layouts
     scalar-cons-layouts
     payload-cons-layouts

@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "06e33807f8f95e6217039151a14bec0ccff4bc49",
+  "revision": "25626d8dcc0ecac2a7438e3ae4c05949e3f2ca5e",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -770,7 +770,12 @@
     "libinterp/tests/alt-hangup.c",
     "libinterp/tests/README.alt-hangup.md",
     "libinterp/tests/README.stack-callbacks.md",
-    "libinterp/tests/README.slice-record-native.md"
+    "libinterp/tests/README.slice-record-native.md",
+    "libinterp/tests/amd64-emission-budget.c",
+    "libinterp/tests/amd64-emission-budget.py",
+    "libinterp/tests/README.amd64-emission-budget.md",
+    "doc/dis64-compatibility.md",
+    "doc/dis64-design.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -799,6 +804,8 @@
     "upstream/appl/lib/tests/regex-unicode.b": "18e9de517f3fc5525a2a053ed55e61aa3c759525f5cc977cf3ad7f736f83111a",
     "upstream/appl/lib/tests/regex-unicode.py": "7a78e1648249d7489a8d9b1a9112b7b061ab454f7a20d835ed2c14e33b7d080c",
     "upstream/appl/lib/tests/string-radix-host.py": "654152a630ac30c58609e88b1451e561e7c5e43bd0e4e2a024318481932c49c1",
+    "upstream/doc/dis64-compatibility.md": "7092559266e3efb3040722ed5cb18e94cb5a68e10341d37091d4e0abb1e3b005",
+    "upstream/doc/dis64-design.md": "6a0e1fa919416813bbbe099876114c571c062dacc2b9a254cb8b7828ae6da399",
     "upstream/emu/Android/srv.h": "bbf98f995844b26febdfaf770e03fc7310f186a96d08daa612cd8731a49f75a1",
     "upstream/emu/Android/srvm.h": "7a003a587210c4e548127ca0830d3bac0999b5b145af37adfb04f06ce337eab2",
     "upstream/emu/port/dat.h": "10a4ae201c07a0015f69f013d29c0047ef8061f6cf6c4f26774b1f2dc3b72212",
@@ -862,7 +869,7 @@
     "upstream/libbio/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",
     "upstream/libinterp/NOTICE": "435c62d6c5f5a58b1aeb1683e5b69e172f37336f8e227d67f3fdbfc7668d7663",
     "upstream/libinterp/alt.c": "e54cc36a10c86180d590abd923760d9e9b2f43dcae3fb0d42e4946684aa79d0f",
-    "upstream/libinterp/amd64-emit.h": "6310c0aa4d84a846e52587f549583dcac7b5b07190d14dcaa1d32c9788ea4ed7",
+    "upstream/libinterp/amd64-emit.h": "6e83dad243c867df7ec3ff26195566f3f7b1a5dcdab6cb2c49bbbbb112cd3178",
     "upstream/libinterp/arm64-emit.h": "1e37ac901ca073282428bfbb5fe53c5a9ee9e3422ab3fea7fc02ae7d5d9cffb9",
     "upstream/libinterp/comp-386.c": "bcccc6b6c374e9a2d28013f653562a40b465811272778b4581ba2c3fd0aaea76",
     "upstream/libinterp/comp-amd64.c": "c0e301955fc750c415ef1a0f558eeb453e9e100ce17f55d870a1ab844366567b",
@@ -901,6 +908,7 @@
     "upstream/libinterp/tests/README.alt-power.md": "f6ae6807b8293f665d7d2ca6c1f51c303b9e554061c73896e70cf0ba3fb07135",
     "upstream/libinterp/tests/README.alt-preflight.md": "fa9dc46ef00db77d31c9b58fb4608d798b3ca49df0b0019b5cd068889581e153",
     "upstream/libinterp/tests/README.alt-publication.md": "1b84bea46995254b2568a77b79a67dfe8377711b2721eb62f10e616eaa2eea42",
+    "upstream/libinterp/tests/README.amd64-emission-budget.md": "6e2f8378edcc3b588a1e0e436a0efdb5a26aa96dfaeef892d97957080e7661b0",
     "upstream/libinterp/tests/README.append-preflight.md": "1855fbed2b3820392fcc80590de949ed0c03207e3ba552d6488e548a5490c74f",
     "upstream/libinterp/tests/README.append-spans.md": "7fb311af2aec203a4b3e1103a244e4fa0636091b736f8c2ea525dcb24967d005",
     "upstream/libinterp/tests/README.arithmetic-slot.md": "94efff6dab3c2cc00904e645a5e9b15bb9bcaa84e23b9078311bbe484c8f5473",
@@ -1050,6 +1058,8 @@
     "upstream/libinterp/tests/alt-hangup.c": "6b768ae33c4725d6fb4f50f3930ee22a19fda47f9134b746af11a6947d1eb2d0",
     "upstream/libinterp/tests/alt-preflight.c": "35b3ca6c5ac2f28b23e769f88a20106129ee1b38e826e0f7f216dcd86d27ec8f",
     "upstream/libinterp/tests/alt-publication.c": "daae0f84506fcfa6c4c89ac2024a356770a70e3443c8fb7a7459196e5c7ab8c4",
+    "upstream/libinterp/tests/amd64-emission-budget.c": "9387334c168dd8c701e4615eebab51e3ae6b010a16b9e57e739aaba19aed8005",
+    "upstream/libinterp/tests/amd64-emission-budget.py": "c88041d449c928e3886aa043552c47818cf001c5e6052f4606f77c509e84db42",
     "upstream/libinterp/tests/amd64-field-registers.py": "cee294dc7cf5fc64a0ba36f7446602fb56f9ff7f6972abfd65d3ca3fbc6b22a1",
     "upstream/libinterp/tests/append-layouts.py": "954b748e62db7f29bacdbd00f87b66093e575461e04cef2aa9901465c5c9c3a9",
     "upstream/libinterp/tests/append-span-c.c": "6765a85372b7df29f0238eac3ed19e358e13c4911f9b15ece4d78ef93b983bb6",
