@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1682**. [English](README.md).
+Версия разработки: **0.1683**. [English](README.md).
 
-Текущая серия: [v0.1682](docs/releases/v0.1682.md): Dis64-контейнер/строковый пул и SDK, пункт13 build-menu, парные целочисленные оптимизации FIR и прямое согласование с Inferno.
+Текущая серия: [v0.1683](docs/releases/v0.1683.md): битовые доказательства FIR для динамической арифметики SWF, настоящие Dis64 payloads/SDK и пункт14 build-menu.
 
 ## Просмотр документации
 

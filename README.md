@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1682**. [Русская версия](README.ru.md).
+Development version: **0.1683**. [Русская версия](README.ru.md).
 
-Current series: [v0.1682](docs/releases/v0.1682.md): Dis64 container/string-pool tools and SDK, build-menu entry13, paired integer FIR optimization and direct Inferno payload coordination.
+Current series: [v0.1683](docs/releases/v0.1683.md): shared FIR known-bit proofs for dynamic SWF arithmetic, real Dis64 pilot tooling/SDK and build-menu entry14.
 
 ## Browse documentation
 
