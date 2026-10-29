@@ -239,7 +239,7 @@ class MenuTests(unittest.TestCase):
             args = menu.argparse.Namespace(out=temporary, no_install=False)
             with contextlib.redirect_stdout(io.StringIO()), patch.dict(
                 menu.os.environ, {"FVM_EDITOR_FONT": "/font with spaces.ttf"}
-            ), patch("builtins.input", side_effect=["8", "source Я.b"]), patch.object(
+            ), patch("builtins.input", side_effect=["9", "source Я.b"]), patch.object(
                 menu.subprocess, "call", return_value=0
             ) as run:
                 status = menu.show_products(args, "/bin/bash", True)
@@ -258,12 +258,120 @@ class MenuTests(unittest.TestCase):
             args = menu.argparse.Namespace(out=temporary, no_install=False)
             with contextlib.redirect_stdout(io.StringIO()), patch.dict(
                 menu.os.environ, {"FVM_EDITOR_FONT": ""}
-            ), patch("builtins.input", side_effect=["8", ""]) as ask, patch.object(
+            ), patch("builtins.input", side_effect=["9", ""]) as ask, patch.object(
                 menu.subprocess, "call", return_value=0
             ) as run:
                 status = menu.show_products(args, "/bin/bash", True)
             if status or run.call_args[0][0] != ["/bin/bash", str(script)] or ask.call_count != 2:
                 self.fail("default graphical launch requested a font or lost the bundled-font path")
+
+    def test_desktop_is_visible_without_general_checker(self):
+        """The real desktop launcher is discoverable even without run-checks.sh."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            package = prefix / "disvm-editor"
+            package.mkdir()
+            script = package / "run-desktop-ide.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            old = package / "run-ide.sh"
+            old.write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), patch(
+                "builtins.input", side_effect=["8", ""]
+            ), patch.dict(menu.os.environ, {"FVM_EDITOR_FONT": ""}), patch.object(
+                menu.subprocess, "call", return_value=0
+            ) as run:
+                status = menu.show_products(args, "/bin/bash", True)
+            if status or run.call_args[0][0] != ["/bin/bash", str(script)]:
+                self.fail("menu 8 did not launch the actual MovieClip desktop without a checker")
+            if "8 — IDE MovieClip" not in output.getvalue() or "9 — Прежний" not in output.getvalue():
+                self.fail("new desktop and legacy editor were not independently listed")
+
+
+    def test_cli_products_show_desktop_and_examples(self):
+        """Explicit --projects builds still print all real installed entry paths."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            package = prefix / "disvm-editor"
+            package.mkdir()
+            for name in ("run-desktop-ide.sh", "run-desktop-lifecycle.sh", "run-desktop-pointer.sh"):
+                (package / name).write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), patch(
+                "builtins.input", side_effect=RuntimeError("unexpected prompt")
+            ):
+                status = menu.show_products(args, "/bin/bash", False)
+            if status or any(
+                name not in output.getvalue()
+                for name in ("run-desktop-ide.sh", "run-desktop-lifecycle.sh", "run-desktop-pointer.sh")
+            ):
+                self.fail("noninteractive build hid the new application paths")
+
+
+    def test_explicit_desktop_launch_preserves_literal_document(self):
+        """--launch does not ask questions or route to the older editor."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            package = prefix / "disvm-editor"
+            package.mkdir()
+            script = package / "run-desktop-ide.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(
+                out=temporary, no_install=False, launch="desktop", document="source Я;$(false).b"
+            )
+            with contextlib.redirect_stdout(io.StringIO()), patch(
+                "builtins.input", side_effect=RuntimeError("unexpected prompt")
+            ), patch.dict(menu.os.environ, {"FVM_EDITOR_FONT": ""}), patch.object(
+                menu.subprocess, "call", return_value=7
+            ) as run:
+                status = menu.show_products(args, "/bin/bash", False)
+            if status != 7 or run.call_args[0][0] != [
+                "/bin/bash",
+                str(script),
+                "--document",
+                args.document,
+            ]:
+                self.fail("explicit desktop launch changed argv or concealed the runtime status")
+
+
+    def test_missing_desktop_does_not_silently_fall_back(self):
+        """An old SDK must report its missing desktop instead of showing old features."""
+        with tempfile.TemporaryDirectory() as temporary:
+            prefix = Path(temporary)
+            package = prefix / "disvm-editor"
+            package.mkdir()
+            (package / "run-ide.sh").write_text("#!/bin/sh\nexit 0\n")
+            args = menu.argparse.Namespace(out=temporary, no_install=False, launch="desktop")
+            with contextlib.redirect_stdout(io.StringIO()), patch.object(
+                menu.subprocess, "call"
+            ) as run:
+                status = menu.show_products(args, "/bin/bash", False)
+            if status != 2 or run.called:
+                self.fail("missing desktop silently launched the old IDE")
+
+    def test_launch_rejects_disabled_installation_before_build(self):
+        """A requested installed application cannot silently vanish under --no-install."""
+        with contextlib.redirect_stderr(io.StringIO()), patch.object(menu.subprocess, "call") as run:
+            try:
+                menu.main(["--projects", "disvm-editor", "--launch", "desktop", "--no-install"])
+            except SystemExit as error:
+                if error.code != 2 or run.called:
+                    self.fail("invalid launch reached a build or returned the wrong parser status")
+            else:
+                self.fail("--launch and --no-install were accepted together")
+
+    def test_document_requires_a_graphical_launch(self):
+        """A source path must not be silently dropped for a portable tutorial."""
+        with contextlib.redirect_stderr(io.StringIO()), patch.object(menu.subprocess, "call") as run:
+            try:
+                menu.main(["--projects", "disvm-runtime", "--launch", "pointer", "--document", "source.b"])
+            except SystemExit as error:
+                if error.code != 2 or run.called:
+                    self.fail("unsupported document argument reached the builder")
+            else:
+                self.fail("non-graphical launch silently accepted --document")
 
     def test_menu_launches_standard_modules_without_switches(self):
         """The retained-library tutorial is available from the post-build menu."""

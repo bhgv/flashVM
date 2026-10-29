@@ -335,7 +335,7 @@ if has ide && [[ "$tests" == ON || "$demo" == 1 ]]; then
         EMU_EXECUTABLE=$(absolute "$EMU_EXECUTABLE")
         ide_runtime=1
     else
-        printf '%s\n' 'IDE: building Dis/debug products without emu; runtime tests are unavailable (embedded host pending).' >&2
+        printf '%s\n' 'IDE module-only target: compiling Dis/debug products without the reference emu tests. Select disvm-runtime/disvm-editor for applications on our embedded VM.' >&2
     fi
     command -v "${PYTHON:-python3}" >/dev/null || fail 'Python 3 not found for IDE host tests'
 fi
@@ -540,7 +540,7 @@ if has ide && [[ "$tests" == ON ]]; then
 fi
 if [[ "$demo" == 1 && "$ide_runtime" == 0 ]]; then
     printf 'Build complete: %s\n' "$build_root"
-    printf '%s\n' 'NOT RUN: requested IDE demo needs an executable Dis host; compilation succeeded, runtime execution is not available.' >&2
+    printf '%s\n' 'NOT RUN: --demo for the module-only ide target needs its reference emu. Compilation succeeded; select disvm-runtime/disvm-editor for applications using our embedded VM.' >&2
     exit 3
 fi
 if [[ "$demo" == 1 ]]; then

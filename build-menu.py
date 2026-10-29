@@ -25,12 +25,12 @@ COMPONENTS = (
     ("fir", "FIR: компилятор, проверка и оптимизатор"),
     ("linker", "SWL: линкер SWO/SWA в SWF"),
     ("symbols", "SBL: читатель отладочных символов Limbo"),
-    ("ide", "IDE: Limbo-ядро и отладочные данные"),
+    ("ide", "IDE: библиотечные Limbo-модули и .sbl (окно: disvm-editor)"),
     ("as1", "Только синтаксический фронтенд AS1"),
     ("as2", "Только синтаксический фронтенд AS2"),
     ("as3", "Только синтаксический фронтенд AS3"),
     ("limbo", "Собственный Coco/R Limbo: синтаксис, .m и внешние заготовки"),
-    ("disvm", "Dis interpreter/JIT core; полный host runner ещё в работе"),
+    ("disvm", "Dis interpreter/JIT core (готовые приложения: disvm-runtime/disvm-editor)"),
     ("cocor", "Coco/R C: локальная сборка из tools/coco-r-C"),
     ("cocor-limbo", "Coco/R Limbo: C generator и cocor.dis"),
     ("limbo-bootstrap", "Временный native bootstrap из вашего experiment"),
@@ -38,7 +38,7 @@ COMPONENTS = (
     ("iyacc", "Inferno iyacc: генератор парсера limbo.y"),
     ("disvm-host", "Общие с FlashVM файлы, сеть, каналы и нативные потоки Dis"),
     ("disvm-runtime", "Dis: исполняемая VM и терминальный редактор IDE (Linux AMD64, эксперимент)"),
-    ("disvm-editor", "Графический редактор: логика Limbo/Dis, TextField FlashVM и окно SDL2"),
+    ("disvm-editor", "IDE MovieClip: несколько окон, каретка/выделение, Limbo/Dis + FlashVM/SDL2"),
 )
 
 
@@ -171,7 +171,7 @@ def show_backends():
         print("  {}. {:7s} {}".format(number, name, detail))
     print("CMake: весь workspace. Meson/Make/mk: фронтенды, линкер, mk, iyacc, limbo-bootstrap.")
     print(
-        "Нативные --tests: mk, iyacc, limbo-bootstrap; запуск IDE пока требует отдельного Dis-хоста."
+        "Нативные --tests: mk, iyacc, limbo-bootstrap. CMake disvm-editor собирает IDE со встроенной DisVM."
     )
 
 
@@ -327,77 +327,150 @@ def choose_settings(args):
             print("Введите номер настройки или Enter.")
 
 
-# Show actual installed entry points and optionally run them from the menu.
-# args supplies the installation prefix; bash is resolved. Returns launched command status.
+# Discover installed scripts without treating the generic checker as an application
+# dependency. prefix is an explicit path; return stable menu IDs and copied metadata.
+# The fallback launcher belongs only to the separately labelled legacy editor.
+def product_entries(prefix):
+    rows = (
+        ("4", "console", "Программа Dis", (prefix / "disvm-runtime/run-console.sh",), False),
+        (
+            "5",
+            "terminal",
+            "Терминальный редактор Dis",
+            (prefix / "disvm-runtime/run-editor.sh",),
+            False,
+        ),
+        ("6", "services", "Сервисы IDE", (prefix / "disvm-runtime/run-ide.sh",), False),
+        ("7", "modules", "Библиотеки Inferno", (prefix / "disvm-runtime/run-modules.sh",), False),
+        (
+            "8",
+            "desktop",
+            "IDE MovieClip: окна, мышиное выделение, F7/F8, Help",
+            (prefix / "disvm-editor/run-desktop-ide.sh",),
+            True,
+        ),
+        (
+            "9",
+            "editor",
+            "Прежний одиночный графический редактор",
+            (prefix / "disvm-editor/run-ide.sh", prefix / "disvm-editor/run-graphical-editor.sh"),
+            True,
+        ),
+        (
+            "10",
+            "lifecycle",
+            "Пример независимых владельцев и закрытия окон",
+            (
+                prefix / "disvm-runtime/run-desktop-lifecycle.sh",
+                prefix / "disvm-editor/run-desktop-lifecycle.sh",
+            ),
+            False,
+        ),
+        (
+            "11",
+            "pointer",
+            "Пример Unicode-выделения и проверки revision",
+            (
+                prefix / "disvm-runtime/run-desktop-pointer.sh",
+                prefix / "disvm-editor/run-desktop-pointer.sh",
+            ),
+            False,
+        ),
+    )
+    entries = {}
+    for key, name, label, candidates, graphical in rows:
+        script = next((path for path in candidates if path.is_file()), None)
+        if script is not None:
+            entries[key] = (name, label, script, graphical)
+    return entries
+
+
+# Launch one admitted installed application. entry contains immutable discovery
+# metadata; document/font are literal argv values. interactive controls only the
+# optional source-path question, never a font search. Return the child exit status.
+def launch_product(entry, args, bash, interactive):
+    name, label, script, graphical = entry
+    command = [bash, str(script)]
+    if graphical:
+        font = os.environ.get("FVM_EDITOR_FONT")
+        if font:
+            command += ["--font", font]
+        document = getattr(args, "document", None)
+        if interactive and document is None:
+            document = input("Файл UTF-8 (Enter — новый буфер без пути сохранения): ").strip()
+        if document:
+            command += ["--document", document]
+    print("Запуск " + label + ": " + " ".join(shlex.quote(value) for value in command), flush=True)
+    return subprocess.call(command)
+
+
+# Show actual installed products in interactive and CLI builds. args supplies
+# prefix/launch policy; bash is resolved. Return a real child status, 2 for an
+# unavailable explicit launch, or zero when the user finishes. Missing run-checks
+# never hides installed bytecode applications or their documented entry points.
 def show_products(args, bash, interactive):
+    requested = getattr(args, "launch", None)
     if args.no_install:
         print("Установка отключена; команды в out/ не создавались.")
-        return 0
+        return 2 if requested else 0
     prefix = Path(args.out).expanduser().resolve() if args.out else ROOT / "out"
     checker = prefix / "run-checks.sh"
     window = prefix / "flashvm/run-demo.sh"
+    entries = product_entries(prefix)
     print("\nРезультаты сборки: " + str(prefix))
     if checker.is_file():
-        print("Проверки: " + str(checker))
+        print("1 — Проверки: " + str(checker))
     if window.is_file():
-        print("Окно, ввод и звук: " + str(window))
-    native = prefix / "disvm-runtime/run-editor.sh"
-    if native.is_file():
-        print("Интерактивный редактор на Dis: " + str(native))
-    if not interactive or not checker.is_file():
+        print("2 — Окно, ввод и звук: " + str(window))
+    for key, (_, label, script, _) in entries.items():
+        print(key + " — " + label + ": " + str(script))
+    for component in ("disvm-editor", "disvm-runtime"):
+        guide = prefix / component / "ENTRYPOINTS.md"
+        if guide.is_file():
+            print("Запуск и возможности: " + str(guide))
+    if "9" in entries and "8" not in entries:
+        print(
+            "MovieClip-стол отсутствует в этом пакете. Пересоберите и установите disvm-editor; пункт 9 запускает прежний редактор."
+        )
+    if requested:
+        entry = next((row for row in entries.values() if row[0] == requested), None)
+        if entry is None:
+            print(
+                "Не установлен запуск "
+                + requested
+                + ". Для desktop/editor выберите disvm-editor; для примеров также подходит disvm-runtime."
+            )
+            return 2
+        return launch_product(entry, args, bash, False)
+    if not interactive or (not entries and not checker.is_file() and not window.is_file()):
         return 0
     while True:
-        print("\nЗапустить: 1 — проверки, 2 — оконный пример, 3 — проверки и окно")
-        print(
-            "  4 — программа Dis, 5 — интерактивный редактор, 6 — проверка сервисов IDE, 7 — библиотеки Inferno, 8 — графический редактор"
-        )
+        print("\nЗапустить установленный продукт:")
+        if checker.is_file():
+            print("  1 — проверки")
+        if window.is_file():
+            print("  2 — оконный пример")
+            if checker.is_file():
+                print("  3 — проверки и окно")
+        for key, (_, label, _, _) in entries.items():
+            print("  " + key + " — " + label)
         value = input("Enter — закончить, либо номер запуска: ").strip()
         if not value:
             return 0
-        if value not in ("1", "2", "3", "4", "5", "6", "7", "8"):
-            print("Введите 1, 2, 3, 4, 5, 6, 7, 8 или Enter.")
-            continue
-        if value == "8":
-            application = prefix / "disvm-editor/run-ide.sh"
-            script = application if application.is_file() else prefix / "disvm-editor/run-graphical-editor.sh"
-            if not script.is_file():
-                print("Выберите disvm-editor или all в меню сборки.")
-                continue
-            font = os.environ.get("FVM_EDITOR_FONT")
-            document = input("Файл UTF-8 (Enter — новый буфер без пути сохранения): ").strip()
-            command = [bash, str(script)]
-            if font:
-                command += ["--font", font]
-            if document:
-                command += ["--document", document]
-            return subprocess.call(command)
-        if value in ("4", "5", "6", "7"):
-            script = (
-                prefix
-                / "disvm-runtime"
-                / (
-                    {
-                        "4": "run-console.sh",
-                        "5": "run-editor.sh",
-                        "6": "run-ide.sh",
-                        "7": "run-modules.sh",
-                    }[value]
-                )
-            )
-            if not script.is_file():
-                print("Выберите disvm-runtime или all в меню сборки.")
-                continue
-            return subprocess.call([bash, str(script)])
-        if value in ("2", "3") and not window.is_file():
-            print("Оконный пакет не установлен. Выберите оконную сборку FlashVM в меню.")
-            continue
-        if value in ("1", "3"):
+        if value in entries:
+            return launch_product(entries[value], args, bash, True)
+        if value in ("1", "3") and checker.is_file():
             status = subprocess.call([bash, str(checker)])
-            if status:
+            if status or value == "1":
                 return status
-        if value in ("2", "3"):
-            return subprocess.call([bash, str(checker), "--window"])
-        return 0
+        elif value != "2":
+            print("Выберите номер установленного продукта или Enter.")
+            continue
+        if value in ("2", "3") and window.is_file():
+            return subprocess.call(
+                [bash, str(checker), "--window"] if checker.is_file() else [bash, str(window)]
+            )
+        print("Оконный пакет не установлен. Выберите оконную сборку FlashVM в меню.")
 
 
 # Build an argv list, never a shell expression; SDK preflight belongs to Bash.
@@ -471,8 +544,15 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
+    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer"),
+                        help="After a successful build launch an installed application; desktop is the MovieClip IDE")
+    parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
     args = parser.parse_args(argv)
+    if args.launch and args.no_install:
+        parser.error("--launch requires installation; remove --no-install")
+    if args.document is not None and args.launch not in ("desktop", "editor"):
+        parser.error("--document requires --launch desktop or editor")
     if args.list_backends:
         show_backends()
         return 0
@@ -503,7 +583,7 @@ def main(argv=None):
                     args.demo = choose_example()
             else:
                 print(
-                    "IDE будет скомпилирована в Dis/.sbl. Запуск пока недоступен: встроенный Dis-хост не завершён."
+                    "Компонент ide создаёт библиотечные Dis/.sbl. Для приложений выберите disvm-runtime или disvm-editor; внешний emu им не нужен."
                 )
     else:
         try:
