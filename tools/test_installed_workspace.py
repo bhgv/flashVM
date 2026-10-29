@@ -600,6 +600,37 @@ def fir_dis_packages(prefix, work, environment):
         if "REAL 0 42.5\n" not in output:
             raise RuntimeError("relocated Limbo real execution produced the wrong result")
 
+    # Relink the optimized source/FIR client using only shipped C99 inputs.
+    # Its Dis and SWO bytes must match explicit installed CLI optimization.
+    identity = component / "examples/integer-identities"
+    client = work / "identity-sdk-client"
+    run([*shlex.split(environment.get("CC", "cc")), "-std=c99", "-I" + str(component / "include"),
+         identity / "main.c", *libraries, "-o", client], work, environment)
+    run([program(prefix, "fir", "fir1_source"), "limbo", "--input", identity / "main.b", fir,
+         "--module", "integer_identities"], work, environment)
+    optimized = work / "identities.opt.fir"
+    run([program(prefix, "fir", "fir1"), "opt", fir, optimized], work, environment)
+    for task, suffix in (("dis", ".dis"), ("object", ".swo")):
+        expected = work / ("identity-cli" + suffix)
+        embedded = work / ("identity-api" + suffix)
+        run([program(prefix, "fir", "fir1"), task, optimized, expected], work, environment)
+        run([client, identity / "main.b", embedded, task], work, environment)
+        if expected.read_bytes() != embedded.read_bytes():
+            raise RuntimeError("relocated optimized integer CLI/C99 bytes differ")
+    unsupported = work / "unsupported-identity.b"
+    unsupported.write_text("implement M; M: module { value: fn(): int; }; value(): int {return 1/0;}")
+    sentinel = work / "unchanged.swo"
+    sentinel.write_bytes(b"KEEP")
+    rejected = subprocess.run([str(client), str(unsupported), str(sentinel), "object"],
+                              cwd=work, env=environment, capture_output=True, text=True, timeout=20)
+    if rejected.returncode == 0 or sentinel.read_bytes() != b"KEEP":
+        raise RuntimeError("relocated C99 rejection changed an existing output")
+    for mode in ("--jit", "--no-jit"):
+        output = run([runtime, mode, "--quantum", 1, "--inspect-words", 0, 2,
+                      work / "identity-api.dis"], work, environment)
+        if "DATA 0 42\nDATA 8 1\n" not in output:
+            raise RuntimeError("relocated optimized integer tutorial differs")
+
 
 # Relink the installed C99 broker example and decode its exact compiler-origin record on Dis.
 # All inputs come from the relocated package; no checkout header/library path is used.

@@ -9,7 +9,7 @@
 [Captured Sys calls and result ownership](SYS_CAPTURE.md) / [RU](SYS_CAPTURE.ru.md):
 fixed native frames, packed result spans and callback-safe operands.
 
-Graphical editor rasterization now runs on a detached background native worker.
+The desktop captures immutable native commands and rasterizes dirty tiles on up to four workers.
 [Ownership and async behavior](../../flashVM/doc/RENDER_ASYNC.md) / [RU](../../flashVM/doc/RENDER_ASYNC.ru.md).
 
 Runtime **0.32.1** — [OS filesystem contracts](FILESYSTEM.md) / [RU](FILESYSTEM.ru.md).
@@ -354,3 +354,5 @@ console and graphical runners. Fircompiler returns copied full FIR/Dis/SWF and
 original debug bytes; Limbo idecompiler coordinates actual workspace tickets.
 No subprocess performs the native call; it blocks the sole VM owner and has no
 UI capability, cancellation or automatic artifact execution. F7 Build/F8 diagnostics are available; Run/Debug controls and final debugger PC maps remain future work.
+
+[Exact integer identities in the compiler library](../../fir/v1/doc/INTEGER_IDENTITIES.md) / [RU](../../fir/v1/doc/INTEGER_IDENTITIES.ru.md): verified optimization before Dis/SWO emission; rebuild matching FIR libraries and relink this service.

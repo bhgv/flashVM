@@ -33,6 +33,9 @@ def fir_pairs(root, package):
     for source in (component / "examples/type-aliases").iterdir():
         if source.is_file():
             pairs[source] = package / "examples/type-aliases" / source.name
+    for source in (component / "examples/integer-identities").iterdir():
+        if source.is_file():
+            pairs[source] = package / "examples/integer-identities" / source.name
     return pairs
 
 

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1678**. [Русская версия](README.ru.md).
+Development version: **0.1679**. [Русская версия](README.ru.md).
 
-Current series: [v0.1678](docs/releases/v0.1678.md): event-driven keyboard input, immutable MovieClip commands and parallel dirty-tile desktop rendering.
+Current series: [v0.1679](docs/releases/v0.1679.md): exact integer identities, preserved traps, optimized Dis/SWF and matching C99/IDE compiler libraries.
 
 ## Browse documentation
 
