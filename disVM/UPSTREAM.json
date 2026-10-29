@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "25626d8dcc0ecac2a7438e3ae4c05949e3f2ca5e",
+  "revision": "d30013d468e43a8adecb0a46ad7156373bab174b",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -775,7 +775,9 @@
     "libinterp/tests/amd64-emission-budget.py",
     "libinterp/tests/README.amd64-emission-budget.md",
     "doc/dis64-compatibility.md",
-    "doc/dis64-design.md"
+    "doc/dis64-design.md",
+    "doc/dis64-flashvm-proposal.md",
+    "doc/dis64-inferno-response.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -804,8 +806,10 @@
     "upstream/appl/lib/tests/regex-unicode.b": "18e9de517f3fc5525a2a053ed55e61aa3c759525f5cc977cf3ad7f736f83111a",
     "upstream/appl/lib/tests/regex-unicode.py": "7a78e1648249d7489a8d9b1a9112b7b061ab454f7a20d835ed2c14e33b7d080c",
     "upstream/appl/lib/tests/string-radix-host.py": "654152a630ac30c58609e88b1451e561e7c5e43bd0e4e2a024318481932c49c1",
-    "upstream/doc/dis64-compatibility.md": "7092559266e3efb3040722ed5cb18e94cb5a68e10341d37091d4e0abb1e3b005",
-    "upstream/doc/dis64-design.md": "6a0e1fa919416813bbbe099876114c571c062dacc2b9a254cb8b7828ae6da399",
+    "upstream/doc/dis64-compatibility.md": "600ee2bbbd9e634b56a67447d1a24f136d5e01b902df0d11a40511568172c75b",
+    "upstream/doc/dis64-design.md": "070380774d41a865d4f8f6038cebd1e88fa807beaa0b2bf64cd2458d2e251801",
+    "upstream/doc/dis64-flashvm-proposal.md": "2c518b00558eb89cfac862ea47f5a0f5c0acc1871701ee31fc1d394ae0281d2c",
+    "upstream/doc/dis64-inferno-response.md": "cbd180b3df8be0ba8637395c95a4c1b2c8e4a093566e64645b2a6a6f125f4b56",
     "upstream/emu/Android/srv.h": "bbf98f995844b26febdfaf770e03fc7310f186a96d08daa612cd8731a49f75a1",
     "upstream/emu/Android/srvm.h": "7a003a587210c4e548127ca0830d3bac0999b5b145af37adfb04f06ce337eab2",
     "upstream/emu/port/dat.h": "10a4ae201c07a0015f69f013d29c0047ef8061f6cf6c4f26774b1f2dc3b72212",
