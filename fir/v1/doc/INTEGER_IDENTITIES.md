@@ -82,3 +82,23 @@ slot numbers and bytes while preserving behavior. The installed C99 tutorial
 explicitly performs FIR_OPT → canonical text → backend, matching the CLI stages;
 byte comparisons apply to that matched pipeline. Direct fir_run with optimise=1
 is independently tested but is not promised byte-identical to a text roundtrip.
+
+## Integer comparisons and branch pruning
+
+For the same evaluated i32/big SSA value, `x == x` becomes true and `x < x`
+becomes false. Signed `x < MIN` and `MAX < x` become false, using the exact
+width of the operand. Reversed endpoint comparisons remain dynamic. The
+ordinary CFG pass can then remove impossible branches. Throwing producers
+remain observable even when their comparison is constant. No range inference
+or floating reflexivity is introduced: `NaN == NaN` remains false at runtime.
+
+[comparisons.b](../examples/integer-identities/comparisons.b) is a fully
+commented source example returning 42. The regression checks raw and optimized
+Dis in interpreter/JIT modes and, with the host/linker test configuration, raw
+and optimized SWF execution. It covers MIN/MAX, negative and zero inputs,
+producer exceptions and IEEE NaN separately. This is the existing NC64 backend,
+not the proposed Dis64 format.
+
+For this comparison example, the measured native run falls from 256 Dis
+instructions (255 native) to 160 (159 native), preserving the result 42.
+These are instruction counters, not a wall-clock speed claim.

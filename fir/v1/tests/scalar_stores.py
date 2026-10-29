@@ -33,7 +33,11 @@ def main():
          '%flag: bool.slot = bool.local\nbool.store %flag, %no\nbool.store %flag, %yes\n'
          '%loaded: bool = bool.load %flag\n%answer: i64 = value.big %loaded\ntrace %answer\nreturn', [1], (0, 1, 0)),
         ('trace', header + 'big.store %cell, %one\ntrace %one\nbig.store %cell, %value\n' + read, [1, 42], (2, 0, 0)),
-        ('join', header + 'big.store %cell, %one\n%yes: bool = big.eq %value, %value\n'
+        # Reflexive predicates now remove one branch; distinct operands retain the join.
+        ('join_reflexive', header + 'big.store %cell, %one\n%yes: bool = big.eq %value, %value\n'
+         'if %yes, ^left, ^right\n^left:\nbig.store %cell, %value\njump ^exit\n'
+         '^right:\nbig.store %cell, %value\njump ^exit\n^exit:\n' + read, [42], (2, 0, 0)),
+        ('join', header + 'big.store %cell, %one\n%yes: bool = big.eq %value, %one\n'
          'if %yes, ^left, ^right\n^left:\nbig.store %cell, %value\njump ^exit\n'
          '^right:\nbig.store %cell, %value\njump ^exit\n^exit:\n' + read, [42], (3, 0, 0)),
         ('zero', '%cell: i64.slot = big.local\n%old: i64 = big.load %cell\n'

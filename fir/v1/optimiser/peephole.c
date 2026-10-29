@@ -1,6 +1,7 @@
-/* Conservative FIR-to-FIR peephole. Never folds dynamic/FP operations, trace,
- * or conversions. Constant branches discard only unexecuted paths. Unsigned arithmetic implements
- * i32 wrap without signed overflow in the compiler itself. */
+/* Conservative FIR-to-FIR peephole over verified typed IR. Fold exact scalar
+ * constants and total integer identities without discarding producer effects.
+ * Constant branches discard only unexecuted paths. Unsigned arithmetic implements
+ * integer wrap without signed overflow in the compiler itself. */
 #include "fir.h"
 #include <stdint.h>
 #include <string.h>
@@ -271,6 +272,43 @@ static void integer_literal(FirInstruction *in, int wide, int value)
 }
 
 
+/* Fold reflexive and extreme-bound comparisons of verified integer SSA values.
+ * in is owner-local IR; a/b are borrowed definitions of its typed operands.
+ * Return one after replacing the comparison by a normalized bool, zero when
+ * no proof applies. Integer equality is reflexive and signed less-than is
+ * irreflexive; no integer is below MIN or above MAX. Producer effects remain
+ * the responsibility of ordinary DCE. Floating NaNs, reference comparisons,
+ * cross-value range inference and source-level reevaluation are excluded. */
+static int simplify_integer_comparison(FirInstruction *in, const FirInstruction *a, const FirInstruction *b)
+{
+    int wide;          /* Compare the full big width rather than int32. */
+    int equality;      /* Equality produces true for the same SSA operand. */
+    int left_constant; /* Only exact same-type literals prove bounds. */
+    int right_constant;
+    int64_t left;
+    int64_t right;
+    if (in->op != O_EQ && in->op != O_LT && in->op != O_BIG_EQ && in->op != O_BIG_LT)
+    {
+        return 0;
+    }
+    wide = in->op == O_BIG_EQ || in->op == O_BIG_LT;
+    equality = in->op == O_EQ || in->op == O_BIG_EQ;
+    left_constant = a && a->op == (wide ? O_I64 : O_I32);
+    right_constant = b && b->op == (wide ? O_I64 : O_I32);
+    left = left_constant ? (wide ? a->big : a->integer) : 0;
+    right = right_constant ? (wide ? b->big : b->integer) : 0;
+    if (in->a != in->b && (equality || !((left_constant && left == (wide ? INT64_MAX : INT32_MAX)) ||
+                                         (right_constant && right == (wide ? INT64_MIN : INT32_MIN)))))
+    {
+        return 0;
+    }
+    in->op = O_BOOL;
+    in->integer = equality;
+    in->a = in->b = -1;
+    return 1;
+}
+
+
 /* Apply only total integer identities to borrowed verified IR operands. Return
  * one after rewriting in, zero otherwise. Division/shift checks disappear only
  * for a proven nontrapping constant divisor/count; evaluating each operand still
@@ -459,7 +497,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (simplify_integer_identity(in, a, b))
+            if (simplify_integer_comparison(in, a, b) || simplify_integer_identity(in, a, b))
             {
                 changed = 1;
             }

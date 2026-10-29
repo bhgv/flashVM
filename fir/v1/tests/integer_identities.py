@@ -29,7 +29,7 @@ def module(kind, value, body):
 # Check captured native payloads and flags for each live static trace. VM/paths
 # are borrowed; the private directory owns all artifacts. Return no inferred JIT
 # claim without the production native instruction counter.
-def execute(compiler, runtime, mode, work, fir, expected):
+def execute(compiler, runtime, mode, work, fir, expected, flags=None):
     image = work / "out.dis"
     call([compiler, "dis", fir, image], work)
     if runtime is None:
@@ -52,7 +52,7 @@ def execute(compiler, runtime, mode, work, fir, expected):
         int(value) for value in re.findall(r"^DATA \d+ (-?\d+)$", result.stdout, re.M)
     ]
     stats = re.search(r"instructions=(\d+) native=(\d+)", result.stderr)
-    if words != expected + [1] * len(expected):
+    if words != expected + ([1] * len(expected) if flags is None else flags):
         raise RuntimeError("integer identity capture differs: " + str(words))
     if not stats or int(stats[1]) == 0 or (int(stats[2]) > 0) != (mode == "--jit"):
         raise RuntimeError("integer identity used incorrect dispatch")
@@ -175,6 +175,98 @@ def main():
                     not in call([runtime, mode, work / "trap.dis"], work, False).stderr
                 ):
                     raise RuntimeError("producer trap was lost")
+        # Integer reflexivity and signed bounds are total at every input;
+        # use cross-block values so these are not literal-comparison tests.
+        for kind, prefix, bits in (("i32", "i32", 32), ("i64", "big", 64)):
+            minimum, maximum = -(1 << (bits - 1)), (1 << (bits - 1)) - 1
+            eq = prefix + ".eq"
+            lt = prefix + ".lt.signed"
+            for value in (minimum, -1, 0, 1, 42, maximum):
+                body = (
+                    f"%min: {kind} = const.{kind} {minimum}\n"
+                    f"%max: {kind} = const.{kind} {maximum}\n"
+                    f"%equal: bool = {eq} %x, %x\n"
+                    f"%less: bool = {lt} %x, %x\n"
+                    f"%below: bool = {lt} %x, %min\n"
+                    f"%above: bool = {lt} %max, %x\n"
+                    "trace %equal\ntrace %less\ntrace %below\ntrace %above"
+                )
+                raw.write_text(module(kind, value, body))
+                call([compiler, "opt", raw, optimized], work)
+                if any(" = " + op + " " in optimized.read_text() for op in (eq, lt)):
+                    raise RuntimeError("total integer comparison was not folded")
+                for selected in (raw, optimized):
+                    execute(compiler, runtime, mode, work, selected, [1, 0, 0, 0])
+            # The reverse comparisons are not constants: they vary at endpoints.
+            for value in (minimum, 0, maximum):
+                raw.write_text(
+                    module(
+                        kind,
+                        value,
+                        f"%min: {kind} = const.{kind} {minimum}\n"
+                        f"%max: {kind} = const.{kind} {maximum}\n"
+                        f"%low: bool = {lt} %min, %x\n"
+                        f"%high: bool = {lt} %x, %max\n"
+                        "trace %low\ntrace %high",
+                    )
+                )
+                call([compiler, "opt", raw, optimized], work)
+                if optimized.read_text().count(" = " + lt + " ") != 2:
+                    raise RuntimeError("nonconstant endpoint comparison was folded")
+                for selected in (raw, optimized):
+                    execute(
+                        compiler,
+                        runtime,
+                        mode,
+                        work,
+                        selected,
+                        [int(minimum < value), int(value < maximum)],
+                    )
+            # Folding a comparison must not suppress its throwing producer.
+            division = prefix + ".div" + (".signed" if bits == 32 else "")
+            raw.write_text(
+                module(
+                    kind,
+                    42,
+                    f"%zero: {kind} = const.{kind} 0\n"
+                    f"%bad: {kind} = {division} %x, %zero\n"
+                    f"%same: bool = {eq} %bad, %bad\ntrace %same",
+                )
+            )
+            call([compiler, "opt", raw, optimized], work)
+            if (
+                division not in optimized.read_text()
+                or " = " + eq + " " in optimized.read_text()
+            ):
+                raise RuntimeError("integer comparison lost producer effects")
+            for selected in (raw, optimized):
+                call([compiler, "dis", selected, work / "trap.dis"], work)
+                if (
+                    runtime
+                    and "zero divide"
+                    not in call([runtime, mode, work / "trap.dis"], work, False).stderr
+                ):
+                    raise RuntimeError("comparison producer trap was erased")
+        # IEEE NaN is not reflexive: no integer proof may reach binary64.
+        raw.write_text(
+            module(
+                "f64",
+                0,
+                "%same: bool = f64.eq %x, %x\n"
+                "%less: bool = f64.lt %x, %x\n"
+                "%ordered: bool = f64.le %x, %x\n"
+                "trace %same\ntrace %less\ntrace %ordered",
+            ).replace(
+                "%seed: f64 = const.f64 0",
+                "%zero: f64 = const.f64 0\n%seed: f64 = f64.div %zero, %zero",
+            )
+        )
+        call([compiler, "opt", raw, optimized], work)
+        for op in ("f64.eq", "f64.lt", "f64.le"):
+            if " = " + op + " " not in optimized.read_text():
+                raise RuntimeError("integer reflexivity crossed into IEEE NaN")
+        for selected in (raw, optimized):
+            execute(compiler, runtime, mode, work, selected, [0, 0, 0])
         # An unknown divisor may be zero even with identical SSA operands or
         # a zero numerator. A zero shifted by an invalid count must still fail.
         for kind, prefix in (("i32", "i32"), ("i64", "big")):
@@ -287,8 +379,36 @@ def main():
                 != "42"
             ):
                 raise RuntimeError("linked optimized SWF differs")
+        # Exercise source lowering, branch pruning and the actual SWF linker.
+        tutorial = tutorial.with_name("comparisons.b")
+        call([source, "limbo", "--input", tutorial, raw], work)
+        call([compiler, "opt", raw, optimized], work)
+        if " = i32.eq " in optimized.read_text():
+            raise RuntimeError("source equality did not reach the shared optimizer")
+        if optimized.read_text().count(" = i32.lt.signed ") != 1:
+            raise RuntimeError("source boundary branches were not pruned")
+        for selected in (raw, optimized):
+            # Raw code has four static return captures, of which only the last
+            # executes; CFG pruning leaves one capture in optimized code.
+            execute(
+                compiler,
+                runtime,
+                mode,
+                work,
+                selected,
+                [0, 0, 0, 42] if selected == raw else [42],
+                [0, 0, 0, 1] if selected == raw else [1],
+            )
+            call([compiler, "object", selected, obj], work)
+            if os.environ.get("FIR_FLASHVM_RUNNER"):
+                call([os.environ["FIR_SWL"], "link", movie, obj], work)
+                if (
+                    call([os.environ["FIR_FLASHVM_RUNNER"], movie], work).stdout.strip()
+                    != "42"
+                ):
+                    raise RuntimeError("source comparison SWF differs")
     print(
-        "PASS integer identities: i32/big rules, MIN wrapping, traps, ordered CSE, signed zero, source Dis/SWF"
+        "PASS integer identities: i32/big rules, MIN wrapping, reflexivity/bounds, NaN, traps, ordered CSE, source Dis/SWF"
     )
 
 

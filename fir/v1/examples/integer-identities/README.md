@@ -58,3 +58,13 @@ through the interpreter and JIT. The SWO output still needs the SWL link step.
 To match CLI bytes, this client explicitly materializes canonical optimized FIR
 between FIR_OPT and backend calls. Direct in-memory optimization preserves old
 SSA identities and can reserve different slots; see the [identity contract](../../doc/INTEGER_IDENTITIES.md).
+
+## Comparison example
+
+[comparisons.b](comparisons.b) adds total integer comparison proofs to the
+same source/compiler pipeline. Its loop sums 0+1+2+3 and returns that sum+36.
+The `i == i` branch is selected; `i < i`, `i < MIN` and `MAX < i` branches are
+impossible. Optimization removes those predicates and their unreachable returns
+while retaining the loop test. Use this input in place of main.b in the CLI
+commands above; both raw and optimized object targets support this example.
+The line comments explain every statement. No extra library or ABI is needed.
