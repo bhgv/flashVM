@@ -1,13 +1,18 @@
-# v0.1674 — Synchronization audit and independent window lifetime
+# v0.1674 — Unified channel readiness and independent window lifetime
 
-Experiment still points to **bfa52530021a9fbd5ca58a69e03042c89a8d9bdd**.
-No incoming selected change and no new common defect requiring an outgoing patch
-were found. Dis **797** and bootstrap **277** files retain the exact pin/hashes;
-**954 unique sources** are shared with the audited upstream Git objects. The
-workspace-only fixes concern MovieClip lifetime, Limbo layout/input and SDK clients.
-Previous outgoing fixes remain present in experiment. No empty upstream commit
-or private interpreter fork was created.
+Final experiment pin: **7e4613ba27c48a556d911cd120852d9919ec0f00**.
+Incoming SEND/RECV now share readiness validation of both queue heads/peers;
+buffered JIT preflight rejects malformed heads before native transfer. Imported
+sources remain byte-identical. Dis **797** and bootstrap **277** files, **954
+unique sources**, match upstream Git blobs and manifest SHA-256 values.
 
+The reverse review found no new common defect needing an outgoing patch.
+Previous outgoing fixes remain present in experiment. MovieClip retirement,
+Limbo window/layout policy and SDK clients are workspace-specific and stay here.
+No empty upstream commit or private interpreter fork was created.
+
+Final full core **212/212**, runtime **241/241**; relocated editor/runtime SDKs,
+compiler-OFF tutorial and Git-only reconstructed owners also pass interpreter/JIT.
 [Series](../docs/releases/v0.1674.md) · [Desktop lifetime](../ide/DESKTOP-LIFECYCLE.md).
 
 # v0.1673 — ALT publication and MovieClip desktop
