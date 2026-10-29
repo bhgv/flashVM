@@ -660,17 +660,21 @@ simplify_integer_pairs(const FirModule *m, FirInstruction *in, const FirInstruct
 }
 
 
-/* Materialize a fully proven integer bit result without evaluating producers.
+/* Materialize a fully proven modular integer result without evaluating producers.
  * in is verified mutable IR and facts describes the equivalent current graph.
- * Return1 on rewrite,0 otherwise. Only admitted pure bit operations and legal
+ * Return1 on rewrite,0 otherwise. Only admitted modular/bit operations and legal
  * checked shifts qualify; each operand producer retains its own effects. */
-static int fold_known_integer_bits(FirInstruction *in, const FirIntegerFacts *facts)
+static int fold_known_integer_result(FirInstruction *in, const FirIntegerFacts *facts)
 {
     int wide = in->type == T_I64;
     uint64_t zero;
     uint64_t one;
     switch (in->op)
     {
+    case O_ADD:
+    case O_SUB:
+    case O_BIG_ADD:
+    case O_BIG_SUB:
     case O_I32_AND:
     case O_I32_OR:
     case O_I32_XOR:
@@ -722,7 +726,7 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
             }
             a = in->a < 0 ? 0 : &m->instructions[m->values[in->a].definition];
             b = in->b < 0 ? 0 : &m->instructions[m->values[in->b].definition];
-            if (fold_known_integer_bits(in, &facts) || simplify_integer_pairs(m, in, a, b) ||
+            if (fold_known_integer_result(in, &facts) || simplify_integer_pairs(m, in, a, b) ||
                 simplify_integer_comparison(in, a, b) || simplify_integer_identity(in, a, b))
             {
                 changed = 1;
