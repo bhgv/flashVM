@@ -1,3 +1,16 @@
+# v0.1676 — ALT metadata preflight and drained-queue finalization
+
+Experiment pin: **95df086d0cf29ab9b471b4d057dd741f7c955794**.
+Imported 60837e4 guard validation before any registration and 95df086 blocked ALT
+cancellation after queue draining/finalization. Added fixtures and independent
+C/RX UBSan matrices. Dis **803**, bootstrap **277**, **960 unique selected files**
+match exact upstream Git blobs and manifest SHA-256. Full core **218/218** and
+runtime **245/245** pass. No new common defect requiring an outgoing patch was
+found; earlier outgoing fixes remain in experiment. Menu/SDK entry integration
+is workspace-specific and stays here.
+
+[Series](../docs/releases/v0.1676.md) · [Entry points](../ide/ENTRYPOINTS.md).
+
 # v0.1675 — Queue-chain validation and glyph selection
 
 Experiment pin: **b27a8513e5cbae9768bf7d95d1fe25bb967a4c4b**.

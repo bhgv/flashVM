@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1675**. [English](README.md).
+Версия разработки: **0.1676**. [English](README.md).
 
-Текущая серия: [v0.1675](docs/releases/v0.1675.md): мышиная каретка/выделение по глифам, независимый допуск layout/документа, табуляция в AS и проверка цепочек очередей Inferno.
+Текущая серия: [v0.1676](docs/releases/v0.1676.md): build-menu запускает настоящий MovieClip-стол, показывает новые примеры; импортированы ALT preflight/finalization из Inferno.
 
 ## Просмотр документации
 
