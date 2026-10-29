@@ -256,13 +256,15 @@ typedef struct
 } FirModule;
 
 
-/* Successful-evaluation facts for immutable int32 SSA, never mutable cells.
+/* Successful-evaluation facts for immutable int32/big SSA, never mutable cells.
  * Scratch belongs to the caller; rebuild after changing live definitions or
  * operands. Retiring unused values preserves facts about the retained graph. */
 typedef struct
 {
     uint32_t zero[FIR_LIMIT]; /* Bits proven zero in every successful result. */
-    uint32_t one[FIR_LIMIT];  /* Bits proven one in every successful result. */
+    uint32_t one[FIR_LIMIT];  /* Bits proven one in every successful int32 result. */
+    uint64_t big_zero[FIR_LIMIT]; /* Bits proven zero in every successful big result. */
+    uint64_t big_one[FIR_LIMIT]; /* Bits proven one in every successful big result. */
 } FirIntegerFacts;
 
 
@@ -274,6 +276,11 @@ void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts);
 /* Query fresh facts for a verified int32 value; one means provably nonzero.
  * Unknown/zero returns zero. No ownership or effect contract is changed. */
 int fir_integer_nonzero(const FirIntegerFacts *facts, int value);
+
+
+/* Query fresh facts for a verified big value; one means provably nonzero.
+ * Unknown/zero returns zero. Ownership and producer effects remain unchanged. */
+int fir_big_nonzero(const FirIntegerFacts *facts, int value);
 
 
 /* Query fresh facts for an int32 count in [0,width-1], width32/64 only.

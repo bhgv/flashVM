@@ -505,7 +505,7 @@ static int scalar_is_total_for_dce(const FirModule *m, const FirInstruction *in,
         return fir_integer_nonzero(facts, in->b);
     case O_BIG_DIV:
     case O_BIG_MOD:
-        return right->op == O_I64 && right->big != 0;
+        return fir_big_nonzero(facts, in->b);
     case O_I32_SHL:
     case O_I32_SHR:
         return fir_integer_shift_count(facts, in->b, 32);

@@ -73,8 +73,8 @@ init()
              "value(): int {\n    sum := 0;\n" +
              "    for(i := -7; i < 8; i++) {\n" +
              "        recovered := ((i + 7) - 7) + ((i ^ 3) ^ 3);\n" +
-             "        sum += (i / (i | 1)) * (i | 1) + i % (i | 1) + recovered - i - i\n" +
-             "               + (i << (i & 31)) - (i << (i & 31));\n    }\n" +
+             "        sum += (i / ((i | 1) << 1)) * ((i | 1) << 1) + i % ((i | 1) << 1) + recovered - i - i\n" +
+             "               + (i << ((i & 127) >> 2)) - (i << ((i & 127) >> 2));\n    }\n" +
              "    return sum + 42;\n}\n";
     action := "// π😀 build snapshot\nvar x=6;trace(x*7);";
     retained: array of byte;

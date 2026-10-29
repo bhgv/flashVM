@@ -1379,3 +1379,12 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
     set_tests_properties(disvm_fir_integer_facts_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
+
+if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
+  foreach(mode jit interp)
+    add_test(NAME disvm_fir_integer_shift_facts_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/integer_shift_facts.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_integer_shift_facts_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
