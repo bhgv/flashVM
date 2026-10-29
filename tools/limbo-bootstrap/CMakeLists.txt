@@ -334,3 +334,9 @@ if(BUILD_TESTING)
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;ASAN_OPTIONS=detect_leaks=0")
   endforeach()
 endif()
+
+# Both active compiler operand writers use the same bounded signed30 encoder.
+if(BUILD_TESTING)
+  add_test(NAME limbo_bootstrap_dis_constants COMMAND "${PYTHON_EXECUTABLE}"
+    "${u}/limbo/tests/dis-constants.py")
+endif()

@@ -97,3 +97,11 @@ pops and empty reductions. `prepare_parser.py` preserves those guards and applie
 a bounded 1024-slot host capacity after the upstream header, which otherwise
 sets 200. Historical source anchors remain checked; this does not change the
 primary Coco/R compiler or the upstream snapshot.
+
+## Общий кодировщик операндов
+
+Снимок включает include/dis-operand.h вместе с limbo/dis.c. Потоковый и
+буферный writer используют проверяемый signed30 encoder с беззнаковыми
+сдвигами и без частичной записи при отказе по диапазону/ёмкости. Тест
+dis-constants проверяет оба production writer и fixed-word output. Байты
+классического формата сохраняются; новый Dis64 ABI этим не включается.

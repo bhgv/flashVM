@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "25626d8dcc0ecac2a7438e3ae4c05949e3f2ca5e",
+  "revision": "b30d99c42ce7e63dbb0fd606e25d472a5b7354d4",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -200,7 +200,10 @@
     "limbo/tests/README.symbol-output.md",
     "limbo/tests/symbol-output-reference.c",
     "limbo/tests/symbol-output.c",
-    "limbo/tests/symbol-output.py"
+    "limbo/tests/symbol-output.py",
+    "include/dis-operand.h",
+    "limbo/tests/dis-constants.py",
+    "limbo/tests/README.dis-constants.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -235,6 +238,7 @@
     "upstream/include/NOTICE": "05e1a9688b3766a57b58a8a0dd84941366572e798d14fca255fcd7d817fd800d",
     "upstream/include/arm-fp.h": "aa07f8765c49ac9dcb94543599190b94811420a99e2037cadeb999d9c39f4466",
     "upstream/include/bio.h": "62dad44e0bf7846eaea75cf97b27c9777b562a3a82cfaaeded1803cb85307dd4",
+    "upstream/include/dis-operand.h": "315c6857c255feaf2f76c144600cd4c7ea787c19e516c11e21e885e0ec419117",
     "upstream/include/fcall.h": "3d3ee67a0c6beb7be8cbf9d25bbefb01f1fea51ef5470d7e6e410cad7da3057f",
     "upstream/include/isa.h": "2c7f60da3b71c139c60bb0dc73d75fe289100d285055401813f358ba4cacacef",
     "upstream/include/libsec.h": "ab25752ebef701f4993377ee0a0a94b022fd1b3582ac6aac941780b87410239f",
@@ -371,7 +375,7 @@
     "upstream/limbo/asm.c": "bf2f1d84e97c4442fbfdfcb529c4922fb2af20af9966629d7d570320663af90f",
     "upstream/limbo/com.c": "170c8048638c17d279a24e67b2cafd3f6363acefff61e57057438a4a59bea897",
     "upstream/limbo/decls.c": "cc7dc4663947506bae7cc4f89156cf81627d7775332b27f8de37b48796f2474f",
-    "upstream/limbo/dis.c": "472d6dc804722e8c8fe3d106bae7b8445b50670245c16dbd001132c2de00d58c",
+    "upstream/limbo/dis.c": "d4069bd42560e90d5a9fe48179fbea9b02ae0c6fad2cb6482713c17217a17ce7",
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
     "upstream/limbo/ecom.c": "058c3a958be21677eda8fd02f6a0d43856c3c90a3746d6e0985014c77d6480fe",
     "upstream/limbo/fns.h": "e05c6562443f2afd62f661c5f893757aa6055d7ffe1a5d7727f1f47d3be30984",
@@ -387,6 +391,7 @@
     "upstream/limbo/tests/README.comm-alias-walks.md": "b30d00bd91d0a000d2d0ad05182514742b018b6cde76a7a60d10255b8a110ad3",
     "upstream/limbo/tests/README.declaration-walks.md": "f48cfadb8ac6f29f4c0ecea424945ed7de27b5e32d6019c6c065b7c7e21003b6",
     "upstream/limbo/tests/README.diagnostic-print.md": "735ec159705a814854ce13ae5e5182f08db0bbd8ba36e64cfcf372418cd9ad01",
+    "upstream/limbo/tests/README.dis-constants.md": "10d582195fdc32d7f6fa071eac4ac5295071ce7c5f16a9e8990bf9bdd3bffe4e",
     "upstream/limbo/tests/README.inline-graphs.md": "2d784785c8f8e794bf3d8dbf85d43479d2a01f8b9d1364fccbf4af56465c8fc5",
     "upstream/limbo/tests/README.node-chains.md": "e3a7a58d2098dea5ed7ac68806a62ac54461714c85defd5d1cf36fe3bbcd0924",
     "upstream/limbo/tests/README.node-queries.md": "17f6835b0c0d764498adbb5dec6b39c2cd9367fc3122de350db70bfc0d3383f0",
@@ -418,6 +423,7 @@
     "upstream/limbo/tests/diagnostic-print.c": "dd7a2585f0c5654807c5900a04c4b2f259a13bf887dbe89225383f8a2357b4e2",
     "upstream/limbo/tests/diagnostic-print.py": "1327bde9e009e7f14aebde8312995bab3a8744680cd43b0af172b71869e1115e",
     "upstream/limbo/tests/diagnostic-reference.c": "6b1b11a89783ebf5944656ecf595a74a9d6ef8f0938f290075158b55a8218f29",
+    "upstream/limbo/tests/dis-constants.py": "43541982da5828e4ddaf88481272810d5c428a925e2d36ed5d41009dcf4146ae",
     "upstream/limbo/tests/fold-casts.c": "818f7ef56b417784602f6af3fb44ebc9df5d5dc3d881fb1bd21517589bbc7c04",
     "upstream/limbo/tests/fold-effects.c": "d14e7527acf2f7a4d5fbc0f93be11a85efe3abb5e153b366443f6ef4ff671d6e",
     "upstream/limbo/tests/fold-identities.c": "b38aa4ca7afbd67b5ce66f2995b21db528794d9733e85a4fd6f28287fb5ecfe1",

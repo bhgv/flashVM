@@ -112,6 +112,7 @@ if(BUILD_TESTING)
     vm-widths
     dis-layout
     dis-control
+    dis-rune
     array-indices
     descriptor-index
     heap-bounds
@@ -690,4 +691,10 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
     set_tests_properties(disvm_stack_callbacks_${driver} PROPERTIES TIMEOUT 240
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all")
   endforeach()
+endif()
+
+# The active Limbo writers share the selected unsigned-shift encoder header.
+if(BUILD_TESTING)
+  add_test(NAME disvm_dis-constants COMMAND "${Python3_EXECUTABLE}"
+    "${u}/limbo/tests/dis-constants.py")
 endif()
