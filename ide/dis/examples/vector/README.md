@@ -7,6 +7,8 @@ native drawing demo. Max/N makes the active vector window larger. B/R/E/L select
 brush/rectangle/ellipse/line,1..6 change colour, F toggles figure fill, +/- changes
 width. Ctrl+S/O saves/reads SVG; Ctrl+Z/Y undo/redo a whole gesture.
 
+Screen controls in v0.1697: upper row tools/Undo/Redo/width; lower row six colours/fill/current width. The last tile is an indicator.
+
 ## Open the supplied drawing
 
 ```sh

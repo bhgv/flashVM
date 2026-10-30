@@ -56,6 +56,19 @@ send(codec: Uibridge, output: chan of array of byte, code, flags, first, last: i
 }
 
 
+# Interpret one decoded uint32 hit word as signed int32 on classic and NC64.
+# parseword intentionally returns raw bits; toolbar cells use negative sentinels.
+# Return only a copied scalar, without I/O, source mutation or native access.
+signedoffset(value: int): int
+{
+    number := big value;
+    if (number >= big 16r80000000) {
+        number -= big 16r100000000;
+    }
+    return int number;
+}
+
+
 # Keep source identities readable without changing the actual destination path.
 caption(reply: Idedeskpane->Reply, index: int): string
 {
@@ -124,7 +137,7 @@ init()
     }
     windows[0] = panes->startnotified(initialkind, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, width indicator. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
     windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -166,6 +179,9 @@ init()
             request.window = index + 1;
             request.title = caption(snapshot, index + 1);
             request.body = snapshot.body;
+            if (snapshot.kind == panes->Vector) {
+                request.body = ""; # The copied toolbar replaces the text-only legend.
+            }
             request.caret = -1;
             request.anchor = -1;
             request.line = 0;
@@ -236,7 +252,7 @@ init()
             }
             stream := shown[index].drawing;
             send(codec, output, desk->VectorBegin, view.ticket, index + 1, len stream,
-                 codec->hexword(shown[index].revision));
+                 codec->hexword(shown[index].revision) + codec->hexword(desk->VectorVersion));
             for (offset := 0; offset < len stream; offset += 1024) {
                 end := offset + 1024;
                 if (end > len stream) {
@@ -387,16 +403,22 @@ init()
             (codeok, code) := codec->parseword(array of byte event.text, 8);
             (hitok, hit) := codec->parseword(array of byte event.text, 16);
             (offsetok, offset) := codec->parseword(array of byte event.text, 24);
+            offset = signedoffset(offset);
             if (phaseok && codeok && hitok && offsetok && (code == 1 || code == 4 || code == 5 || code == 6 || code == 7 || code == 8 || code == 9 || code == 10)) {
                 if (drawing != 0 && code != 1) {
                     panecall(windows[drawing-1], panes->CancelPointer, "", nil);
                     drawing = 0;
                 }
+                if (code == 1 && hit >= 1 && hit <= len windows && windows[hit-1] != nil &&
+                    shown[hit-1].kind == panes->Vector && pointing != 0) {
+                    panecall(windows[pointing-1], panes->CancelPointer, "", nil);
+                    pointing = 0;
+                }
                 if (code == 1 && (drawing != 0 || (hit >= 1 && hit <= len windows &&
                     windows[hit-1] != nil && shown[hit-1].kind == panes->Vector))) {
                     if (event.flags != view.ticket || hit < 1 || hit > len windows ||
                         windows[hit-1] == nil || shown[hit-1].kind != panes->Vector ||
-                        offset < 0 || offset > 601600 || (drawing != 0 && drawing != hit)) {
+                        offset < -16 || offset == -1 || offset > 601600 || (drawing != 0 && drawing != hit)) {
                         if (drawing != 0) {
                             panecall(windows[drawing-1], panes->CancelPointer, "", nil);
                             drawing = 0;
@@ -410,6 +432,24 @@ init()
                     request.y = event.second;
                     admitted := deskcall(layout, request);
                     if (admitted.status != desk->Ok || (phase != 1 && drawing != hit)) {
+                        continue;
+                    }
+                    if (offset < -1) {
+                        if (drawing != 0) {
+                            panecall(windows[drawing-1], panes->CancelPointer, "", nil);
+                            drawing = 0;
+                            continue;
+                        }
+                        if (phase == 1) {
+                            if (active != hit) {
+                                panecall(windows[active-1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+                            }
+                            active = hit;
+                            request.operation = desk->Activate;
+                            view = deskcall(layout, request);
+                            panecall(windows[hit-1], panes->VectorControl, "",
+                                ref Uibridge->Message(codec->Request, 0, -offset - 1, shown[hit-1].revision, 0, 0, ""));
+                        }
                         continue;
                     }
                     if (phase == 1) {

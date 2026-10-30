@@ -5,6 +5,7 @@
 #include "flashvm/flashvm.h"
 #include "flashvm/path.h"
 #include "editor_raster.h"
+#define DVM_DESK_VECTOR_VERSION 2UL /* Exact private vector header revision; no Dis64 wire admission. */
 #define DVM_DESK_VECTOR_BEGIN 65576UL /* Staged pane/revision and exact vector-stream byte count. */
 #define DVM_DESK_VECTOR_DATA 65577UL /* Same-ticket pane and exact ordered byte offset, ASCII hex. */
 #define DVM_DESK_COLORS 65575UL  /* Same-ticket body palette: first=pane, second=source revision. */
@@ -44,8 +45,9 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame);
 int dvm_desktop_advance(unsigned int elapsed);
 
 
-/* Owner-only glyph hit in the last completed scene. x/y are canvas pixels;
- * widget/position are copied scalar outputs, initialized to 0/-1 on no hit.
+/* Owner-only input hit in the last completed scene. x/y are canvas pixels;
+ * widget/position are copied outputs, initialized to0/-1 on no hit. Text panes
+ * return a scalar offset; vector canvases return y*1001+x, toolbar cells-2..-16.
  * Returns zero for headers/occlusion/failure; never edits a document. */
 int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position);
 /* Return committed input/view state, or zero before any desktop scene. */

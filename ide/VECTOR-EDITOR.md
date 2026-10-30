@@ -3,7 +3,7 @@
 [Русский](VECTOR-EDITOR.ru.md) · [Entry points](ENTRYPOINTS.md) ·
 [Desktop](DESKTOP-WORKSPACE.md) · [Example](dis/examples/vector/README.md)
 
-Implemented in v0.1696; SVG interoperability extended in v0.1697: a new independently owned vector document type inside
+Implemented in v0.1696, expanded with screen controls and SVG interoperability in v0.1697: a new independently owned vector document type inside
 menu **8**, the existing MovieClip IDE. Click **Draw** on the right, or press
 **Ctrl+Shift+N**. Each command creates another MDI window, up to the existing
 combined eight-window limit. Text editors, vector documents, Help and console
@@ -16,15 +16,24 @@ commands and calls actual MovieClip moveTo/lineTo/curveTo/lineStyle/beginFill.
 Detached contours then go through the existing raster workers. No worker uses a
 VM/font/document pointer. This is scheduled Dis ownership, not parallel VM/GC.
 
-![Actual MovieClip vector window and thumbnail](assets/vector-v0.1696.png)
+![Actual MovieClip vector window and thumbnail](assets/vector-v0.1697.png)
 
 ## Drawing
 
-Focus the vector window, choose a tool with its key, then drag on the page below
-the two-line tool legend. The owner accepts explicit keys and asynchronous/batched SDL text commands.
-Controls currently use the keyboard; the main right
-rail has the Draw creation button. A full Flash-style toolbox/selection editor
-is not implemented yet.
+Focus the vector window and use its two rows of rounded child MovieClips:
+
+| Row | Left to right |
+| --- | --- |
+| Upper | Brush, rectangle, ellipse, line, Undo, Redo, narrower stroke, wider stroke |
+| Lower | Six colour swatches, fill toggle, current colour with numeric stroke width |
+
+The last width tile is an indicator. Selected tools/colours/fill are highlighted;
+unavailable history and width steps are dimmed. Clicks carry a copied cell
+proposal through the same ticket/owner/revision admission as the canvas. Each
+pane and miniature owns its own16 child MovieClips. The model remains on Dis.
+Controls hide in very narrow panes; keyboard shortcuts remain available.
+The owner also accepts explicit keys and asynchronous/batched SDL text commands.
+Node selection/editing and a full Flash-style toolbox remain future work.
 
 | Key | Action |
 | --- | --- |
@@ -115,15 +124,19 @@ original in-memory artwork remains available for another Save.
 Limits are local resource policy, not SVG/Dis64 wire requirements:32 paths,
 64 commands/path,512 commands/document,64 KiB UTF-8 source input including metadata. Authoring reserves
 64 commands before starting another gesture; it may conservatively refuse before
-all512 are consumed. Each complete drawing stream is at most21,512 ASCII bytes.
+all512 are consumed. Each complete drawing stream is at most21,560 ASCII bytes.
 
 `Idedeskpane.Reply.drawing` carries a complete copied snapshot. Local UI codes
 65576/65577 stage Begin/data fragments inside the ordinary desktop Begin/End:
-Begin identifies pane/revision/exact bytes; data has the same view ticket and
+Begin identifies pane/revision/exact bytes and explicit private version2. The
+complete stream starts with tool/colour/width/fill/Undo/Redo and path count;
+data has the same view ticket and
 exact next byte offset, at most1024 bytes. The native adapter validates the whole
 stream, every style, range, opcode and extent before scene commit. Missing,
 reordered, duplicate, overlong or malformed fragments cannot commit partial paths.
-These are private UI codes, **not shared Dis64 format/opcode IDs**. Exported module
+These are private UI codes, **not shared Dis64 format/opcode IDs**. Old unversioned
+vector messages are rejected. Hit metadata uses signed int32 cells -2..-16;
+raw uint32 parse results are explicitly sign-extended on NC64. Exported module
 signatures changed: rebuild/install the matching .dis/.m application together.
 
 ## Verification and sources

@@ -104,12 +104,19 @@ typedef struct VectorScene
     char bytes[VECTOR_BYTES];              /* Owned bounded hex assembly buffer. */
     size_t expected;                       /* Exact declared stream bytes, zero for text panes. */
     size_t used;                           /* Contiguous bytes received. */
+    unsigned long tool;                   /* Copied selected authoring tool1..4. */
+    unsigned long color;                  /* Copied current RGB24. */
+    unsigned long width;                  /* Copied current logical width1..32. */
+    unsigned long fill;                   /* Copied fill toggle0/1. */
+    unsigned long undo;                   /* Copied Undo availability0..16. */
+    unsigned long redo;                   /* Copied Redo availability0..16. */
     unsigned int count;                    /* Parsed complete path count. */
     unsigned int complete;                 /* Only one allows painting/End commit. */
     VectorShape shapes[VECTOR_SHAPES];     /* Copied style/range records. */
     VectorNode nodes[VECTOR_NODES];        /* Copied scalar commands. */
 } VectorScene;
 
+static FVM_Object *vector_buttons[DESK_SLOTS][16]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
 static VectorScene vectors[9]; /* Stable pane identities1..8, reset at scene Begin. */
 
 
@@ -603,11 +610,16 @@ int dvm_desktop_bind(FVM_Context *context, const unsigned char *font, size_t siz
  * before dereference; no partial stream is paintable and no SVG/XML is parsed. */
 static int vector_parse(VectorScene *scene)
 {
-    size_t at = 8;
+    size_t at = 56;
     unsigned long shapes;
     unsigned int total = 0;
     unsigned int i;
-    if (!word(scene->bytes, &shapes) || shapes > VECTOR_SHAPES)
+    if (scene->used < 56 || !word(scene->bytes, &scene->tool) ||
+        !word(scene->bytes + 8, &scene->color) || !word(scene->bytes + 16, &scene->width) ||
+        !word(scene->bytes + 24, &scene->fill) || !word(scene->bytes + 32, &scene->undo) ||
+        !word(scene->bytes + 40, &scene->redo) || !word(scene->bytes + 48, &shapes) ||
+        scene->tool < 1 || scene->tool > 4 || scene->color > 0xffffffUL || scene->width < 1 ||
+        scene->width > 32 || scene->fill > 1 || scene->undo > 16 || scene->redo > 16 || shapes > VECTOR_SHAPES)
     {
         return 0;
     }
@@ -668,10 +680,248 @@ static double vector_scale(const DeskItem *item)
 }
 
 
+/* Draw one small copied line/curve icon through ordinary MovieClip methods.
+ * cell selects presentation only; all control admission/semantics remain on Dis.
+ * Caller owns the context and child clip; zero propagates a VM drawing error. */
+static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigned long color)
+{
+    FVM_Value args[4];
+    FVM_Value ignored;
+    double scale = fmin(1.0, (wide - 8) / 18.0);
+    double x[18];
+    double y[18];
+    unsigned int count = 0;
+    unsigned int i;
+    if (scale <= 0)
+    {
+        return 1;
+    }
+    if (cell == 0)
+    {
+        for (i = 0; i < 9; ++i)
+        {
+            x[i] = -7 + i * 1.75;
+            y[i] = sin(i * 0.8) * 4;
+        }
+        count = 9;
+    }
+    else if (cell == 1 || cell == 2 || cell == 14)
+    {
+        count = cell == 2 ? 17 : 5;
+        for (i = 0; i < count; ++i)
+        {
+            if (cell == 2)
+            {
+                x[i] = cos(i * 3.141592653589793 / 8) * 7;
+                y[i] = sin(i * 3.141592653589793 / 8) * 5;
+            }
+            else
+            {
+                x[i] = i == 0 || i >= 3 ? -6 : 6;
+                y[i] = i < 2 || i == 4 ? -5 : 5;
+            }
+        }
+    }
+    else if (cell == 3)
+    {
+        x[0] = -7;
+        y[0] = 5;
+        x[1] = 7;
+        y[1] = -5;
+        count = 2;
+    }
+    else if (cell == 4 || cell == 5)
+    {
+        double sign = cell == 4 ? 1 : -1;
+        x[0] = 7 * sign;
+        y[0] = 4;
+        x[1] = 7 * sign;
+        y[1] = -3;
+        x[2] = -6 * sign;
+        y[2] = -3;
+        x[3] = -2 * sign;
+        y[3] = -7;
+        x[4] = -6 * sign;
+        y[4] = -3;
+        x[5] = -2 * sign;
+        y[5] = 1;
+        count = 6;
+    }
+    else if (cell == 6 || cell == 7)
+    {
+        x[0] = -6;
+        y[0] = 0;
+        x[1] = 6;
+        y[1] = 0;
+        count = 2;
+    }
+    fvm_value_number(args, 1.6);
+    fvm_value_number(args + 1, color);
+    fvm_value_number(args + 2, 100);
+    if (fvm_object_call(owner, clip, "lineStyle", 3, args, &ignored) != FVM_OK)
+    {
+        return 0;
+    }
+    for (i = 0; i < count; ++i)
+    {
+        fvm_value_number(args, wide / 2 + x[i] * scale);
+        fvm_value_number(args + 1, 10 + y[i] * scale);
+        if (fvm_object_call(owner, clip, i ? "lineTo" : "moveTo", 2, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    if (cell == 7)
+    {
+        fvm_value_number(args, wide / 2);
+        fvm_value_number(args + 1, 10 - 6 * scale);
+        if (fvm_object_call(owner, clip, "moveTo", 2, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+        fvm_value_number(args + 1, 10 + 6 * scale);
+        if (fvm_object_call(owner, clip, "lineTo", 2, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* Render one copied decimal digit as seven small solid line segments. Value is
+ *0..9; geometry/color are caller-owned values, no font or document is accessed. */
+static int vector_digit(FVM_Object *clip, unsigned int value, double cx, double cy, double scale, unsigned long color)
+{
+    static const unsigned int masks[10] = {63, 6, 91, 79, 102, 109, 125, 7, 127, 111};
+    static const double coordinates[7][4] = {
+        {-2, -4, 2, -4}, {2, -4, 2, 0}, {2, 0, 2, 4}, {-2, 4, 2, 4},
+        {-2, 0, -2, 4}, {-2, -4, -2, 0}, {-2, 0, 2, 0}};
+    unsigned int i;
+    FVM_Value args[3];
+    FVM_Value ignored;
+    fvm_value_number(args, 1.2);
+    fvm_value_number(args + 1, color);
+    fvm_value_number(args + 2, 100);
+    if (value > 9 || fvm_object_call(owner, clip, "lineStyle", 3, args, &ignored) != FVM_OK)
+    {
+        return 0;
+    }
+    for (i = 0; i < 7; ++i)
+    {
+        if (!(masks[value] & (1U << i)))
+        {
+            continue;
+        }
+        fvm_value_number(args, cx + coordinates[i][0] * scale);
+        fvm_value_number(args + 1, cy + coordinates[i][1] * scale);
+        if (fvm_object_call(owner, clip, "moveTo", 2, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+        fvm_value_number(args, cx + coordinates[i][2] * scale);
+        fvm_value_number(args + 1, cy + coordinates[i][3] * scale);
+        if (fvm_object_call(owner, clip, "lineTo", 2, args, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* Update16 real child MovieClips with copied state. Source and thumbnail each
+ * own their children through parent edges; workers receive only detached paths.
+ * Null scene hides pooled controls when a slot becomes an ordinary text pane.
+ * This function presents values and never chooses/executes a document command. */
+static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *content, const VectorScene *scene)
+{
+    static const unsigned long palette[6] = {0x245ac4UL, 0xe04444UL, 0x229955UL, 0xf0b323UL, 0x222222UL, 0x9933bbUL};
+    unsigned int i;
+    double cell = content->width > 12 ? (content->width - 12) / 8.0 : 0;
+    for (i = 0; i < 16; ++i)
+    {
+        FVM_Object *button = vector_buttons[slot][i];
+        if (!scene || cell < 12)
+        {
+            if (button && !number(button, "_visible", 0))
+            {
+                return 0;
+            }
+            continue;
+        }
+        if (!button)
+        {
+            char name[32];
+            snprintf(name, sizeof(name), "vectorButton%u", i);
+            button = vector_buttons[slot][i] = child(clip, name, 100 + i);
+            if (!button)
+            {
+                return 0;
+            }
+        }
+        unsigned long fill = 0xe3e8ebUL;
+        unsigned long border = 0x8799a8UL;
+        unsigned long ink = 0x26343fUL;
+        int selected = i < 4 && scene->tool == i + 1;
+        if (i >= 8 && i < 14)
+        {
+            fill = palette[i - 8];
+            selected = scene->color == fill;
+        }
+        if (i == 14)
+        {
+            selected = scene->fill != 0;
+        }
+        if (i == 15)
+        {
+            fill = scene->color;
+            unsigned long luminance = ((fill >> 16) & 255) * 299 + ((fill >> 8) & 255) * 587 + (fill & 255) * 114;
+            ink = luminance < 128000 ? 0xffffffUL : 0x222222UL;
+        }
+        if (selected)
+        {
+            border = 0x2684dbUL;
+            if (i < 8 || i == 14)
+            {
+                fill = 0xb8d9f5UL;
+            }
+        }
+        if ((i == 4 && !scene->undo) || (i == 5 && !scene->redo) ||
+            (i == 6 && scene->width == 1) || (i == 7 && scene->width == 32))
+        {
+            ink = 0xa4afb7UL;
+        }
+        if (!number(button, "_visible", 1) || !number(button, "_x", 6 + (i % 8) * cell) ||
+            !number(button, "_y", i < 8 ? 26 : 50) || !box(button, cell - 3, 20, fill, border) ||
+            !vector_icon(button, i, cell - 3, ink))
+        {
+            return 0;
+        }
+        if (i == 15)
+        {
+            double center = (cell - 3) / 2;
+            double scale = fmin(1.4, (cell - 7) / 12);
+            if ((scene->width >= 10 && !vector_digit(button, (unsigned int)scene->width / 10, center - 4 * scale, 10, scale, ink)) ||
+                !vector_digit(button, (unsigned int)scene->width % 10, center + (scene->width >= 10 ? 4 * scale : 0), 10, scale, ink))
+            {
+                return 0;
+            }
+        }
+    }
+    if (trace && scene)
+    {
+        printf("VECTOR_TOOLBAR %lu %lu %lu %lu %lu %lu %lu %lu\n", ticket, slot,
+               scene->tool, scene->color, scene->width, scene->fill, scene->undo, scene->redo);
+    }
+    return 1;
+}
+
+
 /* Append copied vector commands to the real owner-local MovieClip. Standard
  * Flash drawing methods produce contours later detached for raster workers.
  * Return zero on a VM failure; no document policy, input or file I/O occurs. */
-static int vector_paint(FVM_Object *clip, const DeskItem *content)
+static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *content)
 {
     const VectorScene *scene;
     double scale;
@@ -680,9 +930,13 @@ static int vector_paint(FVM_Object *clip, const DeskItem *content)
     FVM_Value ignored;
     if (content->id > 8 || !vectors[content->id].complete)
     {
-        return 1;
+        return vector_toolbar(clip, slot, content, NULL);
     }
     scene = &vectors[content->id];
+    if (!vector_toolbar(clip, slot, content, scene))
+    {
+        return 0;
+    }
     scale = vector_scale(content);
     if (scale <= 0)
     {
@@ -906,8 +1160,10 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         if (message->code == DVM_DESK_VECTOR_BEGIN)
         {
             unsigned long revision;
-            if (scene->expected || message->size != 8 || !word(message->text, &revision) ||
-                revision > 0x7fffffffUL || message->second < 8 || message->second > VECTOR_BYTES)
+            unsigned long version;
+            if (scene->expected || message->size != 16 || !word(message->text, &revision) ||
+                !word(message->text + 8, &version) || version != DVM_DESK_VECTOR_VERSION ||
+                revision > 0x7fffffffUL || message->second < 56 || message->second > VECTOR_BYTES)
             {
                 return 0;
             }
@@ -1117,6 +1373,20 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
         }
         if (vectors[item->id].complete)
         {
+            double cell = item->width > 12 ? (item->width - 12) / 8.0 : 0;
+            if (cell >= 12 && localx >= 6 && localx < item->width - 6 &&
+                ((localy >= 26 && localy < 46) || (localy >= 50 && localy < 70)))
+            {
+                int column = (int)((localx - 6) / cell);
+                int index = column + (localy >= 50 ? 8 : 0);
+                if (index < 15)
+                {
+                    *widget = item->id;
+                    *position = -2 - index;
+                    return 1;
+                }
+                return 0;
+            }
             double scale = vector_scale(item);
             double vx = scale > 0 ? (localx - 6) / scale - 20 : -1;
             double vy = scale > 0 ? (localy - 80) / scale - 20 : -1;
@@ -1741,7 +2011,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     {
         return 0;
     }
-    if (!vector_paint(clip, content))
+    if (!vector_paint(clip, item->id, content))
     {
         return 0;
     }
@@ -2313,6 +2583,7 @@ unsigned long dvm_desktop_ticket(void)
 void dvm_desktop_destroy(void)
 {
     memset(vectors, 0, sizeof(vectors));
+    memset(vector_buttons, 0, sizeof(vector_buttons));
     unsigned int index;
     for (index = 0; index < DESK_SLOTS; ++index)
     {

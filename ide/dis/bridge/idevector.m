@@ -62,7 +62,8 @@ Idevector: module
     cancel: fn(doc: ref Document);
     # Return0/1 for undo/redo admission. Gesture-active requests are refused.
     history: fn(doc: ref Document, redo: int): int;
-    # Serialize complete preview as bounded ASCII hex commands for the typed UI adapter.
+    # Serialize a complete copied preview: six style/history words, path count,
+    # then bounded ASCII path commands. The typed UI adapter requires Begin v2.
     wire: fn(doc: ref Document): string;
     # Serialize complete committed SVG. Callers refuse Save while a gesture is active.
     svg: fn(doc: ref Document): string;

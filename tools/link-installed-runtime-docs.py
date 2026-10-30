@@ -73,7 +73,7 @@ def main():
     pairs[root / "ide/dis/app/desktop.b"] = package / "source/desktop.b"
     pairs[root / "ide/dis/app/desktop.m"] = package / "include/limbo/desktop.m"
     pairs[root / "ide/as/desktop-view.as"] = package / "source/as/desktop-view.as"
-    pairs[root / "ide/assets/vector-v0.1696.png"] = package / "VECTOR-EDITOR.png"
+    pairs[root / "ide/assets/vector-v0.1697.png"] = package / "VECTOR-EDITOR.png"
     pairs[root / "ide/assets/desktop-v0.1677.png"] = package / "DESKTOP-CLIPBOARD.png"
     pairs[root / "ide/assets/desktop-v0.1675.png"] = package / "DESKTOP.png"
     # Include the portable inspector/value closure even in the headless runtime package.

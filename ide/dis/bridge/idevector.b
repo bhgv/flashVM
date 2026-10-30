@@ -237,7 +237,9 @@ wire(doc: ref Document): string
         return "";
     }
     shapes := visible(doc);
-    result := codec->hexword(len shapes);
+    result := codec->hexword(doc.tool) + codec->hexword(doc.color) + codec->hexword(doc.width)
+        + codec->hexword(doc.fill) + codec->hexword(doc.nundo) + codec->hexword(doc.nredo)
+        + codec->hexword(len shapes);
     for (i := 0; i < len shapes; i++) {
         shape := shapes[i];
         result += codec->hexword(shape.color) + codec->hexword(shape.width)

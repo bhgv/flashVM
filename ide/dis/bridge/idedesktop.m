@@ -2,6 +2,7 @@
 Idedesktop: module
 {
     PATH: con "idedesktop.dis"; # Matched layout/gesture implementation.
+    VectorVersion: con 2; # Explicit private UI stream revision; unrelated to Dis64 formats.
     VectorBegin: con 65576; # Staged vector pane/revision and exact command-stream byte count.
     VectorData: con 65577; # Ordered ASCII hex fragment, same view ticket and pane.
     VectorEditor: con 17; # Create another independently owned vector document.

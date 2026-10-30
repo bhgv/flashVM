@@ -5,6 +5,7 @@
 #include <string.h>
 
 static const char valid[] = /* One red, unfilled two-node path in the logical canvas. */
+    "00000001" "00e04444" "00000008" "00000000" "00000001" "00000000"
     "00000001" "00e04444" "00000008" "00000000" "00000002"
     "00000000" "00000064" "00000064" "00000000" "00000000"
     "00000001" "0000012c" "000000c8" "00000000" "00000000";
@@ -34,7 +35,7 @@ static void message(DVM_UIMessage *out, unsigned long code, const char *text)
 
 
 /* Begin a genuine staged scene containing one vector-capable pane descriptor. */
-static void begin(void)
+static void scene(void)
 {
     DVM_UIMessage out;
     dvm_desktop_destroy();
@@ -46,7 +47,15 @@ static void begin(void)
             "000000010000006000000040000001a00000011000000001ffffffff00000000ffffffffVector");
     out.first = 1;
     require(dvm_desktop_message(&out), "copied pane");
-    message(&out, DVM_DESK_VECTOR_BEGIN, "00000001");
+}
+
+
+/* Start the exact v2 vector extent after its owning pane has been staged. */
+static void begin(void)
+{
+    DVM_UIMessage out;
+    scene();
+    message(&out, DVM_DESK_VECTOR_BEGIN, "0000000100000002");
     out.first = 1;
     out.second = (long)strlen(valid);
     require(dvm_desktop_message(&out), "vector exact extent declaration");
@@ -74,6 +83,15 @@ static void refuse(size_t offset, const char *replacement)
 int main(void)
 {
     DVM_UIMessage out;
+    scene();
+    message(&out, DVM_DESK_VECTOR_BEGIN, "00000001");
+    out.first = 1;
+    out.second = (long)strlen(valid);
+    require(!dvm_desktop_message(&out), "old unversioned Begin is not silently reinterpreted");
+    message(&out, DVM_DESK_VECTOR_BEGIN, "0000000100000003");
+    out.first = 1;
+    out.second = (long)strlen(valid);
+    require(!dvm_desktop_message(&out), "unknown vector version");
     begin();
     message(&out, DVM_DESK_END, "");
     require(!dvm_desktop_message(&out), "missing vector fragments block commit");
@@ -96,18 +114,24 @@ int main(void)
     require(!dvm_desktop_message(&out), "duplicate final fragment");
     message(&out, DVM_DESK_END, "");
     require(dvm_desktop_message(&out), "complete scene commit");
-    refuse(0, "00000021");
+    refuse(0, "00000000");
     refuse(8, "ffffffff");
-    refuse(16, "00000021");
+    refuse(16, "00000000");
     refuse(24, "00000002");
-    refuse(32, "ffffffff");
-    refuse(40, "00000001");
-    refuse(48, "000003e9");
-    refuse(56, "00000259");
-    refuse(64, "00000001");
-    refuse(80, "00000000");
-    refuse(80, "00000004");
-    refuse(80, "gggggggg");
+    refuse(32, "00000011");
+    refuse(40, "00000011");
+    refuse(48, "00000021");
+    refuse(56, "ffffffff");
+    refuse(64, "00000021");
+    refuse(72, "00000002");
+    refuse(80, "ffffffff");
+    refuse(88, "00000001");
+    refuse(96, "000003e9");
+    refuse(104, "00000259");
+    refuse(112, "00000001");
+    refuse(128, "00000000");
+    refuse(128, "00000004");
+    refuse(128, "gggggggg");
     dvm_desktop_destroy();
     puts("PASS vector protocol: fragments, stale/order/quotas, full command validation, no partial commit");
     return 0;

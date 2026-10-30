@@ -501,6 +501,21 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 status = vectorstatus(vector->pointer(doc, e.code, e.first, e.second));
                 diagnostic = "Draw status=" + string status;
             }
+        } else if (request.operation == VectorControl) {
+            e := request.event;
+            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 15 ||
+                e.first != 0 || e.second != 0 || e.text != "") {
+                status = Idecore->Invalid;
+            } else if (e.flags != doc.revision || len doc.points != 0) {
+                status = Idecore->Conflict;
+            } else if (e.code == 5 || e.code == 6) {
+                if (!vector->history(doc, e.code == 6)) {
+                    status = Idecore->NotFound;
+                }
+            } else {
+                keys := array[] of {0, 66, 82, 69, 76, 0, 0, 189, 187, 49, 50, 51, 52, 53, 54, 70};
+                vectorstyle(vector, doc, keys[e.code]);
+            }
         } else if (request.operation == CancelPointer) {
             vector->cancel(doc);
         } else if (request.operation == Open) {

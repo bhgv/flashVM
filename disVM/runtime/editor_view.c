@@ -2553,7 +2553,7 @@ static void resolve_pointer(DVM_UIMessage *message)
                  phase,
                  code,
                  widget,
-                 position < 0 ? 0xffffffffUL : (unsigned long)position);
+                 (unsigned long)position & 0xffffffffUL);
         memcpy(message->text, metadata, 32);
         message->size = 32;
         return;

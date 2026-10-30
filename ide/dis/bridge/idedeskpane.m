@@ -5,6 +5,7 @@ Idedeskpane: module
     Editor, Console, Help, Vector: con iota + 1; # Actual document owner, mutable log, immutable help.
     Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, ExportSelection, CutSelection, PasteSelection, Shutdown: con iota; # FIFO operations.
 
+    VectorControl: con 14; # Revision-bound toolbar cell1..15; copied event code, no source coordinates.
     Draw: con 13; # Revision-bound logical canvas gesture; event code=phase, first/second=X/Y.
 
     Request: adt
@@ -18,7 +19,11 @@ Idedeskpane: module
         # first/second=the exact ordered full selection captured from a fresh reply.
         # Cut follows a successful session clipboard acknowledgement; Paste text is bounded.
         # CancelPointer drops the gesture without changing selection/modifiers.
-        event: ref Uibridge->Message; # Input keyboard/text/focus, or checked Place proposal.
+        # Draw requires Request kind, code=phase1..3, flags=shown revision,
+        # first/second=logical X/Y and empty text. VectorControl requires Request
+        # kind, code1..15, flags=committed revision, zero coordinates/empty text
+        # and an idle gesture. Both produce one ordinary pane acknowledgement.
+        event: ref Uibridge->Message; # Input keyboard/text/focus, or a checked value proposal.
         reply: chan of Reply; # Required unique acknowledgement.
     };
 
@@ -39,7 +44,7 @@ Idedeskpane: module
         transfer: string; # ExportSelection only: complete bounded selection; never native UI metadata.
         line: int; # One-based logical source line containing the viewport start.
         diagnostic: string; # Plain build/error metadata, bounded by the caller before UI publication.
-        drawing: string; # Vector-only complete bounded scalar path stream; empty for text panes.
+        drawing: string; # Vector v2 style/history header and complete bounded paths; empty for text panes.
         colors: string; # Empty while pending; otherwise one ASCII palette class 0..5 per body scalar.
     };
 

@@ -525,7 +525,7 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/token-query" "$destination/examples/token-query"
             copy_tree "$ROOT/ide/dis/examples/vector" "$destination/examples/vector"
             copy_file "$ROOT/ide/dis/bridge/idevector.b" "$destination/source/idevector.b"
-            copy_file "$ROOT/ide/assets/vector-v0.1696.png" "$destination/VECTOR-EDITOR.png"
+            copy_file "$ROOT/ide/assets/vector-v0.1697.png" "$destination/VECTOR-EDITOR.png"
             copy_file "$ROOT/ide/VECTOR-EDITOR.md" "$destination/VECTOR-EDITOR.md"
             copy_file "$ROOT/ide/VECTOR-EDITOR.ru.md" "$destination/VECTOR-EDITOR.ru.md"
             copy_file "$ROOT/ide/dis/bridge/idetokenquery.b" "$destination/source/idetokenquery.b"
