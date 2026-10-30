@@ -37,6 +37,18 @@ mdicall(owner: chan of Idemdi->Request, revision, operation, document, family: i
 }
 
 
+# Exchange a complete membership command. owner is borrowed; revision is exact,
+# operation is an Idemdi command, document/container are stable bounded IDs,
+# and family is Source/Graphics for creation. Consume the copied reply before
+# changing presentation. No document/file/native ownership is transferred.
+mdigroupcall(owner: chan of Idemdi->Request, revision, operation, document, container, family: int): Idemdi->Reply
+{
+    replies := chan of Idemdi->Reply;
+    owner <-= Idemdi->Request(1, revision, operation, document, container, family, replies);
+    return <-replies;
+}
+
+
 # Complete one private layout-owner exchange without exposing mutable state.
 deskcall(owner: chan of Idedesktop->Request, request: Idedesktop->Request): Idedesktop->Reply
 {
@@ -152,7 +164,7 @@ init()
     }
     windows[0] = panes->startnotified(initialkind, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, width indicator. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, width indicator. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nMDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. SDI / Ctrl+D detaches with saved geometry. Drag an exposed container title; children are tiled in this first version.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
     windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -621,6 +633,10 @@ init()
                 if (shift) {
                     action = desk->VectorEditor;
                 }
+            } else if (control && event.code == 71) {
+                action = desk->GroupEditor;
+            } else if (control && event.code == 68) {
+                action = desk->DetachEditor;
             } else if (control && event.code == 67) {
                 action = desk->CopySelection;
             } else if (control && event.code == 88) {
@@ -702,11 +718,23 @@ init()
                 view = deskcall(layout, request);
             } else {
                 if (current.kind == panes->Editor || current.kind == panes->Vector) {
+                    before := mdicall(membership, mdirevision, mdi->Snapshot, 0, 0);
+                    oldcontainer := before.containers[active - 1];
                     removed := mdicall(membership, mdirevision, mdi->Remove, active, 0);
                     if (removed.status != mdi->Ok) {
                         raise "fail: MDI document retirement";
                     }
                     mdirevision = removed.revision;
+                    if (oldcontainer != 0) {
+                        remaining := 0;
+                        for (member := 0; member < mdi->Limit; member++) {
+                            remaining += removed.containers[member] == oldcontainer;
+                        }
+                        if (!remaining) {
+                            dissolved := mdigroupcall(membership, mdirevision, mdi->Dissolve, 0, oldcontainer, 0);
+                            mdirevision = dissolved.revision;
+                        }
+                    }
                 }
                 # Consume the terminal acknowledgement before reusing the slot.
                 panecall(windows[active - 1], panes->Shutdown, "", nil);
@@ -739,6 +767,78 @@ init()
                     request.window = action;
                     view = deskcall(layout, request);
                 }
+            }
+        } else if (action == desk->GroupEditor || action == desk->DetachEditor) {
+            current := panecall(windows[active - 1], panes->Snapshot, "", nil);
+            if (current.kind == panes->Editor || current.kind == panes->Vector) {
+                family := mdi->Source;
+                if (current.kind == panes->Vector) {
+                    family = mdi->Graphics;
+                }
+                before := mdicall(membership, mdirevision, mdi->Snapshot, 0, 0);
+                target := 0;
+                if (action == desk->GroupEditor) {
+                    if (!shift) {
+                        for (group := 0; group < mdi->Limit; group++) {
+                            if (before.tools[group] == family) {
+                                target = group + 1;
+                                break;
+                            }
+                        }
+                    }
+                    if (target == 0) {
+                        for (group := 0; group < mdi->Limit; group++) {
+                            if (before.tools[group] == 0) {
+                                target = group + 1;
+                                break;
+                            }
+                        }
+                        if (target != 0) {
+                            made := mdigroupcall(membership, mdirevision, mdi->Create, 0, target, family);
+                            if (made.status != mdi->Ok) {
+                                raise "fail: MDI container creation";
+                            }
+                            mdirevision = made.revision;
+                        }
+                    }
+                }
+                if (action == desk->DetachEditor || target != 0) {
+                    operation := mdi->Join;
+                    if (target == 0) {
+                        operation = mdi->Leave;
+                    }
+                    changed := mdigroupcall(membership, mdirevision, operation, active, target, 0);
+                    if (changed.status != mdi->Ok) {
+                        raise "fail: MDI membership change";
+                    }
+                    mdirevision = changed.revision;
+                    request.operation = desk->SetContainer;
+                    request.window = active;
+                    request.phase = target;
+                    request.x = family;
+                    view = deskcall(layout, request);
+                    if (view.status != desk->Ok) {
+                        raise "fail: MDI presentation change";
+                    }
+                    request.operation = desk->Select;
+                    request.window = active;
+                    view = deskcall(layout, request);
+                    old := before.containers[active - 1];
+                    if (old != 0 && old != target) {
+                        used := 0;
+                        for (document := 0; document < mdi->Limit; document++) {
+                            used += changed.containers[document] == old;
+                        }
+                        if (!used) {
+                            dissolved := mdigroupcall(membership, mdirevision, mdi->Dissolve, 0, old, 0);
+                            mdirevision = dissolved.revision;
+                        }
+                    }
+                } else {
+                    panecall(windows[1], panes->SetText, "MDI container limit reached; document kept unchanged.", nil);
+                }
+            } else {
+                panecall(windows[1], panes->SetText, "MDI/SDI applies to source and graphics documents; debugger panels stay independent.", nil);
             }
         } else if (action == desk->Debugger) {
             replies := chan of Idedebug->Reply;

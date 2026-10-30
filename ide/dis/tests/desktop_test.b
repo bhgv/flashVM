@@ -233,6 +233,7 @@ init()
     view = point(layout, view.ticket, 100, 380, 1);
     check(view.action == desk->CancelClose, "narrow scroll uses actual button bounds");
     zoomanchor(desk);
+    mdicontainers(desk);
     request.operation = desk->Shutdown;
     view = call(layout, request);
     check(view.status == desk->Ok, "layout shutdown");
@@ -274,4 +275,86 @@ zoomanchor(desk: Idedesktop)
     }
     request.operation = desk->Shutdown;
     check(call(owner, request).status == desk->Ok, "zoom fixture shutdown");
+}
+
+
+# Verify real presentation descriptors for homogeneous MDI parents, root motion,
+# stale input and exact saved SDI geometry. Documents are not re-created here.
+mdicontainers(desk: Idedesktop)
+{
+    owner := desk->start();
+    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "source one", "one", -1, -1, 0, nil);
+    original := call(owner, request);
+    before := item(original, 1);
+    request.window = 4;
+    request.title = "source two";
+    call(owner, request);
+    request.operation = desk->SetContainer;
+    request.window = 1;
+    request.phase = 1;
+    request.x = 1;
+    grouped := call(owner, request);
+    check(grouped.status == desk->Ok && item(grouped, 13) != nil && item(grouped, 1).parent == 5,
+          "MDI root and actual child descriptor parent");
+    stale := point(owner, original.ticket, 100, 80, 1);
+    check(stale.status == desk->Conflict, "pre-parenting pointer ticket refused");
+    request.window = 4;
+    grouped = call(owner, request);
+    check(item(grouped, 4).parent == 5 && item(grouped, 4).x > item(grouped, 1).x,
+          "same-family children tile under one root");
+    request.x = 2;
+    refused := call(owner, request);
+    check(refused.status == desk->Invalid && refused.ticket == grouped.ticket,
+          "wrong-family layout assignment does not mutate membership");
+    root := item(grouped, 13);
+    grabbed := point(owner, grouped.ticket, root.x + 10, root.y + 10, 1);
+    moved := point(owner, grabbed.ticket, root.x + 45, root.y + 40, 2);
+    moved = point(owner, moved.ticket, root.x + 45, root.y + 40, 3);
+    check(item(moved, 13).x == root.x + 35 && item(moved, 13).y == root.y + 30 &&
+          item(moved, 1).x == item(grouped, 1).x && item(moved, 1).y == item(grouped, 1).y,
+          "moving a container keeps child local geometry unchanged");
+    root = item(moved, 13);
+    grabbed = point(owner, moved.ticket, root.x + 10, root.y + 10, 1);
+    request.operation = desk->Resize;
+    request.x = 960;
+    request.y = 640;
+    resized := call(owner, request);
+    cancelled := point(owner, resized.ticket, root.x + 55, root.y + 45, 2);
+    check(item(cancelled, 13).x == root.x && item(cancelled, 13).y == root.y,
+          "resize cancels an in-progress container drag");
+    root = item(cancelled, 13);
+    ignoredzoom := point(owner, cancelled.ticket, root.x + 18, root.y + 50, 4);
+    check(ignoredzoom.status == desk->Ok, "fixed MDI child zoom does not corrupt saved SDI state");
+    request.operation = desk->SetContainer;
+    request.window = 1;
+    request.x = 1;
+    request.phase = 0;
+    detached := call(owner, request);
+    after := item(detached, 1);
+    check(after.parent == 1 && after.x == before.x && after.y == before.y &&
+          after.width == before.width && after.height == before.height && item(detached, 4).parent == 5,
+          "detach restores saved SDI geometry without detaching siblings");
+    request.window = 4;
+    empty := call(owner, request);
+    check(item(empty, 13) == nil && item(empty, 4).parent == 1, "empty MDI root retired");
+    request.operation = desk->Update;
+    request.window = 5;
+    request.title = "source three";
+    call(owner, request);
+    slots := array[] of {1, 4, 5};
+    for (index := 0; index < len slots; index++) {
+        request.operation = desk->SetContainer;
+        request.window = slots[index];
+        request.x = 1;
+        request.phase = 8;
+        call(owner, request);
+    }
+    request.operation = desk->Select;
+    request.window = 1;
+    revealed := call(owner, request);
+    root = item(revealed, 28);
+    bottom := 48 + (root.y - 48 + root.height) * revealed.zoom / 100 - revealed.scroll;
+    check(bottom <= 635, "last container identity reveals its complete outer frame, not just child bounds");
+    request.operation = desk->Shutdown;
+    check(call(owner, request).status == desk->Ok, "MDI layout shutdown acknowledgement");
 }

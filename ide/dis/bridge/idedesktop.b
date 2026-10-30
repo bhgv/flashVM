@@ -3,8 +3,15 @@ include "idedesktop.m";
 
 
 # Copied presentation state; document authority stays with its separate pane owner.
+# [GC:] Parent references form a depth-one forest inside this owner. Replies carry
+# copied scalar geometry only; no presentation reference crosses a VM heap.
 Window: adt
 {
+    container: ref Window; # Private presentation parent; nil means SDI.
+    root: int; # Container identity1..8, zero for document windows.
+    family: int; # Container tool family1 source/2 graphics.
+    rank: int; # Stable child tile rank, recomputed on membership change.
+    count: int; # Number of children for container geometry.
     title: string; # Immutable caption value.
     body: string; # Copied presentation, not source authority.
     caret: int; # Body-local display caret.
@@ -42,7 +49,31 @@ geometry(index, width: int): (int, int, int, int)
 # the stored position. No UI object or document ownership is acquired.
 position(index, width: int, window: ref Window): (int, int, int, int)
 {
+    if (window.container != nil) {
+        parent := window.container;
+        (x, y, wide, high) := position(parent.root - 1, width, parent);
+        columns := 1;
+        if (wide >= 650) {
+            columns = 2;
+        }
+        childwide := (wide - 24) / columns;
+        return (x + 8 + (window.rank % columns) * (childwide + 8),
+                y + 40 + (window.rank / columns) * 260, childwide, 252);
+    }
     (x, y, wide, high) := geometry(index, width);
+    if (window.root != 0) {
+        x = 96;
+        y = 72 + (window.root - 1) * 320;
+        wide = width - 216;
+        if (wide < 96) {
+            wide = 96;
+        }
+        columns := 1;
+        if (wide >= 650) {
+            columns = 2;
+        }
+        high = 48 + ((window.count + columns - 1) / columns) * 260;
+    }
     if (window.maximized) {
         return (84, window.maxtop, window.maxwide, window.maxhigh);
     }
@@ -80,6 +111,9 @@ project(index, width: int, window: ref Window, zoom, pan: int): (int, int, int, 
 # Inputs are bounded copied canvas values; no document ownership is acquired.
 maximize(window: ref Window, width, height, scroll, zoom: int)
 {
+    if (window.container != nil) {
+        return;
+    }
     window.maximized = !window.maximized;
     window.maxwide = (width - 196) * 100 / zoom;
     window.maxhigh = (height - 60) * 100 / zoom;
@@ -91,7 +125,7 @@ maximize(window: ref Window, width, height, scroll, zoom: int)
 # preserves normal offsets; the caller borrows its presentation-only record.
 move(window: ref Window, dx, dy: int)
 {
-    if (window.maximized) {
+    if (window.maximized || window.container != nil) {
         return;
     }
     if (dx < -2048) {
@@ -117,6 +151,10 @@ move(window: ref Window, dx, dy: int)
 restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int, int, int)
 {
     window.hidden = 0;
+    if (window.container != nil) {
+        parent := window.container;
+        return restore(parent, parent.root - 1, width, height, scroll, zoom, pan);
+    }
     (originx, originy, wide, high) := position(index, width, window);
     # Keep one spare pixel for fractional transforms and round exposed bounds
     # outward; integer truncation must not hide a sliver beneath a rail.
@@ -171,6 +209,9 @@ restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int,
 # no source owner is closed, moved or blocked by this presentation decision.
 dock(window: ref Window, index, width, zoom, pan, dx, dy: int): int
 {
+    if (window.container != nil) {
+        return 0;
+    }
     (left, unused, wide, unusedhigh) := project(index, width, window, zoom, pan);
     if (window.maximized || left + wide > 100) {
         return 0;
@@ -236,11 +277,23 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
 
 # Build fresh scene descriptors. windows is borrowed only during this call;
 # the returned array/Items are new, and all text values are immutable Dis strings.
-scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving, zooming: int, thumbnails: array of int): array of ref Item
+scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving, zooming: int, thumbnails: array of int, containers: array of ref Window): array of ref Item
 {
-    items := array[52] of ref Item;
+    items := array[62] of ref Item;
     used := 0;
     items[used++] = ref Item(10, 0, 0, 0, 0, width, height, 2, "", -1, -1);
+    for (group := 0; group < len containers; group++) {
+        parent := containers[group];
+        if (parent == nil) {
+            continue;
+        }
+        (gx, gy, gw, gh) := position(group, width, parent);
+        id := 13 + group;
+        if (group == 7) {
+            id = 28;
+        }
+        items[used++] = ref Item(id, 1, 0, gx, gy, gw, gh, 4, parent.title, -1, -1);
+    }
     for (order := 0; order < len windows; order++) {
         index := stackslot(order, focus);
         window := windows[index];
@@ -271,9 +324,18 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
                 anchor = len window.title + 1 + window.anchor;
             }
         }
-        items[used++] = ref Item(index + 1, 1, 0, x, y, wide, high, style + window.line * 8, caption, caret, anchor);
+        parentid := 1;
+        if (window.container != nil && !window.hidden) {
+            parent := window.container;
+            (gx, gy, unusedw, unusedh) := position(parent.root - 1, width, parent);
+            x -= gx;
+            y -= gy;
+            parentid = 4 + parent.root;
+        }
+        items[used++] = ref Item(index + 1, parentid, 0, x, y, wide, high, style + window.line * 8, caption, caret, anchor);
         if (index != 1 && index != 2 && !window.hidden) {
-            items[used++] = ref Item(30 + index, 1, 0, x + wide - 30, y, 30, 24, 4, "x", -1, -1);
+            (closex, closey, closew, closeh) := position(index, width, window);
+            items[used++] = ref Item(30 + index, 1, 0, closex + wide - 30, closey, 30, 24, 4, "x", -1, -1);
         }
     }
     items[used++] = ref Item(11, 2, 0, 0, 0, 80, height, 2, "", -1, -1);
@@ -285,8 +347,8 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
                                     index + 1 == focus, windows[index].title, -1, -1);
         }
     }
-    names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close", "Clip", "All", "Max/N", "Draw"};
-    for (index := 1; index <= MaxNorm + 1; index++) {
+    names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close", "Clip", "All", "Max/N", "Draw", "MDI", "SDI"};
+    for (index := 1; index <= MaxNorm + 3; index++) {
         style := 4;
         if (drawer == index || index == Help) {
             style = 3;
@@ -349,6 +411,8 @@ serve(requests: chan of Request)
     reveal := 0; # Changes only for explicit thumbnail/Select viewport reveal proposals.
     zooming := 0; # Transient table-wide opacity, cleared on release/cancel.
     windows := array[MaxWindows] of ref Window;
+    containers := array[MaxWindows] of ref Window; # Presentation roots only; no document/GC owner transfer.
+    groupdrag := 0; # Container being moved; document drag state is independent.
     thumbnails := array[MaxWindows] of int;
     for (rank := 0; rank < len thumbnails; rank++) {
         thumbnails[rank] = rank;
@@ -381,10 +445,39 @@ serve(requests: chan of Request)
             if (request.operation == Shutdown) {
                 status = Ok;
                 stop = 1;
+            } else if (request.operation == SetContainer && request.window >= 1 && request.window <= MaxWindows &&
+                       windows[request.window - 1] != nil && request.phase >= 0 && request.phase <= MaxWindows &&
+                       (request.x == 1 || request.x == 2)) {
+                target := request.phase - 1;
+                status = Ok;
+                if (target >= 0 && containers[target] != nil && containers[target].family != request.x) {
+                    status = Invalid;
+                }
+                if (status == Ok) {
+                    if (target >= 0 && containers[target] == nil) {
+                        name := "Source MDI";
+                        if (request.x == 2) {
+                            name = "Graphics MDI";
+                        }
+                        containers[target] = ref Window(nil, target + 1, request.x, 0, 0,
+                            name, "", -1, -1, 0, 0, 0, 0, 0, 0, 100, 0, 0);
+                    }
+                    windows[request.window - 1].container = nil;
+                    if (target >= 0) {
+                        windows[request.window - 1].container = containers[target];
+                    }
+                    dragging = 0;
+                    moving = 0;
+                    groupdrag = 0;
+                    pressed = 0;
+                    thumbdrag = -1;
+                    changed = 1;
+                }
             } else if (request.operation == Cancel) {
                 zooming = 0;
                 dragging = 0;
                 moving = 0;
+                groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
                 status = Ok;
@@ -405,9 +498,11 @@ serve(requests: chan of Request)
                     dx = old.dx;
                     dy = old.dy;
                 }
-                windows[request.window - 1] = ref Window(request.title, request.body, request.caret, request.anchor, 0, 0, 0, 0, request.line, hidden, zoom, dx, dy);
+                windows[request.window - 1] = ref Window(nil, 0, 0, 0, 0, request.title, request.body, request.caret, request.anchor, 0, 0, 0, 0, request.line, hidden, zoom, dx, dy);
                 if (old != nil) {
                     current := windows[request.window - 1];
+                    current.container = old.container;
+                    current.rank = old.rank;
                     current.maximized = old.maximized;
                     current.maxwide = old.maxwide;
                     current.maxhigh = old.maxhigh;
@@ -419,6 +514,7 @@ serve(requests: chan of Request)
                 windows[request.window - 1] = nil;
                 dragging = 0;
                 moving = 0;
+                groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
                 drawer = 0;
@@ -437,6 +533,7 @@ serve(requests: chan of Request)
                        request.y >= 160 && request.y <= 2048) {
                 dragging = 0;
                 moving = 0;
+                groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
                 width = request.x;
@@ -458,6 +555,7 @@ serve(requests: chan of Request)
             } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
                 dragging = 0;
                 moving = 0;
+                groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
                 focus = request.window;
@@ -466,6 +564,7 @@ serve(requests: chan of Request)
             } else if (request.operation == Select && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
                 dragging = 0;
                 moving = 0;
+                groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
                 focus = request.window;
@@ -479,6 +578,7 @@ serve(requests: chan of Request)
             } else if (request.operation == Tool && request.window >= 0 && request.window <= MaxNorm) {
                 dragging = 0;
                 moving = 0;
+                groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
                 drawer = request.window;
@@ -489,11 +589,13 @@ serve(requests: chan of Request)
                     status = Conflict;
                     dragging = 0;
                     moving = 0;
+                    groupdrag = 0;
                     thumbdrag = -1;
                     pressed = 0;
                 } else if (request.operation == Scroll && request.x >= -2048 && request.x <= 2048) {
                     dragging = 0;
                     moving = 0;
+                    groupdrag = 0;
                     thumbdrag = -1;
                     pressed = 0;
                     scroll += request.x;
@@ -516,6 +618,7 @@ serve(requests: chan of Request)
                     }
                     if (phase == 4 || phase == 5 || phase == 6) {
                         moving = 0;
+                        groupdrag = 0;
                         thumbdrag = -1;
                         dragging = 0;
                         pressed = 0;
@@ -561,7 +664,7 @@ serve(requests: chan of Request)
                             focus = target;
                             action = Focus;
                             changed = 1;
-                        } else if (target != 0) {
+                        } else if (target != 0 && windows[target - 1].container == nil) {
                             zoom := windows[target - 1].zoom;
                             if (phase == 4) {
                                 zoom += 10;
@@ -584,6 +687,7 @@ serve(requests: chan of Request)
                         zooming = 0;
                         dragging = 0;
                         moving = 0;
+                        groupdrag = 0;
                         thumbdrag = -1;
                         pressed = 0;
                         thumbdrag = -1;
@@ -615,7 +719,10 @@ serve(requests: chan of Request)
                             # The scroll owns this area; never focus or drag the covered window.
                         } else if (x >= width - 104 && y >= 56) {
                             tool := (y - 56) / 32 + 1;
-                            if (tool == MaxNorm + 1) {
+                            if (tool == MaxNorm + 2 || tool == MaxNorm + 3) {
+                                action = GroupEditor + tool - MaxNorm - 2;
+                                drawer = 0;
+                            } else if (tool == MaxNorm + 1) {
                                 drawer = 0;
                                 action = VectorEditor;
                             } else if (tool == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
@@ -632,6 +739,21 @@ serve(requests: chan of Request)
                                     }
                                     windows[slot].hidden = 0;
                                     (left, top, wide, high) := position(slot, width, windows[slot]);
+                                    if (left < minimumleft) {
+                                        minimumleft = left;
+                                    }
+                                    if (left + wide > right) {
+                                        right = left + wide;
+                                    }
+                                    if (top + high > bottom) {
+                                        bottom = top + high;
+                                    }
+                                }
+                                for (group := 0; group < MaxWindows; group++) {
+                                    if (containers[group] == nil) {
+                                        continue;
+                                    }
+                                    (left, top, wide, high) := position(group, width, containers[group]);
                                     if (left < minimumleft) {
                                         minimumleft = left;
                                     }
@@ -692,6 +814,7 @@ serve(requests: chan of Request)
                                 if (x >= left && x < left + wide && y >= top && y < top + high) {
                                     pressed = index + 1;
                                     moving = 0;
+                                    groupdrag = 0;
                                     thumbdrag = -1;
                                     if (y < top + 24 * deskzoom / 100 || fingers == 2) {
                                         if (fingers == 1 && x >= left + wide - 30 * deskzoom / 100 && index != 1 && index != 2) {
@@ -704,7 +827,28 @@ serve(requests: chan of Request)
                                     }
                                 }
                             }
-                            dragging = pressed == 0 && drawer == 0;
+                            if (pressed == 0 && drawer == 0) {
+                                for (group := 0; group < MaxWindows; group++) {
+                                    if (containers[group] == nil) {
+                                        continue;
+                                    }
+                                    (gx, gy, gw, gh) := project(group, width, containers[group], deskzoom, deskpan);
+                                    gy -= scroll;
+                                    if (x >= gx && x < gx + gw && y >= gy && y < gy + 32 * deskzoom / 100) {
+                                        groupdrag = group + 1;
+                                        windowx = containers[group].dx;
+                                        windowy = containers[group].dy;
+                                        for (child := 0; child < MaxWindows; child++) {
+                                            if (windows[child] != nil && windows[child].container == containers[group]) {
+                                                focus = child + 1;
+                                                action = Focus;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            dragging = pressed == 0 && drawer == 0 && groupdrag == 0;
                             if (moving != 0) {
                                 focus = moving;
                                 action = Focus;
@@ -712,6 +856,10 @@ serve(requests: chan of Request)
                         }
                         changed = 1;
                     } else if (phase == 2) {
+                        if (groupdrag != 0 && containers[groupdrag - 1] != nil) {
+                            move(containers[groupdrag - 1], windowx + (x - startx) * 100 / deskzoom,
+                                 windowy + (y - starty) * 100 / deskzoom);
+                        }
                         if (thumbdrag >= 0) {
                             rank := (y - 72) / 64;
                             if (rank < 0) {
@@ -752,6 +900,7 @@ serve(requests: chan of Request)
                         }
                         if (moving != 0 && dock(windows[moving - 1], moving - 1, width, deskzoom, deskpan, windowx, windowy)) {
                             moving = 0;
+                            groupdrag = 0;
                             pressed = 0;
                             focus = 0;
                             for (slot := 0; slot < len windows; slot++) {
@@ -791,6 +940,7 @@ serve(requests: chan of Request)
                         }
                         if (moving != 0 && dock(windows[moving - 1], moving - 1, width, deskzoom, deskpan, windowx, windowy)) {
                             moving = 0;
+                            groupdrag = 0;
                             pressed = 0;
                             focus = 1;
                             for (slot := 0; slot < len windows; slot++) {
@@ -814,6 +964,7 @@ serve(requests: chan of Request)
                         pressed = 0;
                         dragging = 0;
                         moving = 0;
+                        groupdrag = 0;
                         thumbdrag = -1;
                         changed = 1;
                     }
@@ -823,6 +974,7 @@ serve(requests: chan of Request)
         if (status != Ok && (request.operation == Pointer || request.operation == Scroll)) {
             dragging = 0;
             moving = 0;
+            groupdrag = 0;
             thumbdrag = -1;
             pressed = 0;
         }
@@ -831,10 +983,33 @@ serve(requests: chan of Request)
             focus = admittedfocus;
             changed = 1;
         }
+        for (group := 0; group < MaxWindows; group++) {
+            parent := containers[group];
+            if (parent == nil) {
+                continue;
+            }
+            parent.count = 0;
+            for (child := 0; child < MaxWindows; child++) {
+                if (windows[child] != nil && windows[child].container == parent) {
+                    windows[child].rank = parent.count++;
+                }
+            }
+            if (parent.count == 0) {
+                containers[group] = nil;
+            }
+        }
         maximum := 72 + 9 * 288 - height;
         for (slot := 0; slot < len windows; slot++) {
             if (windows[slot] != nil) {
                 (unused, bottom, unusedwide, high) := project(slot, width, windows[slot], deskzoom, deskpan);
+                if (bottom + high - height + 5 > maximum) {
+                    maximum = bottom + high - height + 5;
+                }
+            }
+        }
+        for (rootindex := 0; rootindex < MaxWindows; rootindex++) {
+            if (containers[rootindex] != nil) {
+                (unused, bottom, unusedwide, high) := project(rootindex, width, containers[rootindex], deskzoom, deskpan);
                 if (bottom + high - height + 5 > maximum) {
                     maximum = bottom + high - height + 5;
                 }
@@ -859,7 +1034,7 @@ serve(requests: chan of Request)
             ticket++;
         }
         request.reply <-= Reply(request.id, status, ticket, scroll, focus, drawer, action,
-                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails));
+                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails, containers));
         if (stop) {
             return;
         }

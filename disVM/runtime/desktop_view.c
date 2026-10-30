@@ -40,13 +40,13 @@ typedef struct DeskItem
 
 static FVM_Context *owner;                /* Borrowed FlashVM context; never used on raster workers. */
 static FVM_Object *root;                  /* [GC:] Pinned MovieClip root retaining all scene children. */
-static FVM_Object *groups[5];             /* [GC:] Borrowed children of the retained root. */
+static FVM_Object *groups[13];             /* [GC:] Borrowed children of the retained root. */
 static FVM_Object *clips[DESK_SLOTS];     /* [GC:] Borrowed stable MovieClip children. */
 static FVM_Object *marks[DESK_SLOTS];     /* [GC:] Selection MovieClips retained beneath widgets. */
 static FVM_Object *cursors[DESK_SLOTS];   /* [GC:] Caret MovieClips retained beneath each widget. */
 static FVM_Object *labels[DESK_SLOTS];    /* [GC:] TextFields retained on their MovieClips. */
 static unsigned char visible[DESK_SLOTS]; /* Slots admitted in the previous complete scene. */
-static unsigned long parents[DESK_SLOTS]; /* Immutable parent identity after creation. */
+static unsigned long parents[DESK_SLOTS]; /* Current validated presentation parent; document identity stays stable. */
 static FVM_Font *face;                    /* Owner-only native face for caret geometry. */
 static DeskItem items[DESK_SLOTS];        /* Copied staged descriptors. */
 static unsigned int expected;             /* Exact declared item count. */
@@ -212,6 +212,11 @@ static void motion_commit(void)
             previous_present[id] = 0;
             continue;
         }
+        if (previous_present[id] && previous_windows[id].parent != window->parent)
+        {
+            previous_present[id] = 0;
+            motions[id].active = 0;
+        }
         if (previous_present[id] && thumbnail && (previous_windows[id].x == 65536) != (window->x == 65536))
         {
             DeskMotion *motion = &motions[id];
@@ -338,6 +343,67 @@ static FVM_Result draw_clip(FVM_Object *clip, FVM_RasterSurface *surface, const 
         return fvm_movieclip_capture_paths(owner, clip, view ? view : &identity, capture_path, NULL);
     }
     return view ? fvm_movieclip_render_view(owner, clip, surface, view) : fvm_movieclip_render(owner, clip, surface);
+}
+
+
+/* Capture only a container's own body: its document children are independent
+ * scene items and are captured later at their current matrices. item/surface
+ * are borrowed on the owner. Saved visibility values are primitive copies.
+ * Restore every mask on failure; no task polling or worker VM access occurs. */
+static FVM_Result draw_widget_clip(const DeskItem *item, FVM_RasterSurface *surface)
+{
+    FVM_Value saved[8];
+    FVM_Value hidden;
+    unsigned char changed[8] = {0};
+    unsigned int id;
+    unsigned long parent;
+    FVM_Result result = FVM_OK;
+    if (!((item->id >= 13 && item->id <= 19) || item->id == 28))
+    {
+        return draw_clip(clips[item->id], surface, NULL);
+    }
+    parent = item->id == 28 ? 12 : item->id - 8;
+    fvm_value_number(&hidden, 0);
+    /* [GC:] Hidden display children remain rooted by the container. No managed
+     * references enter saved; the owner restores flags before exposing the view. */
+    for (id = 1; id <= 8; ++id)
+    {
+        if (clips[id] && parents[id] == parent)
+        {
+            result = fvm_object_get(owner, clips[id], "_visible", &saved[id - 1]);
+            if (result != FVM_OK)
+            {
+                break;
+            }
+            if (saved[id - 1].type != FVM_VALUE_NUMBER && saved[id - 1].type != FVM_VALUE_BOOLEAN)
+            {
+                result = FVM_INVALID_ARGUMENT;
+                break;
+            }
+            changed[id - 1] = 1;
+            result = fvm_object_set(owner, clips[id], "_visible", &hidden);
+            if (result != FVM_OK)
+            {
+                break;
+            }
+        }
+    }
+    if (result == FVM_OK)
+    {
+        result = draw_clip(clips[item->id], surface, NULL);
+    }
+    for (id = 1; id <= 8; ++id)
+    {
+        if (changed[id - 1])
+        {
+            FVM_Result restored = fvm_object_set(owner, clips[id], "_visible", &saved[id - 1]);
+            if (result == FVM_OK)
+            {
+                result = restored;
+            }
+        }
+    }
+    return result;
 }
 
 
@@ -1152,7 +1218,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
                 item = &items[index];
             }
         }
-        if (!item || item->line || item->mirror || item->parent != 1)
+        if (!item || item->line || item->mirror || (item->parent != 1 && item->parent < 5))
         {
             return 0;
         }
@@ -1189,6 +1255,31 @@ int dvm_desktop_message(const DVM_UIMessage *message)
                 return 0;
             }
         }
+        /* The only additional hierarchy is document -> MDI root -> table.
+         * Validate the entire copied forest before presentation; no cycles or
+         * arbitrary native parent addresses can be proposed. */
+        for (index = 0; index < received; ++index)
+        {
+            unsigned int root_index;
+            unsigned long root_id;
+            int found = 0;
+            if (items[index].parent < 5)
+            {
+                continue;
+            }
+            root_id = items[index].parent == 12 ? 28 : items[index].parent + 8;
+            for (root_index = 0; root_index < index; ++root_index)
+            {
+                if (items[root_index].id == root_id && items[root_index].parent == 1 && !items[root_index].mirror)
+                {
+                    found = 1;
+                }
+            }
+            if (!found)
+            {
+                return 0;
+            }
+        }
         if (message->size || received != expected)
         {
             return 0;
@@ -1211,7 +1302,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             return 0;
         }
     }
-    if (words[0] > 4 || (words[1] > 65536 && words[1] < 0xffff8000UL) || words[2] > 65536 || !words[3] ||
+    if (words[0] > 12 || (words[0] >= 5 && ((unsigned long)message->first > 8 || words[7])) || (words[1] > 65536 && words[1] < 0xffff8000UL) || words[2] > 65536 || !words[3] ||
         words[3] > 32768 || !words[4] || words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 ||
         words[7] >= DESK_SLOTS)
     {
@@ -1253,14 +1344,16 @@ int dvm_desktop_message(const DVM_UIMessage *message)
 }
 
 
-/* Compose the actual group/local matrices for detached field placement. Both
- * matrices are copied observations; no script state is guessed from wire input. */
+/* Compose actual local/parent matrices into caller-owned world output. parent
+ * is a validated slot0..12; MDI parents recurse once through the table. Return
+ * zero on failed observations. Owner-thread only; no managed reference escapes. */
 static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *output)
 {
     FVM_Affine local;
     FVM_Affine group;
     if (fvm_movieclip_get_matrix(owner, clip, &local) != FVM_OK ||
-        fvm_movieclip_get_matrix(owner, groups[parent], &group) != FVM_OK)
+        (parent >= 5 ? !world_matrix(groups[parent], 1, &group) :
+         fvm_movieclip_get_matrix(owner, groups[parent], &group) != FVM_OK))
     {
         return 0;
     }
@@ -1918,6 +2011,25 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             scale = (double)item->height / content->height;
         }
     }
+    if (clips[item->id] && parents[item->id] != item->parent)
+    {
+        FVM_Value ignored;
+        FVM_Object *previous = clips[item->id];
+        /* [GC:] Source owners do not move. Retire only this presentation subtree;
+         * discard every borrowed child handle before an allocation can collect it.
+         * Immutable raster paths are independent of these managed objects. */
+        clips[item->id] = NULL;
+        labels[item->id] = NULL;
+        marks[item->id] = NULL;
+        cursors[item->id] = NULL;
+        memset(vector_buttons[item->id], 0, sizeof(vector_buttons[item->id]));
+        free(drag_pixels[item->id]);
+        drag_pixels[item->id] = NULL;
+        if (fvm_object_call(owner, previous, "removeMovieClip", 0, NULL, &ignored) != FVM_OK)
+        {
+            return 0;
+        }
+    }
     if (!clips[item->id])
     {
         char name[24];
@@ -1987,6 +2099,10 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         return 0;
     }
     clip = clips[item->id];
+    if ((item->id >= 13 && item->id <= 19) || item->id == 28)
+    {
+        groups[item->id == 28 ? 12 : item->id - 8] = clip;
+    }
     label = labels[item->id];
     {
         FVM_Value ignored;
@@ -2106,7 +2222,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         {
             return 1;
         }
-        result = draw_clip(clip, surface, NULL);
+        result = draw_widget_clip(item, surface);
         if (result != FVM_OK)
         {
             fprintf(stderr, "desktop movie render: %d\n", result);

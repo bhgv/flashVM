@@ -472,6 +472,13 @@ if(DVM_RUNTIME_EDITOR)
     target_include_directories(disvm_desktop_colors_test PRIVATE "${view}" "${root}/disVM/include")
     target_link_libraries(disvm_desktop_colors_test PRIVATE flashvm m)
     add_test(NAME disvm_desktop_color_protocol COMMAND disvm_desktop_colors_test)
+    add_executable(disvm_mdi_capture_test test_mdi_capture.c desktop_view.c editor_raster.c)
+    add_dependencies(disvm_mdi_capture_test disvm_view_headers)
+    target_include_directories(disvm_mdi_capture_test PRIVATE "${view}" "${root}/disVM/include")
+    target_link_libraries(disvm_mdi_capture_test PRIVATE flashvm m)
+    if(DVM_EDITOR_TEST_FONT)
+      add_test(NAME disvm_mdi_reflow_capture COMMAND disvm_mdi_capture_test "${DVM_EDITOR_TEST_FONT}")
+    endif()
     add_executable(disvm_desktop_vector_test test_desktop_vector.c desktop_view.c editor_raster.c)
     add_dependencies(disvm_desktop_vector_test disvm_view_headers)
     target_include_directories(disvm_desktop_vector_test PRIVATE "${view}" "${root}/disVM/include")
@@ -1308,7 +1315,7 @@ if(DVM_RUNTIME_TESTS)
       set(dispatch --no-jit)
     endif()
     add_test(NAME disvm_desktop_owners_${mode} COMMAND "$<TARGET_FILE:disvm>" ${dispatch}
-      --quantum 1 "${CMAKE_CURRENT_BINARY_DIR}/desktop-test.dis")
+      --quantum 1 --max-instructions 2000000 "${CMAKE_CURRENT_BINARY_DIR}/desktop-test.dis")
     set_tests_properties(disvm_desktop_owners_${mode} PROPERTIES TIMEOUT 60
       PASS_REGULAR_EXPRESSION "PASS desktop owners:")
   endforeach()
@@ -1398,6 +1405,10 @@ endif()
 # Exercise normalized gestures against actual Dis policy and MovieClip pixels.
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_mdi_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_mdi.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_desktop_mdi_${mode} PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_desktop_debugger_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_debugger.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})

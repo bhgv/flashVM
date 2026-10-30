@@ -79,10 +79,46 @@ static void refuse(size_t offset, const char *replacement)
 }
 
 
+/* Validate the only admitted nested forest: document -> container -> table.
+ * Staged roots must precede children so presentation never observes a nil parent.
+ * No FlashVM object is allocated by these decoder-only refusal controls. */
+static void mdi_parents(void)
+{
+    DVM_UIMessage out;
+    dvm_desktop_destroy();
+    message(&out, DVM_DESK_BEGIN, "00000007000000010000000000000064");
+    out.first = 960;
+    out.second = 640;
+    require(dvm_desktop_message(&out), "nested missing-root begin");
+    message(&out, DVM_DESK_ITEM,
+            "00000005000000080000002800000168000000fc00000000ffffffff00000000ffffffffchild");
+    out.first = 1;
+    require(dvm_desktop_message(&out), "staged bounded nested child");
+    message(&out, DVM_DESK_END, "");
+    require(!dvm_desktop_message(&out), "nested child without its root refused before commit");
+    dvm_desktop_destroy();
+    message(&out, DVM_DESK_BEGIN, "00000007000000020000000000000064");
+    out.first = 960;
+    out.second = 640;
+    require(dvm_desktop_message(&out), "valid nested begin");
+    message(&out, DVM_DESK_ITEM,
+            "000000010000006000000048000002e80000013400000004ffffffff00000000ffffffffSource MDI");
+    out.first = 13;
+    require(dvm_desktop_message(&out), "container root beneath table");
+    message(&out, DVM_DESK_ITEM,
+            "00000005000000080000002800000168000000fc00000000ffffffff00000000ffffffffchild");
+    out.first = 1;
+    require(dvm_desktop_message(&out), "child below preceding container");
+    message(&out, DVM_DESK_END, "");
+    require(dvm_desktop_message(&out), "complete bounded nested forest admitted");
+}
+
+
 /* Check fragmentation, ticket/order, immutable extent bounds and command validation. */
 int main(void)
 {
     DVM_UIMessage out;
+    mdi_parents();
     scene();
     message(&out, DVM_DESK_VECTOR_BEGIN, "00000001");
     out.first = 1;
