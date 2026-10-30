@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1691**. [English](README.md).
+Версия разработки: **0.1692**. [English](README.md).
 
-Текущая серия: [v0.1691](docs/releases/v0.1691.md): исправление pc6/nil при закрытии первого редактора и скрытии Help.
+Текущая серия: [v0.1692](docs/releases/v0.1692.md): синхронизация Inferno, exception/native64 и ленивый анализ Limbo/AS через Coco/R (пункт 16).
 
 ## Просмотр документации
 

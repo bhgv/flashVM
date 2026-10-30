@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1691**. [Русская версия](README.ru.md).
+Development version: **0.1692**. [Русская версия](README.ru.md).
 
-Current series: [v0.1691](docs/releases/v0.1691.md): fix nil-owner sends after closing Editor1 and hiding Help.
+Current series: [v0.1692](docs/releases/v0.1692.md): Inferno exception/native64 sync and a lazy Coco/R Limbo/AS analysis service (menu 16).
 
 ## Browse documentation
 

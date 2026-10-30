@@ -14,6 +14,7 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 | 9 / editor | `sh run-ide.sh` | Прежний одиночный графический редактор с его отдельными интеграциями |
 | 10 / lifecycle | `sh run-desktop-lifecycle.sh` | Переносимый пример независимых владельцев, завершения и нового документа |
 | 11 / pointer | `sh run-desktop-pointer.sh` | Переносимый пример Unicode-выделения и отклонения stale revision |
+| 16 / syntax | `sh run-syntax-check.sh` | Coco/R Limbo/AS: ленивый сервис, Unicode, revision; без цветного GUI |
 | 12 / clipboard | `sh run-desktop-clipboard.sh` | Сессионный Copy/Cut/Paste через отдельного владельца Limbo |
 
 Пункты 10/11/12 доступны также в `disvm-runtime`, без графики. Они запускают настоящие
@@ -62,3 +63,5 @@ are separate integrations. The single-editor's extra capabilities are available
 through entry 9; they are not silently claimed to be embedded in entry 8.
 
 [Сессионный clipboard](DESKTOP-CLIPBOARD.ru.md) · [Session clipboard](DESKTOP-CLIPBOARD.md).
+
+[Lazy syntax service / Ленивый анализ Coco/R](SYNTAX-LAZY.md) · [Русский](SYNTAX-LAZY.ru.md).

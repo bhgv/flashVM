@@ -512,12 +512,21 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
             copy_file "$ROOT/disVM/runtime/run-desktop-pointer.sh" "$destination/run-desktop-pointer.sh" 755
             copy_file "$ROOT/disVM/runtime/run-desktop-clipboard.sh" "$destination/run-desktop-clipboard.sh" 755
+            copy_file "$ROOT/disVM/runtime/run-syntax-check.sh" "$destination/run-syntax-check.sh" 755
+            copy_file "$ROOT/ide/dis/bridge/idesyntax.b" "$destination/source/idesyntax.b"
+            copy_tree "$ROOT/ide/syntax" "$destination/source/syntax"
+            for file in "$ROOT/ide/syntax/"*.m; do
+                copy_file "$file" "$destination/include/limbo/$(basename "$file")"
+            done
+            copy_file "$ROOT/ide/SYNTAX-LAZY.md" "$destination/SYNTAX-LAZY.md"
+            copy_file "$ROOT/ide/SYNTAX-LAZY.ru.md" "$destination/SYNTAX-LAZY.ru.md"
+
             copy_file "$ROOT/ide/dis/bridge/idedeskclip.b" "$destination/source/idedeskclip.b"
             copy_file "$ROOT/ide/DESKTOP-WORKSPACE.md" "$destination/DESKTOP-WORKSPACE.md"
             copy_file "$ROOT/ide/DESKTOP-WORKSPACE.ru.md" "$destination/DESKTOP-WORKSPACE.ru.md"

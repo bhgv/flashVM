@@ -54,15 +54,20 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
-    for name in ("DESKTOP-WORKSPACE.md", "DESKTOP-WORKSPACE.ru.md", "DESKTOP-CLIPBOARD.md", "DESKTOP-CLIPBOARD.ru.md", "ENTRYPOINTS.md", "DESKTOP-POINTER.md", "DESKTOP-POINTER.ru.md", "DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
+    for name in ("SYNTAX-LAZY.md", "SYNTAX-LAZY.ru.md", "DESKTOP-WORKSPACE.md", "DESKTOP-WORKSPACE.ru.md", "DESKTOP-CLIPBOARD.md", "DESKTOP-CLIPBOARD.ru.md", "ENTRYPOINTS.md", "DESKTOP-POINTER.md", "DESKTOP-POINTER.ru.md", "DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
         pairs[root / "ide" / name] = package / name
     pairs[root / "disVM/module/fircompiler.m"] = package / "include/limbo/fircompiler.m"
     pairs[root / "disVM/compiler/compiler_engine.h"] = package / "include/native/compiler_engine.h"
-    for name in ("idecompiler", "ideworkspace"):
+    for name in ("idecompiler", "ideworkspace", "idesyntax"):
         pairs[root / "ide/dis/bridge" / (name + ".b")] = package / "source" / (name + ".b")
     for source in (root / "ide/dis/examples/compiler-service").iterdir():
         if source.is_file():
             pairs[source] = package / "examples/compiler-service" / source.name
+    for source in (root / "ide/syntax").iterdir():
+        if source.is_file():
+            pairs[source] = package / "source/syntax" / source.name
+    pairs[root / "ide/syntax/limbolex.m"] = package / "include/limbo/limbolex.m"
+    pairs[root / "ide/syntax/aslex.m"] = package / "include/limbo/aslex.m"
     pairs[root / "ide/dis/app/desktop.b"] = package / "source/desktop.b"
     pairs[root / "ide/dis/app/desktop.m"] = package / "include/limbo/desktop.m"
     pairs[root / "ide/as/desktop-view.as"] = package / "source/as/desktop-view.as"

@@ -476,6 +476,18 @@ class MenuTests(unittest.TestCase):
                 self.fail("codec launcher changed argv or concealed its failure")
 
 
+    def test_syntax_service_is_discoverable_without_graphics(self):
+        """Menu 16 exposes the portable service check without a document prompt."""
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "disvm-runtime"
+            package.mkdir()
+            script = package / "run-syntax-check.sh"
+            script.write_text("#!/bin/sh\nexit 0\n")
+            entries = menu.product_entries(Path(directory))
+            if "16" not in entries or entries["16"][0] != "syntax" or entries["16"][3]:
+                self.fail("portable syntax service check is missing or classified as graphical")
+
+
     def test_storage_demo_discovery_from_host_package(self):
         """The standalone codec demo is visible even without an IDE runtime."""
         with tempfile.TemporaryDirectory() as directory:

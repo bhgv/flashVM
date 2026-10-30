@@ -1,5 +1,7 @@
 [Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
 
+[Lazy Coco/R syntax / Ленивый анализ](SYNTAX-LAZY.md) · [Русский](SYNTAX-LAZY.ru.md)
+
 [Workspace gestures / Жесты и оформление](DESKTOP-WORKSPACE.md) · [Русский](DESKTOP-WORKSPACE.ru.md)
 
 [Build-menu: 8 — MovieClip IDE, 9 — separate single editor](ENTRYPOINTS.md)

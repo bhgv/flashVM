@@ -105,7 +105,29 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${library_sources
   "${root}/disVM/libraries/prepare.py")
 
 # Native-cell IDE modules live beside their matching runner, never in the legacy package.
+set(DVM_COCOR_LIMBO_ROOT "${root}/tools/coco-r-limbo" CACHE PATH "Explicit Coco/R Limbo generator source")
+if(NOT EXISTS "${DVM_COCOR_LIMBO_ROOT}/CMakeLists.txt")
+  message(FATAL_ERROR "Provide DVM_COCOR_LIMBO_ROOT containing the source-built generator")
+endif()
+add_subdirectory("${DVM_COCOR_LIMBO_ROOT}" ide-cocor)
+file(GLOB syntax_frames "${DVM_COCOR_LIMBO_ROOT}/upstream/frames/*.frm")
+set(syntax_products)
+foreach(profile limbo as)
+  set(grammar "${root}/ide/syntax/${profile}lex.atg")
+  set(generated "${CMAKE_CURRENT_BINARY_DIR}/syntax/${profile}lex.b")
+  set(binary "${CMAKE_CURRENT_BINARY_DIR}/${profile}lex.dis")
+  add_custom_command(OUTPUT "${generated}"
+    COMMAND "${PYTHON_EXECUTABLE}" "${root}/ide/syntax/generate.py"
+      --generator "$<TARGET_FILE:cocor>" --frames "${DVM_COCOR_LIMBO_ROOT}/upstream/frames"
+      --grammar "${grammar}" --output "${generated}"
+    DEPENDS cocor "${grammar}" "${root}/ide/syntax/generate.py" ${syntax_frames} VERBATIM)
+  add_custom_command(OUTPUT "${binary}"
+    COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module" -o "${binary}" "${generated}"
+    DEPENDS limbo-bootstrap "${generated}" "${u}/module/sys.m" "${u}/module/draw.m" VERBATIM)
+  list(APPEND syntax_products "${binary}")
+endforeach()
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
+  -I "${root}/ide/syntax"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
 set(module_names idedeskclip idecore ideworkspace idecompiler idebuildpanel ideartifact idedeskpane idedesktop workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
 set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
@@ -128,6 +150,10 @@ set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/ideco
   "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b" "${root}/ide/dis/bridge/idebrowser.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
+list(APPEND module_names idesyntax syntax-check)
+list(APPEND module_sources "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/tests/idesyntax_test.b")
+file(GLOB syntax_headers "${root}/ide/syntax/*.m")
+list(APPEND module_headers ${syntax_headers})
 list(LENGTH module_names module_count)
 math(EXPR module_last "${module_count}-1")
 set(products)
@@ -139,7 +165,7 @@ foreach(index RANGE ${module_last})
   DEPENDS limbo-bootstrap "${source}" ${module_headers} VERBATIM)
  list(APPEND products "${CMAKE_CURRENT_BINARY_DIR}/${name}.dis")
 endforeach()
-add_custom_target(disvm_native_modules ALL DEPENDS ${products})
+add_custom_target(disvm_native_modules ALL DEPENDS ${products} ${syntax_products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 if(DVM_RUNTIME_TESTS)
   get_target_property(sys_capture_includes disvm INCLUDE_DIRECTORIES)
@@ -155,7 +181,7 @@ endif()
 
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
+ foreach(test idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
     set(source "${root}/ide/dis/examples/document-projection/main.b")
@@ -380,7 +406,6 @@ if(DVM_RUNTIME_EDITOR)
       "${view}/ide-view.swf" "${view}/ide_view_swf.h"
     DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}"
       "${DVM_SWF_LINKER}" "${root}/ide/as/editor-view.as" embed_view.py VERBATIM)
-  target_sources(disvm-editor PRIVATE "${view}/ide_view_swf.h")
   add_custom_command(OUTPUT "${view}/desktop_view_swf.h"
     BYPRODUCTS "${view}/desktop-view.fir" "${view}/desktop-view.opt.fir" "${view}/desktop-view.swo" "${view}/desktop-view.swf"
     COMMAND "${DVM_AS_VIEW_COMPILER}" "${root}/ide/as/desktop-view.as" "${view}/desktop-view.fir"
@@ -395,10 +420,14 @@ if(DVM_RUNTIME_EDITOR)
       "${view}/desktop-view.swf" "${view}/desktop_view_swf.h"
     DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}"
       "${DVM_SWF_LINKER}" "${root}/ide/as/desktop-view.as" embed_view.py VERBATIM)
-  target_sources(disvm-editor PRIVATE "${view}/desktop_view_swf.h")
+  # One producer owns both generated headers across parallel Make target graphs.
+  add_custom_target(disvm_view_headers DEPENDS
+    "${view}/ide_view_swf.h" "${view}/desktop_view_swf.h")
+  add_dependencies(disvm-editor disvm_view_headers)
   target_sources(disvm-editor PRIVATE desktop_view.c)
   if(DVM_RUNTIME_TESTS)
-    add_executable(disvm_as_view_test test_as_view.c "${view}/ide_view_swf.h")
+    add_executable(disvm_as_view_test test_as_view.c)
+    add_dependencies(disvm_as_view_test disvm_view_headers)
     target_include_directories(disvm_as_view_test PRIVATE "${view}")
     target_link_libraries(disvm_as_view_test PRIVATE flashvm)
     add_test(NAME disvm_as_view_execution COMMAND disvm_as_view_test)
@@ -422,6 +451,7 @@ if(DVM_RUNTIME_EDITOR)
       target_link_libraries(disvm_window_events_test PRIVATE SDL2::SDL2)
       if(UNIX AND CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         add_executable(disvm_desktop_touch_test test_desktop_touch.c)
+        add_dependencies(disvm_desktop_touch_test disvm_view_headers)
         get_target_property(editor_includes disvm-editor INCLUDE_DIRECTORIES)
         target_include_directories(disvm_desktop_touch_test PRIVATE ${editor_includes} "${DVM_FLASHVM_SOURCE_ROOT}/include")
         target_compile_definitions(disvm_desktop_touch_test PRIVATE DVM_EDITOR_SDL=1)

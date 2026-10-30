@@ -1,0 +1,73 @@
+COMPILER Aslex
+CHARACTERS
+    letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$" + CHR(128)..CHR(255).
+    digit = "0123456789".
+    hex = digit + "abcdefABCDEFxX".
+    newline = CHR(10).
+    backslash = CHR(92).
+    doublebody = ANY - CHR(34) - CHR(92) - CHR(10) - CHR(13).
+    singlebody = ANY - CHR(39) - CHR(92) - CHR(10) - CHR(13).
+    escaped = ANY - CHR(10) - CHR(13).
+TOKENS
+    ident = letter {letter | digit}.
+    number = digit {hex
+        | "."}.
+    quoted = '"' {doublebody | backslash [escaped]} ['"'].
+    rune = "'" {singlebody | backslash [escaped]} ["'"].
+COMMENTS
+FROM "//" TO newline
+COMMENTS FROM "/*" TO "*/"
+IGNORE CHR(9) + CHR(10) + CHR(13) + CHR(32)
+PRODUCTIONS
+    Aslex = {ident | number | quoted | rune
+        | "break"
+        | "case"
+        | "catch"
+        | "class"
+        | "const"
+        | "continue"
+        | "default"
+        | "delete"
+        | "do"
+        | "dynamic"
+        | "else"
+        | "extends"
+        | "false"
+        | "finally"
+        | "for"
+        | "function"
+        | "get"
+        | "if"
+        | "implements"
+        | "import"
+        | "in"
+        | "instanceof"
+        | "interface"
+        | "intrinsic"
+        | "is"
+        | "namespace"
+        | "native"
+        | "new"
+        | "null"
+        | "override"
+        | "package"
+        | "private"
+        | "protected"
+        | "public"
+        | "return"
+        | "set"
+        | "static"
+        | "super"
+        | "switch"
+        | "this"
+        | "throw"
+        | "true"
+        | "try"
+        | "typeof"
+        | "undefined"
+        | "use"
+        | "var"
+        | "void"
+        | "while"
+        | "with"}.
+END Aslex.

@@ -1,0 +1,63 @@
+COMPILER Limbolex
+CHARACTERS
+    letter = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$" + CHR(128)..CHR(255).
+    digit = "0123456789".
+    hex = digit + "abcdefABCDEFxX".
+    newline = CHR(10).
+    backslash = CHR(92).
+    doublebody = ANY - CHR(34) - CHR(92) - CHR(10) - CHR(13).
+    singlebody = ANY - CHR(39) - CHR(92) - CHR(10) - CHR(13).
+    escaped = ANY - CHR(10) - CHR(13).
+TOKENS
+    ident = letter {letter | digit}.
+    number = digit {hex
+        | "."}.
+    quoted = '"' {doublebody | backslash [escaped]} ['"'].
+    rune = "'" {singlebody | backslash [escaped]} ["'"].
+COMMENTS
+FROM "#" TO newline
+IGNORE CHR(9) + CHR(10) + CHR(13) + CHR(32)
+PRODUCTIONS
+    Limbolex = {ident | number | quoted | rune
+        | "adt"
+        | "alt"
+        | "array"
+        | "big"
+        | "break"
+        | "byte"
+        | "case"
+        | "chan"
+        | "con"
+        | "continue"
+        | "cyclic"
+        | "do"
+        | "else"
+        | "exit"
+        | "fn"
+        | "for"
+        | "hd"
+        | "if"
+        | "implement"
+        | "import"
+        | "include"
+        | "int"
+        | "len"
+        | "list"
+        | "load"
+        | "module"
+        | "nil"
+        | "of"
+        | "or"
+        | "pick"
+        | "real"
+        | "ref"
+        | "return"
+        | "self"
+        | "spawn"
+        | "string"
+        | "tagof"
+        | "tl"
+        | "to"
+        | "type"
+        | "while"}.
+END Limbolex.
