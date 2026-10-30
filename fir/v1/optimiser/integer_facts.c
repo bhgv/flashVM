@@ -2,6 +2,7 @@
 #include "fir.h"
 #include <string.h>
 
+
 /* Propagate independent bit facts through modular addition or subtraction.
  * az/ao and bz/bo describe borrowed disjoint known-zero/known-one masks;
  * width is32 or64, subtract selects a+~b+1. Write disjoint result masks to
@@ -62,7 +63,7 @@ static unsigned trailing_zero_facts(uint64_t zero, unsigned width)
 /* Derive known bits without reading cells or evaluating operand producers.
  * module is borrowed verified IR; facts is disjoint caller-owned scratch.
  * Clear stale facts, then follow int32/big literals, copies, bit operations and
- * shifts with an exact proven legal int32 count, modular add/sub/neg carry bits and multiplication trailing zeros.
+ * shifts with an exact proven legal int32 count, modular add/sub/neg carry bits, typed scalar casts and product low bits.
  * Everything else is unknown.
  * Monotone bounded scans handle non-topological definitions; an incomplete
  * proof stays conservative. No allocation, callbacks or waiting occurs. These
@@ -114,16 +115,53 @@ void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts)
                 zero = az;
                 one = ao;
             }
+            else if (in->op == O_TO_INT || in->op == O_TO_BIG)
+            {
+                FirType source = module->values[in->a].type;
+                if (source == T_BOOL)
+                {
+                    zero = mask & ~UINT64_C(1);
+                }
+                else if (source == T_I32)
+                {
+                    zero = facts->zero[in->a];
+                    one = facts->one[in->a];
+                    if (wide)
+                    {
+                        uint64_t high = UINT64_MAX ^ (uint64_t)UINT32_MAX;
+                        if (zero & UINT32_C(0x80000000))
+                        {
+                            zero |= high;
+                        }
+                        else if (one & UINT32_C(0x80000000))
+                        {
+                            one |= high;
+                        }
+                    }
+                }
+                else if (source == T_I64)
+                {
+                    zero = facts->big_zero[in->a] & mask;
+                    one = facts->big_one[in->a] & mask;
+                }
+                /* String/key conversion producers remain outside this proof. */
+            }
             else if (in->op == O_ADD || in->op == O_SUB || in->op == O_BIG_ADD || in->op == O_BIG_SUB)
             {
                 arithmetic_bits(az, ao, bz, bo, width, in->op == O_SUB || in->op == O_BIG_SUB, &zero, &one);
             }
             else if (in->op == O_MUL || in->op == O_BIG_MUL)
             {
-                unsigned count = trailing_zero_facts(az, width) + trailing_zero_facts(bz, width);
+                unsigned left = trailing_zero_facts(az, width);
+                unsigned right = trailing_zero_facts(bz, width);
+                unsigned count = left + right;
                 /* Divisibility adds under multiplication, including wraparound.
                  * Saturate before shifting so a full-width proof never shifts64. */
                 zero = count >= width ? mask : (UINT64_C(1) << count) - 1;
+                if (count < width && (ao & (UINT64_C(1) << left)) && (bo & (UINT64_C(1) << right)))
+                {
+                    one = UINT64_C(1) << count;
+                }
             }
             else if (in->op == O_BIG_NEG)
             {

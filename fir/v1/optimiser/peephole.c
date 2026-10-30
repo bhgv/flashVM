@@ -675,6 +675,8 @@ static int fold_known_integer_result(FirInstruction *in, const FirIntegerFacts *
     case O_SUB:
     case O_BIG_ADD:
     case O_BIG_SUB:
+    case O_TO_INT:
+    case O_TO_BIG:
     case O_MUL:
     case O_BIG_MUL:
     case O_BIG_NEG:

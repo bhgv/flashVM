@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.68.0 LANGUAGES C)
+project(fir1 VERSION 0.69.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -691,6 +691,12 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
 endif()
 
 if(BUILD_TESTING)
+  add_test(NAME fir1_integer_cast_facts COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_cast_facts.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_integer_cast_facts PROPERTIES TIMEOUT 120)
+  add_executable(fir1_integer_cast_facts_api tests/integer_cast_facts_api.c)
+  target_link_libraries(fir1_integer_cast_facts_api PRIVATE fir1_ir)
+  add_test(NAME fir1_integer_cast_facts_api COMMAND fir1_integer_cast_facts_api)
   add_executable(fir1_integer_facts_api tests/integer_facts_api.c)
   target_link_libraries(fir1_integer_facts_api PRIVATE fir1_ir)
   add_test(NAME fir1_integer_facts_api COMMAND fir1_integer_facts_api)
