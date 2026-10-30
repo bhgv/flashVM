@@ -217,3 +217,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [shift-facts.b](shift-facts.b): dynamic shift-derived proofs; raw/optimized Dis/SWF return42. [Guide / Руководство](../../doc/SHIFT_FACTS.ru.md).
 
 [known-results.b](known-results.b): exact constants from dynamic bit/carry/borrow expressions, raw/opt Dis/SWF42. [Guide / Руководство](../../doc/KNOWN_RESULTS.ru.md).
+
+[big-neg-facts.b](big-neg-facts.b): typed table lookup, odd-bit negation and retained producer effects; raw/opt Dis42. [Guide / Руководство](../../doc/KNOWN_RESULTS.md).

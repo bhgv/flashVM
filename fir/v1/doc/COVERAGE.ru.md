@@ -1,4 +1,4 @@
-# Актуальное покрытие — FIR 0.66
+# Актуальное покрытие — FIR 0.67
 
 [English](COVERAGE.md) · [Грамматика](../compiler/src1.atg) · [Публичный API](../include/fir.h) · [Архитектура компиляторов](../../../compiler/README.ru.md)
 
@@ -50,5 +50,5 @@
 
 [Known bit constants / Точные битовые константы](KNOWN_RESULTS.ru.md).
 
-[FIR0.66 carry/borrow facts and exhaustive arithmetic evidence / Переносы,
+[FIR0.67 carry/borrow facts and exhaustive arithmetic evidence / Переносы,
 заёмы и исчерпывающие проверки](KNOWN_RESULTS.md#carry-and-borrow-facts).

@@ -1,4 +1,4 @@
-# Fully known integer results — FIR 0.66
+# Fully known integer results — FIR 0.67
 
 [Русский](KNOWN_RESULTS.ru.md) · [Optimizer](../optimiser/peephole.c) ·
 [Bit analysis](../optimiser/integer_facts.c) · [Commented source](../examples/dis/known-results.b) ·
@@ -96,7 +96,7 @@ Source debug sidecars retain original spans, not new native-PC debugger support.
 
 ## Evidence
 
-The dedicated matrix checks352 raw/optimized results from eleven expression shapes,
+The dedicated matrix checks384 raw/optimized results from twelve expression shapes,
 eight inputs and both widths. Inputs include MIN/MAX, both signs and dynamic
 cross-block loads. The test requires exact literal spelling, absence of the
 folded bit operators, optimizer fixed points, retained zero-divide producers,
@@ -105,7 +105,7 @@ inputs; actual Dis execution requires the supplied runtime and checks dispatch
 counters, capture flags and owner teardown. Compiler-only runs prove neither
 player execution nor new-ABI VM acceptance.
 
-The C99 analysis fixture checks194560 mask/shift samples and192512 additional
+The C99 analysis fixture checks204800 mask/shift samples and192512 additional
 carry/borrow samples across every low-bit boundary in32/64 bits. Facts must be
 disjoint, retain proven low zeros, and hold for independent unsigned evaluations.
 The SWF proof matrix also exercises arithmetic-derived counts and divisors,
@@ -116,3 +116,10 @@ four-bit ternary domains and256 concrete input pairs for each, in both widths
 and both operations: **6,718,464 evaluations**. It compares exact zero/one
 intersections with analysis, including subtraction sign extension and carry
 beyond the four-bit domain. The oracle does not reproduce the carry algorithm.
+
+FIR0.67 also propagates big negation as unsigned modular zero-minus-value.
+Known low bits/nonzero proofs survive negation, including MIN wraparound;
+operand errors remain observable. [Commented own-source Dis example](../examples/dis/big-neg-facts.b)
+uses a typed table fetch, forces an odd value, negates it and returns42.
+The C99 fixture additionally exercises10240 negation samples; the target matrix
+now covers384 raw/optimized results and tests the source example through Dis.
