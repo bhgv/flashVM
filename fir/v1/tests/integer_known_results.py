@@ -113,6 +113,21 @@ def main():
                         ),
                     ]
                 )
+                forms.extend(
+                    [
+                        (
+                            f"%a: {kind} = {prefix}.or %x, %one\n%b: {kind} = {prefix}.or %y, %one\n%c: {kind} = {mul} %a, %b\n%r: {kind} = {prefix}.and %c, %one",
+                            1,
+                        ),
+                        (
+                            f"%bit: {kind} = const.{kind} 8\n%low: {kind} = const.{kind} 127\n"
+                            f"%aa: {kind} = {prefix}.and %x, %eight\n%bb: {kind} = {prefix}.and %y, %eight\n"
+                            f"%a: {kind} = {prefix}.or %aa, %bit\n%b: {kind} = {prefix}.or %bb, %bit\n"
+                            f"%c: {kind} = {mul} %a, %b\n%r: {kind} = {prefix}.and %c, %low",
+                            64,
+                        ),
+                    ]
+                )
                 for body, expected in forms:
                     raw.write_text(
                         pair_module(kind, value, 0, declarations + body + "\ntrace %r")
@@ -199,6 +214,35 @@ def main():
                     raise RuntimeError(
                         "zero product suppressed an eager divide failure"
                     )
+            # An odd product is nonzero under wraparound. Only the unused
+            # division becomes total; an eager failing multiplier still throws.
+            raw.write_text(
+                pair_module(
+                    kind,
+                    42,
+                    0,
+                    f"%bad: {kind} = {division} %x, %y\n%one: {kind} = const.{kind} 1\n"
+                    f"%a: {kind} = {prefix}.or %bad, %one\n%b: {kind} = {prefix}.or %x, %one\n"
+                    f"%product: {kind} = {mul} %a, %b\n%unused: {kind} = {division} %x, %product\ntrace %x",
+                )
+            )
+            call([compiler, "opt", raw, opt], work)
+            if opt.read_text().count(division) != 1:
+                raise RuntimeError(
+                    "odd-product nonzero proof lost an eager failure or kept a total dead division"
+                )
+            for selected in (raw, opt):
+                call([compiler, "dis", selected, work / "odd-trap.dis"], work)
+                if (
+                    runtime
+                    and "zero divide"
+                    not in call(
+                        [runtime, mode, work / "odd-trap.dis"], work, False
+                    ).stderr
+                ):
+                    raise RuntimeError(
+                        "odd-product totality suppressed a producer exception"
+                    )
             if kind == "i64":
                 # A negated proven-odd divisor makes the outer division total,
                 # but cannot erase a failing eager producer of that odd value.
@@ -262,11 +306,12 @@ def main():
                     raise RuntimeError("known-result source tutorial differs")
         # The own Coco/R frontend must also lower unary big negation through the
         # same analysis. It remains Dis-only; do not imply big support in SWF.
-        tutorial = Path(__file__).resolve().parents[1] / "examples/dis/big-neg-facts.b"
-        call([source, "limbo", "--input", tutorial, raw], work)
-        call([compiler, "opt", raw, opt], work)
-        for selected in (raw, opt):
-            execute(compiler, runtime, mode, work, selected, [42])
+        for name in ("big-neg-facts.b", "odd-product-facts.b"):
+            tutorial = Path(__file__).resolve().parents[1] / "examples/dis" / name
+            call([source, "limbo", "--input", tutorial, raw], work)
+            call([compiler, "opt", raw, opt], work)
+            for selected in (raw, opt):
+                execute(compiler, runtime, mode, work, selected, [42])
     print(
         "PASS known integer results:",
         checks,

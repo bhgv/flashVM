@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /* Parse a verified graph whose producer appears after its consumer in text.
  * left/right are independent mask constants; operation selects a bit or modular arithmetic formula.
  * Return one only if every reported fact holds for all sampled full-width inputs
@@ -438,10 +439,11 @@ done:
 
 /* Check modular product facts for independent dynamic operands at one width.
  * left/right are low-zero counts in [0,width], where width denotes exact zero.
+ * exact forces the next bit to one for nonzero operands; otherwise it is unknown.
  * Own the parsed module and stream; return0 on any parse, proof or unsigned
  * oracle mismatch. Require useful saturated low-bit facts, disjoint masks,
- * immutable IR, and conservative unknown high bits. No VM callbacks occur. */
-static int exercise_product(unsigned width, unsigned left, unsigned right)
+ * immutable IR, exact first-one bits when proved and unknown higher bits. No VM callbacks occur. */
+static int exercise_product(unsigned width, unsigned left, unsigned right, int exact)
 {
     FirModule *module = malloc(sizeof(*module));
     FirModule *saved = malloc(sizeof(*saved));
@@ -453,8 +455,11 @@ static int exercise_product(unsigned width, unsigned left, unsigned right)
     uint64_t mask = width == 64 ? UINT64_MAX : UINT32_MAX;
     int64_t lm = left == width ? 0 : left == 63 ? INT64_MIN : -(int64_t)(UINT64_C(1) << left);
     int64_t rm = right == width ? 0 : right == 63 ? INT64_MIN : -(int64_t)(UINT64_C(1) << right);
+    uint64_t lbit = exact && left < width ? UINT64_C(1) << left : 0;
+    uint64_t rbit = exact && right < width ? UINT64_C(1) << right : 0;
     unsigned count = left + right;
     uint64_t expected = count >= width ? mask : (UINT64_C(1) << count) - 1;
+    uint64_t expected_one = exact && count < width ? UINT64_C(1) << count : 0;
     uint64_t state = UINT64_C(0x91e10da591e10da5);
     uint64_t zero;
     uint64_t one;
@@ -463,34 +468,47 @@ static int exercise_product(unsigned width, unsigned left, unsigned right)
     int value = -1;
     int ok = 0;
     if (!module || !saved || !input ||
-        fprintf(input,
-                "FIR 1.0\nmodule @product\nfunc @main() -> void {\n^entry:\n"
-                "%%cx: %s.slot = %s.local\n%%cy: %s.slot = %s.local\njump ^producer\n"
-                "^consumer:\n%%r: %s = %s.mul%s %%a, %%b\ntrace %%r\nreturn\n"
-                "^producer:\n%%x: %s = %s.load %%cx\n%%y: %s = %s.load %%cy\n"
-                "%%lm: %s = const.%s %lld\n%%rm: %s = const.%s %lld\n"
-                "%%a: %s = %s.and %%x, %%lm\n%%b: %s = %s.and %%y, %%rm\njump ^consumer\n}\n",
-                kind,
-                prefix,
-                kind,
-                prefix,
-                kind,
-                prefix,
-                width == 32 ? ".wrap" : "",
-                kind,
-                prefix,
-                kind,
-                prefix,
-                kind,
-                kind,
-                (long long)lm,
-                kind,
-                kind,
-                (long long)rm,
-                kind,
-                prefix,
-                kind,
-                prefix) < 0 ||
+        fprintf(
+            input,
+            "FIR 1.0\nmodule @product\nfunc @main() -> void {\n^entry:\n"
+            "%%cx: %s.slot = %s.local\n%%cy: %s.slot = %s.local\njump ^producer\n"
+            "^consumer:\n%%r: %s = %s.mul%s %%a, %%b\ntrace %%r\nreturn\n"
+            "^producer:\n%%x: %s = %s.load %%cx\n%%y: %s = %s.load %%cy\n"
+            "%%lm: %s = const.%s %lld\n%%rm: %s = const.%s %lld\n"
+            "%%la: %s = const.%s %lld\n%%rb: %s = const.%s %lld\n"
+            "%%aa: %s = %s.and %%x, %%lm\n%%bb: %s = %s.and %%y, %%rm\n"
+            "%%a: %s = %s.or %%aa, %%la\n%%b: %s = %s.or %%bb, %%rb\njump ^consumer\n}\n",
+            kind,
+            prefix,
+            kind,
+            prefix,
+            kind,
+            prefix,
+            width == 32 ? ".wrap" : "",
+            kind,
+            prefix,
+            kind,
+            prefix,
+            kind,
+            kind,
+            (long long)lm,
+            kind,
+            kind,
+            (long long)rm,
+            kind,
+            kind,
+            left == width - 1 && lbit ? (width == 64 ? (long long)INT64_MIN : (long long)INT32_MIN) : (long long)lbit,
+            kind,
+            kind,
+            right == width - 1 && rbit ? (width == 64 ? (long long)INT64_MIN : (long long)INT32_MIN) : (long long)rbit,
+            kind,
+            prefix,
+            kind,
+            prefix,
+            kind,
+            prefix,
+            kind,
+            prefix) < 0 ||
         fseek(input, 0, SEEK_SET) || !fir_parse(input, module, error, sizeof(error)) ||
         !fir_verify(module, error, sizeof(error)))
     {
@@ -511,7 +529,7 @@ static int exercise_product(unsigned width, unsigned left, unsigned right)
     fir_integer_facts(module, &facts);
     zero = width == 64 ? facts.big_zero[value] : facts.zero[value];
     one = width == 64 ? facts.big_one[value] : facts.one[value];
-    if (zero != expected || one || memcmp(saved, module, sizeof(*saved)))
+    if (zero != expected || one != expected_one || memcmp(saved, module, sizeof(*saved)))
     {
         goto done;
     }
@@ -521,9 +539,9 @@ static int exercise_product(unsigned width, unsigned left, unsigned right)
         uint64_t b;
         uint64_t actual;
         state = state * UINT64_C(6364136223846793005) + 1;
-        a = state & (uint64_t)lm & mask;
+        a = (state & (uint64_t)lm & mask) | lbit;
         state = state * UINT64_C(6364136223846793005) + 1;
-        b = state & (uint64_t)rm & mask;
+        b = (state & (uint64_t)rm & mask) | rbit;
         actual = (a * b) & mask;
         if ((actual & zero) || (actual & one) != one)
         {
@@ -593,13 +611,15 @@ int main(void)
     {
         for (right = 0; right <= 64; right++)
         {
-            if (!exercise_product(64, left, right) || (left <= 32 && right <= 32 && !exercise_product(32, left, right)))
+            if (!exercise_product(64, left, right, 0) || !exercise_product(64, left, right, 1) ||
+                (left <= 32 && right <= 32 &&
+                 (!exercise_product(32, left, right, 0) || !exercise_product(32, left, right, 1))))
             {
                 return 1;
             }
         }
     }
     puts("PASS integer facts C99: 6718464 exhaustive arithmetic evaluations, "
-         "192512 carry/borrow and204800 mask/shift/negation samples; 1360384 product samples; immutable IR and CFG");
+         "192512 carry/borrow and204800 mask/shift/negation samples; 2720768 product samples; immutable IR and CFG");
     return 0;
 }
