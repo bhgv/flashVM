@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1689**. [Русская версия](README.ru.md).
+Development version: **0.1690**. [Русская версия](README.ru.md).
 
-Current series: [v0.1689](docs/releases/v0.1689.md): FIR0.68 product facts, retained eager errors and actual Dis64 vmachine exception selection.
+Current series: [v0.1690](docs/releases/v0.1690.md): FIR0.69 typed conversion facts, collector exception roots and generated native-layout audit.
 
 ## Browse documentation
 

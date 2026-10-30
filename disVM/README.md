@@ -240,3 +240,5 @@ without an out-of-range signed conversion; boundary regressions remain separate.
 Upstream vm-widths.py was repaired at4c26a0f to borrow the new unsigned
 bigbits/memmove body. Its49 independent half pairs pass three data models
 under O3/NDEBUG strict UBSan; no loader/wire behavior changes in that test fix.
+
+[Native-consumer layout audit](upstream/doc/dis64-native-consumer-audit.md): representative generated-header blockers remain separate from75 selected object builds (78 with explicit geometry). [GC roots](upstream/doc/dis64-gc-roots.md): actual collector epochs with bounded arena, separate from full boot/live compaction.

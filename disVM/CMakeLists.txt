@@ -104,6 +104,7 @@ if(BUILD_TESTING)
     loader-runtime
     pointer-maps
     gc-maps
+    gc-roots
     gc-arithmetic
     gc-idle
     readmod-io
@@ -252,7 +253,7 @@ if(BUILD_TESTING)
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endif()
   # Boundary arithmetic fixtures retain sanitizer checks in normal CTest runs.
-  set_tests_properties(disvm_gc-arithmetic disvm_gc-idle disvm_readmod-io PROPERTIES
+  set_tests_properties(disvm_gc-roots disvm_gc-arithmetic disvm_gc-idle disvm_readmod-io PROPERTIES
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=address,undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp;ASAN_OPTIONS=detect_leaks=0")
   set_tests_properties(disvm_type-retains disvm_byte-array-retains disvm_list-retains disvm_channel-retains disvm_module-data-retains disvm_token-capacity disvm_token-retains disvm_clone-owners disvm_heap-clones disvm_heap-preflight disvm_loader-snapshots disvm_loader-runtime disvm_srv-results disvm_module-imports PROPERTIES
     ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")

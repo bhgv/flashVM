@@ -222,3 +222,5 @@ big bits через unsigned halves и memmove, без out-of-range signed cast.
 В4c26a0f исправлен upstream vm-widths.py: он использует actual unsigned
 bigbits/memmove body и49 независимых пар половин. Три data models прошли
 O3/NDEBUG strict UBSan; production loader/wire этим test fix не меняются.
+
+[Аудит native-разметки](upstream/doc/dis64-native-consumer-audit.md): выявленные несоответствия generated headers не закрываются сборкой75 selected объектов (78 с явной geometry). [Корни GC](upstream/doc/dis64-gc-roots.md): реальные эпохи collector при ограниченной арене, отдельно от полного boot/compaction.

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1689**. [English](README.md).
+Версия разработки: **0.1690**. [English](README.md).
 
-Текущая серия: [v0.1689](docs/releases/v0.1689.md): FIR0.68, младшие нули произведений и actual vmachine/handler/propex Dis64.
+Текущая серия: [v0.1690](docs/releases/v0.1690.md): FIR0.69, типизированные приведения, GC exception roots и аудит native ABI.
 
 ## Просмотр документации
 
