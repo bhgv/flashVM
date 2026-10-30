@@ -6,7 +6,7 @@
 
 Development version: **0.1689**. [Русская версия](README.ru.md).
 
-Current series: [v0.1689](docs/releases/v0.1689.md): FIR0.68 multiplication low-zero facts, retained eager errors and compiler/linker/VM acceptance.
+Current series: [v0.1689](docs/releases/v0.1689.md): FIR0.68 product facts, retained eager errors and actual Dis64 vmachine exception selection.
 
 ## Browse documentation
 

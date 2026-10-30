@@ -122,6 +122,7 @@ if(BUILD_TESTING)
     dis64-runtime
     dis64-scheduler
     dis64-fileloader
+    dis64-vmachine
     dis64-inspect
     dis-rune-case
     array-indices
@@ -226,7 +227,7 @@ if(BUILD_TESTING)
       continue()
     endif()
     # This connected fixture executes actual Linux/AMD64 RX code, not other targets.
-    if((driver STREQUAL "dis64-runtime" OR driver STREQUAL "dis64-scheduler" OR driver STREQUAL "dis64-fileloader") AND
+    if((driver STREQUAL "dis64-runtime" OR driver STREQUAL "dis64-scheduler" OR driver STREQUAL "dis64-fileloader" OR driver STREQUAL "dis64-vmachine") AND
        (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$"))
       continue()
     endif()
@@ -244,6 +245,10 @@ if(BUILD_TESTING)
   endif()
   if(TEST disvm_dis64-fileloader)
     set_tests_properties(disvm_dis64-fileloader PROPERTIES TIMEOUT 180
+      ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  endif()
+  if(TEST disvm_dis64-vmachine)
+    set_tests_properties(disvm_dis64-vmachine PROPERTIES TIMEOUT 180
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -DNDEBUG -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endif()
   # Boundary arithmetic fixtures retain sanitizer checks in normal CTest runs.
