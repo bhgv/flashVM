@@ -37,8 +37,9 @@ for analysis completion. There is at most one active immutable scan and one
 newest pending snapshot. Each Update requires a strictly increasing positive
 ticket, a nonnegative revision and a supported profile. The owner immediately
 invalidates the old presentation catalog. Old ticket/revision/profile results
-cannot replace the latest catalog. Shutdown drains active bounded work and
-acknowledges termination; it can wait for that work. Clients must receive replies.
+cannot replace the latest catalog. A newer accepted Update requests cooperative cancellation of the active old
+scan. Shutdown requests cancellation too, drains its result and acknowledges
+termination; it can wait until the next checkpoint. Clients must receive replies.
 Optional buffered notices are best effort; Snapshot is authoritative. Nil notices
 are supported without selecting on a nil channel.
 
@@ -173,3 +174,34 @@ while old analysis is active, duplicate tickets and shutdown. Both interpreter
 and JIT pass. These are functional scheduling tests, not measured physical typing
 latency or parallel VM execution. Real headless MovieClip/raster integration
 checks additionally verify coloured pixels and queued edits in both VM modes.
+
+
+## Cooperative cancellation (v0.1695)
+
+`startcancellable` supplies the ordinary job/result pair plus a buffered channel
+of active positive tickets. Job tickets must be unique over the worker lifetime
+to distinguish late requests. It has one sending owner and capacity one. Send at
+most one pending cancellation, and still receive exactly one job result. An exact
+match observed at a checkpoint produces `Cancelled` with no token array or
+partial counters. A result completed before the request can still be `Ok`; a late or
+nonpositive ticket is consumed and ignored. Metadata/size validation still takes
+precedence over cancellation. Cancellation never replaces the last
+successful incremental baseline. The ordinary `start` API remains unchanged.
+
+The lazy owner uses this capability automatically for superseding edits and
+Shutdown. It keeps only the newest pending snapshot, replaces its own queued
+cancellation without blocking on scanner completion, and drops stale results as
+before. An invalid or oversized Update does not cancel valid current work.
+
+Checkpoints run before analysis, every 256 scalars during validation, common
+prefix/suffix and UTF-8 boundary preparation, and between generated records.
+This is cooperative scheduling within Dis, independent of Flash frame rate.
+A generated scan of one long string/comment, source encoding, allocation, array
+copy or suffix copy is not preempted by this service. There is no wall-clock
+latency guarantee or claim of parallel VM/GC execution. Grammar recognition and
+Coco/R-generated tables have not changed.
+
+The actual-runtime regression covers queued and in-flight cancellation, exact
+correlation, repeated cancellation, late/nonpositive requests, preservation of a
+private successful baseline, ordinary scanner use, coalesced edit bursts and
+acknowledged shutdown in interpreter and JIT dispatch.

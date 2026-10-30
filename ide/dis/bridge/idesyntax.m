@@ -3,7 +3,7 @@ Idesyntax: module
 {
     PATH: con "idesyntax.dis"; # Portable Limbo implementation, no display dependency.
     Limbo, ActionScript: con iota + 1; # Lexical profiles, not compiler acceptance.
-    Ok, Invalid, TooLarge, Pending: con iota; # Complete result, failure or lazy work outstanding.
+    Ok, Invalid, TooLarge, Pending, Cancelled: con iota; # Complete result, failure, pending or explicit cooperative cancellation.
     Update, Snapshot, Shutdown: con iota; # Lazy-owner operations; exactly one reply each.
     MaxCharacters: con 65536; # Scalar budget for one immutable source snapshot.
     MaxBytes: con 262144; # UTF-8 scanner allocation bound.
@@ -33,7 +33,7 @@ Idesyntax: module
         ticket: int; # Original correlation value.
         revision: int; # Original source revision.
         language: int; # Original profile.
-        status: int; # Ok, Invalid or TooLarge.
+        status: int; # Ok, Invalid, TooLarge or Cancelled; cancellation has no tokens.
         tokens: array of Token; # Receiver-owned ordered intervals; nil on failure.
         scanned: int; # Generated records visited on success, excluding EOF.
         reused: int; # Records reused from the private successful baseline.
@@ -52,6 +52,15 @@ Idesyntax: module
     # Nil channels report missing scanner dependencies. Each accepted job needs one receive;
     # stop also receives an acknowledgement. No frame clock, renderer or OS thread claim.
     start: fn(): (chan of Request, chan of Result);
+
+    # Start the same worker with a buffered, single-producer cancellation channel.
+    # Use unique positive job tickets for this worker lifetime; send the active
+    # ticket. A match observed at a checkpoint returns Cancelled with
+    # no partial tokens. A result already complete may still be Ok. Late/nonmatching tickets are ignored. At most one pending
+    # send is permitted; receive the job result even after cancellation. Checks are
+    # cooperative: every 256 source scalars and between generated scanner records;
+    # one long generated token/allocation/copy is not preempted. Stop still acknowledges.
+    startcancellable: fn(): (chan of Request, chan of Result, chan of int);
 
     # Start a revision-aware lazy owner: one active scan and at most one newest snapshot.
     # notices may be a buffered channel; readiness delivery is best effort, Snapshot is authoritative.

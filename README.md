@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1694**. [Русская версия](README.ru.md).
+Development version: **0.1695**. [Русская версия](README.ru.md).
 
-Current series: [v0.1694](docs/releases/v0.1694.md): incremental Coco/R catalogs, context/search/lexical candidates (menu 17), KMP initialization and verified native64 Math import.
+Current series: [v0.1695](docs/releases/v0.1695.md): cooperative cancellation of superseded Coco/R analysis, preserved incremental baselines and source-built compiler/FIR/linker/runtime verification.
 
 ## Browse documentation
 

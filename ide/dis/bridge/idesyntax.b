@@ -8,15 +8,26 @@ include "aslex.m";
 # Returned channels carry copied values; each scanner's mutable tables have one owner.
 start(): (chan of Request, chan of Result)
 {
+    (jobs, answers, unused) := startcancellable();
+    return (jobs, answers);
+}
+
+
+# Start an ordinary worker plus one buffered cancellation capability. A positive
+# ticket cancels only that job at a cooperative checkpoint; callers own sends.
+# Missing generated dependencies return three nil channels. No frame/OS timer.
+startcancellable(): (chan of Request, chan of Result, chan of int)
+{
     limbo := load LimbolexParser LimbolexParser->PATH;
     actionscript := load AslexParser AslexParser->PATH;
     if (limbo == nil || actionscript == nil) {
-        return (nil, nil);
+        return (nil, nil, nil);
     }
     jobs := chan of Request;
     answers := chan of Result;
-    spawn serve(jobs, answers, limbo, actionscript);
-    return (jobs, answers);
+    cancel := chan[1] of int;
+    spawn serve(jobs, answers, cancel, limbo, actionscript);
+    return (jobs, answers, cancel);
 }
 
 
@@ -38,12 +49,12 @@ copyresult(result: Result): Result
 # One owning Dis process serializes client updates and immutable completed results.
 startlazy(notices: chan of int): chan of Command
 {
-    (jobs, answers) := start();
+    (jobs, answers, cancel) := startcancellable();
     if (jobs == nil) {
         return nil;
     }
     commands := chan of Command;
-    spawn lazyowner(commands, notices, jobs, answers);
+    spawn lazyowner(commands, notices, jobs, answers, cancel);
     return commands;
 }
 
@@ -52,16 +63,18 @@ startlazy(notices: chan of int): chan of Command
 # Update acknowledgements precede scanning. Stale ticket/revision/profile results are dropped.
 # [GC:] The owner retains at most active/latest snapshots and one completed catalog.
 lazyowner(commands: chan of Command, notices: chan of int,
-          jobs: chan of Request, answers: chan of Result)
+          jobs: chan of Request, answers: chan of Result, cancel: chan of int)
 {
     latest := Request(0, 0, Limbo, "", 0);
     cached := Result(0, 0, Limbo, Pending, nil, 0, 0, 0);
     working := 0;
+    active := 0;
     dirty := 0;
     for (;;) {
         if (!working && dirty) {
             jobs <-= latest;
             working = 1;
+            active = latest.ticket;
             dirty = 0;
         }
         alt {
@@ -71,6 +84,7 @@ lazyowner(commands: chan of Command, notices: chan of int,
             }
             if (command.operation == Shutdown) {
                 if (working) {
+                    requestcancel(cancel, active);
                     <-answers;
                 }
                 jobs <-= Request(latest.ticket, latest.revision, latest.language, "", 1);
@@ -88,6 +102,9 @@ lazyowner(commands: chan of Command, notices: chan of int,
                 if (len job.text > MaxCharacters) {
                     command.reply <-= Result(job.ticket, job.revision, job.language, TooLarge, nil, 0, 0, 0);
                     continue;
+                }
+                if (working) {
+                    requestcancel(cancel, active);
                 }
                 latest = job;
                 cached = Result(job.ticket, job.revision, job.language, Pending, nil, 0, 0, 0);
@@ -116,11 +133,39 @@ lazyowner(commands: chan of Command, notices: chan of int,
 }
 
 
+# Replace the sole pending cancellation with this active ticket. The lazy owner
+# is the only producer, so its buffered send cannot wait for scanner completion.
+# Draining a previous value is harmless even if the worker consumed it first.
+requestcancel(cancel: chan of int, ticket: int)
+{
+    alt {
+    <-cancel => ;
+    * => ;
+    }
+    cancel <-= ticket;
+}
+
+
+# Consume at most one buffered value without blocking. Only an exact positive
+# active ticket cancels: a late old request never aborts the following snapshot.
+# The worker has sole receive ownership; no clock or UI callback is involved.
+cancelled(cancel: chan of int, ticket: int): int
+{
+    alt {
+    target := <-cancel =>
+        return target > 0 && target == ticket;
+    * =>
+        return 0;
+    }
+}
+
+
 # Validate scalar input, translate generated UTF-8 byte spans, return one complete catalog.
 # baseline/catalog are private last-success values. Safe prefix restart plus generated
 # token convergence can reuse an unchanged suffix; otherwise scanning continues to EOF.
 # Scanner/boundary storage remain worker-local; failure has no partial tokens.
-scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscript: AslexParser): Result
+scan(job, baseline: Request, catalog: Result, cancel: chan of int,
+     limbo: LimbolexParser, actionscript: AslexParser): Result
 {
     result := Result(job.ticket, job.revision, job.language, Invalid, nil, 0, 0, 0);
     if (job.ticket <= 0 || job.revision < 0 ||
@@ -131,7 +176,15 @@ scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscrip
         result.status = TooLarge;
         return result;
     }
+    if (cancelled(cancel, job.ticket)) {
+        result.status = Cancelled;
+        return result;
+    }
     for (i := 0; i < len job.text; i++) {
+        if (i % 256 == 0 && cancelled(cancel, job.ticket)) {
+            result.status = Cancelled;
+            return result;
+        }
         scalar := job.text[i];
         if (scalar < 0 || scalar > 16r10ffff || (scalar >= 16rd800 && scalar <= 16rdfff)) {
             return result;
@@ -150,10 +203,18 @@ scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscrip
         while (prefix < len baseline.text && prefix < len job.text &&
                baseline.text[prefix] == job.text[prefix]) {
             prefix++;
+            if (prefix % 256 == 0 && cancelled(cancel, job.ticket)) {
+                result.status = Cancelled;
+                return result;
+            }
         }
         while (suffix < len baseline.text - prefix && suffix < len job.text - prefix &&
                baseline.text[len baseline.text - suffix - 1] == job.text[len job.text - suffix - 1]) {
             suffix++;
+            if (suffix % 256 == 0 && cancelled(cancel, job.ticket)) {
+                result.status = Cancelled;
+                return result;
+            }
         }
         # Include the token ending exactly at the edit: identifiers/numbers or
         # two-byte comment openers may merge across that old boundary.
@@ -180,6 +241,10 @@ scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscrip
     position := 0;
     startbyte := 0;
     for (i = 0; i < len job.text; i++) {
+        if (i % 256 == 0 && cancelled(cancel, job.ticket)) {
+            result.status = Cancelled;
+            return result;
+        }
         boundaries[position] = i;
         if (i == restart) {
             startbyte = position;
@@ -214,6 +279,10 @@ scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscrip
     scanned := 0;
     previous := startbyte;
     for (;;) {
+        if (cancelled(cancel, job.ticket)) {
+            result.status = Cancelled;
+            return result;
+        }
         kind, first, last: int;
         if (job.language == Limbo) {
             (kind, first, last) = limbo->next();
@@ -280,7 +349,7 @@ scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscrip
 
 # Serially serve immutable jobs independently of timeline frames; stop is acknowledged.
 # [GC:] Channels retain snapshots/results until rendezvous; no cross-heap native pointers.
-serve(jobs: chan of Request, answers: chan of Result,
+serve(jobs: chan of Request, answers: chan of Result, cancel: chan of int,
       limbo: LimbolexParser, actionscript: AslexParser)
 {
     baseline := Request(0, 0, 0, "", 0);
@@ -291,7 +360,7 @@ serve(jobs: chan of Request, answers: chan of Result,
             answers <-= Result(job.ticket, job.revision, job.language, Ok, nil, 0, 0, 0);
             return;
         }
-        result := scan(job, baseline, catalog, limbo, actionscript);
+        result := scan(job, baseline, catalog, cancel, limbo, actionscript);
         if (result.status == Ok) {
             baseline = job;
             catalog = result;

@@ -76,6 +76,52 @@ lazychecks()
 }
 
 
+# Use the public cooperative capability, without sleep/timing or a fake scanner.
+# Buffered cancellation before submission deterministically reaches a checkpoint;
+# later old/nonpositive tickets must not poison the following job or baseline.
+cancelchecks()
+{
+    (jobs, answers, cancel) := syntax->startcancellable();
+    require(jobs != nil && answers != nil && cancel != nil, "cancellable dependencies");
+    original := "var alpha=1; // baseline😀\nalpha++;";
+    jobs <-= syntax->Request(1, 1, syntax->ActionScript, original, 0);
+    result := <-answers;
+    require(result.status == syntax->Ok, "successful private baseline before cancellation");
+    tokens := len result.tokens;
+    filler := array[syntax->MaxCharacters] of { * => byte '+' };
+    for (ticket := 2; ticket <= 8; ticket++) {
+        cancel <-= ticket;
+        jobs <-= syntax->Request(ticket, ticket, syntax->ActionScript, string filler, 0);
+        result = <-answers;
+        require(result.status == syntax->Cancelled && result.ticket == ticket &&
+                result.revision == ticket && result.language == syntax->ActionScript,
+                "cancelled result keeps exact correlation");
+        require(len result.tokens == 0 && result.scanned == 0 && result.reused == 0 &&
+                result.restart == 0, "cancellation publishes no partial catalog or counters");
+    }
+    # Send only after the worker accepts this maximum-sized snapshot. Validation
+    # exceeds the runtime's bounded quantum, so this also exercises an in-flight
+    # checkpoint rather than only cancellation already waiting before submission.
+    jobs <-= syntax->Request(9, 9, syntax->ActionScript, string filler, 0);
+    cancel <-= 9;
+    result = <-answers;
+    require(result.status == syntax->Cancelled && len result.tokens == 0,
+            "in-flight validation cancellation returns no partial catalog");
+    cancel <-= 9;
+    jobs <-= syntax->Request(10, 10, syntax->ActionScript, original, 0);
+    result = <-answers;
+    require(result.status == syntax->Ok && result.scanned == 0 && result.reused == tokens,
+            "late cancellation ignored and successful baseline preserved");
+    cancel <-= 0;
+    jobs <-= syntax->Request(11, 11, syntax->ActionScript, "var beta=2;", 0);
+    result = <-answers;
+    require(result.status == syntax->Ok, "nonpositive cancellation ignored");
+    jobs <-= syntax->Request(12, 12, syntax->Limbo, "", 1);
+    result = <-answers;
+    require(result.status == syntax->Ok && result.ticket == 12, "cancellable stop acknowledged");
+}
+
+
 # Execute real generated scanner jobs and check source/correlation/staleness/Unicode bounds.
 # Each accepted request has exactly one receive, including acknowledged shutdown.
 init()
@@ -134,5 +180,6 @@ init()
     second = <-answers;
     require(second.status == syntax->Ok && second.ticket == 25, "shutdown acknowledged");
     lazychecks();
-    sys->print("PASS Coco/R syntax: worker channels, scalar spans, immutable catalogs, stale projection, incomplete text and quotas\n");
+    cancelchecks();
+    sys->print("PASS Coco/R syntax: worker channels, scalar spans, immutable catalogs, cooperative cancellation, stale projection, incomplete text and quotas\n");
 }

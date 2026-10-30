@@ -15,7 +15,7 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 | 10 / lifecycle | `sh run-desktop-lifecycle.sh` | Переносимый пример независимых владельцев, завершения и нового документа |
 | 11 / pointer | `sh run-desktop-pointer.sh` | Переносимый пример Unicode-выделения и отклонения stale revision |
 | 17 / tokens | `sh run-token-query.sh` | Coco/R: контекст, поиск, лексические кандидаты; настоящий пример Limbo без GUI |
-| 16 / syntax | `sh run-syntax-check.sh` | Coco/R Limbo/AS: ленивый сервис, Unicode, revision; без цветного GUI |
+| 16 / syntax | `sh run-syntax-check.sh` | Coco/R Limbo/AS: ленивый сервис, отмена устаревших задач, Unicode, revision; без цветного GUI |
 | 12 / clipboard | `sh run-desktop-clipboard.sh` | Сессионный Copy/Cut/Paste через отдельного владельца Limbo |
 
 Пункты 10/11/12 доступны также в `disvm-runtime`, без графики. Они запускают настоящие
