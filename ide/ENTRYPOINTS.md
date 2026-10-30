@@ -10,7 +10,7 @@ MovieClip-стол. Пункт **9** сохраняет прежний один�
 
 | Пункт / Entry | Команда в установленном пакете / Installed command | Назначение / Purpose |
 | --- | --- | --- |
-| 8 / desktop | `sh run-desktop-ide.sh` | Несколько MovieClip-окон, миниатюры, перемещение, мышиная каретка/выделение, F7/F8, Help |
+| 8 / desktop | `sh run-desktop-ide.sh` | Несколько MovieClip-окон, миниатюры, перемещение, мышиная каретка/выделение, F7/F8, Help, ленивая подсветка Limbo/AS |
 | 9 / editor | `sh run-ide.sh` | Прежний одиночный графический редактор с его отдельными интеграциями |
 | 10 / lifecycle | `sh run-desktop-lifecycle.sh` | Переносимый пример независимых владельцев, завершения и нового документа |
 | 11 / pointer | `sh run-desktop-pointer.sh` | Переносимый пример Unicode-выделения и отклонения stale revision |
@@ -65,3 +65,5 @@ through entry 9; they are not silently claimed to be embedded in entry 8.
 [Сессионный clipboard](DESKTOP-CLIPBOARD.ru.md) · [Session clipboard](DESKTOP-CLIPBOARD.md).
 
 [Lazy syntax service / Ленивый анализ Coco/R](SYNTAX-LAZY.md) · [Русский](SYNTAX-LAZY.ru.md).
+
+Menu8 presents lazy Limbo/AS colours through the native contour extension; menu16 checks the service alone. [Contract](SYNTAX-LAZY.md).

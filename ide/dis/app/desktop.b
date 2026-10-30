@@ -67,6 +67,14 @@ caption(reply: Idedeskpane->Reply, index: int): string
     } else if (reply.path != "") {
         title = reply.path;
     }
+    # Captions are one visual line. Preserve the real path while replacing only
+    # presentation controls, including valid filename line/paragraph separators.
+    for (scalar := 0; scalar < len title; scalar++) {
+        value := title[scalar];
+        if (value < 32 || value == 127 || value == 16r85 || value == 16r2028 || value == 16r2029) {
+            title[scalar] = ' ';
+        }
+    }
     if (len title > 28) {
         title = title[len title - 28:];
     }
@@ -94,6 +102,7 @@ init()
     if (sys == nil || codec == nil || host == nil || panes == nil || desk == nil || fields == nil || policy == nil || files == nil || clips == nil) {
         raise "fail: desktop modules";
     }
+    notices := chan[8] of int; # Stable pane identities only; snapshots remain owner-authoritative.
     windows := array[desk->MaxWindows] of chan of Idedeskpane->Request;
     shown := array[desk->MaxWindows] of Idedeskpane->Reply;
     pointing := 0; # Stable source slot for the admitted body selection gesture.
@@ -106,10 +115,10 @@ init()
         }
         source = loaded;
     }
-    windows[0] = panes->start(panes->Editor, path, source);
+    windows[0] = panes->startnotified(panes->Editor, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
-    windows[3] = panes->start(panes->Editor, "", "");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
             raise "fail: desktop pane startup";
@@ -206,8 +215,45 @@ init()
                 + codec->hexword(3) + codec->hexword(field.caret - first) + codec->hexword(0)
                 + codec->hexword(-1) + field.text[first:last]);
         }
+        for (index = 0; index < len view.items; index++) {
+            id := view.items[index].id;
+            if (id >= 1 && id <= len windows && windows[id-1] != nil &&
+                shown[id-1].colors != "") {
+                send(codec, output, desk->ColorsView, view.ticket, id,
+                    shown[id-1].revision, shown[id-1].colors);
+            }
+        }
         send(codec, output, desk->EndView, view.ticket, 0, 0, "");
-        (valid, event) := codec->decode(<-input);
+        raw: array of byte;
+        for (;;) {
+            receivedinput := 0;
+            alt {
+            raw = <-input => receivedinput = 1;
+            id := <-notices =>
+                if (id < 1 || id > len windows || windows[id-1] == nil) {
+                    continue;
+                }
+                fresh := panecall(windows[id-1], panes->Snapshot, "", nil);
+                if (fresh.revision != shown[id-1].revision || fresh.first != shown[id-1].first ||
+                    fresh.body != shown[id-1].body || fresh.colors == "") {
+                    continue;
+                }
+                # Paint-only publication keeps the completed geometry/input ticket.
+                # It cannot acknowledge an outstanding keyboard edit or move a pane.
+                shown[id-1].colors = fresh.colors;
+                for (item := 0; item < len view.items; item++) {
+                    if (view.items[item].id == id) {
+                        send(codec, output, desk->ColorsView, view.ticket, id,
+                            fresh.revision, fresh.colors);
+                        break;
+                    }
+                }
+            }
+            if (receivedinput) {
+                break;
+            }
+        }
+        (valid, event) := codec->decode(raw);
         if (!valid) {
             raise "fail: desktop event envelope";
         }
@@ -534,7 +580,7 @@ init()
             created := 0;
             for (index = 0; index < len windows; index++) {
                 if (windows[index] == nil) {
-                    owner := panes->start(panes->Editor, "", "");
+                    owner := panes->startnotified(panes->Editor, "", "", notices, index + 1);
                     if (owner == nil) {
                         panecall(windows[1], panes->SetText, "Cannot start an editor owner.", nil);
                         break;

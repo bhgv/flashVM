@@ -426,6 +426,11 @@ if(DVM_RUNTIME_EDITOR)
   add_dependencies(disvm-editor disvm_view_headers)
   target_sources(disvm-editor PRIVATE desktop_view.c)
   if(DVM_RUNTIME_TESTS)
+    add_executable(disvm_desktop_colors_test test_desktop_colors.c desktop_view.c editor_raster.c)
+    add_dependencies(disvm_desktop_colors_test disvm_view_headers)
+    target_include_directories(disvm_desktop_colors_test PRIVATE "${view}" "${root}/disVM/include")
+    target_link_libraries(disvm_desktop_colors_test PRIVATE flashvm m)
+    add_test(NAME disvm_desktop_color_protocol COMMAND disvm_desktop_colors_test)
     add_executable(disvm_as_view_test test_as_view.c)
     add_dependencies(disvm_as_view_test disvm_view_headers)
     target_include_directories(disvm_as_view_test PRIVATE "${view}")
@@ -1347,6 +1352,10 @@ endif()
 # Exercise normalized gestures against actual Dis policy and MovieClip pixels.
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_syntax_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_syntax.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_desktop_syntax_${mode} PROPERTIES TIMEOUT 120)
     add_test(NAME disvm_desktop_focus_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_focus.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" ${mode})

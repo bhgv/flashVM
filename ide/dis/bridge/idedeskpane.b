@@ -1,4 +1,5 @@
 implement Idedeskpane;
+include "idesyntax.m";
 include "sys.m";
 include "uibridge.m";
 include "idecore.m";
@@ -39,6 +40,31 @@ language(path: string): int
 }
 
 
+# Select the editor lexical profile independently of compiler availability.
+# Untitled source defaults to Limbo; unknown suffixes keep ordinary text presentation.
+syntaxlanguage(path: string): int
+{
+    if (path == "" || language(path) == Fircompiler->Limbo) {
+        return Idesyntax->Limbo;
+    }
+    if (language(path) != 0) {
+        return Idesyntax->ActionScript;
+    }
+    return 0;
+}
+
+
+# Rendezvous with the lazy owner, whose Update/Snapshot never waits for scanning.
+# Arguments are copied values; the reply channel is retained until acknowledgement.
+syntaxcall(owner: chan of Idesyntax->Command, operation: int,
+           job: Idesyntax->Request): Idesyntax->Result
+{
+    reply := chan of Idesyntax->Result;
+    owner <-= Idesyntax->Command(operation, job, reply);
+    return <-reply;
+}
+
+
 # Admit complete session clipboard text independently of the broker caller.
 # text is borrowed Unicode; return an Idecore status without changing source.
 # Keep the shared byte bound and reject values native C-string clipboards cannot
@@ -66,7 +92,8 @@ clipstatus(text: string): int
 # separate Limbo processes do not imply parallel native parser or UI execution.
 serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
       core: Idecore, policy: Ideinput, viewport: Ideviewport, files: Idefileops, panel: Idebuildpanel,
-      workspace: Ideworkspace, compiler: Idecompiler)
+      workspace: Ideworkspace, compiler: Idecompiler, syntax: Idesyntax,
+      analysis: chan of Idesyntax->Command, ready, notices: chan of int, identity: int)
 {
     document: chan of Idecore->Request;
     builds: chan of Idebuildpanel->Request;
@@ -84,8 +111,29 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
     helpfirst := 0;
     pointing := 0; # Active admitted pointer sequence for this document only.
     pointanchor := 0; # Full scalar endpoint captured at pointer begin.
+    submittedrevision := -1;
+    submittedlanguage := 0;
+    syntaxticket := 0;
+    colored := Idesyntax->Result(0, 0, 0, Idesyntax->Pending, nil);
     for (;;) {
-        request := <-requests;
+        request: Request;
+        if (analysis == nil) {
+            request = <-requests;
+        } else {
+            alt {
+            request = <-requests => ;
+            <-ready =>
+                colored = syntaxcall(analysis, syntax->Snapshot,
+                    Idesyntax->Request(0, 0, 0, "", 0));
+                if (notices != nil) {
+                    alt {
+                    notices <-= identity => ;
+                    * => ;
+                    }
+                }
+                continue;
+            }
+        }
         if (request.reply == nil) {
             continue;
         }
@@ -98,6 +146,10 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
         stop := 0;
         if (request.id >= 0) {
             if (request.operation == Shutdown) {
+                if (analysis != nil) {
+                    syntaxcall(analysis, syntax->Shutdown, Idesyntax->Request(0, 0, 0, "", 0));
+                    analysis = nil;
+                }
                 if (builds != nil) {
                     answers := chan of Idebuildpanel->Reply;
                     builds <-= Idebuildpanel->Request(1, panel->Shutdown, 0, 0, 0, 0, answers);
@@ -331,8 +383,24 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 }
             }
         }
+        colors := "";
+        if (analysis != nil && kind == Editor) {
+            profile := syntaxlanguage(path);
+            if (profile != 0 &&
+                (submittedrevision != current.revision || submittedlanguage != profile)) {
+                if (syntaxticket == Sys->Maxint) {
+                    raise "fail: syntax correlation exhausted";
+                }
+                syntaxticket++;
+                colored = syntaxcall(analysis, syntax->Update,
+                    Idesyntax->Request(syntaxticket, current.revision, profile, current.text, 0));
+                submittedrevision = current.revision;
+                submittedlanguage = profile;
+            }
+            colors = syntax->project(colored, current.revision, profile, first, len body);
+        }
         response := Reply(request.id, status, kind, path, body, current.revision,
-                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic);
+                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic, colors);
         request.reply <-= response;
         if (stop) {
             return;
@@ -345,6 +413,14 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
 # compilation leaves an editable window with explicit unavailable Build status.
 # The returned channel owns its document until acknowledged Shutdown.
 start(kind: int, path, text: string): chan of Request
+{
+    return startnotified(kind, path, text, nil, 0);
+}
+
+
+# Start one document/presentation owner and an optional private lazy analysis owner.
+# Scanner/GC heaps never escape; external readiness carries only the stable identity.
+startnotified(kind: int, path, text: string, notices: chan of int, identity: int): chan of Request
 {
     if (kind < Editor || kind > Help || len text > 65536) {
         return nil;
@@ -360,7 +436,17 @@ start(kind: int, path, text: string): chan of Request
     if (sys == nil || core == nil || policy == nil || viewport == nil || files == nil || panel == nil || workspace == nil || compiler == nil) {
         return nil;
     }
+    syntax: Idesyntax;
+    analysis: chan of Idesyntax->Command;
+    ready: chan of int;
+    if (kind == Editor && notices != nil && identity > 0) {
+        syntax = load Idesyntax Idesyntax->PATH;
+        if (syntax != nil) {
+            ready = chan[1] of int;
+            analysis = syntax->startlazy(ready);
+        }
+    }
     requests := chan of Request;
-    spawn serve(kind, path, text, requests, sys, core, policy, viewport, files, panel, workspace, compiler);
+    spawn serve(kind, path, text, requests, sys, core, policy, viewport, files, panel, workspace, compiler, syntax, analysis, ready, notices, identity);
     return requests;
 }

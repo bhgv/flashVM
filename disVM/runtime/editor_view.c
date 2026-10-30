@@ -2138,7 +2138,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
-    if (message->code >= DVM_DESK_BEGIN && message->code <= DVM_DESK_END)
+    if ((message->code >= DVM_DESK_BEGIN && message->code <= DVM_DESK_END) || message->code == DVM_DESK_COLORS)
     {
         if (!desktop_bound)
         {
@@ -2153,7 +2153,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
         {
             return 0;
         }
-        if (!dvm_desktop_message(message))
+        int desktop_status = dvm_desktop_message(message);
+        if (!desktop_status)
         {
             fprintf(stderr,
                     "desktop wire code=%lu first=%ld size=%lu\n",
@@ -2162,9 +2163,12 @@ int dvm_editor_present(const DVM_UIMessage *message)
                     (unsigned long)message->size);
             return 0;
         }
-        if (message->code == DVM_DESK_END)
+        if (message->code == DVM_DESK_END || desktop_status == 2)
         {
-            complete = 1;
+            if (message->code == DVM_DESK_END)
+            {
+                complete = 1;
+            }
 #ifdef DVM_EDITOR_SDL
             if (!events && !capture_path)
             {

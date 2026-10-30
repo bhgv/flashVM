@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1692**. [English](README.md).
+Версия разработки: **0.1693**. [English](README.md).
 
-Текущая серия: [v0.1692](docs/releases/v0.1692.md): синхронизация Inferno, exception/native64 и ленивый анализ Limbo/AS через Coco/R (пункт 16).
+Текущая серия: [v0.1693](docs/releases/v0.1693.md): видимая ленивая подсветка Limbo/AS в редакторах (пункт 8), диапазоны TextField и обновления цветов без подтверждения ввода.
 
 ## Просмотр документации
 

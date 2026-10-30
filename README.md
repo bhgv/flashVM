@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1692**. [Русская версия](README.ru.md).
+Development version: **0.1693**. [Русская версия](README.ru.md).
 
-Current series: [v0.1692](docs/releases/v0.1692.md): Inferno exception/native64 sync and a lazy Coco/R Limbo/AS analysis service (menu 16).
+Current series: [v0.1693](docs/releases/v0.1693.md): visible lazy Limbo/AS syntax colours in desktop/menu 8, shared TextField contour ranges and input-safe paint updates.
 
 ## Browse documentation
 

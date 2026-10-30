@@ -37,10 +37,18 @@ Idedeskpane: module
         transfer: string; # ExportSelection only: complete bounded selection; never native UI metadata.
         line: int; # One-based logical source line containing the viewport start.
         diagnostic: string; # Plain build/error metadata, bounded by the caller before UI publication.
+        colors: string; # Empty while pending; otherwise one ASCII palette class 0..5 per body scalar.
     };
 
     # Create an exclusive process and ordinary channel. Editor owns a real Idecore
     # and optional compiler panel; other kinds own separate text. Return nil on
     # invalid kind/missing dependencies. No UI/native heap pointer escapes.
     start: fn(kind: int, path, text: string): chan of Request;
+
+    # Same owner, with best-effort ready notifications carrying the stable pane identity.
+    # A buffered notices channel and positive identity enable analysis. Nil/zero keeps
+    # the plain owner used by start; missing optional scanners also keep plain text.
+    # No document or native pointer is sent through readiness notifications.
+    startnotified: fn(kind: int, path, text: string, notices: chan of int,
+                      identity: int): chan of Request;
 };

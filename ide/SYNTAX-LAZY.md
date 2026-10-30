@@ -3,11 +3,11 @@
 [Русский](SYNTAX-LAZY.ru.md) · [IDE entry points](ENTRYPOINTS.md) ·
 [Desktop](DESKTOP.md) · [Compiler frontends](../compiler/README.md)
 
-Implemented: a portable Limbo/Dis analysis worker, a coalescing lazy owner and
-Coco/R-generated scanners. **Visible mixed-colour editor text is not connected
-by this series.** The existing Flash TextField uses uniform formatting; arbitrary
-AS range TextFormat/HTML support is not added here. Rendering colour ranges is
-the next integration, separate from the tested lexical service.
+Implemented: a portable Limbo/Dis analysis worker, a coalescing lazy owner,
+Coco/R-generated scanners and **visible mixed-colour text in desktop editors**
+(menu8). The FlashVM native range-contour extension shares whole-field shaping;
+AS mixed-range TextFormat/HTML and mixed fonts remain outside this implementation.
+[Native contour contract](../flashVM/doc/TEXT_COLOR_RANGES.md).
 
 The source of recognition is [limbolex.atg](syntax/limbolex.atg) and
 [aslex.atg](syntax/aslex.atg), built by our selected Coco/R Limbo generator.
@@ -59,6 +59,47 @@ binary-searches an authentic catalog and visits intersecting records for at most
 200 visible scalars. A revision/profile mismatch returns an empty palette. It
 never changes source, Undo, save state, caret, selection or view geometry.
 
+## Desktop presentation
+
+[Idedeskpane](dis/bridge/idedeskpane.m) keeps document ownership and optionally
+starts a private lazy analysis owner through `startnotified`. A buffered readiness
+channel and positive pane identity enable this work; plain `start` preserves the
+old library/document path without background scans. Untitled/.b source uses Limbo;
+.as/.as1/.as2/.as3 uses the AS lexical profile. Unknown suffixes and missing
+optional scanner dependencies remain plain text. Failed/over-budget snapshots
+remain editable without partial colours. No full incremental re-lexing is claimed:
+a newest complete admitted snapshot is scanned after the active job finishes.
+
+A pane projects its current revision/profile into the <=200-scalar viewport.
+Completion notifications contain only stable pane identities. The app fetches a
+fresh snapshot and compares revision, viewport origin and body before publishing.
+Hidden panes retain their catalog without painting; reopening uses a fresh view.
+The [app](dis/app/desktop.b) sends `ColorsView` (local UI code65575) through the
+existing typed channel, containing the completed view ticket, pane ID, bounded
+source revision and ASCII palette. Captions replace control/line separators for presentation only; actual paths remain intact.
+The source revision is authoritative at the
+Limbo owner; native admission checks the view ticket, live editor item, scalar
+count, quota and palette classes. It does not independently own source revisions.
+This code is unrelated to shared Dis64 wire/extension IDs.
+
+A staged palette belongs to its full scene. A later paint-only palette keeps the
+same geometry/input ticket and cannot acknowledge queued keyboard input. It
+neither moves a window nor changes source/Undo/save/caret/selection. On the VM
+owner, native code converts scalar colours to byte intervals and exports detached
+contours per palette class from one cached layout. Names keep the default ink;
+numbers, strings, keywords and comments get distinct colours. Selection is drawn
+first and caret last. Thumbnail copies use the same source palette. Drag snapshots
+and contour caches include palette values in their invalidation keys.
+
+The existing immutable render jobs and dirty tiles perform raster work separately
+from the VM; changed palettes use that same damage path. The owner still performs
+layout/contour preparation. This does not claim pixel-minimal damage for every
+edit, physical latency measurements, or OS-thread-parallel Dis/GC execution.
+[test_desktop_syntax.py](../disVM/runtime/test_desktop_syntax.py) checks actual
+RGB ink, unchanged saved source/dirty state for colour-only updates, then a burst
+of26 queued characters while results compete with input. Native protocol tests
+also distinguish paint-only completion from a complete-scene input acknowledgement.
+
 ## Reuse and limits
 
 Consumers can retain the same immutable token catalog for lexical context,
@@ -91,4 +132,5 @@ Dis channels. It checks escaped/incomplete strings/comments, supplementary
 Unicode, atomic quotas, immutable old catalogs, stale projection, an edit burst
 while old analysis is active, duplicate tickets and shutdown. Both interpreter
 and JIT pass. These are functional scheduling tests, not measured physical typing
-latency, parallel VM execution or completed GUI colour acceptance.
+latency or parallel VM execution. Real headless MovieClip/raster integration
+checks additionally verify coloured pixels and queued edits in both VM modes.

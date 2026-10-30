@@ -22,19 +22,20 @@
 /* One immutable copied scene item and its persistent owner-local capabilities. */
 typedef struct DeskItem
 {
-    unsigned long id;     /* Stable controller slot. */
-    unsigned long parent; /* Layer group 0..4. */
-    long x;               /* Signed parent-local pixels; windows may pass under the left rail. */
-    unsigned long y;      /* Parent-local pixels. */
-    unsigned long width;  /* Bounded local extent. */
-    unsigned long height; /* Bounded local extent. */
-    unsigned long mirror; /* Optional source window snapshot in this scene. */
-    unsigned long line;   /* One-based logical source line, zero for non-editor panes. */
-    unsigned long style;  /* Palette 0..6; line origin is decoded separately. */
-    long anchor;          /* Clipped Unicode selection endpoint, -1 hides selection. */
-    long caret;           /* Unicode position, -1 disables the caret. */
-    char text[DESK_TEXT]; /* Owned counted text, not evaluated. */
-    size_t size;          /* Valid bytes in text. */
+    unsigned long id;                /* Stable controller slot. */
+    unsigned long parent;            /* Layer group 0..4. */
+    long x;                          /* Signed parent-local pixels; windows may pass under the left rail. */
+    unsigned long y;                 /* Parent-local pixels. */
+    unsigned long width;             /* Bounded local extent. */
+    unsigned long height;            /* Bounded local extent. */
+    unsigned long mirror;            /* Optional source window snapshot in this scene. */
+    unsigned long line;              /* One-based logical source line, zero for non-editor panes. */
+    unsigned long style;             /* Palette 0..6; line origin is decoded separately. */
+    long anchor;                     /* Clipped Unicode selection endpoint, -1 hides selection. */
+    long caret;                      /* Unicode position, -1 disables the caret. */
+    char text[DESK_TEXT];            /* Owned counted text, not evaluated. */
+    size_t size;                     /* Valid bytes in text. */
+    unsigned char colors[DESK_TEXT]; /* Numeric palette 0..5 per displayed Unicode scalar. */
 } DeskItem;
 
 static FVM_Context *owner;                /* Borrowed FlashVM context; never used on raster workers. */
@@ -60,6 +61,7 @@ static unsigned int height;               /* Committed canvas pixels. */
 static int pending;                       /* A declared scene is being assembled. */
 static int trace; /* Explicit replay diagnostic mode; ordinary windows do not dump source text. */
 static FVM_Path *text_paths[DESK_SLOTS];       /* Owner-local untransformed glyph outlines. */
+static FVM_Path *syntax_paths[DESK_SLOTS][4];  /* Detached colour groups2..5, sharing whole-field shaping. */
 static DeskItem text_keys[DESK_SLOTS];         /* Immutable layout keys; position is deliberately excluded. */
 static unsigned char *drag_pixels[DESK_SLOTS]; /* Owned bounded complete window snapshots. */
 static DeskItem drag_keys[DESK_SLOTS];         /* Content/geometry keys for copied drag pixels. */
@@ -621,6 +623,68 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         pending = 1;
         return 1;
     }
+    if (message->code == DVM_DESK_COLORS)
+    {
+        DeskItem *item = NULL;
+        unsigned long scalars;
+        size_t prefix = 0;
+        size_t byte;
+        if ((!pending && !active) || message->flags != ticket || message->first < 1 || message->first > 8 ||
+            message->second < 0 || message->second > 0x7fffffffL || message->size > 200)
+        {
+            return 0;
+        }
+        for (index = 0; index < received; ++index)
+        {
+            if (items[index].id == (unsigned long)message->first && items[index].line)
+            {
+                item = &items[index];
+            }
+        }
+        if (!item || fvm_utf8_validate(item->text, item->size, &scalars) != FVM_UTF8_OK)
+        {
+            return 0;
+        }
+        for (byte = 0; byte < item->size; ++byte)
+        {
+            if (((unsigned char)item->text[byte] & 0xc0U) != 0x80U)
+            {
+                ++prefix;
+            }
+            if (item->text[byte] == '\n')
+            {
+                break;
+            }
+        }
+        if (byte == item->size || prefix > scalars || message->size != scalars - prefix)
+        {
+            return 0;
+        }
+        for (byte = 0; byte < message->size; ++byte)
+        {
+            if (message->text[byte] < '0' || message->text[byte] > '5')
+            {
+                return 0;
+            }
+        }
+        memset(item->colors, 0, sizeof(item->colors));
+        for (byte = 0; byte < message->size; ++byte)
+        {
+            item->colors[prefix + byte] = (unsigned char)(message->text[byte] - '0');
+        }
+        if (trace)
+        {
+            printf("COLORS %lu %ld %ld %lu %.*s %s\n",
+                   ticket,
+                   message->first,
+                   message->second,
+                   (unsigned long)message->size,
+                   (int)message->size,
+                   message->text,
+                   pending ? "staged" : "paint");
+        }
+        return pending ? 1 : 2;
+    }
     if (!pending || message->flags != ticket)
     {
         return 0;
@@ -666,6 +730,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         DeskItem *item = &items[received];
         unsigned long scalars;
         item->size = message->size - DESK_META;
+        memset(item->colors, 0, sizeof(item->colors));
         memset(item->text, 0, sizeof(item->text));
         memcpy(item->text, message->text + DESK_META, item->size);
         if (fvm_utf8_validate(item->text, item->size, &scalars) != FVM_UTF8_OK ||
@@ -1087,8 +1152,9 @@ static int field_ink(FVM_Path *path,
         capture_top = top;
         capture_right = right;
         capture_bottom = bottom;
-        ok = draw_clip(mark, surface, &identity) == FVM_OK && capture_path(NULL, path, ink, 0, 0) == FVM_OK &&
-             draw_clip(cursor, surface, &identity) == FVM_OK;
+        ok = (!mark || draw_clip(mark, surface, &identity) == FVM_OK) &&
+             capture_path(NULL, path, ink, 0, 0) == FVM_OK &&
+             (!cursor || draw_clip(cursor, surface, &identity) == FVM_OK);
         capture_left = capture_top = 0;
         capture_right = (int)surface->width;
         capture_bottom = (int)surface->height;
@@ -1111,9 +1177,9 @@ static int field_ink(FVM_Path *path,
     shift.xx = shift.yy = 1;
     shift.x0 = -left;
     shift.y0 = -top;
-    ok = fvm_movieclip_render_view(owner, mark, &tile, &shift) == FVM_OK &&
+    ok = (!mark || fvm_movieclip_render_view(owner, mark, &tile, &shift) == FVM_OK) &&
          fvm_path_transform(path, &shift) == FVM_OK && fvm_path_draw(path, &tile, ink, 0, 0) == FVM_OK &&
-         fvm_movieclip_render_view(owner, cursor, &tile, &shift) == FVM_OK;
+         (!cursor || fvm_movieclip_render_view(owner, cursor, &tile, &shift) == FVM_OK);
     if (ok)
     {
         for (row = 0; row < (int)tile.height; ++row)
@@ -1213,6 +1279,73 @@ static int gutter(const DeskItem *content, const FVM_Affine *world, FVM_RasterSu
     }
     fvm_text_layout_destroy(layout);
     return ok;
+}
+
+
+/* Atomically replace detached colour contours using the same owner-held TextField.
+ * content is copied scalar data; label/id belong to this VM owner. No worker sees
+ * a VM/font handle. Failure retains the old cache and destroys every candidate. */
+static int syntax_cache(FVM_Object *label, const DeskItem *content, unsigned long id)
+{
+    FVM_Path *paths[5] = {NULL, NULL, NULL, NULL, NULL};
+    FVM_TextPathRange ranges[DESK_TEXT];
+    size_t boundaries[DESK_TEXT + 1];
+    size_t scalars = 0;
+    size_t byte;
+    unsigned int group;
+    for (byte = 0; byte < content->size; ++byte)
+    {
+        if (((unsigned char)content->text[byte] & 0xc0U) != 0x80U)
+        {
+            boundaries[scalars++] = byte;
+        }
+    }
+    boundaries[scalars] = content->size;
+    for (group = 0; group < 5; ++group)
+    {
+        size_t count = 0;
+        size_t scalar = 0;
+        while (scalar < scalars)
+        {
+            unsigned int kind = content->colors[scalar];
+            unsigned int selected = kind < 2 ? 0 : kind - 1;
+            if (selected != group)
+            {
+                ++scalar;
+                continue;
+            }
+            ranges[count].first = boundaries[scalar++];
+            while (scalar < scalars)
+            {
+                kind = content->colors[scalar];
+                selected = kind < 2 ? 0 : kind - 1;
+                if (selected != group)
+                {
+                    break;
+                }
+                ++scalar;
+            }
+            ranges[count++].last = boundaries[scalar];
+        }
+        if (fvm_textfield_path_ranges(owner, label, ranges, count, &paths[group]) != FVM_OK)
+        {
+            unsigned int discard;
+            for (discard = 0; discard < 5; ++discard)
+            {
+                fvm_path_destroy(paths[discard]);
+            }
+            return 0;
+        }
+    }
+    fvm_path_destroy(text_paths[id]);
+    text_paths[id] = paths[0];
+    for (group = 0; group < 4; ++group)
+    {
+        fvm_path_destroy(syntax_paths[id][group]);
+        syntax_paths[id][group] = paths[group + 1];
+    }
+    text_keys[id] = *content;
+    return 1;
 }
 
 
@@ -1450,16 +1583,13 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
          * no GC pointers and are invalidated by every text/extent change. */
         if (!text_paths[item->id] || text_keys[item->id].width != content->width ||
             text_keys[item->id].height != content->height || text_keys[item->id].size != content->size ||
-            memcmp(text_keys[item->id].text, content->text, content->size))
+            memcmp(text_keys[item->id].text, content->text, content->size) ||
+            memcmp(text_keys[item->id].colors, content->colors, sizeof(content->colors)))
         {
-            fvm_path_destroy(text_paths[item->id]);
-            text_paths[item->id] = NULL;
-            result = fvm_textfield_path(owner, label, &text_paths[item->id]);
-            if (result != FVM_OK)
+            if (!syntax_cache(label, content, item->id))
             {
                 return 0;
             }
-            text_keys[item->id] = *content;
         }
         if (fvm_path_create(&path) != FVM_OK || fvm_path_append(path, text_paths[item->id], NULL) != FVM_OK)
         {
@@ -1491,12 +1621,33 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         {
             ok = fvm_path_create(&caption_path) == FVM_OK && fvm_path_append(caption_path, path, NULL) == FVM_OK;
         }
-        ok = ok && field_ink(path, cursors[item->id], marks[item->id], &world, item, content, surface, ink, 0);
+        ok = ok && field_ink(path, NULL, marks[item->id], &world, item, content, surface, ink, 0);
         if (ok && caption_path)
         {
             FVM_RasterColor caption_ink = {176, 36, 48, 255};
-            ok = field_ink(
-                caption_path, cursors[item->id], marks[item->id], &world, item, content, surface, caption_ink, 1);
+            ok = field_ink(caption_path, NULL, NULL, &world, item, content, surface, caption_ink, 1);
+        }
+        if (ok && text_paths[item->id])
+        {
+            static const FVM_RasterColor palette[4] = {
+                {174, 99, 19, 255}, {31, 126, 65, 255}, {110, 57, 169, 255}, {113, 123, 137, 255}};
+            unsigned int group;
+            for (group = 0; ok && group < 4; ++group)
+            {
+                FVM_Path *colored = NULL;
+                ok = fvm_path_create(&colored) == FVM_OK &&
+                     fvm_path_append(colored, syntax_paths[item->id][group], NULL) == FVM_OK &&
+                     fvm_path_transform(colored, &placement) == FVM_OK &&
+                     field_ink(colored, NULL, NULL, &world, item, content, surface, palette[group], 0);
+                fvm_path_destroy(colored);
+            }
+        }
+        if (ok && content->caret >= 0)
+        {
+            FVM_Path *empty = NULL;
+            ok = fvm_path_create(&empty) == FVM_OK &&
+                 field_ink(empty, cursors[item->id], NULL, &world, item, content, surface, ink, 0);
+            fvm_path_destroy(empty);
         }
         fvm_path_destroy(caption_path);
         ok = ok && gutter(content, &world, surface);
@@ -1538,6 +1689,14 @@ static int retire(const unsigned char *present)
             drag_pixels[id] = NULL;
             fvm_path_destroy(text_paths[id]);
             text_paths[id] = NULL;
+            {
+                unsigned int group;
+                for (group = 0; group < 4; ++group)
+                {
+                    fvm_path_destroy(syntax_paths[id][group]);
+                    syntax_paths[id][group] = NULL;
+                }
+            }
             memset(&text_keys[id], 0, sizeof(text_keys[id]));
             memset(&drag_keys[id], 0, sizeof(drag_keys[id]));
             if (trace)
@@ -1566,7 +1725,7 @@ static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
          !((item->style == 5 && key->style == 1) || (item->style == 6 && key->style == 0))) ||
         key->width != item->width || key->height != item->height || key->size != item->size ||
         key->caret != item->caret || key->anchor != item->anchor || key->line != item->line ||
-        memcmp(key->text, item->text, item->size))
+        memcmp(key->text, item->text, item->size) || memcmp(key->colors, item->colors, sizeof(item->colors)))
     {
         return 0;
     }
@@ -1895,6 +2054,14 @@ void dvm_desktop_destroy(void)
     {
         fvm_path_destroy(text_paths[index]);
         text_paths[index] = NULL;
+        {
+            unsigned int group;
+            for (group = 0; group < 4; ++group)
+            {
+                fvm_path_destroy(syntax_paths[index][group]);
+                syntax_paths[index][group] = NULL;
+            }
+        }
         free(drag_pixels[index]);
         drag_pixels[index] = NULL;
     }

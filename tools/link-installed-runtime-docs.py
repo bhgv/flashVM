@@ -22,6 +22,8 @@ def main():
         root / "compiler/limbo/frontend/NATIVE_C.ru.md": package / "docs/limbo/NATIVE_C.ru.md",
         root / "flashVM/doc/RENDER_ASYNC.md": package / "docs/ide/RENDER_ASYNC.md",
         root / "flashVM/doc/RENDER_ASYNC.ru.md": package / "docs/ide/RENDER_ASYNC.ru.md",
+        root / "flashVM/doc/TEXT_COLOR_RANGES.md": package / "docs/ide/TEXT_COLOR_RANGES.md",
+        root / "flashVM/doc/TEXT_COLOR_RANGES.ru.md": package / "docs/ide/TEXT_COLOR_RANGES.ru.md",
         root / "ide/RENDER_OWNERS.md": package / "docs/ide/RENDER_OWNERS.md",
         root / "ide/RENDER_OWNERS.ru.md": package / "docs/ide/RENDER_OWNERS.ru.md",
         root / "compiler/as2/view/README.md": package / "docs/as2/VIEW.md",

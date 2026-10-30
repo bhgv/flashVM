@@ -345,7 +345,7 @@ def product_entries(prefix):
         (
             "8",
             "desktop",
-            "IDE MovieClip: окна, выделение, сессионный clipboard, F7/F8, Help",
+            "IDE MovieClip: окна, подсветка Limbo/AS, clipboard, F7/F8, Help",
             (prefix / "disvm-editor/run-desktop-ide.sh",),
             True,
         ),
