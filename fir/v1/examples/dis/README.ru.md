@@ -219,3 +219,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [known-results.b](known-results.b): exact constants from dynamic bit/carry/borrow expressions, raw/opt Dis/SWF42. [Guide / Руководство](../../doc/KNOWN_RESULTS.ru.md).
 
 [big-neg-facts.b](big-neg-facts.b): typed table lookup, odd-bit negation and retained producer effects; raw/opt Dis42. [Guide / Руководство](../../doc/KNOWN_RESULTS.md).
+
+[product-facts.b](product-facts.b): independent checked table operands, multiplication low-zero facts, modular saturation, raw/opt Dis42. [Full guide / Руководство](../../doc/KNOWN_RESULTS.md#multiplication-trailing-zero-facts--младшие-нули-произведения).

@@ -1,4 +1,4 @@
-# Fully known integer results — FIR 0.67
+# Fully known integer results — FIR 0.68
 
 [Русский](KNOWN_RESULTS.ru.md) · [Optimizer](../optimiser/peephole.c) ·
 [Bit analysis](../optimiser/integer_facts.c) · [Commented source](../examples/dis/known-results.b) ·
@@ -96,7 +96,7 @@ Source debug sidecars retain original spans, not new native-PC debugger support.
 
 ## Evidence
 
-The dedicated matrix checks384 raw/optimized results from twelve expression shapes,
+The dedicated matrix checks448 raw/optimized results from fourteen expression shapes,
 eight inputs and both widths. Inputs include MIN/MAX, both signs and dynamic
 cross-block loads. The test requires exact literal spelling, absence of the
 folded bit operators, optimizer fixed points, retained zero-divide producers,
@@ -117,9 +117,33 @@ and both operations: **6,718,464 evaluations**. It compares exact zero/one
 intersections with analysis, including subtraction sign extension and carry
 beyond the four-bit domain. The oracle does not reproduce the carry algorithm.
 
-FIR0.67 also propagates big negation as unsigned modular zero-minus-value.
+FIR0.68 also propagates big negation as unsigned modular zero-minus-value.
 Known low bits/nonzero proofs survive negation, including MIN wraparound;
 operand errors remain observable. [Commented own-source Dis example](../examples/dis/big-neg-facts.b)
 uses a typed table fetch, forces an odd value, negates it and returns42.
 The C99 fixture additionally exercises10240 negation samples; the target matrix
-now covers384 raw/optimized results and tests the source example through Dis.
+at0.67 covered384 raw/optimized results and tests the source example through Dis.
+
+## Multiplication trailing-zero facts / Младшие нули произведения
+
+For int32/big modular multiplication, if successful operands have at least a
+and b trailing zero bits, the product has at least min(width,a+b). The analysis
+stops at the first unknown bit and makes no claim about the remaining bits.
+It saturates before a full-width shift; all payload arithmetic remains unsigned.
+Thus `((x & -8) * (y & -8)) & 63` becomes0, and
+`(x & MIN) * (y & -2)` becomes0 even across modular overflow. This does not
+justify a floating-point or dynamic AS rewrite. Both operand producers retain
+checked reads, conversions and eager exceptions.
+
+[product-facts.b](../examples/dis/product-facts.b) is commented line by line.
+Compile it with the same source/opt/dis commands above; its raw and optimized
+big-capable Dis result is42. The installed C99 source-library client also emits
+identical bytes to the CLI. No parser, SWF big support or Dis64 wire change is
+introduced. The existing int32 target matrix also checks linked SWF execution.
+
+The C API oracle covers every pair of low-zero counts0..32 and0..64,
+including exact zero and saturation:1,360,384 unsigned product samples. It
+requires useful low-zero masks, unknown remaining bits, immutable input IR and
+propagation through a later textual dominating block. The raw/optimized target
+matrix has448 executions and retains division-by-zero producers even when the
+outer product is entirely zero.
