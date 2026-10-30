@@ -5,6 +5,8 @@
 #include "flashvm/flashvm.h"
 #include "flashvm/path.h"
 #include "editor_raster.h"
+#define DVM_DESK_VECTOR_BEGIN 65576UL /* Staged pane/revision and exact vector-stream byte count. */
+#define DVM_DESK_VECTOR_DATA 65577UL /* Same-ticket pane and exact ordered byte offset, ASCII hex. */
 #define DVM_DESK_COLORS 65575UL  /* Same-ticket body palette: first=pane, second=source revision. */
 #define DVM_DESK_BEGIN 65569UL   /* width/height plus ticket/count/scroll/scale and optional pan/reveal words. */
 #define DVM_DESK_ITEM 65570UL    /* One copied bounded MovieClip descriptor. */

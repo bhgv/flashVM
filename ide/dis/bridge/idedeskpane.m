@@ -2,8 +2,10 @@
 Idedeskpane: module
 {
     PATH: con "idedeskpane.dis"; # Matching portable window controller.
-    Editor, Console, Help: con iota + 1; # Actual document owner, mutable log, immutable help.
+    Editor, Console, Help, Vector: con iota + 1; # Actual document owner, mutable log, immutable help.
     Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, ExportSelection, CutSelection, PasteSelection, Shutdown: con iota; # FIFO operations.
+
+    Draw: con 13; # Revision-bound logical canvas gesture; event code=phase, first/second=X/Y.
 
     Request: adt
     {
@@ -37,6 +39,7 @@ Idedeskpane: module
         transfer: string; # ExportSelection only: complete bounded selection; never native UI metadata.
         line: int; # One-based logical source line containing the viewport start.
         diagnostic: string; # Plain build/error metadata, bounded by the caller before UI publication.
+        drawing: string; # Vector-only complete bounded scalar path stream; empty for text panes.
         colors: string; # Empty while pending; otherwise one ASCII palette class 0..5 per body scalar.
     };
 

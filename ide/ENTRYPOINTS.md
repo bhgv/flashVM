@@ -70,3 +70,6 @@ through entry 9; they are not silently claimed to be embedded in entry 8.
 Menu8 presents lazy Limbo/AS colours through the native contour extension; menu16 checks the service alone. [Contract](SYNTAX-LAZY.md).
 
 [Context/search/candidates](TOKEN-QUERIES.md) · [Контекст/поиск/кандидаты](TOKEN-QUERIES.ru.md).
+
+
+Menu **8 → Draw** / **Ctrl+Shift+N** creates an independent vector window. B/R/E/L, colours1..6, F fill, Ctrl+Z/Y, Ctrl+S/O SVG. A `.svg` launch path selects a vector owner. [Guide EN](VECTOR-EDITOR.md) · [RU](VECTOR-EDITOR.ru.md).

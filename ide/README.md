@@ -1,5 +1,7 @@
 [Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
 
+[MDI vector editor / Векторный редактор: Draw, SVG](VECTOR-EDITOR.md) · [Русский](VECTOR-EDITOR.ru.md)
+
 [Token queries / Запросы к токенам](TOKEN-QUERIES.md) · [Русский](TOKEN-QUERIES.ru.md)
 
 [Lazy Coco/R syntax / Ленивый анализ](SYNTAX-LAZY.md) · [Русский](SYNTAX-LAZY.ru.md)

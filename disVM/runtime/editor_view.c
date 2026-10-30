@@ -2138,7 +2138,8 @@ int dvm_editor_present(const DVM_UIMessage *message)
     {
         return 0;
     }
-    if ((message->code >= DVM_DESK_BEGIN && message->code <= DVM_DESK_END) || message->code == DVM_DESK_COLORS)
+    if ((message->code >= DVM_DESK_BEGIN && message->code <= DVM_DESK_END) || message->code == DVM_DESK_COLORS ||
+        message->code == DVM_DESK_VECTOR_BEGIN || message->code == DVM_DESK_VECTOR_DATA)
     {
         if (!desktop_bound)
         {

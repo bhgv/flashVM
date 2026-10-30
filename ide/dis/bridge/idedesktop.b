@@ -285,8 +285,8 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
                                     index + 1 == focus, windows[index].title, -1, -1);
         }
     }
-    names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close", "Clip", "All", "Max/N"};
-    for (index := 1; index <= MaxNorm; index++) {
+    names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close", "Clip", "All", "Max/N", "Draw"};
+    for (index := 1; index <= MaxNorm + 1; index++) {
         style := 4;
         if (drawer == index || index == Help) {
             style = 3;
@@ -603,7 +603,10 @@ serve(requests: chan of Request)
                             # The scroll owns this area; never focus or drag the covered window.
                         } else if (x >= width - 104 && y >= 56) {
                             tool := (y - 56) / 32 + 1;
-                            if (tool == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
+                            if (tool == MaxNorm + 1) {
+                                drawer = 0;
+                                action = VectorEditor;
+                            } else if (tool == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
                                 deskpan = 0;
                                 maximize(windows[focus - 1], width, height, scroll, deskzoom);
                                 drawer = 0;

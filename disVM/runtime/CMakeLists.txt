@@ -150,8 +150,8 @@ set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/ideco
   "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b" "${root}/ide/dis/bridge/idebrowser.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
-list(APPEND module_names idesyntax idetokenquery syntax-check tokenquery-demo)
-list(APPEND module_sources "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
+list(APPEND module_names vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
+list(APPEND module_sources "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
 file(GLOB syntax_headers "${root}/ide/syntax/*.m")
 list(APPEND module_headers ${syntax_headers})
 list(LENGTH module_names module_count)
@@ -190,7 +190,7 @@ endif()
 
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idetokenquery idesyntaxincremental idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
+ foreach(test idevectorpane idevector idetokenquery idesyntaxincremental idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
     set(source "${root}/ide/dis/examples/document-projection/main.b")
@@ -443,6 +443,11 @@ if(DVM_RUNTIME_EDITOR)
     target_include_directories(disvm_desktop_colors_test PRIVATE "${view}" "${root}/disVM/include")
     target_link_libraries(disvm_desktop_colors_test PRIVATE flashvm m)
     add_test(NAME disvm_desktop_color_protocol COMMAND disvm_desktop_colors_test)
+    add_executable(disvm_desktop_vector_test test_desktop_vector.c desktop_view.c editor_raster.c)
+    add_dependencies(disvm_desktop_vector_test disvm_view_headers)
+    target_include_directories(disvm_desktop_vector_test PRIVATE "${view}" "${root}/disVM/include")
+    target_link_libraries(disvm_desktop_vector_test PRIVATE flashvm m)
+    add_test(NAME disvm_desktop_vector_protocol COMMAND disvm_desktop_vector_test)
     add_executable(disvm_as_view_test test_as_view.c)
     add_dependencies(disvm_as_view_test disvm_view_headers)
     target_include_directories(disvm_as_view_test PRIVATE "${view}")
@@ -1364,6 +1369,10 @@ endif()
 # Exercise normalized gestures against actual Dis policy and MovieClip pixels.
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_vector_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_vector.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
+    set_tests_properties(disvm_desktop_vector_${mode} PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_desktop_syntax_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_syntax.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
@@ -1471,5 +1480,28 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${root}/fir/v1/tests/integer_known_results.py" "${DVM_FIR_SOURCE_COMPILER}"
       "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_integer_known_results_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Real owning-compiler regression: preserve old array values through initializer
+# evaluation and publish the completed temporary only afterwards. Both optimizer
+# selections execute on the matching native-cell VM in interpreter/JIT modes.
+if(DVM_RUNTIME_TESTS)
+  foreach(selection plain optimized)
+    set(alias_flags)
+    if(selection STREQUAL "optimized")
+      set(alias_flags -O)
+    endif()
+    set(alias_binary "${CMAKE_CURRENT_BINARY_DIR}/array-alias-${selection}.dis")
+    add_custom_command(OUTPUT "${alias_binary}"
+      COMMAND "$<TARGET_FILE:limbo-bootstrap>" ${alias_flags} ${includes} -o "${alias_binary}"
+        "${u}/utils/tests/array-initializer-alias.b"
+      DEPENDS limbo-bootstrap "${u}/utils/tests/array-initializer-alias.b" VERBATIM)
+    add_custom_target(disvm_array_alias_${selection} ALL DEPENDS "${alias_binary}")
+    foreach(mode jit interpreter)
+      add_test(NAME disvm_array_initializer_${selection}_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${alias_binary}" ${mode})
+      set_tests_properties(disvm_array_initializer_${selection}_${mode} PROPERTIES TIMEOUT 60)
+    endforeach()
   endforeach()
 endif()

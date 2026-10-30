@@ -12,6 +12,7 @@ include "idecompiler.m";
 include "idebuildpanel.m";
 include "idedeskpane.m";
 include "idedeskclip.m";
+include "idevector.m";
 
 
 # Complete one private document exchange; borrowed endpoint stays live and no
@@ -400,7 +401,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
             colors = syntax->project(colored, current.revision, profile, first, len body);
         }
         response := Reply(request.id, status, kind, path, body, current.revision,
-                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic, colors);
+                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic, "", colors);
         request.reply <-= response;
         if (stop) {
             return;
@@ -422,8 +423,27 @@ start(kind: int, path, text: string): chan of Request
 # Scanner/GC heaps never escape; external readiness carries only the stable identity.
 startnotified(kind: int, path, text: string, notices: chan of int, identity: int): chan of Request
 {
-    if (kind < Editor || kind > Help || len text > 65536) {
+    if (kind < Editor || kind > Vector || len text > 65536) {
         return nil;
+    }
+    if (kind == Vector) {
+        vector := load Idevector Idevector->PATH;
+        sys := load Sys Sys->PATH;
+        files := load Idefileops Idefileops->PATH;
+        if (vector == nil || sys == nil || files == nil) {
+            return nil;
+        }
+        doc := vector->create();
+        if (text != "") {
+            (status, imported) := vector->parse(text);
+            if (status != vector->Ok) {
+                return nil;
+            }
+            doc = imported;
+        }
+        endpoint := chan of Request;
+        spawn servevector(endpoint, vector, doc, sys, files, path);
+        return endpoint;
     }
     sys := load Sys Sys->PATH;
     core := load Idecore Idecore->PATH;
@@ -449,4 +469,186 @@ startnotified(kind: int, path, text: string, notices: chan of int, identity: int
     requests := chan of Request;
     spawn serve(kind, path, text, requests, sys, core, policy, viewport, files, panel, workspace, compiler, syntax, analysis, ready, notices, identity);
     return requests;
+}
+
+
+# Own one vector document and its history independently of every text editor.
+# All UI/document commands arrive through the ordinary pane channel. File calls
+# may block this owner. No native graphics/VM pointer or mutable path is shared.
+servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Document,
+            sys: Sys, files: Idefileops, path: string)
+{
+    control := 0;
+    diagnostic := "";
+    for (;;) {
+        request := <-requests;
+        if (request.reply == nil) {
+            continue;
+        }
+        status := Idecore->Ok;
+        stop := 0;
+        if (request.operation == Shutdown) {
+            vector->cancel(doc);
+            stop = 1;
+        } else if (request.operation == Draw) {
+            e := request.event;
+            expected := doc.revision + (len doc.points != 0);
+            if (e == nil || e.kind != Uibridge->Request || e.text != "") {
+                status = Idecore->Invalid;
+            } else if (e.flags != expected) {
+                status = Idecore->Conflict;
+            } else {
+                status = vectorstatus(vector->pointer(doc, e.code, e.first, e.second));
+                diagnostic = "Draw status=" + string status;
+            }
+        } else if (request.operation == CancelPointer) {
+            vector->cancel(doc);
+        } else if (request.operation == Open) {
+            if (doc.revision != doc.saved || len doc.points != 0 || doc.revision == 2147483647) {
+                status = Idecore->Conflict;
+            } else {
+                (readstatus, text) := files->read(sys, request.text, 65536);
+                status = vectorfilestatus(readstatus);
+                if (readstatus == files->Ok) {
+                    (parsed, loaded) := vector->parse(text);
+                    status = vectorstatus(parsed);
+                    if (parsed == vector->Ok) {
+                        loaded.revision = doc.revision + 1;
+                        loaded.saved = loaded.revision;
+                        doc = loaded;
+                        path = request.text;
+                    }
+                }
+            }
+            diagnostic = "SVG Open status=" + string status;
+        } else if (request.operation == Save) {
+            destination := request.text;
+            if (destination == "") {
+                destination = path;
+            }
+            if (len doc.points != 0 || destination == "") {
+                status = Idecore->Conflict;
+            } else {
+                status = vectorfilestatus(files->write(sys, destination, vector->svg(doc)));
+                if (status == Idecore->Ok) {
+                    path = destination;
+                    doc.saved = doc.revision;
+                }
+            }
+            diagnostic = "SVG Save status=" + string status;
+        } else if (request.operation == Input && request.event != nil) {
+            e := request.event;
+            if (e.kind == Uibridge->Focus && !e.flags) {
+                control = 0;
+                vector->cancel(doc);
+            }
+            if (e.kind == Uibridge->Key) {
+                if (e.code == 17) {
+                    control = e.flags;
+                }
+                if (e.flags == 1) {
+                    if (e.code == 27) {
+                        vector->cancel(doc);
+                    } else if (control && (e.code == 90 || e.code == 89)) {
+                        vector->history(doc, e.code == 89);
+                    } else if (!control) {
+                        vectorstyle(vector, doc, e.code);
+                    }
+                }
+            }
+            if (e.kind == Uibridge->Text && !control) {
+                # SDL ordinary letters/digits arrive as asynchronous committed
+                # text, possibly batched. They select tools here, never insert text.
+                for (i := 0; i < len e.text; i++) {
+                    key := e.text[i];
+                    if (key >= 'a' && key <= 'z') {
+                        key -= 'a' - 'A';
+                    }
+                    if (key == '+' || key == '=') {
+                        key = 187;
+                    } else if (key == '-') {
+                        key = 189;
+                    }
+                    vectorstyle(vector, doc, key);
+                }
+            }
+        } else if (request.operation == Build) {
+            status = Idecore->Invalid;
+            diagnostic = "Save this drawing as SVG with Ctrl+S.";
+        } else if (request.operation != Snapshot && request.operation != Diagnostic) {
+            status = Idecore->Invalid;
+        }
+        tools := array[] of {"", "Brush", "Rectangle", "Ellipse", "Line"};
+        body := "B/R/E/L | 1..6 color | F fill\n" + tools[doc.tool]
+            + sys->sprint(" #%06x w=%d f=%d | +/- Z/Y", doc.color, doc.width, doc.fill);
+        revision := doc.revision;
+        if (len doc.points != 0) {
+            revision++;
+        }
+        request.reply <-= Reply(request.id, status, Vector, path, body, revision,
+            doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, vector->wire(doc), "");
+        if (stop) {
+            return;
+        }
+    }
+}
+
+
+# Apply one copied authoring key to a borrowed pane-owned document. Tool/style
+# changes require an idle gesture and do not alter source, history or saved state.
+# Used by explicit Key and asynchronous/batched SDL Text input; no UI/I/O occurs.
+vectorstyle(vector: Idevector, doc: ref Idevector->Document, key: int)
+{
+    if (len doc.points != 0) {
+        return;
+    }
+    if (key == 66) {
+        doc.tool = vector->Brush;
+    } else if (key == 82) {
+        doc.tool = vector->Rectangle;
+    } else if (key == 69) {
+        doc.tool = vector->Ellipse;
+    } else if (key == 76) {
+        doc.tool = vector->Line;
+    } else if (key == 70) {
+        doc.fill = !doc.fill;
+    } else if (key >= 49 && key <= 54) {
+        palette := array[] of {16r245ac4, 16re04444, 16r229955, 16rf0b323, 16r222222, 16r9933bb};
+        doc.color = palette[key - 49];
+    } else if ((key == 187 || key == 107) && doc.width < 32) {
+        doc.width++;
+    } else if ((key == 189 || key == 109) && doc.width > 1) {
+        doc.width--;
+    }
+}
+
+
+# Translate the pure model's local status namespace into the shared pane contract.
+# No model constants are leaked as unrelated Idecore status values.
+vectorstatus(status: int): int
+{
+    if (status == Idevector->Ok) {
+        return Idecore->Ok;
+    }
+    if (status == Idevector->Limit) {
+        return Idecore->TooLarge;
+    }
+    if (status == Idevector->Conflict) {
+        return Idecore->Conflict;
+    }
+    return Idecore->Invalid;
+}
+
+
+# Map checked file outcomes to the pane's existing public status namespace.
+# Native I/O has no separate Idecore code: its failure maps to Invalid.
+vectorfilestatus(status: int): int
+{
+    if (status == Idefileops->Ok) {
+        return Idecore->Ok;
+    }
+    if (status == Idefileops->TooLarge) {
+        return Idecore->TooLarge;
+    }
+    return Idecore->Invalid;
 }
