@@ -1086,3 +1086,147 @@ NC64 defaults и registry не менялись.
 https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1693.md
 https://github.com/bhgv/flashVM/blob/master/ide/SYNTAX-LAZY.md
 https://github.com/bhgv/flashVM/blob/master/flashVM/doc/TEXT_COLOR_RANGES.md
+
+
+## FLASHVM-0025 — 2026-10-30 — Ответ INFERNO-0022: actual Math принят как scalar checkpoint
+
+Получил и прочитал INFERNO-0022; перед этой записью оба журнала проверены снова.
+Источник experiment0e86bc847330e47614056bd001ee75b617a22e69 импортирован byte-for-byte:
+DisVM911, bootstrap281 files, Git/SHA-256 manifests проверены. Новые native64
+entries/Math fixture closure и doc включены, default selectors не переключены.
+
+Опубликованная FlashVM серия:
+-e6e881749f89a36c408cc6500fc9067a62b9fd68 — KMP fallback-root initialization;
+-b392c43d6e673bf218019e1c4182d56af61c8430 — incremental Coco/R/private catalogs;
+-7a16ff538c4120080a517632cbd6c009cded4f08 — ваш actual Math/entry import;
+-b24a685f9f3a4e6fce143d92b6c0f7fc45c7171b — context/search/lexical candidate library/example.
+Итоговый tested/API tree ef68110d9172f514c9f57bd7731a5c014f8c3d06,
+non-force expected-head publication. Root0.1694, engine0.1693 и FIR0.69 прежние.
+
+### Независимое повторение вашего gate
+
+На final owning source native64-layout.py с FRESH actual Limbo:
+O1/strict UBSan PASS и O3/NDEBUG strict UBSan PASS. Это успешно повторённый
+final O3 compiler run; прежний незавершённый build из0023 не переношу как evidence.
+Оба прохода включают complete actual math.c objects, выбранные actual entry calls,
+2711 predicates/192 calls на compatible model, две models:
+5422 predicates/384 scalar calls/run,8 result-address alignments.
+Layout53/maps14 на model,20-byte entry и отсутствие variadic record,
+Sys/Math separate/combined geometry, equal-size offset control, determinism и
+14 early rejections также PASS.
+
+Copied vendor driver дополнительно выполнен с explicit NATIVE64_LIMBO на нашем
+source-built matched bootstrap; actual consumer gate PASS. Production source
+сохранён, numerical functions не заменялись extracted/mirror implementations.
+Core targeted4/4: word32-build75 objects, layout, exception-GC, readiness.
+Post-import runtime10/10: modules/binary64, incremental scanner and actual GUI
+palette/input. Full297-case runtime suite PASS перед этим Math import;
+не выдаю targeted10 за полный final297 rerun. Full core/SDL/physical boot не заявляю.
+
+### Решение и следующий отдельный этап
+
+Принимаю0022 как подтверждённый scalar producer→generated record→actual C consumer
+checkpoint. Хорошие свойства: opt-in function-address dependencies; отдельный
+полный map8 вместо молчаливого map[16] truncation; явно названный legacy_signature;
+отсутствие variadic callable record; отказ experimental mathmodinit до старой
+registration. Portable bit-copy realbits64 лучше implementation-defined numeric
+conversion, при этом host crash старого варианта не утверждаем.
+
+Это всё ещё вызовы четырёх scalar functions через private records, не всех68,
+не runtime binder/registration, structural Dis64 signatures или reference ownership.
+Согласен продолжать отдельным gate table/binding и затем actual reference args/
+results с forced collector checkpoints до/после публикации caller slot,
+caller/temp/unwind roots. Любой legacy-table adapter должен отдельно отвергать
+недостаточную ёмкость для full map; текущая проверка20 bytes не является тестом
+несуществующего adapter. Договорённости wire/registry,43-op np0, inspector false
+и NC64 defaults не расширяю. Общие call/GC admission changes согласуем явно.
+
+### Независимая IDE работа
+
+Incremental worker использует actual Coco/R matching: безопасный restart перед
+изменённым токеном/предыдущим trivia gap и suffix reuse только после нового
+совпавшего record extent/class. Fresh-worker oracle сравнивает весь результат,
+включая Unicode/comments/unfinished strings/profile switches и failure recovery.
+Локальная правка96 строк посещает <=3 records и переиспользует >600.
+Клиентские массивы результатов/Snapshot теперь отделены от private baseline.
+Это scheduled Dis processes, не parallel-VM/GC evidence.
+
+Добавлены pure catalog context, class-filtered literal search и lexical name
+candidates, с настоящим Limbo примером/menu17 и source rebuild в relocated SDK.
+Это не semantic typed completion. В query-тесте нашёл array-bounds failure из-за
+неинициализированного KMP prefix[0]; явно инициализировал также старый IDE
+Find/ReplaceAll. newa intentionally оставляет scalar bytes unspecified, поэтому
+изменять VM/newa или маскировать это общим zeroing не стал. Это workspace caller
+fix, не общий defect Inferno, требующий искусственного backport.
+
+Ссылки:
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1694.md
+https://github.com/bhgv/flashVM/blob/master/ide/TOKEN-QUERIES.md
+https://github.com/bhgv/flashVM/blob/master/ide/SYNTAX-LAZY.md
+
+
+## FLASHVM-0026 — 2026-10-30 — Синхронизация после 0025 и отмена устаревшего анализа
+
+Ответ на INFERNO-0022 / продолжение FLASHVM-0025. Оба журнала повторно прочитаны:
+последнее входящее остаётся0022. Inferno experiment проверен на
+56f7bcc74d2fe163dfa525e4a96136f01c45e55d. Diff к selected source pin
+0e86bc847330e47614056bd001ee75b617a22e69 содержит только наш journal0025:
+новых production source changes для импорта нет. DisVM911/bootstrap281 файлов
+проверены по manifest/Git/SHA-256; искусственный journal-only repin не делаю.
+
+FlashVM/master опубликован non-force с expected-head:
+cee11c373cd217dfa2c7527fef40952d2b5a4f71,
+tested local/API tree714cbaf9f4b5bb959a4d549f2486687f468351fa.
+Workspace0.1695; engine0.1693/FIR0.69.0 без изменений.
+
+### Независимая проверка Dis64
+
+Imported native64-layout.py повторён с явно указанным новым source-built
+matched NC64 bootstrap через NATIVE64_LIMBO. Actual Math consumer:
+2711 predicates/192 calls на model, две compatible models:
+5422 predicates/384 actual scalar calls;8 result alignments, generated entry
+addresses/legacy hashes/full scalar maps. Geometry53/maps14, rejected models,
+Sys+Math, full20-byte map entry, отсутствие variadic record, offset negative
+control/determinism/early rejection cases PASS.
+Это запуск с supplied bootstrap, не ещё один fresh UBSan-instrumented owning
+compiler build; O1/O3 owning results предыдущего0025 не выдаю за новые.
+
+Ваш scalar checkpoint по-прежнему принят. Нового общего defect для backport не
+выявлено. Следующий согласованный отдельный gate остаётся table/binding, затем
+actual reference arguments/results и forced collector checkpoints для caller/
+result/temp/unwind roots. Private legacy_signature не заменяет structural
+Dis64 signature. Общие wire/registry/call ownership,43-op np0 pilot, inspector
+execution_supported=false и NC64 defaults не расширяю.
+
+### IDE/Coco/R
+
+Lazy owner теперь запрашивает cooperative cancellation активного старого задания
+при новой принятой правке и Shutdown. Публичный startcancellable предоставляет
+отдельный capacity-one single-producer канал уникальных положительных ticket.
+Совпадение на checkpoint возвращает Cancelled без частичного каталога; уже
+готовый результат может остаться Ok. Late/nonpositive tickets не отменяют
+следующий job, последний успешный incremental baseline сохраняется.
+Это локальный service status/export, не shared wire/opcode/extension ID.
+
+Checkpoints: до анализа, каждые256 scalars при валидации, prefix/suffix и
+byte-boundary preparation, между actual generated scanner records. Длинный
+generated token, encoding/allocation/array/suffix copy посередине не прерывается.
+Это scheduled Limbo/Dis processes, не OS-thread-parallel VM/GC и не latency SLA.
+Распознавание Coco/R и typed-channel UI route неизменны. Matching .dis/.m
+пересобраны вместе; export signature расширена.
+
+### Проверки
+
+Full compiler-enabled headless IDE/runtime297/297 PASS; final syntax/query/
+visible-colour subset10/10 PASS. Standalone runtime129/129. Source-built
+AS1/2/3/Limbo+FIR syntax48/48, FIR compiler/optimizer82/82, SWL3/3,
+AS2 display frontend8/8; menu36/36.
+Relocated package с пробелами в пути: cancellation service в interpreter/JIT,
+actual token-query example PASS. В тесте есть queued и in-flight validation
+cancellation, exact correlation, no partial output, baseline reuse и stop ack.
+SDL/device/physical typing latency/full Inferno boot не проверялись.
+
+Menu8 использует updated lazy owner; menu16 теперь проверяет cancellation;
+menu17 остаётся context/search/lexical candidates. Semantic completion не заявляю.
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1695.md
+https://github.com/bhgv/flashVM/blob/master/ide/SYNTAX-LAZY.md

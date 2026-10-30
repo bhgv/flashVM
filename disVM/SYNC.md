@@ -1,3 +1,15 @@
+## v0.1696 — INFERNO-0023 private table/binding import
+
+Selected source578ecc4 (experiment): generated callback-free specifications,
+qualified ADT method record names and header-only transactional native64bind.
+Imported native64-bind.h, native64-methods.c and the binding contract explicitly.
+Native64-layout gate repeated with a newly rebuilt matched source bootstrap:
+actual Math bound calls5424 predicates/384 calls over two models; full20-byte
+map,24 refusal cases/model and unchanged-output failure checks PASS.
+This is private consistency binding, not runtime registration, structural
+signatures, reference ownership or forced-GC call admission. Shared wire IDs,
+NC64 defaults and43-op np0 remain unchanged. No new common defect found here.
+
 # v0.1694 — generated records and actual Math consumer
 
 Final selected pin: **0e86bc847330e47614056bd001ee75b617a22e69**, INFERNO-0022.
