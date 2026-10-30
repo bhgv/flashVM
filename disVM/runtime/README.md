@@ -1,3 +1,5 @@
+[Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
+
 [Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](../../ide/ARTIFACT-EXPORT.md)
 
 [Desktop gestures and rendering](../../ide/DESKTOP-WORKSPACE.md) · [Session clipboard](../../ide/DESKTOP-CLIPBOARD.md) · [Launch menu](../../ide/ENTRYPOINTS.md)

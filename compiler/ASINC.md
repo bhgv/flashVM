@@ -120,3 +120,5 @@ unpublished partial writes. Whether every intermediate local assignment must be
 retained as an event is not agreed: publication events alone do not promise that.
 Lifetime, unsubscribe, task retirement and retained snapshot roots need explicit
 runtime ownership. This API and capture synchronization are not executable yet.
+
+[Executable scalar publication prototype / Исполняемый скалярный прототип](runtime/ASINC-VIEWS.md).

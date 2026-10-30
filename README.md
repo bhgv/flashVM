@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1699**. [Русская версия](README.ru.md).
+Development version: **0.1700**. [Русская версия](README.ru.md).
 
-Current series: [v0.1699](docs/releases/v0.1699.md): actual source/graphics MovieClip MDI containers, SDI detach, frame-free drawing proof and contextual asinc syntax; executable closure/task lowering remains pending.
+Current series: [v0.1700](docs/releases/v0.1700.md): executable scalar capture publication on DisVM, dirty-only COW views, remote event queues and transactional phase boundaries; asinc closure/task lowering remains pending.
 
 ## Browse documentation
 

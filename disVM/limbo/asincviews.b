@@ -24,7 +24,8 @@ State: adt
 };
 
 
-# Allocate explicit initial state; do not rely on fresh scalar arena contents.
+# Allocate and return the sole owner state, with no caller inputs or borrowed roots.
+# Explicitly initialize scalar state; allocation errors propagate from the VM.
 initial(): ref State
 {
     size := (Tasks + 1) * Bindings;
@@ -47,7 +48,9 @@ initial(): ref State
 }
 
 
-# Produce detached public snapshots; immutable strings can safely share storage.
+# Borrow state and supplied id/status; return independent public arrays and events.
+# The events array is already detached by Drain; immutable strings safely share storage.
+# Allocation errors propagate; this helper neither blocks nor mutates owner state.
 snapshot(state: ref State, id, status: int, events: array of Event): Reply
 {
     size := len state.cells;
@@ -74,7 +77,9 @@ snapshot(state: ref State, id, status: int, events: array of Event): Reply
 }
 
 
-# Return one event only when receiving changes the scalar value from another writer.
+# Borrow state and incoming cell; index names a live flattened subscriber binding.
+# Return1 only when a subscribed remote scalar change requires a notification.
+# No mutation, allocation, blocking or ownership transfer occurs.
 # Versions still propagate for equal values, but equal values create no notification.
 notification(state: ref State, index: int, cell: ref Cell): int
 {
@@ -83,7 +88,9 @@ notification(state: ref State, index: int, cell: ref Cell): int
 }
 
 
-# Append a preflight-admitted event and install one immutable received version.
+# Borrow sole-owner state, live destination index and rooted immutable incoming cell.
+# Append a preflight-admitted event and retain the received cell; returns no value.
+# Allocation errors propagate; callers must preflight capacity before mutation.
 # Receiving never marks a view dirty, so no artificial echo is published later.
 receive(state: ref State, index: int, cell: ref Cell)
 {
@@ -102,6 +109,8 @@ receive(state: ref State, index: int, cell: ref Cell)
 }
 
 
+# Borrow sole-owner state; before selects task-to-owner1 or owner-to-task0 exchange.
+# Return Ok/Invalid/Conflict/Full; logical refusal preserves all state and roots.
 # Validate a complete boundary before any publication or dirty-bit consumption.
 # Multiple dirty writers to one binding refuse; this chooses no winning writer.
 boundary(state: ref State, before: int): int
@@ -176,7 +185,9 @@ boundary(state: ref State, before: int): int
 }
 
 
-# Execute admitted scalar/lifecycle commands. Invalid/conflicting requests preserve state.
+# Borrow state and copied request; return status and an independently owned drain array.
+# Execute scalar/lifecycle commands without blocking except ordinary VM allocation.
+# Invalid/conflicting requests preserve state; VM allocation errors propagate.
 # Drain removes only the target's queued events; Retire discards its subscriptions/events.
 apply(state: ref State, request: Request): (int, array of Event)
 {
@@ -262,6 +273,8 @@ apply(state: ref State, request: Request): (int, array of Event)
 }
 
 
+# Own requests channel consumption until acknowledged Shutdown; return no value.
+# Every request.reply must be consumed or that acknowledgement blocks this owner.
 # Serialize typed requests; phase publication never blocks on a callback consumer.
 # [GC:] Only copied reply arrays escape. Shutdown releases all private roots on exit.
 serve(requests: chan of Request)
@@ -300,7 +313,9 @@ serve(requests: chan of Request)
 }
 
 
-# Start a scheduled Dis owner, not an OS-thread AS interpreter. Caller must consume replies.
+# With no inputs, return a new request channel and spawn its scheduled Dis owner.
+# Allocation errors propagate; caller must consume replies and acknowledge Shutdown.
+# This does not start an OS-thread AS interpreter.
 start(): chan of Request
 {
     requests := chan of Request;
