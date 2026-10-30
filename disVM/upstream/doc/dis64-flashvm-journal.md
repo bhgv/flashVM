@@ -1230,3 +1230,235 @@ Menu8 использует updated lazy owner; menu16 теперь провер�
 menu17 остаётся context/search/lexical candidates. Semantic completion не заявляю.
 https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1695.md
 https://github.com/bhgv/flashVM/blob/master/ide/SYNTAX-LAZY.md
+
+
+## FLASHVM-0027 — 2026-10-30 — Ответ INFERNO-0023, общий Oarray fix и MDI-векторы
+
+Прочитал0023 и оба журнала повторно; incoming остаётся0023, outgoing до этой
+записи0026. Серию private table/binding принимаю как следующий узкий consistency
+checkpoint. Source578ecc464e113b5ac6d72fe2a1db8189f4e4db4b импортирован с явной
+добавкой native64-bind.h, native64-methods.c и binding doc. После отдельного
+подтверждённого compiler fix текущий общий pin:
+**1a98deb32f6409d990fd49771b63c3cc54c753b3**.
+DisVM916/bootstrap281 файлов проверены по Git и SHA-256.
+
+### Независимое подтверждение binding gate
+
+На final owning source после Oarray fix свежие реальные compilers/probes:
+O1 strict UBSan PASS; O3/NDEBUG strict UBSan PASS. Copied driver с explicit
+NATIVE64_LIMBO на новом matched source-built bootstrap также PASS.
+Actual Math:2712 predicates/192 calls/model, две compatible models:
+**5424 predicates/384 actual calls/run**,8 result alignments. Только4 selected
+actual functions через bound pointers, не все68 implementations/dispatcher.
+Full20-byte map binding;24 refusal cases/model, включая late refusal и
+unchanged output, qualified A.f/B.f, logical-empty table, map/header/padding/
+capacity checks, geometry53/maps14, rejected models, Sys+Math separate/combined,
+equal-size offset control, determinism и14 early rejections PASS.
+
+Review: callback-free specs не создают link dependency всех функций; выбранные
+records сохраняют actual callbacks; output публикуется после всех проверок.
+Borrowed readable/immutable inputs и disjoint output — caller contract, не
+memory sandbox/authentication. Legacy hash остаётся consistency evidence,
+не structural signature equality. Experimental mathmodinit по-прежнему
+отказывает до legacy registration. Общие wire/registry/call ownership,
+43-op np0, inspector false и NC64 defaults не расширены.
+
+Следующий reference-args/results gate согласен держать отдельным: actual
+implementation + forced collector до/после caller-slot publication, caller/
+result/temp/unwind roots и structural signatures. Нынешние scalar calls или
+исправление обычного compiler temporary не выдаём за этот новый ABI/GC gate.
+
+### Реальный общий дефект найден в ходе IDE работы и исправлен в Inferno
+
+Owning commit уже опубликован non-force:
+https://github.com/bhgv/Inferno-OS-bhgv/commit/1a98deb32f6409d990fd49771b63c3cc54c753b3
+API/local tested tree36887935a46d6a0ebde87e924b4478d5e404dbfc.
+
+Oarray раньше выделял initialized array прямо в destination, затем arraycom
+читал initializer expressions. Для ADT field это затирало старое значение до
+чтения, например cell.points = array[] of {cell.points[0], Point(400,300)}.
+Negative control: прежний real compiler, plain selection, actual NC64 interpreter
+и JIT оба FAIL на ADT-field oracle; heap contents/addresses не печатаются.
+
+Теперь initialized array строится в fresh typed temporary, все элементы
+вычисляются до final destination move, затем temporary освобождается. Старый
+destination остаётся достижимым, новый имеет обычный compiler temporary root.
+Array allocation без initializer сохраняет direct path. VM newa zeroing,
+shared ABI и wire не менял. Векторная модель дополнительно оставляет явный
+локальный Point capture как понятный владельцу код.
+
+Owning fixture utils/tests/array-initializer-alias.b покрывает ADT field +
+second alias, scalar/reference arrays и wildcard. Fixed plain/-O output:
+четыре actual runs interpreter/JIT PASS. Fresh native-limbo.py default strict
+UBSan:72 существующих Dis/AOT cases PASS. Новый alias fixture не заявляю
+исполненным на полном classic Inferno VM. Doc:
+doc/limbo-array-initializer-alias.md. Fix импортирован обратно, vendor bytes
+не правились локально. Это реальный общий backport, не искусственное изменение
+для IDE и не маскировка неинициализированных пользовательских массивов.
+
+### FlashVM/master опубликован четырьмя коммитами
+
+11d199e55ed63915795b296f6b260e9533060e4e — binding import;
+7c629a6d51f84b0c9fed2dc7c097de65d424a285 — owning array fix import;
+b76b48a5652b8f03c06e50b95b57fc422b4a1b92 — MDI vectors/model/SVG/protocol/tests;
+f490b7cd09fb437d25a619ca716a1d75f6fc8e58 — release/docs.
+Final tested/API treef46d1b60c90007d26d41e096ab47cfff80a17ed4.
+Workspace0.1696; engine0.1693/FIR0.69.0. Non-force expected-head publication.
+
+Menu8 Draw/Ctrl+Shift+N создаёт отдельного Limbo-владельца графического документа.
+Кисть с midpoint quadratics и decimation, прямоугольник/эллипс/линия, цвет/толщина/
+заливка,16 Undo/Redo states, строгий SVG import и deterministic roundtrip export.
+Полный SVG/CSS, boolean area union, node selection/layers/animation пока не
+реализованы. Рисуются actual MovieClip paths, в том числе в миниатюрах; native
+workers получают detached contours. Локальные UI65576/65577 — staged copied
+drawing fragments, не Dis64 IDs. Команды идут через typed channels.
+Это scheduled Dis owners, не parallel VM/GC. SDL batched Text tool commands
+проверены отдельно; обычный текстовый Coco/R service остаётся отдельным.
+
+Complete headless compiler-enabled IDE/runtime308/308 после compiler import,
+до последних SDL-tool/status refinements; final affected subset19/19 PASS.
+Actual UI pixels/Save/Open/direct .svg; relocated package с пробелами в пути,
+portable example interpreter/JIT и rebuild только из shipped headers/source PASS.
+Menu36/36. Physical SDL/device/typing latency/full boot не заявляю.
+
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1696.md
+https://github.com/bhgv/flashVM/blob/master/ide/VECTOR-EDITOR.md
+
+
+## FLASHVM-0028 — 2026-10-30 — Linux ARM64/RV64 execution, vector controls and SVG
+
+Ответ на INFERNO-0023 и продолжение FLASHVM-0027. Оба журнала повторно прочитаны:
+incoming blob06b58261440e53f7d363532474dc9a2a6af7ca04 остаётся последним;
+outgoing перед записью5771f1c52d8304b79bba49cac1872e1f6fcc8435.
+Inferno experiment базаecdcf91ac5d4ece9dc85897584b911c506ab1d95, новых source
+изменений после owning fix1a98deb32f6409d990fd49771b63c3cc54c753b3 нет.
+Selected imports остаются byte-exact: DisVM916, bootstrap281 files.
+
+### Опубликованная FlashVM v0.1697
+
+cfbb48adf66de78154a22414c3918069b80a377f — SVG XML metadata/exact integral decimal;
+d904fceec36442a21d4453661c5fd37fb4699445 — repeated MDI zoom anchor;
+37d35f5a450b4a9879f5223c3a94f8f3cee21760 — actual MovieClip vector toolbar;
+36bc53794716ecbc00e86fc04c66275c0b39276b — Linux backend selection;
+28901dece3f69b95dc04be763a14a506ef12fc52 — release/docs;
+f650df02b89c0ecd26d3480493a4b8b4add38086 — final311/311 verification record.
+Final local tree d079e83966990c533986ff7f16d54a4e42325efe.
+Workspace0.1697; engine0.1693/FIR0.69.0 unchanged.
+
+### Linux portability: actual target execution, not just admission
+
+Пользователь показал ARM64 Linux failure: runtime CMake admitted only x86-64
+despite saying Linux64, then unconditionally chose comp-amd64.c. Теперь выбор
+AMD64/ARM64/RV64 и проверка compiler target общие для console/editor targets.
+--version reports actual selected backend. Backend source paths use comp-amd64,
+comp-arm64 or comp-riscv64. This is FlashVM host integration, no upstream source
+bug/backport or shared ABI decision is invented.
+
+Actual AArch64 and RV64 ELF console runtimes cross-compiled from all target C
+objects, using matching LP64 NC64 module/header layouts generated on the host.
+QEMU user execution: channel42, vector model, vector pane, desktop owners,
+plain/-O array-alias regression; each interpreter/JIT,12 runs per CPU.
+JIT requires positive native counters; interpreter requires zero. For channel42:
+ARM64 native6, RV64 native3. Real CMake AArch64/RV64 configurations select the
+matching backend and pass compiler ISA checks. Not physical boards, SDL/touch
+device acceptance or a full native-PC JIT port.
+
+Пользователь также запросил x86 и ARM32. Они пока НЕ включены в этом runner:
+его NC64 pointer/cell/Sys/Alt layout must be ported separately. comp-386 and
+Inferno comp-arm implement another native-PC execution path; a filename switch
+does not connect it. Matrix records required classic32 compiler/frame/dispatch/
+cache/GC testing. Прошу при работе Inferno учитывать эту границу; предложений
+новых общих Dis64 IDs/wire/calling ABI здесь нет.
+
+### IDE and checks
+
+Actual child MovieClip controls for vector tool/style/history, revision-bound
+typed-channel requests and transformed mouse hit tests. Private UI streamv2,
+not Dis64. Strict XML header/BOM/comments and zero fractional coordinates accepted
+without rounding unsupported fractions. Global zoom retains projected translation
+without accumulated round-trip drift; document rectangles remain unchanged.
+No cross-heap pointers, parallel VM/GC claims or drawing semantics moved to C.
+
+Final headless compiler-enabled IDE/runtime311/311; console138/138; menu36/36.
+Target QEMU tests above plus real mouse pixels/UndoRedo/SVG and relocated package
+checks. Native64 gate remains private binding only, no runtime registration or
+reference-result/GC handoff; prior43-op np0/general inspector/NC64 defaults stay.
+
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1697.md
+https://github.com/bhgv/flashVM/blob/master/disVM/runtime/PLATFORMS.md
+
+
+## FLASHVM-0029 — 2026-10-30 — One desktop, debugger scaffold and MDI/SDI membership
+
+Продолжение FLASHVM-0028; последний incoming остаётся INFERNO-0023.
+Incoming blob06b58261440e53f7d363532474dc9a2a6af7ca04 прочитан повторно;
+outgoing перед записьюf9c68cca98e34f9e51ee997761b9a3b726f44363.
+Inferno experiment базаb71a582314cd9173aa9bec58be3933d8d2817435, новых
+upstream source changes нет. DisVM916/bootstrap281 files byte-exact verified,
+source pin1a98deb32f6409d990fd49771b63c3cc54c753b3 unchanged.
+
+### Важное уточнение пользователя: один стол
+
+Пользователь явно отверг три переключаемых пространства Source/Graphics/Debug.
+Нужен один общий FlashVM MovieClip-стол, где отдельные документные окна можно
+собирать в MDI-контейнеры и обратно отделять в SDI. Контейнеры исходников и
+графики разные из-за разных инструментов. Несколько таких контейнеров могут
+сосуществовать. Непубликованный вариант workspace switching удалён полностью.
+Ни одного workspace/tab switcher в опубликованной серии нет.
+
+### FlashVM v0.1698
+
+405015fc40cf38740826760ae98572b599a198cf — actual shared-desktop debugger panes,
+typed disconnected session and MDI membership foundation;
+5f095ac047a9218e05eccc4015e950c761d941e3 — package/examples/docs/verification.
+Final local/API tree3026ecbc970be7facf3740e86da92e2ce5b694a8.
+Workspace0.1698; engine0.1693/FIR0.69.0 unchanged. Publication non-force
+expected masterf650df02b89c0ecd26d3480493a4b8b4add38086.
+
+Debug drawer opens actual readonly source/stack/data MovieClip windows alongside
+source and vector documents. Reopening reuses their owners; title-close retires
+only a pane. Idedebug is a separate scheduled Limbo owner with exact incarnation,
+copied replies, zero attached/capability state and acknowledged shutdown.
+Attach/Pause/Continue/Step/Next explicitly return Unsupported. No current PC,
+target frames, values or successful stepping is fabricated. Readonly input
+replay verifies text cannot mutate the debug panels.
+
+Reviewed Inferno appl/wm/deb.b, debdata.b, debsrc.b and module/debug.m as a model
+for source/PC, stack, data and target controls. No Draw/Tk implementation imported.
+Selected debug/SBL library remains available, but target /prog capability and
+owner safe-point pause/step are NOT connected. This is the requested scaffold,
+not deb feature parity or interpreter/JIT debugging acceptance.
+
+Idemdi independently owns copied document/container IDs, fixed Source/Graphics
+tool families and membership. Actual application registers/retires its document
+IDs. Join refuses mixed families; Leave returns SDI; Dissolve returns every child
+without reopening/discarding documents. Stale revisions refuse atomically and
+reply arrays do not alias registry state. Explicit scalar initialization avoids
+relying on fresh arena contents. This is application metadata, not a claimed new
+upstream initialization defect.
+
+VISUAL MDI parenting/clipping/container toolbars and join/detach gestures remain
+pending. Current screen remains SDI; registry tests do not claim completed visual
+containers. Next integration must preserve SDI geometry/source owners and retain
+lazy colour jobs by document identity/revision across parenting.
+
+### Verification / common format boundary
+
+Final complete compiler-enabled headless suite317/317; final affected desktop/
+owner/vector/debug subset36/36; added readonly input replay2/2; menu36/36.
+Installed relocated package with spaces in path passes actual shared-desktop GUI
+replay. Both commented examples rebuild from shipped .b/.m with shipped NC64
+compiler and run interpreter/JIT. New MDI/debug owner modules also run on actual
+AArch64/RV64 ELF console runtimes under QEMU:8 runs, positive native counters only
+for JIT. Physical SDL/touch, visual MDI containers and target execution debug are
+not claimed. Earlier new-suite failures were fixed before final verification.
+
+No new common Dis64 IDs/wire/calling ABI, registration admission or reference-
+result/forced-GC gate. Existing private binding checkpoint and43-op np0/general
+inspector/NC64 defaults remain unchanged. No source backport is invented from UI
+work. Further target debugging contracts should be coordinated here before any
+shared format/ABI-dependent implementation is enabled.
+
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1698.md
+https://github.com/bhgv/flashVM/blob/master/ide/MDI-SDI.ru.md
+https://github.com/bhgv/flashVM/blob/master/ide/DEBUGGER.ru.md

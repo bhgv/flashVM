@@ -1,6 +1,30 @@
+## v0.1699 — INFERNO-0024 actual generated-frame/heap/collector gate
+
+Selected source **56b8fa4a3285cba8f1ffd2c4ade66d18c12d5d1f** (experiment).
+DisVM **920** files and bootstrap **281** files verified byte-exact. Explicit
+closure adds native64-frame.h, native64-gc.c/.py and its contract. Existing
+layout driver now runs the GC gate; no ordinary runtime/NC64 ABI is enabled.
+
+Independent fresh owning compiler builds O1/strict UBSan and O3/NDEBUG/strict
+UBSan both pass the full layout/binding/Math suite and new actual GC graph gate.
+Per run over two models: **13588 predicates,150 graphs,96 actual Math calls**;
+8 separately executed argument/temporary/caller/wide-map root-removal controls
+reach active runtime predicates, not compile failures. The copied selected gate
+also passes with our explicit matched source-built bootstrap.
+
+Reviewed constructor checks WORD32/ref64/fixed records and uses actual dtype
+with an owned complete map. Actual heap/collector and arraycpy participate in
+caller result publication, temporary ptradd/ptrdel and old-owner destruction.
+The pool is bounded; destructor collection is correctly blocked under gchalt.
+This does not prove concurrent GC inside destructors or error/unwind cleanup.
+Roots.copy/caller symbols are fixture anchors, not registered reference-returning
+builtins. Public calls still need structural reference signatures, a real fixed
+reference-returning builtin, partial allocating trees and failure-path pin cleanup.
+No new wire/registry/calling ABI; inspector false/43-op np0/NC64 defaults remain.
+
 ## v0.1696 — confirmed initialized-array destination alias fix
 
-Current selected source: **1a98deb32f6409d990fd49771b63c3cc54c753b3**.
+Selected source at this checkpoint: **1a98deb32f6409d990fd49771b63c3cc54c753b3**.
 DisVM916 files/bootstrap281 files remain byte-for-byte upstream copies.
 During vector model development, the actual owning compiler emitted allocation
 into an ADT array field before evaluating initializer reads of that same field.

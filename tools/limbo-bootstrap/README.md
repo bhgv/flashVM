@@ -1,3 +1,8 @@
+[v0.1699 native64 frame/collector import and independent checks](../../disVM/SYNC.md):
+source56b8fa4a3285cba8f1ffd2c4ade66d18c12d5d1f,281 selected files. The actual
+compiler files retain their prior hashes; this checkpoint does not switch the
+bootstrap target or authorize new native calls.
+
 # Temporary source-built native Limbo bootstrap
 
 [Русский](README.ru.md) · [Own compiler priority](../../compiler/limbo/OWN_COMPILER.md) ·
