@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /* Parse a verified graph whose producer appears after its consumer in text.
  * left/right are independent mask constants; operation selects a bit or modular arithmetic formula.
  * Return one only if every reported fact holds for all sampled full-width inputs
@@ -437,6 +436,116 @@ done:
 }
 
 
+/* Check modular product facts for independent dynamic operands at one width.
+ * left/right are low-zero counts in [0,width], where width denotes exact zero.
+ * Own the parsed module and stream; return0 on any parse, proof or unsigned
+ * oracle mismatch. Require useful saturated low-bit facts, disjoint masks,
+ * immutable IR, and conservative unknown high bits. No VM callbacks occur. */
+static int exercise_product(unsigned width, unsigned left, unsigned right)
+{
+    FirModule *module = malloc(sizeof(*module));
+    FirModule *saved = malloc(sizeof(*saved));
+    FirIntegerFacts facts;
+    FILE *input = fir_temporary();
+    char error[256] = "";
+    const char *kind = width == 64 ? "i64" : "i32";
+    const char *prefix = width == 64 ? "big" : "i32";
+    uint64_t mask = width == 64 ? UINT64_MAX : UINT32_MAX;
+    int64_t lm = left == width ? 0 : left == 63 ? INT64_MIN : -(int64_t)(UINT64_C(1) << left);
+    int64_t rm = right == width ? 0 : right == 63 ? INT64_MIN : -(int64_t)(UINT64_C(1) << right);
+    unsigned count = left + right;
+    uint64_t expected = count >= width ? mask : (UINT64_C(1) << count) - 1;
+    uint64_t state = UINT64_C(0x91e10da591e10da5);
+    uint64_t zero;
+    uint64_t one;
+    unsigned sample;
+    int index;
+    int value = -1;
+    int ok = 0;
+    if (!module || !saved || !input ||
+        fprintf(input,
+                "FIR 1.0\nmodule @product\nfunc @main() -> void {\n^entry:\n"
+                "%%cx: %s.slot = %s.local\n%%cy: %s.slot = %s.local\njump ^producer\n"
+                "^consumer:\n%%r: %s = %s.mul%s %%a, %%b\ntrace %%r\nreturn\n"
+                "^producer:\n%%x: %s = %s.load %%cx\n%%y: %s = %s.load %%cy\n"
+                "%%lm: %s = const.%s %lld\n%%rm: %s = const.%s %lld\n"
+                "%%a: %s = %s.and %%x, %%lm\n%%b: %s = %s.and %%y, %%rm\njump ^consumer\n}\n",
+                kind,
+                prefix,
+                kind,
+                prefix,
+                kind,
+                prefix,
+                width == 32 ? ".wrap" : "",
+                kind,
+                prefix,
+                kind,
+                prefix,
+                kind,
+                kind,
+                (long long)lm,
+                kind,
+                kind,
+                (long long)rm,
+                kind,
+                prefix,
+                kind,
+                prefix) < 0 ||
+        fseek(input, 0, SEEK_SET) || !fir_parse(input, module, error, sizeof(error)) ||
+        !fir_verify(module, error, sizeof(error)))
+    {
+        goto done;
+    }
+    for (index = 0; index < module->value_count; index++)
+    {
+        if (!strcmp(module->values[index].name, "%r"))
+        {
+            value = index;
+        }
+    }
+    if (value < 0)
+    {
+        goto done;
+    }
+    memcpy(saved, module, sizeof(*saved));
+    fir_integer_facts(module, &facts);
+    zero = width == 64 ? facts.big_zero[value] : facts.zero[value];
+    one = width == 64 ? facts.big_one[value] : facts.one[value];
+    if (zero != expected || one || memcmp(saved, module, sizeof(*saved)))
+    {
+        goto done;
+    }
+    for (sample = 0; sample < 256; sample++)
+    {
+        uint64_t a;
+        uint64_t b;
+        uint64_t actual;
+        state = state * UINT64_C(6364136223846793005) + 1;
+        a = state & (uint64_t)lm & mask;
+        state = state * UINT64_C(6364136223846793005) + 1;
+        b = state & (uint64_t)rm & mask;
+        actual = (a * b) & mask;
+        if ((actual & zero) || (actual & one) != one)
+        {
+            goto done;
+        }
+    }
+    ok = 1;
+done:
+    if (!ok)
+    {
+        fprintf(stderr, "product facts mismatch width%u left%u right%u: %s\n", width, left, right, error);
+    }
+    if (input)
+    {
+        fclose(input);
+    }
+    free(module);
+    free(saved);
+    return ok;
+}
+
+
 /* Exercise high/sign bits, zero masks, bounds and reuse in non-topological CFGs.
  * No arguments or borrowed owners. Return nonzero at the first explicit failure. */
 int main(void)
@@ -480,7 +589,17 @@ int main(void)
     {
         return 1;
     }
+    for (left = 0; left <= 64; left++)
+    {
+        for (right = 0; right <= 64; right++)
+        {
+            if (!exercise_product(64, left, right) || (left <= 32 && right <= 32 && !exercise_product(32, left, right)))
+            {
+                return 1;
+            }
+        }
+    }
     puts("PASS integer facts C99: 6718464 exhaustive arithmetic evaluations, "
-         "192512 carry/borrow and204800 mask/shift/negation samples; immutable IR and CFG");
+         "192512 carry/borrow and204800 mask/shift/negation samples; 1360384 product samples; immutable IR and CFG");
     return 0;
 }

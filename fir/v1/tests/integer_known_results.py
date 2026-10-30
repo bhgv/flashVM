@@ -100,6 +100,19 @@ def main():
                         0,
                     )
                 )
+                mul = "i32.mul.wrap" if bits == 32 else "big.mul"
+                forms.extend(
+                    [
+                        (
+                            f"%a: {kind} = {prefix}.and %x, %eight\n%b: {kind} = {prefix}.and %y, %eight\n%c: {kind} = {mul} %a, %b\n%r: {kind} = {prefix}.and %c, %seven",
+                            0,
+                        ),
+                        (
+                            f"%a: {kind} = {prefix}.and %x, %hi\n%b: {kind} = {prefix}.and %y, %even\n%r: {kind} = {mul} %a, %b",
+                            0,
+                        ),
+                    ]
+                )
                 for body, expected in forms:
                     raw.write_text(
                         pair_module(kind, value, 0, declarations + body + "\ntrace %r")
@@ -159,6 +172,33 @@ def main():
                     not in call([runtime, mode, work / "trap.dis"], work, False).stderr
                 ):
                     raise RuntimeError("known constant suppressed eager divide failure")
+            # A wrapped zero product still evaluates its potentially failing input.
+            raw.write_text(
+                pair_module(
+                    kind,
+                    42,
+                    0,
+                    f"%bad: {kind} = {division} %x, %y\n%hi: {kind} = const.{kind} {minimum}\n"
+                    f"%even: {kind} = const.{kind} -2\n%a: {kind} = {prefix}.and %bad, %hi\n"
+                    f"%b: {kind} = {prefix}.and %x, %even\n%r: {kind} = {mul} %a, %b\ntrace %r",
+                )
+            )
+            call([compiler, "opt", raw, opt], work)
+            result = opt.read_text()
+            if division not in result or mul in result:
+                raise RuntimeError("zero product lost an eager error or did not fold")
+            for selected in (raw, opt):
+                call([compiler, "dis", selected, work / "product-trap.dis"], work)
+                if (
+                    runtime
+                    and "zero divide"
+                    not in call(
+                        [runtime, mode, work / "product-trap.dis"], work, False
+                    ).stderr
+                ):
+                    raise RuntimeError(
+                        "zero product suppressed an eager divide failure"
+                    )
             if kind == "i64":
                 # A negated proven-odd divisor makes the outer division total,
                 # but cannot erase a failing eager producer of that odd value.
