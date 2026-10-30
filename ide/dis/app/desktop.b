@@ -9,6 +9,8 @@ include "idehost.m";
 include "idedeskpane.m";
 include "idedesktop.m";
 include "idedeskclip.m";
+include "idedebug.m";
+include "idemdi.m";
 DesktopIDE: module
 {
     init: fn(); # Own the MovieClip desktop and independent pane processes.
@@ -21,6 +23,16 @@ panecall(owner: chan of Idedeskpane->Request, operation: int, text: string,
 {
     replies := chan of Idedeskpane->Reply;
     owner <-= Idedeskpane->Request(1, operation, text, event, replies);
+    return <-replies;
+}
+
+
+# Exchange one membership operation. The private registry owns only copied pane
+# identities/tool families; file/document processes remain independently owned.
+mdicall(owner: chan of Idemdi->Request, revision, operation, document, family: int): Idemdi->Reply
+{
+    replies := chan of Idemdi->Reply;
+    owner <-= Idemdi->Request(1, revision, operation, document, 0, family, replies);
     return <-replies;
 }
 
@@ -73,6 +85,9 @@ signedoffset(value: int): int
 caption(reply: Idedeskpane->Reply, index: int): string
 {
     title := "Editor " + string index;
+    if (reply.kind == Idedeskpane->Debugger) {
+        return reply.path;
+    }
     if (reply.kind == Idedeskpane->Console) {
         title = "Build console";
     } else if (reply.kind == Idedeskpane->Help) {
@@ -137,13 +152,39 @@ init()
     }
     windows[0] = panes->startnotified(initialkind, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, width indicator. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, width indicator. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
     windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
             raise "fail: desktop pane startup";
         }
     }
+    debugger := load Idedebug Idedebug->PATH;
+    if (debugger == nil) {
+        raise "fail: debugger session module";
+    }
+    session := debugger->start(1);
+    mdi := load Idemdi Idemdi->PATH;
+    if (mdi == nil) {
+        raise "fail: MDI registry module";
+    }
+    membership := mdi->start();
+    mdirevision := 1;
+    for (index = 0; index < 4; index++) {
+        if (index == 1 || index == 2) {
+            continue;
+        }
+        family := mdi->Source;
+        if (index == 0 && initialkind == panes->Vector) {
+            family = mdi->Graphics;
+        }
+        registered := mdicall(membership, mdirevision, mdi->Register, index + 1, family);
+        if (registered.status != mdi->Ok) {
+            raise "fail: initial MDI registration";
+        }
+        mdirevision = registered.revision;
+    }
+    debugpanes := array[] of {0, 0, 0}; # Stable readonly source/stack/data panel identities.
     clipboard := clips->start();
     layout := desk->start();
     request := Idedesktop->Request(1, desk->View, 0, 0, 0, 0, 0, "", "", -1, -1, 0, nil);
@@ -651,7 +692,7 @@ init()
                 active = view.focus;
             }
             current := panecall(windows[active - 1], panes->Snapshot, "", nil);
-            if (current.kind != panes->Editor && current.kind != panes->Vector) {
+            if (current.kind != panes->Editor && current.kind != panes->Vector && current.kind != panes->Debugger) {
                 panecall(windows[1], panes->SetText, "Help and build console stay open. Select an editor to close.", nil);
             } else if (current.revision != current.saved && closing == 0 && !approved) {
                 closing = active;
@@ -660,9 +701,21 @@ init()
                 request.window = desk->CloseEditor;
                 view = deskcall(layout, request);
             } else {
+                if (current.kind == panes->Editor || current.kind == panes->Vector) {
+                    removed := mdicall(membership, mdirevision, mdi->Remove, active, 0);
+                    if (removed.status != mdi->Ok) {
+                        raise "fail: MDI document retirement";
+                    }
+                    mdirevision = removed.revision;
+                }
                 # Consume the terminal acknowledgement before reusing the slot.
                 panecall(windows[active - 1], panes->Shutdown, "", nil);
                 windows[active - 1] = nil;
+                for (panel := 0; panel < len debugpanes; panel++) {
+                    if (debugpanes[panel] == active) {
+                        debugpanes[panel] = 0;
+                    }
+                }
                 request.operation = desk->Remove;
                 request.window = active;
                 view = deskcall(layout, request);
@@ -687,6 +740,36 @@ init()
                     view = deskcall(layout, request);
                 }
             }
+        } else if (action == desk->Debugger) {
+            replies := chan of Idedebug->Reply;
+            session <-= Idedebug->Request(1, 1, debugger->Snapshot, replies);
+            snapshot := <-replies;
+            titles := array[] of {"Debug: source", "Debug: stack", "Debug: data"};
+            bodies := array[] of {snapshot.source, snapshot.stack, snapshot.data};
+            for (panel := 0; panel < len debugpanes; panel++) {
+                if (debugpanes[panel] != 0 && windows[debugpanes[panel] - 1] != nil) {
+                    continue;
+                }
+                for (slot := 0; slot < len windows; slot++) {
+                    if (windows[slot] == nil) {
+                        owner := panes->start(panes->Debugger, titles[panel], bodies[panel]);
+                        if (owner != nil) {
+                            windows[slot] = owner;
+                            debugpanes[panel] = slot + 1;
+                        }
+                        break;
+                    }
+                }
+            }
+            if (debugpanes[0] != 0) {
+                panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+                active = debugpanes[0];
+                request.operation = desk->Select;
+                request.window = active;
+                view = deskcall(layout, request);
+            }
+            panecall(windows[1], panes->SetText,
+                "Debugger panels share this desktop. No target attached; run controls remain unavailable.", nil);
         } else if (action == desk->NewEditor || action == desk->VectorEditor) {
             created := 0;
             for (index = 0; index < len windows; index++) {
@@ -700,6 +783,15 @@ init()
                         panecall(windows[1], panes->SetText, "Cannot start an editor owner.", nil);
                         break;
                     }
+                    family := mdi->Source;
+                    if (kind == panes->Vector) {
+                        family = mdi->Graphics;
+                    }
+                    registered := mdicall(membership, mdirevision, mdi->Register, index + 1, family);
+                    if (registered.status != mdi->Ok) {
+                        raise "fail: new MDI registration";
+                    }
+                    mdirevision = registered.revision;
                     windows[index] = owner;
                     created = 1;
                     panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
@@ -742,6 +834,16 @@ init()
     stopped := deskcall(layout, request);
     if (stopped.status != desk->Ok) {
         raise "fail: desktop layout shutdown";
+    }
+    mdistopped := mdicall(membership, mdirevision, mdi->Shutdown, 0, 0);
+    if (mdistopped.status != mdi->Ok) {
+        raise "fail: MDI registry shutdown";
+    }
+    debugreply := chan of Idedebug->Reply;
+    session <-= Idedebug->Request(1, 1, debugger->Shutdown, debugreply);
+    debugstopped := <-debugreply;
+    if (debugstopped.status != debugger->Ok) {
+        raise "fail: debugger session shutdown";
     }
     host->detach();
     sys->print("PASS MovieClip desktop: independent panes and acknowledged shutdown\n");

@@ -298,7 +298,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
             "Save the active editor. Choose a path for an untitled document.",
             "Compile the current revision using the library service. F8 selects a source diagnostic.",
             "Create another independent editor. Existing documents remain open.",
-            "No debugger is attached. This button does not fabricate a debug session.",
+            "Open source/stack/data debugger panels on this desktop. No runtime target is attached.",
             "F1 Help. F7 Build. Ctrl+S Save. Keyboard edits the focused editor. Drag EMPTY table space to scroll. Left thumbnails jump to windows. Escape closes a scroll.",
             "Close the desktop. The action button explicitly discards unsaved documents.",
             "Close this editor only. Unsaved changes will be discarded. Escape or Cancel keeps the document open.",
@@ -315,7 +315,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         labels := array[] of {"", "Choose file", "Save editor", "Build editor", "New editor", "Not attached", "Read Help", "Discard and close", "Discard this editor", "Copy", "Show all", "Max/Norm"};
         label := labels[drawer];
         if (drawer == Debugger) {
-            label = "Not attached";
+            label = "Open panels";
         }
         if (drawer == ClipboardTool) {
             button := (wide - 32) / 3;
@@ -609,10 +609,8 @@ serve(requests: chan of Request)
                             action = CancelClose;
                             drawer = 0;
                         } else if (drawer != 0 && x >= drawerleft + 8 && x < width - 120 && y >= 320 && y < 356) {
-                            if (drawer != Debugger) {
-                                action = drawer;
-                                drawer = 0;
-                            }
+                            action = drawer;
+                            drawer = 0;
                         } else if (drawer != 0 && x >= drawerleft && x < width - 112 && y >= 72 && y < 412) {
                             # The scroll owns this area; never focus or drag the covered window.
                         } else if (x >= width - 104 && y >= 56) {

@@ -345,7 +345,7 @@ def product_entries(prefix):
         (
             "8",
             "desktop",
-            "IDE MovieClip: MDI, Draw/SVG с кнопками, подсветка Limbo/AS, F7/F8, Help",
+            "IDE MovieClip: общий стол, Draw/SVG, Debug-панели, подсветка Limbo/AS, F7/F8",
             (prefix / "disvm-editor/run-desktop-ide.sh",),
             True,
         ),

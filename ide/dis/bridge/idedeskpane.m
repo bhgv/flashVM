@@ -2,7 +2,7 @@
 Idedeskpane: module
 {
     PATH: con "idedeskpane.dis"; # Matching portable window controller.
-    Editor, Console, Help, Vector: con iota + 1; # Actual document owner, mutable log, immutable help.
+    Editor, Console, Help, Vector, Debugger: con iota + 1; # Actual document owner, mutable log, immutable help.
     Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, ExportSelection, CutSelection, PasteSelection, Shutdown: con iota; # FIFO operations.
 
     VectorControl: con 14; # Revision-bound toolbar cell1..15; copied event code, no source coordinates.

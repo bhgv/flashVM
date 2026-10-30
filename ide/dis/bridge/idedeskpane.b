@@ -172,10 +172,10 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 status = core->Ok;
             } else if (request.operation == Snapshot) {
                 status = core->Ok;
-            } else if (request.operation == SetText && kind == Console && len request.text <= 4096) {
+            } else if (request.operation == SetText && (kind == Console || kind == Debugger) && len request.text <= 4096) {
                 text = request.text;
                 status = core->Ok;
-            } else if (kind == Help && request.operation == Input && request.event != nil) {
+            } else if ((kind == Help || kind == Debugger) && request.operation == Input && request.event != nil) {
                 if (request.event.kind == Uibridge->Key && request.event.flags == 1) {
                     if (request.event.code == 34) {
                         helpfirst += 150;
@@ -358,7 +358,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 anchor = len body;
             }
         } else if (len body > 200) {
-            if (kind == Help) {
+            if (kind == Help || kind == Debugger) {
                 first = helpfirst;
             }
             if (kind == Console) {
@@ -423,7 +423,7 @@ start(kind: int, path, text: string): chan of Request
 # Scanner/GC heaps never escape; external readiness carries only the stable identity.
 startnotified(kind: int, path, text: string, notices: chan of int, identity: int): chan of Request
 {
-    if (kind < Editor || kind > Vector || len text > 65536) {
+    if (kind < Editor || kind > Debugger || len text > 65536) {
         return nil;
     }
     if (kind == Vector) {

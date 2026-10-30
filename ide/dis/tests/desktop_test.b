@@ -159,7 +159,7 @@ init()
     request.y = 330;
     request.phase = 1;
     view = call(layout, request);
-    check(view.action == 0 && view.drawer == desk->Debugger, "no fabricated debugger session");
+    check(view.action == desk->Debugger && view.drawer == 0, "debugger panel proposal without target attachment");
     request.operation = desk->Tool;
     request.window = 0;
     view = call(layout, request);
