@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1696**. [Русская версия](README.ru.md).
+Development version: **0.1697**. [Русская версия](README.ru.md).
 
-Current series: [v0.1696](docs/releases/v0.1696.md): MDI vector windows (Draw), interpolated brush/figures, SVG, private native64 binding import and an owning Limbo array-initializer fix.
+Current series: [v0.1697](docs/releases/v0.1697.md): MovieClip vector toolbar, SVG metadata, stable MDI zoom and Linux AMD64/ARM64/RV64 backend selection with emulated target execution.
 
 ## Browse documentation
 

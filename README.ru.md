@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1696**. [English](README.md).
+Версия разработки: **0.1697**. [English](README.md).
 
-Текущая серия: [v0.1696](docs/releases/v0.1696.md): векторные MDI-окна Draw, сглаженная кисть/фигуры, SVG, импорт native64 binding и исправление инициализаторов массива в самой Inferno.
+Текущая серия: [v0.1697](docs/releases/v0.1697.md): кнопки векторного редактора, SVG с метаданными, устойчивый зум MDI и выбор Linux backend AMD64/ARM64/RV64 с проверкой целевого исполнения.
 
 ## Просмотр документации
 
