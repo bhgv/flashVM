@@ -49,7 +49,7 @@ static void arithmetic_bits(
 /* Derive known bits without reading cells or evaluating operand producers.
  * module is borrowed verified IR; facts is disjoint caller-owned scratch.
  * Clear stale facts, then follow int32/big literals, copies, bit operations and
- * shifts with an exact proven legal int32 count, and modular add/sub carry bits.
+ * shifts with an exact proven legal int32 count, and modular add/sub/neg carry bits.
  * Everything else is unknown.
  * Monotone bounded scans handle non-topological definitions; an incomplete
  * proof stays conservative. No allocation, callbacks or waiting occurs. These
@@ -104,6 +104,10 @@ void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts)
             else if (in->op == O_ADD || in->op == O_SUB || in->op == O_BIG_ADD || in->op == O_BIG_SUB)
             {
                 arithmetic_bits(az, ao, bz, bo, width, in->op == O_SUB || in->op == O_BIG_SUB, &zero, &one);
+            }
+            else if (in->op == O_BIG_NEG)
+            {
+                arithmetic_bits(mask, 0, az, ao, width, 1, &zero, &one);
             }
             else if (in->op == O_I32_AND || in->op == O_BIG_AND)
             {

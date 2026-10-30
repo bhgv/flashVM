@@ -98,10 +98,11 @@ done:
 
 
 /* Check big shift/complement facts against unsigned mathematical payload bits.
- * count is a legal0..63 shift, right selects arithmetic right versus left.
+ * count is a legal0..63 shift, right selects arithmetic right versus left;
+ * negate selects modular negation instead of complement of the shifted value.
  * Own/close parser input and module. Return zero with a diagnostic on mismatch;
  * no VM, callbacks, mutable-cell inference or signed host shifts are used. */
-static int exercise_big(unsigned count, int right)
+static int exercise_big(unsigned count, int right, int negate)
 {
     FirModule *module = malloc(sizeof(*module));
     FILE *input = fir_temporary();
@@ -117,10 +118,11 @@ static int exercise_big(unsigned count, int right)
                 "%%cell: i64.slot = big.local\n%%x: i64 = big.load %%cell\n"
                 "%%mask: i64 = const.i64 %lld\n%%count: i32 = const.i32 %u\n"
                 "%%a: i64 = big.or %%x, %%mask\n%%shift: i64 = big.%s %%a, %%count\n"
-                "%%r: i64 = big.not %%shift\ntrace %%r\nreturn\n}\n",
+                "%%r: i64 = big.%s %%shift\ntrace %%r\nreturn\n}\n",
                 right ? (long long)INT64_MIN : 1LL,
                 count,
-                right ? "shr" : "shl") < 0 ||
+                right ? "shr" : "shl",
+                negate ? "neg" : "not") < 0 ||
         fseek(input, 0, SEEK_SET) || !fir_parse(input, module, error, sizeof(error)) ||
         !fir_verify(module, error, sizeof(error)))
     {
@@ -138,6 +140,10 @@ static int exercise_big(unsigned count, int right)
         goto done;
     }
     fir_integer_facts(module, &facts);
+    if (negate && !right && !fir_big_nonzero(&facts, value))
+    {
+        goto done;
+    }
     for (index = 0; index < 1024; index++)
     {
         uint64_t actual;
@@ -155,7 +161,7 @@ static int exercise_big(unsigned count, int right)
         {
             actual <<= count;
         }
-        actual = ~actual;
+        actual = negate ? UINT64_C(0) - actual : ~actual;
         if ((actual & facts.big_zero[value]) || (actual & facts.big_one[value]) != facts.big_one[value] ||
             (fir_big_nonzero(&facts, value) && actual == 0))
         {
@@ -455,7 +461,8 @@ int main(void)
     for (left = 0; left < 5; left++)
     {
         static const unsigned counts[] = {0, 1, 31, 32, 63}; /* Width and sign boundaries. */
-        if (!exercise_big(counts[left], 0) || !exercise_big(counts[left], 1))
+        if (!exercise_big(counts[left], 0, 0) || !exercise_big(counts[left], 1, 0) ||
+            !exercise_big(counts[left], 0, 1) || !exercise_big(counts[left], 1, 1))
         {
             return 1;
         }
@@ -468,12 +475,12 @@ int main(void)
             return 1;
         }
     }
-    if (!exhaustive_arithmetic(32, 0) || !exhaustive_arithmetic(32, 1) ||
-        !exhaustive_arithmetic(64, 0) || !exhaustive_arithmetic(64, 1))
+    if (!exhaustive_arithmetic(32, 0) || !exhaustive_arithmetic(32, 1) || !exhaustive_arithmetic(64, 0) ||
+        !exhaustive_arithmetic(64, 1))
     {
         return 1;
     }
     puts("PASS integer facts C99: 6718464 exhaustive arithmetic evaluations, "
-         "192512 carry/borrow and194560 mask/shift samples; immutable IR and CFG");
+         "192512 carry/borrow and204800 mask/shift/negation samples; immutable IR and CFG");
     return 0;
 }

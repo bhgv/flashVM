@@ -91,6 +91,15 @@ def main():
                         ),
                     ]
                 )
+                negation = (
+                    f"{opcode(kind, 'sub')} %zero, %a" if bits == 32 else "big.neg %a"
+                )
+                forms.append(
+                    (
+                        f"%zero: {kind} = const.{kind} 0\n%a: {kind} = {prefix}.and %x, %eight\n%b: {kind} = {negation}\n%r: {kind} = {prefix}.and %b, %seven",
+                        0,
+                    )
+                )
                 for body, expected in forms:
                     raw.write_text(
                         pair_module(kind, value, 0, declarations + body + "\ntrace %r")
@@ -150,6 +159,34 @@ def main():
                     not in call([runtime, mode, work / "trap.dis"], work, False).stderr
                 ):
                     raise RuntimeError("known constant suppressed eager divide failure")
+            if kind == "i64":
+                # A negated proven-odd divisor makes the outer division total,
+                # but cannot erase a failing eager producer of that odd value.
+                raw.write_text(
+                    pair_module(
+                        kind,
+                        42,
+                        0,
+                        "%bad: i64 = big.div %x, %y\n%one: i64 = const.i64 1\n"
+                        "%odd: i64 = big.or %bad, %one\n%n: i64 = big.neg %odd\n"
+                        "%unused: i64 = big.div %x, %n\ntrace %x",
+                    )
+                )
+                call([compiler, "opt", raw, opt], work)
+                if opt.read_text().count("big.div") != 1:
+                    raise RuntimeError(
+                        "negation nonzero proof lost inner trap or retained total outer divide"
+                    )
+                for selected in (raw, opt):
+                    call([compiler, "dis", selected, work / "neg-trap.dis"], work)
+                    if (
+                        runtime
+                        and "zero divide"
+                        not in call(
+                            [runtime, mode, work / "neg-trap.dis"], work, False
+                        ).stderr
+                    ):
+                        raise RuntimeError("negation DCE erased its producer error")
             # Unknown/invalid count prevents the checked operation from folding.
             for invalid in (False, True):
                 if invalid:
@@ -183,6 +220,13 @@ def main():
                 call([linker, "link", movie, obj], work)
                 if call([host, movie], work).stdout.strip() != "42":
                     raise RuntimeError("known-result source tutorial differs")
+        # The own Coco/R frontend must also lower unary big negation through the
+        # same analysis. It remains Dis-only; do not imply big support in SWF.
+        tutorial = Path(__file__).resolve().parents[1] / "examples/dis/big-neg-facts.b"
+        call([source, "limbo", "--input", tutorial, raw], work)
+        call([compiler, "opt", raw, opt], work)
+        for selected in (raw, opt):
+            execute(compiler, runtime, mode, work, selected, [42])
     print(
         "PASS known integer results:",
         checks,

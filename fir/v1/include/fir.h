@@ -269,7 +269,7 @@ typedef struct
 
 
 /* Analyze borrowed verified module into disjoint caller-owned scratch.
- * Modular add/sub propagate independent carry facts for int32 and big.
+ * Modular add/sub and big negation propagate independent carry facts.
  * No allocation, evaluation, callbacks or waits; producers retain their effects. */
 void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts);
 
