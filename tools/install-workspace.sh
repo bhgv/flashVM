@@ -440,6 +440,8 @@ EOF
             install_dis64_envelope "$base" "$destination"
             mkdir -p "$destination"
             copy_tree "$ROOT/disVM/examples/native-module" "$destination/examples/native-module"
+            copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.md" "$destination/RETAINED-SCENE.md"
+            copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.ru.md" "$destination/RETAINED-SCENE.ru.md"
             copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.md" "$destination/SYS_CAPTURE.md"
             copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.ru.md" "$destination/SYS_CAPTURE.ru.md"
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.md" "$destination/NATIVE_MODULES.md"

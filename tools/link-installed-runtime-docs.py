@@ -14,6 +14,8 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "disVM/runtime/RETAINED-SCENE.md": package / "RETAINED-SCENE.md",
+        root / "disVM/runtime/RETAINED-SCENE.ru.md": package / "RETAINED-SCENE.ru.md",
         root / "disVM/runtime/SYS_CAPTURE.md": package / "SYS_CAPTURE.md",
         root / "disVM/runtime/SYS_CAPTURE.ru.md": package / "SYS_CAPTURE.ru.md",
         root / "disVM/runtime/NATIVE_MODULES.md": package / "NATIVE_MODULES.md",

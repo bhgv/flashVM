@@ -59,3 +59,5 @@ local commit `51b2ebaf19e1bd0002974b5da8d55b0cab7ca6cd` (tree
 They are supplied as a tested backup patch, **not claimed published** to the fork.
 Исправления приложены проверенным патчем; публикация в графический fork пока
 недоступна, в отличие от разрешённой публикации flashVM.
+
+[Retained IDE bitmap tree / Сохраняемые битмапы IDE](../disVM/runtime/RETAINED-SCENE.md).

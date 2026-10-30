@@ -1,3 +1,5 @@
+[Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
+
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
 [Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](../../ide/ARTIFACT-EXPORT.md)
