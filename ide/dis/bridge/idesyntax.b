@@ -20,6 +20,20 @@ start(): (chan of Request, chan of Result)
 }
 
 
+# Detach the receiver's mutable array from worker/lazy-owner retained catalogs.
+# Value fields are copied; nil/error catalogs allocate no token array. No callbacks.
+copyresult(result: Result): Result
+{
+    tokens: array of Token;
+    if (len result.tokens != 0) {
+        tokens = array[len result.tokens] of Token;
+        tokens[0:] = result.tokens;
+    }
+    return Result(result.ticket, result.revision, result.language, result.status,
+                  tokens, result.scanned, result.reused, result.restart);
+}
+
+
 # Resolve dependencies before returning a lazy command capability; nil means unavailable.
 # One owning Dis process serializes client updates and immutable completed results.
 startlazy(notices: chan of int): chan of Command
@@ -41,7 +55,7 @@ lazyowner(commands: chan of Command, notices: chan of int,
           jobs: chan of Request, answers: chan of Result)
 {
     latest := Request(0, 0, Limbo, "", 0);
-    cached := Result(0, 0, Limbo, Pending, nil);
+    cached := Result(0, 0, Limbo, Pending, nil, 0, 0, 0);
     working := 0;
     dirty := 0;
     for (;;) {
@@ -61,28 +75,28 @@ lazyowner(commands: chan of Command, notices: chan of int,
                 }
                 jobs <-= Request(latest.ticket, latest.revision, latest.language, "", 1);
                 <-answers;
-                command.reply <-= Result(latest.ticket, latest.revision, latest.language, Ok, nil);
+                command.reply <-= Result(latest.ticket, latest.revision, latest.language, Ok, nil, 0, 0, 0);
                 return;
             }
             if (command.operation == Update) {
                 job := command.job;
                 if (job.ticket <= latest.ticket || job.revision < 0 || job.stop ||
                     (job.language != Limbo && job.language != ActionScript)) {
-                    command.reply <-= Result(job.ticket, job.revision, job.language, Invalid, nil);
+                    command.reply <-= Result(job.ticket, job.revision, job.language, Invalid, nil, 0, 0, 0);
                     continue;
                 }
                 if (len job.text > MaxCharacters) {
-                    command.reply <-= Result(job.ticket, job.revision, job.language, TooLarge, nil);
+                    command.reply <-= Result(job.ticket, job.revision, job.language, TooLarge, nil, 0, 0, 0);
                     continue;
                 }
                 latest = job;
-                cached = Result(job.ticket, job.revision, job.language, Pending, nil);
+                cached = Result(job.ticket, job.revision, job.language, Pending, nil, 0, 0, 0);
                 dirty = 1;
-                command.reply <-= cached;
+                command.reply <-= copyresult(cached);
             } else if (command.operation == Snapshot) {
-                command.reply <-= cached;
+                command.reply <-= copyresult(cached);
             } else {
-                command.reply <-= Result(latest.ticket, latest.revision, latest.language, Invalid, nil);
+                command.reply <-= Result(latest.ticket, latest.revision, latest.language, Invalid, nil, 0, 0, 0);
             }
         result := <-answers =>
             working = 0;
@@ -103,10 +117,12 @@ lazyowner(commands: chan of Command, notices: chan of int,
 
 
 # Validate scalar input, translate generated UTF-8 byte spans, return one complete catalog.
-# Scanner instances and boundary storage remain worker-local; failure has no partial tokens.
-scan(job: Request, limbo: LimbolexParser, actionscript: AslexParser): Result
+# baseline/catalog are private last-success values. Safe prefix restart plus generated
+# token convergence can reuse an unchanged suffix; otherwise scanning continues to EOF.
+# Scanner/boundary storage remain worker-local; failure has no partial tokens.
+scan(job, baseline: Request, catalog: Result, limbo: LimbolexParser, actionscript: AslexParser): Result
 {
-    result := Result(job.ticket, job.revision, job.language, Invalid, nil);
+    result := Result(job.ticket, job.revision, job.language, Invalid, nil, 0, 0, 0);
     if (job.ticket <= 0 || job.revision < 0 ||
         (job.language != Limbo && job.language != ActionScript)) {
         return result;
@@ -121,6 +137,40 @@ scan(job: Request, limbo: LimbolexParser, actionscript: AslexParser): Result
             return result;
         }
     }
+    reusable := catalog.status == Ok && baseline.language == job.language;
+    if (reusable && baseline.text == job.text) {
+        return Result(job.ticket, job.revision, job.language, Ok, catalog.tokens,
+                      0, len catalog.tokens, len job.text);
+    }
+    prefix := 0;
+    suffix := 0;
+    retained := 0;
+    restart := 0;
+    if (reusable) {
+        while (prefix < len baseline.text && prefix < len job.text &&
+               baseline.text[prefix] == job.text[prefix]) {
+            prefix++;
+        }
+        while (suffix < len baseline.text - prefix && suffix < len job.text - prefix &&
+               baseline.text[len baseline.text - suffix - 1] == job.text[len job.text - suffix - 1]) {
+            suffix++;
+        }
+        # Include the token ending exactly at the edit: identifiers/numbers or
+        # two-byte comment openers may merge across that old boundary.
+        while (retained < len catalog.tokens && catalog.tokens[retained].last < prefix) {
+            retained++;
+        }
+        # Generated gaps combine adjacent whitespace and comments into one record.
+        # A changed punctuation token may become a skipped comment and join that gap.
+        if (retained > 0 && catalog.tokens[retained-1].kind == 5) {
+            retained--;
+        }
+        if (retained < len catalog.tokens) {
+            restart = catalog.tokens[retained].first;
+        }
+    }
+    delta := len job.text - len baseline.text;
+    suffixfirst := len job.text - suffix;
     bytes := array of byte job.text;
     if (len bytes > MaxBytes) {
         result.status = TooLarge;
@@ -128,8 +178,12 @@ scan(job: Request, limbo: LimbolexParser, actionscript: AslexParser): Result
     }
     boundaries := array[len bytes + 1] of { * => -1 };
     position := 0;
+    startbyte := 0;
     for (i = 0; i < len job.text; i++) {
         boundaries[position] = i;
+        if (i == restart) {
+            startbyte = position;
+        }
         scalar := job.text[i];
         if (scalar < 16r80) {
             position++;
@@ -142,14 +196,23 @@ scan(job: Request, limbo: LimbolexParser, actionscript: AslexParser): Result
         }
     }
     boundaries[len bytes] = len job.text;
+    resetok: int;
     if (job.language == Limbo) {
-        limbo->reset(bytes);
+        resetok = limbo->resetat(bytes, startbyte);
     } else {
-        actionscript->reset(bytes);
+        resetok = actionscript->resetat(bytes, startbyte);
+    }
+    if (!resetok) {
+        return result;
     }
     storage := array[MaxTokens] of Token;
-    count := 0;
-    previous := 0;
+    if (retained != 0) {
+        storage[0:] = catalog.tokens[0:retained];
+    }
+    count := retained;
+    reused := retained;
+    scanned := 0;
+    previous := startbyte;
     for (;;) {
         kind, first, last: int;
         if (job.language == Limbo) {
@@ -171,12 +234,46 @@ scan(job: Request, limbo: LimbolexParser, actionscript: AslexParser): Result
             result.status = TooLarge;
             return result;
         }
-        storage[count++] = Token(kind, boundaries[first], boundaries[last]);
+        token := Token(kind, boundaries[first], boundaries[last]);
+        storage[count++] = token;
+        scanned++;
         previous = last;
+        if (reusable && token.first >= suffixfirst) {
+            # Equal token extent/class in the unchanged suffix proves the same
+            # generated normal state after that token; only then reuse its tail.
+            wanted := token.first - delta;
+            low := 0;
+            high := len catalog.tokens;
+            while (low < high) {
+                middle := low + (high - low) / 2;
+                if (catalog.tokens[middle].first < wanted) {
+                    low = middle + 1;
+                } else {
+                    high = middle;
+                }
+            }
+            if (low < len catalog.tokens && catalog.tokens[low].first == wanted &&
+                catalog.tokens[low].last == token.last - delta && catalog.tokens[low].kind == kind) {
+                remaining := len catalog.tokens - low - 1;
+                if (remaining > MaxTokens - count) {
+                    result.status = TooLarge;
+                    return result;
+                }
+                for (tail := low + 1; tail < len catalog.tokens; tail++) {
+                    old := catalog.tokens[tail];
+                    storage[count++] = Token(old.kind, old.first + delta, old.last + delta);
+                }
+                reused += remaining;
+                break;
+            }
+        }
     }
     result.tokens = array[count] of Token;
     result.tokens[0:] = storage[0:count];
     result.status = Ok;
+    result.scanned = scanned;
+    result.reused = reused;
+    result.restart = restart;
     return result;
 }
 
@@ -186,13 +283,20 @@ scan(job: Request, limbo: LimbolexParser, actionscript: AslexParser): Result
 serve(jobs: chan of Request, answers: chan of Result,
       limbo: LimbolexParser, actionscript: AslexParser)
 {
+    baseline := Request(0, 0, 0, "", 0);
+    catalog := Result(0, 0, 0, Invalid, nil, 0, 0, 0);
     for (;;) {
         job := <-jobs;
         if (job.stop) {
-            answers <-= Result(job.ticket, job.revision, job.language, Ok, nil);
+            answers <-= Result(job.ticket, job.revision, job.language, Ok, nil, 0, 0, 0);
             return;
         }
-        answers <-= scan(job, limbo, actionscript);
+        result := scan(job, baseline, catalog, limbo, actionscript);
+        if (result.status == Ok) {
+            baseline = job;
+            catalog = result;
+        }
+        answers <-= copyresult(result);
     }
 }
 

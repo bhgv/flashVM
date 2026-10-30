@@ -59,6 +59,43 @@ binary-searches an authentic catalog and visits intersecting records for at most
 200 visible scalars. A revision/profile mismatch returns an empty palette. It
 never changes source, Undo, save state, caret, selection or view geometry.
 
+## Incremental reuse and ownership
+
+The worker compares source scalars with one successful same-profile baseline.
+Only complete prefix records ending strictly before the first change are retained.
+The token ending exactly at that boundary is rescanned: identifiers, numbers and
+comment openers can merge across it. A preceding class5 gap is also rescanned,
+because generated whitespace/comment gaps can join. Restart is before a complete
+old token, never inside an old string/comment. Generated tables and matching stay
+unchanged; the facade checks the restart byte boundary and initializes read-only
+tables once per private instance.
+
+Scanning stops early only after a generated record lies wholly in the unchanged
+suffix and matches an old record's class and shifted scalar extent. The remaining
+tail is then copied with the scalar delta. Otherwise scanning continues to EOF.
+Profile changes force a full pass; identical validated source can reuse everything.
+Errors/quotas publish no partial catalog and retain the last successful baseline.
+Multiline/incomplete string/comment changes can still require a large/full pass.
+
+`Result.scanned` counts returned generated records excluding EOF, `reused` counts
+copied records, and `restart` gives the scalar restart (source length for unchanged
+reuse). On success scanned+reused equals catalog size. These are record counters,
+not timings/opcode counts: the facade can prefetch a token while returning trivia.
+
+Private baselines are never delivered. Worker results and lazy Snapshot replies
+contain detached arrays, so receiver mutation cannot corrupt later analysis or
+another snapshot. Consumers should keep their catalog unchanged while querying.
+Retained state is bounded: one successful baseline, one active job, one newest
+pending source and bounded delivered/owner catalogs; no edit history accumulates.
+Scalar validation, byte-boundary construction and copying still do linear work.
+This is not an incremental semantic parser or a physical latency guarantee.
+
+[idesyntaxincremental_test.b](dis/tests/idesyntaxincremental_test.b) compares edited
+catalogs against a separate fresh worker running the real generated scanner.
+It covers merges, comment delimiters, escapes/incomplete text, profile/Unicode
+changes, receiver mutation and failure recovery. A local edit in a96-line fixture
+scans at most3 returned records and reuses over600; both VM modes are checked.
+
 ## Desktop presentation
 
 [Idedeskpane](dis/bridge/idedeskpane.m) keeps document ownership and optionally
@@ -67,8 +104,8 @@ channel and positive pane identity enable this work; plain `start` preserves the
 old library/document path without background scans. Untitled/.b source uses Limbo;
 .as/.as1/.as2/.as3 uses the AS lexical profile. Unknown suffixes and missing
 optional scanner dependencies remain plain text. Failed/over-budget snapshots
-remain editable without partial colours. No full incremental re-lexing is claimed:
-a newest complete admitted snapshot is scanned after the active job finishes.
+remain editable without partial colours. The newest snapshot now reuses safe
+records from a private last-success baseline, as described below.
 
 A pane projects its current revision/profile into the <=200-scalar viewport.
 Completion notifications contain only stable pane identities. The app fetches a

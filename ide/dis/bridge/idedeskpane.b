@@ -114,7 +114,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
     submittedrevision := -1;
     submittedlanguage := 0;
     syntaxticket := 0;
-    colored := Idesyntax->Result(0, 0, 0, Idesyntax->Pending, nil);
+    colored := Idesyntax->Result(0, 0, 0, Idesyntax->Pending, nil, 0, 0, 0);
     for (;;) {
         request: Request;
         if (analysis == nil) {

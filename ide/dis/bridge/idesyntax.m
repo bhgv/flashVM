@@ -28,13 +28,16 @@ Idesyntax: module
     };
 
 
-    # Complete immutable lexical catalog, usable independently of any visible viewport.
+    # Completed receiver-owned lexical catalog; the service never mutates delivered arrays.
     Result: adt {
         ticket: int; # Original correlation value.
         revision: int; # Original source revision.
         language: int; # Original profile.
         status: int; # Ok, Invalid or TooLarge.
-        tokens: array of Token; # Sorted nonoverlapping scalar intervals; nil on failure.
+        tokens: array of Token; # Receiver-owned ordered intervals; nil on failure.
+        scanned: int; # Generated records visited on success, excluding EOF.
+        reused: int; # Records reused from the private successful baseline.
+        restart: int; # Scalar rescan start; full unchanged reuse reports source length.
     };
 
 

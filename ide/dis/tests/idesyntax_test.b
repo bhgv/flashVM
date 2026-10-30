@@ -66,6 +66,9 @@ lazychecks()
     require(result.status == syntax->Ok, "latest coalesced result completes");
     palette := syntax->project(result, 20, syntax->ActionScript, 0, len job.text);
     require(palette[0:3] == "444" && palette[4:7] == "111", "latest Unicode catalog projected");
+    result.tokens[0] = syntax->Token(99, -1, -1);
+    result = call(owner, syntax->Snapshot, job);
+    require(result.tokens[0].kind == 4, "lazy owner snapshot array is detached");
     job = syntax->Request(21, 21, syntax->Limbo, string filler, 0);
     call(owner, syntax->Update, job);
     result = call(owner, syntax->Shutdown, job);

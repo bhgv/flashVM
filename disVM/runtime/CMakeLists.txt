@@ -181,7 +181,7 @@ endif()
 
 if(DVM_RUNTIME_TESTS)
  enable_testing()
- foreach(test idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
+ foreach(test idesyntaxincremental idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
     set(source "${root}/ide/dis/examples/document-projection/main.b")
@@ -203,6 +203,9 @@ if(DVM_RUNTIME_TESTS)
   # The unchanged million-character replace-all matrix takes about 55 s with
   # checked interpreter operands on this host; preserve its data and all oracles.
   set(application_budget 50)
+  if(test STREQUAL "idesyntaxincremental")
+    set(application_budget 120)
+  endif()
   if(test STREQUAL "replaceall")
     set(application_budget 90)
   endif()

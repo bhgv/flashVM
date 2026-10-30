@@ -6,26 +6,46 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-
 # This appended facade uses only generated scanner tables and byte coordinates.
 # Trivia includes whitespace and skipped comments; no second recognizer is used.
-FACADE = r'''
+FACADE = r"""
 previousend: int; # End of the last returned generated token, in bytes.
 pending: int; # One token held while preceding trivia is returned.
 pendingkind, pendingfirst, pendinglast: int; # Saved generated token values.
 
 
-# Borrow immutable input for this worker-local scanner instance; reset all cursor state.
-# Caller must not mutate data until the next reset. No rendering or channel operation.
-reset(data: array of byte)
+initialized: int; # Generated read-only tables are built once per private module instance.
+
+
+# Start at a verified normal-state token boundary; return zero on invalid byte offset.
+# The caller must establish lexical safety, not just UTF-8 alignment. Tables/recognition
+# remain generated. No partial string/comment continuation state is inferred here.
+resetat(data: array of byte, first: int): int
 {
+    if (first < 0 || first > len data ||
+        (first < len data && (int data[first] & 16rc0) == 16r80)) {
+        return 0;
+    }
     input = data;
-    scanpos = 0;
+    scanpos = first;
     scanline = scancol = 1;
     Errors = Sym = 0;
     S_Pos = S_Len = S_NextPos = S_NextLen = 0;
-    previousend = pending = 0;
-    tables();
+    previousend = first;
+    pending = 0;
+    if (!initialized) {
+        tables();
+        initialized = 1;
+    }
+    return 1;
+}
+
+
+# Borrow immutable input and reset to its beginning; no UI or channel operation.
+# The caller owns the bytes until the next reset; the scanner does not mutate them.
+reset(data: array of byte)
+{
+    resetat(data, 0);
 }
 
 
@@ -66,7 +86,7 @@ next(): (int, int, int)
     previousend = last;
     return (kind, first, last);
 }
-'''
+"""
 
 
 def main():
@@ -97,8 +117,12 @@ def main():
         raise RuntimeError("Coco/R scanner facade anchors changed")
     source = source.replace(
         anchor,
-        anchor + " reset: fn(data: array of byte);\n next: fn(): (int, int, int);\n",
-    ).replace(diagnostic, " # Incomplete editor input retains Errors without synchronous diagnostics.")
+        anchor
+        + " reset: fn(data: array of byte);\n resetat: fn(data: array of byte, first: int): int;\n next: fn(): (int, int, int);\n",
+    ).replace(
+        diagnostic,
+        " # Incomplete editor input retains Errors without synchronous diagnostics.",
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(source + FACADE)
 
