@@ -469,6 +469,14 @@ EOF
             copy_file "$ROOT/disVM/runtime/test_compiler_service.py" "$destination/examples/artifact-export/test_compiler_service.py"
             copy_file "$ROOT/ide/ARTIFACT-EXPORT.md" "$destination/ARTIFACT-EXPORT.md"
             copy_file "$ROOT/ide/ARTIFACT-EXPORT.ru.md" "$destination/ARTIFACT-EXPORT.ru.md"
+            copy_tree "$ROOT/ide/dis/examples/mdi" "$destination/examples/mdi"
+            copy_tree "$ROOT/ide/dis/examples/debugger-scaffold" "$destination/examples/debugger-scaffold"
+            copy_file "$ROOT/ide/dis/tests/idemdi_test.b" "$destination/examples/mdi/acceptance.b"
+            copy_file "$ROOT/ide/dis/tests/idedebug_test.b" "$destination/examples/debugger-scaffold/acceptance.b"
+            copy_file "$ROOT/ide/MDI-SDI.md" "$destination/MDI-SDI.md"
+            copy_file "$ROOT/ide/MDI-SDI.ru.md" "$destination/MDI-SDI.ru.md"
+            copy_file "$ROOT/ide/DEBUGGER.md" "$destination/DEBUGGER.md"
+            copy_file "$ROOT/ide/DEBUGGER.ru.md" "$destination/DEBUGGER.ru.md"
             copy_file "$ROOT/ide/DESKTOP.md" "$destination/DESKTOP.md"
             copy_file "$ROOT/ide/DESKTOP.ru.md" "$destination/DESKTOP.ru.md"
             copy_file "$ROOT/ide/DESKTOP-LIFECYCLE.md" "$destination/DESKTOP-LIFECYCLE.md"
@@ -514,7 +522,7 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in idemdi idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
@@ -524,6 +532,8 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-token-query.sh" "$destination/run-token-query.sh" 755
             copy_tree "$ROOT/ide/dis/examples/token-query" "$destination/examples/token-query"
             copy_tree "$ROOT/ide/dis/examples/vector" "$destination/examples/vector"
+            copy_file "$ROOT/ide/dis/bridge/idemdi.b" "$destination/source/idemdi.b"
+            copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
             copy_file "$ROOT/ide/dis/bridge/idevector.b" "$destination/source/idevector.b"
             copy_file "$ROOT/ide/assets/vector-v0.1697.png" "$destination/VECTOR-EDITOR.png"
             copy_file "$ROOT/ide/VECTOR-EDITOR.md" "$destination/VECTOR-EDITOR.md"

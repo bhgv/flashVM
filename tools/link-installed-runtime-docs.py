@@ -56,7 +56,7 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
-    for name in ("VECTOR-EDITOR.md", "VECTOR-EDITOR.ru.md", "TOKEN-QUERIES.md", "TOKEN-QUERIES.ru.md", "SYNTAX-LAZY.md", "SYNTAX-LAZY.ru.md", "DESKTOP-WORKSPACE.md", "DESKTOP-WORKSPACE.ru.md", "DESKTOP-CLIPBOARD.md", "DESKTOP-CLIPBOARD.ru.md", "ENTRYPOINTS.md", "DESKTOP-POINTER.md", "DESKTOP-POINTER.ru.md", "DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
+    for name in ("MDI-SDI.md", "MDI-SDI.ru.md", "DEBUGGER.md", "DEBUGGER.ru.md", "VECTOR-EDITOR.md", "VECTOR-EDITOR.ru.md", "TOKEN-QUERIES.md", "TOKEN-QUERIES.ru.md", "SYNTAX-LAZY.md", "SYNTAX-LAZY.ru.md", "DESKTOP-WORKSPACE.md", "DESKTOP-WORKSPACE.ru.md", "DESKTOP-CLIPBOARD.md", "DESKTOP-CLIPBOARD.ru.md", "ENTRYPOINTS.md", "DESKTOP-POINTER.md", "DESKTOP-POINTER.ru.md", "DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
         pairs[root / "ide" / name] = package / name
     pairs[root / "disVM/module/fircompiler.m"] = package / "include/limbo/fircompiler.m"
     pairs[root / "disVM/compiler/compiler_engine.h"] = package / "include/native/compiler_engine.h"

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1697**. [Русская версия](README.ru.md).
+Development version: **0.1698**. [Русская версия](README.ru.md).
 
-Current series: [v0.1697](docs/releases/v0.1697.md): MovieClip vector toolbar, SVG metadata, stable MDI zoom and Linux AMD64/ARM64/RV64 backend selection with emulated target execution.
+Current series: [v0.1698](docs/releases/v0.1698.md): shared-desktop debugger panels, typed disconnected sessions and homogeneous MDI/SDI membership foundations; visual grouping remains pending.
 
 ## Browse documentation
 

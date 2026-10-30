@@ -1,3 +1,5 @@
+[MDI/SDI: one desktop](MDI-SDI.md) · [Один стол](MDI-SDI.ru.md) · [Debugger scaffold](DEBUGGER.md) · [Отладчик](DEBUGGER.ru.md)
+
 [Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
 
 [MDI vector editor / Векторный редактор: Draw, SVG](VECTOR-EDITOR.md) · [Русский](VECTOR-EDITOR.ru.md)
