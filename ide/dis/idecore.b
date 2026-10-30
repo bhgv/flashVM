@@ -421,6 +421,12 @@ utf8span(document: ref Document, request: Request): Reply
 prefixes(needle: string): array of int
 {
     prefix := array[len needle] of int;
+    # Scalar array storage is unspecified for newa. KMP can read prefix[0]
+    # after the first partial mismatch, before any loop iteration writes it.
+    if(len needle != 0)
+    {
+        prefix[0] = 0;
+    }
     matched := 0;
     for(index := 1; index < len needle; index++)
     {
