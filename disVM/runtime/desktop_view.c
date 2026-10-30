@@ -2561,9 +2561,42 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
 }
 
 
+/* Copied owner-side content key; placement and transient opacity are excluded. */
+typedef struct DeskRetainedKey
+{
+    DeskItem item; /* Exact immutable scalar content and local geometry descriptor. */
+    unsigned int canvas_width; /* Resize invalidates clipped local geometry. */
+    unsigned int canvas_height; /* Canvas admission belongs to this capture. */
+    int eligible; /* Complete ordinary source/help/console body, never a clipped/mirrored/vector snapshot. */
+} DeskRetainedKey;
+
+
+/* Build a borrowed descriptor's initialized native key using its actual placement.
+ * Only complete visible ordinary panes can bypass owner MovieClip reconstruction. */
+static void retained_key(DeskRetainedKey *key, const DeskItem *item, const FVM_Affine *world)
+{
+    memset(key, 0, sizeof(*key));
+    key->item = *item;
+    key->item.x = 0;
+    key->item.y = 0;
+    key->item.parent = 0;
+    if (key->item.style == 5) { key->item.style = 1; }
+    if (key->item.style == 6) { key->item.style = 0; }
+    key->canvas_width = width;
+    key->canvas_height = height;
+    key->eligible = item->id <= 8 && !item->mirror && !vectors[item->id].complete &&
+                    !motions[item->id].active && !camera_motion.active &&
+                    (item->style == 0 || item->style == 1 || item->style == 5 || item->style == 6) &&
+                    world->xy == 0 && world->yx == 0 && world->xx > 0 && world->yy > 0 &&
+                    world->x0 >= 2 && world->y0 >= 50 &&
+                    world->x0 + world->xx * item->width <= width - 2 &&
+                    world->y0 + world->yy * item->height <= height - 2;
+}
+
+
 /* Build detached painter commands from the complete owner-local MovieClip scene.
  * Capture ends before returning, including failures; workers receive no VM state. */
-int dvm_desktop_prepare(DVM_EditorFrame *frame)
+static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior, int retained)
 {
     FVM_RasterSurface surface;
     unsigned char present[DESK_SLOTS] = {0};
@@ -2590,6 +2623,17 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
     capture_left = capture_top = 0;
     capture_right = (int)width;
     capture_bottom = (int)height;
+    {
+        double zoom, pan, scroll;
+        camera_view(&zoom, &pan, &scroll);
+        if (!number(groups[1], "_xscale", zoom * 100) || !number(groups[1], "_yscale", zoom * 100) ||
+            !number(groups[1], "_x", 84.0 * (1.0 - zoom) + pan) ||
+            !number(groups[1], "_y", 48.0 * (1.0 - zoom) - scroll))
+        {
+            prepared_frame = NULL;
+            return 0;
+        }
+    }
     for (index = 0; index < received && ok; ++index)
     {
         DeskItem *item = &items[index];
@@ -2599,42 +2643,72 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
         }
         int translucent = item->id <= 8 && (motions[item->id].active || item->style == 5 || item->style == 6);
         FVM_Affine world;
-        int left = 0;
-        int top = 0;
-        int right = 0;
-        int bottom = 0;
-        if (translucent)
+        unsigned int parent = item->parent >= 5 ? (item->parent == 12 ? 28 : (unsigned int)item->parent + 8) : 0;
+        unsigned int logical_width = (unsigned int)item->width;
+        unsigned int logical_height = (unsigned int)item->height;
+        unsigned int source;
+        if (item->mirror)
         {
-            double zoom;
-            double pan;
-            double scroll;
-            double x;
-            double y;
-            double scale = 1;
-            camera_view(&zoom, &pan, &scroll);
-            x = item->x * zoom + 84 * (1 - zoom) + pan;
-            y = item->y * zoom + 48 * (1 - zoom) - scroll;
-            if (motions[item->id].active)
+            for (source = 0; source < received; ++source)
             {
-                motion_sample(&motions[item->id], &x, &y, &scale);
-                zoom = scale;
+                if (items[source].id == item->mirror)
+                {
+                    logical_width = (unsigned int)items[source].width;
+                    logical_height = (unsigned int)items[source].height;
+                }
             }
-            left = (int)floor(x);
-            top = (int)floor(y);
-            right = (int)ceil(x + item->width * zoom);
-            bottom = (int)ceil(y + item->height * zoom);
-            if (top < 48)
-            {
-                top = 48;
-            }
-            ok = dvm_editor_frame_group(frame, 1, left, top, right, bottom);
         }
-        ok = ok && paint(item, &surface);
-        if (ok && translucent)
+        DeskRetainedKey key;
+        int reused = 0;
+        if (!retained)
         {
-            ok = world_matrix(clips[item->id], item->parent, &world) &&
-                 dvm_editor_frame_group(frame, 0, left, top, right, bottom);
+            ok = !translucent || dvm_editor_frame_group(frame, 1, 0, 0, (int)width, (int)height);
+            ok = ok && paint(item, &surface);
+            ok = ok && (!translucent || dvm_editor_frame_group(frame, 0, 0, 0, (int)width, (int)height));
+            continue;
         }
+        ok = dvm_editor_frame_node_begin(frame, (unsigned int)item->id, parent);
+        if (ok && prior && item->id <= 8 && clips[item->id] && parents[item->id] == item->parent &&
+            !motions[item->id].active && !camera_motion.active && !item->mirror)
+        {
+            ok = number(clips[item->id], "_x", item->x) && number(clips[item->id], "_y", item->y) &&
+                 number(clips[item->id], "_xscale", 100) && number(clips[item->id], "_yscale", 100) &&
+                 world_matrix(clips[item->id], item->parent, &world);
+            if (ok)
+            {
+                retained_key(&key, item, &world);
+                if (key.eligible && dvm_editor_frame_node_matches(prior, (unsigned int)item->id, &key, sizeof(key)))
+                {
+                    ok = dvm_editor_frame_node_replay(frame, prior, (unsigned int)item->id);
+                    reused = ok;
+                }
+            }
+        }
+        if (ok && !reused)
+        {
+            ok = paint(item, &surface) && world_matrix(clips[item->id], item->parent, &world);
+        }
+        if (ok)
+        {
+            retained_key(&key, item, &world);
+            ok = dvm_editor_frame_node_key(frame, &key, sizeof(key)) &&
+                 dvm_editor_frame_node_end(frame, &world, logical_width, logical_height, translucent ? 900 : DVM_EDITOR_NODE_OPACITY);
+            if (trace && reused)
+            {
+                size_t byte;
+                printf("NODECACHE %lu %lu\n", ticket, item->id);
+                printf("GEOMETRY %lu %lu %lu %lu %lu %lu\n", ticket, item->id,
+                       item->width, item->height, item->style, item->line);
+                printf("MC %lu %lu %lu %.0f %.0f ", ticket, item->id, item->parent, world.x0, world.y0);
+                for (byte = 0; byte < item->size; ++byte)
+                {
+                    printf("%02x", (unsigned char)item->text[byte]);
+                }
+                printf("\nSELECTION %lu %lu %ld %ld\n", ticket, item->id, item->caret, item->anchor);
+            }
+        }
+
+
     }
     prepared_frame = NULL;
     if (ok)
@@ -2647,6 +2721,28 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
         }
     }
     return ok;
+}
+
+
+/* Prepare owner-held native layers using only a completed immutable baseline. */
+int dvm_desktop_prepare_cached(DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
+{
+    return prepare_desktop(frame, prior, 1);
+}
+
+
+/* Resource-budget fallback and development comparison: capture ordinary world
+ * vector commands without associated object images, retaining the same UI policy. */
+int dvm_desktop_prepare_vector(DVM_EditorFrame *frame)
+{
+    return prepare_desktop(frame, NULL, 0);
+}
+
+
+/* Prepare a standalone snapshot without a displayed baseline; owner only. */
+int dvm_desktop_prepare(DVM_EditorFrame *frame)
+{
+    return dvm_desktop_prepare_cached(frame, NULL);
 }
 
 

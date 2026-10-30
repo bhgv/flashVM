@@ -4,13 +4,11 @@
 #define dvm_desktop_header touch_test_header
 #include "editor_view.c"
 
-
 /* Deterministic borrowed canvas-header boundary for native contact tests. */
 int touch_test_header(double x, double y)
 {
     return x >= 84 && x < 848 && y >= 72 && y < 96;
 }
-
 
 /* Submit one native SDL contact value. Expected code/phase are independent
  * protocol observations, zero means the contact must produce no proposal. */
@@ -49,7 +47,6 @@ static int contact(Uint32 type,
     }
     return 1;
 }
-
 
 /* Check actual SDL event timestamps, contact transitions, device-local IDs and
  * zoom termination. No window, native device or document is mocked as accepted. */
@@ -184,6 +181,51 @@ int main(void)
             !presentation_blocks_input())
         {
             fprintf(stderr, "asynchronous input broke FIFO or presentation barriers\n");
+            return 1;
+        }
+        /* An already captured header continues against owner geometry, while a
+         * fresh button boundary still waits for matching pixels. Keep FIFO order. */
+        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_MOUSEMOTION;
+        event.motion.state = SDL_BUTTON_LMASK;
+        if (SDL_PushEvent(&event) != 1)
+        {
+            return 1;
+        }
+        event.type = SDL_MOUSEBUTTONUP;
+        event.button.button = SDL_BUTTON_LEFT;
+        if (SDL_PushEvent(&event) != 1)
+        {
+            return 1;
+        }
+        event.type = SDL_MOUSEBUTTONDOWN;
+        if (SDL_PushEvent(&event) != 1)
+        {
+            return 1;
+        }
+        header_drag = 1;
+        if (presentation_blocks_input())
+        {
+            fprintf(stderr, "captured header motion incorrectly waits for pixels\n");
+            return 1;
+        }
+        capture_path = "captured header still respects replay capture";
+        if (!presentation_blocks_input())
+        {
+            return 1;
+        }
+        capture_path = NULL;
+        if (SDL_PollEvent(&taken) != 1 || taken.type != SDL_MOUSEMOTION || presentation_blocks_input() ||
+            SDL_PollEvent(&taken) != 1 || taken.type != SDL_MOUSEBUTTONUP)
+        {
+            fprintf(stderr, "captured header lost FIFO motion/release: %u\n", taken.type);
+            return 1;
+        }
+        header_drag = 0;
+        if (!presentation_blocks_input() || SDL_PollEvent(&taken) != 1 || taken.type != SDL_MOUSEBUTTONDOWN)
+        {
+            fprintf(stderr, "header continuation crossed a new pointer boundary\n");
             return 1;
         }
         raster_pending = 0;

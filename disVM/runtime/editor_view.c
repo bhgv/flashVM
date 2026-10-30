@@ -10,6 +10,7 @@
 #include "flashvm/path.h"
 #include "flashvm/render_queue.h"
 #include "editor_raster.h"
+#include "editor_pointer_gate.h"
 #include "desktop_view.h"
 #include "flashvm/utf8.h"
 #include <stdio.h>
@@ -114,6 +115,7 @@ static FVM_RenderQueue *raster_queue;          /* Owned persistent native raster
 static DVM_EditorFrame *displayed_frame;       /* Owned completed baseline; workers never retain this frame. */
 static const DVM_EditorFrame *upload_frame;    /* Borrowed completed damage during SDL presentation only. */
 static DVM_EditorFrame *recording_frame;       /* Owner-only frame builder; workers never read this global. */
+static int header_drag; /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
 static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notification. */
 static int paint_due; /* Frame-free notification delivered, latest state may be prepared. */
@@ -920,7 +922,11 @@ int dvm_editor_create(void)
             SDL_SetWindowMinimumSize(window, EDITOR_WIDTH_MIN, EDITOR_HEIGHT_MIN);
             SDL_SetWindowMaximumSize(window, EDITOR_EXTENT_MAX, EDITOR_EXTENT_MAX);
         }
-        renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE) : 0;
+        renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) : 0;
+        if (window && !renderer)
+        {
+            renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
+        }
         texture = renderer
                       ? SDL_CreateTexture(
                             renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STREAMING, canvas_width, canvas_height)
@@ -2000,6 +2006,26 @@ static int collect_frame(int wait)
     else if (surface->width == canvas_width && surface->height == canvas_height)
     {
         memcpy(pixels, surface->pixels, (size_t)canvas_width * canvas_height * 4);
+        if ((events || getenv("DVM_EDITOR_RENDER_STATS")) && dvm_desktop_active())
+        {
+            unsigned int built, reused, dirty;
+            dvm_editor_frame_scene_stats(job, &built, &reused, &dirty);
+            unsigned int tiles = 0;
+            unsigned int root_pixels = 0;
+            unsigned int index;
+            for (index = 0; index < DVM_EDITOR_FRAME_MAX_TILES; ++index)
+            {
+                unsigned int x, y, tile_width, tile_height;
+                if (dvm_editor_frame_damage(job, index, &x, &y, &tile_width, &tile_height))
+                {
+                    tiles++;
+                    root_pixels += tile_width * tile_height;
+                }
+            }
+            printf("SCENECACHE %lu %u %u %u %lu\n", dvm_desktop_ticket(), built, reused, dirty,
+                   (unsigned long)dvm_editor_frame_scene_pixels(job));
+            printf("ROOTDAMAGE %lu %u %u\n", dvm_desktop_ticket(), tiles, root_pixels);
+        }
         upload_frame = job;
         ok = present_pixels();
         upload_frame = NULL;
@@ -2044,9 +2070,26 @@ static int render(void)
  * a worker; superseded snapshots are replaced before this expensive operation. */
 static int render_desktop(void)
 {
+    const char *retained = getenv("DVM_EDITOR_RETAINED");
+    int vector = retained && !strcmp(retained, "0");
+    int prepared;
     DVM_EditorFrame *frame = dvm_editor_frame_create(canvas_width, canvas_height);
-    if (!frame || !dvm_desktop_prepare(frame) || !dvm_editor_frame_incremental(frame, displayed_frame) ||
-        fvm_gc_collect(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
+    if (!frame)
+    {
+        return 0;
+    }
+    prepared = vector ? dvm_desktop_prepare_vector(frame) : dvm_desktop_prepare_cached(frame, displayed_frame);
+    prepared = prepared && dvm_editor_frame_incremental(frame, displayed_frame);
+    if (!prepared && !vector && dvm_editor_frame_scene_budget(frame))
+    {
+        dvm_editor_frame_destroy(frame);
+        frame = dvm_editor_frame_create(canvas_width, canvas_height);
+        prepared = frame && dvm_desktop_prepare_vector(frame) && dvm_editor_frame_incremental(frame, displayed_frame);
+    }
+    /* [GC:] Captured data is detached; live MovieClips remain pinned by their
+     * owner tree. Honor the allocation threshold instead of sweeping each drag. */
+    if (!prepared || fvm_gc_step(context, 0) != FVM_OK ||
+        fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
     {
         dvm_editor_frame_destroy(frame);
         return 0;
@@ -2055,7 +2098,6 @@ static int render_desktop(void)
     raster_pending = 1;
     return collect_frame(capture_path != NULL);
 }
-
 
 #ifdef DVM_EDITOR_SDL
 
@@ -2080,7 +2122,16 @@ static int keyboard_waiting(void)
  * FIFO inspection never lets a key overtake pointer, focus or lifecycle events. */
 static int presentation_blocks_input(void)
 {
-    return (desktop_dirty || raster_pending) && (events || capture_path || !keyboard_waiting());
+    int continuation = 0;
+    SDL_Event event;
+    int keyboard = keyboard_waiting();
+    if (header_drag && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
+    {
+        continuation = (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)) ||
+                       (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT);
+    }
+    return dvm_editor_pointer_waits(desktop_dirty, raster_pending, events != NULL,
+                                     capture_path != NULL, keyboard, continuation);
 }
 #endif
 
@@ -2543,7 +2594,7 @@ static void resolve_pointer(DVM_UIMessage *message)
         message->code = DVM_DESK_POINTER;
         message->first = message->first < 0 ? -1 : message->first / 20;
         message->second = message->second < 0 ? -1 : message->second / 20;
-        if (code == 1)
+        if (code == 1 && !(header_drag && phase != FVM_INPUT_BEGIN))
         {
             dvm_desktop_hit(message->first, message->second, &widget, &position);
         }
@@ -2840,6 +2891,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             if (message->code == EDITOR_RESIZE)
             {
+                header_drag = 0;
                 if (message->first == (long)canvas_width && message->second == (long)canvas_height)
                 {
                     return 0;
@@ -2913,6 +2965,10 @@ int dvm_editor_event(DVM_UIMessage *message)
             {
                 return 0;
             }
+            if (event.type == SDL_MOUSEBUTTONDOWN)
+            {
+                header_drag = dvm_desktop_active() && dvm_desktop_header(x, y);
+            }
             if (fvm_input_set_pointer(context, x, y) != FVM_OK ||
                 dvm_ui_capture_pointer(context, FVM_MOUSE_LEFT, phase, message) != FVM_OK)
             {
@@ -2973,6 +3029,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         }
         else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
         {
+            header_drag = 0;
             pinch_distance = 0;
             desktop_touch(NULL, message);
             if (fvm_input_reset_keyboard(context) != FVM_OK)
@@ -2986,6 +3043,10 @@ int dvm_editor_event(DVM_UIMessage *message)
             return 0;
         }
         resolve_pointer(message);
+        if (event.type == SDL_MOUSEBUTTONUP)
+        {
+            header_drag = 0;
+        }
         complete = 0;
         return 1;
     }
@@ -2997,7 +3058,8 @@ int dvm_editor_event(DVM_UIMessage *message)
 
 /* Tear down only after scheduler/channel routing is quiescent; null resources are allowed. */
 void dvm_editor_destroy(void)
-{ /* [GC:] Join all native callbacks before destroying fonts or either VM. */
+{
+    header_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */
     fvm_render_queue_destroy(raster_queue);
     raster_queue = NULL;
     dvm_editor_frame_destroy(displayed_frame);

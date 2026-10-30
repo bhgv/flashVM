@@ -40,6 +40,15 @@ int dvm_desktop_draw(FVM_RasterSurface *surface);
 int dvm_desktop_prepare(DVM_EditorFrame *frame);
 
 
+/* As above, but reuse exact eligible local content from the immutable displayed
+ * prior frame. Source owners/VM handles never enter the retained bitmap cache. */
+/* Ordinary world-vector fallback, without owner-content replay. */
+int dvm_desktop_prepare_vector(DVM_EditorFrame *frame);
+
+
+int dvm_desktop_prepare_cached(DVM_EditorFrame *frame, const DVM_EditorFrame *prior);
+
+
 /* Advance frame-independent visual interpolation by1..1000 milliseconds.
  * Return one when new copied raster work is needed; owner only, no VM callbacks. */
 int dvm_desktop_advance(unsigned int elapsed);

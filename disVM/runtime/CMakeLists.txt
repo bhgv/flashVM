@@ -408,6 +408,9 @@ if(DVM_RUNTIME_EDITOR)
     target_link_libraries(disvm_movieclip_capture_test PRIVATE flashvm m)
     add_test(NAME disvm_movieclip_native_capture COMMAND disvm_movieclip_capture_test)
     set_tests_properties(disvm_movieclip_native_capture PROPERTIES TIMEOUT 30)
+    add_executable(disvm_retained_scene_test test_retained_scene.c editor_raster.c)
+    target_link_libraries(disvm_retained_scene_test PRIVATE flashvm m)
+    add_test(NAME disvm_editor_retained_scene COMMAND disvm_retained_scene_test)
     add_executable(disvm_editor_incremental_test test_editor_incremental.c editor_raster.c)
     target_link_libraries(disvm_editor_incremental_test PRIVATE flashvm m)
     add_test(NAME disvm_editor_dirty_parallel_raster COMMAND disvm_editor_incremental_test)
@@ -1409,6 +1412,10 @@ endif()
 # Exercise normalized gestures against actual Dis policy and MovieClip pixels.
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_retained_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_retained.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_desktop_retained_${mode} PROPERTIES TIMEOUT 90)
     add_test(NAME disvm_desktop_mdi_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_mdi.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
