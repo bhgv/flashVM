@@ -1,5 +1,7 @@
 [Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
 
+[Token queries / Запросы к токенам](TOKEN-QUERIES.md) · [Русский](TOKEN-QUERIES.ru.md)
+
 [Lazy Coco/R syntax / Ленивый анализ](SYNTAX-LAZY.md) · [Русский](SYNTAX-LAZY.ru.md)
 
 [Workspace gestures / Жесты и оформление](DESKTOP-WORKSPACE.md) · [Русский](DESKTOP-WORKSPACE.ru.md)

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1693**. [Русская версия](README.ru.md).
+Development version: **0.1694**. [Русская версия](README.ru.md).
 
-Current series: [v0.1693](docs/releases/v0.1693.md): visible lazy Limbo/AS syntax colours in desktop/menu 8, shared TextField contour ranges and input-safe paint updates.
+Current series: [v0.1694](docs/releases/v0.1694.md): incremental Coco/R catalogs, context/search/lexical candidates (menu 17), KMP initialization and verified native64 Math import.
 
 ## Browse documentation
 

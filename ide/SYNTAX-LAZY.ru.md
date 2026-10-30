@@ -1,5 +1,7 @@
 # Ленивые лексические каталоги Limbo и ActionScript
 
+[Token queries / Запросы к токенам](TOKEN-QUERIES.md) · [Русский](TOKEN-QUERIES.ru.md)
+
 [English](SYNTAX-LAZY.md) · [Запуск](ENTRYPOINTS.md) · [Рабочий стол](DESKTOP.ru.md)
 
 Реализованы процесс анализа Limbo/Dis, владелец ленивой очереди, сканеры Coco/R

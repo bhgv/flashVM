@@ -399,6 +399,9 @@ def product_entries(prefix):
     rows += (("16", "syntax", "Coco/R: ленивый анализ Limbo/AS (проверка сервиса, без GUI)",
               (prefix / "disvm-editor/run-syntax-check.sh",
                prefix / "disvm-runtime/run-syntax-check.sh"), False),)
+    rows += (("17", "tokens", "Coco/R: контекст, поиск и лексические кандидаты (пример без GUI)",
+              (prefix / "disvm-editor/run-token-query.sh",
+               prefix / "disvm-runtime/run-token-query.sh"), False),)
     entries = {}
     for key, name, label, candidates, graphical in rows:
         script = next((path for path in candidates if path.is_file()), None)
@@ -566,7 +569,7 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
-    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax"),
+    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax", "tokens"),
                         help="After a successful build launch an installed application; desktop is the MovieClip IDE")
     parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")

@@ -56,7 +56,7 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
-    for name in ("SYNTAX-LAZY.md", "SYNTAX-LAZY.ru.md", "DESKTOP-WORKSPACE.md", "DESKTOP-WORKSPACE.ru.md", "DESKTOP-CLIPBOARD.md", "DESKTOP-CLIPBOARD.ru.md", "ENTRYPOINTS.md", "DESKTOP-POINTER.md", "DESKTOP-POINTER.ru.md", "DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
+    for name in ("TOKEN-QUERIES.md", "TOKEN-QUERIES.ru.md", "SYNTAX-LAZY.md", "SYNTAX-LAZY.ru.md", "DESKTOP-WORKSPACE.md", "DESKTOP-WORKSPACE.ru.md", "DESKTOP-CLIPBOARD.md", "DESKTOP-CLIPBOARD.ru.md", "ENTRYPOINTS.md", "DESKTOP-POINTER.md", "DESKTOP-POINTER.ru.md", "DESKTOP-LIFECYCLE.md", "DESKTOP-LIFECYCLE.ru.md", "DESKTOP.md", "DESKTOP.ru.md", "ARTIFACT-EXPORT.md", "ARTIFACT-EXPORT.ru.md", "BUILD-PANEL.md", "BUILD-PANEL.ru.md", "COMPILER-SERVICE.md", "COMPILER-SERVICE.ru.md", "WORKSPACE.md"):
         pairs[root / "ide" / name] = package / name
     pairs[root / "disVM/module/fircompiler.m"] = package / "include/limbo/fircompiler.m"
     pairs[root / "disVM/compiler/compiler_engine.h"] = package / "include/native/compiler_engine.h"
@@ -88,7 +88,7 @@ def main():
             pairs[root / "ide/dis" / name] = package / name
     for source in (root / "ide/dis/bridge").glob("*.m"):
         pairs[source] = package / "include/limbo" / source.name
-    for name in ("idevalue", "ideprojection", "ideinspect", "idedocprojection", "idebuildpanel", "ideartifact", "idefileops", "idedesktop", "idedeskpane", "idedeskclip"):
+    for name in ("idevalue", "ideprojection", "ideinspect", "idedocprojection", "idebuildpanel", "ideartifact", "idefileops", "idedesktop", "idedeskpane", "idedeskclip", "idetokenquery"):
         pairs[root / "ide/dis/bridge" / (name + ".b")] = package / "source" / (name + ".b")
     pairs[root / "ide/as/projection-values.as"] = package / "as/projection-values.as"
     if (package / "examples/broker").is_dir():
@@ -97,7 +97,7 @@ def main():
                 installed = package / "examples/broker" / source.relative_to(root / "disVM/broker")
                 if installed.is_file():
                     pairs[source] = installed
-    for example in ("desktop-clipboard", "desktop-pointer", "desktop-lifecycle", "desktop", "artifact-export", "build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
+    for example in ("token-query", "desktop-clipboard", "desktop-pointer", "desktop-lifecycle", "desktop", "artifact-export", "build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():

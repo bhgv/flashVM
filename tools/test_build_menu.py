@@ -476,6 +476,17 @@ class MenuTests(unittest.TestCase):
                 self.fail("codec launcher changed argv or concealed its failure")
 
 
+    def test_token_query_example_is_a_portable_menu_entry(self):
+        """Entry 17 launches the real source-built example without a GUI/document prompt."""
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "disvm-runtime"
+            package.mkdir()
+            (package / "run-token-query.sh").write_text("#!/bin/sh\nexit 0\n")
+            entries = menu.product_entries(Path(directory))
+            if "17" not in entries or entries["17"][0] != "tokens" or entries["17"][3]:
+                self.fail("token-query example missing or incorrectly treated as graphical")
+
+
     def test_syntax_service_is_discoverable_without_graphics(self):
         """Menu 16 exposes the portable service check without a document prompt."""
         with tempfile.TemporaryDirectory() as directory:

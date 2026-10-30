@@ -1,5 +1,7 @@
 # Lazy lexical catalogs for Limbo and ActionScript
 
+[Token queries / Запросы к токенам](TOKEN-QUERIES.md) · [Русский](TOKEN-QUERIES.ru.md)
+
 [Русский](SYNTAX-LAZY.ru.md) · [IDE entry points](ENTRYPOINTS.md) ·
 [Desktop](DESKTOP.md) · [Compiler frontends](../compiler/README.md)
 
