@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1688**. [Русская версия](README.ru.md).
+Development version: **0.1689**. [Русская версия](README.ru.md).
 
-Current series: [v0.1688](docs/releases/v0.1688.md): IDE glass rails and smooth whole-table reveal, FIR big.neg facts and connected Dis64 scheduler acceptance.
+Current series: [v0.1689](docs/releases/v0.1689.md): FIR0.68 multiplication low-zero facts, retained eager errors and compiler/linker/VM acceptance.
 
 ## Browse documentation
 
