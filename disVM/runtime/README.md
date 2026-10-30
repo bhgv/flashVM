@@ -24,7 +24,7 @@ bash out/disvm-runtime/run-ide.sh
 ```
 
 This is an actual native executable loading and executing compiled Limbo modules:
-production Dis decoding, instructions, AMD64 guarded native leaves, stacks,
+production Dis decoding, instructions, architecture-selected AMD64/ARM64/RV64 guarded native leaves, stacks,
 module linking, reference counting and cycle collector are retained. `up` and its
 named `R` subobject use the existing OS TLS context. Blocking Dis channels and
 spawned Limbo processes run above one native owner using a FIFO scheduler. This
@@ -41,7 +41,7 @@ windowed examples remain separately launchable from the same build menu.
 ## Explicit experimental ABI
 
 Classic bootstrap output uses four-byte cells; native host pointers and legacy
-WORD are eight bytes on this AMD64 build. Silently mixing them corrupts frames,
+WORD are eight bytes on these 64-bit Linux builds. Silently mixing them corrupts frames,
 pointer maps, alt tables and Sys arguments. This runner therefore uses a separate
 **NC64** experimental cell target with magic **819264** (classic **819248**).
 Native cells, int slots and pointer-map slots are eight bytes. Sys frames and
@@ -63,7 +63,7 @@ are shipped beside native modules; a runtime debugger connection is still pendin
 
 ## Host boundary
 
-Acceptance is native Linux AMD64. Normal Sys support includes production string
+The native Linux build selects AMD64, ARM64 or RV64 from the actual CPU and checks the C compiler target. See [platforms and verification](PLATFORMS.md). Normal Sys support includes production string
 formatting/tokenization/UTF helpers, stdout printing and read-only module/file
 opening plus read/readn through FlashVM's file port. Unavailable Sys calls report
 explicit failures. One stdout message is bounded to a 4096-byte formatting buffer.

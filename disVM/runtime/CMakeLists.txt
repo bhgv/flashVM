@@ -1,10 +1,36 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
 project(disvm_runtime VERSION 0.39.0 LANGUAGES C)
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8
-    OR NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
-  message(FATAL_ERROR "Experimental runtime acceptance currently requires native Linux 64-bit")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
+dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
+  "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
+include(CheckCSourceCompiles)
+if(runtime_backend STREQUAL "arm64")
+  check_c_source_compiles("#if !defined(__aarch64__)
+#error Selected ARM64 backend requires an AArch64 C compiler
+#endif
+int main(void) { return 0; }" DVM_RUNTIME_COMPILER_ARM64)
+  if(NOT DVM_RUNTIME_COMPILER_ARM64)
+    message(FATAL_ERROR "ARM64 runtime selected but the C compiler does not target AArch64")
+  endif()
+elseif(runtime_backend STREQUAL "riscv64")
+  check_c_source_compiles("#if !defined(__riscv) || __riscv_xlen != 64
+#error Selected RV64 backend requires an RV64 C compiler
+#endif
+int main(void) { return 0; }" DVM_RUNTIME_COMPILER_RV64)
+  if(NOT DVM_RUNTIME_COMPILER_RV64)
+    message(FATAL_ERROR "RV64 runtime selected but the C compiler does not target RV64")
+  endif()
+else()
+  check_c_source_compiles("#if !defined(__x86_64__)
+#error Selected AMD64 backend requires an x86-64 C compiler
+#endif
+int main(void) { return 0; }" DVM_RUNTIME_COMPILER_AMD64)
+  if(NOT DVM_RUNTIME_COMPILER_AMD64)
+    message(FATAL_ERROR "AMD64 runtime selected but the C compiler does not target x86-64")
+  endif()
 endif()
+message(STATUS "DisVM Linux64 runtime backend: ${runtime_backend}")
 option(DVM_RUNTIME_NATIVE_DEMO "Build the documented native module tutorial" OFF)
 option(DVM_RUNTIME_COMPILER "Link our C99 compiler/linker library service" OFF)
 option(DVM_RUNTIME_EDITOR "Build the Dis-controlled FlashVM graphical editor" OFF)
@@ -69,7 +95,7 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
-set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-amd64)
+set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-${runtime_backend})
 set(sources)
 foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
@@ -87,7 +113,7 @@ if(DVM_RUNTIME_NATIVE_DEMO)
   target_sources(disvm PRIVATE "${native_demo_root}/native.c")
   target_compile_definitions(disvm PRIVATE DVM_RUNTIME_NATIVE_DEMO=1)
 endif()
-target_compile_definitions(disvm PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(disvm PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}" DVM_RUNTIME_BACKEND="${runtime_backend}")
 target_compile_options(disvm PRIVATE -fno-strict-aliasing)
 target_include_directories(disvm PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${root}/common/table" "${view}" "${root}/disVM/host/include" "${u}/Linux/arm/include"
  "${u}/include" "${u}/emu/port" "${root}/disVM/include")
@@ -190,6 +216,9 @@ endif()
 
 if(DVM_RUNTIME_TESTS)
  enable_testing()
+ add_test(NAME disvm_runtime_platform_selection COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_platform.py" "${CMAKE_COMMAND}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
  foreach(test idevectorpane idevector idetokenquery idesyntaxincremental idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
@@ -455,7 +484,7 @@ if(DVM_RUNTIME_EDITOR)
     add_test(NAME disvm_as_view_execution COMMAND disvm_as_view_test)
   endif()
   target_include_directories(disvm-editor PRIVATE ${runtime_includes} "${DVM_FLASHVM_SOURCE_ROOT}/ports")
-  target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_EDITOR=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}")
+  target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_EDITOR=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}" DVM_RUNTIME_BACKEND="${runtime_backend}")
   target_compile_options(disvm-editor PRIVATE -fno-strict-aliasing)
   target_link_libraries(disvm-editor PRIVATE fvm_owned_table disvm_flashvm_host limbo_bootstrap_lib9
     limbo_bootstrap_support limbo_bootstrap_lib9 flashvm m)

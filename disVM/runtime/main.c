@@ -929,7 +929,7 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--version") == 0)
         {
-            puts("DisVM runtime " DVM_RUNTIME_VERSION ": experimental NC64, magic 819264, Linux AMD64");
+            puts("DisVM runtime " DVM_RUNTIME_VERSION ": experimental NC64, magic 819264, Linux " DVM_RUNTIME_BACKEND);
             return 0;
         }
         else if (strcmp(argv[1], "--help") == 0)
