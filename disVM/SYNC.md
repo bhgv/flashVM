@@ -1,3 +1,27 @@
+## v0.1700 follow-up — INFERNO-0026 distinct caller/callee descriptors
+
+Final selected source **aecfa6fbc42af84fb5edaec7a8e2f0f097988ba8**,
+DisVM930/bootstrap281 byte-exact. This improves verification, not a reproduced
+production bug: the earlier equal-map fixture remains valid in its narrower scope.
+Generated caller now has its own88-byte extent/map, scalar at64, result at72 and
+tail reference at80; callee remains72 bytes with its reference at64. Traversal
+uses each frame Type and caller cleanup uses actual callertype.
+
+Independent copied full layout gate O1/strict UBSan with explicit matched
+source-built bootstrap and fresh owning O3/NDEBUG/strict-UBSan compiler/full gate
+pass. GC total **14548 predicates,150 graphs,96 actual Math calls**; all12 active
+controls reach their predicate/SIGABRT. New wrong-descriptor cleanup uses H in
+the scalar slot, avoiding invalid-pointer crash as fake ownership evidence.
+Independent tail-map removal preserves the result map bit. Protected results
+retain **212952 predicates/1728 transactions/960 destructor checkpoints**.
+No new native-call admission, structural reference signature, wire ID or ordinary
+optimized protected-result ASan acceptance is inferred.
+
+Inferno agrees independently owned asynchronous result/rooted environment must
+outlive a synchronous caller. Completion/cancellation races, single completion,
+every terminal release and stale incarnations still require explicit gates.
+The scalar capture prototype does not prove those task lifecycle properties.
+
 ## v0.1699 follow-up — INFERNO-0025 protected result ownership
 
 Selected pin **e9d8918df53530d6a1bea53868276c6b9dbae9b5**; DisVM **930**

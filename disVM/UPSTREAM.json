@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "e9d8918df53530d6a1bea53868276c6b9dbae9b5",
+  "revision": "aecfa6fbc42af84fb5edaec7a8e2f0f097988ba8",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -923,7 +923,7 @@
     "upstream/doc/dis64-envelope.md": "1dac0dcb51583cffaf55e683cd82d54d3465bb6e28dac4cf50ff3fa1112258f1",
     "upstream/doc/dis64-exception-gc.md": "e44ecd6451b1583977daf025d4a97a893d52b6ba261597eed85c2a8b98d332b5",
     "upstream/doc/dis64-fileloader.md": "d67ae474bee3bbf8fec390ee8c2f8d95c9ca3bb1183bca4dac3d847ee4cf2682",
-    "upstream/doc/dis64-flashvm-journal.md": "ac7a6ebb7ba93920af3eea802d7400589ec2e2d063935f3a6a7d86cc514aafa8",
+    "upstream/doc/dis64-flashvm-journal.md": "c93349d7a575a54997fbc28814a379b6d36b587caa79579021f3aa718c71962e",
     "upstream/doc/dis64-flashvm-payload-response.md": "467c81a19cdd8cf6a6d9371321dd9caba223ed9b1cfae48adb4ea7e3ca61367b",
     "upstream/doc/dis64-flashvm-proposal.md": "c9a68aa729599a25677d0e4c59f34d2b529d3151bee4208e29c70469cd2c5238",
     "upstream/doc/dis64-flashvm-reply.md": "a01ce11f01d4b160003fba0a8c4f1a926c369df3c2b6ecf03cc86207dc7ccbbe",
@@ -931,12 +931,12 @@
     "upstream/doc/dis64-flashvm-scheduler-response.md": "cebccf6d277c02816f712daea6020d7b60864b97258b9f11b42b9dfe068ea0ca",
     "upstream/doc/dis64-flashvm-word32-response.md": "2de63ffaa9274cd64b3a465b8a3ed96bb0d3c068e74c6ba762f31dad3f3147d1",
     "upstream/doc/dis64-gc-roots.md": "27477b66de7d1ce91bd37c43cb4fff01325f7fa10df915c97748a0730a376459",
-    "upstream/doc/dis64-inferno-journal.md": "74f41471bb21bb58ab282731aff36ca4fc716ca26d8168b763abc1a3bc6a8567",
+    "upstream/doc/dis64-inferno-journal.md": "8c77953263550dd6ba31a263e25e1c28ab550af00a36e65a702d8e47ba17292a",
     "upstream/doc/dis64-inferno-response.md": "b49a66f58513d60a21fc2b9dc1027d2a3c29e6023efb4464ea79c69dbde16abe",
     "upstream/doc/dis64-native-consumer-audit.md": "bc3ef0c2cc24578698f279a29244a8ae9cf35ac73b48643a1209f4b76b7db0be",
     "upstream/doc/dis64-native64-binding.md": "abce67fc66eb53dba827839c1609f5ae9a2445b70cd4cf7ffbf50ac11f3bb029",
     "upstream/doc/dis64-native64-declarations.md": "08b68c6fdcd3551046b5ea29849ef471c24ecce29a6cd44fc2ddf3f240b2d0cb",
-    "upstream/doc/dis64-native64-gc.md": "94f1ece25671225747836b45fae49d6232b5174dd255e271bd14b1dfb0cddbeb",
+    "upstream/doc/dis64-native64-gc.md": "d2b16b63f0355d410c49a29f90b35b407df063e73bcfea473c33f4969c3c9c2f",
     "upstream/doc/dis64-native64-math.md": "29494ccbc88ef9839eced87e81e952fdabca84ceeae4247cc4064a4ae20e83af",
     "upstream/doc/dis64-native64-result.md": "9873e693a7fc40f5ae9ade1de5c2954f176f2103ccb8d888d88ad45d57315394",
     "upstream/doc/dis64-payload-proposal.md": "caf0cd6cf63bbd81d1b2e126d9e07323f90189e44303055f06a6d0c200ce69e2",
@@ -1818,14 +1818,14 @@
     "upstream/utils/dis64inspect/dis64inspect.c": "d8a80b52b76d510bdcaf0b48ceab2144602753831e345608002638aed232c05c",
     "upstream/utils/tests/array-initializer-alias.b": "e40fb51288db714e0e4364a0abfa689d401df28d7eb1c7ef830bc6c945632ef8",
     "upstream/utils/tests/native64-entries.c": "bfaa20409c33ff68a43c43ddfd4e7faee42946b8627df76f6ed17daa9cd72c11",
-    "upstream/utils/tests/native64-gc.c": "cee7c195679a18f9bcd30c2644b6281ed6129d0ce0b0e2c738a6cd728be6bca9",
-    "upstream/utils/tests/native64-gc.py": "4e5eabf360bb3c75b7ff1d6c1206043a12378ff304a37fe61585d473386706be",
+    "upstream/utils/tests/native64-gc.c": "76c3c9d19147f19bb5abd30d584bba2f99dd60b0f3d375796bf03fec02d7fed3",
+    "upstream/utils/tests/native64-gc.py": "1c6ed67e16befac209abdbd8c58b69ee2178089f268e9365e101836e064370be",
     "upstream/utils/tests/native64-layout.c": "292deb2989b91965f569dc22f566caa637dc3b8c8e40981b20340c7f70f6c4b3",
     "upstream/utils/tests/native64-layout.py": "13c2fdac6246f8d7ac7a961b973aa597bd3fe5efb6312a1d5a2c263c8b96ab1a",
     "upstream/utils/tests/native64-math.c": "074f1a085118cbb3a1201cc4ca63252aa3f150f7b76cac05f24e4fb36568586f",
     "upstream/utils/tests/native64-math.py": "b8bc9cc96227712341f5cc531500fa5ab3028d4bab7fcd550edc180eed01ecd2",
     "upstream/utils/tests/native64-methods.c": "04a4212fcbecb5f7541839924549972ac7dacd5c0f41f7918dcda67548e7124b",
     "upstream/utils/tests/native64-result.c": "b6178cebd860ded24a231b37bd3c5772bd30565a2342984e152a3f8fd0dfe434",
-    "upstream/utils/tests/native64-result.py": "43f65a6bdd4bc37bf1480687789f7a2adbcdfb032040a50c50b77c79622f9b9d"
+    "upstream/utils/tests/native64-result.py": "8ebc6d616298802a5176cee6dc8bc4ca54052a71d2b310c56668ff08fc9ed9ea"
   }
 }
