@@ -1,3 +1,33 @@
+# v0.1694 — generated records and actual Math consumer
+
+Final selected pin: **0e86bc847330e47614056bd001ee75b617a22e69**, INFERNO-0022.
+DisVM **911**, bootstrap **281** files are verified against exact Git/SHA-256.
+New full-map entry/Math fixtures and owning docs are included with production
+math.c and native64.c; default NC64/runtime headers are unchanged.
+
+Independently repeated full native64-layout.py on the owning checkout with fresh
+O1/strict UBSan and O3/NDEBUG strict UBSan compilers. Both include complete actual
+math.c compilation and selected generated entry linkage: **2711 predicates and
+192 calls/model**, two compatible selections, eight result-address alignments.
+Per run: **5422 predicates /384 scalar calls**. Layout/map/20-byte entry/variadic
+exclusion, separate/combined Sys+Math, equal-size offset control and14 early
+rejections also pass. The copied driver is additionally checked with our matched
+source-built bootstrap supplied through explicit NATIVE64_LIMBO.
+
+This is an opt-in scalar actual-C-consumer checkpoint: four bit-conversion
+functions, not all68 Math entries and not VM table registration. The full frame
+maps remain separate immutable arrays; no truncating old map[16] adapter is added.
+legacy_signature names the old hash, not a structural Dis64 wire signature.
+The selected experimental mathmodinit explicitly refuses legacy registration.
+Math_realbits64 now copies representation into the signed result rather than
+using an implementation-defined unsigned-to-signed value conversion.
+
+Default registration/NC64,43 scalar ops/np0 and general inspector false remain.
+Reference results/args, caller/temp roots, forced GC handoff, unwind and actual
+runtime table/binding admission still require separate agreed gates. Physical
+ARM64/RV64 and full boot are not claimed. IDE incremental catalogs and pure token
+queries are independent workspace changes, not new Dis64 format IDs.
+
 # v0.1692 — final native64 geometry follow-up
 
 Final pin: **bb0b706798ae7eb2510dcf30f9db99e66d81f4a5**, incoming INFERNO-0021.

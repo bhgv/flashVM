@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "bb0b706798ae7eb2510dcf30f9db99e66d81f4a5",
+  "revision": "0e86bc847330e47614056bd001ee75b617a22e69",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -383,7 +383,7 @@
     "upstream/limbo/lex.c": "e828013736dd60b45ecf3d435a5bcb7e7a506ca34f555d317a59ffc2a3e7a6cd",
     "upstream/limbo/limbo.h": "bf59b511d3704bf2d9928e15a3c31639f04981491f0e6609a7666f29d22704d9",
     "upstream/limbo/limbo.y": "e9f8f8ff9362b342f8339ac5d3b9d8af28ff8f1ed8891a45d856ddf8741e9bcb",
-    "upstream/limbo/native64.c": "d49ccc170cba8f1f4fd785417d5f0e8d52960227d30af51b1967525962d580db",
+    "upstream/limbo/native64.c": "7c2cc19b4c1583bb5361cd5097a0578b2d0fb5998f0d89217bcf47b85ce87aa9",
     "upstream/limbo/nodes.c": "822b112f40bb57ed01429743185fa99d5db930ed9e18206a82e9dda4cd00f2e3",
     "upstream/limbo/optab.c": "3d31a907813b5663f591ccb9446813ba5503e379b182ef76395ad98447be2475",
     "upstream/limbo/optim.c": "4a75f58802dadfa65096eb8f02b10035dce75847e958ac8a5173acd00aace75c",
