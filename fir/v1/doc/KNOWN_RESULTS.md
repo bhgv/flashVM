@@ -1,4 +1,4 @@
-# Fully known integer results — FIR 0.68
+# Fully known integer results — FIR 0.69
 
 [Русский](KNOWN_RESULTS.ru.md) · [Optimizer](../optimiser/peephole.c) ·
 [Bit analysis](../optimiser/integer_facts.c) · [Commented source](../examples/dis/known-results.b) ·
@@ -117,7 +117,7 @@ and both operations: **6,718,464 evaluations**. It compares exact zero/one
 intersections with analysis, including subtraction sign extension and carry
 beyond the four-bit domain. The oracle does not reproduce the carry algorithm.
 
-FIR0.68 also propagates big negation as unsigned modular zero-minus-value.
+FIR0.69 also propagates big negation as unsigned modular zero-minus-value.
 Known low bits/nonzero proofs survive negation, including MIN wraparound;
 operand errors remain observable. [Commented own-source Dis example](../examples/dis/big-neg-facts.b)
 uses a typed table fetch, forces an odd value, negates it and returns42.
@@ -147,3 +147,16 @@ requires useful low-zero masks, unknown remaining bits, immutable input IR and
 propagation through a later textual dominating block. The raw/optimized target
 matrix has448 executions and retains division-by-zero producers even when the
 outer product is entirely zero.
+
+## First known product one / Первый известный единичный бит произведения
+
+FIR0.69 also preserves a first known one: if both operands have exact trailing
+zero counts a,b and bit a/b is proved one, product bit a+b is one when a+b<width.
+Above that bit remains unknown. Saturation still yields zero. Odd×odd therefore
+stays provably nonzero under wraparound; an unused division by that successful
+product becomes total while failures in either multiplier remain observable.
+The C99 API now checks2,720,768 product samples with both unknown and forced
+first-one variants. The exact target matrix has512 raw/opt results, including
+odd parity and two values with low pattern1000 producing low pattern1000000.
+[Commented source](../examples/dis/odd-product-facts.b) returns42.
+[Typed conversion facts](CAST_FACTS.md) carry useful bits across widths separately.

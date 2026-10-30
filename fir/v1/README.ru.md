@@ -1,6 +1,6 @@
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.68.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.69.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
@@ -195,3 +195,5 @@ Compiler 0.32 / Компилятор 0.32: [relative indexes and copy slices](do
 [Биты после сдвигов и big DCE / Shift facts and big DCE](doc/SHIFT_FACTS.ru.md).
 
 [Known bit and arithmetic results / Известные битовые и арифметические результаты](doc/KNOWN_RESULTS.ru.md).
+
+[FIR0.69 typed conversions / Типизированные приведения](doc/CAST_FACTS.ru.md): sign extension, truncation, boolean high bits, C99 oracle and raw/opt Dis.

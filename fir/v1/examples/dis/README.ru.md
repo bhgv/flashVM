@@ -221,3 +221,7 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [big-neg-facts.b](big-neg-facts.b): typed table lookup, odd-bit negation and retained producer effects; raw/opt Dis42. [Guide / Руководство](../../doc/KNOWN_RESULTS.md).
 
 [product-facts.b](product-facts.b): independent checked table operands, multiplication low-zero facts, modular saturation, raw/opt Dis42. [Full guide / Руководство](../../doc/KNOWN_RESULTS.md#multiplication-trailing-zero-facts--младшие-нули-произведения).
+
+[FIR0.69 typed conversions / Типизированные приведения](../../doc/CAST_FACTS.ru.md): sign extension, truncation, boolean high bits, C99 oracle and raw/opt Dis.
+
+[cast-facts.b](cast-facts.b) · [odd-product-facts.b](odd-product-facts.b): fully commented typed-table sources, raw/opt Dis42 and retained eager producers.
