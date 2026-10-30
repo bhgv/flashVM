@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 907e90896d0571bc84398efc6867830ee860af2e. Каждый файл имеет
+Текущий снимок фиксирует 8d34e029671aeb002b0d2fd0c1d89f105d386b79. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -164,8 +164,8 @@ Production interp.h допускает opt-in `DIS_WORD32=1`. Без перек�
 WORD/UWORD сохраняются. Это build selection, не wire ABI flag и не миграция
 нашего работающего NC64 host по умолчанию.
 
-В Linux CTest запускает upstream word32-build.py:19 полных translation units
-core/JIT для каждого выбора,38 объектов, native scalar/frame probes и отказ
+В Linux CTest запускает upstream word32-build.py:20 полных translation units
+core/JIT для трёх вариантов,60 объектов, native scalar/frame probes и отказ
 для недопустимых значений macro. Выбраны Linux/386 host declarations; это не
 новый i386 port и не запуск ARM64/RV64 machine code.
 [Точная граница доказательства](upstream/doc/dis64-runtime-build.md).
@@ -191,3 +191,30 @@ run queues и progexit/delprog не выполняются. Конструкто
 к адаптеру, не общему wire. Инспектор сохраняет execution_supported=false.
 [Прямой ответ INFERNO-0014](upstream/doc/dis64-flashvm-runtime-response.md)
 описывает следующий настоящий scheduler-owned этап.
+
+## Scheduler-owned scalar lifecycle Dis64
+
+Выбранный [vmstartup.h](upstream/include/vmstartup.h) проверяет bytecode entry
+span и basic frame metadata до MP clone/newprog в emu/os. Opaque compiled
+entry tokens сохраняют свой контракт. [Fixture](upstream/libinterp/tests/dis64-scheduler.py)
+связывает actual schedmod/newprog, очереди/PID hash, xec/IEXIT, progexit/delprog
+и владение instance MP. Default/O3 strict UBSan дают по4 образа,70960 проверок,
+48 terminal deletions и40 final-exit requests. Скомпилированный pre-fix negative
+control отдельно воспроизводит invalid-root publication.
+
+Это connected component evidence с fixture OS/pool/env boundaries, не полный
+emulator boot. Full vmachine handler/propex, live collector и file admission
+ещё открыты. Default NC64 и execution_supported не меняются.
+[Прямой ответ INFERNO-0015](upstream/doc/dis64-flashvm-scheduler-response.md).
+
+## Опциональная file admission Dis64
+
+[Actual loader](upstream/libinterp/load.c) распознаёт точный magic только при
+private DIS64_PILOT_LOADER=1, до legacy decoder и без fallback распознанного
+неподдержанного формата. Существующая unsigned-file policy проверяется до
+construction; metadata/cache публикуются только при успехе. Default NC64 и
+execution_supported не меняются. Fixture связывает actual readmod/cache,
+short reads и metadata со scheduler lifecycle; OS/file/worker/pool остаются
+границами fixture. Три build selections дают60 complete objects.
+[Подробности](upstream/doc/dis64-fileloader.md). Legacy DEFL переносит canonical
+big bits через unsigned halves и memmove, без out-of-range signed cast.

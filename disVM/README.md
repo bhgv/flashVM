@@ -7,7 +7,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-907e90896d0571bc84398efc6867830ee860af2e; every imported file has a manifest hash.
+8d34e029671aeb002b0d2fd0c1d89f105d386b79; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -179,8 +179,8 @@ The selected production interp.h now accepts opt-in `DIS_WORD32=1`. Default
 builds keep their previous WORD/UWORD typedefs. This is a build selection, not
 an on-disk ABI flag or a default migration of the existing NC64 host.
 
-On Linux, CTest runs upstream `word32-build.py`:19 complete core/JIT translation
-units per selection,38 objects total, native scalar/frame probes and rejection
+On Linux, CTest runs upstream `word32-build.py`:20 complete core/JIT translation
+units across three selections,60 objects total, native scalar/frame probes and rejection
 of invalid macro values. It uses the selected Linux/386 host declarations on
 this host, without building an i386 port or executing ARM64/RV64 instructions.
 [Exact upstream boundary](upstream/doc/dis64-runtime-build.md).
@@ -207,3 +207,32 @@ limits are adapter restrictions, never shared wire constraints. The inspector
 continues to report execution_supported=false for general new Dis64 modules.
 [Direct response to INFERNO-0014](upstream/doc/dis64-flashvm-runtime-response.md)
 records the next scheduler-owned acceptance criteria.
+
+## Scheduler-owned Dis64 scalar lifecycle
+
+The selected [vmstartup.h](upstream/include/vmstartup.h) checks bytecode entry
+spans and basic root-frame metadata before MP cloning/newprog publication in
+both emulator/kernel adapters; opaque compiled entry tokens keep their own contract.
+[Scheduler fixture](upstream/libinterp/tests/dis64-scheduler.py) now connects
+actual schedmod/newprog, queues/PID hash, xec/IEXIT, progexit/delprog and instance
+MP ownership. Default/O3 strict UBSan each pass4 images,70960 predicates,
+48 terminal deletions and40 final-exit requests. A compiled pre-fix negative
+control independently reproduces invalid-root publication.
+
+This is connected component evidence with fixture OS/pool/env boundaries.
+Full vmachine handler/propex selection, live collector, file admission and full
+emulator boot remain open. NC64 defaults and general Dis64 execution_supported
+are unchanged. [Direct response to INFERNO-0015](upstream/doc/dis64-flashvm-scheduler-response.md).
+
+## Opt-in Dis64 file admission
+
+[Selected actual loader](upstream/libinterp/load.c) recognizes exact magic only
+with private DIS64_PILOT_LOADER=1, before the legacy decoder and without fallback
+for recognized invalid/new images. Existing unsigned-file admission runs before
+construction; only successful file parsing publishes metadata/cache ownership.
+Default NC64 and general execution_supported stay unchanged. The fixture connects
+actual readmod/cache, short reads and copied metadata to the scheduler lifecycle;
+OS file/worker/pool boundaries remain fixtures. The build probe now covers three
+selections and60 complete objects. [Scope](upstream/doc/dis64-fileloader.md).
+Legacy DEFL uses unsigned canonical halves and memmove to preserve exact big bits
+without an out-of-range signed conversion; boundary regressions remain separate.
