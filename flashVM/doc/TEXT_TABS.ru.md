@@ -59,7 +59,7 @@ tab неподдержанным. Полное присваивание испо
 Изменение исходного массива/снимка не редактирует поле. Управляемые результаты
 нужно удерживать корнями через GC в потоке-владельце.
 
-[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L28) добавляет ограниченный u32 count и tagged числа после
+[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L33) добавляет ограниченный u32 count и tagged числа после
 необязательного indent. Старые записи получают пустую таблицу, текущий/будущий
 стили передаются отдельно, старые readers отклоняют новый флаг. Count проверяется
 до выделения; восстановление проверяет границы/порядок/целые значения и
@@ -92,6 +92,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:218](../include/flashvm/text_layout.h#L218) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:199](../include/flashvm/text_layout.h#L199) |
-| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:28](../src/standard/text_constants.h#L28) |
+| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:33](../src/standard/text_constants.h#L33) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:15](../src/capi/text_layout_c.cpp#L15) |
 <!-- source-links:end -->

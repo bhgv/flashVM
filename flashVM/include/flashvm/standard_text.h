@@ -89,6 +89,36 @@ FVM_API FVM_Result fvm_textfield_scroll_info(
 
 /* Includes uniform underline when enabled; use nonzero fill for the combined contours. */
 FVM_API FVM_Result fvm_textfield_path(FVM_Context *, FVM_Object *, FVM_Path **out);
+
+
+/* Maximum borrowed interval count in one colour-contour export. */
+#define FVM_TEXT_PATH_RANGE_LIMIT 1024U
+
+
+/* One half-open UTF-8 byte interval in the field's counted source text. */
+typedef struct FVM_TextPathRange
+{
+    size_t first; /* Inclusive scalar-aligned UTF-8 byte offset. */
+    size_t last;  /* Exclusive scalar-aligned UTF-8 byte offset. */
+} FVM_TextPathRange;
+
+
+/* Export selected glyph contours using the SAME whole-field layout and scroll as
+ * fvm_textfield_path. c/object must match and stay reachable on the VM owner thread.
+ * ranges is borrowed for this call: count <= RANGE_LIMIT, sorted, nonoverlapping,
+ * nonempty intervals within counted text, at UTF-8 scalar boundaries. count zero
+ * accepts NULL and returns an empty owned path. Glyph shaping-cluster START selects
+ * membership: colours never split a ligature/grapheme or reshape separate runs.
+ * Uniform underline is excluded; decorations remain a separate presentation pass.
+ * No script/callback, source/style/caret mutation or pointer retention. The caller
+ * owns the detached result and destroys it with fvm_path_destroy; copy/transfer it
+ * to immutable native raster jobs only after export. Serialize layout, field and GC.
+ * Invalid descriptors return INVALID_ARGUMENT; layout/font/allocation errors
+ * propagate. *out is cleared on failure; failed export preserves scroll offsets.
+ * This native colour-range extension is not AS mixed-font TextFormat/HTML support. */
+FVM_API FVM_Result fvm_textfield_path_ranges(FVM_Context *c, FVM_Object *object,
+                                             const FVM_TextPathRange *ranges, size_t count, FVM_Path **out);
+
 #ifdef __cplusplus
 }
 #endif

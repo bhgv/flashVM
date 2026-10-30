@@ -61,7 +61,7 @@ getTextFormat/getNewTextFormat return fresh managed Arrays (including an empty
 Array for no custom table); mutation of source/snapshot Arrays does not edit the
 native field. Keep managed results rooted across GC on the context owner thread.
 
-[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L28) adds a bounded u32 count and tagged numeric positions after
+[FVM_TEXT_STYLE_HAS_TABS](../src/standard/text_constants.h#L33) adds a bounded u32 count and tagged numeric positions after
 optional indent. Legacy records restore an empty table, current/future transfer
 separately and old readers reject the unknown flag. Reader count is checked before
 allocation; restore checks table bounds/order/integer values and exact flag/table
@@ -94,6 +94,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:218](../include/flashvm/text_layout.h#L218) |
 | `FVM_TEXT_LAYOUT_MAX_TAB_STOPS` | macro / define | [include/flashvm/text_layout.h:14](../include/flashvm/text_layout.h#L14) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:199](../include/flashvm/text_layout.h#L199) |
-| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:28](../src/standard/text_constants.h#L28) |
+| `FVM_TEXT_STYLE_HAS_TABS` | macro / define | [src/standard/text_constants.h:33](../src/standard/text_constants.h#L33) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:15](../src/capi/text_layout_c.cpp#L15) |
 <!-- source-links:end -->

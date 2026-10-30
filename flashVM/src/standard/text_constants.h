@@ -1,6 +1,11 @@
 /* FlashVM: bounded native TextField scalar storage and UTF-16 indexing limits. */
 #ifndef FVM_STANDARD_TEXT_CONSTANTS_H
 #define FVM_STANDARD_TEXT_CONSTANTS_H /* Native text storage constants guard. */
+/* UTF-8 scalar-boundary admission for borrowed colour contour ranges. */
+#define FVM_TEXT_RANGE_UTF8_MASK 0xc0U /* UTF-8 continuation-prefix mask. */
+#define FVM_TEXT_RANGE_UTF8_CONTINUATION 0x80U /* Continuation byte prefix. */
+
+
 /* Current shaping/storage envelope; these are implementation bounds, not Flash limits. */
 #define FVM_TEXT_FONT_MAX_NAME 255U /* Maximum registered family-name bytes, excluding terminator. */
 #define FVM_TEXT_FONT_KEY_PREFIX 2U /* Leading NUL plus nonzero variant isolates private slots. */

@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1693: native colour contour ranges share whole-field shaping and scroll; the IDE presents lazy revision-bound Dis palettes without advancing the input ticket. [EN](TEXT_COLOR_RANGES.md) / [RU](TEXT_COLOR_RANGES.ru.md). Full AS mixed-font/HTML TextFormat and physical platform acceptance remain open; no compatibility stage closes.
+
 Checkpoint v0.1678: the Dis desktop captures real solid MovieClip geometry into independent native commands and rasterizes only damaged tiles on up to four workers. Keyboard admission no longer waits for raster completion; owner/VM/channel isolation and legacy timeline behavior remain explicit. [EN](RENDER_ASYNC.md) / [RU](RENDER_ASYNC.ru.md). Arbitrary-SWF capture, persistent tile pools and physical platform performance remain open.
 
 Checkpoint v0.1672: explicit Dis IDE export uses OS-exclusive binary creation through the shared file port. Existing paths/symlinks are preserved; byte/CLI and concurrent-create fixtures are separate from physical platform acceptance. [Contract](EXCLUSIVE_FILES.md). No Flash compatibility milestone closes.

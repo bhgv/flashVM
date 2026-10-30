@@ -50,7 +50,7 @@ v0.895 применяет целый TextFormat.indent в [-4096,4096] к тек
 TextWidth/extent.width включают отступ первой строки, исключая поля абзаца;
 autoSize включает поля и gutter как раньше.
 
-[FVM_TEXT_STYLE_HAS_INDENT](../src/standard/text_constants.h#L25) сохраняет необязательное знаковое число после полей
+[FVM_TEXT_STYLE_HAS_INDENT](../src/standard/text_constants.h#L30) сохраняет необязательное знаковое число после полей
 абзаца. Старые записи получают ноль; публичные структуры и версия wire прежние.
 Текущий/будущий стили передаются отдельно; старые readers отвергают новый флаг.
 Восстановление проверяет соответствие флага, целые границы и отрицательную
@@ -80,6 +80,6 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_text_layout_destroy` | function | [include/flashvm/text_layout.h:99](../include/flashvm/text_layout.h#L99) |
 | `fvm_text_layout_glyph_path` | function | [include/flashvm/text_layout.h:218](../include/flashvm/text_layout.h#L218) |
 | `fvm_text_layout_path` | function | [include/flashvm/text_layout.h:199](../include/flashvm/text_layout.h#L199) |
-| `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:25](../src/standard/text_constants.h#L25) |
+| `FVM_TEXT_STYLE_HAS_INDENT` | macro / define | [src/standard/text_constants.h:30](../src/standard/text_constants.h#L30) |
 | `FVM_TextLayout` | struct | [src/capi/text_layout_c.cpp:15](../src/capi/text_layout_c.cpp#L15) |
 <!-- source-links:end -->

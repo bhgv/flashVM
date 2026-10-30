@@ -2443,8 +2443,12 @@ static double field_line_shift(const Field *field, const FVM_TextLayoutLine &lin
 }
 
 
-/* Compute and return textfield path. */
-extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM_Path **out)
+/* Export all or selected contours from one cached whole-field layout. c/object are
+ * owner-thread borrowed values; ranges/count are validated before layout. selected
+ * excludes uniform underline. On success out owns a detached path; errors clear it.
+ * No script callbacks or native raster worker accesses to the VM occur here. */
+static FVM_Result textfield_paths(
+    FVM_Context *c, FVM_Object *object, const FVM_TextPathRange *ranges, size_t count, bool selected, FVM_Path **out)
 {
     if (!out)
     {
@@ -2458,6 +2462,25 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
 
     /* Initialization / Инициализация локального состояния. */
     Field *field = (Field *)object->resource;
+    if (selected)
+    {
+        if (count > FVM_TEXT_PATH_RANGE_LIMIT || (count && !ranges))
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+        for (size_t i = 0; i < count; ++i)
+        {
+            const FVM_TextPathRange &range = ranges[i];
+            if (range.first >= range.last || range.last > field->text_size || (i && range.first < ranges[i - 1].last) ||
+                ((unsigned char)field->text[range.first] & FVM_TEXT_RANGE_UTF8_MASK) == FVM_TEXT_RANGE_UTF8_CONTINUATION ||
+                (range.last < field->text_size &&
+                 ((unsigned char)field->text[range.last] & FVM_TEXT_RANGE_UTF8_MASK) ==
+                     FVM_TEXT_RANGE_UTF8_CONTINUATION))
+            {
+                return FVM_INVALID_ARGUMENT;
+            }
+        }
+    }
     FVM_Result result = ensure_layout(c, field);
     if (result != FVM_OK)
     {
@@ -2485,6 +2508,29 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
         FVM_TextLayoutLine line;
         FVM_Path *copy = 0;
         result = fvm_text_layout_glyph(field->layout, i, &glyph);
+        if (result == FVM_OK && selected)
+        {
+            /* Visual bidi order need not follow source order: search each cluster. */
+            size_t low = 0;
+            size_t high = count;
+            while (low < high)
+            {
+                size_t middle = low + (high - low) / 2;
+                if (ranges[middle].last <= glyph.shaped.cluster)
+                {
+                    low = middle + 1;
+                }
+                else
+                {
+                    high = middle;
+                }
+            }
+            if (low == count || glyph.shaped.cluster < ranges[low].first)
+            {
+                continue;
+            }
+        }
+
         if (result == FVM_OK)
         {
             result = fvm_text_layout_line(field->layout, glyph.line, &line);
@@ -2501,7 +2547,7 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
         }
         fvm_path_destroy(copy);
     }
-    if (result == FVM_OK && field->current.underline)
+    if (result == FVM_OK && !selected && field->current.underline)
     {
         FontOwner font;
         FVM_FontUnderlineMetrics underline;
@@ -2538,6 +2584,23 @@ extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM
     field->hscroll = viewport.hscroll;
     *out = path;
     return FVM_OK;
+}
+
+
+/* Export the complete uniform field, preserving the existing underline contract.
+ * c/object/out follow the public owner-thread and detached-path lifetime rules. */
+extern "C" FVM_Result fvm_textfield_path(FVM_Context *c, FVM_Object *object, FVM_Path **out)
+{
+    return textfield_paths(c, object, 0, 0, false, out);
+}
+
+
+/* Export borrowed scalar-aligned ranges without reshaping or splitting clusters.
+ * Arguments, errors and ownership are specified in standard_text.h. */
+extern "C" FVM_Result fvm_textfield_path_ranges(
+    FVM_Context *c, FVM_Object *object, const FVM_TextPathRange *ranges, size_t count, FVM_Path **out)
+{
+    return textfield_paths(c, object, ranges, count, true, out);
 }
 
 namespace
