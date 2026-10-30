@@ -176,8 +176,8 @@ set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/ideco
   "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b" "${root}/ide/dis/bridge/idebrowser.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
-list(APPEND module_names idemdi idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
-list(APPEND module_sources "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
+list(APPEND module_names asincviews idemdi idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
+list(APPEND module_sources "${root}/disVM/limbo/asincviews.b" "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
 file(GLOB syntax_headers "${root}/ide/syntax/*.m")
 list(APPEND module_headers ${syntax_headers})
 list(LENGTH module_names module_count)
@@ -219,7 +219,7 @@ if(DVM_RUNTIME_TESTS)
  add_test(NAME disvm_runtime_platform_selection COMMAND "${PYTHON_EXECUTABLE}"
    "${CMAKE_CURRENT_SOURCE_DIR}/test_platform.py" "${CMAKE_COMMAND}"
    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
- foreach(test idemdi idedebug idevectorpane idevector idetokenquery idesyntaxincremental idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
+ foreach(test asincviews idemdi idedebug idevectorpane idevector idetokenquery idesyntaxincremental idesyntax idecore limits coordinates find history replaceall utf8span ideworkspace idebridge idecomplete idebuiltins navigation viewport uicodec words indent decimalappend clipboard field stringslice values docprojection hybridtable tableguards tableleases)
   set(source "${root}/ide/dis/tests/${test}_test.b")
   if(test STREQUAL "docprojection")
     set(source "${root}/ide/dis/examples/document-projection/main.b")
