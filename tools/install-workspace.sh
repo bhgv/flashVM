@@ -207,6 +207,14 @@ frontend() {
         copy_file "$ROOT/compiler/as2/view/README.ru.md" "$destination/VIEW.ru.md"
         copy_file "$ROOT/ide/as/editor-view.as" "$destination/examples/editor-view.as"
     fi
+    if [[ "$language" == as1 || "$language" == as2 || "$language" == as3 ]]; then
+        copy_tree "$ROOT/compiler/examples/asinc" "$destination/examples/asinc"
+        for guide in ASINC.md ASINC.ru.md; do
+            sed -e 's|../flashVM/doc/|https://github.com/bhgv/flashVM/blob/master/flashVM/doc/|g' \
+                -e 's|../disVM/runtime/|https://github.com/bhgv/flashVM/blob/master/disVM/runtime/|g' \
+                "$ROOT/compiler/$guide" >"$destination/$guide"
+        done
+    fi
     notices "$destination" "$ROOT/compiler/$language"
     copy_file "$ROOT/tools/coco-r-C/upstream/read.me" "$destination/LICENSES/CocoR-README.txt"
     printf 'component=%s\nbuild=%s\nconfiguration=%s\n' "$language" "$base" "$CONFIG" >"$destination/PACKAGE.txt"

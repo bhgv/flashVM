@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1698**. [Русская версия](README.ru.md).
+Development version: **0.1699**. [Русская версия](README.ru.md).
 
-Current series: [v0.1698](docs/releases/v0.1698.md): shared-desktop debugger panels, typed disconnected sessions and homogeneous MDI/SDI membership foundations; visual grouping remains pending.
+Current series: [v0.1699](docs/releases/v0.1699.md): actual source/graphics MovieClip MDI containers, SDI detach, frame-free drawing proof and contextual asinc syntax; executable closure/task lowering remains pending.
 
 ## Browse documentation
 

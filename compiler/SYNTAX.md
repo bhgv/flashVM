@@ -1,3 +1,5 @@
+[Contextual asinc checkpoint: syntax only, executable lowering pending](ASINC.md) · [RU](ASINC.ru.md)
+
 # Current parser syntax 0.5.1
 
 [Coverage, checks and remaining work](PARSER_COVERAGE.md) describe the current

@@ -1,3 +1,7 @@
+Contextual `asinc` forms are syntax-recognized by the AS frontends; this executable
+profile explicitly rejects them with a semantic lexical-closure/task diagnostic
+and preserves prior output. [Contract](../../../compiler/ASINC.md).
+
 # Working numeric source profile 0.9.0
 
 This page retains baseline/versioned syntax notes. See [current coverage](COVERAGE.md), [RU](COVERAGE.ru.md) and [signed32 bits](INT_BITS.md) for implementation 0.52.
