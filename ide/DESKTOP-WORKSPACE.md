@@ -78,3 +78,12 @@ through a frame backlog. The native SDL event-queue check proves that release
 ordering is retained. Release coordinates are applied to the final window offset.
 
 [Glass rails, docking and smooth whole-table reveal / Матовые панели и плавный показ окна целиком](DESKTOP-GLASS-MOTION.md).
+
+
+## Zoom viewport anchor (v0.1697)
+
+Table zoom scales physical scroll/pan from one exact reference anchor while
+leaving window rectangles in logical coordinates. Opposite zoom steps restore
+the reference without accumulating integer-rounding drift. This also keeps the
+header of an already scrolled/maximized window below the top bar. New panning/
+scrolling establishes a new reference; existing viewport bounds still apply.

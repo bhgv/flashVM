@@ -232,6 +232,7 @@ init()
     view = call(layout, request);
     view = point(layout, view.ticket, 100, 380, 1);
     check(view.action == desk->CancelClose, "narrow scroll uses actual button bounds");
+    zoomanchor(desk);
     request.operation = desk->Shutdown;
     view = call(layout, request);
     check(view.status == desk->Ok, "layout shutdown");
@@ -239,4 +240,38 @@ init()
     stoppedright := pane(right, panes->Shutdown, nil);
     check(stoppedleft.status == 0 && stoppedright.status == 0, "pane shutdown");
     sys->print("PASS desktop owners: independent edits/undo, live mirrors, guarded pan, stale rejection, shutdown\n");
+}
+
+
+# Exercise a scrolled/maximized pane and a genuine table zoom request. Window
+# coordinates/size must remain logical values while physical translations scale.
+# This independent layout owner is acknowledged before returning; no UI is mocked.
+zoomanchor(desk: Idedesktop)
+{
+    owner := desk->start();
+    request := Idedesktop->Request(1, desk->Update, 0, 5, 0, 0, 0, "Vector", "", -1, -1, 0, nil);
+    view := call(owner, request);
+    request.operation = desk->Select;
+    view = call(owner, request);
+    view = point(owner, view.ticket, 900, 385, 1);
+    view = point(owner, view.ticket, 900, 385, 3);
+    before := item(view, 5);
+    scroll := view.scroll;
+    zoom := view.zoom;
+    check(scroll > 0, "zoom anchor fixture has real prior scrolling");
+    view = point(owner, view.ticket, 82, 55, 5);
+    after := item(view, 5);
+    check(view.zoom == zoom - 10 && view.scroll == scroll * view.zoom / zoom,
+          "table zoom scales physical scroll rather than changing logical anchor");
+    check(after.x == before.x && after.y == before.y && after.width == before.width && after.height == before.height,
+          "table zoom leaves every saved window rectangle unchanged");
+    top := 48 + (after.y - 48) * view.zoom / 100 - view.scroll;
+    check(top >= 47 && top <= 49, "maximized header remains below the top bar after table zoom");
+    for (cycle := 0; cycle < 8; cycle++) {
+        view = point(owner, view.ticket, 82, 55, 4);
+        check(view.zoom == zoom && view.scroll == scroll, "opposite zoom restores anchor without cumulative integer drift");
+        view = point(owner, view.ticket, 82, 55, 5);
+    }
+    request.operation = desk->Shutdown;
+    check(call(owner, request).status == desk->Ok, "zoom fixture shutdown");
 }

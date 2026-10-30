@@ -342,6 +342,9 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
 serve(requests: chan of Request)
 {
     deskzoom := 100;
+    zoomreference := 0; # Last exact viewport anchor's scale, zero until first table zoom.
+    scrollreference := 0; # Physical scroll at that reference scale; avoids cumulative rounding.
+    panreference := 0; # Signed physical pan at that reference scale.
     deskpan := 0; # Physical horizontal viewport translation; window coordinates stay persistent.
     reveal := 0; # Changes only for explicit thumbnail/Select viewport reveal proposals.
     zooming := 0; # Transient table-wide opacity, cleared on release/cancel.
@@ -533,11 +536,22 @@ serve(requests: chan of Request)
                             }
                         }
                         if (phase != 6 && !obscured && target == 0 && x >= 80 && x < width - 104 && y >= 48) {
+                            if (zoomreference == 0 || scroll != scrollreference * deskzoom / zoomreference ||
+                                deskpan != panreference * deskzoom / zoomreference) {
+                                zoomreference = deskzoom;
+                                scrollreference = scroll;
+                                panreference = deskpan;
+                            }
                             if (phase == 4 && deskzoom <= 170) {
                                 deskzoom += 10;
                             } else if (phase == 5 && deskzoom >= 20) {
                                 deskzoom -= 10;
                             }
+                            # Keep the logical viewport anchor at the same point.
+                            # Scroll/pan are physical translations, so they scale
+                            # with the parent; window coordinates remain untouched.
+                            scroll = scrollreference * deskzoom / zoomreference;
+                            deskpan = panreference * deskzoom / zoomreference;
                             zooming = 1;
                             changed = 1;
                         }
