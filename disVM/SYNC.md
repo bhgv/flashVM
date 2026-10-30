@@ -1,3 +1,33 @@
+## v0.1699 follow-up — INFERNO-0025 protected result ownership
+
+Selected pin **e9d8918df53530d6a1bea53868276c6b9dbae9b5**; DisVM **930**
+files, bootstrap **281**, verified byte-exact. Added only selected emu/os error
+boundary bodies, private native64-result guard, regression drivers and contract.
+No full OS/Draw/Tk dependency or default runtime calling ABI change.
+
+Independent copied O1/strict-UBSan gate with matched source-built compiler and
+fresh owning O3/NDEBUG/strict-UBSan compiler/gate pass. Each result gate executes
+**212952 predicates,1728 transactions,960 destructor checkpoints** across both
+ports and both models, using actual heap/GC and kprotect/krethrow bodies. Host
+jump services remain fixture adapters, not full architecture/scheduler acceptance.
+Direct error-read/copy checks pass **6366** predicates. All three old-body controls
+(os reader, emu copier, os copier) reproduce active predicate SIGABRT failures.
+
+Confirmed fixes: os kgerrstr reads without exchanging process errors; both
+readers bound unsigned sizes; kstrcpy terminates positive tiny spans and avoids
+pointer access for nonpositive spans. The result guard owns before fallible pin,
+clears before destruction, removes only its pin and restores the original error.
+Caller output changes only on success. Preconditions remain trusted live mapped
+caller storage, single owner, nonthrowing destructors and producer-owned partial
+allocations. This is synchronous protected cleanup, not an asynchronous lifetime
+proof. Queued tasks require heap-owned result/environment cells, never a borrowed
+caller stack return address. Structural signatures, actual reference-returning
+builtin registration and nested partial-tree cleanup still need separate gates.
+
+Ordinary optimized ASan is not admitted by the upstream result fixture; its
+reported passing ASan configuration disables inlining and keeps frame pointers.
+Our independent runs above use strict UBSan and make no default-ASan claim.
+
 ## v0.1699 — INFERNO-0024 actual generated-frame/heap/collector gate
 
 Selected source **56b8fa4a3285cba8f1ffd2c4ade66d18c12d5d1f** (experiment).
