@@ -24,7 +24,7 @@ typedef struct DeskItem
 {
     unsigned long id;     /* Stable controller slot. */
     unsigned long parent; /* Layer group 0..4. */
-    unsigned long x;      /* Parent-local pixels. */
+    long x;               /* Signed parent-local pixels; windows may pass under the left rail. */
     unsigned long y;      /* Parent-local pixels. */
     unsigned long width;  /* Bounded local extent. */
     unsigned long height; /* Bounded local extent. */
@@ -51,6 +51,8 @@ static DeskItem items[DESK_SLOTS];        /* Copied staged descriptors. */
 static unsigned int expected;             /* Exact declared item count. */
 static unsigned int received;             /* Complete staged descriptors. */
 static unsigned long ticket;              /* Committed view token. */
+static long tablepan;                     /* Logical horizontal viewport translation in physical pixels. */
+static unsigned long reveal_epoch;        /* Explicit Dis-owned reveal proposal identity. */
 static unsigned long tablezoom = 100;     /* Uniform scale of the table MovieClip only. */
 static unsigned long offset;              /* Table scroll magnitude. */
 static unsigned int width;                /* Committed canvas pixels. */
@@ -61,8 +63,192 @@ static FVM_Path *text_paths[DESK_SLOTS];       /* Owner-local untransformed glyp
 static DeskItem text_keys[DESK_SLOTS];         /* Immutable layout keys; position is deliberately excluded. */
 static unsigned char *drag_pixels[DESK_SLOTS]; /* Owned bounded complete window snapshots. */
 static DeskItem drag_keys[DESK_SLOTS];         /* Content/geometry keys for copied drag pixels. */
+static unsigned int glass_width[2];            /* Cached immutable rail contour widths. */
+static unsigned int glass_height[2];           /* Cached immutable rail contour heights. */
 static int active;                             /* A desktop scene has been admitted. */
 
+
+/* Owner-local visual interpolation; no document, VM pointer or worker handle. */
+typedef struct DeskMotion
+{
+    double from_x;        /* Initial canvas origin in pixels. */
+    double from_y;        /* Initial canvas origin in pixels. */
+    double from_scale;    /* Initial uniform scale relative to normal geometry. */
+    double to_x;          /* Final canvas origin in pixels. */
+    double to_y;          /* Final canvas origin in pixels. */
+    double to_scale;      /* Final uniform scale relative to normal geometry. */
+    unsigned int elapsed; /* Bounded elapsed wall-clock milliseconds,0..240. */
+    int active;           /* Presentation still needs clock-driven frames. */
+} DeskMotion;
+
+static DeskMotion camera_motion;          /* Value-only whole-table pan/scroll/zoom interpolation. */
+static DeskMotion motions[9];             /* Value-only interpolation for eight window identities. */
+static DeskItem previous_windows[9];      /* Last complete logical window descriptors. */
+static unsigned char previous_present[9]; /* Previous scene identity membership. */
+
+
+/* Evaluate smoothstep with zero endpoint velocity. Borrow motion and write
+ * caller-owned table-local position/scale; no allocation or VM access occurs. */
+static void motion_sample(const DeskMotion *motion, double *x, double *y, double *scale)
+{
+    double t = motion->elapsed / 240.0;
+    double ease = t * t * (3.0 - 2.0 * t);
+    *x = motion->from_x + (motion->to_x - motion->from_x) * ease;
+    *y = motion->from_y + (motion->to_y - motion->from_y) * ease;
+    *scale = motion->from_scale + (motion->to_scale - motion->from_scale) * ease;
+}
+
+
+/* Read the effective visual viewport; logical target stays Dis-owned. Outputs
+ * are caller-owned scale/pan/scroll values. No allocation or VM state changes. */
+static void camera_view(double *zoom, double *pan, double *scroll)
+{
+    *zoom = tablezoom / 100.0;
+    *pan = tablepan;
+    *scroll = offset;
+    if (camera_motion.active)
+    {
+        motion_sample(&camera_motion, pan, scroll, zoom);
+    }
+}
+
+
+/* Convert a copied window trajectory from canvas pixels into the current
+ * table matrix. Borrow motion and write local x/y/scale; no VM handles escape. */
+static void motion_local(const DeskMotion *motion, double *x, double *y, double *scale)
+{
+    double zoom;
+    double pan;
+    double scroll;
+    motion_sample(motion, x, y, scale);
+    camera_view(&zoom, &pan, &scroll);
+    *x = 84 + (*x - pan - 84) / zoom;
+    *y = 48 + (*y + scroll - 48) / zoom;
+    *scale /= zoom;
+}
+
+
+/* Observe a borrowed owner-local MovieClip's composed native matrix. */
+static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *output);
+
+
+/* Observe a complete typed scene and derive visual transitions only. Logical
+ * visibility, focus, normal geometry and thumbnail ordering stay on Dis.
+ * All descriptors are copied; missing/changed-size panes cancel stale motion. */
+static void motion_commit(void)
+{
+    unsigned int id;
+    for (id = 1; id <= 8; ++id)
+    {
+        const DeskItem *window = NULL;
+        const DeskItem *thumbnail = NULL;
+        unsigned int index;
+        for (index = 0; index < received; ++index)
+        {
+            if (items[index].id == id)
+            {
+                window = &items[index];
+            }
+            if (items[index].mirror == id && items[index].parent == 2)
+            {
+                thumbnail = &items[index];
+            }
+        }
+        if (!window)
+        {
+            motions[id].active = 0;
+            previous_present[id] = 0;
+            continue;
+        }
+        if (previous_present[id] && thumbnail && (previous_windows[id].x == 65536) != (window->x == 65536))
+        {
+            DeskMotion *motion = &motions[id];
+            double zoom = tablezoom / 100.0;
+            double small = fmin((double)thumbnail->width / window->width, (double)thumbnail->height / window->height);
+            double x = thumbnail->x + (thumbnail->width - window->width * small) / 2;
+            double y = thumbnail->y + (thumbnail->height - window->height * small) / 2;
+            int hiding = window->x == 65536;
+            double from_x = x;
+            double from_y = y;
+            double from_scale = small;
+            FVM_Affine world;
+            if (hiding && clips[id] && world_matrix(clips[id], 1, &world))
+            {
+                from_x = world.x0;
+                from_y = world.y0;
+                from_scale = world.xx;
+            }
+            if (motion->active)
+            {
+                motion_sample(motion, &from_x, &from_y, &from_scale);
+            }
+            motion->from_x = from_x;
+            motion->from_y = from_y;
+            motion->from_scale = from_scale;
+            motion->to_x = hiding ? x : 84 + (window->x - 84) * zoom + tablepan;
+            motion->to_y = hiding ? y : 48 + (window->y - 48) * zoom - offset;
+            motion->to_scale = hiding ? small : zoom;
+            motion->elapsed = 0;
+            motion->active = 1;
+        }
+        else if (previous_present[id] &&
+                 (previous_windows[id].width != window->width || previous_windows[id].height != window->height))
+        {
+            motions[id].active = 0;
+        }
+        previous_windows[id] = *window;
+        previous_present[id] = 1;
+    }
+}
+
+
+/* Advance visual time independently of SWF frames. elapsed is a copied bounded
+ * delta in milliseconds; invalid deltas change nothing. Return one if a new
+ * immutable raster snapshot is needed. Owner only; no document or event waits. */
+int dvm_desktop_advance(unsigned int elapsed)
+{
+    unsigned int id;
+    int changed = 0;
+    if (!active || pending || !elapsed || elapsed > 1000)
+    {
+        return 0;
+    }
+    if (camera_motion.active)
+    {
+        unsigned int remaining = 240 - camera_motion.elapsed;
+        camera_motion.elapsed += elapsed < remaining ? elapsed : remaining;
+        camera_motion.active = camera_motion.elapsed < 240;
+        changed = 1;
+        if (trace)
+        {
+            double pan;
+            double scroll;
+            double zoom;
+            motion_sample(&camera_motion, &pan, &scroll, &zoom);
+            printf("CAMERA %lu %u %.3f %.3f %.6f\n", ticket, camera_motion.elapsed, pan, scroll, zoom);
+        }
+    }
+    for (id = 1; id <= 8; ++id)
+    {
+        DeskMotion *motion = &motions[id];
+        if (motion->active)
+        {
+            unsigned int remaining = 240 - motion->elapsed;
+            motion->elapsed += elapsed < remaining ? elapsed : remaining;
+            motion->active = motion->elapsed < 240;
+            changed = 1;
+            if (trace)
+            {
+                double x;
+                double y;
+                double scale;
+                motion_sample(motion, &x, &y, &scale);
+                printf("TWEEN %lu %u %u %.3f %.3f %.6f\n", ticket, id, motion->elapsed, x, y, scale);
+            }
+        }
+    }
+    return changed;
+}
 
 static DVM_EditorFrame *prepared_frame; /* Borrowed owner-private capture destination during preparation. */
 static int capture_left;                /* Current inclusive canvas capture clip. */
@@ -164,6 +350,68 @@ static FVM_Object *child(FVM_Object *parent, const char *name, unsigned int dept
         return NULL;
     }
     return result.object;
+}
+
+
+/* Draw a60-percent frosted-glass imitation using genuine alpha MovieClip fills.
+ * Borrow clip; wide/high are copied panel pixels and right chooses its inner
+ * edge. Smoothstep fades the inner32 pixels; deterministic low-contrast grain
+ * varies tint rather than accumulating opacity. No backdrop/VM pointer escapes.
+ * Return zero on a drawing failure; detached workers later composite the paths. */
+static int glass(FVM_Object *clip, double wide, double high, int right)
+{
+    FVM_Value args[3];
+    FVM_Value ignored;
+    int x;
+    int y;
+    if (glass_width[right] == (unsigned int)wide && glass_height[right] == (unsigned int)high)
+    {
+        return 1;
+    }
+    if (fvm_object_call(owner, clip, "clear", 0, NULL, &ignored) != FVM_OK)
+    {
+        return 0;
+    }
+    if (fvm_object_call(owner, clip, "lineStyle", 0, NULL, &ignored) != FVM_OK)
+    {
+        return 0;
+    }
+    for (x = 0; x < (int)wide; x += 4)
+    {
+        double edge = right ? x + 2 : wide - x - 2;
+        double t = fmax(0, fmin(1, edge / 32));
+        double alpha = 60 * t * t * (3 - 2 * t);
+        for (y = 0; y < (int)high; y += 24)
+        {
+            unsigned long grain = ((unsigned int)x * 13U + (unsigned int)y * 7U) % 7U;
+            unsigned long tint = ((47UL + grain) << 16) | ((62UL + grain) << 8) | (73UL + grain);
+            double xs[5] = {x, fmin(x + 4, wide), fmin(x + 4, wide), x, x};
+            double ys[5] = {y, y, fmin(y + 24, high), fmin(y + 24, high), y};
+            unsigned int point;
+            fvm_value_number(&args[0], tint);
+            fvm_value_number(&args[1], alpha);
+            if (fvm_object_call(owner, clip, "beginFill", 2, args, &ignored) != FVM_OK)
+            {
+                return 0;
+            }
+            for (point = 0; point < 5; ++point)
+            {
+                fvm_value_number(&args[0], xs[point]);
+                fvm_value_number(&args[1], ys[point]);
+                if (fvm_object_call(owner, clip, point ? "lineTo" : "moveTo", 2, args, &ignored) != FVM_OK)
+                {
+                    return 0;
+                }
+            }
+            if (fvm_object_call(owner, clip, "endFill", 0, NULL, &ignored) != FVM_OK)
+            {
+                return 0;
+            }
+        }
+    }
+    glass_width[right] = (unsigned int)wide;
+    glass_height[right] = (unsigned int)high;
+    return 1;
 }
 
 
@@ -318,12 +566,53 @@ int dvm_desktop_message(const DVM_UIMessage *message)
     }
     if (message->code == DVM_DESK_BEGIN)
     {
+        unsigned long old_zoom = tablezoom;
+        unsigned long old_offset = offset;
+        long old_pan = tablepan;
+        unsigned long old_reveal = reveal_epoch;
+        unsigned long encoded_pan = 0;
+        double from_zoom;
+        double from_pan;
+        double from_scroll;
+        camera_view(&from_zoom, &from_pan, &from_scroll);
         if (pending || message->first < 240 || message->first > 2048 || message->second < 160 ||
-            message->second > 2048 || message->size != 32 || !word(message->text, &ticket) || !ticket ||
-            !word(message->text + 8, &count) || count >= DESK_SLOTS || !word(message->text + 16, &offset) ||
-            offset > 4096 || !word(message->text + 24, &tablezoom) || tablezoom < 10 || tablezoom > 180)
+            message->second > 2048 || (message->size != 32 && message->size != 40 && message->size != 48) ||
+            !word(message->text, &ticket) || !ticket || !word(message->text + 8, &count) || count >= DESK_SLOTS ||
+            !word(message->text + 16, &offset) || offset > 8192 || !word(message->text + 24, &tablezoom) ||
+            tablezoom < 10 || tablezoom > 180)
         {
             return 0;
+        }
+        tablepan = 0;
+        if (message->size >= 40)
+        {
+            if (!word(message->text + 32, &encoded_pan) || (encoded_pan > 4096 && encoded_pan < 0xfffff000UL))
+            {
+                return 0;
+            }
+            tablepan = encoded_pan <= 4096 ? (long)encoded_pan : -1L - (long)(0xffffffffUL - encoded_pan);
+        }
+        if (message->size == 48 && !word(message->text + 40, &reveal_epoch))
+        {
+            return 0;
+        }
+        if (active && (old_zoom != tablezoom || old_offset != offset || old_pan != tablepan ||
+                       width != (unsigned int)message->first || height != (unsigned int)message->second))
+        {
+            memset(motions, 0, sizeof(motions));
+            camera_motion.active = 0;
+            if (old_reveal != reveal_epoch && width == (unsigned int)message->first &&
+                height == (unsigned int)message->second)
+            {
+                camera_motion.from_x = from_pan;
+                camera_motion.from_y = from_scroll;
+                camera_motion.from_scale = from_zoom;
+                camera_motion.to_x = tablepan;
+                camera_motion.to_y = offset;
+                camera_motion.to_scale = tablezoom / 100.0;
+                camera_motion.elapsed = 0;
+                camera_motion.active = 1;
+            }
         }
         width = (unsigned int)message->first;
         height = (unsigned int)message->second;
@@ -345,6 +634,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         memset(items + received, 0, (DESK_SLOTS - received) * sizeof(*items));
         pending = 0;
         active = 1;
+        motion_commit();
         return 1;
     }
     if (message->code != DVM_DESK_ITEM || received >= expected || message->first <= 0 || message->first >= DESK_SLOTS ||
@@ -359,8 +649,9 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             return 0;
         }
     }
-    if (words[0] > 4 || words[1] > 65536 || words[2] > 65536 || !words[3] || words[3] > 32768 || !words[4] ||
-        words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 || words[7] >= DESK_SLOTS)
+    if (words[0] > 4 || (words[1] > 65536 && words[1] < 0xffff8000UL) || words[2] > 65536 || !words[3] ||
+        words[3] > 32768 || !words[4] || words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 ||
+        words[7] >= DESK_SLOTS)
     {
         return 0;
     }
@@ -384,7 +675,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         }
         item->id = (unsigned long)message->first;
         item->parent = words[0];
-        item->x = words[1];
+        item->x = words[1] <= 65536 ? (long)words[1] : -1L - (long)(0xffffffffUL - words[1]);
         item->y = words[2];
         item->width = words[3];
         item->height = words[4];
@@ -481,8 +772,8 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
     }
     *widget = 0;
     *position = -1;
-    if (!owner || !active || pending || !isfinite(x) || !isfinite(y) || x < 80 || x >= width - 104 || y < 48 ||
-        y >= height)
+    if (!owner || !active || pending || camera_motion.active || !isfinite(x) || !isfinite(y) || x < 80 ||
+        x >= width - 104 || y < 48 || y >= height)
     {
         return 0;
     }
@@ -493,6 +784,11 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
         double determinant;
         double localx;
         double localy;
+        if ((item->id <= 8 && motions[item->id].active) ||
+            (item->id >= 30 && item->id <= 37 && motions[item->id - 29].active))
+        {
+            continue;
+        }
         if (!world_matrix(clips[item->id], item->parent, &world))
         {
             return 0;
@@ -1038,11 +1334,13 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             return 0;
         }
     }
-    if (!box(clip,
-             content->width,
-             content->height,
-             colors[content->style],
-             item->id <= 8 && (content->style == 1 || content->style == 5) ? 0x2684dbUL : 0))
+    if ((item->id == 11 || item->id == 12)
+            ? !glass(clip, content->width, content->height, item->id == 12)
+            : !box(clip,
+                   content->width,
+                   content->height,
+                   colors[content->style],
+                   item->id <= 8 && (content->style == 1 || content->style == 5) ? 0x2684dbUL : 0))
     {
         fprintf(stderr, "desktop box\n");
         return 0;
@@ -1067,8 +1365,14 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     } while (0)
     GLOBAL_NUMBER("ideTableOffset", -(double)offset);
     GLOBAL_NUMBER("ideRightX", width - 104);
-    GLOBAL_NUMBER("ideWidgetX", item->x);
-    GLOBAL_NUMBER("ideWidgetY", item->y);
+    double widget_x = item->x;
+    double widget_y = item->y;
+    if (item->id <= 8 && motions[item->id].active)
+    {
+        motion_local(&motions[item->id], &widget_x, &widget_y, &scale);
+    }
+    GLOBAL_NUMBER("ideWidgetX", widget_x);
+    GLOBAL_NUMBER("ideWidgetY", widget_y);
     GLOBAL_NUMBER("ideWidgetWidth", content->width);
     GLOBAL_NUMBER("ideWidgetHeight", content->height);
     GLOBAL_NUMBER("ideWidgetScale", scale * 100);
@@ -1089,9 +1393,13 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             fprintf(stderr, "desktop AS: %d\n", result);
             return 0;
         }
-        if (!number(groups[1], "_xscale", tablezoom) || !number(groups[1], "_yscale", tablezoom) ||
-            !number(groups[1], "_x", 84.0 * (1.0 - tablezoom / 100.0)) ||
-            !number(groups[1], "_y", 48.0 * (1.0 - tablezoom / 100.0) - offset))
+        double visual_zoom;
+        double visual_pan;
+        double visual_scroll;
+        camera_view(&visual_zoom, &visual_pan, &visual_scroll);
+        if (!number(groups[1], "_xscale", visual_zoom * 100) || !number(groups[1], "_yscale", visual_zoom * 100) ||
+            !number(groups[1], "_x", 84.0 * (1.0 - visual_zoom) + visual_pan) ||
+            !number(groups[1], "_y", 48.0 * (1.0 - visual_zoom) - visual_scroll))
         {
             return 0;
         }
@@ -1128,7 +1436,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         }
         /* A minimized pane remains a typed source for its thumbnail. Do not
          * submit its explicit hidden origin to the raster coordinate domain. */
-        if (item->id <= 8 && item->parent == 1 && item->x == 65536 && item->y == 65536)
+        if (item->id <= 8 && item->parent == 1 && item->x == 65536 && item->y == 65536 && !motions[item->id].active)
         {
             return 1;
         }
@@ -1221,6 +1529,11 @@ static int retire(const unsigned char *present)
             {
                 return 0;
             }
+            if (id == 11 || id == 12)
+            {
+                glass_width[id - 11] = 0;
+                glass_height[id - 11] = 0;
+            }
             free(drag_pixels[id]);
             drag_pixels[id] = NULL;
             fvm_path_destroy(text_paths[id]);
@@ -1247,7 +1560,8 @@ static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
     int top = (int)item->y - (int)offset;
     int x;
     int y;
-    if (tablezoom != 100 || item->id > 8 || item->parent != 1 || !pixels ||
+    if (tablezoom != 100 || tablepan != 0 || camera_motion.active || item->id > 8 || motions[item->id].active ||
+        item->parent != 1 || !pixels ||
         (key->style != item->style &&
          !((item->style == 5 && key->style == 1) || (item->style == 6 && key->style == 0))) ||
         key->width != item->width || key->height != item->height || key->size != item->size ||
@@ -1273,7 +1587,7 @@ static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
             unsigned int channel;
             int dx = x < 7 ? 7 - x : (x >= (int)item->width - 7 ? x - ((int)item->width - 8) : 0);
             int dy = y < 7 ? 7 - y : (y >= (int)item->height - 7 ? y - ((int)item->height - 8) : 0);
-            if (item->x + x >= surface->width || (dx && dy && dx * dx + dy * dy > 49))
+            if (item->x + x < 0 || item->x + x >= (long)surface->width || (dx && dy && dx * dx + dy * dy > 49))
             {
                 continue;
             }
@@ -1294,7 +1608,7 @@ static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
         printf("DRAGCACHE %lu %lu\n", ticket, item->id);
         printf(
             "GEOMETRY %lu %lu %lu %lu %lu %lu\n", ticket, item->id, item->width, item->height, item->style, item->line);
-        printf("MC %lu %lu %lu %lu %d ", ticket, item->id, item->parent, item->x, top);
+        printf("MC %lu %lu %lu %ld %d ", ticket, item->id, item->parent, item->x, top);
         for (byte = 0; byte < item->size; ++byte)
         {
             printf("%02x", (unsigned char)item->text[byte]);
@@ -1314,7 +1628,8 @@ static void remember_window(const DeskItem *item, const FVM_RasterSurface *surfa
     unsigned char *pixels;
     unsigned int y;
     size_t size;
-    if (tablezoom != 100 || item->id > 8 || item->parent != 1 || top < 48 || item->x + item->width > surface->width ||
+    if (tablezoom != 100 || tablepan != 0 || camera_motion.active || item->id > 8 || item->parent != 1 || top < 48 ||
+        item->x < 0 || motions[item->id].active || item->x + item->width > surface->width ||
         top + item->height > surface->height)
     {
         return;
@@ -1363,11 +1678,15 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
     {
         unsigned char *behind = NULL;
         DeskItem *item = &items[index];
+        if (item->id >= 30 && item->id <= 37 && motions[item->id - 29].active)
+        {
+            continue;
+        }
         if (drag_image(item, surface))
         {
             continue;
         }
-        if (item->id <= 8 && (item->style == 5 || item->style == 6))
+        if (item->id <= 8 && (motions[item->id].active || item->style == 5 || item->style == 6))
         {
             behind = malloc(surface->stride * surface->height);
             if (!behind)
@@ -1394,6 +1713,11 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
             int left;
             int right;
             int bottom;
+            if ((item->id <= 8 && motions[item->id].active) ||
+                (item->id >= 30 && item->id <= 37 && motions[item->id - 29].active))
+            {
+                continue;
+            }
             if (!world_matrix(clips[item->id], item->parent, &world))
             {
                 free(behind);
@@ -1461,7 +1785,11 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
     for (index = 0; index < received && ok; ++index)
     {
         DeskItem *item = &items[index];
-        int translucent = item->id <= 8 && (item->style == 5 || item->style == 6);
+        if (item->id >= 30 && item->id <= 37 && motions[item->id - 29].active)
+        {
+            continue;
+        }
+        int translucent = item->id <= 8 && (motions[item->id].active || item->style == 5 || item->style == 6);
         FVM_Affine world;
         int left = 0;
         int top = 0;
@@ -1469,9 +1797,20 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
         int bottom = 0;
         if (translucent)
         {
-            double zoom = tablezoom / 100.0;
-            double x = item->x * zoom + 84 * (1 - zoom);
-            double y = item->y * zoom + 48 * (1 - zoom) - offset;
+            double zoom;
+            double pan;
+            double scroll;
+            double x;
+            double y;
+            double scale = 1;
+            camera_view(&zoom, &pan, &scroll);
+            x = item->x * zoom + 84 * (1 - zoom) + pan;
+            y = item->y * zoom + 48 * (1 - zoom) - scroll;
+            if (motions[item->id].active)
+            {
+                motion_sample(&motions[item->id], &x, &y, &scale);
+                zoom = scale;
+            }
             left = (int)floor(x);
             top = (int)floor(y);
             right = (int)ceil(x + item->width * zoom);
@@ -1508,7 +1847,7 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
 int dvm_desktop_header(double x, double y)
 {
     unsigned int ordinal;
-    if (!active || pending || !isfinite(x) || !isfinite(y) || y < 48)
+    if (!active || pending || camera_motion.active || !isfinite(x) || !isfinite(y) || y < 48)
     {
         return 0;
     }
@@ -1516,6 +1855,11 @@ int dvm_desktop_header(double x, double y)
     {
         DeskItem *item = &items[ordinal - 1];
         FVM_Affine world;
+        if ((item->id <= 8 && motions[item->id].active) ||
+            (item->id >= 30 && item->id <= 37 && motions[item->id - 29].active))
+        {
+            continue;
+        }
         if (!world_matrix(clips[item->id], item->parent, &world))
         {
             return 0;
@@ -1535,7 +1879,6 @@ int dvm_desktop_active(void)
 {
     return active;
 }
-
 
 unsigned long dvm_desktop_ticket(void)
 {
@@ -1572,4 +1915,12 @@ void dvm_desktop_destroy(void)
     memset(labels, 0, sizeof(labels));
     memset(visible, 0, sizeof(visible));
     memset(items, 0, sizeof(items));
+    memset(&camera_motion, 0, sizeof(camera_motion));
+    tablepan = 0;
+    reveal_epoch = 0;
+    memset(glass_width, 0, sizeof(glass_width));
+    memset(glass_height, 0, sizeof(glass_height));
+    memset(motions, 0, sizeof(motions));
+    memset(previous_present, 0, sizeof(previous_present));
+    memset(previous_windows, 0, sizeof(previous_windows));
 }

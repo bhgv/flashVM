@@ -108,7 +108,7 @@ init()
     }
     windows[0] = panes->start(panes->Editor, path, source);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Drag to the left edge to minimize. Tap/swipe a miniature right to restore; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debugger sessions are not attached in this shell yet.");
     windows[3] = panes->start(panes->Editor, "", "");
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -176,7 +176,7 @@ init()
             count++;
         }
         send(codec, output, desk->BeginView, 0, width, height,
-             codec->hexword(view.ticket) + codec->hexword(count) + codec->hexword(view.scroll) + codec->hexword(view.zoom));
+             codec->hexword(view.ticket) + codec->hexword(count) + codec->hexword(view.scroll) + codec->hexword(view.zoom) + codec->hexword(view.pan) + codec->hexword(view.reveal));
         for (index = 0; index < len view.items; index++) {
             item := view.items[index];
             metadata := codec->hexword(item.parent) + codec->hexword(item.x) + codec->hexword(item.y)
@@ -214,6 +214,10 @@ init()
         if ((event.kind == codec->Key && (event.flags < 0 || event.flags > 1 || event.code < 1 || event.code > 255)) ||
             (event.kind == codec->Focus && (event.flags < 0 || event.flags > 1))) {
             raise "fail: desktop input flags";
+        }
+        if (event.kind == codec->Request && event.code == desk->AnimationClock) {
+            # Only presentation time advances; preserve document/gesture owners.
+            continue;
         }
         if (pointing != 0 && !(event.kind == codec->Request && event.code == desk->PointerEvent &&
                               len array of byte event.text == 32)) {

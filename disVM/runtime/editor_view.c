@@ -119,6 +119,8 @@ static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notific
 static int paint_due; /* Frame-free notification delivered, latest state may be prepared. */
 static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
 #ifdef DVM_EDITOR_SDL
+static Uint32 desktop_animation_clock; /* Last native visual-clock sample; independent of SWF frames. */
+static int desktop_animation_clock_set; /* Initial sample is not an elapsed delta. */
 static Uint32 desktop_dirty_since; /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
 #endif
 
@@ -2713,7 +2715,25 @@ int dvm_editor_event(DVM_UIMessage *message)
         return 0;
     }
 #ifdef DVM_EDITOR_SDL
-    if (desktop_dirty && paint_due &&
+    if (!events && dvm_desktop_active())
+    {
+        Uint32 now = SDL_GetTicks();
+        Uint32 elapsed = now - desktop_animation_clock;
+        if (!desktop_animation_clock_set)
+        {
+            desktop_animation_clock_set = 1;
+            desktop_animation_clock = now;
+        }
+        else if (elapsed >= 8)
+        {
+            desktop_animation_clock = now;
+            if (dvm_desktop_advance(elapsed > 1000 ? 1000 : elapsed) && !request_paint())
+            {
+                return -1;
+            }
+        }
+    }
+    if (desktop_dirty && paint_due && !raster_pending &&
         (!keyboard_waiting() || (Uint32)(SDL_GetTicks() - desktop_dirty_since) >= EDITOR_KEYBOARD_BATCH_MS))
     {
         if (!(dvm_desktop_active() ? render_desktop() : render()))
@@ -2782,6 +2802,14 @@ int dvm_editor_event(DVM_UIMessage *message)
             {
                 return -1;
             }
+        }
+        if (message->kind == DVM_UI_REQUEST && message->code == DVM_DESK_CLOCK)
+        {
+            if (message->first < 0 || message->first > 1000 || message->second != 0 || message->size)
+            {
+                return -1;
+            }
+            dvm_desktop_advance((unsigned int)message->first);
         }
         resolve_pointer(message);
         complete = 0;
@@ -3001,6 +3029,9 @@ void dvm_editor_destroy(void)
     fvm_text_layout_destroy(panel_layout);
     fvm_font_destroy(layout_font);
     dvm_desktop_destroy();
+#ifdef DVM_EDITOR_SDL
+    desktop_animation_clock_set = 0;
+#endif
     desktop_bound = 0;
     if (paint_callback)
     {

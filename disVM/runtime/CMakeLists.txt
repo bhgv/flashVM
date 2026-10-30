@@ -1321,6 +1321,10 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_workspace.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" ${mode})
     set_tests_properties(disvm_desktop_workspace_${mode} PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_desktop_glass_motion_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_glass_motion.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" ${mode})
+    set_tests_properties(disvm_desktop_glass_motion_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()
 

@@ -1,6 +1,8 @@
 implement Idedesktop;
 include "idedesktop.m";
 
+
+# Copied presentation state; document authority stays with its separate pane owner.
 Window: adt
 {
     title: string; # Immutable caption value.
@@ -48,8 +50,8 @@ position(index, width: int, window: ref Window): (int, int, int, int)
     high = high * window.zoom / 100;
     x += window.dx;
     y += window.dy;
-    if (x < 84) {
-        x = 84;
+    if (x < -2048) {
+        x = -2048;
     }
     if (x > width - 128) {
         x = width - 128;
@@ -66,10 +68,10 @@ position(index, width: int, window: ref Window): (int, int, int, int)
 
 # Project immutable table geometry into current canvas coordinates. Scroll is
 # applied by callers; source identity and normal window geometry are unchanged.
-project(index, width: int, window: ref Window, zoom: int): (int, int, int, int)
+project(index, width: int, window: ref Window, zoom, pan: int): (int, int, int, int)
 {
     (x, y, wide, high) := position(index, width, window);
-    return (84 + (x - 84) * zoom / 100, 48 + (y - 48) * zoom / 100,
+    return (84 + (x - 84) * zoom / 100 + pan, 48 + (y - 48) * zoom / 100,
             wide * zoom / 100, high * zoom / 100);
 }
 
@@ -109,6 +111,77 @@ move(window: ref Window, dx, dy: int)
 }
 
 
+# Reveal a borrowed logical pane by moving only the viewport. Return copied
+# scroll/zoom/pan values; normal window offsets and source owners stay unchanged.
+# Oversized panes reduce the whole-table zoom only enough to fit both dimensions.
+restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int, int, int)
+{
+    window.hidden = 0;
+    (originx, originy, wide, high) := position(index, width, window);
+    # Keep one spare pixel for fractional transforms and round exposed bounds
+    # outward; integer truncation must not hide a sliver beneath a rail.
+    fit := (width - 195) * 100 / wide;
+    vertical := (height - 54) * 100 / high;
+    if (vertical < fit) {
+        fit = vertical;
+    }
+    if (zoom > fit) {
+        zoom = fit;
+    }
+    if (zoom < 10) {
+        zoom = 10;
+    }
+    horizontal := 8400 + (originx - 84) * zoom + pan * 100;
+    left := horizontal / 100;
+    if (horizontal < 0) {
+        left = (horizontal - 99) / 100;
+    }
+    if (left < 85) {
+        delta := 85 - left;
+        pan += delta;
+        horizontal += delta * 100;
+    }
+    right := (horizontal + wide * zoom + 99) / 100;
+    if (right > width - 109) {
+        pan -= right - (width - 109);
+    }
+    verticalposition := 4800 + (originy - 48) * zoom - scroll * 100;
+    top := verticalposition / 100;
+    if (verticalposition < 0) {
+        top = (verticalposition - 99) / 100;
+    }
+    if (top < 48) {
+        targettop := 72;
+        if ((high * zoom + 99) / 100 > height - 77) {
+            targettop = 48;
+        }
+        scroll += top - targettop;
+    } else {
+        bottom := (verticalposition + high * zoom + 99) / 100;
+        if (bottom > height - 5) {
+            scroll += bottom - (height - 5);
+        }
+    }
+    return (scroll, zoom, pan);
+}
+
+
+# Dock only after the right edge leaves at most20 physical pixels beyond the
+# left rail. Keep pre-drag normal offsets for restoration. Return one if docked;
+# no source owner is closed, moved or blocked by this presentation decision.
+dock(window: ref Window, index, width, zoom, pan, dx, dy: int): int
+{
+    (left, unused, wide, unusedhigh) := project(index, width, window, zoom, pan);
+    if (window.maximized || left + wide > 100) {
+        return 0;
+    }
+    window.hidden = 1;
+    window.dx = dx;
+    window.dy = dy;
+    return 1;
+}
+
+
 # Map a bounded paint/hit ordinal to a stable slot; focused windows come last.
 # Missing slots are skipped by callers. This keeps overlapping hit order equal
 # to actual MovieClip paint order without changing a document's identity.
@@ -130,7 +203,7 @@ stackslot(order, focus: int): int
 # Admit a text-body identity from copied pixels in the same paint/hit order.
 # Borrowed windows contain presentation only. Return zero for rails, headers,
 # opaque scrolls and no hit; source kind/revision/ranges stay with the pane owner.
-texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y, zoom: int): int
+texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y, zoom, pan: int): int
 {
     if (x < 80 || x >= width - 104 || y < 48 || y >= height) {
         return 0;
@@ -148,7 +221,7 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
         if (windows[index] == nil || windows[index].hidden) {
             continue;
         }
-        (x0, y0, wide, high) := project(index, width, windows[index], zoom);
+        (x0, y0, wide, high) := project(index, width, windows[index], zoom, pan);
         y0 -= scroll;
         if (x >= x0 && x < x0 + wide && y >= y0 && y < y0 + high) {
             target = 0;
@@ -269,6 +342,8 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
 serve(requests: chan of Request)
 {
     deskzoom := 100;
+    deskpan := 0; # Physical horizontal viewport translation; window coordinates stay persistent.
+    reveal := 0; # Changes only for explicit thumbnail/Select viewport reveal proposals.
     zooming := 0; # Transient table-wide opacity, cleared on release/cancel.
     windows := array[MaxWindows] of ref Window;
     thumbnails := array[MaxWindows] of int;
@@ -374,7 +449,7 @@ serve(requests: chan of Request)
             } else if (request.operation == TextHit) {
                 status = Conflict;
                 if (request.ticket == ticket && request.window >= 1 && request.window <= MaxWindows &&
-                    texttarget(windows, width, height, scroll, focus, drawer, request.x, request.y, deskzoom) == request.window) {
+                    texttarget(windows, width, height, scroll, focus, drawer, request.x, request.y, deskzoom, deskpan) == request.window) {
                     status = Ok;
                 }
             } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
@@ -391,9 +466,11 @@ serve(requests: chan of Request)
                 thumbdrag = -1;
                 pressed = 0;
                 focus = request.window;
-                windows[focus - 1].hidden = 0;
-                (unused, top, unusedwide, unusedheight) := project(focus - 1, width, windows[focus - 1], deskzoom);
-                scroll = top - 72;
+                (scroll, deskzoom, deskpan) = restore(windows[focus - 1], focus - 1, width, height, scroll, deskzoom, deskpan);
+                if (reveal == 2147483647) {
+                    raise "fail: desktop reveal epoch exhausted";
+                }
+                reveal++;
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Tool && request.window >= 0 && request.window <= MaxNorm) {
@@ -446,7 +523,7 @@ serve(requests: chan of Request)
                             if (obscured || windows[index] == nil || windows[index].hidden) {
                                 continue;
                             }
-                            (left, top, wide, high) := project(index, width, windows[index], deskzoom);
+                            (left, top, wide, high) := project(index, width, windows[index], deskzoom, deskpan);
                             top -= scroll;
                             if (x >= left && x < left + wide && y >= top && y < top + high) {
                                 target = 0;
@@ -465,6 +542,7 @@ serve(requests: chan of Request)
                             changed = 1;
                         }
                         if (target != 0 && phase == 6) {
+                            deskpan = 0;
                             maximize(windows[target - 1], width, height, scroll, deskzoom);
                             focus = target;
                             action = Focus;
@@ -526,9 +604,11 @@ serve(requests: chan of Request)
                         } else if (x >= width - 104 && y >= 56) {
                             tool := (y - 56) / 32 + 1;
                             if (tool == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
+                                deskpan = 0;
                                 maximize(windows[focus - 1], width, height, scroll, deskzoom);
                                 drawer = 0;
                             } else if (tool == ShowAll) {
+                                minimumleft := 84;
                                 right := 85;
                                 bottom := 49;
                                 for (slot := 0; slot < len windows; slot++) {
@@ -537,6 +617,9 @@ serve(requests: chan of Request)
                                     }
                                     windows[slot].hidden = 0;
                                     (left, top, wide, high) := position(slot, width, windows[slot]);
+                                    if (left < minimumleft) {
+                                        minimumleft = left;
+                                    }
                                     if (left + wide > right) {
                                         right = left + wide;
                                     }
@@ -544,7 +627,7 @@ serve(requests: chan of Request)
                                         bottom = top + high;
                                     }
                                 }
-                                deskzoom = (width - 196) * 100 / (right - 84);
+                                deskzoom = (width - 196) * 100 / (right - minimumleft);
                                 vertical := (height - 60) * 100 / (bottom - 48);
                                 if (vertical < deskzoom) {
                                     deskzoom = vertical;
@@ -556,6 +639,7 @@ serve(requests: chan of Request)
                                     deskzoom = 180;
                                 }
                                 scroll = 0;
+                                deskpan = 85 - (84 + (minimumleft - 84) * deskzoom / 100);
                                 drawer = 0;
                             } else if (tool == Help && windows[2] != nil) {
                                 windows[2].hidden = !windows[2].hidden;
@@ -588,7 +672,7 @@ serve(requests: chan of Request)
                                 if (fingers == 3 || windows[index] == nil || windows[index].hidden) {
                                     continue;
                                 }
-                                (left, top, wide, high) := project(index, width, windows[index], deskzoom);
+                                (left, top, wide, high) := project(index, width, windows[index], deskzoom, deskpan);
                                 top -= scroll;
                                 if (x >= left && x < left + wide && y >= top && y < top + high) {
                                     pressed = index + 1;
@@ -623,10 +707,12 @@ serve(requests: chan of Request)
                             }
                             slot := thumbnails[thumbdrag];
                             if (x - startx > 32) {
-                                windows[slot].hidden = 0;
+                                (scroll, deskzoom, deskpan) = restore(windows[slot], slot, width, height, scroll, deskzoom, deskpan);
+                                if (reveal == 2147483647) {
+                                    raise "fail: desktop reveal epoch exhausted";
+                                }
+                                reveal++;
                                 focus = slot + 1;
-                                (unused, top, unusedwide, unusedheight) := project(slot, width, windows[slot], deskzoom);
-                                scroll = top - 72;
                                 action = Focus;
                             }
                             while (thumbdrag < rank) {
@@ -649,6 +735,18 @@ serve(requests: chan of Request)
                         if (x - startx > 8 || startx - x > 8 || y - starty > 8 || starty - y > 8) {
                             pressed = 0;
                         }
+                        if (moving != 0 && dock(windows[moving - 1], moving - 1, width, deskzoom, deskpan, windowx, windowy)) {
+                            moving = 0;
+                            pressed = 0;
+                            focus = 0;
+                            for (slot := 0; slot < len windows; slot++) {
+                                if (windows[slot] != nil && !windows[slot].hidden) {
+                                    focus = slot + 1;
+                                    break;
+                                }
+                            }
+                            action = Focus;
+                        }
                         changed = 1;
                     } else {
                         zooming = 0;
@@ -661,7 +759,7 @@ serve(requests: chan of Request)
                             pressed = 0;
                         }
                         if (pressed < 0) {
-                            (left, top, wide, high) := project(-pressed - 1, width, windows[-pressed - 1], deskzoom);
+                            (left, top, wide, high) := project(-pressed - 1, width, windows[-pressed - 1], deskzoom, deskpan);
                             top -= scroll;
                             if (x < left + wide - 30 * deskzoom / 100 || x >= left + wide || y < top || y >= top + 24 * deskzoom / 100) {
                                 pressed = 0;
@@ -669,15 +767,14 @@ serve(requests: chan of Request)
                         }
                         if (thumbdrag >= 0 && pressed > 0) {
                             focus = pressed;
-                            windows[focus - 1].hidden = 0;
-                            (unused, top, unusedwide, unusedheight) := project(focus - 1, width, windows[focus - 1], deskzoom);
-                            scroll = top - 72;
+                            (scroll, deskzoom, deskpan) = restore(windows[focus - 1], focus - 1, width, height, scroll, deskzoom, deskpan);
+                            if (reveal == 2147483647) {
+                                raise "fail: desktop reveal epoch exhausted";
+                            }
+                            reveal++;
                             action = Focus;
                         }
-                        if (moving != 0 && !windows[moving - 1].maximized && x <= 80) {
-                            windows[moving - 1].hidden = 1;
-                            windows[moving - 1].dx = windowx;
-                            windows[moving - 1].dy = windowy;
+                        if (moving != 0 && dock(windows[moving - 1], moving - 1, width, deskzoom, deskpan, windowx, windowy)) {
                             moving = 0;
                             pressed = 0;
                             focus = 1;
@@ -715,6 +812,20 @@ serve(requests: chan of Request)
             pressed = 0;
         }
         maximum := 72 + 9 * 288 - height;
+        for (slot := 0; slot < len windows; slot++) {
+            if (windows[slot] != nil) {
+                (unused, bottom, unusedwide, high) := project(slot, width, windows[slot], deskzoom, deskpan);
+                if (bottom + high - height + 5 > maximum) {
+                    maximum = bottom + high - height + 5;
+                }
+            }
+        }
+        if (deskpan < -4096) {
+            deskpan = -4096;
+        }
+        if (deskpan > 4096) {
+            deskpan = 4096;
+        }
         if (scroll < 0) {
             scroll = 0;
         }
@@ -728,7 +839,7 @@ serve(requests: chan of Request)
             ticket++;
         }
         request.reply <-= Reply(request.id, status, ticket, scroll, focus, drawer, action,
-                                deskzoom, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails));
+                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails));
         if (stop) {
             return;
         }

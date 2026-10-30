@@ -2,10 +2,11 @@
 Idedesktop: module
 {
     PATH: con "idedesktop.dis"; # Matched layout/gesture implementation.
-    BeginView: con 65569; # width/height, ticket/count/scroll/table-scale metadata.
+    BeginView: con 65569; # width/height, ticket/count/scroll/table-scale/pan/reveal metadata.
     ItemView: con 65570; # Stable MovieClip ID and copied descriptor.
     EndView: con 65571; # Complete the exact declared scene.
     PointerEvent: con 65572; # Pixel/phase proposal carrying the completed view ticket.
+    AnimationClock: con 65574; # Bounded replay visual-clock acknowledgement; no layout/source mutation.
     ResizeEvent: con 65573; # Ticket-bound native canvas proposal.
     MaxWindows: con 8; # Bounded independent window processes in this first shell.
     View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Activate, TextHit, Shutdown: con iota; # FIFO operations.
@@ -34,7 +35,7 @@ Idedesktop: module
         id: int; # Stable local MovieClip slot, 1..63; never a native object address.
         parent: int; # 0 stage, 1 scrolling table, 2 left rail, 3 right rail, 4 overlay.
         mirror: int; # Zero, or the source window ID for a live scaled MovieClip view.
-        x: int; # Parent-local pixels.
+        x: int; # Signed parent-local pixels; negative windows can pass under the left rail.
         y: int; # Parent-local pixels, before table translation.
         width: int; # Positive local width.
         height: int; # Positive local height.
@@ -54,6 +55,8 @@ Idedesktop: module
         drawer: int; # Expanded tool or zero.
         action: int; # Tool/Focus/CloseEditor/CancelClose proposal; zero otherwise.
         zoom: int; # Uniform table MovieClip scale, 10..180 percent.
+        pan: int; # Signed physical horizontal viewport translation, -4096..4096 pixels.
+        reveal: int; # Explicit reveal epoch; visual interpolation never changes source geometry.
         items: array of ref Item; # Independent scene values for MovieClip presentation.
     };
 
