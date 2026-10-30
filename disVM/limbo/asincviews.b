@@ -87,6 +87,9 @@ notification(state: ref State, index: int, cell: ref Cell): int
 # Receiving never marks a view dirty, so no artificial echo is published later.
 receive(state: ref State, index: int, cell: ref Cell)
 {
+    if (state.cells[index] == cell) {
+        return;
+    }
     if (notification(state, index, cell)) {
         events := array[len state.events + 1] of Event;
         events[0:] = state.events;
