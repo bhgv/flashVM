@@ -1317,6 +1317,10 @@ endif()
 # Exercise normalized gestures against actual Dis policy and MovieClip pixels.
 if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
   foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_focus_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_focus.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" ${mode})
+    set_tests_properties(disvm_desktop_focus_${mode} PROPERTIES TIMEOUT 120)
     add_test(NAME disvm_desktop_workspace_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_workspace.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf" ${mode})

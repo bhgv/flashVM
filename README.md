@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1690**. [Русская версия](README.ru.md).
+Development version: **0.1691**. [Русская версия](README.ru.md).
 
-Current series: [v0.1690](docs/releases/v0.1690.md): FIR0.69 typed conversion facts, collector exception roots and generated native-layout audit.
+Current series: [v0.1691](docs/releases/v0.1691.md): fix nil-owner sends after closing Editor1 and hiding Help.
 
 ## Browse documentation
 

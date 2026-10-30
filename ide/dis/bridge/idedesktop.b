@@ -811,6 +811,11 @@ serve(requests: chan of Request)
             thumbdrag = -1;
             pressed = 0;
         }
+        admittedfocus := livefocus(windows, focus);
+        if (admittedfocus != focus) {
+            focus = admittedfocus;
+            changed = 1;
+        }
         maximum := 72 + 9 * 288 - height;
         for (slot := 0; slot < len windows; slot++) {
             if (windows[slot] != nil) {
@@ -844,6 +849,33 @@ serve(requests: chan of Request)
             return;
         }
     }
+}
+
+
+# Resolve focus to an existing owner descriptor. Prefer the current visible pane,
+# then another visible pane; if all are hidden, retain an existing hidden owner.
+# Return0 only for an empty registry. Borrow descriptors; never restore/move/edit
+# a document while correcting focus after Remove, docking or Help toggling.
+livefocus(windows: array of ref Window, preferred: int): int
+{
+    if (preferred >= 1 && preferred <= len windows && windows[preferred - 1] != nil &&
+        !windows[preferred - 1].hidden) {
+        return preferred;
+    }
+    for (index := 0; index < len windows; index++) {
+        if (windows[index] != nil && !windows[index].hidden) {
+            return index + 1;
+        }
+    }
+    if (preferred >= 1 && preferred <= len windows && windows[preferred - 1] != nil) {
+        return preferred;
+    }
+    for (index = 0; index < len windows; index++) {
+        if (windows[index] != nil) {
+            return index + 1;
+        }
+    }
+    return 0;
 }
 
 
