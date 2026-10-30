@@ -43,9 +43,8 @@ not an ABC implementation. No new SWF/Dis64 IDs or calling ABI are assigned.
 
 A declaration marks invocation as frame-independent; defining the function does
 not execute its body. A block posts work when reached. Invocation preserves
-arguments, `this` and the lexical environment. Captured mutable variables need
-shared rooted environment cells on the owning VM, not snapshots silently
-substituted for lambda semantics. Returning from a posted body must not return
+arguments, `this` and the lexical environment. Captured bindings have rooted, versioned per-task views, following the explicit
+snapshot/publication contract below. This replaces the earlier shared-cell proposal. Returning from a posted body must not return
 from the surrounding function. Task result/error/cancellation representation and
 escape/type checking require dedicated FIR/optimizer/backend work.
 
@@ -84,3 +83,40 @@ build/workspace/disvm-editor/disvm_frame_free_drawing_test
 
 [Commented source fixtures](examples/asinc/README.md) explain parser-only use and
 explicit executable-profile refusal.
+
+## Captured views and remote changes (agreed direction; implementation pending)
+
+Each captured binding has a stable identity, not the identity of a boxed primitive.
+Tasks retain rooted environments after the declaring function returns. Each task
+and the frame owner see independent versions; unchanged storage is shared through
+copy-on-write. Objects/arrays require nested-write tracking and alias-preserving
+versions, not merely copied top-level pointers.
+
+Before frame code begins, publish task-originated dirty bindings into the frame
+view. After frame computation, publish frame-originated dirty bindings into task
+views. Transfer only changes since the last publication in that direction.
+Receiving a version does not create a new local write or echo it back. Publication
+must preserve task writes made while frame computation runs. Concurrent writes
+to the same binding/path require an explicit conflict policy; none is selected
+here. Frame-independent execution and drawing continue between these boundaries;
+an equivalent explicit boundary is still needed for hosts without frames.
+
+The requested binding intrinsic is `variable.onChangeVarAsinc(callback)`.
+It observes changes published by another asinc/task/thread, including primitive
+bindings. The compiler resolves the binding before ordinary property lookup;
+this is not a method attached to a number or a getter/setter on every object.
+Callbacks are delivered on the subscriber owner queue after publication, outside
+internal locks, independently of frame rendering. They do not execute on the
+writer thread or recursively inside assignment. Own writes and unchanged echoed
+versions do not trigger this remote-change notification.
+
+Proposed event payload: binding identity, source stable task ID (and optional
+thread ID), previous/new published values, publication version. Proposed inspection
+operation returns a detached read-only map: `key: id_asinc/tid, value: var_val`.
+The exact inspection method name and subscription cancellation handle remain to
+be chosen. Stable task identity must distinguish reused OS thread IDs. Snapshots
+expose coherent last-published values, never live cross-thread heap pointers or
+unpublished partial writes. Whether every intermediate local assignment must be
+retained as an event is not agreed: publication events alone do not promise that.
+Lifetime, unsubscribe, task retirement and retained snapshot roots need explicit
+runtime ownership. This API and capture synchronization are not executable yet.
