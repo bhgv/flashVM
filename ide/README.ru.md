@@ -124,3 +124,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Native compiler jobs / Библиотечные сборки на Dis](COMPILER-SERVICE.md) · [Русский](COMPILER-SERVICE.ru.md): actual Coco/R/FIR/SWL libraries, revision-bound workspace worker, copied diagnostics and artifacts. F7 Build/F8 diagnostics now use the portable revision-bound panel; Run/Debug remain future work.
 
 [Мышиная каретка и выделение](DESKTOP-POINTER.ru.md).
+
+[Glass rails, docking and smooth whole-table reveal / Матовые панели и плавный показ окна целиком](DESKTOP-GLASS-MOTION.ru.md).

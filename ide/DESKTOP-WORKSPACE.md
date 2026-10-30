@@ -76,3 +76,5 @@ from the same pointer/contact. Every key, button release, focus transition or
 other contact identity stops that pass. This avoids replaying stale movement
 through a frame backlog. The native SDL event-queue check proves that release
 ordering is retained. Release coordinates are applied to the final window offset.
+
+[Glass rails, docking and smooth whole-table reveal / Матовые панели и плавный показ окна целиком](DESKTOP-GLASS-MOTION.md).

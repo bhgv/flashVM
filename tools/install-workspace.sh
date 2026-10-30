@@ -521,6 +521,8 @@ EOF
             copy_file "$ROOT/ide/dis/bridge/idedeskclip.b" "$destination/source/idedeskclip.b"
             copy_file "$ROOT/ide/DESKTOP-WORKSPACE.md" "$destination/DESKTOP-WORKSPACE.md"
             copy_file "$ROOT/ide/DESKTOP-WORKSPACE.ru.md" "$destination/DESKTOP-WORKSPACE.ru.md"
+            copy_file "$ROOT/ide/DESKTOP-GLASS-MOTION.md" "$destination/DESKTOP-GLASS-MOTION.md"
+            copy_file "$ROOT/ide/DESKTOP-GLASS-MOTION.ru.md" "$destination/DESKTOP-GLASS-MOTION.ru.md"
             copy_file "$ROOT/ide/DESKTOP-CLIPBOARD.md" "$destination/DESKTOP-CLIPBOARD.md"
             copy_file "$ROOT/ide/DESKTOP-CLIPBOARD.ru.md" "$destination/DESKTOP-CLIPBOARD.ru.md"
             copy_tree "$ROOT/ide/dis/examples/desktop-clipboard" "$destination/examples/desktop-clipboard"
