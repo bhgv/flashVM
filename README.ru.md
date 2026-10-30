@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1687**. [English](README.md).
+Версия разработки: **0.1688**. [English](README.md).
 
-Текущая серия: [v0.1687](docs/releases/v0.1687.md): переносы и заёмы FIR, точные арифметические факты, SWF/Dis, C99 SDK и прямое согласование Dis64.
+Текущая серия: [v0.1688](docs/releases/v0.1688.md): матовые панели IDE, S-анимация и показ окна целиком, FIR big.neg и scheduler Dis64.
 
 ## Просмотр документации
 

@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1687**. [Русская версия](README.ru.md).
+Development version: **0.1688**. [Русская версия](README.ru.md).
 
-Current series: [v0.1687](docs/releases/v0.1687.md): FIR carry/borrow facts, exact arithmetic results, SWF/Dis, C99 SDK and direct Dis64 coordination.
+Current series: [v0.1688](docs/releases/v0.1688.md): IDE glass rails and smooth whole-table reveal, FIR big.neg facts and connected Dis64 scheduler acceptance.
 
 ## Browse documentation
 
