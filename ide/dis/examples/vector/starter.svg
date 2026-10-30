@@ -1,5 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This file demonstrates the exact1000 by600 logical authoring page. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+  <!-- Blue quadratic curve: one unfilled path, with an explicit release line. -->
   <path fill="none" stroke="#245ac4" stroke-width="12" d="M 100 120 Q 200 280 350 160 Q 500 40 700 220 L 850 180 "/>
+  <!-- Red fill-only rectangle: x/y name its upper-left corner. -->
   <rect x="120" y="340" width="260" height="160" fill="#e04444"/>
+  <!-- Green unfilled ellipse: centre and radii are logical document units. -->
   <ellipse cx="650" cy="420" rx="140" ry="90" fill="none" stroke="#229955" stroke-width="12"/>
 </svg>

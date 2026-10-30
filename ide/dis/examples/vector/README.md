@@ -17,8 +17,9 @@ In the installed package use its `examples/vector/starter.svg` instead. The `.sv
 suffix selects a real vector owner on startup. Its editor window and thumbnail
 render the same actual MovieClip paths.
 
-`starter.svg` deliberately contains no XML comments because the first strict
-importer rejects comments. Here is the complete explanation of its source:
+`starter.svg` now includes an XML1.0 UTF-8 declaration and explanatory comments.
+The v0.1697 reader accepts them as non-rendering metadata and omits them during
+canonical Save. Here is the complete explanation of its drawing source:
 
 - `svg` declares the standard namespace and a1000×600 logical viewBox, matching
   the model. Width/height do not depend on the current desktop/window scale.

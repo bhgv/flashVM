@@ -115,6 +115,33 @@ init()
     dot.width = 0;
     require(vector->pointer(dot, 1, 20, 20) == vector->Invalid && len dot.points == 0,
             "invalid authoring style refused atomically");
+    # Limbo strings hold Unicode scalars; the BOM is one U+FEFF, not three bytes.
+    metadata := "";
+    metadata[len metadata] = 16rfeff;
+    metadata += "<?xml version='1.0' encoding='UTF-8'?><!-- drawing π -->"
+        + "<svg width='1000.0' height='600.000' viewBox='0  0 1000.0 600'>"
+        + "<!-- leaf --><rect x='10.0' y='20.00' width='30.000' height='40' fill='#ff0000'/></svg><!-- done -->";
+    (status, loaded) = vector->parse(metadata);
+    require(status == vector->Ok && len loaded.shapes == 1 && loaded.shapes[0].nodes[0].x == 10,
+            "BOM, UTF8 declaration, comments and exact zero fractions preserve geometry");
+    (status, loaded) = vector->parse("<svg/>");
+    require(status == vector->Ok && len loaded.shapes == 0, "self-closing empty canvas");
+    invalidmeta := array[] of {"<!-- bad -- comment --><svg/>", "<!-- unterminated<svg/>",
+        "<?xml version='1.0' encoding='ISO-8859-1'?><svg/>", "<?xml version='1.1'?><svg/>",
+        "<!-- prefix --><?xml version='1.0'?><svg/>", "<svg><!-- open</svg>",
+        "<svg><path d='M 0 0 L 1.1 2'/></svg>",
+        "<svg><path d='M 0 0 L 1<!-- not path trivia --> 2'/></svg>"};
+    for (i = 0; i < len invalidmeta; i++) {
+        (status, loaded) = vector->parse(invalidmeta[i]);
+        require(status != vector->Ok && loaded == nil, "invalid metadata or lossy geometry refused atomically");
+    }
+    utf8 := array[66000] of byte;
+    for (i = 0; i < len utf8; i += 2) {
+        utf8[i] = byte 16rce;
+        utf8[i+1] = byte 16ra9;
+    }
+    (status, loaded) = vector->parse("<!--" + string utf8 + "--><svg/>");
+    require(status == vector->Limit && loaded == nil, "SVG byte quota includes multibyte comment metadata");
     crowded := vector->create();
     crowded.tool = vector->Rectangle;
     for (i = 0; i < vector->MaxShapes; i++) {

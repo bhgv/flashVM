@@ -3,7 +3,7 @@
 [Русский](VECTOR-EDITOR.ru.md) · [Entry points](ENTRYPOINTS.md) ·
 [Desktop](DESKTOP-WORKSPACE.md) · [Example](dis/examples/vector/README.md)
 
-Implemented in v0.1696: a new independently owned vector document type inside
+Implemented in v0.1696; SVG interoperability extended in v0.1697: a new independently owned vector document type inside
 menu **8**, the existing MovieClip IDE. Click **Draw** on the right, or press
 **Ctrl+Shift+N**. Each command creates another MDI window, up to the existing
 combined eight-window limit. Text editors, vector documents, Help and console
@@ -79,18 +79,23 @@ The first importer deliberately accepts a **strict subset**, not arbitrary SVG:
 
 - One `svg` root, optional standard xmlns, width1000, height600 and
   viewBox=`0 0 1000 600` (omitted dimensions use that same logical page).
+  A self-closing empty root is accepted too.
+- Optional UTF-8 BOM, XML1.0 declaration with UTF-8 encoding/standalone metadata,
+  and well-formed inter-element XML comments. These non-rendering annotations
+  are normalized away by canonical Save; they never execute/load resources.
 - Self-closing `path`, `rect`, `ellipse`, `line` elements, with unique quoted
   supported attributes and whitespace between attributes.
 - Absolute explicit `M`, `L`, `Q`, `Z` path commands, one subpath, integer
-  coordinates inside the page. Each repeated segment needs its command letter;
-  separators are whitespace. No fractional/exponent/relative/comma shorthand.
+  coordinates inside the page. Exactly integral decimals such as100.000 are
+  accepted without rounding. Each repeated segment needs its command letter;
+  separators are whitespace. No nonzero fraction/exponent/relative/comma shorthand.
 - RGB colours `#rrggbb` or `none`; fill and stroke must share the same RGB when
   both are present. Default fill is black, default stroke absent. Stroke width
   is 1..32; fill-only paths disable their native stroke.
 - For primitives: x/y/width/height, cx/cy/rx/ry, or x1/y1/x2/y2 respectively.
 
-Unsupported elements/attributes, XML declarations/comments/DOCTYPE/entities,
-CSS, transforms, different fill/stroke colours, arbitrary viewBoxes, fractional
+Unsupported elements/attributes, DOCTYPE/entities/unknown processing instructions,
+CSS, transforms, different fill/stroke colours, arbitrary viewBoxes, nonintegral
 numbers, cubic/arc commands and extra subpaths are **rejected transactionally**.
 They are not silently dropped or converted. This prevents an apparently successful
 read/save from losing unsupported artwork. The SVG reader is a bounded data-format
@@ -108,7 +113,7 @@ original in-memory artwork remains available for another Save.
 ## Bounds and presentation protocol
 
 Limits are local resource policy, not SVG/Dis64 wire requirements:32 paths,
-64 commands/path,512 commands/document,64 KiB source input. Authoring reserves
+64 commands/path,512 commands/document,64 KiB UTF-8 source input including metadata. Authoring reserves
 64 commands before starting another gesture; it may conservatively refuse before
 all512 are consumed. Each complete drawing stream is at most21,512 ASCII bytes.
 

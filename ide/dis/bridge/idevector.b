@@ -316,8 +316,46 @@ space(r: ref Reader)
 }
 
 
-# Read one unsigned decimal integer <=4096. No truncation, exponent or implicit
-# malformed-number acceptance; unsupported fractional geometry is rejected.
+# Skip inter-element XML whitespace/comments only. Comment contents are discarded
+# as non-rendering metadata; internal double hyphens, invalid scalars and missing
+# terminators reject the document. This helper is never used inside path data.
+xmlspace(r: ref Reader)
+{
+    for (;;) {
+        space(r);
+        if (r.bad || r.at + 4 > len r.text || r.text[r.at:r.at+4] != "<!--") {
+            return;
+        }
+        r.at += 4;
+        ended := 0;
+        while (r.at < len r.text) {
+            if (r.at + 2 <= len r.text && r.text[r.at:r.at+2] == "--") {
+                if (r.at + 3 <= len r.text && r.text[r.at+2] == '>') {
+                    r.at += 3;
+                    ended = 1;
+                } else {
+                    r.bad = 1;
+                }
+                break;
+            }
+            c := r.text[r.at++];
+            if (c < 0 || c > 16r10ffff || (c >= 16rd800 && c <= 16rdfff) ||
+                (c < 32 && c != '\t' && c != '\r' && c != '\n')) {
+                r.bad = 1;
+                break;
+            }
+        }
+        if (!ended || r.bad) {
+            r.bad = 1;
+            return;
+        }
+    }
+}
+
+
+# Read an exactly representable unsigned integer <=4096. A decimal suffix is
+# admitted only when every fractional digit is zero; no rounding/truncation,
+# exponent, units or nonzero fractional geometry is accepted.
 number(r: ref Reader): int
 {
     space(r);
@@ -332,6 +370,19 @@ number(r: ref Reader): int
     }
     if (r.at == start) {
         r.bad = 1;
+    }
+    if (r.at < len r.text && r.text[r.at] == '.') {
+        r.at++;
+        fraction := r.at;
+        while (r.at < len r.text && r.text[r.at] >= '0' && r.text[r.at] <= '9') {
+            if (r.text[r.at] != '0') {
+                r.bad = 1;
+            }
+            r.at++;
+        }
+        if (fraction == r.at) {
+            r.bad = 1;
+        }
     }
     return value;
 }
@@ -373,7 +424,7 @@ name(r: ref Reader): string
 # Unknown constructs/entities are rejected before any document publication.
 tag(r: ref Reader): (string, array of string, int)
 {
-    space(r);
+    xmlspace(r);
     attrs := array[32] of string;
     count := 0;
     if (r.at >= len r.text || r.text[r.at++] != '<') {
@@ -381,8 +432,8 @@ tag(r: ref Reader): (string, array of string, int)
         return ("", nil, 0);
     }
     ending := "";
-    if (r.at < len r.text && r.text[r.at] == '/') {
-        ending = "/";
+    if (r.at < len r.text && (r.text[r.at] == '/' || r.text[r.at] == '?')) {
+        ending = r.text[r.at:r.at+1];
         r.at++;
     }
     label := ending + name(r);
@@ -397,11 +448,15 @@ tag(r: ref Reader): (string, array of string, int)
             r.at++;
             return (label, attrs[0:count], 0);
         }
+        if (r.text[r.at] == '?' && ending == "?" && r.at + 1 < len r.text && r.text[r.at+1] == '>') {
+            r.at += 2;
+            return (label, attrs[0:count], 1);
+        }
         if (r.text[r.at] == '/' && ending == "" && r.at + 1 < len r.text && r.text[r.at+1] == '>') {
             r.at += 2;
             return (label, attrs[0:count], 1);
         }
-        if (ending != "" || before == r.at || count == len attrs) {
+        if (ending == "/" || before == r.at || count == len attrs) {
             r.bad = 1;
             return ("", nil, 0);
         }
@@ -533,28 +588,79 @@ pathdata(text: string, parent: ref Reader): array of Node
 }
 
 
+# Admit only the fixed logical canvas, allowing harmless numeric whitespace and
+# zero fractional suffixes. No scaling or lossy coordinate conversion occurs.
+canvasbox(text: string, parent: ref Reader): int
+{
+    r := ref Reader(text, 0, 0);
+    x := number(r);
+    y := number(r);
+    wide := number(r);
+    high := number(r);
+    space(r);
+    if (r.bad || r.at != len text || x != 0 || y != 0 || wide != 1000 || high != 600) {
+        parent.bad = 1;
+        return 0;
+    }
+    return 1;
+}
+
+
 # Transactionally import a strict bounded SVG subset on a1000×600 canvas.
 # All unsupported attributes/elements fail instead of disappearing on Save.
 parse(text: string): (int, ref Document)
 {
-    if (len text > 65536) {
+    if (len text > 65536 || len array of byte text > 65536) {
         return (Limit, nil);
     }
     r := ref Reader(text, 0, 0);
+    if (len text != 0 && text[0] == 16rfeff) {
+        r.at++;
+    }
+    space(r);
+    first := r.at;
     (root, attrs, short) := tag(r);
-    if (r.bad || root != "svg" || short) {
+    if (root == "?xml") {
+        if (first + 5 > len text || text[first:first+5] != "<?xml" || !short ||
+            len attrs < 2 || attrs[0] != "version" || attrs[1] != "1.0") {
+            return (Invalid, nil);
+        }
+        for (i := 0; i < len attrs; i += 2) {
+            key := attrs[i];
+            value := attrs[i+1];
+            if ((key == "encoding" && (i != 2 || (value != "UTF-8" && value != "utf-8"))) ||
+                (key == "standalone" && ((value != "yes" && value != "no") ||
+                 (i != 2 && i != 4))) ||
+                (key != "version" && key != "encoding" && key != "standalone")) {
+                return (Invalid, nil);
+            }
+        }
+        (root, attrs, short) = tag(r);
+    }
+    if (r.bad || root != "svg") {
         return (Invalid, nil);
     }
     for (i := 0; i < len attrs; i += 2) {
         key := attrs[i];
         if ((key == "xmlns" && attrs[i+1] != "http://www.w3.org/2000/svg") ||
-            (key == "width" && attrs[i+1] != "1000") || (key == "height" && attrs[i+1] != "600") ||
-            (key == "viewBox" && attrs[i+1] != "0 0 1000 600") ||
+            (key == "width" && integer(attrs[i+1], r) != 1000) ||
+            (key == "height" && integer(attrs[i+1], r) != 600) ||
+            (key == "viewBox" && !canvasbox(attrs[i+1], r)) ||
             (key != "xmlns" && key != "width" && key != "height" && key != "viewBox")) {
             return (Invalid, nil);
         }
     }
+    if (r.bad) {
+        return (Invalid, nil);
+    }
     doc := create();
+    if (short) {
+        xmlspace(r);
+        if (r.bad || r.at != len text) {
+            return (Invalid, nil);
+        }
+        return (Ok, doc);
+    }
     storage := array[MaxShapes] of ref Shape;
     count := 0;
     total := 0;
@@ -564,8 +670,8 @@ parse(text: string): (int, ref Document)
             return (Invalid, nil);
         }
         if (label == "/svg") {
-            space(r);
-            if (len values != 0 || selfclose || r.at != len text) {
+            xmlspace(r);
+            if (r.bad || len values != 0 || selfclose || r.at != len text) {
                 return (Invalid, nil);
             }
             doc.shapes = storage[0:count];
