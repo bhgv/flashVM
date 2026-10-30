@@ -1,3 +1,21 @@
+## v0.1696 — confirmed initialized-array destination alias fix
+
+Current selected source: **1a98deb32f6409d990fd49771b63c3cc54c753b3**.
+DisVM916 files/bootstrap281 files remain byte-for-byte upstream copies.
+During vector model development, the actual owning compiler emitted allocation
+into an ADT array field before evaluating initializer reads of that same field.
+The old compiler fails the new ADT-field alias oracle in both runtime modes.
+The owning Inferno fix uses a fresh typed/rooted array temporary, evaluates all
+initializers, then publishes. No VM zeroing, Dis64 ABI or GC contract changes.
+
+Fix published non-force in Inferno experiment, then reimported here. The owning
+fixture covers ADT/second alias, scalar, reference and wildcard reads. Plain/-O
+compiler output executes successfully in interpreter/JIT (four runs). Fresh
+owning native-limbo strict UBSan passes72 existing Dis/AOT cases. Fresh actual
+native64 table/Math gates pass O1 and O3/NDEBUG strict UBSan after the fix; copied
+driver with our source-built matched bootstrap passes too. This is not a claim
+of full classic VM execution of the alias fixture or new reference-result ABI.
+
 ## v0.1696 — INFERNO-0023 private table/binding import
 
 Selected source578ecc4 (experiment): generated callback-free specifications,

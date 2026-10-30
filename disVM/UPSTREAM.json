@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "578ecc464e113b5ac6d72fe2a1db8189f4e4db4b",
+  "revision": "1a98deb32f6409d990fd49771b63c3cc54c753b3",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -870,7 +870,9 @@
     "doc/dis64-native64-math.md",
     "include/native64-bind.h",
     "utils/tests/native64-methods.c",
-    "doc/dis64-native64-binding.md"
+    "doc/dis64-native64-binding.md",
+    "utils/tests/array-initializer-alias.b",
+    "doc/limbo-array-initializer-alias.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -932,6 +934,7 @@
     "upstream/doc/dis64-strings.md": "f89c3d15989fb9896dc317b76bd8f7bd3a1f3e3889293eeec7a6f1d84bec8040",
     "upstream/doc/dis64-vmachine.md": "32911660dd45f196a620b1364cd0bc87bbb147518b10b15d2c089d2f9c63a66e",
     "upstream/doc/jit64-status.md": "320b10513e5c6fbc85cd5806a1ada5e4bd5f6a6110241758e7ebf9186d5b31fe",
+    "upstream/doc/limbo-array-initializer-alias.md": "034b691b316fd645c6845bb9cb6c0bede7c57dc44b04410e2a63255b51c5aca4",
     "upstream/doc/riscv-jit.md": "4da61d07e58f670625bfde6e60d7816a65c5a18b7dca69a9600ad9d8ecff67da",
     "upstream/emu/Android/srv.h": "bbf98f995844b26febdfaf770e03fc7310f186a96d08daa612cd8731a49f75a1",
     "upstream/emu/Android/srvm.h": "7a003a587210c4e548127ca0830d3bac0999b5b145af37adfb04f06ce337eab2",
@@ -1656,7 +1659,7 @@
     "upstream/limbo/decls.c": "cc7dc4663947506bae7cc4f89156cf81627d7775332b27f8de37b48796f2474f",
     "upstream/limbo/dis.c": "d4069bd42560e90d5a9fe48179fbea9b02ae0c6fad2cb6482713c17217a17ce7",
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
-    "upstream/limbo/ecom.c": "058c3a958be21677eda8fd02f6a0d43856c3c90a3746d6e0985014c77d6480fe",
+    "upstream/limbo/ecom.c": "df2595434d8316dc4656be80b4f5f571524d70bf16a70e054513d03de1de734d",
     "upstream/limbo/fns.h": "0fee4fb7395163a0c84ec008b3c4b11848067957af29fe1b5dc3ba6852ff6905",
     "upstream/limbo/gen.c": "ef5a0199d26fb800dc55e3d93878dd223c4090adcc7e2a2398d6571a9803745f",
     "upstream/limbo/lex.c": "e828013736dd60b45ecf3d435a5bcb7e7a506ca34f555d317a59ffc2a3e7a6cd",
@@ -1789,6 +1792,7 @@
     "upstream/utils/dis64inspect/Makefile": "431cbb7b5bec73cea44e3e4c4ef0e37149eb77abe109d63ce053d7e1c072034c",
     "upstream/utils/dis64inspect/README.md": "fb6c67937c0d38459f9fc7572d5c49732eb312c452f75801fabb5cb1ff7122e9",
     "upstream/utils/dis64inspect/dis64inspect.c": "d8a80b52b76d510bdcaf0b48ceab2144602753831e345608002638aed232c05c",
+    "upstream/utils/tests/array-initializer-alias.b": "e40fb51288db714e0e4364a0abfa689d401df28d7eb1c7ef830bc6c945632ef8",
     "upstream/utils/tests/native64-entries.c": "bfaa20409c33ff68a43c43ddfd4e7faee42946b8627df76f6ed17daa9cd72c11",
     "upstream/utils/tests/native64-layout.c": "292deb2989b91965f569dc22f566caa637dc3b8c8e40981b20340c7f70f6c4b3",
     "upstream/utils/tests/native64-layout.py": "6ae18f62f24a667d689a9045de08d6aef4fa56f59bdb32340fa7c4aed474bed4",
