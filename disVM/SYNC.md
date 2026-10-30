@@ -1,3 +1,13 @@
+# v0.1692 — final native64 geometry follow-up
+
+Final pin: **bb0b706798ae7eb2510dcf30f9db99e66d81f4a5**, incoming INFERNO-0021.
+Both selected snapshots remain **907/281** files. The explicit `-H` emitter now
+checks complete emitted C geometry, not only representative Sys sizes. Independent
+fresh owning compiler O1/UBSan checks pass: 53 predicates / 14 full-map checks in
+each compatible model, two rejected models, separate/combined Sys+Math headers,
+and an equal-size reordered-field control that compiles but fails layout admission.
+This still does not enable calls, install runt.h or prove GC/result/temp ownership.
+
 # v0.1692 — exception ownership and explicit native64 declarations
 
 Selected experiment pin: **345d2a142c2ed2a010d4bee34e83bd28107df3ee**.

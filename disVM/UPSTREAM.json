@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "345d2a142c2ed2a010d4bee34e83bd28107df3ee",
+  "revision": "bb0b706798ae7eb2510dcf30f9db99e66d81f4a5",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -908,10 +908,10 @@
     "upstream/doc/dis64-flashvm-scheduler-response.md": "cebccf6d277c02816f712daea6020d7b60864b97258b9f11b42b9dfe068ea0ca",
     "upstream/doc/dis64-flashvm-word32-response.md": "2de63ffaa9274cd64b3a465b8a3ed96bb0d3c068e74c6ba762f31dad3f3147d1",
     "upstream/doc/dis64-gc-roots.md": "27477b66de7d1ce91bd37c43cb4fff01325f7fa10df915c97748a0730a376459",
-    "upstream/doc/dis64-inferno-journal.md": "43ac68d60094af7176fcab7bbdc1fbbfec2054ea351fcedbf633bab57397a812",
+    "upstream/doc/dis64-inferno-journal.md": "a2fd4dc9f0e055e9c8a34522f108cb886ea6310981fdc7b29b26fea1b6fd0058",
     "upstream/doc/dis64-inferno-response.md": "b49a66f58513d60a21fc2b9dc1027d2a3c29e6023efb4464ea79c69dbde16abe",
     "upstream/doc/dis64-native-consumer-audit.md": "bc3ef0c2cc24578698f279a29244a8ae9cf35ac73b48643a1209f4b76b7db0be",
-    "upstream/doc/dis64-native64-declarations.md": "ebc238adc757beff258ab711edf8c913990b7e1d36a75eff2efdc58bba96ef67",
+    "upstream/doc/dis64-native64-declarations.md": "eb21bd444d7149abb361eefa102b8312874bb11d509724c2b7117d9fcc03f865",
     "upstream/doc/dis64-payload-proposal.md": "caf0cd6cf63bbd81d1b2e126d9e07323f90189e44303055f06a6d0c200ce69e2",
     "upstream/doc/dis64-pilot.md": "c4c22f15011e97918c3d39ac5f8bc58c3ea333cc557212264e551b97104864da",
     "upstream/doc/dis64-registry-proposal.json": "7109a5d660c7cd8dbe3041c44fe45db1006ca553853da96ccf4d588080589103",
@@ -1653,7 +1653,7 @@
     "upstream/limbo/limbo.h": "bf59b511d3704bf2d9928e15a3c31639f04981491f0e6609a7666f29d22704d9",
     "upstream/limbo/limbo.y": "e9f8f8ff9362b342f8339ac5d3b9d8af28ff8f1ed8891a45d856ddf8741e9bcb",
     "upstream/limbo/mkfile": "37e69cae7404f03f91531744ec921a2a5ebe69eaf3837129edd9b59a038bc41d",
-    "upstream/limbo/native64.c": "ac6847db054bdcdf759b6ecc743f4f176e4318b5bef2ae3e70581ee7974c6345",
+    "upstream/limbo/native64.c": "d49ccc170cba8f1f4fd785417d5f0e8d52960227d30af51b1967525962d580db",
     "upstream/limbo/nodes.c": "822b112f40bb57ed01429743185fa99d5db930ed9e18206a82e9dda4cd00f2e3",
     "upstream/limbo/optim.c": "4a75f58802dadfa65096eb8f02b10035dce75847e958ac8a5173acd00aace75c",
     "upstream/limbo/sbl.c": "b0c7276caf94008fb4df1f21863af3f7ae45a881e0b17fa4702ba329c33c8b81",
@@ -1779,7 +1779,7 @@
     "upstream/utils/dis64inspect/Makefile": "431cbb7b5bec73cea44e3e4c4ef0e37149eb77abe109d63ce053d7e1c072034c",
     "upstream/utils/dis64inspect/README.md": "fb6c67937c0d38459f9fc7572d5c49732eb312c452f75801fabb5cb1ff7122e9",
     "upstream/utils/dis64inspect/dis64inspect.c": "d8a80b52b76d510bdcaf0b48ceab2144602753831e345608002638aed232c05c",
-    "upstream/utils/tests/native64-layout.c": "9bc0708f57d16e9e2e673eda21876b7b082146d7af0a3987ad066462be3e5141",
-    "upstream/utils/tests/native64-layout.py": "051e6e4090a327effa7d3bd090605e742d63d3cfb94901c5553f9cdd4ddb4de0"
+    "upstream/utils/tests/native64-layout.c": "292deb2989b91965f569dc22f566caa637dc3b8c8e40981b20340c7f70f6c4b3",
+    "upstream/utils/tests/native64-layout.py": "39573a645d32cb0ab5124f4cce2c430da3113fab882c2087feaf6aeaa9ad0896"
   }
 }
