@@ -196,6 +196,7 @@ add_executable(limbo-bootstrap
   upstream/limbo/optab.c
   upstream/limbo/optim.c
   upstream/limbo/sbl.c
+  upstream/limbo/native64.c
   upstream/limbo/stubs.c
   upstream/limbo/typecheck.c
   upstream/limbo/types.c

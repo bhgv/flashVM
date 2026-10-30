@@ -1,3 +1,26 @@
+# v0.1692 — exception ownership and explicit native64 declarations
+
+Selected experiment pin: **345d2a142c2ed2a010d4bee34e83bd28107df3ee**.
+Both snapshots are verified against committed Git bytes: DisVM **907** files,
+bootstrap **281**. The bootstrap build explicitly includes new `native64.c`.
+Production empty/unhandled exception cleanup now clears the process root before
+releasing its owner. Complete producer/handler/collector graph fixtures are
+imported and registered with ASan/UBSan in the independent core suite.
+
+Independent owning-checkout checks: exception-GC O1/UBSan and O3/ASan+UBSan,
+120 actual RAISE graphs / 8816 predicates per run, both handler ports and WORD
+models. Native64 O1/UBSan: real compiler, 100 model predicates, Sys audit,
+deterministic output and 14 early rejections. The same declaration test passes
+with the imported, source-built bootstrap. Runtime without editor/compiler:
+**121/121** before adding the independent syntax service. Targeted core **4/4**:
+GC roots, exception-GC, 75-object WORD32 closure and JIT readiness.
+
+`limbo -H` emits opt-in metadata. It improves representative layout coherence;
+it does not install generated headers, enable native calls, change normal `-a`
+or make the full native ABI verified. Natural int32/ref64, map8 and Frame64
+remain separate from NC64 defaults and scalar Dis64 admission. No wire IDs,
+43-op/np0 admission or general inspector execution claim changed.
+
 # v0.1677 — record slices, parser guards and outgoing AMD64 staging fix
 
 Final published experiment pin: **25626d8dcc0ecac2a7438e3ae4c05949e3f2ca5e**.

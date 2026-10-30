@@ -10,9 +10,11 @@ import sys
 CORE = [
     'utils/tests/iyacc-stack.py',
     'utils/tests/native-limbo.py',
+    'utils/tests/native64-layout.py',
     'libmath/tests/native-fp-control.py',
     'libinterp/tests/gc-arithmetic.py',
     'libinterp/tests/gc-roots.py',
+    'libinterp/tests/exception-gc.py',
     'libinterp/tests/gc-idle.py',
     'emu/port/tests/native-io.py',
     'libinterp/tests/readmod-io.py',
