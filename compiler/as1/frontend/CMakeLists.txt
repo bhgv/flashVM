@@ -87,3 +87,9 @@ if(BUILD_TESTING)
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/generator_check.py ${CMAKE_COMMAND}
     ${CMAKE_CURRENT_SOURCE_DIR}/run_cocor.cmake ${COCOR_EXECUTABLE} ${COCOR_ROOT})
 endif()
+
+# Contextual extension recognition is independent of executable backend admission.
+if(BUILD_TESTING)
+  add_test(NAME as1_asinc_syntax COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/asinc_check.py" as1 $<TARGET_FILE:as1_parse>)
+endif()

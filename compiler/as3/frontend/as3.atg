@@ -351,17 +351,62 @@ static int ConfigBlockAhead(void)
     }
     return pos != start && S_CurrentCh(Trivia(pos)) == '{';
 }
+
+
+/* Recognize only the contextual extension spelling followed by a block or
+ * function. Returns1 for a block,2 for a function,0 for an ordinary identifier.
+ * Scanner positions are borrowed and unchanged; comments/Unicode trivia use
+ * the existing lexical profile. This frontend recognizes syntax, not scheduling. */
+static int AsincAhead(void)
+{
+    long pos;
+    unsigned int index;
+    const char *keyword = "asinc";
+    const char *function_word = "function";
+    int next;
+    if (S_NextLen != 5)
+    {
+        return 0;
+    }
+    for (index = 0; index < 5; ++index)
+    {
+        if (S_CurrentCh(S_NextPos + index) != keyword[index])
+        {
+            return 0;
+        }
+    }
+    pos = Trivia(S_NextPos + S_NextLen);
+    if (S_CurrentCh(pos) == '{')
+    {
+        return 1;
+    }
+    for (index = 0; index < 8; ++index)
+    {
+        if (S_CurrentCh(pos + index) != function_word[index])
+        {
+            return 0;
+        }
+    }
+    next = S_CurrentCh(pos + 8);
+    if ((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
+        (next >= '0' && next <= '9') || next == '_' || next == '$' || next == 92 || next >= 128)
+    {
+        return 0;
+    }
+    return 2;
+}
+
 /* Complete repetition FIRST set, including contextual namespace attributes. */
 static int ModifierAhead(int token)
 {
     return token == publicSym || token == privateSym || token == protectedSym ||
            token == internalSym || token == staticSym || token == dynamicSym ||
            token == overrideSym || token == finalSym ||
-           (token == identSym && CustomModifierAhead());
+           (token == identSym && !AsincAhead() && CustomModifierAhead());
 }
 static int MemberAhead(int token)
 {
-    return ModifierAhead(token) || token == functionSym || token == varSym ||
+    return AsincAhead() == 2 || ModifierAhead(token) || token == functionSym || token == varSym ||
            token == constSym || token == namespaceSym || token == useSym ||
            token == SemicolonSym || token == LbrackSym ||
            (token == identSym && ConfigBlockAhead());
@@ -369,12 +414,12 @@ static int MemberAhead(int token)
 /* Explicit declaration resolver factors common modifier prefixes from items. */
 static int DeclarationAhead(int token)
 {
-    return token == classSym || token == interfaceSym || token == functionSym ||
+    return AsincAhead() == 2 || token == classSym || token == interfaceSym || token == functionSym ||
            token == varSym || token == constSym || token == namespaceSym ||
            token == publicSym || token == privateSym || token == protectedSym ||
            token == internalSym || token == staticSym || token == dynamicSym ||
            token == overrideSym || token == finalSym ||
-           (token == identSym && CustomModifierAhead());
+           (token == identSym && !AsincAhead() && CustomModifierAhead());
 }
 /* get/set are contextual names, not globally reserved scanner keywords. */
 static int AccessorName(void)
@@ -1469,7 +1514,8 @@ PRODUCTIONS
   Statement =
                                                                         (. as3_syntax_enter(); .)
     (
-        IF(Sym == identSym && LabelAhead()) Identifier ":" Statement
+        IF(AsincAhead()) AsincStatement
+        | IF(Sym == identSym && LabelAhead()) Identifier ":" Statement
         | IF(Sym == LbraceSym) Block
         | ";"
         |
@@ -1924,11 +1970,37 @@ PRODUCTIONS
     ")"                                                                 (. allow_in = outer; .)
   .
 
+  /* Statement prefix: named deferred function or an immediately posted block.
+   * Scope capture, task results and worker safety belong to semantic lowering. */
+  AsincStatement =
+    Identifier
+    (
+        "function" Identifier FunctionTail
+        | Block
+    )
+  .
+
+  /* Expression form supports a captured block or an anonymous/named function.
+   * Recognizing this syntax does not claim an executable closure backend. */
+  AsincExpression =
+    Identifier
+    (
+        Block
+        | "function" [ Identifier ] FunctionTail
+    )
+  .
+
+  /* Methods retain the enclosing class tool/type syntax after the prefix. */
+  AsincMethod =
+    Identifier "function" MethodName FunctionTail
+  .
+
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
   Primary =
                                                                         (. as3_syntax_enter(); .)
     (
-        Identifier
+        IF(AsincAhead()) AsincExpression
+        | Identifier
         [
             "::" XmlProperty
         ]
@@ -2104,6 +2176,7 @@ PRODUCTIONS
             Signature
         }
         "}"
+        | IF(AsincAhead() == 2) AsincMethod
         | "function" MethodName FunctionTail
         |
         (
@@ -2162,6 +2235,7 @@ PRODUCTIONS
             | "const"
         )
         Variables Terminator
+        | IF(AsincAhead() == 2) AsincMethod
         | "function" MethodName FunctionTail
         | NamespaceDeclaration
         | UseNamespace

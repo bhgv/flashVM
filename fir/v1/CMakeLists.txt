@@ -127,6 +127,8 @@ if(BUILD_TESTING)
   add_executable(fir1_source_diagnostics tests/source_diagnostics.c)
   target_link_libraries(fir1_source_diagnostics PRIVATE fir1_source_api)
   add_test(NAME fir1_source_diagnostics COMMAND fir1_source_diagnostics)
+  add_test(NAME fir1_asinc_rejection COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/asinc_rejection.py" $<TARGET_FILE:fir1_source>)
   add_test(NAME fir1_source_json COMMAND ${Python3_EXECUTABLE}
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/source_json.py" $<TARGET_FILE:fir1_source>)
 endif()

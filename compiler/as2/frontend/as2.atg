@@ -366,6 +366,51 @@ void as2_syntax_leave(void);
 
 /* Byte-preserving UTF-8 lexer; semantic Unicode validation is a later pass. */
 
+
+
+/* Recognize only the contextual extension spelling followed by a block or
+ * function. Returns1 for a block,2 for a function,0 for an ordinary identifier.
+ * Scanner positions are borrowed and unchanged; comments/Unicode trivia use
+ * the existing lexical profile. This frontend recognizes syntax, not scheduling. */
+static int AsincAhead(void)
+{
+    long pos;
+    unsigned int index;
+    const char *keyword = "asinc";
+    const char *function_word = "function";
+    int next;
+    if (S_NextLen != 5)
+    {
+        return 0;
+    }
+    for (index = 0; index < 5; ++index)
+    {
+        if (S_CurrentCh(S_NextPos + index) != keyword[index])
+        {
+            return 0;
+        }
+    }
+    pos = EventTrivia(S_NextPos + S_NextLen);
+    if (S_CurrentCh(pos) == '{')
+    {
+        return 1;
+    }
+    for (index = 0; index < 8; ++index)
+    {
+        if (S_CurrentCh(pos + index) != function_word[index])
+        {
+            return 0;
+        }
+    }
+    next = S_CurrentCh(pos + 8);
+    if ((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
+        (next >= '0' && next <= '9') || next == '_' || next == '$' || next == 92 || next >= 128)
+    {
+        return 0;
+    }
+    return 2;
+}
+
 CHARACTERS
   /* Байты имён: ASCII и старшие байты UTF-8. Это не таблица категорий Unicode. */
   letter =
@@ -585,7 +630,8 @@ PRODUCTIONS
   Statement =
                                                                         (. as2_syntax_enter(); .)
     (
-        IF(Sym == identSym && EventHandlerAhead()) EventHandler
+        IF(AsincAhead()) AsincStatement
+        | IF(Sym == identSym && EventHandlerAhead()) EventHandler
         | IF(Sym == identSym && LabelAhead()) Identifier ":"
         Statement
         | IF(Sym == LbraceSym) Block
@@ -979,11 +1025,37 @@ PRODUCTIONS
     ")"                                                                 (. allow_in = outer; .)
   .
 
+  /* Statement prefix: named deferred function or an immediately posted block.
+   * Scope capture, task results and worker safety belong to semantic lowering. */
+  AsincStatement =
+    Identifier
+    (
+        "function" Identifier FunctionTail
+        | Block
+    )
+  .
+
+  /* Expression form supports a captured block or an anonymous/named function.
+   * Recognizing this syntax does not claim an executable closure backend. */
+  AsincExpression =
+    Identifier
+    (
+        Block
+        | "function" [ Identifier ] FunctionTail
+    )
+  .
+
+  /* Methods retain the enclosing class tool/type syntax after the prefix. */
+  AsincMethod =
+    Identifier "function" Identifier [ Identifier ] FunctionTail
+  .
+
   /* Атомы выражений: литералы, имена, группировка и составные литералы. */
   Primary =
                                                                         (. as2_syntax_enter(); .)
     (
-        Identifier
+        IF(AsincAhead()) AsincExpression
+        | Identifier
         | number
         | hexnum
         | text
@@ -1133,6 +1205,7 @@ PRODUCTIONS
     }
     (
         "var" Variables Terminator
+        | IF(AsincAhead() == 2) AsincMethod
         | "function" Identifier
         [
             Identifier

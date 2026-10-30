@@ -92,3 +92,9 @@ if(BUILD_TESTING)
   add_test(NAME as3_regexp COMMAND ${Python3_EXECUTABLE}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/regexp_check.py $<TARGET_FILE:as3_parse>)
 endif()
+
+# Contextual extension recognition is independent of executable backend admission.
+if(BUILD_TESTING)
+  add_test(NAME as3_asinc_syntax COMMAND ${Python3_EXECUTABLE}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/asinc_check.py" as3 $<TARGET_FILE:as3_parse>)
+endif()

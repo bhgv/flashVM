@@ -74,6 +74,43 @@ static long AfterToken(void)
     }
 }
 
+/* Contextual AS extension lookahead. Preserve ordinary bindings named asinc;
+ * executable source profiles reject only its function/block prefix explicitly.
+ * Scanner positions are borrowed; no tokens are consumed or reparsed. */
+static int AsincAhead(void)
+{
+    char text[6] = "";
+    const char *word = "function";
+    long pos;
+    unsigned int index;
+    int next;
+    if (S_NextLen != 5)
+    {
+        return 0;
+    }
+    S_GetString(S_NextPos, S_NextLen, text, 5);
+    if (strcmp(text, "asinc"))
+    {
+        return 0;
+    }
+    pos = AfterToken();
+    if (S_CurrentCh(pos) == '{')
+    {
+        return 1;
+    }
+    for (index = 0; index < 8; ++index)
+    {
+        if (S_CurrentCh(pos + index) != word[index])
+        {
+            return 0;
+        }
+    }
+    next = S_CurrentCh(pos + 8);
+    return !((next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') ||
+             (next >= '0' && next <= '9') || next == '_' || next == '$' || next == 92 || next >= 128);
+}
+
+
 
 /* Select snapshot for-in after one name followed by comma or the keyword in.
  * Borrow scanner trivia/bytes without consuming them; distinguish in from an
@@ -315,6 +352,7 @@ PRODUCTIONS
                                                                         .)
     (
         "trace" "(" Expression<&value> ")" ";"                          (. source_trace(value); .)
+        | IF(AsincAhead()) UnsupportedAsinc
         | ASDeclaration ";"
         | Name<&name>                                                   (. target = source_mark(); .)
         AssignmentOperator<&op> Expression<&value> ";"                  (.
@@ -323,6 +361,18 @@ PRODUCTIONS
                                                                         .)
         | ";"
     )
+  .
+
+  /* Never turn a recognized asynchronous source into synchronous FIR. The
+   * diagnostic is sticky and output remains transactional on later recovery. */
+  UnsupportedAsinc =
+    ident                                                               (.
+                                                                            SourceMark location;
+                                                                            capture();
+                                                                            location = source_mark();
+                                                                            source_error(FIR_DIAG_SEMANTIC, 0, location.offset, location.length,
+                                                                                "asinc requires executable lexical-closure/task lowering, which is not available in this profile");
+                                                                        .)
   .
 
   /* AS3 const is enforced by the binding table, not merely accepted as spelling. */
@@ -909,6 +959,7 @@ PRODUCTIONS
                                                                         (. int name = 0; .)
     IF(Sym==LparenSym && depth<64) "("                                  (. ++depth; .)
     Expression<result> ")"                                              (. --depth; .)
+    | IF(AsincAhead()) UnsupportedAsinc                                 (. *result = 0; .)
     | Name<&name>                                                       (. *result = source_read(name); .)
     | Literal<result,0>
   .
