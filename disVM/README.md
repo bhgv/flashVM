@@ -7,7 +7,7 @@
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
 This branch is actively changing. The current snapshot pins
-8d34e029671aeb002b0d2fd0c1d89f105d386b79; every imported file has a manifest hash.
+4c26a0f994c7b63973b2898537d93b60bd616030; every imported file has a manifest hash.
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
@@ -236,3 +236,7 @@ OS file/worker/pool boundaries remain fixtures. The build probe now covers three
 selections and60 complete objects. [Scope](upstream/doc/dis64-fileloader.md).
 Legacy DEFL uses unsigned canonical halves and memmove to preserve exact big bits
 without an out-of-range signed conversion; boundary regressions remain separate.
+
+Upstream vm-widths.py was repaired at4c26a0f to borrow the new unsigned
+bigbits/memmove body. Its49 independent half pairs pass three data models
+under O3/NDEBUG strict UBSan; no loader/wire behavior changes in that test fix.

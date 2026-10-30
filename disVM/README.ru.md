@@ -4,7 +4,7 @@
 [Инструменты и обновление](../tools/UPSTREAMS.ru.md) · [Архитектура](ARCHITECTURE.ru.md)
 
 Источник: https://github.com/bhgv/Inferno-OS-bhgv, активная ветка **experiment**.
-Текущий снимок фиксирует 8d34e029671aeb002b0d2fd0c1d89f105d386b79. Каждый файл имеет
+Текущий снимок фиксирует 4c26a0f994c7b63973b2898537d93b60bd616030. Каждый файл имеет
 SHA-256 в manifest. Сборки сами не подтягивают неизвестный HEAD; обновление явное.
 Другой fork не подменяет это ядро.
 
@@ -218,3 +218,7 @@ short reads и metadata со scheduler lifecycle; OS/file/worker/pool остаю
 границами fixture. Три build selections дают60 complete objects.
 [Подробности](upstream/doc/dis64-fileloader.md). Legacy DEFL переносит canonical
 big bits через unsigned halves и memmove, без out-of-range signed cast.
+
+В4c26a0f исправлен upstream vm-widths.py: он использует actual unsigned
+bigbits/memmove body и49 независимых пар половин. Три data models прошли
+O3/NDEBUG strict UBSan; production loader/wire этим test fix не меняются.

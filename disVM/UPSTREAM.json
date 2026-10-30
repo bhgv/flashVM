@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "8d34e029671aeb002b0d2fd0c1d89f105d386b79",
+  "revision": "4c26a0f994c7b63973b2898537d93b60bd616030",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -879,7 +879,7 @@
     "upstream/doc/dis64-design.md": "cc4c2472280079d5377dcf7a6d6293666d6213b6ba6b6f251cd627fec4c9cca8",
     "upstream/doc/dis64-envelope.md": "1dac0dcb51583cffaf55e683cd82d54d3465bb6e28dac4cf50ff3fa1112258f1",
     "upstream/doc/dis64-fileloader.md": "db84c4be42dad915ea0b18abcb2be8e49b12fd0e1762cf08c5ef50461c270bd5",
-    "upstream/doc/dis64-flashvm-journal.md": "a1b9690d77eb108abe08083fb873a7fb7c0c877e4013dfcb1f2a4a7b03b330b0",
+    "upstream/doc/dis64-flashvm-journal.md": "62904a5dc0f1e25701350f89b532a6353ae989b0eb297dc56ce51ce2a6c35a4b",
     "upstream/doc/dis64-flashvm-payload-response.md": "467c81a19cdd8cf6a6d9371321dd9caba223ed9b1cfae48adb4ea7e3ca61367b",
     "upstream/doc/dis64-flashvm-proposal.md": "c9a68aa729599a25677d0e4c59f34d2b529d3151bee4208e29c70469cd2c5238",
     "upstream/doc/dis64-flashvm-reply.md": "a01ce11f01d4b160003fba0a8c4f1a926c369df3c2b6ecf03cc86207dc7ccbbe",
@@ -1593,7 +1593,7 @@
     "upstream/libinterp/tests/utf8-view-spans-c.py": "5c6a4d8ba0b90848ca172997d174650192a40025e5868fc89907f37753ac2f2f",
     "upstream/libinterp/tests/vm-addresses.c": "70c611c7cd4d11c92592a78c171cdd506fde75bad9f71939e32ad9ac37aae96e",
     "upstream/libinterp/tests/vm-addresses.py": "45198a9596fb321c53881e19a7a37d350d903f997967146c5bdaffac8c1048e8",
-    "upstream/libinterp/tests/vm-widths.py": "becd0047210f38e805ee52d8cb12cb76a14e09488b3734cc98d2a85be1bdeebf",
+    "upstream/libinterp/tests/vm-widths.py": "02a42fa2c17e137eeb088f910626429937f936f29f3bb7de2ade326ec6dfae0e",
     "upstream/libinterp/tests/word32-build.py": "bd79fe6f15ee7914d4963ba2a27af9235eb3874bfd05ec9edf3fe1da29bf949a",
     "upstream/libinterp/tests/xec-fetch-native.c": "f013ef64861d13f17e0665d689e374c0694c0bdd7f84f34a8527904793036ab9",
     "upstream/libinterp/tests/xec-fetch-native.py": "c22c8c8804f665d0697929236c1a50a74b56c8fbcc595647a12e2b8d660acdf7",
