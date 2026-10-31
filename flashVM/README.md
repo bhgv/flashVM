@@ -1,8 +1,10 @@
+[C native module / C-модуль](examples/embedding/native_module/README.md)
+
 [Text colour ranges / Цветовые диапазоны](doc/TEXT_COLOR_RANGES.md) · [Русский](doc/TEXT_COLOR_RANGES.ru.md)
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Development version: **0.1693** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1694** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development

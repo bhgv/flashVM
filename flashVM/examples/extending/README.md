@@ -21,6 +21,12 @@ This tutorial does not implement a dynamic module loader; it calls the registere
 
 Read [stack API](../../doc/STACK_API.md) and [AVM1 functions](../../doc/AVM1_FUNCTIONS.md).
 
+For a separately compiled namespace module using the same public API, see
+[embedding/native_module](../embedding/native_module/README.md): C methods,
+a property setter, traced callback captures, host-state lifetime and actual
+compiled ActionScript property writes. / Отдельно компилируемый модуль на том же
+API: методы C, setter, захваты GC и исполняемый AS-пример.
+
 <!-- example-catalog-api:start -->
 ## Назначение и особенности
 
