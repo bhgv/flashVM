@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1701**. [Русская версия](README.ru.md).
+Development version: **0.1702**. [Русская версия](README.ru.md).
 
-Current series: [v0.1701](docs/releases/v0.1701.md): retained IDE object bitmaps, transform-only blitting, local contour damage and captured header input without raster waits.
+Current series: [v0.1702](docs/releases/v0.1702.md): complementary clean/dirty root-buffer transfers with exact displayed-baseline validation.
 
 ## Browse documentation
 

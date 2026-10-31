@@ -61,8 +61,10 @@ their existing geometry barrier; this change is not a universal input bypass.
 
 SDL requests accelerated presentation and falls back to software when unavailable.
 The root texture is still uploaded by dirty tiles. Associated object composition
-currently runs on the CPU; this is not a GPU scene-graph backend. Full frame-buffer
-allocation/copies remain. Desktop GC now follows the normal safe-point allocation
+currently runs on the CPU; this is not a GPU scene-graph backend. Full frame-buffer allocation remains for immutable queue isolation. In v0.1702,
+only clean spans are copied into a successor and dirty spans into the owner
+buffer. Exact native baseline identities force a full copy/upload when a different
+frame was shown meanwhile, or the owner buffer was recreated. Desktop GC now follows the normal safe-point allocation
 threshold instead of forcing a complete sweep for each drag update.
 
 ## Limits, fallback and observation
@@ -111,3 +113,10 @@ external opacity maps, pixel-tile COW, resolution-adaptive bitmap rebuilding aft
 large zoom and GPU object composition remain future work. Associated bitmaps are
 at local resolution; bilinear enlargement does not add vector detail. Existing
 source owners, MDI/SDI membership and shared Dis/SWF formats remain unchanged.
+
+`FRAMECOPY ticket baseline_bytes presented_bytes` reports actual pixel transfer
+bytes (no padding). For a compatible valid baseline the two disjoint selections
+sum to one canvas, rather than two complete canvas copies. Fresh/stale buffers
+require full presentation; the counter does not claim zero-copy or measure FPS.
+
+[Transfer verification / Проверки переноса](../../docs/releases/v0.1702.md).
