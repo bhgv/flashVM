@@ -2,8 +2,8 @@
 
 [Русский](README.ru.md) · [Source manifest](UPSTREAM.json) · [Native build paths](../../BUILD-NATIVE.md)
 
-Selected from bhgv/Inferno-OS-bhgv, experiment, commit
-3e3536578b969cf1a460210d8ec667713869ccfc. The manifest owns 82 upstream files:
+Selected from bhgv/Inferno-OS-bhgv, experiment, at the exact revision in
+[UPSTREAM.json](UPSTREAM.json). The manifest owns 83 upstream files:
 POSIX/sh mk, the actually linked lib9/BIO/regexp closure, headers and notices.
 The initial closure was pruned using a native link map: 58 translation units remain.
 No OS, GUI, services, other utilities or prebuilt executable is imported.
@@ -32,3 +32,9 @@ rules, stable timestamps and failure propagation. Equal-second timestamps may
 rebuild in upstream mk; the test uses explicitly older input without sleeping.
 Native host acceptance here is Linux AMD64/glibc. Physical Android, BSD, ARM64 and
 RISC-V hosts have not been accepted by these build-tool tests.
+
+
+Command-line assignments now use a bounded mkstemp file in the configured
+TMPDIR, including directories with spaces, and remove it after parsing.
+Unusable/overlong directories fail cleanly. Run the owning regression with
+`python3 tools/mk/upstream/utils/tests/mk-tempdir.py build/mk/mk`.

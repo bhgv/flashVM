@@ -48,12 +48,21 @@ ARM64/RV64/NDK compilation or physical execution is not inferred from expansion.
 
 ## Android path-resolver boundary
 
-The independently testable POSIX `storage.c`/`.h` prefers native-launcher app
-storage, supports explicit root selection and refuses invalid/overlong/unavailable
-paths without publishing a partial output. Its source and 32 filesystem predicates
-are retained and run under strict UBSan. The test restores environment variables
-and uses temporary directories. It imports no Android SDK, Draw/Tk, JNI or full
-platform emulator into the DisVM runtime.
+The current independent POSIX `storage.c`/`.h` resolves only `/sdcard/Inferno`.
+The earlier private-directory/environment fallback has been withdrawn upstream.
+The resolver creates no directory and refuses missing/non-directory/inaccessible
+storage. It checks output bounds before filesystem calls and preserves the
+output on failure. Configurable storage setters are no longer part of this helper.
+
+Its updated host test wraps stat/access with bounded stand-ins and verifies the
+exact shared path, requested access mask, output/errno behavior, unavailable
+storage and ignored private/environment alternatives. It does not touch a real
+/sdcard or prove Android permission grants. The gate uses strict UBSan; no Android
+SDK, Draw/Tk, JNI or complete emulator enters the DisVM runtime.
+
+Android profile `EXTWINFLAGS` now explicitly selects GLES/Clutter ABI flags;
+framebuffer leaves it empty. `SYSLIBS` includes libm. These are build settings,
+not device/NDK execution evidence.
 
 Upstream Android startup/trace/mkfile integration and the separate companion APK
 patch are documented in the owning guide. They are outside this selected helper

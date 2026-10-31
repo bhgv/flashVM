@@ -81,6 +81,10 @@ if(BUILD_TESTING)
     if(NOT EXISTS "${DVM_MK_EXECUTABLE}" OR IS_DIRECTORY "${DVM_MK_EXECUTABLE}")
       message(FATAL_ERROR "DVM_MK_EXECUTABLE must name an existing file: ${DVM_MK_EXECUTABLE}")
     endif()
+    add_test(NAME disvm_mk_tempdir COMMAND "${Python3_EXECUTABLE}"
+      "${u}/utils/tests/mk-tempdir.py" "${DVM_MK_EXECUTABLE}")
+    set_tests_properties(disvm_mk_tempdir PROPERTIES TIMEOUT 60
+      ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
     add_test(NAME disvm_native64_mkfiles COMMAND "${Python3_EXECUTABLE}"
       "${u}/utils/tests/native64-mkfiles.py")
     set_tests_properties(disvm_native64_mkfiles PROPERTIES TIMEOUT 120
