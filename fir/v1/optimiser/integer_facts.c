@@ -2,7 +2,6 @@
 #include "fir.h"
 #include <string.h>
 
-
 /* Propagate independent bit facts through modular addition or subtraction.
  * az/ao and bz/bo describe borrowed disjoint known-zero/known-one masks;
  * width is32 or64, subtract selects a+~b+1. Write disjoint result masks to
@@ -45,7 +44,6 @@ static void arithmetic_bits(
     }
 }
 
-
 /* Count the contiguous known-zero low bits of a borrowed mask, up to width.
  * width is32 or64. Return width for an entirely zero value. No signed shifts,
  * allocation, IR mutation or callbacks occur; unknown bits stop the proof. */
@@ -58,7 +56,6 @@ static unsigned trailing_zero_facts(uint64_t zero, unsigned width)
     }
     return count;
 }
-
 
 /* Derive known bits without reading cells or evaluating operand producers.
  * module is borrowed verified IR; facts is disjoint caller-owned scratch.
@@ -155,12 +152,30 @@ void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts)
                 unsigned left = trailing_zero_facts(az, width);
                 unsigned right = trailing_zero_facts(bz, width);
                 unsigned count = left + right;
-                /* Divisibility adds under multiplication, including wraparound.
-                 * Saturate before shifting so a full-width proof never shifts64. */
-                zero = count >= width ? mask : (UINT64_C(1) << count) - 1;
-                if (count < width && (ao & (UINT64_C(1) << left)) && (bo & (UINT64_C(1) << right)))
+                /* A fully known single-bit factor is a total modular left shift.
+                 * Keep all shifted known bits, not just the trailing divisibility.
+                 * The sign-bit factor is valid too: arithmetic is unsigned here. */
+                if ((bz | bo) == mask && bo && !(bo & (bo - 1)))
                 {
-                    one = UINT64_C(1) << count;
+                    unsigned shift = trailing_zero_facts(bz, width);
+                    zero = ((az << shift) | ((UINT64_C(1) << shift) - 1)) & mask;
+                    one = (ao << shift) & mask;
+                }
+                else if ((az | ao) == mask && ao && !(ao & (ao - 1)))
+                {
+                    unsigned shift = trailing_zero_facts(az, width);
+                    zero = ((bz << shift) | ((UINT64_C(1) << shift) - 1)) & mask;
+                    one = (bo << shift) & mask;
+                }
+                else
+                {
+                    /* Divisibility adds under multiplication, including wraparound.
+                     * Saturate before shifting so a full-width proof never shifts64. */
+                    zero = count >= width ? mask : (UINT64_C(1) << count) - 1;
+                    if (count < width && (ao & (UINT64_C(1) << left)) && (bo & (UINT64_C(1) << right)))
+                    {
+                        one = UINT64_C(1) << count;
+                    }
                 }
             }
             else if (in->op == O_BIG_NEG)
@@ -242,7 +257,6 @@ void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts)
     }
 }
 
-
 /* Return whether successful int32 SSA evaluation has a provably set bit.
  * facts is a fresh borrowed analysis; value is a verified int32 SSA index.
  * Unknown and exact zero return zero. No ownership or producer effects change. */
@@ -251,7 +265,6 @@ int fir_integer_nonzero(const FirIntegerFacts *facts, int value)
     return facts->one[value] != 0;
 }
 
-
 /* Return whether fresh borrowed facts prove a successful big SSA value nonzero.
  * value is a verified big index. Unknown/zero returns zero; no producer effect,
  * ownership, memory, scheduling or evaluation is changed by this query. */
@@ -259,7 +272,6 @@ int fir_big_nonzero(const FirIntegerFacts *facts, int value)
 {
     return facts->big_one[value] != 0;
 }
-
 
 /* Prove an int32 SSA count lies in [0,width-1] for width32 or width64.
  * facts/value follow the analysis contract. Return zero for unsupported width

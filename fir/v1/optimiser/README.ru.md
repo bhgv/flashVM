@@ -58,3 +58,5 @@ COCOR_ROOT и COCOR_EXECUTABLE; executable находятся в `v1/` ката�
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../doc/SHIFT_FACTS.ru.md).
 
 [Known bit results / Известные битовые результаты](../doc/KNOWN_RESULTS.ru.md).
+
+[Умножение на точную степень двойки](../doc/POWER_FACTS.ru.md).

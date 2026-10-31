@@ -225,3 +225,5 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [FIR0.69 typed conversions / Типизированные приведения](../../doc/CAST_FACTS.ru.md): sign extension, truncation, boolean high bits, C99 oracle and raw/opt Dis.
 
 [cast-facts.b](cast-facts.b) · [odd-product-facts.b](odd-product-facts.b): fully commented typed-table sources, raw/opt Dis42 and retained eager producers.
+
+[Умножение на степень двойки: пример и руководство](../../doc/POWER_FACTS.ru.md).

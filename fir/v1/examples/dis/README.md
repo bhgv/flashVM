@@ -224,3 +224,5 @@ returns42. Every line is commented. [Exact rules, API/CLI use and boundaries](..
 [FIR0.69 typed conversions / Типизированные приведения](../../doc/CAST_FACTS.md): sign extension, truncation, boolean high bits, C99 oracle and raw/opt Dis.
 
 [cast-facts.b](cast-facts.b) · [odd-product-facts.b](odd-product-facts.b): fully commented typed-table sources, raw/opt Dis42 and retained eager producers.
+
+[Power multiplication example and complete guide](../../doc/POWER_FACTS.md) · [Русский](../../doc/POWER_FACTS.ru.md).

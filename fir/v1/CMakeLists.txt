@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.69.0 LANGUAGES C)
+project(fir1 VERSION 0.70.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -714,4 +714,11 @@ if(BUILD_TESTING)
   add_test(NAME fir1_integer_known_results COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_known_results.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
   set_tests_properties(fir1_integer_known_results PROPERTIES TIMEOUT 120)
+endif()
+
+# Preserve all known bits for exact modular power-of-two factors.
+if(BUILD_TESTING)
+  add_test(NAME fir1_integer_power_facts COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_power_facts.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_integer_power_facts PROPERTIES TIMEOUT 120)
 endif()

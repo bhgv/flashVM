@@ -58,3 +58,5 @@ channels and trace remain even when their results are unused.
 [Биты после сдвигов и big DCE / Shift facts and big DCE](../doc/SHIFT_FACTS.md).
 
 [Known bit results / Известные битовые результаты](../doc/KNOWN_RESULTS.md).
+
+[Exact power multiplication facts / Биты умножения на степень двойки](../doc/POWER_FACTS.md).
