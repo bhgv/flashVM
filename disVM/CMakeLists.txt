@@ -71,6 +71,21 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/module_parser.py")
   set_tests_properties(disvm_memory_parser_adapter PROPERTIES TIMEOUT 120)
   file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  add_test(NAME disvm_android_storage COMMAND "${Python3_EXECUTABLE}"
+    "${u}/emu/Android/tests/storage.py")
+  set_tests_properties(disvm_android_storage PROPERTIES TIMEOUT 60
+    ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O2 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  # The source-built mk is an explicit optional input, never a hidden sibling build.
+  set(DVM_MK_EXECUTABLE "" CACHE FILEPATH "Explicit source-built mk for native64 profile tests")
+  if(DVM_MK_EXECUTABLE)
+    if(NOT EXISTS "${DVM_MK_EXECUTABLE}" OR IS_DIRECTORY "${DVM_MK_EXECUTABLE}")
+      message(FATAL_ERROR "DVM_MK_EXECUTABLE must name an existing file: ${DVM_MK_EXECUTABLE}")
+    endif()
+    add_test(NAME disvm_native64_mkfiles COMMAND "${Python3_EXECUTABLE}"
+      "${u}/utils/tests/native64-mkfiles.py")
+    set_tests_properties(disvm_native64_mkfiles PROPERTIES TIMEOUT 120
+      ENVIRONMENT "NATIVE_MK=${DVM_MK_EXECUTABLE};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  endif()
   # Selected production regressions and their manifest-owned fixture dependencies.
   foreach(driver
     integer-ops
