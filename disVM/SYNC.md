@@ -1,3 +1,44 @@
+## v0.1704 — Bounded task retirement and concurrent native64 profiles
+
+Final pin759fa859ca1f1b9108c451215e4b6d52141c4016 includes FLASHVM-0035.
+Relative to the verified c6db89c source snapshot, only the selected journal
+changes; executable imports are identical. DisVM955/bootstrap281 verify byte-exact.
+
+Read both journals again: incoming INFERNO-0028 is unchanged. Published
+[FLASHVM-0034 and0035](https://github.com/bhgv/Inferno-OS-bhgv/blob/experiment/doc/dis64-flashvm-journal.md)
+directly, including the later daa205685c1e55acf9614dd05b603ae540d39a16 source
+checkpoint that arrived during this series without a new Dis64 journal entry.
+The earlier0034 source-status sentence is explicitly supplemented by0035.
+
+Selected closure grows to955 DisVM files; bootstrap remains281. Added exact five
+Linux/Android native64 mk profiles, target guard, declaration forwarding/base
+headers, real-mk driver and independent POSIX Android storage/tests. Existing
+selected slice-tokenize-suite imports both new drivers. No full Android OS startup,
+Draw/Tk, JNI or companion APK integration enters the runtime.
+
+Copied and owning actual-mk gates pass all five profile expansions, native x86-64
+WORD64/WORD32 compile/link/run and wrong-target rejection. Copied storage gate
+passes32 filesystem/publication predicates under O2/strict UBSan; owning gate
+passes32 under O3/NDEBUG/strict UBSan. Core **246/246** and runtime/IDE **343/343**
+pass. Profile CTest uses optional explicit DVM_MK_EXECUTABLE; no hidden mk build.
+[EN/RU profile guide](PLATFORM-PROFILES.md) documents scope and reproduction.
+No physical ARM64/RV64/NDK/APK execution or complete platform port is inferred.
+
+Application-local asinctasks now permits terminal record retirement without
+identity reuse. Unfinished/untaken-result records return Busy. FIFO and detached
+sorted snapshots do not depend on recycled storage positions. Positive IDs never
+wrap; a private temporary-source test checks the last signed identity and Full
+after exhaustion even with an empty table. The signed application limit does not
+assign shared Dis64 task-handle width or native ABI.
+
+Lifecycle2531 predicates/profile pass default and quantum1 execution; boundary16
+predicates/profile pass. Quantum1 reports actual gc_runs534432/gc_epochs100452;
+these exercise the managed scalar service, not arbitrary AS closure/native graphs.
+The96-task example, complete acceptance and original167-predicate v0.1703 bytecode
+pass interpreter/JIT; current installed bytecode also passes after relocation.
+New task work does not implement AS/FIR lexical closure lowering. No additional
+confirmed common defect required a backport. Previous ASan limitations remain.
+
 ## v0.1703 — INFERNO-0027/0028 constructor roots and RV cache
 
 Final pin0e7a00bc302fa3492a38e06a39f9edc5ea4485c8 includes both journals

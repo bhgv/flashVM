@@ -6,17 +6,20 @@
 [Owned tools/update policy](../tools/UPSTREAMS.md) · [Architecture](ARCHITECTURE.md)
 
 Authoritative source: https://github.com/bhgv/Inferno-OS-bhgv, branch **experiment**.
-This branch is actively changing. The current snapshot pins
-4c26a0f994c7b63973b2898537d93b60bd616030; every imported file has a manifest hash.
+This branch is actively changing. The current source revision and every imported file hash are pinned in
+[UPSTREAM.json](UPSTREAM.json).
 Use the explicit update workflow rather than letting builds pull an unknown HEAD.
 No unrelated fork supplies this core.
 
-Current v0.1670: [executable selected modules](libraries/README.md),
+Available applications: [executable selected modules](libraries/README.md),
 [fully commented tutorial](examples/standard-modules/README.md),
 [native runtime](runtime/README.md). Menu launch 7 runs the actual modules;
 module availability and missing /prog/VFS services are documented separately.
 
 [OS filesystem services and example](runtime/FILESYSTEM.md).
+
+[Reviewed synchronization](SYNC.md) · [Native64 profiles](PLATFORM-PROFILES.md) ·
+[Cooperative task owner](../compiler/runtime/ASINC-TASKS.md).
 
 ## Build and test
 

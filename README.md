@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1703**. [Русская версия](README.ru.md).
+Development version: **0.1704**. [Русская версия](README.ru.md).
 
-Current series: [v0.1703](docs/releases/v0.1703.md): independently verified Inferno GC/JIT fixes and executable cooperative task lifetime ownership.
+Current series: [v0.1704](docs/releases/v0.1704.md): reusable bounded task records, nonrecycled identities, FIFO and scheduler/GC stress gates.
 
 ## Browse documentation
 
