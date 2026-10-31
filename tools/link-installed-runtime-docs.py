@@ -58,6 +58,12 @@ def main():
         root / "ide/dis/bridge/idefiles.README.md": package / "FILE-WINDOWS.md",
         root / "ide/dis/bridge/idefiles.b": package / "source/idefiles.b",
     }
+    pairs[root / "disVM/examples/asinctasks/main.b"] = package / "examples/asinctasks/main.b"
+    pairs[root / "disVM/module/asinctasks.m"] = package / "include/limbo/asinctasks.m"
+    pairs[root / "disVM/limbo/asinctasks.b"] = package / "source/asinctasks.b"
+    pairs[root / "ide/dis/tests/asinctasks_test.b"] = package / "examples/asinctasks/acceptance.b"
+    pairs[root / "compiler/runtime/ASINC-TASKS.md"] = package / "examples/asinctasks/README.md"
+    pairs[root / "compiler/runtime/ASINC-TASKS.ru.md"] = package / "examples/asinctasks/README.ru.md"
     pairs[root / "disVM/examples/asincviews/main.b"] = package / "examples/asincviews/main.b"
     pairs[root / "compiler/runtime/ASINC-VIEWS.md"] = package / "examples/asincviews/README.md"
     pairs[root / "compiler/runtime/ASINC-VIEWS.ru.md"] = package / "examples/asincviews/README.ru.md"

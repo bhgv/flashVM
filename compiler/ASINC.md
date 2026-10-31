@@ -29,7 +29,8 @@ create tasks, evaluate bodies or emit executable closures.
 | Runtime owner callbacks without frame/clock advancement | Existing `Async.post` / `fvm_async_post` |
 | Actual frame-free drawing and detached pixels | Executed native regression below |
 | `asinc` closure/task lowering and invocation | Not implemented |
-| Lexical environment cells, task result/error/cancellation types | Design/implementation pending |
+| Cooperative scalar task input/result/cancellation owner | [Executable Limbo service](runtime/ASINC-TASKS.md); separate from AS lowering |
+| AS lexical environment cells and task lowering | Pending |
 | Concurrent physical threads sharing mutable AS objects | Not admitted |
 
 The numeric executable profile emits **no synchronous fallback**. It reports

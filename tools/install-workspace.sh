@@ -481,6 +481,12 @@ EOF
             copy_file "$ROOT/ide/ARTIFACT-EXPORT.ru.md" "$destination/ARTIFACT-EXPORT.ru.md"
             copy_tree "$ROOT/ide/dis/examples/mdi" "$destination/examples/mdi"
             copy_tree "$ROOT/ide/dis/examples/debugger-scaffold" "$destination/examples/debugger-scaffold"
+            copy_file "$ROOT/disVM/examples/asinctasks/main.b" "$destination/examples/asinctasks/main.b"
+            copy_file "$ROOT/disVM/module/asinctasks.m" "$destination/include/limbo/asinctasks.m"
+            copy_file "$ROOT/disVM/limbo/asinctasks.b" "$destination/source/asinctasks.b"
+            copy_file "$ROOT/ide/dis/tests/asinctasks_test.b" "$destination/examples/asinctasks/acceptance.b"
+            copy_file "$ROOT/compiler/runtime/ASINC-TASKS.md" "$destination/examples/asinctasks/README.md"
+            copy_file "$ROOT/compiler/runtime/ASINC-TASKS.ru.md" "$destination/examples/asinctasks/README.ru.md"
             copy_file "$ROOT/disVM/examples/asincviews/main.b" "$destination/examples/asincviews/main.b"
             copy_file "$ROOT/disVM/module/asincviews.m" "$destination/include/limbo/asincviews.m"
             copy_file "$ROOT/disVM/limbo/asincviews.b" "$destination/source/asincviews.b"
@@ -538,7 +544,7 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in capture-demo asincviews idemdi idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in tasks-demo asinctasks capture-demo asincviews idemdi idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
