@@ -14,6 +14,7 @@ typedef struct DVM_ChromeItem
     double preview_scale;         /* Actual uniform owner-local mirror transform. */
     unsigned long preview_width;  /* Admitted shelf/card physical width. */
     unsigned long preview_height; /* Admitted shelf/card physical height. */
+    unsigned long palette;        /* Copied compact popup role; appearance remains in AS. */
     unsigned long mirror;         /* Zero or copied thumbnail source identity. */
 } DVM_ChromeItem;
 
@@ -45,6 +46,10 @@ int dvm_chrome_glass(FVM_Context *owner,
 
 /* Append desktop, header and scroll decorations from copied scalar descriptors. */
 int dvm_chrome_decorate(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeItem *item, double wide, double high);
+
+
+/* Invalidate retained graphics after a clear. Borrow owner/clip; return0 on VM error. */
+int dvm_chrome_invalidate(FVM_Context *owner, FVM_Object *clip);
 
 
 /* Return whether this copied role has a dedicated AS appearance module. */

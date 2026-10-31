@@ -1,5 +1,6 @@
 """Check real Dis geometry, timed MovieClip transforms and translucent rail pixels."""
 
+from test_desktop_tools import tool
 from pathlib import Path
 import re
 import sys
@@ -42,12 +43,12 @@ def main():
             )
         # Move a different window behind the right rail. Controls occupy its
         # centre; these probes measure only the copied alpha MovieClip fills.
-        overlap_right = [mouse(700, 80), mouse(800, 80, 2), mouse(800, 80, 3)]
+        overlap_right = [mouse(700, 80), mouse(820, 80, 2), mouse(820, 80, 3)]
         _, _, capture = run(
             runtime, module, font, mode, work, overlap_right + quit_event
         )
-        inner = pixel(capture, 858, 195)
-        outer = pixel(capture, 950, 195)
+        inner = pixel(capture, 902, 195)
+        outer = pixel(capture, 958, 195)
         if not (100 < outer[0] < 170 and inner[0] > outer[0] + 70):
             raise RuntimeError(
                 f"right glass does not mirror the inward fade: {outer}/{inner}"
@@ -79,7 +80,7 @@ def main():
             overlap_right + reveal_right + ticks + quit_event,
         )
         final = list(views.values())[-1]
-        if final[2][1] != 479 or final[1][1] != -9:
+        if final[2][1] != 523 or final[1][1] != 15:
             raise RuntimeError(
                 "right-covered pane did not fit behind a shared table translation"
             )
@@ -96,7 +97,7 @@ def main():
                 "camera reveal was not clock-driven or failed to terminate"
             )
         for (elapsed, pan), fraction in zip(camera, (0.15625, 0.5, 0.84375, 1.0)):
-            if abs(pan - (-105 * fraction)) > 0.002:
+            if abs(pan - (-81 * fraction)) > 0.002:
                 raise RuntimeError("whole-table reveal did not follow the S curve")
         pan_up = [
             envelope(3, 7, 1, first=200 * 20, second=500 * 20),
@@ -139,14 +140,14 @@ def main():
             oversized + reveal_left + ticks + quit_event,
         )
         trace = (work / "trace.txt").read_text()
-        if not re.search(r"^TABLEZOOM \d+ 114$", trace, re.M):
+        if not re.search(r"^TABLEZOOM \d+ 120$", trace, re.M):
             raise RuntimeError(
                 "oversized-pane reveal did not reduce the table zoom to fit"
             )
         left = list(views.values())[-1][1][1]
-        if left < 85 or left + 669 * 1.14 > 852:
+        if left < 85 or left + 669 * 1.20 > 896:
             raise RuntimeError("oversized pane still extends underneath a side rail")
-        show_all = [mouse(900, 355), mouse(900, 355, 3)]
+        show_all = tool("All")
         views, _, _ = run(
             runtime,
             module,

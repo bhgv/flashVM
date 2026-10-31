@@ -4,12 +4,15 @@
 [Entry points](ENTRYPOINTS.md) · [Русский](DESKTOP-CLIPBOARD.ru.md)
 
 Ctrl+C copies the focused editor's selection, Ctrl+X cuts it, Ctrl+V pastes into
-its current selection/caret. The right Clipboard scroll supplies three actual
+its current selection/caret. The right Edit palette supplies three actual
 MovieClip buttons too. The buffer belongs to this IDE session: **it does not read
 or write the operating-system clipboard**. The separate single-editor application
 keeps its existing native clipboard integration.
 
-![Actual MovieClip workspace with clipboard controls](assets/desktop-v0.1677.png)
+The image below records the earlier v0.1677 layout; current controls are in
+[Edit](dis/DESKTOP-CONTROLS.md).
+
+![Earlier MovieClip workspace with clipboard controls](assets/desktop-v0.1677.png)
 
 The source window can close after Copy; other editors still paste the retained
 immutable value. Closing the desktop terminates its clipboard process. Help and

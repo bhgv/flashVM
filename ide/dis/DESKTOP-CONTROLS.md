@@ -14,6 +14,7 @@ membership service; presentation parents do not acquire source authority.
 | `bridge/idethumbnails` | Portrait card spacing and stable reordered identities |
 | `bridge/iderails` | Independent left/right scroll ranges and physical rail regions |
 | `bridge/idetools` | Toolbar labels, palette rows and command mapping |
+| `bridge/idetoolpalette` | Shared button grid, owner anchor and popup hit geometry |
 | `bridge/iderecent` | Four session-only recent paths and sanitized display labels |
 | `bridge/idedesktop` | Layout/gesture owner; composes the controls above |
 | `app/desktop` | Document/channel registry and command coordination |
@@ -29,11 +30,22 @@ clicking or swiping a card right reveals its document. Rail offsets are independ
 of document geometry and desktop zoom/pan. Portrait cards keep their readable
 size as more documents open; overflow is reached by scrolling.
 
-Scroll the right toolbar to reach Files, Edit, Search and frequent Undo/Redo/Find.
-Files opens a palette to the left, over the desktop: New Limbo, AS1/AS2/AS3, SVG,
-Open, Save, Save As, Undo/Redo and four recent paths. Edit duplicates Undo/Redo and
-session Copy/Cut/Paste. Search provides literal, case-sensitive Unicode Find and
-Replace All. Save and Find are standalone shortcuts too. Ctrl+F/Ctrl+H open search
+The right shelf is 60 pixels wide. Its 44×27 buttons sit 6 pixels from the outer
+edge, with a 32-pixel vertical step; a short viewport still scrolls independently.
+Files, Edit, Search and View open compact rounded bubbles to their left. A triangular
+tip points to the invoking button. Bubble buttons use exactly the same dimensions
+and compiled AS appearance as shelf buttons; gaps and recent-label text are inert.
+The grid uses three columns, or four on short canvases. Files has New Limbo,
+AS1/AS2/AS3, SVG, Open, Save, Save As, Undo/Redo, four recent files, Close and Quit.
+The short R1–R4 captions refer to the numbered path legend below the buttons;
+the full paths remain solely with the application owner. The legend is omitted
+below 300 pixels of canvas height. Edit has Undo/Redo and session Copy/Cut/Paste;
+Search has Find and Replace (`Repl.`). View has Show All, Max/Norm, MDI, SDI and Close.
+Palette-only commands have no duplicate shelf buttons. The frequent Save, Undo,
+Redo and Find shortcuts intentionally remain on the shelf. Build, Debug and Help
+are direct buttons; Help toggles its owned pane.
+
+Ctrl+F/Ctrl+H open search
 fields. Find selects the next match and wraps; Replace asks for a needle, then a
 replacement, applying one undoable core transaction on the exact current revision.
 These are literal operations, not regular-expression or cross-project search.
@@ -63,3 +75,20 @@ The private scene has96 slots for controls; this is not a Dis64 file-format ID c
 See [C module example](../../flashVM/examples/embedding/native_module/README.md),
 [existing extension examples](../../flashVM/examples/extending/README.md) and
 [Dis native modules](../../disVM/runtime/NATIVE_MODULES.md).
+
+## Reused MovieClip backgrounds
+
+Hiding an absent scene slot clears its graphics but retains its MovieClip for
+reuse. Clearing now invalidates the chrome cache at the same ownership boundary.
+The next appearance rebuilds its AS graphics even when dimensions/selection match
+the previous appearance. Position-only changes retain the normal cache benefit.
+Popup role and preview scale also participate in the chrome key; a failed repaint
+cannot leave an apparently valid old key. No global cache disable or frame delay
+is introduced.
+
+`disVM/runtime/test_desktop_pool.py` compares actual before/reopen RGB captures,
+including after docking and panning and for every command bubble, in interpreter
+and JIT dispatch. The first modal comparison fails against the previous binary.
+`test_desktop_rails.py` exercises physical button hits, common extents, right
+alignment, real source creation/history/search/clipboard and independent scrolling.
+The Limbo desktop test covers the 320-pixel viewport and a scrolled popup anchor.

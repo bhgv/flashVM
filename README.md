@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1708**. [Русская версия](README.ru.md).
+Development version: **0.1709**. [Русская версия](README.ru.md).
 
-Current series: [v0.1708](docs/releases/v0.1708.md): sparse constant FIR facts, native64 typed-tail/result review, complete Math validation and bidirectional tests.
+Current series: [v0.1709](docs/releases/v0.1709.md): restored pooled window backgrounds, a narrow right shelf and compact anchored command bubbles.
 
 ## Browse documentation
 

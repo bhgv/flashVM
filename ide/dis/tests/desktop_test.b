@@ -232,6 +232,7 @@ init()
     view = call(layout, request);
     view = point(layout, view.ticket, 100, 380, 1);
     check(view.action == desk->CancelClose, "narrow scroll uses actual button bounds");
+    railmetrics(desk);
     zoomanchor(desk);
     mdicontainers(desk);
     request.operation = desk->Shutdown;
@@ -254,8 +255,10 @@ zoomanchor(desk: Idedesktop)
     view := call(owner, request);
     request.operation = desk->Select;
     view = call(owner, request);
-    view = point(owner, view.ticket, 900, 385, 1);
-    view = point(owner, view.ticket, 900, 385, 3);
+    view = point(owner, view.ticket, 932, 389, 1);
+    view = point(owner, view.ticket, 932, 389, 3);
+    view = point(owner, view.ticket, 815, 389, 1);
+    view = point(owner, view.ticket, 815, 389, 3);
     before := item(view, 5);
     scroll := view.scroll;
     zoom := view.zoom;
@@ -358,4 +361,36 @@ mdicontainers(desk: Idedesktop)
     check(bottom <= 635, "last container identity reveals its complete outer frame, not just child bounds");
     request.operation = desk->Shutdown;
     check(call(owner, request).status == desk->Ok, "MDI layout shutdown acknowledgement");
+}
+
+
+# Exercise the actual independent layout process at a short canvas. Rail scrolling
+# must clamp to its own content, preserve the table and anchor a compact popup to
+# the moved invoking button. All copied descriptors are observed after replies.
+railmetrics(desk: Idedesktop)
+{
+    owner := desk->start();
+    request := Idedesktop->Request(1, desk->Resize, 0, 0, 960, 320, 0, "", "", -1, -1, 0, nil);
+    view := call(owner, request);
+    check(item(view, 12).width == 60 && item(view, 64).x == 10,
+          "narrow right-aligned shelf");
+    request.operation = desk->RailScroll;
+    request.window = 3;
+    request.x = 120;
+    request.ticket = view.ticket;
+    view = call(owner, request);
+    check(view.scroll == 0 && item(view, 64).y == -40 && item(view, 70).y == 280,
+          "short right rail clamps independently");
+    view = point(owner, view.ticket, 932, 293, 1);
+    view = point(owner, view.ticket, 932, 293, 3);
+    bubble := item(view, 55);
+    tip := item(view, 71);
+    button := item(view, 72);
+    check(bubble != nil && tip != nil && button != nil &&
+          bubble.x + bubble.width - 1 == tip.x && tip.y == 285 &&
+          bubble.y >= 48 && bubble.y + bubble.height <= 312 &&
+          button.width == 44 && button.height == 27,
+          "scrolled owner anchors shared-size compact bubble");
+    request.operation = desk->Shutdown;
+    check(call(owner, request).status == desk->Ok, "rail fixture shutdown");
 }

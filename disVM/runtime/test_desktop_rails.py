@@ -1,5 +1,7 @@
 """Exercise real rail/command MovieClips and document owners in both dispatch modes."""
+from test_desktop_tools import tool
 from pathlib import Path
+import re
 import sys
 import tempfile
 from test_desktop import run, mouse, envelope
@@ -16,9 +18,9 @@ def click(x, y):
     return [mouse(x, y), mouse(x, y, 3)]
 
 
-# Scroll the toolbar to its bounded last page. Replaying extra wheel input stays clamped.
+# Attempt to scroll the full-height toolbar; its eleven controls fit without overflow.
 def toolbar():
-    return [wheel(900, 600), wheel(900, 600)]
+    return [wheel(932, 600), wheel(932, 600)]
 
 
 # Query final scene after ordinary input; Quit is an explicit event, never a timeout.
@@ -30,14 +32,24 @@ def main():
         work = Path(directory)
         source = work / "source.b"
         source.write_text("alpha beta alpha", encoding="utf-8")
-        views, scrolls, _ = run(runtime, module, font, mode, work, toolbar() + click(900, 410) + end, source)
+        views, scrolls, _ = run(runtime, module, font, mode, work, toolbar() + tool("Files") + end, source)
         final = list(views.values())[-1]
-        if final[64][2] != 408 or final[20][2] != 72 or any(scrolls):
+        if final[64][2] != 56 or final[20][2] != 72 or any(scrolls):
             raise RuntimeError("toolbar wheel changed table/left rail or failed to clamp")
-        if final[72][3] != "New Limbo" or final[79][3] != "Save as" or "source.b" not in final[82][3]:
+        if final[72][3] != "Limbo" or final[79][3] != "SaveAs" or "source.b" not in final[88][3]:
             raise RuntimeError("Files palette has no real creation/save/recent rows")
+        if any(slot in final for slot in (41, 44, 47, 48, 49, 50, 51, 52, 53, 54)):
+            raise RuntimeError("duplicate palette-only actions remain on the shelf")
+        trace = (work / "trace.txt").read_text()
+        for slot in (64, 72, 79):
+            if not re.search(r"^GEOMETRY \d+ " + str(slot) + r" 44 27 ", trace, re.M):
+                raise RuntimeError("rail and palette buttons do not share their extent")
+        if not re.search(r"^GEOMETRY \d+ 12 60 640 ", trace, re.M):
+            raise RuntimeError("right shelf did not shrink to sixty pixels")
+        if final[64][1] != 910 or final[55][1:3] != (736, 48) or final[71][1:3] != (893, 61):
+            raise RuntimeError("command bubble lost its button anchor/right alignment")
         # New AS1 is a distinct untitled owner; grouping preserves its AS domain.
-        events = toolbar() + click(900, 410) + click(600, 130) + shortcut("G")
+        events = tool("Files") + click(815, 69) + shortcut("G")
         views, group_scroll, _ = run(runtime, module, font, mode, work, events + end, source)
         final = list(views.values())[-1]
         if "ActionScript MDI" not in final[13][3] or "Untitled5.as1" not in final[5][3]:
@@ -52,7 +64,7 @@ def main():
         if scrolls[-1] != group_scroll[-1] + 30:
             raise RuntimeError("three-contact MDI header gesture moved the group instead of panning")
         # The standalone Undo/Redo buttons invoke document history, not a visual approximation.
-        events = [envelope(5, text="Z")] + toolbar() + click(900, 505) + click(900, 537)
+        events = [envelope(5, text="Z")] + tool("Undo") + tool("Redo")
         views, _, _ = run(runtime, module, font, mode, work, events + end, source)
         final = list(views.values())[-1]
         if "Z" not in final[1][3]:
@@ -64,13 +76,13 @@ def main():
         if source.read_text(encoding="utf-8") != "omega beta omega":
             raise RuntimeError("literal ReplaceAll did not reach the actual saved file")
         # Open the Search palette by mouse and replace its selected match through ordinary typing.
-        events = toolbar() + click(900, 480) + click(600, 100) + [envelope(5, text="omega"),
+        events = tool("Search") + click(815, 261) + [envelope(5, text="omega"),
             envelope(4, 13, 1), envelope(5, text="X")] + shortcut("S")
         run(runtime, module, font, mode, work, events + end, source)
         if source.read_text(encoding="utf-8") != "X beta omega":
             raise RuntimeError("Search palette Find did not select the actual next match")
         # Edit palette contains real history and session clipboard operations.
-        views, _, _ = run(runtime, module, font, mode, work, toolbar() + click(900, 440) + end, source)
+        views, _, _ = run(runtime, module, font, mode, work, tool("Edit") + end, source)
         final = list(views.values())[-1]
         if [final[row][3] for row in range(72, 77)] != ["Undo", "Redo", "Copy", "Cut", "Paste"]:
             raise RuntimeError("Edit palette lost duplicated history/clipboard commands")

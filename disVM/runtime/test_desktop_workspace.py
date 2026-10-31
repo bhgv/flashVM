@@ -1,5 +1,6 @@
 """Exercise real MovieClip workspace gestures through typed Dis/native channels."""
 
+from test_desktop_tools import tool
 from pathlib import Path
 import re
 import sys
@@ -45,13 +46,7 @@ def main():
             raise RuntimeError(
                 "thumbnail drag did not reorder stable source identities"
             )
-        events = [
-            mouse(900, 225),
-            mouse(900, 225, 3),
-            envelope(1, 65574, first=240),
-            mouse(900, 225),
-            mouse(900, 225, 3),
-        ]
+        events = tool("Help") + [envelope(1, 65574, first=240)] + tool("Help")
         views, _, _ = run(runtime, module, font, mode, work, events + quit_event)
         if not any(
             widgets.get(3, (0, 0, 0, ""))[2] >= 640 for widgets in views.values()
@@ -113,7 +108,7 @@ def main():
         ]
         views, _, _ = run(runtime, module, font, mode, work, events + quit_event)
         trace = (work / "trace.txt").read_text()
-        if not re.search(r"^GEOMETRY \d+ 1 764 580 ", trace, re.M):
+        if not re.search(r"^GEOMETRY \d+ 1 808 580 ", trace, re.M):
             raise RuntimeError(
                 "header double-click did not maximize into the visible table"
             )
@@ -121,15 +116,10 @@ def main():
             raise RuntimeError(
                 "second header double-click did not restore normal geometry"
             )
-        events = [
-            mouse(900, 385),
-            mouse(900, 385, 3),
-            mouse(900, 385),
-            mouse(900, 385, 3),
-        ]
+        events = tool("Max/N") + tool("Max/N")
         run(runtime, module, font, mode, work, events + quit_event)
         trace = (work / "trace.txt").read_text()
-        if not re.search(r"^GEOMETRY \d+ 1 764 580 ", trace, re.M):
+        if not re.search(r"^GEOMETRY \d+ 1 808 580 ", trace, re.M):
             raise RuntimeError("Max/Norm toolbar does not share header maximization")
         # The contact enters the rail while most of the paper is still on the
         # desk. Docking must use contact position, never the window's far edge.
@@ -172,10 +162,10 @@ def main():
             raise RuntimeError(
                 "Ctrl+wheel on the table did not scale its MovieClip parent"
             )
-        events = minimize + [mouse(900, 355), mouse(900, 355, 3)]
+        events = minimize + tool("All")
         views, _, _ = run(runtime, module, font, mode, work, events + quit_event)
         trace = (work / "trace.txt").read_text()
-        if not re.search(r"^TABLEZOOM \d+ 98$", trace, re.M):
+        if not re.search(r"^TABLEZOOM \d+ 102$", trace, re.M):
             raise RuntimeError(
                 "Show all did not derive a fit from complete open-window bounds"
             )

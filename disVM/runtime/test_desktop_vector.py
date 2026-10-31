@@ -1,5 +1,6 @@
 """Exercise the actual MDI vector owner, MovieClip paths and SVG file operations."""
 
+from test_desktop_tools import tool
 from pathlib import Path
 import sys
 import tempfile
@@ -12,9 +13,9 @@ from test_graphical_editor import shortcut
 # its visual reveal. These are copied input events, not direct model mutations.
 def create_events(mouse_tools=False):
     if mouse_tools:
-        events = [mouse(900, 420), mouse(900, 420, 3)]
+        events = tool("SVG")
         events += [envelope(1, 65574, first=16) for _ in range(20)]
-        events += [mouse(900, 385), mouse(900, 385, 3)]
+        events += tool("Max/N")
         # Resize the table through a genuine Ctrl+wheel event over empty space.
         # Parent-space controls must still match their actual composed matrices.
         events += [envelope(4, 17, 1), envelope(3, 5, 1, first=82 * 20, second=55 * 20), envelope(4, 17, 0)]

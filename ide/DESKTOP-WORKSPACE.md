@@ -20,7 +20,7 @@ verification tooling and is not part of the installed application runtime.
 | Drag empty central table space | Pan the table vertically |
 | Two contacts, dragging over a window body | Move the window without editing its text |
 | Three contacts, dragging over a window | Pan the table without editing its text |
-| Double-click/tap a header, or right Max/N | Toggle the active window between the visible table extent and its saved normal geometry |
+| Double-click/tap a header, or View → Max/N | Toggle the active window between the visible table extent and its saved normal geometry |
 | Drag a window to the left canvas edge | Minimize it into its live left miniature, retaining its pre-drag normal position |
 | Tap a miniature, or swipe it right | Restore that owner and scroll its window into view |
 | Right All | Restore and fit all open windows by scaling the parent table, preserving model positions |

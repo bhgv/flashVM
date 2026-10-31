@@ -2,7 +2,7 @@
 
 [Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
 
-[MDI vector editor / Векторный редактор: Draw, SVG](VECTOR-EDITOR.md) · [Русский](VECTOR-EDITOR.ru.md)
+[MDI vector editor / Векторный редактор: Files → SVG](VECTOR-EDITOR.md) · [Русский](VECTOR-EDITOR.ru.md)
 
 [Token queries / Запросы к токенам](TOKEN-QUERIES.md) · [Русский](TOKEN-QUERIES.ru.md)
 
@@ -22,7 +22,7 @@
 
 # FlashVM Limbo IDE and host build tools
 
-Version **0.7.1**. [Русский](README.ru.md).
+Version **0.7.2**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 

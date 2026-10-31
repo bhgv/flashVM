@@ -1,5 +1,6 @@
 """Verify the session clipboard through real MovieClip/Dis desktop input and files."""
 
+from test_desktop_tools import tool
 from pathlib import Path
 import sys
 import tempfile
@@ -55,18 +56,18 @@ def main():
         # Their positions are a rendered 3-column row, not hard-coded source edits.
         events = (
             shortcut("A")
-            + [mouse(900, 325), mouse(900, 325, 3), mouse(570, 330), mouse(570, 330, 3)]
+            + tool("Copy")
             + peer
         )
-        events += [mouse(900, 325), mouse(900, 325, 3), mouse(780, 330), mouse(780, 330, 3)]
+        events += tool("Paste")
         events += save_as("buttons.b") + [envelope(1, 65539)]
         views, _, _ = run(runtime, module, font, mode, work, events, source)
         if (work / "buttons.b").read_text() != original:
             raise RuntimeError("MovieClip clipboard scroll did not execute the owner protocol")
         if not any(
-            widgets.get(56, (0, 0, 0, ""))[3] == "Copy"
-            and widgets.get(58, (0, 0, 0, ""))[3] == "Cut"
-            and widgets.get(59, (0, 0, 0, ""))[3] == "Paste"
+            widgets.get(74, (0, 0, 0, ""))[3] == "Copy"
+            and widgets.get(75, (0, 0, 0, ""))[3] == "Cut"
+            and widgets.get(76, (0, 0, 0, ""))[3] == "Paste"
             for widgets in views.values()
         ):
             raise RuntimeError("clipboard actions were logged without real MovieClip TextFields")

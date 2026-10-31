@@ -1,4 +1,5 @@
 """Regress actual nil-owner sends after closing Editor1 and hiding Help."""
+from test_desktop_tools import tool
 from pathlib import Path
 import sys
 import tempfile
@@ -15,7 +16,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="closed first editor ") as directory:
         work = Path(directory)
         events = shortcut("W") + [mouse(900, 225), mouse(900, 225, 3), envelope(5, text="x")]
-        events += [mouse(900, 225), mouse(900, 225, 3)]
+        events += tool("Help")
         events += shortcut("N") + [envelope(5, text="fresh owner"), envelope(1, 65539, 1)]
         views, _, _ = run(runtime, module, font, mode, work, events)
         if not any(1 not in widgets for widgets in views.values()):

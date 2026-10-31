@@ -6,6 +6,8 @@
 #include "chrome_miniature_card.h"
 #include "chrome_window_header.h"
 #include "chrome_tool_scroll.h"
+#include "chrome_tool_palette.h"
+#include "chrome_tool_pointer.h"
 #include "chrome_tab_button.h"
 #include "chrome_input_field.h"
 #include "chrome_top_bar.h"
@@ -63,7 +65,7 @@ static int cache_number(FVM_Context *owner, FVM_Object *clip, const char *name, 
 int dvm_chrome_owns_view(unsigned long id, unsigned long mirror)
 {
     return id <= 8 || id == 10 || (id >= 13 && id <= 19) || id == 28 || (id >= 30 && id <= 37) ||
-           (id >= 41 && id <= 59) || id == 63 || (id >= 64 && id <= 85) || mirror;
+           (id >= 41 && id <= 59) || id == 63 || (id >= 64 && id <= 88) || mirror;
 }
 
 
@@ -73,6 +75,18 @@ static int render_view(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIte
     if (item->id == 10)
     {
         return execute(owner, clip, chrome_desktop_background, sizeof(chrome_desktop_background), wide, high, 0, 0);
+    }
+    if (item->id == 71)
+    {
+        return execute(owner, clip, chrome_tool_pointer, sizeof(chrome_tool_pointer), wide, high, 0, 0);
+    }
+    if (item->id == 88)
+    {
+        return 1;
+    }
+    if (item->palette)
+    {
+        return execute(owner, clip, chrome_tool_palette, sizeof(chrome_tool_palette), wide, high, 0, 0);
     }
     if (item->id <= 8 || (item->id >= 13 && item->id <= 19) || item->id == 28 || item->id == 55 || item->mirror)
     {
@@ -97,7 +111,7 @@ static int render_view(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIte
     {
         return execute(owner, clip, chrome_tab_button, sizeof(chrome_tab_button), wide, high, item->active, 0);
     }
-    if ((item->id >= 41 && item->id <= 59) || (item->id >= 64 && item->id <= 85))
+    if ((item->id >= 41 && item->id <= 59) || (item->id >= 64 && item->id <= 87))
     {
         return execute(owner, clip, chrome_tool_scroll, sizeof(chrome_tool_scroll), wide, high, 0, item->selected);
     }
@@ -112,6 +126,8 @@ int dvm_chrome_decorate(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIt
 {
     if (!item->dynamic && cached_number(owner, clip, "_chromeWidth", wide) &&
         cached_number(owner, clip, "_chromeHeight", high) &&
+        cached_number(owner, clip, "_chromePalette", item->palette) &&
+        cached_number(owner, clip, "_chromePreviewScale", item->preview_scale) &&
         cached_number(owner, clip, "_chromeActive", item->active) &&
         cached_number(owner, clip, "_chromeSelected", item->selected) &&
         cached_number(owner, clip, "_chromePreviewWidth", item->preview_width) &&
@@ -119,8 +135,10 @@ int dvm_chrome_decorate(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIt
     {
         return 1;
     }
-    return render_view(owner, clip, item, wide, high) && cache_number(owner, clip, "_chromeWidth", wide) &&
-           cache_number(owner, clip, "_chromeHeight", high) &&
+    return dvm_chrome_invalidate(owner, clip) && render_view(owner, clip, item, wide, high) &&
+           cache_number(owner, clip, "_chromePalette", item->palette) &&
+           cache_number(owner, clip, "_chromePreviewScale", item->preview_scale) &&
+           cache_number(owner, clip, "_chromeWidth", wide) && cache_number(owner, clip, "_chromeHeight", high) &&
            cache_number(owner, clip, "_chromeActive", item->active) &&
            cache_number(owner, clip, "_chromeSelected", item->selected) &&
            cache_number(owner, clip, "_chromePreviewWidth", item->preview_width) &&
@@ -151,4 +169,13 @@ int dvm_chrome_glass(FVM_Context *owner,
         *cached_height = (unsigned int)high;
     }
     return ok;
+}
+
+
+/* A pooled clip may survive after its graphics were released. Retire the cache
+ * key with those graphics, not with the object lifetime. Caller owns/serializes
+ * the context. This writes ordinary managed data, never a native pointer. */
+int dvm_chrome_invalidate(FVM_Context *owner, FVM_Object *clip)
+{
+    return cache_number(owner, clip, "_chromeWidth", -1);
 }

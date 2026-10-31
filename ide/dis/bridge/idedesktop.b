@@ -6,6 +6,9 @@ include "idepick.m";
 include "idethumbnails.m";
 include "iderails.m";
 include "idetools.m";
+include "idetoolpalette.m";
+
+palettes: Idetoolpalette; # Pure owner-anchored popup geometry.
 rails: Iderails; # Pure independent rail geometry.
 tools: Idetools; # Labels and command palette rows, never document state.
 thumbview: Idethumbnails; # Pure shelf geometry and order mapping.
@@ -117,7 +120,7 @@ maximize(window: ref Window, width, height, scroll, zoom: int)
         return;
     }
     window.maximized = !window.maximized;
-    window.maxwide = (width - 196) * 100 / zoom;
+    window.maxwide = (width - tools->RightWidth - 92) * 100 / zoom;
     window.maxhigh = (height - 60) * 100 / zoom;
     window.maxtop = 48 + scroll * 100 / zoom;
 }
@@ -160,7 +163,7 @@ restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int,
     (originx, originy, wide, high) := position(index, width, window);
     # Keep one spare pixel for fractional transforms and round exposed bounds
     # outward; integer truncation must not hide a sliver beneath a rail.
-    fit := (width - 195) * 100 / wide;
+    fit := (width - tools->RightWidth - 91) * 100 / wide;
     vertical := (height - 54) * 100 / high;
     if (vertical < fit) {
         fit = vertical;
@@ -182,8 +185,8 @@ restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int,
         horizontal += delta * 100;
     }
     right := (horizontal + wide * zoom + 99) / 100;
-    if (right > width - 109) {
-        pan -= right - (width - 109);
+    if (right > width - tools->RightWidth - 5) {
+        pan -= right - (width - tools->RightWidth - 5);
     }
     verticalposition := 4800 + (originy - 48) * zoom - scroll * 100;
     top := verticalposition / 100;
@@ -244,16 +247,24 @@ stackslot(order, focus: int): int
 # Admit a text-body identity from copied pixels in the same paint/hit order.
 # Borrowed windows contain presentation only. Return zero for rails, headers,
 # opaque scrolls and no hit; source kind/revision/ranges stay with the pane owner.
-texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y, zoom, pan: int): int
+texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x, y, zoom, pan, rightscroll: int): int
 {
-    if (x < 80 || x >= width - 104 || y < 48 || y >= height) {
+    if (x < 80 || x >= width - tools->RightWidth || y < 48 || y >= height) {
         return 0;
+    }
+    if (tools->palette(drawer)) {
+        labels := tools->rows(drawer);
+        owner_y := tools->ButtonTop + (tools->index(drawer) - 1) * tools->ButtonStep - rightscroll;
+        (px, py, pw, ph) := palettes->bounds(owner_y, len labels, drawer == tools->Files, width, height);
+        if (palettes->contains(x, y, px, py, pw, ph)) {
+            return 0;
+        }
     }
     left := width - 424;
     if (left < 84) {
         left = 84;
     }
-    if (drawer != 0 && x >= left && x < width - 112 && y >= 72 && y < 412) {
+    if (drawer != 0 && !tools->palette(drawer) && x >= left && x < width - tools->RightWidth - 8 && y >= 72 && y < 412) {
         return 0;
     }
     target := 0;
@@ -384,7 +395,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         }
     }
     items[used++] = ref Item(11, 2, 0, 0, 0, 80, height, 2, "", -1, -1);
-    items[used++] = ref Item(12, 3, 0, 0, 0, 104, height, 2, "", -1, -1);
+    items[used++] = ref Item(12, 3, 0, 0, 0, tools->RightWidth, height, 2, "", -1, -1);
     thumbnailcount := 0;
     for (slot := 0; slot < len windows; slot++) {
         thumbnailcount += windows[slot] != nil;
@@ -401,31 +412,36 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
     }
     names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close", "Clip", "All", "Max/N", "Draw", "MDI", "SDI"};
     for (index := 1; index <= tools->Count; index++) {
+        command := tools->action(index);
         style := 4;
-        if (drawer == index || index == Help) {
+        if (drawer == command || (command == Help && windows[2] != nil && !windows[2].hidden)) {
             style = 3;
         }
-        identity := 40 + index;
-        if (index > 14) {
-            identity = 64 + index - 15;
-        }
-        items[used++] = ref Item(identity, 3, 0, 30, 56 + (index - 1) * 32 - rightscroll, 44, 27, style, tools->name(index), -1, -1);
+        items[used++] = ref Item(tools->identity(index), 3, 0, tools->ButtonLeft,
+            tools->ButtonTop + (index - 1) * tools->ButtonStep - rightscroll,
+            tools->ButtonWidth, tools->ButtonHeight, style, tools->name(index), -1, -1);
     }
     if (tools->palette(drawer)) {
-        x := width - 424;
-        if (x < 84) {
-            x = 84;
-        }
         labels := tools->rows(drawer);
-        if (drawer == tools->Files) {
-            for (index := 0; index < len recent && index < 4; index++) {
-                labels[10 + index] = recent[index];
-            }
-        }
-        wide := width - 112 - x;
-        items[used++] = ref Item(55, 4, 0, x, 56, wide, 32 + len labels * 30, 0, "Commands", -1, -1);
+        owner_y := tools->ButtonTop + (tools->index(drawer) - 1) * tools->ButtonStep - rightscroll;
+        (x, y, wide, high) := palettes->bounds(owner_y, len labels, drawer == tools->Files, width, height);
+        items[used++] = ref Item(55, 4, 0, x, y, wide, high, 2, "", -1, -1);
+        items[used++] = ref Item(71, 4, 0, x + wide - 1, owner_y + 5, 12, 16, 2, "", -1, -1);
         for (row := 0; row < len labels; row++) {
-            items[used++] = ref Item(72 + row, 4, 0, x + 8, 88 + row * 30, wide - 16, 27, 4, labels[row], -1, -1);
+            (cx, cy) := palettes->cell(row, x, y, height);
+            items[used++] = ref Item(72 + row, 4, 0, cx, cy,
+                tools->ButtonWidth, tools->ButtonHeight, 4, labels[row], -1, -1);
+        }
+        if (drawer == tools->Files && palettes->legend(height) > 0) {
+            notes := "";
+            for (index := 0; index < len recent; index++) {
+                label := recent[index];
+                if (len label > 26) {
+                    label = label[:3] + "..." + label[len label - 20:];
+                }
+                notes += label + "\n";
+            }
+            items[used++] = ref Item(88, 4, 0, x + 8, y + high - palettes->legend(height), wide - 16, palettes->legend(height) - 4, 2, notes, -1, -1);
         }
     } else if (drawer == tools->Find || drawer == tools->Replace) {
         x := width - 424;
@@ -436,7 +452,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         if (drawer == tools->Replace) {
             text = "Replace all in file\nEnter the literal search text, then the replacement. Second Enter applies one undoable replacement. Escape cancels.";
         }
-        items[used++] = ref Item(55, 4, 0, x, 72, width - 112 - x, 340, 0, text, -1, -1);
+        items[used++] = ref Item(55, 4, 0, x, 72, width - tools->RightWidth - 8 - x, 340, 0, text, -1, -1);
     } else if (drawer != 0) {
         descriptions := array[] of {"", "Open a UTF-8 source file in the active editor. Unsaved edits are protected.",
             "Save the active editor. Choose a path for an untitled document.",
@@ -451,7 +467,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         if (x < 84) {
             x = 84;
         }
-        wide := width - 112 - x;
+        wide := width - tools->RightWidth - 8 - x;
         if (wide < 24) {
             wide = 24;
         }
@@ -659,7 +675,7 @@ serve(requests: chan of Request)
             } else if (request.operation == TextHit) {
                 status = Conflict;
                 if (request.ticket == ticket && request.window >= 1 && request.window <= MaxWindows &&
-                    texttarget(windows, width, height, scroll, focus, drawer, request.x, request.y, deskzoom, deskpan) == request.window) {
+                    texttarget(windows, width, height, scroll, focus, drawer, request.x, request.y, deskzoom, deskpan, rightscroll) == request.window) {
                     status = Ok;
                 }
             } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
@@ -743,6 +759,18 @@ serve(requests: chan of Request)
                     if (drawerleft < 84) {
                         drawerleft = 84;
                     }
+                    popupx := 0;
+                    popupy := 0;
+                    popupwide := 0;
+                    popuphigh := 0;
+                    popupcount := 0;
+                    if (tools->palette(drawer)) {
+                        popupcount = len tools->rows(drawer);
+                        owner_y := tools->ButtonTop + (tools->index(drawer) - 1) * tools->ButtonStep - rightscroll;
+                        (popupx, popupy, popupwide, popuphigh) = palettes->bounds(owner_y, popupcount,
+                            drawer == tools->Files, width, height);
+                    }
+                    inpopup := tools->palette(drawer) && palettes->contains(x, y, popupx, popupy, popupwide, popuphigh);
                     if (phase == 4 || phase == 5 || phase == 6) {
                         moving = 0;
                         groupdrag = 0;
@@ -750,7 +778,7 @@ serve(requests: chan of Request)
                         dragging = 0;
                         pressed = 0;
                         target := 0;
-                        obscured := drawer != 0 && x >= drawerleft && x < width - 112 && y >= 72 && y < 412;
+                        obscured := inpopup || (drawer != 0 && !tools->palette(drawer) && x >= drawerleft && x < width - tools->RightWidth - 8 && y >= 72 && y < 412);
                         for (order := 0; order < len windows; order++) {
                             index := stackslot(order, focus);
                             if (obscured || windows[index] == nil || windows[index].hidden ||
@@ -766,7 +794,7 @@ serve(requests: chan of Request)
                                 }
                             }
                         }
-                        if (phase != 6 && !obscured && target == 0 && x >= 80 && x < width - 104 && y >= 48) {
+                        if (phase != 6 && !obscured && target == 0 && x >= 80 && x < width - tools->RightWidth && y >= 48) {
                             if (zoomreference == 0 || scroll != scrollreference * deskzoom / zoomreference ||
                                 deskpan != panreference * deskzoom / zoomreference) {
                                 zoomreference = deskzoom;
@@ -828,20 +856,25 @@ serve(requests: chan of Request)
                         rail := rails->region(x, y, width);
                         railpan := fingers == 3 ||
                             (rail == 2 && (x < 6 || x >= 74 || y < 72 || (y - 72 + leftscroll) % thumbstep >= thumbstep - 8)) ||
-                            (rail == 3 && (x < width - 74 || x >= width - 30 || y < 56 || (y - 56 + rightscroll) % 32 >= 27));
-                        if (rail != 0 && railpan) {
+                            (rail == 3 && (x < width - tools->RightWidth + tools->ButtonLeft || x >= width - 6 ||
+                                y < tools->ButtonTop || (y - tools->ButtonTop + rightscroll) % tools->ButtonStep >= tools->ButtonHeight));
+                        if (rail != 0 && railpan && !inpopup) {
                             raildrag = rail;
                             railorigin = leftscroll;
                             if (rail == 3) {
                                 railorigin = rightscroll;
                             }
-                        } else if (tools->palette(drawer) && x >= drawerleft && x < width - 112 && y >= 56 && y < 88 + len tools->rows(drawer) * 30) {
-                            if (y >= 88 && (y - 88) % 30 < 27) {
-                                action = tools->command(drawer, (y - 88) / 30);
+                        } else if (fingers == 3 && rail == 0) {
+                            drawer = 0;
+                            dragging = 1;
+                        } else if (inpopup && fingers == 1) {
+                            row := palettes->hit(x, y, popupx, popupy, popupcount, height);
+                            if (row >= 0) {
+                                action = tools->command(drawer, row);
                                 drawer = 0;
                             }
                         } else if (drawer == ClipboardTool && y >= 320 && y < 356) {
-                            wide := width - 112 - drawerleft;
+                            wide := width - tools->RightWidth - 8 - drawerleft;
                             button := (wide - 32) / 3;
                             if (button < 1) {
                                 button = 1;
@@ -855,92 +888,24 @@ serve(requests: chan of Request)
                             if (action != 0) {
                                 drawer = 0;
                             }
-                        } else if (drawer == CloseEditor && x >= drawerleft + 8 && x < width - 120 && y >= 364 && y < 400) {
+                        } else if (drawer == CloseEditor && x >= drawerleft + 8 && x < width - tools->RightWidth - 16 && y >= 364 && y < 400) {
                             action = CancelClose;
                             drawer = 0;
-                        } else if (drawer != 0 && x >= drawerleft + 8 && x < width - 120 && y >= 320 && y < 356) {
+                        } else if (drawer != 0 && !tools->palette(drawer) && x >= drawerleft + 8 && x < width - tools->RightWidth - 16 && y >= 320 && y < 356) {
                             action = drawer;
                             drawer = 0;
-                        } else if (drawer != 0 && x >= drawerleft && x < width - 112 && y >= 72 && y < 412) {
+                        } else if (drawer != 0 && !tools->palette(drawer) && x >= drawerleft && x < width - tools->RightWidth - 8 && y >= 72 && y < 412) {
                             # The scroll owns this area; never focus or drag the covered window.
-                        } else if (x >= width - 104 && y >= 56) {
-                            tool := (y - 56 + rightscroll) / 32 + 1;
-                            command := tools->action(tool);
-                            if (tool >= 15) {
-                                if (tools->palette(command)) {
-                                    if (drawer == command) {
-                                        drawer = 0;
-                                    } else {
-                                        drawer = command;
-                                    }
-                                } else {
-                                    action = command;
+                        } else if (x >= width - tools->RightWidth && y >= 56) {
+                            ordinal := (y - tools->ButtonTop + rightscroll) / tools->ButtonStep + 1;
+                            command := tools->action(ordinal);
+                            if (tools->palette(command)) {
+                                if (drawer == command) {
                                     drawer = 0;
+                                } else {
+                                    drawer = command;
                                 }
-                            } else if (tool == SaveFile) {
-                                action = SaveFile;
-                                drawer = 0;
-                            } else if (tool == MaxNorm + 2 || tool == MaxNorm + 3) {
-                                action = GroupEditor + tool - MaxNorm - 2;
-                                drawer = 0;
-                            } else if (tool == MaxNorm + 1) {
-                                drawer = 0;
-                                action = VectorEditor;
-                            } else if (tool == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
-                                deskpan = 0;
-                                maximize(windows[focus - 1], width, height, scroll, deskzoom);
-                                drawer = 0;
-                            } else if (tool == ShowAll) {
-                                minimumleft := 84;
-                                right := 85;
-                                bottom := 49;
-                                for (slot := 0; slot < len windows; slot++) {
-                                    if (windows[slot] == nil) {
-                                        continue;
-                                    }
-                                    windows[slot].hidden = 0;
-                                    (left, top, wide, high) := position(slot, width, windows[slot]);
-                                    if (left < minimumleft) {
-                                        minimumleft = left;
-                                    }
-                                    if (left + wide > right) {
-                                        right = left + wide;
-                                    }
-                                    if (top + high > bottom) {
-                                        bottom = top + high;
-                                    }
-                                }
-                                for (group := 0; group < MaxWindows; group++) {
-                                    if (containers[group] == nil) {
-                                        continue;
-                                    }
-                                    containers[group].hidden = 0;
-                                    (left, top, wide, high) := position(group, width, containers[group]);
-                                    if (left < minimumleft) {
-                                        minimumleft = left;
-                                    }
-                                    if (left + wide > right) {
-                                        right = left + wide;
-                                    }
-                                    if (top + high > bottom) {
-                                        bottom = top + high;
-                                    }
-                                }
-                                deskzoom = (width - 196) * 100 / (right - minimumleft);
-                                vertical := (height - 60) * 100 / (bottom - 48);
-                                if (vertical < deskzoom) {
-                                    deskzoom = vertical;
-                                }
-                                if (deskzoom < 10) {
-                                    deskzoom = 10;
-                                }
-                                if (deskzoom > 180) {
-                                    deskzoom = 180;
-                                }
-                                scroll = 0;
-                                deskpan = 85 - (84 + (minimumleft - 84) * deskzoom / 100);
-                                drawer = 0;
-                            } else if (tool == Help && windows[2] != nil) {
+                            } else if (command == Help && windows[2] != nil) {
                                 windows[2].hidden = !windows[2].hidden;
                                 drawer = 0;
                                 focus = 3;
@@ -948,12 +913,9 @@ serve(requests: chan of Request)
                                     focus = 1;
                                 }
                                 action = Focus;
-                            } else if (tool <= MaxNorm) {
-                                if (drawer == tool) {
-                                    drawer = 0;
-                                } else {
-                                    drawer = tool;
-                                }
+                            } else {
+                                drawer = 0;
+                                action = command;
                             }
                         } else if (x < 80 && y >= 72) {
                             rank := (y - 72 + leftscroll) / thumbstep;
@@ -966,7 +928,7 @@ serve(requests: chan of Request)
                                 thumbdrag = rank;
                                 pressed = slot + 1;
                             }
-                        } else if (x >= 80 && x < width - 104 && y >= 48) {
+                        } else if (x >= 80 && x < width - tools->RightWidth && y >= 48) {
                             tabhit := 0;
                             if (fingers == 1) {
                                 for (child := 0; child < len windows; child++) {
@@ -1198,6 +1160,64 @@ serve(requests: chan of Request)
             thumbdrag = -1;
             pressed = 0;
         }
+        if (action == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
+            deskpan = 0;
+            maximize(windows[focus - 1], width, height, scroll, deskzoom);
+            action = 0;
+            changed = 1;
+        } else if (action == ShowAll) {
+            minimumleft := 84;
+            right := 85;
+            bottom := 49;
+            for (slot := 0; slot < len windows; slot++) {
+                if (windows[slot] == nil) {
+                    continue;
+                }
+                windows[slot].hidden = 0;
+                (left, top, wide, high) := position(slot, width, windows[slot]);
+                if (left < minimumleft) {
+                    minimumleft = left;
+                }
+                if (left + wide > right) {
+                    right = left + wide;
+                }
+                if (top + high > bottom) {
+                    bottom = top + high;
+                }
+            }
+            for (group := 0; group < MaxWindows; group++) {
+                if (containers[group] == nil) {
+                    continue;
+                }
+                containers[group].hidden = 0;
+                (left, top, wide, high) := position(group, width, containers[group]);
+                if (left < minimumleft) {
+                    minimumleft = left;
+                }
+                if (left + wide > right) {
+                    right = left + wide;
+                }
+                if (top + high > bottom) {
+                    bottom = top + high;
+                }
+            }
+            deskzoom = (width - tools->RightWidth - 92) * 100 / (right - minimumleft);
+            vertical := (height - 60) * 100 / (bottom - 48);
+            if (vertical < deskzoom) {
+                deskzoom = vertical;
+            }
+            if (deskzoom < 10) {
+                deskzoom = 10;
+            }
+            if (deskzoom > 180) {
+                deskzoom = 180;
+            }
+            scroll = 0;
+            deskpan = 85 - (84 + (minimumleft - 84) * deskzoom / 100);
+            drawer = 0;
+            action = 0;
+            changed = 1;
+        }
         admittedfocus := livefocus(windows, focus);
         if (admittedfocus != focus) {
             focus = admittedfocus;
@@ -1248,7 +1268,7 @@ serve(requests: chan of Request)
             }
         }
         leftscroll = rails->clamp(leftscroll, live, thumbstep, 72, height);
-        rightscroll = rails->clamp(rightscroll, tools->Count, 32, 56, height);
+        rightscroll = rails->clamp(rightscroll, tools->Count, tools->ButtonStep, tools->ButtonTop, height);
         if (deskpan < -4096) {
             deskpan = -4096;
         }
@@ -1309,13 +1329,14 @@ livefocus(windows: array of ref Window, preferred: int): int
 # acquired; only the caller owns the returned terminal request channel.
 start(): chan of Request
 {
+    palettes = load Idetoolpalette Idetoolpalette->PATH;
     rails = load Iderails Iderails->PATH;
     tools = load Idetools Idetools->PATH;
     thumbview = load Idethumbnails Idethumbnails->PATH;
     picking = load Idepick Idepick->PATH;
     tabs = load Idetabview Idetabview->PATH;
     docking = load Idedocking Idedocking->PATH;
-    if (tabs == nil || docking == nil || picking == nil || thumbview == nil || rails == nil || tools == nil) {
+    if (tabs == nil || docking == nil || picking == nil || thumbview == nil || rails == nil || tools == nil || palettes == nil) {
         raise "fail: desktop control modules";
     }
     requests := chan of Request;

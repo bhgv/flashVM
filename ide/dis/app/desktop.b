@@ -185,7 +185,7 @@ init()
     }
     windows[0] = panes->startnotified(initialkind, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when the dragging mouse/finger enters the left shelf; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space, three fingers, middle mouse, or Ctrl+Shift+left drag to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, Pen/width. B/P/R/E/L: brush/pen/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nMDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. SDI / Ctrl+D detaches with saved geometry. MDI uses tabs; AS, Limbo and graphics have separate containers. Drag the container title.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or View > Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. View > All fits every window. Dock when the dragging mouse/finger enters the left shelf; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space, three fingers, middle mouse, or Ctrl+Shift+left drag to pan. Left thumbnails jump. Tools expand on the right.\n\nFiles > SVG / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, Pen/width. B/P/R/E/L: brush/pen/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nView > MDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. View > SDI / Ctrl+D detaches with saved geometry. MDI uses tabs; AS, Limbo and graphics have separate containers. Drag the container title.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
     windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -334,7 +334,7 @@ init()
             if (x < 92) {
                 x = 92;
             }
-            wide := width - 128 - x;
+            wide := width - Idetools->RightWidth - 24 - x;
             if (wide < 24) {
                 wide = 24;
             }
@@ -496,7 +496,7 @@ init()
                 left = 84;
             }
             if (event.kind != codec->Request || event.code != desk->PointerEvent ||
-                event.first < left + 8 || event.first >= width - 120 ||
+                event.first < left + 8 || event.first >= width - Idetools->RightWidth - 16 ||
                 !((event.second >= 320 && event.second < 356) ||
                   (event.second >= 364 && event.second < 400))) {
                 continue;
@@ -645,10 +645,10 @@ init()
                 }
                 if (code == 4 || code == 5) {
                     request.operation = desk->Scroll;
-                    if (event.first < 80 || event.first >= width - 104) {
+                    if (event.first < 80 || event.first >= width - Idetools->RightWidth) {
                         request.operation = desk->RailScroll;
                         request.window = 2;
-                        if (event.first >= width - 104) {
+                        if (event.first >= width - Idetools->RightWidth) {
                             request.window = 3;
                         }
                     }
@@ -668,7 +668,7 @@ init()
                     left = 84;
                 }
                 approved = action == desk->CloseEditor && previousdrawer == desk->CloseEditor &&
-                    phase == 1 && code == 1 && event.first >= left + 8 && event.first < width - 120 &&
+                    phase == 1 && code == 1 && event.first >= left + 8 && event.first < width - Idetools->RightWidth - 16 &&
                     event.second >= 320 && event.second < 356;
                 # Native glyph geometry proposes an offset. Layout independently
                 # admits its pane, and that pane checks the shown source revision.

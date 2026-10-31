@@ -1,5 +1,6 @@
 """Exercise actual MovieClip parenting for source/graphics MDI and SDI detach."""
 
+from test_desktop_tools import tool
 from pathlib import Path
 import sys
 import tempfile
@@ -25,7 +26,7 @@ def main():
         source = work / "source.b"
         original = "# MDI_SOURCE_1699\n"
         source.write_text(original, encoding="utf-8")
-        events = create_events() + [mouse(900, 452), mouse(900, 452, 3)] + settle()
+        events = create_events() + tool("MDI") + settle()
         events += [mouse(40, 90), mouse(40, 90, 3)] + settle() + shortcut("G") + settle()
         events += [mouse(40, 500), mouse(40, 500, 3)] + settle() + shortcut("G") + settle()
         views, _, _ = run(runtime, module, font, mode, work, events + [envelope(1, 65539, 1)], source)
@@ -36,7 +37,7 @@ def main():
             raise RuntimeError("missing real container MovieClips")
         # Hide the overlapping Help SDI, then select the left tab through real
         # pointer input. Exactly that child is painted inside the shared content.
-        tabs = events + [mouse(900, 225), mouse(900, 225, 3)] + settle()
+        tabs = events + tool("Help") + settle()
         tx, ty = grouped[30][1:3]
         tabs += [mouse(tx + 15, ty + 12), mouse(tx + 15, ty + 12, 3)] + settle()
         tabviews, _, _ = run(runtime, module, font, mode, work, tabs + [envelope(1, 65539, 1)], source)

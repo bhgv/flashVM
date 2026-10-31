@@ -1,6 +1,7 @@
 implement Idepick;
 include "idedesktop.m";
 include "idepick.m";
+include "idetools.m";
 
 
 # Walk the exact copied paint order backwards. Parent transforms are bounded to
@@ -40,7 +41,7 @@ topmost(items: array of ref Idedesktop->Item, x, y, width, zoom, pan, scroll: in
             wide = wide * zoom / 100;
             high = high * zoom / 100;
         } else if (parent == 3) {
-            left += width - 104;
+            left += width - Idetools->RightWidth;
         }
         if (x >= left && x < left + wide && y >= top && y < top + high) {
             return item.id;

@@ -1,5 +1,6 @@
 """Exercise real debugger panel creation on the same source/vector MovieClip desk."""
 
+from test_desktop_tools import tool
 from pathlib import Path
 import sys
 import tempfile
@@ -18,11 +19,9 @@ def main():
         original = "# SHARED_DESKTOP_SOURCE\n"
         source.write_text(original, encoding="utf-8")
         events = create_events()
-        events += [mouse(900, 200), mouse(900, 200, 3)]
-        events += [mouse(600, 330), mouse(600, 330, 3)]
+        events += tool("Debug")
         # Reopening must reuse the same three owners rather than consume slots.
-        events += [mouse(900, 200), mouse(900, 200, 3)]
-        events += [mouse(600, 330), mouse(600, 330, 3)]
+        events += tool("Debug")
         events += [envelope(5, text="MUST_NOT_EDIT_DEBUG")]
         events += [envelope(1, 65539, 1)]
         views, _, _ = run(runtime, module, font, mode, work, events, source)

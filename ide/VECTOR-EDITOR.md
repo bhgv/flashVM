@@ -4,7 +4,7 @@
 [Desktop](DESKTOP-WORKSPACE.md) · [Example](dis/examples/vector/README.md)
 
 Implemented in v0.1696, expanded with screen controls and SVG interoperability in v0.1697: a new independently owned vector document type inside
-menu **8**, the existing MovieClip IDE. Click **Draw** on the right, or press
+menu **8**, the existing MovieClip IDE. Choose **Files → SVG** on the right, or press
 **Ctrl+Shift+N**. Each command creates another MDI window, up to the existing
 combined eight-window limit. Text editors, vector documents, Help and console
 coexist. Window movement, max/normal, desktop zoom, thumbnails, docking and

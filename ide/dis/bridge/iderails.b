@@ -1,5 +1,6 @@
 implement Iderails;
 include "iderails.m";
+include "idetools.m";
 
 
 # Clamp an independent rail translation. count/spacing/top describe its content;
@@ -30,7 +31,7 @@ region(x, y, width: int): int
     if (x < 80) {
         return 2;
     }
-    if (x >= width - 104) {
+    if (x >= width - Idetools->RightWidth) {
         return 3;
     }
     return 0;

@@ -474,6 +474,22 @@ static FVM_Object *child(FVM_Object *parent, const char *name, unsigned int dept
 }
 
 
+/* Read admitted rail geometry from the complete copied scene. A scene without
+ * a right rail owns the whole canvas. No theme constant or VM pointer escapes. */
+static unsigned long right_extent(void)
+{
+    unsigned int index;
+    for (index = 0; index < received; index++)
+    {
+        if (items[index].id == 12)
+        {
+            return items[index].width <= width ? items[index].width : width;
+        }
+    }
+    return 0;
+}
+
+
 /* Append one value rectangle to a retained MovieClip without clearing siblings.
  * Coordinates/extents/color are copied pixels; return zero on a VM call failure.
  * The caller owns the clip's context and serializes all managed access. */
@@ -1351,7 +1367,7 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
     *widget = 0;
     *position = -1;
     if (!owner || !active || pending || camera_motion.active || !isfinite(x) || !isfinite(y) || x < 80 ||
-        x >= width - 104 || y < 48 || y >= height)
+        x >= width - right_extent() || y < 48 || y >= height)
     {
         return 0;
     }
@@ -2004,7 +2020,8 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
             {
                 return 0;
             }
-            ok = number(format, "size", item->parent == 3 && item->id >= 41 ? 9 : 11) && number(format, "leading", 2);
+            ok = number(format, "size", (item->parent == 3 || (item->id >= 72 && item->id <= 88)) ? 8 : 11) &&
+                 number(format, "leading", 2);
             fvm_value_undefined(&argument);
             argument.type = FVM_VALUE_OBJECT;
             argument.object = format;
@@ -2066,6 +2083,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
                              scale,
                              item->width,
                              item->height,
+                             item->id == 55 && content->style == 2,
                              item->mirror};
     if (!dvm_chrome_decorate(owner, clip, &chrome, content->width, content->height))
     {
@@ -2090,7 +2108,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         }                                                                                                              \
     } while (0)
     GLOBAL_NUMBER("ideTableOffset", -(double)offset);
-    GLOBAL_NUMBER("ideRightX", width - 104);
+    GLOBAL_NUMBER("ideRightX", width - right_extent());
     double widget_x = item->x;
     double widget_y = item->y;
     if (item->id <= 8 && motions[item->id].active)
@@ -2103,7 +2121,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     GLOBAL_NUMBER("ideWidgetHeight", content->height);
     GLOBAL_NUMBER("ideWidgetScale", scale * 100);
     GLOBAL_NUMBER("ideLabelWidth",
-                  content->width > (content->line ? 40U : 12U) ? content->width - (content->line ? 40 : 12) : 1);
+                  content->width > (content->line ? 40U : 8U) ? content->width - (content->line ? 40 : 8) : 1);
     GLOBAL_NUMBER("ideLabelHeight", content->height > 12 ? content->height - 12 : 1);
 #undef GLOBAL_NUMBER
     {
@@ -2265,6 +2283,7 @@ static int retire(const unsigned char *present)
             FVM_Value ignored;
             if (fvm_value_string_bytes(&value, "", 0) != FVM_OK ||
                 fvm_object_set(owner, labels[id], "text", &value) != FVM_OK ||
+                !dvm_chrome_invalidate(owner, clips[id]) ||
                 fvm_object_call(owner, clips[id], "clear", 0, NULL, &ignored) != FVM_OK ||
                 fvm_object_call(owner, cursors[id], "clear", 0, NULL, &ignored) != FVM_OK ||
                 fvm_object_call(owner, marks[id], "clear", 0, NULL, &ignored) != FVM_OK ||
