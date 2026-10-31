@@ -2,9 +2,10 @@
 Idemdi: module
 {
     PATH: con "idemdi.dis"; # Portable registry owner, never a workspace switcher.
-    Source, Graphics: con iota + 1; # Tool families; a container accepts exactly one.
+    Source, Graphics, ActionScript: con iota + 1; # Tool families; a container accepts exactly one.
     Snapshot, Register, Create, Join, Leave, Remove, Dissolve, Shutdown: con iota; # FIFO commands.
     Ok, Invalid, Conflict: con iota; # Admission; refusal preserves membership.
+    Reclassify: con 8; # Change document family; incompatible membership detaches atomically.
     Limit: con 8; # Stable document/container identities in this first registry.
 
 
@@ -35,6 +36,6 @@ Idemdi: module
 
     # Start one isolated membership owner. Removing/dissolving groups NEVER shuts
     # down documents, discards changes or changes their file identities. This
-    # foundation is not an implemented MovieClip parent/tab/drag adapter yet.
+    # registry supplies the tabbed MovieClip adapter with copied membership only.
     start: fn(): chan of Request;
 };

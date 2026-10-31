@@ -440,6 +440,19 @@ EOF
             install_dis64_envelope "$base" "$destination"
             mkdir -p "$destination"
             copy_tree "$ROOT/disVM/examples/native-module" "$destination/examples/native-module"
+            copy_tree "$ROOT/flashVM/examples/embedding/native_module" "$destination/examples/flashvm-native-module"
+            if [[ -f "$base/disvm_flashvm_native_module_example" && -f "$base/native/native-module.swf" ]]; then
+                install_program "$base" disvm_flashvm_native_module_example "$destination"
+                copy_file "$ROOT/disVM/runtime/run-flashvm-native-module.sh" "$destination/run-flashvm-native-module.sh" 755
+                copy_file "$base/native/native-module.swf" "$destination/examples/flashvm-native-module/native-module.swf"
+            fi
+            copy_file "$ROOT/disVM/runtime/FLASHVM-NATIVE-MODULE.md" "$destination/examples/flashvm-native-module/README.md"
+            mkdir -p "$destination/docs/ide"
+            for language in md ru.md; do
+                sed -e 's|../../flashVM/|https://github.com/bhgv/flashVM/blob/master/flashVM/|g' \
+                    -e 's|../../disVM/|https://github.com/bhgv/flashVM/blob/master/disVM/|g' \
+                    "$ROOT/ide/dis/DESKTOP-CONTROLS.$language" >"$destination/docs/ide/DESKTOP-CONTROLS.$language"
+            done
             copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.md" "$destination/RETAINED-SCENE.md"
             copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.ru.md" "$destination/RETAINED-SCENE.ru.md"
             copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.md" "$destination/SYS_CAPTURE.md"
@@ -544,7 +557,7 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in tasks-demo asinctasks capture-demo asincviews idemdi idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in tasks-demo asinctasks capture-demo asincviews idemdi iderails idetools iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
@@ -554,7 +567,9 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-token-query.sh" "$destination/run-token-query.sh" 755
             copy_tree "$ROOT/ide/dis/examples/token-query" "$destination/examples/token-query"
             copy_tree "$ROOT/ide/dis/examples/vector" "$destination/examples/vector"
-            copy_file "$ROOT/ide/dis/bridge/idemdi.b" "$destination/source/idemdi.b"
+            for control in idemdi iderails idetools iderecent idepick idethumbnails idetabview idedocking idesourcedomain; do
+                copy_file "$ROOT/ide/dis/bridge/$control.b" "$destination/source/$control.b"
+            done
             copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
             copy_file "$ROOT/ide/dis/bridge/idevector.b" "$destination/source/idevector.b"
             copy_file "$ROOT/ide/assets/vector-v0.1697.png" "$destination/VECTOR-EDITOR.png"

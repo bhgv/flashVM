@@ -192,7 +192,32 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                 }
                 status = core->Ok;
             } else if (kind == Editor) {
-                if (request.operation == ExportSelection || request.operation == CutSelection ||
+                if ((request.operation == FindText || request.operation == ReplaceText) && request.event != nil) {
+                    current = call(document, core->Snapshot, 0, "");
+                    status = core->Conflict;
+                    if (request.event.flags == current.revision && request.text != "") {
+                        replies := chan of Idecore->Reply;
+                        operation := core->Find;
+                        first := state.caret;
+                        if (request.operation == ReplaceText) {
+                            operation = core->ReplaceAll;
+                            first = 0;
+                        }
+                        document <-= Idecore->Request(1, operation, current.revision, first,
+                            len current.text, request.text, request.event.text, replies);
+                        current = <-replies;
+                        if (request.operation == FindText && current.status == core->NotFound && first != 0) {
+                            document <-= Idecore->Request(1, core->Find, current.revision, 0,
+                                len current.text, request.text, "", replies);
+                            current = <-replies;
+                        }
+                        status = current.status;
+                        policy->observe(state, current);
+                        if (status == core->Ok && request.operation == FindText) {
+                            policy->select(state, current, current.offset, current.offset + len request.text);
+                        }
+                    }
+                } else if (request.operation == ExportSelection || request.operation == CutSelection ||
                     request.operation == PasteSelection) {
                     current = call(document, core->Snapshot, 0, "");
                     policy->observe(state, current);
@@ -203,7 +228,32 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                         last = state.anchor;
                     }
                     status = core->Ok;
-                    if (request.operation == ExportSelection) {
+                    if ((request.operation == FindText || request.operation == ReplaceText) && request.event != nil) {
+                    current = call(document, core->Snapshot, 0, "");
+                    status = core->Conflict;
+                    if (request.event.flags == current.revision && request.text != "") {
+                        replies := chan of Idecore->Reply;
+                        operation := core->Find;
+                        first := state.caret;
+                        if (request.operation == ReplaceText) {
+                            operation = core->ReplaceAll;
+                            first = 0;
+                        }
+                        document <-= Idecore->Request(1, operation, current.revision, first,
+                            len current.text, request.text, request.event.text, replies);
+                        current = <-replies;
+                        if (request.operation == FindText && current.status == core->NotFound && first != 0) {
+                            document <-= Idecore->Request(1, core->Find, current.revision, 0,
+                                len current.text, request.text, "", replies);
+                            current = <-replies;
+                        }
+                        status = current.status;
+                        policy->observe(state, current);
+                        if (status == core->Ok && request.operation == FindText) {
+                            policy->select(state, current, current.offset, current.offset + len request.text);
+                        }
+                    }
+                } else if (request.operation == ExportSelection) {
                         selected := current.text[first:last];
                         status = clipstatus(selected);
                         if (status == core->Ok) {

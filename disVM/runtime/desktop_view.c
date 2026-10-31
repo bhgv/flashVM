@@ -1,5 +1,6 @@
 /* Actual MovieClip/AS widget presentation for copied Limbo desktop scenes. */
 #include "desktop_view.h"
+#include "desktop_chrome.h"
 #include "desktop_view_swf.h"
 #include "flashvm/avm1.h"
 #include "flashvm/movieclip.h"
@@ -14,7 +15,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define DESK_SLOTS 64U  /* Stable bounded widget identities, independent of VM addresses. */
+#define DESK_SLOTS 96U  /* Stable bounded widget identities, independent of VM addresses. */
 #define DESK_TEXT 1024U /* Maximum copied UTF-8 payload. */
 #define DESK_META 72U   /* parent/x/y/width/height/style/caret/mirror/anchor words. */
 
@@ -25,7 +26,7 @@ typedef struct DeskItem
     unsigned long id;                /* Stable controller slot. */
     unsigned long parent;            /* Layer group 0..4. */
     long x;                          /* Signed parent-local pixels; windows may pass under the left rail. */
-    unsigned long y;                 /* Parent-local pixels. */
+    long y;                          /* Signed parent-local pixels; scrolled rail items may precede the viewport. */
     unsigned long width;             /* Bounded local extent. */
     unsigned long height;            /* Bounded local extent. */
     unsigned long mirror;            /* Optional source window snapshot in this scene. */
@@ -222,9 +223,10 @@ static void motion_commit(void)
         {
             DeskMotion *motion = &motions[id];
             double zoom = tablezoom / 100.0;
-            double small = fmin((double)thumbnail->width / window->width, (double)thumbnail->height / window->height);
-            double x = thumbnail->x + (thumbnail->width - window->width * small) / 2;
-            double y = thumbnail->y + (thumbnail->height - window->height * small) / 2;
+            double small =
+                fmin(1, fmin((double)thumbnail->width / window->width, (double)thumbnail->height / window->height));
+            double x = thumbnail->x;
+            double y = thumbnail->y;
             int hiding = window->x == 65536;
             double from_x = x;
             double from_y = y;
@@ -469,120 +471,6 @@ static FVM_Object *child(FVM_Object *parent, const char *name, unsigned int dept
         return NULL;
     }
     return result.object;
-}
-
-
-/* Draw a60-percent frosted-glass imitation using genuine alpha MovieClip fills.
- * Borrow clip; wide/high are copied panel pixels and right chooses its inner
- * edge. Smoothstep fades the inner32 pixels; deterministic low-contrast grain
- * varies tint rather than accumulating opacity. No backdrop/VM pointer escapes.
- * Return zero on a drawing failure; detached workers later composite the paths. */
-static int glass(FVM_Object *clip, double wide, double high, int right)
-{
-    FVM_Value args[3];
-    FVM_Value ignored;
-    int x;
-    int y;
-    if (glass_width[right] == (unsigned int)wide && glass_height[right] == (unsigned int)high)
-    {
-        return 1;
-    }
-    if (fvm_object_call(owner, clip, "clear", 0, NULL, &ignored) != FVM_OK)
-    {
-        return 0;
-    }
-    if (fvm_object_call(owner, clip, "lineStyle", 0, NULL, &ignored) != FVM_OK)
-    {
-        return 0;
-    }
-    for (x = 0; x < (int)wide; x += 4)
-    {
-        double edge = right ? x + 2 : wide - x - 2;
-        double t = fmax(0, fmin(1, edge / 32));
-        double alpha = 60 * t * t * (3 - 2 * t);
-        for (y = 0; y < (int)high; y += 24)
-        {
-            unsigned long grain = ((unsigned int)x * 13U + (unsigned int)y * 7U) % 7U;
-            unsigned long tint = ((47UL + grain) << 16) | ((62UL + grain) << 8) | (73UL + grain);
-            double xs[5] = {x, fmin(x + 4, wide), fmin(x + 4, wide), x, x};
-            double ys[5] = {y, y, fmin(y + 24, high), fmin(y + 24, high), y};
-            unsigned int point;
-            fvm_value_number(&args[0], tint);
-            fvm_value_number(&args[1], alpha);
-            if (fvm_object_call(owner, clip, "beginFill", 2, args, &ignored) != FVM_OK)
-            {
-                return 0;
-            }
-            for (point = 0; point < 5; ++point)
-            {
-                fvm_value_number(&args[0], xs[point]);
-                fvm_value_number(&args[1], ys[point]);
-                if (fvm_object_call(owner, clip, point ? "lineTo" : "moveTo", 2, args, &ignored) != FVM_OK)
-                {
-                    return 0;
-                }
-            }
-            if (fvm_object_call(owner, clip, "endFill", 0, NULL, &ignored) != FVM_OK)
-            {
-                return 0;
-            }
-        }
-    }
-    glass_width[right] = (unsigned int)wide;
-    glass_height[right] = (unsigned int)high;
-    return 1;
-}
-
-
-/* Build one solid drawing using actual MovieClip drawing methods. The copied
- * palette/extent are values; output is FlashVM-managed graphics, not a C mock. */
-static int box(FVM_Object *clip, double wide, double high, unsigned long rgb, unsigned long border)
-{
-    FVM_Value args[3];
-    FVM_Value ignored;
-    int index;
-    double radius = fmin(7, fmin(wide, high) / 4);
-    double x[25];
-    double y[25];
-    /* Six segments per corner keep the outline independent of font/raster jobs. */
-    for (index = 0; index < 25; ++index)
-    {
-        int corner = (index % 24) / 6;
-        double angle = ((index % 24) * 15.0 + 180.0) * 3.141592653589793 / 180.0;
-        double cx = corner == 0 || corner == 3 ? radius : wide - radius;
-        double cy = corner < 2 ? radius : high - radius;
-        x[index] = cx + radius * cos(angle);
-        y[index] = cy + radius * sin(angle);
-    }
-    if (fvm_object_call(owner, clip, "clear", 0, NULL, &ignored) != FVM_OK)
-    {
-        return 0;
-    }
-    {
-        fvm_value_number(&args[0], border ? 2 : 0);
-        fvm_value_number(&args[1], border);
-        fvm_value_number(&args[2], 100);
-        if (fvm_object_call(owner, clip, "lineStyle", 3, args, &ignored) != FVM_OK)
-        {
-            return 0;
-        }
-    }
-    fvm_value_number(&args[0], rgb);
-    fvm_value_number(&args[1], 100);
-    if (fvm_object_call(owner, clip, "beginFill", 2, args, &ignored) != FVM_OK)
-    {
-        return 0;
-    }
-    for (index = 0; index < 25; ++index)
-    {
-        fvm_value_number(&args[0], x[index]);
-        fvm_value_number(&args[1], y[index]);
-        if (fvm_object_call(owner, clip, index ? "lineTo" : "moveTo", 2, args, &ignored) != FVM_OK)
-        {
-            return 0;
-        }
-    }
-    return fvm_object_call(owner, clip, "endFill", 0, NULL, &ignored) == FVM_OK;
 }
 
 
@@ -976,7 +864,7 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
             ink = 0xa4afb7UL;
         }
         if (!number(button, "_visible", 1) || !number(button, "_x", 6 + (i % 8) * cell) ||
-            !number(button, "_y", i < 8 ? 26 : 50) || !box(button, cell - 3, 20, fill, border) ||
+            !number(button, "_y", i < 8 ? 26 : 50) || !dvm_chrome_box(owner, button, cell - 3, 20, fill, border) ||
             !vector_icon(button, i, cell - 3, ink))
         {
             return 0;
@@ -1336,8 +1224,9 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         }
     }
     if (words[0] > 12 || (words[0] >= 5 && ((unsigned long)message->first > 8 || words[7])) ||
-        (words[1] > 65536 && words[1] < 0xffff8000UL) || words[2] > 65536 || !words[3] || words[3] > 32768 ||
-        !words[4] || words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 || words[7] >= DESK_SLOTS)
+        (words[1] > 65536 && words[1] < 0xffff8000UL) || (words[2] > 65536 && words[2] < 0xffff8000UL) || !words[3] ||
+        words[3] > 32768 || !words[4] || words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 ||
+        words[7] >= DESK_SLOTS)
     {
         return 0;
     }
@@ -1363,7 +1252,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         item->id = (unsigned long)message->first;
         item->parent = words[0];
         item->x = words[1] <= 65536 ? (long)words[1] : -1L - (long)(0xffffffffUL - words[1]);
-        item->y = words[2];
+        item->y = words[2] <= 65536 ? (long)words[2] : -1L - (long)(0xffffffffUL - words[2]);
         item->width = words[3];
         item->height = words[4];
         item->style = words[5] % 8;
@@ -1672,7 +1561,7 @@ static int caret_clip(FVM_Object *cursor, const DeskItem *content)
         }
         ok = ok && number(cursor, "_x", (content->line ? 36 : 8) + x) &&
              number(cursor, "_y", 8 + line.baseline - font.ascent) &&
-             box(cursor, 1, options.line_height, 0x203747UL, 0);
+             dvm_chrome_box(owner, cursor, 1, options.line_height, 0x203747UL, 0);
         break;
     }
     fvm_text_layout_destroy(layout);
@@ -2146,17 +2035,39 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         }
     }
     if ((item->id == 11 || item->id == 12)
-            ? !glass(clip, content->width, content->height, item->id == 12)
-            : !box(clip,
-                   content->width,
-                   content->height,
-                   colors[content->style],
-                   item->id <= 8 && (content->style == 1 || content->style == 5) ? 0x2684dbUL : 0))
+            ? !dvm_chrome_glass(owner,
+                                clip,
+                                content->width,
+                                content->height,
+                                item->id == 12,
+                                &glass_width[item->id == 12],
+                                &glass_height[item->id == 12])
+            : !dvm_chrome_owns_view(item->id, item->mirror) &&
+                  !dvm_chrome_box(
+                      owner,
+                      clip,
+                      content->width,
+                      content->height,
+                      (item->id >= 41 && item->id <= 55 && content->style != 3)
+                          ? 0x252b2eUL
+                          : (((item->id >= 13 && item->id <= 19) || item->id == 28) ? 0xeff2f1UL
+                                                                                    : colors[content->style]),
+                      item->id <= 8 && (content->style == 1 || content->style == 5)
+                          ? 0x2684dbUL
+                          : (item->id <= 8 || (item->id >= 13 && item->id <= 28) ? 0xb9c4caUL : 0x4d575bUL)))
     {
         fprintf(stderr, "desktop box\n");
         return 0;
     }
-    if (item->id <= 8 && !rectangle(clip, 2, 2, content->width - 4, 22))
+    DVM_ChromeItem chrome = {item->id,
+                             content->id <= 8 && vectors[content->id].complete,
+                             content->style == 1 || content->style == 5,
+                             content->style == 3,
+                             scale,
+                             item->width,
+                             item->height,
+                             item->mirror};
+    if (!dvm_chrome_decorate(owner, clip, &chrome, content->width, content->height))
     {
         return 0;
     }
@@ -2727,6 +2638,16 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
         }
         if (ok)
         {
+            if (item->mirror)
+            {
+                /* Cache the shelf object in physical card pixels, independently
+                 * of its preview's source resolution. Captured paths already
+                 * carry the actual MovieClip transform. */
+                world.xx = world.yy = 1;
+                world.xy = world.yx = 0;
+                logical_width = (unsigned int)item->width;
+                logical_height = (unsigned int)item->height;
+            }
             retained_key(&key, item, &world);
             ok = dvm_editor_frame_node_key(frame, &key, sizeof(key)) &&
                  dvm_editor_frame_node_end(

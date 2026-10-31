@@ -1,5 +1,17 @@
 implement Idedesktop;
 include "idedesktop.m";
+include "idetabview.m";
+include "idedocking.m";
+include "idepick.m";
+include "idethumbnails.m";
+include "iderails.m";
+include "idetools.m";
+rails: Iderails; # Pure independent rail geometry.
+tools: Idetools; # Labels and command palette rows, never document state.
+thumbview: Idethumbnails; # Pure shelf geometry and order mapping.
+picking: Idepick; # Pure reversed-scene admission, shared with actual paint order.
+tabs: Idetabview; # Pure geometry module; the layout process owns selection.
+docking: Idedocking; # Pure contact policy; the layout process owns hidden state.
 
 
 # Copied presentation state; document authority stays with its separate pane owner.
@@ -9,8 +21,8 @@ Window: adt
 {
     container: ref Window; # Private presentation parent; nil means SDI.
     root: int; # Container identity1..8, zero for document windows.
-    family: int; # Container tool family1 source/2 graphics.
-    rank: int; # Stable child tile rank, recomputed on membership change.
+    family: int; # Container domain1 Limbo/2 graphics/3 ActionScript.
+    rank: int; # Child tab ordinal; on containers, selected child identity.
     count: int; # Number of children for container geometry.
     title: string; # Immutable caption value.
     body: string; # Copied presentation, not source authority.
@@ -52,13 +64,7 @@ position(index, width: int, window: ref Window): (int, int, int, int)
     if (window.container != nil) {
         parent := window.container;
         (x, y, wide, high) := position(parent.root - 1, width, parent);
-        columns := 1;
-        if (wide >= 650) {
-            columns = 2;
-        }
-        childwide := (wide - 24) / columns;
-        return (x + 8 + (window.rank % columns) * (childwide + 8),
-                y + 40 + (window.rank / columns) * 260, childwide, 252);
+        return tabs->body(x, y, wide, high);
     }
     (x, y, wide, high) := geometry(index, width);
     if (window.root != 0) {
@@ -68,11 +74,7 @@ position(index, width: int, window: ref Window): (int, int, int, int)
         if (wide < 96) {
             wide = 96;
         }
-        columns := 1;
-        if (wide >= 650) {
-            columns = 2;
-        }
-        high = 48 + ((window.count + columns - 1) / columns) * 260;
+        high = 400;
     }
     if (window.maximized) {
         return (84, window.maxtop, window.maxwide, window.maxhigh);
@@ -204,17 +206,15 @@ restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int,
 }
 
 
-# Dock only after the right edge leaves at most20 physical pixels beyond the
-# left rail. Keep pre-drag normal offsets for restoration. Return one if docked;
-# no source owner is closed, moved or blocked by this presentation decision.
-dock(window: ref Window, index, width, zoom, pan, dx, dy: int): int
+# Hide a dragged SDI or MDI card when its contact enters the shelf. Preserve
+# pre-drag offsets for reveal; only the layout owner mutates this presentation.
+dock(window: ref Window, x, y, dx, dy: int): int
 {
-    if (window.container != nil) {
+    if (!docking->inside(x, y)) {
         return 0;
     }
-    (left, unused, wide, unusedhigh) := project(index, width, window, zoom, pan);
-    if (window.maximized || left + wide > 100) {
-        return 0;
+    if (window.container != nil) {
+        window = window.container;
     }
     window.hidden = 1;
     window.dx = dx;
@@ -259,7 +259,8 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
     target := 0;
     for (order := 0; order < len windows; order++) {
         index := stackslot(order, focus);
-        if (windows[index] == nil || windows[index].hidden) {
+        if (windows[index] == nil || windows[index].hidden ||
+            (windows[index].container != nil && (windows[index].container.rank != index + 1 || windows[index].container.hidden))) {
             continue;
         }
         (x0, y0, wide, high) := project(index, width, windows[index], zoom, pan);
@@ -277,20 +278,28 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
 
 # Build fresh scene descriptors. windows is borrowed only during this call;
 # the returned array/Items are new, and all text values are immutable Dis strings.
-scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving, zooming: int, thumbnails: array of int, containers: array of ref Window): array of ref Item
+scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving, zooming: int, thumbnails: array of int, containers: array of ref Window, leftscroll, rightscroll: int, recent: array of string): array of ref Item
 {
-    items := array[62] of ref Item;
+    items := array[94] of ref Item;
     used := 0;
+    focused: ref Window;
+    if (focus >= 1 && focus <= len windows && windows[focus - 1] != nil) {
+        focused = windows[focus - 1].container;
+    }
     items[used++] = ref Item(10, 0, 0, 0, 0, width, height, 2, "", -1, -1);
     for (group := 0; group < len containers; group++) {
         parent := containers[group];
-        if (parent == nil) {
+        if (parent == nil || parent == focused) {
             continue;
         }
         (gx, gy, gw, gh) := position(group, width, parent);
         id := 13 + group;
         if (group == 7) {
             id = 28;
+        }
+        if (parent.hidden) {
+            gx = 65536;
+            gy = 65536;
         }
         items[used++] = ref Item(id, 1, 0, gx, gy, gw, gh, 4, parent.title, -1, -1);
     }
@@ -300,8 +309,35 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         if (window == nil) {
             continue;
         }
+        # The focused MDI is one paint-order unit: root, tabs, selected child.
+        # Its header must not sit behind another group's taller content pane.
+        if (index + 1 == focus && focused != nil) {
+            (gx, gy, gw, gh) := position(focused.root - 1, width, focused);
+            rootid := 12 + focused.root;
+            if (focused.root == 8) {
+                rootid = 28;
+            }
+            if (focused.hidden) {
+                gx = 65536;
+                gy = 65536;
+            }
+            items[used++] = ref Item(rootid, 1, 0, gx, gy, gw, gh, 4, focused.title, -1, -1);
+            for (child := 0; child < len windows; child++) {
+                tab := windows[child];
+                if (tab == nil || tab.hidden || tab.container != focused || focused.hidden) {
+                    continue;
+                }
+                tabwide := tabs->width(gw, focused.count, 100);
+                tabstyle := 4;
+                if (child + 1 == focus) {
+                    tabstyle = 1;
+                }
+                items[used++] = ref Item(30 + child, 1, 0, gx + 8 + tab.rank * tabwide,
+                    gy + 28, tabwide - 2, 26, tabstyle, tab.title, -1, -1);
+            }
+        }
         (x, y, wide, high) := position(index, width, window);
-        if (window.hidden) {
+        if (window.hidden || (window.container != nil && (window.container.rank != index + 1 || window.container.hidden))) {
             x = 65536;
             y = 65536;
         }
@@ -325,7 +361,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
             }
         }
         parentid := 1;
-        if (window.container != nil && !window.hidden) {
+        if (window.container != nil && !window.hidden && window.container.rank == index + 1 && !window.container.hidden) {
             parent := window.container;
             (gx, gy, unusedw, unusedh) := position(parent.root - 1, width, parent);
             x -= gx;
@@ -333,29 +369,75 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
             parentid = 4 + parent.root;
         }
         items[used++] = ref Item(index + 1, parentid, 0, x, y, wide, high, style + window.line * 8, caption, caret, anchor);
-        if (index != 1 && index != 2 && !window.hidden) {
+        if (window.container != nil && window.container != focused && !window.hidden && !window.container.hidden) {
+            (gx, gy, gw, gh) := position(window.container.root - 1, width, window.container);
+            tabwide := tabs->width(gw, window.container.count, 100);
+            tabstyle := 4;
+            if (window.container.rank == index + 1 && !window.container.hidden) {
+                tabstyle = 1;
+            }
+            items[used++] = ref Item(30 + index, 1, 0, gx + 8 + window.rank * tabwide,
+                gy + 28, tabwide - 2, 26, tabstyle, window.title, -1, -1);
+        } else if (window.container == nil && index != 1 && index != 2 && !window.hidden) {
             (closex, closey, closew, closeh) := position(index, width, window);
             items[used++] = ref Item(30 + index, 1, 0, closex + wide - 30, closey, 30, 24, 4, "x", -1, -1);
         }
     }
     items[used++] = ref Item(11, 2, 0, 0, 0, 80, height, 2, "", -1, -1);
     items[used++] = ref Item(12, 3, 0, 0, 0, 104, height, 2, "", -1, -1);
+    thumbnailcount := 0;
+    for (slot := 0; slot < len windows; slot++) {
+        thumbnailcount += windows[slot] != nil;
+    }
+    thumbstep := thumbview->step(thumbnailcount, height);
+    ordinal := 0;
     for (rank := 0; rank < len thumbnails; rank++) {
         index := thumbnails[rank];
         if (windows[index] != nil) {
-            items[used++] = ref Item(20 + index, 2, index + 1, 6, 72 + rank * 64, 68, 54,
+            items[used++] = ref Item(20 + index, 2, index + 1, 6, 72 + ordinal * thumbstep - leftscroll, 68, thumbstep - 8,
                                     index + 1 == focus, windows[index].title, -1, -1);
+            ordinal++;
         }
     }
     names := array[] of {"", "Open", "Save", "Build", "New", "Debug", "Help", "Quit", "Close", "Clip", "All", "Max/N", "Draw", "MDI", "SDI"};
-    for (index := 1; index <= MaxNorm + 3; index++) {
+    for (index := 1; index <= tools->Count; index++) {
         style := 4;
         if (drawer == index || index == Help) {
             style = 3;
         }
-        items[used++] = ref Item(40 + index, 3, 0, 30, 56 + (index - 1) * 32, 44, 27, style, names[index], -1, -1);
+        identity := 40 + index;
+        if (index > 14) {
+            identity = 64 + index - 15;
+        }
+        items[used++] = ref Item(identity, 3, 0, 30, 56 + (index - 1) * 32 - rightscroll, 44, 27, style, tools->name(index), -1, -1);
     }
-    if (drawer != 0) {
+    if (tools->palette(drawer)) {
+        x := width - 424;
+        if (x < 84) {
+            x = 84;
+        }
+        labels := tools->rows(drawer);
+        if (drawer == tools->Files) {
+            for (index := 0; index < len recent && index < 4; index++) {
+                labels[10 + index] = recent[index];
+            }
+        }
+        wide := width - 112 - x;
+        items[used++] = ref Item(55, 4, 0, x, 56, wide, 32 + len labels * 30, 0, "Commands", -1, -1);
+        for (row := 0; row < len labels; row++) {
+            items[used++] = ref Item(72 + row, 4, 0, x + 8, 88 + row * 30, wide - 16, 27, 4, labels[row], -1, -1);
+        }
+    } else if (drawer == tools->Find || drawer == tools->Replace) {
+        x := width - 424;
+        if (x < 84) {
+            x = 84;
+        }
+        text := "Find in file\nLiteral, case-sensitive Unicode search. Enter finds the next match and wraps. Escape cancels.";
+        if (drawer == tools->Replace) {
+            text = "Replace all in file\nEnter the literal search text, then the replacement. Second Enter applies one undoable replacement. Escape cancels.";
+        }
+        items[used++] = ref Item(55, 4, 0, x, 72, width - 112 - x, 340, 0, text, -1, -1);
+    } else if (drawer != 0) {
         descriptions := array[] of {"", "Open a UTF-8 source file in the active editor. Unsaved edits are protected.",
             "Save the active editor. Choose a path for an untitled document.",
             "Compile the current revision using the library service. F8 selects a source diagnostic.",
@@ -417,6 +499,11 @@ serve(requests: chan of Request)
     for (rank := 0; rank < len thumbnails; rank++) {
         thumbnails[rank] = rank;
     }
+    recent := array[] of {"1: (empty)", "2: (empty)", "3: (empty)", "4: (empty)"}; # Display labels only.
+    leftscroll := 0; # Independent physical left-shelf offset.
+    rightscroll := 0; # Independent physical toolbar offset.
+    raildrag := 0; # Latched2/3 rail for pan gestures, zero for table.
+    railorigin := 0; # Offset captured at the beginning of a rail drag.
     thumbdrag := -1; # Rank being reordered; source slots and document owners never move.
     width := 960;
     height := 640;
@@ -437,6 +524,13 @@ serve(requests: chan of Request)
         if (request.reply == nil) {
             continue;
         }
+        present := array[MaxWindows] of { * => 0 };
+        live := 0;
+        for (presenceindex := 0; presenceindex < len windows; presenceindex++) {
+            present[presenceindex] = windows[presenceindex] != nil;
+            live += present[presenceindex];
+        }
+        thumbstep := thumbview->step(live, height);
         status := Invalid;
         action := 0;
         changed := 0;
@@ -445,9 +539,20 @@ serve(requests: chan of Request)
             if (request.operation == Shutdown) {
                 status = Ok;
                 stop = 1;
+            } else if (request.operation == RecentLabels && len request.body <= 160) {
+                first := 0;
+                row := 0;
+                for (index := 0; index < len request.body && row < 4; index++) {
+                    if (request.body[index] == '\n') {
+                        recent[row++] = request.body[first:index];
+                        first = index + 1;
+                    }
+                }
+                status = Ok;
+                changed = 1;
             } else if (request.operation == SetContainer && request.window >= 1 && request.window <= MaxWindows &&
                        windows[request.window - 1] != nil && request.phase >= 0 && request.phase <= MaxWindows &&
-                       (request.x == 1 || request.x == 2)) {
+                       (request.x >= 1 && request.x <= 3)) {
                 target := request.phase - 1;
                 status = Ok;
                 if (target >= 0 && containers[target] != nil && containers[target].family != request.x) {
@@ -455,9 +560,11 @@ serve(requests: chan of Request)
                 }
                 if (status == Ok) {
                     if (target >= 0 && containers[target] == nil) {
-                        name := "Source MDI";
+                        name := "Limbo MDI";
                         if (request.x == 2) {
                             name = "Graphics MDI";
+                        } else if (request.x == 3) {
+                            name = "ActionScript MDI";
                         }
                         containers[target] = ref Window(nil, target + 1, request.x, 0, 0,
                             name, "", -1, -1, 0, 0, 0, 0, 0, 0, 100, 0, 0);
@@ -475,6 +582,7 @@ serve(requests: chan of Request)
                 }
             } else if (request.operation == Cancel) {
                 zooming = 0;
+                raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
@@ -512,6 +620,7 @@ serve(requests: chan of Request)
             } else if (request.operation == Remove && request.window >= 1 && request.window <= MaxWindows &&
                        request.window != 2 && request.window != 3 && windows[request.window - 1] != nil) {
                 windows[request.window - 1] = nil;
+                raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
@@ -531,6 +640,7 @@ serve(requests: chan of Request)
                 status = Ok;
             } else if (request.operation == Resize && request.x >= 240 && request.x <= 2048 &&
                        request.y >= 160 && request.y <= 2048) {
+                raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
@@ -553,6 +663,7 @@ serve(requests: chan of Request)
                     status = Ok;
                 }
             } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
+                raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
@@ -562,6 +673,7 @@ serve(requests: chan of Request)
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Select && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
+                raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
@@ -575,7 +687,8 @@ serve(requests: chan of Request)
                 reveal++;
                 changed = 1;
                 status = Ok;
-            } else if (request.operation == Tool && request.window >= 0 && request.window <= MaxNorm) {
+            } else if (request.operation == Tool && request.window >= 0 && (request.window <= MaxNorm || (tools->palette(request.window) || request.window == tools->Find || request.window == tools->Replace))) {
+                raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
@@ -584,7 +697,7 @@ serve(requests: chan of Request)
                 drawer = request.window;
                 changed = 1;
                 status = Ok;
-            } else if (request.operation == Pointer || request.operation == Scroll) {
+            } else if (request.operation == Pointer || request.operation == Scroll || request.operation == RailScroll) {
                 if (request.ticket != ticket) {
                     status = Conflict;
                     dragging = 0;
@@ -592,6 +705,20 @@ serve(requests: chan of Request)
                     groupdrag = 0;
                     thumbdrag = -1;
                     pressed = 0;
+                } else if (request.operation == RailScroll && (request.window == 2 || request.window == 3) && request.x >= -2048 && request.x <= 2048) {
+                    raildrag = 0;
+                    dragging = 0;
+                    moving = 0;
+                    groupdrag = 0;
+                    thumbdrag = -1;
+                    pressed = 0;
+                    if (request.window == 2) {
+                        leftscroll += request.x;
+                    } else {
+                        rightscroll += request.x;
+                    }
+                    changed = 1;
+                    status = Ok;
                 } else if (request.operation == Scroll && request.x >= -2048 && request.x <= 2048) {
                     dragging = 0;
                     moving = 0;
@@ -626,7 +753,8 @@ serve(requests: chan of Request)
                         obscured := drawer != 0 && x >= drawerleft && x < width - 112 && y >= 72 && y < 412;
                         for (order := 0; order < len windows; order++) {
                             index := stackslot(order, focus);
-                            if (obscured || windows[index] == nil || windows[index].hidden) {
+                            if (obscured || windows[index] == nil || windows[index].hidden ||
+            (windows[index].container != nil && (windows[index].container.rank != index + 1 || windows[index].container.hidden))) {
                                 continue;
                             }
                             (left, top, wide, high) := project(index, width, windows[index], deskzoom, deskpan);
@@ -691,10 +819,28 @@ serve(requests: chan of Request)
                         thumbdrag = -1;
                         pressed = 0;
                         thumbdrag = -1;
+                        picked := picking->topmost(scene(windows, width, height, scroll, focus, drawer,
+                            moving, zooming, thumbnails, containers, leftscroll, rightscroll, recent), x, y, width, deskzoom, deskpan, scroll);
                         startx = x;
                         starty = y;
                         origin = scroll;
-                        if (drawer == ClipboardTool && y >= 320 && y < 356) {
+                        raildrag = 0;
+                        rail := rails->region(x, y, width);
+                        railpan := fingers == 3 ||
+                            (rail == 2 && (x < 6 || x >= 74 || y < 72 || (y - 72 + leftscroll) % thumbstep >= thumbstep - 8)) ||
+                            (rail == 3 && (x < width - 74 || x >= width - 30 || y < 56 || (y - 56 + rightscroll) % 32 >= 27));
+                        if (rail != 0 && railpan) {
+                            raildrag = rail;
+                            railorigin = leftscroll;
+                            if (rail == 3) {
+                                railorigin = rightscroll;
+                            }
+                        } else if (tools->palette(drawer) && x >= drawerleft && x < width - 112 && y >= 56 && y < 88 + len tools->rows(drawer) * 30) {
+                            if (y >= 88 && (y - 88) % 30 < 27) {
+                                action = tools->command(drawer, (y - 88) / 30);
+                                drawer = 0;
+                            }
+                        } else if (drawer == ClipboardTool && y >= 320 && y < 356) {
                             wide := width - 112 - drawerleft;
                             button := (wide - 32) / 3;
                             if (button < 1) {
@@ -718,8 +864,23 @@ serve(requests: chan of Request)
                         } else if (drawer != 0 && x >= drawerleft && x < width - 112 && y >= 72 && y < 412) {
                             # The scroll owns this area; never focus or drag the covered window.
                         } else if (x >= width - 104 && y >= 56) {
-                            tool := (y - 56) / 32 + 1;
-                            if (tool == MaxNorm + 2 || tool == MaxNorm + 3) {
+                            tool := (y - 56 + rightscroll) / 32 + 1;
+                            command := tools->action(tool);
+                            if (tool >= 15) {
+                                if (tools->palette(command)) {
+                                    if (drawer == command) {
+                                        drawer = 0;
+                                    } else {
+                                        drawer = command;
+                                    }
+                                } else {
+                                    action = command;
+                                    drawer = 0;
+                                }
+                            } else if (tool == SaveFile) {
+                                action = SaveFile;
+                                drawer = 0;
+                            } else if (tool == MaxNorm + 2 || tool == MaxNorm + 3) {
                                 action = GroupEditor + tool - MaxNorm - 2;
                                 drawer = 0;
                             } else if (tool == MaxNorm + 1) {
@@ -753,6 +914,7 @@ serve(requests: chan of Request)
                                     if (containers[group] == nil) {
                                         continue;
                                     }
+                                    containers[group].hidden = 0;
                                     (left, top, wide, high) := position(group, width, containers[group]);
                                     if (left < minimumleft) {
                                         minimumleft = left;
@@ -794,9 +956,10 @@ serve(requests: chan of Request)
                                 }
                             }
                         } else if (x < 80 && y >= 72) {
-                            rank := (y - 72) / 64;
+                            rank := (y - 72 + leftscroll) / thumbstep;
                             slot := -1;
-                            if (rank < len thumbnails) {
+                            rank = thumbview->slot(thumbnails, present, rank);
+                            if (rank >= 0) {
                                 slot = thumbnails[rank];
                             }
                             if (slot >= 0 && windows[slot] != nil) {
@@ -804,9 +967,29 @@ serve(requests: chan of Request)
                                 pressed = slot + 1;
                             }
                         } else if (x >= 80 && x < width - 104 && y >= 48) {
+                            tabhit := 0;
+                            if (fingers == 1) {
+                                for (child := 0; child < len windows; child++) {
+                                    window := windows[child];
+                                    if (window == nil || window.hidden || window.container == nil || picked != 30 + child) {
+                                        continue;
+                                    }
+                                    parent := window.container;
+                                    (gx, gy, gw, gh) := project(parent.root - 1, width, parent, deskzoom, deskpan);
+                                    gy -= scroll;
+                                    if (tabs->hit(x, y, gx, gy, gw, parent.count, window.rank, deskzoom)) {
+                                        focus = child + 1;
+                                        parent.rank = focus;
+                                        pressed = focus;
+                                        tabhit = 1;
+                                        action = Focus;
+                                    }
+                                }
+                            }
                             for (order := 0; order < len windows; order++) {
                                 index := stackslot(order, focus);
-                                if (fingers == 3 || windows[index] == nil || windows[index].hidden) {
+                                if (tabhit || fingers == 3 || (picked != index + 1 && picked != 30 + index) || windows[index] == nil || windows[index].hidden ||
+            (windows[index].container != nil && (windows[index].container.rank != index + 1 || windows[index].container.hidden))) {
                                     continue;
                                 }
                                 (left, top, wide, high) := project(index, width, windows[index], deskzoom, deskpan);
@@ -817,12 +1000,16 @@ serve(requests: chan of Request)
                                     groupdrag = 0;
                                     thumbdrag = -1;
                                     if (y < top + 24 * deskzoom / 100 || fingers == 2) {
-                                        if (fingers == 1 && x >= left + wide - 30 * deskzoom / 100 && index != 1 && index != 2) {
+                                        if (fingers == 1 && x >= left + wide - 30 * deskzoom / 100 && index != 1 && index != 2 && windows[index].container == nil) {
                                             pressed = -(index + 1);
                                         } else {
                                             moving = index + 1;
                                             windowx = windows[index].dx;
                                             windowy = windows[index].dy;
+                                            if (windows[index].container != nil) {
+                                                windowx = windows[index].container.dx;
+                                                windowy = windows[index].container.dy;
+                                            }
                                         }
                                     }
                                 }
@@ -834,17 +1021,16 @@ serve(requests: chan of Request)
                                     }
                                     (gx, gy, gw, gh) := project(group, width, containers[group], deskzoom, deskpan);
                                     gy -= scroll;
-                                    if (x >= gx && x < gx + gw && y >= gy && y < gy + 32 * deskzoom / 100) {
+                                    rootid := 13 + group;
+                                    if (group == 7) {
+                                        rootid = 28;
+                                    }
+                                    if (fingers != 3 && picked == rootid && x >= gx && x < gx + gw && y >= gy && y < gy + 28 * deskzoom / 100) {
                                         groupdrag = group + 1;
                                         windowx = containers[group].dx;
                                         windowy = containers[group].dy;
-                                        for (child := 0; child < MaxWindows; child++) {
-                                            if (windows[child] != nil && windows[child].container == containers[group]) {
-                                                focus = child + 1;
-                                                action = Focus;
-                                                break;
-                                            }
-                                        }
+                                        focus = containers[group].rank;
+                                        action = Focus;
                                     }
                                 }
                             }
@@ -861,12 +1047,16 @@ serve(requests: chan of Request)
                                  windowy + (y - starty) * 100 / deskzoom);
                         }
                         if (thumbdrag >= 0) {
-                            rank := (y - 72) / 64;
+                            rank := (y - 72 + leftscroll) / thumbstep;
                             if (rank < 0) {
                                 rank = 0;
                             }
-                            if (rank >= len thumbnails) {
-                                rank = len thumbnails - 1;
+                            if (rank >= live) {
+                                rank = live - 1;
+                            }
+                            rank = thumbview->slot(thumbnails, present, rank);
+                            if (rank < 0) {
+                                rank = thumbdrag;
                             }
                             slot := thumbnails[thumbdrag];
                             if (x - startx > 32) {
@@ -888,23 +1078,40 @@ serve(requests: chan of Request)
                             }
                             thumbnails[rank] = slot;
                         }
+                        if (raildrag == 2) {
+                            leftscroll = railorigin + starty - y;
+                        } else if (raildrag == 3) {
+                            rightscroll = railorigin + starty - y;
+                        }
                         if (dragging) {
                             scroll = origin + starty - y;
                         }
                         if (moving != 0) {
-                            move(windows[moving - 1], windowx + (x - startx) * 100 / deskzoom,
+                            target := windows[moving - 1];
+                            if (target.container != nil) {
+                                target = target.container;
+                            }
+                            move(target, windowx + (x - startx) * 100 / deskzoom,
                                  windowy + (y - starty) * 100 / deskzoom);
                         }
                         if (x - startx > 8 || startx - x > 8 || y - starty > 8 || starty - y > 8) {
                             pressed = 0;
                         }
-                        if (moving != 0 && dock(windows[moving - 1], moving - 1, width, deskzoom, deskpan, windowx, windowy)) {
+                        raildrag = 0;
+                        docked := 0;
+                        if (moving != 0) {
+                            docked = dock(windows[moving - 1], x, y, windowx, windowy);
+                        } else if (groupdrag != 0 && containers[groupdrag - 1] != nil) {
+                            docked = dock(containers[groupdrag - 1], x, y, windowx, windowy);
+                        }
+                        if (docked) {
                             moving = 0;
                             groupdrag = 0;
                             pressed = 0;
                             focus = 0;
                             for (slot := 0; slot < len windows; slot++) {
-                                if (windows[slot] != nil && !windows[slot].hidden) {
+                                if (windows[slot] != nil && !windows[slot].hidden &&
+                                    (windows[slot].container == nil || !windows[slot].container.hidden)) {
                                     focus = slot + 1;
                                     break;
                                 }
@@ -915,7 +1122,11 @@ serve(requests: chan of Request)
                     } else {
                         zooming = 0;
                         if (moving != 0) {
-                            move(windows[moving - 1], windowx + (x - startx) * 100 / deskzoom,
+                            target := windows[moving - 1];
+                            if (target.container != nil) {
+                                target = target.container;
+                            }
+                            move(target, windowx + (x - startx) * 100 / deskzoom,
                                  windowy + (y - starty) * 100 / deskzoom);
                         }
                         if (moving == 0 && (x - startx > 8 || startx - x > 8 ||
@@ -938,13 +1149,21 @@ serve(requests: chan of Request)
                             reveal++;
                             action = Focus;
                         }
-                        if (moving != 0 && dock(windows[moving - 1], moving - 1, width, deskzoom, deskpan, windowx, windowy)) {
+                        raildrag = 0;
+                        docked := 0;
+                        if (moving != 0) {
+                            docked = dock(windows[moving - 1], x, y, windowx, windowy);
+                        } else if (groupdrag != 0 && containers[groupdrag - 1] != nil) {
+                            docked = dock(containers[groupdrag - 1], x, y, windowx, windowy);
+                        }
+                        if (docked) {
                             moving = 0;
                             groupdrag = 0;
                             pressed = 0;
                             focus = 1;
                             for (slot := 0; slot < len windows; slot++) {
-                                if (windows[slot] != nil && !windows[slot].hidden) {
+                                if (windows[slot] != nil && !windows[slot].hidden &&
+                                    (windows[slot].container == nil || !windows[slot].container.hidden)) {
                                     focus = slot + 1;
                                     break;
                                 }
@@ -971,7 +1190,8 @@ serve(requests: chan of Request)
                 }
             }
         }
-        if (status != Ok && (request.operation == Pointer || request.operation == Scroll)) {
+        if (status != Ok && (request.operation == Pointer || request.operation == Scroll || request.operation == RailScroll)) {
+            raildrag = 0;
             dragging = 0;
             moving = 0;
             groupdrag = 0;
@@ -989,11 +1209,23 @@ serve(requests: chan of Request)
                 continue;
             }
             parent.count = 0;
+            selected := 0;
             for (child := 0; child < MaxWindows; child++) {
                 if (windows[child] != nil && windows[child].container == parent) {
                     windows[child].rank = parent.count++;
+                    if (parent.rank == child + 1) {
+                        selected = child + 1;
+                    }
+                    if (selected == 0) {
+                        selected = child + 1;
+                    }
+                    if (focus == child + 1) {
+                        parent.rank = child + 1;
+                        selected = child + 1;
+                    }
                 }
             }
+            parent.rank = selected;
             if (parent.count == 0) {
                 containers[group] = nil;
             }
@@ -1015,6 +1247,8 @@ serve(requests: chan of Request)
                 }
             }
         }
+        leftscroll = rails->clamp(leftscroll, live, thumbstep, 72, height);
+        rightscroll = rails->clamp(rightscroll, tools->Count, 32, 56, height);
         if (deskpan < -4096) {
             deskpan = -4096;
         }
@@ -1034,7 +1268,7 @@ serve(requests: chan of Request)
             ticket++;
         }
         request.reply <-= Reply(request.id, status, ticket, scroll, focus, drawer, action,
-                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails, containers));
+                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails, containers, leftscroll, rightscroll, recent));
         if (stop) {
             return;
         }
@@ -1049,11 +1283,13 @@ serve(requests: chan of Request)
 livefocus(windows: array of ref Window, preferred: int): int
 {
     if (preferred >= 1 && preferred <= len windows && windows[preferred - 1] != nil &&
-        !windows[preferred - 1].hidden) {
+        !windows[preferred - 1].hidden && (windows[preferred - 1].container == nil ||
+        !windows[preferred - 1].container.hidden)) {
         return preferred;
     }
     for (index := 0; index < len windows; index++) {
-        if (windows[index] != nil && !windows[index].hidden) {
+        if (windows[index] != nil && !windows[index].hidden &&
+            (windows[index].container == nil || !windows[index].container.hidden)) {
             return index + 1;
         }
     }
@@ -1073,6 +1309,15 @@ livefocus(windows: array of ref Window, preferred: int): int
 # acquired; only the caller owns the returned terminal request channel.
 start(): chan of Request
 {
+    rails = load Iderails Iderails->PATH;
+    tools = load Idetools Idetools->PATH;
+    thumbview = load Idethumbnails Idethumbnails->PATH;
+    picking = load Idepick Idepick->PATH;
+    tabs = load Idetabview Idetabview->PATH;
+    docking = load Idedocking Idedocking->PATH;
+    if (tabs == nil || docking == nil || picking == nil || thumbview == nil || rails == nil || tools == nil) {
+        raise "fail: desktop control modules";
+    }
     requests := chan of Request;
     spawn serve(requests);
     return requests;

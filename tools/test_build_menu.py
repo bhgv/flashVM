@@ -525,5 +525,23 @@ class MenuTests(unittest.TestCase):
                 self.fail("codec launcher changed argv or concealed its failure")
 
 
+    def test_flashvm_native_module_discovery_and_status(self):
+        """Discover the real installed extension runner; no source/font arguments leak in."""
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "disvm-editor"
+            package.mkdir()
+            script = package / "run-flashvm-native-module.sh"
+            script.write_text('#!/bin/sh\n[ "$#" -eq 0 ] || exit 99\nexit 17\n')
+            entries = menu.product_entries(Path(directory))
+            if "18" not in entries or entries["18"][0] != "flashvm-native" or entries["18"][3]:
+                self.fail("native module example missing or marked graphical")
+            args = menu.argparse.Namespace(out=directory, no_install=False,
+                                          launch="flashvm-native", document="ignored source.b")
+            with contextlib.redirect_stdout(io.StringIO()):
+                status = menu.show_products(args, "/bin/bash", False)
+            if status != 17:
+                self.fail("native module launcher concealed the real status or changed argv")
+
+
 if __name__ == "__main__":
     unittest.main()

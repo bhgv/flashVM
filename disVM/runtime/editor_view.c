@@ -119,6 +119,7 @@ static FVM_RenderQueue *raster_queue;       /* Owned persistent native raster wo
 static DVM_EditorFrame *displayed_frame;    /* Owned completed baseline; workers never retain this frame. */
 static const DVM_EditorFrame *upload_frame; /* Borrowed completed damage during SDL presentation only. */
 static DVM_EditorFrame *recording_frame;    /* Owner-only frame builder; workers never read this global. */
+static int desktop_pan;                     /* Latched middle/Ctrl+Shift drag; copied table gesture only. */
 static unsigned long vector_drag;           /* Captured logical canvas identity; never a VM object. */
 static int header_drag;            /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
@@ -2118,11 +2119,14 @@ static int presentation_blocks_input(void)
     int continuation = 0;
     SDL_Event event;
     int keyboard = keyboard_waiting();
-    if ((header_drag || vector_drag) && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
+    if ((header_drag || vector_drag || desktop_pan) &&
+        SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
     {
-        continuation = (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)) ||
-                       (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) ||
-                       (vector_drag && (event.type == SDL_FINGERMOTION || event.type == SDL_FINGERUP));
+        continuation =
+            (event.type == SDL_MOUSEMOTION && (event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))) ||
+            (event.type == SDL_MOUSEBUTTONUP &&
+             (event.button.button == SDL_BUTTON_LEFT || event.button.button == SDL_BUTTON_MIDDLE)) ||
+            (vector_drag && (event.type == SDL_FINGERMOTION || event.type == SDL_FINGERUP));
     }
     return dvm_editor_pointer_waits(
         desktop_dirty, raster_pending, events != NULL, capture_path != NULL, keyboard, continuation);
@@ -2910,6 +2914,7 @@ int dvm_editor_event(DVM_UIMessage *message)
             if (message->code == EDITOR_RESIZE)
             {
                 header_drag = 0;
+                desktop_pan = 0;
                 vector_drag = 0;
                 if (message->first == (long)canvas_width && message->second == (long)canvas_height)
                 {
@@ -2968,10 +2973,14 @@ int dvm_editor_event(DVM_UIMessage *message)
             }
         }
         else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP ||
-                 (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)))
+                 (event.type == SDL_MOUSEMOTION && (event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_MMASK))))
         {
             if ((event.type == SDL_MOUSEMOTION && event.motion.which == SDL_TOUCH_MOUSEID) ||
                 (event.type != SDL_MOUSEMOTION && event.button.which == SDL_TOUCH_MOUSEID))
+            {
+                return 0;
+            }
+            if (!dvm_desktop_active() && event.type != SDL_MOUSEMOTION && event.button.button == SDL_BUTTON_MIDDLE)
             {
                 return 0;
             }
@@ -2980,20 +2989,26 @@ int dvm_editor_event(DVM_UIMessage *message)
             FVM_InputPhase phase = event.type == SDL_MOUSEBUTTONDOWN ? FVM_INPUT_BEGIN
                                    : event.type == SDL_MOUSEBUTTONUP ? FVM_INPUT_END
                                                                      : FVM_INPUT_UPDATE;
-            if (event.type != SDL_MOUSEMOTION && event.button.button != SDL_BUTTON_LEFT)
+            if (event.type != SDL_MOUSEMOTION && event.button.button != SDL_BUTTON_LEFT &&
+                event.button.button != SDL_BUTTON_MIDDLE)
             {
                 return 0;
             }
             if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                header_drag = dvm_desktop_active() && dvm_desktop_header(x, y);
+                desktop_pan = dvm_desktop_active() && dvm_editor_pan_button(event.button.button, SDL_GetModState());
+                header_drag = !desktop_pan && dvm_desktop_active() && dvm_desktop_header(x, y);
             }
             if (fvm_input_set_pointer(context, x, y) != FVM_OK ||
                 dvm_ui_capture_pointer(context, FVM_MOUSE_LEFT, phase, message) != FVM_OK)
             {
                 return -1;
             }
-            if (dvm_desktop_active() && event.type == SDL_MOUSEBUTTONDOWN && event.button.clicks >= 2 &&
+            if (desktop_pan)
+            {
+                message->code = 7; /* Existing copied three-contact table-pan proposal. */
+            }
+            if (!desktop_pan && dvm_desktop_active() && event.type == SDL_MOUSEBUTTONDOWN && event.button.clicks >= 2 &&
                 (event.button.clicks % 2) == 0)
             {
                 message->code = 10;
@@ -3049,6 +3064,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
         {
             header_drag = 0;
+            desktop_pan = 0;
             vector_drag = 0;
             pinch_distance = 0;
             desktop_touch(NULL, message);
@@ -3065,6 +3081,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         resolve_pointer(message);
         if (event.type == SDL_MOUSEBUTTONUP)
         {
+            desktop_pan = 0;
             header_drag = 0;
             vector_drag = 0;
         }
@@ -3082,6 +3099,7 @@ void dvm_editor_destroy(void)
 {
     pixels_valid = 0;
     header_drag = 0;
+    desktop_pan = 0;
     vector_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */
     fvm_render_queue_destroy(raster_queue);
     raster_queue = NULL;

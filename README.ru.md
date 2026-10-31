@@ -1,12 +1,14 @@
+[Нативные расширения](docs/NATIVE-EXTENSIONS.ru.md) · [Контролы стола](ide/dis/DESKTOP-CONTROLS.ru.md)
+
 # Рабочее пространство FlashVM
 
 Меню сборки: `python3 build-menu.py`.
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1706**. [English](README.md).
+Версия разработки: **0.1707**. [English](README.md).
 
-Текущая серия: [v0.1706](docs/releases/v0.1706.md): кисть и перо, отложенная геометрия Limbo, объединение заполненных контуров и сохранение траектории ввода.
+Текущая серия: [v0.1707](docs/releases/v0.1707.md): MDI с вкладками по доменам, оформление Limbo/AS, независимая прокрутка полок, палитры команд и C-модули.
 
 ## Просмотр документации
 

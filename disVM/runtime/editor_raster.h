@@ -3,7 +3,7 @@
 #define DVM_EDITOR_RASTER_H
 #include "flashvm/path.h"
 
-#define DVM_EDITOR_SCENE_NODES 64U                   /* Stable retained layer IDs; zero is the composition root. */
+#define DVM_EDITOR_SCENE_NODES 96U                   /* Stable retained layer IDs; zero is the composition root. */
 #define DVM_EDITOR_NODE_OPACITY 1000U                /* Fixed-point opacity:1000 opaque,900 exactly90 percent. */
 #define DVM_EDITOR_NODE_CONTENT 1U                   /* Native local commands changed: repaint associated bitmap. */
 #define DVM_EDITOR_NODE_TRANSFORM 2U                 /* Placement/opacity/order changed: compose old/new bounds. */
@@ -89,7 +89,8 @@ FVM_Result dvm_editor_frame_render(void *frame);
  * Safe on an owner or worker with exclusive frame ownership; no VM/GC dependencies. */
 void dvm_editor_frame_destroy(void *frame);
 
-/* Begin one retained object in painter order. id is1..63 and parent is0..63.
+
+/* Begin one retained object in painter order. id is1..95 and parent is0..95.
  * Geometry is initially captured in world coordinates. end supplies its actual
  * world matrix and logical extent; nesting is represented by parent IDs, not
  * nested command recording. Zero rejects malformed state; discard that frame. */

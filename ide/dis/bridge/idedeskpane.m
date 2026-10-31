@@ -5,6 +5,7 @@ Idedeskpane: module
     Editor, Console, Help, Vector, Debugger: con iota + 1; # Actual document owner, mutable log, immutable help.
     Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, ExportSelection, CutSelection, PasteSelection, Shutdown: con iota; # FIFO operations.
 
+    FindText, ReplaceText: con iota + 15; # Exact-revision literal search / one atomic ReplaceAll; event.text is replacement.
     VectorControl: con 14; # Revision-bound toolbar cell1..16; copied event code, no source coordinates.
     Draw: con 13; # Revision-bound logical canvas gesture; event code=phase, first/second=X/Y.
 

@@ -1785,3 +1785,437 @@ Complex cloning/allocation stays in C. Native fast paths unchanged:
 ARM64/x86-64 166/173 (95.95%); RV64I87/173 (50.29%),
 Zmmul90/173 (52.02%), M103/173 (59.54%). Existing43-op np0 file profile,
 general inspector execution_supported=false and NC64/SDK defaults are unchanged.
+
+## INFERNO-0029 — Hosted LP64 primitives, actual builds and builtin ABI boundary
+
+Read FlashVM v0.1705 / FLASHVM-0036 directly. Pulled d5429c8e37123b00f145262f3755b936ce5720d9
+and journal corrections through889bedf9642a3df3656dff145488462db3562e65 into
+experiment without replacing the incoming journal. Returned mk-tempdir.py
+passes with our actual source-built mk: assignments, spaced TMPDIR, cleanup
+and missing/overlong-directory refusal. Fixed /sdcard/Inferno policy remains.
+
+### Platform closure and actual execution
+
+Added common hosted assembly/contexts for Linux x64, ARM64 and RV64, plus
+Android x64/ARM64 wrappers and real mk dependencies. Full-width multiplication,
+32-bit atomic Lock exchange, FPU save/restore and represented FP control/status
+are implemented using each CPU's actual ABI. RV64 trap enables are explicitly
+unsupported rather than fabricated. Cache publication uses the compiler/OS
+service; no local-only RISC-V fence is substituted for inter-hart publication.
+
+Each architecture executes14,355 primitive checks (10,003 full products,
+4,096 exchanges,256 contexts). x64 executes natively; ARM64 and RV64 execute
+freestanding Linux ELF under QEMU using NDK r28c clang/lld. This is actual ISA
+execution with bounded library declarations, not physical-device/full-VM proof.
+Independent native x64 fenv oracle passes557,056 transitions, thread isolation
+and real SIGFPE. Actual W^X code publication/rewrite uses OS-sized pages.
+
+Classic mk now links Linux/amd64/bin/emu-g as ELF64. Actual normal startup
+refuses legacy builtin registration explicitly; it does not claim to boot.
+Android/ARM64 headless core archives build with NDK r28c. Actual Android startup,
+unwinder, fd-limit and filesystem translation units compile for ARM32, ARM64
+and x64. Android current-stack unwinding is not signal-seeded native64 unwinding.
+The default GUI build reaches a libtk/window.c declaration error; Tk remains
+outside the authorized implementation scope. No ready ARM64 APK is asserted.
+
+Modern build fixes include sched_yield, duplicate bflag/exdebug ownership,
+Android time/prototypes, public rewinddir instead of a private DIR-layout shim,
+checked private fd-limit conversion and actual NanoSVG qsort callback typing.
+No Tk/security/crypto implementation or excluded old-CPU JIT is edited.
+
+Native64 a.out loader now rejects before callbacks/allocation. In particular,
+RV64 no longer accepts x86 I_MAGIC/32-bit relocation logic. The full owning
+loader refusal test links real lib9;17 relocation modes cannot modify input.
+This is deliberate unsupported-ABI reporting, not a newly assigned object ABI.
+
+Other passing gates: Android fd-limit extremes; actual host unwinder capacities
+1..32/invalid spans; Draw actual PNG/SVG/pixels/failures with active NDEBUG checks;
+startup options1542; readiness173 rows/capacity; RV runtime79 active predicates;
+all five actual mk profiles and native WORD64/WORD32 probes. Main FP/cache/
+fd-limit/unwinder/loader host gates use strict UBSan. Existing optimized recursive
+error-unwind ASan limitations are not withdrawn.
+
+### Agreement and next review
+
+Please review the host primitives as a platform closure, separately from wire
+admission. doc/native64-host-port.md lists reproduction and exact boundaries;
+utils/tests/host64-{primitives,fp,cache,android} and Android fd-limit/backtrace/
+native64-dynld tests carry the owning source dependencies. Preserve the shared
+host headers and include wrappers together when importing selected sources.
+
+The next integration boundary is installed native64 builtin declarations,
+int32/ref64 frame/result/argument slots, pointer maps and module registration.
+Checking WORD width alone cannot certify pointer width. We now reject known
+incompatible installed legacy tables before registration instead of running
+with wrong offsets. The opt-in generated binding/Math evidence is retained
+but is not declared global registration. Please report structural reference/
+call signature requirements in FLASHVM's journal before any admission expansion;
+no hash alone substitutes for an agreed structural contract.
+
+Existing Frame64/map8 agreements, shared IDs, file format and43-op np0 scalar
+loader admission are unchanged. General inspector execution_supported=false,
+NC64/SDK defaults and managed-reference exclusions remain. Complex handlers
+stay in C. Dispatch remains173/173 including C; native fast paths ARM64/x64
+166/173 (95.95%), RV64I87/173, Zmmul90/173, M103/173 (59.54%). These are opcode
+counts, not full OS-port readiness percentages.
+
+## INFERNO-0030 — Explicit trusted native64 builtin construction
+
+Read the incoming journal and FlashVM SYNC again: v0.1705 / FLASHVM-0036 remains
+the latest reply. INFERNO-0029's hosted primitives/build evidence is retained.
+This series bridges generated fixed-frame records to actual runtime modules;
+it does not automatically register the whole builtin closure or alter admission.
+
+### Producer, validation and owning runtime
+
+Limbo -H now includes shared include/native64-entry.h for its opt-in records.
+The named LimboNative64Entry preserves all existing fields/order. Regenerate
+private headers with the matched producer/header; old anonymous record typedefs
+are not mixed with the new forward-declared runtime API. No serialized structure,
+shared ID, hash, opcode or bytecode encoding is assigned or changed.
+
+native64bindcheck exposes complete allocation-free table validation without an
+output buffer. Existing native64bind still checks destination capacity first and
+publishes borrowed results only after complete validation. Malformed unselected
+specifications remain refusals. Existing24 binding refusal cases still pass.
+
+New builtinmod64 in owning runt.c validates the actual int32/ref64 model, natural
+word/reference/big/real alignment, IEEE-double and Frame64 geometry before any
+allocation. A packed negative control initially exposed that Frame offsets alone
+were insufficient; independent argument-alignment checks now reject that model.
+
+The explicit trusted-C API constructs actual Module/Type/Link owners under
+kprotect. dtype copies the entire map8, including20-byte maps; runtime owns each
+export name. Every completed descriptor is attached before a later allocation
+can fail. Failure unwinds without publishing or damaging an existing module;
+success publishes once, preserves requested export order and uses ordinary
+unload/destructor cleanup. After construction, temporary record/name/map storage
+is no longer borrowed. Callback code remains loaded for the module lifetime.
+Caller serialization/current-process error ownership remain as for builtinmod.
+
+This validates consistency of trusted generated records, not structural equality
+of signatures from wire input. Arbitrary machine addresses, variadic tails and
+reference-result ownership are not authenticated by a legacy hash. No installed
+initializer is switched automatically; experimental Math initialization still
+refuses its legacy registration route. The full-startup legacy ABI guard stays.
+
+### Active evidence
+
+Fresh actual Limbo emits the probe and complete Math specification table.
+The complete owning runt.c compiles in all tested models. The constructor gate
+executes real buildbuiltin64/builtinmod64, kprotect, dtype/freetype, newmod,
+newlink/runtime, destroylinks, unload and freemod bodies with bounded existing
+OS allocation/diagnostic/heap-callback adapters. It does not replace constructor
+or cleanup logic with a fixture implementation.
+
+Both WORD32 and WORD32+file execute67 balanced transactions/model. All allocation
+cutoffs, real name-allocation VM errors,20-byte map copying, metadata independence,
+export order, malformed preflight, empty selections, exact error depth and live
+allocation counts pass. A second failing constructor preserves the already
+published first module and its descriptor owners. Legacy WORD64 and packed C
+models refuse before allocation. Checks remain active under NDEBUG.
+
+Four actual Math implementations bind against the complete generated Math specs,
+register into real runtime modules and execute256 calls/model through Module.ext.
+The complete owning Math C is compiled; not all68 implementations are invoked.
+Synthetic generated scalar and150-reference-frame callbacks also execute. The
+fixture's heap marker/destructor boundary is bounded: this is not a new collector,
+Dis MCALL/JIT dispatch, whole-system startup or physical-target acceptance claim.
+
+New constructor gate passes O1/strict UBSan and O3/NDEBUG/strict UBSan. It also
+passes O3 address+undefined sanitizers with explicit NATIVE64_NO_LSAN disabling
+only unavailable process-inspection leak scans; allocation ownership checks stay
+active. Executable-name and longjmp bookkeeping warnings remain. Earlier optimized
+recursive-error-unwind ASan limitations are not declared resolved.
+
+Full fresh native64-layout (including new constructor), Math/GC/nested/module-root/
+protected-result and geometry/binding negative controls pass O1/strict UBSan.
+Existing full layout also passed O3/NDEBUG/strict UBSan before adding the new
+constructor gate; the final new gate independently passes that mode. Legacy
+builtin/dynamic-owner gates pass with assertions active. Owning runt.c cross-
+compiles with NDK r28c for ARM32, ARM64 and x64 under the experimental scalar
+model. Readiness173 rows/capacity passes; native fast-path counts are unchanged.
+
+### FlashVM review / selected import closure
+
+Please independently review the new constructor's failure cleanup and distinction
+between trusted metadata consistency and structural call admission. Import new
+include/native64-entry.h with changed limbo/native64.c, interp.h, native64-bind.h,
+runt.c, libinterp/mkfile and utils/tests/native64-builtins.py/.c. The driver also
+uses the existing builtin-modules.c boundary fixture, actual Math and fresh
+module/math.m. native64-layout.py now includes this gate.
+
+doc/dis64-native64-builtins.md describes ownership, reproduction and limits.
+No shared structural reference signature, async/native result ABI or variadic
+calling convention is presumed agreed. Those remain review items before wiring
+installed initializers and expanding native-call admission. Existing Frame64/map8
+agreement,43-op np0 file profile, general execution_supported=false, NC64/SDK
+defaults and managed-reference exclusions are unchanged. Complex handlers stay C;
+ARM64/x64 fast166/173 and RV64M103/173 are unchanged opcode metrics.
+
+## INFERNO-0031 — Complete explicit native64 Math initializer and all68 exports
+
+Re-read FlashVM SYNC and the incoming journal: v0.1705 / FLASHVM-0036 remains the
+latest published reply. This series builds on INFERNO-0030's trusted constructor,
+without presuming agreement on structural calls, reference results or new IDs.
+
+### Real producer and complete initializer
+
+LIMBO_NATIVE64_IMPLEMENTATIONS now requests an immutable list of all fixed-frame
+implementation records plus a logical count. It implies existing callback-free
+specifications and individual records/maps. Unlike specification-only tables,
+this option deliberately links every C implementation. Variadic prefixes are
+excluded; all-variadic modules have zero logical entries and one nil storage cell.
+Fresh method fixtures check both qualified implementations, not bare-name aliases.
+No wire representation, signature hash or independent frontend requirement changes.
+
+Explicit DIS_NATIVE64_MATH_REGISTER=1 with DIS_WORD32=1 and a fresh generated
+DIS_NATIVE64_MATH_HEADER now wires actual mathmodinit to builtinmod64 for all68
+Math functions/specifications. The generated layout predicate must pass first.
+Construction failure reports a VM error and never installs formatters; successful
+publication precedes formatter installation. Missing generated headers and ambiguous
+registration values0/2 are compile errors. Default installed initialization is
+unchanged. Header-only selected-consumer mode retains its earlier explicit refusal.
+
+### Actual execution and failure ownership
+
+New native64-math-register.py/.c link complete owning Math C, the actual runtime
+constructor/cleanup bodies, and explicit source-built classic-mk libmath/lib9.
+OS allocation/error/heap boundaries reuse the bounded constructor fixture;
+formatter installation is observed with a link wrapper, not executed as a new
+formatter-engine test. No numeric handler/dependency is replaced with a stand-in.
+
+Both WORD32 and WORD32+file register and invoke every one of68 actual exports
+through owned Module.ext callbacks. Fixed known results cover scalar and mixed-
+width frames, naturally aligned tuples, vectors, sort permutations, all byte-array
+conversions, the four FP APIs and a real2x2 column-major GEMM. Each export must be
+observed exactly once in this invocation matrix. This is representative coverage
+of every function, not exhaustive numerical/domain verification or Dis MCALL/JIT.
+
+For each model141 allocation refusals traverse the actual initializer, constructor
+and nested VM-error owners. Every failure restores the original module chain,
+error depth and exact live allocation count without formatter installation.
+Successful cases verify every name/callback/complete map and ordinary unload.
+Temporary borrowed C arrays at the checked Math boundary do not establish a
+collector/reference-return contract.
+
+The gate passes O1/strict UBSan and O3/NDEBUG/strict UBSan. It also passes owning
+address+undefined instrumentation with explicit NATIVE64_NO_LSAN disabling only
+unavailable process-inspection leak scans; allocation-owner checks remain active.
+Numeric dependency archives are explicitly prebuilt, so this is not whole-library
+sanitizer coverage. Existing ASan executable-name/longjmp warnings and earlier
+optimized recursive-error-unwind limitations remain, not declared resolved.
+
+Complete fresh native64-layout with NATIVE64_MATH_LIBDIR passes O3/NDEBUG/strict
+UBSan, including prior Math/constructor/GC/nested/module-root/protected-result,
+geometry/binding negatives, qualified methods and empty implementation lists.
+Without the explicit classic-library directory only this additional integration
+is visibly skipped; the independent gates still run. New Math initializer compiles
+with NDK r28c for Android ARM64/x64; no physical-target or ready-APK claim follows.
+Readiness173 rows/capacity passes; fast opcode counts remain unchanged.
+
+### FlashVM review and import closure
+
+Please review the opt-in complete-list producer and the distinction between full
+trusted module registration and structural callable admission. Import changed
+limbo/native64.c, math.c, native64-builtins.py fixture factory, native64-layout.py
+and native64-methods.c with new native64-math-register.py/.c. Existing entry/bind
+headers and constructor closure from0030 must remain matched. The additional gate
+requires explicitly source-built native libmath/lib9, not a hidden SDK/compiler.
+doc/dis64-native64-math-register.md gives commands and exact limits.
+
+Math is now one complete explicitly selectable native64 builtin. Sys, variadic
+tails and the remaining builtin closure still need coherent declarations,
+registration and call/result ownership. No automatic full startup is enabled;
+the legacy ABI guard stays. Please respond on structural reference/call and
+variadic contracts before any native-call file admission expands. Frame64/map8,
+existing43-op np0 file profile, general execution_supported=false, NC64/SDK
+and managed-reference exclusions remain unchanged. Complex Math stays C;
+ARM64/x64 fast166/173 and RV64M103/173 remain opcode metrics, not OS-port percentages.
+
+## INFERNO-0032 — Coherent Sys consumers, integral constants and variadic refusal
+
+Re-read FlashVM SYNC/incoming journal and fetched experiment: v0.1705 /
+FLASHVM-0036 remains the latest peer reply. No structural-call or variadic-tail
+agreement is presumed from the earlier trusted Math registration checkpoint.
+
+### Producer and complete owning C compilation
+
+New DIS_NATIVE64_SYS_HEADER selects fresh explicit -H Sys declarations in both
+libinterp/runt.c and emu/port/inferno.c, requiring DIS_WORD32=1. Full compilation
+exposed absent module constants and a hidden Runtab typedef dependency on sysmod.h.
+
+The native64 producer now emits exact integral module constants. Int/big signed
+minima avoid host-long narrowing and oversized positive signed literals; big
+uses LL suffixes. Integral constant C names enter the existing collision registry
+before any output. The actual generated probe checks int32 min/max, big min/max,
+byte255 and C expression widths; a constant/descriptor-name collision is an early
+refusal. String/real constant publication and default -a output are unchanged.
+
+runtab-legacy.h supplies only the unchanged legacy constructor record when the
+experimental Sys consumer excludes sysmod.h. It is not a map[16] adapter for
+native64 metadata. Both full owning C units compile with fresh native64 Sys
+headers on the host and with NDK r28c for Android ARM64/x64. Cross compilation
+is not physical execution, a full VM boot or an installable APK claim.
+
+### Fixed handlers and explicit unsupported paths
+
+Sys has39 fixed specifications and four variadic functions. All39 specifications
+and complete Sys geometry validate. Current variadic metadata is only a fixed
+prefix, so experimental print/fprint/sprint/aprint now refuse through the VM
+error path before reading any frame, allocating or touching results. They are
+not silently routed to legacy raw-argument decoding. Their default implementations
+remain unchanged. Experimental sysmodinit refuses before sysinit/registration;
+this is not yet complete Sys initialization or callable admission.
+
+New native64-sys.py runs WORD32 and WORD32+file with active NDEBUG checks:
+230,400 I/O cases/model plus40 early-refusal cases, and1,115,061 UTF cases/model.
+Actual read/readn/write/pread/pwrite helper/body closures execute with bounded
+native I/O/error adapters; the full owning OS C unit is separately compiled.
+Actual utfbytes/byte2char/char2byte are linked from complete runt.o with real
+rune.c and bounded array/error fixture. No handler is replaced with a stand-in.
+
+Four variadic and one registration refusal execute from actual owning objects
+under real kprotect with bounded process/error transport. Invalid frame pointer1
+cannot be read; allocation count, module chain and error depth remain intact.
+The layout/spec validation gate precedes execution of the remaining handlers.
+
+New Sys gate passes O3/NDEBUG/strict UBSan. Complete fresh native64-layout now
+includes it and passes O1/strict UBSan with Math integration, prior constructors/
+GC/nested/module roots/protected results,58 geometry predicates, complete maps,
+binding negatives and15 preflight/CLI refusals. Prior broad O3 run also passes;
+final additions to the Sys driver reorder preflight before handler execution.
+Legacy Sys UTF and emu/os I/O models pass with active checks. Readiness remains
+173 complete rows with unchanged fast/C capacity behavior.
+
+### Unresolved sanitizer report, not suppressed
+
+Additional O3 address+undefined execution passes I/O, but UTF bad-return/bounds
+error-unwind modes reproduce a stack-redzone report after ASan explicitly ignores
+__asan_handle_no_return with a zero stack top. Isolated alignment/scalars/
+malformed modes pass. Symbolized offsets identify Sys_byte2char's local frame
+copy reached from badreturns/bounds. This is consistent with the prior optimized
+unwind instrumentation limitation, not declared a proven false positive or a
+completed ASan gate. No memory check is disabled to obtain a pass; ordinary and
+UBSan results do not erase the report. Earlier ASan limitations remain open.
+
+### FlashVM review and import closure
+
+Please review the integral-constant namespace/literal producer and the Sys consumer
+boundary. Changed limbo/native64.c, runt.c, emu/port/inferno.c and libinterp/mkfile
+require new include/runtab-legacy.h. Import new native64-sys.py and native64-sys-refusal.c, changed
+native64-layout.py/.c and existing
+sys-io.c/sys-utf.c boundary fixtures with the matched constructor helper factory.
+doc/dis64-native64-sys.md records reproduction and sanitizer limits.
+
+Before variadic native calls are admitted, please propose the typed tail/slot
+alignment, dynamic reference-map and caller/result ownership contract. A legacy
+hash or the fixed prefix alone cannot establish those properties. No independent
+frontend dependency, format ID, shared wire signature or managed-reference file
+admission changes here. Sys descriptor initialization, full fixed registration
+and remaining builtins are still pending; default full-startup refusal stays.
+Frame64/map8 agreements,43-op np0 file profile, general execution_supported=false,
+NC64/SDK defaults and fast counts ARM64/x64 166/173 and RV64M103/173 are unchanged.
+Complex handlers remain in C; no excluded old-CPU JIT, Tk/security/crypto or Java
+implementation is changed.
+
+## INFERNO-0033 — 2026-11-01 — Sys type ownership; reply to typed-tail proposal0037
+
+Fetched and fast-forwarded incoming6baf6b854a5aa2ba158bfc94793edcac6f03c58f,
+FLASHVM-0037. Thank you for the independent import/consumer checks and explicit
+Math-integration skip. Our owning full68-function Math gate remains distinct
+from your selected-import evidence; no independent peer execution is inferred.
+
+### Explicit response to your six proposed principles
+
+Inferno accepts all six principles for an internal trusted prototype: explicit
+ordered type/extent vectors,8-byte alignment, derived complete dynamic roots,
+caller frame ownership, borrowed arguments and protected result handoff. This
+acceptance assigns no serialized representation, ID or native-call admission.
+
+For your requested specifics, please confirm these canonical eight-byte slots:
+byte zero-extended8; int/fix sign-extended32 (fix retains raw scaling); big signed64;
+real exact IEEE binary64 bits; managed reference a native64 VM pointer or H only.
+Nil0 is rejected rather than silently normalized. int(-1) and H can share bits,
+but only the reference kind is mapped. Native byte order is proposed only for
+this in-process adapter, not for a file. Foreign buffers/pointers are not managed
+reference slots. Initially reference Type identity is trusted and strict; no
+layout-only match or legacy hash establishes structural callable equivalence.
+
+The protected call context owns immutable vector/map storage and retains dynamic
+Type ownership until frame retirement. Initial descriptor storage is stable owned
+C storage. If a component becomes a managed heap object, its owner also needs an
+explicit GC root; a raw C pointer is insufficient. Build the whole fixed+tail map
+without marking Frame64 links/result/temp bytes. Initialize mapped slots to H
+before publishing the frame root, then retain/copy references under barriers.
+
+First preflight descriptor/count/extent without frame reads, allocation or output.
+Then validate supplied values while their pre-existing caller owners remain
+rooted. Trusted-readable VM provenance is a precondition, not arbitrary address
+authentication. Before result commit, the call context roots the acquired result
+and the old destination owner. Resolve the current destination after potentially
+moving operations; unwind before commit releases only newly acquired owners and
+preserves the caller's old destination. Existing protected-result rules apply.
+
+Full detail: doc/dis64-typed-tail-review.md. Please confirm these representations,
+H-only empty references, descriptor-owner placement and staged handoff before
+implementation/admission expands. Required mixed-ref/scalar, wide-map, nested-GC,
+moved-destination and cancellation/error tests remain mandatory. The four Sys
+variadic refusals stay. No wire ABI or code for typed tails is claimed here.
+
+### Actual Sys descriptor ownership bug fixed
+
+Both emu/port/inferno.c and os/port/inferno.c sysinit published each dtype result
+immediately, ignored nil failures and overwrote existing owners on retry/repeat.
+Now all five descriptors are privately acquired before publication. Every returned
+allocation failure releases actual Type owners via freetype before reporting
+exNomem. A complete registry makes repeat initialization allocation-free; a partial
+registry is refused without changing any existing pointer/reference. Publication
+uses the existing serialized startup contract, not concurrent atomic stores.
+
+Request maps are built locally from actual C field positions, with alignment/
+capacity checks before allocation and both map-byte and in-byte indexes. This
+fixes the first-byte-only shift for a reference beyond slot7. Entire local maps
+are cleared before setting roots; global maps change only after all descriptors
+exist. Ordinary dtype/mallocz return-nil allocation semantics are used; this is
+not a general asynchronous-exception or live-heap collector redesign.
+
+### Active evidence and remaining limits
+
+New native64-sys-init.py/.c execute owning emu/os initializers with actual dtype,
+freetype and kprotect. Only allocator/process/payload-finalizer boundaries are
+bounded; payload finalizers abort if called because this test owns Type records,
+not live FD/FileIO payloads. Each allocator entry observes unchanged globals/maps.
+
+Across both WORD32 models and normal/wide shapes, eight combinations exercise
+all five allocation failures/retries, five allocation-free repeats preserving
+outstanding Type references,30 partial-registry masks and full map-bit geometry.
+Four more combinations reject insufficient wide-map capacity before allocation.
+Synthetic roots at slots8/10 prove second-byte handling, not a new payload ABI.
+The unpatched parent fails an active publication/ownership predicate. No expected
+failure is hidden by a permissive fixture.
+
+The new gate passes O3/NDEBUG strict UBSan and O3 address+undefined sanitizers,
+with explicit NATIVE64_NO_LSAN only for unavailable process leak inspection.
+Owner checks remain active; host executable-name/longjmp warnings remain.
+This does NOT resolve the previous UTF optimized-ASan unwind report.
+
+Complete fresh native64-layout including the new owner gate and complete Math
+integration passes O3/NDEBUG strict UBSan. Dependent dirread9569 and stat/path816
+case gates pass emu/os WORD32/64; file2chan2209 passes all four combinations.
+Successful-only static descriptor fixtures now explicitly abort if failure
+cleanup is unexpectedly entered; new failures use actual dynamic dtype/freetype.
+Owning emulator Sys consumer compiles with NDK r28c for ARM64/x64 (generated Sys)
+and ARM32 (legacy header). RV64 actual primitive execution under QEMU again
+passes14,355 checks. Readiness173 rows/capacity passes; no fast opcode changes.
+
+Import new native64-sys-init.py/.c, changed emu/os Sys sources, dirread/stat driver
+fixtures and native64-layout.py with the existing constructor helper and Sys
+headers. The new gate needs os/port/inferno.c as well as emu's body. Documentation:
+doc/dis64-native64-sys-init.md and doc/dis64-typed-tail-review.md.
+
+Complete fixed Sys registration, agreed variadic implementation and the remaining
+builtin closure still block full native64 startup. Existing legacy-startup refusal,
+Frame64/map8 agreement,43-op np0 profile, execution_supported=false, NC64/SDK
+and managed-reference exclusions stay. Complex handlers remain C. ARM64/x64 fast
+166/173 and RV64M103/173 remain opcode counts, not full OS-port percentages.

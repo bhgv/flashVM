@@ -13,7 +13,9 @@ Idedesktop: module
     PointerEvent: con 65572; # Pixel/phase proposal carrying the completed view ticket.
     AnimationClock: con 65574; # Bounded replay visual-clock acknowledgement; no layout/source mutation.
     ResizeEvent: con 65573; # Ticket-bound native canvas proposal.
-    SetContainer: con 13; # window=document, phase=container0..8, x=tool family1/2; zero detaches.
+    RecentLabels: con 15; # Application-owned sanitized labels; body has four LF-separated lines.
+    RailScroll: con 14; # Ticket-bound wheel delta x, window2/3 selects the rail.
+    SetContainer: con 13; # window=document, phase=container0..8, x=tool family1/2/3; zero detaches.
     GroupEditor, DetachEditor: con iota + 18; # MDI/SDI commands for the active document.
     MaxWindows: con 8; # Bounded independent window processes in this first shell.
     View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Activate, TextHit, Shutdown: con iota; # FIFO operations.
@@ -39,7 +41,7 @@ Idedesktop: module
 
     Item: adt
     {
-        id: int; # Stable local MovieClip slot, 1..63; never a native object address.
+        id: int; # Stable local MovieClip slot, 1..95; never a native object address.
         parent: int; # 0 stage, 1 table, 2/3 rails, 4 overlay; 5..12 are MDI roots1..8.
         mirror: int; # Zero, or the source window ID for a live scaled MovieClip view.
         x: int; # Signed parent-local pixels; negative windows can pass under the left rail.

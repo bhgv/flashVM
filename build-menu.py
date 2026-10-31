@@ -345,7 +345,7 @@ def product_entries(prefix):
         (
             "8",
             "desktop",
-            "IDE MovieClip: общий стол, MDI/SDI, Draw/SVG, Debug-панели, подсветка Limbo/AS, F7/F8",
+            "IDE MovieClip: MDI-вкладки, полки/палитры File/Edit/Search, Draw/SVG, Debug, Limbo/AS, F7/F8",
             (prefix / "disvm-editor/run-desktop-ide.sh",),
             True,
         ),
@@ -402,6 +402,8 @@ def product_entries(prefix):
     rows += (("17", "tokens", "Coco/R: контекст, поиск и лексические кандидаты (пример без GUI)",
               (prefix / "disvm-editor/run-token-query.sh",
                prefix / "disvm-runtime/run-token-query.sh"), False),)
+    rows += (("18", "flashvm-native", "FlashVM: C-модуль, GC и вызов из AS/SWF (без GUI)",
+              (prefix / "disvm-editor/run-flashvm-native-module.sh",), False),)
     entries = {}
     for key, name, label, candidates, graphical in rows:
         script = next((path for path in candidates if path.is_file()), None)
@@ -569,7 +571,7 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
-    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax", "tokens"),
+    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax", "tokens", "flashvm-native"),
                         help="After a successful build launch an installed application; desktop is the MovieClip IDE")
     parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")

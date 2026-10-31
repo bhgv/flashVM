@@ -27,13 +27,22 @@ def main():
         source.write_text(original, encoding="utf-8")
         events = create_events() + [mouse(900, 452), mouse(900, 452, 3)] + settle()
         events += [mouse(40, 90), mouse(40, 90, 3)] + settle() + shortcut("G") + settle()
-        events += [mouse(40, 290), mouse(40, 290, 3)] + settle() + shortcut("G") + settle()
+        events += [mouse(40, 500), mouse(40, 500, 3)] + settle() + shortcut("G") + settle()
         views, _, _ = run(runtime, module, font, mode, work, events + [envelope(1, 65539, 1)], source)
         grouped = list(views.values())[-1]
-        if grouped[5][0] != 5 or grouped[1][0] != 6 or grouped[4][0] != 6:
+        if grouped[5][0] != 5 or grouped[1][0] != 1 or grouped[1][1] < 60000 or grouped[4][0] != 6:
             raise RuntimeError("documents do not have separate homogeneous actual MDI parents: " + str(grouped))
-        if "Graphics MDI" not in grouped[13][3] or "Source MDI" not in grouped[14][3]:
+        if "Graphics MDI" not in grouped[13][3] or "Limbo MDI" not in grouped[14][3]:
             raise RuntimeError("missing real container MovieClips")
+        # Hide the overlapping Help SDI, then select the left tab through real
+        # pointer input. Exactly that child is painted inside the shared content.
+        tabs = events + [mouse(900, 225), mouse(900, 225, 3)] + settle()
+        tx, ty = grouped[30][1:3]
+        tabs += [mouse(tx + 15, ty + 12), mouse(tx + 15, ty + 12, 3)] + settle()
+        tabviews, _, _ = run(runtime, module, font, mode, work, tabs + [envelope(1, 65539, 1)], source)
+        selected = list(tabviews.values())[-1]
+        if selected[1][0] != 6 or selected[4][0] != 1 or selected[4][1] < 60000:
+            raise RuntimeError("tab click did not select exactly one source owner: " + str(selected))
         # Root movement must compose through the actual native parent matrices;
         # child-local positions are not synthesized by the test controller.
         root_x, root_y = grouped[14][1:3]
@@ -46,7 +55,7 @@ def main():
             mouse(grab_x + 35, root_y + 40, 2), mouse(grab_x + 35, root_y + 40, 3)] + settle()
         views, _, _ = run(runtime, module, font, mode, work, moved_events + [envelope(1, 65539, 1)], source)
         moved = list(views.values())[-1]
-        for slot in (14, 1, 4):
+        for slot in (14, 4):
             if moved[slot][1] != grouped[slot][1] + 35 or moved[slot][2] != grouped[slot][2] + 30:
                 raise RuntimeError("container drag did not move its actual child MovieClips: "+str((slot,grouped[slot],moved[slot])))
         # The selected source remains owned by slot4 while its renderer detaches.
@@ -81,6 +90,13 @@ def main():
         paths = list(ET.fromstring(destination.read_text(encoding="utf-8")))
         if len(paths) != 1 or "Z" not in paths[0].attrib.get("d", "") or paths[0].attrib.get("fill") == "none" or paths[0].attrib.get("stroke") != "none":
             raise RuntimeError("nested vector hit/filled brush/SVG save failed")
+        as_source = work / "source.AS"
+        as_source.write_text("// independent ActionScript domain\n", encoding="utf-8")
+        as_views, _, _ = run(runtime, module, font, mode, work,
+            shortcut("G") + settle() + [envelope(1, 65539, 1)], as_source)
+        as_grouped = list(as_views.values())[-1]
+        if as_grouped[1][0] != 5 or "ActionScript MDI" not in as_grouped[13][3]:
+            raise RuntimeError("ActionScript source did not receive its own navigation/tool container")
         print("PASS actual source/graphics MDI MovieClip parents and independent SDI detach")
 
 

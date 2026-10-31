@@ -11,6 +11,10 @@ include "idedesktop.m";
 include "idedeskclip.m";
 include "idedebug.m";
 include "idemdi.m";
+include "idesourcedomain.m";
+include "idetools.m";
+include "iderecent.m";
+domains: Idesourcedomain; # Immutable classifier module; no document ownership.
 DesktopIDE: module
 {
     init: fn(); # Own the MovieClip desktop and independent pane processes.
@@ -24,6 +28,13 @@ panecall(owner: chan of Idedeskpane->Request, operation: int, text: string,
     replies := chan of Idedeskpane->Reply;
     owner <-= Idedeskpane->Request(1, operation, text, event, replies);
     return <-replies;
+}
+
+
+# Adapt a pane kind to the separate pure navigation-domain classifier.
+sourcefamily(kind: int, path: string): int
+{
+    return domains->family(path, kind == Idedeskpane->Vector);
 }
 
 
@@ -133,6 +144,14 @@ caption(reply: Idedeskpane->Reply, index: int): string
 init()
 {
     sys := load Sys Sys->PATH;
+    recents := load Iderecent Iderecent->PATH;
+    if (recents == nil) {
+        raise "fail: recent path policy module";
+    }
+    domains = load Idesourcedomain Idesourcedomain->PATH;
+    if (domains == nil) {
+        raise "fail: source domain module";
+    }
     codec := load Uibridge Uibridge->PATH;
     host := load Idehost Idehost->PATH;
     panes := load Idedeskpane Idedeskpane->PATH;
@@ -166,7 +185,7 @@ init()
     }
     windows[0] = panes->startnotified(initialkind, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, Pen/width. B/P/R/E/L: brush/pen/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nMDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. SDI / Ctrl+D detaches with saved geometry. Drag an exposed container title; children are tiled in this first version.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when the dragging mouse/finger enters the left shelf; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space, three fingers, middle mouse, or Ctrl+Shift+left drag to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, Pen/width. B/P/R/E/L: brush/pen/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nMDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. SDI / Ctrl+D detaches with saved geometry. MDI uses tabs; AS, Limbo and graphics have separate containers. Drag the container title.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
     windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -184,14 +203,16 @@ init()
     }
     membership := mdi->start();
     mdirevision := 1;
+    families := array[desk->MaxWindows] of { * => 0 };
     for (index = 0; index < 4; index++) {
         if (index == 1 || index == 2) {
             continue;
         }
-        family := mdi->Source;
-        if (index == 0 && initialkind == panes->Vector) {
-            family = mdi->Graphics;
+        family := sourcefamily(panes->Editor, "");
+        if (index == 0) {
+            family = sourcefamily(initialkind, path);
         }
+        families[index] = family;
         registered := mdicall(membership, mdirevision, mdi->Register, index + 1, family);
         if (registered.status != mdi->Ok) {
             raise "fail: initial MDI registration";
@@ -213,6 +234,11 @@ init()
     active := 1;
     control := 0;
     shift := 0;
+    recentpaths := recents->remember(nil, path); # Full paths remain app-owned, session-only.
+    recentlabels := ""; # Last presentation-only labels sent to the layout owner.
+    draftnames := array[desk->MaxWindows] of string; # Untitled language hint, never an adopted file path.
+    searchtext := ""; # First stage of Replace; no source mutation until replacement is entered.
+    replacing := 0; # Second-stage replacement field when1.
     modal := 0;
     closing := 0; # Stable editor slot retained while its dirty-close decision is modal.
     field := fields->create();
@@ -229,10 +255,35 @@ init()
             }
             snapshot := panecall(windows[index], panes->Snapshot, "", nil);
             shown[index] = snapshot;
+            if (snapshot.kind == panes->Editor || snapshot.kind == panes->Vector) {
+                family := sourcefamily(snapshot.kind, snapshot.path);
+                if (snapshot.path == "" && families[index] != 0) {
+                    family = families[index];
+                }
+                if (families[index] != family) {
+                    classified := mdicall(membership, mdirevision, mdi->Reclassify, index + 1, family);
+                    if (classified.status != mdi->Ok) {
+                        raise "fail: source family update";
+                    }
+                    mdirevision = classified.revision;
+                    families[index] = family;
+                    request.operation = desk->SetContainer;
+                    request.window = index + 1;
+                    request.phase = classified.containers[index];
+                    request.x = family;
+                    view = deskcall(layout, request);
+                }
+            }
             dirty += snapshot.revision != snapshot.saved;
             request.operation = desk->Update;
             request.window = index + 1;
             request.title = caption(snapshot, index + 1);
+            if (snapshot.path == "" && draftnames[index] != "") {
+                request.title = draftnames[index];
+                if (snapshot.revision != snapshot.saved) {
+                    request.title = "* " + request.title;
+                }
+            }
             request.body = snapshot.body;
             if (snapshot.kind == panes->Vector) {
                 request.body = ""; # The copied toolbar replaces the text-only legend.
@@ -255,6 +306,13 @@ init()
             request.operation = desk->Select;
             request.window = active;
             view = deskcall(layout, request);
+        }
+        labels := recents->labels(recentpaths);
+        if (labels != recentlabels) {
+            request.operation = desk->RecentLabels;
+            request.body = labels;
+            view = deskcall(layout, request);
+            recentlabels = labels;
         }
         request.operation = desk->View;
         view = deskcall(layout, request);
@@ -451,6 +509,34 @@ init()
                 request.window = 0;
                 view = deskcall(layout, request);
             } else if (event.kind == codec->Key && event.flags == 1 && event.code == 13) {
+                if (modal == Idetools->Find || modal == Idetools->Replace) {
+                    if (modal == Idetools->Replace && !replacing) {
+                        if (field.text != "") {
+                            searchtext = field.text;
+                            replacing = 1;
+                            fields->set(field, "", 0);
+                        }
+                        continue;
+                    }
+                    current := panecall(windows[active - 1], panes->Snapshot, "", nil);
+                    needle := field.text;
+                    replacement := "";
+                    operation := panes->FindText;
+                    if (modal == Idetools->Replace) {
+                        operation = panes->ReplaceText;
+                        needle = searchtext;
+                        replacement = field.text;
+                    }
+                    result := panecall(windows[active - 1], operation, needle,
+                        ref Uibridge->Message(codec->Request, 0, 0, current.revision, 0, 0, replacement));
+                    panecall(windows[1], panes->SetText, "Search status=" + string result.status, nil);
+                    modal = 0;
+                    replacing = 0;
+                    request.operation = desk->Tool;
+                    request.window = 0;
+                    view = deskcall(layout, request);
+                    continue;
+                }
                 operation := panes->Open;
                 if (modal == desk->SaveFile) {
                     operation = panes->Save;
@@ -458,6 +544,7 @@ init()
                 result := panecall(windows[active - 1], operation, field.text, nil);
                 panecall(windows[1], panes->SetText, "File status=" + string result.status + " " + result.path, nil);
                 if (result.status == Idecore->Ok) {
+                    recentpaths = recents->remember(recentpaths, result.path);
                     modal = 0;
                     request.operation = desk->Tool;
                     request.window = 0;
@@ -558,6 +645,13 @@ init()
                 }
                 if (code == 4 || code == 5) {
                     request.operation = desk->Scroll;
+                    if (event.first < 80 || event.first >= width - 104) {
+                        request.operation = desk->RailScroll;
+                        request.window = 2;
+                        if (event.first >= width - 104) {
+                            request.window = 3;
+                        }
+                    }
                     request.x = 120;
                     if (code == 4) {
                         request.x = -120;
@@ -648,6 +742,10 @@ init()
                 action = desk->Compile;
             } else if (control && event.code == 83) {
                 action = desk->SaveFile;
+            } else if (control && event.code == 70) {
+                action = Idetools->Find;
+            } else if (control && event.code == 72) {
+                action = Idetools->Replace;
             } else if (control && event.code == 79) {
                 action = desk->OpenFile;
             } else if (control && event.code == 78) {
@@ -673,7 +771,40 @@ init()
                 continue;
             }
         }
-        if (action == desk->CopySelection || action == desk->CutSelection || action == desk->PasteSelection) {
+        if (action >= Idetools->Recent && action < Idetools->Recent + 4) {
+            slot := action - Idetools->Recent;
+            if (recentpaths[slot] != "") {
+                result := panecall(windows[active - 1], panes->Open, recentpaths[slot], nil);
+                panecall(windows[1], panes->SetText, "Recent Open status=" + string result.status, nil);
+                if (result.status == Idecore->Ok) {
+                    recentpaths = recents->remember(recentpaths, result.path);
+                }
+            } else {
+                panecall(windows[1], panes->SetText, "No recent file in this session slot.", nil);
+            }
+        } else if (action == Idetools->Undo || action == Idetools->Redo) {
+            key := 90;
+            if (action == Idetools->Redo) {
+                key = 89;
+            }
+            panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
+            panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Key, 0, 17, 1, 0, 0, ""));
+            panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Key, 0, key, 1, 0, 0, ""));
+            panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Key, 0, key, 0, 0, 0, ""));
+            panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Key, 0, 17, 0, 0, 0, ""));
+            control = 0;
+            shift = 0;
+        } else if (action == Idetools->Find || action == Idetools->Replace) {
+            current := panecall(windows[active - 1], panes->Snapshot, "", nil);
+            if (current.kind == panes->Editor) {
+                modal = action;
+                replacing = 0;
+                field = fields->create();
+                request.operation = desk->Tool;
+                request.window = action;
+                view = deskcall(layout, request);
+            }
+        } else if (action == desk->CopySelection || action == desk->CutSelection || action == desk->PasteSelection) {
             current := panecall(windows[active - 1], panes->Snapshot, "", nil);
             if (current.kind != panes->Editor) {
                 panecall(windows[1], panes->SetText, "Session clipboard: select an editor first.", nil);
@@ -774,29 +905,36 @@ init()
             }
             control = 0;
             shift = 0;
-        } else if (action == desk->OpenFile || action == desk->SaveFile) {
+        } else if (action == desk->OpenFile || action == desk->SaveFile || action == Idetools->SaveAs) {
             current := panecall(windows[active - 1], panes->Snapshot, "", nil);
             if (current.kind == panes->Editor || current.kind == panes->Vector) {
                 if (action == desk->SaveFile && current.path != "" && !shift) {
                     result := panecall(windows[active - 1], panes->Save, "", nil);
                     panecall(windows[1], panes->SetText, "Save status=" + string result.status, nil);
+                    if (result.status == Idecore->Ok) {
+                        recentpaths = recents->remember(recentpaths, result.path);
+                    }
                 } else {
                     modal = action;
+                    if (action == Idetools->SaveAs) {
+                        modal = desk->SaveFile;
+                    }
                     panecall(windows[active - 1], panes->Input, "", ref Uibridge->Message(codec->Focus, 0, 0, 0, 0, 0, ""));
                     field = fields->create();
-                    fields->set(field, current.path, 1);
+                    destination := current.path;
+                    if (destination == "") {
+                        destination = draftnames[active - 1];
+                    }
+                    fields->set(field, destination, 1);
                     request.operation = desk->Tool;
-                    request.window = action;
+                    request.window = modal;
                     view = deskcall(layout, request);
                 }
             }
         } else if (action == desk->GroupEditor || action == desk->DetachEditor) {
             current := panecall(windows[active - 1], panes->Snapshot, "", nil);
             if (current.kind == panes->Editor || current.kind == panes->Vector) {
-                family := mdi->Source;
-                if (current.kind == panes->Vector) {
-                    family = mdi->Graphics;
-                }
+                family := families[active - 1];
                 before := mdicall(membership, mdirevision, mdi->Snapshot, 0, 0);
                 target := 0;
                 if (action == desk->GroupEditor) {
@@ -892,7 +1030,7 @@ init()
             }
             panecall(windows[1], panes->SetText,
                 "Debugger panels share this desktop. No target attached; run controls remain unavailable.", nil);
-        } else if (action == desk->NewEditor || action == desk->VectorEditor) {
+        } else if (action == desk->NewEditor || action == desk->VectorEditor || (action >= Idetools->NewLimbo && action <= Idetools->NewAS3)) {
             created := 0;
             for (index = 0; index < len windows; index++) {
                 if (windows[index] == nil) {
@@ -905,10 +1043,16 @@ init()
                         panecall(windows[1], panes->SetText, "Cannot start an editor owner.", nil);
                         break;
                     }
-                    family := mdi->Source;
-                    if (kind == panes->Vector) {
-                        family = mdi->Graphics;
+                    family := sourcefamily(kind, "");
+                    draftnames[index] = "";
+                    if (action >= Idetools->NewLimbo && action <= Idetools->NewAS3) {
+                        suffix := array[] of {".b", ".as1", ".as2", ".as3"};
+                        draftnames[index] = "Untitled" + string (index + 1) + suffix[action - Idetools->NewLimbo];
+                        if (action != Idetools->NewLimbo) {
+                            family = 3;
+                        }
                     }
+                    families[index] = family;
                     registered := mdicall(membership, mdirevision, mdi->Register, index + 1, family);
                     if (registered.status != mdi->Ok) {
                         raise "fail: new MDI registration";

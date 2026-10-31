@@ -176,8 +176,8 @@ set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/ideco
   "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b" "${root}/ide/dis/bridge/idebrowser.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
-list(APPEND module_names capture-demo asincviews idemdi idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
-list(APPEND module_sources "${root}/disVM/examples/asincviews/main.b" "${root}/disVM/limbo/asincviews.b" "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
+list(APPEND module_names capture-demo asincviews idemdi iderails idetools iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
+list(APPEND module_sources "${root}/disVM/examples/asincviews/main.b" "${root}/disVM/limbo/asincviews.b" "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/iderails.b" "${root}/ide/dis/bridge/idetools.b" "${root}/ide/dis/bridge/iderecent.b" "${root}/ide/dis/bridge/idepick.b" "${root}/ide/dis/bridge/idethumbnails.b" "${root}/ide/dis/bridge/idetabview.b" "${root}/ide/dis/bridge/idedocking.b" "${root}/ide/dis/bridge/idesourcedomain.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
 # Portable cooperative task ownership is a library and separately runnable example.
 list(APPEND module_names asinctasks tasks-demo)
 list(APPEND module_sources
@@ -489,25 +489,56 @@ if(DVM_RUNTIME_EDITOR)
       "${view}/desktop-view.swf" "${view}/desktop_view_swf.h"
     DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}"
       "${DVM_SWF_LINKER}" "${root}/ide/as/desktop-view.as" embed_view.py VERBATIM)
+  # Each chrome view is a separate Coco/R AS -> FIR -> optimizer -> SWL product.
+  set(chrome_headers)
+  foreach(control desktop-background rail-left rail-right window-card miniature-card window-header tab-button tool-scroll input-field top-bar)
+    string(REPLACE "-" "_" symbol "chrome_${control}")
+    set(header "${view}/${symbol}.h")
+    add_custom_command(OUTPUT "${header}"
+      COMMAND "${DVM_AS_VIEW_COMPILER}" "${root}/ide/as/chrome/${control}.as" "${view}/${control}.fir"
+      COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp" "${DVM_FIR_COMPILER}" check "${view}/${control}.fir"
+      COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp" "${DVM_FIR_OPTIMIZER}" "${view}/${control}.fir" "${view}/${control}.opt.fir"
+      COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp" "${DVM_FIR_COMPILER}" object "${view}/${control}.opt.fir" "${view}/${control}.swo"
+      COMMAND "${DVM_SWF_LINKER}" link "${view}/${control}.swf" "${view}/${control}.swo"
+      COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/embed_chrome.py" "${view}/${control}.swf" "${header}" "${symbol}"
+      DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_FIR_OPTIMIZER}" "${DVM_SWF_LINKER}"
+        "${root}/ide/as/chrome/${control}.as" embed_chrome.py VERBATIM)
+    list(APPEND chrome_headers "${header}")
+  endforeach()
+  add_custom_target(disvm_chrome_headers DEPENDS ${chrome_headers})
+  if(DVM_RUNTIME_TESTS)
+    add_custom_command(OUTPUT "${view}/native-module.swf"
+      COMMAND "${DVM_AS_VIEW_COMPILER}" "${root}/flashVM/examples/embedding/native_module/main.as" "${view}/native-module.fir"
+      COMMAND "${CMAKE_COMMAND}" -E env "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp" "${DVM_FIR_COMPILER}" object "${view}/native-module.fir" "${view}/native-module.swo"
+      COMMAND "${DVM_SWF_LINKER}" link "${view}/native-module.swf" "${view}/native-module.swo"
+      DEPENDS "${DVM_AS_VIEW_COMPILER}" "${DVM_FIR_COMPILER}" "${DVM_SWF_LINKER}" "${root}/flashVM/examples/embedding/native_module/main.as" VERBATIM)
+    add_custom_target(disvm_flashvm_native_module_swf DEPENDS "${view}/native-module.swf")
+    add_executable(disvm_flashvm_native_module_example
+      "${root}/flashVM/examples/embedding/native_module/main.c" "${root}/flashVM/examples/embedding/native_module/module.c")
+    set_property(TARGET disvm_flashvm_native_module_example PROPERTY C_STANDARD 90)
+    target_link_libraries(disvm_flashvm_native_module_example PRIVATE flashvm m)
+    add_dependencies(disvm_flashvm_native_module_example disvm_flashvm_native_module_swf)
+    add_test(NAME disvm_flashvm_native_module_example COMMAND disvm_flashvm_native_module_example "${view}/native-module.swf")
+  endif()
   # One producer owns both generated headers across parallel Make target graphs.
   add_custom_target(disvm_view_headers DEPENDS
     "${view}/ide_view_swf.h" "${view}/desktop_view_swf.h")
   add_dependencies(disvm-editor disvm_view_headers)
-  target_sources(disvm-editor PRIVATE desktop_view.c)
+  target_sources(disvm-editor PRIVATE desktop_view.c desktop_paint_primitives.c desktop_drawing_capability.c desktop_window_chrome.c)
   if(DVM_RUNTIME_TESTS)
-    add_executable(disvm_desktop_colors_test test_desktop_colors.c desktop_view.c editor_raster.c)
+    add_executable(disvm_desktop_colors_test test_desktop_colors.c desktop_view.c desktop_paint_primitives.c desktop_drawing_capability.c desktop_window_chrome.c editor_raster.c)
     add_dependencies(disvm_desktop_colors_test disvm_view_headers)
     target_include_directories(disvm_desktop_colors_test PRIVATE "${view}" "${root}/disVM/include")
     target_link_libraries(disvm_desktop_colors_test PRIVATE flashvm m)
     add_test(NAME disvm_desktop_color_protocol COMMAND disvm_desktop_colors_test)
-    add_executable(disvm_mdi_capture_test test_mdi_capture.c desktop_view.c editor_raster.c)
+    add_executable(disvm_mdi_capture_test test_mdi_capture.c desktop_view.c desktop_paint_primitives.c desktop_drawing_capability.c desktop_window_chrome.c editor_raster.c)
     add_dependencies(disvm_mdi_capture_test disvm_view_headers)
     target_include_directories(disvm_mdi_capture_test PRIVATE "${view}" "${root}/disVM/include")
     target_link_libraries(disvm_mdi_capture_test PRIVATE flashvm m)
     if(DVM_EDITOR_TEST_FONT)
       add_test(NAME disvm_mdi_reflow_capture COMMAND disvm_mdi_capture_test "${DVM_EDITOR_TEST_FONT}")
     endif()
-    add_executable(disvm_desktop_vector_test test_desktop_vector.c desktop_view.c editor_raster.c)
+    add_executable(disvm_desktop_vector_test test_desktop_vector.c desktop_view.c desktop_paint_primitives.c desktop_drawing_capability.c desktop_window_chrome.c editor_raster.c)
     add_dependencies(disvm_desktop_vector_test disvm_view_headers)
     target_include_directories(disvm_desktop_vector_test PRIVATE "${view}" "${root}/disVM/include")
     target_link_libraries(disvm_desktop_vector_test PRIVATE flashvm m)
@@ -1443,6 +1474,10 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS AND DVM_EDITOR_TEST_FONT)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_retained.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
     set_tests_properties(disvm_desktop_retained_${mode} PROPERTIES TIMEOUT 90)
+    add_test(NAME disvm_desktop_rails_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_rails.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_desktop_rails_${mode} PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_desktop_mdi_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_mdi.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" ${mode})
@@ -1593,5 +1628,14 @@ if(DVM_RUNTIME_TESTS)
         "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>" "${alias_binary}" ${mode})
       set_tests_properties(disvm_array_initializer_${selection}_${mode} PROPERTIES TIMEOUT 60)
     endforeach()
+  endforeach()
+endif()
+
+# Every consumer of desktop_view links the same generic primitives and AS resources.
+if(TARGET disvm_chrome_headers)
+  foreach(consumer disvm-editor disvm_desktop_colors_test disvm_mdi_capture_test disvm_desktop_vector_test)
+    if(TARGET ${consumer})
+      add_dependencies(${consumer} disvm_chrome_headers)
+    endif()
   endforeach()
 endif()

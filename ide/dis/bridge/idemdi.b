@@ -36,7 +36,7 @@ serve(requests: chan of Request)
         stop := 0;
         document := request.document - 1;
         container := request.container - 1;
-        if (request.id >= 0 && request.operation >= Snapshot && request.operation <= Shutdown) {
+        if (request.id >= 0 && request.operation >= Snapshot && request.operation <= Reclassify) {
             if (request.operation == Snapshot) {
                 status = Ok;
             } else if (request.revision != revision) {
@@ -45,14 +45,30 @@ serve(requests: chan of Request)
                 status = Ok;
                 stop = 1;
             } else if (request.operation == Register && document >= 0 && document < Limit &&
-                       (request.family == Source || request.family == Graphics) && families[document] == 0) {
+                       (request.family >= Source && request.family <= ActionScript) && families[document] == 0) {
                 families[document] = request.family;
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Create && container >= 0 && container < Limit &&
-                       (request.family == Source || request.family == Graphics) && tools[container] == 0) {
+                       (request.family >= Source && request.family <= ActionScript) && tools[container] == 0) {
                 tools[container] = request.family;
                 changed = 1;
+                status = Ok;
+            } else if (request.operation == Reclassify && document >= 0 && document < Limit &&
+                       families[document] != 0 && request.family >= Source && request.family <= ActionScript) {
+                changed = families[document] != request.family;
+                families[document] = request.family;
+                if (containers[document] != 0 && tools[containers[document] - 1] != request.family) {
+                    old := containers[document];
+                    containers[document] = 0;
+                    remaining := 0;
+                    for (index := 0; index < Limit; index++) {
+                        remaining |= containers[index] == old;
+                    }
+                    if (!remaining) {
+                        tools[old - 1] = 0;
+                    }
+                }
                 status = Ok;
             } else if (request.operation == Join && document >= 0 && document < Limit &&
                        container >= 0 && container < Limit && families[document] != 0 &&

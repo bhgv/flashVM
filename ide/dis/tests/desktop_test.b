@@ -300,8 +300,9 @@ mdicontainers(desk: Idedesktop)
     check(stale.status == desk->Conflict, "pre-parenting pointer ticket refused");
     request.window = 4;
     grouped = call(owner, request);
-    check(item(grouped, 4).parent == 5 && item(grouped, 4).x > item(grouped, 1).x,
-          "same-family children tile under one root");
+    check(item(grouped, 1).parent == 5 && item(grouped, 4).parent == 1 &&
+          item(grouped, 4).x > 60000 && item(grouped, 30) != nil && item(grouped, 33) != nil,
+          "one visible MDI body and separate tabs preserve both source owners");
     request.x = 2;
     refused := call(owner, request);
     check(refused.status == desk->Invalid && refused.ticket == grouped.ticket,

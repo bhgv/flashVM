@@ -84,8 +84,8 @@ def main():
         source.write_text(original, encoding="utf-8")
         events = [
             envelope(5, text="# one\n"),
-            mouse(20, 280),
-            mouse(20, 280, 3),
+            mouse(20, 500),
+            mouse(20, 500, 3),
             envelope(5, text="second"),
         ]
         events += shortcut("S") + [envelope(5, text="second.b"), envelope(4, 13, 1)]
@@ -146,8 +146,8 @@ def main():
         # The focused pane paints last and wins the same overlapping hit area.
         # Covered document text must not receive keys meant for the console.
         events = [
-            mouse(20, 150),
-            mouse(20, 150, 3),
+            mouse(20, 230),
+            mouse(20, 230, 3),
             mouse(500, 80),
             mouse(136, 80, 2),
             mouse(136, 80, 3),

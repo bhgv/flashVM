@@ -1,3 +1,5 @@
+[Контролы рабочего стола и нативные расширения](DESKTOP-CONTROLS.ru.md)
+
 [F7 Build / F8 diagnostics — v0.1671](../BUILD-PANEL.md) · [Русский](../BUILD-PANEL.ru.md)
 
 # Переносимое ядро документа IDE

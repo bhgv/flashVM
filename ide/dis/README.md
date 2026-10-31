@@ -1,3 +1,5 @@
+[Desktop controls and native extensions](DESKTOP-CONTROLS.md)
+
 [F7 Build / F8 diagnostics — v0.1671](../BUILD-PANEL.md) · [Русский](../BUILD-PANEL.ru.md)
 
 # Portable IDE document core

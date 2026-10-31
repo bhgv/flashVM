@@ -69,7 +69,7 @@ def main():
             raise RuntimeError(
                 "left miniature did not expose the pane by panning every window"
             )
-        reveal_right = [mouse(30, 155), mouse(30, 155, 3)]
+        reveal_right = [mouse(30, 230), mouse(30, 230, 3)]
         views, _, _ = run(
             runtime,
             module,
@@ -215,7 +215,7 @@ def main():
             1 in widgets and widgets[1][1] == 65536 for widgets in views.values()
         ):
             raise RuntimeError(
-                "right-edge docking never reached its hidden logical state"
+                "contact-driven docking never reached its hidden logical state"
             )
         final = list(views.values())[-1][1]
         if final[1:3] != (96, 72):

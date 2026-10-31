@@ -1,12 +1,14 @@
+[Native extensions](docs/NATIVE-EXTENSIONS.md) · [Desktop controls](ide/dis/DESKTOP-CONTROLS.md)
+
 # FlashVM workspace
 
 Меню сборки: `python3 build-menu.py`.
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1706**. [Русская версия](README.ru.md).
+Development version: **0.1707**. [Русская версия](README.ru.md).
 
-Current series: [v0.1706](docs/releases/v0.1706.md): distinct Brush/Pen, deferred Limbo geometry, connected filled contours and preserved input trajectories.
+Current series: [v0.1707](docs/releases/v0.1707.md): tabbed domain-specific MDI, Limbo/AS chrome, independent scrolling rails, command palettes and rooted C modules.
 
 ## Browse documentation
 

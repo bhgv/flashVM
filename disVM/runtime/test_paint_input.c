@@ -34,6 +34,10 @@ static void motion(int x, int y)
 int main(void)
 {
     SDL_Event first;
+    require(dvm_editor_pan_button(SDL_BUTTON_MIDDLE, 0), "middle button pans");
+    require(dvm_editor_pan_button(SDL_BUTTON_LEFT, KMOD_LCTRL | KMOD_RSHIFT), "Ctrl+Shift+left pans");
+    require(!dvm_editor_pan_button(SDL_BUTTON_LEFT, KMOD_LCTRL), "Ctrl alone keeps ordinary input");
+    require(!dvm_editor_pan_button(SDL_BUTTON_RIGHT, KMOD_LCTRL | KMOD_LSHIFT), "right button remains separate");
     SDL_Event next;
     require(SDL_Init(SDL_INIT_EVENTS) == 0, "initialize events without a display");
     SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);

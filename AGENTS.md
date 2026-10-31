@@ -41,3 +41,12 @@ publishing confirmed upstream fixes. This supersedes older no-push/patch-only
 instructions in component files. Preserve bhgv authorship, expected-head checks,
 source provenance and tested trees. GitHub connector publication may use the
 connected bhgv identity when local HTTPS credentials are unavailable.
+
+# UI composition and modularity
+
+- Put each control/view and each algorithm in a separate source module, across
+  Limbo, AS and C. Coordinators compose modules rather than growing monoliths.
+- IDE window/panel styling and behavior belong in executable Limbo/AS sources.
+  C supplies generic drawing, input, ownership and raster primitives; it does not
+  become the IDE's theme/layout implementation. Use supported compiler/JIT paths
+  and state actual coverage instead of assuming unimplemented language features.

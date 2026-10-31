@@ -3,7 +3,15 @@
 #include "error.h"
 #include "interp.h"
 #include "isa.h"
+/* Explicit native64 consumers must use one coherent generated Sys declaration set. */
+#ifdef DIS_NATIVE64_SYS_HEADER
+#ifndef DIS_WORD32
+#error experimental native64 Sys requires DIS_WORD32=1
+#endif
+#include DIS_NATIVE64_SYS_HEADER
+#else
 #include "runt.h"
+#endif
 #include "kernel.h"
 #include "raise.h"
 #include "vmchannel.h"
@@ -37,23 +45,70 @@ struct FD
 	Fgrp*	grp;
 };
 
-/* Size native records and locate channel-request pointers from their C declarations. */
+/* Construct every Sys descriptor before publishing globals; a failed attempt owns no persistent types. */
 void
 sysinit(void)
 {
-	TFD = dtype(freeFD, sizeof(FD), FDmap, sizeof(FDmap));
-	TFileIO = dtype(freeFileIO, sizeof(Sys_FileIO), FileIOmap, sizeof(FileIOmap));
+	Type *types[5] = {nil};
+	uchar readmap[sizeof(rmap)], writemap[sizeof(wmap)];
+	ulong readslot, dataslot, replyslot;
+	int i;
 
-	/* Support for devsrv.c */
-	rmap[0] = 0x80 >> (offsetof(Sys_FileIO_read, t3)/sizeof(void*));
-	wmap[0] = (0x80 >> (offsetof(Sys_FileIO_write, t1)/sizeof(void*))) |
-		(0x80 >> (offsetof(Sys_FileIO_write, t3)/sizeof(void*)));
-	FioTread = dtype(freeheap, sizeof(Sys_FileIO_read), rmap, sizeof(rmap));
-	FioTwrite = dtype(freeheap, sizeof(Sys_FileIO_write), wmap, sizeof(wmap));
+	if(TFD != nil || TFileIO != nil || FioTread != nil || FioTwrite != nil || Tdir != nil){
+		if(TFD != nil && TFileIO != nil && FioTread != nil && FioTwrite != nil && Tdir != nil)
+			return;
+		error("partial Sys type initialization");
+		return;
+	}
+	/* Build request maps from actual native field positions, never from a truncated bit shift. */
+	readslot = offsetof(Sys_FileIO_read, t3)/sizeof(void*);
+	dataslot = offsetof(Sys_FileIO_write, t1)/sizeof(void*);
+	replyslot = offsetof(Sys_FileIO_write, t3)/sizeof(void*);
+	if(offsetof(Sys_FileIO_read, t3)%sizeof(void*) != 0 ||
+	   offsetof(Sys_FileIO_write, t1)%sizeof(void*) != 0 ||
+	   offsetof(Sys_FileIO_write, t3)%sizeof(void*) != 0 ||
+	   readslot/8 >= sizeof(readmap) || dataslot/8 >= sizeof(writemap) ||
+	   replyslot/8 >= sizeof(writemap)){
+		error("bad Sys request maps");
+		return;
+	}
+	memset(readmap, 0, sizeof(readmap));
+	memset(writemap, 0, sizeof(writemap));
+	readmap[readslot/8] |= 0x80 >> (readslot%8);
+	writemap[dataslot/8] |= 0x80 >> (dataslot%8);
+	writemap[replyslot/8] |= 0x80 >> (replyslot%8);
 
-	/* Support for dirread */
-	Tdir = dtype(freeheap, sizeof(Sys_Dir), dmap, sizeof(dmap));
+	/* dtype and the native mallocz boundary return nil on allocation failure. */
+	types[0] = dtype(freeFD, sizeof(FD), FDmap, sizeof(FDmap));
+	if(types[0] == nil)
+		goto failed;
+	types[1] = dtype(freeFileIO, sizeof(Sys_FileIO), FileIOmap, sizeof(FileIOmap));
+	if(types[1] == nil)
+		goto failed;
+	types[2] = dtype(freeheap, sizeof(Sys_FileIO_read), readmap, sizeof(readmap));
+	if(types[2] == nil)
+		goto failed;
+	types[3] = dtype(freeheap, sizeof(Sys_FileIO_write), writemap, sizeof(writemap));
+	if(types[3] == nil)
+		goto failed;
+	types[4] = dtype(freeheap, sizeof(Sys_Dir), dmap, sizeof(dmap));
+	if(types[4] == nil)
+		goto failed;
+
+	memmove(rmap, readmap, sizeof(rmap));
+	memmove(wmap, writemap, sizeof(wmap));
+	TFD = types[0];
+	TFileIO = types[1];
+	FioTread = types[2];
+	FioTwrite = types[3];
+	Tdir = types[4];
+	return;
+failed:
+	for(i=0; i<5; i++)
+		freetype(types[i]);
+	error(exNomem);
 }
+
 
 void
 freeFD(Heap *h, int swept)
@@ -1108,6 +1163,11 @@ Sys_fwstat(void *fp)
 void
 Sys_print(void *fp)
 {
+#ifdef DIS_NATIVE64_SYS_HEADER
+	USED(fp);
+	error("native64 Sys variadic calls are not supported");
+	return;
+#else
 	int n;
 	Prog *p;
 	Chan *c;
@@ -1144,6 +1204,7 @@ Sys_print(void *fp)
 	if (b != buf)
 		free(b);
 	acquire();
+#endif
 }
 
 
@@ -1151,6 +1212,11 @@ Sys_print(void *fp)
 void
 Sys_fprint(void *fp)
 {
+#ifdef DIS_NATIVE64_SYS_HEADER
+	USED(fp);
+	error("native64 Sys variadic calls are not supported");
+	return;
+#else
 	int n;
 	Prog *p;
 	char buf[1024], *b = buf;
@@ -1198,6 +1264,7 @@ Sys_fprint(void *fp)
 	if (b != buf)
 		free(b);
 	acquire();
+#endif
 }
 
 

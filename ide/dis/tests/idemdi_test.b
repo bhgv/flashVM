@@ -50,6 +50,15 @@ init()
     dissolved := call(owner, joined.revision, mdi->Dissolve, 0, 1, 0);
     check(dissolved.containers[0] == 0 && dissolved.tools[0] == 0 && dissolved.families[0] == mdi->Source,
           "dissolve restores SDI without discarding source");
-    check(call(owner, dissolved.revision, mdi->Shutdown, 0, 0, 0).status == mdi->Ok, "terminal acknowledgement");
+    asdoc := call(owner, dissolved.revision, mdi->Register, 3, 0, mdi->ActionScript);
+    limbo := call(owner, asdoc.revision, mdi->Create, 0, 2, mdi->Source);
+    rejected := call(owner, limbo.revision, mdi->Join, 3, 2, 0);
+    check(rejected.status == mdi->Invalid, "AS cannot join Limbo navigation domain");
+    asgroup := call(owner, rejected.revision, mdi->Create, 0, 3, mdi->ActionScript);
+    attached := call(owner, asgroup.revision, mdi->Join, 3, 3, 0);
+    changed := call(owner, attached.revision, mdi->Reclassify, 3, 0, mdi->Source);
+    check(changed.status == mdi->Ok && changed.containers[2] == 0 && changed.families[2] == mdi->Source,
+          "changed file domain detaches incompatible tabs without removing owner");
+    check(call(owner, changed.revision, mdi->Shutdown, 0, 0, 0).status == mdi->Ok, "terminal acknowledgement");
     sys->print("PASS MDI membership: same desk, homogeneous tools, SDI detach, stale refusal and copied snapshots\n");
 }

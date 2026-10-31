@@ -37,10 +37,10 @@ def main():
         _, scrolls, _ = run(runtime, module, font, mode, work, events + quit_event)
         if 100 not in scrolls:
             raise RuntimeError("three-contact drag over a window did not pan the table")
-        events = [mouse(30, 90), mouse(30, 290, 2), mouse(30, 290, 3)]
+        events = [mouse(30, 90), mouse(30, 500, 2), mouse(30, 500, 3)]
         views, _, _ = run(runtime, module, font, mode, work, events + quit_event)
         if not any(
-            widgets.get(20, (0, 0, 0, ""))[2] == 264 for widgets in views.values()
+            widgets.get(20, (0, 0, 0, ""))[2] == 480 for widgets in views.values()
         ):
             raise RuntimeError(
                 "thumbnail drag did not reorder stable source identities"
@@ -78,7 +78,15 @@ def main():
         _, _, capture = run(runtime, module, font, mode, work, moving + quit_event)
         pixels = capture.read_bytes().split(b"\n", 3)[3]
         at = (280 * 960 + 200) * 3
-        if tuple(pixels[at : at + 3]) != (219, 223, 223):
+        # Move only the covering paper away and observe the exact same backdrop
+        # coordinate. The oracle remains independent of AS theme colours/gradients.
+        _, _, backdrop = run(runtime, module, font, mode, work,
+            [mouse(150, 80), mouse(550, 80, 2)] + quit_event)
+        background_pixels = backdrop.read_bytes().split(b"\n", 3)[3]
+        background = background_pixels[at:at + 3]
+        expected = tuple(round(0.9 * paper + 0.1 * backdrop) for paper, backdrop in
+                         zip((239, 242, 241), background))
+        if any(abs(actual - wanted) > 2 for actual, wanted in zip(pixels[at:at + 3], expected)):
             raise RuntimeError(
                 "dragged window did not blend 90% paper over current table pixels"
             )
@@ -123,6 +131,13 @@ def main():
         trace = (work / "trace.txt").read_text()
         if not re.search(r"^GEOMETRY \d+ 1 764 580 ", trace, re.M):
             raise RuntimeError("Max/Norm toolbar does not share header maximization")
+        # The contact enters the rail while most of the paper is still on the
+        # desk. Docking must use contact position, never the window's far edge.
+        contact_dock = [mouse(110, 80), mouse(79, 80, 2), mouse(79, 80, 3),
+                        envelope(1, 65574, first=240)]
+        contact_views, _, _ = run(runtime, module, font, mode, work, contact_dock + quit_event)
+        if list(contact_views.values())[-1][1][1] < 60000:
+            raise RuntimeError("dragging contact entered shelf without docking the mostly visible window")
         minimize = [
             mouse(420, 80),
             mouse(80, 70, 2),

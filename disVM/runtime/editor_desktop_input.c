@@ -37,3 +37,11 @@ void dvm_editor_coalesce_motion(SDL_Event *event, int captured)
         *event = next;
     }
 }
+
+
+/* Pure copied SDL classification; no queue, VM, document or rendering access. */
+int dvm_editor_pan_button(unsigned int button, unsigned int modifiers)
+{
+    return button == SDL_BUTTON_MIDDLE ||
+           (button == SDL_BUTTON_LEFT && (modifiers & KMOD_CTRL) && (modifiers & KMOD_SHIFT));
+}
