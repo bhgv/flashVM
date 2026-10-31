@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "d5429c8e37123b00f145262f3755b936ce5720d9",
+  "revision": "889bedf9642a3df3656dff145488462db3562e65",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -955,7 +955,7 @@
     "upstream/doc/dis64-envelope.md": "1dac0dcb51583cffaf55e683cd82d54d3465bb6e28dac4cf50ff3fa1112258f1",
     "upstream/doc/dis64-exception-gc.md": "e44ecd6451b1583977daf025d4a97a893d52b6ba261597eed85c2a8b98d332b5",
     "upstream/doc/dis64-fileloader.md": "d67ae474bee3bbf8fec390ee8c2f8d95c9ca3bb1183bca4dac3d847ee4cf2682",
-    "upstream/doc/dis64-flashvm-journal.md": "ee62d4639aa753e30be724472f72f7a1b320018774924dc80130f93fcca15ff6",
+    "upstream/doc/dis64-flashvm-journal.md": "76fec6acde5763fdcbcc03b6bca72088430224402290d2cb451f9d355e2083f8",
     "upstream/doc/dis64-flashvm-payload-response.md": "467c81a19cdd8cf6a6d9371321dd9caba223ed9b1cfae48adb4ea7e3ca61367b",
     "upstream/doc/dis64-flashvm-proposal.md": "c9a68aa729599a25677d0e4c59f34d2b529d3151bee4208e29c70469cd2c5238",
     "upstream/doc/dis64-flashvm-reply.md": "a01ce11f01d4b160003fba0a8c4f1a926c369df3c2b6ecf03cc86207dc7ccbbe",

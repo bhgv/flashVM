@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1704**. [English](README.md).
+Версия разработки: **0.1705**. [English](README.md).
 
-Текущая серия: [v0.1704](docs/releases/v0.1704.md): повторное использование записей задач, уникальные ID, FIFO и проверки при частом переключении процессов/GC.
+Текущая серия: [v0.1705](docs/releases/v0.1705.md): биты умножения FIR, фиксированный Android root и проверенная синхронизация mk/TMPDIR.
 
 ## Просмотр документации
 

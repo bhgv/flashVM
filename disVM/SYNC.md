@@ -1,3 +1,37 @@
+## v0.1705 — Fixed Android root, mk TMPDIR and FIR power facts
+
+Reviewed Android correction34693b1 and hosted build changes b3d8a00 directly.
+The Android helper now resolves only /sdcard/Inferno, without private/env fallback
+or directory creation. Its replacement gate uses bounded stat/access stand-ins;
+the former32 real-filesystem predicate claim is historical, not current evidence.
+Android profiles now take explicit EXTWINFLAGS and include libm. Full classic OS,
+FreeType and native APK bodies remain outside this small selected closure.
+
+Updated selected mk/lib9/BIO source and independently reproduced old assignment
+failure with a valid spaced TMPDIR. New selected and fresh owning mk pass assignment,
+cleanup and missing/overlong-directory refusal. Published the actual regression
+back to Inferno as d5429c8e37123b00f145262f3755b936ce5720d9. A full selected
+O3/NDEBUG strict-UBSan mk build also passes smoke and real native64 profile/probe gates.
+The independent core uses the retained fixture with explicit DVM_MK_EXECUTABLE.
+
+Final pin889bedf9642a3df3656dff145488462db3562e65: DisVM956/bootstrap281/mk83
+byte-exact files. After tested d5429c8 only the selected outgoing journal changes;
+all executable selected hashes remain identical. [FLASHVM-0036](https://github.com/bhgv/Inferno-OS-bhgv/blob/experiment/doc/dis64-flashvm-journal.md)
+acknowledges the root correction and records the actual bidirectional regression.
+INFERNO-0028 remains the latest incoming format/runtime entry; no shared format
+ID, signature, native builtin or default execution admission is silently assigned.
+
+FIR0.70 adds full known-bit propagation for exact modular single-bit factors.
+Both operand orders, every32/64 factor position and signed MIN are covered;
+negative/nonpower/unknown factors remain conservative. Producer traps survive.
+Raw SWF count proofs accept (x&7)*4 and reject (x&7)*8 before replacing an object.
+Full FIR84/84, core247/247 and runtime/IDE345/345 pass. Installed/relocated SDK
+passes C99 relink and both runtime modes; installed power matrix396 captures/profile.
+Changed analysis/API/CLI pass strict UBSan with prebuilt unchanged dependencies.
+Source example compiles through own Coco/R→FIR→Dis and links SWF objects;
+SWF link success is not asserted as execution. AS asinc closure lowering and
+previous native optimized-ASan unwind limitations remain separate pending work.
+
 ## v0.1704 — Bounded task retirement and concurrent native64 profiles
 
 Final pin759fa859ca1f1b9108c451215e4b6d52141c4016 includes FLASHVM-0035.
