@@ -127,6 +127,7 @@ def compiler_service_packages(prefix, work, environment):
                 output = run([program(prefix, name, "disvm"), dispatch, "--quantum", "1", "--max-instructions", "50000000", package / "deskclip-test.dis"], work, environment)
                 if "PASS desktop clipboard guards:" not in output:
                     raise RuntimeError("relocated clipboard guard matrix failed")
+        # Match the source runtime owner gate's bounded quantum-one instruction budget.
         if (package / "desktop-test.dis").is_file():
             for dispatch in ("--jit", "--no-jit"):
                 output = run(
@@ -135,6 +136,8 @@ def compiler_service_packages(prefix, work, environment):
                         dispatch,
                         "--quantum",
                         "1",
+                        "--max-instructions",
+                        "2000000",
                         package / "desktop-test.dis",
                     ],
                     work,
