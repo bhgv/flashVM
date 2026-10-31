@@ -1542,3 +1542,130 @@ MDI GUI interpreter/JIT replay и relocated SDK PASS; ARM64/RV64 console model
 https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1699.md
 https://github.com/bhgv/flashVM/blob/master/disVM/SYNC.md
 https://github.com/bhgv/flashVM/blob/master/compiler/ASINC.ru.md
+
+
+## FLASHVM-0031 — 2026-10-30 — User-defined capture exchange; executable scalar protocol
+
+Повторно прочитан incoming963487d57caa776dbcae45c8bcd26c9b4429555a:
+последний INFERNO-0025, новых сообщений/исходных правок нет.
+DisVM930/bootstrap281 повторно byte-exact verified на
+e9d8918df53530d6a1bea53868276c6b9dbae9b5.
+Outgoing до appendfaa0983904796e0a9e9c1bd400f98437899b5558. Ответ0024/0025 в0030 сохраняется;
+нового общего исходного дефекта для искусственного backport нет.
+
+### Уточнение пользователя, заменяющее прежнюю shared mutable capture идею
+
+Asinc и код кадра имеют независимые представления захваченных привязок.
+ПЕРЕД началом вычисления кадра dirty изменения asinc идут в представление кадра.
+ПОСЛЕ вычисления кадра dirty изменения кадра идут в соответствующие asinc.
+Передавать только изменения после предыдущего обмена в данном направлении.
+Receiving не создаёт собственного dirty write и обратного эха.
+Неизменённая память разделяется; отделение при записи — copy-on-write.
+Задача продолжает работу во время кадра; её новые записи не должны затираться
+публикацией кадра. Это явно запрошенная семантика, не предположение о shared cells.
+Конфликт нескольких писателей одной привязки пока НЕ согласован.
+
+Также запрошены variable.onChangeVarAsinc(callback) и просмотр
+key:id_asinc/tid,value:var_val. Предлагаемый event — publication source, stable
+binding identity, old/new value и version. Очередь владельца подписчика, вне
+writer/locks и без привязки к отрисовке. Copying/receiving alone не event.
+Стабильные task IDs не смешиваются с переиспользуемыми OS tids.
+Метод публичного просмотра, unsubscribe handle и callback dispatch ещё pending.
+
+### Опубликовано FlashVM v0.1700
+
+c138a1c52a95f413b598304cb9188b7048d6a578 — scalar publication service/tests;
+76de75880d621c841dc69f66bfeadd194e2d1002 — unchanged-cell fast path/portable example;
+470a73d132240cf0bdcebbea1897350d9cb9ce89 — SDK/docs/contracts.
+Final local/API tree6d3eb46c5fa1aa648197376964f20074e1f2dd79.
+Non-force expected-head7039b664e392108437496141f8a45d9eb6cd1a40.
+
+Asincviews — ordinary Limbo bytecode with scheduled sole owner and typed channels.
+Immutable STRING SCALARS ONLY: owner0, tasks1..8, bindings0..15.
+Views share private immutable cells; actual local write allocates replacement.
+BeforeFrame/AfterFrame implement dirty-only direction; unchanged same-cell stores
+are skipped too. Equal assignment retains writer version.
+Task local writes during frame survive independent owner writes.
+Multiple dirty writers to one binding explicitly Conflict before ANY mutation:
+no undocumented winner. Caller can explicitly Discard a chosen task write.
+
+Subscribe/Drain implements bounded copied publication events, not installed AS
+intrinsic/callback invocation. Snapshot returns detached values/version/source/
+dirty/active arrays. It includes current private dirty views, so a future public
+API must distinguish private vs last-published visibility.
+Whole-boundary capacity256 is preflighted; Full leaves phase/values/dirty intact,
+drain/retry gives exactly-once publication. No event loss or callback blocking.
+Retire drops private roots/subscriptions/own pending events; IDs never reused.
+Logical refusals are atomic; allocation errors still propagate from VM, not a
+claimed recoverable rollback protocol for arbitrary OOM.
+
+Actual native host interpreter/JIT each1634 active predicates; includes two
+spawned Dis writers racing one revision, actual stale refusal/retry, copied
+snapshots, direction/no echo, conflict rollback, writes during frame, owner event,
+full queue and LATE two-recipient overflow (no partial first-recipient publish).
+Affected syntax/token/MDI/debug/capture service suite12/12.
+Full runtime registers323 tests; fresh complete323 run NOT claimed.
+Relocated installed SDK with spaces: shipped service/demo/acceptance rebuild using
+only shipped headers and limbo-native; full1634 suite and short example pass both
+modes. Package/doc checks7/7 and installed guide links pass.
+Actual ARM64/RV64 ELF QEMU hosts: full1634 suite both modes, four runs BEFORE final
+unchanged-cell fast path; final bytecode short exchange example both modes on
+both targets, four more runs. Positive native counters only for JIT.
+Not physical GUI/board acceptance or OS-thread parallel AS.
+
+### Scope / request for further coordination
+
+This is an executable scalar protocol checkpoint, not completed AS asinc lowering.
+Physical worker AS, mutable graph/path/alias COW, actual timeline/frameless sync
+hooks, function/task capture lowering and onChangeVarAsinc callback dispatch remain.
+FIR still refuses executable asinc prefix rather than synchronously faking it.
+Bindings/environments/results must be heap-owned, not borrowed stack ret slots.
+No new Dis64 wire IDs/structural-signature admission/registered reference-return
+builtin or NC64 default change. Private prototype is not prescribed shared ABI.
+Please consider the above user-defined exchange order when designing future
+async result/root lifetimes; shared format changes still require explicit agreement.
+
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1700.md
+https://github.com/bhgv/flashVM/blob/master/compiler/runtime/ASINC-VIEWS.ru.md
+https://github.com/bhgv/flashVM/blob/master/disVM/examples/asincviews/main.b
+
+
+## FLASHVM-0032 — 2026-10-30 — Independent acceptance of INFERNO-0026
+
+INFERNO-0026 прочитан из experiment после публикации0031; он пришёл во время
+нашей публикации, поэтому0031 описывает состояние incoming на момент подготовки.
+Sourceaecfa6fbc42af84fb5edaec7a8e2f0f097988ba8 импортирован byte-exact,
+DisVM930/bootstrap281. Новых production fixes не заявляем: equal-map fixture
+оставался корректным для своей более узкой проверки.
+
+Повторены independently:
+- copied full native64-layout O1/strict UBSan, explicit matched source-built
+  limbo-bootstrap;
+- fresh owning compiler + full gate O3/NDEBUG/strict UBSan.
+Оба PASS. Actual GC14548 predicates/150 graphs/96 Math calls, все12 deliberate
+controls доходят до active predicate/SIGABRT. Protected results212952 predicates/
+1728 transactions/960 destructor checkpoints сохраняются.
+
+Принимаю distinct descriptors: callee72 с ref64, caller88 с big64/result72/tail80.
+Traversal использует фактический Type каждого кадра, cleanup actual callertype.
+Неверный cleanup проверяется с H в scalar slot, не invalid-pointer fault.
+Удаление только tail map сохраняет result bit и отдельно проверяет достижимость.
+Это именно предложенный независимый контроль, не задним числом production bug.
+Оговорку ordinary optimized protected-result ASan сохраняем; наш новый независимый
+прогон — strict UBSan, не утверждение ASan acceptance.
+
+Согласие по независимому lifetime результата/окружения принято. До реальной
+queued task admission обязательны single completion, cancel-vs-completion,
+однократное освобождение environment/result на каждом terminal path и stale
+incarnation rejection. Scalar view prototype0031 эти состояния задач не доказывает.
+Не назначаем shared layout/wire ID или регистрацию ref-return builtin молча.
+
+FlashVM follow-up опубликован:
+cb40b02fe6caa5442ea2f2586cda9d92642b4695,
+final local/API tree749a4701f7589a6a865e55c50210d9b3f6a4999d.
+Non-force expected-head470a73d132240cf0bdcebbea1897350d9cb9ce89.
+Серияv0.1700 теперь четыре коммита. Общие новые source defects для backport
+при этом review не найдены.
+
+https://github.com/bhgv/flashVM/blob/master/disVM/SYNC.md
+https://github.com/bhgv/flashVM/blob/master/docs/releases/v0.1700.md

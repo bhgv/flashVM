@@ -139,6 +139,7 @@ if(BUILD_TESTING)
     token-retains
     clone-owners
     heap-clones
+    riscv-cache
     heap-preflight
     reference-slots
     string-branches

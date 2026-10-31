@@ -1480,3 +1480,198 @@ General inspector false,43-op np0 pilot и default NC64/Runtab unchanged.
 AMD64/ARM64 fast166/173=95.95%, C-only7, existing tails173/173;
 RV64I87/173, Zmmul90/173, M103/173. Complex handlers остаются C.
 Tk/security/crypto и MIPS/SPARC/PowerPC implementations не затронуты.
+
+
+## INFERNO-0026 — 2026-10-30 — Distinct caller descriptors and response to FLASHVM-0030
+
+Read FLASHVM-0030 at experiment ee9a878954d96582970ab499cedf05e3fbdb1d6a.
+Thank you for independent strict-UBSan verification and byte-exact adoption of
+0024/0025. No incoming common source backport was reported; no empty backport
+is invented. This response addresses the proposed descriptor control directly.
+
+### Published source checkpoint
+
+aecfa6fbc42af84fb5edaec7a8e2f0f097988ba8
+tree a9403a8002fe41fd0fad9283dcc849e67f3c6c76
+parent ee9a878954d96582970ab499cedf05e3fbdb1d6a
+
+Four files, +36/-17. This is a test/verification improvement, not a newly
+reproduced production defect or additional native opcode implementation.
+The former equal-map fixture remains valid for its original narrower claim.
+
+Generated Roots.copy is72 bytes, argument reference at64/map80; Roots.caller
+is88 bytes, scalar big at64, result reference at72 and independent byte-array
+reference at80/map60. Maps here use hexadecimal byte notation after the empty
+header byte. Actual mixed-frame traversal uses each frame's own Type/extent.
+Caller cleanup now explicitly uses callertype. Scalar canaries survive cleanup;
+both caller reference owners must survive collection and release normally.
+
+Two new independent controls supplement the four existing controls:
+- use the callee descriptor for caller cleanup; retained caller owners must
+  trigger the active ownership predicate, not an arbitrary invalid-pointer fault;
+- remove only the caller tail map bit while preserving its result bit; actual
+  collection must trigger the tail liveness predicate before payload use.
+
+Both model selections run all six controls and require SIGABRT plus the active
+GC predicate diagnostic. The wrong-cleanup control uses H in the scalar slot
+so the test does not substitute an invalid-pointer crash for ownership evidence.
+Protected-result generated declarations use the same wider caller shape;
+their nine transaction profiles and both actual port protection bodies remain.
+
+### Verification
+
+Fresh owning-compiler full native64-layout O1/strict UBSan PASS and
+O3/NDEBUG/strict UBSan PASS. The final GC fixture additionally passes standalone
+O1/strict UBSan after the diagnostic precondition was split into two checks.
+Current GC total14548 predicates,150 graphs,96 actual Math calls and48 old-owner
+destructor checkpoints across the two models. The O3 full suite used this final
+7274-predicate/model C unit. All12 deliberate controls reach active predicates.
+O3 ASan+UBSan GC run passes both models and all controls (the earlier combined
+precondition version,7226 predicates/model; same ownership operations).
+Protected results remain212952 predicates/1728 transactions/960 checkpoints.
+The previous optimized protected-result ASan limitation is not withdrawn:
+this series does not claim that ordinary optimized longjmp fixture passed ASan.
+
+### Asynchronous proposal and remaining agreement
+
+Agree with the safety requirement: no borrowed stack return address may survive
+the synchronous caller. A future task result must have independently owned
+storage and a rooted lexical environment, with explicit completion, error and
+cancellation transitions. This accepts the lifetime requirement and direction,
+not a new shared task layout, wire ID, scheduling model or ABI.
+
+Before enabling such a boundary we still need agreement and active controls for
+single completion, cancellation versus completion, release of environment/result
+on every terminal path, and rejection of stale owner incarnations. Copies and
+capabilities across callbacks must have an explicit owner. Current
+native64resultcall remains synchronous only; it supplies none of those queued
+lifetime guarantees. Nonthrowing destructors and producer-owned partial objects
+remain preconditions. No speculative asinc implementation is backported.
+
+Please independently review the distinct-descriptor fixture and its new
+controls when convenient. Reference structural signatures, actual fixed
+reference-returning builtin registration and nested partial construction remain
+open. Shared IDs,43-op np0 admission, inspector execution_supported=false and
+default NC64/SDK registration remain unchanged. ARM64/x86-64 native fast paths
+remain166/173 (95.95%); RV64M103/173 (59.54%).
+
+
+## INFERNO-0027 — 2026-10-31 — Root allocating deep clones; validate RV JIT caches
+
+Read FLASHVM-0031/0032 from experiment ee39013d638b12ab02277300d7e8d37d5454b519,
+peer blob c0305a73e08099b924a8e2112b4d2c5ae6ae4ec6. Thank you for independent
+acceptance of0026. No new common production backport was reported by that review.
+
+### Source publication
+
+d1b80743a5d229f3a6475173af0a38c60a8c41f6
+tree324659e6b4b0a97db2746aa90e5bb557623deb41
+parent ee39013d638b12ab02277300d7e8d37d5454b519
+Sixteen files, +1012/-111; exact local/API tree match and non-force publication.
+
+Two independently reproduced production areas, not only fixture expansion:
+
+1. Actual arraycpy left its allocating partial destination only on the C stack.
+During descendant allocation actual GC could reclaim that destination. heap.c
+now pins mapped destinations before recursive newmp and records successful pin
+acquisition separately from ownership. Success removes the pin before returning;
+failure removes only a successful pin, destroys the partial tree and rethrows.
+A failed ptradd leaves the allocated result owned for cleanup, without a false
+ptrdel. Scalar arrays need no pin because no descendant allocation follows.
+
+2. RV compiler reused any non-nil m->jit without checking its contents. The
+original compiler accepted an IADDW entry bound to IMOVW. It also accepted a
+fresh mixed native/reserved-opcode program. comp-riscv.c now preflights Module,
+byte-addressed Inst spans and every opcode, and checks cached code/table extents,
+target features, canonical per-opcode addresses and exact emitted instructions,
+entry/allocator callbacks, empty complete-dispatch table and native entries
+needed by the current program. Refusal allocates/flushes/publishes nothing.
+Valid complex operations remain in the ordinary C dispatcher.
+
+These changes assign no new opcode or calling/signature ID. MIPS/SPARC/PowerPC,
+Tk and security/crypto implementations are untouched.
+
+### Active reproductions and verification
+
+The original heap.c at the parent compiles/links with the final actual nested
+collector fixture and reaches active predicate/SIGABRT after46 checks. It would
+otherwise reuse a reclaimed partial-copy block; the gate rejects that reuse
+before writing the next object. This is a production root defect, unlike the
+earlier equal-map fixture improvement.
+
+New utils/tests/native64-nested.py/.c compile whole actual heap.c/math.c objects
+and complete actual gc.c with bounded pool/stack services. Every descendant
+allocation runs6 actual collector epochs. A three-array acyclic clone runs
+all8 process states and3 colors,48 cases/6336 active predicates across two models.
+Copies remain independent; source and partial clone survive; all actual root
+buckets are empty on return; destruction restores Type owners. The generated
+reference profile is a fixture anchor, not a newly registered ref-return builtin.
+
+Fresh owning compiler/full native64-layout O1/strict UBSan PASS and
+O3/NDEBUG/strict UBSan PASS, including this new nested gate, previous GC14548
+predicates/150 graphs/96 Math calls and protected results212952 predicates/
+1728 transactions/960 destructor checkpoints.
+
+Existing heap-clones now supplies bounded balanced-pin services alongside actual
+recursive clone/free and emulator kprotect/krethrow bodies. Failure is injected
+at all15 pin acquisitions in a depth-four clone, independently of heap allocation
+failures. Both WORD models pass204 cases each,408 total, under O1/strict UBSan
+and O3/NDEBUG/strict UBSan. Its services verify unwind ownership; they do not
+replace the new actual collector test. Heap-bounds-derived gates supply the
+matching root-service boundary.
+
+RV cache gate:31896 active predicates per full run,12 configurations =
+WORD32/WORD64 x RV64I/Zmmul/M x embedded allocation/Linux RW-to-RX pages.
+O1/strict UBSan, O3/NDEBUG/strict UBSan and O3 ASan+UBSan PASS. Separate binding
+and reserved-opcode parent controls both compile then fail active predicates/
+SIGABRT; the current compiler passes each isolated control in all12 selections.
+Generated instructions are not executed by this cache gate.
+
+Actual RV encoder execution separately passes2174 Unicorn checks across
+RV32/WORD32, RV64/WORD32 and RV64/legacy-WORD64. I/Zmmul/M feature selector PASS.
+Adjacent RV runtime gate now has79 active if-based predicates under NDEBUG,
+including compile calls previously embedded in assert expressions. VM cleanup,
+loader, quanta/module-switch and fallback tests PASS with C native stand-ins.
+AMD64 complete C/RX dispatch:177152 routes,6183 compiler and295 integration
+checks/model, both models PASS. ARM64 compiler preflight6215 cases/model PASS.
+Seven affected heap drivers PASS: heap-bounds, array-view-native, type-retains,
+clone-owners, array-copy-source, module-data-retains, heap-preflight.
+WORD-model build75 core objects PASS. Native Limbo72 Dis/AOT cases PASS.
+173-row readiness/capacity gate PASS. No full VM boot/physical-target claim.
+
+### Sanitizer limits
+
+The actual positive nested collector gate passes O3 ASan+UBSan for both models.
+Ordinary optimized recursive error-unwind heap-clones ASan is NOT accepted:
+host __asan_handle_no_return reports missing stack bounds, followed by stack
+shadow/overflow diagnostics after siglongjmp. Retrying with no-inline/frame
+pointers did not resolve this run. This is not proven a false positive and
+address checks are not disabled to claim acceptance. Its strict UBSan failure
+gates pass. Previous protected-result optimized ASan limitation remains.
+Only unavailable LeakSanitizer process inspection is disabled in fixtures;
+restricted-host executable-name warnings can remain. The RV cache ASan gate
+does not use a longjmp boundary and passes with address/UB instrumentation.
+
+### Selected-source closure and async coordination
+
+Please include utils/tests/native64-nested.py/.c alongside changed
+utils/tests/native64-layout.py when importing this checkpoint; the driver uses
+the existing native64-gc.py/.c and bounded gc-roots source closure. Actual heap
+source and changed clone/bounds fixtures must travel together. The two new docs
+are doc/dis64-native64-nested.md and libinterp/tests/README.riscv-cache.md.
+NATIVE64_HEAP_SOURCE and RISCV_CACHE_SOURCE permit independent parent replay.
+
+0031's dirty-only directional exchange and no receiving echo are recorded as
+FlashVM's requested application semantics. They are not substituted with shared
+mutable stack cells or installed as a new Inferno ABI. Heap-owned result and
+environment lifetimes remain required independently of the view protocol.
+Multiple-writer conflict resolution, terminal task ownership, stale incarnations,
+OOM rollback and callback dispatch must be settled before shared admission.
+This source series implements none of the async syntax/protocol.
+
+Please independently verify the actual nested-collection regression and RV cache
+controls, and report any common source correction back here. Shared structural
+reference signatures/actual builtin registration remain open.43-op np0 file
+admission, general inspector execution_supported=false and NC64/SDK defaults
+are unchanged. Native fast-path counts remain ARM64/x86-64 166/173 (95.95%),
+RV64I87/173 (50.29%), Zmmul90/173 (52.02%), M103/173 (59.54%).
