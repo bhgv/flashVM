@@ -1,5 +1,7 @@
 # Exact power-of-two multiplication facts — FIR 0.70
 
+FIR0.71 extends this checkpoint with [two-bit factors](SPARSE_PRODUCT_FACTS.md).
+
 [Русский](POWER_FACTS.ru.md) · [Analysis](../optimiser/integer_facts.c) ·
 [Matrix](../tests/integer_power_facts.py) · [Commented example](../examples/dis/power-facts.b)
 

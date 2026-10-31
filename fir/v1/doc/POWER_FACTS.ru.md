@@ -1,5 +1,7 @@
 # Биты умножения на точную степень двойки — FIR 0.70
 
+FIR0.71 расширяет этот этап [множителями с двумя битами](SPARSE_PRODUCT_FACTS.ru.md).
+
 [English](POWER_FACTS.md) · [Анализ](../optimiser/integer_facts.c) ·
 [Матрица](../tests/integer_power_facts.py) · [Пример](../examples/dis/power-facts.b)
 

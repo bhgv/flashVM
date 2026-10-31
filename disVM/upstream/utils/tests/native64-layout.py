@@ -36,6 +36,8 @@ def main():
         print(run([sys.executable, ROOT/'utils/tests/native64-builtins.py'], work, dict(env, NATIVE64_LIMBO=str(limbo), NATIVE64_CFLAGS=env['CFLAGS'])).stdout, end='', flush=True)
         print(run([sys.executable, ROOT/'utils/tests/native64-sys.py', '--limbo', limbo], work, env).stdout, end='', flush=True)
         print(run([sys.executable, ROOT/'utils/tests/native64-sys-init.py', '--limbo', limbo], work, env).stdout, end='', flush=True)
+        print(run([sys.executable, ROOT/'utils/tests/native64-tail.py', '--limbo', limbo], work, env).stdout, end='', flush=True)
+        print(run([sys.executable, ROOT/'utils/tests/native64-tail-map.py'], work, env).stdout, end='', flush=True)
         if env.get('NATIVE64_MATH_LIBDIR'):
             print(run([sys.executable, ROOT/'utils/tests/native64-math-register.py', '--limbo', limbo, '--libdir', env['NATIVE64_MATH_LIBDIR']], work, env).stdout, end='', flush=True)
         else:
@@ -44,6 +46,7 @@ def main():
         print(run([sys.executable, ROOT/'utils/tests/native64-nested.py'], work, dict(env, NATIVE64_LIMBO=str(limbo), NATIVE64_CFLAGS=env['CFLAGS'])).stdout, end='', flush=True)
         print(run([sys.executable, ROOT/'utils/tests/native64-module-roots.py'], work, dict(env, NATIVE64_LIMBO=str(limbo), NATIVE64_CFLAGS=env['CFLAGS'])).stdout, end='', flush=True)
         print(run([sys.executable, ROOT/'utils/tests/native64-result.py'], work, dict(env, NATIVE64_LIMBO=str(limbo), NATIVE64_CFLAGS=env['CFLAGS'])).stdout, end='', flush=True)
+        print(run([sys.executable, ROOT/'utils/tests/native64-resolved.py', '--limbo', limbo], work, env).stdout, end='', flush=True)
         args = ', '.join('a'+str(i)+': string' for i in range(150))
         source = work/'probe.m'
         source.write_text('''Probe: module {

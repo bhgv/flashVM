@@ -1,3 +1,5 @@
+[Sparse constant product transfer](../doc/SPARSE_PRODUCT_FACTS.md)
+
 # FIR-to-FIR peephole
 
 [Русский](README.ru.md). Implementation: [peephole.c](peephole.c).

@@ -227,3 +227,30 @@ FIR сохраняет `source_language limbo` и новый `source_semantics l
 [cast-facts.b](cast-facts.b) · [odd-product-facts.b](odd-product-facts.b): fully commented typed-table sources, raw/opt Dis42 and retained eager producers.
 
 [Умножение на степень двойки: пример и руководство](../../doc/POWER_FACTS.ru.md).
+
+## Пример разреженного множителя, FIR0.71
+
+[sparse-facts.b](sparse-facts.b) проходит наш Coco/R-фронтенд Limbo. Функция
+`value` перебирает восемь знаковых значений, приводит их к0..7 через`&7`, умножает
+на3 и разделяет младшие/старшие биты. Произведения дают сумму84; после вычитания42
+результат42. Старшая проекция равна нулю: произведения помещаются в пяти битах.
+Переходы состояния прокомментированы в исходнике. Цикл сохраняет динамические
+значения; никаких вычислений результата хостом нет.
+
+Используйте реальные пути своей сборки вместо каталогов примера:
+
+```sh
+mkdir -p build/tmp
+export TMPDIR="$PWD/build/tmp"
+build/fir/fir1_source limbo --input fir/v1/examples/dis/sparse-facts.b build/sparse.fir
+build/fir/fir1 opt build/sparse.fir build/sparse.opt.fir
+build/fir/fir1 dis build/sparse.opt.fir build/sparse.dis
+build/editor/disvm --jit --stats --inspect-words 0 1 build/sparse.dis
+build/editor/disvm --no-jit --stats --inspect-words 0 1 build/sparse.dis
+build/fir/fir1 object build/sparse.opt.fir build/sparse.swo
+build/linker/swl link build/sparse.swf build/sparse.swo
+```
+
+Ожидается`DATA 0 42` в обоих режимах Dis. Сборка SWF не равна исполнению:
+отдельный FlashVM runner проверяет реальный trace42. [Доказательства и границы](../../doc/SPARSE_PRODUCT_FACTS.ru.md).
+Это пример числового подмножества Limbo, а не заявление о завершении всего языка.

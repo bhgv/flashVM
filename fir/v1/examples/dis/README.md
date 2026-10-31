@@ -226,3 +226,33 @@ returns42. Every line is commented. [Exact rules, API/CLI use and boundaries](..
 [cast-facts.b](cast-facts.b) · [odd-product-facts.b](odd-product-facts.b): fully commented typed-table sources, raw/opt Dis42 and retained eager producers.
 
 [Power multiplication example and complete guide](../../doc/POWER_FACTS.md) · [Русский](../../doc/POWER_FACTS.ru.md).
+
+## Sparse-factor example, FIR0.71
+
+[sparse-facts.b](sparse-facts.b) uses our Coco/R Limbo frontend. Its `value` function
+visits eight signed inputs, normalizes them with`&7`, multiplies by3 and separates
+lower and upper product bits. The products sum to84; subtracting42 returns42.
+The upper projection is always zero because products fit in five bits. This is
+an analysis opportunity, not a source rewrite to checked shifts.
+
+Every state transition is commented in the source. Loop values stay dynamic;
+unsigned compiler arithmetic preserves modular semantics even for negative inputs.
+The scalar result is captured by the normal Dis backend, not computed by the host.
+Use your actual tool paths in place of the example build directories:
+
+```sh
+mkdir -p build/tmp
+export TMPDIR="$PWD/build/tmp"
+build/fir/fir1_source limbo --input fir/v1/examples/dis/sparse-facts.b build/sparse.fir
+build/fir/fir1 opt build/sparse.fir build/sparse.opt.fir
+build/fir/fir1 dis build/sparse.opt.fir build/sparse.dis
+build/editor/disvm --jit --stats --inspect-words 0 1 build/sparse.dis
+build/editor/disvm --no-jit --stats --inspect-words 0 1 build/sparse.dis
+build/fir/fir1 object build/sparse.opt.fir build/sparse.swo
+build/linker/swl link build/sparse.swf build/sparse.swo
+```
+
+Expect`DATA 0 42` in each Dis run. Linking a SWF is distinct from executing it;
+our optional FlashVM test runner verifies its actual trace42 as a separate gate.
+See [proof and limits](../../doc/SPARSE_PRODUCT_FACTS.md). The example is numeric
+Limbo coverage, not a claim that the full Limbo language is implemented.

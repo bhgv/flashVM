@@ -1,3 +1,5 @@
+[Умножение на разреженные константы](../doc/SPARSE_PRODUCT_FACTS.ru.md)
+
 # Peephole FIR → FIR
 
 [English](README.md). Реализация: [peephole.c](peephole.c).

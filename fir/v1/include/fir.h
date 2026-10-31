@@ -271,7 +271,8 @@ typedef struct
 /* Analyze borrowed verified module into disjoint caller-owned scratch.
  * Modular add/sub and big negation propagate independent carry facts.
  * Multiplication combines low zero/first-one bits; typed scalar casts preserve
- * truncation/sign-extension facts. Neither proof removes producer effects.
+ * truncation/sign-extension facts. Sparse exact one/two-bit factors combine
+ * shifts and modular carry facts. These proofs do not remove producer effects.
  * No allocation, evaluation, callbacks or waits; producers retain their effects. */
 void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts);
 

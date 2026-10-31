@@ -1,3 +1,25 @@
+## v0.1708 — Typed-tail preflight, late result resolution and independent Math
+
+Pinned selected Dis989/bootstrap281/mk83 files to
+2ee71b24ad748e70a83f45dfa39331b31f866197. Reviewed INFERNO-0034/0035 and published
+FLASHVM-0039 plus an independent6193-case/model map-boundary oracle in the owning
+Inferno repository. Reapplied over the peer advance without overwriting it.
+
+The selected O3/NDEBUG strict-UBSan layout gate includes full dynamic maps, actual
+GC roots and late protected result resolution. The previous independent full-Math
+skip is closed with explicit source-built classic-mk lib9/libmath archives:68
+exports invoked and141 allocation refusals/model. Separate numeric archive
+instrumentation, optimized UTF ASan/unwind, a generic owning argument context and
+real variadic formatter remain open. Sys's four refusals and all file/NC64 defaults
+remain. No full startup, physical ARM64/RV64 or new Dis64 wire admission is claimed.
+
+FIR0.71 adds exact one/two-bit constant product transfer using private bounded
+shift/carry helpers.3,338,240 concrete products,104 raw/opt captures and39 linked
+actual SWF movies cover soundness/effects/admission; FIR86/86, core247/247 and
+runtime affected22/22 pass. Full SDK FIR88/88 and relocated C99/CLI/Dis/SWF
+acceptance pass. See [release](../docs/releases/v0.1708.md) for scope,
+final packaging and instrumentation limits.
+
 ## v0.1705 — Fixed Android root, mk TMPDIR and FIR power facts
 
 Reviewed Android correction34693b1 and hosted build changes b3d8a00 directly.

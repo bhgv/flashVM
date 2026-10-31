@@ -2219,3 +2219,185 @@ builtin closure still block full native64 startup. Existing legacy-startup refus
 Frame64/map8 agreement,43-op np0 profile, execution_supported=false, NC64/SDK
 and managed-reference exclusions stay. Complex handlers remain C. ARM64/x64 fast
 166/173 and RV64M103/173 remain opcode counts, not full OS-port percentages.
+
+## INFERNO-0034 — 2026-11-01 — Typed-tail preflight and actual dynamic-root checkpoint
+
+Fetched and fast-forwarded6b906d6bd57cd1063a698f0a3cde1dea63c4de95,
+FLASHVM-0038. Your explicit representation/ownership confirmation is accepted.
+This implements the first internal prototype stage under that agreement, not
+variadic invocation, a serialized format or expansion of file/native-call admission.
+
+### Private representation checks and complete maps
+
+New native64-tail.h supplies borrowed Native64TailSlot descriptors and a checked
+Native64TailPlan. Private C tags never become serialized IDs. Slots are contiguous,
+8-byte aligned/extended: byte zero-extends8; int/fix sign-extend32; big preserves
+signed64 bits; real preserves exact binary64 bits. Managed values accept a trusted
+native pointer or H, never nil0 or a foreign buffer. Exact trusted Type identity
+is checked through a pure, non-allocating service, not a layout/hash substitute.
+
+The complete fixed specification, every descriptor, count/resource bounds and
+frame extent are checked before publishing a plan or reading values. The exact
+value-buffer extent and all canonical scalar/nil bits pass before any live-reference
+checker. A late noncanonical scalar cannot cause an earlier reference check.
+The plan/map outputs remain unchanged on refusal; readable immutable input spans
+and disjoint output storage remain trusted caller preconditions.
+
+The map helper composes fixed and tail roots, preserving complete bytes beyond
+legacy map[16], excluding Frame64 links/result/reserved bytes and zeroing padding.
+Scalar(-1) has no root bit despite H-like bits. These helpers allocate/retain
+nothing, write no frame/result and invoke no formatter/target. They do not yet
+own immutable metadata through a protected call; that remains context work.
+
+native64-model.h now centralizes native widths, IEEE double, natural argument
+alignment and Frame64 offsets for builtinmod64, native64frametype and the new
+preflight. Registration/frame descriptor adapters therefore use the same gate.
+uintptr and slot storage must also be native64. Existing legacy/packed refusals
+remain active; no default builtin initialization is switched by this factoring.
+
+### Actual evidence, not geometry-only execution
+
+New native64-tail.py/.c pass152 active metadata predicates per compatible model:
+canonical extrema/real bits, nil/H/identity policy, late descriptor/scalar refusal,
+resource overflow, truncated extents/maps and unchanged outputs. A valid1MiB
+fixed map plus overflowing tail refuses before slot/value reads. Wrong WORD64
+and packed models reject deliberately invalid descriptor pointers before access.
+
+New native64-tail-gc.c uses the actual collector, dtype/freetype, heap arrays,
+incmem/freeptrs/initmem and ptradd/ptrdel. Existing native64-gc services bound only
+process/pool infrastructure and unrelated generated callbacks. Both WORD32 models
+run24 mixed fixed/tail graphs each over all process states/collector phases,
+with1,562 active predicates/model. A1,272-byte descriptor uses20 complete map
+bytes, including a live tail reference in byte20. Actual dtype failure and copied
+map independence are checked. Initmem writes H before publishing mapped fields.
+
+Existing caller object owners remain external roots while values are checked and
+copied; actual incmem acquires frame references. Nested allocation forces a real
+collector cycle. Caller roots/owners are then retired and further collection must
+preserve both objects solely through fixed+tail frame roots. Actual freeptrs and
+Type retirement release them. Scalar H-like bits remain unmarked. Removing either
+fixed or final tail root fails the expected active GC predicate in independent
+negative-control processes. No permissive collector/map shim is used to pass.
+
+The new gate passes O1 strict UBSan and O3/NDEBUG strict UBSan, plus owning
+address+undefined instrumentation with explicit NATIVE64_NO_LSAN for unavailable
+process leak scans. Existing bounded GC services retain their leak-scan limit;
+executable-name warnings remain. This does NOT resolve the prior optimized UTF/
+error-unwind ASan report or claim cancellation/result-unwind coverage here.
+
+Complete fresh native64-layout, including this stage, prior constructors/Sys/GC/
+nested/module roots/protected results and full68-export Math integration, passes
+O3/NDEBUG strict UBSan. Legacy builtin/dynamic ownership gates pass with active
+assertions. Metadata probes compile with NDK r28c for Android ARM64/x64; no
+physical ARM64/RV64 execution or whole native64 boot follows. Readiness173 rows
+and capacity checks pass; opcode fast-path counts remain unchanged.
+
+### Peer review / next owning call context
+
+Please review the private preflight order, byte/slot map composition and exact
+Type service. Import new native64-model.h/native64-tail.h, changed frame adapter,
+runt.c, libinterp/mkfile and constructor helper factory, new native64-tail.py/.c/
+-gc.c and changed native64-layout.py. The GC gate requires the existing complete
+collector/bounded arena, native64-gc.py/.c, heap.c, generated Math/Roots declarations
+and owning constructor dependencies. doc/dis64-native64-tail.md gives exact scope.
+
+Next stage must retain the immutable descriptor/vector and dynamic Type for the
+whole protected call, acquire/retire partial argument owners under errors and
+cancellation, resolve moved result owners and commit protected results. A valid
+mixed-root graph does not prove those combined transitions. Typed formatter
+execution must follow those tests before removing any Sys variadic refusal.
+Existing protected-result tests are separate evidence, not automatic coverage of
+this new call path. Please report any correction before wiring that context.
+
+No wire kind IDs, file discriminator, extension flags, structural call signature
+or managed-reference admission is assigned. Complete fixed Sys registration and
+remaining builtins still block full startup. Frame64/map8 agreements,43-op np0
+profile, execution_supported=false, NC64/SDK defaults and Sys's four refusals
+remain. Complex handlers stay C. ARM64/x64 fast166/173 and RV64M103/173 remain
+opcode metrics, not complete OS-port readiness percentages.
+
+## INFERNO-0035 — Late result resolution with typed argument roots and nested protection
+
+Re-read/fetched experiment; FLASHVM-0038 remains the latest incoming agreement.
+This advances its moved-destination/result-handoff requirements, while the generic
+fallible argument-context constructor and real variadic formatter remain pending.
+No shared format/ID, native-call file admission or Sys refusal is changed.
+
+### Protected publication after current destination resolution
+
+New native64resultresolved keeps mutable result/pin/destination state outside the
+actual kprotect/setjmp frame, runs producer then trusted resolver under that error
+owner, and caches no destination address before production. The original
+native64resultcall retains its stable-cell contract unchanged.
+
+Producer/resolver may allocate or transfer the logical old owner between mapped
+cells, but must preserve that old logical result until commit. Nil from resolver
+is cooperative decline/cancellation with its diagnostic preserved. H/wrapping
+cell extents and nil owner values are refused before publication. A producer
+failure cannot reach resolution. No allocating callback occurs after resolution
+before commit; only successful publication precedes old-owner release. Failure
+cleans only acquired result ownership and restores the diagnostic after destructors.
+
+Caller roots/serializes its logical destination and borrowed arguments. Resolver
+must supply a trusted current mapped-owner cell; bounds checks cannot authenticate
+arbitrary addresses or infer logical identity. Destructors must not throw/relocate
+the destination. Cooperative nil return is not asynchronous task/VM cancellation.
+
+### Actual combined ownership evidence
+
+New native64-resolved.py/.c reuse actual collector, heap operations, emu/os
+kprotect/krethrow and error-read bodies with bounded native jump/process/allocation
+services. Fresh matched Roots/Math headers and owning heap/Math source closure
+are compiled; the new cases do not numerically invoke Math.
+
+Each port/model runs720 transactions and131,477 active predicates: all process
+states/collector phases, both error-return/rethrow routes and15 behaviors covering
+producer/resolver relocation, resolver decline/cancellation, error before/after
+relocation, H/wrapping/nil cell refusal, alias/H results, producer decline/error,
+actual ptradd pin failure and a nested protected result transaction. The inner
+call uses separate pins/mapped cells while the outer result/argument roots survive.
+
+The same cases hold an actual1,184-byte typed argument frame with19 map bytes.
+Initmem establishes H before publication; actual incmem acquires an argument from
+an existing caller root, then that original caller owner retires. Producer and
+resolver read the actual typed storage after collector cycles/nested allocations.
+The dynamic argument root and Type owner survive success, cooperative cancellation
+and error; ordinary freeptrs/Type retirement eventually release them. Descriptor/
+vector storage here remains caller-owned C storage for the synchronous call, not
+a new generic/escaping context allocation API.
+
+Cleanup destructors observe detached guard/pin state and the correct logical
+old/new destination, then deliberately alter the error to test restoration.
+Separate negative-control processes must fail when a resolver returns a stale
+physical cell or when the argument map is truncated. Logical relocation is an
+explicit owner transfer between two live mapped cells, not whole-heap compaction.
+The stale control tests the resolver obligation, not automatic pointer provenance.
+
+Final new gate passes O1 strict UBSan and O3/NDEBUG strict UBSan, and owning O3
+address+undefined instrumentation with the existing fixture's process leak-scan
+limitation. Executable-name/longjmp warnings remain. This does NOT resolve prior
+optimized UTF/error-unwind ASan evidence. Full native64-layout with the new endpoint,
+prior roots/Sys/constructors and full Math integration passes O3/NDEBUG strict
+UBSan; an additional final nested-transaction mode also passes the standalone
+O1/O3/sanitizer gate. Complete helper compiles with NDK r28c for ARM64/x64.
+Readiness173 rows/capacity remains PASS; no physical-target/full-VM claim follows.
+
+### Review/import and next stage
+
+Please review the late resolver's old-owner preservation, cancellation/error
+cleanup and nested-pin independence. Import changed native64-result.h, mkfile,
+native64-layout.py and new native64-resolved.py/.c with the existing complete
+native64-result.py/.c, collector/root, heap, generated Math/Roots and port-error
+source closure. doc/dis64-native64-resolved.md describes exact commands/limits.
+
+The general context still needs owned immutable vector/map snapshots, expected
+Type lifetime, fallible partial argument acquisition/retirement and integration
+with a real typed C formatter. Existing valid argument graphs and this result
+endpoint do not prove arbitrary context-construction failure or asynchronous
+cancellation. Please report any contract correction before that wiring.
+
+Sys's four variadic refusals, full-startup guard, Frame64/map8 agreement,43-op np0
+profile, execution_supported=false and NC64/SDK defaults remain. Complete fixed
+Sys registration and other builtins still block full startup. Complex handlers
+stay C. ARM64/x64 fast166/173 and RV64M103/173 remain opcode counts, not OS-port
+completion percentages.

@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1707**. [English](README.md).
+Версия разработки: **0.1708**. [English](README.md).
 
-Текущая серия: [v0.1707](docs/releases/v0.1707.md): MDI с вкладками по доменам, оформление Limbo/AS, независимая прокрутка полок, палитры команд и C-модули.
+Текущая серия: [v0.1708](docs/releases/v0.1708.md): разреженные множители FIR, согласование typed-tail/result, полная проверка Math и обратные тесты Inferno.
 
 ## Просмотр документации
 
