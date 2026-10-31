@@ -2,7 +2,7 @@
 Asinctasks: module
 {
     PATH: con "asinctasks.dis"; # Ordinary portable Dis module.
-    Capacity: con 32; # Lifetime task IDs; IDs are never recycled.
+    Capacity: con 32; # Maximum retained records; retired storage can be reused.
     Snapshot, # Detached inspection without changing ownership.
     Submit, # Create a queued scalar input.
     Claim, # Assign one queued task to one positive worker.
@@ -11,7 +11,8 @@ Asinctasks: module
     Cancel, # Request cancellation; running workers must acknowledge.
     AcknowledgeCancel, # Matching worker confirms it has stopped.
     TakeResult, # Transfer terminal result exactly once.
-    Shutdown: con iota; # Refuse active workers; otherwise discard roots and exit.
+    Shutdown, # Refuse active workers; otherwise discard roots and exit.
+    Retire: con iota; # Remove a terminal record only after its result was taken.
     Queued, # Owner retains input before any worker claims it.
     Running, # Claimed worker may still use input.
     CancelRequested, # Cancellation won; awaiting worker acknowledgement.
@@ -20,8 +21,8 @@ Asinctasks: module
     Cancelled: con iota; # Terminal cancellation with no owner input/result.
     Ok, # Accepted request.
     Invalid, # Invalid command, identity, payload or state.
-    Stale, # Wrong owner incarnation or worker/claim token.
-    Full, # Lifetime ID capacity exhausted.
+    Stale, # Wrong owner/worker/lease, or a previously issued but retired task ID.
+    Full, # Retained record capacity or monotonic ID range exhausted.
     Empty, # Claim found no queued task.
     Terminal, # Task already terminal or cancelled without result.
     Busy, # Task/owner still has unfinished work.
@@ -45,7 +46,7 @@ Asinctasks: module
     # Detached task observation; empty strings alone do not imply absence of a root.
     Task: adt
     {
-        id: int; # Monotonic ID1..Capacity.
+        id: int; # Monotonic positive task ID; never reused within an incarnation.
         state: int; # Current state constant.
         worker: int; # Claiming worker, zero before Claim.
         lease: int; # Unique claim token within this incarnation.

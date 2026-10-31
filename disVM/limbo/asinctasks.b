@@ -2,6 +2,51 @@ implement Asinctasks;
 include "asinctasks.m";
 
 
+# [GC:] Sole owner retains only this bounded table; zero ID denotes a free record.
+State: adt
+{
+    tasks: array of Task; # Fixed-capacity storage, never exposed by reference.
+    count: int;           # Number of positive-ID records currently retained.
+    lastid: int;          # Last issued identity; monotonic and never allowed to wrap.
+};
+
+
+# Borrow state and a positive identity; return its slot, or -1 for a retired ID.
+# No allocation or blocking occurs; caller checks identity against lastid first.
+findtask(state: ref State, id: int): int
+{
+    for (index := 0; index < Capacity; index++) {
+        if (state.tasks[index].id == id) {
+            return index;
+        }
+    }
+    return -1;
+}
+
+
+# Copy live records sorted by creation ID, independent of storage-slot recycling.
+# Borrow owner state; return detached records with scalar value/COW semantics.
+# Allocation errors propagate; neither state mutation nor channel blocking occurs.
+observe(state: ref State): array of Task
+{
+    result := array[state.count] of Task;
+    count := 0;
+    for (slot := 0; slot < Capacity; slot++) {
+        if (state.tasks[slot].id > 0) {
+            task := state.tasks[slot];
+            index := count;
+            while (index > 0 && result[index - 1].id > task.id) {
+                result[index] = result[index - 1];
+                index--;
+            }
+            result[index] = task;
+            count++;
+        }
+    }
+    return result;
+}
+
+
 # Inspect one detached task state; return whether no worker can still finish it.
 terminal(state: int): int
 {
@@ -18,25 +63,32 @@ releaseinput(tasks: array of Task, index: int)
 }
 
 
-# Apply one incarnation-checked request to sole-owner tasks; return an acknowledgement.
+# Apply an incarnation-checked request to private owner state; return an acknowledgement.
 # No callbacks or frame waits occur. Allocation failures propagate; no OOM recovery claim.
 # The sole receive order determines whether completion or cancellation wins.
-apply(tasks: array of Task, count: int, request: Request): Reply
+apply(owner: ref State, request: Request): Reply
 {
+    tasks := owner.tasks;
     reply := Reply(request.id, Invalid, request.task, 0, nil, nil);
     if (request.operation == Snapshot) {
-        reply.tasks = array[count] of Task;
-        reply.tasks[0:] = tasks[0:count];
+        reply.tasks = observe(owner);
         reply.status = Ok;
         return reply;
     }
     if (request.operation == Submit) {
-        if (count == Capacity) {
+        if (owner.count == Capacity || owner.lastid == 2147483647) {
             reply.status = Full;
         } else if (len request.value <= 65536) {
-            tasks[count] = Task(count + 1, Queued, 0, 0, request.value, nil, 1, 0);
-            reply.task = count + 1;
-            reply.status = Ok;
+            for (slot := 0; slot < Capacity; slot++) {
+                if (tasks[slot].id == 0) {
+                    owner.lastid++;
+                    tasks[slot] = Task(owner.lastid, Queued, 0, 0, request.value, nil, 1, 0);
+                    owner.count++;
+                    reply.task = owner.lastid;
+                    reply.status = Ok;
+                    break;
+                }
+            }
         }
         return reply;
     }
@@ -44,42 +96,63 @@ apply(tasks: array of Task, count: int, request: Request): Reply
         if (request.worker <= 0) {
             return reply;
         }
-        reply.status = Empty;
-        for (index := 0; index < count; index++) {
-            if (tasks[index].state == Queued) {
-                tasks[index].state = Running;
-                tasks[index].worker = request.worker;
-                tasks[index].lease = tasks[index].id;
-                reply.task = tasks[index].id;
-                reply.lease = tasks[index].lease;
-                reply.value = tasks[index].input;
-                reply.status = Ok;
-                break;
+        # Earliest creation ID wins, even if a newer task reused an earlier slot.
+        selected := -1;
+        for (index := 0; index < Capacity; index++) {
+            if (tasks[index].id > 0 && tasks[index].state == Queued &&
+                (selected < 0 || tasks[index].id < tasks[selected].id)) {
+                selected = index;
             }
+        }
+        reply.status = Empty;
+        if (selected >= 0) {
+            tasks[selected].state = Running;
+            tasks[selected].worker = request.worker;
+            tasks[selected].lease = tasks[selected].id;
+            reply.task = tasks[selected].id;
+            reply.lease = tasks[selected].lease;
+            reply.value = tasks[selected].input;
+            reply.status = Ok;
         }
         return reply;
     }
     if (request.operation == Shutdown) {
         reply.status = Ok;
-        for (index := 0; index < count; index++) {
-            if (tasks[index].state == Running || tasks[index].state == CancelRequested) {
+        for (index := 0; index < Capacity; index++) {
+            if (tasks[index].id > 0 &&
+                (tasks[index].state == Running || tasks[index].state == CancelRequested)) {
                 reply.status = Busy;
                 return reply;
             }
         }
         # [GC:] Acknowledged shutdown discards queued inputs and untaken results.
-        for (index = 0; index < count; index++) {
+        for (index = 0; index < Capacity; index++) {
             releaseinput(tasks, index);
             tasks[index].result = nil;
             tasks[index].resultHeld = 0;
         }
         return reply;
     }
-    if (request.task <= 0 || request.task > count) {
+    if (request.task <= 0 || request.task > owner.lastid) {
         return reply;
     }
-    index := request.task - 1;
+    index := findtask(owner, request.task);
+    if (index < 0) {
+        reply.status = Stale;
+        return reply;
+    }
     state := tasks[index].state;
+    if (request.operation == Retire) {
+        if (!terminal(state) || tasks[index].resultHeld) {
+            reply.status = Busy;
+            return reply;
+        }
+        # [GC:] No worker/result remains. Clear metadata and all payload roots together.
+        tasks[index] = Task(0, Queued, 0, 0, nil, nil, 0, 0);
+        owner.count--;
+        reply.status = Ok;
+        return reply;
+    }
     if (request.operation == Cancel) {
         if (terminal(state)) {
             reply.status = Terminal;
@@ -153,11 +226,11 @@ apply(tasks: array of Task, count: int, request: Request): Reply
 
 # Consume typed requests until an accepted Shutdown. Every nonnil reply must be consumed.
 # All arrays stay local; snapshots copy records, whose scalar strings have value semantics.
-# No task IDs or claim tokens are recycled; a new owner needs a new caller generation.
+# Storage slots can be retired; task IDs/claim tokens never recycle or wrap.
+# A replacement owner still requires a new caller generation.
 serve(requests: chan of Request, incarnation: int)
 {
-    tasks := array[Capacity] of Task;
-    count := 0;
+    state := ref State(array[Capacity] of Task, 0, 0);
     for (;;) {
         request := <-requests;
         if (request.reply == nil) {
@@ -169,11 +242,8 @@ serve(requests: chan of Request, incarnation: int)
             if (request.incarnation != incarnation) {
                 reply.status = Stale;
             } else {
-                reply = apply(tasks, count, request);
+                reply = apply(state, request);
             }
-        }
-        if (reply.status == Ok && request.operation == Submit) {
-            count++;
         }
         # [GC:] Do not retain transport payloads while blocked for the next request.
         # Slot ownership was already transferred/released by apply; reply owns its copy.

@@ -108,8 +108,96 @@ lifecycle()
 }
 
 
+# Retire the full table, then reuse slots without reusing identities or FIFO position.
+# Runs under the same owner incarnation; old worker replies must never name new work.
+recycling()
+{
+    full := accept(tasks->Snapshot, 0, 0, 0, "");
+    check(len full.tasks == tasks->Capacity, "start recycling at retained capacity");
+    for (index := 0; index < len full.tasks; index++) {
+        task := full.tasks[index];
+        if (task.state == tasks->Queued) {
+            accept(tasks->Cancel, task.id, 0, 0, "");
+        }
+        if (task.resultHeld) {
+            accept(tasks->TakeResult, task.id, 0, 0, "");
+        }
+        accept(tasks->Retire, task.id, 0, 0, "");
+    }
+    check(len accept(tasks->Snapshot, 0, 0, 0, "").tasks == 0,
+          "all terminal records removed");
+    check(call(17, tasks->Complete, 1, 41, 1, "late").status == tasks->Stale &&
+          call(17, tasks->Cancel, 1, 0, 0, "").status == tasks->Stale &&
+          call(17, tasks->TakeResult, 2, 0, 0, "").status == tasks->Stale,
+          "retired IDs refuse late finish/cancel/take");
+    check(call(17, tasks->Retire, 0, 0, 0, "").status == tasks->Invalid &&
+          call(17, tasks->Retire, 2147483647, 0, 0, "").status == tasks->Invalid,
+          "zero and never-issued IDs remain invalid");
+    first := accept(tasks->Submit, 0, 0, 0, "first");
+    older := accept(tasks->Submit, 0, 0, 0, "older");
+    check(first.task == tasks->Capacity + 1 && older.task == first.task + 1,
+          "new IDs advance beyond former lifetime limit");
+    check(call(17, tasks->Retire, first.task, 0, 0, "").status == tasks->Busy,
+          "queued record cannot be retired");
+    claim := accept(tasks->Claim, 0, 77, 0, "");
+    check(claim.task == first.task &&
+          call(17, tasks->Retire, first.task, 0, 0, "").status == tasks->Busy,
+          "claimed record cannot be retired");
+    accept(tasks->Cancel, first.task, 0, 0, "");
+    check(call(17, tasks->Retire, first.task, 0, 0, "").status == tasks->Busy,
+          "cancelling record waits for acknowledgement");
+    accept(tasks->AcknowledgeCancel, first.task, 77, claim.lease, "");
+    accept(tasks->Retire, first.task, 0, 0, "");
+    newer := accept(tasks->Submit, 0, 0, 0, "newer");
+    snapshot := accept(tasks->Snapshot, 0, 0, 0, "");
+    check(len snapshot.tasks == 2 && snapshot.tasks[0].id == older.task &&
+          snapshot.tasks[1].id == newer.task, "snapshot sorted despite recycled slot order");
+    claim = accept(tasks->Claim, 0, 77, 0, "");
+    check(claim.task == older.task && claim.value == "older",
+          "old queued work precedes newer work in a lower storage slot");
+    check(call(17, tasks->Complete, first.task, 77, first.task, "late").status == tasks->Stale &&
+          call(17, tasks->Complete, older.task, 77, first.task, "wrong lease").status == tasks->Stale,
+          "late retired worker and old lease cannot complete replacement");
+    accept(tasks->Complete, older.task, 77, claim.lease, "");
+    retained := accept(tasks->Snapshot, 0, 0, 0, "");
+    check(retained.tasks[0].resultHeld == 1 && len retained.tasks[0].result == 0 &&
+          call(17, tasks->Retire, older.task, 0, 0, "").status == tasks->Busy,
+          "empty valid result still prevents retirement before take");
+    check(accept(tasks->TakeResult, older.task, 0, 0, "").value == "",
+          "empty result transfers successfully");
+    accept(tasks->Retire, older.task, 0, 0, "");
+    claim = accept(tasks->Claim, 0, 78, 0, "");
+    check(claim.task == newer.task, "newer queued work remains available");
+    accept(tasks->Fail, newer.task, 78, claim.lease, "failure");
+    check(call(17, tasks->Retire, newer.task, 0, 0, "").status == tasks->Busy,
+          "untaken error result also prevents retirement");
+    check(accept(tasks->TakeResult, newer.task, 0, 0, "").value == "failure", "error transfers");
+    accept(tasks->Retire, newer.task, 0, 0, "");
+    check(snapshot.tasks[0].input == "older" && snapshot.tasks[1].input == "newer",
+          "old detached snapshot survives owner retirement and slot reuse");
+    previous := newer.task;
+    for (round := 0; round < tasks->Capacity * 4; round++) {
+        submitted := accept(tasks->Submit, 0, 0, 0, string round);
+        check(submitted.task == previous + 1, "identity monotonic across repeated slot reuse");
+        claim = accept(tasks->Claim, 0, 87, 0, "");
+        check(claim.task == submitted.task && claim.value == string round,
+              "recycled slot retains only current input");
+        check(call(17, tasks->Complete, previous, 87, previous, "late").status == tasks->Stale,
+              "previous identity stays stale while replacement is running");
+        accept(tasks->Complete, submitted.task, 87, claim.lease, "value " + string round);
+        check(accept(tasks->TakeResult, submitted.task, 0, 0, "").value == "value " + string round,
+              "only current result delivered");
+        accept(tasks->Retire, submitted.task, 0, 0, "");
+        check(call(17, tasks->Retire, submitted.task, 0, 0, "").status == tasks->Stale,
+              "duplicate retirement is stale");
+        previous = submitted.task;
+    }
+    check(len accept(tasks->Snapshot, 0, 0, 0, "").tasks == 0, "bounded table empty after churn");
+}
+
+
 # Cover queued cancellation, explicit cancellation acknowledgement, failure and capacity.
-# IDs remain occupied after terminal release, so no late message names a different task.
+# Retained records fill capacity until explicitly retired; IDs themselves never recycle.
 boundaries()
 {
     queued := accept(tasks->Submit, 0, 0, 0, "queued");
@@ -142,7 +230,8 @@ boundaries()
         check(accepted.task == index + 1, "monotonic nonrecycled ID");
     }
     check(call(17, tasks->Submit, 0, 0, 0, "overflow").status == tasks->Full,
-          "lifetime capacity refuses without reuse");
+          "retained capacity refuses without silent record removal");
+    recycling();
     accept(tasks->Shutdown, 0, 0, 0, "");
     owner = tasks->start(18);
     check(call(17, tasks->Snapshot, 0, 0, 0, "").status == tasks->Stale,

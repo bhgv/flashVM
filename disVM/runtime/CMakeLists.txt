@@ -278,6 +278,18 @@ if(DVM_RUNTIME_TESTS)
 endif()
 
 if(DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_asinctasks_quantum_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm>"
+      "${CMAKE_CURRENT_BINARY_DIR}/asinctasks-test.dis" "${mode}" 50 1)
+    set_tests_properties(disvm_asinctasks_quantum_${mode} PROPERTIES TIMEOUT 60)
+    add_test(NAME disvm_asinctasks_limit_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_asinctasks_limit.py" "$<TARGET_FILE:disvm>"
+      "$<TARGET_FILE:limbo-bootstrap>" "${root}/disVM/module" "${u}/module"
+      "${root}/disVM/limbo/asinctasks.b" "${root}/ide/dis/tests/asinctaskslimit_test.b" "${mode}")
+    set_tests_properties(disvm_asinctasks_limit_${mode} PROPERTIES TIMEOUT 130
+      ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
+  endforeach()
   add_test(NAME disvm_bigtable_boundary COMMAND "${PYTHON_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/test_bigtable_boundary.py" "$<TARGET_FILE:disvm>"
     "$<TARGET_FILE:limbo-bootstrap>" "${root}/disVM/module")

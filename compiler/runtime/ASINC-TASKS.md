@@ -31,7 +31,8 @@ identities prevent accidental stale delivery; they are not security credentials.
 | Complete / Fail after cancellation | Acknowledge worker termination, discard late value, enter Cancelled |
 | AcknowledgeCancel | Explicit worker acknowledgement after cancellation request |
 | TakeResult | Completed/Failed result transfers once; repeated take returns Taken |
-| Snapshot | Copy task records for inspection; modifying records/strings cannot mutate owner |
+| Retire | Remove terminal record after result is taken; active/untaken result returns Busy |
+| Snapshot | Copy retained records sorted by creation ID; modifications cannot mutate owner |
 | Shutdown | Busy while Running/CancelRequested; otherwise discard remaining owner roots and exit |
 
 The owner's receive order decides completion versus cancellation. Completion first
@@ -41,10 +42,25 @@ therefore keep shutdown Busy indefinitely. The caller must arrange worker error
 handling and acknowledgement; this service does not discover dead processes.
 Never send to an acknowledged stopped owner: an unbuffered send has no consumer.
 
-There are 32 lifetime slots. Terminal slots are not recycled, preventing an old
-finish from naming a new task. Claim leases equal their unique task IDs in this
-single-claim prototype; retries and requeue do not exist. At capacity Submit
-returns Full. Start a new owner with a new incarnation only after quiescence.
+There are 32 **retained records**, rather than 32 tasks over the owner's lifetime.
+Completed/Failed records must have their result taken before Retire; Cancelled
+records can be retired immediately after acknowledgement. Queued, Running and
+CancelRequested records return Busy. Retirement clears record metadata and scalar
+roots and frees storage; IDs and claim tokens themselves are never reused.
+
+New tasks receive monotonically increasing positive IDs through 2147483647.
+Submit returns Full when all records are retained or the ID range is exhausted,
+including if storage is empty after the final ID was retired. It never wraps to
+zero/negative or reuses an old identity. Replacing an exhausted owner still
+requires a new incarnation and quiescence. Claim leases equal their unique task
+IDs in this single-claim prototype; retries and requeue do not exist.
+
+After Retire, requests to a previously issued ID return Stale. Zero, negative
+and never-issued IDs return Invalid. A newer task can occupy an earlier physical
+slot without overtaking older queued work: Claim chooses the lowest queued ID.
+Snapshots contain retained records only, sorted by ID, never internal slot order.
+Existing detached snapshots can retain their values after the owner retires a
+record; this neither revives a task nor consumes a new owner's record slot.
 
 ## Ownership and GC boundary
 
@@ -82,8 +98,22 @@ runner can also run `tasks-demo.dis` in interpreter/JIT mode. No Python runtime
 is required by the bytecode application.
 
 [Commented example](../../disVM/examples/asinctasks/main.b) loads the service,
-submits an input, spawns a real Limbo worker, takes its result and shuts down.
+runs 96 tasks through real spawned Limbo workers on one owner, takes each result,
+retires each record and then shuts down. Peak retained storage is one record.
 [Acceptance source](../../ide/dis/tests/asinctasks_test.b) forces both race orders
 with channels rather than sleeps; it checks stale generations, wrong worker/lease,
 snapshot isolation including a string-character write, duplicate completion,
 queued/explicit cancellation, failures, capacity and shutdown while active.
+
+
+The lifecycle gate also checks retirement refusal for every nonterminal state,
+untaken empty/error results, FIFO through reused holes, sorted detached snapshots,
+and 128 additional complete/take/retire cycles with late previous-ID messages.
+It runs with the normal scheduler and quantum 1 (interpreter and JIT), checking
+actual native/interpreter dispatch counters rather than only exit text.
+
+[Identity-limit fixture](../../ide/dis/tests/asinctaskslimit_test.b) executes the
+last positive ID, refusal on exhaustion, empty-table exhaustion and stale delivery
+after retirement. Its host driver compiles a temporary owner with only the private
+initial counter seeded to 2147483646. It does not change production source or
+expose a public seed, and does not claim to have executed two billion tasks.

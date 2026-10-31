@@ -42,11 +42,25 @@ init()
         raise "fail: task demo module load";
     }
     owner := tasks->start(1);
-    submitted := send(owner, tasks->Submit, 0, 0, 0, "immutable capture");
-    done := chan of int;
-    spawn work(owner, done);
-    <-done;
-    result := send(owner, tasks->TakeResult, submitted.task, 0, 0, "");
-    sys->print("PASS asinc task demo: %s\n", result.value);
+    previous := 0;
+    for (round := 0; round < tasks->Capacity * 3; round++) {
+        # More tasks than storage slots, without restarting the owner or recycling IDs.
+        value := "immutable capture " + string round;
+        submitted := send(owner, tasks->Submit, 0, 0, 0, value);
+        if (submitted.task != previous + 1) {
+            raise "fail: task demo identity reuse";
+        }
+        done := chan of int;
+        spawn work(owner, done);
+        <-done;
+        result := send(owner, tasks->TakeResult, submitted.task, 0, 0, "");
+        if (result.value != value + " / done") {
+            raise "fail: task demo stale result";
+        }
+        # Result is consumed and worker finished; only now may this record be removed.
+        send(owner, tasks->Retire, submitted.task, 0, 0, "");
+        previous = submitted.task;
+    }
+    sys->print("PASS asinc task demo: %d completed and retired tasks on one bounded owner\n", previous);
     send(owner, tasks->Shutdown, 0, 0, 0, "");
 }
