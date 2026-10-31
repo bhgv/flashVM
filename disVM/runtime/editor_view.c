@@ -110,6 +110,7 @@ static int panel_selected;                     /* Dis-owned field select-all pre
 static char panel_text[1024];                  /* Copied counted UTF-8 prompt/path label. */
 static size_t panel_size;                      /* Active panel bytes, never implicitly strlen-decoded. */
 static FVM_Object *field;                      /* [GC:] Pinned display object until destroy. */
+static int pixels_valid; /* Owner buffer contains the last successfully displayed complete frame. */
 static unsigned char *pixels;                  /* Owned RGBA8 raster storage. */
 static FVM_RenderQueue *raster_queue;          /* Owned persistent native raster worker, joined before VM teardown. */
 static DVM_EditorFrame *displayed_frame;       /* Owned completed baseline; workers never retain this frame. */
@@ -694,6 +695,7 @@ static int apply_canvas(unsigned int width, unsigned int height)
 #endif
     free(pixels);
     pixels = candidate;
+    pixels_valid = 0;
     canvas_width = width;
     canvas_height = height;
     return 1;
@@ -888,6 +890,7 @@ int dvm_editor_create(void)
     {
         return 0;
     }
+    pixels_valid = 0;
     pixels = malloc(canvas_width * canvas_height * 4U);
     snapshot = malloc(EDITOR_SOURCE_MAX + 1U);
     if (!pixels || !snapshot ||
@@ -2005,7 +2008,16 @@ static int collect_frame(int wait)
     }
     else if (surface->width == canvas_width && surface->height == canvas_height)
     {
-        memcpy(pixels, surface->pixels, (size_t)canvas_width * canvas_height * 4);
+        FVM_RasterSurface destination = {pixels, canvas_width, canvas_height, (size_t)canvas_width * 4U};
+        const FVM_RasterSurface *previous = dvm_editor_frame_surface(displayed_frame);
+        size_t copied;
+        int fresh = !pixels_valid || !previous || previous->width != canvas_width || previous->height != canvas_height ||
+                    !dvm_editor_frame_has_baseline(job, displayed_frame);
+        if (!dvm_editor_frame_present(job, &destination, fresh, &copied))
+        {
+            dvm_editor_frame_destroy(job);
+            return 0;
+        }
         if ((events || getenv("DVM_EDITOR_RENDER_STATS")) && dvm_desktop_active())
         {
             unsigned int built, reused, dirty;
@@ -2025,12 +2037,16 @@ static int collect_frame(int wait)
             printf("SCENECACHE %lu %u %u %u %lu\n", dvm_desktop_ticket(), built, reused, dirty,
                    (unsigned long)dvm_editor_frame_scene_pixels(job));
             printf("ROOTDAMAGE %lu %u %u\n", dvm_desktop_ticket(), tiles, root_pixels);
+            printf("FRAMECOPY %lu %lu %lu\n", dvm_desktop_ticket(),
+                   (unsigned long)dvm_editor_frame_baseline_bytes(job), (unsigned long)copied);
         }
-        upload_frame = job;
+        pixels_valid = 0;
+        upload_frame = fresh ? NULL : job;
         ok = present_pixels();
         upload_frame = NULL;
         if (ok)
         {
+            pixels_valid = 1;
             dvm_editor_frame_destroy(displayed_frame);
             displayed_frame = job;
             job = NULL;
@@ -3059,6 +3075,7 @@ int dvm_editor_event(DVM_UIMessage *message)
 /* Tear down only after scheduler/channel routing is quiescent; null resources are allowed. */
 void dvm_editor_destroy(void)
 {
+    pixels_valid = 0;
     header_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */
     fvm_render_queue_destroy(raster_queue);
     raster_queue = NULL;

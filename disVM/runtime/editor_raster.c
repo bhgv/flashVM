@@ -2,6 +2,7 @@
 #include "editor_raster.h"
 #include "flashvm/render_jobs.h"
 #include <math.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +26,8 @@ typedef struct FramePath
 /* Refcount metadata alone is shared across owner/queue-release threads. Pixels
  * and local commands are immutable once the rendering worker publishes a frame. */
 static pthread_mutex_t image_mutex = PTHREAD_MUTEX_INITIALIZER;
-static unsigned int live_images; /* Protected physical image count, independent of frame references. */
+static unsigned long long next_frame_serial = 1; /* Protected nonreused native baseline identity; never a wire ID. */
+static unsigned int live_images;                 /* Protected physical image count, independent of frame references. */
 
 /* One independently owned straight-alpha local object bitmap. */
 typedef struct SceneImage
@@ -62,15 +64,18 @@ typedef struct SceneNode
 /* A detached frame is mutable only during owner preparation or exclusive rendering. */
 struct DVM_EditorFrame
 {
-    FVM_RasterSurface surface;                       /* Owned RGBA storage, allocated before submission. */
-    FramePath *first;                                /* First owned path in paint order. */
-    FramePath *last;                                 /* Borrowed tail of the same owned list. */
-    size_t paths;                                    /* Count checked against the command budget. */
-    size_t verbs;                                    /* Total contour commands checked before transfer. */
-    int background;                                  /* Preserve the explicitly copied base for legacy jobs. */
-    int incremental;                                 /* Rasterize only dirty tiles with independent outputs. */
-    unsigned int columns;                            /* Row-major canvas tile columns. */
-    unsigned int rows;                               /* Row-major canvas tile rows. */
+    unsigned long long serial;          /* Nonreused native snapshot identity. */
+    unsigned long long baseline_serial; /* Compatible displayed baseline used for clean pixels; zero for none. */
+    FVM_RasterSurface surface;          /* Owned RGBA storage, allocated before submission. */
+    FramePath *first;                   /* First owned path in paint order. */
+    FramePath *last;                    /* Borrowed tail of the same owned list. */
+    size_t paths;                       /* Count checked against the command budget. */
+    size_t verbs;                       /* Total contour commands checked before transfer. */
+    int background;                     /* Preserve the explicitly copied base for legacy jobs. */
+    size_t baseline_bytes;              /* Clean root pixels copied from the displayed baseline. */
+    int incremental;                    /* Rasterize only dirty tiles with independent outputs. */
+    unsigned int columns;               /* Row-major canvas tile columns. */
+    unsigned int rows;                  /* Row-major canvas tile rows. */
     unsigned char dirty[DVM_EDITOR_FRAME_MAX_TILES]; /* Maximum 32 by 32 tiles at the admitted extent. */
     unsigned int work[DVM_EDITOR_FRAME_MAX_TILES];   /* Packed dirty indices, so jobs distribute real work. */
     unsigned int work_count;                         /* Number of dirty tiles, zero requires no worker wakeup. */
@@ -99,6 +104,15 @@ DVM_EditorFrame *dvm_editor_frame_create(unsigned int width, unsigned int height
     {
         return NULL;
     }
+    pthread_mutex_lock(&image_mutex);
+    if (next_frame_serial == ULLONG_MAX)
+    {
+        pthread_mutex_unlock(&image_mutex);
+        free(frame);
+        return NULL;
+    }
+    frame->serial = next_frame_serial++;
+    pthread_mutex_unlock(&image_mutex);
     frame->surface.width = width;
     frame->surface.height = height;
     frame->surface.stride = (size_t)width * 4;
@@ -1451,6 +1465,141 @@ unsigned int dvm_editor_frame_node_flags(const DVM_EditorFrame *frame, unsigned 
     return frame && id < DVM_EDITOR_SCENE_NODES ? frame->nodes[id].flags : 0;
 }
 
+/* Copy one selected tile class between disjoint matching surfaces. Source and
+ * destination are borrowed, immutable/exclusive respectively. Adjacent selected
+ * tiles share a horizontal run; tight full-width runs use one contiguous copy.
+ * Return actual copied pixel bytes, excluding row padding. Owner thread only. */
+static size_t
+copy_tiles(const DVM_EditorFrame *frame, const FVM_RasterSurface *source, FVM_RasterSurface *destination, int selected)
+{
+    unsigned int tile_y;
+    size_t bytes = 0;
+    for (tile_y = 0; tile_y < frame->rows; ++tile_y)
+    {
+        unsigned int column = 0;
+        unsigned int top = tile_y * DVM_EDITOR_TILE_SIZE;
+        unsigned int height = source->height - top;
+        if (height > DVM_EDITOR_TILE_SIZE)
+        {
+            height = DVM_EDITOR_TILE_SIZE;
+        }
+        while (column < frame->columns)
+        {
+            unsigned int first;
+            unsigned int left;
+            unsigned int right;
+            unsigned int row;
+            while (column < frame->columns && !!frame->dirty[tile_y * frame->columns + column] != selected)
+            {
+                column++;
+            }
+            first = column;
+            while (column < frame->columns && !!frame->dirty[tile_y * frame->columns + column] == selected)
+            {
+                column++;
+            }
+            if (first == column)
+            {
+                continue;
+            }
+            left = first * DVM_EDITOR_TILE_SIZE;
+            right = column * DVM_EDITOR_TILE_SIZE;
+            if (right > source->width)
+            {
+                right = source->width;
+            }
+            if (!left && right == source->width && source->stride == source->width * 4U &&
+                destination->stride == source->stride)
+            {
+                memcpy(destination->pixels + (size_t)top * destination->stride,
+                       source->pixels + (size_t)top * source->stride,
+                       height * source->stride);
+            }
+            else
+            {
+                for (row = top; row < top + height; ++row)
+                {
+                    memcpy(destination->pixels + (size_t)row * destination->stride + left * 4U,
+                           source->pixels + (size_t)row * source->stride + left * 4U,
+                           (right - left) * 4U);
+                }
+            }
+            bytes += (size_t)(right - left) * height * 4U;
+        }
+    }
+    return bytes;
+}
+
+/* Return baseline transfer accounting on an owner-held snapshot; never inspect
+ * concurrently with its worker. Null reports zero; no resources are transferred. */
+size_t dvm_editor_frame_baseline_bytes(const DVM_EditorFrame *frame)
+{
+    return frame ? frame->baseline_bytes : 0;
+}
+
+/* Compare immutable native identities, not recyclable object addresses. Caller
+ * keeps both owner-held frames alive during this query; no prior pointer is
+ * retained in the candidate. Null or independent/full snapshots return zero. */
+int dvm_editor_frame_has_baseline(const DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
+{
+    return frame && prior && frame->baseline_serial && frame->baseline_serial == prior->serial;
+}
+
+/* Copy completed pixels into the owner's disjoint buffer. complete=1 initializes
+ * a new/resized buffer; complete=0 requires this exact preparation baseline.
+ * Validate all geometry before writing; preserve padding. Return zero on invalid
+ * input, otherwise report copied bytes through optional copied. No SDL/VM calls. */
+int dvm_editor_frame_present(const DVM_EditorFrame *frame, FVM_RasterSurface *destination, int complete, size_t *copied)
+{
+    const FVM_RasterSurface *source;
+    unsigned int row;
+    size_t bytes = 0;
+    if (copied)
+    {
+        *copied = 0;
+    }
+    if (!frame || !destination || !destination->pixels || (complete != 0 && complete != 1))
+    {
+        return 0;
+    }
+    source = &frame->surface;
+    if (destination->width != source->width || destination->height != source->height ||
+        destination->stride < (size_t)source->width * 4U || destination->stride > (size_t)-1 / destination->height)
+    {
+        return 0;
+    }
+    if (source->pixels == destination->pixels)
+    {
+        return destination->stride == source->stride;
+    }
+    if (complete || !frame->incremental)
+    {
+        if (source->stride == (size_t)source->width * 4U && destination->stride == source->stride)
+        {
+            memcpy(destination->pixels, source->pixels, source->stride * source->height);
+        }
+        else
+        {
+            for (row = 0; row < source->height; ++row)
+            {
+                memcpy(destination->pixels + (size_t)row * destination->stride,
+                       source->pixels + (size_t)row * source->stride,
+                       source->width * 4U);
+            }
+        }
+        bytes = (size_t)source->width * source->height * 4U;
+    }
+    else
+    {
+        bytes = copy_tiles(frame, source, destination, 1);
+    }
+    if (copied)
+    {
+        *copied = bytes;
+    }
+    return 1;
+}
+
 /* Establish a self-contained baseline from the last actually displayed frame.
  * Intermediate queued frames never become a baseline, so supersession cannot lose damage. */
 int dvm_editor_frame_incremental(DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
@@ -1471,12 +1620,17 @@ int dvm_editor_frame_incremental(DVM_EditorFrame *frame, const DVM_EditorFrame *
     memset(frame->dirty, 0, sizeof(frame->dirty));
     if (frame->node_count)
     {
+        if (!scene_prepare(frame, prior))
+        {
+            return 0;
+        }
         if (prior && prior->incremental && frame->surface.width == prior->surface.width &&
             frame->surface.height == prior->surface.height)
         {
-            memcpy(frame->surface.pixels, prior->surface.pixels, frame->surface.stride * frame->surface.height);
+            frame->baseline_serial = prior->serial;
+            frame->baseline_bytes = copy_tiles(frame, &prior->surface, &frame->surface, 0);
         }
-        return scene_prepare(frame, prior);
+        return 1;
     }
     if (prior && prior->node_count)
     {
@@ -1489,7 +1643,6 @@ int dvm_editor_frame_incremental(DVM_EditorFrame *frame, const DVM_EditorFrame *
         pack_damage(frame);
         return 1;
     }
-    memcpy(frame->surface.pixels, prior->surface.pixels, frame->surface.stride * frame->surface.height);
     a = frame->first;
     b = prior->first;
     while (a || b)
@@ -1509,6 +1662,8 @@ int dvm_editor_frame_incremental(DVM_EditorFrame *frame, const DVM_EditorFrame *
         b = b ? b->next : NULL;
     }
     pack_damage(frame);
+    frame->baseline_serial = prior->serial;
+    frame->baseline_bytes = copy_tiles(frame, &prior->surface, &frame->surface, 0);
     return 1;
 }
 

@@ -20,6 +20,12 @@ def main():
         rows = [tuple(map(int, row)) for row in re.findall(
             r"^SCENECACHE (\d+) (\d+) (\d+) (\d+) (\d+)$", trace, re.M)]
         damage = [tuple(map(int, row)) for row in re.findall(r"^ROOTDAMAGE (\d+) (\d+) (\d+)$", trace, re.M)]
+        transfers = [tuple(map(int, row)) for row in re.findall(
+            r"^FRAMECOPY (\d+) (\d+) (\d+)$", trace, re.M)]
+        if not transfers or any(base + present != 960 * 640 * 4 for _, base, present in transfers):
+            raise RuntimeError("root transfer traffic does not match the clean/dirty partition")
+        if not any(0 < present < 960 * 640 * 4 for _, _, present in transfers):
+            raise RuntimeError("movement still copies the complete presentation buffer")
         if not rows or rows[0][1] < 10 or not rows[0][4]:
             raise RuntimeError("initial associated bitmaps were not actually rasterized")
         total = rows[0][1]

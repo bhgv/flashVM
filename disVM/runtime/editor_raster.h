@@ -145,4 +145,25 @@ int dvm_editor_frame_node_matches(const DVM_EditorFrame *prior, unsigned int id,
  * node. Caller supplies new placement with node_end; failure discards candidate. */
 int dvm_editor_frame_node_replay(DVM_EditorFrame *frame, const DVM_EditorFrame *prior, unsigned int id);
 
+
+/* Owner-only completed-frame transfer. complete=1 initializes a fresh buffer;
+ * otherwise destination must contain this frame's exact preparation baseline.
+ * Surfaces must be disjoint or exactly identical. Padding is untouched. Failure
+ * validates before writing; copied is optional and reports actual pixel bytes. */
+int dvm_editor_frame_present(const DVM_EditorFrame *frame,
+                             FVM_RasterSurface *destination,
+                             int complete,
+                             size_t *copied);
+
+
+/* Return clean baseline pixel bytes copied while preparing this native frame.
+ * Read only on its owner, outside worker execution; null returns zero. */
+size_t dvm_editor_frame_baseline_bytes(const DVM_EditorFrame *frame);
+
+
+/* Check whether prior is this candidate's exact preparation baseline. Both
+ * frames are borrowed live immutable snapshots; no pointer is retained. A
+ * mismatched displayed baseline requires complete=1 on presentation. */
+int dvm_editor_frame_has_baseline(const DVM_EditorFrame *frame, const DVM_EditorFrame *prior);
+
 #endif

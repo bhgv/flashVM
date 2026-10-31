@@ -8,7 +8,6 @@
 #define TEST_WIDTH 256U  /* Four tile columns expose untouched and shared edges. */
 #define TEST_HEIGHT 128U /* Two rows exercise multiple native raster partitions. */
 
-
 /* Create a closed rectangle with copied coordinates; caller owns the result. */
 static FVM_Path *rectangle(double x, double y, double width, double height)
 {
@@ -34,7 +33,6 @@ static FVM_Path *rectangle(double x, double y, double width, double height)
     return path;
 }
 
-
 /* Append one native command and independently draw the same borrowed path into
  * the complete oracle surface. Return zero on failure; no path escapes the call. */
 static int command(DVM_EditorFrame *frame,
@@ -52,7 +50,6 @@ static int command(DVM_EditorFrame *frame,
     fvm_path_destroy(path);
     return ok;
 }
-
 
 /* Generate a small changing object behind an unchanged translucent foreground.
  * Reference pixels use the ordinary synchronous rasterizer, never tile helpers. */
@@ -78,7 +75,6 @@ static DVM_EditorFrame *scene(unsigned int step, FVM_RasterSurface *oracle)
     return frame;
 }
 
-
 /* Count admitted damage independently through the public native-frame contract. */
 static unsigned int damage(const DVM_EditorFrame *frame)
 {
@@ -94,7 +90,6 @@ static unsigned int damage(const DVM_EditorFrame *frame)
     }
     return count;
 }
-
 
 /* A single text-like path retains distant contours and appends one local glyph.
  * Only the appended contour may cause damage, not the complete text bounds. */
@@ -129,6 +124,117 @@ static int appended_contour(void)
     return ok;
 }
 
+/* Copy completed damage into a padded owner buffer and compare each actual pixel
+ * with the full oracle. Validate counters and every untouched padding byte. */
+static int present_checked(const DVM_EditorFrame *frame,
+                           FVM_RasterSurface *destination,
+                           const FVM_RasterSurface *oracle,
+                           int first)
+{
+    unsigned int row;
+    size_t copied = 0;
+    if (!dvm_editor_frame_present(frame, destination, first, &copied) ||
+        copied + dvm_editor_frame_baseline_bytes(frame) != (size_t)oracle->width * oracle->height * 4U)
+    {
+        return 0;
+    }
+    for (row = 0; row < oracle->height; ++row)
+    {
+        size_t byte;
+        if (memcmp(destination->pixels + row * destination->stride,
+                   oracle->pixels + row * oracle->stride,
+                   oracle->width * 4U))
+        {
+            return 0;
+        }
+        for (byte = oracle->width * 4U; byte < destination->stride; ++byte)
+        {
+            if (destination->pixels[row * destination->stride + byte] != 0xa5)
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+/* Partial edge tiles must preserve padding and invalid inputs must not write.
+ * Destroy the prior snapshot before rendering its copied successor. */
+static int edge_transfers(void)
+{
+    FVM_RasterSurface oracle = {NULL, 130, 70, 520};
+    FVM_RasterSurface destination = {NULL, 130, 70, 536};
+    DVM_EditorFrame *prior = dvm_editor_frame_create(130, 70);
+    DVM_EditorFrame *next = dvm_editor_frame_create(130, 70);
+    FVM_RasterColor ink = {20, 40, 80, 255};
+    size_t copied = 99;
+    int ok;
+    oracle.pixels = malloc(oracle.stride * oracle.height);
+    destination.pixels = malloc(destination.stride * destination.height);
+    ok = oracle.pixels && destination.pixels && prior && next;
+    if (ok)
+    {
+        memset(oracle.pixels, 255, oracle.stride * oracle.height);
+        memset(destination.pixels, 0xa5, destination.stride * destination.height);
+        ok = dvm_editor_frame_incremental(prior, NULL) && dvm_editor_frame_render(prior) == FVM_OK &&
+             present_checked(prior, &destination, &oracle, 1) && command(next, &oracle, 129, 69, 1, 1, ink, 0) &&
+             dvm_editor_frame_incremental(next, prior);
+    }
+    dvm_editor_frame_destroy(prior);
+    ok = ok && dvm_editor_frame_render(next) == FVM_OK && present_checked(next, &destination, &oracle, 0);
+    if (ok)
+    {
+        FVM_RasterSurface invalid = destination;
+        unsigned char before = destination.pixels[0];
+        invalid.stride = 1;
+        ok = !dvm_editor_frame_present(next, &invalid, 0, &copied) && copied == 0 && destination.pixels[0] == before;
+    }
+    dvm_editor_frame_destroy(next);
+    free(oracle.pixels);
+    free(destination.pixels);
+    return ok;
+}
+
+/* Two jobs prepared against A can complete after a different image B was shown.
+ * C's tile mask is not a delta from B. Detect that exact baseline mismatch and
+ * force full presentation, including the zero-damage C==A case. */
+static int stale_presentation(void)
+{
+    FVM_RasterSurface oracle = {NULL, TEST_WIDTH, TEST_HEIGHT, TEST_WIDTH * 4U};
+    FVM_RasterSurface destination = oracle;
+    DVM_EditorFrame *a = dvm_editor_frame_create(TEST_WIDTH, TEST_HEIGHT);
+    DVM_EditorFrame *b = dvm_editor_frame_create(TEST_WIDTH, TEST_HEIGHT);
+    DVM_EditorFrame *c = dvm_editor_frame_create(TEST_WIDTH, TEST_HEIGHT);
+    FVM_RasterColor ink = {200, 30, 40, 255};
+    size_t copied = 99;
+    int ok;
+    oracle.pixels = malloc(oracle.stride * oracle.height);
+    destination.pixels = malloc(destination.stride * destination.height);
+    ok = oracle.pixels && destination.pixels && a && b && c;
+    if (ok)
+    {
+        memset(oracle.pixels, 255, oracle.stride * oracle.height);
+        ok = dvm_editor_frame_incremental(a, NULL) && dvm_editor_frame_render(a) == FVM_OK &&
+             dvm_editor_frame_present(a, &destination, 1, NULL) && command(b, &oracle, 10, 10, 20, 20, ink, 0) &&
+             dvm_editor_frame_incremental(b, a) && dvm_editor_frame_incremental(c, a) &&
+             dvm_editor_frame_render(b) == FVM_OK && dvm_editor_frame_render(c) == FVM_OK &&
+             dvm_editor_frame_has_baseline(b, a) && dvm_editor_frame_has_baseline(c, a) &&
+             !dvm_editor_frame_has_baseline(c, b) && dvm_editor_frame_present(b, &destination, 0, NULL) &&
+             damage(c) == 0 &&
+             memcmp(destination.pixels, dvm_editor_frame_surface(c)->pixels, oracle.stride * oracle.height) != 0;
+        /* The exact native baseline check selects a complete copy and upload.
+         * C's empty damage must not leave B's red rectangle on screen. */
+        ok = ok && dvm_editor_frame_present(c, &destination, !dvm_editor_frame_has_baseline(c, b), &copied) &&
+             copied == oracle.stride * oracle.height &&
+             memcmp(destination.pixels, dvm_editor_frame_surface(c)->pixels, copied) == 0;
+    }
+    dvm_editor_frame_destroy(a);
+    dvm_editor_frame_destroy(b);
+    dvm_editor_frame_destroy(c);
+    free(oracle.pixels);
+    free(destination.pixels);
+    return ok;
+}
 
 /* Render all scenes through the real queue and compare every output byte.
  * Moved/removed content invalidates old/new bounds; unchanged overlays must be
@@ -139,13 +245,21 @@ int main(void)
     DVM_EditorFrame *prior = NULL;
     DVM_EditorFrame *frame = NULL;
     FVM_RasterSurface oracle;
+    FVM_RasterSurface destination;
     unsigned int step;
     int ok = 0;
     oracle.width = TEST_WIDTH;
     oracle.height = TEST_HEIGHT;
     oracle.stride = TEST_WIDTH * 4;
     oracle.pixels = malloc(oracle.stride * oracle.height);
-    if (!oracle.pixels ||
+    destination = oracle;
+    destination.stride += 12;
+    destination.pixels = malloc(destination.stride * destination.height);
+    if (destination.pixels)
+    {
+        memset(destination.pixels, 0xa5, destination.stride * destination.height);
+    }
+    if (!oracle.pixels || !destination.pixels ||
         fvm_render_queue_create(1, dvm_editor_frame_render, dvm_editor_frame_destroy, &queue) != FVM_OK)
     {
         goto done;
@@ -174,16 +288,31 @@ int main(void)
             fprintf(stderr, "parallel/full raster byte mismatch at scene %u\n", step);
             goto done;
         }
+        if (!present_checked(frame, &destination, &oracle, step == 0))
+        {
+            fprintf(stderr, "dirty transfer or padding failed at scene %u\n", step);
+            goto done;
+        }
+        if (step == 4)
+        {
+            size_t copied = 99;
+            if (!dvm_editor_frame_present(frame, &destination, 0, &copied) || copied != 0)
+            {
+                fprintf(stderr, "unchanged frame copied presentation pixels\n");
+                goto done;
+            }
+        }
         dvm_editor_frame_destroy(prior);
         prior = frame;
         frame = NULL;
     }
-    ok = appended_contour();
+    ok = appended_contour() && edge_transfers() && stale_presentation();
 done:
     fvm_render_queue_destroy(queue);
     dvm_editor_frame_destroy(frame);
     dvm_editor_frame_destroy(prior);
     free(oracle.pixels);
+    free(destination.pixels);
     if (!ok)
     {
         return 1;
