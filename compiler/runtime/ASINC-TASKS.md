@@ -23,7 +23,7 @@ identities prevent accidental stale delivery; they are not security credentials.
 
 | Operation | Accepted behavior |
 | --- | --- |
-| Submit | Copy an input string of at most65536 characters; allocate monotonic task ID |
+| Submit | Copy an input string of at most 65536 characters; allocate monotonic task ID |
 | Claim | Positive worker takes first queued task, input and a claim lease; empty returns immediately |
 | Complete / Fail | Exact worker+lease supplies result/error; terminal state entered once |
 | Cancel queued | Enter Cancelled and release owner input immediately |
@@ -41,7 +41,7 @@ therefore keep shutdown Busy indefinitely. The caller must arrange worker error
 handling and acknowledgement; this service does not discover dead processes.
 Never send to an acknowledged stopped owner: an unbuffered send has no consumer.
 
-There are32 lifetime slots. Terminal slots are not recycled, preventing an old
+There are 32 lifetime slots. Terminal slots are not recycled, preventing an old
 finish from naming a new task. Claim leases equal their unique task IDs in this
 single-claim prototype; retries and requeue do not exist. At capacity Submit
 returns Full. Start a new owner with a new incarnation only after quiescence.
@@ -58,6 +58,8 @@ flags, so an empty valid result is distinguishable from no result.
 Snapshots copy the record array; strings use Limbo value/COW semantics. A snapshot
 can itself retain copied values after the owner releases them. `inputHeld` and
 `resultHeld` report owner-slot lifetime, not the entire VM heap's live-root count.
+Consumed request/reply payload fields are explicitly cleared before the next receive,
+so idle service stack slots do not retain previous transport values.
 Allocation exceptions propagate; recoverable OOM rollback is not implemented.
 These tests do not replace Inferno's forced-collector native environment/result
 gates. Directional capture publication remains the separate `asincviews` protocol;

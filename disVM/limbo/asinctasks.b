@@ -161,6 +161,7 @@ serve(requests: chan of Request, incarnation: int)
     for (;;) {
         request := <-requests;
         if (request.reply == nil) {
+            request.value = nil;
             continue;
         }
         reply := Reply(request.id, Invalid, request.task, 0, nil, nil);
@@ -174,7 +175,13 @@ serve(requests: chan of Request, incarnation: int)
         if (reply.status == Ok && request.operation == Submit) {
             count++;
         }
+        # [GC:] Do not retain transport payloads while blocked for the next request.
+        # Slot ownership was already transferred/released by apply; reply owns its copy.
+        request.value = nil;
         request.reply <-= reply;
+        request.reply = nil;
+        reply.value = nil;
+        reply.tasks = nil;
         if (reply.status == Ok && request.operation == Shutdown) {
             return;
         }
