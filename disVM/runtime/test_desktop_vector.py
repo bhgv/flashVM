@@ -51,7 +51,7 @@ def main():
             return mouse(round(left + (6 + (20 + x) * scale) * zoom), round(top + (80 + (20 + y) * scale) * zoom), phase)
 
         # Click the same real child MovieClips that are shown in the toolbar.
-        # index0..7 is the upper row;8..14 selects colours/fill in the lower row.
+        # index0..7 is the upper row;8..14 selects colours/fill;15 selects Pen.
         def button(index):
             x = round(left + (6 + (index % 8 + 0.5) * (wide - 12) / 8) * zoom)
             y = round(top + (36 if index < 8 else 60) * zoom)
@@ -63,6 +63,9 @@ def main():
         events += [canvas(100, 350, 1), canvas(400, 520, 3)]
         # A whole figure is one history unit; redo must restore the same complete path.
         events += (button(4) + button(5)) if mouse_tools else shortcut("Z") + shortcut("Y")
+        events += button(15) if mouse_tools else [envelope(5, text="p")]
+        # Release over the toolbar: capture must keep this Pen stroke and clamp y.
+        events += [canvas(650, 360, 1), canvas(710, 440, 2), canvas(820, -30, 3)]
         destination = work / "drawing.svg"
         events += shortcut("S") + [envelope(5, text=str(destination)), envelope(4, 13, 1)]
         # Dirty Open must not overwrite current state; a successful saved reload is legal.
@@ -73,11 +76,15 @@ def main():
             raise RuntimeError("vector Save did not create SVG")
         xml = ET.fromstring(destination.read_text())
         paths = list(xml)
-        if len(paths) != 2 or " Q " not in paths[0].attrib["d"] or paths[1].attrib["fill"] != "#e04444":
+        if len(paths) != 3 or "Z" not in paths[0].attrib["d"] or paths[0].attrib["fill"] != "#e04444" or paths[1].attrib["fill"] != "#e04444":
             raise RuntimeError("real gesture merging/interpolation/history/SVG failed: " + destination.read_text())
+        if " Q " not in paths[2].attrib["d"] or paths[2].attrib["fill"] != "none" or paths[2].attrib["stroke-width"] != "9":
+            raise RuntimeError("Pen must save a smoothed stroked centerline after release")
+        if paths[2].attrib["d"].strip().split()[-1] != "0":
+            raise RuntimeError("captured Pen release above the page must clamp, not discard the gesture")
         if paths[1].attrib["stroke-width"] != "9":
             raise RuntimeError("batched SDL-style tool/colour/fill/width commands were lost")
-        if any(path.attrib["stroke"] != "#e04444" for path in paths):
+        if paths[0].attrib["stroke"] != "none" or paths[1].attrib["stroke"] != "#e04444":
             raise RuntimeError("document colour did not survive save/reload")
         final = list(views.values())[-1][5]
         if "*" in final[3].split("\n", 1)[0] or "drawing.svg" not in final[3]:

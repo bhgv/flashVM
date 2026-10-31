@@ -40,7 +40,7 @@ typedef struct DeskItem
 
 static FVM_Context *owner;                /* Borrowed FlashVM context; never used on raster workers. */
 static FVM_Object *root;                  /* [GC:] Pinned MovieClip root retaining all scene children. */
-static FVM_Object *groups[13];             /* [GC:] Borrowed children of the retained root. */
+static FVM_Object *groups[13];            /* [GC:] Borrowed children of the retained root. */
 static FVM_Object *clips[DESK_SLOTS];     /* [GC:] Borrowed stable MovieClip children. */
 static FVM_Object *marks[DESK_SLOTS];     /* [GC:] Selection MovieClips retained beneath widgets. */
 static FVM_Object *cursors[DESK_SLOTS];   /* [GC:] Caret MovieClips retained beneath each widget. */
@@ -70,9 +70,9 @@ static unsigned int glass_height[2];           /* Cached immutable rail contour 
 static int active;                             /* A desktop scene has been admitted. */
 
 
-#define VECTOR_BYTES 22000U /* Complete bounded ASCII command stream, never SVG/script input. */
-#define VECTOR_SHAPES 32U  /* Matching portable document path bound. */
-#define VECTOR_NODES 512U  /* Complete document command bound. */
+#define VECTOR_BYTES 660000U /* Complete bounded ASCII command stream, never SVG/script input. */
+#define VECTOR_SHAPES 32U    /* Matching portable document path bound. */
+#define VECTOR_NODES 16384U  /* Complete document command bound. */
 
 
 /* Detached scalar command. Managed/native object addresses never enter the stream. */
@@ -92,8 +92,8 @@ typedef struct VectorShape
     unsigned long color; /* RGB24; common fill/stroke colour. */
     unsigned long width; /* Logical width0..32, zero disables stroke. */
     unsigned long fill;  /* Boolean fill admission. */
-    unsigned int first; /* First node in the detached array. */
-    unsigned int count; /* Path command count2..64. */
+    unsigned int first;  /* First node in the detached array. */
+    unsigned int count;  /* Path command count2..4096. */
 } VectorShape;
 
 
@@ -101,23 +101,24 @@ typedef struct VectorShape
  * workers receive copied contours through the existing immutable frame pipeline. */
 typedef struct VectorScene
 {
-    char bytes[VECTOR_BYTES];              /* Owned bounded hex assembly buffer. */
-    size_t expected;                       /* Exact declared stream bytes, zero for text panes. */
-    size_t used;                           /* Contiguous bytes received. */
-    unsigned long tool;                   /* Copied selected authoring tool1..4. */
-    unsigned long color;                  /* Copied current RGB24. */
-    unsigned long width;                  /* Copied current logical width1..32. */
-    unsigned long fill;                   /* Copied fill toggle0/1. */
-    unsigned long undo;                   /* Copied Undo availability0..16. */
-    unsigned long redo;                   /* Copied Redo availability0..16. */
-    unsigned int count;                    /* Parsed complete path count. */
-    unsigned int complete;                 /* Only one allows painting/End commit. */
-    VectorShape shapes[VECTOR_SHAPES];     /* Copied style/range records. */
-    VectorNode nodes[VECTOR_NODES];        /* Copied scalar commands. */
+    char bytes[VECTOR_BYTES];          /* Owned bounded hex assembly buffer. */
+    size_t expected;                   /* Exact declared stream bytes, zero for text panes. */
+    size_t used;                       /* Contiguous bytes received. */
+    unsigned long tool;                /* Copied selected authoring tool1..5. */
+    unsigned long color;               /* Copied current RGB24. */
+    unsigned long width;               /* Copied current logical width1..32. */
+    unsigned long fill;                /* Copied fill toggle0/1. */
+    unsigned long undo;                /* Copied Undo availability0..16. */
+    unsigned long redo;                /* Copied Redo availability0..16. */
+    unsigned int count;                /* Parsed complete path count. */
+    unsigned int complete;             /* Only one allows painting/End commit. */
+    VectorShape shapes[VECTOR_SHAPES]; /* Copied style/range records. */
+    VectorNode nodes[VECTOR_NODES];    /* Copied scalar commands. */
 } VectorScene;
 
-static FVM_Object *vector_buttons[DESK_SLOTS][16]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
-static VectorScene vectors[9]; /* Stable pane identities1..8, reset at scene Begin. */
+static FVM_Object
+    *vector_buttons[DESK_SLOTS][16]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
+static VectorScene vectors[9];       /* Stable pane identities1..8, reset at scene Begin. */
 
 
 /* Owner-local visual interpolation; no document, VM pointer or worker handle. */
@@ -680,12 +681,12 @@ static int vector_parse(VectorScene *scene)
     unsigned long shapes;
     unsigned int total = 0;
     unsigned int i;
-    if (scene->used < 56 || !word(scene->bytes, &scene->tool) ||
-        !word(scene->bytes + 8, &scene->color) || !word(scene->bytes + 16, &scene->width) ||
-        !word(scene->bytes + 24, &scene->fill) || !word(scene->bytes + 32, &scene->undo) ||
-        !word(scene->bytes + 40, &scene->redo) || !word(scene->bytes + 48, &shapes) ||
-        scene->tool < 1 || scene->tool > 4 || scene->color > 0xffffffUL || scene->width < 1 ||
-        scene->width > 32 || scene->fill > 1 || scene->undo > 16 || scene->redo > 16 || shapes > VECTOR_SHAPES)
+    if (scene->used < 56 || !word(scene->bytes, &scene->tool) || !word(scene->bytes + 8, &scene->color) ||
+        !word(scene->bytes + 16, &scene->width) || !word(scene->bytes + 24, &scene->fill) ||
+        !word(scene->bytes + 32, &scene->undo) || !word(scene->bytes + 40, &scene->redo) ||
+        !word(scene->bytes + 48, &shapes) || scene->tool < 1 || scene->tool > 5 || scene->color > 0xffffffUL ||
+        scene->width < 1 || scene->width > 32 || scene->fill > 1 || scene->undo > 16 || scene->redo > 16 ||
+        shapes > VECTOR_SHAPES)
     {
         return 0;
     }
@@ -697,7 +698,7 @@ static int vector_parse(VectorScene *scene)
         if (scene->used - at < 32 || !word(scene->bytes + at, &shape->color) ||
             !word(scene->bytes + at + 8, &shape->width) || !word(scene->bytes + at + 16, &shape->fill) ||
             !word(scene->bytes + at + 24, &count) || shape->color > 0xffffffUL || shape->width > 32 ||
-            shape->fill > 1 || (!shape->width && !shape->fill) || count < 2 || count > 64 ||
+            shape->fill > 1 || (!shape->width && !shape->fill) || count < 2 || count > 4096 ||
             count > VECTOR_NODES - total)
         {
             return 0;
@@ -714,10 +715,11 @@ static int vector_parse(VectorScene *scene)
             VectorNode *node = &scene->nodes[total++];
             if (!word(scene->bytes + at, &node->verb) || !word(scene->bytes + at + 8, &node->x) ||
                 !word(scene->bytes + at + 16, &node->y) || !word(scene->bytes + at + 24, &node->cx) ||
-                !word(scene->bytes + at + 32, &node->cy) || node->verb > 3 || node->x > 1000 ||
-                node->y > 600 || node->cx > 1000 || node->cy > 600 || (j == 0) != (node->verb == 0) ||
-                (node->verb != 2 && (node->cx || node->cy)) ||
-                (node->verb == 3 && (j + 1 != count || node->x || node->y)))
+                !word(scene->bytes + at + 32, &node->cy) || node->verb > 3 || node->x > 1000 || node->y > 600 ||
+                node->cx > 1000 || node->cy > 600 || (j == 0 && node->verb != 0) ||
+                (j > 0 && node->verb == 0 && scene->nodes[total - 2].verb != 3) ||
+                (j > 0 && node->verb != 0 && scene->nodes[total - 2].verb == 3) ||
+                (node->verb != 2 && (node->cx || node->cy)) || (node->verb == 3 && (node->x || node->y)))
             {
                 return 0;
             }
@@ -787,6 +789,22 @@ static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigne
                 y[i] = i < 2 || i == 4 ? -5 : 5;
             }
         }
+    }
+    else if (cell == 15)
+    {
+        x[0] = -12;
+        y[0] = 6;
+        x[1] = -10;
+        y[1] = -3;
+        x[2] = -4;
+        y[2] = -7;
+        x[3] = -2;
+        y[3] = -4;
+        x[4] = -8;
+        y[4] = 4;
+        x[5] = -12;
+        y[5] = 6;
+        count = 6;
     }
     else if (cell == 3)
     {
@@ -861,8 +879,7 @@ static int vector_digit(FVM_Object *clip, unsigned int value, double cx, double 
 {
     static const unsigned int masks[10] = {63, 6, 91, 79, 102, 109, 125, 7, 127, 111};
     static const double coordinates[7][4] = {
-        {-2, -4, 2, -4}, {2, -4, 2, 0}, {2, 0, 2, 4}, {-2, 4, 2, 4},
-        {-2, 0, -2, 4}, {-2, -4, -2, 0}, {-2, 0, 2, 0}};
+        {-2, -4, 2, -4}, {2, -4, 2, 0}, {2, 0, 2, 4}, {-2, 4, 2, 4}, {-2, 0, -2, 4}, {-2, -4, -2, 0}, {-2, 0, 2, 0}};
     unsigned int i;
     FVM_Value args[3];
     FVM_Value ignored;
@@ -929,7 +946,7 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
         unsigned long fill = 0xe3e8ebUL;
         unsigned long border = 0x8799a8UL;
         unsigned long ink = 0x26343fUL;
-        int selected = i < 4 && scene->tool == i + 1;
+        int selected = (i < 4 && scene->tool == i + 1) || (i == 15 && scene->tool == 5);
         if (i >= 8 && i < 14)
         {
             fill = palette[i - 8];
@@ -948,13 +965,13 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
         if (selected)
         {
             border = 0x2684dbUL;
-            if (i < 8 || i == 14)
+            if (i < 8 || i == 14 || i == 15)
             {
                 fill = 0xb8d9f5UL;
             }
         }
-        if ((i == 4 && !scene->undo) || (i == 5 && !scene->redo) ||
-            (i == 6 && scene->width == 1) || (i == 7 && scene->width == 32))
+        if ((i == 4 && !scene->undo) || (i == 5 && !scene->redo) || (i == 6 && scene->width == 1) ||
+            (i == 7 && scene->width == 32))
         {
             ink = 0xa4afb7UL;
         }
@@ -966,10 +983,16 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
         }
         if (i == 15)
         {
-            double center = (cell - 3) / 2;
+            double center = (cell - 3) * 0.69;
             double scale = fmin(1.4, (cell - 7) / 12);
-            if ((scene->width >= 10 && !vector_digit(button, (unsigned int)scene->width / 10, center - 4 * scale, 10, scale, ink)) ||
-                !vector_digit(button, (unsigned int)scene->width % 10, center + (scene->width >= 10 ? 4 * scale : 0), 10, scale, ink))
+            if ((scene->width >= 10 &&
+                 !vector_digit(button, (unsigned int)scene->width / 10, center - 4 * scale, 10, scale, ink)) ||
+                !vector_digit(button,
+                              (unsigned int)scene->width % 10,
+                              center + (scene->width >= 10 ? 4 * scale : 0),
+                              10,
+                              scale,
+                              ink))
             {
                 return 0;
             }
@@ -977,8 +1000,15 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
     }
     if (trace && scene)
     {
-        printf("VECTOR_TOOLBAR %lu %lu %lu %lu %lu %lu %lu %lu\n", ticket, slot,
-               scene->tool, scene->color, scene->width, scene->fill, scene->undo, scene->redo);
+        printf("VECTOR_TOOLBAR %lu %lu %lu %lu %lu %lu %lu %lu\n",
+               ticket,
+               slot,
+               scene->tool,
+               scene->color,
+               scene->width,
+               scene->fill,
+               scene->undo,
+               scene->redo);
     }
     return 1;
 }
@@ -1054,8 +1084,12 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
                 fvm_value_number(args + 2, x);
                 fvm_value_number(args + 3, y);
             }
-            if (fvm_object_call(owner, clip, node->verb == 0 ? "moveTo" : (node->verb == 2 ? "curveTo" : "lineTo"),
-                                node->verb == 2 ? 4 : 2, args, &ignored) != FVM_OK)
+            if (fvm_object_call(owner,
+                                clip,
+                                node->verb == 0 ? "moveTo" : (node->verb == 2 ? "curveTo" : "lineTo"),
+                                node->verb == 2 ? 4 : 2,
+                                args,
+                                &ignored) != FVM_OK)
             {
                 return 0;
             }
@@ -1228,17 +1262,16 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             unsigned long revision;
             unsigned long version;
             if (scene->expected || message->size != 16 || !word(message->text, &revision) ||
-                !word(message->text + 8, &version) || version != DVM_DESK_VECTOR_VERSION ||
-                revision > 0x7fffffffUL || message->second < 56 || message->second > VECTOR_BYTES)
+                !word(message->text + 8, &version) || version != DVM_DESK_VECTOR_VERSION || revision > 0x7fffffffUL ||
+                message->second < 56 || message->second > VECTOR_BYTES)
             {
                 return 0;
             }
             scene->expected = (size_t)message->second;
             return 1;
         }
-        if (!scene->expected || scene->complete || message->second < 0 ||
-            (size_t)message->second != scene->used || !message->size || message->size > 1024 ||
-            message->size > scene->expected - scene->used)
+        if (!scene->expected || scene->complete || message->second < 0 || (size_t)message->second != scene->used ||
+            !message->size || message->size > 1024 || message->size > scene->expected - scene->used)
         {
             return 0;
         }
@@ -1302,9 +1335,9 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             return 0;
         }
     }
-    if (words[0] > 12 || (words[0] >= 5 && ((unsigned long)message->first > 8 || words[7])) || (words[1] > 65536 && words[1] < 0xffff8000UL) || words[2] > 65536 || !words[3] ||
-        words[3] > 32768 || !words[4] || words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 ||
-        words[7] >= DESK_SLOTS)
+    if (words[0] > 12 || (words[0] >= 5 && ((unsigned long)message->first > 8 || words[7])) ||
+        (words[1] > 65536 && words[1] < 0xffff8000UL) || words[2] > 65536 || !words[3] || words[3] > 32768 ||
+        !words[4] || words[4] > 32768 || words[5] > 80000005UL || (words[5] % 8) > 6 || words[7] >= DESK_SLOTS)
     {
         return 0;
     }
@@ -1352,8 +1385,8 @@ static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *outp
     FVM_Affine local;
     FVM_Affine group;
     if (fvm_movieclip_get_matrix(owner, clip, &local) != FVM_OK ||
-        (parent >= 5 ? !world_matrix(groups[parent], 1, &group) :
-         fvm_movieclip_get_matrix(owner, groups[parent], &group) != FVM_OK))
+        (parent >= 5 ? !world_matrix(groups[parent], 1, &group)
+                     : fvm_movieclip_get_matrix(owner, groups[parent], &group) != FVM_OK))
     {
         return 0;
     }
@@ -1472,7 +1505,7 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
             {
                 int column = (int)((localx - 6) / cell);
                 int index = column + (localy >= 50 ? 8 : 0);
-                if (index < 15)
+                if (index < 16)
                 {
                     *widget = item->id;
                     *position = -2 - index;
@@ -2368,8 +2401,8 @@ static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
     int top = (int)item->y - (int)offset;
     int x;
     int y;
-    if ((item->id <= 8 && vectors[item->id].complete) || tablezoom != 100 || tablepan != 0 || camera_motion.active || item->id > 8 || motions[item->id].active ||
-        item->parent != 1 || !pixels ||
+    if ((item->id <= 8 && vectors[item->id].complete) || tablezoom != 100 || tablepan != 0 || camera_motion.active ||
+        item->id > 8 || motions[item->id].active || item->parent != 1 || !pixels ||
         (key->style != item->style &&
          !((item->style == 5 && key->style == 1) || (item->style == 6 && key->style == 0))) ||
         key->width != item->width || key->height != item->height || key->size != item->size ||
@@ -2436,9 +2469,9 @@ static void remember_window(const DeskItem *item, const FVM_RasterSurface *surfa
     unsigned char *pixels;
     unsigned int y;
     size_t size;
-    if ((item->id <= 8 && vectors[item->id].complete) || tablezoom != 100 || tablepan != 0 || camera_motion.active || item->id > 8 || item->parent != 1 || top < 48 ||
-        item->x < 0 || motions[item->id].active || item->x + item->width > surface->width ||
-        top + item->height > surface->height)
+    if ((item->id <= 8 && vectors[item->id].complete) || tablezoom != 100 || tablepan != 0 || camera_motion.active ||
+        item->id > 8 || item->parent != 1 || top < 48 || item->x < 0 || motions[item->id].active ||
+        item->x + item->width > surface->width || top + item->height > surface->height)
     {
         return;
     }
@@ -2564,8 +2597,8 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
 /* Copied owner-side content key; placement and transient opacity are excluded. */
 typedef struct DeskRetainedKey
 {
-    DeskItem item; /* Exact immutable scalar content and local geometry descriptor. */
-    unsigned int canvas_width; /* Resize invalidates clipped local geometry. */
+    DeskItem item;              /* Exact immutable scalar content and local geometry descriptor. */
+    unsigned int canvas_width;  /* Resize invalidates clipped local geometry. */
     unsigned int canvas_height; /* Canvas admission belongs to this capture. */
     int eligible; /* Complete ordinary source/help/console body, never a clipped/mirrored/vector snapshot. */
 } DeskRetainedKey;
@@ -2580,17 +2613,21 @@ static void retained_key(DeskRetainedKey *key, const DeskItem *item, const FVM_A
     key->item.x = 0;
     key->item.y = 0;
     key->item.parent = 0;
-    if (key->item.style == 5) { key->item.style = 1; }
-    if (key->item.style == 6) { key->item.style = 0; }
+    if (key->item.style == 5)
+    {
+        key->item.style = 1;
+    }
+    if (key->item.style == 6)
+    {
+        key->item.style = 0;
+    }
     key->canvas_width = width;
     key->canvas_height = height;
-    key->eligible = item->id <= 8 && !item->mirror && !vectors[item->id].complete &&
-                    !motions[item->id].active && !camera_motion.active &&
-                    (item->style == 0 || item->style == 1 || item->style == 5 || item->style == 6) &&
-                    world->xy == 0 && world->yx == 0 && world->xx > 0 && world->yy > 0 &&
-                    world->x0 >= 2 && world->y0 >= 50 &&
-                    world->x0 + world->xx * item->width <= width - 2 &&
-                    world->y0 + world->yy * item->height <= height - 2;
+    key->eligible =
+        item->id <= 8 && !item->mirror && !vectors[item->id].complete && !motions[item->id].active &&
+        !camera_motion.active && (item->style == 0 || item->style == 1 || item->style == 5 || item->style == 6) &&
+        world->xy == 0 && world->yx == 0 && world->xx > 0 && world->yy > 0 && world->x0 >= 2 && world->y0 >= 50 &&
+        world->x0 + world->xx * item->width <= width - 2 && world->y0 + world->yy * item->height <= height - 2;
 }
 
 
@@ -2692,13 +2729,19 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
         {
             retained_key(&key, item, &world);
             ok = dvm_editor_frame_node_key(frame, &key, sizeof(key)) &&
-                 dvm_editor_frame_node_end(frame, &world, logical_width, logical_height, translucent ? 900 : DVM_EDITOR_NODE_OPACITY);
+                 dvm_editor_frame_node_end(
+                     frame, &world, logical_width, logical_height, translucent ? 900 : DVM_EDITOR_NODE_OPACITY);
             if (trace && reused)
             {
                 size_t byte;
                 printf("NODECACHE %lu %lu\n", ticket, item->id);
-                printf("GEOMETRY %lu %lu %lu %lu %lu %lu\n", ticket, item->id,
-                       item->width, item->height, item->style, item->line);
+                printf("GEOMETRY %lu %lu %lu %lu %lu %lu\n",
+                       ticket,
+                       item->id,
+                       item->width,
+                       item->height,
+                       item->style,
+                       item->line);
                 printf("MC %lu %lu %lu %.0f %.0f ", ticket, item->id, item->parent, world.x0, world.y0);
                 for (byte = 0; byte < item->size; ++byte)
                 {
@@ -2707,8 +2750,6 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
                 printf("\nSELECTION %lu %lu %ld %ld\n", ticket, item->id, item->caret, item->anchor);
             }
         }
-
-
     }
     prepared_frame = NULL;
     if (ok)
@@ -2743,6 +2784,48 @@ int dvm_desktop_prepare_vector(DVM_EditorFrame *frame)
 int dvm_desktop_prepare(DVM_EditorFrame *frame)
 {
     return dvm_desktop_prepare_cached(frame, NULL);
+}
+
+
+/* Map stable capture against completed owner geometry; input never re-hits a
+ * different window/toolbar while drawing. Off-page samples clamp, including Up. */
+int dvm_desktop_vector_point(unsigned long widget, double x, double y, long *position)
+{
+    unsigned int index;
+    if (!position || widget < 1 || widget > 8 || pending || !vectors[widget].complete)
+    {
+        return 0;
+    }
+    for (index = 0; index < received; ++index)
+    {
+        const DeskItem *item = &items[index];
+        FVM_Affine world;
+        double determinant;
+        double localx;
+        double localy;
+        double scale;
+        if (item->id != widget || item->mirror)
+        {
+            continue;
+        }
+        if (!world_matrix(clips[widget], item->parent, &world))
+        {
+            return 0;
+        }
+        determinant = world.xx * world.yy - world.xy * world.yx;
+        scale = vector_scale(item);
+        if (fabs(determinant) < 0.000001 || scale <= 0)
+        {
+            return 0;
+        }
+        localx = ((world.yy * (x - world.x0) - world.xy * (y - world.y0)) / determinant - 6) / scale - 20;
+        localy = ((-world.yx * (x - world.x0) + world.xx * (y - world.y0)) / determinant - 80) / scale - 20;
+        localx = fmax(0, fmin(1000, localx));
+        localy = fmax(0, fmin(600, localy));
+        *position = (long)floor(localy) * 1001 + (long)floor(localx);
+        return 1;
+    }
+    return 0;
 }
 
 

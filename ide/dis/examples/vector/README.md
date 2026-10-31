@@ -3,11 +3,17 @@
 [Русский](README.ru.md) · [Full editor guide](../../../VECTOR-EDITOR.md)
 
 The actual editor is inside **menu8 → Draw** (or Ctrl+Shift+N), not a separate
-native drawing demo. Max/N makes the active vector window larger. B/R/E/L select
-brush/rectangle/ellipse/line,1..6 change colour, F toggles figure fill, +/- changes
+native drawing demo. Max/N makes the active vector window larger. B/P/R/E/L select
+brush/pen/rectangle/ellipse/line,1..6 change colour, F toggles figure fill, +/- changes
 width. Ctrl+S/O saves/reads SVG; Ctrl+Z/Y undo/redo a whole gesture.
 
-Screen controls in v0.1697: upper row tools/Undo/Redo/width; lower row six colours/fill/current width. The last tile is an indicator.
+Screen controls in v0.1697: upper row tools/Undo/Redo/width; lower row six colours/fill/current width. The last lower-row tile now selects Pen and displays the width.
+
+Brush keeps raw input while drawing, then vectorizes a filled nib boundary. Pen
+keeps a stroked centerline and smooths it after release. The interactive owner
+uses a separate Limbo process for refinement; this small library example calls
+`pointer` synchronously. See the full guide for precision, quotas and worker
+ownership.
 
 ## Open the supplied drawing
 

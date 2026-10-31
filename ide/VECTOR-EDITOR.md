@@ -25,9 +25,9 @@ Focus the vector window and use its two rows of rounded child MovieClips:
 | Row | Left to right |
 | --- | --- |
 | Upper | Brush, rectangle, ellipse, line, Undo, Redo, narrower stroke, wider stroke |
-| Lower | Six colour swatches, fill toggle, current colour with numeric stroke width |
+| Lower | Six colour swatches, fill toggle, pen with numeric stroke width |
 
-The last width tile is an indicator. Selected tools/colours/fill are highlighted;
+The last lower-row tile selects Pen and displays the current width. Selected tools/colours/fill are highlighted;
 unavailable history and width steps are dimmed. Clicks carry a copied cell
 proposal through the same ticket/owner/revision admission as the canvas. Each
 pane and miniature owns its own16 child MovieClips. The model remains on Dis.
@@ -37,7 +37,8 @@ Node selection/editing and a full Flash-style toolbox remain future work.
 
 | Key | Action |
 | --- | --- |
-| B | Brush |
+| B | Brush: filled round nib |
+| P | Pen: stroked centerline |
 | R | Rectangle from opposite corners |
 | E | Ellipse from opposite corners |
 | L | Straight line |
@@ -56,17 +57,32 @@ actual composed MovieClip matrices, including table/window zoom and pan. The
 Limbo app independently admits the completed view ticket, frontmost pane and
 source revision before sending the gesture to its owner. Two/three-contact
 window/desktop gestures cancel a pending brush gesture and retain existing policy.
-Leaving the page cancels the active uncommitted gesture rather than drawing into
-another window. Focus loss and other non-pointer commands also cancel it.
+After an admitted canvas press, the gesture captures that pane. Continuations use
+its current composed matrix and clamp to the page, rather than re-hit another
+widget. Escape cancels; ordinary commands/focus changes finish at the last admitted
+sample. Existing multi-contact window/table gestures retain their cancellation policy.
 
-One continuous, same-colour brush drag becomes **one path and one Undo unit**.
-Samples are joined using midpoint quadratic interpolation with shared tangents;
-the release endpoint is retained. A click alone creates a filled dot. At the
-per-path sample bound the brush decimates old samples, retaining endpoints, then
-continues the same path. This deliberately reduces fine detail. Separate pen-down
-gestures remain separate paths even when they overlap: this is not boolean union
-of arbitrary painted areas. Pressure, erasing, shape selection/control-point
-editing, layers and animation remain future work.
+Brush and Pen keep raw samples while the pointer moves: no curve fitting or
+sample decimation in the live path. Captured native motion is not coalesced away
+and does not wait for the previous raster to complete. Pen becomes a stroked
+midpoint-quadratic centerline after release, preserving the final endpoint.
+Brush sweeps a round nib of width1..32, then traces and simplifies the **filled
+boundary** after release. Visible connected same-colour filled shapes/brush areas
+unite, including transitive connections; enclosed holes remain compound subpaths.
+Different-colour overlays are respected; covered older paint is not resurrected.
+The implementation uses a bounded1000×600 packed coverage grid, then polygonal
+approximation with a0.75-unit distance threshold. This is quantized vectorization,
+not an exact analytic Boolean operation. Imported curves use eight subdivisions
+for union coverage. Pressure, erasing, node editing, layers and animation are future work.
+
+Live panes use a separate spawned Limbo process for final geometry, independent
+of the Flash frame clock. This is scheduled Dis work, not a claim of parallel
+native VM/GC execution. The owner first commits visible raw ink and one Undo unit,
+then sends immutable shapes to the worker. One job plus one latest queued snapshot
+bounds the queue. Only matching revisions are published; stale jobs cannot replace
+new edits. Save explicitly waits for current work; ordinary input does not.
+Worker failure or geometry quota refusal retains raw ink and reports a diagnostic.
+No periodic10-second fitting is enabled yet: refinement currently runs on release.
 
 Rectangles use lines and close. Ellipses use eight quadratic arcs with tangent
 intersections at 22.5 degrees (an approximation, not exact conics). All paths use
@@ -94,7 +110,7 @@ The first importer deliberately accepts a **strict subset**, not arbitrary SVG:
   are normalized away by canonical Save; they never execute/load resources.
 - Self-closing `path`, `rect`, `ellipse`, `line` elements, with unique quoted
   supported attributes and whitespace between attributes.
-- Absolute explicit `M`, `L`, `Q`, `Z` path commands, one subpath, integer
+- Absolute explicit `M`, `L`, `Q`, `Z` path commands, closed compound subpaths (each new M follows Z), integer
   coordinates inside the page. Exactly integral decimals such as100.000 are
   accepted without rounding. Each repeated segment needs its command letter;
   separators are whitespace. No nonzero fraction/exponent/relative/comma shorthand.
@@ -105,7 +121,7 @@ The first importer deliberately accepts a **strict subset**, not arbitrary SVG:
 
 Unsupported elements/attributes, DOCTYPE/entities/unknown processing instructions,
 CSS, transforms, different fill/stroke colours, arbitrary viewBoxes, nonintegral
-numbers, cubic/arc commands and extra subpaths are **rejected transactionally**.
+numbers, cubic/arc commands and unterminated extra subpaths are **rejected transactionally**.
 They are not silently dropped or converted. This prevents an apparently successful
 read/save from losing unsupported artwork. The SVG reader is a bounded data-format
 reader, not a replacement compiler parser; AS/Limbo recognition stays on Coco/R.
@@ -122,9 +138,11 @@ original in-memory artwork remains available for another Save.
 ## Bounds and presentation protocol
 
 Limits are local resource policy, not SVG/Dis64 wire requirements:32 paths,
-64 commands/path,512 commands/document,64 KiB UTF-8 source input including metadata. Authoring reserves
-64 commands before starting another gesture; it may conservatively refuse before
-all512 are consumed. Each complete drawing stream is at most21,560 ASCII bytes.
+4096 commands/path,16384 commands/document,1 MiB complete UTF-8 SVG input.
+Authoring reserves4096 commands before starting a gesture, so admission is
+conservative. At the sample bound, the retained raw stroke commits as one Undo unit with
+a Limit status; new samples are refused and earlier points are never decimated. The complete drawing stream is bounded by660000 bytes.
+Raw contour tracing also has an explicit65536-vertex intermediate budget.
 
 `Idedeskpane.Reply.drawing` carries a complete copied snapshot. Local UI codes
 65576/65577 stage Begin/data fragments inside the ordinary desktop Begin/End:
@@ -135,16 +153,18 @@ exact next byte offset, at most1024 bytes. The native adapter validates the whol
 stream, every style, range, opcode and extent before scene commit. Missing,
 reordered, duplicate, overlong or malformed fragments cannot commit partial paths.
 These are private UI codes, **not shared Dis64 format/opcode IDs**. Old unversioned
-vector messages are rejected. Hit metadata uses signed int32 cells -2..-16;
+vector messages are rejected. Hit metadata uses signed int32 cells -2..-17;
 raw uint32 parse results are explicitly sign-extended on NC64. Exported module
 signatures changed: rebuild/install the matching .dis/.m application together.
 
 ## Verification and sources
 
 - [Model](dis/bridge/idevector.b) / [interface](dis/bridge/idevector.m): real gesture,
-  interpolation, decimation, dot, figure, immutable history and SVG logic.
+  raw samples, post-release fitting, dot, figure, immutable history and SVG logic.
 - [Model regression](dis/tests/idevector_test.b): roundtrips, common primitives,
   malformed/unsupported/truncated input and atomic quota refusals.
+- [Paint regression](dis/tests/idepaint_test.b): Pen centerline, Brush fill/hole,
+  queued raw strokes, connected union and immutable Undo masks.
 - [Owner regression](dis/tests/idevectorpane_test.b): independent vector panes,
   revision-bound preview, dirty file refusals and acknowledged shutdown.
 - [Native admission](../disVM/runtime/test_desktop_vector.c): fragment order,

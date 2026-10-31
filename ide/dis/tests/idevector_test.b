@@ -49,8 +49,8 @@ init()
             "one interpolated bounded path and Undo unit per continuous stroke");
     shape := doc.shapes[0];
     last := shape.nodes[len shape.nodes - 1];
-    require(shape.nodes[1].verb == vector->Quadratic && last.x == 900 && last.y == 500,
-            "quadratic interpolation and final endpoint");
+    require(shape.fill && shape.width == 0 && last.verb == vector->Close,
+            "brush commits a filled closed contour");
     before := vector->svg(doc);
     require(vector->history(doc, 0) && len doc.shapes == 0, "undo whole stroke");
     require(vector->history(doc, 1) && vector->svg(doc) == before, "redo exact immutable geometry");
@@ -108,7 +108,7 @@ init()
     dot := vector->create();
     require(vector->pointer(dot, 1, 100, 100) == vector->Ok &&
             vector->pointer(dot, 3, 100, 100) == vector->Ok, "single-click brush");
-    require(dot.shapes[0].fill && dot.shapes[0].width == 0 && len dot.shapes[0].nodes == 10,
+    require(dot.shapes[0].fill && dot.shapes[0].width == 0 && len dot.shapes[0].nodes >= 4,
             "single click becomes a visible filled dot");
     (status, loaded) = vector->parse(vector->svg(dot));
     require(status == vector->Ok, "dot SVG roundtrip");
@@ -135,7 +135,7 @@ init()
         (status, loaded) = vector->parse(invalidmeta[i]);
         require(status != vector->Ok && loaded == nil, "invalid metadata or lossy geometry refused atomically");
     }
-    utf8 := array[66000] of byte;
+    utf8 := array[vector->MaxSVG + 2] of byte;
     for (i = 0; i < len utf8; i += 2) {
         utf8[i] = byte 16rce;
         utf8[i+1] = byte 16ra9;

@@ -273,7 +273,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
                     pointing = 0;
                     status = core->Conflict;
                     if (current.revision == current.saved) {
-                        (readstatus, source) := files->read(sys, request.text, 65536);
+                        (readstatus, source) := files->read(sys, request.text, Idevector->MaxSVG);
                         status = core->Invalid;
                         if (readstatus == files->Ok) {
                             current = call(document, core->Close, current.revision, "");
@@ -442,7 +442,7 @@ startnotified(kind: int, path, text: string, notices: chan of int, identity: int
             doc = imported;
         }
         endpoint := chan of Request;
-        spawn servevector(endpoint, vector, doc, sys, files, path);
+        spawn servevector(endpoint, vector, doc, sys, files, path, notices, identity);
         return endpoint;
     }
     sys := load Sys Sys->PATH;
@@ -472,18 +472,106 @@ startnotified(kind: int, path, text: string, notices: chan of int, identity: int
 }
 
 
+# Immutable geometry job transferred to one scheduled Limbo process.
+VectorJob: adt
+{
+    revision: int; # Exact committed source revision; never a UI/frame clock.
+    document: ref Idevector->Document; # Private state, sharing only immutable shapes.
+};
+
+
+# Worker-owned immutable completion; only a matching revision may be published.
+VectorDone: adt
+{
+    revision: int; # Copied source generation.
+    status: int; # Geometry admission outcome, including retained raw ink on limits.
+    shapes: array of ref Idevector->Shape; # Complete replacement values.
+};
+
+
+# Own the sole geometry job until completion; no window/Flash object is accessed.
+# Input ends with nil. Results rendezvous with the document owner; queued latest-wins
+# work is bounded outside this process. Drop transport roots before the next receive.
+vectorworker(vector: Idevector, jobs: chan of ref VectorJob, completed: chan of ref VectorDone)
+{
+    for (;;) {
+        job := <-jobs;
+        if (job == nil) {
+            return;
+        }
+        status := Idevector->Invalid;
+        original := job.document.shapes;
+        {
+            status = vector->refine(job.document);
+        } exception failure {
+            * =>
+                # [GC:] Recover only the private job; preserve the raw gesture
+                # array so Save/Shutdown can receive a result rather than hang.
+                job.document.shapes = original;
+        }
+        completed <-= ref VectorDone(job.revision, status, job.document.shapes);
+        job = nil;
+    }
+}
+
+
 # Own one vector document and its history independently of every text editor.
 # All UI/document commands arrive through the ordinary pane channel. File calls
 # may block this owner. No native graphics/VM pointer or mutable path is shared.
 servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Document,
-            sys: Sys, files: Idefileops, path: string)
+            sys: Sys, files: Idefileops, path: string, notices: chan of int, identity: int)
 {
     control := 0;
     diagnostic := "";
+    jobs: chan of ref VectorJob;
+    completed := chan of ref VectorDone;
+    busy := 0;
+    queued: ref VectorJob;
+    scheduled := doc.revision;
+    if (notices != nil && identity > 0) {
+        jobs = chan of ref VectorJob;
+        spawn vectorworker(vector, jobs, completed);
+    }
     for (;;) {
-        request := <-requests;
+        request: Request;
+        alt {
+        done := <-completed =>
+            busy = 0;
+            if (done.revision == doc.revision) {
+                doc.shapes = done.shapes;
+                diagnostic = "Vector approximation complete";
+                if (done.status != Idevector->Ok) {
+                    diagnostic = "Refinement refused; raw ink retained";
+                }
+                alt { notices <-= identity => ; * => ; }
+            }
+            if (queued != nil) {
+                jobs <-= queued;
+                queued = nil;
+                busy = 1;
+            }
+            continue;
+        request = <-requests => ;
+        }
         if (request.reply == nil) {
             continue;
+        }
+        if (request.operation == Save || request.operation == Shutdown) {
+            if (request.operation == Shutdown) {
+                queued = nil;
+            }
+            while (busy) {
+                done := <-completed;
+                busy = 0;
+                if (done.revision == doc.revision) {
+                    doc.shapes = done.shapes;
+                }
+                if (queued != nil) {
+                    jobs <-= queued;
+                    queued = nil;
+                    busy = 1;
+                }
+            }
         }
         status := Idecore->Ok;
         stop := 0;
@@ -498,12 +586,16 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             } else if (e.flags != expected) {
                 status = Idecore->Conflict;
             } else {
-                status = vectorstatus(vector->pointer(doc, e.code, e.first, e.second));
+                if (jobs != nil) {
+                    status = vectorstatus(vector->defer(doc, e.code, e.first, e.second));
+                } else {
+                    status = vectorstatus(vector->pointer(doc, e.code, e.first, e.second));
+                }
                 diagnostic = "Draw status=" + string status;
             }
         } else if (request.operation == VectorControl) {
             e := request.event;
-            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 15 ||
+            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 16 ||
                 e.first != 0 || e.second != 0 || e.text != "") {
                 status = Idecore->Invalid;
             } else if (e.flags != doc.revision || len doc.points != 0) {
@@ -513,7 +605,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                     status = Idecore->NotFound;
                 }
             } else {
-                keys := array[] of {0, 66, 82, 69, 76, 0, 0, 189, 187, 49, 50, 51, 52, 53, 54, 70};
+                keys := array[] of {0, 66, 82, 69, 76, 0, 0, 189, 187, 49, 50, 51, 52, 53, 54, 70, 80};
                 vectorstyle(vector, doc, keys[e.code]);
             }
         } else if (request.operation == CancelPointer) {
@@ -522,7 +614,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             if (doc.revision != doc.saved || len doc.points != 0 || doc.revision == 2147483647) {
                 status = Idecore->Conflict;
             } else {
-                (readstatus, text) := files->read(sys, request.text, 65536);
+                (readstatus, text) := files->read(sys, request.text, Idevector->MaxSVG);
                 status = vectorfilestatus(readstatus);
                 if (readstatus == files->Ok) {
                     (parsed, loaded) := vector->parse(text);
@@ -593,8 +685,26 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         } else if (request.operation != Snapshot && request.operation != Diagnostic) {
             status = Idecore->Invalid;
         }
-        tools := array[] of {"", "Brush", "Rectangle", "Ellipse", "Line"};
-        body := "B/R/E/L | 1..6 color | F fill\n" + tools[doc.tool]
+        if (jobs != nil && scheduled != doc.revision && !stop) {
+            scheduled = doc.revision;
+            pending := 0;
+            for (index := 0; index < len doc.shapes; index++) {
+                pending |= doc.shapes[index].author != 0;
+            }
+            if (pending) {
+                snapshot := vector->create();
+                snapshot.shapes = doc.shapes;
+                job := ref VectorJob(doc.revision, snapshot);
+                if (busy) {
+                    queued = job;
+                } else {
+                    jobs <-= job;
+                    busy = 1;
+                }
+            }
+        }
+        tools := array[] of {"", "Brush", "Rectangle", "Ellipse", "Line", "Pen"};
+        body := "B/P/R/E/L | 1..6 color | F fill\n" + tools[doc.tool]
             + sys->sprint(" #%06x w=%d f=%d | +/- Z/Y", doc.color, doc.width, doc.fill);
         revision := doc.revision;
         if (len doc.points != 0) {
@@ -603,6 +713,9 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         request.reply <-= Reply(request.id, status, Vector, path, body, revision,
             doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, vector->wire(doc), "");
         if (stop) {
+            if (jobs != nil) {
+                jobs <-= nil;
+            }
             return;
         }
     }
@@ -619,6 +732,8 @@ vectorstyle(vector: Idevector, doc: ref Idevector->Document, key: int)
     }
     if (key == 66) {
         doc.tool = vector->Brush;
+    } else if (key == 80) {
+        doc.tool = vector->Pen;
     } else if (key == 82) {
         doc.tool = vector->Rectangle;
     } else if (key == 69) {

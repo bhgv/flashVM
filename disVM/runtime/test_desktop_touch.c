@@ -4,11 +4,13 @@
 #define dvm_desktop_header touch_test_header
 #include "editor_view.c"
 
+
 /* Deterministic borrowed canvas-header boundary for native contact tests. */
 int touch_test_header(double x, double y)
 {
     return x >= 84 && x < 848 && y >= 72 && y < 96;
 }
+
 
 /* Submit one native SDL contact value. Expected code/phase are independent
  * protocol observations, zero means the contact must produce no proposal. */
@@ -47,6 +49,7 @@ static int contact(Uint32 type,
     }
     return 1;
 }
+
 
 /* Check actual SDL event timestamps, contact transitions, device-local IDs and
  * zoom termination. No window, native device or document is mocked as accepted. */
@@ -115,7 +118,7 @@ int main(void)
         {
             return 1;
         }
-        coalesce_desktop_motion(&first);
+        dvm_editor_coalesce_motion(&first, 0);
         if (first.motion.x != 30 || SDL_PollEvent(&queued) != 1 || queued.type != SDL_MOUSEBUTTONUP ||
             SDL_PollEvent(&queued) != 1 || queued.type != SDL_MOUSEMOTION || queued.motion.x != 40)
         {

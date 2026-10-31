@@ -11,6 +11,9 @@
 #include "flashvm/render_queue.h"
 #include "editor_raster.h"
 #include "editor_pointer_gate.h"
+#ifdef DVM_EDITOR_SDL
+#include "editor_desktop_input.h"
+#endif
 #include "desktop_view.h"
 #include "flashvm/utf8.h"
 #include <stdio.h>
@@ -110,21 +113,22 @@ static int panel_selected;                     /* Dis-owned field select-all pre
 static char panel_text[1024];                  /* Copied counted UTF-8 prompt/path label. */
 static size_t panel_size;                      /* Active panel bytes, never implicitly strlen-decoded. */
 static FVM_Object *field;                      /* [GC:] Pinned display object until destroy. */
-static int pixels_valid; /* Owner buffer contains the last successfully displayed complete frame. */
-static unsigned char *pixels;                  /* Owned RGBA8 raster storage. */
-static FVM_RenderQueue *raster_queue;          /* Owned persistent native raster worker, joined before VM teardown. */
-static DVM_EditorFrame *displayed_frame;       /* Owned completed baseline; workers never retain this frame. */
-static const DVM_EditorFrame *upload_frame;    /* Borrowed completed damage during SDL presentation only. */
-static DVM_EditorFrame *recording_frame;       /* Owner-only frame builder; workers never read this global. */
-static int header_drag; /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
+static int pixels_valid;                    /* Owner buffer contains the last successfully displayed complete frame. */
+static unsigned char *pixels;               /* Owned RGBA8 raster storage. */
+static FVM_RenderQueue *raster_queue;       /* Owned persistent native raster worker, joined before VM teardown. */
+static DVM_EditorFrame *displayed_frame;    /* Owned completed baseline; workers never retain this frame. */
+static const DVM_EditorFrame *upload_frame; /* Borrowed completed damage during SDL presentation only. */
+static DVM_EditorFrame *recording_frame;    /* Owner-only frame builder; workers never read this global. */
+static unsigned long vector_drag;           /* Captured logical canvas identity; never a VM object. */
+static int header_drag;            /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
 static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notification. */
-static int paint_due; /* Frame-free notification delivered, latest state may be prepared. */
+static int paint_due;              /* Frame-free notification delivered, latest state may be prepared. */
 static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
 #ifdef DVM_EDITOR_SDL
-static Uint32 desktop_animation_clock; /* Last native visual-clock sample; independent of SWF frames. */
+static Uint32 desktop_animation_clock;  /* Last native visual-clock sample; independent of SWF frames. */
 static int desktop_animation_clock_set; /* Initial sample is not an elapsed delta. */
-static Uint32 desktop_dirty_since; /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
+static Uint32 desktop_dirty_since;      /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
 #endif
 
 static char *snapshot;                /* Owned assembly storage, independent of both VM heaps. */
@@ -164,38 +168,6 @@ static SDL_Texture *texture;          /* RGBA8 upload target. */
 /* Keep the latest consecutive absolute motion before painting. event belongs
  * to the SDL/main owner. Bound work to 256 updates and stop before every key,
  * button, focus or contact-identity boundary; releases must remain queued. */
-static void coalesce_desktop_motion(SDL_Event *event)
-{
-    SDL_Event next;
-    unsigned int count;
-    if (event->type != SDL_MOUSEMOTION && event->type != SDL_FINGERMOTION)
-    {
-        return;
-    }
-    for (count = 0; count < 256; ++count)
-    {
-        int same;
-        if (SDL_PeepEvents(&next, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1)
-        {
-            break;
-        }
-        same = next.type == event->type;
-        if (same && next.type == SDL_MOUSEMOTION)
-        {
-            same = next.motion.windowID == event->motion.windowID && next.motion.which == event->motion.which &&
-                   next.motion.state == event->motion.state;
-        }
-        if (same && next.type == SDL_FINGERMOTION)
-        {
-            same = next.tfinger.touchId == event->tfinger.touchId && next.tfinger.fingerId == event->tfinger.fingerId;
-        }
-        if (!same || SDL_PeepEvents(&next, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1)
-        {
-            break;
-        }
-        *event = next;
-    }
-}
 
 
 /* Track bounded native contacts and emit only copied gesture proposals. The
@@ -2011,8 +1983,8 @@ static int collect_frame(int wait)
         FVM_RasterSurface destination = {pixels, canvas_width, canvas_height, (size_t)canvas_width * 4U};
         const FVM_RasterSurface *previous = dvm_editor_frame_surface(displayed_frame);
         size_t copied;
-        int fresh = !pixels_valid || !previous || previous->width != canvas_width || previous->height != canvas_height ||
-                    !dvm_editor_frame_has_baseline(job, displayed_frame);
+        int fresh = !pixels_valid || !previous || previous->width != canvas_width ||
+                    previous->height != canvas_height || !dvm_editor_frame_has_baseline(job, displayed_frame);
         if (!dvm_editor_frame_present(job, &destination, fresh, &copied))
         {
             dvm_editor_frame_destroy(job);
@@ -2034,11 +2006,17 @@ static int collect_frame(int wait)
                     root_pixels += tile_width * tile_height;
                 }
             }
-            printf("SCENECACHE %lu %u %u %u %lu\n", dvm_desktop_ticket(), built, reused, dirty,
+            printf("SCENECACHE %lu %u %u %u %lu\n",
+                   dvm_desktop_ticket(),
+                   built,
+                   reused,
+                   dirty,
                    (unsigned long)dvm_editor_frame_scene_pixels(job));
             printf("ROOTDAMAGE %lu %u %u\n", dvm_desktop_ticket(), tiles, root_pixels);
-            printf("FRAMECOPY %lu %lu %lu\n", dvm_desktop_ticket(),
-                   (unsigned long)dvm_editor_frame_baseline_bytes(job), (unsigned long)copied);
+            printf("FRAMECOPY %lu %lu %lu\n",
+                   dvm_desktop_ticket(),
+                   (unsigned long)dvm_editor_frame_baseline_bytes(job),
+                   (unsigned long)copied);
         }
         pixels_valid = 0;
         upload_frame = fresh ? NULL : job;
@@ -2104,8 +2082,7 @@ static int render_desktop(void)
     }
     /* [GC:] Captured data is detached; live MovieClips remain pinned by their
      * owner tree. Honor the allocation threshold instead of sweeping each drag. */
-    if (!prepared || fvm_gc_step(context, 0) != FVM_OK ||
-        fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
+    if (!prepared || fvm_gc_step(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
     {
         dvm_editor_frame_destroy(frame);
         return 0;
@@ -2141,21 +2118,22 @@ static int presentation_blocks_input(void)
     int continuation = 0;
     SDL_Event event;
     int keyboard = keyboard_waiting();
-    if (header_drag && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
+    if ((header_drag || vector_drag) && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
     {
         continuation = (event.type == SDL_MOUSEMOTION && (event.motion.state & SDL_BUTTON_LMASK)) ||
-                       (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT);
+                       (event.type == SDL_MOUSEBUTTONUP && event.button.button == SDL_BUTTON_LEFT) ||
+                       (vector_drag && (event.type == SDL_FINGERMOTION || event.type == SDL_FINGERUP));
     }
-    return dvm_editor_pointer_waits(desktop_dirty, raster_pending, events != NULL,
-                                     capture_path != NULL, keyboard, continuation);
+    return dvm_editor_pointer_waits(
+        desktop_dirty, raster_pending, events != NULL, capture_path != NULL, keyboard, continuation);
 }
 #endif
 
 
 /* Frame-free notification only. Arguments are borrowed and ignored; no managed
  * data is retained or rendered inside this native callback. Owner-only. */
-static FVM_Result paint_ready(FVM_Context *c, FVM_Object *receiver, unsigned count,
-                              const FVM_Value *args, FVM_Value *out, void *user)
+static FVM_Result
+paint_ready(FVM_Context *c, FVM_Object *receiver, unsigned count, const FVM_Value *args, FVM_Value *out, void *user)
 {
     (void)c;
     (void)receiver;
@@ -2374,7 +2352,7 @@ int dvm_editor_present(const DVM_UIMessage *message)
         }
         else
 #endif
-        if (!render())
+            if (!render())
         {
             return 0;
         }
@@ -2612,7 +2590,31 @@ static void resolve_pointer(DVM_UIMessage *message)
         message->second = message->second < 0 ? -1 : message->second / 20;
         if (code == 1 && !(header_drag && phase != FVM_INPUT_BEGIN))
         {
-            dvm_desktop_hit(message->first, message->second, &widget, &position);
+            if (vector_drag && phase != FVM_INPUT_BEGIN)
+            {
+                widget = vector_drag;
+                if (!dvm_desktop_vector_point(widget, message->first, message->second, &position))
+                {
+                    vector_drag = widget = 0;
+                    position = -1;
+                }
+            }
+            else
+            {
+                dvm_desktop_hit(message->first, message->second, &widget, &position);
+                if (phase == FVM_INPUT_BEGIN)
+                {
+                    long captured;
+                    vector_drag =
+                        position >= 0 && dvm_desktop_vector_point(widget, message->first, message->second, &captured)
+                            ? widget
+                            : 0;
+                }
+            }
+        }
+        if (phase == FVM_INPUT_END || code != 1)
+        {
+            vector_drag = 0;
         }
         snprintf(metadata,
                  sizeof(metadata),
@@ -2896,7 +2898,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         }
         if (dvm_desktop_active())
         {
-            coalesce_desktop_motion(&event);
+            dvm_editor_coalesce_motion(&event, vector_drag != 0);
         }
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED && window &&
             event.window.windowID == SDL_GetWindowID(window))
@@ -2908,6 +2910,7 @@ int dvm_editor_event(DVM_UIMessage *message)
             if (message->code == EDITOR_RESIZE)
             {
                 header_drag = 0;
+                vector_drag = 0;
                 if (message->first == (long)canvas_width && message->second == (long)canvas_height)
                 {
                     return 0;
@@ -3046,6 +3049,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
         {
             header_drag = 0;
+            vector_drag = 0;
             pinch_distance = 0;
             desktop_touch(NULL, message);
             if (fvm_input_reset_keyboard(context) != FVM_OK)
@@ -3062,6 +3066,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         if (event.type == SDL_MOUSEBUTTONUP)
         {
             header_drag = 0;
+            vector_drag = 0;
         }
         complete = 0;
         return 1;
@@ -3076,7 +3081,8 @@ int dvm_editor_event(DVM_UIMessage *message)
 void dvm_editor_destroy(void)
 {
     pixels_valid = 0;
-    header_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */
+    header_drag = 0;
+    vector_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */
     fvm_render_queue_destroy(raster_queue);
     raster_queue = NULL;
     dvm_editor_frame_destroy(displayed_frame);

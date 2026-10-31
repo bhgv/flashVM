@@ -5,7 +5,7 @@ Idedeskpane: module
     Editor, Console, Help, Vector, Debugger: con iota + 1; # Actual document owner, mutable log, immutable help.
     Snapshot, Input, Open, Save, Build, Diagnostic, SetText, Place, CancelPointer, ExportSelection, CutSelection, PasteSelection, Shutdown: con iota; # FIFO operations.
 
-    VectorControl: con 14; # Revision-bound toolbar cell1..15; copied event code, no source coordinates.
+    VectorControl: con 14; # Revision-bound toolbar cell1..16; copied event code, no source coordinates.
     Draw: con 13; # Revision-bound logical canvas gesture; event code=phase, first/second=X/Y.
 
     Request: adt
@@ -21,7 +21,7 @@ Idedeskpane: module
         # CancelPointer drops the gesture without changing selection/modifiers.
         # Draw requires Request kind, code=phase1..3, flags=shown revision,
         # first/second=logical X/Y and empty text. VectorControl requires Request
-        # kind, code1..15, flags=committed revision, zero coordinates/empty text
+        # kind, code1..16, flags=committed revision, zero coordinates/empty text
         # and an idle gesture. Both produce one ordinary pane acknowledgement.
         event: ref Uibridge->Message; # Input keyboard/text/focus, or a checked value proposal.
         reply: chan of Reply; # Required unique acknowledgement.
@@ -54,8 +54,9 @@ Idedeskpane: module
     start: fn(kind: int, path, text: string): chan of Request;
 
     # Same owner, with best-effort ready notifications carrying the stable pane identity.
-    # A buffered notices channel and positive identity enable analysis. Nil/zero keeps
-    # the plain owner used by start; missing optional scanners also keep plain text.
+    # Buffered notices and positive identity enable lazy source analysis or deferred
+    # vector geometry. Nil/zero uses start semantics (synchronous vector refinement);
+    # missing optional scanners still keep plain text.
     # No document or native pointer is sent through readiness notifications.
     startnotified: fn(kind: int, path, text: string, notices: chan of int,
                       identity: int): chan of Request;

@@ -147,6 +147,8 @@ init()
     notices := chan[8] of int; # Stable pane identities only; snapshots remain owner-authoritative.
     windows := array[desk->MaxWindows] of chan of Idedeskpane->Request;
     shown := array[desk->MaxWindows] of Idedeskpane->Reply;
+    drawx := 0; # Last admitted logical sample, for finishing on focus loss.
+    drawy := 0; # A nonpointer event must not silently erase pending ink.
     drawing := 0; # Stable vector owner receiving the current admitted single-contact gesture.
     pointing := 0; # Stable source slot for the admitted body selection gesture.
     path := host->path();
@@ -164,7 +166,7 @@ init()
     }
     windows[0] = panes->startnotified(initialkind, path, source, notices, 1);
     windows[1] = panes->start(panes->Console, "", "Build output appears here. F7 compiles the focused editor through its own channel.");
-    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, width indicator. B/R/E/L: brush/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nMDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. SDI / Ctrl+D detaches with saved geometry. Drag an exposed container title; children are tiled in this first version.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
+    windows[2] = panes->start(panes->Help, "", "F1 Help; PageUp/Down pages. Drag a header to move. Double-tap/click a header or Max/N to maximize/restore. Ctrl+wheel/pinch: header sizes a window; table scales all. All fits every window. Dock when only20px remain beyond the left rail; transitions ease over240ms. Tap/swipe a miniature right to reveal the entire pane by smoothly panning the table; drag it vertically to reorder. Two fingers move a window; three pan the table. The right Help button hides/restores this pane.\n\nKeyboard: F7: Build. F8: source diagnostic. Ctrl+S: Save. Ctrl+O: Open. Ctrl+N: New editor. Ctrl+W: Close editor. Ctrl+C/X/V: session clipboard. Click text to place the caret. Shift-click or drag selects.\nDrag titles to move windows. Click a window to focus. Drag EMPTY table space to pan. Left thumbnails jump. Tools expand on the right.\n\nDraw / Ctrl+Shift+N creates a vector window. Upper row: tools, Undo/Redo, width. Lower row: colours, fill, Pen/width. B/P/R/E/L: brush/pen/rectangle/ellipse/line.1..6: colour. F: fill. +/-: width. Ctrl+Z/Y: Undo/Redo. Ctrl+S/O: SVG Save/Open.\n\nMDI / Ctrl+G groups this source or drawing. Shift+MDI / Ctrl+Shift+G creates a separate matching container. SDI / Ctrl+D detaches with saved geometry. Drag an exposed container title; children are tiled in this first version.\n\nSyntax: lazy Coco/R Limbo/AS colours run independently of Flash frames. Unknown suffixes stay plain.\n\nFiles: Open protects unsaved edits. Save records the active editor only. New keeps existing editors open.\n\nBuild: choose a .b, .as, .as1, .as2 or .as3 path first. The build console records the result. F8 selects the latest source diagnostic.\n\nClose: dirty editors offer Discard this editor or Cancel/Escape. Help and console owners remain alive.\n\nQuit: unsaved editors require an explicit Discard and close action. Debug opens source/stack/data panels on this same desktop. No target is attached yet.");
     windows[3] = panes->startnotified(panes->Editor, "", "", notices, 4);
     for (index := 0; index < 4; index++) {
         if (windows[index] == nil) {
@@ -316,6 +318,7 @@ init()
         }
         send(codec, output, desk->EndView, view.ticket, 0, 0, "");
         raw: array of byte;
+        vectorready := 0;
         for (;;) {
             receivedinput := 0;
             alt {
@@ -325,6 +328,11 @@ init()
                     continue;
                 }
                 fresh := panecall(windows[id-1], panes->Snapshot, "", nil);
+                if (fresh.kind == panes->Vector && fresh.drawing != shown[id-1].drawing) {
+                    vectorready = 1;
+                    refresh = 1;
+                    break;
+                }
                 if (fresh.revision != shown[id-1].revision || fresh.first != shown[id-1].first ||
                     fresh.body != shown[id-1].body || fresh.colors == "") {
                     continue;
@@ -344,6 +352,9 @@ init()
                 break;
             }
         }
+        if (vectorready) {
+            continue;
+        }
         (valid, event) := codec->decode(raw);
         if (!valid) {
             raise "fail: desktop event envelope";
@@ -362,7 +373,13 @@ init()
             pointing = 0;
         }
         if (drawing != 0 && !(event.kind == codec->Request && event.code == desk->PointerEvent)) {
-            panecall(windows[drawing - 1], panes->CancelPointer, "", nil);
+            if (event.kind == codec->Key && event.code == 27 && event.flags) {
+                panecall(windows[drawing - 1], panes->CancelPointer, "", nil);
+            } else {
+                panecall(windows[drawing - 1], panes->Draw, "",
+                    ref Uibridge->Message(codec->Request, 0, 3, shown[drawing - 1].revision,
+                        drawx, drawy, ""));
+            }
             drawing = 0;
         }
         action := 0;
@@ -471,7 +488,7 @@ init()
                     windows[hit-1] != nil && shown[hit-1].kind == panes->Vector))) {
                     if (event.flags != view.ticket || hit < 1 || hit > len windows ||
                         windows[hit-1] == nil || shown[hit-1].kind != panes->Vector ||
-                        offset < -16 || offset == -1 || offset > 601600 || (drawing != 0 && drawing != hit)) {
+                        offset < -17 || offset == -1 || offset > 601600 || (drawing != 0 && drawing != hit)) {
                         if (drawing != 0) {
                             panecall(windows[drawing-1], panes->CancelPointer, "", nil);
                             drawing = 0;
@@ -483,7 +500,10 @@ init()
                     request.window = hit;
                     request.x = event.first;
                     request.y = event.second;
-                    admitted := deskcall(layout, request);
+                    admitted := view;
+                    if (phase == 1) {
+                        admitted = deskcall(layout, request);
+                    }
                     if (admitted.status != desk->Ok || (phase != 1 && drawing != hit)) {
                         continue;
                     }
@@ -514,6 +534,8 @@ init()
                         request.operation = desk->Activate;
                         view = deskcall(layout, request);
                     }
+                    drawx = offset % 1001;
+                    drawy = offset / 1001;
                     result := panecall(windows[hit-1], panes->Draw, "",
                         ref Uibridge->Message(codec->Request, 0, phase, shown[hit-1].revision,
                             offset % 1001, offset / 1001, ""));

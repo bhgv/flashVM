@@ -79,8 +79,8 @@ def main():
         drawing += shortcut("S") + [envelope(5, text=str(destination)), envelope(4, 13, 1)]
         run(runtime, module, font, mode, work, drawing + [envelope(1, 65539, 1)], source)
         paths = list(ET.fromstring(destination.read_text(encoding="utf-8")))
-        if len(paths) != 1 or " Q " not in paths[0].attrib.get("d", ""):
-            raise RuntimeError("nested vector hit/interpolation/SVG save failed")
+        if len(paths) != 1 or "Z" not in paths[0].attrib.get("d", "") or paths[0].attrib.get("fill") == "none" or paths[0].attrib.get("stroke") != "none":
+            raise RuntimeError("nested vector hit/filled brush/SVG save failed")
         print("PASS actual source/graphics MDI MovieClip parents and independent SDI detach")
 
 

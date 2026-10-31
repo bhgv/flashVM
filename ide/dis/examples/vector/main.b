@@ -9,7 +9,7 @@ VectorExample: module # A source-built portable entry, not a native drawing appl
 }; # No mutable application state is exported.
 
 
-# Create one continuous curve and a filled ellipse, export without overwriting,
+# Create one filled brush contour and a filled ellipse, export without overwriting,
 # read that actual file and require an exact canonical SVG roundtrip. All model
 # references belong to this single Dis process; no UI/frame dependency is needed.
 init()
@@ -23,8 +23,8 @@ init()
     doc := vector->create(); # Start clean, with private bounded Undo/Redo history.
     vector->pointer(doc, 1, 100, 120); # Begin the blue brush stroke at a logical point.
     vector->pointer(doc, 2, 250, 250); # Add a sample; the preview remains one path.
-    vector->pointer(doc, 2, 450, 140); # Add another sample for midpoint quadratic interpolation.
-    vector->pointer(doc, 3, 700, 260); # Release: commit the complete stroke as one Undo unit.
+    vector->pointer(doc, 2, 450, 140); # Add a raw sample; no fitting occurs during motion.
+    vector->pointer(doc, 3, 700, 260); # Release: commit one Undo unit and synchronously vectorize this library example.
     doc.tool = vector->Ellipse; # Choose the next authoring tool inside this owner.
     doc.color = 16re04444; # Use the same red RGB24 for stroke and fill.
     doc.fill = 1; # Closed figures may have an interior fill.
@@ -35,7 +35,7 @@ init()
     if (status != files->Ok) { # Do not mark the document saved after a refused/failed write.
         raise "fail: vector-example.svg exists or could not be written"; # Use a fresh directory next time.
     } # A real file now contains the exact serialized snapshot.
-    (readstatus, source) := files->read(sys, "vector-example.svg", 65536); # Reopen through the actual file boundary.
+    (readstatus, source) := files->read(sys, "vector-example.svg", Idevector->MaxSVG); # Reopen through the actual file boundary.
     (parsed, copy) := vector->parse(source); # Parse into a new independent document transactionally.
     if (readstatus != files->Ok || parsed != vector->Ok || vector->svg(copy) != text) { # Check bytes and geometry.
         raise "fail: vector example SVG roundtrip"; # A partial/unsupported import is never called successful.

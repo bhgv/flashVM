@@ -5,16 +5,16 @@
 #include "flashvm/flashvm.h"
 #include "flashvm/path.h"
 #include "editor_raster.h"
-#define DVM_DESK_VECTOR_VERSION 2UL /* Exact private vector header revision; no Dis64 wire admission. */
+#define DVM_DESK_VECTOR_VERSION 2UL   /* Exact private vector header revision; no Dis64 wire admission. */
 #define DVM_DESK_VECTOR_BEGIN 65576UL /* Staged pane/revision and exact vector-stream byte count. */
-#define DVM_DESK_VECTOR_DATA 65577UL /* Same-ticket pane and exact ordered byte offset, ASCII hex. */
-#define DVM_DESK_COLORS 65575UL  /* Same-ticket body palette: first=pane, second=source revision. */
-#define DVM_DESK_BEGIN 65569UL   /* width/height plus ticket/count/scroll/scale and optional pan/reveal words. */
-#define DVM_DESK_ITEM 65570UL    /* One copied bounded MovieClip descriptor. */
-#define DVM_DESK_END 65571UL     /* Commit the declared complete scene. */
-#define DVM_DESK_POINTER 65572UL /* Raw checked pixel proposal with phase/code words. */
-#define DVM_DESK_CLOCK 65574UL   /* Replay-only copied elapsed milliseconds; no document authority. */
-#define DVM_DESK_RESIZE 65573UL  /* Native pixel resize proposal. */
+#define DVM_DESK_VECTOR_DATA 65577UL  /* Same-ticket pane and exact ordered byte offset, ASCII hex. */
+#define DVM_DESK_COLORS 65575UL       /* Same-ticket body palette: first=pane, second=source revision. */
+#define DVM_DESK_BEGIN 65569UL        /* width/height plus ticket/count/scroll/scale and optional pan/reveal words. */
+#define DVM_DESK_ITEM 65570UL         /* One copied bounded MovieClip descriptor. */
+#define DVM_DESK_END 65571UL          /* Commit the declared complete scene. */
+#define DVM_DESK_POINTER 65572UL      /* Raw checked pixel proposal with phase/code words. */
+#define DVM_DESK_CLOCK 65574UL        /* Replay-only copied elapsed milliseconds; no document authority. */
+#define DVM_DESK_RESIZE 65573UL       /* Native pixel resize proposal. */
 
 
 /* Bind borrowed initialized context/face bytes; no cross-heap pointer is published.
@@ -59,6 +59,12 @@ int dvm_desktop_advance(unsigned int elapsed);
  * return a scalar offset; vector canvases return y*1001+x, toolbar cells-2..-16.
  * Returns zero for headers/occlusion/failure; never edits a document. */
 int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position);
+/* Map an already captured vector pane without another hit test. Clamp outside
+ * page coordinates to its logical edge. Return zero on stale/nonvector geometry.
+ * Owner-only; no managed handle or pointer escapes through the scalar result. */
+int dvm_desktop_vector_point(unsigned long widget, double x, double y, long *position);
+
+
 /* Return committed input/view state, or zero before any desktop scene. */
 
 

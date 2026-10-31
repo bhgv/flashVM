@@ -4,9 +4,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1705**. [Русская версия](README.ru.md).
+Development version: **0.1706**. [Русская версия](README.ru.md).
 
-Current series: [v0.1705](docs/releases/v0.1705.md): FIR power-of-two known-bit analysis, fixed Android root and verified mk TMPDIR synchronization.
+Current series: [v0.1706](docs/releases/v0.1706.md): distinct Brush/Pen, deferred Limbo geometry, connected filled contours and preserved input trajectories.
 
 ## Browse documentation
 

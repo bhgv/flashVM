@@ -6,7 +6,7 @@ include "uibridge.m";
 # Allocate every scalar explicitly; arrays hold immutable path references only.
 create(): ref Document
 {
-    return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil,
+    return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
                         array[16] of array of ref Shape, 0);
 }
@@ -62,21 +62,21 @@ figure(tool: int, a, b: Point): array of Node
 }
 
 
-# Convert the active private samples into one immutable interpolated path.
-# Midpoint quadratic joins share a tangent. No renderer/font/native object is used.
+# Convert active samples to an immutable raw polyline or primitive preview.
+# No fitting or decimation occurs here; release refinement belongs to a worker.
 draft(doc: ref Document): ref Shape
 {
-    points := doc.points;
-    if (doc.tool != Brush) {
+    points := doc.points[0:doc.used];
+    if (doc.tool != Brush && doc.tool != Pen) {
         return ref Shape(doc.color, doc.width, doc.fill,
-                         figure(doc.tool, points[0], points[len points - 1]));
+                         figure(doc.tool, points[0], points[len points - 1]), nil, 0);
     }
     if (len points == 1) {
-        radius := (doc.width + 1) / 2;
-        left := points[0].x - radius;
-        top := points[0].y - radius;
-        right := points[0].x + radius;
-        bottom := points[0].y + radius;
+        p := points[0];
+        left := p.x - doc.width / 2;
+        top := p.y - doc.width / 2;
+        right := left + doc.width;
+        bottom := top + doc.width;
         if (left < 0) {
             left = 0;
         }
@@ -89,17 +89,32 @@ draft(doc: ref Document): ref Shape
         if (bottom > 600) {
             bottom = 600;
         }
-        return ref Shape(doc.color, 0, 1, figure(Ellipse, Point(left, top), Point(right, bottom)));
+        area: array of byte;
+        if (doc.tool == Brush) {
+            area = zerobytes(GridBytes);
+            nib(area, p, doc.width);
+        }
+        tool := Ellipse;
+        if (doc.width == 1) {
+            tool = Rectangle;
+            if (left == 1000) {
+                left--;
+            }
+            if (top == 600) {
+                top--;
+            }
+            right = left + 1;
+            bottom = top + 1;
+        }
+        return ref Shape(doc.color, 0, 1,
+            figure(tool, Point(left, top), Point(right, bottom)), area, doc.tool);
     }
-    nodes := array[len points + 1] of Node;
+    nodes := array[len points] of Node;
     nodes[0] = Node(Move, points[0].x, points[0].y, 0, 0);
     for (i := 1; i < len points; i++) {
-        nodes[i] = Node(Quadratic, (points[i-1].x + points[i].x) / 2,
-            (points[i-1].y + points[i].y) / 2, points[i-1].x, points[i-1].y);
+        nodes[i] = Node(Segment, points[i].x, points[i].y, 0, 0);
     }
-    last := points[len points - 1];
-    nodes[len points] = Node(Segment, last.x, last.y, 0, 0);
-    return ref Shape(doc.color, doc.width, 0, nodes);
+    return ref Shape(doc.color, doc.width, 0, nodes, nil, doc.tool);
 }
 
 
@@ -136,17 +151,19 @@ push(stack: array of array of ref Shape, depth: int, shapes: array of ref Shape)
 cancel(doc: ref Document)
 {
     doc.points = nil;
+    doc.used = 0;
 }
 
 
 # Admit bounded samples and commit one complete gesture as one Undo unit.
-# Capacity decimation preserves endpoints but deliberately reduces fine detail.
-pointer(doc: ref Document, phase, x, y: int): int
+# At sample capacity commit the retained raw trace rather than cancel visible ink.
+advance(doc: ref Document, phase, x, y, smooth: int): int
 {
+    capacity := 0;
     if (doc == nil || phase < 1 || phase > 3 || !pointok(x, y)) {
         return Invalid;
     }
-    if (doc.tool < Brush || doc.tool > Line || doc.color < 0 || doc.color > 16rffffff ||
+    if (doc.tool < Brush || doc.tool > Pen || doc.color < 0 || doc.color > 16rffffff ||
         doc.width < 1 || doc.width > 32 || (doc.fill != 0 && doc.fill != 1)) {
         return Invalid;
     }
@@ -158,32 +175,34 @@ pointer(doc: ref Document, phase, x, y: int): int
         for (i := 0; i < len doc.shapes; i++) {
             total += len doc.shapes[i].nodes;
         }
-        # Reserve enough space for any of the four authoring tools.
+        # Reserve the maximum raw gesture budget before starting a new stroke.
         if (total > MaxTotal - MaxNodes) {
             return Limit;
         }
-        doc.points = array[] of {Point(x, y)};
+        doc.points = array[64] of Point;
+        doc.points[0] = Point(x, y);
+        doc.used = 1;
     } else {
         if (len doc.points == 0) {
             return Conflict;
         }
-        previous := doc.points[len doc.points - 1];
+        previous := doc.points[doc.used - 1];
         if (previous.x != x || previous.y != y) {
-            if (doc.tool == Brush && len doc.points == MaxNodes - 1) {
-                reduced := array[(len doc.points + 1) / 2] of Point;
-                for (i := 0; i < len reduced; i++) {
-                    reduced[i] = doc.points[i * 2];
-                }
-                doc.points = reduced;
-            }
-            if (doc.tool != Brush) {
-                first := doc.points[0];
-                doc.points = array[] of {first, Point(x, y)};
+            if (doc.tool != Brush && doc.tool != Pen) {
+                doc.points[1] = Point(x, y);
+                doc.used = 2;
             } else {
-                points := array[len doc.points + 1] of Point;
-                points[0:] = doc.points;
-                points[len doc.points] = Point(x, y);
-                doc.points = points;
+                if (doc.used == MaxNodes) {
+                    capacity = 1;
+                    phase = 3;
+                } else {
+                    if (doc.used == len doc.points) {
+                        points := array[len doc.points * 2] of Point;
+                        points[0:] = doc.points;
+                        doc.points = points;
+                    }
+                    doc.points[doc.used++] = Point(x, y);
+                }
             }
         }
     }
@@ -196,8 +215,33 @@ pointer(doc: ref Document, phase, x, y: int): int
         }
         doc.revision++;
         cancel(doc);
+        if (smooth) {
+            result := refine(doc);
+            if (result != Ok) {
+                return result;
+            }
+        }
+    }
+    if (capacity) {
+        return Limit;
     }
     return Ok;
+}
+
+
+# Pure model entry: collect raw points, then refine once after release.
+# Borrow the sole owner's document; return explicit admission/geometry status.
+pointer(doc: ref Document, phase, x, y: int): int
+{
+    return advance(doc, phase, x, y, 1);
+}
+
+
+# Live pane entry: commit raw ink as one history unit without contour processing.
+# Caller sends a separate immutable snapshot to its scheduled Limbo worker.
+defer(doc: ref Document, phase, x, y: int): int
+{
+    return advance(doc, phase, x, y, 0);
 }
 
 
@@ -232,25 +276,49 @@ history(doc: ref Document, redo: int): int
 # five words per command. All arrays remain with this document's owning process.
 wire(doc: ref Document): string
 {
-    codec := load Uibridge Uibridge->PATH;
-    if (codec == nil) {
-        return "";
-    }
     shapes := visible(doc);
-    result := codec->hexword(doc.tool) + codec->hexword(doc.color) + codec->hexword(doc.width)
-        + codec->hexword(doc.fill) + codec->hexword(doc.nundo) + codec->hexword(doc.nredo)
-        + codec->hexword(len shapes);
-    for (i := 0; i < len shapes; i++) {
-        shape := shapes[i];
-        result += codec->hexword(shape.color) + codec->hexword(shape.width)
-            + codec->hexword(shape.fill) + codec->hexword(len shape.nodes);
-        for (j := 0; j < len shape.nodes; j++) {
-            n := shape.nodes[j];
-            result += codec->hexword(n.verb) + codec->hexword(n.x) + codec->hexword(n.y)
-                + codec->hexword(n.cx) + codec->hexword(n.cy);
+    total := 0;
+    for (index := 0; index < len shapes; index++) {
+        total += len shapes[index].nodes;
+    }
+    bytes := array[56 + 32 * len shapes + 40 * total] of byte;
+    putword(bytes, 0, doc.tool);
+    putword(bytes, 8, doc.color);
+    putword(bytes, 16, doc.width);
+    putword(bytes, 24, doc.fill);
+    putword(bytes, 32, doc.nundo);
+    putword(bytes, 40, doc.nredo);
+    putword(bytes, 48, len shapes);
+    at := 56;
+    for (index = 0; index < len shapes; index++) {
+        shape := shapes[index];
+        putword(bytes, at, shape.color);
+        putword(bytes, at + 8, shape.width);
+        putword(bytes, at + 16, shape.fill);
+        putword(bytes, at + 24, len shape.nodes);
+        at += 32;
+        for (part := 0; part < len shape.nodes; part++) {
+            node := shape.nodes[part];
+            putword(bytes, at, node.verb);
+            putword(bytes, at + 8, node.x);
+            putword(bytes, at + 16, node.y);
+            putword(bytes, at + 24, node.cx);
+            putword(bytes, at + 32, node.cy);
+            at += 40;
         }
     }
-    return result;
+    return string bytes;
+}
+
+
+# Write one copied uint32 value into a preflight-sized owner-private ASCII buffer.
+# No allocation/module load/string concatenation occurs in this inner transport loop.
+putword(bytes: array of byte, at, value: int)
+{
+    digits := "0123456789abcdef";
+    for (digit := 0; digit < 8; digit++) {
+        bytes[at + digit] = byte digits[(value >> (28 - digit * 4)) & 15];
+    }
 }
 
 
@@ -482,7 +550,7 @@ tag(r: ref Reader): (string, array of string, int)
         start := r.at;
         while (r.at < len r.text && r.text[r.at] != quote) {
             c := r.text[r.at++];
-            if (c == '&' || c == '<' || c == '>' || c == 0 || r.at - start > 4096) {
+            if (c == '&' || c == '<' || c == '>' || c == 0 || r.at - start > MaxSVG) {
                 r.bad = 1;
                 return ("", nil, 0);
             }
@@ -550,7 +618,7 @@ pathdata(text: string, parent: ref Reader): array of Node
         if (r.bad || r.at == len text) {
             break;
         }
-        if (count == MaxNodes || closed) {
+        if (count == MaxNodes) {
             r.bad = 1;
             break;
         }
@@ -560,12 +628,13 @@ pathdata(text: string, parent: ref Reader): array of Node
         y := 0;
         cx := 0;
         cy := 0;
-        if (op == 'Z' && count >= 2) {
+        if (op == 'Z' && count >= 2 && !closed) {
             verb = Close;
             closed = 1;
-        } else if ((count == 0 && op == 'M') || (count > 0 && (op == 'L' || op == 'Q'))) {
+        } else if (((count == 0 || closed) && op == 'M') || (count > 0 && !closed && (op == 'L' || op == 'Q'))) {
             if (op == 'M') {
                 verb = Move;
+                closed = 0;
             }
             if (op == 'Q') {
                 verb = Quadratic;
@@ -612,7 +681,7 @@ canvasbox(text: string, parent: ref Reader): int
 # All unsupported attributes/elements fail instead of disappearing on Save.
 parse(text: string): (int, ref Document)
 {
-    if (len text > 65536 || len array of byte text > 65536) {
+    if (len text > MaxSVG || len array of byte text > MaxSVG) {
         return (Limit, nil);
     }
     r := ref Reader(text, 0, 0);
@@ -764,6 +833,610 @@ parse(text: string): (int, ref Document)
         if (total > MaxTotal) {
             return (Limit, nil);
         }
-        storage[count++] = ref Shape(rgb, wide, fill != "none", nodes);
+        storage[count++] = ref Shape(rgb, wide, fill != "none", nodes, nil, 0);
     }
+}
+
+
+# Bounded logical paint grid. Cell edges use the SVG canvas coordinates.
+GridWidth: con 1000; # Raster authoring precision is one logical canvas unit.
+GridHeight: con 600; # Paint never escapes the document page.
+GridBytes: con 75000; # Packed immutable coverage, eight horizontal cells per byte.
+RawContour: con 65536; # Explicit boundary complexity bound before approximation.
+
+
+# Allocate private zeroed scalar storage using bounded doubling copies. Plain
+# Limbo scalar arrays are uninitialized; mask bits must never inherit freed data.
+# size is a positive internal byte count. Array copies run through Dis primitives,
+# avoiding one interpreted assignment per cell of the full coverage/palette grid.
+zerobytes(size: int): array of byte
+{
+    bytes := array[size] of byte;
+    bytes[0] = byte 0;
+    for (used := 1; used < size;) {
+        next := used * 2;
+        if (next > size) {
+            next = size;
+        }
+        bytes[used:] = bytes[0:next - used];
+        used = next;
+    }
+    return bytes;
+}
+
+
+# Read a borrowed packed area; outside the canvas is empty. No allocation/mutation.
+covered(area: array of byte, x, y: int): int
+{
+    if (x < 0 || y < 0 || x >= GridWidth || y >= GridHeight) {
+        return 0;
+    }
+    index := y * GridWidth + x;
+    return (int area[index >> 3] & (1 << (index & 7))) != 0;
+}
+
+
+# Add one in-page cell to a private area. Out-of-page contributions are clipped.
+cover(area: array of byte, x, y: int)
+{
+    if (x >= 0 && x < GridWidth && y >= 0 && y < GridHeight) {
+        index := y * GridWidth + x;
+        area[index >> 3] |= byte (1 << (index & 7));
+    }
+}
+
+
+# Stamp a circular nib of integer diameter1..32 into caller-owned coverage.
+# Pixel-centre sampling handles diameter1 and even diameters without empty dots.
+nib(area: array of byte, p: Point, diameter: int)
+{
+    if (p.x == GridWidth) {
+        p.x--;
+    }
+    if (p.y == GridHeight) {
+        p.y--;
+    }
+    left := p.x - diameter / 2;
+    top := p.y - diameter / 2;
+    cx := 2 * left + diameter;
+    cy := 2 * top + diameter;
+    for (y := top; y < top + diameter; y++) {
+        dy := 2 * y + 1 - cy;
+        for (x := left; x < left + diameter; x++) {
+            dx := 2 * x + 1 - cx;
+            if (dx * dx + dy * dy <= diameter * diameter) {
+                cover(area, x, y);
+            }
+        }
+    }
+}
+
+
+# Sweep a nib along every major-axis cell between two copied samples, endpoints included.
+# Interpolation fills fast pointer gaps; only bounded integer arithmetic is used.
+sweep(area: array of byte, a, b: Point, diameter: int)
+{
+    dx := b.x - a.x;
+    dy := b.y - a.y;
+    steps := dx;
+    if (steps < 0) {
+        steps = -steps;
+    }
+    high := dy;
+    if (high < 0) {
+        high = -high;
+    }
+    if (high > steps) {
+        steps = high;
+    }
+    if (steps == 0) {
+        nib(area, a, diameter);
+        return;
+    }
+    for (step := 0; step <= steps; step++) {
+        nib(area, Point(a.x + dx * step / steps, a.y + dy * step / steps), diameter);
+    }
+}
+
+
+# Private flattened edge; no mutable document or renderer handle is retained.
+PaintEdge: adt
+{
+    a: Point; # Initial logical coordinate.
+    b: Point; # Final logical coordinate.
+};
+
+
+# Rasterize immutable generic path geometry, or borrow its canonical brush coverage.
+# Returned new masks are private; borrowed canonical masks are never written here.
+# Curves use eight fixed subdivisions for union sampling; SVG geometry stays intact.
+shapearea(shape: ref Shape): array of byte
+{
+    if (shape.area != nil) {
+        return shape.area;
+    }
+    area := zerobytes(GridBytes);
+    edges := array[len shape.nodes * 9 + 1] of PaintEdge;
+    count := 0;
+    start := Point(0, 0);
+    previous := start;
+    opened := 0;
+    for (index := 0; index < len shape.nodes; index++) {
+        node := shape.nodes[index];
+        finish := Point(node.x, node.y);
+        if (node.verb == Move) {
+            if (opened && shape.fill) {
+                edges[count++] = PaintEdge(previous, start);
+            }
+            start = finish;
+            previous = start;
+            opened = 1;
+        } else if (node.verb == Quadratic) {
+            origin := previous;
+            for (part := 1; part <= 8; part++) {
+                left := 8 - part;
+                point := Point((left * left * origin.x + 2 * left * part * node.cx + part * part * finish.x) / 64,
+                               (left * left * origin.y + 2 * left * part * node.cy + part * part * finish.y) / 64);
+                edges[count++] = PaintEdge(previous, point);
+                previous = point;
+            }
+        } else {
+            if (node.verb == Close) {
+                finish = start;
+                opened = 0;
+            }
+            edges[count++] = PaintEdge(previous, finish);
+            previous = finish;
+        }
+    }
+    if (opened && shape.fill) {
+        edges[count++] = PaintEdge(previous, start);
+    }
+    if (shape.width > 0) {
+        for (index = 0; index < count; index++) {
+            sweep(area, edges[index].a, edges[index].b, shape.width);
+        }
+    }
+    if (!shape.fill) {
+        return area;
+    }
+    crossings := array[count] of (int, int);
+    for (y := 0; y < GridHeight; y++) {
+        used := 0;
+        scan := 2 * y + 1;
+        for (index = 0; index < count; index++) {
+            edge := edges[index];
+            direction := 0;
+            if (2 * edge.a.y <= scan && scan < 2 * edge.b.y) {
+                direction = 1;
+            } else if (2 * edge.b.y <= scan && scan < 2 * edge.a.y) {
+                direction = -1;
+            }
+            if (direction != 0) {
+                x := 2 * edge.a.x + (scan - 2 * edge.a.y) * (edge.b.x - edge.a.x) / (edge.b.y - edge.a.y);
+                at := used;
+                while (at > 0 && crossings[at - 1].t0 > x) {
+                    crossings[at] = crossings[at - 1];
+                    at--;
+                }
+                crossings[at] = (x, direction);
+                used++;
+            }
+        }
+        winding := 0;
+        last := 0;
+        for (index = 0; index < used; index++) {
+            (x, direction) := crossings[index];
+            if (winding != 0) {
+                for (cell := last / 2; 2 * cell + 1 < x; cell++) {
+                    cover(area, cell, y);
+                }
+            }
+            winding += direction;
+            last = x;
+        }
+    }
+    return area;
+}
+
+
+# Test touching/overlapping canonical coverage, including diagonal cell contact.
+# Inputs are borrowed immutable masks; return1 without changing either one.
+touches(a, b: array of byte): int
+{
+    for (index := 0; index < GridBytes; index++) {
+        bits := int a[index];
+        if (bits == 0) {
+            continue;
+        }
+        if ((bits & int b[index]) != 0) {
+            return 1;
+        }
+        for (bit := 0; bit < 8; bit++) {
+            if ((bits & (1 << bit)) == 0) {
+                continue;
+            }
+            cell := index * 8 + bit;
+            x := cell % GridWidth;
+            y := cell / GridWidth;
+            for (dy := -1; dy <= 1; dy++) {
+                for (dx := -1; dx <= 1; dx++) {
+                    if (covered(b, x + dx, y + dy)) {
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+
+# Approximate a copied closed boundary within0.75 logical units, using a bounded
+# iterative Douglas-Peucker stack. Preserve at least three vertices and orientation.
+# Return the original array when approximation would collapse or reverse a small loop.
+approximate(points: array of Point): array of Point
+{
+    count := len points;
+    if (count < 5) {
+        return points;
+    }
+    keep := zerobytes(count);
+    keep[0] = keep[count - 1] = byte 1;
+    stack := array[count * 2] of int;
+    used := 2;
+    stack[0] = 0;
+    stack[1] = count - 1;
+    while (used != 0) {
+        last := stack[--used];
+        first := stack[--used];
+        a := points[first];
+        b := points[last];
+        dx := real (b.x - a.x);
+        dy := real (b.y - a.y);
+        length := dx * dx + dy * dy;
+        worst := -1;
+        distance := 0.5625;
+        for (index := first + 1; index < last; index++) {
+            px := real (points[index].x - a.x);
+            py := real (points[index].y - a.y);
+            value := px * px + py * py;
+            if (length != 0.0) {
+                projection := (px * dx + py * dy) / length;
+                if (projection < 0.0) {
+                    projection = 0.0;
+                }
+                if (projection > 1.0) {
+                    projection = 1.0;
+                }
+                px -= projection * dx;
+                py -= projection * dy;
+                value = px * px + py * py;
+            }
+            if (value > distance) {
+                worst = index;
+                distance = value;
+            }
+        }
+        if (worst >= 0) {
+            keep[worst] = byte 1;
+            stack[used++] = first;
+            stack[used++] = worst;
+            stack[used++] = worst;
+            stack[used++] = last;
+        }
+    }
+    result := array[count] of Point;
+    used = 0;
+    for (index := 0; index < count; index++) {
+        if (keep[index] != byte 0) {
+            result[used++] = points[index];
+        }
+    }
+    if (used < 4) {
+        return points;
+    }
+    before := 0;
+    after := 0;
+    for (index = 1; index < count; index++) {
+        before += points[index - 1].x * points[index].y - points[index].x * points[index - 1].y;
+    }
+    for (index = 1; index < used; index++) {
+        after += result[index - 1].x * result[index].y - result[index].x * result[index - 1].y;
+    }
+    if (after == 0 || (before < 0) != (after < 0)) {
+        return points;
+    }
+    return result[0:used];
+}
+
+
+# Trace filled-cell edges with consistent winding. Separate loops and holes become
+# explicit M/L/Z subpaths of one filled vector shape. No contour fitting runs in move.
+# Return nil on explicit complexity limit; callers retain already committed raw ink.
+contours(area: array of byte): array of Node
+{
+    stride := GridWidth + 1;
+    edges := zerobytes(stride * (GridHeight + 1));
+    seeds := array[RawContour] of int;
+    nseeds := 0;
+    for (index := 0; index < GridBytes; index++) {
+        bits := int area[index];
+        if (bits == 0) {
+            continue;
+        }
+        for (bit := 0; bit < 8; bit++) {
+            if ((bits & (1 << bit)) == 0) {
+                continue;
+            }
+            cell := index * 8 + bit;
+            x := cell % GridWidth;
+            y := cell / GridWidth;
+            if (!covered(area, x, y - 1)) {
+                vertex := y * stride + x;
+                if (edges[vertex] == byte 0) {
+                    if (nseeds == len seeds) {
+                        return nil;
+                    }
+                    seeds[nseeds++] = vertex;
+                }
+                edges[vertex] |= byte 1;
+            }
+            if (!covered(area, x + 1, y)) {
+                vertex := y * stride + x + 1;
+                if (edges[vertex] == byte 0) {
+                    if (nseeds == len seeds) {
+                        return nil;
+                    }
+                    seeds[nseeds++] = vertex;
+                }
+                edges[vertex] |= byte 2;
+            }
+            if (!covered(area, x, y + 1)) {
+                vertex := (y + 1) * stride + x + 1;
+                if (edges[vertex] == byte 0) {
+                    if (nseeds == len seeds) {
+                        return nil;
+                    }
+                    seeds[nseeds++] = vertex;
+                }
+                edges[vertex] |= byte 4;
+            }
+            if (!covered(area, x - 1, y)) {
+                vertex := (y + 1) * stride + x;
+                if (edges[vertex] == byte 0) {
+                    if (nseeds == len seeds) {
+                        return nil;
+                    }
+                    seeds[nseeds++] = vertex;
+                }
+                edges[vertex] |= byte 8;
+            }
+        }
+    }
+    nodes := array[MaxNodes] of Node;
+    used := 0;
+    points := array[RawContour] of Point;
+    for (seed := 0; seed < nseeds; seed++) {
+        vertex := seeds[seed];
+        while (edges[vertex] != byte 0) {
+            count := 1;
+            points[0] = Point(vertex % stride, vertex / stride);
+            at := vertex;
+            direction := 0;
+            while ((int edges[at] & (1 << direction)) == 0) {
+                direction++;
+            }
+            for (;;) {
+                edges[at] &= byte (255 ^ (1 << direction));
+                x := at % stride;
+                y := at / stride;
+                if (direction == 0) {
+                    x++;
+                }
+                if (direction == 1) {
+                    y++;
+                }
+                if (direction == 2) {
+                    x--;
+                }
+                if (direction == 3) {
+                    y--;
+                }
+                next := Point(x, y);
+                if (count > 1 &&
+                    (points[count - 1].x - points[count - 2].x) * (next.y - points[count - 1].y) ==
+                    (points[count - 1].y - points[count - 2].y) * (next.x - points[count - 1].x)) {
+                    points[count - 1] = next;
+                } else {
+                    if (count == RawContour) {
+                        return nil;
+                    }
+                    points[count++] = next;
+                }
+                at = y * stride + x;
+                if (at == vertex) {
+                    break;
+                }
+                found := 0;
+                for (choice := 0; choice < 4; choice++) {
+                    turn := 1;
+                    if (choice == 1) {
+                        turn = 0;
+                    }
+                    if (choice == 2) {
+                        turn = 3;
+                    }
+                    if (choice == 3) {
+                        turn = 2;
+                    }
+                    selected := (direction + turn) % 4;
+                    if ((int edges[at] & (1 << selected)) != 0) {
+                        direction = selected;
+                        found = 1;
+                        break;
+                    }
+                }
+                if (!found) {
+                    return nil;
+                }
+            }
+            path := approximate(points[0:count]);
+            if (len path < 4) {
+                return nil;
+            }
+            if (used + len path > MaxNodes) {
+                return nil;
+            }
+            nodes[used++] = Node(Move, path[0].x, path[0].y, 0, 0);
+            for (index = 1; index < len path - 1; index++) {
+                nodes[used++] = Node(Segment, path[index].x, path[index].y, 0, 0);
+            }
+            nodes[used++] = Node(Close, 0, 0, 0, 0);
+        }
+    }
+    return nodes[0:used];
+}
+
+
+# Refine only a private worker snapshot. The owner publishes the returned shapes
+# only for a matching revision. History is untouched; all old shapes remain immutable.
+# Return Limit on contour budget failure, preserving the raw committed preview.
+refineone(doc: ref Document): int
+{
+    count := len doc.shapes;
+    if (count == 0) {
+        return Ok;
+    }
+    last := doc.shapes[count - 1];
+    if (last.author == Pen) {
+        if (last.width == 0) {
+            replacement := array[count] of ref Shape;
+            replacement[0:] = doc.shapes;
+            replacement[count - 1] = ref Shape(last.color, 0, last.fill, last.nodes, last.area, 0);
+            doc.shapes = replacement;
+            return Ok;
+        }
+        if (len last.nodes == MaxNodes) {
+            return Limit;
+        }
+        nodes := array[len last.nodes + 1] of Node;
+        nodes[0] = last.nodes[0];
+        for (index := 1; index < len last.nodes; index++) {
+            a := last.nodes[index - 1];
+            b := last.nodes[index];
+            nodes[index] = Node(Quadratic, (a.x + b.x) / 2, (a.y + b.y) / 2, a.x, a.y);
+        }
+        nodes[len last.nodes] = last.nodes[len last.nodes - 1];
+        replacement := array[count] of ref Shape;
+        replacement[0:] = doc.shapes;
+        replacement[count - 1] = ref Shape(last.color, last.width, 0, nodes, nil, 0);
+        doc.shapes = replacement;
+        return Ok;
+    }
+    if (last.author != Brush) {
+        return Ok;
+    }
+    area := shapearea(last);
+    merged := array[count] of { * => 0 };
+    candidates := array[count] of array of byte;
+    palette := zerobytes(GridWidth * GridHeight);
+    for (index := 0; index < count - 1; index++) {
+        old := doc.shapes[index];
+        source := shapearea(old);
+        for (part := 0; part < GridBytes; part++) {
+            bits := int source[part];
+            if (bits == 0) {
+                continue;
+            }
+            for (bit := 0; bit < 8; bit++) {
+                if ((bits & (1 << bit)) != 0) {
+                    palette[part * 8 + bit] = byte (index + 1);
+                }
+            }
+        }
+        if (old.color == last.color && (old.fill || old.author == Brush)) {
+            candidates[index] = zerobytes(GridBytes);
+        }
+    }
+    for (cell := 0; count > 1 && cell < len palette; cell++) {
+        slot := int palette[cell] - 1;
+        if (slot >= 0 && candidates[slot] != nil) {
+            candidates[slot][cell >> 3] |= byte (1 << (cell & 7));
+        }
+    }
+    # Copy before union; canonical old coverage belongs to immutable history.
+    combined := zerobytes(GridBytes);
+    combined[0:] = area;
+    changed := 1;
+    while (changed) {
+        changed = 0;
+        for (index = 0; index < count - 1; index++) {
+            if (!merged[index] && candidates[index] != nil && touches(combined, candidates[index])) {
+                merged[index] = 1;
+                changed = 1;
+                for (part := 0; part < GridBytes; part++) {
+                    combined[part] |= candidates[index][part];
+                }
+            }
+        }
+    }
+    nodes := contours(combined);
+    if (len nodes < 2) {
+        return Limit;
+    }
+    retained := 1;
+    total := len nodes;
+    for (index = 0; index < count - 1; index++) {
+        if (!merged[index]) {
+            retained++;
+            total += len doc.shapes[index].nodes;
+        }
+    }
+    if (retained > MaxShapes || total > MaxTotal) {
+        return Limit;
+    }
+    replacement := array[retained] of ref Shape;
+    used := 0;
+    for (index = 0; index < count - 1; index++) {
+        if (!merged[index]) {
+            replacement[used++] = doc.shapes[index];
+        }
+    }
+    replacement[used] = ref Shape(last.color, 0, 1, nodes, combined, 0);
+    doc.shapes = replacement;
+    return Ok;
+}
+
+
+# Refine every unprocessed raw gesture in creation order on a private snapshot.
+# Latest-wins workers may supersede older jobs; no earlier stroke is then skipped.
+# Failed bounded refinements leave their original visible ink and report Limit.
+refine(doc: ref Document): int
+{
+    index := 0;
+    status := Ok;
+    while (index < len doc.shapes) {
+        if (doc.shapes[index].author == 0) {
+            index++;
+            continue;
+        }
+        work := create();
+        work.shapes = doc.shapes[0:index + 1];
+        result := refineone(work);
+        if (result != Ok) {
+            status = result;
+            index++;
+            continue;
+        }
+        tail := len doc.shapes - index - 1;
+        joined := array[len work.shapes + tail] of ref Shape;
+        joined[0:] = work.shapes;
+        if (tail != 0) {
+            joined[len work.shapes:] = doc.shapes[index + 1:];
+        }
+        doc.shapes = joined;
+        index = len work.shapes;
+    }
+    return status;
 }
