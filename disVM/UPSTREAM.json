@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "64359007f6382cd0c885687c831ed59cdbb789d2",
+  "revision": "0e7a00bc302fa3492a38e06a39f9edc5ea4485c8",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -932,7 +932,7 @@
     "upstream/doc/dis64-envelope.md": "1dac0dcb51583cffaf55e683cd82d54d3465bb6e28dac4cf50ff3fa1112258f1",
     "upstream/doc/dis64-exception-gc.md": "e44ecd6451b1583977daf025d4a97a893d52b6ba261597eed85c2a8b98d332b5",
     "upstream/doc/dis64-fileloader.md": "d67ae474bee3bbf8fec390ee8c2f8d95c9ca3bb1183bca4dac3d847ee4cf2682",
-    "upstream/doc/dis64-flashvm-journal.md": "564c06b80d5b4ec8a511307aa4ec23b032b15dad7e73263a7360d2f291d96850",
+    "upstream/doc/dis64-flashvm-journal.md": "e3bf28848c0a57983f8dcab7807a8d0d1409d10c7bdb7a6c78ad4f2add185421",
     "upstream/doc/dis64-flashvm-payload-response.md": "467c81a19cdd8cf6a6d9371321dd9caba223ed9b1cfae48adb4ea7e3ca61367b",
     "upstream/doc/dis64-flashvm-proposal.md": "c9a68aa729599a25677d0e4c59f34d2b529d3151bee4208e29c70469cd2c5238",
     "upstream/doc/dis64-flashvm-reply.md": "a01ce11f01d4b160003fba0a8c4f1a926c369df3c2b6ecf03cc86207dc7ccbbe",
@@ -940,7 +940,7 @@
     "upstream/doc/dis64-flashvm-scheduler-response.md": "cebccf6d277c02816f712daea6020d7b60864b97258b9f11b42b9dfe068ea0ca",
     "upstream/doc/dis64-flashvm-word32-response.md": "2de63ffaa9274cd64b3a465b8a3ed96bb0d3c068e74c6ba762f31dad3f3147d1",
     "upstream/doc/dis64-gc-roots.md": "27477b66de7d1ce91bd37c43cb4fff01325f7fa10df915c97748a0730a376459",
-    "upstream/doc/dis64-inferno-journal.md": "702cbe147322bd1918c6d13ac7068173e3559cf7fa6627e96165b043f5255e66",
+    "upstream/doc/dis64-inferno-journal.md": "9d69d3f1aaa0c30c495aa4d51b56160b2d020d9cbc0742c0e4497f096a13dad6",
     "upstream/doc/dis64-inferno-response.md": "b49a66f58513d60a21fc2b9dc1027d2a3c29e6023efb4464ea79c69dbde16abe",
     "upstream/doc/dis64-native-consumer-audit.md": "bc3ef0c2cc24578698f279a29244a8ae9cf35ac73b48643a1209f4b76b7db0be",
     "upstream/doc/dis64-native64-binding.md": "abce67fc66eb53dba827839c1609f5ae9a2445b70cd4cf7ffbf50ac11f3bb029",

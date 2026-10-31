@@ -1,3 +1,44 @@
+## v0.1703 — INFERNO-0027/0028 constructor roots and RV cache
+
+Final pin0e7a00bc302fa3492a38e06a39f9edc5ea4485c8 includes both journals
+through FLASHVM-0033; DisVM939/bootstrap281 verified byte-exact. Executable
+upstream sources are identical to verified source6435900; subsequent changes
+at this pin are the synchronization journals only.
+
+Reviewed and independently reproduced actual source fixes at d1b8074 and
+64359007f6382cd0c885687c831ed59cdbb789d2. Partially cloned destination arrays
+need a root before descendant allocation. A constructing Modlink and its borrowed
+unpublished source MP need independent roots before allocating replacement data.
+Only acquired pins are removed; source borrowing creates no extra reference owner.
+The RV compiler now validates program preflight and canonical cache/code binding
+instead of treating a nonnil cached JIT as automatically usable.
+
+Six separately compiled parent-body GC controls (nested, cached module,
+unpublished module × WORD32/WORD32-file) reach active predicates and SIGABRT.
+Twelve independently compiled parent RV binaries each run binding/opcode controls:
+24 active failures, with compile errors and arbitrary crashes excluded as evidence.
+Current copied O1/strict-UBSan and fresh owning O3/NDEBUG/strict-UBSan full native64
+layout gates pass. Per full gate: nested6336 predicates/48 clones, module16130
+predicates/96 constructions, earlier GC14548/150 graphs/96 Math calls and
+protected result212952/1728 transactions/960 destructor checkpoints.
+RV twelve-configuration gates pass 31896 predicates per O1/O3 run; heap-clones420
+cases pass both optimization profiles. The ordinary core CTest now includes RV
+cache validation. Core244/244, FIR82/82, frontend48/48 and linker3/3 pass.
+Full SDL runtime/IDE339/339 passes; after explicit transport-root clearing,
+the affected task interpreter/JIT gates pass2/2 again, as does installed relocation.
+
+[FLASHVM-0033](https://github.com/bhgv/Inferno-OS-bhgv/blob/experiment/doc/dis64-flashvm-journal.md)
+is published directly upstream; no additional confirmed common source defect
+was found for a separate backport. Its application-local scalar task owner
+proposal is implemented in [asinctasks](../compiler/runtime/ASINC-TASKS.md),
+with167 lifecycle predicates in each Dis interpreter/JIT and installed relocation
+acceptance. This is not a shared task layout, AS closure lowering, forced-GC
+acceptance of arbitrary AS environments or an OOM recovery proof.
+
+Ordinary optimized recursive error-unwind ASan remains unaccepted. No physical
+RV/ARM execution, full OS boot, new native reference signature/builtin, shared
+ID, wider execution profile or changed NC64/SDK default is inferred.
+
 ## v0.1700 follow-up — INFERNO-0026 distinct caller/callee descriptors
 
 Final selected source **aecfa6fbc42af84fb5edaec7a8e2f0f097988ba8**,
