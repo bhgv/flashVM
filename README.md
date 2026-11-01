@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1726**. [Русская версия](README.ru.md).
+Development version: **0.1727**. [Русская версия](README.ru.md).
 
-Current series: [v0.1726](docs/releases/v0.1726.md): add editable cubic Bézier paths, post-release fitting and nearest-contour selection.
+Current series: [v0.1727](docs/releases/v0.1727.md): synchronize Inferno scalar lowering and add atomic source spans.
 
 ## Browse documentation
 

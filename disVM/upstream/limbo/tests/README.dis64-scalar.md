@@ -1,4 +1,4 @@
-# Limbo scalar Dis64 backend (series 0054)
+# Limbo scalar Dis64 backend (through series 0058)
 
 `limbo -6` emits the already agreed extension-free Dis64 v1 np0 executable
 profile. It is an explicit experimental backend, independent of `-H` C metadata.
@@ -9,11 +9,15 @@ The first accepted shape has one reachable compiled `init()` with no parameters,
 no result and pointer-free int/big/real storage. The backend runs after ordinary
 parsing, type checking, lowering and optimization. It accepts only the 43 existing
 scalar operations validated by dis64-pilot.h; no opcode, feature, section, scalar
-kind, signature or calling convention is assigned. Source helpers can only enter
-this profile if ordinary lowering has already eliminated their calls. The backend
-does not implement general function calls or a managed ABI.
+kind, signature or calling convention is assigned. Bounded no-argument, no-result
+leaf procedures can now be specialized into the entry before scalar lowering.
+Scalar helper locals are initialized per call; managed/nested calling remains
+closed. See [the helper limits](../../doc/dis64-scalar-helpers.md) and
+[the self-checking example](dis64-scalar/procedures.b). General function calls
+and a managed ABI remain outside this profile.
 
-The source entry's RET becomes EXIT, preserving PCs and early entry termination.
+The source entry's RET becomes EXIT. Lowering remaps branch targets while
+preserving early entry termination.
 Imports, linkage/exception tables, other exported functions or exported module
 data, managed/byte/aggregate storage and unsupported operand/instruction forms
 are refused. Real moves/comparisons are admitted; Real arithmetic/conversions
@@ -125,3 +129,12 @@ profile. Ordinary programs with Sys/Draw imports, a full shell, file CALL/MCALL,
 managed arguments/results and generic native calls remain outside admission.
 The shared execution_supported=false status and all existing default guards
 remain unchanged. Complex runtime handlers stay in C where appropriate.
+
+## Small numeric cases (series 0056)
+
+The private compiler lowering also accepts bounded int cases/ranges and discrete
+Big labels, including dense cases represented by compiler GOTO IR. It emits only
+the same43 scalar wire operations; file CASE/CASEL/GOTO remain closed. Expanded
+PCs and diagnostic rows are remapped without mutating legacy compiler IR. Larger
+or managed tables refuse. See [scope and reproduction](../../doc/dis64-scalar-cases.md)
+and the self-checking [case example](dis64-scalar/case.b).

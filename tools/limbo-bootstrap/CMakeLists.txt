@@ -189,6 +189,8 @@ add_executable(limbo-bootstrap
   upstream/limbo/decls.c
   upstream/limbo/dis.c
   upstream/limbo/dis64.c
+  upstream/limbo/dis64-inline.c
+  upstream/limbo/dis64-lower.c
   upstream/limbo/dtocanon.c
   "${limbo_ecom}"
   upstream/limbo/gen.c
@@ -341,4 +343,23 @@ endif()
 if(BUILD_TESTING)
   add_test(NAME limbo_bootstrap_dis_constants COMMAND "${PYTHON_EXECUTABLE}"
     "${u}/limbo/tests/dis-constants.py")
+endif()
+
+# The ordinary-cell bootstrap lowers source helpers/cases without adding VM calls.
+# Optional reader is an explicit SDK executable; no sibling checkout is required.
+set(LIMBO_DIS64_READER "" CACHE FILEPATH "Independent Dis64 reader for compiler cross-checks")
+if(BUILD_TESTING AND LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "4")
+  set(dis64_reader_arguments)
+  if(LIMBO_DIS64_READER)
+    if(NOT EXISTS "${LIMBO_DIS64_READER}")
+      message(FATAL_ERROR "LIMBO_DIS64_READER must name an existing independent reader")
+    endif()
+    list(APPEND dis64_reader_arguments --reader "${LIMBO_DIS64_READER}")
+  endif()
+  foreach(kind cases inline)
+    add_test(NAME limbo_bootstrap_dis64_${kind} COMMAND "${PYTHON_EXECUTABLE}"
+      "${u}/utils/tests/dis64-${kind}.py" --limbo "$<TARGET_FILE:limbo-bootstrap>"
+      --root "${CMAKE_CURRENT_BINARY_DIR}" ${dis64_reader_arguments})
+    set_tests_properties(limbo_bootstrap_dis64_${kind} PROPERTIES TIMEOUT 180)
+  endforeach()
 endif()

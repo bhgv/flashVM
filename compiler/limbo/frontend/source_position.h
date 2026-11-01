@@ -24,6 +24,22 @@ typedef struct LimboSourcePosition
  * blocking occurs; independent calls are reentrant. Columns are not graphemes,
  * display cells, UTF-16 units or legacy Coco/R scanner diagnostic columns. */
 int limbo_source_position(const char *text, size_t size, size_t offset, LimboSourcePosition *out);
+
+
+/* A physical half-open span on one exact source snapshot, with both endpoints. */
+typedef struct LimboSourceSpan
+{
+    LimboSourcePosition begin; /* Inclusive original UTF-8 byte boundary. */
+    LimboSourcePosition end;   /* Exclusive boundary, possibly equal to begin. */
+} LimboSourceSpan;
+
+
+/* Resolve ordered begin/end on the same borrowed text[0:size] in one pass.
+ * Return1 and publish *out only after complete snapshot validation; return0
+ * without changing *out on reversed/out-of-range/interior/invalid boundaries.
+ * Empty spans and EOF are valid. All position API bounds/units apply; no allocation,
+ * parser state, I/O, digest calculation or blocking. Filenames confer no access. */
+int limbo_source_span(const char *text, size_t size, size_t begin, size_t end, LimboSourceSpan *out);
 #ifdef __cplusplus
 }
 #endif

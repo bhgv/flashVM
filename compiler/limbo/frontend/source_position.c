@@ -59,29 +59,35 @@ static size_t scalar_width(const unsigned char *text, size_t available)
 }
 
 
-/* Resolve a physical source boundary transactionally after validating the entire
- * borrowed snapshot. See source_position.h for units, ownership and refusal rules. */
-int limbo_source_position(const char *text, size_t size, size_t offset, LimboSourcePosition *out)
+/* Resolve one or two ordered byte boundaries in one complete validation pass.
+ * Borrow text/offsets, keep candidates private until the full snapshot validates,
+ * and leave caller results untouched on refusal. No allocation or I/O occurs. */
+static int resolve(const char *text, size_t size, const size_t *offsets,
+                   size_t count, LimboSourcePosition *results)
 {
     const unsigned char *bytes = (const unsigned char *)text;
     size_t at = 0;
     size_t line = 1;
     size_t column = 1;
-    int found = 0;
-    LimboSourcePosition result;
-    if (!out || (!text && size) || size > SOURCE_LIMIT || offset > size)
+    size_t found = 0;
+    LimboSourcePosition candidates[2];
+    if ((!text && size) || size > SOURCE_LIMIT || offsets[count-1] > size)
     {
         return 0;
     }
-    while (at < size)
+    for (;;)
     {
         size_t width;
-        if (at == offset)
+        while (found < count && offsets[found] == at)
         {
-            result.byte_offset = at;
-            result.line = line;
-            result.column = column;
-            found = 1;
+            candidates[found].byte_offset = at;
+            candidates[found].line = line;
+            candidates[found].column = column;
+            ++found;
+        }
+        if (at == size)
+        {
+            break;
         }
         width = scalar_width(bytes + at, size - at);
         if (!width)
@@ -103,17 +109,48 @@ int limbo_source_position(const char *text, size_t size, size_t offset, LimboSou
         }
         at += width;
     }
-    if (offset == size)
-    {
-        result.byte_offset = offset;
-        result.line = line;
-        result.column = column;
-        found = 1;
-    }
-    if (!found)
+    if (found != count)
     {
         return 0;
     }
-    *out = result;
+    for (at = 0; at < count; ++at)
+    {
+        results[at] = candidates[at];
+    }
+    return 1;
+}
+
+
+/* Resolve one physical source boundary. The header defines the stable units,
+ * snapshot ownership and transactional refusal contract. No parser state changes. */
+int limbo_source_position(const char *text, size_t size, size_t offset, LimboSourcePosition *out)
+{
+    if (!out)
+    {
+        return 0;
+    }
+    return resolve(text, size, &offset, 1, out);
+}
+
+
+/* Resolve a half-open span on one immutable snapshot, not two independent reads.
+ * Borrow text, validate ordered endpoints and the entire UTF-8 snapshot, then
+ * publish both endpoints together. Empty spans and EOF use the same boundary rules. */
+int limbo_source_span(const char *text, size_t size, size_t begin, size_t end, LimboSourceSpan *out)
+{
+    size_t offsets[2];
+    LimboSourcePosition positions[2];
+    if (!out || begin > end)
+    {
+        return 0;
+    }
+    offsets[0] = begin;
+    offsets[1] = end;
+    if (!resolve(text, size, offsets, 2, positions))
+    {
+        return 0;
+    }
+    out->begin = positions[0];
+    out->end = positions[1];
     return 1;
 }

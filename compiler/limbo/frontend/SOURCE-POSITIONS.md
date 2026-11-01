@@ -45,3 +45,17 @@ execute Limbo. Tests independently encode every Unicode scalar and check all its
 interior byte boundaries, plus mixed newlines, tabs, combining marks, astral text,
 EOF, bad UTF-8 and nonmutation. Strict O3/NDEBUG UBSan and the standalone frontend
 CTest suite pass. Display/IME/editor cursor policy remains a separate conversion.
+
+
+## Half-open spans / Полуоткрытые диапазоны
+
+`limbo_source_span(text,size,begin,end,out)` resolves both ordered endpoints on
+one borrowed snapshot in one complete pass. It publishes both or neither; empty
+spans and EOF are valid, reversed/interior/invalid boundaries refuse. It does not
+load paths, calculate digests or reinterpret logical remapping. Independent
+all-pairs mixed-UTF/newline tests and unchanged exhaustive scalar tests cover it.
+
+Обе границы диапазона преобразуются за один проход по одному снимку исходника.
+Результат публикуется целиком только после проверки всего UTF-8. Пустой диапазон
+и EOF допустимы; обратный порядок, внутренние границы UTF-8/CRLF и повреждённые
+байты дают отказ без изменения результата. Общих IDs или секций Dis64 не добавлено.

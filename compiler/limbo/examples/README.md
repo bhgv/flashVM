@@ -49,3 +49,6 @@ build/frontend/limbo_parse examples/Polymorphic.b
 
 [NativeExample.m](NativeExample.m) is a self-contained explicit module interface for
 the declaration catalog. It does not include a C implementation or target layout.
+
+
+[Source position/span C example](source-position/README.md) converts immutable UTF-8 byte anchors without invoking a parser.
