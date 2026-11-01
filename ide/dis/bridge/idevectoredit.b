@@ -53,8 +53,18 @@ editnear(x, y, a, b, radius: int): int
 
 # Hit a flattened contour and filled interior. Quadratics use 32 bounded samples;
 # source commands stay exact and are never replaced by these picking segments.
-edithit(shape: ref Shape, x, y: int): int
+edithit(e: ref Edit, shape: ref Shape, x, y: int): int
 {
+    # A fitted brush already owns the exact original union coverage. Interior
+    # picking can return before walking any vector commands or quadratic samples.
+    if (shape.fill && len shape.area == GridBytes && covered(shape.area,x,y)) {
+        return 1;
+    }
+    (left,top,right,bottom) := pickbounds(e,shape);
+    margin := 6+shape.width/2;
+    if (x < left-margin || x > right+margin || y < top-margin || y > bottom+margin) {
+        return 0;
+    }
     previous := Point(0, 0);
     start := previous;
     crossings := 0;
@@ -69,10 +79,44 @@ edithit(shape: ref Shape, x, y: int): int
         if (n.verb == Close) {
             end = start;
         }
+        low := previous.y;
+        high := end.y;
+        if (low > high) {
+            (low,high) = (high,low);
+        }
+        minx := previous.x;
+        maxx := end.x;
+        if (minx > maxx) {
+            (minx,maxx) = (maxx,minx);
+        }
+        if (n.verb == Quadratic) {
+            if (n.cy < low) {
+                low = n.cy;
+            }
+            if (n.cy > high) {
+                high = n.cy;
+            }
+            if (n.cx < minx) {
+                minx = n.cx;
+            }
+            if (n.cx > maxx) {
+                maxx = n.cx;
+            }
+        }
+        # The curve lies in its control hull. A disjoint Y range contributes
+        # neither stroke proximity nor a horizontal fill-ray intersection.
+        if (y < low-margin || y > high+margin || x > maxx+margin ||
+            ((!shape.fill || y < low || y > high) && (x < minx-margin || x > maxx+margin))) {
+            previous = end;
+            continue;
+        }
         begin := previous;
         steps := 1;
         if (n.verb == Quadratic) {
             steps = 32;
+            if (maxx-minx < 24 && high-low < 24) {
+                steps = 8;
+            }
         }
         for (step := 1; step <= steps; step++) {
             next := end;
@@ -119,9 +163,13 @@ editmove(doc: ref Document, x, y: int): int
 {
     e := doc.edit;
     shape := e.base[e.selected];
-    (left, top, right, bottom) := editbounds(shape);
     dx := x-e.origin.x;
     dy := y-e.origin.y;
+    if (dx == 0 && dy == 0) {
+        doc.shapes = e.base;
+        return Ok;
+    }
+    (left, top, right, bottom) := pickbounds(e,shape);
     ax := left;
     ay := top;
     bx := right;
@@ -207,8 +255,11 @@ editmove(doc: ref Document, x, y: int): int
 # geometry commits one revision and one Undo item on release. Cancel restores base.
 editpointer(doc: ref Document, phase, x, y: int): int
 {
+    if (doc.presentation != nil) {
+        doc.presentation.dirty = 1;
+    }
     if (doc.edit == nil) {
-        doc.edit = ref Edit(-1, nil, nil, Point(0, 0), 0, 0, Point(0, 0));
+        doc.edit = ref Edit(nil, nil, -1, nil, nil, Point(0, 0), 0, 0, Point(0, 0));
     }
     e := doc.edit;
     if (phase == 1) {
@@ -227,7 +278,7 @@ editpointer(doc: ref Document, phase, x, y: int): int
                 e.mask = editmask(len shape.nodes*2);
             }
             if (doc.tool == Select) {
-                (l, t, r, b) := editbounds(shape);
+                (l, t, r, b) := pickbounds(e,shape);
                 for (h := 0; h < 4; h++) {
                     hx := l;
                     hy := t;
@@ -283,7 +334,7 @@ editpointer(doc: ref Document, phase, x, y: int): int
         if (e.mode == 0) {
             found := -1;
             for (i := len doc.shapes-1; i >= 0; i--) {
-                if (edithit(doc.shapes[i], x, y)) {
+                if (edithit(e, doc.shapes[i], x, y)) {
                     found = i;
                     break;
                 }
@@ -356,6 +407,18 @@ editbox(nodes: array of Node, at, l, t, r, b: int): int
     if (t < 0) {
         t = 0;
     }
+    if (r < 0) {
+        r = 0;
+    }
+    if (b < 0) {
+        b = 0;
+    }
+    if (l > 1000) {
+        l = 1000;
+    }
+    if (t > 600) {
+        t = 600;
+    }
     if (r > 1000) {
         r = 1000;
     }
@@ -396,7 +459,7 @@ editoverlay(doc: ref Document): ref Shape
     nodes := array[MaxNodes] of Node;
     at := 0;
     if (doc.tool == Select) {
-        (l,t,r,b) := editbounds(shape);
+        (l,t,r,b) := pickbounds(e,shape);
         at = editbox(nodes,at,l,t,r,b);
         for (h := 0; h < 4; h++) {
             x := l;
@@ -461,4 +524,19 @@ editmask(count: int): array of int
         mask[i] = 0;
     }
     return mask;
+}
+
+
+# Reuse conservative bounds for the exact immutable selected/picked shape.
+# The owner retains one shape reference only; a new geometry identity invalidates
+# automatically, independently of revisions, Undo and worker publication.
+pickbounds(e: ref Edit, shape: ref Shape): (int,int,int,int)
+{
+    if (e.boundshape != shape || len e.boundbox != 4) {
+        (l,t,r,b) := editbounds(shape);
+        e.boundbox = array[] of {l,t,r,b};
+        e.boundshape = shape;
+    }
+    box := e.boundbox;
+    return (box[0],box[1],box[2],box[3]);
 }

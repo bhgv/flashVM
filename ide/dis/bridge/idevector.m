@@ -41,6 +41,8 @@ Idevector: module
 
     # Private owner-local selection and gesture; immutable baselines support Cancel/Undo.
     Edit: adt {
+        boundshape: ref Shape; # Exact immutable shape represented by boundbox.
+        boundbox: array of int; # Cached left/top/right/bottom, owner-only.
         selected: int; # Selected shape index, -1 for none.
         mask: array of int; # Endpoint/control selection, two entries per command.
         base: array of ref Shape; # Original committed array for one active gesture.
@@ -48,6 +50,19 @@ Idevector: module
         mode: int; # 0 idle, 1 translate, 2 scale, 3 rotate, 4 nodes, 5 marquee.
         handle: int; # Corner ordinal for scaling.
         current: Point; # Last marquee position.
+    };
+
+
+    # Owner-only presentation cache; immutable source bytes are reused by reference.
+    Presentation: adt {
+        base: array of ref Shape; # Exact geometry identity represented by paths.
+        tool: int; # Tool that produced the cached overlay.
+        selected: int; # Selected source ordinal, -1 if none.
+        dirty: int; # A pointer/mask change requires one overlay rebuild.
+        paths: string; # Cached source body excluding the mutable shape-count word.
+        overlay: string; # Cached transient path bytes, absent from SVG/history.
+        count: string; # Copied shape-count word including the transient overlay.
+        builds: int; # Saturating overlay rebuild diagnostic, never a source revision.
     };
 
 
@@ -73,6 +88,7 @@ Idevector: module
         zoom: int; # Canvas percent, 100 is fit/native page scale.
         center: Point; # Logical viewport centre.
         previous: int; # Authoring tool restored when Zoom toggles off.
+        presentation: ref Presentation; # Owner-only selection wire cache.
         edit: ref Edit; # Selection never enters SVG/history or a render worker.
         control: int; # Copied Ctrl key state for additive node selection.
         wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.

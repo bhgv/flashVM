@@ -31,6 +31,9 @@ viewport(doc: ref Document, step, x, y: int)
 # release; it never creates an SVG shape, a source revision or an Undo item.
 zoompointer(doc: ref Document, phase, x, y: int): int
 {
+    if (doc.presentation != nil) {
+        doc.presentation.dirty = 1;
+    }
     if (phase == 1) {
         if (len doc.points != 0) {
             return Conflict;

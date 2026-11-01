@@ -50,6 +50,16 @@ editing()
     vector->pointer(d, 2, 160, 170);
     vector->pointer(d, 3, 150, 160);
     require(d.shapes == unchanged && d.nundo == count, "return to origin is not an edit");
+    firstparts := vector->wireparts(d);
+    builds := d.presentation.builds;
+    body := d.presentation.paths;
+    for (snapshot := 0; snapshot < 20; snapshot++) {
+        vector->wireparts(d);
+    }
+    vector->cancel(d);
+    vector->wireparts(d);
+    require(d.presentation.builds == builds && d.presentation.paths == body && len firstparts == 4,
+            "unchanged snapshots/cancel reuse source and overlay presentation");
     before := d.shapes;
     vector->pointer(d, 1, 150, 160);
     vector->pointer(d, 2, 160, 170);

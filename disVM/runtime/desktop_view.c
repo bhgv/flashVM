@@ -632,7 +632,8 @@ static int vector_parse(VectorScene *scene)
                 !word(scene->bytes + at + 16, &node->y) || !word(scene->bytes + at + 24, &node->cx) ||
                 !word(scene->bytes + at + 32, &node->cy) || node->verb > 3 || node->x > 1000 || node->y > 600 ||
                 node->cx > 1000 || node->cy > 600 || (j == 0 && node->verb != 0) ||
-                (j > 0 && node->verb == 0 && scene->nodes[total - 2].verb != 3) ||
+                (j > 0 && node->verb == 0 && scene->nodes[total - 2].verb != 3 &&
+                 !(scene->tool >= 6 && i + 1 == shapes)) ||
                 (j > 0 && node->verb != 0 && scene->nodes[total - 2].verb == 3) ||
                 (node->verb != 2 && (node->cx || node->cy)) || (node->verb == 3 && (node->x || node->y)))
             {

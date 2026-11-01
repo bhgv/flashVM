@@ -59,18 +59,21 @@ preparewire(doc: ref Document)
 # existing header/record fields. No channel, callback or module load occurs.
 wire(doc: ref Document): string
 {
+    if (doc.tool >= Select) {
+        segments := wireparts(doc);
+        joined := "";
+        for (segment := 0; segment < len segments; segment++) {
+            joined += segments[segment];
+        }
+        return joined;
+    }
     if (!doc.nativecapture && len doc.chain != 0 && len doc.points != 0) {
         return chainwire(doc);
     }
     preparewire(doc);
     extra: ref Shape;
     additional := 0;
-    if (doc.tool >= Select) {
-        extra = editoverlay(doc);
-        if (extra != nil) {
-            additional = 32 + 40 * len extra.nodes;
-        }
-    } else if (len doc.points != 0 && !doc.nativecapture) {
+    if (len doc.points != 0 && !doc.nativecapture) {
         extra = draft(doc);
         additional = 32 + 40 * len extra.nodes;
     }
@@ -97,7 +100,13 @@ wire(doc: ref Document): string
 # Native live ink has no doc.points; the portable draft fallback preserves wire.
 wireparts(doc: ref Document): array of string
 {
-    if (doc.tool >= Select || (len doc.points != 0 && !doc.nativecapture)) {
+    if (doc.tool >= Select) {
+        preparewire(doc);
+        presentation(doc);
+        p := doc.presentation;
+        return array[] of {string cameraheader(doc),p.count,p.paths,p.overlay};
+    }
+    if (len doc.points != 0 && !doc.nativecapture) {
         return array[] of {wire(doc)};
     }
     preparewire(doc);
@@ -136,3 +145,5 @@ cameraheader(doc: ref Document): array of byte
     }
     return header;
 }
+
+include "idevectorpresentation.b";

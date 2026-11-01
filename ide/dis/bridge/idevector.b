@@ -9,7 +9,7 @@ create(): ref Document
 {
     return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
-                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, 0, 0);
+                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, nil, 0, 0);
 }
 
 
@@ -155,6 +155,9 @@ push(stack: array of array of ref Shape, depth: int, shapes: array of ref Shape)
 # Drop the gesture without changing committed state or its revision.
 cancel(doc: ref Document)
 {
+    if (doc.presentation != nil && len doc.points != 0) {
+        doc.presentation.dirty = 1;
+    }
     if (doc.edit != nil && doc.edit.mode != 0) {
         if (doc.edit.base != nil) {
             doc.shapes = doc.edit.base;

@@ -1,3 +1,5 @@
+[Dense picking and crash correction](VECTOR-PICKING.md)
+
 # Object and contour editing
 
 [Русский](VECTOR-EDITING.ru.md) · [Vector editor](VECTOR-EDITOR.md)

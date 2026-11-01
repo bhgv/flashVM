@@ -1,3 +1,5 @@
+[Плотные контуры: поиск и исправление падения](VECTOR-PICKING.ru.md)
+
 # Редактирование фигур и контуров
 
 [English](VECTOR-EDITING.md) · [Графический редактор](VECTOR-EDITOR.ru.md)
