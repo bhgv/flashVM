@@ -9,6 +9,7 @@
 #include "disvm/ui_client.h"
 #include "editor_view.h"
 #include "editor_ink.h"
+#include "editor_bulk.h"
 
 static DVM_UIDisEndpoint endpoint; /* [GC:] Borrowed ports rooted by the live Limbo init stack. */
 static DVM_UIBridge *transport;    /* Owned real FlashVM queue pair, no shared VM heap. */
@@ -33,6 +34,19 @@ void Idehost_attach(void *frame)
     memmove(arguments->ret, &result, sizeof(result));
 }
 
+/* Register one typed private geometry sender, or explicitly detach with nil.
+ * frame is borrowed under the same Dis owner as attach. Cross-use of ordinary
+ * input/output ports is refused; the sender stack roots any admitted channel. */
+void Idehost_attachbulk(void *frame)
+{
+    F_Idehost_attachbulk *arguments = frame;
+    WORD result = -1;
+    if (arguments->output == nil || (arguments->output != endpoint.requests && arguments->output != endpoint.replies))
+    {
+        result = dvm_editor_bulk_attach(arguments->slot, arguments->output);
+    }
+    memmove(arguments->ret, &result, sizeof(result));
+}
 
 /* End native borrowing before Limbo releases its stack-rooted port references.
  * frame has no arguments/result. The scheduler owner makes this mutation exclusively. */
@@ -43,7 +57,6 @@ void Idehost_detach(void *frame)
     endpoint.replies = nil;
 }
 
-
 /* Return initial renderer line capacity in the generated native-cell result slot.
  * frame is borrowed; this reports actual font geometry without changing any document. */
 void Idehost_rows(void *frame)
@@ -52,7 +65,6 @@ void Idehost_rows(void *frame)
     WORD rows = dvm_editor_rows();
     memmove(arguments->ret, &rows, sizeof(rows));
 }
-
 
 /* Copy the initial line-number preference into the generated native-cell result slot.
  * frame is borrowed; application visibility is subsequently controlled only by Dis envelopes. */
@@ -63,7 +75,6 @@ void Idehost_linenumbers(void *frame)
     memmove(arguments->ret, &visible, sizeof(visible));
 }
 
-
 /* Return the explicit new-document flag in a matching generated native-cell slot.
  * frame borrows the builtin invocation; no heap mutation or native I/O occurs. */
 void Idehost_fresh(void *frame)
@@ -73,7 +84,6 @@ void Idehost_fresh(void *frame)
     memmove(arguments->ret, &fresh, sizeof(fresh));
 }
 
-
 /* Return an independently Dis-owned configuration string in the generated frame.
  * frame is borrowed; retstr handles reference replacement and Dis allocation errors. */
 void Idehost_path(void *frame)
@@ -81,7 +91,6 @@ void Idehost_path(void *frame)
     F_Idehost_path *arguments = frame;
     retstr((char *)dvm_editor_path(), arguments->ret);
 }
-
 
 /* Initialize the sole native UI owner before loading application modules.
  * Returns one on success; caller stops routing before destroying either VM. */
@@ -96,13 +105,11 @@ int dvm_editor_start(void)
     return dvm_editor_create();
 }
 
-
 /* Observe whether the live Limbo entry stack has registered its rooted ports. */
 int dvm_editor_attached(void)
 {
     return endpoint.requests != nil;
 }
-
 
 /* Route bounded copied records and native events without running Dis or blocking.
  * Requires an existing protected owner/TLS context. Returns progress, idle, or -1 on failure.
@@ -145,6 +152,12 @@ int dvm_editor_poll(void)
         }
         progress = 1;
     }
+    event = dvm_editor_bulk_poll();
+    if (event < 0)
+    {
+        return -1;
+    }
+    progress |= event;
     event = dvm_editor_event(&message);
     if (event < 0 || (event && dvm_ui_client_post(client, &message) != FVM_OK))
     {
@@ -152,7 +165,6 @@ int dvm_editor_poll(void)
     }
     return progress || event;
 }
-
 
 /* Detach borrowed roots only after all Dis processes stop; release native queue/view owners.
  * Also accepts partial initialization on failure. No channel callback runs during teardown. */
@@ -165,11 +177,11 @@ void dvm_editor_stop(void)
         dvm_ui_pump_stop(pump);
         dvm_ui_pump_destroy(pump);
     }
+    dvm_editor_bulk_stop();
     dvm_ui_client_destroy(client);
     dvm_ui_destroy(transport);
     dvm_editor_destroy();
 }
-
 
 /* [GC:] retstr installs a private Dis string in the generated mapped return slot.
  * The borrowed native frozen buffer remains registered on allocation failure. */
@@ -179,7 +191,6 @@ void Idehost_ink(void *frame)
     retstr((char *)dvm_ink_read((unsigned long)arguments->token), arguments->ret);
 }
 
-
 /* Borrow a rooted managed input only during this native call. Copy hash/extent,
  * never the String address, into the native pending-presentation registry. */
 void Idehost_inkdone(void *frame)
@@ -188,7 +199,6 @@ void Idehost_inkdone(void *frame)
     char *bytes = string2c(arguments->drawing);
     dvm_ink_ack((unsigned long)arguments->token, bytes, strlen(bytes));
 }
-
 
 /* Apply scalar document admission before any live native samples are consumed.
  * Refusal retires only that capture; no document or VM reference is retained. */

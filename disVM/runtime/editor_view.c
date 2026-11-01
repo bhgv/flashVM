@@ -2202,9 +2202,13 @@ int dvm_editor_present(const DVM_UIMessage *message)
                     (unsigned long)message->size);
             return 0;
         }
-        if (message->code == DVM_DESK_END || desktop_status == 2)
+        if (desktop_status == 3)
         {
-            if (message->code == DVM_DESK_END)
+            return 1; /* End accepted; separate geometry brokers have not completed. */
+        }
+        if (message->code == DVM_DESK_END || desktop_status == 2 || desktop_status == 4)
+        {
+            if (message->code == DVM_DESK_END || desktop_status == 4)
             {
                 complete = 1;
             }

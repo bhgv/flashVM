@@ -151,3 +151,5 @@ Dis modules together because the private Document module signature changed.
 Wheel batching is limited to 16 same-direction/device/window/location packets and
 preserves each legacy 120-pixel step. Key events, reversal and Ctrl zoom remain FIFO
 fences. Details and reproducible scope: [v0.1714](../docs/releases/v0.1714.md).
+
+[Per-pane geometry transport / Отдельные брокеры геометрии](BULK-GEOMETRY.md) · [Русский](BULK-GEOMETRY.ru.md).

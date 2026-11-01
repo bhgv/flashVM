@@ -82,6 +82,26 @@ wire(doc: ref Document): string
 }
 
 
+# Borrow sole-owner doc and return a new small segment array. Committed body
+# bytes remain shared immutable strings, never copied into the UI owner's reply.
+# Native live ink has no doc.points; the portable draft fallback preserves wire.
+wireparts(doc: ref Document): array of string
+{
+    if (len doc.points != 0) {
+        return array[] of {wire(doc)};
+    }
+    preparewire(doc);
+    header := array[48] of byte;
+    putword(header, 0, doc.tool);
+    putword(header, 8, doc.color);
+    putword(header, 16, doc.width);
+    putword(header, 24, doc.fill);
+    putword(header, 32, doc.nundo);
+    putword(header, 40, doc.nredo);
+    return array[] of {string header, doc.wirebody};
+}
+
+
 # Write one uint32 in the existing eight-hex-digit scalar encoding.
 # Caller owns the admitted bytes/range; no allocation or user work occurs here.
 putword(bytes: array of byte, at, value: int)

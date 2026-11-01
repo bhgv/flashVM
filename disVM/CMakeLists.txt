@@ -141,6 +141,7 @@ if(BUILD_TESTING)
     dis-string-pool
     dis64-payloads
     dis64-storage
+    dis64-fixedcall-proposal
     dis64-pilot-native
     dis64-runtime
     dis64-scheduler

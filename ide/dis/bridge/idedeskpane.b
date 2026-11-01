@@ -453,7 +453,7 @@ serve(kind: int, path, text: string, requests: chan of Request, sys: Sys,
             colors = syntax->project(colored, current.revision, profile, first, len body);
         }
         response := Reply(request.id, status, kind, path, body, current.revision,
-                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic, "", colors);
+                          current.saved, first, caret, anchor, rangefirst, rangelast, transfer, line, diagnostic, "", nil, 0, colors);
         request.reply <-= response;
         if (stop) {
             return;
@@ -771,8 +771,12 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         if (len doc.points != 0) {
             revision++;
         }
-        drawing := vector->wire(doc);
-        if (inkack != 0) {
+        parts := vector->wireparts(doc);
+        drawing := "";
+        if (notices == nil || identity <= 0) {
+            drawing = vector->wire(doc);
+        }
+        if (inkack != 0 && (notices == nil || identity <= 0)) {
             if (native == nil) {
                 native = load Idehost Idehost->PATH;
             }
@@ -784,7 +788,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         }
         request.reply <-= Reply(request.id, status, Vector, path, body, revision,
-            doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, drawing, "");
+            doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, drawing, parts, inkack, "");
         if (stop) {
             if (jobs != nil) {
                 jobs <-= nil;

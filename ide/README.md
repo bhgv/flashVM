@@ -24,7 +24,7 @@
 
 # FlashVM Limbo IDE and host build tools
 
-Version **0.7.3**. [Русский](README.ru.md).
+Version **0.7.4**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 
@@ -135,3 +135,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Mouse caret and selection](DESKTOP-POINTER.md).
 
 [Glass rails, docking and smooth whole-table reveal / Матовые панели и плавный показ окна целиком](DESKTOP-GLASS-MOTION.md).
+
+[Independent geometry brokers / Независимая передача геометрии](BULK-GEOMETRY.md) · [Русский контракт](BULK-GEOMETRY.ru.md)

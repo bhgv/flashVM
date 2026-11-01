@@ -9,7 +9,7 @@ Idedesktop: module
     BeginView: con 65569; # width/height, ticket/count/scroll/table-scale/pan/reveal metadata.
     ItemView: con 65570; # Stable MovieClip ID and copied descriptor.
     ColorsView: con 65575; # Same view ticket; pane/revision plus ASCII palette, no geometry/input ack.
-    EndView: con 65571; # Complete the exact declared scene.
+    EndView: con 65571; # Commit scene; first=vector count1..8 permits private-stream join,0 is legacy.
     PointerEvent: con 65572; # Pixel/phase proposal carrying the completed view ticket.
     AnimationClock: con 65574; # Bounded replay visual-clock acknowledgement; no layout/source mutation.
     ResizeEvent: con 65573; # Ticket-bound native canvas proposal.

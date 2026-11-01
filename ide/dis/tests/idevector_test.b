@@ -46,13 +46,20 @@ wirecache()
     for (i = 0; i < 64; i++) {
         cached.fill = i % 2;
         cached.tool = vector->Brush;
-        if (cached.fill) { cached.tool = vector->Pen; }
+        if (cached.fill) {
+            cached.tool = vector->Pen;
+        }
         changed = vector->wire(cached);
+        pieces := vector->wireparts(cached);
+        require(len pieces == 2 && pieces[0] + pieces[1] == changed &&
+                pieces[1] == cached.wirebody, "segmented transport shares immutable geometry");
         require(changed[48:] == original[48:] && cached.wirebuilds == 1,
                 "Fill/Pen changes reuse committed bytes");
     }
     require(vector->defer(cached, 1, 100, 100) == vector->Ok, "live draft begins");
     preview := vector->wire(cached);
+    draftparts := vector->wireparts(cached);
+    require(len draftparts == 1 && draftparts[0] == preview, "portable draft wire compatibility");
     require(len preview > len original && cached.wirebuilds == 1, "live draft appends without rebuilding old geometry");
     vector->cancel(cached);
     vector->wire(cached);

@@ -23,7 +23,10 @@ int dvm_desktop_bind(FVM_Context *context, const unsigned char *font, size_t siz
 
 
 /* Stage a bounded copied frame; return 1 valid, 0 malformed. End returns a complete
- * scene ready for draw; a committed colour-only update returns2 (repaint, no input ack). No filesystem, document or Limbo process is accessed. */
+ * scene ready for draw; End returns3 while private data is pending and the last
+ * fragment returns4 after committing that deferred End. No partial scene is shown. A committed colour-only update returns2 (repaint, no input ack).
+ * End.first=declared pane count1..8 opts into deferred publication; legacy0
+ * still refuses incomplete streams. No filesystem or document access occurs. */
 int dvm_desktop_message(const DVM_UIMessage *message);
 
 

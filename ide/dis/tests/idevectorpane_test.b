@@ -46,6 +46,11 @@ init()
     b := panes->start(panes->Vector, "", "");
     require(a != nil && b != nil, "independent startup");
     empty := call(b, panes->Snapshot, nil);
+    notices := chan[1] of int;
+    fallback := panes->startnotified(panes->Vector, "", "", notices, 0);
+    legacy := call(fallback, panes->Snapshot, nil);
+    require(len legacy.drawing == 56, "zero notification identity keeps synchronous wire contract");
+    call(fallback, panes->Shutdown, nil);
     require(empty.revision == 0 && empty.saved == 0 && len empty.drawing == 56 && empty.drawing[48:] == "00000000", "clean serialized vector");
     first := call(a, panes->Draw, ref Uibridge->Message(Uibridge->Request, 0, 1, 0, 100, 100, ""));
     require(first.status == 0 && first.revision == 1 && first.saved == 0, "uncommitted preview is dirty");

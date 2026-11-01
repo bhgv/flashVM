@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "f530f864d008efdacdb9ebd48082c458e537a32a",
+  "revision": "9472f5032913e38f7fda0aec3383b1984c179458",
   "destination": "upstream",
   "include": [
     "NOTICE",

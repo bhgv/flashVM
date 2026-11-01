@@ -79,6 +79,9 @@ Idevector: module
     # Serialize a complete copied preview: six style/history words, path count,
     # then bounded ASCII path commands. The typed UI adapter requires Begin v2.
     wire: fn(doc: ref Document): string;
+    # Return immutable stream segments: small current header + cached geometry
+    # by reference. An active portable draft uses the legacy contiguous snapshot.
+    wireparts: fn(doc: ref Document): array of string;
     # Serialize complete committed SVG. Callers refuse Save while a gesture is active.
     svg: fn(doc: ref Document): string;
     # Parse the documented strict SVG subset transactionally. On error return nil;

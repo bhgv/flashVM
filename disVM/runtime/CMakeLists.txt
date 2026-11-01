@@ -180,8 +180,10 @@ list(APPEND module_headers "${root}/ide/dis/bridge/idevectorwire.b")
 list(APPEND module_names capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
 list(APPEND module_sources "${root}/disVM/examples/asincviews/main.b" "${root}/disVM/limbo/asincviews.b" "${root}/ide/dis/bridge/ideinkworker.b" "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/iderails.b" "${root}/ide/dis/bridge/idetools.b" "${root}/ide/dis/bridge/idetoolpalette.b" "${root}/ide/dis/bridge/iderecent.b" "${root}/ide/dis/bridge/idepick.b" "${root}/ide/dis/bridge/idethumbnails.b" "${root}/ide/dis/bridge/idetabview.b" "${root}/ide/dis/bridge/idedocking.b" "${root}/ide/dis/bridge/idesourcedomain.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
 # Portable cooperative task ownership is a library and separately runnable example.
-list(APPEND module_names asinctasks tasks-demo)
+list(APPEND module_names idebulk bulkports-test asinctasks tasks-demo)
 list(APPEND module_sources
+  "${root}/ide/dis/bridge/idebulk.b"
+  "${root}/ide/dis/tests/idebulk_test.b"
   "${root}/disVM/limbo/asinctasks.b"
   "${root}/disVM/examples/asinctasks/main.b")
 file(GLOB syntax_headers "${root}/ide/syntax/*.m")
@@ -418,7 +420,7 @@ if(DVM_RUNTIME_EDITOR)
   endif()
   get_target_property(runtime_sources disvm SOURCES)
   get_target_property(runtime_includes disvm INCLUDE_DIRECTORIES)
-  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_view.c editor_raster.c editor_stamp.c editor_ink.c
+  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_bulk.c editor_view.c editor_raster.c editor_stamp.c editor_ink.c
     "${root}/disVM/host/dis_ui_channel.c")
   if(DVM_RUNTIME_TESTS)
     add_executable(disvm_editor_raster_test test_editor_raster.c editor_raster.c editor_stamp.c editor_ink.c)
@@ -1729,5 +1731,20 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_vector_controls_cache.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
     set_tests_properties(disvm_vector_control_cache_${mode} PROPERTIES TIMEOUT 120)
+  endforeach()
+endif()
+
+# Two real document owners must make progress through separate geometry queues.
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_bulk_ports_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_application.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/bulkports-test.dis" "${mode}")
+    set_tests_properties(disvm_bulk_ports_${mode} PROPERTIES TIMEOUT 60
+      ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy")
+    add_test(NAME disvm_bulk_geometry_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_bulk_transport.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_bulk_geometry_${mode} PROPERTIES TIMEOUT 180)
   endforeach()
 endif()

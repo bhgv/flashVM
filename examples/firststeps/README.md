@@ -61,3 +61,12 @@ CTest with the built editor, desktop module and test font). They compare canvas
 pixels, cache reuse, repeated scroll reversal and legacy wheel distances in both
 JIT and interpreter modes. See [v0.1714](../../docs/releases/v0.1714.md) and the
 [native drawing contract](../../ide/NATIVE-INK.md) for bounds and fallback cases.
+
+### Independent drawing transfers (v0.1715)
+
+Open a large SVG in one vector window, create another via Files > SVG and open
+another SVG there. Each document now has a private geometry sender/broker;
+normal metadata remains on the ordinary queue. The two-owner regression runs
+through actual native channels in both JIT/interpreter modes. The optional
+DVM_EDITOR_BULK_STATS=1 prints frame/port/offset/size without document bytes.
+See the [ownership and atomic publication contract](../../ide/BULK-GEOMETRY.md).

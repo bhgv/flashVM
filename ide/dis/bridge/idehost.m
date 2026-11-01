@@ -62,6 +62,11 @@ Idehost: module
     # Returns zero on registration, minus one for invalid/repeated registration.
     attach: fn(input: chan of array of byte, output: chan of array of byte): int;
 
+    # Register a separate geometry-only broker for slot1..8. output is rooted
+    # by its sender until drained; nil explicitly detaches that slot. No other
+    # slot or ordinary UI queue is consumed by this broker. Return0/-1.
+    attachbulk: fn(slot: int, output: chan of array of byte): int;
+
     # Stop native channel borrowing before the entry stack releases its roots.
     # The controller calls this only after all private services acknowledge shutdown.
     detach: fn();

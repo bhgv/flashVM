@@ -5,11 +5,27 @@
 #include <string.h>
 
 static const char valid[] = /* One red, unfilled two-node path in the logical canvas. */
-    "00000001" "00e04444" "00000008" "00000000" "00000001" "00000000"
-    "00000001" "00e04444" "00000008" "00000000" "00000002"
-    "00000000" "00000064" "00000064" "00000000" "00000000"
-    "00000001" "0000012c" "000000c8" "00000000" "00000000";
-
+    "00000001"
+    "00e04444"
+    "00000008"
+    "00000000"
+    "00000001"
+    "00000000"
+    "00000001"
+    "00e04444"
+    "00000008"
+    "00000000"
+    "00000002"
+    "00000000"
+    "00000064"
+    "00000064"
+    "00000000"
+    "00000000"
+    "00000001"
+    "0000012c"
+    "000000c8"
+    "00000000"
+    "00000000";
 
 /* Preserve active evaluation in Release; label names the admission invariant. */
 static void require(int ok, const char *label)
@@ -20,7 +36,6 @@ static void require(int ok, const char *label)
         exit(EXIT_FAILURE);
     }
 }
-
 
 /* Populate a copied envelope with borrowed literal bytes; no decoding is mocked. */
 static void message(DVM_UIMessage *out, unsigned long code, const char *text)
@@ -33,7 +48,6 @@ static void message(DVM_UIMessage *out, unsigned long code, const char *text)
     memcpy(out->text, text, out->size);
 }
 
-
 /* Begin a genuine staged scene containing one vector-capable pane descriptor. */
 static void scene(void)
 {
@@ -43,12 +57,10 @@ static void scene(void)
     out.first = 960;
     out.second = 640;
     require(dvm_desktop_message(&out), "scene begin");
-    message(&out, DVM_DESK_ITEM,
-            "000000010000006000000040000001a00000011000000001ffffffff00000000ffffffffVector");
+    message(&out, DVM_DESK_ITEM, "000000010000006000000040000001a00000011000000001ffffffff00000000ffffffffVector");
     out.first = 1;
     require(dvm_desktop_message(&out), "copied pane");
 }
-
 
 /* Start the exact v2 vector extent after its owning pane has been staged. */
 static void begin(void)
@@ -60,7 +72,6 @@ static void begin(void)
     out.second = (long)strlen(valid);
     require(dvm_desktop_message(&out), "vector exact extent declaration");
 }
-
 
 /* Reject a complete malformed stream and prevent End from admitting partial geometry.
  * offset selects a canonical word; replacement has exactly eight ASCII bytes. */
@@ -78,6 +89,27 @@ static void refuse(size_t offset, const char *replacement)
     require(!dvm_desktop_message(&out), "incomplete/rejected geometry cannot commit");
 }
 
+/* Exercise the private split-stream join without rendering partial geometry.
+ * No native heap/Dis channel is mocked here; all actual decoder predicates run. */
+static void deferred_end(void)
+{
+    DVM_UIMessage out;
+    begin();
+    message(&out, DVM_DESK_END, "");
+    out.first = 2;
+    require(!dvm_desktop_message(&out), "wrong declared stream count refuses");
+    out.first = 1;
+    require(dvm_desktop_message(&out) == 3, "explicit End waits for bulk data");
+    require(!dvm_desktop_active(), "partial first scene is not active");
+    message(&out, DVM_DESK_VECTOR_DATA, valid);
+    out.first = 1;
+    out.flags = 6;
+    require(!dvm_desktop_message(&out), "stale split-stream ticket refuses");
+    out.flags = 7;
+    require(dvm_desktop_message(&out) == 4, "last fragment commits deferred End once");
+    require(dvm_desktop_active(), "complete split-stream scene becomes active");
+    require(!dvm_desktop_message(&out), "duplicate after split commit refuses");
+}
 
 /* Validate the only admitted nested forest: document -> container -> table.
  * Staged roots must precede children so presentation never observes a nil parent.
@@ -90,8 +122,7 @@ static void mdi_parents(void)
     out.first = 960;
     out.second = 640;
     require(dvm_desktop_message(&out), "nested missing-root begin");
-    message(&out, DVM_DESK_ITEM,
-            "00000005000000080000002800000168000000fc00000000ffffffff00000000ffffffffchild");
+    message(&out, DVM_DESK_ITEM, "00000005000000080000002800000168000000fc00000000ffffffff00000000ffffffffchild");
     out.first = 1;
     require(dvm_desktop_message(&out), "staged bounded nested child");
     message(&out, DVM_DESK_END, "");
@@ -101,24 +132,22 @@ static void mdi_parents(void)
     out.first = 960;
     out.second = 640;
     require(dvm_desktop_message(&out), "valid nested begin");
-    message(&out, DVM_DESK_ITEM,
-            "000000010000006000000048000002e80000013400000004ffffffff00000000ffffffffSource MDI");
+    message(&out, DVM_DESK_ITEM, "000000010000006000000048000002e80000013400000004ffffffff00000000ffffffffSource MDI");
     out.first = 13;
     require(dvm_desktop_message(&out), "container root beneath table");
-    message(&out, DVM_DESK_ITEM,
-            "00000005000000080000002800000168000000fc00000000ffffffff00000000ffffffffchild");
+    message(&out, DVM_DESK_ITEM, "00000005000000080000002800000168000000fc00000000ffffffff00000000ffffffffchild");
     out.first = 1;
     require(dvm_desktop_message(&out), "child below preceding container");
     message(&out, DVM_DESK_END, "");
     require(dvm_desktop_message(&out), "complete bounded nested forest admitted");
 }
 
-
 /* Check fragmentation, ticket/order, immutable extent bounds and command validation. */
 int main(void)
 {
     DVM_UIMessage out;
     mdi_parents();
+    deferred_end();
     scene();
     message(&out, DVM_DESK_VECTOR_BEGIN, "00000001");
     out.first = 1;

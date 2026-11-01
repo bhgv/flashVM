@@ -64,6 +64,7 @@ static unsigned long offset;      /* Table scroll magnitude. */
 static unsigned int width;        /* Committed canvas pixels. */
 static unsigned int height;       /* Committed canvas pixels. */
 static int pending;               /* A declared scene is being assembled. */
+static int end_waiting;           /* End metadata validated; private geometry fragments still outstanding. */
 static int trace;                 /* Explicit replay diagnostic mode; ordinary windows do not dump source text. */
 static FVM_Path *text_paths[DESK_SLOTS];       /* Owner-local untransformed glyph outlines. */
 static FVM_Path *syntax_paths[DESK_SLOTS][4];  /* Detached colour groups2..5, sharing whole-field shaping. */
@@ -1148,6 +1149,11 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         expected = (unsigned int)count;
         received = 0;
         pending = 1;
+        end_waiting = 0;
+        if (getenv("DVM_EDITOR_BULK_STATS"))
+        {
+            printf("BULKFRAME %lu\n", ticket);
+        }
         return 1;
     }
     if (message->code == DVM_DESK_COLORS)
@@ -1259,18 +1265,41 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         if (scene->used == scene->expected)
         {
             int parsed = vector_parse(scene);
+            if (parsed && end_waiting)
+            {
+                unsigned int pane;
+                DVM_UIMessage end;
+                for (pane = 1; pane <= 8; pane++)
+                {
+                    if (vectors[pane].expected && !vectors[pane].complete)
+                    {
+                        return 1;
+                    }
+                }
+                memset(&end, 0, sizeof(end));
+                end.kind = DVM_UI_VIEW;
+                end.code = DVM_DESK_END;
+                end.flags = ticket;
+                return dvm_desktop_message(&end) == 1 ? 4 : 0;
+            }
             return parsed;
         }
         return 1;
     }
     if (message->code == DVM_DESK_END)
     {
-        for (index = 1; index <= 8; ++index)
+        unsigned int declarations = 0;
+        if (message->first < 0 || message->first > 8 || message->second)
         {
-            if (vectors[index].expected && !vectors[index].complete)
-            {
-                return 0;
-            }
+            return 0;
+        }
+        for (index = 1; index <= 8; index++)
+        {
+            declarations += vectors[index].expected != 0;
+        }
+        if (message->first && (unsigned long)message->first != declarations)
+        {
+            return 0;
         }
         /* The only additional hierarchy is document -> MDI root -> table.
          * Validate the entire copied forest before presentation; no cycles or
@@ -1302,6 +1331,19 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         {
             return 0;
         }
+        for (index = 1; index <= 8; ++index)
+        {
+            if (vectors[index].expected && !vectors[index].complete)
+            {
+                if (!message->first)
+                {
+                    return 0; /* Legacy End still requires all fragments now. */
+                }
+                end_waiting = 1;
+                return 3; /* Accepted End; publication remains pending, no input acknowledgement. */
+            }
+        }
+        end_waiting = 0;
         memset(items + received, 0, (DESK_SLOTS - received) * sizeof(*items));
         for (index = 1; index <= 8; ++index)
         {

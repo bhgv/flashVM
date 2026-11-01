@@ -45,7 +45,9 @@ Idedeskpane: module
         transfer: string; # ExportSelection only: complete bounded selection; never native UI metadata.
         line: int; # One-based logical source line containing the viewport start.
         diagnostic: string; # Plain build/error metadata, bounded by the caller before UI publication.
-        drawing: string; # Vector v2 style/history header and complete bounded paths; empty for text panes.
+        drawing: string; # Legacy synchronous vector snapshot; empty for notified/segmented owners.
+        parts: array of string; # Immutable geometry segments for notified owners; caller never mutates.
+        ink: int; # Cumulative preview token; sender fences the exact outgoing parts before delivery.
         colors: string; # Empty while pending; otherwise one ASCII palette class 0..5 per body scalar.
     };
 
@@ -58,7 +60,9 @@ Idedeskpane: module
     # Buffered notices and positive identity enable lazy source analysis or deferred
     # vector geometry. Nil/zero uses start semantics (synchronous vector refinement);
     # missing optional scanners still keep plain text.
-    # No document or native pointer is sent through readiness notifications.
+    # Notified vector replies expose immutable parts and ink fence instead of
+    # copying the complete drawing string. No mutable document or native pointer
+    # is sent through readiness notifications.
     startnotified: fn(kind: int, path, text: string, notices: chan of int,
                       identity: int): chan of Request;
 };

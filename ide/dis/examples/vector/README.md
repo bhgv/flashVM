@@ -81,3 +81,12 @@ separate Limbo controller per vector pane and only typed-channel presentation.
 The SVG subset/resource limits and incomplete I/O caveats are listed in the
 [guide](../../../VECTOR-EDITOR.md). It does not silently load unsupported SVG,
 perform boolean paint union, implement node selection or animate the drawing.
+
+## Geometry transfer (IDE 0.7.4)
+
+When this owner is used by the MovieClip desktop, notified snapshots share a
+small header and cached immutable body. A separate Limbo sender and native broker
+per pane perform fragment encoding/delivery. Opening a second large SVG exercises
+an independent stream; ordinary input/control ports remain distinct. Complete
+scene publication still waits for every declared stream. Update all runtime and
+Dis modules together. See [the transport contract](../../../BULK-GEOMETRY.md).

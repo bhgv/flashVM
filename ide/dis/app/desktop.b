@@ -6,6 +6,7 @@ include "idefileops.m";
 include "ideinput.m";
 include "idefield.m";
 include "idehost.m";
+include "idebulk.m";
 include "idedeskpane.m";
 include "idedesktop.m";
 include "idedeskclip.m";
@@ -28,6 +29,22 @@ panecall(owner: chan of Idedeskpane->Request, operation: int, text: string,
     replies := chan of Idedeskpane->Reply;
     owner <-= Idedeskpane->Request(1, operation, text, event, replies);
     return <-replies;
+}
+
+
+# Compare immutable geometry segments without allocating a contiguous drawing.
+# Arrays are borrowed and never mutated; nil/length differences report change.
+sameparts(left, right: array of string): int
+{
+    if (len left != len right) {
+        return 0;
+    }
+    for (index := 0; index < len left; index++) {
+        if (left[index] != right[index]) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
@@ -242,6 +259,12 @@ init()
     modal := 0;
     closing := 0; # Stable editor slot retained while its dirty-close decision is modal.
     field := fields->create();
+    bulk := load Idebulk Idebulk->PATH;
+    if (bulk == nil) {
+        raise "fail: bulk sender module";
+    }
+    senders := array[8] of chan of ref Idebulk->Job;
+    delivered := chan[8] of int; # Scalar acknowledgements, never geometry buffers.
     finished := 0;
     refresh := 1; # Geometry-only motion reuses immutable pane snapshots.
     dirty := 0; # Last source-authoritative dirty count, refreshed after edits.
@@ -359,22 +382,36 @@ init()
                     shown[id-1].revision, shown[id-1].colors);
             }
         }
+        transfers := 0;
         for (index = 0; index < len windows; index++) {
-            if (windows[index] == nil || shown[index].drawing == "") {
+            if (windows[index] == nil || len shown[index].parts == 0) {
                 continue;
             }
-            stream := shown[index].drawing;
-            send(codec, output, desk->VectorBegin, view.ticket, index + 1, len stream,
-                 codec->hexword(shown[index].revision) + codec->hexword(desk->VectorVersion));
-            for (offset := 0; offset < len stream; offset += 1024) {
-                end := offset + 1024;
-                if (end > len stream) {
-                    end = len stream;
+            if (senders[index] == nil) {
+                senders[index] = bulk->start(codec, host, index + 1, delivered);
+                if (senders[index] == nil) {
+                    raise "fail: private geometry broker";
                 }
-                send(codec, output, desk->VectorData, view.ticket, index + 1, offset, stream[offset:end]);
             }
+            parts := shown[index].parts;
+            extent := 0;
+            for (part := 0; part < len parts; part++) {
+                extent += len parts[part];
+            }
+            # Declare extents on the ordinary stream before its private sender
+            # runs. The native owner drains ordinary metadata before bulk data.
+            send(codec, output, desk->VectorBegin, view.ticket, index + 1, extent,
+                 codec->hexword(shown[index].revision) + codec->hexword(desk->VectorVersion));
+            senders[index] <-= ref Idebulk->Job(view.ticket, parts, shown[index].ink);
+            transfers++;
         }
-        send(codec, output, desk->EndView, view.ticket, 0, 0, "");
+        send(codec, output, desk->EndView, view.ticket, transfers, 0, "");
+        # Keep one atomic scene publication. Encoding/fragment rendezvous belongs
+        # to independent senders/brokers; other Dis owners and ports keep running.
+        # Do not start a second scene or act on partially published hit geometry.
+        for (index = 0; index < transfers; index++) {
+            <-delivered;
+        }
         raw: array of byte;
         vectorready := 0;
         for (;;) {
@@ -386,7 +423,7 @@ init()
                     continue;
                 }
                 fresh := panecall(windows[id-1], panes->Snapshot, "", nil);
-                if (fresh.kind == panes->Vector && fresh.drawing != shown[id-1].drawing) {
+                if (fresh.kind == panes->Vector && !sameparts(fresh.parts, shown[id-1].parts)) {
                     vectorready = 1;
                     refresh = 1;
                     break;
@@ -1128,6 +1165,12 @@ init()
     debugstopped := <-debugreply;
     if (debugstopped.status != debugger->Ok) {
         raise "fail: debugger session shutdown";
+    }
+    for (index = 0; index < len senders; index++) {
+        if (senders[index] != nil) {
+            senders[index] <-= nil;
+            <-delivered;
+        }
     }
     host->detach();
     sys->print("PASS MovieClip desktop: independent panes and acknowledged shutdown\n");

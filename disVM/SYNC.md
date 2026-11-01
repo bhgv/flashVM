@@ -1,3 +1,12 @@
+## v0.1715 — First fixed Math C-call review and independent codec fixture
+
+Selected Dis1037/bootstrap282/mk83 files are pinned to
+9472f5032913e38f7fda0aec3383b1984c179458. Read INFERNO-0047 at ec17a5b and INFERNO-0048 at5a9f852;
+FLASHVM-0046/0047/0048 publish independent golden-codec checks and scoped acceptance
+of the trusted scalar C proof. No generic VM result capability, reference-result
+or file-native call admission follows. Host owning Math gates, injected error and
+four active mutation controls passed. See [v0.1715](../docs/releases/v0.1715.md).
+
 ## v0.1714 — RV64 bridge oracle and native64 startup review
 
 Selected Dis1023/bootstrap282/mk83 files are pinned to
