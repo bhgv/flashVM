@@ -42,6 +42,12 @@ init()
             x = 500;
             y = 400;
         }
+        if (stroke != 0) {
+            changed := call(owner, panes->VectorControl, "", ref Uibridge->Message(
+                Uibridge->Request, 0, 13, stroke, 0, 0, ""));
+            check(changed.status == 0, "color accepted while earlier ink is queued");
+            check(changed.body != "", "color response is available before Save joins workers");
+        }
         begun := call(owner, panes->Draw, "", ref Uibridge->Message(Uibridge->Request, 0, 1, stroke, x, y, ""));
         check(begun.status == 0 && begun.revision == stroke + 1, "begin metadata");
         token := "00000001";

@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1712**. [Русская версия](README.ru.md).
+Development version: **0.1713**. [Русская версия](README.ru.md).
 
-Current series: [v0.1712](docs/releases/v0.1712.md): signed FIR division facts, real Dis/SWF validation and an independent Inferno arithmetic oracle.
+Current series: [v0.1713](docs/releases/v0.1713.md): responsive repeated vector controls and pointer-owned native ink without stray connecting segments.
 
 ## Browse documentation
 

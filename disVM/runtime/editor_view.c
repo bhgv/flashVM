@@ -15,6 +15,7 @@
 #ifdef DVM_EDITOR_SDL
 #include "editor_desktop_input.h"
 #include "editor_motion_batch.h"
+#include "editor_ink_pointer.h"
 #endif
 #include "desktop_view.h"
 #include "flashvm/utf8.h"
@@ -131,6 +132,7 @@ static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notific
 static int paint_due;              /* Frame-free notification delivered, latest state may be prepared. */
 static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
 #ifdef DVM_EDITOR_SDL
+static SDL_Event ink_pointer; /* Copied source identity of the sole native ink capture. */
 static SDL_Event postponed_event; /* One FIFO barrier behind a synthetic ink release. */
 static int postponed_valid; /* No later SDL input may overtake the saved event. */
 static Uint32 desktop_animation_clock;  /* Last native visual-clock sample; independent of SWF frames. */
@@ -2939,7 +2941,26 @@ int dvm_editor_event(DVM_UIMessage *message)
                 vector_drag = 0;
             }
         }
-        if (ink_token && dvm_editor_motion_barrier(&event))
+        /* SDL touch-generated mouse copies must not terminate their real finger.
+         * Ignore foreign motion/releases instead of mapping them into this stroke. */
+        if (((event.type == SDL_MOUSEMOTION && event.motion.which == SDL_TOUCH_MOUSEID) ||
+             ((event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) &&
+              event.button.which == SDL_TOUCH_MOUSEID)))
+        {
+            return 0;
+        }
+        int lost_pointer = 0;
+        if (ink_token && (event.type == SDL_MOUSEMOTION || event.type == SDL_MOUSEBUTTONUP ||
+                          event.type == SDL_FINGERMOTION || event.type == SDL_FINGERUP))
+        {
+            int ownership = dvm_editor_ink_pointer(&ink_pointer, &event);
+            if (!ownership)
+            {
+                return 0;
+            }
+            lost_pointer = ownership < 0;
+        }
+        if (ink_token && (lost_pointer || dvm_editor_motion_barrier(&event)))
         {
             if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
             {
@@ -3087,7 +3108,7 @@ int dvm_editor_event(DVM_UIMessage *message)
             {
                 message->code = 7; /* Existing copied three-contact table-pan proposal. */
             }
-            if (!desktop_pan && dvm_desktop_active() && event.type == SDL_MOUSEBUTTONDOWN && event.button.clicks >= 2 &&
+            if (header_drag && dvm_desktop_active() && event.type == SDL_MOUSEBUTTONDOWN && event.button.clicks >= 2 &&
                 (event.button.clicks % 2) == 0)
             {
                 message->code = 10;
@@ -3170,6 +3191,7 @@ int dvm_editor_event(DVM_UIMessage *message)
                 ink_token = dvm_ink_begin(vector_drag, color, wide, (long)point);
                 if (ink_token)
                 {
+                    ink_pointer = event;
                     snprintf(message->text + 32, 9, "%08x", (unsigned int)ink_token);
                     message->size = 40;
                 }

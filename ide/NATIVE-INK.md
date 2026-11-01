@@ -114,3 +114,27 @@ window zooms, including changes after maximize and normal restore.
 See [vector editor](VECTOR-EDITOR.md), [desktop controls](dis/DESKTOP-CONTROLS.md),
 [retained native scene](../disVM/runtime/RETAINED-SCENE.md) and
 [Dis C modules](../disVM/runtime/NATIVE_MODULES.md).
+
+## Pointer ownership and repeated controls (v0.1713)
+
+The native trajectory owns the copied window/device/contact from its Begin.
+Motion or release from another pointer cannot append a segment or end it.
+SDL touch-generated mouse copies are discarded before lifecycle fences. If the
+owning mouse reports motion without its left button after a lost release, C
+freezes at the last admitted point, sends one ordinary frozen-token End, and
+then consumes the hover. The hover/toolbar coordinate is never a paint endpoint.
+No live point arrays are sent to Limbo by this recovery.
+
+Mouse click counts select maximize/restore only over the actual window header.
+Second and later clicks on colors, Fill and Pen remain normal control requests;
+they never become window-management or drawing requests. Style changes while a
+previous stroke is queued remain ordinary owner requests. The companion worker
+regression now checks blue then black SVG/history across that boundary.
+
+The real SDL regression exercises repeated toolbar clicks, foreign mouse motion
+and release, lost-release hover, synthetic mouse copies and contact identity,
+in addition to its original600-motion raster capture. The old editor_view body
+fails the repeated-control predicate. With only the header correction it still
+fails the independent no-foreign/hover-ink predicate. These are headless SDL
+queue/raster and actual Dis worker gates, not physical-device or measured-FPS
+acceptance. Geometry/refinement algorithms and SWF/Dis wire formats are unchanged.

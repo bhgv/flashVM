@@ -25,7 +25,7 @@ int main(int argc, char **argv)
         unsigned int index;
         long x = stroke ? 500 : 100;
         long y = stroke ? 400 : 100;
-        token = dvm_ink_begin(1, 0x245ac4, 8, y * 1001 + x);
+        token = dvm_ink_begin(1, stroke ? 0x222222 : 0x245ac4, 8, y * 1001 + x);
         if (token != stroke + 1 || dvm_ink_read(token)[0])
         {
             fputs("FAIL ink fixture token/live copy\n", stderr);

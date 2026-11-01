@@ -29,7 +29,8 @@ def main():
         for name, count in (("native-ink.svg", 2), ("native-undo.svg", 1), ("native-redo.svg", 2)):
             text = (work / name).read_text()
             paths = list(ET.fromstring(text))
-            if len(paths) != count or any(path.attrib.get("fill") != "#245ac4" for path in paths):
+            colors = [path.attrib.get("fill") for path in paths]
+            if len(paths) != count or colors != ["#245ac4", "#222222"][:count]:
                 raise RuntimeError("native FIFO/history lost a complete brush shape: " + text)
             if name == "native-ink.svg":
                 expected = [path.attrib for path in paths]

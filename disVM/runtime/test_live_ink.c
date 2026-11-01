@@ -3,6 +3,7 @@
 #include "editor_view.h"
 #include "desktop_view.h"
 #include "editor_ink.h"
+#include "editor_ink_pointer.h"
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,8 +99,139 @@ static DVM_UIMessage proposal(void)
 }
 
 
-/* Drive600 real queued motions through the production C owner. The only emitted
- * proposals are Begin and a frozen-token End. Inspect actual detached pixels. */
+/* Exercise repeated toolbar clicks as ordinary controls, never maximize/draw.
+ * ticket advances at the copied Dis-scene boundary; x is a canvas pixel, offset
+ * is the expected negative control hit, and clicks is the SDL click count.
+ * No document is mocked;
+ * negative hit offsets and actual SDL click counts come from the native adapter.
+ */
+static void toolbar_click(unsigned long *ticket, int x, long offset, unsigned int clicks)
+{
+    SDL_Event click;
+    DVM_UIMessage event;
+    char expected[33];
+    SDL_zero(click);
+    click.type = SDL_MOUSEBUTTONDOWN;
+    click.button.windowID = 1;
+    click.button.which = 1;
+    click.button.button = SDL_BUTTON_LEFT;
+    click.button.clicks = (Uint8)clicks;
+    click.button.x = x;
+    click.button.y = 108;
+    require(SDL_PushEvent(&click) == 1, "queue toolbar click");
+    event = proposal();
+    snprintf(expected, sizeof(expected), "%08x%08x%08x%08x", 1, 1, 1, (unsigned int)offset);
+    require(event.code == DVM_DESK_POINTER && event.size == 32 && !memcmp(event.text, expected, 32),
+            "repeated toolbar click stays a control, with no ink token or maximize code");
+    scene(++*ticket);
+    pointer(SDL_MOUSEBUTTONUP, x, 108);
+    event = proposal();
+    require(event.code == DVM_DESK_POINTER && event.size == 32, "toolbar release creates no stroke");
+    scene(++*ticket);
+}
+
+
+/* A missing release is repaired at the last admitted point. Foreign pointers
+ * cannot append/end this capture, and hover coordinates must not become a tail.
+ */
+static void capture_recovery(unsigned long *ticket)
+{
+    DVM_UIMessage event;
+    SDL_Event foreign;
+    SDL_zero(foreign);
+    foreign.type = SDL_MOUSEBUTTONDOWN;
+    foreign.button.windowID = 1;
+    foreign.button.which = 1;
+    foreign.button.button = SDL_BUTTON_LEFT;
+    foreign.button.clicks = 2;
+    foreign.button.x = 160;
+    foreign.button.y = 220;
+    require(SDL_PushEvent(&foreign) == 1, "repeated canvas press");
+    event = proposal();
+    require(event.size == 40, "repeated canvas press begins ink, never maximize");
+    scene(++*ticket);
+    SDL_zero(foreign);
+    foreign.type = SDL_MOUSEMOTION;
+    foreign.motion.windowID = 1;
+    foreign.motion.which = 2;
+    foreign.motion.state = SDL_BUTTON_LMASK;
+    foreign.motion.x = 700;
+    foreign.motion.y = 500;
+    require(SDL_PushEvent(&foreign) == 1, "foreign mouse motion");
+    foreign.type = SDL_MOUSEBUTTONUP;
+    foreign.button.windowID = 1;
+    foreign.button.which = 2;
+    foreign.button.button = SDL_BUTTON_LEFT;
+    foreign.button.x = 700;
+    foreign.button.y = 500;
+    require(SDL_PushEvent(&foreign) == 1, "foreign mouse release");
+    SDL_zero(foreign);
+    foreign.type = SDL_MOUSEMOTION;
+    foreign.motion.windowID = 1;
+    foreign.motion.which = 1;
+    foreign.motion.state = 0;
+    foreign.motion.x = 800;
+    foreign.motion.y = 550;
+    require(SDL_PushEvent(&foreign) == 1, "own hover proves release was lost");
+    event = proposal();
+    require(event.code == DVM_DESK_POINTER && event.size == 40 && !memcmp(event.text, "00000003", 8),
+            "only the owning lost-release fence ends the stroke");
+    require(strlen(dvm_ink_read(2)) == 8, "foreign/hover positions never become ink or a connecting line");
+    scene(++*ticket);
+    toolbar_click(ticket, 510, -14, 2);
+    toolbar_click(ticket, 710, -16, 2);
+    toolbar_click(ticket, 810, -17, 2);
+}
+
+
+/* SDL's synthetic mouse copies must not fence an active capture. The real
+ * release is queued last and must be consumed before any End is delivered.
+ * Finger identity checks cover separate contacts on the same touch surface.
+ */
+static void synthetic_copies(unsigned long *ticket)
+{
+    SDL_Event event;
+    SDL_Event begin;
+    DVM_UIMessage out;
+    pointer(SDL_MOUSEBUTTONDOWN, 160, 220);
+    out = proposal();
+    require(out.size == 40, "capture before synthetic copies");
+    scene(++*ticket);
+    SDL_zero(event);
+    event.type = SDL_MOUSEBUTTONDOWN;
+    event.button.windowID = 1;
+    event.button.which = SDL_TOUCH_MOUSEID;
+    event.button.button = SDL_BUTTON_LEFT;
+    event.button.x = 710;
+    event.button.y = 108;
+    require(SDL_PushEvent(&event) == 1, "synthetic mouse down");
+    event.type = SDL_MOUSEBUTTONUP;
+    require(SDL_PushEvent(&event) == 1, "synthetic mouse up");
+    pointer(SDL_MOUSEBUTTONUP, 160, 220);
+    out = proposal();
+    require(out.size == 40 && !memcmp(out.text, "00000003", 8) && !SDL_HasEvent(SDL_MOUSEBUTTONUP),
+            "synthetic copies cannot seal before the actual owner release");
+    require(strlen(dvm_ink_read(3)) == 8, "synthetic toolbar coordinates never enter the trajectory");
+    scene(++*ticket);
+    SDL_zero(begin);
+    begin.type = SDL_FINGERDOWN;
+    begin.tfinger.windowID = 1;
+    begin.tfinger.touchId = 17;
+    begin.tfinger.fingerId = 31;
+    event = begin;
+    event.type = SDL_FINGERMOTION;
+    require(dvm_editor_ink_pointer(&begin, &event) == 1, "same finger owns motion");
+    event.tfinger.fingerId++;
+    require(dvm_editor_ink_pointer(&begin, &event) == 0, "another finger cannot append a connecting segment");
+    event = begin;
+    event.type = SDL_FINGERUP;
+    event.tfinger.windowID++;
+    require(dvm_editor_ink_pointer(&begin, &event) == 0, "another window cannot release a finger capture");
+}
+
+
+/* First drive600 real queued motions with only Begin/frozen End proposals and
+ * inspect detached pixels. Then check controls and recovered pointer ownership. */
 int dvm_test_live_ink(const char *font)
 {
     DVM_UIMessage event;
@@ -159,8 +291,18 @@ int dvm_test_live_ink(const char *font)
     }
     require(ink > 1000, "buffered trajectory is visibly stamped across its actual pane");
     dvm_editor_frame_destroy(frame);
+    {
+        unsigned long ticket = 9;
+        scene(ticket);
+        toolbar_click(&ticket, 510, -14, 1);
+        toolbar_click(&ticket, 510, -14, 2);
+        toolbar_click(&ticket, 710, -16, 2);
+        toolbar_click(&ticket, 810, -17, 2);
+        capture_recovery(&ticket);
+        synthetic_copies(&ticket);
+    }
     dvm_editor_destroy();
-    printf("PASS native SDL ink:600 motions,2 Dis proposals, frozen bytes=%lu, stamped pixels=%u\n",
+    printf("PASS native SDL ink: initial600 motions/2 proposals, repeated controls, pointer recovery, synthetic copies; frozen bytes=%lu, stamped pixels=%u\n",
            (unsigned long)(event.size - 32),
            ink);
     return 0;
