@@ -1,7 +1,35 @@
-// Rounded speech-bubble body; Limbo owns its bounded grid and anchor.
-// Use the same dark surface/border as the rail buttons, without a window header.
-ideDraw.w = chromeWidth;
-ideDraw.h = chromeHeight;
+// Raised dark speech-bubble panel; anchor/contents belong to Limbo.
+ideDraw.clear = true;
+ideDraw.x = 2;
+ideDraw.y = 3;
+ideDraw.w = chromeWidth - 2;
+ideDraw.h = chromeHeight - 3;
+ideDraw.radius = 10;
+ideDraw.color = 0;
+ideDraw.border = 0;
+ideDraw.stroke = 0;
+ideDraw.alpha = 22;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 0;
+ideDraw.y = 0;
+ideDraw.w = chromeWidth - 3;
+ideDraw.h = chromeHeight - 4;
+ideDraw.radius = 8;
 ideDraw.color = 2435886;
 ideDraw.border = 5068635;
-ideDraw.box = true;
+ideDraw.stroke = 1;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 2;
+ideDraw.y = 1;
+ideDraw.w = chromeWidth - 7;
+ideDraw.h = 2;
+ideDraw.radius = 1;
+ideDraw.color = 16777215;
+ideDraw.border = 0;
+ideDraw.stroke = 0;
+ideDraw.alpha = 25;
+ideDraw.filled = 1;
+ideDraw.round = true;

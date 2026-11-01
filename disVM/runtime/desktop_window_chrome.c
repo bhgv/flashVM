@@ -10,6 +10,9 @@
 #include "chrome_tool_pointer.h"
 #include "chrome_tab_button.h"
 #include "chrome_vector_control.h"
+#include "chrome_atlas_card.h"
+#include "chrome_atlas_frame.h"
+#include "chrome_atlas_miniature.h"
 #include "chrome_input_field.h"
 #include "chrome_top_bar.h"
 #include "chrome_rail_left.h"
@@ -65,7 +68,7 @@ static int cache_number(FVM_Context *owner, FVM_Object *clip, const char *name, 
 /* Identify AS presentation roles from copied scene identities, without styling them. */
 int dvm_chrome_owns_view(unsigned long id, unsigned long mirror)
 {
-    return id <= 8 || id == 10 || (id >= 13 && id <= 19) || id == 28 || (id >= 30 && id <= 37) ||
+    return id == 60 || id == 62 || id <= 8 || id == 10 || (id >= 13 && id <= 19) || id == 28 || (id >= 30 && id <= 37) ||
            (id >= 41 && id <= 59) || id == 63 || (id >= 64 && id <= 88) || mirror;
 }
 
@@ -73,6 +76,21 @@ int dvm_chrome_owns_view(unsigned long id, unsigned long mirror)
 /* Route copied view roles to AS resources, never calculate their visual geometry. */
 static int render_view(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeItem *item, double wide, double high)
 {
+    if (item->id == 60)
+    {
+        return execute(owner, clip, chrome_atlas_card, sizeof(chrome_atlas_card), wide, high, 0, 0);
+    }
+    if (item->id == 62)
+    {
+        return execute(owner, clip, chrome_atlas_frame, sizeof(chrome_atlas_frame), wide, high, 0, 0);
+    }
+    if (item->mirror && (item->id == 61 || item->id >= 89))
+    {
+        return parameter(owner, "chromePreviewScale", item->preview_scale) &&
+               parameter(owner, "chromePreviewWidth", item->preview_width) &&
+               parameter(owner, "chromePreviewHeight", item->preview_height) &&
+               execute(owner, clip, chrome_atlas_miniature, sizeof(chrome_atlas_miniature), wide, high, item->active, 0);
+    }
     if (item->id == 10)
     {
         return execute(owner, clip, chrome_desktop_background, sizeof(chrome_desktop_background), wide, high, 0, 0);

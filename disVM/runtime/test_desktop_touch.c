@@ -12,6 +12,9 @@ int touch_test_header(double x, double y)
 }
 
 
+static DVM_UIMessage last_contact; /* Copied observed proposal, never a VM pointer. */
+
+
 /* Submit one native SDL contact value. Expected code/phase are independent
  * protocol observations, zero means the contact must produce no proposal. */
 static int contact(Uint32 type,
@@ -35,6 +38,7 @@ static int contact(Uint32 type,
     event.x = x;
     event.y = y;
     result = desktop_touch(&event, &message);
+    last_contact = message;
     if ((code && (!result || message.code != code || message.flags != phase)) || (!code && result))
     {
         fprintf(stderr,
@@ -56,6 +60,35 @@ static int contact(Uint32 type,
 int main(void)
 {
     DVM_UIMessage message;
+    canvas_width = 960;
+    canvas_height = 640;
+    desktop_touch(NULL, &message);
+    if (!contact(SDL_FINGERDOWN, 1, 1, 1, .98f, .2f, 1, 1) ||
+        !contact(SDL_FINGERDOWN, 2, 1, 2, .2f, .2f, 11, 3) ||
+        !contact(SDL_FINGERDOWN, 3, 1, 3, .4f, .2f, 7, 1) ||
+        last_contact.first < 900 * 20 || last_contact.second != 128 * 20 ||
+        !contact(SDL_FINGERMOTION, 4, 1, 3, .4f, .26f, 7, 2) ||
+        last_contact.first < 900 * 20 || last_contact.second <= 128 * 20 ||
+        !contact(SDL_FINGERUP, 5, 1, 3, .4f, .26f, 7, 3))
+    {
+        fprintf(stderr, "three-finger surface must follow first touch, not centroid\n");
+        return 1;
+    }
+    if (!contact(SDL_FINGERMOTION, 6, 1, 1, .98f, .3f, 0, 0) ||
+        !contact(SDL_FINGERUP, 7, 1, 1, .98f, .3f, 0, 0) ||
+        !contact(SDL_FINGERUP, 8, 1, 2, .2f, .2f, 0, 0))
+    {
+        fprintf(stderr, "lifting a triple pan must not create a new button tap\n");
+        return 1;
+    }
+    desktop_touch(NULL, &message);
+    if (!contact(SDL_FINGERDOWN, 10, 1, 1, .01f, .2f, 1, 1) ||
+        !contact(SDL_FINGERDOWN, 11, 1, 2, .5f, .2f, 11, 3) ||
+        !contact(SDL_FINGERDOWN, 12, 1, 3, .7f, .2f, 7, 1) || last_contact.first >= 80 * 20)
+    {
+        fprintf(stderr, "first left-shelf contact lost its three-finger target\n");
+        return 1;
+    }
     desktop_touch(NULL, &message);
     if (!contact(SDL_FINGERDOWN, 100, 1, 1, .12f, .125f, 1, 1) ||
         !contact(SDL_FINGERUP, 110, 1, 1, .12f, .125f, 1, 3) ||
@@ -65,14 +98,14 @@ int main(void)
         return 1;
     }
     desktop_touch(NULL, &message);
-    if (!contact(SDL_FINGERDOWN, 200, 1, 7, .3f, .4f, 1, 1) || !contact(SDL_FINGERDOWN, 210, 2, 7, .4f, .4f, 1, 3) ||
+    if (!contact(SDL_FINGERDOWN, 200, 1, 7, .3f, .4f, 1, 1) || !contact(SDL_FINGERDOWN, 210, 2, 7, .4f, .4f, 11, 3) ||
         !contact(SDL_FINGERMOTION, 220, 2, 7, .4f, .4f, 6, 1) ||
         !contact(SDL_FINGERMOTION, 230, 2, 7, .5f, .4f, 8, 1) || !contact(SDL_FINGERUP, 240, 1, 7, .3f, .4f, 6, 3))
     {
         return 1;
     }
     desktop_touch(NULL, &message);
-    if (!contact(SDL_FINGERDOWN, 300, 1, 1, .3f, .4f, 1, 1) || !contact(SDL_FINGERDOWN, 310, 1, 2, .4f, .4f, 1, 3) ||
+    if (!contact(SDL_FINGERDOWN, 300, 1, 1, .3f, .4f, 1, 1) || !contact(SDL_FINGERDOWN, 310, 1, 2, .4f, .4f, 11, 3) ||
         !contact(SDL_FINGERMOTION, 320, 1, 2, .4f, .4f, 6, 1) || !contact(SDL_FINGERDOWN, 330, 1, 3, .5f, .4f, 6, 3) ||
         !contact(SDL_FINGERMOTION, 340, 1, 3, .5f, .4f, 7, 1) || !contact(SDL_FINGERUP, 350, 1, 3, .5f, .4f, 7, 3))
     {

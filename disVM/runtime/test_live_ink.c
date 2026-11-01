@@ -370,6 +370,50 @@ static void primitive_bursts(unsigned long *ticket)
 }
 
 
+/* Added contacts cancel provisional native paint before the frame/worker
+ * handoff. Real SDL values must produce ContactCancel, never a frozen dot. */
+static void multicontact_cancel(unsigned long *ticket)
+{
+    unsigned long tool;
+    for (tool = 1; tool <= 5; ++tool)
+    {
+        SDL_Event event;
+        DVM_UIMessage message;
+        unsigned int attempt;
+        scene_tool(++*ticket, tool);
+        SDL_zero(event);
+        event.type = SDL_FINGERDOWN;
+        event.tfinger.windowID = 1;
+        event.tfinger.touchId = 50;
+        event.tfinger.fingerId = 1;
+        event.tfinger.x = 160.0f / 960;
+        event.tfinger.y = 220.0f / 640;
+        require(SDL_PushEvent(&event) == 1, "first canvas contact");
+        message = proposal();
+        require(message.size == 40, "first finger owns provisional native paint");
+        scene_tool(++*ticket, tool);
+        event.tfinger.fingerId = 2;
+        event.tfinger.x = 400.0f / 960;
+        require(SDL_PushEvent(&event) == 1, "second canvas contact");
+        message = proposal();
+        require(message.size == 32 && !memcmp(message.text + 8, "0000000b", 8) &&
+                !dvm_ink_has_preview(1), "added contact cancels paint without committing a frozen dot");
+        scene_tool(++*ticket, tool);
+        event.type = SDL_FINGERUP;
+        require(SDL_PushEvent(&event) == 1, "second contact release");
+        event.tfinger.fingerId = 1;
+        require(SDL_PushEvent(&event) == 1, "first contact release");
+        for (attempt = 0; attempt < 500 && SDL_HasEvents(SDL_FINGERDOWN, SDL_FINGERMOTION); ++attempt)
+        {
+            require(dvm_editor_event(&message) == 0, "lifting converted contacts creates no new tap");
+            SDL_Delay(1);
+        }
+        require(!SDL_HasEvents(SDL_FINGERDOWN, SDL_FINGERMOTION), "all converted contacts retired");
+    }
+    scene(++*ticket);
+}
+
+
 /* First drive600 real queued motions with only Begin/frozen End proposals and
  * inspect detached pixels. Then check controls and recovered pointer ownership. */
 int dvm_test_live_ink(const char *font)
@@ -443,6 +487,7 @@ int dvm_test_live_ink(const char *font)
         wheel_bursts(&ticket);
         wheel_fences();
         primitive_bursts(&ticket);
+        multicontact_cancel(&ticket);
     }
     dvm_editor_destroy();
     printf(

@@ -80,7 +80,7 @@ def main():
         background_pixels = backdrop.read_bytes().split(b"\n", 3)[3]
         background = background_pixels[at:at + 3]
         expected = tuple(round(0.9 * paper + 0.1 * backdrop) for paper, backdrop in
-                         zip((239, 242, 241), background))
+                         zip((242, 243, 241), background))
         if any(abs(actual - wanted) > 2 for actual, wanted in zip(pixels[at:at + 3], expected)):
             raise RuntimeError(
                 "dragged window did not blend 90% paper over current table pixels"
@@ -94,7 +94,7 @@ def main():
             moving + [mouse(200, 130, 3)] + quit_event,
         )
         pixels = capture.read_bytes().split(b"\n", 3)[3]
-        if tuple(pixels[at : at + 3]) != (239, 242, 241):
+        if tuple(pixels[at : at + 3]) != (242, 243, 241):
             raise RuntimeError("window opacity did not return to normal after release")
         if list(views.values())[-1][1][1:3] != (146, 122):
             raise RuntimeError(

@@ -468,6 +468,9 @@ EOF
             for native_ink_file in editor_primitive.h editor_xor.h editor_vector_layout.h editor_full_raster.h editor_ink.c editor_ink.h editor_ink_pointer.h editor_wheel_batch.h editor_bulk.c editor_bulk.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
                 copy_file "$ROOT/disVM/runtime/$native_ink_file" "$destination/source/native-ink/$native_ink_file"
             done
+            for chrome_file in desktop_round_primitive.h desktop_chrome.h desktop_drawing_capability.c desktop_paint_primitives.c desktop_window_chrome.c; do
+                copy_file "$ROOT/disVM/runtime/$chrome_file" "$destination/source/chrome-native/$chrome_file"
+            done
             copy_tree "$ROOT/ide/dis/examples/native-ink" "$destination/examples/native-ink"
             copy_file "$ROOT/disVM/runtime/test_ink_primitives.c" "$destination/examples/native-ink/stamp-check.c"
             copy_file "$ROOT/ide/dis/tests/native_ink_test.b" "$destination/examples/native-ink/worker-check.b"
@@ -533,6 +536,9 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/desktop-pointer" "$destination/examples/desktop-pointer"
             copy_tree "$ROOT/ide/dis/examples/desktop-lifecycle" "$destination/examples/desktop-lifecycle"
             copy_file "$ROOT/ide/dis/bridge/idedesktop.b" "$destination/source/idedesktop.b"
+            copy_file "$ROOT/ide/dis/bridge/ideatlas.b" "$destination/source/ideatlas.b"
+            copy_file "$ROOT/ide/dis/bridge/idedesktopatlas.b" "$destination/source/idedesktopatlas.b"
+            copy_file "$ROOT/ide/dis/bridge/idedesktoptools.b" "$destination/source/idedesktoptools.b"
             copy_file "$ROOT/ide/dis/bridge/idedeskpane.b" "$destination/source/idedeskpane.b"
             copy_file "$ROOT/ide/dis/tests/desktop_test.b" "$destination/examples/desktop-owners.b"
             copy_file "$ROOT/ide/dis/bridge/ideartifact.b" "$destination/source/ideartifact.b"
@@ -569,7 +575,7 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in idevectorlabels idebulk tasks-demo asinctasks capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in ideatlas idevectorlabels idebulk tasks-demo asinctasks capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
@@ -603,6 +609,8 @@ EOF
             copy_file "$ROOT/ide/SYNTAX-LAZY.ru.md" "$destination/SYNTAX-LAZY.ru.md"
 
             copy_file "$ROOT/ide/dis/bridge/idedeskclip.b" "$destination/source/idedeskclip.b"
+            copy_file "$ROOT/ide/CHROME-ATLAS.md" "$destination/CHROME-ATLAS.md"
+            copy_file "$ROOT/ide/CHROME-ATLAS.ru.md" "$destination/CHROME-ATLAS.ru.md"
             copy_file "$ROOT/ide/DESKTOP-WORKSPACE.md" "$destination/DESKTOP-WORKSPACE.md"
             copy_file "$ROOT/ide/DESKTOP-WORKSPACE.ru.md" "$destination/DESKTOP-WORKSPACE.ru.md"
             copy_file "$ROOT/ide/DESKTOP-GLASS-MOTION.md" "$destination/DESKTOP-GLASS-MOTION.md"
@@ -627,7 +635,8 @@ EOF
                 copy_file "$ROOT/disVM/runtime/test_desktop_clipboard.py" "$destination/examples/desktop/check-clipboard.py"
                 copy_file "$ROOT/disVM/runtime/test_desktop_workspace.py" "$destination/examples/desktop/check-workspace.py"
                 copy_file "$ROOT/disVM/runtime/test_graphical_editor.py" "$destination/examples/desktop/test_graphical_editor.py"
-                copy_file "$ROOT/ide/assets/desktop-v0.1675.png" "$destination/DESKTOP.png"
+                copy_file "$ROOT/ide/assets/desktop-v0.1719.png" "$destination/DESKTOP.png"
+                copy_file "$ROOT/ide/assets/desktop-v0.1719.png" "$destination/assets/desktop-v0.1719.png"
                 copy_file "$ROOT/ide/assets/desktop-v0.1677.png" "$destination/DESKTOP-CLIPBOARD.png"
                 copy_tree "$ROOT/ide/as" "$destination/source/as"
                 copy_file "$ROOT/compiler/as2/view/README.md" "$destination/docs/as2/VIEW.md"

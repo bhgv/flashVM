@@ -1,0 +1,24 @@
+// Fixed overview, separate from toolbar scroll. Opaque inset covers overflowing buttons.
+ideDraw.clear = true;
+ideDraw.x = 0;
+ideDraw.y = 0;
+ideDraw.w = chromeWidth;
+ideDraw.h = chromeHeight;
+ideDraw.radius = 4;
+ideDraw.color = 2435886;
+ideDraw.border = 8029320;
+ideDraw.stroke = 1;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 1;
+ideDraw.y = 1;
+ideDraw.w = chromeWidth - 2;
+ideDraw.h = chromeHeight - 2;
+ideDraw.radius = 3;
+ideDraw.color = 4475992;
+ideDraw.border = 13883342;
+ideDraw.stroke = 6 / 10;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;

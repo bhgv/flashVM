@@ -1,7 +1,35 @@
-// Editable path/prompt field. Text, caret and selection belong to the Limbo owner.
-// This AS view only paints the field's paper and visible rim.
+// Recessed rounded paper input; text/selection belong to the Limbo owner.
+ideDraw.clear = true;
+ideDraw.x = 0;
+ideDraw.y = 0;
 ideDraw.w = chromeWidth;
 ideDraw.h = chromeHeight;
+ideDraw.radius = 6;
+ideDraw.color = 12174538;
+ideDraw.border = 5068635;
+ideDraw.stroke = 1;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 1;
+ideDraw.y = 2;
+ideDraw.w = chromeWidth - 2;
+ideDraw.h = chromeHeight - 3;
+ideDraw.radius = 5;
 ideDraw.color = 16772553;
 ideDraw.border = 12174538;
-ideDraw.box = true;
+ideDraw.stroke = 1;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 2;
+ideDraw.y = 2;
+ideDraw.w = chromeWidth - 4;
+ideDraw.h = 1;
+ideDraw.radius = 0;
+ideDraw.color = 0;
+ideDraw.border = 0;
+ideDraw.stroke = 0;
+ideDraw.alpha = 18;
+ideDraw.filled = 1;
+ideDraw.round = true;

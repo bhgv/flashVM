@@ -1,5 +1,6 @@
 /* Generic owner-local graphics property adapter for the bounded AS display profile. */
 #include "desktop_chrome.h"
+#include "desktop_round_primitive.h"
 #include "flashvm/value.h"
 #include "flashvm/gc.h"
 #include "flashvm/avm1.h"
@@ -89,6 +90,22 @@ static FVM_Result command(FVM_Context *owner,
                          ? FVM_OK
                          : FVM_ERROR;
         }
+        else if (!strcmp(name, "round"))
+        {
+            double radius;
+            double stroke;
+            double filled;
+            if (scalar(owner, receiver, "x", &x) && scalar(owner, receiver, "y", &y) &&
+                scalar(owner, receiver, "alpha", &alpha) && alpha >= 0 && alpha <= 100 &&
+                scalar(owner, receiver, "radius", &radius) && radius >= 0 && radius <= 1048576 &&
+                scalar(owner, receiver, "stroke", &stroke) && stroke >= 0 && stroke <= 32 &&
+                scalar(owner, receiver, "filled", &filled) && (filled == 0 || filled == 1) &&
+                scalar(owner, receiver, "border", &border) && border >= 0 && floor(border) == border)
+            {
+                status = dvm_chrome_round(owner, target.object, x, y, wide, high, radius,
+                    (unsigned long)color, (unsigned long)border, stroke, alpha, (int)filled) ? FVM_OK : FVM_ERROR;
+            }
+        }
         else if (!strcmp(name, "rect") && scalar(owner, receiver, "x", &x) && scalar(owner, receiver, "y", &y) &&
                  scalar(owner, receiver, "alpha", &alpha) && alpha >= 0 && alpha <= 100)
         {
@@ -110,7 +127,7 @@ int dvm_chrome_drawing_bind(FVM_Context *owner, FVM_Object *clip)
     FVM_Value value;
     FVM_Object *drawing;
     unsigned int index;
-    static const char *names[] = {"clear", "box", "rect", "begin", "move", "line", "end"};
+    static const char *names[] = {"clear", "box", "round", "rect", "begin", "move", "line", "end"};
     if (fvm_get_global(owner, "ideDraw", &value) != FVM_OK)
     {
         return 0;

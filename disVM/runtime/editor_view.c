@@ -198,6 +198,11 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
     static Uint32 tap_time;        /* Last completed native single-contact tap timestamp. */
     static double tap_x;           /* Last tap canvas position, checked for spatial proximity. */
     static double tap_y;           /* Last tap canvas position, checked for spatial proximity. */
+    static unsigned int session_contacts; /* Max contacts in this session; no phantom downgrade taps. */
+    static double first_x;        /* First contact of the session selects the gesture surface. */
+    static double first_y;        /* Preserved until every finger has left. */
+    static double triple_x;       /* Centroid reference for subsequent three-finger deltas. */
+    static double triple_y;       /* No later finger can change the selected surface. */
     static int zoom_pending;       /* Ensure the final contact release ends transient zoom paint. */
     unsigned int index;
     unsigned int slot = 8;
@@ -213,6 +218,7 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
     {
         memset(used, 0, sizeof(used));
         gesture = 0;
+        session_contacts = 0;
         span = 0;
         zoom_pending = 0;
         tap_time = 0;
@@ -252,6 +258,12 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
     {
         return 0;
     }
+    if (oldcount == 0 && event->type == SDL_FINGERDOWN)
+    {
+        first_x = event->x;
+        first_y = event->y;
+        session_contacts = 1;
+    }
     xs[slot] = event->x;
     ys[slot] = event->y;
     used[slot] = event->type != SDL_FINGERUP;
@@ -273,12 +285,23 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
         }
     }
     memset(message, 0, sizeof(*message));
+    if (count > session_contacts)
+    {
+        session_contacts = count;
+    }
     message->kind = DVM_UI_POINTER;
     if ((gesture && count != gesture) || (zoom_pending && event->type == SDL_FINGERUP))
     {
-        message->code = gesture == 3 ? 7 : (gesture == 1 ? 1 : 6);
+        /* A second finger cancels a provisional tap; it must not activate
+         * a shelf button before the third contact can start its pan. */
+        message->code = gesture == 3 ? 7 : (gesture == 1 && count > 1 ? 11 : (gesture == 1 ? 1 : 6));
         zoom_pending = 0;
-        if (gesture == 1 && tap_eligible && event->type == SDL_FINGERUP && count == 0 &&
+        if (count > 1)
+        {
+            tap_time = 0;
+            tap_eligible = 0;
+        }
+        if (gesture == 1 && session_contacts == 1 && tap_eligible && event->type == SDL_FINGERUP && count == 0 &&
             dvm_desktop_header(event->x * canvas_width, event->y * canvas_height))
         {
             tap_time = event->timestamp;
@@ -286,11 +309,15 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
             tap_y = event->y * canvas_height;
         }
         message->flags = 3;
-        message->first = (long)(oldx / oldcount * canvas_width * 20);
-        message->second = (long)(oldy / oldcount * canvas_height * 20);
+        message->first = (long)((gesture == 3 ? first_x + oldx / oldcount - triple_x : oldx / oldcount) * canvas_width * 20);
+        message->second = (long)((gesture == 3 ? first_y + oldy / oldcount - triple_y : oldy / oldcount) * canvas_height * 20);
         gesture = 0;
         span = 0;
         return 1;
+    }
+    if (session_contacts > count && !gesture)
+    {
+        return 0; /* A completed multi-contact gesture cannot become a new tap while lifting. */
     }
     if (count == 1)
     {
@@ -357,10 +384,15 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
             span = distance;
         }
     }
+    if (count == 3 && !gesture)
+    {
+        triple_x = x / count;
+        triple_y = y / count;
+    }
     message->code = count == 3 ? 7 : 6;
     message->flags = gesture ? 2 : 1;
-    message->first = (long)(x / count * canvas_width * 20);
-    message->second = (long)(y / count * canvas_height * 20);
+    message->first = (long)((count == 3 ? first_x + x / count - triple_x : x / count) * canvas_width * 20);
+    message->second = (long)((count == 3 ? first_y + y / count - triple_y : y / count) * canvas_height * 20);
     gesture = count;
     return 1;
 }
@@ -2930,8 +2962,14 @@ int dvm_editor_event(DVM_UIMessage *message)
         }
         if (ink_token && (lost_pointer || dvm_editor_motion_barrier(&event)))
         {
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+            if ((event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) ||
+                (event.type == SDL_FINGERDOWN && ink_pointer.type == SDL_FINGERDOWN &&
+                 event.tfinger.windowID == ink_pointer.tfinger.windowID &&
+                 (event.tfinger.touchId != ink_pointer.tfinger.touchId ||
+                  event.tfinger.fingerId != ink_pointer.tfinger.fingerId)))
             {
+                /* Added contacts convert a provisional canvas touch into a
+                 * gesture. Cancel its native preview instead of committing a dot. */
                 dvm_ink_cancel(ink_token);
                 ink_token = 0;
                 vector_drag = 0;

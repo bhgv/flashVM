@@ -1,8 +1,37 @@
-// A tab or close control on the desktop. The Limbo owner chooses its state.
-// All colours and drawing choices remain executable AS, not native UI policy.
 chromeTabDelta = 12048871 - 5464427;
-ideDraw.w = chromeWidth;
-ideDraw.h = chromeHeight;
-ideDraw.color = 5464427 + chromeActive * chromeTabDelta;
+chromeFace = 5464427 + chromeActive * chromeTabDelta;
+// Raised compact control: diffuse shadow, rounded face, bright upper lip.
+ideDraw.clear = true;
+ideDraw.x = 1;
+ideDraw.y = 2;
+ideDraw.w = chromeWidth - 1;
+ideDraw.h = chromeHeight - 2;
+ideDraw.radius = 7;
+ideDraw.color = 0;
+ideDraw.border = 0;
+ideDraw.stroke = 0;
+ideDraw.alpha = 20;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 0;
+ideDraw.y = 0;
+ideDraw.w = chromeWidth - 2;
+ideDraw.h = chromeHeight - 3;
+ideDraw.radius = chromeHeight / 2;
+ideDraw.color = chromeFace;
 ideDraw.border = 12174538;
-ideDraw.box = true;
+ideDraw.stroke = 1;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 2;
+ideDraw.y = 1;
+ideDraw.w = chromeWidth - 6;
+ideDraw.h = 2;
+ideDraw.radius = 1;
+ideDraw.color = 16777215;
+ideDraw.border = 16777215;
+ideDraw.stroke = 0;
+ideDraw.alpha = 32;
+ideDraw.filled = 1;
+ideDraw.round = true;

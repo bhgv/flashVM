@@ -155,8 +155,8 @@ endforeach()
 set(includes -I "${u}/module" -I "${root}/ide/dis" -I "${root}/ide/dis/bridge"
   -I "${root}/ide/syntax"
   -I "${root}/ide/dis/examples/workspace" -I "${root}/disVM/module" -I "${root}/disVM/broker")
-set(module_names idedeskclip idecore ideworkspace idecompiler idebuildpanel ideartifact idedeskpane idedesktop workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
-set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
+set(module_names ideatlas idedeskclip idecore ideworkspace idecompiler idebuildpanel ideartifact idedeskpane idedesktop workspace-example ide-console console-check uibridge ideinput idebridge idecomplete idebuiltins editor-console idefiles bufio string arg readdir debug dis styx styxservers libraries-check ideviewport idefileops idesearch decimal-append ideclipboard idefield field-demo brokerdiag ideprojection projection-check ideinspect idevalue idedocprojection regex regex-check idebrowser)
+set(module_sources "${root}/ide/dis/bridge/ideatlas.b" "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/idecore.b" "${root}/ide/dis/bridge/ideworkspace.b"
   "${root}/ide/dis/bridge/idecompiler.b" "${root}/ide/dis/bridge/idebuildpanel.b" "${root}/ide/dis/bridge/ideartifact.b" "${root}/ide/dis/bridge/idedeskpane.b" "${root}/ide/dis/bridge/idedesktop.b"
   "${root}/ide/dis/examples/workspace/main.b" "${root}/ide/dis/examples/native-console/main.b"
   "${root}/disVM/examples/console-check/main.b" "${root}/disVM/limbo/uibridge.b"
@@ -176,7 +176,7 @@ set(module_sources "${root}/ide/dis/bridge/idedeskclip.b" "${root}/ide/dis/ideco
   "${view}/libraries/regex.b" "${u}/appl/lib/tests/regex-unicode.b" "${root}/ide/dis/bridge/idebrowser.b")
 file(GLOB module_headers "${root}/ide/dis/*.m" "${root}/ide/dis/bridge/*.m"
   "${root}/ide/dis/examples/workspace/*.m" "${root}/disVM/module/*.m" "${root}/disVM/broker/*.m" "${u}/module/*.m")
-list(APPEND module_headers "${root}/ide/dis/bridge/idevectorwire.b" "${root}/ide/dis/bridge/idevectorchain.b")
+list(APPEND module_headers "${root}/ide/dis/bridge/idevectorwire.b" "${root}/ide/dis/bridge/idevectorchain.b" "${root}/ide/dis/bridge/idedesktopatlas.b" "${root}/ide/dis/bridge/idedesktoptools.b")
 list(APPEND module_names capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
 list(APPEND module_sources "${root}/disVM/examples/asincviews/main.b" "${root}/disVM/limbo/asincviews.b" "${root}/ide/dis/bridge/ideinkworker.b" "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/iderails.b" "${root}/ide/dis/bridge/idetools.b" "${root}/ide/dis/bridge/idetoolpalette.b" "${root}/ide/dis/bridge/iderecent.b" "${root}/ide/dis/bridge/idepick.b" "${root}/ide/dis/bridge/idethumbnails.b" "${root}/ide/dis/bridge/idetabview.b" "${root}/ide/dis/bridge/idedocking.b" "${root}/ide/dis/bridge/idesourcedomain.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
 # Portable cooperative task ownership is a library and separately runnable example.
@@ -496,7 +496,7 @@ if(DVM_RUNTIME_EDITOR)
       "${DVM_SWF_LINKER}" "${root}/ide/as/desktop-view.as" embed_view.py VERBATIM)
   # Each chrome view is a separate Coco/R AS -> FIR -> optimizer -> SWL product.
   set(chrome_headers)
-  foreach(control desktop-background rail-left rail-right window-card miniature-card window-header tab-button tool-scroll tool-palette tool-pointer input-field top-bar vector-control)
+  foreach(control desktop-background rail-left rail-right window-card miniature-card window-header tab-button tool-scroll tool-palette tool-pointer input-field top-bar vector-control atlas-card atlas-frame atlas-miniature)
     string(REPLACE "-" "_" symbol "chrome_${control}")
     set(header "${view}/${symbol}.h")
     add_custom_command(OUTPUT "${header}"
@@ -1764,5 +1764,15 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_vector_tool_modes.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
     set_tests_properties(disvm_vector_tool_modes_${mode} PROPERTIES TIMEOUT 180)
+  endforeach()
+endif()
+
+# The finite overview is a real fixed MovieClip layer with live source mirrors.
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_desktop_atlas_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_desktop_atlas.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_desktop_atlas_${mode} PROPERTIES TIMEOUT 120)
   endforeach()
 endif()

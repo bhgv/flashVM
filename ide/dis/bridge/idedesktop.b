@@ -5,10 +5,12 @@ include "idedocking.m";
 include "idepick.m";
 include "idethumbnails.m";
 include "iderails.m";
+include "ideatlas.m";
 include "idetools.m";
 include "idetoolpalette.m";
 
 palettes: Idetoolpalette; # Pure owner-anchored popup geometry.
+atlas: Ideatlas; # Pure finite-strip/overview geometry.
 rails: Iderails; # Pure independent rail geometry.
 tools: Idetools; # Labels and command palette rows, never document state.
 thumbview: Idethumbnails; # Pure shelf geometry and order mapping.
@@ -62,11 +64,11 @@ geometry(index, width: int): (int, int, int, int)
 # Return bounded table-local geometry for a borrowed window and canvas width.
 # Offsets survive content updates; resizing clamps presentation without losing
 # the stored position. No UI object or document ownership is acquired.
-position(index, width: int, window: ref Window): (int, int, int, int)
+position(index, width, height: int, window: ref Window): (int, int, int, int)
 {
     if (window.container != nil) {
         parent := window.container;
-        (x, y, wide, high) := position(parent.root - 1, width, parent);
+        (x, y, wide, high) := position(parent.root - 1, width, height, parent);
         return tabs->body(x, y, wide, high);
     }
     (x, y, wide, high) := geometry(index, width);
@@ -95,8 +97,13 @@ position(index, width: int, window: ref Window): (int, int, int, int)
     if (y < 48) {
         y = 48;
     }
-    if (y > 2600) {
-        y = 2600;
+    (unusedwidth, tapeheight) := atlas->extent(width, height);
+    limit := 48 + tapeheight - high;
+    if (limit < 48) {
+        limit = 48;
+    }
+    if (y > limit) {
+        y = limit;
     }
     return (x, y, wide, high);
 }
@@ -104,9 +111,9 @@ position(index, width: int, window: ref Window): (int, int, int, int)
 
 # Project immutable table geometry into current canvas coordinates. Scroll is
 # applied by callers; source identity and normal window geometry are unchanged.
-project(index, width: int, window: ref Window, zoom, pan, scroll: int): (int, int, int, int)
+project(index, width, height: int, window: ref Window, zoom, pan, scroll: int): (int, int, int, int)
 {
-    (x, y, wide, high) := position(index, width, window);
+    (x, y, wide, high) := position(index, width, height, window);
     if (viewportfixed(window)) {
         return (x, y + scroll, wide, high);
     }
@@ -167,7 +174,7 @@ restore(window: ref Window, index, width, height, scroll, zoom, pan: int): (int,
         parent := window.container;
         return restore(parent, parent.root - 1, width, height, scroll, zoom, pan);
     }
-    (originx, originy, wide, high) := position(index, width, window);
+    (originx, originy, wide, high) := position(index, width, height, window);
     # Keep one spare pixel for fractional transforms and round exposed bounds
     # outward; integer truncation must not hide a sliver beneath a rail.
     fit := (width - tools->RightWidth - 91) * 100 / wide;
@@ -281,7 +288,7 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
             (windows[index].container != nil && (windows[index].container.rank != index + 1 || windows[index].container.hidden))) {
             continue;
         }
-        (x0, y0, wide, high) := project(index, width, windows[index], zoom, pan, scroll);
+        (x0, y0, wide, high) := project(index, width, height, windows[index], zoom, pan, scroll);
         y0 -= scroll;
         if (x >= x0 && x < x0 + wide && y >= y0 && y < y0 + high) {
             target = 0;
@@ -296,7 +303,7 @@ texttarget(windows: array of ref Window, width, height, scroll, focus, drawer, x
 
 # Build fresh scene descriptors. windows is borrowed only during this call;
 # the returned array/Items are new, and all text values are immutable Dis strings.
-scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving, zooming: int, thumbnails: array of int, containers: array of ref Window, leftscroll, rightscroll: int, recent: array of string): array of ref Item
+scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving, zooming: int, thumbnails: array of int, containers: array of ref Window, leftscroll, rightscroll, scenezoom, scenepan: int, recent: array of string): array of ref Item
 {
     items := array[94] of ref Item;
     used := 0;
@@ -310,7 +317,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         if (parent == nil || parent == focused) {
             continue;
         }
-        (gx, gy, gw, gh) := position(group, width, parent);
+        (gx, gy, gw, gh) := position(group, width, height, parent);
         id := 13 + group;
         if (group == 7) {
             id = 28;
@@ -330,7 +337,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         # The focused MDI is one paint-order unit: root, tabs, selected child.
         # Its header must not sit behind another group's taller content pane.
         if (index + 1 == focus && focused != nil) {
-            (gx, gy, gw, gh) := position(focused.root - 1, width, focused);
+            (gx, gy, gw, gh) := position(focused.root - 1, width, height, focused);
             rootid := 12 + focused.root;
             if (focused.root == 8) {
                 rootid = 28;
@@ -354,7 +361,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
                     gy + 28, tabwide - 2, 26, tabstyle, tab.title, -1, -1);
             }
         }
-        (x, y, wide, high) := position(index, width, window);
+        (x, y, wide, high) := position(index, width, height, window);
         if (window.hidden || (window.container != nil && (window.container.rank != index + 1 || window.container.hidden))) {
             x = 65536;
             y = 65536;
@@ -381,14 +388,14 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         parentid := layer(window);
         if (window.container != nil && !window.hidden && window.container.rank == index + 1 && !window.container.hidden) {
             parent := window.container;
-            (gx, gy, unusedw, unusedh) := position(parent.root - 1, width, parent);
+            (gx, gy, unusedw, unusedh) := position(parent.root - 1, width, height, parent);
             x -= gx;
             y -= gy;
             parentid = 4 + parent.root;
         }
         items[used++] = ref Item(index + 1, parentid, 0, x, y, wide, high, style + window.line * 8, caption, caret, anchor);
         if (window.container != nil && window.container != focused && !window.hidden && !window.container.hidden) {
-            (gx, gy, gw, gh) := position(window.container.root - 1, width, window.container);
+            (gx, gy, gw, gh) := position(window.container.root - 1, width, height, window.container);
             tabwide := tabs->width(gw, window.container.count, 100);
             tabstyle := 4;
             if (window.container.rank == index + 1 && !window.container.hidden) {
@@ -397,7 +404,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
             items[used++] = ref Item(30 + index, layer(window), 0, gx + 8 + window.rank * tabwide,
                 gy + 28, tabwide - 2, 26, tabstyle, window.title, -1, -1);
         } else if (window.container == nil && index != 1 && index != 2 && !window.hidden) {
-            (closex, closey, closew, closeh) := position(index, width, window);
+            (closex, closey, closew, closeh) := position(index, width, height, window);
             items[used++] = ref Item(30 + index, layer(window), 0, closex + wide - 30, closey, 30, 24, 4, "x", -1, -1);
         }
     }
@@ -423,6 +430,11 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
         style := 4;
         if (drawer == command || (command == Help && windows[2] != nil && !windows[2].hidden)) {
             style = 3;
+        }
+        (mapx, maptop, mapwide, maphigh) := atlas->bounds(width, height);
+        buttony := tools->ButtonTop + (index - 1) * tools->ButtonStep - rightscroll;
+        if (buttony < 48 || buttony + tools->ButtonHeight > maptop) {
+            continue;
         }
         items[used++] = ref Item(tools->identity(index), 3, 0, tools->ButtonLeft,
             tools->ButtonTop + (index - 1) * tools->ButtonStep - rightscroll,
@@ -499,6 +511,10 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
             items[used++] = ref Item(58, 4, 0, x + 8, 364, wide - 16, 36, 4, "Cancel", -1, -1);
         }
     }
+    overview := atlasitems(windows, width, height, scroll, focus, scenezoom, scenepan);
+    for (mapordinal := 0; mapordinal < len overview; mapordinal++) {
+        items[used++] = overview[mapordinal];
+    }
     items[used++] = ref Item(63, 0, 0, 0, 0, width, 48, 2, "FlashVM IDE     |     MovieClip desk     |     F1 Help", -1, -1);
     return items[:used];
 }
@@ -525,6 +541,7 @@ serve(requests: chan of Request)
     recent := array[] of {"1: (empty)", "2: (empty)", "3: (empty)", "4: (empty)"}; # Display labels only.
     leftscroll := 0; # Independent physical left-shelf offset.
     rightscroll := 0; # Independent physical toolbar offset.
+    mapdrag := 0; # Only a one-contact map gesture can navigate; never scroll toolbar buttons.
     raildrag := 0; # Latched2/3 rail for pan gestures, zero for table.
     railorigin := 0; # Offset captured at the beginning of a rail drag.
     thumbdrag := -1; # Rank being reordered; source slots and document owners never move.
@@ -538,6 +555,7 @@ serve(requests: chan of Request)
     moving := 0;
     windowx := 0;
     windowy := 0;
+    toolpress := 0; # Provisional toolbar tap; only release can activate a command.
     pressed := 0;
     startx := 0;
     starty := 0;
@@ -600,17 +618,20 @@ serve(requests: chan of Request)
                     moving = 0;
                     groupdrag = 0;
                     pressed = 0;
+                    toolpress = 0;
                     thumbdrag = -1;
                     changed = 1;
                 }
             } else if (request.operation == Cancel) {
                 zooming = 0;
+                mapdrag = 0;
                 raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
+                toolpress = 0;
                 status = Ok;
             } else if (request.operation == View) {
                 status = Ok;
@@ -644,12 +665,14 @@ serve(requests: chan of Request)
             } else if (request.operation == Remove && request.window >= 1 && request.window <= MaxWindows &&
                        request.window != 2 && request.window != 3 && windows[request.window - 1] != nil) {
                 windows[request.window - 1] = nil;
+                mapdrag = 0;
                 raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
+                toolpress = 0;
                 drawer = 0;
                 if (focus == request.window) {
                     focus = 0;
@@ -664,12 +687,14 @@ serve(requests: chan of Request)
                 status = Ok;
             } else if (request.operation == Resize && request.x >= 240 && request.x <= 2048 &&
                        request.y >= 160 && request.y <= 2048) {
+                mapdrag = 0;
                 raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
+                toolpress = 0;
                 width = request.x;
                 height = request.y;
                 for (slot := 0; slot < len windows; slot++) {
@@ -693,22 +718,26 @@ serve(requests: chan of Request)
                     status = Ok;
                 }
             } else if (request.operation == Activate && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
+                mapdrag = 0;
                 raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
+                toolpress = 0;
                 focus = request.window;
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Select && request.window >= 1 && request.window <= MaxWindows && windows[request.window - 1] != nil) {
+                mapdrag = 0;
                 raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
+                toolpress = 0;
                 focus = request.window;
                 (scroll, deskzoom, deskpan) = restore(windows[focus - 1], focus - 1, width, height, scroll, deskzoom, deskpan);
                 if (reveal == 2147483647) {
@@ -718,34 +747,43 @@ serve(requests: chan of Request)
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Tool && request.window >= 0 && (request.window <= MaxNorm || (tools->palette(request.window) || request.window == tools->Find || request.window == tools->Replace))) {
+                mapdrag = 0;
                 raildrag = 0;
                 dragging = 0;
                 moving = 0;
                 groupdrag = 0;
                 thumbdrag = -1;
                 pressed = 0;
+                toolpress = 0;
                 drawer = request.window;
                 changed = 1;
                 status = Ok;
             } else if (request.operation == Pointer || request.operation == Scroll || request.operation == RailScroll) {
                 if (request.ticket != ticket) {
                     status = Conflict;
+                    mapdrag = 0;
                     dragging = 0;
                     moving = 0;
                     groupdrag = 0;
                     thumbdrag = -1;
                     pressed = 0;
+                    toolpress = 0;
                 } else if (request.operation == RailScroll && (request.window == 2 || request.window == 3) && request.x >= -2048 && request.x <= 2048) {
+                    mapdrag = 0;
                     raildrag = 0;
                     dragging = 0;
                     moving = 0;
                     groupdrag = 0;
                     thumbdrag = -1;
                     pressed = 0;
+                    toolpress = 0;
                     if (request.window == 2) {
                         leftscroll += request.x;
                     } else {
-                        rightscroll += request.x;
+                        (mapx, maptop, mapw, maph) := atlas->bounds(width, height);
+                        if (request.y < maptop) {
+                            rightscroll += request.x;
+                        }
                     }
                     changed = 1;
                     status = Ok;
@@ -755,6 +793,8 @@ serve(requests: chan of Request)
                     groupdrag = 0;
                     thumbdrag = -1;
                     pressed = 0;
+                    toolpress = 0;
+                    mapdrag = 0;
                     scroll += request.x;
                     changed = 1;
                     status = Ok;
@@ -791,6 +831,7 @@ serve(requests: chan of Request)
                         thumbdrag = -1;
                         dragging = 0;
                         pressed = 0;
+                        toolpress = 0;
                         target := 0;
                         obscured := inpopup || (drawer != 0 && !tools->palette(drawer) && x >= drawerleft && x < width - tools->RightWidth - 8 && y >= 72 && y < 412);
                         for (order := 0; order < len windows; order++) {
@@ -799,7 +840,7 @@ serve(requests: chan of Request)
             (windows[index].container != nil && (windows[index].container.rank != index + 1 || windows[index].container.hidden))) {
                                 continue;
                             }
-                            (left, top, wide, high) := project(index, width, windows[index], deskzoom, deskpan, scroll);
+                            (left, top, wide, high) := project(index, width, height, windows[index], deskzoom, deskpan, scroll);
                             top -= scroll;
                             if (x >= left && x < left + wide && y >= top && y < top + high) {
                                 target = 0;
@@ -814,7 +855,7 @@ serve(requests: chan of Request)
                                 if (parent == nil || parent.hidden) {
                                     continue;
                                 }
-                                (gx, gy, gw, gh) := project(group, width, parent, deskzoom, deskpan, scroll);
+                                (gx, gy, gw, gh) := project(group, width, height, parent, deskzoom, deskpan, scroll);
                                 gy -= scroll;
                                 if (x >= gx && x < gx + gw && y >= gy &&
                                     y < gy + 28 * controlzoom(parent, deskzoom) / 100) {
@@ -873,9 +914,10 @@ serve(requests: chan of Request)
                         groupdrag = 0;
                         thumbdrag = -1;
                         pressed = 0;
+                        toolpress = 0;
                         thumbdrag = -1;
                         picked := picking->topmost(scene(windows, width, height, scroll, focus, drawer,
-                            moving, zooming, thumbnails, containers, leftscroll, rightscroll, recent), x, y, width, deskzoom, deskpan, scroll);
+                            moving, zooming, thumbnails, containers, leftscroll, rightscroll, deskzoom, deskpan, recent), x, y, width, deskzoom, deskpan, scroll);
                         startx = x;
                         starty = y;
                         origin = scroll;
@@ -883,9 +925,15 @@ serve(requests: chan of Request)
                         rail := rails->region(x, y, width);
                         railpan := fingers == 3 ||
                             (rail == 2 && (x < 6 || x >= 74 || y < 72 || (y - 72 + leftscroll) % thumbstep >= thumbstep - 8)) ||
-                            (rail == 3 && (x < width - tools->RightWidth + tools->ButtonLeft || x >= width - 6 ||
+                            (rail == 3 && (picked == 12 || x < width - tools->RightWidth + tools->ButtonLeft || x >= width - 6 ||
                                 y < tools->ButtonTop || (y - tools->ButtonTop + rightscroll) % tools->ButtonStep >= tools->ButtonHeight));
-                        if (rail != 0 && railpan && !inpopup) {
+                        mapdrag = 0;
+                        if (atlas->contains(width, height, x, y)) {
+                            if (fingers == 1) {
+                                mapdrag = 1;
+                                changed = 1;
+                            }
+                        } else if (rail != 0 && railpan && !inpopup) {
                             raildrag = rail;
                             railorigin = leftscroll;
                             if (rail == 3) {
@@ -923,26 +971,12 @@ serve(requests: chan of Request)
                             drawer = 0;
                         } else if (drawer != 0 && !tools->palette(drawer) && x >= drawerleft && x < width - tools->RightWidth - 8 && y >= 72 && y < 412) {
                             # The scroll owns this area; never focus or drag the covered window.
-                        } else if (x >= width - tools->RightWidth && y >= 56) {
+                        } else if (x >= width - tools->RightWidth && y >= 56 &&
+                                   picked == tools->identity((y - tools->ButtonTop + rightscroll) / tools->ButtonStep + 1)) {
                             ordinal := (y - tools->ButtonTop + rightscroll) / tools->ButtonStep + 1;
-                            command := tools->action(ordinal);
-                            if (tools->palette(command)) {
-                                if (drawer == command) {
-                                    drawer = 0;
-                                } else {
-                                    drawer = command;
-                                }
-                            } else if (command == Help && windows[2] != nil) {
-                                windows[2].hidden = !windows[2].hidden;
-                                drawer = 0;
-                                focus = 3;
-                                if (windows[2].hidden) {
-                                    focus = 1;
-                                }
-                                action = Focus;
-                            } else {
-                                drawer = 0;
-                                action = command;
+                            if (fingers == 1) {
+                                toolpress = ordinal;
+                                railorigin = rightscroll;
                             }
                         } else if (x < 80 && y >= 72) {
                             rank := (y - 72 + leftscroll) / thumbstep;
@@ -964,7 +998,7 @@ serve(requests: chan of Request)
                                         continue;
                                     }
                                     parent := window.container;
-                                    (gx, gy, gw, gh) := project(parent.root - 1, width, parent, deskzoom, deskpan, scroll);
+                                    (gx, gy, gw, gh) := project(parent.root - 1, width, height, parent, deskzoom, deskpan, scroll);
                                     gy -= scroll;
                                     if (tabs->hit(x, y, gx, gy, gw, parent.count, window.rank, controlzoom(parent, deskzoom))) {
                                         focus = child + 1;
@@ -981,7 +1015,7 @@ serve(requests: chan of Request)
             (windows[index].container != nil && (windows[index].container.rank != index + 1 || windows[index].container.hidden))) {
                                     continue;
                                 }
-                                (left, top, wide, high) := project(index, width, windows[index], deskzoom, deskpan, scroll);
+                                (left, top, wide, high) := project(index, width, height, windows[index], deskzoom, deskpan, scroll);
                                 top -= scroll;
                                 if (x >= left && x < left + wide && y >= top && y < top + high) {
                                     pressed = index + 1;
@@ -1008,7 +1042,7 @@ serve(requests: chan of Request)
                                     if (containers[group] == nil) {
                                         continue;
                                     }
-                                    (gx, gy, gw, gh) := project(group, width, containers[group], deskzoom, deskpan, scroll);
+                                    (gx, gy, gw, gh) := project(group, width, height, containers[group], deskzoom, deskpan, scroll);
                                     gy -= scroll;
                                     rootid := 13 + group;
                                     if (group == 7) {
@@ -1067,6 +1101,14 @@ serve(requests: chan of Request)
                             }
                             thumbnails[rank] = slot;
                         }
+                        if (toolpress != 0 && (y - starty > 8 || starty - y > 8)) {
+                            toolpress = 0;
+                            raildrag = 3;
+                        }
+                        if (mapdrag) {
+                            (deskpan, scroll) = atlas->center(width, height, deskzoom, x, y);
+                            changed = 1;
+                        }
                         if (raildrag == 2) {
                             leftscroll = railorigin + starty - y;
                         } else if (raildrag == 3) {
@@ -1085,8 +1127,8 @@ serve(requests: chan of Request)
                         }
                         if (x - startx > 8 || startx - x > 8 || y - starty > 8 || starty - y > 8) {
                             pressed = 0;
+                            toolpress = 0;
                         }
-                        raildrag = 0;
                         docked := 0;
                         if (moving != 0) {
                             docked = dock(windows[moving - 1], x, y, windowx, windowy);
@@ -1097,6 +1139,7 @@ serve(requests: chan of Request)
                             moving = 0;
                             groupdrag = 0;
                             pressed = 0;
+                            toolpress = 0;
                             focus = 0;
                             for (slot := 0; slot < len windows; slot++) {
                                 if (windows[slot] != nil && !windows[slot].hidden &&
@@ -1121,12 +1164,14 @@ serve(requests: chan of Request)
                         if (moving == 0 && (x - startx > 8 || startx - x > 8 ||
                                             y - starty > 8 || starty - y > 8)) {
                             pressed = 0;
+                            toolpress = 0;
                         }
                         if (pressed < 0) {
-                            (left, top, wide, high) := project(-pressed - 1, width, windows[-pressed - 1], deskzoom, deskpan, scroll);
+                            (left, top, wide, high) := project(-pressed - 1, width, height, windows[-pressed - 1], deskzoom, deskpan, scroll);
                             top -= scroll;
                             if (x < left + wide - 30 * controlzoom(windows[-pressed - 1], deskzoom) / 100 || x >= left + wide || y < top || y >= top + 24 * controlzoom(windows[-pressed - 1], deskzoom) / 100) {
                                 pressed = 0;
+                                toolpress = 0;
                             }
                         }
                         if (thumbdrag >= 0 && pressed > 0) {
@@ -1137,6 +1182,10 @@ serve(requests: chan of Request)
                             }
                             reveal++;
                             action = Focus;
+                        }
+                        if (mapdrag) {
+                            (deskpan, scroll) = atlas->center(width, height, deskzoom, x, y);
+                            mapdrag = 0;
                         }
                         raildrag = 0;
                         docked := 0;
@@ -1149,6 +1198,7 @@ serve(requests: chan of Request)
                             moving = 0;
                             groupdrag = 0;
                             pressed = 0;
+                            toolpress = 0;
                             focus = 1;
                             for (slot := 0; slot < len windows; slot++) {
                                 if (windows[slot] != nil && !windows[slot].hidden &&
@@ -1169,7 +1219,15 @@ serve(requests: chan of Request)
                             }
                             action = Focus;
                         }
+                        if (toolpress > 0) {
+                            top := tools->ButtonTop + (toolpress - 1) * tools->ButtonStep - rightscroll;
+                            if (x >= width - tools->RightWidth + tools->ButtonLeft && x < width - 6 &&
+                                y >= top && y < top + tools->ButtonHeight) {
+                                (drawer, focus, action) = toolactivate(windows, drawer, focus, tools->action(toolpress));
+                            }
+                        }
                         pressed = 0;
+                        toolpress = 0;
                         dragging = 0;
                         moving = 0;
                         groupdrag = 0;
@@ -1180,12 +1238,14 @@ serve(requests: chan of Request)
             }
         }
         if (status != Ok && (request.operation == Pointer || request.operation == Scroll || request.operation == RailScroll)) {
+            mapdrag = 0;
             raildrag = 0;
             dragging = 0;
             moving = 0;
             groupdrag = 0;
             thumbdrag = -1;
             pressed = 0;
+            toolpress = 0;
         }
         if (action == MaxNorm && focus >= 1 && windows[focus - 1] != nil) {
             maximize(windows[focus - 1], width, height, scroll, deskzoom);
@@ -1212,7 +1272,7 @@ serve(requests: chan of Request)
                 }
                 windows[slot].hidden = 0;
                 windows[slot].maximized = 0;
-                (left, top, wide, high) := position(slot, width, windows[slot]);
+                (left, top, wide, high) := position(slot, width, height, windows[slot]);
                 if (left < minimumleft) {
                     minimumleft = left;
                 }
@@ -1229,7 +1289,7 @@ serve(requests: chan of Request)
                 }
                 containers[group].hidden = 0;
                 containers[group].maximized = 0;
-                (left, top, wide, high) := position(group, width, containers[group]);
+                (left, top, wide, high) := position(group, width, height, containers[group]);
                 if (left < minimumleft) {
                     minimumleft = left;
                 }
@@ -1289,25 +1349,16 @@ serve(requests: chan of Request)
                 containers[group] = nil;
             }
         }
-        maximum := 72 + 9 * 288 - height;
-        for (slot := 0; slot < len windows; slot++) {
-            if (windows[slot] != nil) {
-                (unused, bottom, unusedwide, high) := project(slot, width, windows[slot], deskzoom, deskpan, scroll);
-                if (bottom + high - height + 5 > maximum) {
-                    maximum = bottom + high - height + 5;
-                }
-            }
-        }
-        for (rootindex := 0; rootindex < MaxWindows; rootindex++) {
-            if (containers[rootindex] != nil) {
-                (unused, bottom, unusedwide, high) := project(rootindex, width, containers[rootindex], deskzoom, deskpan, scroll);
-                if (bottom + high - height + 5 > maximum) {
-                    maximum = bottom + high - height + 5;
-                }
-            }
-        }
+        maximum := atlas->maximum(height, deskzoom);
         leftscroll = rails->clamp(leftscroll, live, thumbstep, 72, height);
-        rightscroll = rails->clamp(rightscroll, tools->Count, tools->ButtonStep, tools->ButtonTop, height);
+        (mapx, maptop, mapw, maph) := atlas->bounds(width, height);
+        rightscroll = rails->clamp(rightscroll, tools->Count, tools->ButtonStep, tools->ButtonTop, maptop);
+        if (tools->palette(drawer)) {
+            ownertop := tools->ButtonTop + (tools->index(drawer) - 1) * tools->ButtonStep - rightscroll;
+            if (ownertop < 48 || ownertop + tools->ButtonHeight > maptop) {
+                drawer = 0;
+            }
+        }
         if (deskpan < -4096) {
             deskpan = -4096;
         }
@@ -1327,7 +1378,7 @@ serve(requests: chan of Request)
             ticket++;
         }
         request.reply <-= Reply(request.id, status, ticket, scroll, focus, drawer, action,
-                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails, containers, leftscroll, rightscroll, recent));
+                                deskzoom, deskpan, reveal, scene(windows, width, height, scroll, focus, drawer, moving, zooming, thumbnails, containers, leftscroll, rightscroll, deskzoom, deskpan, recent));
         if (stop) {
             return;
         }
@@ -1368,6 +1419,7 @@ livefocus(windows: array of ref Window, preferred: int): int
 # acquired; only the caller owns the returned terminal request channel.
 start(): chan of Request
 {
+    atlas = load Ideatlas Ideatlas->PATH;
     palettes = load Idetoolpalette Idetoolpalette->PATH;
     rails = load Iderails Iderails->PATH;
     tools = load Idetools Idetools->PATH;
@@ -1375,7 +1427,7 @@ start(): chan of Request
     picking = load Idepick Idepick->PATH;
     tabs = load Idetabview Idetabview->PATH;
     docking = load Idedocking Idedocking->PATH;
-    if (tabs == nil || docking == nil || picking == nil || thumbview == nil || rails == nil || tools == nil || palettes == nil) {
+    if (atlas == nil || tabs == nil || docking == nil || picking == nil || thumbview == nil || rails == nil || tools == nil || palettes == nil) {
         raise "fail: desktop control modules";
     }
     requests := chan of Request;
@@ -1412,3 +1464,7 @@ controlzoom(window: ref Window, zoom: int): int
     }
     return zoom;
 }
+
+include "idedesktopatlas.b";
+
+include "idedesktoptools.b";

@@ -32,8 +32,8 @@ def main():
                 raise RuntimeError("shared desktop lost actual pane: " + required)
         if "MUST_NOT_EDIT_DEBUG" in text:
             raise RuntimeError("debugger panel accepted a text edit")
-        if any(slot in final for slot in (60, 61, 62)):
-            raise RuntimeError("unexpected workspace-switching UI")
+        if 60 not in final or 62 not in final or "Source" in final[60][3]:
+            raise RuntimeError("shared desktop overview missing or replaced by a workspace switch")
         if source.read_text(encoding="utf-8") != original:
             raise RuntimeError("opening debugger panels edited source")
         print("PASS actual shared desktop: source, vector and three disconnected debugger panels, owner reuse")

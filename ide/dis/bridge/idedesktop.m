@@ -10,11 +10,12 @@ Idedesktop: module
     ItemView: con 65570; # Stable MovieClip ID and copied descriptor.
     ColorsView: con 65575; # Same view ticket; pane/revision plus ASCII palette, no geometry/input ack.
     EndView: con 65571; # Commit scene; first=vector count1..8 permits private-stream join,0 is legacy.
+    ContactCancel: con 11; # Native pointer subcode: added contacts cancel a provisional one-finger tap.
     PointerEvent: con 65572; # Pixel/phase proposal carrying the completed view ticket.
     AnimationClock: con 65574; # Bounded replay visual-clock acknowledgement; no layout/source mutation.
     ResizeEvent: con 65573; # Ticket-bound native canvas proposal.
     RecentLabels: con 15; # Application-owned sanitized labels; body has four LF-separated lines.
-    RailScroll: con 14; # Ticket-bound wheel delta x, window2/3 selects the rail.
+    RailScroll: con 14; # Ticket-bound wheel delta x, physical y, window2/3 selects the rail.
     SetContainer: con 13; # window=document, phase=container0..8, x=tool family1/2/3; zero detaches.
     GroupEditor, DetachEditor: con iota + 18; # MDI/SDI commands for the active document.
     MaxCaption: con 96; # Scalars; longer vector captions include tool/fill/width status.

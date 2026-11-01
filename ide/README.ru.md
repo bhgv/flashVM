@@ -22,7 +22,7 @@
 
 # Backend сборки для IDE
 
-Версия **0.7.6**. [English](README.md).
+Версия **0.7.7**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 
@@ -136,3 +136,5 @@ question, Dis-owned scrolling/mouse/search/file actions and Ctrl-wheel/pinch zoo
 [Glass rails, docking and smooth whole-table reveal / Матовые панели и плавный показ окна целиком](DESKTOP-GLASS-MOTION.ru.md).
 
 [Independent geometry brokers / Независимая передача геометрии](BULK-GEOMETRY.md) · [Русский контракт](BULK-GEOMETRY.ru.md)
+
+[Window chrome and finite-strip atlas / Оформление и карта ленты](CHROME-ATLAS.ru.md).

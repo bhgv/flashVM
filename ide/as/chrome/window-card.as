@@ -1,9 +1,61 @@
-// Rounded paper card, active outline and inactive grey rim.
-// Executed AS -> FIR -> SWO -> SWF actions. ideDraw is an owner-local generic
-// drawing capability; Dis owns geometry/selection and no heap pointer crosses it.
-chromeBorderDelta = 2524379 - 12174538;
-ideDraw.w = chromeWidth;
-ideDraw.h = chromeHeight;
-ideDraw.color = 15725297;
-ideDraw.border = 12174538 + chromeActive * chromeBorderDelta;
-ideDraw.box = true;
+// Layered card: shadow stays inside the admitted object extent and cache.
+ideDraw.clear = true;
+// Broad soft shadow, followed by the darker contact edge.
+ideDraw.x = 2;
+ideDraw.y = 4;
+ideDraw.w = chromeWidth - 2;
+ideDraw.h = chromeHeight - 4;
+ideDraw.radius = 10;
+ideDraw.color = 0;
+ideDraw.border = 0;
+ideDraw.stroke = 0;
+ideDraw.alpha = 12;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 1;
+ideDraw.y = 2;
+ideDraw.w = chromeWidth - 3;
+ideDraw.h = chromeHeight - 4;
+ideDraw.radius = 9;
+ideDraw.color = 0;
+ideDraw.border = 0;
+ideDraw.stroke = 0;
+ideDraw.alpha = 20;
+ideDraw.filled = 1;
+ideDraw.round = true;
+// Opaque paper, selected blue rim, inner highlight and recessed bevel.
+windowRimDelta = 2524379 - 8227470;
+windowRim = 8227470 + chromeActive * windowRimDelta;
+ideDraw.x = 0;
+ideDraw.y = 0;
+ideDraw.w = chromeWidth - 4;
+ideDraw.h = chromeHeight - 5;
+ideDraw.radius = 8;
+ideDraw.color = 15922161;
+ideDraw.border = windowRim;
+ideDraw.stroke = 13 / 10;
+ideDraw.alpha = 100;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 1;
+ideDraw.y = 1;
+ideDraw.w = chromeWidth - 6;
+ideDraw.h = chromeHeight - 7;
+ideDraw.radius = 7;
+ideDraw.color = 16777215;
+ideDraw.border = 16777215;
+ideDraw.stroke = 1;
+ideDraw.alpha = 80;
+ideDraw.filled = 0;
+ideDraw.round = true;
+ideDraw.x = 2;
+ideDraw.y = 2;
+ideDraw.w = chromeWidth - 8;
+ideDraw.h = chromeHeight - 9;
+ideDraw.radius = 6;
+ideDraw.color = 14081241;
+ideDraw.border = 14081241;
+ideDraw.stroke = 7 / 10;
+ideDraw.alpha = 75;
+ideDraw.filled = 0;
+ideDraw.round = true;

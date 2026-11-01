@@ -7,7 +7,7 @@
 
 [English](DESKTOP-WORKSPACE.md) · [Стол](DESKTOP.ru.md) · [Запуск](ENTRYPOINTS.md) · [Сессионный буфер](DESKTOP-CLIPBOARD.ru.md)
 
-![Actual MovieClip workspace / Рабочий стол](assets/desktop-v0.1677.png)
+![Actual MovieClip workspace / Рабочий стол](assets/desktop-v0.1719.png)
 
 Запуск: **8** в build-menu, `--launch desktop` или `run-desktop-ide.sh`.
 Владельцы документов и политика интерфейса работают отдельными процессами Limbo;
@@ -74,3 +74,5 @@ Max/Norm сохраняет нормальные смещения и разме�
 без накопления целочисленного округления. Заголовок уже прокрученного и
 максимизированного окна остаётся под верхней панелью. Новая прокрутка задаёт
 новую опору; прежние ограничения области просмотра продолжают действовать.
+
+[Layered chrome, fixed seven-page atlas and first-contact gestures / Объёмные края, карта семи страниц и первое касание](CHROME-ATLAS.ru.md).

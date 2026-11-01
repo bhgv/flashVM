@@ -7,7 +7,7 @@ clipping and limitations in [event-driven rendering](../flashVM/doc/RENDER_ASYNC
 
 [Русский](DESKTOP-WORKSPACE.ru.md) · [Desktop](DESKTOP.md) · [Entry points](ENTRYPOINTS.md) · [Session clipboard](DESKTOP-CLIPBOARD.md)
 
-![Actual MovieClip workspace / Рабочий стол](assets/desktop-v0.1677.png)
+![Actual MovieClip workspace / Рабочий стол](assets/desktop-v0.1719.png)
 
 The application is `run-desktop-ide.sh`, build-menu **8**, or `--launch desktop`.
 The application policy and document owners run in separate Limbo processes;
@@ -87,3 +87,5 @@ leaving window rectangles in logical coordinates. Opposite zoom steps restore
 the reference without accumulating integer-rounding drift. This also keeps the
 header of an already scrolled/maximized window below the top bar. New panning/
 scrolling establishes a new reference; existing viewport bounds still apply.
+
+[Layered chrome, fixed seven-page atlas and first-contact gestures / Объёмные края, карта семи страниц и первое касание](CHROME-ATLAS.md).

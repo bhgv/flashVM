@@ -1,54 +1,36 @@
-// Six-band blue header for desktop cards and live miniatures.
-// Executed AS -> FIR -> SWO -> SWF actions. ideDraw is an owner-local generic
-// drawing capability; Dis owns geometry/selection and no heap pointer crosses it.
-// Use the admitted shelf bounds for a miniature, keeping its preview undistorted.
+// Rounded blue title strip, with a bright lip and a darker lower bevel.
 chromeHeaderDelta = chromePreviewWidth / chromePreviewScale - chromeWidth;
 chromeHeaderWidth = chromeWidth + chromeMiniature * chromeHeaderDelta;
-// Header highlight band 1; coordinates remain local to the card.
 ideDraw.x = 3;
-ideDraw.y = 2 + 0 * 22 / 6;
-ideDraw.w = chromeHeaderWidth - 6;
-ideDraw.h = 22 / 6;
-ideDraw.color = 8824241;
+ideDraw.y = 3;
+ideDraw.w = chromeHeaderWidth - 11;
+ideDraw.h = 21;
+ideDraw.radius = 5;
+ideDraw.color = 7054270;
+ideDraw.border = 4947352;
+ideDraw.stroke = 6 / 10;
 ideDraw.alpha = 100;
-ideDraw.rect = true;
-// Header highlight band 2; coordinates remain local to the card.
-ideDraw.x = 3;
-ideDraw.y = 2 + 1 * 22 / 6;
-ideDraw.w = chromeHeaderWidth - 6;
-ideDraw.h = 22 / 6;
-ideDraw.color = 9153206;
-ideDraw.alpha = 100;
-ideDraw.rect = true;
-// Header highlight band 3; coordinates remain local to the card.
-ideDraw.x = 3;
-ideDraw.y = 2 + 2 * 22 / 6;
-ideDraw.w = chromeHeaderWidth - 6;
-ideDraw.h = 22 / 6;
-ideDraw.color = 9482171;
-ideDraw.alpha = 100;
-ideDraw.rect = true;
-// Header highlight band 4; coordinates remain local to the card.
-ideDraw.x = 3;
-ideDraw.y = 2 + 3 * 22 / 6;
-ideDraw.w = chromeHeaderWidth - 6;
-ideDraw.h = 22 / 6;
-ideDraw.color = 9811136;
-ideDraw.alpha = 100;
-ideDraw.rect = true;
-// Header highlight band 5; coordinates remain local to the card.
-ideDraw.x = 3;
-ideDraw.y = 2 + 4 * 22 / 6;
-ideDraw.w = chromeHeaderWidth - 6;
-ideDraw.h = 22 / 6;
-ideDraw.color = 10140101;
-ideDraw.alpha = 100;
-ideDraw.rect = true;
-// Header highlight band 6; coordinates remain local to the card.
-ideDraw.x = 3;
-ideDraw.y = 2 + 5 * 22 / 6;
-ideDraw.w = chromeHeaderWidth - 6;
-ideDraw.h = 22 / 6;
-ideDraw.color = 10469066;
-ideDraw.alpha = 100;
-ideDraw.rect = true;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 5;
+ideDraw.y = 4;
+ideDraw.w = chromeHeaderWidth - 15;
+ideDraw.h = 4;
+ideDraw.radius = 2;
+ideDraw.color = 16777215;
+ideDraw.border = 16777215;
+ideDraw.stroke = 0;
+ideDraw.alpha = 32;
+ideDraw.filled = 1;
+ideDraw.round = true;
+ideDraw.x = 5;
+ideDraw.y = 22;
+ideDraw.w = chromeHeaderWidth - 15;
+ideDraw.h = 1;
+ideDraw.radius = 0;
+ideDraw.color = 3886691;
+ideDraw.border = 3886691;
+ideDraw.stroke = 0;
+ideDraw.alpha = 40;
+ideDraw.filled = 1;
+ideDraw.round = true;

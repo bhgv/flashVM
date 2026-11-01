@@ -3,6 +3,7 @@ include "sys.m";
 include "uibridge.m";
 include "idedeskpane.m";
 include "idedesktop.m";
+include "ideatlas.m";
 DesktopTest: module { init: fn(); }; # Real pane processes and layout owner admission.
 
 
@@ -104,6 +105,7 @@ init()
     codec := load Uibridge Uibridge->PATH;
     check(sys != nil && panes != nil && desk != nil && codec != nil, "modules");
     captionbounds(desk, codec);
+    atlasmetrics(desk);
     left := panes->start(panes->Editor, "", "left");
     right := panes->start(panes->Editor, "", "right");
     check(left != nil && right != nil, "owners");
@@ -136,7 +138,7 @@ init()
     check(view.status == desk->Ok, "window admission");
     mirrored := 0;
     for (index := 0; index < len view.items; index++) {
-        if (view.items[index].mirror == 1) {
+        if (view.items[index].mirror == 1 && view.items[index].parent == 2) {
             mirrored++;
         }
     }
@@ -414,23 +416,78 @@ railmetrics(desk: Idedesktop)
     view := call(owner, request);
     check(item(view, 12).width == 60 && item(view, 64).x == 10,
           "narrow right-aligned shelf");
+    view = point(owner, view.ticket, 932, 69, 1);
+    check(view.drawer == 0 && view.action == 0, "toolbar action waits for release");
+    request.operation = desk->Cancel;
+    view = call(owner, request);
+    view = point(owner, view.ticket, 932, 69, 3);
+    check(view.drawer == 0 && view.action == 0, "multi-contact cancellation cannot activate Files");
+    view = point(owner, view.ticket, 932, 100, 13);
+    view = point(owner, view.ticket, 400, 80, 14);
+    view = point(owner, view.ticket, 400, 60, 14);
+    view = point(owner, view.ticket, 400, 60, 15);
+    check(view.scroll == 0 && item(view, 45).y == 144 && item(view, 60).y == 210,
+        "three-contact toolbar pan stays latched across multiple moves and leaves map fixed");
     request.operation = desk->RailScroll;
     request.window = 3;
-    request.x = 120;
+    request.x = 2048;
+    request.y = 80; # Wheel originated in the scrollable tools, above the atlas.
     request.ticket = view.ticket;
     view = call(owner, request);
-    check(view.scroll == 0 && item(view, 64).y == -40 && item(view, 70).y == 280,
-          "short right rail clamps independently");
-    view = point(owner, view.ticket, 932, 293, 1);
-    view = point(owner, view.ticket, 932, 293, 3);
+    check(view.scroll == 0 && item(view, 64) == nil && item(view, 70).y == 170 && item(view, 60).y == 210,
+          "short toolbar clamps above the fixed atlas and culls hidden buttons");
+    view = point(owner, view.ticket, 932, 183, 1);
+    view = point(owner, view.ticket, 932, 183, 3);
     bubble := item(view, 55);
     tip := item(view, 71);
     button := item(view, 72);
     check(bubble != nil && tip != nil && button != nil &&
-          bubble.x + bubble.width - 1 == tip.x && tip.y == 285 &&
+          bubble.x + bubble.width - 1 == tip.x && tip.y == 175 &&
           bubble.y >= 48 && bubble.y + bubble.height <= 312 &&
           button.width == 44 && button.height == 27,
           "scrolled owner anchors shared-size compact bubble");
     request.operation = desk->Shutdown;
     check(call(owner, request).status == desk->Ok, "rail fixture shutdown");
+}
+
+
+# Exercise the finite strip, live references, fixed atlas and viewport navigation
+# through the real layout owner. No renderer/window/document owner is mocked.
+atlasmetrics(desk: Idedesktop)
+{
+    atlas := load Ideatlas Ideatlas->PATH;
+    check(atlas != nil, "atlas geometry module");
+    owner := desk->start();
+    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0, "Map source", "live", -1, -1, 0, nil);
+    view := call(owner, request);
+    back := item(view, 60);
+    frame := item(view, 62);
+    miniature := item(view, 89);
+    check(back != nil && frame != nil && miniature != nil && miniature.mirror == 1 &&
+        back.parent == 3 && back.width == 44 && back.height == 223 && back.y == 409 &&
+        frame.y >= back.y && frame.y + frame.height <= back.y + back.height,
+        "proportional bottom-fixed map, live miniature and viewport frame");
+    view = point(owner, view.ticket, 930, back.y + back.height - 4, 1);
+    view = point(owner, view.ticket, 930, back.y + back.height - 4, 3);
+    check(view.scroll == atlas->maximum(640, 100) && item(view, 62).y > frame.y &&
+        item(view, 60).y == back.y && item(view, 64).y == 56,
+        "map tap moves viewport to strip end without scrolling buttons");
+    view = point(owner, view.ticket, 930, back.y + 2, 2);
+    check(view.scroll == 3552, "released map capture cannot follow hover motion");
+    request.operation = desk->Scroll;
+    request.ticket = view.ticket;
+    request.x = 2048;
+    view = call(owner, request);
+    check(view.scroll == 3552, "seven-page finite lower bound");
+    view = point(owner, view.ticket, 930, back.y + 2, 1);
+    view = point(owner, view.ticket, 930, back.y + 2, 3);
+    check(view.scroll == 0, "map top returns to strip start");
+    request.operation = desk->Resize;
+    request.x = 240;
+    request.y = 160;
+    view = call(owner, request);
+    check(item(view, 60).height == 61 && item(view, 60).y == 91,
+        "map stays below half height and preserves a usable tool at minimum size");
+    request.operation = desk->Shutdown;
+    check(call(owner, request).status == desk->Ok, "atlas owner shutdown");
 }
