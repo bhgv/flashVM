@@ -623,6 +623,11 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         } else if (request.operation == Draw) {
             e := request.event;
             expected := doc.revision + (len doc.points != 0);
+            # Native pointer id carries the copied screen/page pick conversion.
+            # Portable clients keep the explicit20 logical-unit default.
+            if (e != nil && e.id > 65536 && e.id <= 2065536) {
+                doc.pickradius = real (e.id-65536)/1000.0;
+            }
             if (e == nil || e.kind != Uibridge->Request ||
                 (e.text != "" && ((e.code != 1 && e.code != 3) || len array of byte e.text != 8))) {
                 status = Idecore->Invalid;

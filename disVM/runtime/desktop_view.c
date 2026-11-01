@@ -77,18 +77,20 @@ static unsigned int glass_height[2];           /* Cached immutable rail contour 
 static int active;                             /* A desktop scene has been admitted. */
 
 
-#define VECTOR_BYTES 825000U /* Complete bounded ASCII command stream, never SVG/script input. */
+#define VECTOR_BYTES 1150000U /* Complete bounded ASCII command stream, never SVG/script input. */
 #define VECTOR_SHAPES 33U    /* 32 source paths plus one transient editing overlay. */
 #define VECTOR_NODES 20480U  /* 16384 source commands plus 4096 presentation commands. */
 
 /* Detached scalar command. Managed/native object addresses never enter the stream. */
 typedef struct VectorNode
 {
-    unsigned long verb; /* Move0, line1, quadratic2, close3. */
+    unsigned long verb; /* Move0, line1, quadratic2, close3, cubic4. */
     unsigned long x;    /* Logical destination X,0..1000. */
     unsigned long y;    /* Logical destination Y,0..600. */
-    unsigned long cx;   /* Quadratic control X, zero otherwise. */
-    unsigned long cy;   /* Quadratic control Y, zero otherwise. */
+    unsigned long cx;   /* First Q/C control X, zero for straight commands. */
+    unsigned long cy;   /* First control Y, zero for straight commands. */
+    unsigned long c2x;  /* Cubic second control X. */
+    unsigned long c2y;  /* Cubic second control Y. */
 } VectorNode;
 
 /* Immutable path style and range into its pane-owned detached node array. */
@@ -575,6 +577,8 @@ static int vector_parse(VectorScene *scene)
 {
     size_t at = 56;
     unsigned long shapes;
+    size_t stride;
+    int cubic;
     unsigned int total = 0;
     unsigned int i;
     if (scene->used < 56 || !word(scene->bytes, &scene->tool) || !word(scene->bytes + 8, &scene->color) ||
@@ -584,6 +588,9 @@ static int vector_parse(VectorScene *scene)
     {
         return 0;
     }
+    cubic = (scene->tool & 0x20000UL) != 0;
+    scene->tool &= ~0x20000UL;
+    stride = cubic ? 56 : 40;
     scene->zoom = 100;
     scene->center_x = 500;
     scene->center_y = 300;
@@ -619,7 +626,7 @@ static int vector_parse(VectorScene *scene)
             return 0;
         }
         at += 32;
-        if (count > (scene->used - at) / 40)
+        if (count > (scene->used - at) / stride)
         {
             return 0;
         }
@@ -630,16 +637,23 @@ static int vector_parse(VectorScene *scene)
             VectorNode *node = &scene->nodes[total++];
             if (!word(scene->bytes + at, &node->verb) || !word(scene->bytes + at + 8, &node->x) ||
                 !word(scene->bytes + at + 16, &node->y) || !word(scene->bytes + at + 24, &node->cx) ||
-                !word(scene->bytes + at + 32, &node->cy) || node->verb > 3 || node->x > 1000 || node->y > 600 ||
+                !word(scene->bytes + at + 32, &node->cy) || node->verb > (cubic ? 4UL : 3UL) || node->x > 1000 || node->y > 600 ||
                 node->cx > 1000 || node->cy > 600 || (j == 0 && node->verb != 0) ||
                 (j > 0 && node->verb == 0 && scene->nodes[total - 2].verb != 3 &&
                  !(scene->tool >= 6 && i + 1 == shapes)) ||
                 (j > 0 && node->verb != 0 && scene->nodes[total - 2].verb == 3) ||
-                (node->verb != 2 && (node->cx || node->cy)) || (node->verb == 3 && (node->x || node->y)))
+                (node->verb != 2 && node->verb != 4 && (node->cx || node->cy)) || (node->verb == 3 && (node->x || node->y)))
             {
                 return 0;
             }
-            at += 40;
+            node->c2x = node->c2y = 0;
+            if (cubic && (!word(scene->bytes + at + 40, &node->c2x) ||
+                !word(scene->bytes + at + 48, &node->c2y) || node->c2x > 1000 || node->c2y > 600 ||
+                (node->verb != 4 && (node->c2x || node->c2y))))
+            {
+                return 0;
+            }
+            at += stride;
         }
     }
     if (at != scene->used)
@@ -1075,6 +1089,8 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
         unsigned int j;
         double start_x = 0;
         double start_y = 0;
+        double previous_x = 0;
+        double previous_y = 0;
         fvm_value_number(args, shape->width * scale);
         fvm_value_number(args + 1, shape->color);
         fvm_value_number(args + 2, 100);
@@ -1106,6 +1122,28 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
                 x = start_x;
                 y = start_y;
             }
+            if (node->verb == 4)
+            {
+                unsigned int part;
+                for (part = 1; part <= 64; ++part)
+                {
+                    double t = part / 64.0;
+                    double u = 1.0 - t;
+                    fvm_value_number(args, u*u*u*previous_x + 3*u*u*t*vector_x(content, node->cx) +
+                        3*u*t*t*vector_x(content, node->c2x) + t*t*t*x);
+                    fvm_value_number(args + 1, u*u*u*previous_y + 3*u*u*t*vector_y(content, node->cy) +
+                        3*u*t*t*vector_y(content, node->c2y) + t*t*t*y);
+                    if (fvm_object_call(owner, clip, "lineTo", 2, args, &ignored) != FVM_OK)
+                    {
+                        return 0;
+                    }
+                }
+                previous_x = x;
+                previous_y = y;
+                continue;
+            }
+            previous_x = x;
+            previous_y = y;
             fvm_value_number(args, x);
             fvm_value_number(args + 1, y);
             if (node->verb == 2)
@@ -1164,6 +1202,7 @@ static int vector_capture(unsigned long widget, const DeskItem *content, const F
             command.verb = node->verb == 0   ? FVM_PATH_MOVE
                            : node->verb == 1 ? FVM_PATH_LINE
                            : node->verb == 2 ? FVM_PATH_QUADRATIC
+                           : node->verb == 4 ? FVM_PATH_CUBIC
                                              : FVM_PATH_CLOSE;
             command.x[0] = vector_x(content, node->x);
             command.y[0] = vector_y(content, node->y);
@@ -1173,6 +1212,15 @@ static int vector_capture(unsigned long widget, const DeskItem *content, const F
                 command.y[1] = command.y[0];
                 command.x[0] = vector_x(content, node->cx);
                 command.y[0] = vector_y(content, node->cy);
+            }
+            if (node->verb == 4)
+            {
+                command.x[2] = command.x[0];
+                command.y[2] = command.y[0];
+                command.x[0] = vector_x(content, node->cx);
+                command.y[0] = vector_y(content, node->cy);
+                command.x[1] = vector_x(content, node->c2x);
+                command.y[1] = vector_y(content, node->c2y);
             }
             result = fvm_path_add(path, &command);
         }
@@ -3070,6 +3118,30 @@ int dvm_desktop_prepare(DVM_EditorFrame *frame)
 {
     return dvm_desktop_prepare_cached(frame, NULL);
 }
+
+/* Convert the 20-pixel hit budget using the completed pane/page transforms.
+ * Owner only; no geometry walks, allocations or managed references are needed. */
+unsigned long dvm_desktop_vector_pick_radius(unsigned long widget)
+{
+    unsigned int index;
+    for (index = 0; index < received; ++index)
+    {
+        const DeskItem *item = &items[index];
+        FVM_Affine world;
+        double scale;
+        if (item->id != widget || item->mirror || !world_matrix(clips[widget], item->parent, &world))
+        {
+            continue;
+        }
+        scale = vector_scale(item) * hypot(world.xx, world.yx);
+        if (scale > 0)
+        {
+            return (unsigned long)fmax(1, fmin(2000000, floor(20000.0 / scale)));
+        }
+    }
+    return 20000;
+}
+
 
 /* Map stable capture against completed owner geometry; input never re-hits a
  * different window/toolbar while drawing. Off-page samples clamp, including Up. */

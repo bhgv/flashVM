@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1725**. [Русская версия](README.ru.md).
+Development version: **0.1726**. [Русская версия](README.ru.md).
 
-Current series: [v0.1725](docs/releases/v0.1725.md): repair dense contour selection and cache owner presentation.
+Current series: [v0.1726](docs/releases/v0.1726.md): add editable cubic Bézier paths, post-release fitting and nearest-contour selection.
 
 ## Browse documentation
 

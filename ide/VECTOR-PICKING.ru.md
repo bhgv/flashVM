@@ -1,3 +1,5 @@
+[v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
+
 # Выбор плотных контуров и кэш выделения
 
 [English](VECTOR-PICKING.md) · [Стрелки объектов/узлов](VECTOR-EDITING.ru.md)

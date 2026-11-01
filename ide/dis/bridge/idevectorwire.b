@@ -5,7 +5,7 @@
 # Serialize one immutable shape into a preflight-sized private byte array.
 # bytes/at name caller-owned writable storage; shape is borrowed. Return the
 # first unused offset. No allocation, callbacks, module load or shared mutation.
-wireshape(bytes: array of byte, at: int, shape: ref Shape): int
+wireshape(bytes: array of byte, at: int, shape: ref Shape, cubic: int): int
 {
     putword(bytes, at, shape.color);
     putword(bytes, at + 8, shape.width);
@@ -19,7 +19,11 @@ wireshape(bytes: array of byte, at: int, shape: ref Shape): int
         putword(bytes, at + 16, node.y);
         putword(bytes, at + 24, node.cx);
         putword(bytes, at + 32, node.cy);
-        at += 40;
+        if (cubic) {
+            putword(bytes, at+40, node.c2x);
+            putword(bytes, at+48, node.c2y);
+        }
+        at += 40+16*cubic;
     }
     return at;
 }
@@ -34,16 +38,33 @@ wireshape(bytes: array of byte, at: int, shape: ref Shape): int
 # handing a result back, so the UI owner never walks its new contour nodes.
 preparewire(doc: ref Document)
 {
+    cubic := doc.wirecubic || doc.tool == Ellipse;
+    if (doc.wired != doc.shapes) {
+        for (index := 0; index < len doc.shapes && !cubic; index++) {
+            nodes := doc.shapes[index].nodes;
+            for (part := 0; part < len nodes; part++) {
+                if (nodes[part].verb == Cubic) {
+                    cubic = 1;
+                    break;
+                }
+            }
+        }
+    }
+    if (cubic != doc.wirecubic) {
+        doc.wirecubic = cubic;
+        doc.wirebody = "";
+        doc.presentation = nil;
+    }
     if (doc.wirebody == "" || doc.wired != doc.shapes) {
         total := 0;
         for (index := 0; index < len doc.shapes; index++) {
             total += len doc.shapes[index].nodes;
         }
-        geometry := array[8 + 32 * len doc.shapes + 40 * total] of byte;
+        geometry := array[8 + 32 * len doc.shapes + (40+16*doc.wirecubic) * total] of byte;
         putword(geometry, 0, len doc.shapes);
         at := 8;
         for (index = 0; index < len doc.shapes; index++) {
-            at = wireshape(geometry, at, doc.shapes[index]);
+            at = wireshape(geometry, at, doc.shapes[index], doc.wirecubic);
         }
         doc.wirebody = string geometry;
         doc.wired = doc.shapes;
@@ -75,7 +96,7 @@ wire(doc: ref Document): string
     additional := 0;
     if (len doc.points != 0 && !doc.nativecapture) {
         extra = draft(doc);
-        additional = 32 + 40 * len extra.nodes;
+        additional = 32 + (40+16*doc.wirecubic) * len extra.nodes;
     }
     header := cameraheader(doc);
     prefix := len header;
@@ -89,7 +110,7 @@ wire(doc: ref Document): string
     bytes[prefix:] = array of byte doc.wirebody;
     if (extra != nil) {
         putword(bytes, prefix, len doc.shapes + 1);
-        wireshape(bytes, prefix + len doc.wirebody, extra);
+        wireshape(bytes, prefix + len doc.wirebody, extra, doc.wirecubic);
     }
     return string bytes;
 }
@@ -132,7 +153,7 @@ cameraheader(doc: ref Document): array of byte
 {
     extra := doc.zoom != 100 || doc.center.x != 500 || doc.center.y != 300;
     header := array[48+24*extra] of byte;
-    putword(header,0,doc.tool | (extra << 16));
+    putword(header,0,doc.tool | (extra << 16) | (doc.wirecubic << 17));
     putword(header,8,doc.color);
     putword(header,16,doc.width);
     putword(header,24,doc.fill | ((len doc.chain != 0) << 1));

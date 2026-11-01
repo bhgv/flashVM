@@ -62,6 +62,11 @@ int dvm_desktop_advance(unsigned int elapsed);
  * return a scalar offset; vector canvases return y*1001+x, toolbar cells-2..-16.
  * Returns zero for headers/occlusion/failure; never edits a document. */
 int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position);
+/* Return the logical radius in thousandths for a20-screen-pixel pick of widget.
+ * Owner-only; return20000 when its completed transform is unavailable. */
+unsigned long dvm_desktop_vector_pick_radius(unsigned long widget);
+
+
 /* Map an already captured vector pane without another hit test. Clamp outside
  * page coordinates to its logical edge. Return zero on stale/nonvector geometry.
  * Owner-only; no managed handle or pointer escapes through the scalar result. */

@@ -614,6 +614,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/clock_sys.c" "$destination/source/clock/clock_sys.c"
             copy_file "$ROOT/ide/dis/tests/millisec_test.b" "$destination/examples/millisec/main.b"
             copy_file "$base/millisec-test.dis" "$destination/examples/millisec/main.dis"
+            copy_file "$ROOT/ide/dis/bridge/idevectorpick.b" "$destination/source/idevectorpick.b"
             copy_file "$ROOT/ide/dis/bridge/idevectorbrushfit.b" "$destination/source/idevectorbrushfit.b"
             copy_file "$ROOT/ide/dis/bridge/idevectorviewport.b" "$destination/source/idevectorviewport.b"
             copy_file "$ROOT/ide/dis/bridge/idevectoredit.b" "$destination/source/idevectoredit.b"

@@ -42,7 +42,7 @@ canonical Save. Here is the complete explanation of its drawing source:
 - The red `rect` has opposite corners(120,340)/(380,500). It is fill-only: no
   stroke attribute means no native outline. Import turns it into a closed path.
 - The green `ellipse` has centre(650,420), radii140/90 and width12. Import turns
-  it into the model's eight quadratic arcs. Save writes those ordinary paths.
+  it into the model's four cubic Bézier segments. Save writes those ordinary paths.
 
 ## Compile and run the fully commented Limbo example
 
@@ -98,3 +98,18 @@ Dis modules together. See [the transport contract](../../../BULK-GEOMETRY.md).
 [Line/Fill/Pen fixes and tests / Исправления инструментов](../../../../docs/releases/v0.1716.md).
 
 [Connected figures and XOR / Составные фигуры и XOR](../../../../docs/releases/v0.1718.md).
+
+
+## Cubic model and post-release fitting
+
+See [v0.1726 geometry contract](../../../../docs/releases/v0.1726.md) for cubic
+SVG C commands, both editable handles, four-segment ellipses, asynchronous brush
+fitting and screen-space selection tolerance. The legacy blue example deliberately
+retains Q commands to demonstrate coexistence with the new cubic model.
+
+
+[cubic.svg](cubic.svg) is a commented four-anchor ellipse expressed directly with
+SVG C commands. Open it with `run-desktop-ide.sh --document /absolute/path/cubic.svg`,
+select Objects, then Nodes to move either control independently; Save retains the
+four cubic commands and no handle overlays. The installed package includes the
+same example under `examples/vector/cubic.svg`.

@@ -1,3 +1,5 @@
+[v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
+
 [Dense picking and crash correction](VECTOR-PICKING.md)
 
 # Object and contour editing
@@ -16,16 +18,16 @@ from Brush union, Pen, primitives or an imported compound path. Other Shapes
 retain their identities and geometry. Empty-space click clears object selection.
 
 Nodes selects one touched contour and shows its path, square endpoint handles
-and quadratic control handles/guides. Click a handle to select it; Ctrl-click
+and quadratic/cubic control handles/guides. Click a handle to select it; Ctrl-click
 adds/removes a handle. Drag a selected handle to move the selected group. Drag
 empty canvas to select handles in a rectangular marquee; Ctrl preserves the
 existing selection. Selecting another contour clears the old handle selection.
-The current model uses quadratic curves; this does not invent cubic SVG support.
+Cubic segments retain two independent handles and round-trip SVG C commands; legacy Q curves remain supported.
 
 Every drag transforms an immutable pointer-down snapshot. Motion never compounds
 rounding from the preceding motion. Release commits one Undo item and revision;
 Escape/focus cancellation restores the exact snapshot. Out-of-canvas transforms
-are refused as a whole. Geometry and quadratic verbs persist in SVG; selection,
+are refused as a whole. Geometry and Q/C verbs persist in SVG; selection,
 frames and handles do not. Save/Open and Undo/Redo retain existing owner channels.
 Pending ink fitting completes before an edit gesture is admitted.
 

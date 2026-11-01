@@ -1,21 +1,20 @@
+[v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
+
 # Brush splines and the independent page viewport
 
 [Русский](VECTOR-VIEWPORT.ru.md) · [Object/node editing](VECTOR-EDITING.md)
 
-After release, the existing Limbo fitting worker compares dense contour samples
-against the complete filled figure's width/40 and height/40. Both coordinate
-differences must be strictly below their respective threshold. Run span is also
-bounded so a long chain of short edges cannot collapse the whole contour.
-A dense run is replaced by a two-part quadratic spline with two editable controls.
-Its start, middle knot and end are interpolated; other nearby samples are fitted,
-not claimed to be interpolated exactly. Both pieces share a tangent at the middle
-knot unless a control must be clamped to the canvas boundary. Open drawing samples
-are still native/raw; fitting never runs in the mouse-motion handler.
+After release, the separate Limbo worker fits closed brush contours with cubic
+Bézier segments, using chord parameters and interval least squares. Every input
+sample is checked against the rounded curve with per-axis extent/40 tolerances
+based on the whole compound figure. Failed intervals subdivide; short intervals
+retain lines. A bounded reverse sampling check rejects bows between knots.
+This is a discrete fitting bound, not a continuous Hausdorff proof. Motion keeps
+raw native ink. The owner replaces geometry only for a matching completion.
 
-The Nodes arrow selects the spline endpoints and both controls. Nearest-handle
-picking disambiguates densely spaced handles. Existing Ctrl/marquee group editing,
-Undo/Cancel and SVG Q commands apply; no cubic SVG command is invented.
-The algorithm is separate in `dis/bridge/idevectorbrushfit.b`.
+Nodes edits endpoints and both cubic controls independently, with Ctrl/marquee,
+Undo/Cancel and SVG C round trips. Legacy Q paths remain editable. The algorithm
+lives in `dis/bridge/idevectorbrushfit.b`; the linked release gives full limitations.
 
 The magnifier button below the two selection arrows toggles viewport mode.
 While active, wheel or two-finger pinch over the page changes magnification;

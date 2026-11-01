@@ -1,3 +1,5 @@
+[v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
+
 # Dense contour picking and selection presentation
 
 [Русский](VECTOR-PICKING.ru.md) · [Object/node tools](VECTOR-EDITING.md)

@@ -9,7 +9,7 @@ create(): ref Document
 {
     return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
-                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, nil, 0, 0);
+                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, nil, 0, 0, 20.0, 0);
 }
 
 
@@ -20,14 +20,14 @@ pointok(x, y: int): int
 }
 
 
-# Form a closed rectangle or eight-quadratic ellipse from two bounded corners.
+# Form a closed rectangle or four-cubic ellipse from two bounded corners.
 # Returned nodes are private immutable values. Ellipse approximation uses tangent
-# intersections at 22.5 degrees and integer half-extents. Odd extents may
+# controls at kappa=0.55228475 and integer half-extents. Odd extents may
 # shrink by one logical unit; all control points stay inside the requested box.
 figure(tool: int, a, b: Point): array of Node
 {
     if (tool == Line) {
-        return array[] of {Node(Move, a.x, a.y, 0, 0), Node(Segment, b.x, b.y, 0, 0)};
+        return array[] of {Node(Move, a.x, a.y, 0, 0, 0, 0), Node(Segment, b.x, b.y, 0, 0, 0, 0)};
     }
     left := a.x;
     right := b.x;
@@ -40,26 +40,21 @@ figure(tool: int, a, b: Point): array of Node
         (top, bottom) = (bottom, top);
     }
     if (tool == Rectangle) {
-        return array[] of {Node(Move, left, top, 0, 0), Node(Segment, right, top, 0, 0),
-            Node(Segment, right, bottom, 0, 0), Node(Segment, left, bottom, 0, 0), Node(Close, 0, 0, 0, 0)};
+        return array[] of {Node(Move, left, top, 0, 0, 0, 0), Node(Segment, right, top, 0, 0, 0, 0),
+            Node(Segment, right, bottom, 0, 0, 0, 0), Node(Segment, left, bottom, 0, 0, 0, 0), Node(Close, 0, 0, 0, 0, 0, 0)};
     }
     x := (left + right) / 2;
     y := (top + bottom) / 2;
     rx := (right - left) / 2;
     ry := (bottom - top) / 2;
-    dx := rx * 707 / 1000;
-    dy := ry * 707 / 1000;
-    cx := rx * 414 / 1000;
-    cy := ry * 414 / 1000;
-    return array[] of {Node(Move, x + rx, y, 0, 0),
-        Node(Quadratic, x + dx, y + dy, x + rx, y + cy),
-        Node(Quadratic, x, y + ry, x + cx, y + ry),
-        Node(Quadratic, x - dx, y + dy, x - cx, y + ry),
-        Node(Quadratic, x - rx, y, x - rx, y + cy),
-        Node(Quadratic, x - dx, y - dy, x - rx, y - cy),
-        Node(Quadratic, x, y - ry, x - cx, y - ry),
-        Node(Quadratic, x + dx, y - dy, x + cx, y - ry),
-        Node(Quadratic, x + rx, y, x + rx, y - cy), Node(Close, 0, 0, 0, 0)};
+    cx := (rx * 552285 + 500000) / 1000000;
+    cy := (ry * 552285 + 500000) / 1000000;
+    return array[] of {Node(Move, x+rx, y, 0, 0, 0, 0),
+        Node(Cubic, x, y+ry, x+rx, y+cy, x+cx, y+ry),
+        Node(Cubic, x-rx, y, x-cx, y+ry, x-rx, y+cy),
+        Node(Cubic, x, y-ry, x-rx, y-cy, x-cx, y-ry),
+        Node(Cubic, x+rx, y, x+cx, y-ry, x+rx, y-cy),
+        Node(Close, 0, 0, 0, 0, 0, 0)};
 }
 
 
@@ -115,9 +110,9 @@ draft(doc: ref Document): ref Shape
             figure(tool, Point(left, top), Point(right, bottom)), area, doc.tool);
     }
     nodes := array[len points] of Node;
-    nodes[0] = Node(Move, points[0].x, points[0].y, 0, 0);
+    nodes[0] = Node(Move, points[0].x, points[0].y, 0, 0, 0, 0);
     for (i := 1; i < len points; i++) {
-        nodes[i] = Node(Segment, points[i].x, points[i].y, 0, 0);
+        nodes[i] = Node(Segment, points[i].x, points[i].y, 0, 0, 0, 0);
     }
     return ref Shape(doc.color, doc.width, 0, nodes, nil, doc.tool);
 }
@@ -336,6 +331,9 @@ svg(doc: ref Document): string
                     result += "M ";
                 } else if (n.verb == Segment) {
                     result += "L ";
+                } else if (n.verb == Cubic) {
+                    result += "C " + string n.cx + " " + string n.cy + " " +
+                        string n.c2x + " " + string n.c2y + " ";
                 } else {
                     result += "Q " + string n.cx + " " + string n.cy + " ";
                 }
@@ -609,28 +607,35 @@ pathdata(text: string, parent: ref Reader): array of Node
         y := 0;
         cx := 0;
         cy := 0;
+        c2x := 0;
+        c2y := 0;
         if (op == 'Z' && count >= 2 && !closed) {
             verb = Close;
             closed = 1;
-        } else if (((count == 0 || closed) && op == 'M') || (count > 0 && !closed && (op == 'L' || op == 'Q'))) {
+        } else if (((count == 0 || closed) && op == 'M') || (count > 0 && !closed && (op == 'L' || op == 'Q' || op == 'C'))) {
             if (op == 'M') {
                 verb = Move;
                 closed = 0;
             }
-            if (op == 'Q') {
+            if (op == 'Q' || op == 'C') {
                 verb = Quadratic;
                 cx = number(r);
                 cy = number(r);
             }
+            if (op == 'C') {
+                verb = Cubic;
+                c2x = number(r);
+                c2y = number(r);
+            }
             x = number(r);
             y = number(r);
-            if (!pointok(x, y) || !pointok(cx, cy)) {
+            if (!pointok(x, y) || !pointok(cx, cy) || !pointok(c2x, c2y)) {
                 r.bad = 1;
             }
         } else {
             r.bad = 1;
         }
-        nodes[count++] = Node(verb, x, y, cx, cy);
+        nodes[count++] = Node(verb, x, y, cx, cy, c2x, c2y);
     }
     if (r.bad || count < 2) {
         parent.bad = 1;
@@ -937,7 +942,7 @@ shapearea(shape: ref Shape): array of byte
         return shape.area;
     }
     area := zerobytes(GridBytes);
-    edges := array[len shape.nodes * 9 + 1] of PaintEdge;
+    edges := array[len shape.nodes * 33 + 1] of PaintEdge;
     count := 0;
     start := Point(0, 0);
     previous := start;
@@ -952,12 +957,10 @@ shapearea(shape: ref Shape): array of byte
             start = finish;
             previous = start;
             opened = 1;
-        } else if (node.verb == Quadratic) {
+        } else if (node.verb == Quadratic || node.verb == Cubic) {
             origin := previous;
-            for (part := 1; part <= 8; part++) {
-                left := 8 - part;
-                point := Point((left * left * origin.x + 2 * left * part * node.cx + part * part * finish.x) / 64,
-                               (left * left * origin.y + 2 * left * part * node.cy + part * part * finish.y) / 64);
+            for (part := 1; part <= 32; part++) {
+                point := curvepoint(origin,node,part,32);
                 edges[count++] = PaintEdge(previous, point);
                 previous = point;
             }
@@ -1326,7 +1329,7 @@ refineone(doc: ref Document): int
         for (index := 1; index < len last.nodes; index++) {
             a := last.nodes[index - 1];
             b := last.nodes[index];
-            nodes[index] = Node(Quadratic, (a.x + b.x) / 2, (a.y + b.y) / 2, a.x, a.y);
+            nodes[index] = Node(Quadratic, (a.x + b.x) / 2, (a.y + b.y) / 2, a.x, a.y, 0, 0);
         }
         nodes[len last.nodes] = last.nodes[len last.nodes - 1];
         replacement := array[count] of ref Shape;

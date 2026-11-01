@@ -698,7 +698,7 @@ init()
                     drawx = offset % 1001;
                     drawy = offset / 1001;
                     result := panecall(windows[hit-1], panes->Draw, "",
-                        ref Uibridge->Message(codec->Request, 0, phase, shown[hit-1].revision,
+                        ref Uibridge->Message(codec->Request, event.id, phase, shown[hit-1].revision,
                             offset % 1001, offset / 1001, event.text[32:]));
                     if (phase == 1 && len array of byte event.text == 40) {
                         (tokenok, token) := codec->parseword(array of byte event.text, 32);

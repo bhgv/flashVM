@@ -1,0 +1,8 @@
+<!-- Native C-command example: four anchors and two editable controls per segment. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+  <!-- The four cubic arcs approximate an ellipse centred at500,300, radii300,200. -->
+  <!-- Each C lists control1 X/Y, control2 X/Y, then the next anchor X/Y. -->
+  <!-- Z welds the final and initial anchor; handles are editor overlays, never SVG objects. -->
+  <path fill="#245ac4" stroke="none" d="M 800 300 C 800 410 666 500 500 500 C 334 500 200 410 200 300 C 200 190 334 100 500 100 C 666 100 800 190 800 300 Z"/>
+  <!-- Opening and saving this document retains all four C commands and eight controls. -->
+</svg>

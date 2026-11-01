@@ -22,16 +22,17 @@ init()
     }
     doc := vector->create();
     nodes := array[258] of Idevector->Node;
-    nodes[0] = Idevector->Node(vector->Move,700,300,0,0);
+    # New second-control fields are zero for legacy Move/Q/Close commands.
+    nodes[0] = Idevector->Node(vector->Move,700,300,0,0, 0, 0);
     for (i := 1; i <= 256; i++) {
         angle := real i*6.283185307179586/256.0;
         middle := (real i-0.5)*6.283185307179586/256.0;
         factor := 1.0/math->cos(3.141592653589793/256.0);
         nodes[i] = Idevector->Node(vector->Quadratic,
             int (500.5+200.0*math->cos(angle)),int (300.5+150.0*math->sin(angle)),
-            int (500.5+200.0*factor*math->cos(middle)),int (300.5+150.0*factor*math->sin(middle)));
+            int (500.5+200.0*factor*math->cos(middle)),int (300.5+150.0*factor*math->sin(middle)), 0, 0);
     }
-    nodes[257] = Idevector->Node(vector->Close,0,0,0,0);
+    nodes[257] = Idevector->Node(vector->Close,0,0,0,0, 0, 0);
     doc.shapes = array[] of {ref Idevector->Shape(16r245ac4,0,1,nodes,nil,0)};
     doc.tool = vector->Select;
     before := sys->millisec();

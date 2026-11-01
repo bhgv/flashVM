@@ -1,6 +1,7 @@
 implement IdevectorTest;
 include "sys.m";
 include "idevector.m";
+include "math.m";
 sys: Sys; # Test output and explicit isolated test-host failure control.
 vector: Idevector; # Actual portable implementation under test.
 checks: int; # Initialized active predicate count.
@@ -34,9 +35,9 @@ wirecache()
 {
     cached := vector->create();
     nodes := array[512] of Idevector->Node;
-    nodes[0] = Idevector->Node(vector->Move, 10, 10, 0, 0);
+    nodes[0] = Idevector->Node(vector->Move, 10, 10, 0, 0, 0, 0);
     for (i := 1; i < len nodes; i++) {
-        nodes[i] = Idevector->Node(vector->Segment, i, 20 + i % 100, 0, 0);
+        nodes[i] = Idevector->Node(vector->Segment, i, 20 + i % 100, 0, 0, 0, 0);
     }
     shape := ref Idevector->Shape(16r245ac4, 8, 0, nodes, nil, 0);
     cached.shapes = array[] of {shape};
@@ -67,6 +68,14 @@ wirecache()
     cached.shapes = array[] of {shape, shape};
     changed = vector->wire(cached);
     require(cached.wirebuilds == 2 && len changed > len original, "immutable replacement invalidates at equal revision");
+    cached.tool = vector->Select;
+    vector->wireparts(cached);
+    cached.tool = vector->Ellipse;
+    vector->wireparts(cached);
+    cached.tool = vector->Select;
+    switched := vector->wireparts(cached);
+    require(switched[2] == cached.wirebody[8:] && switched[0][0:8] == "00020006",
+            "cubic record upgrade invalidates old selection source cache");
 }
 
 
@@ -78,6 +87,7 @@ init()
     checks = 0;
     require(vector != nil, "load");
     wirecache();
+    picking();
     editing();
     brushviewport();
     doc := vector->create();
@@ -169,7 +179,7 @@ init()
     bad := array[] of {
         "<svg><script/></svg>", "<!DOCTYPE svg><svg></svg>",
         "<svg><path d='M 0 0 L 1 1' onclick='run()'/></svg>",
-        "<svg><path d='M 0 0 C 1 1 2 2 3 3'/></svg>",
+        "<svg><path d='M 0 0 A 1 1 2 2 3 3'/></svg>",
         "<svg><path d='M 0 0 L 1001 0'/></svg>",
         "<svg><rect width='20.5' height='30'/></svg>",
         "<svg><rect width='20' width='30' height='30'/></svg>",

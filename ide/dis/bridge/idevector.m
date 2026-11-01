@@ -4,7 +4,7 @@ Idevector: module
     PATH: con "idevector.dis"; # Portable model/SVG implementation, no native UI dependency.
     Ok, Invalid, Limit, Conflict: con iota; # Success, bounded raw retention or explicit refusal.
     Brush, Rectangle, Ellipse, Line, Pen, Select, Nodes, Zoom: con iota + 1; # Authoring tools; paths remain editable values.
-    Move, Segment, Quadratic, Close: con iota; # Generic path verbs; quadratic has one control.
+    Move, Segment, Quadratic, Close, Cubic: con iota; # Path verbs; cubic has two independent controls.
     MaxShapes: con 32; # Per-document path budget.
     MaxNodes: con 4096; # Per-path command budget.
     MaxSVG: con 1048576; # Complete SVG UTF-8 source bound, including comments.
@@ -20,11 +20,13 @@ Idevector: module
 
     # One immutable generic path command; Close uses zero coordinates.
     Node: adt {
-        verb: int; # Move/Segment/Quadratic/Close.
+        verb: int; # Move/Segment/Quadratic/Close/Cubic.
         x: int; # Destination X.
         y: int; # Destination Y.
-        cx: int; # Quadratic control X; zero for other verbs.
-        cy: int; # Quadratic control Y.
+        cx: int; # First Q/C control X; zero for straight verbs.
+        cy: int; # First control Y.
+        c2x: int; # Cubic second control X; zero for other verbs.
+        c2y: int; # Cubic second control Y.
     };
 
 
@@ -44,7 +46,7 @@ Idevector: module
         boundshape: ref Shape; # Exact immutable shape represented by boundbox.
         boundbox: array of int; # Cached left/top/right/bottom, owner-only.
         selected: int; # Selected shape index, -1 for none.
-        mask: array of int; # Endpoint/control selection, two entries per command.
+        mask: array of int; # Endpoint/control selection, three entries per command.
         base: array of ref Shape; # Original committed array for one active gesture.
         origin: Point; # Logical pointer-down position.
         mode: int; # 0 idle, 1 translate, 2 scale, 3 rotate, 4 nodes, 5 marquee.
@@ -91,11 +93,13 @@ Idevector: module
         presentation: ref Presentation; # Owner-only selection wire cache.
         edit: ref Edit; # Selection never enters SVG/history or a render worker.
         control: int; # Copied Ctrl key state for additive node selection.
+        wirecubic: int; # Cached body uses seven-word cubic-capable commands.
+        pickradius: real; # Logical equivalent of20 screen pixels; portable default20.0.
         wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.
     };
 
     # Fit one bounded closed brush contour after release; nil refuses invalid input.
-    # Pure worker/model helper; emits existing editable quadratic controls.
+    # Pure worker/model helper; emits editable cubic controls and retained lines.
     brushfit: fn(points: array of Point, width, height: int): array of Node;
     # Allocate a clean empty document and private history. No I/O or channel operation.
     create: fn(): ref Document;

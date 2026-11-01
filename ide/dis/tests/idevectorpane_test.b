@@ -74,17 +74,17 @@ init()
     require(malformed.status == Idecore->Invalid && malformed.drawing[48:] == empty.drawing[48:],
             "malformed draw uses shared pane Invalid status and keeps source");
     styled := call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 1, 2, 0, 0, ""));
-    require(styled.revision == 2 && styled.drawing[0:8] == "00000001" && styled.drawing[48:] == "00000000",
+    require(styled.revision == 2 && styled.drawing[0:8] == "00020001" && styled.drawing[48:] == "00000000",
             "toolbar tool command changes copied style without editing geometry");
     refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 15, 1, 0, 0, ""));
     require(refused.status == Idecore->Conflict && refused.drawing == styled.drawing, "stale toolbar revision refused atomically");
     refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 24, 2, 0, 0, ""));
     require(refused.status == Idecore->Invalid && refused.drawing == styled.drawing, "unknown control cannot issue a command");
     selected := call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 18, 2, 0, 0, ""));
-    require(selected.status == 0 && selected.drawing[0:8] == "00000006" && selected.revision == 2,
+    require(selected.status == 0 && selected.drawing[0:8] == "00020006" && selected.revision == 2,
             "object arrow is an idle style change");
     selected = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 19, 2, 0, 0, ""));
-    require(selected.status == 0 && selected.drawing[0:8] == "00000007" && selected.revision == 2,
+    require(selected.status == 0 && selected.drawing[0:8] == "00020007" && selected.revision == 2,
             "node arrow is a separate idle style change");
     require(call(a, panes->Shutdown, nil).status == 0 && call(b, panes->Shutdown, nil).status == 0,
             "independent acknowledged shutdown");

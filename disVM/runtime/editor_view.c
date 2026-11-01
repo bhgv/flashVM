@@ -2669,6 +2669,10 @@ static void resolve_pointer(DVM_UIMessage *message)
                  (unsigned long)position & 0xffffffffUL);
         memcpy(message->text, metadata, 32);
         message->size = 32;
+        if (widget >= 1 && widget <= 8 && position >= 0)
+        {
+            message->id = 0x10000UL + dvm_desktop_vector_pick_radius(widget);
+        }
         return;
     }
     if (message->code == EDITOR_RESIZE)

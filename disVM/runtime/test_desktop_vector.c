@@ -142,10 +142,55 @@ static void mdi_parents(void)
     require(dvm_desktop_message(&out), "complete bounded nested forest admitted");
 }
 
+/* Exercise cubic admission independently from the Limbo encoder. Legacy records
+ * above remain five words; the explicit flag selects seven words for all nodes. */
+static void cubics(void)
+{
+    static const char data[] =
+        "0002000700e044440000000800000000000000000000000000000001"
+        "00e04444000000010000000000000002"
+        "00000000000000640000006400000000000000000000000000000000"
+        "000000040000012c000000c800000064000000c80000012c00000064";
+    DVM_UIMessage out;
+    char bad[sizeof(data)];
+    unsigned int test;
+    for (test = 0; test < 3; ++test)
+    {
+        scene();
+        message(&out, DVM_DESK_VECTOR_BEGIN, "0000000100000002");
+        out.first = 1;
+        out.second = (long)strlen(data);
+        require(dvm_desktop_message(&out), "cubic extent");
+        memcpy(bad, data, sizeof(data));
+        if (test == 1)
+        {
+            memcpy(bad + strlen(data) - 16, "000003e9", 8);
+        }
+        if (test == 2)
+        {
+            memcpy(bad, "00000007", 8);
+        }
+        message(&out, DVM_DESK_VECTOR_DATA, bad);
+        out.first = 1;
+        if (test == 0)
+        {
+            require(dvm_desktop_message(&out), "cubic with both bounded controls");
+            message(&out, DVM_DESK_END, "");
+            require(dvm_desktop_message(&out), "complete cubic scene");
+        }
+        else
+        {
+            require(!dvm_desktop_message(&out), "bad second handle or absent cubic flag refused");
+        }
+    }
+}
+
+
 /* Check fragmentation, ticket/order, immutable extent bounds and command validation. */
 int main(void)
 {
     DVM_UIMessage out;
+    cubics();
     mdi_parents();
     deferred_end();
     scene();

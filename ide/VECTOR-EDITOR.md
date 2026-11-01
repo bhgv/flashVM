@@ -1,3 +1,5 @@
+[v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
+
 [Brush splines and viewport](VECTOR-VIEWPORT.md)
 
 [Object/node editing](VECTOR-EDITING.md)
@@ -86,7 +88,7 @@ unite, including transitive connections; enclosed holes remain compound subpaths
 Different-colour overlays are respected; covered older paint is not resurrected.
 The implementation uses a bounded1000×600 packed coverage grid, then polygonal
 approximation with a0.75-unit distance threshold. This is quantized vectorization,
-not an exact analytic Boolean operation. Imported curves use eight subdivisions
+not an exact analytic Boolean operation. Imported curves use32 subdivisions
 for union coverage. Pressure, erasing, node editing, layers and animation are future work.
 
 Live panes use a separate spawned Limbo process for final geometry, independent
@@ -98,8 +100,8 @@ new edits. Save explicitly waits for current work; ordinary input does not.
 Worker failure or geometry quota refusal retains raw ink and reports a diagnostic.
 No periodic10-second fitting is enabled yet: refinement currently runs on release.
 
-Rectangles use lines and close. Ellipses use eight quadratic arcs with tangent
-intersections at 22.5 degrees (an approximation, not exact conics). All paths use
+Rectangles use lines and close. Ellipses use four cubic Bézier segments with kappa0.55228475
+(an approximation, not exact rational conics). All paths use
 the same generic commands for preview, committed drawing, history and SVG export.
 A preview changes no committed path/history; release commits once. Sixteen Undo
 and sixteen Redo states retain immutable path references. Undo/Redo creates a new
@@ -124,7 +126,7 @@ The first importer deliberately accepts a **strict subset**, not arbitrary SVG:
   are normalized away by canonical Save; they never execute/load resources.
 - Self-closing `path`, `rect`, `ellipse`, `line` elements, with unique quoted
   supported attributes and whitespace between attributes.
-- Absolute explicit `M`, `L`, `Q`, `Z` path commands, closed compound subpaths (each new M follows Z), integer
+- Absolute explicit `M`, `L`, `Q`, `C`, `Z` path commands, closed compound subpaths (each new M follows Z), integer
   coordinates inside the page. Exactly integral decimals such as100.000 are
   accepted without rounding. Each repeated segment needs its command letter;
   separators are whitespace. No nonzero fraction/exponent/relative/comma shorthand.
@@ -135,7 +137,7 @@ The first importer deliberately accepts a **strict subset**, not arbitrary SVG:
 
 Unsupported elements/attributes, DOCTYPE/entities/unknown processing instructions,
 CSS, transforms, different fill/stroke colours, arbitrary viewBoxes, nonintegral
-numbers, cubic/arc commands and unterminated extra subpaths are **rejected transactionally**.
+numbers, arc commands and unterminated extra subpaths are **rejected transactionally**.
 They are not silently dropped or converted. This prevents an apparently successful
 read/save from losing unsupported artwork. The SVG reader is a bounded data-format
 reader, not a replacement compiler parser; AS/Limbo recognition stays on Coco/R.

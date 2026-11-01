@@ -42,7 +42,7 @@ editing()
     vector->pointer(d, 1, 130, 130);
     vector->pointer(d, 2, 260, 180);
     vector->pointer(d, 3, 260, 180);
-    require(d.edit.mask[0] && d.edit.mask[2] && !d.edit.mask[4],
+    require(d.edit.mask[0] && d.edit.mask[3] && !d.edit.mask[6],
             "marquee selects only enclosed nodes");
     unchanged := d.shapes;
     count := d.nundo;
@@ -75,9 +75,15 @@ editing()
     curve := ellipse.shapes[0].nodes[1];
     vector->pointer(ellipse, 1, curve.cx, curve.cy);
     vector->pointer(ellipse, 3, curve.cx-10, curve.cy+10);
-    require(ellipse.shapes[0].nodes[1].verb == vector->Quadratic &&
+    require(ellipse.shapes[0].nodes[1].verb == vector->Cubic &&
             ellipse.shapes[0].nodes[1].cx == curve.cx-10 &&
-            ellipse.shapes[0].nodes[1].x == curve.x, "quadratic control preserves endpoint");
+            ellipse.shapes[0].nodes[1].x == curve.x, "first cubic control preserves endpoint");
+    first := ellipse.shapes[0].nodes[0];
+    vector->pointer(ellipse,1,first.x,first.y);
+    vector->pointer(ellipse,3,first.x+10,first.y);
+    closed := ellipse.shapes[0].nodes;
+    require(closed[0].x == closed[4].x && closed[0].x == first.x+10,
+            "closed cubic anchor copies stay welded during node editing");
 }
 
 
@@ -85,37 +91,93 @@ editing()
 # values. Both quadratic controls remain ordinary editable contour fields.
 brushviewport()
 {
-    points := array[] of {Idevector->Point(100,100),Idevector->Point(103,102),
-        Idevector->Point(106,104),Idevector->Point(109,105),Idevector->Point(112,106),
-        Idevector->Point(800,100),Idevector->Point(800,500),Idevector->Point(100,100)};
-    fitted := vector->brushfit(points,700,400);
-    require(fitted != nil && len fitted < len points && fitted[1].verb == vector->Quadratic &&
-            fitted[2].verb == vector->Quadratic, "dense 1/40 cluster uses a two-handle spline");
-    require(fitted[1].x == 106 && fitted[1].y == 104 && fitted[2].x == 112,
-            "spline interpolates endpoints and middle knot");
+    points := array[65] of Idevector->Point;
+    math := load Math Math->PATH;
+    require(math != nil,"fitting math module");
+    for (i := 0; i < len points; i++) {
+        angle := real i*6.283185307179586/64.0;
+        points[i] = Idevector->Point(500+int (300.0*math->cos(angle)),
+            300+int (180.0*math->sin(angle)));
+    }
+    points[64] = points[0];
+    fitted := vector->brushfit(points,600,360);
+    require(fitted != nil && len fitted <= 10 && fitted[1].verb == vector->Cubic,
+            "global oval fit uses a few cubics instead of dense local knots");
     d := vector->create();
-    d.shapes = array[] of {ref Idevector->Shape(16r245ac4,1,0,fitted,nil,0)};
+    d.tool = vector->Ellipse;
+    vector->pointer(d,1,200,120);
+    vector->pointer(d,3,800,480);
+    require(len d.shapes[0].nodes == 6,"ellipse has four cubic segments and Close");
     d.tool = vector->Nodes;
-    vector->pointer(d,1,100,100);
-    vector->pointer(d,3,100,100);
-    handle := fitted[1];
-    vector->pointer(d,1,handle.cx,handle.cy);
-    vector->pointer(d,3,handle.cx+2,handle.cy+3);
-    require(d.shapes[0].nodes[1].cx == handle.cx+2 && d.shapes[0].nodes[2].cx == fitted[2].cx,
-            "nearest fitted spline handle moves independently");
+    vector->pointer(d,1,800,300);
+    vector->pointer(d,3,800,300);
+    handle := d.shapes[0].nodes[1];
+    vector->pointer(d,1,handle.c2x,handle.c2y);
+    vector->pointer(d,3,handle.c2x+2,handle.c2y+3);
+    require(d.shapes[0].nodes[1].c2x == handle.c2x+2 &&
+            d.shapes[0].nodes[1].cx == handle.cx,
+            "second cubic handle moves independently of first");
+    (parsed,roundtrip) := vector->parse(vector->svg(d));
+    require(parsed == vector->Ok && vector->svg(roundtrip) == vector->svg(d),
+            "absolute cubic SVG round trip preserves both controls");
     d.tool = vector->Zoom;
     source := vector->svg(d);
     vector->pointer(d,1,200,100);
     vector->pointer(d,2,450,250);
     vector->pointer(d,3,450,250);
-    require(d.zoom == 400 && d.center.x == 325 && d.center.y == 175 && d.revision == 1 && d.nundo == 1,
+    require(d.zoom == 400 && d.center.x == 325 && d.center.y == 175 && d.revision == 2 && d.nundo == 2,
             "marquee fits and centres camera without a source transaction");
     wire := vector->wire(d);
-    require(wire[0:8] == "00010008" && vector->svg(d) == source,
+    require(wire[0:8] == "00030008" && vector->svg(d) == source,
             "nondefault camera is private presentation metadata only");
     vector->viewport(d,1,325,175);
     require(d.zoom == 500 && d.center.x == 325 && d.center.y == 175, "focused wheel camera step");
     vector->viewport(d,0,0,0);
     require(d.zoom == 100 && d.center.x == 500 && d.center.y == 300 && vector->svg(d) == source,
             "1:1 reset preserves source");
+}
+
+
+# Check independent selection policy against nested fills and nearby open paths.
+# No native hit routine or flattened oracle is substituted for the model.
+picking()
+{
+    d := vector->create();
+    d.tool = vector->Rectangle;
+    d.fill = 1;
+    vector->pointer(d,1,100,100);
+    vector->pointer(d,3,600,500);
+    vector->pointer(d,1,200,200);
+    vector->pointer(d,3,400,400);
+    d.tool = vector->Select;
+    vector->pointer(d,1,300,300);
+    vector->pointer(d,3,300,300);
+    require(d.edit.selected == 1,"topmost containing nested figure wins");
+    d.tool = vector->Nodes;
+    vector->pointer(d,1,300,300);
+    vector->pointer(d,3,300,300);
+    require(d.edit.selected == 1,"Nodes retains selected contour on an interior click");
+    lines := vector->create();
+    lines.tool = vector->Line;
+    vector->pointer(lines,1,100,100);
+    vector->pointer(lines,3,800,100);
+    vector->finish(lines);
+    vector->pointer(lines,1,100,130);
+    vector->pointer(lines,3,800,130);
+    vector->finish(lines);
+    lines.tool = vector->Select;
+    vector->pointer(lines,1,400,111);
+    vector->pointer(lines,3,400,111);
+    require(lines.edit.selected == 0,"globally nearer contour beats topmost farther path");
+    vector->pointer(lines,1,400,151);
+    vector->pointer(lines,3,400,151);
+    require(lines.edit.selected == -1,"contours beyond20 logical units are refused");
+    lines.pickradius = 5.0;
+    vector->pointer(lines,1,400,106);
+    vector->pointer(lines,3,400,106);
+    require(lines.edit.selected == -1,"copied screen conversion controls zoomed tolerance");
+    lines.pickradius = 20.0;
+    vector->pointer(lines,1,400,150);
+    vector->pointer(lines,3,400,150);
+    require(lines.edit.selected == 1,"20-unit contour boundary is inclusive");
 }

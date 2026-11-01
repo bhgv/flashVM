@@ -126,6 +126,7 @@ apply(vector: Idevector, doc: ref Idevector->Document, done: ref Done)
     if (done.document.wired == done.document.shapes) {
         doc.wired = done.document.wired;
         doc.wirebody = done.document.wirebody;
+        doc.wirecubic = done.document.wirecubic;
     }
 
     if (done.token != 0) {

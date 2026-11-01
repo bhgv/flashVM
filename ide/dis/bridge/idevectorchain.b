@@ -56,14 +56,14 @@ lineadvance(doc: ref Document, phase, x, y: int): int
     if (len previous != 0) {
         nodes[0:] = previous;
     } else {
-        nodes[0] = Node(Move, first.x, first.y, 0, 0);
+        nodes[0] = Node(Move, first.x, first.y, 0, 0, 0, 0);
     }
     if (closed) {
         x = first.x;
         y = first.y;
-        nodes[len nodes - 1] = Node(Close, 0, 0, 0, 0);
+        nodes[len nodes - 1] = Node(Close, 0, 0, 0, 0, 0, 0);
     }
-    nodes[count] = Node(Segment, x, y, 0, 0);
+    nodes[count] = Node(Segment, x, y, 0, 0, 0, 0);
     shape := ref Shape(doc.color, 1, closed && doc.fill, nodes, nil, 0);
     extra := len previous == 0;
     shapes := array[len doc.shapes + extra] of ref Shape;
@@ -119,7 +119,7 @@ chainwire(doc: ref Document): string
     nodes := array[len doc.chain + 1] of Node;
     nodes[0:] = doc.chain;
     last := doc.points[doc.used - 1];
-    nodes[len nodes - 1] = Node(Segment, last.x, last.y, 0, 0);
+    nodes[len nodes - 1] = Node(Segment, last.x, last.y, 0, 0, 0, 0);
     preview.shapes[len preview.shapes - 1] = ref Shape(doc.color, 1, 0, nodes, nil, 0);
     return wire(preview);
 }
