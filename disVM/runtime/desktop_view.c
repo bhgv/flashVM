@@ -1,6 +1,7 @@
 /* Actual MovieClip/AS widget presentation for copied Limbo desktop scenes. */
 #include "desktop_view.h"
 #include "desktop_chrome.h"
+#include "editor_ink.h"
 #include "desktop_view_swf.h"
 #include "flashvm/avm1.h"
 #include "flashvm/movieclip.h"
@@ -169,12 +170,16 @@ static void camera_view(double *zoom, double *pan, double *scroll)
 
 /* Convert a copied window trajectory from canvas pixels into the current
  * table matrix. Borrow motion and write local x/y/scale; no VM handles escape. */
-static void motion_local(const DeskMotion *motion, double *x, double *y, double *scale)
+static void motion_local(const DeskMotion *motion, double *x, double *y, double *scale, unsigned long parent)
 {
     double zoom;
     double pan;
     double scroll;
     motion_sample(motion, x, y, scale);
+    if (parent == 4)
+    {
+        return;
+    }
     camera_view(&zoom, &pan, &scroll);
     *x = 84 + (*x - pan - 84) / zoom;
     *y = 48 + (*y + scroll - 48) / zoom;
@@ -222,7 +227,7 @@ static void motion_commit(void)
         if (previous_present[id] && thumbnail && (previous_windows[id].x == 65536) != (window->x == 65536))
         {
             DeskMotion *motion = &motions[id];
-            double zoom = tablezoom / 100.0;
+            double zoom = window->parent == 4 ? 1.0 : tablezoom / 100.0;
             double small =
                 fmin(1, fmin((double)thumbnail->width / window->width, (double)thumbnail->height / window->height));
             double x = thumbnail->x;
@@ -232,7 +237,7 @@ static void motion_commit(void)
             double from_y = y;
             double from_scale = small;
             FVM_Affine world;
-            if (hiding && clips[id] && world_matrix(clips[id], 1, &world))
+            if (hiding && clips[id] && world_matrix(clips[id], window->parent, &world))
             {
                 from_x = world.x0;
                 from_y = world.y0;
@@ -245,8 +250,8 @@ static void motion_commit(void)
             motion->from_x = from_x;
             motion->from_y = from_y;
             motion->from_scale = from_scale;
-            motion->to_x = hiding ? x : 84 + (window->x - 84) * zoom + tablepan;
-            motion->to_y = hiding ? y : 48 + (window->y - 48) * zoom - offset;
+            motion->to_x = hiding ? x : window->parent == 4 ? window->x : 84 + (window->x - 84) * zoom + tablepan;
+            motion->to_y = hiding ? y : window->parent == 4 ? window->y : 48 + (window->y - 48) * zoom - offset;
             motion->to_scale = hiding ? small : zoom;
             motion->elapsed = 0;
             motion->active = 1;
@@ -826,6 +831,20 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
     static const unsigned long palette[6] = {0x245ac4UL, 0xe04444UL, 0x229955UL, 0xf0b323UL, 0x222222UL, 0x9933bbUL};
     unsigned int i;
     double cell = content->width > 12 ? (content->width - 12) / 8.0 : 0;
+    unsigned long key[8];
+    static unsigned long keys[DESK_SLOTS][8]; /* Copied toolbar pixels/style identity. */
+    key[0] = content->width;
+    key[1] = scene ? scene->tool : 0;
+    key[2] = scene ? scene->color : 0;
+    key[3] = scene ? scene->width : 0;
+    key[4] = scene ? scene->fill : 0;
+    key[5] = scene ? scene->undo : 0;
+    key[6] = scene ? scene->redo : 0;
+    key[7] = scene != NULL;
+    if (vector_buttons[slot][0] && !memcmp(key, keys[slot], sizeof(key)))
+    {
+        goto report;
+    }
     for (i = 0; i < 16; ++i)
     {
         FVM_Object *button = vector_buttons[slot][i];
@@ -902,6 +921,8 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
             }
         }
     }
+    memcpy(keys[slot], key, sizeof(key));
+report:
     if (trace && scene)
     {
         printf("VECTOR_TOOLBAR %lu %lu %lu %lu %lu %lu %lu %lu\n",
@@ -915,6 +936,26 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
                scene->redo);
     }
     return 1;
+}
+
+
+/* Copy an immutable native ink path into the current raster frame. Existing
+ * capture bounds clip it to the same admitted canvas; workers own all copies. */
+static int ink_emit(void *unused, const FVM_Path *path, FVM_RasterColor color, double wide)
+{
+    (void)unused;
+    return dvm_editor_frame_command(prepared_frame, path, color, wide, 0,
+        capture_left, capture_top, capture_right, capture_bottom);
+}
+
+
+/* Only native live ink opts into approximate bitmap stamping. Standard Flash
+ * contours and final vector paths continue through exact backend rasterization. */
+static int preview_emit(void *unused, const FVM_Path *path, FVM_RasterColor color, double wide)
+{
+    (void)unused;
+    return dvm_editor_frame_stamp(prepared_frame, path, color, wide,
+        capture_left, capture_top, capture_right, capture_bottom);
 }
 
 
@@ -941,6 +982,10 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
     if (scale <= 0)
     {
         return 1;
+    }
+    if (prepared_frame)
+    {
+        return 1; /* Native immutable commands are emitted after the card body. */
     }
     for (i = 0; i < scene->count; ++i)
     {
@@ -1002,6 +1047,61 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
         {
             return 0;
         }
+    }
+    return 1;
+}
+
+
+/* Build detached vector paths directly from the already validated copied
+ * stream. AS/Dis still owns appearance and document geometry; no per-point
+ * AVM1 method invocation or VM object allocation is needed for raster work. */
+static int vector_capture(unsigned long widget, const DeskItem *content, const FVM_Affine *world)
+{
+    const VectorScene *scene = &vectors[content->id];
+    unsigned int shape_index;
+    double scale = vector_scale(content);
+    (void)widget;
+    if (scale <= 0)
+    {
+        return 1;
+    }
+    for (shape_index = 0; shape_index < scene->count; ++shape_index)
+    {
+        const VectorShape *shape = &scene->shapes[shape_index];
+        FVM_Path *path = NULL;
+        FVM_Result result = fvm_path_create(&path);
+        FVM_RasterColor color = {(unsigned char)(shape->color >> 16),
+            (unsigned char)(shape->color >> 8), (unsigned char)shape->color, 255};
+        unsigned int index;
+        for (index = 0; result == FVM_OK && index < shape->count; ++index)
+        {
+            const VectorNode *node = &scene->nodes[shape->first + index];
+            FVM_PathCommand command;
+            memset(&command, 0, sizeof(command));
+            command.verb = node->verb == 0 ? FVM_PATH_MOVE : node->verb == 1 ? FVM_PATH_LINE
+                : node->verb == 2 ? FVM_PATH_QUADRATIC : FVM_PATH_CLOSE;
+            command.x[0] = 6 + (20 + node->x) * scale;
+            command.y[0] = 80 + (20 + node->y) * scale;
+            if (node->verb == 2)
+            {
+                command.x[1] = command.x[0];
+                command.y[1] = command.y[0];
+                command.x[0] = 6 + (20 + node->cx) * scale;
+                command.y[0] = 80 + (20 + node->cy) * scale;
+            }
+            result = fvm_path_add(path, &command);
+        }
+        if (result == FVM_OK)
+        {
+            result = fvm_path_transform(path, world);
+        }
+        if (result != FVM_OK || (shape->fill && !ink_emit(NULL, path, color, 0)) ||
+            (shape->width && !ink_emit(NULL, path, color, shape->width * scale * world->xx)))
+        {
+            fvm_path_destroy(path);
+            return 0;
+        }
+        fvm_path_destroy(path);
     }
     return 1;
 }
@@ -1156,7 +1256,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
                 item = &items[index];
             }
         }
-        if (!item || item->line || item->mirror || (item->parent != 1 && item->parent < 5))
+        if (!item || item->line || item->mirror || (item->parent != 1 && item->parent != 4 && item->parent < 5))
         {
             return 0;
         }
@@ -1181,7 +1281,12 @@ int dvm_desktop_message(const DVM_UIMessage *message)
         }
         memcpy(scene->bytes + scene->used, message->text, message->size);
         scene->used += message->size;
-        return scene->used == scene->expected ? vector_parse(scene) : 1;
+        if (scene->used == scene->expected)
+        {
+            int parsed = vector_parse(scene);
+            return parsed;
+        }
+        return 1;
     }
     if (message->code == DVM_DESK_END)
     {
@@ -1207,7 +1312,7 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             root_id = items[index].parent == 12 ? 28 : items[index].parent + 8;
             for (root_index = 0; root_index < index; ++root_index)
             {
-                if (items[root_index].id == root_id && items[root_index].parent == 1 && !items[root_index].mirror)
+                if (items[root_index].id == root_id && (items[root_index].parent == 1 || items[root_index].parent == 4) && !items[root_index].mirror)
                 {
                     found = 1;
                 }
@@ -1222,6 +1327,17 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             return 0;
         }
         memset(items + received, 0, (DESK_SLOTS - received) * sizeof(*items));
+        for (index = 1; index <= 8; ++index)
+        {
+            if (vectors[index].complete)
+            {
+                dvm_ink_commit(index, vectors[index].bytes, vectors[index].used);
+            }
+            else
+            {
+                dvm_ink_drop(index);
+            }
+        }
         pending = 0;
         active = 1;
         motion_commit();
@@ -1289,8 +1405,22 @@ static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *outp
 {
     FVM_Affine local;
     FVM_Affine group;
+    unsigned long ancestor = 1;
+    if (parent >= 5)
+    {
+        unsigned int index;
+        unsigned long identity = parent == 12 ? 28 : parent + 8;
+        for (index = 0; index < received; ++index)
+        {
+            if (items[index].id == identity)
+            {
+                ancestor = items[index].parent;
+                break;
+            }
+        }
+    }
     if (fvm_movieclip_get_matrix(owner, clip, &local) != FVM_OK ||
-        (parent >= 5 ? !world_matrix(groups[parent], 1, &group)
+        (parent >= 5 ? !world_matrix(groups[parent], ancestor, &group)
                      : fvm_movieclip_get_matrix(owner, groups[parent], &group) != FVM_OK))
     {
         return 0;
@@ -1956,6 +2086,25 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         /* [GC:] Source owners do not move. Retire only this presentation subtree;
          * discard every borrowed child handle before an allocation can collect it.
          * Immutable raster paths are independent of these managed objects. */
+        if ((item->id >= 13 && item->id <= 19) || item->id == 28)
+        {
+            unsigned int group = item->id == 28 ? 12 : (unsigned int)item->id - 8;
+            unsigned int child_id;
+            /* [GC:] Removing a reparented container retires its entire managed
+             * subtree. Drop every borrowed child handle before any allocation
+             * can collect it, even when a child's numeric parent slot is stable. */
+            groups[group] = NULL;
+            for (child_id = 0; child_id < DESK_SLOTS; ++child_id)
+            {
+                if (parents[child_id] == group)
+                {
+                    clips[child_id] = labels[child_id] = marks[child_id] = cursors[child_id] = NULL;
+                    memset(vector_buttons[child_id], 0, sizeof(vector_buttons[child_id]));
+                    free(drag_pixels[child_id]);
+                    drag_pixels[child_id] = NULL;
+                }
+            }
+        }
         clips[item->id] = NULL;
         labels[item->id] = NULL;
         marks[item->id] = NULL;
@@ -2077,7 +2226,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         return 0;
     }
     DVM_ChromeItem chrome = {item->id,
-                             content->id <= 8 && vectors[content->id].complete,
+                             content->id <= 8 && vectors[content->id].complete && !prepared_frame,
                              content->style == 1 || content->style == 5,
                              content->style == 3,
                              scale,
@@ -2113,7 +2262,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     double widget_y = item->y;
     if (item->id <= 8 && motions[item->id].active)
     {
-        motion_local(&motions[item->id], &widget_x, &widget_y, &scale);
+        motion_local(&motions[item->id], &widget_x, &widget_y, &scale, item->parent);
     }
     GLOBAL_NUMBER("ideWidgetX", widget_x);
     GLOBAL_NUMBER("ideWidgetY", widget_y);
@@ -2180,11 +2329,22 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         }
         /* A minimized pane remains a typed source for its thumbnail. Do not
          * submit its explicit hidden origin to the raster coordinate domain. */
-        if (item->id <= 8 && item->parent == 1 && item->x == 65536 && item->y == 65536 && !motions[item->id].active)
+        if (item->id <= 8 && (item->parent == 1 || item->parent == 4) && item->x == 65536 && item->y == 65536 && !motions[item->id].active)
         {
             return 1;
         }
         result = draw_widget_clip(item, surface);
+        if (result == FVM_OK && prepared_frame && content->id <= 8 &&
+            vectors[content->id].complete)
+        {
+            FVM_Affine ink_world;
+            if (!world_matrix(clip, item->parent, &ink_world) ||
+                !vector_capture(content->id, content, &ink_world) ||
+                (!item->mirror && !dvm_ink_preview(content->id, &ink_world, vector_scale(content), preview_emit, NULL)))
+            {
+                return 0;
+            }
+        }
         if (result != FVM_OK)
         {
             fprintf(stderr, "desktop movie render: %d\n", result);
@@ -2530,12 +2690,12 @@ typedef struct DeskRetainedKey
     DeskItem item;              /* Exact immutable scalar content and local geometry descriptor. */
     unsigned int canvas_width;  /* Resize invalidates clipped local geometry. */
     unsigned int canvas_height; /* Canvas admission belongs to this capture. */
-    int eligible; /* Complete ordinary source/help/console body, never a clipped/mirrored/vector snapshot. */
+    int eligible; /* Ordinary pane or immutable control, never a clipped/mirrored/vector snapshot. */
 } DeskRetainedKey;
 
 
 /* Build a borrowed descriptor's initialized native key using its actual placement.
- * Only complete visible ordinary panes can bypass owner MovieClip reconstruction. */
+ * Complete visible ordinary panes and immutable controls can bypass MovieClip reconstruction. */
 static void retained_key(DeskRetainedKey *key, const DeskItem *item, const FVM_Affine *world)
 {
     memset(key, 0, sizeof(*key));
@@ -2554,8 +2714,9 @@ static void retained_key(DeskRetainedKey *key, const DeskItem *item, const FVM_A
     key->canvas_width = width;
     key->canvas_height = height;
     key->eligible =
-        item->id <= 8 && !item->mirror && !vectors[item->id].complete && !motions[item->id].active &&
-        !camera_motion.active && (item->style == 0 || item->style == 1 || item->style == 5 || item->style == 6) &&
+        (item->id <= 8 || item->parent == 3 || item->id >= 64) && !item->mirror &&
+        !(item->id <= 8 && (vectors[item->id].complete || motions[item->id].active)) &&
+        !camera_motion.active &&
         world->xy == 0 && world->yx == 0 && world->xx > 0 && world->yy > 0 && world->x0 >= 2 && world->y0 >= 50 &&
         world->x0 + world->xx * item->width <= width - 2 && world->y0 + world->yy * item->height <= height - 2;
 }
@@ -2635,8 +2796,8 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
             continue;
         }
         ok = dvm_editor_frame_node_begin(frame, (unsigned int)item->id, parent);
-        if (ok && prior && item->id <= 8 && clips[item->id] && parents[item->id] == item->parent &&
-            !motions[item->id].active && !camera_motion.active && !item->mirror)
+        if (ok && prior && clips[item->id] && parents[item->id] == item->parent &&
+            !(item->id <= 8 && motions[item->id].active) && !camera_motion.active && !item->mirror)
         {
             ok = number(clips[item->id], "_x", item->x) && number(clips[item->id], "_y", item->y) &&
                  number(clips[item->id], "_xscale", 100) && number(clips[item->id], "_yscale", 100) &&
@@ -2860,4 +3021,18 @@ void dvm_desktop_destroy(void)
     memset(motions, 0, sizeof(motions));
     memset(previous_present, 0, sizeof(previous_present));
     memset(previous_windows, 0, sizeof(previous_windows));
+}
+
+
+/* No managed object is exposed: style is read from the complete copied stream. */
+int dvm_desktop_ink_style(unsigned long widget, unsigned long *tool, unsigned long *color, unsigned long *width)
+{
+    if (widget < 1 || widget > 8 || !vectors[widget].complete)
+    {
+        return 0;
+    }
+    *tool = vectors[widget].tool;
+    *color = vectors[widget].color;
+    *width = vectors[widget].width;
+    return 1;
 }

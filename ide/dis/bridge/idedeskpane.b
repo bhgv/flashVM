@@ -13,6 +13,8 @@ include "idebuildpanel.m";
 include "idedeskpane.m";
 include "idedeskclip.m";
 include "idevector.m";
+include "ideinkworker.m";
+include "idehost.m";
 
 
 # Complete one private document exchange; borrowed endpoint stays live and no
@@ -522,49 +524,6 @@ startnotified(kind: int, path, text: string, notices: chan of int, identity: int
 }
 
 
-# Immutable geometry job transferred to one scheduled Limbo process.
-VectorJob: adt
-{
-    revision: int; # Exact committed source revision; never a UI/frame clock.
-    document: ref Idevector->Document; # Private state, sharing only immutable shapes.
-};
-
-
-# Worker-owned immutable completion; only a matching revision may be published.
-VectorDone: adt
-{
-    revision: int; # Copied source generation.
-    status: int; # Geometry admission outcome, including retained raw ink on limits.
-    shapes: array of ref Idevector->Shape; # Complete replacement values.
-};
-
-
-# Own the sole geometry job until completion; no window/Flash object is accessed.
-# Input ends with nil. Results rendezvous with the document owner; queued latest-wins
-# work is bounded outside this process. Drop transport roots before the next receive.
-vectorworker(vector: Idevector, jobs: chan of ref VectorJob, completed: chan of ref VectorDone)
-{
-    for (;;) {
-        job := <-jobs;
-        if (job == nil) {
-            return;
-        }
-        status := Idevector->Invalid;
-        original := job.document.shapes;
-        {
-            status = vector->refine(job.document);
-        } exception failure {
-            * =>
-                # [GC:] Recover only the private job; preserve the raw gesture
-                # array so Save/Shutdown can receive a result rather than hang.
-                job.document.shapes = original;
-        }
-        completed <-= ref VectorDone(job.revision, status, job.document.shapes);
-        job = nil;
-    }
-}
-
-
 # Own one vector document and its history independently of every text editor.
 # All UI/document commands arrive through the ordinary pane channel. File calls
 # may block this owner. No native graphics/VM pointer or mutable path is shared.
@@ -573,14 +532,23 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
 {
     control := 0;
     diagnostic := "";
-    jobs: chan of ref VectorJob;
-    completed := chan of ref VectorDone;
+    inkack := 0; # Highest adopted native token; fence follows the actual outgoing wire.
+    native: Idehost;
+    inkfailure := 0; # A failed native handoff must never publish an incomplete Save.
+    jobs: chan of ref Ideinkworker->Job;
+    completed := chan of ref Ideinkworker->Done;
     busy := 0;
-    queued: ref VectorJob;
+    queued: list of ref Ideinkworker->Job;
+    inkworker := load Ideinkworker Ideinkworker->PATH;
+    if (inkworker == nil) {
+        raise "fail: vector ink worker";
+    }
+    notifications: chan of int;
+    codec := load Uibridge Uibridge->PATH;
     scheduled := doc.revision;
     if (notices != nil && identity > 0) {
-        jobs = chan of ref VectorJob;
-        spawn vectorworker(vector, jobs, completed);
+        (jobs, completed) = inkworker->start(vector);
+        notifications = inkworker->notifier(notices, identity);
     }
     for (;;) {
         request: Request;
@@ -588,16 +556,23 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         done := <-completed =>
             busy = 0;
             if (done.revision == doc.revision) {
-                doc.shapes = done.shapes;
+                if (done.retained) {
+                    inkworker->apply(vector, doc, done);
+                    if (done.token != 0) {
+                        inkack = done.token;
+                    }
+                } else {
+                    inkfailure = 1;
+                }
                 diagnostic = "Vector approximation complete";
                 if (done.status != Idevector->Ok) {
                     diagnostic = "Refinement refused; raw ink retained";
                 }
-                alt { notices <-= identity => ; * => ; }
+                notifications <-= 1;
             }
             if (queued != nil) {
-                jobs <-= queued;
-                queued = nil;
+                jobs <-= hd queued;
+                queued = tl queued;
                 busy = 1;
             }
             continue;
@@ -606,7 +581,12 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         if (request.reply == nil) {
             continue;
         }
-        if (request.operation == Save || request.operation == Shutdown) {
+        if (request.operation == Save || request.operation == Shutdown || request.operation == Open ||
+            (request.operation == VectorControl && request.event != nil &&
+             (request.event.code == 5 || request.event.code == 6)) ||
+            (request.operation == Draw && request.event != nil && request.event.code == 1 && request.event.text == "") ||
+            (request.operation == Input && request.event != nil &&
+             request.event.kind == Uibridge->Key && (request.event.code == 90 || request.event.code == 89))) {
             if (request.operation == Shutdown) {
                 queued = nil;
             }
@@ -614,11 +594,18 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 done := <-completed;
                 busy = 0;
                 if (done.revision == doc.revision) {
-                    doc.shapes = done.shapes;
+                    if (done.retained) {
+                        inkworker->apply(vector, doc, done);
+                        if (done.token != 0) {
+                            inkack = done.token;
+                        }
+                    } else {
+                        inkfailure = 1;
+                    }
                 }
                 if (queued != nil) {
-                    jobs <-= queued;
-                    queued = nil;
+                    jobs <-= hd queued;
+                    queued = tl queued;
                     busy = 1;
                 }
             }
@@ -631,10 +618,32 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         } else if (request.operation == Draw) {
             e := request.event;
             expected := doc.revision + (len doc.points != 0);
-            if (e == nil || e.kind != Uibridge->Request || e.text != "") {
+            if (e == nil || e.kind != Uibridge->Request ||
+                (e.text != "" && ((e.code != 1 && e.code != 3) || len array of byte e.text != 8))) {
                 status = Idecore->Invalid;
             } else if (e.flags != expected) {
                 status = Idecore->Conflict;
+            } else if (inkfailure) {
+                status = Idecore->Conflict;
+            } else if (e.text != "" && e.code == 3) {
+                (valid, token) := codec->parseword(array of byte e.text, 0);
+                if (!valid || token <= 0 || jobs == nil || len doc.points == 0 || len queued >= 31) {
+                    status = Idecore->Invalid;
+                } else {
+                    snapshot := inkworker->copy(vector, doc);
+                    previous := doc.revision;
+                    vector->cancel(doc);
+                    doc.revision++;
+                    scheduled = doc.revision;
+                    job := ref Ideinkworker->Job(doc.revision, snapshot, token, previous);
+                    if (busy) {
+                        queued = inkworker->append(queued, job);
+                    } else {
+                        jobs <-= job;
+                        busy = 1;
+                    }
+                    diagnostic = "Native ink queued for vectorization";
+                }
             } else {
                 if (jobs != nil) {
                     status = vectorstatus(vector->defer(doc, e.code, e.first, e.second));
@@ -678,6 +687,9 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 }
             }
             diagnostic = "SVG Open status=" + string status;
+        } else if (request.operation == Save && inkfailure) {
+            status = Idecore->Conflict;
+            diagnostic = "Native ink handoff failed; retained preview is not a saved document";
         } else if (request.operation == Save) {
             destination := request.text;
             if (destination == "") {
@@ -742,11 +754,10 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 pending |= doc.shapes[index].author != 0;
             }
             if (pending) {
-                snapshot := vector->create();
-                snapshot.shapes = doc.shapes;
-                job := ref VectorJob(doc.revision, snapshot);
+                snapshot := inkworker->copy(vector, doc);
+                job := ref Ideinkworker->Job(doc.revision, snapshot, 0, doc.revision);
                 if (busy) {
-                    queued = job;
+                    queued = inkworker->append(queued, job);
                 } else {
                     jobs <-= job;
                     busy = 1;
@@ -760,11 +771,24 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         if (len doc.points != 0) {
             revision++;
         }
+        drawing := vector->wire(doc);
+        if (inkack != 0) {
+            if (native == nil) {
+                native = load Idehost Idehost->PATH;
+            }
+            if (native != nil) {
+                # Bind retirement to this actual response, after Undo/style/new
+                # gesture changes. A worker's earlier intermediate wire may never
+                # be shown, so it must not be used as the publication fence.
+                native->inkdone(inkack, drawing);
+            }
+        }
         request.reply <-= Reply(request.id, status, Vector, path, body, revision,
-            doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, vector->wire(doc), "");
+            doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, drawing, "");
         if (stop) {
             if (jobs != nil) {
                 jobs <-= nil;
+                notifications <-= 0;
             }
             return;
         }

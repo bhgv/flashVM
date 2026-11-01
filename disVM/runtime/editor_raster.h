@@ -56,6 +56,14 @@ int dvm_editor_frame_command(DVM_EditorFrame *frame,
                              int bottom);
 
 
+/* Copy an explicitly approximate live-ink stroke into the current painter node.
+ * Unlike ordinary Flash capture, only this command may use the native nib stamp.
+ * Borrow path/frame exclusively during preparation; return zero on admission error. */
+int dvm_editor_frame_stamp(DVM_EditorFrame *frame, const FVM_Path *path,
+                           FVM_RasterColor color, double width,
+                           int left, int top, int right, int bottom);
+
+
 /* Append a bounded opacity-group boundary. begin=1 saves the underlying tile;
  * begin=0 composites this group's painted pixels at 90 percent. Groups cannot
  * nest; caller supplies matching canvas bounds. Returns zero on allocation error. */

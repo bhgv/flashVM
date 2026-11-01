@@ -44,6 +44,14 @@ Idehost: module
     BrowseChoose: con 65567; # Navigate/open selected entry under dirty-source admission; same ticket/revision.
     BrowseClose: con 65568; # Close the browser cursor; first=0, second=ticket, empty text.
 
+    # Copy one frozen native stroke only from the geometry worker. Empty means
+    # stale/live token; the preview stays native until matching vector publication.
+    ink: fn(token: int): string;
+    # Cancel a native capture immediately when the document refuses Begin.
+    inkadmit: fn(token, accepted: int);
+    # Acknowledge cumulative vector output without clearing any displayed pixels.
+    inkdone: fn(token: int, drawing: string);
+
     # Read the initial --line-numbers 0/1 preference; subsequent visibility belongs to Dis.
     linenumbers: fn(): int;
 

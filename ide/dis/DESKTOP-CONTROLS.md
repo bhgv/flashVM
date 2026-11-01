@@ -92,3 +92,8 @@ and JIT dispatch. The first modal comparison fails against the previous binary.
 `test_desktop_rails.py` exercises physical button hits, common extents, right
 alignment, real source creation/history/search/clipboard and independent scrolling.
 The Limbo desktop test covers the 320-pixel viewport and a scrolled popup anchor.
+
+Maximized windows and MDI containers now use the unscaled physical overlay, keeping
+fonts and controls at 1:1 independently of the saved desktop/window zoom. Restoring
+keeps the camera and normal geometry. See [native ink](../NATIVE-INK.md) for the C
+trajectory buffer, stamp raster and separate ordered Limbo geometry worker.

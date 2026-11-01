@@ -12,8 +12,10 @@ revealing use the existing layout owner. A thumbnail contains the actual paths.
 
 There is no separate mock browser/canvas application. Authoring logic and Undo/
 Redo run in portable Limbo/Dis. The FlashVM context owner receives copied path
-commands and calls actual MovieClip moveTo/lineTo/curveTo/lineStyle/beginFill.
-Detached contours then go through the existing raster workers. No worker uses a
+commands. Normal raster preparation now builds detached native paths directly;
+the legacy MovieClip drawing route remains available. Live Brush/Pen input stays
+in C until release, then a separate Limbo worker acquires the frozen trajectory.
+See [native ink and native-sized maximization](NATIVE-INK.md). No worker uses a
 VM/font/document pointer. This is scheduled Dis ownership, not parallel VM/GC.
 
 ![Actual MovieClip vector window and thumbnail](assets/vector-v0.1697.png)

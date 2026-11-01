@@ -1,3 +1,5 @@
+[Нативное рисование и масштаб 1:1](NATIVE-INK.ru.md) · [English](NATIVE-INK.md)
+
 [Сессионный clipboard, Ctrl+C/X/V и пункт 12](DESKTOP-CLIPBOARD.ru.md)
 
 [MDI vector editor / Векторный редактор: Files → SVG](VECTOR-EDITOR.md) · [Русский](VECTOR-EDITOR.ru.md)
@@ -20,7 +22,7 @@
 
 # Backend сборки для IDE
 
-Версия **0.7.2**. [English](README.md).
+Версия **0.7.3**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 

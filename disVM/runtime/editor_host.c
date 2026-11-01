@@ -8,6 +8,7 @@
 #include "disvm/ui_pump.h"
 #include "disvm/ui_client.h"
 #include "editor_view.h"
+#include "editor_ink.h"
 
 static DVM_UIDisEndpoint endpoint; /* [GC:] Borrowed ports rooted by the live Limbo init stack. */
 static DVM_UIBridge *transport;    /* Owned real FlashVM queue pair, no shared VM heap. */
@@ -167,4 +168,35 @@ void dvm_editor_stop(void)
     dvm_ui_client_destroy(client);
     dvm_ui_destroy(transport);
     dvm_editor_destroy();
+}
+
+
+/* [GC:] retstr installs a private Dis string in the generated mapped return slot.
+ * The borrowed native frozen buffer remains registered on allocation failure. */
+void Idehost_ink(void *frame)
+{
+    F_Idehost_ink *arguments = frame;
+    retstr((char *)dvm_ink_read((unsigned long)arguments->token), arguments->ret);
+}
+
+
+/* Borrow a rooted managed input only during this native call. Copy hash/extent,
+ * never the String address, into the native pending-presentation registry. */
+void Idehost_inkdone(void *frame)
+{
+    F_Idehost_inkdone *arguments = frame;
+    char *bytes = string2c(arguments->drawing);
+    dvm_ink_ack((unsigned long)arguments->token, bytes, strlen(bytes));
+}
+
+
+/* Apply scalar document admission before any live native samples are consumed.
+ * Refusal retires only that capture; no document or VM reference is retained. */
+void Idehost_inkadmit(void *frame)
+{
+    F_Idehost_inkadmit *arguments = frame;
+    if (arguments->accepted != 1)
+    {
+        dvm_ink_cancel((unsigned long)arguments->token);
+    }
 }

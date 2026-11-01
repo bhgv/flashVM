@@ -14,6 +14,10 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "ide/NATIVE-INK.md": package / "NATIVE-INK.md",
+        root / "ide/NATIVE-INK.ru.md": package / "NATIVE-INK.ru.md",
+        root / "ide/dis/tests/native_ink_test.b": package / "examples/native-ink/worker-check.b",
+        root / "disVM/runtime/test_ink_primitives.c": package / "examples/native-ink/stamp-check.c",
         root / "disVM/runtime/RETAINED-SCENE.md": package / "RETAINED-SCENE.md",
         root / "disVM/runtime/RETAINED-SCENE.ru.md": package / "RETAINED-SCENE.ru.md",
         root / "disVM/runtime/SYS_CAPTURE.md": package / "SYS_CAPTURE.md",
@@ -60,6 +64,10 @@ def main():
     }
     pairs[root / "disVM/examples/asinctasks/main.b"] = package / "examples/asinctasks/main.b"
     pairs[root / "disVM/module/asinctasks.m"] = package / "include/limbo/asinctasks.m"
+    for name in ("editor_ink.c", "editor_ink.h", "editor_motion_batch.c", "editor_motion_batch.h",
+                 "editor_stamp.c", "editor_stamp.h", "editor_host.c"):
+        pairs[root / "disVM/runtime" / name] = package / "source/native-ink" / name
+    pairs[root / "ide/dis/bridge/ideinkworker.b"] = package / "source/ideinkworker.b"
     pairs[root / "disVM/limbo/asinctasks.b"] = package / "source/asinctasks.b"
     pairs[root / "ide/dis/tests/asinctasks_test.b"] = package / "examples/asinctasks/acceptance.b"
     pairs[root / "compiler/runtime/ASINC-TASKS.md"] = package / "examples/asinctasks/README.md"
@@ -112,7 +120,7 @@ def main():
                 installed = package / "examples/broker" / source.relative_to(root / "disVM/broker")
                 if installed.is_file():
                     pairs[source] = installed
-    for example in ("vector", "token-query", "desktop-clipboard", "desktop-pointer", "desktop-lifecycle", "desktop", "artifact-export", "build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
+    for example in ("native-ink", "vector", "token-query", "desktop-clipboard", "desktop-pointer", "desktop-lifecycle", "desktop", "artifact-export", "build-panel", "workspace", "editor-console", "native-console", "projection", "document-projection"):
         installed = package / "examples" / example
         if installed.is_dir():
             for source in (root / "ide/dis/examples" / example).iterdir():

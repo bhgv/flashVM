@@ -127,6 +127,7 @@ int dvm_chrome_decorate(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIt
     if (!item->dynamic && cached_number(owner, clip, "_chromeWidth", wide) &&
         cached_number(owner, clip, "_chromeHeight", high) &&
         cached_number(owner, clip, "_chromePalette", item->palette) &&
+        cached_number(owner, clip, "_chromeDynamic", item->dynamic) &&
         cached_number(owner, clip, "_chromePreviewScale", item->preview_scale) &&
         cached_number(owner, clip, "_chromeActive", item->active) &&
         cached_number(owner, clip, "_chromeSelected", item->selected) &&
@@ -137,6 +138,7 @@ int dvm_chrome_decorate(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIt
     }
     return dvm_chrome_invalidate(owner, clip) && render_view(owner, clip, item, wide, high) &&
            cache_number(owner, clip, "_chromePalette", item->palette) &&
+           cache_number(owner, clip, "_chromeDynamic", item->dynamic) &&
            cache_number(owner, clip, "_chromePreviewScale", item->preview_scale) &&
            cache_number(owner, clip, "_chromeWidth", wide) && cache_number(owner, clip, "_chromeHeight", high) &&
            cache_number(owner, clip, "_chromeActive", item->active) &&

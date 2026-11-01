@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1709**. [Русская версия](README.ru.md).
+Development version: **0.1710**. [Русская версия](README.ru.md).
 
-Current series: [v0.1709](docs/releases/v0.1709.md): restored pooled window backgrounds, a narrow right shelf and compact anchored command bubbles.
+Current series: [v0.1710](docs/releases/v0.1710.md): native live-ink buffers and stamps, ordered Limbo vectorization and native-sized maximized SDI/MDI.
 
 ## Browse documentation
 

@@ -1,3 +1,5 @@
+[Native ink / Масштаб 1:1 и C-рисование](NATIVE-INK.md) · [Русский](NATIVE-INK.ru.md)
+
 [MDI/SDI: one desktop](MDI-SDI.md) · [Один стол](MDI-SDI.ru.md) · [Debugger scaffold](DEBUGGER.md) · [Отладчик](DEBUGGER.ru.md)
 
 [Session clipboard, Ctrl+C/X/V and menu 12](DESKTOP-CLIPBOARD.md)
@@ -22,7 +24,7 @@
 
 # FlashVM Limbo IDE and host build tools
 
-Version **0.7.2**. [Русский](README.ru.md).
+Version **0.7.3**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 

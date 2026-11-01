@@ -555,12 +555,16 @@ init()
             }
             continue;
         }
-        if (event.kind == codec->Request && event.code == desk->PointerEvent && len array of byte event.text == 32) {
+        if (event.kind == codec->Request && event.code == desk->PointerEvent && (len array of byte event.text == 32 || len array of byte event.text == 40)) {
             (phaseok, phase) := codec->parseword(array of byte event.text, 0);
             (codeok, code) := codec->parseword(array of byte event.text, 8);
             (hitok, hit) := codec->parseword(array of byte event.text, 16);
             (offsetok, offset) := codec->parseword(array of byte event.text, 24);
             offset = signedoffset(offset);
+            if (len array of byte event.text == 40 && ((phase != 1 && phase != 3) || code != 1 ||
+                (phase == 3 && (hit != drawing || drawing == 0)))) {
+                continue;
+            }
             if (phaseok && codeok && hitok && offsetok && (code == 1 || code == 4 || code == 5 || code == 6 || code == 7 || code == 8 || code == 9 || code == 10)) {
                 if (drawing != 0 && code != 1) {
                     panecall(windows[drawing-1], panes->CancelPointer, "", nil);
@@ -625,7 +629,13 @@ init()
                     drawy = offset / 1001;
                     result := panecall(windows[hit-1], panes->Draw, "",
                         ref Uibridge->Message(codec->Request, 0, phase, shown[hit-1].revision,
-                            offset % 1001, offset / 1001, ""));
+                            offset % 1001, offset / 1001, event.text[32:]));
+                    if (phase == 1 && len array of byte event.text == 40) {
+                        (tokenok, token) := codec->parseword(array of byte event.text, 32);
+                        if (tokenok) {
+                            host->inkadmit(token, result.status == Idecore->Ok);
+                        }
+                    }
                     if (phase == 3 || result.status != Idecore->Ok) {
                         panecall(windows[hit-1], panes->CancelPointer, "", nil);
                         drawing = 0;

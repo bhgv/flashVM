@@ -47,6 +47,11 @@ def main():
         if mouse_tools and not 47 <= top <= 49:
             raise RuntimeError("maximized vector header went underneath the top bar during table zoom")
 
+        if mouse_tools:
+            if pane[0] != 4 or wide != 808 or high != 580:
+                raise RuntimeError("maximized canvas did not detach into native-scale overlay")
+            zoom = 1.0  # Saved table zoom must not scale maximized controls/content.
+
         # Pick points strictly inside the1000x600 document page after uniform zoom.
         def canvas(x, y, phase):
             return mouse(round(left + (6 + (20 + x) * scale) * zoom), round(top + (80 + (20 + y) * scale) * zoom), phase)

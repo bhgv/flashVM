@@ -26,6 +26,7 @@ topmost(items: array of ref Idedesktop->Item, x, y, width, zoom, pan, scroll: in
                 if (items[root].id == identity) {
                     left += items[root].x;
                     top += items[root].y;
+                    parent = items[root].parent;
                     found = 1;
                     break;
                 }
@@ -33,7 +34,6 @@ topmost(items: array of ref Idedesktop->Item, x, y, width, zoom, pan, scroll: in
             if (!found) {
                 continue;
             }
-            parent = 1;
         }
         if (parent == 1) {
             left = 84 + (left - 84) * zoom / 100 + pan;

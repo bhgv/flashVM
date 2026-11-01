@@ -80,4 +80,7 @@ unsigned long dvm_desktop_ticket(void); /* Equality token, never a heap address.
 
 /* Release pinned owner objects/font before the borrowed context is destroyed. */
 void dvm_desktop_destroy(void);
+/* Read copied captured-style metadata; no heap/reference ownership transfers. */
+int dvm_desktop_ink_style(unsigned long widget, unsigned long *tool, unsigned long *color, unsigned long *width);
+
 #endif

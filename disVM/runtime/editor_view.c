@@ -10,9 +10,11 @@
 #include "flashvm/path.h"
 #include "flashvm/render_queue.h"
 #include "editor_raster.h"
+#include "editor_ink.h"
 #include "editor_pointer_gate.h"
 #ifdef DVM_EDITOR_SDL
 #include "editor_desktop_input.h"
+#include "editor_motion_batch.h"
 #endif
 #include "desktop_view.h"
 #include "flashvm/utf8.h"
@@ -43,6 +45,7 @@
 #define EDITOR_PANEL_EXPORT_PATH 11U     /* Editable explicit artifact destination. */
 #define EDITOR_PANEL_BROWSE_PATH 10U     /* Editable directory path, with caret and normal field geometry. */
 #define EDITOR_PANEL 65543UL             /* Dis-owned prompt mode, selection and counted field text. */
+#define EDITOR_INK_BATCH_MS 4U /* Native live-ink coalescing bound; no SWF-frame dependency. */
 #define EDITOR_KEYBOARD_BATCH_MS 16U     /* Owner-poll batching budget, independent of SWF timeline frequency. */
 #define EDITOR_VIEWPORT 65540UL          /* Dis-owned Unicode window and monotonic view ticket. */
 #define EDITOR_SCROLL 65541UL            /* Ticket/revision-bound logical scroll request. */
@@ -120,6 +123,7 @@ static DVM_EditorFrame *displayed_frame;    /* Owned completed baseline; workers
 static const DVM_EditorFrame *upload_frame; /* Borrowed completed damage during SDL presentation only. */
 static DVM_EditorFrame *recording_frame;    /* Owner-only frame builder; workers never read this global. */
 static int desktop_pan;                     /* Latched middle/Ctrl+Shift drag; copied table gesture only. */
+static unsigned long ink_token; /* Sole native live trajectory; never a Dis reference. */
 static unsigned long vector_drag;           /* Captured logical canvas identity; never a VM object. */
 static int header_drag;            /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
@@ -127,6 +131,8 @@ static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notific
 static int paint_due;              /* Frame-free notification delivered, latest state may be prepared. */
 static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
 #ifdef DVM_EDITOR_SDL
+static SDL_Event postponed_event; /* One FIFO barrier behind a synthetic ink release. */
+static int postponed_valid; /* No later SDL input may overtake the saved event. */
 static Uint32 desktop_animation_clock;  /* Last native visual-clock sample; independent of SWF frames. */
 static int desktop_animation_clock_set; /* Initial sample is not an elapsed delta. */
 static Uint32 desktop_dirty_since;      /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
@@ -2111,6 +2117,16 @@ static int keyboard_waiting(void)
 }
 
 
+/* Inspect only the queued head during an established drawing capture. New hits
+ * still require presented geometry; no event is consumed or crosses a release. */
+static int paint_motion_waiting(void)
+{
+    SDL_Event event;
+    return !postponed_valid && vector_drag && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1 &&
+           (event.type == SDL_MOUSEMOTION || event.type == SDL_FINGERMOTION);
+}
+
+
 /* Return whether native input must wait for matching pixels. Keyboard/text can
  * use the latest acknowledged Dis view. Replay/capture stays deterministic, and
  * FIFO inspection never lets a key overtake pointer, focus or lifecycle events. */
@@ -2119,6 +2135,10 @@ static int presentation_blocks_input(void)
     int continuation = 0;
     SDL_Event event;
     int keyboard = keyboard_waiting();
+    if (postponed_valid)
+    {
+        return desktop_dirty || raster_pending;
+    }
     if ((header_drag || vector_drag || desktop_pan) &&
         SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1)
     {
@@ -2812,7 +2832,9 @@ int dvm_editor_event(DVM_UIMessage *message)
         }
     }
     if (desktop_dirty && paint_due && !raster_pending &&
-        (!keyboard_waiting() || (Uint32)(SDL_GetTicks() - desktop_dirty_since) >= EDITOR_KEYBOARD_BATCH_MS))
+        ((!keyboard_waiting() && !paint_motion_waiting()) ||
+         (Uint32)(SDL_GetTicks() - desktop_dirty_since) >=
+             (ink_token ? EDITOR_INK_BATCH_MS : EDITOR_KEYBOARD_BATCH_MS)))
     {
         if (!(dvm_desktop_active() ? render_desktop() : render()))
         {
@@ -2896,13 +2918,68 @@ int dvm_editor_event(DVM_UIMessage *message)
 #ifdef DVM_EDITOR_SDL
     {
         SDL_Event event;
-        if (!SDL_PollEvent(&event))
+        SDL_Event motion_points[DVM_EDITOR_MOTION_POINTS];
+        unsigned int motion_count = 0;
+        if (postponed_valid)
+        {
+            event = postponed_event;
+            postponed_valid = 0;
+        }
+        else if (!SDL_PollEvent(&event))
         {
             return 0;
         }
+        if (ink_token)
+        {
+            unsigned long widget;
+            long point;
+            if (!dvm_ink_last(ink_token, &widget, &point))
+            {
+                ink_token = 0;
+                vector_drag = 0;
+            }
+        }
+        if (ink_token && dvm_editor_motion_barrier(&event))
+        {
+            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
+            {
+                dvm_ink_cancel(ink_token);
+                ink_token = 0;
+                vector_drag = 0;
+                request_paint();
+            }
+            else
+            {
+                unsigned long widget;
+                long point;
+                if (dvm_ink_last(ink_token, &widget, &point) && dvm_ink_end(ink_token, point))
+                {
+                    postponed_event = event;
+                    postponed_valid = 1;
+                    message->kind = DVM_UI_REQUEST;
+                    message->id = 1;
+                    message->code = DVM_DESK_POINTER;
+                    message->flags = dvm_desktop_ticket();
+                    snprintf(message->text, 41, "%08x%08x%08x%08x%08x", 3, 1, (unsigned int)widget,
+                        (unsigned int)point, (unsigned int)ink_token);
+                    message->size = 40;
+                    ink_token = 0;
+                    vector_drag = 0;
+                    complete = 0;
+                    return 1;
+                }
+            }
+        }
         if (dvm_desktop_active())
         {
-            dvm_editor_coalesce_motion(&event, vector_drag != 0);
+            if (ink_token && (event.type == SDL_MOUSEMOTION || event.type == SDL_FINGERMOTION))
+            {
+                motion_count = dvm_editor_motion_batch(&event, motion_points);
+            }
+            else
+            {
+                dvm_editor_coalesce_motion(&event, vector_drag != 0);
+            }
         }
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED && window &&
             event.window.windowID == SDL_GetWindowID(window))
@@ -2916,6 +2993,8 @@ int dvm_editor_event(DVM_UIMessage *message)
                 header_drag = 0;
                 desktop_pan = 0;
                 vector_drag = 0;
+                dvm_ink_cancel(ink_token);
+                ink_token = 0;
                 if (message->first == (long)canvas_width && message->second == (long)canvas_height)
                 {
                     return 0;
@@ -3079,6 +3158,64 @@ int dvm_editor_event(DVM_UIMessage *message)
             return 0;
         }
         resolve_pointer(message);
+        if (vector_drag && !ink_token && message->kind == DVM_UI_REQUEST &&
+            message->code == DVM_DESK_POINTER && message->size == 32 &&
+            (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN))
+        {
+            unsigned long tool, color, wide;
+            unsigned long point;
+            if (dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) && (tool == 1 || tool == 5) &&
+                hexword(message->text + 24, &point))
+            {
+                ink_token = dvm_ink_begin(vector_drag, color, wide, (long)point);
+                if (ink_token)
+                {
+                    snprintf(message->text + 32, 9, "%08x", (unsigned int)ink_token);
+                    message->size = 40;
+                }
+            }
+        }
+        if (ink_token && motion_count)
+        {
+            unsigned int index;
+            for (index = 0; index < motion_count; ++index)
+            {
+                long point;
+                double x = event.type == SDL_MOUSEMOTION ? motion_points[index].motion.x
+                    : motion_points[index].tfinger.x * canvas_width;
+                double y = event.type == SDL_MOUSEMOTION ? motion_points[index].motion.y
+                    : motion_points[index].tfinger.y * canvas_height;
+                if (dvm_desktop_vector_point(vector_drag, x, y, &point))
+                {
+                    dvm_ink_point(ink_token, point);
+                }
+            }
+            if (event.type == SDL_FINGERMOTION)
+            {
+                DVM_UIMessage ignored;
+                desktop_touch(&motion_points[motion_count - 1].tfinger, &ignored);
+            }
+            if (!request_paint())
+            {
+                return -1;
+            }
+            return 0; /* C owns live points; no channel event or Limbo snapshot. */
+        }
+        if (ink_token && (event.type == SDL_MOUSEBUTTONUP || event.type == SDL_FINGERUP))
+        {
+            unsigned long point;
+            if (message->size == 32 && hexword(message->text + 24, &point) &&
+                dvm_ink_end(ink_token, (long)point))
+            {
+                snprintf(message->text + 32, 9, "%08x", (unsigned int)ink_token);
+                message->size = 40; /* Only a frozen opaque token crosses on release. */
+            }
+            else
+            {
+                dvm_ink_cancel(ink_token);
+            }
+            ink_token = 0;
+        }
         if (event.type == SDL_MOUSEBUTTONUP)
         {
             desktop_pan = 0;
@@ -3098,6 +3235,11 @@ int dvm_editor_event(DVM_UIMessage *message)
 void dvm_editor_destroy(void)
 {
     pixels_valid = 0;
+    dvm_ink_reset();
+#ifdef DVM_EDITOR_SDL
+    postponed_valid = 0;
+#endif
+    ink_token = 0;
     header_drag = 0;
     desktop_pan = 0;
     vector_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */

@@ -269,8 +269,8 @@ zoomanchor(desk: Idedesktop)
           "table zoom scales physical scroll rather than changing logical anchor");
     check(after.x == before.x && after.y == before.y && after.width == before.width && after.height == before.height,
           "table zoom leaves every saved window rectangle unchanged");
-    top := 48 + (after.y - 48) * view.zoom / 100 - view.scroll;
-    check(top >= 47 && top <= 49, "maximized header remains below the top bar after table zoom");
+    top := after.y;
+    check(after.parent == 4 && top == 48, "maximized header remains below the top bar after table zoom");
     for (cycle := 0; cycle < 8; cycle++) {
         view = point(owner, view.ticket, 82, 55, 4);
         check(view.zoom == zoom && view.scroll == scroll, "opposite zoom restores anchor without cumulative integer drift");

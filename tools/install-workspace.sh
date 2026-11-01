@@ -459,6 +459,14 @@ EOF
             copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.ru.md" "$destination/SYS_CAPTURE.ru.md"
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.md" "$destination/NATIVE_MODULES.md"
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.ru.md" "$destination/NATIVE_MODULES.ru.md"
+            copy_file "$ROOT/ide/NATIVE-INK.md" "$destination/NATIVE-INK.md"
+            copy_file "$ROOT/ide/NATIVE-INK.ru.md" "$destination/NATIVE-INK.ru.md"
+            for native_ink_file in editor_ink.c editor_ink.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
+                copy_file "$ROOT/disVM/runtime/$native_ink_file" "$destination/source/native-ink/$native_ink_file"
+            done
+            copy_tree "$ROOT/ide/dis/examples/native-ink" "$destination/examples/native-ink"
+            copy_file "$ROOT/disVM/runtime/test_ink_primitives.c" "$destination/examples/native-ink/stamp-check.c"
+            copy_file "$ROOT/ide/dis/tests/native_ink_test.b" "$destination/examples/native-ink/worker-check.b"
             copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/docs/limbo/NATIVE_C.md"
             copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.ru.md" "$destination/docs/limbo/NATIVE_C.ru.md"
             copy_file "$ROOT/flashVM/doc/RENDER_ASYNC.md" "$destination/docs/ide/RENDER_ASYNC.md"
@@ -557,7 +565,7 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in tasks-demo asinctasks capture-demo asincviews idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in tasks-demo asinctasks capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
@@ -567,7 +575,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-token-query.sh" "$destination/run-token-query.sh" 755
             copy_tree "$ROOT/ide/dis/examples/token-query" "$destination/examples/token-query"
             copy_tree "$ROOT/ide/dis/examples/vector" "$destination/examples/vector"
-            for control in idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain; do
+            for control in ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain; do
                 copy_file "$ROOT/ide/dis/bridge/$control.b" "$destination/source/$control.b"
             done
             copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
