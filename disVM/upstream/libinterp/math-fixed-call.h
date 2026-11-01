@@ -213,3 +213,62 @@ Math_bits64realframe64(const Native64MathFrameCall *request)
 	return 0;
 #endif
 }
+
+
+#ifdef DIS_NATIVE64_CALLER_GUARD
+#include "native64-caller.h"
+
+
+/* Check the held process generation before consulting its stack storage. */
+static void*
+native64bitsguard(void *argument)
+{
+	return native64callerresolve(argument);
+}
+#endif
+
+
+/* Keep one typed caller lease through protected production, late resolution and cleanup. */
+static int
+native64bitsleased(const Native64MathFrameCall *request, int live)
+{
+#ifdef DIS_NATIVE64_CALLER_GUARD
+	Native64Caller caller;
+	Native64MathBitsCall owned;
+	char saved[ERRMAX];
+	int status;
+
+	if(request == nil)
+		return 0;
+	memset(&caller, 0, sizeof(caller));
+	owned = request->call;
+	if(!(live ? native64callerbeginlive(&caller, request->caller, request->type, request->offset) :
+	             native64callerbegin(&caller, request->caller, request->type, request->offset)))
+		return 0;
+	owned.resolve = native64bitsguard; owned.argument = &caller;
+	status = Math_bits64real64(&owned);
+	kgerrstr(saved, sizeof(saved));
+	native64callerclear(&caller);
+	kwerrstr("%s", saved);
+	return status;
+#else
+	USED(request); USED(live);
+	return 0;
+#endif
+}
+
+
+/* Retain the existing explicitly published current-frame contract. */
+int
+Math_bits64realguard64(const Native64MathFrameCall *request)
+{
+	return native64bitsleased(request, 0);
+}
+
+
+/* Acquire from interpreter-owned live R, publishing its validated caller roots before allocation. */
+int
+Math_bits64realvm64(const Native64MathFrameCall *request)
+{
+	return native64bitsleased(request, 1);
+}

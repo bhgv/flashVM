@@ -1,3 +1,16 @@
+## v0.1717 — Current-caller leases and live registers
+
+Selected Dis1043/bootstrap282/mk83 files are pinned to
+6d77333be50815c3ededb55e9b308c65b4bb623e. INFERNO-0049..0051 add
+noncopyable current-caller leases, saturating generations, retained descriptors,
+coherent build markers and live REG entry/return/unwind publication. Reverse
+FLASHVM-0049 and the independent sequence oracle are published in experiment.
+Private Prog layout changed: rebuild all consumers. The default host guard stays
+off; file CALL/MCALL and general managed native ABI remain closed.
+
+See [contract, commands and limits](NATIVE64-CALLER.md),
+[Russian review](NATIVE64-CALLER.ru.md) and [release](../docs/releases/v0.1717.md).
+
 ## v0.1715 — First fixed Math C-call review and independent codec fixture
 
 Selected Dis1037/bootstrap282/mk83 files are pinned to

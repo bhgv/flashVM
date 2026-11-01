@@ -91,8 +91,10 @@ if(BUILD_TESTING)
       ENVIRONMENT "NATIVE_MK=${DVM_MK_EXECUTABLE};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endif()
   include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RV64TargetReview.cmake")
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Native64CallerReview.cmake")
   # Selected production regressions and their manifest-owned fixture dependencies.
   foreach(driver
+    native64-caller-sequences
     integer-ops
     division-powers
     control-transfer-native
@@ -248,6 +250,11 @@ if(BUILD_TESTING)
     string-cell-spans-c
     utf8-view-spans-c
   )
+    # This private C-layout oracle executes native Linux 64-bit host code only.
+    if(driver STREQUAL "native64-caller-sequences" AND
+       (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8 OR CMAKE_CROSSCOMPILING))
+      continue()
+    endif()
     # This upstream object probe deliberately uses Linux host declarations.
     if(driver STREQUAL "word32-build" AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
       continue()
@@ -260,6 +267,10 @@ if(BUILD_TESTING)
     add_test(NAME disvm_${driver} COMMAND "${Python3_EXECUTABLE}" "${u}/libinterp/tests/${driver}.py")
     set_tests_properties(disvm_${driver} PROPERTIES TIMEOUT 120
       ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+    if(driver STREQUAL "native64-caller-sequences")
+      set_tests_properties(disvm_${driver} PROPERTIES
+        ENVIRONMENT "CC=${CMAKE_C_COMPILER};CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all;TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+    endif()
   endforeach()
   if(TEST disvm_dis64-runtime)
     set_tests_properties(disvm_dis64-runtime PROPERTIES TIMEOUT 180

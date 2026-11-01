@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1716**. [Русская версия](README.ru.md).
+Development version: **0.1717**. [Русская версия](README.ru.md).
 
-Current series: [v0.1716](docs/releases/v0.1716.md): visible committed Line/Pen strokes in the full raster fallback, bounded primitive input and readable authoring status.
+Current series: [v0.1717](docs/releases/v0.1717.md): bidirectional Inferno caller-lease synchronization, independent transition oracle and clean native64 boot review.
 
 ## Browse documentation
 
