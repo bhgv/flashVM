@@ -8,7 +8,7 @@ create(): ref Document
 {
     return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
-                        array[16] of array of ref Shape, 0);
+                        array[16] of array of ref Shape, 0, nil, "", 0);
 }
 
 
@@ -272,54 +272,9 @@ history(doc: ref Document, redo: int): int
 }
 
 
-# Serialize only scalar values. Each record has colour/width/fill/count, then
-# five words per command. All arrays remain with this document's owning process.
-wire(doc: ref Document): string
-{
-    shapes := visible(doc);
-    total := 0;
-    for (index := 0; index < len shapes; index++) {
-        total += len shapes[index].nodes;
-    }
-    bytes := array[56 + 32 * len shapes + 40 * total] of byte;
-    putword(bytes, 0, doc.tool);
-    putword(bytes, 8, doc.color);
-    putword(bytes, 16, doc.width);
-    putword(bytes, 24, doc.fill);
-    putword(bytes, 32, doc.nundo);
-    putword(bytes, 40, doc.nredo);
-    putword(bytes, 48, len shapes);
-    at := 56;
-    for (index = 0; index < len shapes; index++) {
-        shape := shapes[index];
-        putword(bytes, at, shape.color);
-        putword(bytes, at + 8, shape.width);
-        putword(bytes, at + 16, shape.fill);
-        putword(bytes, at + 24, len shape.nodes);
-        at += 32;
-        for (part := 0; part < len shape.nodes; part++) {
-            node := shape.nodes[part];
-            putword(bytes, at, node.verb);
-            putword(bytes, at + 8, node.x);
-            putword(bytes, at + 16, node.y);
-            putword(bytes, at + 24, node.cx);
-            putword(bytes, at + 32, node.cy);
-            at += 40;
-        }
-    }
-    return string bytes;
-}
-
-
-# Write one copied uint32 value into a preflight-sized owner-private ASCII buffer.
-# No allocation/module load/string concatenation occurs in this inner transport loop.
-putword(bytes: array of byte, at, value: int)
-{
-    digits := "0123456789abcdef";
-    for (digit := 0; digit < 8; digit++) {
-        bytes[at + digit] = byte digits[(value >> (28 - digit * 4)) & 15];
-    }
-}
+# Implementation fragment owns the one serialization/cache algorithm; it shares
+# only this module's types/functions, never mutable module-global cache state.
+include "idevectorwire.b";
 
 
 # Produce deterministic SVG using the same generic commands as actual MovieClip

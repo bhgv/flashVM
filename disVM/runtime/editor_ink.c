@@ -21,7 +21,6 @@ typedef struct InkSlot
 static InkSlot slots[DVM_INK_SLOTS]; /* Native UI-owner registry; workers see copies. */
 static unsigned long next_token = 1; /* Refuse exhaustion instead of reusing identities. */
 
-
 /* Locate an opaque live registry value; never reinterpret it as an address. */
 static InkSlot *find(unsigned long token)
 {
@@ -36,13 +35,11 @@ static InkSlot *find(unsigned long token)
     return NULL;
 }
 
-
 /* Bound a packed logical coordinate before storing/formatting any sample. */
 static int valid(long point)
 {
     return point >= 0 && point <= 601600;
 }
-
 
 /* Allocate only a free native slot. Captured style/first point are immutable. */
 unsigned long dvm_ink_begin(unsigned long widget, unsigned long color, unsigned long width, long point)
@@ -70,7 +67,6 @@ unsigned long dvm_ink_begin(unsigned long widget, unsigned long color, unsigned 
     return 0;
 }
 
-
 /* Append a changed point while space remains; caller controls capture ordering. */
 int dvm_ink_point(unsigned long token, long point)
 {
@@ -90,7 +86,6 @@ int dvm_ink_point(unsigned long token, long point)
     slot->points[slot->count++] = point;
     return 1;
 }
-
 
 /* Freeze even a full retained trajectory. Never drop its earlier samples to fit
  * a release endpoint. Worker can still vectorize the complete retained prefix. */
@@ -118,14 +113,12 @@ int dvm_ink_end(unsigned long token, long point)
     return 1;
 }
 
-
 /* Native buffer is immutable after release and remains registered until commit. */
 const char *dvm_ink_read(unsigned long token)
 {
     InkSlot *slot = find(token);
     return slot && slot->frozen ? slot->wire : "";
 }
-
 
 /* Stable complete-stream content identity, paired with byte length on commit. */
 static uint64_t fingerprint(const char *bytes, size_t size)
@@ -138,7 +131,6 @@ static uint64_t fingerprint(const char *bytes, size_t size)
     }
     return value;
 }
-
 
 /* A cumulative worker result replaces all preceding captured strokes together. */
 void dvm_ink_ack(unsigned long token, const char *drawing, size_t size)
@@ -163,7 +155,6 @@ void dvm_ink_ack(unsigned long token, const char *drawing, size_t size)
     }
 }
 
-
 /* Exact extent/hash gates visual retirement; no timer or worker-read clears ink. */
 void dvm_ink_commit(unsigned long widget, const char *drawing, size_t size)
 {
@@ -178,7 +169,6 @@ void dvm_ink_commit(unsigned long widget, const char *drawing, size_t size)
         }
     }
 }
-
 
 /* Emit in token order despite reuse of earlier registry slots. Geometry is
  * copied native data; constructing paths cannot allocate or inspect VM objects. */
@@ -235,7 +225,6 @@ int dvm_ink_preview(unsigned long widget, const FVM_Affine *world, double scale,
     return 1;
 }
 
-
 /* Cancel only one current capture; frozen unrelated preview layers survive. */
 void dvm_ink_cancel(unsigned long token)
 {
@@ -246,13 +235,11 @@ void dvm_ink_cancel(unsigned long token)
     }
 }
 
-
 /* Called only after the UI/worker bridge is detached, before the next session. */
 void dvm_ink_reset(void)
 {
     memset(slots, 0, sizeof(slots));
 }
-
 
 /* Borrow only copied endpoint metadata for a lifecycle-triggered release. */
 int dvm_ink_last(unsigned long token, unsigned long *widget, long *point)
@@ -267,7 +254,6 @@ int dvm_ink_last(unsigned long token, unsigned long *widget, long *point)
     return 1;
 }
 
-
 /* A closed/reused document slot cannot inherit an earlier owner's raw preview. */
 void dvm_ink_drop(unsigned long widget)
 {
@@ -279,4 +265,18 @@ void dvm_ink_drop(unsigned long widget)
             slots[index].token = 0;
         }
     }
+}
+
+/* The sole native owner queries registry values before preparing a detached layer. */
+int dvm_ink_has_preview(unsigned long widget)
+{
+    unsigned int index;
+    for (index = 0; index < DVM_INK_SLOTS; index++)
+    {
+        if (slots[index].token && slots[index].widget == widget)
+        {
+            return 1;
+        }
+    }
+    return 0;
 }

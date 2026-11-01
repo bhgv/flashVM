@@ -1,3 +1,12 @@
+## v0.1714 — RV64 bridge oracle and native64 startup review
+
+Selected Dis1023/bootstrap282/mk83 files are pinned to
+f530f864d008efdacdb9ebd48082c458e537a32a. Reviewed INFERNO-0043..0046;
+reverse FLASHVM-0043/0044 and the independent RV64 decoder are published upstream.
+Default host bridge oracle adds no cross-tool dependency. Optional owning target
+review requires both DVM_RV64_CC and DVM_RV64_RUNNER. Trusted startup does not
+admit file-native calls. See [v0.1714](../docs/releases/v0.1714.md) for exact scope.
+
 ## v0.1712 — Independent owning signed division conformance
 
 Pinned selected Dis1010/bootstrap281/mk83 files to
@@ -1514,3 +1523,7 @@ production bodies. The complete executable Dis host, Sys/VFS registration and
 IDE startup remain unfinished. No newly confirmed upstream defect was found.
 
 See the Russian report for source selection, repeat commands and integration limits.
+
+Generic RV64 emitter regressions were updated upstream after complete C dispatch:
+all six ISA/WORD host encoder configurations now require dispatch while preserving
+the distinction from native entries. Cold host stubs model target code alignment.

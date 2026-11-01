@@ -75,6 +75,9 @@ worker(vector: Idevector, jobs: chan of ref Job, completed: chan of ref Done)
                     status = Idevector->Limit;
                 }
             }
+            # Serialization is geometry work too. Hand immutable committed bytes
+            # to the UI owner with the shapes, rather than blocking its Snapshot.
+            vector->preparewire(job.document);
         } exception failure {
             * =>
                 # [GC:] Recover only the private job; preserve the raw gesture
@@ -119,6 +122,11 @@ copy(vector: Idevector, source: ref Idevector->Document): ref Idevector->Documen
 apply(vector: Idevector, doc: ref Idevector->Document, done: ref Done)
 {
     doc.shapes = done.document.shapes;
+    if (done.document.wired == done.document.shapes) {
+        doc.wired = done.document.wired;
+        doc.wirebody = done.document.wirebody;
+    }
+
     if (done.token != 0) {
         doc.undo[0:] = done.document.undo;
         doc.nundo = done.document.nundo;

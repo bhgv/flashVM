@@ -28,6 +28,41 @@ require(ok: int, message: string)
 }
 
 
+# Style/header changes and a live draft must not reserialize committed nodes.
+# Arrays are immutable; a new array identity must invalidate even at same revision.
+wirecache()
+{
+    cached := vector->create();
+    nodes := array[512] of Idevector->Node;
+    nodes[0] = Idevector->Node(vector->Move, 10, 10, 0, 0);
+    for (i := 1; i < len nodes; i++) {
+        nodes[i] = Idevector->Node(vector->Segment, i, 20 + i % 100, 0, 0);
+    }
+    shape := ref Idevector->Shape(16r245ac4, 8, 0, nodes, nil, 0);
+    cached.shapes = array[] of {shape};
+    original := vector->wire(cached);
+    require(cached.wirebuilds == 1, "initial geometry serialized once");
+    changed: string;
+    for (i = 0; i < 64; i++) {
+        cached.fill = i % 2;
+        cached.tool = vector->Brush;
+        if (cached.fill) { cached.tool = vector->Pen; }
+        changed = vector->wire(cached);
+        require(changed[48:] == original[48:] && cached.wirebuilds == 1,
+                "Fill/Pen changes reuse committed bytes");
+    }
+    require(vector->defer(cached, 1, 100, 100) == vector->Ok, "live draft begins");
+    preview := vector->wire(cached);
+    require(len preview > len original && cached.wirebuilds == 1, "live draft appends without rebuilding old geometry");
+    vector->cancel(cached);
+    vector->wire(cached);
+    require(cached.wirebuilds == 1, "cancel leaves committed byte cache intact");
+    cached.shapes = array[] of {shape, shape};
+    changed = vector->wire(cached);
+    require(cached.wirebuilds == 2 && len changed > len original, "immutable replacement invalidates at equal revision");
+}
+
+
 # Exercise actual gesture interpolation, immutable history, quotas and strict SVG.
 init()
 {
@@ -35,6 +70,7 @@ init()
     vector = load Idevector Idevector->PATH;
     checks = 0;
     require(vector != nil, "load");
+    wirecache();
     doc := vector->create();
     require(doc.revision == 0 && doc.saved == 0 && len doc.shapes == 0, "clean document");
     require(vector->pointer(doc, 2, 20, 20) == vector->Conflict, "move without press");

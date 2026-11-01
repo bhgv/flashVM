@@ -463,7 +463,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/NATIVE_MODULES.ru.md" "$destination/NATIVE_MODULES.ru.md"
             copy_file "$ROOT/ide/NATIVE-INK.md" "$destination/NATIVE-INK.md"
             copy_file "$ROOT/ide/NATIVE-INK.ru.md" "$destination/NATIVE-INK.ru.md"
-            for native_ink_file in editor_ink.c editor_ink.h editor_ink_pointer.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
+            for native_ink_file in editor_ink.c editor_ink.h editor_ink_pointer.h editor_wheel_batch.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
                 copy_file "$ROOT/disVM/runtime/$native_ink_file" "$destination/source/native-ink/$native_ink_file"
             done
             copy_tree "$ROOT/ide/dis/examples/native-ink" "$destination/examples/native-ink"
@@ -582,6 +582,7 @@ EOF
             done
             copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
             copy_file "$ROOT/ide/dis/bridge/idevector.b" "$destination/source/idevector.b"
+            copy_file "$ROOT/ide/dis/bridge/idevectorwire.b" "$destination/source/idevectorwire.b"
             copy_file "$ROOT/ide/assets/vector-v0.1697.png" "$destination/VECTOR-EDITOR.png"
             copy_file "$ROOT/ide/VECTOR-EDITOR.md" "$destination/VECTOR-EDITOR.md"
             copy_file "$ROOT/ide/VECTOR-EDITOR.ru.md" "$destination/VECTOR-EDITOR.ru.md"

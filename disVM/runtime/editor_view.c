@@ -16,6 +16,7 @@
 #include "editor_desktop_input.h"
 #include "editor_motion_batch.h"
 #include "editor_ink_pointer.h"
+#include "editor_wheel_batch.h"
 #endif
 #include "desktop_view.h"
 #include "flashvm/utf8.h"
@@ -46,7 +47,7 @@
 #define EDITOR_PANEL_EXPORT_PATH 11U     /* Editable explicit artifact destination. */
 #define EDITOR_PANEL_BROWSE_PATH 10U     /* Editable directory path, with caret and normal field geometry. */
 #define EDITOR_PANEL 65543UL             /* Dis-owned prompt mode, selection and counted field text. */
-#define EDITOR_INK_BATCH_MS 4U /* Native live-ink coalescing bound; no SWF-frame dependency. */
+#define EDITOR_INK_BATCH_MS 4U           /* Native live-ink coalescing bound; no SWF-frame dependency. */
 #define EDITOR_KEYBOARD_BATCH_MS 16U     /* Owner-poll batching budget, independent of SWF timeline frequency. */
 #define EDITOR_VIEWPORT 65540UL          /* Dis-owned Unicode window and monotonic view ticket. */
 #define EDITOR_SCROLL 65541UL            /* Ticket/revision-bound logical scroll request. */
@@ -124,7 +125,7 @@ static DVM_EditorFrame *displayed_frame;    /* Owned completed baseline; workers
 static const DVM_EditorFrame *upload_frame; /* Borrowed completed damage during SDL presentation only. */
 static DVM_EditorFrame *recording_frame;    /* Owner-only frame builder; workers never read this global. */
 static int desktop_pan;                     /* Latched middle/Ctrl+Shift drag; copied table gesture only. */
-static unsigned long ink_token; /* Sole native live trajectory; never a Dis reference. */
+static unsigned long ink_token;             /* Sole native live trajectory; never a Dis reference. */
 static unsigned long vector_drag;           /* Captured logical canvas identity; never a VM object. */
 static int header_drag;            /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
@@ -132,9 +133,9 @@ static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notific
 static int paint_due;              /* Frame-free notification delivered, latest state may be prepared. */
 static int desktop_dirty;          /* Latest complete desktop snapshot awaits owner-side painting. */
 #ifdef DVM_EDITOR_SDL
-static SDL_Event ink_pointer; /* Copied source identity of the sole native ink capture. */
-static SDL_Event postponed_event; /* One FIFO barrier behind a synthetic ink release. */
-static int postponed_valid; /* No later SDL input may overtake the saved event. */
+static SDL_Event ink_pointer;      /* Copied source identity of the sole native ink capture. */
+static SDL_Event postponed_event;  /* One FIFO barrier behind a synthetic ink release. */
+static int postponed_valid;        /* No later SDL input may overtake the saved event. */
 static Uint32 desktop_animation_clock;  /* Last native visual-clock sample; independent of SWF frames. */
 static int desktop_animation_clock_set; /* Initial sample is not an elapsed delta. */
 static Uint32 desktop_dirty_since;      /* First unpainted snapshot time; unsigned elapsed time tolerates wrap. */
@@ -393,13 +394,11 @@ static int hexword(const char *text, unsigned long *out)
     return 1;
 }
 
-
 /* Return startup configuration by value; no renderer or document state is exposed. */
 int dvm_editor_line_numbers(void)
 {
     return initial_line_numbers;
 }
-
 
 /* Store a known CLI option without copying argv; returns whether it was recognized. */
 int dvm_editor_option(const char *name, const char *value)
@@ -452,20 +451,17 @@ int dvm_editor_option(const char *name, const char *value)
     return 1;
 }
 
-
 /* Expose immutable configuration to the Dis builtin; no I/O or heap pointer escapes. */
 const char *dvm_editor_path(void)
 {
     return document_path;
 }
 
-
 /* Return copied new-document configuration; no file or VM operation occurs. */
 int dvm_editor_fresh(void)
 {
     return new_document;
 }
-
 
 /* Choose the bundled font relative to the entry module, preserving the caller's cwd.
  * directory is borrowed. An explicit --font remains an optional override, never a prompt. */
@@ -492,7 +488,6 @@ int dvm_editor_default_font(const char *directory)
     return 1;
 }
 
-
 /* Reserve enough native pixels for a readable prompt at the admitted face size.
  * line_height is an actual finite font metric; returns bounded surface pixels, never text policy. */
 static int panel_height(double line_height)
@@ -504,7 +499,6 @@ static int panel_height(double line_height)
     }
     return height;
 }
-
 
 /* Measure copied multiline panel data for the AS view's bounded native surface.
  * line_height is a trusted font metric. Return pixels; no selection/action policy lives here. */
@@ -531,14 +525,12 @@ static int panel_extent(double line_height)
     return height;
 }
 
-
 /* Return the TextField baseline distance for the explicit editor TextFormat.
  * metrics is a borrowed current/proposed font record; no VM or view state changes. */
 static double line_step(const FVM_FontMetrics *metrics)
 {
     return metrics->ascent + metrics->descent + EDITOR_LEADING;
 }
-
 
 /* Measure bounded visible logical rows from the actual current face metrics.
  * No arguments; returns 1..128, with a conservative single row on an unavailable metric. */
@@ -561,7 +553,6 @@ int dvm_editor_rows(void)
     }
     return rows;
 }
-
 
 /* Measure a proposed face size without changing the current view or either VM state.
  * size is bounded 6..48; height is admitted 160..2048 pixels. Returns row capacity or zero on failure. */
@@ -596,7 +587,6 @@ static int rows_for_canvas(int size, unsigned int height)
     }
     return rows;
 }
-
 
 /* Admit a bounded Dis-selected surface with fresh storage before retiring the old one.
  * width/height are copied pixels. Returns zero on allocation/field/SDL failure; no document access.
@@ -682,7 +672,6 @@ static int apply_canvas(unsigned int width, unsigned int height)
     return 1;
 }
 
-
 /* Apply a Dis-admitted size to both real TextFields and the glyph-hit face.
  * size is bounded; returns one on actual matching font/layout setup, zero on failure. */
 static int apply_font_size(int size)
@@ -748,7 +737,6 @@ static int apply_font_size(int size)
     font_size = size;
     return 1;
 }
-
 
 /* Load an explicitly selected bounded font and create a pinned uniform TextField.
  * Returns one on success, zero on any actual backend/SDK/file failure. */
@@ -929,7 +917,6 @@ int dvm_editor_create(void)
     return 1;
 }
 
-
 /* Record a clipped rectangle in the owner-held frame without document mutation.
  * surface supplies only pixel bounds; color is copied. Return one on admitted
  * geometry (including offscreen no-op), zero on contour allocation/budget failure. */
@@ -998,7 +985,6 @@ static int rectangle(FVM_RasterSurface *surface, double x, double y, double widt
     }
 }
 
-
 /* Map borrowed valid UTF-8 scalar positions to bounded preview byte offsets.
  * Offscreen positions return shown+1; bytes and document authority stay unchanged. */
 static size_t scalar_byte(size_t shown, long position)
@@ -1022,7 +1008,6 @@ static size_t scalar_byte(size_t shown, long position)
     return scalar == position ? byte : shown + 1;
 }
 
-
 /* Translate an admitted scalar insertion coordinate in borrowed valid UTF-8.
  * text/length are borrowed bytes; position is nonnegative. Returns a bounded byte count without mutation. */
 static size_t text_byte(const char *text, size_t length, long position)
@@ -1041,14 +1026,12 @@ static size_t text_byte(const char *text, size_t length, long position)
     return byte;
 }
 
-
 /* Translate a prevalidated source scalar through its immutable complete UTF-8 snapshot.
  * position is copied; returns a byte count and performs no VM, allocation or I/O operation. */
 static size_t document_byte(long position)
 {
     return text_byte(snapshot, extent, position);
 }
-
 
 /* Queue one copied clipboard result for the next ordinary input rendezvous.
  * status is an Idecore-compatible scalar; no source edit or channel operation occurs here. */
@@ -1057,7 +1040,6 @@ static void clipboard_result(int status)
     clipboard_status = status;
     clipboard_ack = 1;
 }
-
 
 /* Execute a Dis-authorized clipboard command against the previous complete immutable snapshot.
  * message is borrowed. Returns zero for a framing/identity error, one for a queued value outcome.
@@ -1183,7 +1165,6 @@ static int clipboard_command(const DVM_UIMessage *message)
     return 1;
 }
 
-
 /* Copy at most one acknowledged result or Unicode-aligned read fragment into message.
  * message is caller-owned. Returns one for a pending result; zero leaves ordinary input available.
  * Bytes are copied before native storage is freed; a later document edit is solely Dis policy. */
@@ -1230,7 +1211,6 @@ static int clipboard_event(DVM_UIMessage *message)
     }
     return 1;
 }
-
 
 /* Paint acknowledged caret/selection using the same face/size and FlashVM layout.
  * surface is borrowed; shown bounds the preview. Returns zero on layout/raster failure.
@@ -1394,7 +1374,6 @@ static int selection_geometry(FVM_RasterSurface *surface, size_t shown)
     return ok;
 }
 
-
 /* Cull entire offscreen font contours before the bounded public raster API.
  * path/surface are borrowed, color is copied. Retained curves/control points stay exact;
  * this is conservative contour culling, never point clamping or glyph distortion. */
@@ -1481,7 +1460,6 @@ static FVM_Result draw_visible(const FVM_Path *path, FVM_RasterSurface *surface,
     return result;
 }
 
-
 /* Resolve an admitted byte insertion coordinate in one owned single-line field layout.
  * layout is borrowed; out receives native pixels. Returns zero on invalid geometry, without policy changes. */
 static int field_position(const FVM_TextLayout *layout, size_t byte, double *out)
@@ -1508,7 +1486,6 @@ static int field_position(const FVM_TextLayout *layout, size_t byte, double *out
     }
     return 1;
 }
-
 
 /* Draw a channel-published prompt/status field over the document surface.
  * surface is borrowed; mode/text/selection are copied Dis values. Returns one only on real rendering. */
@@ -1698,7 +1675,6 @@ static int render_panel(FVM_RasterSurface *surface)
     return result == FVM_OK;
 }
 
-
 /* Reserve a measured strip and update only the native source field's available width.
  * Uses copied viewport/font/visibility data; returns zero on font/field errors, never edits source. */
 static int measure_gutter(void)
@@ -1741,7 +1717,6 @@ static int measure_gutter(void)
     fvm_value_number(&value, canvas_width - gutter_width);
     return fvm_object_set(context, field, "_width", &value) == FVM_OK;
 }
-
 
 /* Paint logical numbers at the actual source layout baselines, covering scrolled source ink.
  * surface is borrowed, layout contains only the acknowledged viewport. No source parsing/mutation. */
@@ -1814,7 +1789,6 @@ static int render_gutter(FVM_RasterSurface *surface)
     return 1;
 }
 
-
 /* Prepare a complete owner-only document view as detached native paint commands.
  * recording_frame is borrowed and receives owned paths. Return one on success or
  * zero on layout/geometry/allocation failure; no pixels, files or SDL are touched. */
@@ -1873,7 +1847,6 @@ static int prepare_frame(void)
     }
     return 1;
 }
-
 
 /* Present only completed native pixels on the UI owner; SDL and capture stay here.
  * No VM state enters the raster worker. Returns zero on SDL/file failure. */
@@ -1962,7 +1935,6 @@ static int present_pixels(void)
     return 1;
 }
 
-
 /* Collect the newest detached raster result; owner-only, wait is explicit capture mode.
  * Return one for ready or idle, zero on native failure. Never publish a stale-size frame. */
 static int collect_frame(int wait)
@@ -2043,7 +2015,6 @@ static int collect_frame(int wait)
     return ok;
 }
 
-
 /* Prepare independent native geometry and submit without waiting for rasterization.
  * [GC:] All VM/font queries and collection remain on this owner. Worker paths have
  * no heap references. Capture deliberately waits; replay input advances only after owner presentation. */
@@ -2066,7 +2037,6 @@ static int render(void)
     raster_pending = 1;
     return collect_frame(capture_path != NULL);
 }
-
 
 /* Paint the latest complete desktop on its sole VM owner and enqueue copied pixels.
  * Returns one on success, zero on allocation/render failure. No managed object enters
@@ -2118,16 +2088,15 @@ static int keyboard_waiting(void)
     return event.type == SDL_TEXTINPUT || event.type == SDL_KEYDOWN || event.type == SDL_KEYUP;
 }
 
-
 /* Inspect only the queued head during an established drawing capture. New hits
  * still require presented geometry; no event is consumed or crosses a release. */
 static int paint_motion_waiting(void)
 {
     SDL_Event event;
-    return !postponed_valid && vector_drag && SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1 &&
+    return !postponed_valid && vector_drag &&
+           SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) == 1 &&
            (event.type == SDL_MOUSEMOTION || event.type == SDL_FINGERMOTION);
 }
-
 
 /* Return whether native input must wait for matching pixels. Keyboard/text can
  * use the latest acknowledged Dis view. Replay/capture stays deterministic, and
@@ -2171,7 +2140,6 @@ paint_ready(FVM_Context *c, FVM_Object *receiver, unsigned count, const FVM_Valu
     return FVM_OK;
 }
 
-
 /* Coalesce notifications for the latest complete Dis view. Return0 on failure.
  * [GC:] Pin a native notification until teardown; the queue separately roots it.
  * This only posts work. No raster/layout/Dis mutation happens synchronously. */
@@ -2197,7 +2165,6 @@ static int request_paint(void)
     desktop_dirty = 1;
     return 1;
 }
-
 
 /* Assemble ordered Dis snapshot fragments, publishing TextField only at selection boundary.
  * message is borrowed, never retained. Returns zero on malformed/stale/inconsistent framing. */
@@ -2436,7 +2403,6 @@ int dvm_editor_present(const DVM_UIMessage *message)
     return 1;
 }
 
-
 /* Convert one actual glyph-layout hit into a source scalar proposal.
  * Coordinates are borrowed pixel values. Returns -1 if no completed layout is available. */
 static long hit_position(double x, double y)
@@ -2507,7 +2473,6 @@ static long hit_position(double x, double y)
     return position;
 }
 
-
 /* Propose a scalar in the completed single-line field using its actual label/scroll layout.
  * Coordinates are native pixels. Returns -1 outside the footer or before a valid completed layout. */
 static long field_hit(double x, double y)
@@ -2575,7 +2540,6 @@ static long field_hit(double x, double y)
     }
     return scalar;
 }
-
 
 /* Resolve a copied raw pointer event using only the completed actual glyph layout.
  * message is replaced with a value request carrying revision and view ticket; Dis decides policy. */
@@ -2981,8 +2945,14 @@ int dvm_editor_event(DVM_UIMessage *message)
                     message->id = 1;
                     message->code = DVM_DESK_POINTER;
                     message->flags = dvm_desktop_ticket();
-                    snprintf(message->text, 41, "%08x%08x%08x%08x%08x", 3, 1, (unsigned int)widget,
-                        (unsigned int)point, (unsigned int)ink_token);
+                    snprintf(message->text,
+                             41,
+                             "%08x%08x%08x%08x%08x",
+                             3,
+                             1,
+                             (unsigned int)widget,
+                             (unsigned int)point,
+                             (unsigned int)ink_token);
                     message->size = 40;
                     ink_token = 0;
                     vector_drag = 0;
@@ -3061,9 +3031,25 @@ int dvm_editor_event(DVM_UIMessage *message)
             {
                 int x;
                 int y;
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+                x = event.wheel.mouseX;
+                y = event.wheel.mouseY;
+#else
                 SDL_GetMouseState(&x, &y);
+#endif
                 message->first = x * 20;
                 message->second = y * 20;
+            }
+            if (dvm_desktop_active())
+            {
+                FVM_KeyboardState state;
+                memset(&state, 0, sizeof(state));
+                state.struct_size = sizeof(state);
+                if (fvm_input_get_keyboard(context, &state) == FVM_OK && !state.down[FVM_KEY_CONTROL])
+                {
+                    unsigned int steps = dvm_editor_wheel_batch(&event);
+                    message->flags = steps > 1 ? DVM_EDITOR_WHEEL_PHASE + steps : 0;
+                }
             }
             message->kind = DVM_UI_POINTER;
             message->code = event.wheel.y > 0 ? FVM_MOUSE_WHEEL_UP : FVM_MOUSE_WHEEL_DOWN;
@@ -3179,9 +3165,8 @@ int dvm_editor_event(DVM_UIMessage *message)
             return 0;
         }
         resolve_pointer(message);
-        if (vector_drag && !ink_token && message->kind == DVM_UI_REQUEST &&
-            message->code == DVM_DESK_POINTER && message->size == 32 &&
-            (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN))
+        if (vector_drag && !ink_token && message->kind == DVM_UI_REQUEST && message->code == DVM_DESK_POINTER &&
+            message->size == 32 && (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN))
         {
             unsigned long tool, color, wide;
             unsigned long point;
@@ -3204,9 +3189,9 @@ int dvm_editor_event(DVM_UIMessage *message)
             {
                 long point;
                 double x = event.type == SDL_MOUSEMOTION ? motion_points[index].motion.x
-                    : motion_points[index].tfinger.x * canvas_width;
+                                                         : motion_points[index].tfinger.x * canvas_width;
                 double y = event.type == SDL_MOUSEMOTION ? motion_points[index].motion.y
-                    : motion_points[index].tfinger.y * canvas_height;
+                                                         : motion_points[index].tfinger.y * canvas_height;
                 if (dvm_desktop_vector_point(vector_drag, x, y, &point))
                 {
                     dvm_ink_point(ink_token, point);
@@ -3226,8 +3211,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         if (ink_token && (event.type == SDL_MOUSEBUTTONUP || event.type == SDL_FINGERUP))
         {
             unsigned long point;
-            if (message->size == 32 && hexword(message->text + 24, &point) &&
-                dvm_ink_end(ink_token, (long)point))
+            if (message->size == 32 && hexword(message->text + 24, &point) && dvm_ink_end(ink_token, (long)point))
             {
                 snprintf(message->text + 32, 9, "%08x", (unsigned int)ink_token);
                 message->size = 40; /* Only a frozen opaque token crosses on release. */
@@ -3251,7 +3235,6 @@ int dvm_editor_event(DVM_UIMessage *message)
     return -1;
 #endif
 }
-
 
 /* Tear down only after scheduler/channel routing is quiescent; null resources are allowed. */
 void dvm_editor_destroy(void)

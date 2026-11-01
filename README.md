@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1713**. [Русская версия](README.ru.md).
+Development version: **0.1714**. [Русская версия](README.ru.md).
 
-Current series: [v0.1713](docs/releases/v0.1713.md): responsive repeated vector controls and pointer-owned native ink without stray connecting segments.
+Current series: [v0.1714](docs/releases/v0.1714.md): bounded wheel input and independent cached vector geometry for responsive Fill/Pen changes; reviewed Inferno RV64/native64 synchronization.
 
 ## Browse documentation
 

@@ -15,7 +15,7 @@ typedef struct FramePath
     FVM_RasterColor color;  /* Copied straight-alpha ink. */
     int group;              /* 0 contour, 1 opacity begin, 2 opacity end. */
     double width;           /* Round stroke width, zero selects a fill. */
-    int stamp; /* Explicit approximate live-ink command, never ordinary Flash capture. */
+    int stamp;              /* Explicit approximate live-ink command, never ordinary Flash capture. */
     int even_odd;           /* Copied winding rule. */
     int left;               /* Inclusive canvas clip left. */
     int top;                /* Inclusive canvas clip top. */
@@ -286,9 +286,9 @@ static int same_command(const FramePath *a, const FramePath *b)
 {
     size_t index;
     if (a->group != b->group || (a->group && memcmp(&a->bounds, &b->bounds, sizeof(a->bounds))) ||
-        a->width != b->width || a->stamp != b->stamp || a->even_odd != b->even_odd || memcmp(&a->color, &b->color, sizeof(a->color)) ||
-        a->left != b->left || a->top != b->top || a->right != b->right || a->bottom != b->bottom ||
-        fvm_path_count(a->path) != fvm_path_count(b->path))
+        a->width != b->width || a->stamp != b->stamp || a->even_odd != b->even_odd ||
+        memcmp(&a->color, &b->color, sizeof(a->color)) || a->left != b->left || a->top != b->top ||
+        a->right != b->right || a->bottom != b->bottom || fvm_path_count(a->path) != fvm_path_count(b->path))
     {
         return 0;
     }
@@ -574,7 +574,7 @@ int dvm_editor_frame_node_key(DVM_EditorFrame *frame, const void *key, size_t si
 {
     SceneNode *node;
     unsigned char *copy;
-    if (!frame || !frame->recording_node || !key || !size || size > 4096)
+    if (!frame || !frame->recording_node || !key || !size || size > DVM_EDITOR_NODE_KEY_BYTES)
     {
         return 0;
     }
@@ -976,7 +976,7 @@ static int scene_prepare(DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
         const SceneNode *old = compatible ? &prior->nodes[node->id] : NULL;
         unsigned int parent = node->parent;
         unsigned int depth = 0;
-        bytes += (size_t)(node->width + 4) * (node->height + 4) * 4;
+        bytes += (size_t)(node->width + 4) * (node->height + 4) * 4 + node->key_size;
         if (bytes > DVM_EDITOR_SCENE_BYTES)
         {
             frame->scene_budget = 1;
@@ -1860,9 +1860,10 @@ FVM_Result dvm_editor_frame_render(void *value)
     }
     for (entry = frame->first; entry; entry = entry->next)
     {
-        FVM_Result result = entry->stamp
-            ? dvm_editor_stamp_draw(entry->path, &frame->surface, entry->color, entry->width, entry->even_odd)
-            : fvm_path_draw(entry->path, &frame->surface, entry->color, 0, 0);
+        FVM_Result result =
+            entry->stamp
+                ? dvm_editor_stamp_draw(entry->path, &frame->surface, entry->color, entry->width, entry->even_odd)
+                : fvm_path_draw(entry->path, &frame->surface, entry->color, 0, 0);
         if (result != FVM_OK)
         {
             return result;
@@ -1899,12 +1900,16 @@ void dvm_editor_frame_destroy(void *value)
     }
 }
 
-
 /* Ordinary command admission owns/clones the path first; mark only the newly
  * appended entry. An empty clip must not change the preceding painter command. */
-int dvm_editor_frame_stamp(DVM_EditorFrame *frame, const FVM_Path *path,
-                           FVM_RasterColor color, double width,
-                           int left, int top, int right, int bottom)
+int dvm_editor_frame_stamp(DVM_EditorFrame *frame,
+                           const FVM_Path *path,
+                           FVM_RasterColor color,
+                           double width,
+                           int left,
+                           int top,
+                           int right,
+                           int bottom)
 {
     FramePath *before = frame ? frame->last : NULL;
     if (!dvm_editor_frame_command(frame, path, color, width, 0, left, top, right, bottom))

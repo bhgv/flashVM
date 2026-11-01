@@ -50,4 +50,9 @@ void dvm_ink_cancel(unsigned long token);
 /* Retire previews for a document removed from the complete scene. */
 void dvm_ink_drop(unsigned long widget);
 void dvm_ink_reset(void);
+
+
+/* Return whether the native owner has any live/frozen preview for this widget.
+ * Scalar query only; no point arrays, allocation or VM access occurs. */
+int dvm_ink_has_preview(unsigned long widget);
 #endif

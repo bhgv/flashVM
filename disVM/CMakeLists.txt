@@ -90,6 +90,7 @@ if(BUILD_TESTING)
     set_tests_properties(disvm_native64_mkfiles PROPERTIES TIMEOUT 120
       ENVIRONMENT "NATIVE_MK=${DVM_MK_EXECUTABLE};TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
   endif()
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RV64TargetReview.cmake")
   # Selected production regressions and their manifest-owned fixture dependencies.
   foreach(driver
     integer-ops
@@ -160,6 +161,7 @@ if(BUILD_TESTING)
     clone-owners
     heap-clones
     riscv-cache
+    riscv-bridge-oracle
     heap-preflight
     reference-slots
     string-branches

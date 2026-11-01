@@ -654,6 +654,14 @@ init()
                     request.phase = code - 4;
                 }
                 if (code == 4 || code == 5) {
+                    # Native same-direction bursts carry2..16 packet steps in
+                    # private phases18..32. Legacy pointer phases0..3 stay one.
+                    steps := 1;
+                    if (phase >= 18 && phase <= 32) {
+                        steps = phase - 16;
+                    } else if (phase < 0 || phase > 3) {
+                        continue;
+                    }
                     request.operation = desk->Scroll;
                     if (event.first < 80 || event.first >= width - Idetools->RightWidth) {
                         request.operation = desk->RailScroll;
@@ -662,9 +670,9 @@ init()
                             request.window = 3;
                         }
                     }
-                    request.x = 120;
+                    request.x = steps * 120;
                     if (code == 4) {
-                        request.x = -120;
+                        request.x = -steps * 120;
                     }
                 }
                 if (phase == 2 && pointing == 0 && (code == 1 || code == 6 || code == 7)) {

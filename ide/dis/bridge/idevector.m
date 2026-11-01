@@ -54,10 +54,15 @@ Idevector: module
         nundo: int; # Initialized Undo stack size.
         redo: array of array of ref Shape; # Up to16 immutable subsequent states.
         nredo: int; # Initialized Redo stack size.
+        wired: array of ref Shape; # Immutable committed identity represented by wirebody.
+        wirebody: string; # Cached geometry bytes beginning with the shape count.
+        wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.
     };
 
     # Allocate a clean empty document and private history. No I/O or channel operation.
     create: fn(): ref Document;
+    # Sole owner/worker precomputes immutable committed wire bytes before handoff.
+    preparewire: fn(doc: ref Document);
     # Apply logical pointer phase1/2/3. Preserve samples and show raw ink until release.
     # Release commits one Undo unit, then refines Brush/Pen synchronously for pure clients.
     # At capacity, Limit commits the retained raw trace; no earlier points are erased.

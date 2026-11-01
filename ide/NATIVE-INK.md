@@ -138,3 +138,16 @@ fails the repeated-control predicate. With only the header correction it still
 fails the independent no-foreign/hover-ink predicate. These are headless SDL
 queue/raster and actual Dis worker gates, not physical-device or measured-FPS
 acceptance. Geometry/refinement algorithms and SWF/Dis wire formats are unchanged.
+
+## Cached controls and bounded wheel work (v0.1714)
+
+Fill/Pen/color changes reuse immutable geometry wire bytes and, for fully visible
+opaque panes, a separate associated canvas bitmap. The refinement worker also
+prepares completed geometry bytes before owner publication. Controls and live ink
+remain separate layers; large keys, clipping and animation use the established
+capture fallback. Keys count against the 64 MiB scene budget. Rebuild all dependent
+Dis modules together because the private Document module signature changed.
+
+Wheel batching is limited to 16 same-direction/device/window/location packets and
+preserves each legacy 120-pixel step. Key events, reversal and Ctrl zoom remain FIFO
+fences. Details and reproducible scope: [v0.1714](../docs/releases/v0.1714.md).

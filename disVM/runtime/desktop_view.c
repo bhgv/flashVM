@@ -20,7 +20,6 @@
 #define DESK_TEXT 1024U /* Maximum copied UTF-8 payload. */
 #define DESK_META 72U   /* parent/x/y/width/height/style/caret/mirror/anchor words. */
 
-
 /* One immutable copied scene item and its persistent owner-local capabilities. */
 typedef struct DeskItem
 {
@@ -57,11 +56,15 @@ static unsigned long ticket;              /* Committed view token. */
 static long tablepan;                     /* Logical horizontal viewport translation in physical pixels. */
 static unsigned long reveal_epoch;        /* Explicit Dis-owned reveal proposal identity. */
 static unsigned long tablezoom = 100;     /* Uniform scale of the table MovieClip only. */
-static unsigned long offset;              /* Table scroll magnitude. */
-static unsigned int width;                /* Committed canvas pixels. */
-static unsigned int height;               /* Committed canvas pixels. */
-static int pending;                       /* A declared scene is being assembled. */
-static int trace; /* Explicit replay diagnostic mode; ordinary windows do not dump source text. */
+static int prepared_retained;             /* Owner-only layer split policy for the current detached frame. */
+static const DVM_EditorFrame *prepared_prior; /* Borrowed displayed baseline during owner preparation. */
+static int deferred_vector;                   /* Current pane's native ink is captured after its chrome node closes. */
+static FVM_Affine deferred_world; /* Copied current source-pane transform, never worker-shared mutable state. */
+static unsigned long offset;      /* Table scroll magnitude. */
+static unsigned int width;        /* Committed canvas pixels. */
+static unsigned int height;       /* Committed canvas pixels. */
+static int pending;               /* A declared scene is being assembled. */
+static int trace;                 /* Explicit replay diagnostic mode; ordinary windows do not dump source text. */
 static FVM_Path *text_paths[DESK_SLOTS];       /* Owner-local untransformed glyph outlines. */
 static FVM_Path *syntax_paths[DESK_SLOTS][4];  /* Detached colour groups2..5, sharing whole-field shaping. */
 static DeskItem text_keys[DESK_SLOTS];         /* Immutable layout keys; position is deliberately excluded. */
@@ -76,7 +79,6 @@ static int active;                             /* A desktop scene has been admit
 #define VECTOR_SHAPES 32U    /* Matching portable document path bound. */
 #define VECTOR_NODES 16384U  /* Complete document command bound. */
 
-
 /* Detached scalar command. Managed/native object addresses never enter the stream. */
 typedef struct VectorNode
 {
@@ -87,7 +89,6 @@ typedef struct VectorNode
     unsigned long cy;   /* Quadratic control Y, zero otherwise. */
 } VectorNode;
 
-
 /* Immutable path style and range into its pane-owned detached node array. */
 typedef struct VectorShape
 {
@@ -97,7 +98,6 @@ typedef struct VectorShape
     unsigned int first;  /* First node in the detached array. */
     unsigned int count;  /* Path command count2..4096. */
 } VectorShape;
-
 
 /* One staged vector snapshot. Only the FlashVM owner reads/writes it; raster
  * workers receive copied contours through the existing immutable frame pipeline. */
@@ -122,7 +122,6 @@ static FVM_Object
     *vector_buttons[DESK_SLOTS][16]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
 static VectorScene vectors[9];       /* Stable pane identities1..8, reset at scene Begin. */
 
-
 /* Owner-local visual interpolation; no document, VM pointer or worker handle. */
 typedef struct DeskMotion
 {
@@ -141,7 +140,6 @@ static DeskMotion motions[9];             /* Value-only interpolation for eight 
 static DeskItem previous_windows[9];      /* Last complete logical window descriptors. */
 static unsigned char previous_present[9]; /* Previous scene identity membership. */
 
-
 /* Evaluate smoothstep with zero endpoint velocity. Borrow motion and write
  * caller-owned table-local position/scale; no allocation or VM access occurs. */
 static void motion_sample(const DeskMotion *motion, double *x, double *y, double *scale)
@@ -152,7 +150,6 @@ static void motion_sample(const DeskMotion *motion, double *x, double *y, double
     *y = motion->from_y + (motion->to_y - motion->from_y) * ease;
     *scale = motion->from_scale + (motion->to_scale - motion->from_scale) * ease;
 }
-
 
 /* Read the effective visual viewport; logical target stays Dis-owned. Outputs
  * are caller-owned scale/pan/scroll values. No allocation or VM state changes. */
@@ -166,7 +163,6 @@ static void camera_view(double *zoom, double *pan, double *scroll)
         motion_sample(&camera_motion, pan, scroll, zoom);
     }
 }
-
 
 /* Convert a copied window trajectory from canvas pixels into the current
  * table matrix. Borrow motion and write local x/y/scale; no VM handles escape. */
@@ -186,10 +182,8 @@ static void motion_local(const DeskMotion *motion, double *x, double *y, double 
     *scale /= zoom;
 }
 
-
 /* Observe a borrowed owner-local MovieClip's composed native matrix. */
 static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *output);
-
 
 /* Observe a complete typed scene and derive visual transitions only. Logical
  * visibility, focus, normal geometry and thumbnail ordering stay on Dis.
@@ -266,7 +260,6 @@ static void motion_commit(void)
     }
 }
 
-
 /* Advance visual time independently of SWF frames. elapsed is a copied bounded
  * delta in milliseconds; invalid deltas change nothing. Return one if a new
  * immutable raster snapshot is needed. Owner only; no document or event waits. */
@@ -321,7 +314,6 @@ static int capture_top;                 /* Current inclusive canvas capture clip
 static int capture_right;               /* Current exclusive canvas capture clip. */
 static int capture_bottom;              /* Current exclusive canvas capture clip. */
 
-
 /* Copy a borrowed world-space contour; callback never enters either VM. */
 static FVM_Result
 capture_path(void *unused, const FVM_Path *path, FVM_RasterColor color, double width_value, int even_odd)
@@ -340,7 +332,6 @@ capture_path(void *unused, const FVM_Path *path, FVM_RasterColor color, double w
                : FVM_OUT_OF_MEMORY;
 }
 
-
 /* Capture a solid MovieClip with a copied viewport, or use legacy owner rendering.
  * Both paths retain ordinary Flash geometry and painter ordering. */
 static FVM_Result draw_clip(FVM_Object *clip, FVM_RasterSurface *surface, const FVM_Affine *view)
@@ -352,7 +343,6 @@ static FVM_Result draw_clip(FVM_Object *clip, FVM_RasterSurface *surface, const 
     }
     return view ? fvm_movieclip_render_view(owner, clip, surface, view) : fvm_movieclip_render(owner, clip, surface);
 }
-
 
 /* Capture only a container's own body: its document children are independent
  * scene items and are captured later at their current matrices. item/surface
@@ -414,7 +404,6 @@ static FVM_Result draw_widget_clip(const DeskItem *item, FVM_RasterSurface *surf
     return result;
 }
 
-
 /* Decode one canonical hex word from a checked eight-byte span; output on success. */
 static int word(const char *text, unsigned long *output)
 {
@@ -441,7 +430,6 @@ static int word(const char *text, unsigned long *output)
     return 1;
 }
 
-
 /* Set one copied number on a same-context object; no pointer leaves this owner. */
 static int number(FVM_Object *object, const char *name, double value)
 {
@@ -449,7 +437,6 @@ static int number(FVM_Object *object, const char *name, double value)
     fvm_value_number(&input, value);
     return fvm_object_set(owner, object, name, &input) == FVM_OK;
 }
-
 
 /* Bind a retained context-local capability as an AS global, never a Dis value. */
 static int binding(const char *name, FVM_Object *object)
@@ -460,7 +447,6 @@ static int binding(const char *name, FVM_Object *object)
     value.object = object;
     return fvm_set_global(owner, name, &value) == FVM_OK;
 }
-
 
 /* Create a genuine MovieClip through the standard Flash method and parent edge.
  * parent/name/depth are borrowed; returned object stays rooted through that edge. */
@@ -478,7 +464,6 @@ static FVM_Object *child(FVM_Object *parent, const char *name, unsigned int dept
     return result.object;
 }
 
-
 /* Read admitted rail geometry from the complete copied scene. A scene without
  * a right rail owns the whole canvas. No theme constant or VM pointer escapes. */
 static unsigned long right_extent(void)
@@ -493,7 +478,6 @@ static unsigned long right_extent(void)
     }
     return 0;
 }
-
 
 /* Append one value rectangle to a retained MovieClip without clearing siblings.
  * Coordinates/extents/color are copied pixels; return zero on a VM call failure.
@@ -522,7 +506,6 @@ static int rectangle(FVM_Object *clip, double left, double top, double wide, dou
     }
     return fvm_object_call(owner, clip, "endFill", 0, NULL, &ignored) == FVM_OK;
 }
-
 
 /* Initialize owner-local scene state and linked AS bytecode once. The root pins
  * all child capabilities; partial startup is retired by destroy. Return success. */
@@ -580,7 +563,6 @@ int dvm_desktop_bind(FVM_Context *context, const unsigned char *font, size_t siz
     }
     return 1;
 }
-
 
 /* Parse a complete bounded private command stream. Every extent is checked
  * before dereference; no partial stream is paintable and no SVG/XML is parsed. */
@@ -644,7 +626,6 @@ static int vector_parse(VectorScene *scene)
     return 1;
 }
 
-
 /* Uniform logical canvas scale; page stays inside the pane beneath its toolbar.
  * Nonpositive means the current very small pane cannot display a drawing. */
 static double vector_scale(const DeskItem *item)
@@ -655,7 +636,6 @@ static double vector_scale(const DeskItem *item)
     }
     return fmin((item->width - 12) / 1040.0, (item->height - 86) / 640.0);
 }
-
 
 /* Draw one small copied line/curve icon through ordinary MovieClip methods.
  * cell selects presentation only; all control admission/semantics remain on Dis.
@@ -781,7 +761,6 @@ static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigne
     return 1;
 }
 
-
 /* Render one copied decimal digit as seven small solid line segments. Value is
  *0..9; geometry/color are caller-owned values, no font or document is accessed. */
 static int vector_digit(FVM_Object *clip, unsigned int value, double cx, double cy, double scale, unsigned long color)
@@ -820,7 +799,6 @@ static int vector_digit(FVM_Object *clip, unsigned int value, double cx, double 
     }
     return 1;
 }
-
 
 /* Update16 real child MovieClips with copied state. Source and thumbnail each
  * own their children through parent edges; workers receive only detached paths.
@@ -938,26 +916,23 @@ report:
     return 1;
 }
 
-
 /* Copy an immutable native ink path into the current raster frame. Existing
  * capture bounds clip it to the same admitted canvas; workers own all copies. */
 static int ink_emit(void *unused, const FVM_Path *path, FVM_RasterColor color, double wide)
 {
     (void)unused;
-    return dvm_editor_frame_command(prepared_frame, path, color, wide, 0,
-        capture_left, capture_top, capture_right, capture_bottom);
+    return dvm_editor_frame_command(
+        prepared_frame, path, color, wide, 0, capture_left, capture_top, capture_right, capture_bottom);
 }
-
 
 /* Only native live ink opts into approximate bitmap stamping. Standard Flash
  * contours and final vector paths continue through exact backend rasterization. */
 static int preview_emit(void *unused, const FVM_Path *path, FVM_RasterColor color, double wide)
 {
     (void)unused;
-    return dvm_editor_frame_stamp(prepared_frame, path, color, wide,
-        capture_left, capture_top, capture_right, capture_bottom);
+    return dvm_editor_frame_stamp(
+        prepared_frame, path, color, wide, capture_left, capture_top, capture_right, capture_bottom);
 }
-
 
 /* Append copied vector commands to the real owner-local MovieClip. Standard
  * Flash drawing methods produce contours later detached for raster workers.
@@ -1051,7 +1026,6 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
     return 1;
 }
 
-
 /* Build detached vector paths directly from the already validated copied
  * stream. AS/Dis still owns appearance and document geometry; no per-point
  * AVM1 method invocation or VM object allocation is needed for raster work. */
@@ -1070,16 +1044,18 @@ static int vector_capture(unsigned long widget, const DeskItem *content, const F
         const VectorShape *shape = &scene->shapes[shape_index];
         FVM_Path *path = NULL;
         FVM_Result result = fvm_path_create(&path);
-        FVM_RasterColor color = {(unsigned char)(shape->color >> 16),
-            (unsigned char)(shape->color >> 8), (unsigned char)shape->color, 255};
+        FVM_RasterColor color = {
+            (unsigned char)(shape->color >> 16), (unsigned char)(shape->color >> 8), (unsigned char)shape->color, 255};
         unsigned int index;
         for (index = 0; result == FVM_OK && index < shape->count; ++index)
         {
             const VectorNode *node = &scene->nodes[shape->first + index];
             FVM_PathCommand command;
             memset(&command, 0, sizeof(command));
-            command.verb = node->verb == 0 ? FVM_PATH_MOVE : node->verb == 1 ? FVM_PATH_LINE
-                : node->verb == 2 ? FVM_PATH_QUADRATIC : FVM_PATH_CLOSE;
+            command.verb = node->verb == 0   ? FVM_PATH_MOVE
+                           : node->verb == 1 ? FVM_PATH_LINE
+                           : node->verb == 2 ? FVM_PATH_QUADRATIC
+                                             : FVM_PATH_CLOSE;
             command.x[0] = 6 + (20 + node->x) * scale;
             command.y[0] = 80 + (20 + node->y) * scale;
             if (node->verb == 2)
@@ -1105,7 +1081,6 @@ static int vector_capture(unsigned long widget, const DeskItem *content, const F
     }
     return 1;
 }
-
 
 /* Validate complete scalar ranges and UTF-8 before any scene object mutation. */
 int dvm_desktop_message(const DVM_UIMessage *message)
@@ -1312,7 +1287,8 @@ int dvm_desktop_message(const DVM_UIMessage *message)
             root_id = items[index].parent == 12 ? 28 : items[index].parent + 8;
             for (root_index = 0; root_index < index; ++root_index)
             {
-                if (items[root_index].id == root_id && (items[root_index].parent == 1 || items[root_index].parent == 4) && !items[root_index].mirror)
+                if (items[root_index].id == root_id &&
+                    (items[root_index].parent == 1 || items[root_index].parent == 4) && !items[root_index].mirror)
                 {
                     found = 1;
                 }
@@ -1397,7 +1373,6 @@ int dvm_desktop_message(const DVM_UIMessage *message)
     return 1;
 }
 
-
 /* Compose actual local/parent matrices into caller-owned world output. parent
  * is a validated slot0..12; MDI parents recurse once through the table. Return
  * zero on failed observations. Owner-thread only; no managed reference escapes. */
@@ -1433,7 +1408,6 @@ static int world_matrix(FVM_Object *clip, unsigned long parent, FVM_Affine *outp
     output->y0 = group.yx * local.x0 + group.yy * local.y0 + group.y0;
     return 1;
 }
-
 
 /* Build the owner's uniform glyph layout shared by caret, selection and hit
  * measurement. Inputs are borrowed copied text and required output cells.
@@ -1480,7 +1454,6 @@ static int text_layout(const DeskItem *content,
     }
     return 1;
 }
-
 
 /* Propose one field-relative Unicode insertion offset from the last complete
  * actual MovieClip scene. x/y are copied canvas pixels; widget/position are
@@ -1641,7 +1614,6 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
     return 0;
 }
 
-
 /* Update a real caret MovieClip using the same face/wrap contract as its field.
  * content is immutable copied text; cursor remains owned beneath its widget. */
 static int caret_clip(FVM_Object *cursor, const DeskItem *content)
@@ -1714,7 +1686,6 @@ static int caret_clip(FVM_Object *cursor, const DeskItem *content)
     return ok;
 }
 
-
 /* Draw selection through actual MovieClip glyph rectangles. content is borrowed
  * copied presentation; selection is clipped to this viewport, never the source.
  * Return zero on layout/VM failure and destroy the temporary glyph layout before
@@ -1783,7 +1754,6 @@ static int selection_clip(FVM_Object *mark, const DeskItem *content)
     fvm_text_layout_destroy(layout);
     return ok;
 }
-
 
 /* Clip field ink and its genuine caret through a private bounded raster tile.
  * The tile copies existing pixels and is released before return; no unmanaged
@@ -1883,7 +1853,6 @@ static int field_ink(FVM_Path *path,
     return ok;
 }
 
-
 /* Draw logical source numbers beside the copied viewport. content/world are
  * borrowed owner values; no document is read. Wrapped continuations are blank,
  * and clipping suppresses labels crossing the window header or lower edge. */
@@ -1971,7 +1940,6 @@ static int gutter(const DeskItem *content, const FVM_Affine *world, FVM_RasterSu
     return ok;
 }
 
-
 /* Atomically replace detached colour contours using the same owner-held TextField.
  * content is copied scalar data; label/id belong to this VM owner. No worker sees
  * a VM/font handle. Failure retains the old cache and destroys every candidate. */
@@ -2037,7 +2005,6 @@ static int syntax_cache(FVM_Object *label, const DeskItem *content, unsigned lon
     text_keys[id] = *content;
     return 1;
 }
-
 
 /* Paint one retained widget. AS owns object property placement; the adapter only
  * supplies copied bindings and invokes standard MovieClip/TextField primitives. */
@@ -2329,18 +2296,32 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
         }
         /* A minimized pane remains a typed source for its thumbnail. Do not
          * submit its explicit hidden origin to the raster coordinate domain. */
-        if (item->id <= 8 && (item->parent == 1 || item->parent == 4) && item->x == 65536 && item->y == 65536 && !motions[item->id].active)
+        if (item->id <= 8 && (item->parent == 1 || item->parent == 4) && item->x == 65536 && item->y == 65536 &&
+            !motions[item->id].active)
         {
             return 1;
         }
         result = draw_widget_clip(item, surface);
-        if (result == FVM_OK && prepared_frame && content->id <= 8 &&
-            vectors[content->id].complete)
+        if (result == FVM_OK && prepared_frame && content->id <= 8 && vectors[content->id].complete)
         {
             FVM_Affine ink_world;
-            if (!world_matrix(clip, item->parent, &ink_world) ||
-                !vector_capture(content->id, content, &ink_world) ||
-                (!item->mirror && !dvm_ink_preview(content->id, &ink_world, vector_scale(content), preview_emit, NULL)))
+            if (!world_matrix(clip, item->parent, &ink_world))
+            {
+                return 0;
+            }
+            if (prepared_retained && vectors[content->id].used >= 48 &&
+                vectors[content->id].used - 48 + 2 * sizeof(item->width) <= DVM_EDITOR_NODE_KEY_BYTES &&
+                !item->mirror && item->style < 5 && !motions[item->id].active && !camera_motion.active &&
+                ink_world.xy == 0 && ink_world.yx == 0 && ink_world.xx > 0 && ink_world.yy > 0 && ink_world.x0 >= 0 &&
+                ink_world.y0 >= 48 && ink_world.x0 + ink_world.xx * content->width <= width &&
+                ink_world.y0 + ink_world.yy * content->height <= height)
+            {
+                deferred_vector = 1;
+                deferred_world = ink_world;
+            }
+            else if (!vector_capture(content->id, content, &ink_world) ||
+                     (!item->mirror &&
+                      !dvm_ink_preview(content->id, &ink_world, vector_scale(content), preview_emit, NULL)))
             {
                 return 0;
             }
@@ -2427,7 +2408,6 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
     return ok;
 }
 
-
 /* Retire absent scene slots on the FlashVM owner. present is a borrowed complete
  * scene mask; return zero on a VM operation/readback failure. Empty pooled clips
  * stay rooted for bounded reuse, while retired text and drawing are released.
@@ -2479,7 +2459,6 @@ static int retire(const unsigned char *present)
     }
     return 1;
 }
-
 
 /* Composite an unchanged complete window image, with 90% opacity during gestures.
  * The cache owns copied pixels, never VM objects. Return one on a matching image,
@@ -2549,7 +2528,6 @@ static int drag_image(const DeskItem *item, FVM_RasterSurface *surface)
     return 1;
 }
 
-
 /* Retain a bounded complete window image before transient blending. A partial
  * offscreen image is never mistaken for a full snapshot. Allocation failure
  * merely disables the optimization; ordinary painting remains authoritative. */
@@ -2584,7 +2562,6 @@ static void remember_window(const DeskItem *item, const FVM_RasterSurface *surfa
     }
     drag_keys[item->id] = *item;
 }
-
 
 /* Execute actual FlashVM object drawing on the owner, then hand only copied
  * pixels to detached presentation. No worker accesses managed scene objects. */
@@ -2683,16 +2660,14 @@ int dvm_desktop_draw(FVM_RasterSurface *surface)
     return 1;
 }
 
-
 /* Copied owner-side content key; placement and transient opacity are excluded. */
 typedef struct DeskRetainedKey
 {
     DeskItem item;              /* Exact immutable scalar content and local geometry descriptor. */
     unsigned int canvas_width;  /* Resize invalidates clipped local geometry. */
     unsigned int canvas_height; /* Canvas admission belongs to this capture. */
-    int eligible; /* Ordinary pane or immutable control, never a clipped/mirrored/vector snapshot. */
+    int eligible;               /* Ordinary pane or immutable control, never a clipped/mirrored/vector snapshot. */
 } DeskRetainedKey;
-
 
 /* Build a borrowed descriptor's initialized native key using its actual placement.
  * Complete visible ordinary panes and immutable controls can bypass MovieClip reconstruction. */
@@ -2713,14 +2688,61 @@ static void retained_key(DeskRetainedKey *key, const DeskItem *item, const FVM_A
     }
     key->canvas_width = width;
     key->canvas_height = height;
-    key->eligible =
-        (item->id <= 8 || item->parent == 3 || item->id >= 64) && !item->mirror &&
-        !(item->id <= 8 && (vectors[item->id].complete || motions[item->id].active)) &&
-        !camera_motion.active &&
-        world->xy == 0 && world->yx == 0 && world->xx > 0 && world->yy > 0 && world->x0 >= 2 && world->y0 >= 50 &&
-        world->x0 + world->xx * item->width <= width - 2 && world->y0 + world->yy * item->height <= height - 2;
+    key->eligible = (item->id <= 8 || item->parent == 3 || item->id >= 64) && !item->mirror &&
+                    !(item->id <= 8 && (vectors[item->id].complete || motions[item->id].active)) &&
+                    !camera_motion.active && world->xy == 0 && world->yx == 0 && world->xx > 0 && world->yy > 0 &&
+                    world->x0 >= 2 && world->y0 >= 50 && world->x0 + world->xx * item->width <= width - 2 &&
+                    world->y0 + world->yy * item->height <= height - 2;
 }
 
+/* Keep committed geometry independent of toolbar state and live C samples.
+ * Only fully visible opaque source panes qualify; clipped/mirrored/translucent
+ * cases retain the original combined capture. Exact key bytes exclude only the
+ * six current tool/history header words. Both baseline/frame remain owner-held.
+ */
+static int vector_layers(const DeskItem *item)
+{
+    const VectorScene *scene = &vectors[item->id];
+    unsigned int id = 96 + (unsigned int)item->id;
+    size_t prefix = 2 * sizeof(item->width);
+    size_t size = prefix + scene->used - 48;
+    unsigned char *key;
+    int reused;
+    int ok;
+    if (size > DVM_EDITOR_NODE_KEY_BYTES || !(key = malloc(size)))
+    {
+        return 0;
+    }
+    memcpy(key, &item->width, sizeof(item->width));
+    memcpy(key + sizeof(item->width), &item->height, sizeof(item->height));
+    memcpy(key + prefix, scene->bytes + 48, scene->used - 48);
+    ok = dvm_editor_frame_node_begin(prepared_frame, id, (unsigned int)item->id);
+    reused = ok && dvm_editor_frame_node_matches(prepared_prior, id, key, size);
+    ok = ok && (reused ? dvm_editor_frame_node_replay(prepared_frame, prepared_prior, id)
+                       : vector_capture(item->id, item, &deferred_world));
+    ok = ok && dvm_editor_frame_node_key(prepared_frame, key, size) &&
+         dvm_editor_frame_node_end(prepared_frame,
+                                   &deferred_world,
+                                   (unsigned int)item->width,
+                                   (unsigned int)item->height,
+                                   DVM_EDITOR_NODE_OPACITY);
+    free(key);
+    if (ok && trace)
+    {
+        printf("VECTORCACHE %lu %lu %d\n", ticket, item->id, reused);
+    }
+    if (ok && dvm_ink_has_preview(item->id))
+    {
+        ok = dvm_editor_frame_node_begin(prepared_frame, 104 + (unsigned int)item->id, (unsigned int)item->id) &&
+             dvm_ink_preview(item->id, &deferred_world, vector_scale(item), preview_emit, NULL) &&
+             dvm_editor_frame_node_end(prepared_frame,
+                                       &deferred_world,
+                                       (unsigned int)item->width,
+                                       (unsigned int)item->height,
+                                       DVM_EDITOR_NODE_OPACITY);
+    }
+    return ok;
+}
 
 /* Build detached painter commands from the complete owner-local MovieClip scene.
  * Capture ends before returning, including failures; workers receive no VM state. */
@@ -2748,6 +2770,8 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
         return 0;
     }
     prepared_frame = frame;
+    prepared_retained = retained;
+    prepared_prior = prior;
     capture_left = capture_top = 0;
     capture_right = (int)width;
     capture_bottom = (int)height;
@@ -2786,6 +2810,7 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
                 }
             }
         }
+        deferred_vector = 0;
         DeskRetainedKey key;
         int reused = 0;
         if (!retained)
@@ -2851,7 +2876,13 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
                 printf("\nSELECTION %lu %lu %ld %ld\n", ticket, item->id, item->caret, item->anchor);
             }
         }
+        if (ok && deferred_vector)
+        {
+            ok = vector_layers(item);
+        }
     }
+    prepared_retained = 0;
+    prepared_prior = NULL;
     prepared_frame = NULL;
     if (ok)
     {
@@ -2865,13 +2896,11 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
     return ok;
 }
 
-
 /* Prepare owner-held native layers using only a completed immutable baseline. */
 int dvm_desktop_prepare_cached(DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
 {
     return prepare_desktop(frame, prior, 1);
 }
-
 
 /* Resource-budget fallback and development comparison: capture ordinary world
  * vector commands without associated object images, retaining the same UI policy. */
@@ -2880,13 +2909,11 @@ int dvm_desktop_prepare_vector(DVM_EditorFrame *frame)
     return prepare_desktop(frame, NULL, 0);
 }
 
-
 /* Prepare a standalone snapshot without a displayed baseline; owner only. */
 int dvm_desktop_prepare(DVM_EditorFrame *frame)
 {
     return dvm_desktop_prepare_cached(frame, NULL);
 }
-
 
 /* Map stable capture against completed owner geometry; input never re-hits a
  * different window/toolbar while drawing. Off-page samples clamp, including Up. */
@@ -2929,7 +2956,6 @@ int dvm_desktop_vector_point(unsigned long widget, double x, double y, long *pos
     return 0;
 }
 
-
 /* Hit the visible header in actual paint order. Coordinates are copied canvas
  * pixels; no source or touch policy is acquired. Return zero for occlusion. */
 int dvm_desktop_header(double x, double y)
@@ -2961,7 +2987,6 @@ int dvm_desktop_header(double x, double y)
     return 0;
 }
 
-
 /* Return copied primitive state; neither observation allocates or invokes AS. */
 int dvm_desktop_active(void)
 {
@@ -2972,7 +2997,6 @@ unsigned long dvm_desktop_ticket(void)
 {
     return ticket;
 }
-
 
 /* [GC:] Drop the root pin while the borrowed context is live; all child/label
  * pointers become invalid after context teardown and must never reach workers. */
@@ -3022,7 +3046,6 @@ void dvm_desktop_destroy(void)
     memset(previous_present, 0, sizeof(previous_present));
     memset(previous_windows, 0, sizeof(previous_windows));
 }
-
 
 /* No managed object is exposed: style is read from the complete copied stream. */
 int dvm_desktop_ink_style(unsigned long widget, unsigned long *tool, unsigned long *color, unsigned long *width)

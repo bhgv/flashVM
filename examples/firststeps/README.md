@@ -46,3 +46,18 @@ pipeline. Run the two packaged SWFs to obtain `123` and `42`. The console runner
 is not a GUI player. Rebuild with the explicit tool paths above; generated files
 stay in the build directory. This is numerical-subset acceptance, not full
 source-language or Flash/platform compatibility.
+
+### Vector controls and wheel regression examples
+
+The desktop vector example is launched through build-menu item 8. After drawing
+or opening SVG, Fill (second from the right), Pen (rightmost) and color controls
+must retain the existing canvas without replaying its geometry. New strokes stay
+native until release; contour refinement and committed wire preparation run on
+the geometry worker. Rebuild the complete editor package when updating modules.
+
+The executable regression examples are
+`disVM/runtime/test_vector_controls_cache.py` and `test_scroll_batch.py` (run through
+CTest with the built editor, desktop module and test font). They compare canvas
+pixels, cache reuse, repeated scroll reversal and legacy wheel distances in both
+JIT and interpreter modes. See [v0.1714](../../docs/releases/v0.1714.md) and the
+[native drawing contract](../../ide/NATIVE-INK.md) for bounds and fallback cases.

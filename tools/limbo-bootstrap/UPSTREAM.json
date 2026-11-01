@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "ad8329707d9a9755b28a1d4165219795a4fc9d5f",
+  "revision": "f530f864d008efdacdb9ebd48082c458e537a32a",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -203,7 +203,8 @@
     "limbo/tests/symbol-output.py",
     "include/dis-operand.h",
     "limbo/tests/dis-constants.py",
-    "limbo/tests/README.dis-constants.md"
+    "limbo/tests/README.dis-constants.md",
+    "include/fdlibm-names.h"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -240,9 +241,10 @@
     "upstream/include/bio.h": "62dad44e0bf7846eaea75cf97b27c9777b562a3a82cfaaeded1803cb85307dd4",
     "upstream/include/dis-operand.h": "315c6857c255feaf2f76c144600cd4c7ea787c19e516c11e21e885e0ec419117",
     "upstream/include/fcall.h": "3d3ee67a0c6beb7be8cbf9d25bbefb01f1fea51ef5470d7e6e410cad7da3057f",
+    "upstream/include/fdlibm-names.h": "e0372621e36468c4b79df8bf14892cfe0e5c1de4ff5879c276c7cfb5dbadd043",
     "upstream/include/isa.h": "2c7f60da3b71c139c60bb0dc73d75fe289100d285055401813f358ba4cacacef",
     "upstream/include/libsec.h": "ab25752ebef701f4993377ee0a0a94b022fd1b3582ac6aac941780b87410239f",
-    "upstream/include/mathi.h": "f174db466f909de303d62de27cc373d8ee3a946523eadeca22ab09a30f98fd18",
+    "upstream/include/mathi.h": "edb6274113645001a4ea3f68ecaf261b88f35169e440c715e23007a6b18dcce2",
     "upstream/include/mp.h": "3622fabc72578c00ecd18b595daa359e5f78bb5b075ebf6c1ac5ddba8b2e45e5",
     "upstream/lib/legal/GPL": "91df39d1816bfb17a4dda2d3d2c83b1f6f2d38d53e53e41e8f97ad5ac46a0cad",
     "upstream/lib/legal/LGPL": "04ff402deb2f11cffd906bf851ad8b2c7178eab005833f641a4b6127212f8b3d",

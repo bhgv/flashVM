@@ -3,7 +3,8 @@
 #define DVM_EDITOR_RASTER_H
 #include "flashvm/path.h"
 
-#define DVM_EDITOR_SCENE_NODES 96U                   /* Stable retained layer IDs; zero is the composition root. */
+#define DVM_EDITOR_SCENE_NODES 128U                  /* Stable retained layer IDs; zero is the composition root. */
+#define DVM_EDITOR_NODE_KEY_BYTES (512U * 1024U)     /* Bounded exact vector geometry identity, not a lossy hash. */
 #define DVM_EDITOR_NODE_OPACITY 1000U                /* Fixed-point opacity:1000 opaque,900 exactly90 percent. */
 #define DVM_EDITOR_NODE_CONTENT 1U                   /* Native local commands changed: repaint associated bitmap. */
 #define DVM_EDITOR_NODE_TRANSFORM 2U                 /* Placement/opacity/order changed: compose old/new bounds. */
@@ -59,9 +60,14 @@ int dvm_editor_frame_command(DVM_EditorFrame *frame,
 /* Copy an explicitly approximate live-ink stroke into the current painter node.
  * Unlike ordinary Flash capture, only this command may use the native nib stamp.
  * Borrow path/frame exclusively during preparation; return zero on admission error. */
-int dvm_editor_frame_stamp(DVM_EditorFrame *frame, const FVM_Path *path,
-                           FVM_RasterColor color, double width,
-                           int left, int top, int right, int bottom);
+int dvm_editor_frame_stamp(DVM_EditorFrame *frame,
+                           const FVM_Path *path,
+                           FVM_RasterColor color,
+                           double width,
+                           int left,
+                           int top,
+                           int right,
+                           int bottom);
 
 
 /* Append a bounded opacity-group boundary. begin=1 saves the underlying tile;

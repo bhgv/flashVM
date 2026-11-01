@@ -4,11 +4,11 @@
 #include "desktop_view.h"
 #include "editor_ink.h"
 #include "editor_ink_pointer.h"
+#include "editor_wheel_batch.h"
 #include <SDL.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 
 /* Preserve active invariants in Release and print a useful ownership-stage label. */
 static void require(int ok, const char *label)
@@ -19,7 +19,6 @@ static void require(int ok, const char *label)
         exit(1);
     }
 }
-
 
 /* Send an admitted copied scene value to the real native editor adapter. */
 static void send(unsigned long ticket, unsigned long code, long first, long second, const char *bytes)
@@ -36,7 +35,6 @@ static void send(unsigned long ticket, unsigned long code, long first, long seco
     require(dvm_editor_present(&out), "actual copied scene admission");
 }
 
-
 /* An empty real vector pane, large enough for a closed native trajectory. The
  * scene is the acknowledged layout boundary, not a mock hit/paint implementation. */
 static void scene(unsigned long ticket)
@@ -49,7 +47,6 @@ static void scene(unsigned long ticket)
     send(ticket, DVM_DESK_VECTOR_DATA, 1, 0, "0000000100245ac40000000800000000000000000000000000000000");
     send(ticket, DVM_DESK_END, 0, 0, "");
 }
-
 
 /* Inject copied SDL values into the real FIFO. No Limbo/UI message is synthesized. */
 static void pointer(Uint32 type, int x, int y)
@@ -76,7 +73,6 @@ static void pointer(Uint32 type, int x, int y)
     require(SDL_PushEvent(&event) == 1, "queue native pointer");
 }
 
-
 /* Poll the actual owner/presentation gate until a channel proposal is produced.
  * Native batch-only progress returns zero and must not be counted as a Dis event. */
 static DVM_UIMessage proposal(void)
@@ -97,7 +93,6 @@ static DVM_UIMessage proposal(void)
     memset(&event, 0, sizeof(event));
     return event;
 }
-
 
 /* Exercise repeated toolbar clicks as ordinary controls, never maximize/draw.
  * ticket advances at the copied Dis-scene boundary; x is a canvas pixel, offset
@@ -129,7 +124,6 @@ static void toolbar_click(unsigned long *ticket, int x, long offset, unsigned in
     require(event.code == DVM_DESK_POINTER && event.size == 32, "toolbar release creates no stroke");
     scene(++*ticket);
 }
-
 
 /* A missing release is repaired at the last admitted point. Foreign pointers
  * cannot append/end this capture, and hover coordinates must not become a tail.
@@ -183,7 +177,6 @@ static void capture_recovery(unsigned long *ticket)
     toolbar_click(ticket, 810, -17, 2);
 }
 
-
 /* SDL's synthetic mouse copies must not fence an active capture. The real
  * release is queued last and must be consumed before any End is delivered.
  * Finger identity checks cover separate contacts on the same touch surface.
@@ -229,6 +222,89 @@ static void synthetic_copies(unsigned long *ticket)
     require(dvm_editor_ink_pointer(&begin, &event) == 0, "another window cannot release a finger capture");
 }
 
+/* A native wheel burst must not build an unbounded per-tick UI backlog.
+ * ticket is the completed copied scene boundary. Preserve all128 packet steps
+ * as eight bounded messages, keeping the direction reversal as a FIFO fence.
+ */
+static void wheel_bursts(unsigned long *ticket)
+{
+    SDL_Event wheel;
+    DVM_UIMessage out;
+    unsigned int index;
+    SDL_zero(wheel);
+    wheel.type = SDL_MOUSEWHEEL;
+    wheel.wheel.windowID = 1;
+    wheel.wheel.which = 1;
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+    wheel.wheel.mouseX = 700;
+    wheel.wheel.mouseY = 500;
+#endif
+    for (index = 0; index < 128; index++)
+    {
+        wheel.wheel.y = index < 64 ? -1 : 1;
+        require(SDL_PushEvent(&wheel) == 1, "queue wheel burst and reversal");
+    }
+    for (index = 0; index < 8; index++)
+    {
+        char prefix[17];
+        out = proposal();
+        snprintf(prefix, sizeof(prefix), "%08x%08x", 32, index < 4 ? 5 : 4);
+        require(out.code == DVM_DESK_POINTER && out.size == 32 && !memcmp(out.text, prefix, 16),
+                "sixteen wheel packets become one bounded scroll message");
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+        require(out.first == 700 && out.second == 500, "wheel uses its recorded pointer position");
+#endif
+        scene(++*ticket);
+    }
+    require(!SDL_HasEvent(SDL_MOUSEWHEEL), "wheel burst drained without deferred tick debt");
+}
+
+/* A partial burst must stop at reversal, key or another device/position.
+ * The head is already removed; this fixture owns only the copied SDL queue.
+ */
+static void wheel_fences(void)
+{
+    SDL_Event head;
+    SDL_Event next;
+    unsigned int variant;
+    SDL_zero(head);
+    head.type = SDL_MOUSEWHEEL;
+    head.wheel.windowID = 1;
+    head.wheel.which = 1;
+    head.wheel.y = 1;
+    for (variant = 0; variant < 4; variant++)
+    {
+        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+        next = head;
+        if (variant == 0)
+        {
+            next.wheel.y = -1;
+        }
+        if (variant == 1)
+        {
+            next.wheel.which = 2;
+        }
+        if (variant == 2)
+        {
+            next.type = SDL_KEYDOWN;
+        }
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+        if (variant == 3)
+        {
+            next.wheel.mouseX = 900;
+        }
+#else
+        if (variant == 3)
+        {
+            next.wheel.windowID = 2;
+        }
+#endif
+        require(SDL_PushEvent(&next) == 1, "queue wheel fence");
+        require(dvm_editor_wheel_batch(&head) == 1 && SDL_HasEvents(SDL_FIRSTEVENT, SDL_LASTEVENT),
+                "partial wheel batch leaves the FIFO fence untouched");
+    }
+    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+}
 
 /* First drive600 real queued motions with only Begin/frozen End proposals and
  * inspect detached pixels. Then check controls and recovered pointer ownership. */
@@ -300,10 +376,13 @@ int dvm_test_live_ink(const char *font)
         toolbar_click(&ticket, 810, -17, 2);
         capture_recovery(&ticket);
         synthetic_copies(&ticket);
+        wheel_bursts(&ticket);
+        wheel_fences();
     }
     dvm_editor_destroy();
-    printf("PASS native SDL ink: initial600 motions/2 proposals, repeated controls, pointer recovery, synthetic copies; frozen bytes=%lu, stamped pixels=%u\n",
-           (unsigned long)(event.size - 32),
-           ink);
+    printf(
+        "PASS native SDL ink: initial600 motions/2 proposals, repeated controls, pointer recovery, synthetic copies; frozen bytes=%lu, stamped pixels=%u\n",
+        (unsigned long)(event.size - 32),
+        ink);
     return 0;
 }
