@@ -672,11 +672,27 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         } else if (request.operation == VectorControl) {
             e := request.event;
-            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 19 ||
-                e.first != 0 || e.second != 0 || e.text != "") {
+            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 23 ||
+                ((e.code < 21 || e.code > 22) && (e.first != 0 || e.second != 0)) || e.text != "") {
                 status = Idecore->Invalid;
             } else if (e.flags != doc.revision || len doc.points != 0) {
                 status = Idecore->Conflict;
+            } else if (e.code >= 20) {
+                if (e.code == 23) {
+                    vector->viewport(doc,0,500,300);
+                } else if (e.code == 21 || e.code == 22) {
+                    if (doc.tool == vector->Zoom) {
+                        vector->viewport(doc,43-2*e.code,e.first,e.second);
+                    }
+                } else {
+                    vector->finish(doc);
+                    if (doc.tool == vector->Zoom) {
+                        doc.tool = doc.previous;
+                    } else {
+                        doc.previous = doc.tool;
+                        doc.tool = vector->Zoom;
+                    }
+                }
             } else if (e.code == 18 || e.code == 19) {
                 vector->finish(doc);
                 doc.tool = vector->Select + e.code - 18;
@@ -790,6 +806,9 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         }
         body := labels->state(doc.tool, doc.width, doc.fill);
+        if (doc.tool == vector->Zoom || doc.zoom != 100) {
+            body += " | View:" + string doc.zoom + "%";
+        }
         if (len doc.chain != 0) {
             body += " | Finish figure: checkmark";
         }

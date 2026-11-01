@@ -79,6 +79,7 @@ init()
     require(vector != nil, "load");
     wirecache();
     editing();
+    brushviewport();
     doc := vector->create();
     require(doc.revision == 0 && doc.saved == 0 && len doc.shapes == 0, "clean document");
     require(vector->pointer(doc, 2, 20, 20) == vector->Conflict, "move without press");

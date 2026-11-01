@@ -69,3 +69,43 @@ editing()
             ellipse.shapes[0].nodes[1].cx == curve.cx-10 &&
             ellipse.shapes[0].nodes[1].x == curve.x, "quadratic control preserves endpoint");
 }
+
+
+# Check relative brush fitting and camera-only transactions using exact source
+# values. Both quadratic controls remain ordinary editable contour fields.
+brushviewport()
+{
+    points := array[] of {Idevector->Point(100,100),Idevector->Point(103,102),
+        Idevector->Point(106,104),Idevector->Point(109,105),Idevector->Point(112,106),
+        Idevector->Point(800,100),Idevector->Point(800,500),Idevector->Point(100,100)};
+    fitted := vector->brushfit(points,700,400);
+    require(fitted != nil && len fitted < len points && fitted[1].verb == vector->Quadratic &&
+            fitted[2].verb == vector->Quadratic, "dense 1/40 cluster uses a two-handle spline");
+    require(fitted[1].x == 106 && fitted[1].y == 104 && fitted[2].x == 112,
+            "spline interpolates endpoints and middle knot");
+    d := vector->create();
+    d.shapes = array[] of {ref Idevector->Shape(16r245ac4,1,0,fitted,nil,0)};
+    d.tool = vector->Nodes;
+    vector->pointer(d,1,100,100);
+    vector->pointer(d,3,100,100);
+    handle := fitted[1];
+    vector->pointer(d,1,handle.cx,handle.cy);
+    vector->pointer(d,3,handle.cx+2,handle.cy+3);
+    require(d.shapes[0].nodes[1].cx == handle.cx+2 && d.shapes[0].nodes[2].cx == fitted[2].cx,
+            "nearest fitted spline handle moves independently");
+    d.tool = vector->Zoom;
+    source := vector->svg(d);
+    vector->pointer(d,1,200,100);
+    vector->pointer(d,2,450,250);
+    vector->pointer(d,3,450,250);
+    require(d.zoom == 400 && d.center.x == 325 && d.center.y == 175 && d.revision == 1 && d.nundo == 1,
+            "marquee fits and centres camera without a source transaction");
+    wire := vector->wire(d);
+    require(wire[0:8] == "00010008" && vector->svg(d) == source,
+            "nondefault camera is private presentation metadata only");
+    vector->viewport(d,1,325,175);
+    require(d.zoom == 500 && d.center.x == 325 && d.center.y == 175, "focused wheel camera step");
+    vector->viewport(d,0,0,0);
+    require(d.zoom == 100 && d.center.x == 500 && d.center.y == 300 && vector->svg(d) == source,
+            "1:1 reset preserves source");
+}

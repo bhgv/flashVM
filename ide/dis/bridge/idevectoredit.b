@@ -247,16 +247,23 @@ editpointer(doc: ref Document, phase, x, y: int): int
                 }
             } else {
                 hit := -1;
+                best := 65;
                 for (i := 0; i < len shape.nodes; i++) {
                     n := shape.nodes[i];
                     if (n.verb == Close) {
                         continue;
                     }
-                    if (editnear(x, y, n.x, n.y, 8)) {
+                    distance := (x-n.x)*(x-n.x)+(y-n.y)*(y-n.y);
+                    if (distance <= 64 && distance <= best) {
                         hit = i*2;
+                        best = distance;
                     }
-                    if (n.verb == Quadratic && editnear(x, y, n.cx, n.cy, 8)) {
-                        hit = i*2+1;
+                    if (n.verb == Quadratic) {
+                        distance = (x-n.cx)*(x-n.cx)+(y-n.cy)*(y-n.cy);
+                        if (distance <= 64 && distance <= best) {
+                            hit = i*2+1;
+                            best = distance;
+                        }
                     }
                 }
                 if (hit >= 0) {
@@ -365,6 +372,22 @@ editbox(nodes: array of Node, at, l, t, r, b: int): int
 # Handles and curve control guides use the same logical coordinate system as ink.
 editoverlay(doc: ref Document): ref Shape
 {
+    if (doc.tool == Zoom && len doc.points == 2) {
+        nodes := array[5] of Node;
+        a := doc.points[0];
+        b := doc.points[1];
+        if (a.x > b.x) {
+            (a.x,b.x) = (b.x,a.x);
+        }
+        if (a.y > b.y) {
+            (a.y,b.y) = (b.y,a.y);
+        }
+        editbox(nodes,0,a.x,a.y,b.x,b.y);
+        return ref Shape(16r1687df,1,0,nodes,nil,0);
+    }
+    if (doc.tool == Zoom) {
+        return nil;
+    }
     e := doc.edit;
     if (e == nil || e.selected < 0 || e.selected >= len doc.shapes) {
         return nil;

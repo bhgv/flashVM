@@ -8,8 +8,8 @@
  * No VM or document is accessed. Negative/out-of-range indices are refused. */
 static int dvm_vector_control_rect(unsigned int index, double width, double *x, double *y)
 {
-    static const unsigned int rows[19] = {2, 3, 4, 5, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 11, 6, 12, 0, 1};
-    if (index >= 19 || width < 80)
+    static const unsigned int rows[20] = {3, 4, 5, 6, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 12, 7, 13, 0, 1, 2};
+    if (index >= 20 || width < 80)
     {
         return 0;
     }

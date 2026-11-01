@@ -1,3 +1,5 @@
+[Сплайны кисти и viewport](VECTOR-VIEWPORT.ru.md)
+
 [Редактирование фигур/узлов](VECTOR-EDITING.ru.md)
 
 [Живая кисть на C, фоновые задания и масштаб 1:1](NATIVE-INK.ru.md)

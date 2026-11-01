@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1723**. [English](README.md).
+Версия разработки: **0.1724**. [English](README.md).
 
-Текущая серия: [v0.1723](docs/releases/v0.1723.md): source locations Inferno, ограниченное чтение sidecar и координаты Unicode.
+Текущая серия: [v0.1724](docs/releases/v0.1724.md): сплайны кисти по 1/40, viewport холста и монотонный Sys.millisec.
 
 ## Просмотр документации
 

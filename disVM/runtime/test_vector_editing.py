@@ -22,7 +22,7 @@ def main():
         left, top = list(views.values())[-1][5][1:3]
         wide, high = 808, 580
         scale = min((wide - 80) / 1040, (high - 34) / 640)
-        rows = [2,3,4,5,7,8,9,10,0,1,2,3,4,5,11,6,12,0,1]
+        rows = [3,4,5,6,8,9,10,11,0,1,2,3,4,5,12,7,13,0,1,2]
 
         # Control and page coordinates are physical positions after maximization.
         def button(index):

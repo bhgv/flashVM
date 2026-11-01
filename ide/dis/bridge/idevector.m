@@ -3,7 +3,7 @@ Idevector: module
 {
     PATH: con "idevector.dis"; # Portable model/SVG implementation, no native UI dependency.
     Ok, Invalid, Limit, Conflict: con iota; # Success, bounded raw retention or explicit refusal.
-    Brush, Rectangle, Ellipse, Line, Pen, Select, Nodes: con iota + 1; # Authoring tools; paths remain editable values.
+    Brush, Rectangle, Ellipse, Line, Pen, Select, Nodes, Zoom: con iota + 1; # Authoring tools; paths remain editable values.
     Move, Segment, Quadratic, Close: con iota; # Generic path verbs; quadratic has one control.
     MaxShapes: con 32; # Per-document path budget.
     MaxNodes: con 4096; # Per-path command budget.
@@ -70,11 +70,17 @@ Idevector: module
         wirebody: string; # Cached geometry bytes beginning with the shape count.
         nativecapture: int; # Native preview owns active pixels; reuse committed wire body on Begin.
         chain: array of Node; # Immutable unfinished Line vertices, nil after Finish/closure.
+        zoom: int; # Canvas percent, 100 is fit/native page scale.
+        center: Point; # Logical viewport centre.
+        previous: int; # Authoring tool restored when Zoom toggles off.
         edit: ref Edit; # Selection never enters SVG/history or a render worker.
         control: int; # Copied Ctrl key state for additive node selection.
         wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.
     };
 
+    # Fit one bounded closed brush contour after release; nil refuses invalid input.
+    # Pure worker/model helper; emits existing editable quadratic controls.
+    brushfit: fn(points: array of Point, width, height: int): array of Node;
     # Allocate a clean empty document and private history. No I/O or channel operation.
     create: fn(): ref Document;
     # Sole owner/worker precomputes immutable committed wire bytes before handoff.
@@ -88,6 +94,8 @@ Idevector: module
     defer: fn(doc: ref Document, phase, x, y: int): int;
     # Refine every committed raw Brush/Pen in a private job document. No I/O/UI.
     refine: fn(doc: ref Document): int;
+    # Adjust viewport around a logical point; zero restores 1:1, no source/history edit.
+    viewport: fn(doc: ref Document, step, x, y: int);
     # End an unfinished open line figure without closing/filling it. Pure owner call.
     finish: fn(doc: ref Document);
     # Drop only the active uncommitted gesture; source/history remain unchanged.

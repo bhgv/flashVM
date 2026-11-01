@@ -88,4 +88,10 @@ int dvm_desktop_ink_style(unsigned long widget, unsigned long *tool, unsigned lo
 
 /* Copy the unfinished Line endpoint from an accepted scene; zero when absent. */
 int dvm_desktop_line_anchor(unsigned long widget, long *point);
+
+
+/* Pick the copied zoom-button role for native double-click/tap classification.
+ * Borrow only completed UI geometry; return zero for occlusion or no hit. */
+int dvm_desktop_zoom_button(double x, double y);
+
 #endif

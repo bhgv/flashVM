@@ -1,3 +1,5 @@
+[Brush splines and viewport](VECTOR-VIEWPORT.md)
+
 [Object/node editing](VECTOR-EDITING.md)
 
 # MDI vector editor: drawing and SVG

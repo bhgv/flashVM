@@ -8,11 +8,11 @@ include "idevectorlabels.m";
 # Returned strings are caller-owned immutable values; this pure call never blocks.
 state(tool, width, fill: int): string
 {
-    if (tool < Idevector->Brush || tool > Idevector->Nodes || width < 1 || width > 32 ||
+    if (tool < Idevector->Brush || tool > Idevector->Zoom || width < 1 || width > 32 ||
         (fill != 0 && fill != 1)) {
         return "";
     }
-    names := array[] of {"", "Brush", "Rectangle", "Ellipse", "Line", "Pen", "Select", "Nodes"};
+    names := array[] of {"", "Brush", "Rectangle", "Ellipse", "Line", "Pen", "Select", "Nodes", "Zoom"};
     value := "off";
     if (fill) {
         value = "on";

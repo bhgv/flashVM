@@ -78,7 +78,7 @@ init()
             "toolbar tool command changes copied style without editing geometry");
     refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 15, 1, 0, 0, ""));
     require(refused.status == Idecore->Conflict && refused.drawing == styled.drawing, "stale toolbar revision refused atomically");
-    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 20, 2, 0, 0, ""));
+    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 24, 2, 0, 0, ""));
     require(refused.status == Idecore->Invalid && refused.drawing == styled.drawing, "unknown control cannot issue a command");
     selected := call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 18, 2, 0, 0, ""));
     require(selected.status == 0 && selected.drawing[0:8] == "00000006" && selected.revision == 2,

@@ -9,7 +9,7 @@ create(): ref Document
 {
     return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
-                        array[16] of array of ref Shape, 0, nil, "", 0, nil, nil, 0, 0);
+                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, 0, 0);
 }
 
 
@@ -175,6 +175,9 @@ advance(doc: ref Document, phase, x, y, smooth: int): int
     capacity := 0;
     if (doc == nil || phase < 1 || phase > 3 || !pointok(x, y)) {
         return Invalid;
+    }
+    if (doc.tool == Zoom) {
+        return zoompointer(doc, phase, x, y);
     }
     if (doc.tool >= Select && doc.tool <= Nodes) {
         return editpointer(doc, phase, x, y);
@@ -1131,6 +1134,10 @@ approximate(points: array of Point): array of Point
 # Return nil on explicit complexity limit; callers retain already committed raw ink.
 contours(area: array of byte): array of Node
 {
+    figureleft := GridWidth;
+    figureright := 0;
+    figuretop := GridHeight;
+    figurebottom := 0;
     stride := GridWidth + 1;
     edges := zerobytes(stride * (GridHeight + 1));
     seeds := array[RawContour] of int;
@@ -1147,6 +1154,18 @@ contours(area: array of byte): array of Node
             cell := index * 8 + bit;
             x := cell % GridWidth;
             y := cell / GridWidth;
+            if (x < figureleft) {
+                figureleft = x;
+            }
+            if (x+1 > figureright) {
+                figureright = x+1;
+            }
+            if (y < figuretop) {
+                figuretop = y;
+            }
+            if (y+1 > figurebottom) {
+                figurebottom = y+1;
+            }
             if (!covered(area, x, y - 1)) {
                 vertex := y * stride + x;
                 if (edges[vertex] == byte 0) {
@@ -1263,11 +1282,15 @@ contours(area: array of byte): array of Node
             if (used + len path > MaxNodes) {
                 return nil;
             }
-            nodes[used++] = Node(Move, path[0].x, path[0].y, 0, 0);
-            for (index = 1; index < len path - 1; index++) {
-                nodes[used++] = Node(Segment, path[index].x, path[index].y, 0, 0);
+            fitted := brushfit(path,figureright-figureleft,figurebottom-figuretop);
+            if (len fitted < 4) {
+                return nil;
             }
-            nodes[used++] = Node(Close, 0, 0, 0, 0);
+            if (used + len fitted > MaxNodes) {
+                return nil;
+            }
+            nodes[used:] = fitted;
+            used += len fitted;
         }
     }
     return nodes[0:used];
@@ -1419,3 +1442,6 @@ refine(doc: ref Document): int
 include "idevectorchain.b";
 
 include "idevectoredit.b";
+
+include "idevectorviewport.b";
+include "idevectorbrushfit.b";

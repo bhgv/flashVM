@@ -106,6 +106,8 @@ chainwire(doc: ref Document): string
 {
     preview := create();
     preview.tool = doc.tool;
+    preview.zoom = doc.zoom;
+    preview.center = doc.center;
     preview.color = doc.color;
     preview.width = doc.width;
     preview.fill = doc.fill;

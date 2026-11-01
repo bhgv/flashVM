@@ -302,7 +302,8 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
             tap_eligible = 0;
         }
         if (gesture == 1 && session_contacts == 1 && tap_eligible && event->type == SDL_FINGERUP && count == 0 &&
-            dvm_desktop_header(event->x * canvas_width, event->y * canvas_height))
+            (dvm_desktop_header(event->x * canvas_width, event->y * canvas_height) ||
+             dvm_desktop_zoom_button(event->x * canvas_width, event->y * canvas_height)))
         {
             tap_time = event->timestamp;
             tap_x = event->x * canvas_width;
@@ -338,9 +339,10 @@ static int desktop_touch(const SDL_TouchFingerEvent *event, DVM_UIMessage *messa
         message->second = (long)(y * canvas_height * 20);
         if (!gesture && event->type == SDL_FINGERDOWN && tap_time && (Uint32)(event->timestamp - tap_time) <= 350 &&
             fabs(x * canvas_width - tap_x) <= 8 && fabs(y * canvas_height - tap_y) <= 8 &&
-            dvm_desktop_header(x * canvas_width, y * canvas_height))
+            (dvm_desktop_header(x * canvas_width, y * canvas_height) ||
+             dvm_desktop_zoom_button(x * canvas_width, y * canvas_height)))
         {
-            message->code = 10;
+            message->code = dvm_desktop_zoom_button(x * canvas_width, y * canvas_height) ? 12 : 10;
             tap_time = 0;
             tap_eligible = 0;
         }
@@ -2638,6 +2640,22 @@ static void resolve_pointer(DVM_UIMessage *message)
                 }
             }
         }
+        if (code == 12)
+        {
+            dvm_desktop_hit(message->first, message->second, &widget, &position);
+        }
+        if (code == 4 || code == 5 || code == 8 || code == 9)
+        {
+            unsigned long tool;
+            unsigned long color;
+            unsigned long wide;
+            dvm_desktop_hit(message->first, message->second, &widget, &position);
+            if (position < 0 || !dvm_desktop_ink_style(widget, &tool, &color, &wide) || tool != 8)
+            {
+                widget = 0;
+                position = -1;
+            }
+        }
         if (phase == FVM_INPUT_END || code != 1)
         {
             vector_drag = 0;
@@ -3143,6 +3161,12 @@ int dvm_editor_event(DVM_UIMessage *message)
             {
                 message->code = 7; /* Existing copied three-contact table-pan proposal. */
             }
+            if (dvm_desktop_active() && event.type == SDL_MOUSEBUTTONDOWN &&
+                event.button.clicks >= 2 && (event.button.clicks % 2) == 0 &&
+                dvm_desktop_zoom_button(x,y))
+            {
+                message->code = 12;
+            }
             if (header_drag && dvm_desktop_active() && event.type == SDL_MOUSEBUTTONDOWN && event.button.clicks >= 2 &&
                 (event.button.clicks % 2) == 0)
             {
@@ -3217,7 +3241,9 @@ int dvm_editor_event(DVM_UIMessage *message)
         if (vector_drag && !ink_token && message->kind == DVM_UI_REQUEST && message->code == DVM_DESK_POINTER &&
             message->size == 32 && (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN))
         {
-            unsigned long tool, color, wide;
+            unsigned long tool;
+            unsigned long color;
+            unsigned long wide;
             unsigned long point;
             if (dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) && tool <= 5 &&
                 hexword(message->text + 24, &point))

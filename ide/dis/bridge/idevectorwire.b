@@ -74,17 +74,19 @@ wire(doc: ref Document): string
         extra = draft(doc);
         additional = 32 + 40 * len extra.nodes;
     }
-    bytes := array[48 + len doc.wirebody + additional] of byte;
-    putword(bytes, 0, doc.tool);
+    header := cameraheader(doc);
+    prefix := len header;
+    bytes := array[prefix + len doc.wirebody + additional] of byte;
+    bytes[0:] = header;
     putword(bytes, 8, doc.color);
     putword(bytes, 16, doc.width);
     putword(bytes, 24, doc.fill | ((len doc.chain != 0) << 1));
     putword(bytes, 32, doc.nundo);
     putword(bytes, 40, doc.nredo);
-    bytes[48:] = array of byte doc.wirebody;
+    bytes[prefix:] = array of byte doc.wirebody;
     if (extra != nil) {
-        putword(bytes, 48, len doc.shapes + 1);
-        wireshape(bytes, 48 + len doc.wirebody, extra);
+        putword(bytes, prefix, len doc.shapes + 1);
+        wireshape(bytes, prefix + len doc.wirebody, extra);
     }
     return string bytes;
 }
@@ -99,13 +101,7 @@ wireparts(doc: ref Document): array of string
         return array[] of {wire(doc)};
     }
     preparewire(doc);
-    header := array[48] of byte;
-    putword(header, 0, doc.tool);
-    putword(header, 8, doc.color);
-    putword(header, 16, doc.width);
-    putword(header, 24, doc.fill | ((len doc.chain != 0) << 1));
-    putword(header, 32, doc.nundo);
-    putword(header, 40, doc.nredo);
+    header := cameraheader(doc);
     return array[] of {string header, doc.wirebody};
 }
 
@@ -118,4 +114,25 @@ putword(bytes: array of byte, at, value: int)
     for (digit := 0; digit < 8; digit++) {
         bytes[at + digit] = byte digits[(value >> (28 - digit * 4)) & 15];
     }
+}
+
+
+# Publish camera scalars only when nondefault; legacy default streams stay exact.
+# Flag 0x10000 is a private IDE header extension, not a SWF/Dis64 format change.
+cameraheader(doc: ref Document): array of byte
+{
+    extra := doc.zoom != 100 || doc.center.x != 500 || doc.center.y != 300;
+    header := array[48+24*extra] of byte;
+    putword(header,0,doc.tool | (extra << 16));
+    putword(header,8,doc.color);
+    putword(header,16,doc.width);
+    putword(header,24,doc.fill | ((len doc.chain != 0) << 1));
+    putword(header,32,doc.nundo);
+    putword(header,40,doc.nredo);
+    if (extra) {
+        putword(header,48,doc.zoom);
+        putword(header,56,doc.center.x);
+        putword(header,64,doc.center.y);
+    }
+    return header;
 }

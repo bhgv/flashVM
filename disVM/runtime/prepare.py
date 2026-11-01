@@ -116,6 +116,7 @@ def main():
     (args.output / "sysmod.h").write_text(text[at:])
     functions = set(re.findall(r"void (Sys_\w+)\(void\*\);", text))
     implemented = {
+        "Sys_millisec",
         "Sys_print",
         "Sys_fprint",
         "Sys_sprint",

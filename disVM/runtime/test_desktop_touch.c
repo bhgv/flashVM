@@ -272,6 +272,21 @@ int main(void)
         }
         SDL_Quit();
     }
+    desktop_touch(NULL, &last_contact);
+    if (!contact(SDL_FINGERDOWN,9000,8,1,0.1f,0.25f,1,1) ||
+        !contact(SDL_FINGERUP,9010,8,1,0.1f,0.25f,1,3) ||
+        !contact(SDL_FINGERDOWN,9100,8,1,0.1f,0.25f,12,1) ||
+        !contact(SDL_FINGERUP,9110,8,1,0.1f,0.25f,1,3))
+    {
+        return 1;
+    }
     puts("PASS native SDL contacts: double tap, pair/triple transition, device IDs, table pinch, release, focus reset");
     return 0;
+}
+
+
+/* Deterministic zoom-control geometry, separate from the title boundary. */
+int dvm_desktop_zoom_button(double x, double y)
+{
+    return x >= 90 && x < 118 && y >= 156 && y < 180;
 }
