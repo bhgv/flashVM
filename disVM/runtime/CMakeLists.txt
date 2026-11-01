@@ -496,7 +496,7 @@ if(DVM_RUNTIME_EDITOR)
       "${DVM_SWF_LINKER}" "${root}/ide/as/desktop-view.as" embed_view.py VERBATIM)
   # Each chrome view is a separate Coco/R AS -> FIR -> optimizer -> SWL product.
   set(chrome_headers)
-  foreach(control desktop-background rail-left rail-right window-card miniature-card window-header tab-button tool-scroll tool-palette tool-pointer input-field top-bar vector-control atlas-card atlas-frame atlas-miniature)
+  foreach(control desktop-background rail-left rail-right window-card miniature-card window-header tab-button close-button tool-scroll tool-palette tool-pointer input-field top-bar vector-control atlas-card atlas-frame atlas-miniature)
     string(REPLACE "-" "_" symbol "chrome_${control}")
     set(header "${view}/${symbol}.h")
     add_custom_command(OUTPUT "${header}"

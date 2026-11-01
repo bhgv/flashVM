@@ -7,8 +7,9 @@ Window cards now use a diffuse edge shadow, opaque paper, an outer selected/grey
 rim and an inner highlight/bevel. Shadows occupy the existing object footprint;
 they do not require an enlarged dirty region or a second full-screen redraw.
 Blue title strips have rounded corners, a bright lip and a darker lower edge.
-Toolbar, vector and tab buttons have pill-shaped faces, a contact shadow and a
-small highlight. Inputs use recessed paper; command bubbles use a raised dark
+Toolbar and vector controls use the earlier compact glazed faces with a diagonal
+highlight; tabs retain their raised faces. Square title-close buttons use the
+rail style and fit entirely inside the title strip. Inputs use recessed paper; command bubbles use a raised dark
 surface. Active windows retain a blue outline and paper-coloured contents.
 
 Each view stays in its own executable AS file under `as/chrome/`. The existing

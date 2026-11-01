@@ -1,37 +1,27 @@
-vectorBorderDelta = 2524379 - 8886696;
-vectorRim = 8886696 + chromeSelected * vectorBorderDelta;
-// Raised compact control: diffuse shadow, rounded face, bright upper lip.
-ideDraw.clear = true;
-ideDraw.x = 1;
-ideDraw.y = 2;
-ideDraw.w = chromeWidth - 1;
-ideDraw.h = chromeHeight - 2;
-ideDraw.radius = 7;
-ideDraw.color = 0;
-ideDraw.border = 0;
-ideDraw.stroke = 0;
-ideDraw.alpha = 20;
-ideDraw.filled = 1;
-ideDraw.round = true;
-ideDraw.x = 0;
-ideDraw.y = 0;
-ideDraw.w = chromeWidth - 2;
-ideDraw.h = chromeHeight - 3;
-ideDraw.radius = chromeHeight / 2;
+// Native adapters supply copied state and a same-context drawing capability.
+// Palette colour comes from the Limbo document. Selection uses a blue border;
+// the controls retain the rounded MovieClip geometry of the IDE chrome.
+ideDraw.w = chromeWidth;
+ideDraw.h = chromeHeight;
 ideDraw.color = vectorControlColor;
-ideDraw.border = vectorRim;
-ideDraw.stroke = 1;
-ideDraw.alpha = 100;
-ideDraw.filled = 1;
-ideDraw.round = true;
-ideDraw.x = 2;
-ideDraw.y = 1;
-ideDraw.w = chromeWidth - 6;
-ideDraw.h = 2;
-ideDraw.radius = 1;
+vectorBorderDelta = 2524379 - 8886696;
+ideDraw.border = 8886696 + chromeSelected * vectorBorderDelta;
+ideDraw.box = true;
+
+// Glazed upper face matches the rail controls while retaining the chosen colour.
+ideDraw.alpha = 19;
 ideDraw.color = 16777215;
-ideDraw.border = 16777215;
-ideDraw.stroke = 0;
-ideDraw.alpha = 32;
-ideDraw.filled = 1;
-ideDraw.round = true;
+ideDraw.begin = true;
+ideDraw.x = 2;
+ideDraw.y = 2;
+ideDraw.move = true;
+ideDraw.x = chromeWidth - 2;
+ideDraw.line = true;
+ideDraw.y = chromeHeight * 27 / 100;
+ideDraw.line = true;
+ideDraw.x = 2;
+ideDraw.y = chromeHeight * 78 / 100;
+ideDraw.line = true;
+ideDraw.y = 2;
+ideDraw.line = true;
+ideDraw.end = true;

@@ -9,6 +9,7 @@
 #include "chrome_tool_palette.h"
 #include "chrome_tool_pointer.h"
 #include "chrome_tab_button.h"
+#include "chrome_close_button.h"
 #include "chrome_vector_control.h"
 #include "chrome_atlas_card.h"
 #include "chrome_atlas_frame.h"
@@ -125,6 +126,10 @@ static int render_view(FVM_Context *owner, FVM_Object *clip, const DVM_ChromeIte
     if (item->id == 63)
     {
         return execute(owner, clip, chrome_top_bar, sizeof(chrome_top_bar), wide, high, 0, 0);
+    }
+    if (item->close_button)
+    {
+        return execute(owner, clip, chrome_close_button, sizeof(chrome_close_button), wide, high, 0, 0);
     }
     if (item->id >= 30 && item->id <= 37)
     {

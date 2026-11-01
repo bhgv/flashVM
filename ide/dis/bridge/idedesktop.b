@@ -405,7 +405,7 @@ scene(windows: array of ref Window, width, height, scroll, focus, drawer, moving
                 gy + 28, tabwide - 2, 26, tabstyle, window.title, -1, -1);
         } else if (window.container == nil && index != 1 && index != 2 && !window.hidden) {
             (closex, closey, closew, closeh) := position(index, width, height, window);
-            items[used++] = ref Item(30 + index, layer(window), 0, closex + wide - 30, closey, 30, 24, 4, "x", -1, -1);
+            items[used++] = ref Item(30 + index, layer(window), 0, closex + wide - 29, closey + 5, 17, 17, 4, "x", -1, -1);
         }
     }
     items[used++] = ref Item(11, 2, 0, 0, 0, 80, height, 2, "", -1, -1);

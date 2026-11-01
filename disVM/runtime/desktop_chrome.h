@@ -15,6 +15,7 @@ typedef struct DVM_ChromeItem
     unsigned long preview_width;  /* Admitted shelf/card physical width. */
     unsigned long preview_height; /* Admitted shelf/card physical height. */
     unsigned long palette;        /* Copied compact popup role; appearance remains in AS. */
+    unsigned long close_button;   /* Copied title close role, distinct from document tabs. */
     unsigned long mirror;         /* Zero or copied thumbnail source identity. */
 } DVM_ChromeItem;
 

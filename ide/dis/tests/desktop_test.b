@@ -224,8 +224,11 @@ init()
     view = point(layout, view.ticket, 420, 280, 2);
     check(item(view, 1).x == 196, "focus cancellation retires header drag");
     # A title close request is only a proposal. The layout never destroys a source.
-    view = point(layout, view.ticket, 550, 180, 1);
-    view = point(layout, view.ticket, 550, 180, 3);
+    close := item(view, 30);
+    check(close.width == close.height && close.y == item(view, 1).y + 5 && close.height == 17,
+          "square close control fits inside the title strip");
+    view = point(layout, view.ticket, close.x + 8, close.y + 8, 1);
+    view = point(layout, view.ticket, close.x + 8, close.y + 8, 3);
     check(view.action == desk->CloseEditor && item(view, 1) != nil, "close proposes without deleting");
     request.operation = desk->Tool;
     request.window = desk->CloseEditor;

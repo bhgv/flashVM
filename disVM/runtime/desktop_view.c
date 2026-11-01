@@ -2205,6 +2205,7 @@ static int paint(DeskItem *item, FVM_RasterSurface *surface)
                              item->width,
                              item->height,
                              item->id == 55 && content->style == 2,
+                             item->id >= 30 && item->id <= 37 && strcmp(content->text, "x") == 0,
                              item->mirror};
     if (!dvm_chrome_decorate(owner, clip, &chrome, content->width, content->height))
     {
