@@ -86,17 +86,19 @@ Brush sweeps a round nib of width1..32, then traces and simplifies the **filled
 boundary** after release. Visible connected same-colour filled shapes/brush areas
 unite, including transitive connections; enclosed holes remain compound subpaths.
 Different-colour overlays are respected; covered older paint is not resurrected.
-The implementation uses a bounded1000×600 packed coverage grid, then polygonal
-approximation with a0.75-unit distance threshold. This is quantized vectorization,
+The implementation uses a bounded1000×600 packed coverage grid, then fits the original traced boundary
+with per-axis figure extent/100 budgets, without the old0.75-unit simplification. This is quantized vectorization,
 not an exact analytic Boolean operation. Imported curves use32 subdivisions
 for union coverage. Pressure, erasing, node editing, layers and animation are future work.
 
 Live panes use a separate spawned Limbo process for final geometry, independent
 of the Flash frame clock. This is scheduled Dis work, not a claim of parallel
 native VM/GC execution. The owner first commits visible raw ink and one Undo unit,
-then sends immutable shapes to the worker. One job plus one latest queued snapshot
-bounds the queue. Only matching revisions are published; stale jobs cannot replace
-new edits. Save explicitly waits for current work; ordinary input does not.
+then sends immutable raw snapshots to the supervisor. Every new fitting job cancels
+the preceding calculation at cooperative checkpoints and discards its pending
+result. Raw native gestures stay ordered and are all included in the replacement
+snapshot. Only the latest result publishes. Save joins current work; mixed portable
+input first adopts pending native capture so a fallback cannot omit a stroke.
 Worker failure or geometry quota refusal retains raw ink and reports a diagnostic.
 No periodic10-second fitting is enabled yet: refinement currently runs on release.
 

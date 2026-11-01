@@ -1,3 +1,5 @@
+[Cancellable vector fitting / Отмена векторизации](VECTOR-CANCELLATION.md)
+
 [Нативное рисование и масштаб 1:1](NATIVE-INK.ru.md) · [English](NATIVE-INK.md)
 
 [Сессионный clipboard, Ctrl+C/X/V и пункт 12](DESKTOP-CLIPBOARD.ru.md)
@@ -22,7 +24,7 @@
 
 # Backend сборки для IDE
 
-Версия **0.7.12**. [English](README.md).
+Версия **0.7.13**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 

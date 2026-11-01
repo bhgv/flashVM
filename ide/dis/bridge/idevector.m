@@ -2,7 +2,7 @@
 Idevector: module
 {
     PATH: con "idevector.dis"; # Portable model/SVG implementation, no native UI dependency.
-    Ok, Invalid, Limit, Conflict: con iota; # Success, bounded raw retention or explicit refusal.
+    Ok, Invalid, Limit, Conflict, Cancelled: con iota; # Success, bounded raw retention or explicit refusal.
     Brush, Rectangle, Ellipse, Line, Pen, Select, Nodes, Zoom: con iota + 1; # Authoring tools; paths remain editable values.
     Move, Segment, Quadratic, Close, Cubic: con iota; # Path verbs; cubic has two independent controls.
     MaxShapes: con 32; # Per-document path budget.
@@ -68,6 +68,13 @@ Idevector: module
     };
 
 
+    # Private cooperative fitting cancellation; only the supervisor writes cancelled.
+    Work: adt {
+        cancelled: int; # Monotonic stop request; never reset or reused by a later job.
+        polls: int; # Saturating worker checkpoint count for diagnostics/tests.
+    };
+
+
     # One pane-owned document; snapshots serialize values, never expose this reference.
     Document: adt {
         shapes: array of ref Shape; # Immutable committed path array.
@@ -96,9 +103,11 @@ Idevector: module
         wirecubic: int; # Cached body uses seven-word cubic-capable commands.
         pickradius: real; # Logical equivalent of20 screen pixels; portable default20.0.
         wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.
+        work: ref Work; # Private fitting cancellation only; never copied into UI owner.
     };
 
-    # Fit one bounded closed brush contour after release; nil refuses invalid input.
+    # Fit one closed contour after release, up to65536 samples and4096 output nodes.
+    # Per-axis sample tolerance is complete figure width/100 and height/100; nil refuses.
     # Pure worker/model helper; emits editable cubic controls and retained lines.
     brushfit: fn(points: array of Point, width, height: int): array of Node;
     # Allocate a clean empty document and private history. No I/O or channel operation.
@@ -112,7 +121,8 @@ Idevector: module
     pointer: fn(doc: ref Document, phase, x, y: int): int;
     # Commit raw ink immediately; a caller-owned worker may refine its immutable snapshot.
     defer: fn(doc: ref Document, phase, x, y: int): int;
-    # Refine every committed raw Brush/Pen in a private job document. No I/O/UI.
+    # Refine raw Brush/Pen in a private job document. Cancelled restores input shapes
+    # when doc.work requests stop; nil work is synchronous. No I/O/UI.
     refine: fn(doc: ref Document): int;
     # Adjust viewport around a logical point; zero restores 1:1, no source/history edit.
     viewport: fn(doc: ref Document, step, x, y: int);

@@ -591,7 +591,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/run-token-query.sh" "$destination/run-token-query.sh" 755
             copy_tree "$ROOT/ide/dis/examples/token-query" "$destination/examples/token-query"
             copy_tree "$ROOT/ide/dis/examples/vector" "$destination/examples/vector"
-            for control in ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain; do
+            for control in ideinkworker ideinkacquire ideinkfit idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain; do
                 copy_file "$ROOT/ide/dis/bridge/$control.b" "$destination/source/$control.b"
             done
             copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
@@ -605,6 +605,8 @@ EOF
             copy_file "$ROOT/ide/dis/bridge/idevectorwire.b" "$destination/source/idevectorwire.b"
             copy_file "$ROOT/ide/VECTOR-EDITING.md" "$destination/VECTOR-EDITING.md"
             copy_file "$ROOT/ide/VECTOR-EDITING.ru.md" "$destination/VECTOR-EDITING.ru.md"
+            copy_file "$ROOT/ide/VECTOR-CANCELLATION.md" "$destination/VECTOR-CANCELLATION.md"
+            copy_file "$ROOT/ide/VECTOR-CANCELLATION.ru.md" "$destination/VECTOR-CANCELLATION.ru.md"
             copy_file "$ROOT/ide/VECTOR-VIEWPORT.md" "$destination/VECTOR-VIEWPORT.md"
             copy_file "$ROOT/ide/VECTOR-VIEWPORT.ru.md" "$destination/VECTOR-VIEWPORT.ru.md"
             copy_file "$ROOT/disVM/MILLISEC.md" "$destination/MILLISEC.md"
@@ -614,6 +616,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/clock_sys.c" "$destination/source/clock/clock_sys.c"
             copy_file "$ROOT/ide/dis/tests/millisec_test.b" "$destination/examples/millisec/main.b"
             copy_file "$base/millisec-test.dis" "$destination/examples/millisec/main.dis"
+            copy_file "$ROOT/ide/dis/bridge/idevectorcancel.b" "$destination/source/idevectorcancel.b"
             copy_file "$ROOT/ide/dis/bridge/idevectorpick.b" "$destination/source/idevectorpick.b"
             copy_file "$ROOT/ide/dis/bridge/idevectorbrushfit.b" "$destination/source/idevectorbrushfit.b"
             copy_file "$ROOT/ide/dis/bridge/idevectorviewport.b" "$destination/source/idevectorviewport.b"

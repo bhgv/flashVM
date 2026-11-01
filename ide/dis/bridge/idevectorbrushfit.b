@@ -36,7 +36,7 @@ brushclamp(value, maximum: int): int
 # Fit one borrowed polyline interval by least squares with fixed endpoints.
 # Chord parameters are precomputed by the caller. Return a private cubic value;
 # singular short intervals use straight one-third/two-third controls.
-brushcandidate(points: array of Point, parameters: array of real, first, last: int): Node
+brushcandidate(points: array of Point, parameters: array of real, first, last: int, work: ref Work): Node
 {
     a := points[first];
     b := points[last];
@@ -49,6 +49,9 @@ brushcandidate(points: array of Point, parameters: array of real, first, last: i
     by := 0.0;
     span := parameters[last]-parameters[first];
     for (i := first+1; i < last && span > 0.0; i++) {
+        if (i % 512 == 0) {
+            checkwork(work);
+        }
         t := (parameters[i]-parameters[first])/span;
         u := 1.0-t;
         p := 3.0*u*u*t;
@@ -81,15 +84,15 @@ brushcandidate(points: array of Point, parameters: array of real, first, last: i
 
 
 # Fit a closed borrowed contour globally, using complete compound-figure extents
-# width/height for the per-axis 1/40 error budget. An explicit work stack bounds
+# width/height for the per-axis 1/100 error budget. An explicit work stack bounds
 # depth, never recurses, and splits at the worst offending original sample.
 # Four initial spans prevent closed-loop collapse; every accepted rounded cubic
 # is tested against all its input samples. Straight terminal edges retain detail.
 # Return private M/C/L/Z commands, or nil for invalid input/capacity/load failure.
-brushfit(points: array of Point, width, height: int): array of Node
+brushfitwork(points: array of Point, width, height: int, work: ref Work): array of Node
 {
     count := len points;
-    if (count < 4 || count > MaxNodes || width < 1 || width > 1000 || height < 1 || height > 600 ||
+    if (count < 4 || count > RawContour || width < 1 || width > 1000 || height < 1 || height > 600 ||
         points[0].x != points[count-1].x || points[0].y != points[count-1].y) {
         return nil;
     }
@@ -100,6 +103,9 @@ brushfit(points: array of Point, width, height: int): array of Node
     parameters := array[count] of real;
     parameters[0] = 0.0;
     for (i := 0; i < count; i++) {
+        if (i % 512 == 0) {
+            checkwork(work);
+        }
         if (!pointok(points[i].x,points[i].y)) {
             return nil;
         }
@@ -125,6 +131,7 @@ brushfit(points: array of Point, width, height: int): array of Node
     output[0] = Node(Move,points[0].x,points[0].y,0,0,0,0);
     used := 1;
     while (pending > 0) {
+        checkwork(work);
         pending--;
         first := starts[pending];
         last := ends[pending];
@@ -140,17 +147,20 @@ brushfit(points: array of Point, width, height: int): array of Node
             }
             continue;
         }
-        candidate := brushcandidate(points,parameters,first,last);
+        candidate := brushcandidate(points,parameters,first,last,work);
         worst := 0.0;
         split := (first+last)/2;
         span := parameters[last]-parameters[first];
         for (i = first+1; i < last && span > 0.0; i++) {
+            if (i % 512 == 0) {
+                checkwork(work);
+            }
             t := (parameters[i]-parameters[first])/span;
             u := 1.0-t;
             dx := (u*u*u*real points[first].x+3.0*u*u*t*real candidate.cx+
-                3.0*u*t*t*real candidate.c2x+t*t*t*real candidate.x-real points[i].x)*40.0/real width;
+                3.0*u*t*t*real candidate.c2x+t*t*t*real candidate.x-real points[i].x)*100.0/real width;
             dy := (u*u*u*real points[first].y+3.0*u*u*t*real candidate.cy+
-                3.0*u*t*t*real candidate.c2y+t*t*t*real candidate.y-real points[i].y)*40.0/real height;
+                3.0*u*t*t*real candidate.c2y+t*t*t*real candidate.y-real points[i].y)*100.0/real height;
             error := dx*dx;
             if (dy*dy > error) {
                 error = dy*dy;
@@ -163,19 +173,38 @@ brushfit(points: array of Point, width, height: int): array of Node
         # Check the reverse direction too: a least-squares curve must not bow
         # away between source knots. Distances are normalized by each axis budget.
         # Sampling is bounded; this is a discrete fit check, not a continuous proof.
+        cursor := first;
         for (sample := 1; sample < 64 && worst <= 1.0; sample++) {
             t := real sample/64.0;
             u := 1.0-t;
             px := (u*u*u*real points[first].x+3.0*u*u*t*real candidate.cx+
-                3.0*u*t*t*real candidate.c2x+t*t*t*real candidate.x)*40.0/real width;
+                3.0*u*t*t*real candidate.c2x+t*t*t*real candidate.x)*100.0/real width;
             py := (u*u*u*real points[first].y+3.0*u*u*t*real candidate.cy+
-                3.0*u*t*t*real candidate.c2y+t*t*t*real candidate.y)*40.0/real height;
+                3.0*u*t*t*real candidate.c2y+t*t*t*real candidate.y)*100.0/real height;
             nearest := 1.0e30;
-            for (edge := first; edge < last; edge++) {
-                ax := real points[edge].x*40.0/real width;
-                ay := real points[edge].y*40.0/real height;
-                dx := real (points[edge+1].x-points[edge].x)*40.0/real width;
-                dy := real (points[edge+1].y-points[edge].y)*40.0/real height;
+            # A monotonic chord cursor avoids rescanning every edge for each
+            # reverse sample. Checking only nearby edges is conservative: a
+            # missing nearby match subdivides, never falsely accepts a far curve.
+            target := parameters[first]+t*span;
+            while (cursor+1 < last && parameters[cursor+1] < target) {
+                cursor++;
+                if (cursor % 512 == 0) {
+                    checkwork(work);
+                }
+            }
+            low := cursor-1;
+            high := cursor+1;
+            if (low < first) {
+                low = first;
+            }
+            if (high >= last) {
+                high = last-1;
+            }
+            for (edge := low; edge <= high; edge++) {
+                ax := real points[edge].x*100.0/real width;
+                ay := real points[edge].y*100.0/real height;
+                dx := real (points[edge+1].x-points[edge].x)*100.0/real width;
+                dy := real (points[edge+1].y-points[edge].y)*100.0/real height;
                 length := dx*dx+dy*dy;
                 along := 0.0;
                 if (length > 0.0) {
@@ -216,4 +245,12 @@ brushfit(points: array of Point, width, height: int): array of Node
     }
     output[used++] = Node(Close,0,0,0,0,0,0);
     return output[0:used];
+}
+
+
+# Pure public fitting helper; caller borrows points and owns returned nodes.
+# Background refinement uses brushfitwork with a private cancellation capsule.
+brushfit(points: array of Point, width, height: int): array of Node
+{
+    return brushfitwork(points,width,height,nil);
 }

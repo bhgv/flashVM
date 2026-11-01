@@ -1,3 +1,5 @@
+[Latest-only fitting / Отмена устаревшей векторизации](VECTOR-CANCELLATION.md)
+
 [v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
 
 # Brush splines and the independent page viewport
@@ -6,7 +8,7 @@
 
 After release, the separate Limbo worker fits closed brush contours with cubic
 Bézier segments, using chord parameters and interval least squares. Every input
-sample is checked against the rounded curve with per-axis extent/40 tolerances
+sample is checked against the rounded curve with per-axis extent/100 tolerances
 based on the whole compound figure. Failed intervals subdivide; short intervals
 retain lines. A bounded reverse sampling check rejects bows between knots.
 This is a discrete fitting bound, not a continuous Hausdorff proof. Motion keeps

@@ -305,7 +305,7 @@ if(UIBRIDGE_SOURCE_ROOT)
       COMMAND "${LIMBO_EXECUTABLE}" -g -I "${UIBRIDGE_SOURCE_ROOT}/module"
         -I "${CMAKE_CURRENT_SOURCE_DIR}" -I "${CMAKE_CURRENT_SOURCE_DIR}/bridge"
         -o "${CMAKE_CURRENT_BINARY_DIR}/${module}.dis" "${source}"
-      DEPENDS "${source}" "${LIMBO_EXECUTABLE}" bridge/idevector.m bridge/idevectoredit.b bridge/idevectorpick.b
+      DEPENDS "${source}" "${LIMBO_EXECUTABLE}" bridge/idevector.m bridge/idevectoredit.b bridge/idevectorpick.b bridge/idevectorcancel.b bridge/ideinkacquire.b bridge/ideinkfit.b
         bridge/idevectorbrushfit.b bridge/idevectorpresentation.b bridge/idevectorviewport.b
         bridge/idevectorchain.b bridge/idevectorwire.b idecore.m bridge/idebridge.m
         bridge/ideinput.m bridge/idecomplete.m bridge/idebuiltins.m bridge/idevalue.m "${UIBRIDGE_SOURCE_ROOT}/module/uibridge.m" VERBATIM)

@@ -5,96 +5,100 @@ include "idehost.m";
 include "ideinkworker.m";
 
 
-# Own the sole geometry job until completion; no window/Flash object is accessed.
-# Input ends with nil. Results rendezvous with the document owner; bounded FIFO
-# jobs preserve every captured stroke. Drop transport roots before the next receive.
+# Own ordered raw input separately from replaceable fitting jobs. Each new job
+# stops the preceding fit and drops any pending old publication. Capture/defer is
+# never discarded: carried retains every admitted native stroke and Undo entry.
+# [GC:] Child documents/history are private; only immutable shapes and a monotonic
+# cancellation capsule are shared. Stop cancels children and drains their replies.
 worker(vector: Idevector, jobs: chan of ref Job, completed: chan of ref Done)
 {
-    host: Idehost;
-    codec := load Uibridge Uibridge->PATH;
+    fitted := chan of ref Done;
+    parkedjobs := chan of ref Job;
+    parkedout := chan of ref Done;
     carried: ref Idevector->Document;
     carriedrevision := -1;
-    broken := 0; # Never discard a preceding failed native stroke via a later completion.
+    current := -1;
+    active: ref Idevector->Work;
+    pending: ref Done;
+    children := 0;
+    stopping := 0;
+    broken := 0;
+    superseded := 0;
     for (;;) {
-        job := <-jobs;
-        if (job == nil) {
+        if (stopping && children == 0) {
             return;
         }
-        status := Idevector->Invalid;
-        if (job.token != 0 && carried != nil && carriedrevision == job.previous) {
-            latest := copy(vector, carried);
-            latest.tool = job.document.tool;
-            latest.color = job.document.color;
-            latest.width = job.document.width;
-            latest.fill = job.document.fill;
-            job.document = latest;
+        outgoing := parkedout;
+        if (pending != nil && !stopping) {
+            outgoing = completed;
         }
-        original := job.document.shapes;
-        atcapacity := 0;
-        {
-            if (job.token != 0) {
-                if (host == nil) {
-                    host = load Idehost Idehost->PATH;
-                }
-                bytes: array of byte;
-                if (host != nil) {
-                    bytes = array of byte host->ink(job.token);
-                }
-                count := len bytes / 8;
-                atcapacity = count == Idevector->MaxNodes;
-                good := !broken && codec != nil && count >= 1 && count <= Idevector->MaxNodes && len bytes % 8 == 0;
-                for (at := 0; good && at < len bytes; at += 8) {
-                    (ok, point) := codec->parseword(bytes, at);
-                    good = ok && point >= 0 && point <= 601600;
-                }
-                if (good) {
-                    job.document.revision = job.previous;
-                    for (index := 0; index < count; index++) {
-                        (unused, point) := codec->parseword(bytes, index * 8);
-                        phase := 2;
-                        if (index == 0) {
-                            phase = 1;
-                        }
-                        status = vector->defer(job.document, phase, point % 1001, point / 1001);
-                        if (status != Idevector->Ok) {
-                            break;
-                        }
-                    }
-                    if (status == Idevector->Ok) {
-                        last := job.document.points[job.document.used - 1];
-                        status = vector->defer(job.document, 3, last.x, last.y);
-                    }
-                }
-            } else {
-                status = Idevector->Ok;
-            }
-            if (status == Idevector->Ok) {
-                original = job.document.shapes;
-                status = vector->refine(job.document);
-                if (status == Idevector->Ok && atcapacity) {
-                    status = Idevector->Limit;
+        alt {
+        job := <-jobs =>
+            if (active != nil) {
+                active.cancelled = 1;
+                active = nil;
+                if (superseded < 2147483647) {
+                    superseded++;
                 }
             }
-            # Serialization is geometry work too. Hand immutable committed bytes
-            # to the UI owner with the shapes, rather than blocking its Snapshot.
-            vector->preparewire(job.document);
-        } exception failure {
-            * =>
-                # [GC:] Recover only the private job; preserve the raw gesture
-                # array so Save/Shutdown can receive a result rather than hang.
-                job.document.shapes = original;
-                status = Idevector->Limit;
+            pending = nil;
+            if (job == nil) {
+                stopping = 1;
+                jobs = parkedjobs;
+                continue;
+            }
+            current = job.revision;
+            if (job.token != 0 && carried != nil && carriedrevision == job.previous) {
+                latest := copy(vector,carried);
+                latest.tool = job.document.tool;
+                latest.color = job.document.color;
+                latest.width = job.document.width;
+                latest.fill = job.document.fill;
+                job.document = latest;
+            }
+            status := Idevector->Invalid;
+            retained := 0;
+            {
+                (status,retained) = acquire(vector,job,broken);
+            } exception failure {
+                * =>
+                    status = Idevector->Invalid;
+                    retained = 0;
+            }
+            if (!retained) {
+                broken = 1;
+            }
+            carried = job.document;
+            carriedrevision = current;
+            if (broken) {
+                pending = ref Done(current,status,carried,job.token,0,superseded);
+                continue;
+            }
+            snapshot := copy(vector,carried);
+            active = ref Idevector->Work(0,0);
+            snapshot.work = active;
+            children++;
+            spawn fit(vector,snapshot,job.revision,job.token,status,superseded,fitted);
+        done := <-fitted =>
+            children--;
+            if (!stopping && done.revision == current && !done.document.work.cancelled &&
+                done.status != Idevector->Cancelled) {
+                active = nil;
+                pending = done;
+            }
+        outgoing <-= pending =>
+            if (pending.retained) {
+                carried = copy(vector,pending.document);
+                carriedrevision = pending.revision;
+            }
+            pending = nil;
         }
-        retained := job.token == 0 || (!broken && job.document.revision == job.revision);
-        if (!retained) {
-            broken = 1;
-        }
-        carried = job.document;
-        carriedrevision = job.revision;
-        completed <-= ref Done(job.revision, status, job.document, job.token, retained);
-        job = nil;
     }
 }
+
+
+include "ideinkacquire.b";
+include "ideinkfit.b";
 
 
 # Clone the mutable history containers, sharing only immutable geometry arrays.
@@ -135,17 +139,6 @@ apply(vector: Idevector, doc: ref Idevector->Document, done: ref Done)
         doc.redo[0:] = done.document.redo;
         doc.nredo = done.document.nredo;
     }
-}
-
-
-# Keep every bounded native gesture in FIFO order. Earlier strokes cannot be
-# discarded by latest-wins refinement scheduling. Caller limits the queue to31.
-append(queue: list of ref Job, job: ref Job): list of ref Job
-{
-    if (queue == nil) {
-        return job :: nil;
-    }
-    return hd queue :: append(tl queue, job);
 }
 
 

@@ -9,7 +9,7 @@ create(): ref Document
 {
     return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
-                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, nil, 0, 0, 20.0, 0);
+                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 100, Point(500, 300), Brush, nil, nil, 0, 0, 20.0, 0, nil);
 }
 
 
@@ -936,7 +936,7 @@ PaintEdge: adt
 # Rasterize immutable generic path geometry, or borrow its canonical brush coverage.
 # Returned new masks are private; borrowed canonical masks are never written here.
 # Curves use eight fixed subdivisions for union sampling; SVG geometry stays intact.
-shapearea(shape: ref Shape): array of byte
+shapearea(shape: ref Shape, work: ref Work): array of byte
 {
     if (shape.area != nil) {
         return shape.area;
@@ -948,6 +948,7 @@ shapearea(shape: ref Shape): array of byte
     previous := start;
     opened := 0;
     for (index := 0; index < len shape.nodes; index++) {
+        checkwork(work);
         node := shape.nodes[index];
         finish := Point(node.x, node.y);
         if (node.verb == Move) {
@@ -986,6 +987,7 @@ shapearea(shape: ref Shape): array of byte
     }
     crossings := array[count] of (int, int);
     for (y := 0; y < GridHeight; y++) {
+        checkwork(work);
         used := 0;
         scan := 2 * y + 1;
         for (index = 0; index < count; index++) {
@@ -1026,9 +1028,12 @@ shapearea(shape: ref Shape): array of byte
 
 # Test touching/overlapping canonical coverage, including diagonal cell contact.
 # Inputs are borrowed immutable masks; return1 without changing either one.
-touches(a, b: array of byte): int
+touches(a, b: array of byte, work: ref Work): int
 {
     for (index := 0; index < GridBytes; index++) {
+        if (index % 512 == 0) {
+            checkwork(work);
+        }
         bits := int a[index];
         if (bits == 0) {
             continue;
@@ -1056,89 +1061,10 @@ touches(a, b: array of byte): int
 }
 
 
-# Approximate a copied closed boundary within0.75 logical units, using a bounded
-# iterative Douglas-Peucker stack. Preserve at least three vertices and orientation.
-# Return the original array when approximation would collapse or reverse a small loop.
-approximate(points: array of Point): array of Point
-{
-    count := len points;
-    if (count < 5) {
-        return points;
-    }
-    keep := zerobytes(count);
-    keep[0] = keep[count - 1] = byte 1;
-    stack := array[count * 2] of int;
-    used := 2;
-    stack[0] = 0;
-    stack[1] = count - 1;
-    while (used != 0) {
-        last := stack[--used];
-        first := stack[--used];
-        a := points[first];
-        b := points[last];
-        dx := real (b.x - a.x);
-        dy := real (b.y - a.y);
-        length := dx * dx + dy * dy;
-        worst := -1;
-        distance := 0.5625;
-        for (index := first + 1; index < last; index++) {
-            px := real (points[index].x - a.x);
-            py := real (points[index].y - a.y);
-            value := px * px + py * py;
-            if (length != 0.0) {
-                projection := (px * dx + py * dy) / length;
-                if (projection < 0.0) {
-                    projection = 0.0;
-                }
-                if (projection > 1.0) {
-                    projection = 1.0;
-                }
-                px -= projection * dx;
-                py -= projection * dy;
-                value = px * px + py * py;
-            }
-            if (value > distance) {
-                worst = index;
-                distance = value;
-            }
-        }
-        if (worst >= 0) {
-            keep[worst] = byte 1;
-            stack[used++] = first;
-            stack[used++] = worst;
-            stack[used++] = worst;
-            stack[used++] = last;
-        }
-    }
-    result := array[count] of Point;
-    used = 0;
-    for (index := 0; index < count; index++) {
-        if (keep[index] != byte 0) {
-            result[used++] = points[index];
-        }
-    }
-    if (used < 4) {
-        return points;
-    }
-    before := 0;
-    after := 0;
-    for (index = 1; index < count; index++) {
-        before += points[index - 1].x * points[index].y - points[index].x * points[index - 1].y;
-    }
-    for (index = 1; index < used; index++) {
-        after += result[index - 1].x * result[index].y - result[index].x * result[index - 1].y;
-    }
-    if (after == 0 || (before < 0) != (after < 0)) {
-        return points;
-    }
-    return result[0:used];
-}
-
-
 # Trace filled-cell edges with consistent winding. Separate loops and holes become
 # explicit M/L/Z subpaths of one filled vector shape. No contour fitting runs in move.
 # Return nil on explicit complexity limit; callers retain already committed raw ink.
-contours(area: array of byte): array of Node
+contours(area: array of byte, work: ref Work): array of Node
 {
     figureleft := GridWidth;
     figureright := 0;
@@ -1149,6 +1075,9 @@ contours(area: array of byte): array of Node
     seeds := array[RawContour] of int;
     nseeds := 0;
     for (index := 0; index < GridBytes; index++) {
+        if (index % 512 == 0) {
+            checkwork(work);
+        }
         bits := int area[index];
         if (bits == 0) {
             continue;
@@ -1218,6 +1147,7 @@ contours(area: array of byte): array of Node
     used := 0;
     points := array[RawContour] of Point;
     for (seed := 0; seed < nseeds; seed++) {
+        checkwork(work);
         vertex := seeds[seed];
         while (edges[vertex] != byte 0) {
             count := 1;
@@ -1228,6 +1158,7 @@ contours(area: array of byte): array of Node
                 direction++;
             }
             for (;;) {
+                checkwork(work);
                 edges[at] &= byte (255 ^ (1 << direction));
                 x := at % stride;
                 y := at / stride;
@@ -1281,14 +1212,11 @@ contours(area: array of byte): array of Node
                     return nil;
                 }
             }
-            path := approximate(points[0:count]);
+            path := points[0:count];
             if (len path < 4) {
                 return nil;
             }
-            if (used + len path > MaxNodes) {
-                return nil;
-            }
-            fitted := brushfit(path,figureright-figureleft,figurebottom-figuretop);
+            fitted := brushfitwork(path,figureright-figureleft,figurebottom-figuretop,work);
             if (len fitted < 4) {
                 return nil;
             }
@@ -1308,6 +1236,7 @@ contours(area: array of byte): array of Node
 # Return Limit on contour budget failure, preserving the raw committed preview.
 refineone(doc: ref Document): int
 {
+    checkwork(doc.work);
     count := len doc.shapes;
     if (count == 0) {
         return Ok;
@@ -1341,14 +1270,18 @@ refineone(doc: ref Document): int
     if (last.author != Brush) {
         return Ok;
     }
-    area := shapearea(last);
+    area := shapearea(last,doc.work);
     merged := array[count] of { * => 0 };
     candidates := array[count] of array of byte;
     palette := zerobytes(GridWidth * GridHeight);
     for (index := 0; index < count - 1; index++) {
+        checkwork(doc.work);
         old := doc.shapes[index];
-        source := shapearea(old);
+        source := shapearea(old,doc.work);
         for (part := 0; part < GridBytes; part++) {
+            if (part % 512 == 0) {
+                checkwork(doc.work);
+            }
             bits := int source[part];
             if (bits == 0) {
                 continue;
@@ -1364,6 +1297,9 @@ refineone(doc: ref Document): int
         }
     }
     for (cell := 0; count > 1 && cell < len palette; cell++) {
+        if (cell % 4096 == 0) {
+            checkwork(doc.work);
+        }
         slot := int palette[cell] - 1;
         if (slot >= 0 && candidates[slot] != nil) {
             candidates[slot][cell >> 3] |= byte (1 << (cell & 7));
@@ -1376,16 +1312,19 @@ refineone(doc: ref Document): int
     while (changed) {
         changed = 0;
         for (index = 0; index < count - 1; index++) {
-            if (!merged[index] && candidates[index] != nil && touches(combined, candidates[index])) {
+            if (!merged[index] && candidates[index] != nil && touches(combined, candidates[index],doc.work)) {
                 merged[index] = 1;
                 changed = 1;
                 for (part := 0; part < GridBytes; part++) {
+            if (part % 512 == 0) {
+                checkwork(doc.work);
+            }
                     combined[part] |= candidates[index][part];
                 }
             }
         }
     }
-    nodes := contours(combined);
+    nodes := contours(combined,doc.work);
     if (len nodes < 2) {
         return Limit;
     }
@@ -1416,17 +1355,19 @@ refineone(doc: ref Document): int
 # Refine every unprocessed raw gesture in creation order on a private snapshot.
 # Latest-wins workers may supersede older jobs; no earlier stroke is then skipped.
 # Failed bounded refinements leave their original visible ink and report Limit.
-refine(doc: ref Document): int
+refinework(doc: ref Document): int
 {
     index := 0;
     status := Ok;
     while (index < len doc.shapes) {
+        checkwork(doc.work);
         if (doc.shapes[index].author == 0) {
             index++;
             continue;
         }
         work := create();
         work.shapes = doc.shapes[0:index + 1];
+        work.work = doc.work;
         result := refineone(work);
         if (result != Ok) {
             status = result;
@@ -1451,3 +1392,5 @@ include "idevectoredit.b";
 
 include "idevectorviewport.b";
 include "idevectorbrushfit.b";
+
+include "idevectorcancel.b";

@@ -48,12 +48,13 @@ init()
             check(changed.status == 0, "color accepted while earlier ink is queued");
             check(changed.body != "", "color response is available before Save joins workers");
         }
-        begun := call(owner, panes->Draw, "", ref Uibridge->Message(Uibridge->Request, 0, 1, stroke, x, y, ""));
-        check(begun.status == 0 && begun.revision == stroke + 1, "begin metadata");
         token := "00000001";
         if (stroke != 0) {
             token = "00000002";
         }
+        # Real native Begin carries its token and must not join the previous fit.
+        begun := call(owner, panes->Draw, "", ref Uibridge->Message(Uibridge->Request, 0, 1, stroke, x, y, token));
+        check(begun.status == 0 && begun.revision == stroke + 1, "begin metadata");
         ended := call(owner, panes->Draw, "", ref Uibridge->Message(Uibridge->Request, 0, 3,
             begun.revision, x + 96, y + 24, token));
         check(ended.status == 0 && ended.revision == stroke + 1, "frozen-token admission");

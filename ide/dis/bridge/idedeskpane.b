@@ -539,11 +539,11 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
     diagnostic := "";
     inkack := 0; # Highest adopted native token; fence follows the actual outgoing wire.
     native: Idehost;
+    nativepending := 0; # Mixed portable input must first adopt all frozen native trajectories.
     inkfailure := 0; # A failed native handoff must never publish an incomplete Save.
     jobs: chan of ref Ideinkworker->Job;
     completed := chan of ref Ideinkworker->Done;
     busy := 0;
-    queued: list of ref Ideinkworker->Job;
     inkworker := load Ideinkworker Ideinkworker->PATH;
     if (inkworker == nil) {
         raise "fail: vector ink worker";
@@ -565,6 +565,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                     inkworker->apply(vector, doc, done);
                     if (done.token != 0) {
                         inkack = done.token;
+                        nativepending = 0;
                     }
                 } else {
                     inkfailure = 1;
@@ -575,11 +576,6 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 }
                 notifications <-= 1;
             }
-            if (queued != nil) {
-                jobs <-= hd queued;
-                queued = tl queued;
-                busy = 1;
-            }
             continue;
         request = <-requests => ;
         }
@@ -589,12 +585,10 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
         if (request.operation == Save || request.operation == Shutdown || request.operation == Open ||
             (request.operation == VectorControl && request.event != nil &&
              (request.event.code == 5 || request.event.code == 6)) ||
-            (request.operation == Draw && request.event != nil && request.event.code == 1 && request.event.text == "") ||
+            (request.operation == Draw && request.event != nil && request.event.code == 1 && request.event.text == "" &&
+             (nativepending || (doc.tool != vector->Brush && doc.tool != vector->Pen))) ||
             (request.operation == Input && request.event != nil &&
              request.event.kind == Uibridge->Key && (request.event.code == 90 || request.event.code == 89))) {
-            if (request.operation == Shutdown) {
-                queued = nil;
-            }
             while (busy) {
                 done := <-completed;
                 busy = 0;
@@ -603,15 +597,11 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                         inkworker->apply(vector, doc, done);
                         if (done.token != 0) {
                             inkack = done.token;
+                            nativepending = 0;
                         }
                     } else {
                         inkfailure = 1;
                     }
-                }
-                if (queued != nil) {
-                    jobs <-= hd queued;
-                    queued = tl queued;
-                    busy = 1;
                 }
             }
         }
@@ -647,7 +637,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 }
             } else if (e.text != "" && e.code == 3) {
                 (valid, token) := codec->parseword(array of byte e.text, 0);
-                if (!valid || token <= 0 || jobs == nil || len doc.points == 0 || len queued >= 31) {
+                if (!valid || token <= 0 || jobs == nil || len doc.points == 0) {
                     status = Idecore->Invalid;
                 } else {
                     snapshot := inkworker->copy(vector, doc);
@@ -656,13 +646,10 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                     doc.revision++;
                     scheduled = doc.revision;
                     job := ref Ideinkworker->Job(doc.revision, snapshot, token, previous);
-                    if (busy) {
-                        queued = inkworker->append(queued, job);
-                    } else {
-                        jobs <-= job;
-                        busy = 1;
-                    }
-                    diagnostic = "Native ink queued for vectorization";
+                    nativepending = 1;
+                    jobs <-= job;
+                    busy = 1;
+                    diagnostic = "Latest ink submitted for vectorization";
                 }
             } else {
                 if (jobs != nil) {
@@ -802,12 +789,8 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             if (pending) {
                 snapshot := inkworker->copy(vector, doc);
                 job := ref Ideinkworker->Job(doc.revision, snapshot, 0, doc.revision);
-                if (busy) {
-                    queued = inkworker->append(queued, job);
-                } else {
-                    jobs <-= job;
-                    busy = 1;
-                }
+                jobs <-= job;
+                busy = 1;
             }
         }
         body := labels->state(doc.tool, doc.width, doc.fill);

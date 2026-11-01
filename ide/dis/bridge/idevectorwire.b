@@ -5,7 +5,7 @@
 # Serialize one immutable shape into a preflight-sized private byte array.
 # bytes/at name caller-owned writable storage; shape is borrowed. Return the
 # first unused offset. No allocation, callbacks, module load or shared mutation.
-wireshape(bytes: array of byte, at: int, shape: ref Shape, cubic: int): int
+wireshape(bytes: array of byte, at: int, shape: ref Shape, cubic: int, work: ref Work): int
 {
     putword(bytes, at, shape.color);
     putword(bytes, at + 8, shape.width);
@@ -13,6 +13,9 @@ wireshape(bytes: array of byte, at: int, shape: ref Shape, cubic: int): int
     putword(bytes, at + 24, len shape.nodes);
     at += 32;
     for (part := 0; part < len shape.nodes; part++) {
+        if (part % 128 == 0) {
+            checkwork(work);
+        }
         node := shape.nodes[part];
         putword(bytes, at, node.verb);
         putword(bytes, at + 8, node.x);
@@ -64,7 +67,7 @@ preparewire(doc: ref Document)
         putword(geometry, 0, len doc.shapes);
         at := 8;
         for (index = 0; index < len doc.shapes; index++) {
-            at = wireshape(geometry, at, doc.shapes[index], doc.wirecubic);
+            at = wireshape(geometry, at, doc.shapes[index], doc.wirecubic, doc.work);
         }
         doc.wirebody = string geometry;
         doc.wired = doc.shapes;
@@ -110,7 +113,7 @@ wire(doc: ref Document): string
     bytes[prefix:] = array of byte doc.wirebody;
     if (extra != nil) {
         putword(bytes, prefix, len doc.shapes + 1);
-        wireshape(bytes, prefix + len doc.wirebody, extra, doc.wirecubic);
+        wireshape(bytes, prefix + len doc.wirebody, extra, doc.wirecubic, doc.work);
     }
     return string bytes;
 }

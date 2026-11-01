@@ -30,7 +30,7 @@ presentation(doc: ref Document)
     count := len doc.shapes;
     if (overlay != nil) {
         bytes := array[32+(40+16*doc.wirecubic)*len overlay.nodes] of byte;
-        wireshape(bytes,0,overlay,doc.wirecubic);
+        wireshape(bytes,0,overlay,doc.wirecubic,doc.work);
         p.overlay = string bytes;
         count++;
     }
