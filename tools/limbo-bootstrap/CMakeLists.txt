@@ -188,6 +188,7 @@ add_executable(limbo-bootstrap
   upstream/limbo/com.c
   upstream/limbo/decls.c
   upstream/limbo/dis.c
+  upstream/limbo/dis64.c
   upstream/limbo/dtocanon.c
   "${limbo_ecom}"
   upstream/limbo/gen.c

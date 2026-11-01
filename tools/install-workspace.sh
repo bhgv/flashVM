@@ -108,6 +108,8 @@ PYCODE
     for file in "$ROOT/disVM/upstream/doc"/dis64-*.md "$ROOT/disVM/upstream/doc"/dis64-*.json; do
         copy_file "$file" "$destination/docs/dis64/$(basename -- "$file")"
     done
+    copy_tree "$ROOT/examples/firststeps/tools/limbo-scalar" "$destination/examples/dis64-scalar"
+    copy_file "$ROOT/tools/limbo-bootstrap/upstream/limbo/tests/README.dis64-scalar.md" "$destination/examples/dis64-scalar/UPSTREAM-SCALAR.md"
     copy_file "$ROOT/disVM/envelope/README.md" "$destination/DIS64-ENVELOPE.md"
     copy_file "$ROOT/disVM/envelope/README.ru.md" "$destination/DIS64-ENVELOPE.ru.md"
     "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination" --envelope
@@ -860,6 +862,8 @@ EOF
                 copy_tree "$ROOT/examples/firststeps/tools/mk" "$destination/examples"
             elif [[ "$component" == limbo-bootstrap ]]; then
                 copy_tree "$source/upstream/module" "$destination/module"
+                copy_tree "$ROOT/examples/firststeps/tools/limbo-scalar" "$destination/examples/dis64-scalar"
+                copy_file "$source/upstream/limbo/tests/README.dis64-scalar.md" "$destination/examples/dis64-scalar/UPSTREAM-SCALAR.md"
                 copy_file "$ROOT/compiler/limbo/examples/external-modules/arithmetic.b" "$destination/examples/arithmetic.b"
                 copy_file "$ROOT/compiler/limbo/examples/external-modules/arithmetic.m" "$destination/examples/arithmetic.m"
             fi

@@ -1,3 +1,10 @@
+## v0.1721 — Scalar compiler and typed field review
+
+Pinned Dis/bootstrap/mk to `4fd422043088d9ba8bf697db89d2069ec40ef9f4`.
+Imported INFERNO-0052..0054; reverse FLASHVM-0050 and the 64-layout cross-reader
+corpus are published upstream. [Commands, evidence and limits](DIS64-SCALAR-COMPILER.md).
+Default file execution/native calls stay closed.
+
 ## v0.1717 — Current-caller leases and live registers
 
 Selected Dis1043/bootstrap282/mk83 files are pinned to

@@ -92,6 +92,7 @@ if(BUILD_TESTING)
   endif()
   include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RV64TargetReview.cmake")
   include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Native64CallerReview.cmake")
+  include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Native64FieldReview.cmake")
   # Selected production regressions and their manifest-owned fixture dependencies.
   foreach(driver
     native64-caller-sequences

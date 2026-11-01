@@ -1,3 +1,6 @@
+[v0.1721 scalar Dis64 producer / скалярный backend](../../disVM/DIS64-SCALAR-COMPILER.md):
+explicit `-6`, shared pilot validation, unchanged ordinary Dis; Coco/R remains primary.
+
 [v0.1699 native64 frame/collector import and independent checks](../../disVM/SYNC.md):
 source56b8fa4a3285cba8f1ffd2c4ade66d18c12d5d1f,281 selected files. The actual
 compiler files retain their prior hashes; this checkpoint does not switch the

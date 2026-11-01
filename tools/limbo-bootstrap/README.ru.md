@@ -1,3 +1,6 @@
+[v0.1721 scalar Dis64 producer / скалярный backend](../../disVM/DIS64-SCALAR-COMPILER.md):
+explicit `-6`, shared pilot validation, unchanged ordinary Dis; Coco/R remains primary.
+
 # Временный native bootstrap Limbo из исходников
 
 [English](README.md) · [Приоритет собственного компилятора](../../compiler/limbo/OWN_COMPILER.ru.md) ·
