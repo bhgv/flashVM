@@ -1,6 +1,6 @@
 # Standalone C99 syntax frontend; Coco/R is an explicit external build tool.
 cmake_minimum_required(VERSION 3.10)
-project(limbo_frontend VERSION 0.10.0 LANGUAGES C)
+project(limbo_frontend VERSION 0.11.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -35,7 +35,7 @@ add_custom_command(
     "${COCOR_ROOT}/frames/parser_h.frm"
   VERBATIM)
 set_source_files_properties("${generated}/limbop.c" "${generated}/limbos.c" PROPERTIES HEADER_FILE_ONLY TRUE)
-add_library(limbo_frontend api.c tree.c parser.c scanner.c "${generated}/limbop.c" "${generated}/limbos.c")
+add_library(limbo_frontend source_position.c api.c tree.c parser.c scanner.c "${generated}/limbop.c" "${generated}/limbos.c")
 target_include_directories(limbo_frontend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(limbo_frontend PRIVATE "${generated}")
 target_compile_definitions(limbo_frontend PRIVATE CUSTOM_BUFF Custom_Error=limbo_Custom_Error GenError=limbo_GenError Parse=limbo_Parse SemError=limbo_SemError Successful=limbo_Successful SynError=limbo_SynError S_Col=limbo_S_Col S_CurrLine=limbo_S_CurrLine S_CurrentCh=limbo_S_CurrentCh S_Get=limbo_S_Get S_GetName=limbo_S_GetName S_GetString=limbo_S_GetString S_Len=limbo_S_Len S_Line=limbo_S_Line S_LineStart=limbo_S_LineStart S_NextCol=limbo_S_NextCol S_NextLen=limbo_S_NextLen S_NextLine=limbo_S_NextLine S_NextPos=limbo_S_NextPos S_Pos=limbo_S_Pos S_Reset=limbo_S_Reset S_src=limbo_S_src)
@@ -242,4 +242,10 @@ if(BUILD_TESTING)
   add_executable(limbo_resolve_alloc tests/resolve_alloc.c $<TARGET_OBJECTS:limbo_resolve_fault>)
   target_link_libraries(limbo_resolve_alloc PRIVATE limbo_interfaces)
   add_test(NAME limbo_alias_allocation_recovery COMMAND limbo_resolve_alloc)
+endif()
+
+if(BUILD_TESTING)
+  add_executable(limbo_source_position_test tests/source_position.c)
+  target_link_libraries(limbo_source_position_test PRIVATE limbo_frontend)
+  add_test(NAME limbo_source_position COMMAND limbo_source_position_test)
 endif()

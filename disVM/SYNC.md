@@ -1,3 +1,12 @@
+## v0.1723 — Source locations, Unicode coordinates and UTF evidence
+
+Dis1062/bootstrap297/mk83 are pinned to `1bc495ad6058841da3e3b60c5fd72aef1dcbe4e2`.
+Reviewed INFERNO-0055; reverse FLASHVM-0051 fixes actual bounded sidecar reads
+and proposes normalized coordinates without new shared IDs. Limbo frontend0.11.0
+adds a pure Unicode source-position API. [Release and evidence](../docs/releases/v0.1723.md).
+Full local optimized UTF ASan unwind still reproduces; UBSan/alignment results
+and upstream native ARM64 CI are separate evidence. Default file admission stays closed.
+
 ## v0.1721 — Scalar compiler and typed field review
 
 Pinned Dis/bootstrap/mk to `4fd422043088d9ba8bf697db89d2069ec40ef9f4`.

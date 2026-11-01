@@ -1,6 +1,8 @@
+[Normalized source coordinates](frontend/SOURCE-POSITIONS.md)
+
 # LIMBO
 
-Version 0.10.0. [Русский](README.ru.md).
+Version 0.11.0. [Русский](README.ru.md).
 
 Independent C99 compiler project. The current implementation is a syntax
 frontend with owned concrete production trees: [grammar and build](frontend/README.md),

@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1722**. [Русская версия](README.ru.md).
+Development version: **0.1723**. [Русская версия](README.ru.md).
 
-Current series: [v0.1722](docs/releases/v0.1722.md): vector object/node editing and desktop scale damage repair.
+Current series: [v0.1723](docs/releases/v0.1723.md): Inferno source locations, bounded sidecar reads and normalized Unicode source coordinates.
 
 ## Browse documentation
 

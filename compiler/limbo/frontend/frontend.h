@@ -8,6 +8,7 @@
 #error "This syntax frontend requires 8-bit bytes and at least 32-bit int"
 #endif
 #include <stddef.h>
+#include "source_position.h"
 #include <stdint.h>
 #include <stdio.h>
 

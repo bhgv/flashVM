@@ -101,6 +101,7 @@ Path(sys.argv[2]).write_bytes(bytes.fromhex(Path(sys.argv[1]).read_text()))
 PYCODE
     fi
     copy_file "$ROOT/disVM/upstream/libinterp/tests/dis64/pilot-init42.hex" "$destination/examples/dis64-envelope/pilot-init42.hex"
+    copy_file "$ROOT/disVM/upstream/utils/dis64-locations.py" "$destination/tools/dis64-locations.py"
     copy_file "$ROOT/disVM/upstream/utils/dis64inspect/dis64inspect.c" "$destination/source/dis64inspect.c"
     for file in isa.h dis64.h dis-rune.h dis-string-pool.h dis-operand.h dis-layout.h dis64-module.h dis64-types.h dis64-code.h dis64-pilot.h dis64-scalar.h dis64-data.h dis64-signature.h dis64-bindings.h; do
         copy_file "$ROOT/disVM/upstream/include/$file" "$destination/include/dis64/$file"
@@ -178,9 +179,12 @@ frontend() {
     libraries "$base" "$destination"
     copy_file "$ROOT/compiler/$language/frontend/frontend.h" "$destination/include/frontend.h"
     if [[ "$language" == limbo ]]; then
+        copy_tree "$ROOT/compiler/limbo/examples/source-position" "$destination/examples/source-position"
+        copy_file "$ROOT/compiler/limbo/frontend/SOURCE-POSITIONS.md" "$destination/SOURCE-POSITIONS.md"
+        copy_file "$ROOT/compiler/limbo/frontend/SOURCE-POSITIONS.ru.md" "$destination/SOURCE-POSITIONS.ru.md"
         copy_file "$ROOT/compiler/limbo/frontend/ALIASES.md" "$destination/ALIASES.md"
         copy_file "$ROOT/compiler/limbo/frontend/ALIASES.ru.md" "$destination/ALIASES.ru.md"
-        for header in interface.h signature.h resolve.h native.h; do
+        for header in interface.h signature.h resolve.h native.h source_position.h; do
             copy_file "$ROOT/compiler/limbo/frontend/$header" "$destination/include/$header"
         done
         copy_file "$ROOT/compiler/limbo/frontend/NATIVE_C.md" "$destination/NATIVE_C.md"

@@ -12,7 +12,8 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     frontend = root / 'compiler/limbo/frontend'
     pairs = {frontend / name: package / name
-             for name in ('ALIASES.md', 'ALIASES.ru.md', 'NATIVE_C.md', 'NATIVE_C.ru.md')}
+             for name in ('ALIASES.md', 'ALIASES.ru.md', 'NATIVE_C.md', 'NATIVE_C.ru.md', 'SOURCE-POSITIONS.md', 'SOURCE-POSITIONS.ru.md')}
+    pairs[root / "compiler/limbo/examples/source-position/main.c"] = package / "examples/source-position/main.c"
     for source in frontend.glob('*.h'):
         target = package / 'include' / source.name
         if target.is_file():

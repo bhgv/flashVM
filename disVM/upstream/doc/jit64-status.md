@@ -79,3 +79,19 @@ field witnesses tied to exact caller Module/Type/callable identity and the held
 activation generation. Its C producer checks execute on x64 and ARM64; standalone
 field and sequence checks also execute on RV64/QEMU. These are calling-contract
 checks, not new native opcode paths or expanded Dis64 file admission.
+
+Series0055 adds fault-PC/source correspondence and optimized UTF semantic checks,
+not opcode emitters. The complete classic-mk x64, ARM64 and RV64 scalar consoles
+retain their existing interpreter/JIT entry coverage. Source locations remain
+private offline tooling; the shared file profile still admits43/173 instructions.
+The UTF fixture's prior NDEBUG-disabled assertions are replaced by active `if`
+predicates plus wrong-count executable controls. This does not close the earlier
+ASan error-unwind report or broaden managed/native file-call admission.
+
+Native Linux ARM64 execution is now confirmed in CI run41334049753, including
+the complete classic-mk scalar console and744-image C/RX/ownership gates. The
+same run passes native x64 and QEMU RV64 and preserves downloadable console
+artifacts. Full optimized UTF ASan+UBSan additionally passes on native ARM64/x64
+in run41334449491. These results strengthen platform/test evidence; they do not
+change the opcode counts,43-op file profile or open full managed application
+startup. See [series0055](native64-series0055.md#native-linux-arm64-ci-acceptance).

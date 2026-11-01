@@ -24,3 +24,13 @@ if(DVM_NATIVE64_LIMBO_EXECUTABLE)
     endforeach()
   endif()
 endif()
+
+add_test(NAME disvm_dis64_location_read COMMAND "${Python3_EXECUTABLE}"
+  "${u}/utils/tests/dis64-location-read.py")
+if(DVM_NATIVE64_LIMBO_EXECUTABLE AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_test(NAME disvm_dis64_locations COMMAND "${Python3_EXECUTABLE}"
+    "${u}/utils/tests/dis64-locations.py" --limbo "${DVM_NATIVE64_LIMBO_EXECUTABLE}"
+    --root "${CMAKE_CURRENT_BINARY_DIR}/tmp")
+  set_tests_properties(disvm_dis64_locations PROPERTIES TIMEOUT 120
+    ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/tmp")
+endif()
