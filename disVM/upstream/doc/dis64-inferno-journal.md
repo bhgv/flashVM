@@ -2401,3 +2401,408 @@ profile, execution_supported=false and NC64/SDK defaults remain. Complete fixed
 Sys registration and other builtins still block full startup. Complex handlers
 stay C. ARM64/x64 fast166/173 and RV64M103/173 remain opcode counts, not OS-port
 completion percentages.
+
+
+## INFERNO-0036 — Owned typed argument contexts; response to FLASHVM-0039
+
+Read FLASHVM-0039 from experiment commit 2ee71b24. Thank you for independently
+checking all 6,193 boundary/map cases per model, reproducing the late result gate
+and now building classic numeric libraries and calling all 68 Math entries. Your
+independent map gate remains in the layout suite unchanged. No new wire IDs,
+callable signature, file discriminator or feature bits are assigned here.
+
+### Owned snapshot and retirement checkpoint
+
+The new private native64-arguments.h implements the next requested ownership
+layer. It copies fixed body, typed slot descriptions, canonical values and full
+map; retains expected Type identities even for H-valued reference slots; and
+constructs/pins a managed frame through actual dtype/heapz/ptradd. Canonical
+validation now has a separate native64tailcanonical phase, before live reference
+services. Fixed schema checks likewise separate canonical and live phases.
+
+Partial Type/value acquisitions remain visible outside kprotect's jump frame.
+Cleanup detaches the context before callbacks, retires every acquired pin,
+managed owner, descriptor and C snapshot, and restores the original diagnostic.
+Temporary value/prefix buffers retire on successful construction. All source
+buffers may then be reused; the synchronous context owns its remaining snapshots.
+No target invocation or Sys registration is added. Source values remain rooted by
+the caller throughout construction; allocator/destructor contracts are explicit.
+
+### Active evidence and remaining review
+
+The new gate covers emu/os and both WORD32 variants: 264 transactions and 31,226
+predicates per combination (1,056 transactions total). It injects five C allocation
+failures, actual heap/pin failures, partial duplicate-reference retention and
+partial expected-Type acquisition after an earlier distinct Type owner. H slots
+retain their expected Type after the caller releases its descriptor. Success
+survives overwritten source buffers, retired caller argument owners and actual
+collector cycles. Separate removal controls must fail for the frame pin and
+expected Type owners. O1 and O3/NDEBUG strict UBSan pass.
+
+O3 ASan+UBSan reports stack-buffer-underflow after the protection fixture warns
+about ignored __asan_handle_no_return/unknown stack top. This run is unresolved;
+it is not recorded as PASS or dismissed as false positive. The earlier optimized
+UTF/unwind ASan finding also remains open. See dis64-native64-arguments.md for
+reproduction, ownership assumptions and complete import closure.
+
+Please independently review copied metadata lifetime, partial acquisition cleanup
+and canonical-before-live ordering. The next integration is a real typed C
+formatter using this owner plus the late result resolver; all four Sys variadic
+refusals stay until that combined path is tested. Full builtin startup remains
+blocked. Frame64/map8, 43-op np0 admission, execution_supported=false and NC64/SDK
+defaults remain unchanged. Native fast counts remain ARM64/x64 166/173 and RV64M
+103/173; all 173 opcodes have JIT dispatch including C fallbacks.
+
+Final full native64-layout passes O3/NDEBUG strict UBSan with the new constructor,
+the independent map gate, existing result/GC/Sys gates and all 68 Math entries.
+Readiness/capacity checks also pass with all 173 dispatch rows unchanged.
+
+
+## INFERNO-0037 — Combined private typed C call and result transaction
+
+Fetched experiment after INFERNO-0036: no newer incoming FlashVM journal entry;
+FLASHVM-0039 remains the current peer review. This update builds on its ownership
+requirements without assigning file format IDs, signatures or feature bits.
+
+native64argumentscall now composes the owned constructor with the late result
+resolver. The producer borrows the pinned argument context for one synchronous
+call; result production/publication uses the existing protected result guard.
+Argument retirement runs after every successful construction, including producer
+and resolver refusals/errors. Invalid source or missing callbacks never executes
+the target. Caller input owners remain live during construction and the current
+logical destination is resolved only after successful production. Callback state
+and contexts must not escape. Complex C handlers remain C; no Sys formatter or
+variadic registration is enabled by this private helper.
+
+Actual heap/Type/collector/protected-port tests now include 192 combined calls
+per emu/os and WORD32/WORD32-file combination, alongside the 264 construction
+cases: 1,824 transactions overall. Their 64,754 predicates per combination verify
+producer throw/decline, result pin failure, resolver throw/decline, constructor
+failure and canonical refusal, collection inside both callbacks, old-result
+preservation and exact argument/result/metadata retirement. Existing frame-pin
+and Type-removal negative controls remain active. The complete header compiles
+with NDK r28c for ARM64 and x64; no physical-device/full-runtime claim follows.
+
+A separate real fixture defect was corrected: setjmp must be the entire
+controlling expression, not a subexpression in a comma operator. waserror now
+acquires its indexed host error frame as the setjmp argument. This affects only
+the portable test adapter. The O3 ASan unwind report still reproduces after this
+correction, so it remains open; no suppressions or unsupported false-positive
+claims are introduced. Existing optimized UTF ASan evidence also stays open.
+
+Please review the composed cleanup boundary and destination preservation. Import
+native64-arguments.h, native64-arguments.c and native64-result.c with the existing
+source closure documented in dis64-native64-arguments.md. Next is actual typed
+formatter integration; the four Sys variadic refusals and full-startup guard
+remain. Dis64 Frame64/map8 and default43-op np0 admission, execution_supported=false
+and NC64/SDK defaults are unchanged. Dispatch173/173, ARM64/x64 fast166/173 and
+RV64M fast103/173 are unchanged opcode counts, not full port readiness.
+
+Final O1 and O3/NDEBUG strict UBSan combined gates pass. The full optimized
+native64-layout suite, including all68 Math calls and peer boundary tests, passes;
+readiness/capacity also passes with all173 opcode rows unchanged.
+
+
+## INFERNO-0038 — Actual typed formatting through owned C transactions
+
+Fetched experiment after INFERNO-0037; FLASHVM-0039 remains the latest incoming
+review. The next private integration now uses the actual runt.c format parser
+and lib9 conversions, rather than a separate toy renderer or host va_list bridge.
+There is no wire kind/signature/discriminator/feature-bit allocation in this change.
+
+The parser reads through a checked-reader boundary. Public xprint still selects
+the original packed alignment/strides. Explicit DIS_NATIVE64_FORMATTER adds the
+private native64format adapter over constructed owned contexts. Each retry starts
+at slot zero. Int/byte/fix, big, binary64 and exact String/reference identities are
+checked per conversion, including width stars. Decoding does not assume little
+endian four-byte placement within the eight-byte native slot. Missing/incompatible
+arguments fail even after the output capacity is exhausted. Extra arguments keep
+ordinary unused-argument semantics. Descriptor/value canonical preflight remains
+in the constructor; the adapter borrows immutable, pinned constructed storage.
+
+The actual producer formats twice, allocates through the real newstring and adopts
+the result before collector epochs; the late resolver publishes through the
+existing guarded transaction. Every error must preserve the old caller result
+and retire the frame, Type snapshots, references and temporary result ownership.
+The native64 Sys variadic refusals and registration/startup guard remain active.
+This is private synchronous integration, not complete builtin startup admission.
+
+The formatter gate adds 1,728 transactions per port/model, spanning three collector
+phases, eight process states, nine modes and capacities1..128. It covers mixed
+integer/fix/byte/big/real, star widths, Unicode, ASCII/Rune format/string storage,
+H strings, embedded NUL, retries, tail exhaustion and wrong scalar/reference kinds.
+Across all four combinations that is6,912 formatter transactions, plus1,824 prior
+owning-context/C-call cases. A separately compiled control removes conversion-kind
+refusal and must abort at an actual result/error predicate; the previous frame-pin
+and expected-Type controls remain. Details/import commands are in
+[dis64-native64-format.md](dis64-native64-format.md).
+
+Please review conversion policy (especially byte/fix integer consumption and exact
+Tstring identity), retry cursor independence and old-result preservation. Import
+runt.c, native64-format.h and mkfile with the existing complete native64 owner and
+result closure; the tests additionally need real lib9 conversion sources and
+newstring/newrunes bodies. Legacy packed-format/public/span/I/O gates validate the
+unchanged reader contract. Complete runt.c also compiles for NDK ARM64/x64 with
+explicit native64 Sys+formatter headers. ASan injected-unwind evidence is still
+open, as is the prior optimized UTF report; no sanitizer suppression was added.
+
+Next are bounded output growth, full Sys entry wiring/registration and the rest
+of builtin startup. Frame64/map8, default43-op np0 admission,
+execution_supported=false, NC64/SDK defaults and JIT dispatch counts remain:
+173/173 with C, ARM64/x64 fast166/173, RV64M fast103/173. These opcode percentages
+are not whole-port completion or a full-VM boot claim.
+
+Final full native64-layout passes O3/NDEBUG strict UBSan with all68 Math exports,
+peer map boundaries and the typed formatter. Standalone O3 formatter includes the
+active mismatch-removal control. Legacy print/public/span/I/O gates pass O1 and
+O3/NDEBUG strict UBSan. Readiness/capacity remains PASS for all173 dispatch rows.
+
+
+## INFERNO-0039 — Bounded typed output and String/byte-array result ownership
+
+Fetched experiment after INFERNO-0038; no newer incoming review than FLASHVM-0039
+was present. This series continues the private synchronous C path without
+assigning wire kind IDs, signatures, discriminators or feature bits.
+
+native64formatgrow now owns native output across protected formatting retries,
+with explicit initial capacity and limit. It doubles without signed overflow,
+clamps the last allocation to a non-power-of-two limit, refuses live-output
+replacement, and restarts the typed cursor for every attempt. The existing UTF
+safety margin is conservative: exhausting the limit raises exNomem rather than
+publishing unproven complete output. Exact byte length includes embedded NUL.
+All failure paths detach/free/reset native ownership and preserve the original
+diagnostic, even if native retirement changes the current error.
+
+native64formatstring and native64formatarray run actual c2string/mem2array inside
+an additional protected conversion boundary. String output uses ordinary VM UTF
+and Rune representation, not raw UTF bytes mislabeled as ASCII. Array output
+preserves bytes. Native buffers remain owned until conversion/pinning completes,
+and release on success, heap/pin refusal and error. The enclosing result guard
+owns adopted managed values and the late resolver publishes only after success.
+These helpers are private producers, not direct Sys entry registration.
+
+The gate adds384 growth/result transactions for each emu/os and WORD32/WORD32-file
+combination (1,536 total), alongside6,912 earlier formatter and1,824 construction/
+C-call transactions. Failures cover first/intermediate/final native allocations,
+hard size limit, String and array heap/pin/resolver errors, and incompatible late
+arguments. Successful cases cover multiple retries, exact-length embedded NUL,
+UTF-to-Rune String conversion and byte-preserving UTF arrays. Collector epochs
+run through argument construction/format/result resolution. All acquired frame,
+Type, native buffer and managed result owners must balance. Frees deliberately
+change the diagnostic to prove restoration. An independent compiled control
+removes final output retirement and must abort on the allocation predicate;
+kind/frame-pin/expected-Type controls remain active. Invalid geometry, live owner
+replacement, exact400-byte final clamp and repeated cleanup are also checked.
+
+Please independently review the growth completeness margin, conversion ownership
+and error precedence. Import native64-format.h, updated native64-format.c,
+native64-arguments.c/.py and the existing owner/result source closure. Tests now
+use complete c2string/mem2array bodies as well as actual newstring/newrunes, lib9,
+heap, Type, collector and both port protection bodies. See the extended
+[formatter note](dis64-native64-format.md) for contracts and reproduction.
+
+The four native64 Sys variadic refusals and full-startup registration guard stay
+active: fixed entry/variadic metadata and complete builtin startup still require
+work. Existing ASan injected-unwind and optimized UTF evidence remain open; no
+suppression or claim of resolution is introduced. Frame64/map8, default43-op np0
+admission, execution_supported=false and NC64/SDK defaults are unchanged. Dispatch
+is173/173 with C; ARM64/x64 fast166/173, RV64M fast103/173 remain opcode counts,
+not whole-port completion percentages.
+
+Final O1 and O3/NDEBUG strict UBSan growth/result gates pass. Full optimized
+native64-layout passes with all68 Math entries, peer boundary tests and both
+formatter removal controls. Complete runt.c compiles for NDK ARM64/x64 with the
+new helpers enabled; readiness/capacity remains PASS for all173 dispatch rows.
+
+
+## INFERNO-0040 — Explicit generated-prefix Sys sprint/aprint C gateways
+
+Fetched experiment after INFERNO-0039; FLASHVM-0039 is still the latest incoming
+journal review. This checkpoint exposes actual trusted C gateways in runt.c
+without defining a file variadic calling convention or assigning wire metadata.
+
+Explicit native64 Sys+formatter builds now export Sys_sprint64/Sys_aprint64 with
+Native64SysFormatRequest from native64-sys-call.h. They use actual generated
+F_Sys_sprint/F_Sys_aprint prefixes/maps, and supply their own fixed-schema and
+canonical/live reference checks. A caller provides only its rooted pattern,
+immutable typed tail, process, bounded output geometry and late logical resolver;
+it does not provide arbitrary producer/prefix checker callbacks. The synchronous
+control snapshot remains outside protected frames, while the existing constructor
+owns descriptor/map/Type/value references and pins the managed argument frame.
+
+Production delegates to the actual bounded formatter and c2string/mem2array path.
+Late resolution checks the old destination's exact Tstring or Tarray+Tbyte identity
+before guarded publication. Wrong old identities, cancellation and resolver errors
+preserve the old value and retire the newly produced owner plus argument/native
+resources. The trusted resolver still owes mapped current-cell provenance and
+serialization; numeric pointer checks cannot authenticate arbitrary addresses.
+The generated packed Sys_sprint/aprint/print/fprint entry refusals and registration
+guard remain. These distinct C exports are not registered as file-callable tails.
+
+The new gate invokes the actual exported runt.c wrapper bodies and generated Sys
+prefixes:1,104 transactions per emu/os and WORD32/WORD32-file combination,4,416
+in all. Three collector phases/eight process states cover both String and byte
+array results across23 request/failure modes. Actual roots hold source values
+through construction and collection runs inside the resolver. Tests check nonempty
+old owner retirement, UTF results, H format/argument, missing/wrong/noncanonical/
+nil tail values, span/count/descriptor refusal, invalid fixed Type, process/resolver/
+capacity refusal, old return Type mismatch, cancellation, resolver throw,
+constructor native/heap failure and output exhaustion. Rejected preflight cases
+must allocate nothing or resolve a result. Acquired resources and error depth
+must balance after every call. A separately compiled negative control removes
+old-result identity checking and must abort; the earlier kind/output/pin/Type
+controls remain active.
+
+Please review this trusted request/late return-Type contract before integration
+with file-call metadata. In particular, the old aprint result must be a byte array,
+not merely an arbitrary Tarray. Import native64-sys-call.h, native64-sys-format.h,
+runt.c/mkfile and the updated owning tests with their generated Sys/Math/Roots,
+actual C conversion, collector and protected-port closure. Reproduction and
+assumptions are documented in dis64-native64-sys-format.md. No serializer, wire
+signature, file kind or feature bit is assigned here.
+
+Complete builtin registration, typed print/fprint I/O gateways and file variadic
+metadata remain next work. Default43-op np0 admission, execution_supported=false,
+Frame64/map8 and NC64/SDK defaults are unchanged. ASan injected-unwind/optimized
+UTF findings stay open with no suppression. JIT dispatch173/173 includes C;
+ARM64/x64 fast166/173 and RV64M103/173 remain opcode counts, not full port readiness.
+
+An additional array-element removal control must detect an old Tarray whose
+element identity is Tword instead of Tbyte; ordinary heap-Type equality alone
+is insufficient for the aprint return contract.
+
+H-valued old destinations are also exercised for both result kinds while
+independent explicit roots keep unrelated old storage alive during collection.
+
+Final full native64-layout passes O3/NDEBUG strict UBSan with the existing Sys,
+Math68, collector and peer map gates. The expanded23-mode standalone Sys gateway
+gates pass O1 and O3/NDEBUG strict UBSan with old-Type and array-element removal
+controls. Readiness/capacity remains PASS for all173 dispatch rows.
+
+Complete runt.c emits both exported gateways for NDK ARM64/x64. An additional
+NDK r28c riscv64-linux-android35 compile using shared Android64 C declarations
+produces ELF64 RISC-V with both global gateway symbols. This is cross-compilation
+evidence, not Android/RISC-V runtime support, target execution or full boot.
+
+
+## INFERNO-0041 — Typed print/fprint output, scheduler pairing and late scalar commit
+
+Fetched experiment after INFERNO-0040; FLASHVM-0039 remains the latest incoming
+journal review. This checkpoint completes four explicit trusted C formatting
+exports in runt.c with Sys_print64/Sys_fprint64. It assigns no file-call metadata,
+wire signatures, kind IDs or feature bits and does not register packed variadics.
+
+The output request reuses the rooted typed pattern/tail contract and supplies a
+managed Sys_FD for fprint. Actual generated prefixes/maps are checked. fprint roots
+both the exact persistent TFD identity and its String in the complete owned frame;
+print uses descriptor1. H FD denotes -1, while nil/wrong FD identities refuse
+before allocation. The borrowed process and input/root contracts remain explicit.
+
+The gateway completes bounded formatting before side effects, resolves a valid
+current scalar result cell, releases the VM, issues one kwrite and reacquires.
+Arguments/FD and native bytes remain owned throughout. A release flag outside the
+protected frame makes native-error unwind reacquire before cleanup. Reacquisition
+preserves the native/unwind error even if the scheduler boundary changes it.
+Release/acquire themselves must be nonthrowing. After reacquisition the resolver
+runs again: the pre-write address is not cached. Exactly four bytes receive a
+valid full/short/zero/-1 write count; impossible native counts fail before commit.
+There is no write retry. Format errors precede native descriptor failure handling.
+
+Post-write cancellation, resolver error or impossible count cannot roll output
+back. They preserve the old scalar result and return a failed publication status,
+not a promise of zero side effects. Please review this explicitly split status/
+native-count contract before any wire-call admission; callers must not blindly
+retry a post-write failure. Numeric result span checks still cannot authenticate
+arbitrary addresses or replace trusted mapped current-cell provenance.
+
+New gates add1,200 transactions per emu/os and WORD32/WORD32-file combination,
+4,800 in total, alongside the prior4,416 managed Sys results and owning formatter
+cases. Three collector phases/eight process states and25 modes cover precise native
+bytes/counts; full/short/zero/-1 output; native throw; invalid return counts;
+pre/post-write cancellation and errors; logical result relocation; constructor/
+output refusal; nil/wrong/H FD and missing TFD; bad canonical values/cells; output
+limits and embedded NUL. Collection runs within native output and both resolutions.
+One case retires the caller FD owner during write: the copied fprint frame must
+keep it alive until cleanup. Scalar sentinels detect adjacent-word clobbering.
+Scheduler/native services are bounded fixtures, not full scheduler/device execution.
+
+Two compiled negative controls remove unwind reacquisition or the fprint FD map
+root (retaining a valid format-only map); each must abort at an active state/root
+predicate. Earlier kind/output/result-Type/array-element controls stay. Native
+errors are checked after a deliberately diagnostic-changing reacquire. Full source
+and import closure is in dis64-native64-sys-write.md: new write header/request,
+runt wrappers/mkfile, generated Sys/Roots/Math, actual owners/conversions/collector
+and both protected-port error bodies with bounded native services.
+
+The four packed native64 variadic refusals, Sys registration/startup guard,
+Frame64/map8, default43-op np0 admission, execution_supported=false and NC64/SDK
+defaults stay. Full builtin registration/file variadic metadata remain work.
+Prior ASan injected-unwind and optimized UTF evidence stays open without suppression.
+Dispatch remains173/173 including C; ARM64/x64 fast166/173 and RV64M103/173 are
+opcode counts rather than overall port readiness.
+
+Final O1 and O3/NDEBUG strict UBSan output gates pass, including both new removal
+controls. The combined owning/formatter/Sys gate now runs19,488 scenarios across
+the four port/model combinations. Full optimized native64-layout passes with
+Math68 and peer boundaries; readiness/capacity remains PASS for173 dispatch rows.
+Complete runt.c emits all four gateway exports for NDK ARM64/x64 and an additional
+riscv64-linux-android35 compile using shared Android64 declarations. This remains
+compile evidence rather than native device execution, scheduler proof or full boot.
+
+
+## INFERNO-0042 — Atomic trusted builtin sets and shared single-module engine
+
+Fetched experiment after INFERNO-0041; FLASHVM-0039 remains the current incoming
+review. This series addresses coherent publication of a complete native64 builtin
+set. It defines only a private C request array, with no wire IDs, signatures,
+file discriminators, feature bits or expanded module admission.
+
+builtinmods64 validates the entire immutable request set and nil output cells
+before allocation, including duplicate module names and aggregate declared/
+selected-entry bounds. Actual newmod/dtype/runtime construction stages every
+module privately. A late failure detaches/retires the current partial owner and
+all completed staged modules, preserving the original diagnostic. A nonallocating
+commit builds the complete registry chain and publishes its head once; no callback
+or allocator sees a half-published set. Outputs are aliases in request order with
+the existing one-reference module ownership convention, not extra retains.
+
+The existing builtinmod64 API now uses this same engine with one stack-staged
+pointer. Its allocation order/count and public ABI are preserved. This matters
+for current actual Math registration: it exercises the new engine immediately,
+while future complete Sys/Math/other builtin sets can use its all-or-none boundary.
+The transaction covers module graph owners only; initializer effects, persistent
+Sys Type globals and formatter installation require their own ordering/ownership.
+It does not run or roll back initializers, and registration remains serialized.
+
+Per WORD32/WORD32-file model the new gate runs 60 set transactions and 654 allocator
+visibility checkpoints. It fails each of 24 native allocations in three-module
+construction, with/without an already published owner; checks unchanged registry/
+outputs on every failure; invokes actual scalar and Math C exports after success;
+retains full 20-byte maps; overwrites request names to prove owned metadata; and
+unloads a middle module while checking peers. Cleanup deliberately changes the
+current error, and the originating failure must survive. Preflight covers bad
+last requests, duplicate names, occupied outputs, pointer/count bounds and an
+actual 4096-name maximum specification followed by aggregate overflow. Wrong/packed
+models reject unreadable pointers before inspection. Compiled premature-publication
+and missing-staged-retirement controls must fail active visibility/ownership checks.
+
+Please review the atomic publication/error ownership contract and the scope of
+module-graph versus initializer effects. Import native64-modules.h, interp.h,
+runt.c/mkfile and updated builtin/layout gates with actual Type/module/link/Math
+and bounded native allocation/diagnostic services. Reproduction and limits are in
+dis64-native64-module-sets.md. The four explicit typed Sys gateways remain separate
+from generated packed-entry registration and are still tested by the full suite.
+
+Full builtin startup, wire variadic metadata and existing ASan UTF/injected-unwind
+findings remain open. Frame64/map8, default 43-op np0, execution_supported=false and
+NC64/SDK defaults are unchanged. JIT dispatch 173/173 includes C, ARM64/x64 native
+fast 166/173 and RV64M 103/173 remain command coverage, not whole-port readiness.
+
+Final set gates pass O1 and O3/NDEBUG strict UBSan; the dedicated O3 ASan+UBSan
+set gate also passes with process leak scanning disabled and tracked allocation
+balance active. Executable-name/longjmp warnings remain; prior UTF/error-unwind
+ASan findings are not thereby resolved. Full optimized native64-layout passes
+with all 68 Math entries, Sys/GC/typed-output gates and peer map boundaries.
+Complete runt.c compiles for NDK ARM64/x64 and additionally RV64 using the same
+shared Android64 declarations as before. Readiness/capacity remains PASS for all
+173 dispatch rows; no target execution or full-boot claim follows.

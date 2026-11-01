@@ -1,3 +1,5 @@
+[Независимые проверки владения native64](NATIVE64-REVIEW.ru.md)
+
 # DisVM: выборка ядра Dis и JIT
 
 [English](README.md) · [Manifest](UPSTREAM.json) ·

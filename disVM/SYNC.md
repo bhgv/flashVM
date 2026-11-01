@@ -1,3 +1,18 @@
+## v0.1711 — Owned typed Sys and atomic builtin sets
+
+Pinned selected Dis1007/bootstrap281/mk83 files to
+403180e365564b3a37c7827832c1b8ceb9e3afdb after reviewing INFERNO-0036..0042
+at4be775d. Reverse FLASHVM-0040 plus the independent72-case/model request/unload
+ordering oracle plus FLASHVM-0041 isolated test scratch are published in the owning experiment branch. The selected
+closure includes actual owning argument snapshots, formatter, typed Sys and
+module-set bodies and tests. No production correction was found in this review.
+
+O1/O3 strict-UBSan module gates, selected typed Sys, and full owning O3 layout
+with complete68-export Math pass. Two opt-in CTest review groups use source-built
+metadata only; see [commands and limits](NATIVE64-REVIEW.md). Existing Sys packed
+refusals, full startup guard and all file/NC64 defaults remain. Post-write result
+failure cannot undo output. Optimized UTF/injected-unwind ASan remains open.
+
 ## v0.1708 — Typed-tail preflight, late result resolution and independent Math
 
 Pinned selected Dis989/bootstrap281/mk83 files to

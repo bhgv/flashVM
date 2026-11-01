@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1710**. [Русская версия](README.ru.md).
+Development version: **0.1711**. [Русская версия](README.ru.md).
 
-Current series: [v0.1710](docs/releases/v0.1710.md): native live-ink buffers and stamps, ordered Limbo vectorization and native-sized maximized SDI/MDI.
+Current series: [v0.1711](docs/releases/v0.1711.md): bidirectional Inferno native64 ownership synchronization, independent module ordering and reproducible review gates.
 
 ## Browse documentation
 

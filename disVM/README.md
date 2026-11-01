@@ -1,3 +1,5 @@
+[Native64 ownership review gates](NATIVE64-REVIEW.md)
+
 # DisVM: selected Dis interpreter and JIT core
 
 [Broker diagnostics and portable clients](broker/README.md)

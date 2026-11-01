@@ -14,6 +14,8 @@ def main():
     root, package = (Path(value).resolve() for value in sys.argv[1:])
     aliases = [] # Additional installed copies still link through the same canonical source map.
     pairs = {
+        root / "disVM/NATIVE64-REVIEW.md": package / "docs/dis64/NATIVE64-REVIEW.md",
+        root / "disVM/NATIVE64-REVIEW.ru.md": package / "docs/dis64/NATIVE64-REVIEW.ru.md",
         root / "ide/NATIVE-INK.md": package / "NATIVE-INK.md",
         root / "ide/NATIVE-INK.ru.md": package / "NATIVE-INK.ru.md",
         root / "ide/dis/tests/native_ink_test.b": package / "examples/native-ink/worker-check.b",

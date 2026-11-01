@@ -453,6 +453,8 @@ EOF
                     -e 's|../../disVM/|https://github.com/bhgv/flashVM/blob/master/disVM/|g' \
                     "$ROOT/ide/dis/DESKTOP-CONTROLS.$language" >"$destination/docs/ide/DESKTOP-CONTROLS.$language"
             done
+            copy_file "$ROOT/disVM/NATIVE64-REVIEW.md" "$destination/docs/dis64/NATIVE64-REVIEW.md"
+            copy_file "$ROOT/disVM/NATIVE64-REVIEW.ru.md" "$destination/docs/dis64/NATIVE64-REVIEW.ru.md"
             copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.md" "$destination/RETAINED-SCENE.md"
             copy_file "$ROOT/disVM/runtime/RETAINED-SCENE.ru.md" "$destination/RETAINED-SCENE.ru.md"
             copy_file "$ROOT/disVM/runtime/SYS_CAPTURE.md" "$destination/SYS_CAPTURE.md"

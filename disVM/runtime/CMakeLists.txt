@@ -221,6 +221,7 @@ endif()
 
 if(DVM_RUNTIME_TESTS)
  enable_testing()
+ include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Native64Review.cmake")
  add_test(NAME disvm_runtime_platform_selection COMMAND "${PYTHON_EXECUTABLE}"
    "${CMAKE_CURRENT_SOURCE_DIR}/test_platform.py" "${CMAKE_COMMAND}"
    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
