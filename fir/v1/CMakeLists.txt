@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.71.0 LANGUAGES C)
+project(fir1 VERSION 0.72.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -733,4 +733,16 @@ if(BUILD_TESTING)
   add_test(NAME fir1_integer_sparse_facts COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_sparse_facts.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
   set_tests_properties(fir1_integer_sparse_facts PROPERTIES TIMEOUT 120)
+endif()
+
+# Independent signed-division oracle and actual FIR projection/admission checks.
+if(BUILD_TESTING)
+  add_executable(fir1_power_division_bits tests/integer_power_division_bits.c)
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(fir1_power_division_bits PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
+  add_test(NAME fir1_power_division_bits COMMAND fir1_power_division_bits)
+  add_test(NAME fir1_integer_division_facts COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_division_facts.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
+  set_tests_properties(fir1_integer_division_facts PROPERTIES TIMEOUT 120)
 endif()

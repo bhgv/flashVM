@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1711**. [Русская версия](README.ru.md).
+Development version: **0.1712**. [Русская версия](README.ru.md).
 
-Current series: [v0.1711](docs/releases/v0.1711.md): bidirectional Inferno native64 ownership synchronization, independent module ordering and reproducible review gates.
+Current series: [v0.1712](docs/releases/v0.1712.md): signed FIR division facts, real Dis/SWF validation and an independent Inferno arithmetic oracle.
 
 ## Browse documentation
 

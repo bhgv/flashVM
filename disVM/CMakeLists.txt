@@ -93,6 +93,7 @@ if(BUILD_TESTING)
   # Selected production regressions and their manifest-owned fixture dependencies.
   foreach(driver
     integer-ops
+    division-powers
     control-transfer-native
     channel-capture-native
     cons-slots-native

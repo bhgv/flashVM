@@ -1,3 +1,18 @@
+## v0.1712 — Independent owning signed division conformance
+
+Pinned selected Dis1010/bootstrap281/mk83 files to
+ad8329707d9a9755b28a1d4165219795a4fc9d5f. Both journals were checked at403180e;
+no newer incoming message than INFERNO-0042 was present. Reverse FLASHVM-0042
+and division-powers.py/.c verify actual divw/divl/modw/modl using independent
+Python integer vectors:131880 successful unaligned/aliased handler calls over
+both WORD models, surrounding bytes, zero-first errors and compiled MIN-result
+controls. Owning O1/O3 strict UBSan pass. No production correction was found.
+
+FIR0.72 separately adds positive-power signed division/remainder facts, retains
+producer errors and source origins, and leaves all wire/C layouts unchanged.
+No native64 file admission, full startup or physical-target claim follows.
+See [release](../docs/releases/v0.1712.md) and [FIR proof](../fir/v1/doc/DIVISION_FACTS.md).
+
 ## v0.1711 — Owned typed Sys and atomic builtin sets
 
 Pinned selected Dis1007/bootstrap281/mk83 files to

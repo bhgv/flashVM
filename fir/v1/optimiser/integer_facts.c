@@ -1,6 +1,7 @@
 /* Conservative bit facts for verified immutable int32 and big SSA values. */
 #include "fir.h"
 #include "integer_product_bits.h"
+#include "integer_division_bits.h"
 #include <string.h>
 
 
@@ -22,7 +23,7 @@ static unsigned trailing_zero_facts(uint64_t zero, unsigned width)
  * module is borrowed verified IR; facts is disjoint caller-owned scratch.
  * Clear stale facts, then follow int32/big literals, copies, bit operations and
  * shifts with proven legal int32 counts, modular add/sub/neg carry facts,
- * scalar casts and sparse/low-bit modular products.
+ * scalar casts, sparse/low-bit modular products and signed power-of-two division.
  * Everything else is unknown.
  * Monotone bounded scans handle non-topological definitions; an incomplete
  * proof stays conservative. No allocation, callbacks or waiting occurs. These
@@ -131,6 +132,16 @@ void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts)
                     {
                         one = UINT64_C(1) << count;
                     }
+                }
+            }
+            else if (in->op == O_I32_DIV || in->op == O_I32_MOD ||
+                     in->op == O_BIG_DIV || in->op == O_BIG_MOD)
+            {
+                if ((bz | bo) == mask)
+                {
+                    fir_power_division_bits(az, ao, bo, width,
+                                            in->op == O_I32_MOD || in->op == O_BIG_MOD,
+                                            &zero, &one);
                 }
             }
             else if (in->op == O_BIG_NEG)

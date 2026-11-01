@@ -3,6 +3,7 @@
  * Generated globals belong to fir1_source, separate from the FIR parser. */
 COMPILER Src1
 #include "lower.h"
+#include <string.h> /* Declare strcmp used by the generated asinc lookahead resolver. */
 
 /* Copy the previous scanner token into semantic storage, including its source span.
  * No arguments or ownership transfer. Oversized tokens become sticky diagnostics. */

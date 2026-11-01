@@ -256,3 +256,36 @@ Expect`DATA 0 42` in each Dis run. Linking a SWF is distinct from executing it;
 our optional FlashVM test runner verifies its actual trace42 as a separate gate.
 See [proof and limits](../../doc/SPARSE_PRODUCT_FACTS.md). The example is numeric
 Limbo coverage, not a claim that the full Limbo language is implemented.
+
+## Signed-division example, FIR0.72
+
+[division-facts.b](division-facts.b) compiles through our Coco/R Limbo frontend.
+It visits42 and43 in a loop, computes each input's checked shift count as
+`(input & 255)/8`, and adds an aligned negative remainder. The count is always
+in0..31, regardless of the current input. The remainder is always zero, because
+`(index-9)&-8` is divisible by8, including negative values. The loop accumulates
+1344+1376; subtracting1376 returns1344. Each operation and ownership limit is
+commented in the source.
+
+Use actual paths to your FIR compiler, linker and optional Dis runtime:
+
+```sh
+mkdir -p build/tmp
+export TMPDIR="$PWD/build/tmp"
+build/fir/fir1_source limbo --input fir/v1/examples/dis/division-facts.b build/division.fir
+build/fir/fir1 opt build/division.fir build/division.opt.fir
+build/fir/fir1 dis build/division.fir build/division.raw.dis
+build/fir/fir1 dis build/division.opt.fir build/division.dis
+build/editor/disvm --jit --stats --inspect-words 0 1 build/division.dis
+build/editor/disvm --no-jit --stats --inspect-words 0 1 build/division.raw.dis
+build/fir/fir1 object build/division.fir build/division.swo
+build/linker/swl link build/division.swf build/division.swo
+```
+
+Both Dis forms return `DATA 0 1344`. Object generation also succeeds without a
+preceding opt pass because raw backend admission shares the bit analysis.
+Changing divisor8 to4 weakens the possible count to0..63 and must not authorize
+an int32 checked shift. The optimizer preserves truncation towards zero and eager
+errors; it does not replace arbitrary negative division with a right shift.
+Linking alone is not execution: the optional FlashVM runner verifies actual SWF
+trace1344 separately. See [proof and complete limits](../../doc/DIVISION_FACTS.md).

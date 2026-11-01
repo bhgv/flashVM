@@ -663,7 +663,8 @@ simplify_integer_pairs(const FirModule *m, FirInstruction *in, const FirInstruct
 /* Materialize a fully proven modular integer result without evaluating producers.
  * in is verified mutable IR and facts describes the equivalent current graph.
  * Return1 on rewrite,0 otherwise. Only admitted modular/bit operations and legal
- * checked shifts qualify; each operand producer retains its own effects. */
+ * checked shifts and nonzero-divisor division qualify; each operand producer
+ * retains its own effects. A successful-result fact alone never removes a trap. */
 static int fold_known_integer_result(FirInstruction *in, const FirIntegerFacts *facts)
 {
     int wide = in->type == T_I64;
@@ -671,6 +672,20 @@ static int fold_known_integer_result(FirInstruction *in, const FirIntegerFacts *
     uint64_t one;
     switch (in->op)
     {
+    case O_I32_DIV:
+    case O_I32_MOD:
+        if (!fir_integer_nonzero(facts, in->b))
+        {
+            return 0;
+        }
+        break;
+    case O_BIG_DIV:
+    case O_BIG_MOD:
+        if (!fir_big_nonzero(facts, in->b))
+        {
+            return 0;
+        }
+        break;
     case O_ADD:
     case O_SUB:
     case O_BIG_ADD:

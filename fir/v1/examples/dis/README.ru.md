@@ -254,3 +254,35 @@ build/linker/swl link build/sparse.swf build/sparse.swo
 Ожидается`DATA 0 42` в обоих режимах Dis. Сборка SWF не равна исполнению:
 отдельный FlashVM runner проверяет реальный trace42. [Доказательства и границы](../../doc/SPARSE_PRODUCT_FACTS.ru.md).
 Это пример числового подмножества Limbo, а не заявление о завершении всего языка.
+
+## Пример знакового деления, FIR0.72
+
+[division-facts.b](division-facts.b) проходит наш фронтенд Limbo на Coco/R.
+Цикл посещает42 и43. Счётчик проверяемого сдвига `(input & 255)/8` находится
+в0..31 для любого input. Добавляется остаток `((index-9)&-8)%8`: он равен нулю,
+потому что выровненное отрицательное число делится на8. Цикл накапливает1344+1376,
+после вычитания1376 функция возвращает1344. В исходнике прокомментированы
+операции, результат и границы поддерживаемой подсистемы.
+
+Подставьте реальные пути к собранным инструментам:
+
+```sh
+mkdir -p build/tmp
+export TMPDIR="$PWD/build/tmp"
+build/fir/fir1_source limbo --input fir/v1/examples/dis/division-facts.b build/division.fir
+build/fir/fir1 opt build/division.fir build/division.opt.fir
+build/fir/fir1 dis build/division.fir build/division.raw.dis
+build/fir/fir1 dis build/division.opt.fir build/division.dis
+build/editor/disvm --jit --stats --inspect-words 0 1 build/division.dis
+build/editor/disvm --no-jit --stats --inspect-words 0 1 build/division.raw.dis
+build/fir/fir1 object build/division.fir build/division.swo
+build/linker/swl link build/division.swf build/division.swo
+```
+
+Оба Dis-варианта дают `DATA 0 1344`. Создание объекта допускается без отдельной
+оптимизации: backend использует тот же анализ битов. Замена делителя8 на4
+расширяет возможный счётчик до0..63 и не должна разрешать сдвиг int32.
+Округление остаётся к нулю, ошибки вычисления аргументов сохраняются.
+Знаковое деление произвольного отрицательного числа не заменяется сдвигом.
+Связывание SWF ещё не является исполнением: отдельный FlashVM runner проверяет
+настоящий trace1344. [Доказательство и ограничения](../../doc/DIVISION_FACTS.ru.md).

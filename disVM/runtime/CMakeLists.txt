@@ -1652,6 +1652,10 @@ if(DVM_RUNTIME_TESTS AND DVM_FIR_SOURCE_COMPILER AND DVM_FIR_COMPILER)
       "${root}/fir/v1/tests/integer_sparse_facts.py" "${DVM_FIR_SOURCE_COMPILER}"
       "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
     set_tests_properties(disvm_fir_sparse_facts_${mode} PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_fir_division_facts_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${root}/fir/v1/tests/integer_division_facts.py" "${DVM_FIR_SOURCE_COMPILER}"
+      "${DVM_FIR_COMPILER}" "$<TARGET_FILE:disvm>" "${mode}")
+    set_tests_properties(disvm_fir_division_facts_${mode} PROPERTIES TIMEOUT 180)
   endforeach()
 endif()
 

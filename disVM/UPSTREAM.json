@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "403180e365564b3a37c7827832c1b8ceb9e3afdb",
+  "revision": "ad8329707d9a9755b28a1d4165219795a4fc9d5f",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -963,7 +963,10 @@
     "utils/tests/native64-module-set.c",
     "utils/tests/native64-sys-format.c",
     "utils/tests/native64-sys-write.c",
-    "utils/tests/native64-module-order.c"
+    "utils/tests/native64-module-order.c",
+    "libinterp/tests/division-powers.c",
+    "libinterp/tests/division-powers.py",
+    "libinterp/tests/README.division-powers.md"
   ],
   "exclude": [
     "lib9/*-Nt.c",
@@ -1006,7 +1009,7 @@
     "upstream/doc/dis64-envelope.md": "1dac0dcb51583cffaf55e683cd82d54d3465bb6e28dac4cf50ff3fa1112258f1",
     "upstream/doc/dis64-exception-gc.md": "e44ecd6451b1583977daf025d4a97a893d52b6ba261597eed85c2a8b98d332b5",
     "upstream/doc/dis64-fileloader.md": "d67ae474bee3bbf8fec390ee8c2f8d95c9ca3bb1183bca4dac3d847ee4cf2682",
-    "upstream/doc/dis64-flashvm-journal.md": "1595f4c94ff9fea6ec7db462da7f54dd7983b46f34522b88a55f772907e911aa",
+    "upstream/doc/dis64-flashvm-journal.md": "47f4b96c595346a759022f6b1240a131ad66d90260c210ce237ed9139751036b",
     "upstream/doc/dis64-flashvm-payload-response.md": "467c81a19cdd8cf6a6d9371321dd9caba223ed9b1cfae48adb4ea7e3ca61367b",
     "upstream/doc/dis64-flashvm-proposal.md": "c9a68aa729599a25677d0e4c59f34d2b529d3151bee4208e29c70469cd2c5238",
     "upstream/doc/dis64-flashvm-reply.md": "a01ce11f01d4b160003fba0a8c4f1a926c369df3c2b6ecf03cc86207dc7ccbbe",
@@ -1227,6 +1230,7 @@
     "upstream/libinterp/tests/README.descriptor-prefix-preflight.md": "084eece0f90c766099d2d31a9e7edd4e486a0f5f489073458811e002980b5d44",
     "upstream/libinterp/tests/README.direct-targets.md": "b5653e4cab2e48ce0f7f86c4b79666c63cd052b9e2e254d140eef32fd835d379",
     "upstream/libinterp/tests/README.dis-numeric-cache.md": "8e45dd4b563fa21c32494b79110f84d72d829cc8be6eee29f630a287c9492873",
+    "upstream/libinterp/tests/README.division-powers.md": "209d0978c851ffeffbb7894c068ae8b0bc8e3c595910c06d1210e3a6fdc5a3f6",
     "upstream/libinterp/tests/README.emitter-layouts.md": "6c146a22285679e1a1a3c8a3c1acc5a18fd0fcdf045f991acab879e107e31302",
     "upstream/libinterp/tests/README.emitter-publication.md": "cbef3d08b05268c8161ebd473ef6268b99bd534ad6f3079b3cca21cbf78204fb",
     "upstream/libinterp/tests/README.exception-frames.md": "1340206d535082c35f05d35e124bb1ba2233d3775c1b00908d3131f72c063d12",
@@ -1463,6 +1467,8 @@
     "upstream/libinterp/tests/dis64/rune-golden.json": "1f316d592d91b48378358ea59f21729cf7eea5dfe4bdae1bdf67c6fdb2cd3907",
     "upstream/libinterp/tests/dis64/rune-order-golden.json": "85e92a10bead6e6c416f37d5f8163ab6ddca98abc8741c362efc5bec23f6acee",
     "upstream/libinterp/tests/dis64/string-pool-golden.json": "9872839098ef97bb054ef75fb4f2cba96a76db92e5d4a49139560ff7f259f7ad",
+    "upstream/libinterp/tests/division-powers.c": "febae25659940c49b616f2326606f0ba7c42629bf37e9faaaa4c6a7584209609",
+    "upstream/libinterp/tests/division-powers.py": "7f76b1945e10c483acdca100ed46fdeb30174a693d02fff6dcd4de3d4f8ab37e",
     "upstream/libinterp/tests/emitter-layouts.c": "6cb5afa67616b5c91eb7b47cddbfaf327f441221b24916efa9376dba9c1d33e6",
     "upstream/libinterp/tests/emitter-layouts.py": "142dc859478833fd131dac3e0917ff7d375d0ba1bc5ca6068efa7c68ea03fcdc",
     "upstream/libinterp/tests/error-read.c": "742e6983c84511361b717eec6ca600fd4635b8a262b7442980e0ffb44c9aa60b",

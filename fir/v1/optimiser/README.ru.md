@@ -1,3 +1,5 @@
+[Анализ знакового частного и остатка](../doc/DIVISION_FACTS.ru.md)
+
 [Умножение на разреженные константы](../doc/SPARSE_PRODUCT_FACTS.ru.md)
 
 # Peephole FIR → FIR

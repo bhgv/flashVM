@@ -272,7 +272,9 @@ typedef struct
  * Modular add/sub and big negation propagate independent carry facts.
  * Multiplication combines low zero/first-one bits; typed scalar casts preserve
  * truncation/sign-extension facts. Sparse exact one/two-bit factors combine
- * shifts and modular carry facts. These proofs do not remove producer effects.
+ * shifts and modular carry facts. Positive power-of-two signed division uses
+ * magnitude branches and an intersection for unknown signs. These proofs do not
+ * remove producer effects.
  * No allocation, evaluation, callbacks or waits; producers retain their effects. */
 void fir_integer_facts(const FirModule *module, FirIntegerFacts *facts);
 
