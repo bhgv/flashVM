@@ -6,7 +6,7 @@
 
 [`fvm_channel_send`](../include/flashvm/channel.h#L106) копирует примитивные значения и строки UTF-8, заканчивающиеся нулём; объекты отклоняются. [`fvm_channel_receive`](../include/flashvm/channel.h#L110) блокируется до появления сообщения или закрытия канала. [`fvm_channel_try_receive`](../include/flashvm/channel.h#L133) не блокируется: [`FVM_OK`](../include/flashvm/flashvm.h#L44) — сообщение получено, [`FVM_NOT_FOUND`](../include/flashvm/flashvm.h#L49) — канал открыт и пуст, [`FVM_ERROR`](../include/flashvm/flashvm.h#L45) — канал закрыт и пуст. Строка после получения принадлежит каналу и действует до следующего успешного чтения из того же канала либо до уничтожения канала. Один канал — FIFO-очередь, а не пара концов соединения; для независимого обмена в двух направлениях используются два канала.
 
-[`fvm_worker_stop`](../include/flashvm/worker.h#L69) только запрашивает остановку и не прерывает заблокированный `receive`. Чтобы разбудить такой поток, владелец должен закрыть соответствующий канал перед `join`. Уничтожать канал, пока другой поток им пользуется, нельзя. Автоматическое управление временем жизни общих каналов ещё не реализовано.
+[`fvm_worker_stop`](../include/flashvm/worker.h#L84) только запрашивает остановку и не прерывает заблокированный `receive`. Чтобы разбудить такой поток, владелец должен закрыть соответствующий канал перед `join`. Уничтожать канал, пока другой поток им пользуется, нельзя. Автоматическое управление временем жизни общих каналов ещё не реализовано.
 
 Рабочий пример C89 находится в `examples/embedding/worker_channels/`. Синтаксис потоков и каналов ActionScript пока запланирован, но не реализован.
 
@@ -27,5 +27,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
 | `FVM_Worker` | struct | [src/capi/worker_c.c:14](../src/capi/worker_c.c#L14) |
-| `fvm_worker_stop` | function | [include/flashvm/worker.h:69](../include/flashvm/worker.h#L69) |
+| `fvm_worker_stop` | function | [include/flashvm/worker.h:84](../include/flashvm/worker.h#L84) |
 <!-- source-links:end -->

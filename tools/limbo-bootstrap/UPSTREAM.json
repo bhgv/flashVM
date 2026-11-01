@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "1640d254c2f7628e78538ae610f49961b1304820",
+  "revision": "9380f259490ef04423fdb81d93c6f666401e3833",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -351,7 +351,7 @@
     "upstream/lib9/utfnlen.c": "36865f476214c47be2a7d963c32c2cae223d730c0b728d636c7b9e1736c0e6b3",
     "upstream/lib9/utfrrune.c": "ca231420f08ad5668ab0507e139a5f7ad65450d3f384f0673f10d25c046bbf43",
     "upstream/lib9/utfrune.c": "3a23b4dc45270c158c1447c2c16b19a1c82cf16c9a81861e1e7e30545ec539db",
-    "upstream/lib9/vfprint.c": "e414683e7df5bbdbe9fe0297ac793cc1677ed25dc0df3a6745317010b419c56f",
+    "upstream/lib9/vfprint.c": "179ed1b8a2adc8b7c7e5b805cce65ef21e40ed5840ad727f36ede7e500dd6390",
     "upstream/lib9/vseprint.c": "2204ac840b4e9bf6a2f21c02048071fca84341edfd01753bea9112c4e384438b",
     "upstream/lib9/vsmprint.c": "adea64359b24e44be02d570480e08fb5f2ee9f28b1398ddf2c294180038c2c99",
     "upstream/lib9/vsnprint.c": "bfbdb5a641f5b54eecd02f673a0c59d3ca1006e4c2e2d97d4b663ec1379894d1",

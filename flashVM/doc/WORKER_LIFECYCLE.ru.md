@@ -37,10 +37,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../include/flashvm/worker.h#L98) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../include/flashvm/worker.h#L60) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../include/flashvm/worker.h#L113) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../include/flashvm/worker.h#L75) |
 | `fvm_worker_run` | function | [include/flashvm/worker.h:25](../include/flashvm/worker.h#L25) |
-| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:32](../include/flashvm/worker.h#L32) |
-| `fvm_worker_start` | function | [include/flashvm/worker.h:38](../include/flashvm/worker.h#L38) |
-| `fvm_worker_state` | function | [include/flashvm/worker.h:54](../include/flashvm/worker.h#L54) |
+| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:47](../include/flashvm/worker.h#L47) |
+| `fvm_worker_start` | function | [include/flashvm/worker.h:53](../include/flashvm/worker.h#L53) |
+| `fvm_worker_state` | function | [include/flashvm/worker.h:69](../include/flashvm/worker.h#L69) |
 <!-- source-links:end -->

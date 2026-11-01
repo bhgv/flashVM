@@ -1,6 +1,6 @@
 # Worker and channel ownership
 
-Concurrent calls to [`fvm_worker_join`](../include/flashvm/worker.h#L60) on the same live handle are serialized.
+Concurrent calls to [`fvm_worker_join`](../include/flashvm/worker.h#L75) on the same live handle are serialized.
 Self-join returns [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). `FINISHED` is published only after the
 private context and its finalizers have completed. Destroy remains an exclusive
 owner operation: first join, wait for all other handle users, then destroy.
@@ -39,5 +39,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../include/flashvm/worker.h#L60) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../include/flashvm/worker.h#L75) |
 <!-- source-links:end -->

@@ -146,9 +146,9 @@ CMake finds Python 3; the thread test does not require Python. Keep
 | [`fvm_value_string`](../../../include/flashvm/value.h#L58) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_string_bytes`](../../../include/flashvm/value.h#L63) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_string_size`](../../../include/flashvm/value.h#L67) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_worker_current`](../../../include/flashvm/worker.h#L88) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L98) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_join`](../../../include/flashvm/worker.h#L60) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_current`](../../../include/flashvm/worker.h#L103) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L113) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_join`](../../../include/flashvm/worker.h#L75) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 | [`fvm_worker_run`](../../../include/flashvm/worker.h#L25) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-function_rpc).
@@ -188,8 +188,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_value_string` | function | [include/flashvm/value.h:58](../../../include/flashvm/value.h#L58) |
 | `fvm_value_string_bytes` | function | [include/flashvm/value.h:63](../../../include/flashvm/value.h#L63) |
 | `fvm_value_string_size` | function | [include/flashvm/value.h:67](../../../include/flashvm/value.h#L67) |
-| `fvm_worker_current` | function | [include/flashvm/worker.h:88](../../../include/flashvm/worker.h#L88) |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../../../include/flashvm/worker.h#L98) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../../../include/flashvm/worker.h#L60) |
+| `fvm_worker_current` | function | [include/flashvm/worker.h:103](../../../include/flashvm/worker.h#L103) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../../../include/flashvm/worker.h#L113) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../../../include/flashvm/worker.h#L75) |
 | `fvm_worker_run` | function | [include/flashvm/worker.h:25](../../../include/flashvm/worker.h#L25) |
 <!-- source-links:end -->

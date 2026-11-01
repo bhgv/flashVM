@@ -27,11 +27,11 @@ FlashVM context. Build as part of the project and run `flashvm_examples_embeddin
 | --- | --- |
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L98) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_join`](../../../include/flashvm/worker.h#L60) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_run_suspended`](../../../include/flashvm/worker.h#L32) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Создание worker без немедленного запуска. |
-| [`fvm_worker_start`](../../../include/flashvm/worker.h#L38) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Разрешение запуска приостановленного worker. |
-| [`fvm_worker_state`](../../../include/flashvm/worker.h#L54) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Запрос состояния worker. |
+| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L113) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_join`](../../../include/flashvm/worker.h#L75) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_run_suspended`](../../../include/flashvm/worker.h#L47) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Создание worker без немедленного запуска. |
+| [`fvm_worker_start`](../../../include/flashvm/worker.h#L53) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Разрешение запуска приостановленного worker. |
+| [`fvm_worker_state`](../../../include/flashvm/worker.h#L69) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Запрос состояния worker. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-worker_lifecycle).
 <!-- example-catalog-api:end -->
@@ -47,9 +47,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../../../include/flashvm/worker.h#L98) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../../../include/flashvm/worker.h#L60) |
-| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:32](../../../include/flashvm/worker.h#L32) |
-| `fvm_worker_start` | function | [include/flashvm/worker.h:38](../../../include/flashvm/worker.h#L38) |
-| `fvm_worker_state` | function | [include/flashvm/worker.h:54](../../../include/flashvm/worker.h#L54) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../../../include/flashvm/worker.h#L113) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../../../include/flashvm/worker.h#L75) |
+| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:47](../../../include/flashvm/worker.h#L47) |
+| `fvm_worker_start` | function | [include/flashvm/worker.h:53](../../../include/flashvm/worker.h#L53) |
+| `fvm_worker_state` | function | [include/flashvm/worker.h:69](../../../include/flashvm/worker.h#L69) |
 <!-- source-links:end -->

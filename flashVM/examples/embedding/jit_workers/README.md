@@ -35,8 +35,8 @@ cmake --build build-examples --target flashvm_examples_embedding_jit_workers_mai
 | [`fvm_jit_available`](../../../include/flashvm/jit.h#L15) | [DEBUG_API.md#fvm_jit_available](../../../doc/DEBUG_API.md#fvm_jit_available) — Параметры, статусы, время жизни и ограничения вызова. |
 | [`fvm_jit_backend_name`](../../../include/flashvm/jit.h#L19) | [DEBUG_API.md#fvm_jit_backend_name](../../../doc/DEBUG_API.md#fvm_jit_backend_name) — Параметры, статусы, время жизни и ограничения вызова. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L98) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_join`](../../../include/flashvm/worker.h#L60) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L113) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_join`](../../../include/flashvm/worker.h#L75) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 | [`fvm_worker_run`](../../../include/flashvm/worker.h#L25) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-jit_workers).
@@ -59,7 +59,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_jit_available` | function | [include/flashvm/jit.h:15](../../../include/flashvm/jit.h#L15) |
 | `fvm_jit_backend_name` | function | [include/flashvm/jit.h:19](../../../include/flashvm/jit.h#L19) |
 | `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../../../include/flashvm/worker.h#L98) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../../../include/flashvm/worker.h#L60) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../../../include/flashvm/worker.h#L113) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../../../include/flashvm/worker.h#L75) |
 | `fvm_worker_run` | function | [include/flashvm/worker.h:25](../../../include/flashvm/worker.h#L25) |
 <!-- source-links:end -->

@@ -1,6 +1,6 @@
 # Кооперативная остановка потоков и ожидание нескольких потоков
 
-В переносимый C89 API добавлены [`fvm_worker_stop`](../include/flashvm/worker.h#L69), [`fvm_worker_stop_requested`](../include/flashvm/worker.h#L73) и [`fvm_worker_join_all`](../include/flashvm/worker.h#L81).
+В переносимый C89 API добавлены [`fvm_worker_stop`](../include/flashvm/worker.h#L84), [`fvm_worker_stop_requested`](../include/flashvm/worker.h#L88) и [`fvm_worker_join_all`](../include/flashvm/worker.h#L96).
 
 `stop` **не завершает поток принудительно**: он устанавливает защищённый синхронизацией флаг отмены и пробуждает поток с отложенным запуском. Функция потока должна сама проверять флаг через `stop_requested` и корректно возвращаться. Блокирующий ввод-вывод или ожидание данных в канале автоматически не прерываются. Перед уничтожением дескриптора обязательно выполнить `join`. `join_all` ожидает все потоки, даже если один завершился с ошибкой; возвращает первую ошибку, отклоняет повторяющиеся и нулевые дескрипторы. Строковые результаты принадлежат дескрипторам потоков до их уничтожения.
 
@@ -19,7 +19,7 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_worker_join_all` | function | [include/flashvm/worker.h:81](../include/flashvm/worker.h#L81) |
-| `fvm_worker_stop` | function | [include/flashvm/worker.h:69](../include/flashvm/worker.h#L69) |
-| `fvm_worker_stop_requested` | function | [include/flashvm/worker.h:73](../include/flashvm/worker.h#L73) |
+| `fvm_worker_join_all` | function | [include/flashvm/worker.h:96](../include/flashvm/worker.h#L96) |
+| `fvm_worker_stop` | function | [include/flashvm/worker.h:84](../include/flashvm/worker.h#L84) |
+| `fvm_worker_stop_requested` | function | [include/flashvm/worker.h:88](../include/flashvm/worker.h#L88) |
 <!-- source-links:end -->

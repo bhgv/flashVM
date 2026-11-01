@@ -41,8 +41,8 @@ cmake --build build-examples --target flashvm_examples_embedding_shared_mutex_ma
 | [`fvm_runtime_destroy`](../../../include/flashvm/flashvm.h#L78) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_value_boolean`](../../../include/flashvm/value.h#L54) | Записывает тег Boolean и нормализует значение: 0 становится false, любое ненулевое число — true. Подробнее: [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views). |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L98) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_join`](../../../include/flashvm/worker.h#L60) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L113) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_join`](../../../include/flashvm/worker.h#L75) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 | [`fvm_worker_run`](../../../include/flashvm/worker.h#L25) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-shared_mutex).
@@ -71,7 +71,7 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_runtime_destroy` | function | [include/flashvm/flashvm.h:78](../../../include/flashvm/flashvm.h#L78) |
 | `fvm_value_boolean` | function | [include/flashvm/value.h:54](../../../include/flashvm/value.h#L54) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../../../include/flashvm/worker.h#L98) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../../../include/flashvm/worker.h#L60) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../../../include/flashvm/worker.h#L113) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../../../include/flashvm/worker.h#L75) |
 | `fvm_worker_run` | function | [include/flashvm/worker.h:25](../../../include/flashvm/worker.h#L25) |
 <!-- source-links:end -->

@@ -24,6 +24,21 @@ typedef FVM_Result (*FVM_WorkerFunction)(FVM_Context *, const FVM_Value *, FVM_V
 /* Run worker. */
 FVM_API FVM_Result fvm_worker_run(const FVM_Config *, FVM_WorkerFunction, const FVM_Value *,
                                   void *, FVM_Worker **);
+/* Snapshot an AVM1 function and its serializable environment on the owner
+ * thread, then invoke the copy without arguments on one independent OS worker.
+ * owner/function must belong to the calling thread; config is copied by launch.
+ * out is cleared on failure. Native entries, root native body attachments and
+ * live function-transfer mode are refused; arbitrary host callbacks/resources
+ * are not installed in the destination. Graph codecs may reject the capture.
+ * Successful launch returns immediately after copying, without invoking the
+ * owner function or advancing a timeline. Execution errors arrive through join.
+ * Only primitive results are supported, with the usual worker-owned lifetime.
+ * Captures are isolated snapshots: no frame synchronization, shared UI objects,
+ * COW/dirty merge or AS asinc syntax lowering is implied. Join before destroy. */
+FVM_API FVM_Result fvm_worker_run_function(FVM_Context *owner, const FVM_Config *config,
+                                           FVM_Object *function, FVM_Worker **out);
+
+
 /* Creates an OS thread which waits until fvm_worker_start() is called.
      * A suspended worker can be joined; join automatically starts it to avoid deadlock. */
 

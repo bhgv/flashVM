@@ -32,10 +32,10 @@ This example does not implement `thread.run`, `<...>` or `<-` in ActionScript.
 | [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_string`](../../../include/flashvm/value.h#L58) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
 | [`fvm_value_undefined`](../../../include/flashvm/value.h#L46) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L98) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_join`](../../../include/flashvm/worker.h#L60) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_run_suspended`](../../../include/flashvm/worker.h#L32) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Создание worker без немедленного запуска. |
-| [`fvm_worker_start`](../../../include/flashvm/worker.h#L38) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Разрешение запуска приостановленного worker. |
+| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L113) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_join`](../../../include/flashvm/worker.h#L75) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_run_suspended`](../../../include/flashvm/worker.h#L47) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Создание worker без немедленного запуска. |
+| [`fvm_worker_start`](../../../include/flashvm/worker.h#L53) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Разрешение запуска приостановленного worker. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-worker_channels).
 <!-- example-catalog-api:end -->
@@ -60,8 +60,8 @@ Source line links describe the current checkout, including in historical notes.
 | `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
 | `fvm_value_string` | function | [include/flashvm/value.h:58](../../../include/flashvm/value.h#L58) |
 | `fvm_value_undefined` | function | [include/flashvm/value.h:46](../../../include/flashvm/value.h#L46) |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../../../include/flashvm/worker.h#L98) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../../../include/flashvm/worker.h#L60) |
-| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:32](../../../include/flashvm/worker.h#L32) |
-| `fvm_worker_start` | function | [include/flashvm/worker.h:38](../../../include/flashvm/worker.h#L38) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../../../include/flashvm/worker.h#L113) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../../../include/flashvm/worker.h#L75) |
+| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:47](../../../include/flashvm/worker.h#L47) |
+| `fvm_worker_start` | function | [include/flashvm/worker.h:53](../../../include/flashvm/worker.h#L53) |
 <!-- source-links:end -->

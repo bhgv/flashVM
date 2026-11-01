@@ -1,6 +1,6 @@
 # Владение потоками и каналами
 
-Одновременные [`fvm_worker_join`](../include/flashvm/worker.h#L60) одного живого handle сериализуются. Self-join
+Одновременные [`fvm_worker_join`](../include/flashvm/worker.h#L75) одного живого handle сериализуются. Self-join
 возвращает [`FVM_INVALID_ARGUMENT`](../include/flashvm/flashvm.h#L47). Состояние FINISHED публикуется после
 уничтожения приватного контекста и его финализаторов. Destroy выполняет один
 владелец: join, завершение остальных пользователей handle, destroy. Кооперативная
@@ -40,5 +40,5 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_NOT_FOUND` | enum constant | [include/flashvm/flashvm.h:49](../include/flashvm/flashvm.h#L49) |
-| `fvm_worker_join` | function | [include/flashvm/worker.h:60](../include/flashvm/worker.h#L60) |
+| `fvm_worker_join` | function | [include/flashvm/worker.h:75](../include/flashvm/worker.h#L75) |
 <!-- source-links:end -->

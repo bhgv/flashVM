@@ -29,11 +29,11 @@ cmake --build build-examples --target flashvm_examples_embedding_worker_stop_mai
 | --- | --- |
 | [`fvm_config_init`](../../../include/flashvm/flashvm.h#L70) | [API_INDEX.md#runtime-and-context](../../../doc/API_INDEX.md#runtime-and-context) — Жизненный цикл runtime/context; точные сигнатуры и ownership — в заголовке. |
 | [`fvm_value_number`](../../../include/flashvm/value.h#L50) | [API_INDEX.md#values-and-borrowed-views](../../../doc/API_INDEX.md#values-and-borrowed-views) — Типы значений, borrowed-данные и преобразования. |
-| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L98) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
-| [`fvm_worker_join_all`](../../../include/flashvm/worker.h#L81) | [WORKER_CANCELLATION.md](../../../doc/WORKER_CANCELLATION.md) — Ожидание завершения группы worker. |
-| [`fvm_worker_run_suspended`](../../../include/flashvm/worker.h#L32) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Создание worker без немедленного запуска. |
-| [`fvm_worker_stop`](../../../include/flashvm/worker.h#L69) | [WORKER_CANCELLATION.md](../../../doc/WORKER_CANCELLATION.md) — Кооперативная остановка worker. |
-| [`fvm_worker_stop_requested`](../../../include/flashvm/worker.h#L73) | [WORKER_CANCELLATION.md](../../../doc/WORKER_CANCELLATION.md) — Проверка запроса остановки. |
+| [`fvm_worker_destroy`](../../../include/flashvm/worker.h#L113) | [WORKERS.md](../../../doc/WORKERS.md) — Изолированные worker-контексты и join. |
+| [`fvm_worker_join_all`](../../../include/flashvm/worker.h#L96) | [WORKER_CANCELLATION.md](../../../doc/WORKER_CANCELLATION.md) — Ожидание завершения группы worker. |
+| [`fvm_worker_run_suspended`](../../../include/flashvm/worker.h#L47) | [WORKER_LIFECYCLE.md](../../../doc/WORKER_LIFECYCLE.md) — Создание worker без немедленного запуска. |
+| [`fvm_worker_stop`](../../../include/flashvm/worker.h#L84) | [WORKER_CANCELLATION.md](../../../doc/WORKER_CANCELLATION.md) — Кооперативная остановка worker. |
+| [`fvm_worker_stop_requested`](../../../include/flashvm/worker.h#L88) | [WORKER_CANCELLATION.md](../../../doc/WORKER_CANCELLATION.md) — Проверка запроса остановки. |
 
 [Описание в общем каталоге](../../README.md#example-embedding-worker_stop).
 <!-- example-catalog-api:end -->
@@ -49,9 +49,9 @@ Source line links describe the current checkout, including in historical notes.
 | --- | --- | --- |
 | `fvm_config_init` | function | [include/flashvm/flashvm.h:70](../../../include/flashvm/flashvm.h#L70) |
 | `fvm_value_number` | function | [include/flashvm/value.h:50](../../../include/flashvm/value.h#L50) |
-| `fvm_worker_destroy` | function | [include/flashvm/worker.h:98](../../../include/flashvm/worker.h#L98) |
-| `fvm_worker_join_all` | function | [include/flashvm/worker.h:81](../../../include/flashvm/worker.h#L81) |
-| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:32](../../../include/flashvm/worker.h#L32) |
-| `fvm_worker_stop` | function | [include/flashvm/worker.h:69](../../../include/flashvm/worker.h#L69) |
-| `fvm_worker_stop_requested` | function | [include/flashvm/worker.h:73](../../../include/flashvm/worker.h#L73) |
+| `fvm_worker_destroy` | function | [include/flashvm/worker.h:113](../../../include/flashvm/worker.h#L113) |
+| `fvm_worker_join_all` | function | [include/flashvm/worker.h:96](../../../include/flashvm/worker.h#L96) |
+| `fvm_worker_run_suspended` | function | [include/flashvm/worker.h:47](../../../include/flashvm/worker.h#L47) |
+| `fvm_worker_stop` | function | [include/flashvm/worker.h:84](../../../include/flashvm/worker.h#L84) |
+| `fvm_worker_stop_requested` | function | [include/flashvm/worker.h:88](../../../include/flashvm/worker.h#L88) |
 <!-- source-links:end -->

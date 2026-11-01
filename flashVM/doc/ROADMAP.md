@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1695: a copied AVM1 closure executes on an independent OS worker after sender destruction. [Contract](WORKER_FUNCTION.md). This does not close AS asinc lowering, frame capture synchronization or any compatibility stage.
+
 Checkpoint v0.1694: a separately compiled C namespace example reuses rooted native methods/accessors, exercises actual GC and linked AS/SWF property writes, and documents host-state ownership. [Example](../examples/embedding/native_module/README.md). This is not a dynamic library loader or full AS call-lowering milestone; no compatibility stage closes.
 
 Checkpoint v0.1693: native colour contour ranges share whole-field shaping and scroll; the IDE presents lazy revision-bound Dis palettes without advancing the input ticket. [EN](TEXT_COLOR_RANGES.md) / [RU](TEXT_COLOR_RANGES.ru.md). Full AS mixed-font/HTML TextFormat and physical platform acceptance remain open; no compatibility stage closes.

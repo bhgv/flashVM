@@ -1,10 +1,12 @@
+[Detached AVM1 workers / Отдельные AVM1-потоки](doc/WORKER_FUNCTION.md) · [RU](doc/WORKER_FUNCTION.ru.md)
+
 [C native module / C-модуль](examples/embedding/native_module/README.md)
 
 [Text colour ranges / Цветовые диапазоны](doc/TEXT_COLOR_RANGES.md) · [Русский](doc/TEXT_COLOR_RANGES.ru.md)
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Версия разработки: **0.1694** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1695** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
