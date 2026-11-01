@@ -3219,7 +3219,7 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             unsigned long tool, color, wide;
             unsigned long point;
-            if (dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) &&
+            if (dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) && tool <= 5 &&
                 hexword(message->text + 24, &point))
             {
                 if (tool == 4)

@@ -27,7 +27,7 @@ def main():
         # Existing toolbar hit geometry is the public replay input, not a command shortcut.
         def button(index):
             x = round(left + (wide - 20 if 8 <= index < 14 else 20))
-            y = top + (40 + [0,1,2,3,5,6,7,8,0,1,2,3,4,5,9,4,10][index]*28)
+            y = top + (40 + [2,3,4,5,7,8,9,10,0,1,2,3,4,5,11,6,12,0,1][index]*28)
             return [mouse(x, y), mouse(x, y, 3)]
 
         # Map logical points to physical pixels in the native-sized maximized canvas.

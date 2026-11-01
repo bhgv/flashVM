@@ -1014,10 +1014,20 @@ static int scene_prepare(DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
             }
         }
         if (!old || !old->id || node->parent != old->parent || node->opacity != old->opacity ||
+            node->width != old->width || node->height != old->height ||
             memcmp(&node->world, &old->world, sizeof(node->world)) || index >= prior->node_count ||
             prior->order[index] != node->id)
         {
             node->flags |= DVM_EDITOR_NODE_TRANSFORM;
+            /* A changed linear transform resamples cached pixels across tile
+             * boundaries. Recompose the root once; retain all local bitmaps.
+             * Translation-only gestures keep their bounded old/new damage. */
+            if (old && old->id &&
+                (node->world.xx != old->world.xx || node->world.xy != old->world.xy ||
+                 node->world.yx != old->world.yx || node->world.yy != old->world.yy))
+            {
+                memset(frame->dirty, 1, frame->columns * frame->rows);
+            }
         }
         if (node->flags)
         {

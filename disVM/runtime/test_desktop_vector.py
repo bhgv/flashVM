@@ -60,7 +60,7 @@ def main():
         # index0..7 is the upper row;8..14 selects colours/fill;15 selects Pen.
         def button(index):
             x = round(left + ((wide - 20 if 8 <= index < 14 else 20)) * zoom)
-            y = round(top + (40 + [0,1,2,3,5,6,7,8,0,1,2,3,4,5,9,4,10][index]*28) * zoom)
+            y = round(top + (40 + [2,3,4,5,7,8,9,10,0,1,2,3,4,5,11,6,12,0,1][index]*28) * zoom)
             return [mouse(x, y), mouse(x, y, 3)]
 
         events = initial + (button(9) if mouse_tools else [envelope(5, text="2")])

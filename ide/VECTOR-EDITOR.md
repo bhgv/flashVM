@@ -1,3 +1,5 @@
+[Object/node editing](VECTOR-EDITING.md)
+
 # MDI vector editor: drawing and SVG
 
 [Русский](VECTOR-EDITOR.ru.md) · [Entry points](ENTRYPOINTS.md) ·

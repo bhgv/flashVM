@@ -77,9 +77,9 @@ static unsigned int glass_height[2];           /* Cached immutable rail contour 
 static int active;                             /* A desktop scene has been admitted. */
 
 
-#define VECTOR_BYTES 660000U /* Complete bounded ASCII command stream, never SVG/script input. */
-#define VECTOR_SHAPES 32U    /* Matching portable document path bound. */
-#define VECTOR_NODES 16384U  /* Complete document command bound. */
+#define VECTOR_BYTES 825000U /* Complete bounded ASCII command stream, never SVG/script input. */
+#define VECTOR_SHAPES 33U    /* 32 source paths plus one transient editing overlay. */
+#define VECTOR_NODES 20480U  /* 16384 source commands plus 4096 presentation commands. */
 
 /* Detached scalar command. Managed/native object addresses never enter the stream. */
 typedef struct VectorNode
@@ -108,7 +108,7 @@ typedef struct VectorScene
     char bytes[VECTOR_BYTES];          /* Owned bounded hex assembly buffer. */
     size_t expected;                   /* Exact declared stream bytes, zero for text panes. */
     size_t used;                       /* Contiguous bytes received. */
-    unsigned long tool;                /* Copied selected authoring tool1..5. */
+    unsigned long tool;                /* Copied authoring/editing tool1..7. */
     unsigned long color;               /* Copied current RGB24. */
     unsigned long width;               /* Copied current logical width1..32. */
     unsigned long fill;                /* Copied fill toggle0/1. */
@@ -121,7 +121,7 @@ typedef struct VectorScene
 } VectorScene;
 
 static FVM_Object
-    *vector_buttons[DESK_SLOTS][17]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
+    *vector_buttons[DESK_SLOTS][19]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
 static VectorScene vectors[9];       /* Stable pane identities1..8, reset at scene Begin. */
 
 /* Owner-local visual interpolation; no document, VM pointer or worker handle. */
@@ -577,7 +577,7 @@ static int vector_parse(VectorScene *scene)
     if (scene->used < 56 || !word(scene->bytes, &scene->tool) || !word(scene->bytes + 8, &scene->color) ||
         !word(scene->bytes + 16, &scene->width) || !word(scene->bytes + 24, &scene->fill) ||
         !word(scene->bytes + 32, &scene->undo) || !word(scene->bytes + 40, &scene->redo) ||
-        !word(scene->bytes + 48, &shapes) || scene->tool < 1 || scene->tool > 5 || scene->color > 0xffffffUL ||
+        !word(scene->bytes + 48, &shapes) || scene->tool < 1 || scene->tool > 7 || scene->color > 0xffffffUL ||
         scene->width < 1 || scene->width > 32 || scene->fill > 3 ||
         ((scene->fill & 2) && (scene->tool != 4 || shapes == 0)) || scene->undo > 16 || scene->redo > 16 ||
         shapes > VECTOR_SHAPES)
@@ -656,7 +656,35 @@ static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigne
     {
         return 1;
     }
-    if (cell == 0)
+    if (cell == 17 || cell == 18)
+    {
+        x[0] = -6;
+        y[0] = -8;
+        x[1] = -6;
+        y[1] = 7;
+        x[2] = -2;
+        y[2] = 3;
+        x[3] = 2;
+        y[3] = 8;
+        x[4] = 5;
+        y[4] = 6;
+        x[5] = 1;
+        y[5] = 1;
+        x[6] = 7;
+        y[6] = 0;
+        x[7] = -6;
+        y[7] = -8;
+        count = 8;
+        if (cell == 18)
+        {
+            x[8] = 7;
+            y[8] = -8;
+            x[9] = 7;
+            y[9] = -4;
+            count = 10;
+        }
+    }
+    else if (cell == 0)
     {
         for (i = 0; i < 9; ++i)
         {
@@ -798,7 +826,7 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
     {
         goto report;
     }
-    for (i = 0; i < 17; ++i)
+    for (i = 0; i < 19; ++i)
     {
         FVM_Object *button = vector_buttons[slot][i];
         if (!scene || content->width < 80 || (i == 16 && scene->tool != 4))
@@ -822,7 +850,7 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
         unsigned long fill = 0xe3e8ebUL;
 
         unsigned long ink = 0x26343fUL;
-        int selected = (i < 4 && scene->tool == i + 1) || (i == 15 && scene->tool == 5);
+        int selected = (i < 4 && scene->tool == i + 1) || (i == 15 && scene->tool == 5) || (i >= 17 && scene->tool == i-11);
         if (i >= 8 && i < 14)
         {
             fill = palette[i - 8];
@@ -1510,7 +1538,7 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
         if (vectors[item->id].complete)
         {
             unsigned int index;
-            for (index = 0; index < 17; ++index)
+            for (index = 0; index < 19; ++index)
             {
                 double bx;
                 double by;

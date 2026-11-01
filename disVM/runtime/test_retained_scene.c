@@ -103,7 +103,7 @@ static DVM_EditorFrame *scene(unsigned int step)
     if (step >= 7)
     {
         ok =
-            frame && object(frame, 3, 0, overlay, 60, 15, blue, 1000) && object(frame, 1, 0, parent, 80, 60, red, 1000);
+            frame && object(frame, 3, 0, overlay, 60, 15, blue, 1000) && object(frame, 1, 0, parent, step == 9 ? 23 : 80, step == 9 ? 19 : 60, red, 1000);
     }
     else
     {
@@ -265,7 +265,7 @@ int main(void)
         fprintf(stderr, "retained capture lifetime/input rule failed\n");
         return 1;
     }
-    for (step = 0; step < 9; ++step)
+    for (step = 0; step < 12; ++step)
     {
         DVM_EditorFrame *frame = scene(step);
         DVM_EditorFrame *fresh = scene(step);
@@ -294,9 +294,13 @@ int main(void)
         {
             ok = ok && built == 1 && reused == 2;
         }
-        if (step >= 6)
+        if ((step >= 6 && step < 9) || step == 11)
         {
             ok = ok && built == 0 && reused == 2;
+        }
+        if (step == 9 || step == 10)
+        {
+            ok = ok && built == 1 && reused == 1;
         }
         if (!ok)
         {

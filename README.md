@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1721**. [Русская версия](README.ru.md).
+Development version: **0.1722**. [Русская версия](README.ru.md).
 
-Current series: [v0.1721](docs/releases/v0.1721.md): bidirectional Inferno synchronization, scalar Dis64 compiler and typed field-witness review.
+Current series: [v0.1722](docs/releases/v0.1722.md): vector object/node editing and desktop scale damage repair.
 
 ## Browse documentation
 

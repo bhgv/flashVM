@@ -65,7 +65,12 @@ wire(doc: ref Document): string
     preparewire(doc);
     extra: ref Shape;
     additional := 0;
-    if (len doc.points != 0 && !doc.nativecapture) {
+    if (doc.tool >= Select) {
+        extra = editoverlay(doc);
+        if (extra != nil) {
+            additional = 32 + 40 * len extra.nodes;
+        }
+    } else if (len doc.points != 0 && !doc.nativecapture) {
         extra = draft(doc);
         additional = 32 + 40 * len extra.nodes;
     }
@@ -90,7 +95,7 @@ wire(doc: ref Document): string
 # Native live ink has no doc.points; the portable draft fallback preserves wire.
 wireparts(doc: ref Document): array of string
 {
-    if (len doc.points != 0 && !doc.nativecapture) {
+    if (doc.tool >= Select || (len doc.points != 0 && !doc.nativecapture)) {
         return array[] of {wire(doc)};
     }
     preparewire(doc);

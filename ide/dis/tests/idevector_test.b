@@ -78,6 +78,7 @@ init()
     checks = 0;
     require(vector != nil, "load");
     wirecache();
+    editing();
     doc := vector->create();
     require(doc.revision == 0 && doc.saved == 0 && len doc.shapes == 0, "clean document");
     require(vector->pointer(doc, 2, 20, 20) == vector->Conflict, "move without press");
@@ -231,3 +232,5 @@ init()
     require(len vector->wire(crowded) <= 22000 && crowded.nundo == 16, "wire/history bounded");
     sys->print("PASS vector model: %d predicates, actual gestures, curves, history, SVG and refusal atomicity\n", checks);
 }
+
+include "idevectoredit_checks.b";

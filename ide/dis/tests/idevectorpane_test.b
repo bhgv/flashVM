@@ -78,8 +78,14 @@ init()
             "toolbar tool command changes copied style without editing geometry");
     refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 15, 1, 0, 0, ""));
     require(refused.status == Idecore->Conflict && refused.drawing == styled.drawing, "stale toolbar revision refused atomically");
-    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 18, 2, 0, 0, ""));
+    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 20, 2, 0, 0, ""));
     require(refused.status == Idecore->Invalid && refused.drawing == styled.drawing, "unknown control cannot issue a command");
+    selected := call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 18, 2, 0, 0, ""));
+    require(selected.status == 0 && selected.drawing[0:8] == "00000006" && selected.revision == 2,
+            "object arrow is an idle style change");
+    selected = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 19, 2, 0, 0, ""));
+    require(selected.status == 0 && selected.drawing[0:8] == "00000007" && selected.revision == 2,
+            "node arrow is a separate idle style change");
     require(call(a, panes->Shutdown, nil).status == 0 && call(b, panes->Shutdown, nil).status == 0,
             "independent acknowledged shutdown");
     sys->print("PASS vector panes: revision, dirty file refusal, isolated owners and shutdown\n");

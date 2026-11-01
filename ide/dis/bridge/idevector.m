@@ -3,7 +3,7 @@ Idevector: module
 {
     PATH: con "idevector.dis"; # Portable model/SVG implementation, no native UI dependency.
     Ok, Invalid, Limit, Conflict: con iota; # Success, bounded raw retention or explicit refusal.
-    Brush, Rectangle, Ellipse, Line, Pen: con iota + 1; # Authoring tools; paths remain editable values.
+    Brush, Rectangle, Ellipse, Line, Pen, Select, Nodes: con iota + 1; # Authoring tools; paths remain editable values.
     Move, Segment, Quadratic, Close: con iota; # Generic path verbs; quadratic has one control.
     MaxShapes: con 32; # Per-document path budget.
     MaxNodes: con 4096; # Per-path command budget.
@@ -39,6 +39,18 @@ Idevector: module
     };
 
 
+    # Private owner-local selection and gesture; immutable baselines support Cancel/Undo.
+    Edit: adt {
+        selected: int; # Selected shape index, -1 for none.
+        mask: array of int; # Endpoint/control selection, two entries per command.
+        base: array of ref Shape; # Original committed array for one active gesture.
+        origin: Point; # Logical pointer-down position.
+        mode: int; # 0 idle, 1 translate, 2 scale, 3 rotate, 4 nodes, 5 marquee.
+        handle: int; # Corner ordinal for scaling.
+        current: Point; # Last marquee position.
+    };
+
+
     # One pane-owned document; snapshots serialize values, never expose this reference.
     Document: adt {
         shapes: array of ref Shape; # Immutable committed path array.
@@ -58,6 +70,8 @@ Idevector: module
         wirebody: string; # Cached geometry bytes beginning with the shape count.
         nativecapture: int; # Native preview owns active pixels; reuse committed wire body on Begin.
         chain: array of Node; # Immutable unfinished Line vertices, nil after Finish/closure.
+        edit: ref Edit; # Selection never enters SVG/history or a render worker.
+        control: int; # Copied Ctrl key state for additive node selection.
         wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.
     };
 

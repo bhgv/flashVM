@@ -672,11 +672,14 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         } else if (request.operation == VectorControl) {
             e := request.event;
-            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 17 ||
+            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 19 ||
                 e.first != 0 || e.second != 0 || e.text != "") {
                 status = Idecore->Invalid;
             } else if (e.flags != doc.revision || len doc.points != 0) {
                 status = Idecore->Conflict;
+            } else if (e.code == 18 || e.code == 19) {
+                vector->finish(doc);
+                doc.tool = vector->Select + e.code - 18;
             } else if (e.code == 17) {
                 vector->finish(doc);
             } else if (e.code == 5 || e.code == 6) {
@@ -735,6 +738,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             if (e.kind == Uibridge->Key) {
                 if (e.code == 17) {
                     control = e.flags;
+                    doc.control = control;
                 }
                 if (e.flags == 1) {
                     if (e.code == 27) {
@@ -833,7 +837,13 @@ vectorstyle(vector: Idevector, doc: ref Idevector->Document, key: int)
     if (key == 66 || key == 80 || key == 82 || key == 69 || key == 76 || (key >= 49 && key <= 54)) {
         vector->finish(doc);
     }
-    if (key == 66) {
+    if (key == 86 || key == 78) {
+        vector->finish(doc);
+        doc.tool = vector->Select;
+        if (key == 78) {
+            doc.tool = vector->Nodes;
+        }
+    } else if (key == 66) {
         doc.tool = vector->Brush;
     } else if (key == 80) {
         doc.tool = vector->Pen;
