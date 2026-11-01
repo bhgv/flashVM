@@ -99,6 +99,40 @@ init()
     require(vector->history(doc, 1) && vector->svg(doc) == before, "redo exact immutable geometry");
     (status, loaded) := vector->parse(before);
     require(status == vector->Ok && vector->svg(loaded) == before, "brush SVG exact roundtrip");
+    chain := vector->create();
+    chain.tool = vector->Line;
+    chain.fill = 1;
+    require(vector->pointer(chain, 1, 100, 100) == vector->Ok &&
+        vector->pointer(chain, 3, 400, 100) == vector->Ok, "first chain segment");
+    require(vector->pointer(chain, 1, 900, 500) == vector->Ok &&
+        chain.points[0].x == 400 && chain.points[0].y == 100 &&
+        vector->pointer(chain, 3, 400, 400) == vector->Ok, "continue from previous endpoint");
+    require(len chain.shapes == 1 && len chain.shapes[0].nodes == 3 &&
+        chain.shapes[0].fill == 0 && chain.shapes[0].width == 1 && chain.nundo == 1,
+        "unfinished figure is one thin open path and one Undo unit");
+    require(vector->pointer(chain, 1, 700, 500) == vector->Ok &&
+        vector->pointer(chain, 3, 102, 101) == vector->Ok &&
+        len chain.chain == 0 && chain.shapes[0].fill &&
+        chain.shapes[0].nodes[len chain.shapes[0].nodes - 1].verb == vector->Close,
+        "release at first node snaps, closes and admits fill");
+    require(vector->history(chain, 0) && len chain.shapes == 0 &&
+        vector->history(chain, 1) && len chain.shapes == 1, "whole figure Undo/Redo");
+    require(vector->pointer(chain, 1, 600, 100) == vector->Ok &&
+        vector->pointer(chain, 3, 800, 200) == vector->Ok, "new figure after closure");
+    vector->finish(chain);
+    require(vector->pointer(chain, 1, 650, 300) == vector->Ok &&
+        chain.points[0].x == 650 && vector->pointer(chain, 3, 850, 400) == vector->Ok &&
+        len chain.shapes == 3, "Finish starts independent next figure");
+    native := vector->create();
+    vector->preparewire(native);
+    builds := native.wirebuilds;
+    require(vector->defer(native, 1, 100, 100) == vector->Ok, "native Begin model admission");
+    native.nativecapture = 1;
+    parts := vector->wireparts(native);
+    require(len parts == 2 && parts[1] == "00000000" && native.wirebuilds == builds,
+        "native Begin reuses immutable committed body, no portable dot/geometry serialization");
+    vector->cancel(native);
+    require(!native.nativecapture, "native preview ownership clears on cancel");
     for (tool := vector->Rectangle; tool <= vector->Line; tool++) {
         doc.tool = tool;
         doc.fill = tool != vector->Line;

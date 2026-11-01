@@ -86,4 +86,6 @@ void dvm_desktop_destroy(void);
 /* Read copied captured-style metadata; no heap/reference ownership transfers. */
 int dvm_desktop_ink_style(unsigned long widget, unsigned long *tool, unsigned long *color, unsigned long *width);
 
+/* Copy the unfinished Line endpoint from an accepted scene; zero when absent. */
+int dvm_desktop_line_anchor(unsigned long widget, long *point);
 #endif

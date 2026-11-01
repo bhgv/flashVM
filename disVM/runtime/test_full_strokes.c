@@ -97,6 +97,67 @@ static void check(FVM_Path *path, double width, int even_odd, int clipped)
 }
 
 
+/* XOR a borrowed path twice over a coloured base. Full and dirty-tile paths
+ * must invert destination RGB and restore exact base bytes, never brush-stamp. */
+static void check_xor(FVM_Path *path, int tiled)
+{
+    DVM_EditorFrame *base = dvm_editor_frame_create(96, 96);
+    DVM_EditorFrame *preview = dvm_editor_frame_create(96, 96);
+    FVM_RasterColor color = {20, 60, 190, 255};
+    const FVM_RasterSurface *a;
+    const FVM_RasterSurface *b;
+    unsigned int changed = 0;
+    unsigned int i;
+    require(base && preview, "XOR frame allocation");
+    require(dvm_editor_frame_command(base, path, color, 9, 0, 0, 0, 96, 96), "XOR coloured baseline");
+    if (tiled)
+    {
+        require(dvm_editor_frame_incremental(base, NULL), "tiled independent baseline");
+    }
+    require(dvm_editor_frame_render(base) == FVM_OK, "baseline rasterization");
+    require(dvm_editor_frame_command(preview, path, color, 9, 0, 0, 0, 96, 96) &&
+            dvm_editor_frame_xor(preview, path, 1, 0, 0, 96, 96), "XOR copied overlay");
+    if (tiled)
+    {
+        require(dvm_editor_frame_incremental(preview, base), "XOR dirty tile admission");
+    }
+    require(dvm_editor_frame_render(preview) == FVM_OK, "XOR rasterization");
+    a = dvm_editor_frame_surface(base);
+    b = dvm_editor_frame_surface(preview);
+    for (i = 0; i < 96 * 96; ++i)
+    {
+        if (memcmp(a->pixels + i * 4, b->pixels + i * 4, 3))
+        {
+            unsigned int c;
+            ++changed;
+            for (c = 0; c < 3; ++c)
+            {
+                if ((a->pixels[i * 4 + c] ^ b->pixels[i * 4 + c]) != 255)
+                {
+                    fprintf(stderr, "XOR mismatch tiled=%d pixel=%u channel=%u base=%u preview=%u\n", tiled, i, c,
+                            a->pixels[i * 4 + c], b->pixels[i * 4 + c]);
+                    require(0, "XOR destination, not chosen colour");
+                }
+            }
+        }
+    }
+    require(changed > 40, "XOR outline is visible");
+    dvm_editor_frame_destroy(preview);
+    preview = dvm_editor_frame_create(96, 96);
+    require(preview && dvm_editor_frame_command(preview, path, color, 9, 0, 0, 0, 96, 96) &&
+            dvm_editor_frame_xor(preview, path, 1, 0, 0, 96, 96) &&
+            dvm_editor_frame_xor(preview, path, 1, 0, 0, 96, 96), "double XOR");
+    if (tiled)
+    {
+        require(dvm_editor_frame_incremental(preview, NULL), "double XOR tiled admission");
+    }
+    require(dvm_editor_frame_render(preview) == FVM_OK &&
+            !memcmp(a->pixels, dvm_editor_frame_surface(preview)->pixels, 96 * 96 * 4), "XOR exactly reversible");
+    dvm_editor_frame_destroy(preview);
+    dvm_editor_frame_destroy(base);
+}
+
+
 /* Exercise a two-node line and a smoothed Pen path, then a compound hole. */
 int main(void)
 {
@@ -104,6 +165,8 @@ int main(void)
     require(fvm_path_create(&path) == FVM_OK, "line allocation");
     add(path, FVM_PATH_MOVE, 8, 20, 0, 0);
     add(path, FVM_PATH_LINE, 86, 70, 0, 0);
+    check_xor(path, 0);
+    check_xor(path, 1);
     check(path, 9, 0, 0);
     check(path, 9, 0, 1);
     fvm_path_destroy(path);

@@ -630,6 +630,16 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 status = Idecore->Conflict;
             } else if (inkfailure) {
                 status = Idecore->Conflict;
+            } else if (e.text != "" && e.code == 3 && doc.tool != vector->Brush && doc.tool != vector->Pen) {
+                (valid, token) := codec->parseword(array of byte e.text, 0);
+                if (!valid || token <= 0) {
+                    status = Idecore->Invalid;
+                } else {
+                    status = vectorstatus(vector->defer(doc, e.code, e.first, e.second));
+                    if (status == Idecore->Ok) {
+                        inkack = token;
+                    }
+                }
             } else if (e.text != "" && e.code == 3) {
                 (valid, token) := codec->parseword(array of byte e.text, 0);
                 if (!valid || token <= 0 || jobs == nil || len doc.points == 0 || len queued >= 31) {
@@ -655,16 +665,22 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 } else {
                     status = vectorstatus(vector->pointer(doc, e.code, e.first, e.second));
                 }
+                if (status == Idecore->Ok && e.code == 1 && e.text != "") {
+                    doc.nativecapture = 1;
+                }
                 diagnostic = "Draw status=" + string status;
             }
         } else if (request.operation == VectorControl) {
             e := request.event;
-            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 16 ||
+            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 17 ||
                 e.first != 0 || e.second != 0 || e.text != "") {
                 status = Idecore->Invalid;
             } else if (e.flags != doc.revision || len doc.points != 0) {
                 status = Idecore->Conflict;
+            } else if (e.code == 17) {
+                vector->finish(doc);
             } else if (e.code == 5 || e.code == 6) {
+                vector->finish(doc);
                 if (!vector->history(doc, e.code == 6)) {
                     status = Idecore->NotFound;
                 }
@@ -770,6 +786,9 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         }
         body := labels->state(doc.tool, doc.width, doc.fill);
+        if (len doc.chain != 0) {
+            body += " | Finish figure: checkmark";
+        }
         revision := doc.revision;
         if (len doc.points != 0) {
             revision++;
@@ -810,6 +829,9 @@ vectorstyle(vector: Idevector, doc: ref Idevector->Document, key: int)
 {
     if (len doc.points != 0) {
         return;
+    }
+    if (key == 66 || key == 80 || key == 82 || key == 69 || key == 76 || (key >= 49 && key <= 54)) {
+        vector->finish(doc);
     }
     if (key == 66) {
         doc.tool = vector->Brush;

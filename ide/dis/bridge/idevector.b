@@ -8,7 +8,7 @@ create(): ref Document
 {
     return ref Document(nil, 0, 0, Brush, 16r245ac4, 8, 0, nil, 0,
                         array[16] of array of ref Shape, 0,
-                        array[16] of array of ref Shape, 0, nil, "", 0);
+                        array[16] of array of ref Shape, 0, nil, "", 0, nil, 0);
 }
 
 
@@ -72,7 +72,7 @@ draft(doc: ref Document): ref Shape
         if (doc.tool == Line) {
             fill = 0; # An open line is always a stroke, regardless of the closed-shape preference.
         }
-        return ref Shape(doc.color, doc.width, fill,
+        return ref Shape(doc.color, 1, fill,
                          figure(doc.tool, points[0], points[len points - 1]), nil, 0);
     }
     if (len points == 1) {
@@ -156,6 +156,7 @@ cancel(doc: ref Document)
 {
     doc.points = nil;
     doc.used = 0;
+    doc.nativecapture = 0;
 }
 
 
@@ -170,6 +171,9 @@ advance(doc: ref Document, phase, x, y, smooth: int): int
     if (doc.tool < Brush || doc.tool > Pen || doc.color < 0 || doc.color > 16rffffff ||
         doc.width < 1 || doc.width > 32 || (doc.fill != 0 && doc.fill != 1)) {
         return Invalid;
+    }
+    if (doc.tool == Line) {
+        return lineadvance(doc, phase, x, y);
     }
     if (phase == 1) {
         if (len doc.points != 0 || len doc.shapes == MaxShapes || doc.revision == 2147483647) {
@@ -256,6 +260,7 @@ history(doc: ref Document, redo: int): int
     if (doc == nil || len doc.points != 0 || doc.revision == 2147483647 || (redo != 0 && redo != 1)) {
         return 0;
     }
+    finish(doc);
     if (redo) {
         if (doc.nredo == 0) {
             return 0;
@@ -1399,3 +1404,5 @@ refine(doc: ref Document): int
     }
     return status;
 }
+
+include "idevectorchain.b";

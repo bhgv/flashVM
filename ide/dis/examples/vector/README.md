@@ -7,7 +7,11 @@ native drawing demo. Max/N makes the active vector window larger. B/P/R/E/L sele
 brush/pen/rectangle/ellipse/line,1..6 change colour, F toggles figure fill, +/- changes
 width. Ctrl+S/O saves/reads SVG; Ctrl+Z/Y undo/redo a whole gesture.
 
-Screen controls in v0.1697: upper row tools/Undo/Redo/width; lower row six colours/fill/current width. The last lower-row tile now selects Pen and displays the width.
+Controls in v0.1718 are vertical: tools/Undo/Redo/size/Fill/Finish on the left,
+colours on the right. +/- changes brush diameter (1..32); primitives use thin
+one-unit outlines. Each new Line drag continues the last vertex until Finish;
+release near the first node closes the figure and allows Fill. The whole figure
+is one Undo unit. Native XOR previews send no per-motion Dis proposals.
 
 Brush keeps raw input while drawing, then vectorizes a filled nib boundary. Pen
 keeps a stroked centerline and smooths it after release. The interactive owner
@@ -92,3 +96,5 @@ scene publication still waits for every declared stream. Update all runtime and
 Dis modules together. See [the transport contract](../../../BULK-GEOMETRY.md).
 
 [Line/Fill/Pen fixes and tests / Исправления инструментов](../../../../docs/releases/v0.1716.md).
+
+[Connected figures and XOR / Составные фигуры и XOR](../../../../docs/releases/v0.1718.md).

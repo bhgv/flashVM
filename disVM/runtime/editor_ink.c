@@ -1,10 +1,12 @@
 /* No live sample array crosses into Limbo: only frozen gestures may be copied. */
 #include "editor_ink.h"
+#include "editor_primitive.h"
 #include <string.h>
 #include <stdint.h>
 
 typedef struct InkSlot
 {
+    unsigned long tool;                /*1 Brush,2 Rectangle,3 Ellipse,4 Line,5 Pen. */
     unsigned long token;               /* Monotonic nonreused value; zero denotes a free slot. */
     unsigned long widget;              /* Stable document presentation ID1..8. */
     unsigned long color;               /* Captured RGB24. */
@@ -56,6 +58,7 @@ unsigned long dvm_ink_begin(unsigned long widget, unsigned long color, unsigned 
         {
             InkSlot *slot = &slots[index];
             memset(slot, 0, sizeof(*slot));
+            slot->tool = 1;
             slot->token = next_token++;
             slot->widget = widget;
             slot->color = color;
@@ -74,6 +77,12 @@ int dvm_ink_point(unsigned long token, long point)
     if (!slot || slot->frozen || !valid(point))
     {
         return 0;
+    }
+    if (slot->tool >= 2 && slot->tool <= 4)
+    {
+        slot->points[1] = point;
+        slot->count = 2;
+        return 1;
     }
     if (slot->points[slot->count - 1] == point)
     {
@@ -197,15 +206,19 @@ int dvm_ink_preview(unsigned long widget, const FVM_Affine *world, double scale,
         }
         previous = slot->token;
         result = fvm_path_create(&path);
-        for (index = 0; result == FVM_OK && index < slot->count + (slot->count == 1); ++index)
+        for (index = 0; result == FVM_OK && (slot->tool == 1 || slot->tool == 5) && index < slot->count + (slot->count == 1); ++index)
         {
             FVM_PathCommand command;
             long point = slot->points[index < slot->count ? index : 0];
             memset(&command, 0, sizeof(command));
             command.verb = index ? FVM_PATH_LINE : FVM_PATH_MOVE;
-            command.x[0] = 6 + (20 + point % 1001) * scale;
-            command.y[0] = 80 + (20 + point / 1001) * scale;
+            command.x[0] = 40 + (20 + point % 1001) * scale;
+            command.y[0] = 28 + (20 + point / 1001) * scale;
             result = fvm_path_add(path, &command);
+        }
+        if (result == FVM_OK && slot->tool >= 2 && slot->tool <= 4)
+        {
+            result = dvm_primitive_path(path, slot->tool, slot->points[0], slot->points[slot->count - 1], scale);
         }
         if (result == FVM_OK)
         {
@@ -215,7 +228,8 @@ int dvm_ink_preview(unsigned long widget, const FVM_Affine *world, double scale,
         color.g = (unsigned char)(slot->color >> 8);
         color.b = (unsigned char)slot->color;
         color.a = 255;
-        if (result != FVM_OK || !emit(user, path, color, slot->width * scale * world->xx))
+        if (result != FVM_OK || !emit(user, path, color,
+            (slot->tool >= 2 && slot->tool <= 4 && !slot->frozen ? -1.0 : 1.0) * slot->width * scale * world->xx))
         {
             fvm_path_destroy(path);
             return 0;
@@ -274,6 +288,32 @@ int dvm_ink_has_preview(unsigned long widget)
     for (index = 0; index < DVM_INK_SLOTS; index++)
     {
         if (slots[index].token && slots[index].widget == widget)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+/* Select copied tool semantics immediately after native capture admission. */
+void dvm_ink_tool(unsigned long token, unsigned long tool)
+{
+    InkSlot *slot = find(token);
+    if (slot && !slot->frozen && tool >= 1 && tool <= 5)
+    {
+        slot->tool = tool;
+    }
+}
+
+
+/* Destination-dependent XOR cannot be cached as an ordinary alpha bitmap. */
+int dvm_ink_has_xor(void)
+{
+    unsigned int index;
+    for (index = 0; index < DVM_INK_SLOTS; ++index)
+    {
+        if (slots[index].token && !slots[index].frozen && slots[index].tool >= 2 && slots[index].tool <= 4)
         {
             return 1;
         }

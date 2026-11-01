@@ -1807,7 +1807,7 @@ static void render_tile(void *value, unsigned int work_index)
         }
         if (result == FVM_OK)
         {
-            result = entry->stamp ? dvm_editor_stamp_draw(path, &tile, entry->color, entry->width, entry->even_odd)
+            result = entry->stamp == 2 ? dvm_editor_xor_draw(path, &tile, entry->width) : entry->stamp == 1 ? dvm_editor_stamp_draw(path, &tile, entry->color, entry->width, entry->even_odd)
                                   : fvm_path_draw(path, &tile, entry->color, entry->width, entry->even_odd);
         }
         fvm_path_destroy(path);
@@ -1919,6 +1919,29 @@ int dvm_editor_frame_stamp(DVM_EditorFrame *frame,
     if (frame->last != before)
     {
         frame->last->stamp = 1;
+    }
+    return 1;
+}
+
+
+/* Clone a temporary XOR command. It follows normal clip/order/damage admission;
+ * its mask is never a serialized document or a cached alpha object image. */
+int dvm_editor_frame_xor(DVM_EditorFrame *frame, const FVM_Path *path, double width,
+                         int left, int top, int right, int bottom)
+{
+    FramePath *before = frame ? frame->last : NULL;
+    FVM_RasterColor white = {255, 255, 255, 255};
+    if (!frame || frame->recording_node || frame->node_count)
+    {
+        return 0; /* XOR needs the composed destination, never a cached alpha image. */
+    }
+    if (!dvm_editor_frame_command(frame, path, white, width, 0, left, top, right, bottom))
+    {
+        return 0;
+    }
+    if (frame->last != before)
+    {
+        frame->last->stamp = 2;
     }
     return 1;
 }

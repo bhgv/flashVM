@@ -59,10 +59,13 @@ preparewire(doc: ref Document)
 # existing header/record fields. No channel, callback or module load occurs.
 wire(doc: ref Document): string
 {
+    if (!doc.nativecapture && len doc.chain != 0 && len doc.points != 0) {
+        return chainwire(doc);
+    }
     preparewire(doc);
     extra: ref Shape;
     additional := 0;
-    if (len doc.points != 0) {
+    if (len doc.points != 0 && !doc.nativecapture) {
         extra = draft(doc);
         additional = 32 + 40 * len extra.nodes;
     }
@@ -70,7 +73,7 @@ wire(doc: ref Document): string
     putword(bytes, 0, doc.tool);
     putword(bytes, 8, doc.color);
     putword(bytes, 16, doc.width);
-    putword(bytes, 24, doc.fill);
+    putword(bytes, 24, doc.fill | ((len doc.chain != 0) << 1));
     putword(bytes, 32, doc.nundo);
     putword(bytes, 40, doc.nredo);
     bytes[48:] = array of byte doc.wirebody;
@@ -87,7 +90,7 @@ wire(doc: ref Document): string
 # Native live ink has no doc.points; the portable draft fallback preserves wire.
 wireparts(doc: ref Document): array of string
 {
-    if (len doc.points != 0) {
+    if (len doc.points != 0 && !doc.nativecapture) {
         return array[] of {wire(doc)};
     }
     preparewire(doc);
@@ -95,7 +98,7 @@ wireparts(doc: ref Document): array of string
     putword(header, 0, doc.tool);
     putword(header, 8, doc.color);
     putword(header, 16, doc.width);
-    putword(header, 24, doc.fill);
+    putword(header, 24, doc.fill | ((len doc.chain != 0) << 1));
     putword(header, 32, doc.nundo);
     putword(header, 40, doc.nredo);
     return array[] of {string header, doc.wirebody};

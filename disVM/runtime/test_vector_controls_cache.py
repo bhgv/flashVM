@@ -23,8 +23,8 @@ def main():
         original = capture.read_bytes().split(b"\n", 3)[3]
         pane = list(views.values())[-1][1]
         def button(index):
-            x = round(pane[1] + 6 + (index%8+0.5)*(808-12)/8)
-            y = pane[2]+(36 if index<8 else 60)
+            x = round(pane[1] + (808-20 if 8 <= index < 14 else 20))
+            y = pane[2]+(40 + [0,1,2,3,5,6,7,8,0,1,2,3,4,5,9,4,10][index]*28)
             return [mouse(x,y), mouse(x,y,3)]
         events = initial
         for unused in range(4):
@@ -36,7 +36,7 @@ def main():
             raise RuntimeError("Fill->Pen/color rerasterized unchanged vector geometry")
         pixels = capture.read_bytes().split(b"\n",3)[3]
         for y in range(155,620):
-            begin=(y*960+110)*3; end=(y*960+880)*3
+            begin=(y*960+130)*3; end=(y*960+850)*3
             if pixels[begin:end] != original[begin:end]:
                 raise RuntimeError("A tool change altered committed drawing pixels")
     print("PASS real Fill/Pen/color cache: unchanged canvas pixels and exact geometry replay",mode)

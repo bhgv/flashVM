@@ -2,6 +2,7 @@
 #ifndef DVM_EDITOR_FULL_RASTER_H
 #define DVM_EDITOR_FULL_RASTER_H
 #include "editor_stamp.h"
+#include "editor_xor.h"
 
 
 /* Borrow immutable path and exclusively writable surface. Clip is already
@@ -46,7 +47,7 @@ static FVM_Result dvm_editor_full_command(const FVM_Path *path,
     }
     if (result == FVM_OK)
     {
-        result = stamp ? dvm_editor_stamp_draw(local, &clip, color, width, even_odd)
+        result = stamp == 2 ? dvm_editor_xor_draw(local, &clip, width) : stamp == 1 ? dvm_editor_stamp_draw(local, &clip, color, width, even_odd)
                        : fvm_path_draw(local, &clip, color, width, even_odd);
     }
     fvm_path_destroy(local);

@@ -58,4 +58,7 @@ int dvm_chrome_owns_view(unsigned long id, unsigned long mirror);
 
 /* Bind a generic owner-local graphics capability; no UI layout/style is encoded. */
 int dvm_chrome_drawing_bind(FVM_Context *owner, FVM_Object *clip);
+/* Run the AS vector-control view with copied palette/selection, UI owner only. */
+int dvm_chrome_vector(FVM_Context *owner, FVM_Object *clip, double wide, double high,
+                       unsigned long color, int selected);
 #endif

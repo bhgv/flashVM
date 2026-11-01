@@ -9,6 +9,7 @@
 #include "chrome_tool_palette.h"
 #include "chrome_tool_pointer.h"
 #include "chrome_tab_button.h"
+#include "chrome_vector_control.h"
 #include "chrome_input_field.h"
 #include "chrome_top_bar.h"
 #include "chrome_rail_left.h"
@@ -180,4 +181,14 @@ int dvm_chrome_glass(FVM_Context *owner,
 int dvm_chrome_invalidate(FVM_Context *owner, FVM_Object *clip)
 {
     return cache_number(owner, clip, "_chromeWidth", -1);
+}
+
+
+/* Execute the standalone AS control view with copied palette/selection values.
+ * Borrow same-context clip on the UI owner; return zero on VM refusal. */
+int dvm_chrome_vector(FVM_Context *owner, FVM_Object *clip, double wide, double high,
+                       unsigned long color, int selected)
+{
+    return parameter(owner, "vectorControlColor", color) &&
+        execute(owner, clip, chrome_vector_control, sizeof(chrome_vector_control), wide, high, 0, selected);
 }

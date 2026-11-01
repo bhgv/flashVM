@@ -39,7 +39,7 @@ def main():
         trace = (work / "trace.txt").read_text()
         geometry = [line.split() for line in trace.splitlines() if line.startswith("GEOMETRY ") and line.split()[2] == "5"][-1]
         wide, high = map(int, geometry[3:5])
-        scale = min((wide - 12) / 1040, (high - 86) / 640)
+        scale = min((wide - 80) / 1040, (high - 34) / 640)
         zoom = int([line.split()[2] for line in trace.splitlines() if line.startswith("TABLEZOOM ")][-1]) / 100
         if mouse_tools and zoom == 1:
             raise RuntimeError("mouse-controls fixture did not exercise a transformed table")
@@ -54,13 +54,13 @@ def main():
 
         # Pick points strictly inside the1000x600 document page after uniform zoom.
         def canvas(x, y, phase):
-            return mouse(round(left + (6 + (20 + x) * scale) * zoom), round(top + (80 + (20 + y) * scale) * zoom), phase)
+            return mouse(round(left + (40 + (20 + x) * scale) * zoom), round(top + (28 + (20 + y) * scale) * zoom), phase)
 
         # Click the same real child MovieClips that are shown in the toolbar.
         # index0..7 is the upper row;8..14 selects colours/fill;15 selects Pen.
         def button(index):
-            x = round(left + (6 + (index % 8 + 0.5) * (wide - 12) / 8) * zoom)
-            y = round(top + (36 if index < 8 else 60) * zoom)
+            x = round(left + ((wide - 20 if 8 <= index < 14 else 20)) * zoom)
+            y = round(top + (40 + [0,1,2,3,5,6,7,8,0,1,2,3,4,5,9,4,10][index]*28) * zoom)
             return [mouse(x, y), mouse(x, y, 3)]
 
         events = initial + (button(9) if mouse_tools else [envelope(5, text="2")])
@@ -88,7 +88,7 @@ def main():
             raise RuntimeError("Pen must save a smoothed stroked centerline after release")
         if paths[2].attrib["d"].strip().split()[-1] != "0":
             raise RuntimeError("captured Pen release above the page must clamp, not discard the gesture")
-        if paths[1].attrib["stroke-width"] != "9":
+        if paths[1].attrib["stroke-width"] != "1":
             raise RuntimeError("batched SDL-style tool/colour/fill/width commands were lost")
         if paths[0].attrib["stroke"] != "none" or paths[1].attrib["stroke"] != "#e04444":
             raise RuntimeError("document colour did not survive save/reload")

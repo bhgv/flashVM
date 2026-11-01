@@ -153,3 +153,22 @@ preserves each legacy 120-pixel step. Key events, reversal and Ctrl zoom remain 
 fences. Details and reproducible scope: [v0.1714](../docs/releases/v0.1714.md).
 
 [Per-pane geometry transport / Отдельные брокеры геометрии](BULK-GEOMETRY.md) · [Русский](BULK-GEOMETRY.ru.md).
+
+## Geometric capture (v0.1718)
+
+Line/Rectangle/Ellipse now use the same native capture boundary but retain only
+start/latest endpoints. There are no per-motion Dis proposals and no trajectory
+handoff to the fitting worker. Release submits a scalar endpoint and token to
+the Limbo owner, which commits geometry and binds normal preview retirement to
+the accepted complete wire. Native Begin reuses the cached committed geometry
+body rather than serializing a portable draft; only copied style/revision state
+changes. While held, an unfilled one-unit destination-XOR
+outline is composed in dirty tiles; release uses the selected colour. This
+operation bypasses associated alpha-image caching while active because it depends
+on the pixels underneath. Committed objects return to retained caching. Brush/Pen
+keep their separate sampled/refinement path and shared size control.
+
+The Line owner stores immutable connected vertices in `idevectorchain.b`.
+See [drawing controls and closure](VECTOR-EDITOR.md). This is a private UI metadata
+extension; rebuild matching native and Dis products. Native SDL tests exercise600
+motions for each primitive and Fill-on Pen with just Begin/End channel proposals.

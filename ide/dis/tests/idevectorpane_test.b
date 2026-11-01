@@ -68,7 +68,7 @@ init()
     require(undone.drawing[48:] == empty.drawing[48:] && undone.revision == 2, "Undo through ordinary key channel");
     call(a, panes->Input, ref Uibridge->Message(Uibridge->Key, 0, 17, 0, 0, 0, ""));
     changed := call(a, panes->Input, ref Uibridge->Message(Uibridge->Text, 0, 0, 0, 0, 0, "r2f+"));
-    require(changed.body == "Rectangle | Fill:on | Width:9" &&
+    require(changed.body == "Rectangle | Fill:on | Stroke:1 | Brush size:9" &&
             changed.revision == 2, "batched SDL text changes style without source revision");
     malformed := call(a, panes->Draw, ref Uibridge->Message(Uibridge->Text, 0, 1, 2, 100, 100, ""));
     require(malformed.status == Idecore->Invalid && malformed.drawing[48:] == empty.drawing[48:],
@@ -78,8 +78,8 @@ init()
             "toolbar tool command changes copied style without editing geometry");
     refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 15, 1, 0, 0, ""));
     require(refused.status == Idecore->Conflict && refused.drawing == styled.drawing, "stale toolbar revision refused atomically");
-    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 17, 2, 0, 0, ""));
-    require(refused.status == Idecore->Invalid && refused.drawing == styled.drawing, "noninteractive preview cell cannot issue a command");
+    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 18, 2, 0, 0, ""));
+    require(refused.status == Idecore->Invalid && refused.drawing == styled.drawing, "unknown control cannot issue a command");
     require(call(a, panes->Shutdown, nil).status == 0 && call(b, panes->Shutdown, nil).status == 0,
             "independent acknowledged shutdown");
     sys->print("PASS vector panes: revision, dirty file refusal, isolated owners and shutdown\n");

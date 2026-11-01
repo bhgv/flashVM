@@ -18,24 +18,32 @@ in C until release, then a separate Limbo worker acquires the frozen trajectory.
 See [native ink and native-sized maximization](NATIVE-INK.md). No worker uses a
 VM/font/document pointer. This is scheduled Dis ownership, not parallel VM/GC.
 
-![Actual MovieClip vector window and thumbnail](assets/vector-v0.1697.png)
+![Actual MovieClip vector window and thumbnail](assets/vector-v0.1718.png)
 
 ## Drawing
 
-Focus the vector window and use its two rows of rounded child MovieClips:
+Tools are arranged vertically on the **left** of each canvas: Brush, Rectangle,
+Ellipse, Line, Pen, Undo, Redo, size minus/plus, closed-shape Fill, and Finish
+(checkmark, visible with Line). Six colours form a vertical column on the **right**.
+The caption reports the selected tool and brush diameter (1..32); +/- adjusts it.
+Rectangle/Ellipse/Line use a one-logical-unit outline rather than brush diameter.
+Pen retains its stroked-centerline width. Controls are rounded real MovieClips;
+`chrome/vector-control.as` owns their view and Limbo owns commands/state. Source
+panes and thumbnails each own17 control children. The screenshot shows the current vertical toolbar.
 
-| Row | Left to right |
-| --- | --- |
-| Upper | Brush, rectangle, ellipse, line, Undo, Redo, narrower stroke, wider stroke |
-| Lower | Six colour swatches, fill toggle, pen with numeric stroke width |
+During a geometric drag, native C keeps just the start and latest endpoint and
+shows a destination-XOR outline, without fill or per-motion Dis round trips.
+Release publishes the chosen colour; Rectangle/Ellipse apply the Fill preference.
+**Line continues the current figure:** a later drag starts from the preceding
+endpoint, wherever that drag begins. Finish ends an open figure without filling
+it. Releasing within8 logical units of the first node (after at least two
+segments) snaps to it, closes the figure and permits Fill. The whole connected
+figure is one Undo unit. A tool/colour change ends the open figure. Save preserves
+its current open or closed path as SVG. Brush and Pen still retain native samples
+and refine only after release in a separate Limbo process.
 
-The last lower-row tile selects Pen and displays the current width. Selected tools/colours/fill are highlighted;
-unavailable history and width steps are dimmed. Clicks carry a copied cell
-proposal through the same ticket/owner/revision admission as the canvas. Each
-pane and miniature owns its own16 child MovieClips. The model remains on Dis.
-Controls hide in very narrow panes; keyboard shortcuts remain available.
-The owner also accepts explicit keys and asynchronous/batched SDL text commands.
-Node selection/editing and a full Flash-style toolbox remain future work.
+The owner accepts keyboard shortcuts and asynchronous/batched SDL text commands.
+Node selection/editing remains future work.
 
 | Key | Action |
 | --- | --- |
@@ -155,7 +163,7 @@ exact next byte offset, at most1024 bytes. The native adapter validates the whol
 stream, every style, range, opcode and extent before scene commit. Missing,
 reordered, duplicate, overlong or malformed fragments cannot commit partial paths.
 These are private UI codes, **not shared Dis64 format/opcode IDs**. Old unversioned
-vector messages are rejected. Hit metadata uses signed int32 cells -2..-17;
+vector messages are rejected. Hit metadata uses signed int32 cells -2..-18;
 raw uint32 parse results are explicitly sign-extended on NC64. Exported module
 signatures changed: rebuild/install the matching .dis/.m application together.
 
@@ -178,21 +186,22 @@ Interpreter and JIT dispatch are checked separately. Replay/pixel tests are not
 physical-device acceptance or a measured input-latency benchmark. The existing
 lazy Coco/R text-colour service remains independent of this vector document model.
 
-## Line, fill and Pen (v0.1716)
+## Preview, fill and Pen (v0.1718)
 
-The second button from the right is the **closed-shape fill preference** (`F`),
-not an asynchronous-mode switch. Rectangle/Ellipse use it; Line is always an
-open stroke. Brush paints a filled area, while Pen paints a centerline smoothed
-after release. The rightmost button selects **Pen** (`P`). Its old width number
-has moved into the readable window caption; +/- still changes width.
+Fill is a closed-shape preference, not a scheduling switch. It cannot fill an
+open Pen centerline or unfinished Line figure. Pen is now in the left tool column,
+not the rightmost old tile. Fill → Pen and colour changes have native SDL and
+real Dis/SVG/pixel regression coverage.
 
-`idevectorlabels.m/.b` owns the labels in Limbo. Captions display the current
-tool, fill preference and width. For Brush/Pen/Line the caption says `Shape fill`
-to make the scope of the saved preference explicit. Historical screenshots above
-may still show the old numeric Pen button.
+`editor_primitive.h` builds the temporary geometric outline;
+`editor_xor.h` performs reversible destination inversion. XOR uses ordered dirty
+tiles rather than caching a destination-dependent operation as an alpha bitmap.
+Ordinary committed drawing returns to retained object images after release.
+The first cache-mode transition can repaint the viewport; following updates
+compare old/new contour bounds and update damaged tiles. This is asynchronous to
+SWF frames; no physical latency/FPS measurement is claimed.
 
-Primitive input keeps the first point and latest endpoint, with release retained
-in FIFO order. Real native tests compress600 queued positions into at most three
-updates. Freehand tools keep their sampled trajectories. Full-frame fallback now
-preserves stroke width, fill rule and clipping; open Pen paths cannot silently
-become zero-area fills. [Evidence and bounds](../docs/releases/v0.1716.md).
+`idevectorchain.b` owns connected figures and `idevectorlabels.b` owns captions.
+The private vector UI header keeps six words; fill word bit0 is the preference,
+bit1 marks an unfinished Line. Rebuild the model, pane owners and native adapter
+together. This extends private UI metadata, not SVG/SWF/Dis/FIR file formats.

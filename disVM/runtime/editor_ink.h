@@ -14,6 +14,10 @@ unsigned long dvm_ink_begin(unsigned long widget, unsigned long color, unsigned 
 
 /* Retain bounded samples without any Dis/channel/managed allocation. Suppress
  * duplicate points. Return one on success, zero on stale token/full storage. */
+/* Copy checked tool identity on the native owner; no VM references are retained. */
+void dvm_ink_tool(unsigned long token, unsigned long tool);
+/* Return whether a live geometric preview needs destination-dependent XOR. */
+int dvm_ink_has_xor(void);
 int dvm_ink_point(unsigned long token, long point);
 
 
@@ -39,6 +43,7 @@ void dvm_ink_commit(unsigned long widget, const char *drawing, size_t size);
 
 /* Emit one immutable physical path per retained stroke in this pane's paint
  * order. Callback borrows path until return; caller copies it into a raster job.
+ * Negative callback width requests XOR for a live primitive; frozen paths use color.
  * Return zero on geometry/callback failure. No VM or document access occurs. */
 typedef int (*DVM_InkEmit)(void *user, const FVM_Path *path, FVM_RasterColor color, double width);
 int dvm_ink_preview(unsigned long widget, const FVM_Affine *world, double scale, DVM_InkEmit emit, void *user);

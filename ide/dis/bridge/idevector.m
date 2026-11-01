@@ -56,6 +56,8 @@ Idevector: module
         nredo: int; # Initialized Redo stack size.
         wired: array of ref Shape; # Immutable committed identity represented by wirebody.
         wirebody: string; # Cached geometry bytes beginning with the shape count.
+        nativecapture: int; # Native preview owns active pixels; reuse committed wire body on Begin.
+        chain: array of Node; # Immutable unfinished Line vertices, nil after Finish/closure.
         wirebuilds: int; # Saturating diagnostic count; never a document revision or wire field.
     };
 
@@ -72,6 +74,8 @@ Idevector: module
     defer: fn(doc: ref Document, phase, x, y: int): int;
     # Refine every committed raw Brush/Pen in a private job document. No I/O/UI.
     refine: fn(doc: ref Document): int;
+    # End an unfinished open line figure without closing/filling it. Pure owner call.
+    finish: fn(doc: ref Document);
     # Drop only the active uncommitted gesture; source/history remain unchanged.
     cancel: fn(doc: ref Document);
     # Return0/1 for undo/redo admission. Gesture-active requests are refused.

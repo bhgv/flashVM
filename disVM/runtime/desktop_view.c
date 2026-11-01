@@ -2,6 +2,7 @@
 #include "desktop_view.h"
 #include "desktop_chrome.h"
 #include "editor_ink.h"
+#include "editor_vector_layout.h"
 #include "desktop_view_swf.h"
 #include "flashvm/avm1.h"
 #include "flashvm/movieclip.h"
@@ -120,7 +121,7 @@ typedef struct VectorScene
 } VectorScene;
 
 static FVM_Object
-    *vector_buttons[DESK_SLOTS][16]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
+    *vector_buttons[DESK_SLOTS][17]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
 static VectorScene vectors[9];       /* Stable pane identities1..8, reset at scene Begin. */
 
 /* Owner-local visual interpolation; no document, VM pointer or worker handle. */
@@ -577,7 +578,8 @@ static int vector_parse(VectorScene *scene)
         !word(scene->bytes + 16, &scene->width) || !word(scene->bytes + 24, &scene->fill) ||
         !word(scene->bytes + 32, &scene->undo) || !word(scene->bytes + 40, &scene->redo) ||
         !word(scene->bytes + 48, &shapes) || scene->tool < 1 || scene->tool > 5 || scene->color > 0xffffffUL ||
-        scene->width < 1 || scene->width > 32 || scene->fill > 1 || scene->undo > 16 || scene->redo > 16 ||
+        scene->width < 1 || scene->width > 32 || scene->fill > 3 ||
+        ((scene->fill & 2) && (scene->tool != 4 || shapes == 0)) || scene->undo > 16 || scene->redo > 16 ||
         shapes > VECTOR_SHAPES)
     {
         return 0;
@@ -631,11 +633,11 @@ static int vector_parse(VectorScene *scene)
  * Nonpositive means the current very small pane cannot display a drawing. */
 static double vector_scale(const DeskItem *item)
 {
-    if (item->width <= 12 || item->height <= 86)
+    if (item->width <= 80 || item->height <= 34)
     {
         return 0;
     }
-    return fmin((item->width - 12) / 1040.0, (item->height - 86) / 640.0);
+    return fmin((item->width - 80) / 1040.0, (item->height - 34) / 640.0);
 }
 
 /* Draw one small copied line/curve icon through ordinary MovieClip methods.
@@ -695,6 +697,16 @@ static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigne
         x[5] = -12;
         y[5] = 6;
         count = 6;
+    }
+    else if (cell == 16)
+    {
+        x[0] = -7;
+        y[0] = 0;
+        x[1] = -2;
+        y[1] = 5;
+        x[2] = 7;
+        y[2] = -6;
+        count = 3;
     }
     else if (cell == 3)
     {
@@ -770,9 +782,10 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
 {
     static const unsigned long palette[6] = {0x245ac4UL, 0xe04444UL, 0x229955UL, 0xf0b323UL, 0x222222UL, 0x9933bbUL};
     unsigned int i;
-    double cell = content->width > 12 ? (content->width - 12) / 8.0 : 0;
-    unsigned long key[8];
-    static unsigned long keys[DESK_SLOTS][8]; /* Copied toolbar pixels/style identity. */
+    double cell = 28;
+    unsigned long key[9];
+    static unsigned long keys[DESK_SLOTS][9]; /* Copied toolbar pixels/style identity. */
+    key[8] = content->height;
     key[0] = content->width;
     key[1] = scene ? scene->tool : 0;
     key[2] = scene ? scene->color : 0;
@@ -785,10 +798,10 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
     {
         goto report;
     }
-    for (i = 0; i < 16; ++i)
+    for (i = 0; i < 17; ++i)
     {
         FVM_Object *button = vector_buttons[slot][i];
-        if (!scene || cell < 12)
+        if (!scene || content->width < 80 || (i == 16 && scene->tool != 4))
         {
             if (button && !number(button, "_visible", 0))
             {
@@ -807,7 +820,7 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
             }
         }
         unsigned long fill = 0xe3e8ebUL;
-        unsigned long border = 0x8799a8UL;
+
         unsigned long ink = 0x26343fUL;
         int selected = (i < 4 && scene->tool == i + 1) || (i == 15 && scene->tool == 5);
         if (i >= 8 && i < 14)
@@ -817,30 +830,27 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
         }
         if (i == 14)
         {
-            selected = scene->fill != 0;
-        }
-        if (i == 15)
-        {
-            fill = scene->color;
-            unsigned long luminance = ((fill >> 16) & 255) * 299 + ((fill >> 8) & 255) * 587 + (fill & 255) * 114;
-            ink = luminance < 128000 ? 0xffffffUL : 0x222222UL;
+            selected = (scene->fill & 1) != 0;
         }
         if (selected)
         {
-            border = 0x2684dbUL;
+
             if (i < 8 || i == 14 || i == 15)
             {
                 fill = 0xb8d9f5UL;
             }
         }
         if ((i == 4 && !scene->undo) || (i == 5 && !scene->redo) || (i == 6 && scene->width == 1) ||
-            (i == 7 && scene->width == 32))
+            (i == 7 && scene->width == 32) || (i == 16 && !(scene->fill & 2)))
         {
             ink = 0xa4afb7UL;
         }
-        if (!number(button, "_visible", 1) || !number(button, "_x", 6 + (i % 8) * cell) ||
-            !number(button, "_y", i < 8 ? 26 : 50) || !dvm_chrome_box(owner, button, cell - 3, 20, fill, border) ||
-            !vector_icon(button, i, cell - 3, ink))
+        double bx;
+        double by;
+        if (!dvm_vector_control_rect(i, content->width, &bx, &by) ||
+            !number(button, "_visible", 1) || !number(button, "_x", bx) || !number(button, "_y", by) ||
+            !dvm_chrome_vector(owner, button, cell, 24, fill, selected) ||
+            !vector_icon(button, i, cell, ink))
         {
             return 0;
         }
@@ -876,6 +886,11 @@ static int ink_emit(void *unused, const FVM_Path *path, FVM_RasterColor color, d
 static int preview_emit(void *unused, const FVM_Path *path, FVM_RasterColor color, double wide)
 {
     (void)unused;
+    if (wide < 0)
+    {
+        return dvm_editor_frame_xor(prepared_frame, path, -wide,
+                                    capture_left, capture_top, capture_right, capture_bottom);
+    }
     return dvm_editor_frame_stamp(
         prepared_frame, path, color, wide, capture_left, capture_top, capture_right, capture_bottom);
 }
@@ -933,8 +948,8 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
         for (j = 0; j < shape->count; ++j)
         {
             const VectorNode *node = &scene->nodes[shape->first + j];
-            double x = 6 + (20 + node->x) * scale;
-            double y = 80 + (20 + node->y) * scale;
+            double x = 40 + (20 + node->x) * scale;
+            double y = 28 + (20 + node->y) * scale;
             if (node->verb == 0)
             {
                 start_x = x;
@@ -949,8 +964,8 @@ static int vector_paint(FVM_Object *clip, unsigned long slot, const DeskItem *co
             fvm_value_number(args + 1, y);
             if (node->verb == 2)
             {
-                fvm_value_number(args, 6 + (20 + node->cx) * scale);
-                fvm_value_number(args + 1, 80 + (20 + node->cy) * scale);
+                fvm_value_number(args, 40 + (20 + node->cx) * scale);
+                fvm_value_number(args + 1, 28 + (20 + node->cy) * scale);
                 fvm_value_number(args + 2, x);
                 fvm_value_number(args + 3, y);
             }
@@ -1002,14 +1017,14 @@ static int vector_capture(unsigned long widget, const DeskItem *content, const F
                            : node->verb == 1 ? FVM_PATH_LINE
                            : node->verb == 2 ? FVM_PATH_QUADRATIC
                                              : FVM_PATH_CLOSE;
-            command.x[0] = 6 + (20 + node->x) * scale;
-            command.y[0] = 80 + (20 + node->y) * scale;
+            command.x[0] = 40 + (20 + node->x) * scale;
+            command.y[0] = 28 + (20 + node->y) * scale;
             if (node->verb == 2)
             {
                 command.x[1] = command.x[0];
                 command.y[1] = command.y[0];
-                command.x[0] = 6 + (20 + node->cx) * scale;
-                command.y[0] = 80 + (20 + node->cy) * scale;
+                command.x[0] = 40 + (20 + node->cx) * scale;
+                command.y[0] = 28 + (20 + node->cy) * scale;
             }
             result = fvm_path_add(path, &command);
         }
@@ -1494,23 +1509,26 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
         }
         if (vectors[item->id].complete)
         {
-            double cell = item->width > 12 ? (item->width - 12) / 8.0 : 0;
-            if (cell >= 12 && localx >= 6 && localx < item->width - 6 &&
-                ((localy >= 26 && localy < 46) || (localy >= 50 && localy < 70)))
+            unsigned int index;
+            for (index = 0; index < 17; ++index)
             {
-                int column = (int)((localx - 6) / cell);
-                int index = column + (localy >= 50 ? 8 : 0);
-                if (index < 16)
+                double bx;
+                double by;
+                if (index == 16 && !(vectors[item->id].fill & 2))
+                {
+                    continue;
+                }
+                if (dvm_vector_control_rect(index, item->width, &bx, &by) &&
+                    localx >= bx && localx < bx + 28 && localy >= by && localy < by + 24)
                 {
                     *widget = item->id;
-                    *position = -2 - index;
+                    *position = -2 - (long)index;
                     return 1;
                 }
-                return 0;
             }
             double scale = vector_scale(item);
-            double vx = scale > 0 ? (localx - 6) / scale - 20 : -1;
-            double vy = scale > 0 ? (localy - 80) / scale - 20 : -1;
+            double vx = scale > 0 ? (localx - 40) / scale - 20 : -1;
+            double vy = scale > 0 ? (localy - 28) / scale - 20 : -1;
             if (vx < 0 || vx > 1000 || vy < 0 || vy > 600)
             {
                 return 0;
@@ -2886,7 +2904,7 @@ static int prepare_desktop(DVM_EditorFrame *frame, const DVM_EditorFrame *prior,
 /* Prepare owner-held native layers using only a completed immutable baseline. */
 int dvm_desktop_prepare_cached(DVM_EditorFrame *frame, const DVM_EditorFrame *prior)
 {
-    return prepare_desktop(frame, prior, 1);
+    return prepare_desktop(frame, prior, !dvm_ink_has_xor());
 }
 
 /* Resource-budget fallback and development comparison: capture ordinary world
@@ -2933,8 +2951,8 @@ int dvm_desktop_vector_point(unsigned long widget, double x, double y, long *pos
         {
             return 0;
         }
-        localx = ((world.yy * (x - world.x0) - world.xy * (y - world.y0)) / determinant - 6) / scale - 20;
-        localy = ((-world.yx * (x - world.x0) + world.xx * (y - world.y0)) / determinant - 80) / scale - 20;
+        localx = ((world.yy * (x - world.x0) - world.xy * (y - world.y0)) / determinant - 40) / scale - 20;
+        localy = ((-world.yx * (x - world.x0) + world.xx * (y - world.y0)) / determinant - 28) / scale - 20;
         localx = fmax(0, fmin(1000, localx));
         localy = fmax(0, fmin(600, localy));
         *position = (long)floor(localy) * 1001 + (long)floor(localx);
@@ -3044,5 +3062,28 @@ int dvm_desktop_ink_style(unsigned long widget, unsigned long *tool, unsigned lo
     *tool = vectors[widget].tool;
     *color = vectors[widget].color;
     *width = vectors[widget].width;
+    return 1;
+}
+
+
+/* Read the last accepted unfinished Line vertex from copied scene geometry.
+ * Native capture borrows values only; Limbo remains the figure owner. */
+int dvm_desktop_line_anchor(unsigned long widget, long *point)
+{
+    const VectorScene *scene;
+    const VectorShape *shape;
+    const VectorNode *node;
+    if (!point || widget < 1 || widget > 8)
+    {
+        return 0;
+    }
+    scene = &vectors[widget];
+    if (!scene->complete || !(scene->fill & 2) || !scene->count)
+    {
+        return 0;
+    }
+    shape = &scene->shapes[scene->count - 1];
+    node = &scene->nodes[shape->first + shape->count - 1];
+    *point = node->y * 1001 + node->x;
     return 1;
 }

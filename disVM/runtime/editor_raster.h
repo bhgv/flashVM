@@ -181,4 +181,8 @@ size_t dvm_editor_frame_baseline_bytes(const DVM_EditorFrame *frame);
  * mismatched displayed baseline requires complete=1 on presentation. */
 int dvm_editor_frame_has_baseline(const DVM_EditorFrame *frame, const DVM_EditorFrame *prior);
 
+/* Append an ordered clipped temporary XOR outline; clone borrowed path. Owner
+ * only, return zero on refusal. Destination-dependent commands use tile mode. */
+int dvm_editor_frame_xor(DVM_EditorFrame *frame, const FVM_Path *path, double width,
+                         int left, int top, int right, int bottom);
 #endif

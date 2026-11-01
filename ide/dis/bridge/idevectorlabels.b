@@ -21,5 +21,11 @@ state(tool, width, fill: int): string
     if (tool == Idevector->Brush || tool == Idevector->Pen || tool == Idevector->Line) {
         label = "Shape fill:";
     }
-    return names[tool] + " | " + label + value + " | Width:" + string width;
+    size := "Width:" + string width;
+    if (tool == Idevector->Brush) {
+        size = "Brush size:" + string width;
+    } else if (tool != Idevector->Pen) {
+        size = "Stroke:1 | Brush size:" + string width;
+    }
+    return names[tool] + " | " + label + value + " | " + size;
 }

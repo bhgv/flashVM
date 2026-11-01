@@ -3181,10 +3181,19 @@ int dvm_editor_event(DVM_UIMessage *message)
         {
             unsigned long tool, color, wide;
             unsigned long point;
-            if (dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) && (tool == 1 || tool == 5) &&
+            if (dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) &&
                 hexword(message->text + 24, &point))
             {
-                ink_token = dvm_ink_begin(vector_drag, color, wide, (long)point);
+                if (tool == 4)
+                {
+                    long anchor;
+                    if (dvm_desktop_line_anchor(vector_drag, &anchor))
+                    {
+                        point = (unsigned long)anchor;
+                    }
+                }
+                ink_token = dvm_ink_begin(vector_drag, color, tool == 1 || tool == 5 ? wide : 1, (long)point);
+                dvm_ink_tool(ink_token, tool);
                 if (ink_token)
                 {
                     ink_pointer = event;

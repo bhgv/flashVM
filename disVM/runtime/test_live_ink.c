@@ -3,6 +3,7 @@
 #include "editor_view.h"
 #include "desktop_view.h"
 #include "editor_ink.h"
+#include "editor_vector_layout.h"
 #include "editor_ink_pointer.h"
 #include "editor_wheel_batch.h"
 #include <SDL.h>
@@ -45,7 +46,7 @@ static void scene_tool(unsigned long ticket, unsigned long tool)
     send(ticket, DVM_DESK_BEGIN, 960, 640, bytes);
     send(ticket, DVM_DESK_ITEM, 1, 0, "000000040000005400000030000003280000024400000001ffffffff00000000ffffffffVector");
     send(ticket, DVM_DESK_VECTOR_BEGIN, 1, 56, "0000000000000002");
-    snprintf(bytes, sizeof(bytes), "%08lx00245ac40000000800000000000000000000000000000000", tool);
+    snprintf(bytes, sizeof(bytes), "%08lx00245ac400000008%08lx000000000000000000000000", tool, tool == 5 ? 1UL : 0UL);
     send(ticket, DVM_DESK_VECTOR_DATA, 1, 0, bytes);
     send(ticket, DVM_DESK_END, 0, 0, "");
 }
@@ -120,15 +121,21 @@ static void toolbar_click(unsigned long *ticket, int x, long offset, unsigned in
     click.button.which = 1;
     click.button.button = SDL_BUTTON_LEFT;
     click.button.clicks = (Uint8)clicks;
-    click.button.x = x;
-    click.button.y = 108;
+    {
+        double bx;
+        double by;
+        require(dvm_vector_control_rect((unsigned int)(-offset - 2), 808, &bx, &by), "control layout");
+        x = (int)bx + 84 + 14;
+        click.button.x = x;
+        click.button.y = (int)by + 48 + 12;
+    }
     require(SDL_PushEvent(&click) == 1, "queue toolbar click");
     event = proposal();
     snprintf(expected, sizeof(expected), "%08x%08x%08x%08x", 1, 1, 1, (unsigned int)offset);
     require(event.code == DVM_DESK_POINTER && event.size == 32 && !memcmp(event.text, expected, 32),
             "repeated toolbar click stays a control, with no ink token or maximize code");
     scene(++*ticket);
-    pointer(SDL_MOUSEBUTTONUP, x, 108);
+    pointer(SDL_MOUSEBUTTONUP, x, click.button.y);
     event = proposal();
     require(event.code == DVM_DESK_POINTER && event.size == 32, "toolbar release creates no stroke");
     scene(++*ticket);
@@ -321,7 +328,7 @@ static void wheel_fences(void)
 static void primitive_bursts(unsigned long *ticket)
 {
     unsigned long tool;
-    for (tool = 2; tool <= 4; tool++)
+    for (tool = 2; tool <= 5; tool++)
     {
         DVM_UIMessage event;
         unsigned int index;
@@ -329,7 +336,7 @@ static void primitive_bursts(unsigned long *ticket)
         scene_tool(++*ticket, tool);
         pointer(SDL_MOUSEBUTTONDOWN, 160, 220);
         event = proposal();
-        require(event.size == 32 && !memcmp(event.text, "00000001", 8), "primitive begins without a freehand token");
+        require(event.size == 40 && !memcmp(event.text, "00000001", 8), "primitive begins native endpoint capture");
         scene_tool(++*ticket, tool);
         for (index = 0; index < 600; index++)
         {
@@ -339,7 +346,7 @@ static void primitive_bursts(unsigned long *ticket)
         for (;;)
         {
             event = proposal();
-            require(event.size == 32, "primitive remains a bounded ordinary proposal");
+            require(event.size == 40, "primitive emits only bounded frozen endpoint release");
             if (!memcmp(event.text, "00000003", 8))
             {
                 break;
@@ -348,7 +355,14 @@ static void primitive_bursts(unsigned long *ticket)
                     "600 primitive motions collapse into at most three latest endpoints");
             scene_tool(++*ticket, tool);
         }
-        require(updates > 0, "primitive motion was observed");
+        require(updates == 0, "native geometric/Pen motions never wait on a Limbo proposal");
+        {
+            unsigned long token = 0;
+            require(sscanf(event.text + 32, "%8lx", &token) == 1, "frozen token");
+            require(tool == 5 ? strlen(dvm_ink_read(token)) > 16 : strlen(dvm_ink_read(token)) == 16,
+                    "Fill-on Pen keeps its trajectory; primitives retain just two endpoints");
+        }
+        dvm_ink_drop(1);
         scene_tool(++*ticket, tool);
         require(!SDL_HasEvents(SDL_MOUSEMOTION, SDL_MOUSEMOTION), "primitive has no delayed motion tail after release");
     }

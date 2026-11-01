@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1717**. [Русская версия](README.ru.md).
+Development version: **0.1718**. [Русская версия](README.ru.md).
 
-Current series: [v0.1717](docs/releases/v0.1717.md): bidirectional Inferno caller-lease synchronization, independent transition oracle and clean native64 boot review.
+Current series: [v0.1718](docs/releases/v0.1718.md): local XOR geometric previews, connected Line figures, vertical tools/colours and brush size controls.
 
 ## Browse documentation
 

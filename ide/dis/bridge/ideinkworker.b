@@ -109,6 +109,7 @@ copy(vector: Idevector, source: ref Idevector->Document): ref Idevector->Documen
     copy.color = source.color;
     copy.width = source.width;
     copy.fill = source.fill;
+    copy.chain = source.chain;
     copy.undo[0:] = source.undo;
     copy.nundo = source.nundo;
     copy.redo[0:] = source.redo;
