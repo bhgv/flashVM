@@ -35,18 +35,27 @@ static void send(unsigned long ticket, unsigned long code, long first, long seco
     require(dvm_editor_present(&out), "actual copied scene admission");
 }
 
-/* An empty real vector pane, large enough for a closed native trajectory. The
- * scene is the acknowledged layout boundary, not a mock hit/paint implementation. */
-static void scene(unsigned long ticket)
+/* Publish an empty real vector pane with copied ticket and authoring tool1..5.
+ * Both are fixture-owned scalars. Abort on refusal; no document is mocked.
+ * The pane is large enough to exercise a closed native trajectory. */
+static void scene_tool(unsigned long ticket, unsigned long tool)
 {
     char bytes[128];
     snprintf(bytes, sizeof(bytes), "%08lx000000010000000000000064", ticket);
     send(ticket, DVM_DESK_BEGIN, 960, 640, bytes);
     send(ticket, DVM_DESK_ITEM, 1, 0, "000000040000005400000030000003280000024400000001ffffffff00000000ffffffffVector");
     send(ticket, DVM_DESK_VECTOR_BEGIN, 1, 56, "0000000000000002");
-    send(ticket, DVM_DESK_VECTOR_DATA, 1, 0, "0000000100245ac40000000800000000000000000000000000000000");
+    snprintf(bytes, sizeof(bytes), "%08lx00245ac40000000800000000000000000000000000000000", tool);
+    send(ticket, DVM_DESK_VECTOR_DATA, 1, 0, bytes);
     send(ticket, DVM_DESK_END, 0, 0, "");
 }
+
+/* Default Brush fixture preserves all existing trajectory tests. */
+static void scene(unsigned long ticket)
+{
+    scene_tool(ticket, 1);
+}
+
 
 /* Inject copied SDL values into the real FIFO. No Limbo/UI message is synthesized. */
 static void pointer(Uint32 type, int x, int y)
@@ -306,6 +315,47 @@ static void wheel_fences(void)
     SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
 }
 
+/* Geometric primitives need only endpoints. Drive the actual native adapter
+ * with600 queued motions and preserve the release/next control FIFO fence.
+ * ticket is borrowed monotonically updated scene identity, not document state. */
+static void primitive_bursts(unsigned long *ticket)
+{
+    unsigned long tool;
+    for (tool = 2; tool <= 4; tool++)
+    {
+        DVM_UIMessage event;
+        unsigned int index;
+        unsigned int updates = 0;
+        scene_tool(++*ticket, tool);
+        pointer(SDL_MOUSEBUTTONDOWN, 160, 220);
+        event = proposal();
+        require(event.size == 32 && !memcmp(event.text, "00000001", 8), "primitive begins without a freehand token");
+        scene_tool(++*ticket, tool);
+        for (index = 0; index < 600; index++)
+        {
+            pointer(SDL_MOUSEMOTION, 160 + index % 300, 220 + index % 120);
+        }
+        pointer(SDL_MOUSEBUTTONUP, 459, 339);
+        for (;;)
+        {
+            event = proposal();
+            require(event.size == 32, "primitive remains a bounded ordinary proposal");
+            if (!memcmp(event.text, "00000003", 8))
+            {
+                break;
+            }
+            require(!memcmp(event.text, "00000002", 8) && ++updates <= 3,
+                    "600 primitive motions collapse into at most three latest endpoints");
+            scene_tool(++*ticket, tool);
+        }
+        require(updates > 0, "primitive motion was observed");
+        scene_tool(++*ticket, tool);
+        require(!SDL_HasEvents(SDL_MOUSEMOTION, SDL_MOUSEMOTION), "primitive has no delayed motion tail after release");
+    }
+    scene(++*ticket);
+}
+
+
 /* First drive600 real queued motions with only Begin/frozen End proposals and
  * inspect detached pixels. Then check controls and recovered pointer ownership. */
 int dvm_test_live_ink(const char *font)
@@ -378,6 +428,7 @@ int dvm_test_live_ink(const char *font)
         synthetic_copies(&ticket);
         wheel_bursts(&ticket);
         wheel_fences();
+        primitive_bursts(&ticket);
     }
     dvm_editor_destroy();
     printf(

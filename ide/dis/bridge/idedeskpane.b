@@ -13,6 +13,7 @@ include "idebuildpanel.m";
 include "idedeskpane.m";
 include "idedeskclip.m";
 include "idevector.m";
+include "idevectorlabels.m";
 include "ideinkworker.m";
 include "idehost.m";
 
@@ -530,6 +531,10 @@ startnotified(kind: int, path, text: string, notices: chan of int, identity: int
 servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Document,
             sys: Sys, files: Idefileops, path: string, notices: chan of int, identity: int)
 {
+    labels := load Idevectorlabels Idevectorlabels->PATH;
+    if (labels == nil) {
+        raise "fail: vector tool labels";
+    }
     control := 0;
     diagnostic := "";
     inkack := 0; # Highest adopted native token; fence follows the actual outgoing wire.
@@ -764,9 +769,7 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 }
             }
         }
-        tools := array[] of {"", "Brush", "Rectangle", "Ellipse", "Line", "Pen"};
-        body := "B/P/R/E/L | 1..6 color | F fill\n" + tools[doc.tool]
-            + sys->sprint(" #%06x w=%d f=%d | +/- Z/Y", doc.color, doc.width, doc.fill);
+        body := labels->state(doc.tool, doc.width, doc.fill);
         revision := doc.revision;
         if (len doc.points != 0) {
             revision++;

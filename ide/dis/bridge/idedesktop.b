@@ -615,7 +615,8 @@ serve(requests: chan of Request)
             } else if (request.operation == View) {
                 status = Ok;
             } else if (request.operation == Update && request.window >= 1 && request.window <= MaxWindows &&
-                       len request.title <= 32 && len request.body <= 200 && request.caret >= -1 &&
+                       len request.title <= MaxCaption && len request.body <= 200 &&
+                       len request.title + len request.body <= MaxPaneText && request.caret >= -1 &&
                        request.caret <= len request.body && request.anchor >= -1 && request.anchor <= len request.body) {
                 old := windows[request.window - 1];
                 changed = old == nil || old.title != request.title || old.body != request.body || old.caret != request.caret || old.anchor != request.anchor;

@@ -2,7 +2,7 @@
 #include "editor_desktop_input.h"
 
 
-/* event is borrowed owner state and captured is a scalar gesture flag.
+/* event is borrowed owner state and captured is a scalar trajectory-preservation flag.
  * Write only the latest eligible uncaptured motion; painting consumes nothing
  * beyond the original head. No allocation, callbacks or VM access occurs. */
 void dvm_editor_coalesce_motion(SDL_Event *event, int captured)
@@ -28,7 +28,8 @@ void dvm_editor_coalesce_motion(SDL_Event *event, int captured)
         }
         if (same && next.type == SDL_FINGERMOTION)
         {
-            same = next.tfinger.touchId == event->tfinger.touchId && next.tfinger.fingerId == event->tfinger.fingerId;
+            same = next.tfinger.windowID == event->tfinger.windowID &&
+                   next.tfinger.touchId == event->tfinger.touchId && next.tfinger.fingerId == event->tfinger.fingerId;
         }
         if (!same || SDL_PeepEvents(&next, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1)
         {

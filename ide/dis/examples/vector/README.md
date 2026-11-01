@@ -90,3 +90,5 @@ per pane perform fragment encoding/delivery. Opening a second large SVG exercise
 an independent stream; ordinary input/control ports remain distinct. Complete
 scene publication still waits for every declared stream. Update all runtime and
 Dis modules together. See [the transport contract](../../../BULK-GEOMETRY.md).
+
+[Line/Fill/Pen fixes and tests / Исправления инструментов](../../../../docs/releases/v0.1716.md).

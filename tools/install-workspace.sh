@@ -465,7 +465,7 @@ EOF
             copy_file "$ROOT/ide/BULK-GEOMETRY.ru.md" "$destination/BULK-GEOMETRY.ru.md"
             copy_file "$ROOT/ide/NATIVE-INK.md" "$destination/NATIVE-INK.md"
             copy_file "$ROOT/ide/NATIVE-INK.ru.md" "$destination/NATIVE-INK.ru.md"
-            for native_ink_file in editor_ink.c editor_ink.h editor_ink_pointer.h editor_wheel_batch.h editor_bulk.c editor_bulk.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
+            for native_ink_file in editor_full_raster.h editor_ink.c editor_ink.h editor_ink_pointer.h editor_wheel_batch.h editor_bulk.c editor_bulk.h editor_motion_batch.c editor_motion_batch.h editor_stamp.c editor_stamp.h editor_host.c; do
                 copy_file "$ROOT/disVM/runtime/$native_ink_file" "$destination/source/native-ink/$native_ink_file"
             done
             copy_tree "$ROOT/ide/dis/examples/native-ink" "$destination/examples/native-ink"
@@ -569,7 +569,7 @@ EOF
             if [[ "$compiler_enabled" != ON ]]; then
                 rm -f -- "$destination/compiler-service.dis" "$destination/compiler-service.sbl" "$destination/compiler-service-check.dis" "$destination/compiler-service-check.sbl" "$destination/lib/compiler/libdisvm_compiler_engine.a" "$destination/buildpanel-test.dis" "$destination/buildpanel-test.sbl" "$destination/build-panel.dis" "$destination/build-panel.sbl" "$destination/artifact-export.dis" "$destination/artifact-export.sbl" "$destination/artifact-test.dis" "$destination/artifact-test.sbl"
             fi
-            for module in idebulk tasks-demo asinctasks capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
+            for module in idevectorlabels idebulk tasks-demo asinctasks capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idetokenquery tokenquery-demo idesyntax limbolex aslex syntax-check idedeskclip idedeskpane idedesktop desktop-lifecycle desktop-pointer desktop-clipboard; do
                 [[ -s "$base/$module.dis" ]] || fail "Missing desktop module: $base/$module.dis; build all runtime targets before installation"
             done
             copy_file "$ROOT/disVM/runtime/run-desktop-lifecycle.sh" "$destination/run-desktop-lifecycle.sh" 755
@@ -584,6 +584,7 @@ EOF
             done
             copy_file "$ROOT/ide/dis/bridge/idedebug.b" "$destination/source/idedebug.b"
             copy_file "$ROOT/ide/dis/bridge/idevector.b" "$destination/source/idevector.b"
+            copy_file "$ROOT/ide/dis/bridge/idevectorlabels.b" "$destination/source/idevectorlabels.b"
             copy_file "$ROOT/ide/dis/bridge/idebulk.b" "$destination/source/idebulk.b"
             copy_file "$ROOT/ide/dis/bridge/idevectorwire.b" "$destination/source/idevectorwire.b"
             copy_file "$ROOT/ide/assets/vector-v0.1697.png" "$destination/VECTOR-EDITOR.png"

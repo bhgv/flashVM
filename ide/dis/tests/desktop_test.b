@@ -55,6 +55,45 @@ item(view: Idedesktop->Reply, id: int): ref Idedesktop->Item
 }
 
 
+# Check the expanded status-caption limit against the unchanged UTF-8 transport
+# budget. desk/codec are borrowed modules; this function owns and stops its
+# private layout. Refusals must preserve the previously acknowledged ticket.
+captionbounds(desk: Idedesktop, codec: Uibridge)
+{
+    layout := desk->start();
+    title := "";
+    body := "";
+    for (index := 0; index < 96; index++) {
+        title += "😀";
+    }
+    for (index = 0; index < 136; index++) {
+        body += "😀";
+    }
+    request := Idedesktop->Request(1, desk->Update, 0, 1, 0, 0, 0,
+        title, body, -1, -1, 0, nil);
+    view := call(layout, request);
+    check(view.status == desk->Ok, "long caption within combined scalar budget");
+    metadata := "";
+    for (index = 0; index < 9; index++) {
+        metadata += "00000000";
+    }
+    (valid, bytes) := codec->encode(ref Uibridge->Message(codec->View, 0,
+        desk->ItemView, view.ticket, 1, 0, metadata + item(view, 1).text));
+    check(valid && len bytes > 0, "maximum Unicode caption/body fits real encoder");
+    request.body += "😀";
+    refused := call(layout, request);
+    check(refused.status == desk->Invalid && refused.ticket == view.ticket,
+        "combined caption/body overflow preserves view");
+    request.title += "😀";
+    request.body = body[0:135];
+    refused = call(layout, request);
+    check(refused.status == desk->Invalid && refused.ticket == view.ticket,
+        "caption limit independent of total budget");
+    request.operation = desk->Shutdown;
+    call(layout, request);
+}
+
+
 # Verify independent documents, undo, readonly help, stale cancellation, blank-only
 # panning and real miniature references. All owners acknowledge shutdown.
 init()
@@ -64,6 +103,7 @@ init()
     desk := load Idedesktop Idedesktop->PATH;
     codec := load Uibridge Uibridge->PATH;
     check(sys != nil && panes != nil && desk != nil && codec != nil, "modules");
+    captionbounds(desk, codec);
     left := panes->start(panes->Editor, "", "left");
     right := panes->start(panes->Editor, "", "right");
     check(left != nil && right != nil, "owners");

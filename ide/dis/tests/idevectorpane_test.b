@@ -68,7 +68,7 @@ init()
     require(undone.drawing[48:] == empty.drawing[48:] && undone.revision == 2, "Undo through ordinary key channel");
     call(a, panes->Input, ref Uibridge->Message(Uibridge->Key, 0, 17, 0, 0, 0, ""));
     changed := call(a, panes->Input, ref Uibridge->Message(Uibridge->Text, 0, 0, 0, 0, 0, "r2f+"));
-    require(changed.body == "B/P/R/E/L | 1..6 color | F fill\nRectangle #e04444 w=9 f=1 | +/- Z/Y" &&
+    require(changed.body == "Rectangle | Fill:on | Width:9" &&
             changed.revision == 2, "batched SDL text changes style without source revision");
     malformed := call(a, panes->Draw, ref Uibridge->Message(Uibridge->Text, 0, 1, 2, 100, 100, ""));
     require(malformed.status == Idecore->Invalid && malformed.drawing[48:] == empty.drawing[48:],

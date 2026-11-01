@@ -1,6 +1,7 @@
 /* Rasterize detached native editor geometry without accessing either interpreter. */
 #include "editor_raster.h"
 #include "editor_stamp.h"
+#include "editor_full_raster.h"
 #include "flashvm/render_jobs.h"
 #include <math.h>
 #include <limits.h>
@@ -1860,10 +1861,9 @@ FVM_Result dvm_editor_frame_render(void *value)
     }
     for (entry = frame->first; entry; entry = entry->next)
     {
-        FVM_Result result =
-            entry->stamp
-                ? dvm_editor_stamp_draw(entry->path, &frame->surface, entry->color, entry->width, entry->even_odd)
-                : fvm_path_draw(entry->path, &frame->surface, entry->color, 0, 0);
+        FVM_Result result = dvm_editor_full_command(entry->path, &frame->surface, entry->color,
+                                                    entry->width, entry->even_odd, entry->stamp,
+                                                    entry->left, entry->top, entry->right, entry->bottom);
         if (result != FVM_OK)
         {
             return result;

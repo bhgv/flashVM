@@ -738,7 +738,7 @@ static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigne
     }
     for (i = 0; i < count; ++i)
     {
-        fvm_value_number(args, wide / 2 + x[i] * scale);
+        fvm_value_number(args, wide / 2 + (x[i] + (cell == 15 ? 7 : 0)) * scale);
         fvm_value_number(args + 1, 10 + y[i] * scale);
         if (fvm_object_call(owner, clip, i ? "lineTo" : "moveTo", 2, args, &ignored) != FVM_OK)
         {
@@ -754,45 +754,6 @@ static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigne
             return 0;
         }
         fvm_value_number(args + 1, 10 + 6 * scale);
-        if (fvm_object_call(owner, clip, "lineTo", 2, args, &ignored) != FVM_OK)
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-/* Render one copied decimal digit as seven small solid line segments. Value is
- *0..9; geometry/color are caller-owned values, no font or document is accessed. */
-static int vector_digit(FVM_Object *clip, unsigned int value, double cx, double cy, double scale, unsigned long color)
-{
-    static const unsigned int masks[10] = {63, 6, 91, 79, 102, 109, 125, 7, 127, 111};
-    static const double coordinates[7][4] = {
-        {-2, -4, 2, -4}, {2, -4, 2, 0}, {2, 0, 2, 4}, {-2, 4, 2, 4}, {-2, 0, -2, 4}, {-2, -4, -2, 0}, {-2, 0, 2, 0}};
-    unsigned int i;
-    FVM_Value args[3];
-    FVM_Value ignored;
-    fvm_value_number(args, 1.2);
-    fvm_value_number(args + 1, color);
-    fvm_value_number(args + 2, 100);
-    if (value > 9 || fvm_object_call(owner, clip, "lineStyle", 3, args, &ignored) != FVM_OK)
-    {
-        return 0;
-    }
-    for (i = 0; i < 7; ++i)
-    {
-        if (!(masks[value] & (1U << i)))
-        {
-            continue;
-        }
-        fvm_value_number(args, cx + coordinates[i][0] * scale);
-        fvm_value_number(args + 1, cy + coordinates[i][1] * scale);
-        if (fvm_object_call(owner, clip, "moveTo", 2, args, &ignored) != FVM_OK)
-        {
-            return 0;
-        }
-        fvm_value_number(args, cx + coordinates[i][2] * scale);
-        fvm_value_number(args + 1, cy + coordinates[i][3] * scale);
         if (fvm_object_call(owner, clip, "lineTo", 2, args, &ignored) != FVM_OK)
         {
             return 0;
@@ -882,22 +843,6 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
             !vector_icon(button, i, cell - 3, ink))
         {
             return 0;
-        }
-        if (i == 15)
-        {
-            double center = (cell - 3) * 0.69;
-            double scale = fmin(1.4, (cell - 7) / 12);
-            if ((scene->width >= 10 &&
-                 !vector_digit(button, (unsigned int)scene->width / 10, center - 4 * scale, 10, scale, ink)) ||
-                !vector_digit(button,
-                              (unsigned int)scene->width % 10,
-                              center + (scene->width >= 10 ? 4 * scale : 0),
-                              10,
-                              scale,
-                              ink))
-            {
-                return 0;
-            }
         }
     }
     memcpy(keys[slot], key, sizeof(key));

@@ -307,6 +307,9 @@ init()
                     request.title = "* " + request.title;
                 }
             }
+            if (snapshot.kind == panes->Vector && snapshot.body != "") {
+                request.title += " | " + snapshot.body;
+            }
             request.body = snapshot.body;
             if (snapshot.kind == panes->Vector) {
                 request.body = ""; # The copied toolbar replaces the text-only legend.

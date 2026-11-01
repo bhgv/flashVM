@@ -17,6 +17,8 @@ Idedesktop: module
     RailScroll: con 14; # Ticket-bound wheel delta x, window2/3 selects the rail.
     SetContainer: con 13; # window=document, phase=container0..8, x=tool family1/2/3; zero detaches.
     GroupEditor, DetachEditor: con iota + 18; # MDI/SDI commands for the active document.
+    MaxCaption: con 96; # Scalars; longer vector captions include tool/fill/width status.
+    MaxPaneText: con 232; # Title+body scalar budget preserves bounded UTF-8 envelopes.
     MaxWindows: con 8; # Bounded independent window processes in this first shell.
     View, Update, Pointer, Scroll, Tool, Resize, Select, Cancel, Remove, Activate, TextHit, Shutdown: con iota; # FIFO operations.
     Ok, Invalid, Conflict: con iota; # Explicit layout/input admission.

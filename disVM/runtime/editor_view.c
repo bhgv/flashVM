@@ -2973,7 +2973,14 @@ int dvm_editor_event(DVM_UIMessage *message)
             }
             else
             {
-                dvm_editor_coalesce_motion(&event, vector_drag != 0);
+                unsigned long tool = 0;
+                unsigned long color;
+                unsigned long wide;
+                int preserve = vector_drag &&
+                    (!dvm_desktop_ink_style(vector_drag, &tool, &color, &wide) || tool == 1 || tool == 5);
+                /* Primitives depend only on start/end. Keep the last queued
+                 * endpoint, leaving release and control events in FIFO order. */
+                dvm_editor_coalesce_motion(&event, preserve);
             }
         }
         if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_EXPOSED && window &&

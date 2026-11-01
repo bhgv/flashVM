@@ -180,8 +180,9 @@ list(APPEND module_headers "${root}/ide/dis/bridge/idevectorwire.b")
 list(APPEND module_names capture-demo asincviews ideinkworker idemdi iderails idetools idetoolpalette iderecent idepick idethumbnails idetabview idedocking idesourcedomain idedebug vector-demo idevector idesyntax idetokenquery syntax-check tokenquery-demo)
 list(APPEND module_sources "${root}/disVM/examples/asincviews/main.b" "${root}/disVM/limbo/asincviews.b" "${root}/ide/dis/bridge/ideinkworker.b" "${root}/ide/dis/bridge/idemdi.b" "${root}/ide/dis/bridge/iderails.b" "${root}/ide/dis/bridge/idetools.b" "${root}/ide/dis/bridge/idetoolpalette.b" "${root}/ide/dis/bridge/iderecent.b" "${root}/ide/dis/bridge/idepick.b" "${root}/ide/dis/bridge/idethumbnails.b" "${root}/ide/dis/bridge/idetabview.b" "${root}/ide/dis/bridge/idedocking.b" "${root}/ide/dis/bridge/idesourcedomain.b" "${root}/ide/dis/bridge/idedebug.b" "${root}/ide/dis/examples/vector/main.b" "${root}/ide/dis/bridge/idevector.b" "${root}/ide/dis/bridge/idesyntax.b" "${root}/ide/dis/bridge/idetokenquery.b" "${root}/ide/dis/tests/idesyntax_test.b" "${root}/ide/dis/examples/token-query/main.b")
 # Portable cooperative task ownership is a library and separately runnable example.
-list(APPEND module_names idebulk bulkports-test asinctasks tasks-demo)
+list(APPEND module_names idevectorlabels idebulk bulkports-test asinctasks tasks-demo)
 list(APPEND module_sources
+  "${root}/ide/dis/bridge/idevectorlabels.b"
   "${root}/ide/dis/bridge/idebulk.b"
   "${root}/ide/dis/tests/idebulk_test.b"
   "${root}/disVM/limbo/asinctasks.b"
@@ -1746,5 +1747,22 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
       "${CMAKE_CURRENT_SOURCE_DIR}/test_bulk_transport.py" "$<TARGET_FILE:disvm-editor>"
       "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
     set_tests_properties(disvm_bulk_geometry_${mode} PROPERTIES TIMEOUT 180)
+  endforeach()
+endif()
+
+# Ordinary full-frame commands must preserve open strokes and compound fill rules.
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
+  add_executable(disvm_full_strokes_test test_full_strokes.c editor_raster.c editor_stamp.c)
+  target_link_libraries(disvm_full_strokes_test PRIVATE flashvm m)
+  add_test(NAME disvm_full_strokes COMMAND disvm_full_strokes_test)
+endif()
+
+# Independent committed Line and Pen colors must survive real authoring and SVG save.
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
+  foreach(mode jit interpreter)
+    add_test(NAME disvm_vector_tool_modes_${mode} COMMAND "${PYTHON_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/test_vector_tool_modes.py" "$<TARGET_FILE:disvm-editor>"
+      "${CMAKE_CURRENT_BINARY_DIR}/desktop-ide.dis" "${DVM_EDITOR_TEST_FONT}" "${mode}")
+    set_tests_properties(disvm_vector_tool_modes_${mode} PROPERTIES TIMEOUT 180)
   endforeach()
 endif()

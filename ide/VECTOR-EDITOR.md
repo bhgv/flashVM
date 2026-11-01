@@ -177,3 +177,22 @@ signatures changed: rebuild/install the matching .dis/.m application together.
 Interpreter and JIT dispatch are checked separately. Replay/pixel tests are not
 physical-device acceptance or a measured input-latency benchmark. The existing
 lazy Coco/R text-colour service remains independent of this vector document model.
+
+## Line, fill and Pen (v0.1716)
+
+The second button from the right is the **closed-shape fill preference** (`F`),
+not an asynchronous-mode switch. Rectangle/Ellipse use it; Line is always an
+open stroke. Brush paints a filled area, while Pen paints a centerline smoothed
+after release. The rightmost button selects **Pen** (`P`). Its old width number
+has moved into the readable window caption; +/- still changes width.
+
+`idevectorlabels.m/.b` owns the labels in Limbo. Captions display the current
+tool, fill preference and width. For Brush/Pen/Line the caption says `Shape fill`
+to make the scope of the saved preference explicit. Historical screenshots above
+may still show the old numeric Pen button.
+
+Primitive input keeps the first point and latest endpoint, with release retained
+in FIFO order. Real native tests compress600 queued positions into at most three
+updates. Freehand tools keep their sampled trajectories. Full-frame fallback now
+preserves stroke width, fill rule and clipping; open Pen paths cannot silently
+become zero-area fills. [Evidence and bounds](../docs/releases/v0.1716.md).

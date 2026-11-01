@@ -68,7 +68,11 @@ draft(doc: ref Document): ref Shape
 {
     points := doc.points[0:doc.used];
     if (doc.tool != Brush && doc.tool != Pen) {
-        return ref Shape(doc.color, doc.width, doc.fill,
+        fill := doc.fill;
+        if (doc.tool == Line) {
+            fill = 0; # An open line is always a stroke, regardless of the closed-shape preference.
+        }
+        return ref Shape(doc.color, doc.width, fill,
                          figure(doc.tool, points[0], points[len points - 1]), nil, 0);
     }
     if (len points == 1) {
