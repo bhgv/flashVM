@@ -193,7 +193,7 @@ editpointer(doc: ref Document, phase, x, y: int): int
         doc.presentation.dirty = 1;
     }
     if (doc.edit == nil) {
-        doc.edit = ref Edit(nil, nil, -1, nil, nil, Point(0, 0), 0, 0, Point(0, 0));
+        doc.edit = ref Edit(nil, nil, -1, nil, nil, Point(0, 0), 0, 0, Point(0, 0), nil, Point(0,0));
     }
     e := doc.edit;
     if (phase == 1) {
@@ -201,7 +201,7 @@ editpointer(doc: ref Document, phase, x, y: int): int
             return Conflict;
         }
         finish(doc);
-        e.origin = e.current = Point(x, y);
+        e.origin = e.current = e.applied = Point(x, y);
         e.mode = 0;
         if (e.selected >= len doc.shapes) {
             e.selected = -1;
@@ -299,7 +299,9 @@ editpointer(doc: ref Document, phase, x, y: int): int
     }
     e.current = Point(x, y);
     if (e.mode > 0 && e.mode < 5) {
-        editmove(doc, x, y);
+        if (editmove(doc,x,y) == Ok) {
+            e.applied = Point(x,y);
+        }
     }
     if (phase == 3) {
         if (e.mode == 5 && e.selected >= 0) {
@@ -413,6 +415,7 @@ editoverlay(doc: ref Document): ref Shape
         }
         at = editbox(nodes,at,(l+r)/2-4,t-22,(l+r)/2+4,t-14);
     } else if (doc.tool == Nodes) {
+        e.bindings = array[MaxNodes] of {* => 0};
         for (part := 0; part < len shape.nodes && at < MaxNodes; part++) {
             nodes[at++] = shape.nodes[part];
         }
@@ -425,6 +428,7 @@ editoverlay(doc: ref Document): ref Shape
             if (3*i < len e.mask && e.mask[3*i]) {
                 radius = 5;
             }
+            editbindbox(e.bindings,at,3*i+1,radius);
             at = editbox(nodes,at,n.x-radius,n.y-radius,n.x+radius,n.y+radius);
             for (control := 1; control <= 2 && at+7 < MaxNodes; control++) {
                 if (n.verb != Cubic && (control != 1 || n.verb != Quadratic)) {
@@ -439,12 +443,19 @@ editoverlay(doc: ref Document): ref Shape
                 if (control == 2) {
                     (cx,cy) = (n.c2x,n.c2y);
                 }
+                anchorcode := 3*i+1;
+                if (n.verb == Cubic && control == 1 && i > 0) {
+                    anchorcode = 3*(i-1)+1;
+                }
+                e.bindings[at] = anchorcode << 8;
+                e.bindings[at+1] = (3*i+control+1) << 8;
                 nodes[at++] = Node(Move,anchor.x,anchor.y,0,0,0,0);
                 nodes[at++] = Node(Segment,cx,cy,0,0,0,0);
                 radius = 3;
                 if (3*i+control < len e.mask && e.mask[3*i+control]) {
                     radius = 5;
                 }
+                editbindbox(e.bindings,at,3*i+control+1,radius);
                 at = editbox(nodes,at,cx-radius,cy-radius,cx+radius,cy+radius);
             }
         }
@@ -461,6 +472,9 @@ editoverlay(doc: ref Document): ref Shape
             }
             at = editbox(nodes,at,l,t,r,b);
         }
+    }
+    if (doc.tool == Nodes) {
+        e.bindings = e.bindings[0:at];
     }
     return ref Shape(16r1687df, 1, 0, nodes[0:at], nil, 0);
 }
@@ -491,3 +505,5 @@ pickbounds(e: ref Edit, shape: ref Shape): (int,int,int,int)
     box := e.boundbox;
     return (box[0],box[1],box[2],box[3]);
 }
+
+include "idevectorlocal.b";

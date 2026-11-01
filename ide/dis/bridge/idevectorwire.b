@@ -155,8 +155,13 @@ putword(bytes: array of byte, at, value: int)
 cameraheader(doc: ref Document): array of byte
 {
     extra := doc.zoom != 100 || doc.center.x != 500 || doc.center.y != 300;
-    header := array[48+24*extra] of byte;
-    putword(header,0,doc.tool | (extra << 16) | (doc.wirecubic << 17));
+    plan := "";
+    if (doc.tool == Nodes && doc.presentation != nil) {
+        plan = doc.presentation.plan;
+    }
+    local := len plan != 0;
+    header := array[48+24*extra+len plan] of byte;
+    putword(header,0,doc.tool | (extra << 16) | (doc.wirecubic << 17) | (local << 18));
     putword(header,8,doc.color);
     putword(header,16,doc.width);
     putword(header,24,doc.fill | ((len doc.chain != 0) << 1));
@@ -166,6 +171,9 @@ cameraheader(doc: ref Document): array of byte
         putword(header,48,doc.zoom);
         putword(header,56,doc.center.x);
         putword(header,64,doc.center.y);
+    }
+    if (local) {
+        header[48+24*extra:] = array of byte plan;
     }
     return header;
 }

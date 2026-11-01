@@ -7,7 +7,7 @@
 presentation(doc: ref Document)
 {
     if (doc.presentation == nil) {
-        doc.presentation = ref Presentation(nil,-1,-2,1,"","","",0);
+        doc.presentation = ref Presentation(nil,-1,-2,1,"","","",0,"");
     }
     p := doc.presentation;
     if (p.base != doc.shapes) {
@@ -27,6 +27,7 @@ presentation(doc: ref Document)
     }
     overlay := editoverlay(doc);
     p.overlay = "";
+    p.plan = "";
     count := len doc.shapes;
     if (overlay != nil) {
         bytes := array[32+(40+16*doc.wirecubic)*len overlay.nodes] of byte;
@@ -37,6 +38,7 @@ presentation(doc: ref Document)
     header := array[8] of byte;
     putword(header,0,count);
     p.count = string header;
+    p.plan = editplan(doc);
     p.tool = doc.tool;
     p.selected = selected;
     p.dirty = 0;

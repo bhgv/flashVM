@@ -99,4 +99,22 @@ int dvm_desktop_line_anchor(unsigned long widget, long *point);
  * Borrow only completed UI geometry; return zero for occlusion or no hit. */
 int dvm_desktop_zoom_button(double x, double y);
 
+
+/* Apply a copied owner plan locally for captured node motion. point uses y*1001+x.
+ * Return0 without a plan,1 for consumed unchanged/refused motion,2 for changed
+ * geometry. Release receives the last valid point for one authoritative commit. */
+int dvm_desktop_local_motion(unsigned long widget, long *point);
+
+
+/* Return nonzero while local geometry awaits commit/cancel. Owner only. */
+int dvm_desktop_local_active(void);
+
+
+/* Copy the captured widget and last valid logical point; return0 when idle. */
+int dvm_desktop_local_position(unsigned long *widget, long *point);
+
+
+/* Restore the admitted baseline on Escape/focus/capture loss; no Dis access. */
+void dvm_desktop_local_cancel(void);
+
 #endif

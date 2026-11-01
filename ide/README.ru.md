@@ -1,3 +1,5 @@
+[Local FlashVM motion / Локальное движение в FlashVM](FLASHVM-LOCAL-MOTION.md)
+
 [Cancellable vector fitting / Отмена векторизации](VECTOR-CANCELLATION.md)
 
 [Нативное рисование и масштаб 1:1](NATIVE-INK.ru.md) · [English](NATIVE-INK.md)
@@ -24,7 +26,7 @@
 
 # Backend сборки для IDE
 
-Версия **0.7.13**. [English](README.md).
+Версия **0.7.14**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 

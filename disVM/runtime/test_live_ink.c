@@ -3,6 +3,7 @@
 #include "editor_view.h"
 #include "desktop_view.h"
 #include "editor_ink.h"
+#include "vector_local.h"
 #include "editor_vector_layout.h"
 #include "editor_ink_pointer.h"
 #include "editor_wheel_batch.h"
@@ -414,6 +415,9 @@ static void multicontact_cancel(unsigned long *ticket)
 }
 
 
+#include "test_local_motion.c"
+
+
 /* First drive600 real queued motions with only Begin/frozen End proposals and
  * inspect detached pixels. Then check controls and recovered pointer ownership. */
 int dvm_test_live_ink(const char *font)
@@ -488,6 +492,7 @@ int dvm_test_live_ink(const char *font)
         wheel_fences();
         primitive_bursts(&ticket);
         multicontact_cancel(&ticket);
+        local_motion(&ticket);
     }
     dvm_editor_destroy();
     printf(

@@ -39,6 +39,12 @@ editing()
     vector->pointer(d, 3, 150, 160);
     require(d.shapes[0].nodes[0].x == 150 && d.shapes[0].nodes[1].x == 240,
             "Ctrl selects node group");
+    vector->pointer(d,1,150,160);
+    held := d.shapes;
+    vector->pointer(d,2,0,0);
+    require(d.shapes == held && d.edit.applied.x == 150 && d.edit.applied.y == 160 &&
+        d.edit.current.x == 0,"local baseline pointer follows valid geometry rather than refused group motion");
+    vector->cancel(d);
     vector->pointer(d, 1, 130, 130);
     vector->pointer(d, 2, 260, 180);
     vector->pointer(d, 3, 260, 180);

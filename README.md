@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1728**. [Русская версия](README.ru.md).
+Development version: **0.1729**. [Русская версия](README.ru.md).
 
-Current series: [v0.1728](docs/releases/v0.1728.md): 1/100 brush fitting and cancellation of superseded jobs.
+Current series: [v0.1729](docs/releases/v0.1729.md): local FlashVM node motion without per-sample Dis round trips.
 
 ## Browse documentation
 

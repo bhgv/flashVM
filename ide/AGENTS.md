@@ -61,3 +61,15 @@
   Ctrl+wheel and two-finger pinch must change scale through checked value/channel
   boundaries; touch input is not Android-specific. Preserve source/licensing and
   distinguish replay/dummy checks from physical desktop/touch acceptance.
+
+
+# Frame-free IDE execution target
+
+- UI behavior belongs in FlashVM AS actors/native graphics extensions. Keep Dis
+  document/compiler/debug services behind typed messages; captured motion must
+  not require a Dis round trip for every pointer sample.
+- The user requires every executable `asinc { ... }` to own a separate worker
+  thread/context, with the agreed captured-variable synchronization. Async.post
+  is an owner-loop callback and does not meet that separate-thread requirement.
+  Do not label syntax-only recognition or native preview callbacks as completed
+  AS closure/task lowering. Track executable coverage and pending UI ports.

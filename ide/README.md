@@ -1,3 +1,5 @@
+[Local FlashVM motion / Локальное движение в FlashVM](FLASHVM-LOCAL-MOTION.md)
+
 [Cancellable vector fitting / Отмена векторизации](VECTOR-CANCELLATION.md)
 
 [Native ink / Масштаб 1:1 и C-рисование](NATIVE-INK.md) · [Русский](NATIVE-INK.ru.md)
@@ -26,7 +28,7 @@
 
 # FlashVM Limbo IDE and host build tools
 
-Version **0.7.13**. [Русский](README.ru.md).
+Version **0.7.14**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 

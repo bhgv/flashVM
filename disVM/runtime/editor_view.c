@@ -127,6 +127,10 @@ static DVM_EditorFrame *recording_frame;    /* Owner-only frame builder; workers
 static int desktop_pan;                     /* Latched middle/Ctrl+Shift drag; copied table gesture only. */
 static unsigned long ink_token;             /* Sole native live trajectory; never a Dis reference. */
 static unsigned long vector_drag;           /* Captured logical canvas identity; never a VM object. */
+#ifdef DVM_EDITOR_SDL
+static SDL_Event local_pointer; /* Copied native pointer identity for bound geometry motion. */
+static int local_pointer_valid; /* Identity exists until release, cancellation or lifecycle barrier. */
+#endif
 static int header_drag;            /* Owner-side capture: only continuing header motion may bypass pixel readiness. */
 static int raster_pending;         /* Owner-only pointer geometry barrier until the latest frame is presented. */
 static FVM_Object *paint_callback; /* [GC:] Pinned owner-only frame-free notification. */
@@ -2236,6 +2240,10 @@ int dvm_editor_present(const DVM_UIMessage *message)
                     (unsigned long)message->size);
             return 0;
         }
+        if (message->code == DVM_DESK_BEGIN)
+        {
+            complete = 0; /* Staged geometry is not an input baseline, even during native capture. */
+        }
         if (desktop_status == 3)
         {
             return 1; /* End accepted; separate geometry brokers have not completed. */
@@ -2982,6 +2990,55 @@ int dvm_editor_event(DVM_UIMessage *message)
             }
             lost_pointer = ownership < 0;
         }
+        if (local_pointer_valid && (event.type == SDL_MOUSEMOTION || event.type == SDL_MOUSEBUTTONUP ||
+            event.type == SDL_FINGERMOTION || event.type == SDL_FINGERUP))
+        {
+            int ownership = dvm_editor_ink_pointer(&local_pointer,&event);
+            if (!ownership)
+            {
+                return 0;
+            }
+            if (ownership < 0)
+            {
+                lost_pointer = 1;
+            }
+        }
+        if (dvm_desktop_local_active() && (lost_pointer || dvm_editor_motion_barrier(&event)))
+        {
+            int cancel = (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) ||
+                (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_FOCUS_LOST) ||
+                (event.type == SDL_FINGERDOWN);
+            if (cancel)
+            {
+                dvm_desktop_local_cancel();
+                local_pointer_valid = 0;
+                vector_drag = 0;
+                if (!request_paint())
+                {
+                    return -1;
+                }
+            }
+            else
+            {
+                unsigned long widget;
+                long point;
+                if (dvm_desktop_local_position(&widget,&point))
+                {
+                    postponed_event = event;
+                    postponed_valid = 1;
+                    message->kind = DVM_UI_REQUEST;
+                    message->id = 1;
+                    message->code = DVM_DESK_POINTER;
+                    message->flags = dvm_desktop_ticket();
+                    snprintf(message->text,33,"%08x%08x%08lx%08lx",3,1,widget,(unsigned long)point);
+                    message->size = 32;
+                    vector_drag = 0;
+                    local_pointer_valid = 0;
+                    complete = 0;
+                    return 1;
+                }
+            }
+        }
         if (ink_token && (lost_pointer || dvm_editor_motion_barrier(&event)))
         {
             if ((event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) ||
@@ -3229,6 +3286,8 @@ int dvm_editor_event(DVM_UIMessage *message)
             header_drag = 0;
             desktop_pan = 0;
             vector_drag = 0;
+            local_pointer_valid = 0;
+            dvm_desktop_local_cancel();
             pinch_distance = 0;
             desktop_touch(NULL, message);
             if (fvm_input_reset_keyboard(context) != FVM_OK)
@@ -3267,6 +3326,47 @@ int dvm_editor_event(DVM_UIMessage *message)
                     ink_pointer = event;
                     snprintf(message->text + 32, 9, "%08x", (unsigned int)ink_token);
                     message->size = 40;
+                }
+            }
+        }
+        if (!events && message->kind == DVM_UI_REQUEST && message->code == DVM_DESK_POINTER &&
+            message->size == 32)
+        {
+            unsigned long phase;
+            unsigned long code;
+            unsigned long widget;
+            unsigned long encoded;
+            if (hexword(message->text,&phase) && hexword(message->text+8,&code) &&
+                hexword(message->text+16,&widget) && hexword(message->text+24,&encoded) && code == 1)
+            {
+                if (phase == 1 && vector_drag)
+                {
+                    unsigned long tool;
+                    unsigned long color;
+                    unsigned long wide;
+                    if (dvm_desktop_ink_style(widget,&tool,&color,&wide) && tool == 7)
+                    {
+                        local_pointer = event;
+                        local_pointer_valid = 1;
+                    }
+                }
+                if (phase == 2 || phase == 3)
+                {
+                    long point = (long)encoded;
+                    int local = dvm_desktop_local_motion(widget,&point);
+                    if (local)
+                    {
+                        if (local == 2 && !request_paint())
+                        {
+                            return -1;
+                        }
+                        if (phase == 2)
+                        {
+                            return 0; /* Captured source/decorations update in FlashVM; no Dis motion roundtrip. */
+                        }
+                        snprintf(message->text+24,9,"%08lx",(unsigned long)point);
+                        local_pointer_valid = 0;
+                    }
                 }
             }
         }
@@ -3310,6 +3410,10 @@ int dvm_editor_event(DVM_UIMessage *message)
             }
             ink_token = 0;
         }
+        if (event.type == SDL_MOUSEBUTTONUP || event.type == SDL_FINGERUP)
+        {
+            local_pointer_valid = 0;
+        }
         if (event.type == SDL_MOUSEBUTTONUP)
         {
             desktop_pan = 0;
@@ -3335,6 +3439,7 @@ void dvm_editor_destroy(void)
     ink_token = 0;
     header_drag = 0;
     desktop_pan = 0;
+    dvm_desktop_local_cancel();
     vector_drag = 0; /* [GC:] Join all native callbacks before destroying fonts or either VM. */
     fvm_render_queue_destroy(raster_queue);
     raster_queue = NULL;

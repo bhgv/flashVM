@@ -52,6 +52,8 @@ Idevector: module
         mode: int; # 0 idle, 1 translate, 2 scale, 3 rotate, 4 nodes, 5 marquee.
         handle: int; # Corner ordinal for scaling.
         current: Point; # Last marquee position.
+        bindings: array of int; # Overlay destination bindings to source control points.
+        applied: Point; # Pointer represented by actual valid baseline geometry.
     };
 
 
@@ -65,6 +67,7 @@ Idevector: module
         overlay: string; # Cached transient path bytes, absent from SVG/history.
         count: string; # Copied shape-count word including the transient overlay.
         builds: int; # Saturating overlay rebuild diagnostic, never a source revision.
+        plan: string; # Copied native motion plan; empty outside an admitted node drag.
     };
 
 

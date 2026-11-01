@@ -1,5 +1,6 @@
 /* Actual MovieClip/AS widget presentation for copied Limbo desktop scenes. */
 #include "desktop_view.h"
+#include "vector_local.h"
 #include "desktop_chrome.h"
 #include "editor_ink.h"
 #include "editor_vector_layout.h"
@@ -77,21 +78,12 @@ static unsigned int glass_height[2];           /* Cached immutable rail contour 
 static int active;                             /* A desktop scene has been admitted. */
 
 
-#define VECTOR_BYTES 1150000U /* Complete bounded ASCII command stream, never SVG/script input. */
+#define VECTOR_BYTES 1230000U /* Complete bounded ASCII command stream, never SVG/script input. */
 #define VECTOR_SHAPES 33U    /* 32 source paths plus one transient editing overlay. */
 #define VECTOR_NODES 20480U  /* 16384 source commands plus 4096 presentation commands. */
 
 /* Detached scalar command. Managed/native object addresses never enter the stream. */
-typedef struct VectorNode
-{
-    unsigned long verb; /* Move0, line1, quadratic2, close3, cubic4. */
-    unsigned long x;    /* Logical destination X,0..1000. */
-    unsigned long y;    /* Logical destination Y,0..600. */
-    unsigned long cx;   /* First Q/C control X, zero for straight commands. */
-    unsigned long cy;   /* First control Y, zero for straight commands. */
-    unsigned long c2x;  /* Cubic second control X. */
-    unsigned long c2y;  /* Cubic second control Y. */
-} VectorNode;
+typedef DVM_VectorCommand VectorNode; /* Copied native geometry, no managed references. */
 
 /* Immutable path style and range into its pane-owned detached node array. */
 typedef struct VectorShape
@@ -122,12 +114,21 @@ typedef struct VectorScene
     unsigned int count;                /* Parsed complete path count. */
     unsigned int complete;             /* Only one allows painting/End commit. */
     VectorShape shapes[VECTOR_SHAPES]; /* Copied style/range records. */
+    DVM_VectorLocalPlan local;         /* Optional owner-issued point modifier plan. */
     VectorNode nodes[VECTOR_NODES];    /* Copied scalar commands. */
 } VectorScene;
 
 static FVM_Object
     *vector_buttons[DESK_SLOTS][20]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
 static VectorScene vectors[9];       /* Stable pane identities1..8, reset at scene Begin. */
+static DVM_VectorLocal *local_edit; /* Exclusively owned immutable baseline/scratch. */
+static unsigned long local_widget; /* Captured source pane identity, never a VM handle. */
+static unsigned long local_epochs[9]; /* Content-key generations for native source motion. */
+
+
+/* Reapply native motion after a complete canonical owner snapshot arrives. */
+static void vector_local_reconcile(unsigned long widget);
+
 
 /* Owner-local visual interpolation; no document, VM pointer or worker handle. */
 typedef struct DeskMotion
@@ -579,6 +580,7 @@ static int vector_parse(VectorScene *scene)
     unsigned long shapes;
     size_t stride;
     int cubic;
+    int local;
     unsigned int total = 0;
     unsigned int i;
     if (scene->used < 56 || !word(scene->bytes, &scene->tool) || !word(scene->bytes + 8, &scene->color) ||
@@ -588,6 +590,9 @@ static int vector_parse(VectorScene *scene)
     {
         return 0;
     }
+    local = (scene->tool & 0x40000UL) != 0;
+    scene->tool &= ~0x40000UL;
+    memset(&scene->local,0,sizeof(scene->local));
     cubic = (scene->tool & 0x20000UL) != 0;
     scene->tool &= ~0x20000UL;
     stride = cubic ? 56 : 40;
@@ -604,6 +609,39 @@ static int vector_parse(VectorScene *scene)
             return 0;
         }
         at += 24;
+    }
+    if (local)
+    {
+        DVM_VectorLocalPlan *plan = &scene->local;
+        unsigned long n;
+        size_t start = at-8;
+        if (scene->used-start < 56 || scene->tool != 7 ||
+            !word(scene->bytes+start,&plan->source) || !word(scene->bytes+start+8,&plan->revision) ||
+            !word(scene->bytes+start+16,&plan->x) || !word(scene->bytes+start+24,&plan->y) ||
+            !word(scene->bytes+start+32,&plan->count) || !word(scene->bytes+start+40,&plan->overlay) ||
+            plan->source >= 32 || plan->revision > 0x7fffffffUL || plan->x > 1000 || plan->y > 600 ||
+            plan->count < 2 || plan->count > DVM_VECTOR_LOCAL_NODES || plan->overlay < plan->count ||
+            plan->overlay > DVM_VECTOR_LOCAL_NODES ||
+            plan->count+plan->overlay > (scene->used-start-56)/8)
+        {
+            return 0;
+        }
+        start += 48;
+        for (n = 0; n < plan->count; ++n, start += 8)
+        {
+            if (!word(scene->bytes+start,&plan->masks[n]))
+            {
+                return 0;
+            }
+        }
+        for (n = 0; n < plan->overlay; ++n, start += 8)
+        {
+            if (!word(scene->bytes+start,&plan->bindings[n]))
+            {
+                return 0;
+            }
+        }
+        at = start+8;
     }
     if (!word(scene->bytes + at - 8, &shapes) || scene->tool < 1 || scene->tool > 8 ||
         scene->width < 1 || scene->width > 32 || scene->fill > 3 ||
@@ -660,8 +698,21 @@ static int vector_parse(VectorScene *scene)
     {
         return 0;
     }
+    if (local)
+    {
+        const DVM_VectorLocalPlan *plan = &scene->local;
+        if (shapes < 2 || plan->source >= shapes-1 || scene->shapes[plan->source].count != plan->count ||
+            scene->shapes[shapes-1].count != plan->overlay ||
+            !dvm_vector_local_valid(plan,scene->nodes+scene->shapes[plan->source].first,
+                scene->nodes+scene->shapes[shapes-1].first))
+        {
+            return 0;
+        }
+        scene->local.valid = 1;
+    }
     scene->count = (unsigned int)shapes;
     scene->complete = 1;
+    vector_local_reconcile((unsigned long)(scene-vectors));
     return 1;
 }
 
@@ -2908,7 +2959,7 @@ static int vector_layers(const DeskItem *item)
 {
     const VectorScene *scene = &vectors[item->id];
     unsigned int id = 96 + (unsigned int)item->id;
-    size_t prefix = 2 * sizeof(item->width);
+    size_t prefix = 2 * sizeof(item->width)+sizeof(local_epochs[0]);
     size_t size = prefix + scene->used - 48;
     unsigned char *key;
     int reused;
@@ -2919,6 +2970,7 @@ static int vector_layers(const DeskItem *item)
     }
     memcpy(key, &item->width, sizeof(item->width));
     memcpy(key + sizeof(item->width), &item->height, sizeof(item->height));
+    memcpy(key+2*sizeof(item->width),local_epochs+item->id,sizeof(local_epochs[0]));
     memcpy(key + prefix, scene->bytes + 48, scene->used - 48);
     ok = dvm_editor_frame_node_begin(prepared_frame, id, (unsigned int)item->id);
     reused = ok && dvm_editor_frame_node_matches(prepared_prior, id, key, size);
@@ -3230,6 +3282,10 @@ unsigned long dvm_desktop_ticket(void)
  * pointers become invalid after context teardown and must never reach workers. */
 void dvm_desktop_destroy(void)
 {
+    dvm_vector_local_destroy(local_edit);
+    local_edit = NULL;
+    local_widget = 0;
+    memset(local_epochs,0,sizeof(local_epochs));
     memset(vectors, 0, sizeof(vectors));
     memset(vector_buttons, 0, sizeof(vector_buttons));
     unsigned int index;
@@ -3319,3 +3375,5 @@ int dvm_desktop_zoom_button(double x, double y)
     long position = -1;
     return dvm_desktop_hit(x,y,&widget,&position) && widget >= 1 && widget <= 8 && position == -21;
 }
+
+#include "desktop_vector_local.c"

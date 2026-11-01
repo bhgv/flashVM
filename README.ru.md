@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1728**. [English](README.md).
+Версия разработки: **0.1729**. [English](README.md).
 
-Текущая серия: [v0.1728](docs/releases/v0.1728.md): векторизация по 1/100 и отмена устаревших заданий.
+Текущая серия: [v0.1729](docs/releases/v0.1729.md): движение узлов в FlashVM без обмена с Dis на каждой позиции.
 
 ## Просмотр документации
 
