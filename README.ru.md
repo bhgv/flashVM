@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1732**. [English](README.md).
+Версия разработки: **0.1733**. [English](README.md).
 
-Текущая серия: [v0.1732](docs/releases/v0.1732.md): независимые системные потоки UI и Dis.
+Текущая серия: [v0.1733](docs/releases/v0.1733.md): настоящий GC в системном потоке с публикацией корней.
 
 ## Просмотр документации
 

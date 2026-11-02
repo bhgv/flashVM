@@ -85,3 +85,35 @@ multiple Dis mutators or executable AS asinc capture lowering.
 
 Only native Linux x64 has been executed in this session. Common thread-port use
 does not constitute physical ARM64/RV64, Android or desktop-display acceptance.
+
+## Runtime0.41.0: actual native cycle collector
+
+Workspace v0.1733 adds `--gc-worker` to both console and graphical runtimes.
+`--gc-inline` remains the default reference. A single collector OS thread binds
+its own extended-up/REG and error environment. Coalesced scheduler requests invoke
+the retained `rungc` algorithm, using its existing adaptive work bound. Eager RC
+still executes on the Dis mutator; no unused deferred-RC lane is advertised.
+
+`runtime_gc.c` connects native_world to the actual process list and heap. At a
+complete-instruction safepoint, the mutator parks; the stopped-world visitor saves
+its active REG into the current Prog.R before any collector scan. Between xec
+calls saved Prog.R is authoritative and the TLS active-process slot is cleared.
+Idle graphical scheduler turns also poll. The collector never races heap/process
+list/module mutations: it owns the heap only while the Dis mutator is parked or
+has left. Requests are native flags, not transferred managed pointers.
+
+Managed normal/error returns leave the active interval, drain an accepted request,
+join the collector and detach the poll hook before mutator TLS retirement. Error
+formatting uses the current native owner's error buffer. A collector exception is process-fatal while the mutator stays parked; a
+partially swept heap must not resume. Protocol failures latch failure. Final statistics follow join;
+`NATIVEGC` records real passes, root snapshots, reclaimed objects and join status.
+Hard process exits retain process-fatal semantics. Blocking native Sys callbacks
+still delay rendezvous until they return; release/reentry around such work remains
+open. GC and a mutator do not execute against the same heap simultaneously.
+
+The real cyclic-garbage example and its sources ship in examples/gc-worker.
+Six successful runs plus two managed-limit failures execute for each console/UI
+host, across interpreter/JIT and three scheduler quanta. Tests require live-root
+preservation, positive cycle reclamation/epochs/snapshots and post-join accounting.
+Parallel shared-heap spawn, synchronized module/JIT publication and deferred RC
+are still separate unfinished stages. Native Linux x64 is the executed target.

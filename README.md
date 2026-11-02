@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1732**. [Русская версия](README.ru.md).
+Development version: **0.1733**. [Русская версия](README.ru.md).
 
-Current series: [v0.1732](docs/releases/v0.1732.md): independent native UI and Dis execution owners.
+Current series: [v0.1733](docs/releases/v0.1733.md): production cycle collector on a native worker with root safepoints.
 
 ## Browse documentation
 

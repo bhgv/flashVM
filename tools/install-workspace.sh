@@ -761,6 +761,7 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
+            copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
@@ -810,6 +811,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/module-store" "$destination/examples/module-store"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
+            copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&

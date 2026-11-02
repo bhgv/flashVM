@@ -1,4 +1,4 @@
-/* Experimental sequential owner for the retained Dis interpreter and native leaves. */
+/* Retained Dis interpreter/JIT with explicit native execution and GC owners. */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -14,6 +14,7 @@
 #include "file_port.h"
 #include "filesystem_sys.h"
 #include "sys_capture.h"
+#include "runtime_gc.h"
 #include <stdio.h>
 #include <stddef.h>
 #include <limits.h>
@@ -76,7 +77,7 @@ extern void dvm_bigtable_owners(unsigned long *, unsigned long *);
 extern ulong gcnruns;                     /* Collector scheduler passes maintained by the owning Dis core. */
 extern ulong gcepochs;                    /* Completed collector epochs; distinct from interpreter/native dispatch. */
 
-static Pool memory;                       /* Sole pool owned by the bound runtime thread. */
+static Pool memory;                       /* Pool mutated by Dis or its stopped-world collector. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static Prog *ready;                       /* FIFO head for runnable Limbo processes. */
 static Prog *tail;                        /* FIFO tail. */
@@ -84,6 +85,7 @@ static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static unsigned long execution_slices;    /* Busy-work budget since the last actual standard-input progress. */
 static int live;                          /* Process quota accounting. */
+static int gc_worker;                     /* Explicit production collector-worker admission. */
 static char failure[256];                 /* Current native error copied before unwinding. */
 static char *module_directory;            /* Read-only module resource base; ordinary Sys paths retain caller cwd. */
 static Osenv environment;                 /* Error string environment for this runtime owner. */
@@ -394,12 +396,24 @@ void *mallocz(ulong size, int clear)
     return value;
 }
 
+/* Return this native owner's error buffer. Before binding, only the launching
+ * owner's fallback exists. Collector errors must never overwrite mutator text. */
+static char *owner_error(void)
+{
+    if (up && up->env && up->env->errstr)
+    {
+        return up->env->errstr;
+    }
+    return failure;
+}
+
+
 /* Preserve the current host error and unwind through the retained Proc error frames. */
 void error(char *message)
 {
-    if (message != failure)
+    if (message != owner_error())
     {
-        snprintf(failure, sizeof(failure), "%s", message);
+        snprintf(owner_error(), ERRMAX, "%s", message);
     }
     nexterror();
 }
@@ -409,7 +423,7 @@ void nexterror(void)
 {
     if (!up || up->nerr <= 0)
     {
-        fprintf(stderr, "disvm: %s\n", failure);
+        fprintf(stderr, "disvm: %s\n", owner_error());
         exit(1);
     }
     siglongjmp(up->estack[--up->nerr], 1);
@@ -439,7 +453,7 @@ void kwerrstr(char *format, ...)
 {
     va_list arguments;
     va_start(arguments, format);
-    vsnprint(failure, sizeof(failure), format, arguments);
+    vsnprint(owner_error(), ERRMAX, format, arguments);
     va_end(arguments);
 }
 
@@ -775,7 +789,7 @@ vlong kseek(int fd, vlong position, int origin)
 char *syserr(char *start, char *end, Prog *process)
 {
     USED(process);
-    return seprint(start, end, "%s", failure);
+    return seprint(start, end, "%s", owner_error());
 }
 
 /* Reserve the complete native-cell entry frame before publishing its process. */
@@ -848,8 +862,9 @@ static char *entry_resource(char *path)
 
 /* Execute the complete Dis runtime exclusively on its bound native owner.
  * argument is a borrowed module path valid until join/return. No UI heap access
- * occurs here in threaded mode; channel movers and GC remain on this owner. */
-static int runtime_execute(void *argument)
+ * occurs here in threaded mode. Channel movers stay on this mutator; optional
+ * native GC obtains exclusive heap access through the world rendezvous. */
+static int runtime_execute_inner(void *argument)
 {
     DVM_NativeContext *context;
     Module *module;
@@ -872,7 +887,6 @@ static int runtime_execute(void *argument)
     {
         inspect_release();
         fprintf(stderr, "disvm: %s\n", failure);
-        runtime_statistics();
         return 1;
     }
     arena_init();
@@ -909,12 +923,20 @@ static int runtime_execute(void *argument)
     {
         inspect_retain(process);
     }
+    if (gc_worker && !dvm_runtime_gc_start(&processes))
+    {
+        error("cannot start native collector");
+    }
     while (ready
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
 #endif
     )
     {
+        if (gc_worker && !dvm_native_context_poll())
+        {
+            error("native collector safepoint failed");
+        }
 #ifdef DVM_RUNTIME_EDITOR
         if (dvm_editor_attached())
         {
@@ -949,6 +971,7 @@ static int runtime_execute(void *argument)
         if (waserror())
         {
             process->R = DVM_R;
+            dvm_native_context_set_process(context, nil);
             dvm_bigtable_abort(process);
             if (failure[0] && !instruction_boundary_error && handler(failure))
             {
@@ -962,7 +985,6 @@ static int runtime_execute(void *argument)
                 runtime_error_location(&path, &pc);
                 fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, failure);
                 inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
-                runtime_statistics();
                 return 1;
             }
             delrun(Pexiting);
@@ -985,6 +1007,7 @@ static int runtime_execute(void *argument)
         else
         {
             xec(process);
+            dvm_native_context_set_process(context, nil);
             poperror();
             if (ready == process)
             {
@@ -993,7 +1016,17 @@ static int runtime_execute(void *argument)
         }
         if (processes)
         {
-            rungc(processes);
+            if (gc_worker)
+            {
+                if (!dvm_runtime_gc_request())
+                {
+                    error("native collector failed");
+                }
+            }
+            else
+            {
+                rungc(processes);
+            }
         }
     }
     if (live)
@@ -1007,12 +1040,27 @@ static int runtime_execute(void *argument)
     if (inspect_requested && !inspect_report())
     {
         fprintf(stderr, "disvm: inspection output failed\n");
-        runtime_statistics();
         return 1;
     }
-    runtime_statistics();
-    puts("PASS Dis application completed");
     return 0;
+}
+
+
+/* Join the collector on every managed normal/error return, before the editor
+ * launcher retires mutator TLS. argument is borrowed through this call. */
+static int runtime_execute(void *argument)
+{
+    int result = runtime_execute_inner(argument);
+    if (!dvm_runtime_gc_stop(show_stats))
+    {
+        result = 1;
+    }
+    runtime_statistics();
+    if (!result)
+    {
+        puts("PASS Dis application completed");
+    }
+    return result;
 }
 
 
@@ -1100,6 +1148,14 @@ int main(int argc, char **argv)
         {
             test_control = 1;
         }
+        else if (strcmp(argv[1], "--gc-worker") == 0)
+        {
+            gc_worker = 1;
+        }
+        else if (strcmp(argv[1], "--gc-inline") == 0)
+        {
+            gc_worker = 0;
+        }
         else if (strcmp(argv[1], "--no-jit") == 0)
         {
             cflag = 0;
@@ -1121,6 +1177,7 @@ int main(int argc, char **argv)
             puts(
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
+            puts("GC execution: --gc-worker (native stopped-world collector), --gc-inline (default reference)");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one Dis heap owner.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
