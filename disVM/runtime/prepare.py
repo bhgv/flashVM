@@ -45,6 +45,16 @@ def main():
         ],
         check=True,
     )
+    # Adapt only the hosted view. Pinned upstream and standalone native fixtures
+    # retain ordinary destroy. Reject drift before installing the owner hook.
+    heap_path = args.output / "heap.c"
+    heap_text = heap_path.read_text()
+    rc_anchor = "\tif(--h->ref > 0 || gchalt > 64)"
+    if heap_text.count(rc_anchor) != 1:
+        raise ValueError("destroy ownership boundary changed; review RC adapter")
+    heap_text = heap_text.replace(rc_anchor,
+        "\tif(dvm_runtime_rc_defer(v))\n\t\treturn;\n\n" + rc_anchor, 1)
+    heap_path.write_text('#include "runtime_rc.h"\n' + heap_text)
     text = subprocess.check_output([args.compiler, "-a", "-t", "Sys", args.sys], text=True)
     marker = "typedef struct{char *name;"
     at = text.index(marker)

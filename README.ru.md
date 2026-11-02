@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1733**. [English](README.md).
+Версия разработки: **0.1734**. [English](README.md).
 
-Текущая серия: [v0.1733](docs/releases/v0.1733.md): настоящий GC в системном потоке с публикацией корней.
+Текущая серия: [v0.1734](docs/releases/v0.1734.md): потоки Fast/Cycles и закреплённая очередь отложенного RC.
 
 ## Просмотр документации
 

@@ -117,3 +117,51 @@ host, across interpreter/JIT and three scheduler quanta. Tests require live-root
 preservation, positive cycle reclamation/epochs/snapshots and post-join accounting.
 Parallel shared-heap spawn, synchronized module/JIT publication and deferred RC
 are still separate unfinished stages. Native Linux x64 is the executed target.
+
+## Runtime0.42.0: Fast and Cycles use the actual heap
+
+Workspace v0.1734 replaces the one-off collector launcher with the existing
+production gc_workers service. Fast and Cycles are separate OS threads, each
+with its own bound extended-up/REG and owner-local error buffers. Their heap
+leases serialize; each pass stops the Dis mutator through native_world. A Fast
+MORE result reschedules another bounded batch, alternating with pending Cycles.
+They are separate workers, not simultaneous unsynchronized heap access.
+
+The runtime-only prepared heap view delegates last-owner destroy to runtime_rc.c
+when --gc-worker is enabled. Pinned upstream and standalone fixtures remain
+unchanged. A queued object keeps one queue-owned reference and an external ptradd
+root, with Setmark at admission. This represents zero remaining caller owners,
+not an unrooted ref==0 pointer. Fast removes the root and calls retained destroy;
+recursive destruction bypasses requeue because it runs on the collector context.
+Native arrays/slices keep the existing live-reference validation semantics.
+
+Admission is bounded by512 slots and4MiB of direct block payloads. Descendant
+graph sizes are not included in that byte bound. A full queue, an oversized block,
+or failed root registration keeps ownership unchanged and uses ordinary inline
+destruction. Failed root registration restores the caller's error text. Each Fast
+pass handles256 top-level owners; nested retained destructors are not preempted.
+No arbitrary graph is advertised as a fixed-time pass. Final shutdown closes
+admission, leaves the mutator, drains accepted Fast MORE work and Cycles requests,
+then joins both workers before releasing roots/TLS. NATIVERC reports transfers,
+releases, remaining owners/bytes and both fallback kinds after join.
+
+The real managed gate now runs per host: six root/cycle-reclamation successes,
+two slot-saturation successes, and two managed-error joins, across interpreter/JIT.
+All successful runs exercise an oversized6MiB direct-block fallback. Existing
+real graphical object/node SVG replay also exercises this host route.
+
+### Reference publication and remaining concurrency boundary
+
+The retained movp already retains/marks the new reference, publishes the slot,
+then releases the old owner. This agrees with the proposed transfer ordering.
+Setmark is the retained incremental collector barrier; it is not a complete SATB
+old-reference log, atomic RC API or permission to traverse mutable C slots in
+parallel. Native channel movers, typed copies, stack/module updates, array/list
+operations and JIT paths must share a proven barrier protocol before concurrent
+marking can be admitted. A transfer flag which is merely skipped is insufficient;
+changed edges must be retained or rescanned before reclamation.
+
+At this checkpoint queue metadata and non-atomic heap/refcounts are protected by
+exclusive world ownership. Parallel shared-heap mutators, a persistent epoch/rooted
+mutation journal, and a concurrent marker remain open. --gc-inline retains ordinary
+immediate RC and inline cycle collection as the default reference mode.

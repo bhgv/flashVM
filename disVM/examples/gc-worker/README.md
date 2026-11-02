@@ -30,3 +30,21 @@ limit failures. It requires positive real reclamation, snapshots and epochs,
 matching pass accounting and collector join after managed error. The editor
 variant additionally checks UI/Dis owner TLS retirement. Limbo processes remain
 cooperative inside one Dis mutator; this example does not claim parallel spawn.
+
+
+Runtime0.42.0 also creates a separate Fast worker. Each cycle-building call now
+allocates a temporary acyclic array, whose last reference transfers to the
+bounded native RC queue. A6MiB array must bypass its4MiB direct-byte budget.
+The queue has512 slots. Its entries retain one queue-owned reference and ptradd
+root; they are never unrooted zero-count pointers. Fast releases owners in
+batches of256 with the retained destroy algorithm. Nested destruction can exceed
+that top-level work count. The normal low-quanta runs require actual cyclic
+reclamation; two extra runs at quantum65536 specifically require queue saturation
+and inline fallback, not completion of a cycle epoch in so few turns.
+
+NATIVERC must report enqueued==released, pending=0 and bytes=0 after both worker
+joins. byte_limited proves the large-block fallback; saturated counts slot-limit
+fallbacks. NATIVEGC additionally requires positive Fast passes and workers=2.
+Two error-limit runs verify queue draining after managed unwinding. Blocking native
+calls still delay heap safepoints, and no parallel shared-heap spawn or concurrent
+lock-free graph scan is enabled by these counters.

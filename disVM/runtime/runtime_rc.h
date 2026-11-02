@@ -1,0 +1,24 @@
+/* Deferred RC ownership inside the production stopped-world heap protocol. */
+#ifndef DVM_RUNTIME_RC_H
+#define DVM_RUNTIME_RC_H
+
+/* [GC:] Enable an empty bounded queue on the current Dis mutator. Called only
+ * after collector startup, before any collection request. No ownership transfer. */
+void dvm_runtime_rc_start(void);
+
+/* [GC:] Transfer the caller's last reference into the native queue, retaining
+ * one queue-owned reference and an external GC root. Called by generated destroy
+ * after its normal header check. Returns one when transferred, zero to retain
+ * inline destruction. Never queues collector-side recursive destruction. */
+int dvm_runtime_rc_defer(void *value);
+
+/* [GC:] Release at most budget queue owners with the retained destroy algorithm.
+ * Caller is the collector with the world stopped. Returns remaining owners. */
+unsigned int dvm_runtime_rc_drain(unsigned int budget);
+
+/* [GC:] Stop admission on the mutator before leaving its heap interval. */
+void dvm_runtime_rc_close(void);
+
+/* [GC:] Report/reset after collector join. Returns zero if owners remain. */
+int dvm_runtime_rc_finish(int diagnostics);
+#endif

@@ -24,6 +24,15 @@ def execute(runtime, module, mode, quantum, budget=None):
         raise RuntimeError(output[-5000:])
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+) snapshots=(\d+) "
                    r"reclaimed=(\d+) joined=1 failed=0", output)
+    rc = re.search(r"NATIVERC enqueued=(\d+) released=(\d+) pending=0 saturated=(\d+)", output)
+    limits = re.search(r"bytes=0 byte_limited=(\d+)", output)
+    if not rc or int(rc[1]) == 0 or rc[1] != rc[2] or not limits:
+        raise RuntimeError("deferred RC did not drain:\n" + output[-5000:])
+    if budget is None and int(limits[1]) == 0:
+        raise RuntimeError("large-block bound did not execute:\n" + output[-5000:])
+    lanes = re.search(r"failed=0 fast_passes=(\d+) workers=2", output)
+    if not lanes or int(lanes[1]) == 0:
+        raise RuntimeError("real Fast/Cycles workers did not execute:\n" + output[-5000:])
     if not gc or int(gc[1]) == 0:
         raise RuntimeError("collector did not run/join:\n" + output[-5000:])
     counters = re.search(r"instructions=(\d+) native=(\d+) gc_runs=(\d+) gc_epochs=(\d+)", output)
@@ -32,10 +41,12 @@ def execute(runtime, module, mode, quantum, budget=None):
     if budget is None:
         if ("PASS gc-worker: 12000" not in output or
                 "PASS Dis application completed" not in output or
-                min(int(gc[2]), int(gc[3]), int(counters[4])) == 0 or
+                (quantum != 65536 and min(int(gc[2]), int(gc[3]), int(counters[4])) == 0) or
                 (int(counters[2]) > 0) != (mode == "--jit")):
             raise RuntimeError("missing real roots/reclamation evidence:\n" + output[-5000:])
-    elif "instruction limit exceeded" not in output or "PASS Dis application completed" in output:
+    if budget is None and quantum == 65536 and int(rc[3]) == 0:
+        raise RuntimeError("queue saturation fallback was not exercised:\n" + output[-5000:])
+    if budget is not None and ("instruction limit exceeded" not in output or "PASS Dis application completed" in output):
         raise RuntimeError("managed error did not retire collector:\n" + output[-5000:])
     if runtime.name == "disvm-editor" and not re.search(
             r"main_dis_tls=0 worker_bound=1 worker_released=1 result=" + str(expected), output):
@@ -47,11 +58,11 @@ def execute(runtime, module, mode, quantum, budget=None):
 def main():
     runtime, module = (Path(value).resolve() for value in sys.argv[1:3])
     for mode in ("--jit", "--no-jit"):
-        for quantum in (31, 257, 2000):
+        for quantum in (31, 257, 2000, 65536):
             execute(runtime, module, mode, quantum)
         execute(runtime, module, mode, 31, 10000)
-    print("PASS actual native cycle GC: 6 managed root/reclamation runs, "
-          "2 managed-error joins, interpreter/JIT, 3 scheduler quanta")
+    print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 bounded-queue saturation runs, "
+          "2 managed-error joins, interpreter/JIT, 4 scheduler quanta including saturation")
 
 
 if __name__ == "__main__":

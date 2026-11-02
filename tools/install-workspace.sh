@@ -764,6 +764,9 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
+            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h; do
+                copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
+            done
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/disVM/upstream/module/readdir.m" "$destination/include/limbo/readdir.m"
@@ -814,6 +817,9 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
+            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h; do
+                copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
+            done
             if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&
                 grep -q '^DVM_BUILD_DIAGNOSTICS:BOOL=ON$' "$base/CMakeCache.txt"; then
                 for file in disvm-check disvm-jit-word32 disvm-jit-word64; do
