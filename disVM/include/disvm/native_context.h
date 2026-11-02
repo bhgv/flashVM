@@ -28,7 +28,7 @@ DVM_NativeContext *dvm_native_context_create_embedded(
 void *dvm_native_context_host_process(DVM_NativeContext *context);
 
 
-/* Destroy only a quiescent unbound context; returns0 for a bound/held-turn
+/* Destroy only a quiescent unbound context; returns0 for a bound/held-turn/guarded
  * context,1 on release. Caller must join users before destroying native storage. */
 int dvm_native_context_destroy(DVM_NativeContext *context);
 
@@ -97,6 +97,26 @@ int dvm_native_context_clear_poll(DVM_NativeContext *context, DVM_NativePoll pol
 
 /* Call between complete instructions, never halfway through an instruction. */
 int dvm_native_context_poll(void);
+/* Guard-layer affinity accounting only. context must be current/bound.
+ * Acquire refuses overflow; release refuses zero; no heap/root access occurs.
+ * Exact guard ownership is checked separately by object_guard, not by this count. */
+int dvm_native_context_object_acquire(DVM_NativeContext *context);
+
+
+/* Consume one owner-local recorded guard; refuse foreign/unmatched calls. */
+int dvm_native_context_object_release(DVM_NativeContext *context);
+
+
+/* Return current owner's guard count, zero for foreign/unbound without reading
+ * its mutable storage. Held guards forbid poll/turn release/unbind/world changes. */
+unsigned long dvm_native_context_object_count(DVM_NativeContext *context);
+
+
+/* Observe this owner's registered hook without invoking it. Foreign returns0;
+ * this does not authorize access to registered roots or managed objects. */
+int dvm_native_context_has_poll(DVM_NativeContext *context);
+
+
 #ifdef __cplusplus
 }
 #endif

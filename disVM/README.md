@@ -257,3 +257,11 @@ under O3/NDEBUG strict UBSan; no loader/wire behavior changes in that test fix.
 The independent disvm_refcount library and Linux disvm_refcount_example target
 need no hosted kernel/GC. Selected hosted sites use checked atomic counts;
 unconverted managed C/JIT paths still run under exclusive heap ownership.
+
+[Native object-guard API](include/disvm/object_guard.h) ·
+[Guard protocol and context fences](runtime/OBJECT-GUARDS.md) ·
+[Mutable native object example](examples/native-object-guard/README.md).
+The independent `disvm_object_guards` library and Linux
+`disvm_object_guard_example` target demonstrate guarded native payloads and
+parking across actual OS contexts. This is not yet a managed Heap layout change
+or parallel managed-mutator mode; current NativeWorld admission stays exclusive.

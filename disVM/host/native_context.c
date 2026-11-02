@@ -3,6 +3,7 @@
 #include "channel_sync.h"
 #include "native_owner_private.h"
 #include <stdlib.h>
+#include <limits.h>
 
 #ifdef _WIN32
 #ifndef _WIN32_WINNT
@@ -32,6 +33,7 @@ struct DVM_NativeContext
     DVM_NativePoll poll;  /* Owner's safepoint hook, if registered. */
     void *poll_user;      /* Borrowed until explicit hook removal. */
     DVM_HeapOwner heap_owner; /* Private TLS lifecycle/counters; no managed owners. */
+    unsigned long object_locks; /* Owner-only guards; cannot survive safepoint/turn/unbind. */
     int bound;            /* Nonzero while one native TLS slot owns this context. */
 };
 
@@ -147,7 +149,7 @@ int dvm_native_context_destroy(DVM_NativeContext *context)
         return 1;
     }
     fvm_port_sync_lock(context->sync);
-    if (context->bound || context->turn)
+    if (context->bound || context->turn || context->object_locks)
     {
         fvm_port_sync_unlock(context->sync);
         return 0;
@@ -188,6 +190,10 @@ int dvm_native_context_bind(DVM_NativeContext *context)
  * process root slot alone does not prove the scheduler continuation is finished. */
 int dvm_native_context_unbind(DVM_NativeContext *context)
 {
+    if (dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
     if (!context || tls_get() != context || context->poll || context->heap_owner.world || context->turn)
     {
         return 0;
@@ -216,6 +222,10 @@ DVM_NativeContext *dvm_native_context_current(void)
  * The bound owner alone writes turn, so no foreign TLS or heap is accessed. */
 int dvm_native_context_acquire_turn(DVM_NativeContext *context, void *token)
 {
+    if (dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
     if (!context || tls_get() != context || !token || context->turn)
     {
         return 0;
@@ -229,6 +239,10 @@ int dvm_native_context_acquire_turn(DVM_NativeContext *context, void *token)
  * its scheduler/continuation has stopped using it; this does not free memory. */
 int dvm_native_context_release_turn(DVM_NativeContext *context, void *token)
 {
+    if (dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
     if (!context || tls_get() != context || !token || context->turn != token)
     {
         return 0;
@@ -288,6 +302,10 @@ size_t dvm_native_context_register_size(DVM_NativeContext *context)
 /* Install only on the owner; the hook itself coordinates any external readers. */
 int dvm_native_context_set_poll(DVM_NativeContext *context, DVM_NativePoll poll, void *user)
 {
+    if (dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
     if (!context || tls_get() != context || !poll || context->poll)
     {
         return 0;
@@ -301,6 +319,10 @@ int dvm_native_context_set_poll(DVM_NativeContext *context, DVM_NativePoll poll,
 /* Remove only the exact owner's registration, preventing a dangling callback. */
 int dvm_native_context_clear_poll(DVM_NativeContext *context, DVM_NativePoll poll, void *user)
 {
+    if (dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
     if (!context || tls_get() != context || context->poll != poll || context->poll_user != user)
     {
         return 0;
@@ -315,7 +337,7 @@ int dvm_native_context_clear_poll(DVM_NativeContext *context, DVM_NativePoll pol
 int dvm_native_context_poll(void)
 {
     DVM_NativeContext *context = dvm_native_context_current();
-    if (!context)
+    if (!context || context->object_locks)
     {
         return 0;
     }
@@ -368,4 +390,47 @@ DVM_HeapOwner *dvm_native_owner_current(void)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     return context ? &context->heap_owner : NULL;
+}
+
+
+/* Count one successful object-guard acquisition on this bound OS owner. This
+ * scalar is native affinity metadata, not a heap root or permission token.
+ * Foreign/unbound/overflow refuses before changing any owner state. */
+int dvm_native_context_object_acquire(DVM_NativeContext *context)
+{
+    if (!context || tls_get() != context || context->object_locks == ULONG_MAX)
+    {
+        return 0;
+    }
+    context->object_locks++;
+    return 1;
+}
+
+
+/* Consume one recorded guard on its bound OS owner; refuse unmatched/foreign
+ * calls. The guard implementation separately verifies exact object ownership. */
+int dvm_native_context_object_release(DVM_NativeContext *context)
+{
+    if (!context || tls_get() != context || !context->object_locks)
+    {
+        return 0;
+    }
+    context->object_locks--;
+    return 1;
+}
+
+
+/* Observe only this bound owner's count. Foreign/unbound returns zero without
+ * reading owner-mutated fields; this observation is not a heap access grant. */
+unsigned long dvm_native_context_object_count(DVM_NativeContext *context)
+{
+    return context && tls_get() == context ? context->object_locks : 0;
+}
+
+
+/* Report owner-local hook registration without invoking it or publishing roots.
+ * Foreign/unbound returns zero; an installed hook is not itself ACTIVE rights. */
+int dvm_native_context_has_poll(DVM_NativeContext *context)
+{
+    return context && tls_get() == context && context->poll != NULL;
 }

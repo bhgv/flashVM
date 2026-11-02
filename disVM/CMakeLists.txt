@@ -800,3 +800,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set_tests_properties(disvm_native_refcounts PROPERTIES TIMEOUT 180)
  endif()
 endif()
+
+
+# Native guards retain TLS affinity; no managed heap implementation is linked.
+add_library(disvm_object_guards STATIC host/object_guard.c host/native_context.c
+ host/native_owner.c host/native_world.c)
+target_include_directories(disvm_object_guards PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+ PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports")
+target_link_libraries(disvm_object_guards PUBLIC disvm_refcount)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+ add_executable(disvm_object_guard_example examples/native-object-guard/main.c
+  "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports/linux/thread.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports/linux/channel_sync.c")
+ target_include_directories(disvm_object_guard_example PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports")
+ target_link_libraries(disvm_object_guard_example PRIVATE disvm_object_guards pthread)
+ if(BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME disvm_native_object_guards COMMAND "${Python3_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/tests/object_guard.py")
+  set_tests_properties(disvm_native_object_guards PROPERTIES TIMEOUT 240)
+ endif()
+endif()

@@ -182,6 +182,10 @@ int dvm_world_destroy(DVM_NativeWorld *world)
 DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *context)
 {
     DVM_WorldParticipant *participant;
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!world || !context || dvm_native_context_current() != context)
     {
         return 0;
@@ -216,6 +220,10 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
 {
     DVM_NativeWorld *world;
     DVM_WorldParticipant **link;
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!owns(participant))
     {
         return 0;
@@ -243,6 +251,10 @@ int dvm_world_enter(DVM_WorldParticipant *participant)
 {
     DVM_NativeWorld *world;
     size_t ticket = 0;
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!owns(participant))
     {
         return 0;
@@ -285,6 +297,10 @@ int dvm_world_enter(DVM_WorldParticipant *participant)
 int dvm_world_leave(DVM_WorldParticipant *participant)
 {
     DVM_NativeWorld *world;
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!owns(participant))
     {
         return 0;
@@ -309,6 +325,10 @@ int dvm_world_leave(DVM_WorldParticipant *participant)
 int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector)
 {
     DVM_WorldParticipant *participant;
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!world || !collector || dvm_native_context_current() != collector)
     {
         return 0;
@@ -371,6 +391,10 @@ int dvm_world_visit(DVM_NativeWorld *world, DVM_WorldRoots visitor, void *user)
 /* Wait for the old parked generation to drain before allowing a new stop request. */
 int dvm_world_stop_end(DVM_NativeWorld *world)
 {
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!world)
     {
         return 0;
@@ -460,6 +484,10 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
 {
     DVM_NativeWorld *world;
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     if (!owns(participant))
     {
         return 0;
