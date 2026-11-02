@@ -467,3 +467,27 @@ UI diagnostic runs cover eight normal/two managed errors per host and match all
 withdrawal/reentry/GC/root/join counters. The managed dispatcher remains single-
 executor; error/budget/current-process, callback wake/kill and queue/channel/cache
 migration remain prerequisites for another. See RUNQUEUE.md for exact scope.
+
+
+## Runtime 0.49.1: recovered roots precede fresh exception allocation
+
+Inferno 0072 at 829d69f publishes the complete recovered REG into Prog.R before
+cleanup/message construction may scan roots. rootset consumes that saved image;
+physical unwind previously left stale bounds/freed extensions visible until final
+PC selection. Both ports retain the final publication too. No allocation, register
+layout, file profile or concurrent graph barrier is introduced by the repair.
+
+Owning and selected strict-UBSan replay pass 21504 trusted fresh-message cases
+and 16 semantic publication/map controls. Actual constructors, emergency failure
+transfer, UTF decoding, rootset and recursive markheap execute; the caller-owned
+two-object graph has no external-root substitute. The closure does not sweep or
+run a concurrent collector. Real exception/GC epochs and 526000 frame cases per
+port/model are separate passing evidence. All 28 configured runtime gates pass.
+
+Host turn/error completion now clears up->prog along with the saved-process
+publication boundary, preventing stale typed current identity between turns.
+It remains present while the active error handler needs it; complete recovered
+saved roots remain authoritative during borrowed-REG cleanup. Production queue/
+I/O/GC/UI gates are rechecked after this bookkeeping change. Another managed
+worker still requires per-owner error/budget dispatch and wake/kill migration.
+Both snapshot manifests pin 829d69f; no wire/ID or default file admission changes.

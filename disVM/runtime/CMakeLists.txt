@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.49.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.49.1 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2030,4 +2030,24 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
  add_test(NAME disvm_runqueue_ownership COMMAND "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_runqueue.py")
  set_tests_properties(disvm_runqueue_ownership PROPERTIES TIMEOUT 60 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+endif()
+
+
+# Fresh exception-message allocation must observe the recovered live caller roots.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(fresh_gate native_fresh_handlers native_fresh_handlers_publication native_fresh_handlers_map)
+  set(fresh_control)
+  if(fresh_gate STREQUAL "native_fresh_handlers_publication")
+   set(fresh_control --control publication)
+  elseif(fresh_gate STREQUAL "native_fresh_handlers_map")
+   set(fresh_control --control map)
+  endif()
+  add_test(NAME disvm_${fresh_gate} COMMAND "${CMAKE_COMMAND}" -E env
+   "CC=${CMAKE_C_COMPILER}"
+   "CPATH=${root}/disVM/host/include:${u}/Linux/arm/include"
+   "NATIVE64_ARCH=${runtime_backend}"
+   "NATIVE64_TMPDIR=${CMAKE_CURRENT_BINARY_DIR}"
+   "${PYTHON_EXECUTABLE}" "${u}/utils/tests/native64-fresh-handlers.py" ${fresh_control})
+  set_tests_properties(disvm_${fresh_gate} PROPERTIES TIMEOUT 240)
+ endforeach()
 endif()

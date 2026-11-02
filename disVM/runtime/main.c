@@ -979,6 +979,7 @@ static int runtime_execute_inner(void *argument)
             if (failure[0] && !instruction_boundary_error && handler(failure))
             {
                 failure[0] = 0;
+                up->prog = nil;
                 continue;
             }
             if (failure[0])
@@ -988,6 +989,7 @@ static int runtime_execute_inner(void *argument)
                 runtime_error_location(&path, &pc);
                 fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, failure);
                 inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
+                up->prog = nil;
                 return 1;
             }
             if (dvm_runqueue_owner(process))
@@ -1015,6 +1017,7 @@ static int runtime_execute_inner(void *argument)
         {
             xec(process);
             dvm_native_context_set_process(context, nil);
+            up->prog = nil;
             poperror();
             if (dvm_runqueue_head() == process)
             {

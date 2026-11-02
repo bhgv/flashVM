@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1743**. [Русская версия](README.ru.md).
+Development version: **0.1744**. [Русская версия](README.ru.md).
 
-Current series: [v0.1743](docs/releases/v0.1743.md): native continuation withdrawal from runnable dispatch.
+Current series: [v0.1744](docs/releases/v0.1744.md): recovered exception roots published before message allocation.
 
 ## Browse documentation
 

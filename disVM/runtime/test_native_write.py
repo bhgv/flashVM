@@ -1,5 +1,6 @@
 """Apply genuine stdout backpressure to managed immutable-snapshot writes."""
 from pathlib import Path
+import array
 import os
 import fcntl
 import re
@@ -7,6 +8,7 @@ import selectors
 import subprocess
 import sys
 import tempfile
+import termios
 import time
 
 # Immutable expected snapshot has distinct stage-edge markers and binary bytes.
@@ -45,8 +47,22 @@ def execute(runtime, module, mode, flags, quantum, budget=None):
                 marker = process.stderr.readline()
             if marker != READY:
                 raise RuntimeError("native write setup failed: "+repr(marker))
-            # Source is ready. Leave stdout undrained so an actual positive write
-            # blocks on a full OS pipe while the GC owns its saved managed roots.
+            # The stderr marker precedes managed dispatch and snapshot copying;
+            # it does not prove that stdout has reached the native write yet.
+            # Observe a full private pipe without consuming its payload before
+            # holding back the reader. A timeout is a failure, never success.
+            capacity = fcntl.fcntl(process.stdout.fileno(),fcntl.F_GETPIPE_SZ)
+            deadline = time.monotonic()+30
+            while True:
+                available = array.array('i',[0])
+                fcntl.ioctl(process.stdout.fileno(),termios.FIONREAD,available,True)
+                if available[0] >= capacity:
+                    break
+                if process.poll() is not None or time.monotonic() >= deadline:
+                    raise RuntimeError("native stdout writer did not fill its private pipe")
+                time.sleep(0.001)
+            # Now the positive write really encounters kernel backpressure.
+            # Keep every existing exact-byte/root/positive-GC-progress check.
             time.sleep(0.05)
             output, diagnostic = process.communicate(timeout=45)
         except BaseException:

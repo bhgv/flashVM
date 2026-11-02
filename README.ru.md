@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1743**. [English](README.md).
+Версия разработки: **0.1744**. [English](README.md).
 
-Текущая серия: [v0.1743](docs/releases/v0.1743.md): исключение ожидающих native-продолжений из runnable-очереди.
+Текущая серия: [v0.1744](docs/releases/v0.1744.md): публикация восстановленных корней перед созданием сообщения исключения.
 
 ## Просмотр документации
 
