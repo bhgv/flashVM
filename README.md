@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1754**. [Русская версия](README.ru.md).
+Development version: **0.1755**. [Русская версия](README.ru.md).
 
-Current series: [v0.1754](docs/releases/v0.1754.md): native file/directory retirement on a dedicated close worker.
+Current series: [v0.1755](docs/releases/v0.1755.md): deferred RC from every admitted executor and explicit shared-heap concurrency plan.
 
 ## Browse documentation
 

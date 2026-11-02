@@ -735,3 +735,14 @@ and collectors, then drains/joins the closer. Reference/startup close stays inli
 NATIVECLOSE shows transfer/completion/backlog/join evidence. A permanently blocked
 OS close still blocks final join; cancellation and native-resource backpressure
 remain separate work. See [release](../../docs/releases/v0.1754.md).
+
+
+## All-executor deferred RC (0.59.0)
+
+Deferred last-reference admission now checks ACTIVE/pending-progress/world identity,
+not equality with the original OS controller. Helpers can enqueue and request Fast
+work. Native/idle/detached/foreign/collector callers refuse before payload access;
+collector recursion cannot requeue. Queue limits and inline fallback are unchanged.
+NATIVERC adds helper transfer/fallback counters. Managed heap mutation and collector
+passes remain exclusive. [Shared-heap proposal, Russian](SHARED-HEAP-CONCURRENCY.ru.md)
+describes object locks/atomic RC with initially STW cycles, not an activated mode.

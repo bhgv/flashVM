@@ -9,7 +9,9 @@ void dvm_runtime_rc_start(void);
 /* [GC:] Transfer the caller's last reference into the native queue, retaining
  * one queue-owned reference and an external GC root. Called by generated destroy
  * after its normal header check. Returns one when transferred, zero to retain
- * inline destruction. Never queues collector-side recursive destruction. */
+ * inline destruction. Only an ACTIVE executor of the owning runtime world is
+ * admitted; native/idle/foreign/collector contexts refuse before payload reads.
+ * Never queues collector-side recursive destruction. */
 int dvm_runtime_rc_defer(void *value);
 
 /* [GC:] Release at most budget queue owners with the retained destroy algorithm.
@@ -17,7 +19,8 @@ int dvm_runtime_rc_defer(void *value);
 unsigned int dvm_runtime_rc_drain(unsigned int budget);
 
 /* [GC:] Query queue size only on the active Dis owner, before releasing the
- * world interval. Returns the current rooted owner count; no wait/allocation. */
+ * world interval, including helper executors. Returns zero for other roles;
+ * no wait/allocation. Queue state stays protected by exclusive world admission. */
 unsigned int dvm_runtime_rc_pending(void);
 
 /* [GC:] Stop admission on the mutator before leaving its heap interval. */

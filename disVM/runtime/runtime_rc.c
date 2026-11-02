@@ -5,6 +5,7 @@
 #include "interp.h"
 #include "pool.h"
 #include "disvm/native_context.h"
+#include "disvm/native_owner.h"
 #include "runtime_rc.h"
 #include <stdio.h>
 #include <string.h>
@@ -16,14 +17,32 @@ extern Pool *heapmem;                 /* Retained pool, accessible only under wo
 static unsigned long sizes[RC_CAPACITY]; /* Direct payload bytes paired with queue slots. */
 static unsigned long queued_bytes;    /* Sum of queued direct block extents. */
 static void *queue[RC_CAPACITY];       /* Each entry owns one reference and a ptradd root. */
-static DVM_NativeContext *owner;      /* Dis admission context, immutable until join. */
+static DVM_NativeContext *owner;      /* Original controller identity, valid through collector join. */
+static DVM_NativeWorld *world;        /* Runtime world, immutable until every producer and collector joins. */
 static unsigned int head;            /* Collector advances while the world is stopped. */
 static unsigned int count;           /* Changed only by the exclusive heap owner. */
 static unsigned long enqueued;       /* Ownership transfers, observed after join. */
 static unsigned long released;       /* Collector-side retained destroy calls. */
 static unsigned long saturated;      /* Bounded-queue inline fallbacks. */
 static unsigned long byte_limited;   /* Direct block-byte budget inline fallbacks. */
+static unsigned long helper_enqueued; /* Accepted releases from other admitted executors. */
+static unsigned long helper_saturated; /* Helper releases falling back at the owner-count bound. */
+static unsigned long helper_byte_limited; /* Helper releases falling back at the byte bound. */
 static int accepting;                /* Closed before mutator leaves on shutdown. */
+
+
+/* [GC:] Authorize queue access before inspecting managed payload or queue data.
+ * Only a bound ACTIVE owner of this runtime's exclusive world may proceed.
+ * Native/idle/detached/collector contexts refuse without reading the queue.
+ * The world lifetime is retained through all producer/collector joins. */
+static int admitted(void)
+{
+    DVM_HeapOwner *current = dvm_native_owner_current();
+    DVM_HeapOwnerStats state;
+    return current && dvm_native_owner_statistics(current, &state) &&
+        state.phase == DVM_HEAP_ACTIVE && !state.pending_progress &&
+        dvm_native_owner_world(current) == world;
+}
 
 
 /* [GC:] Initialize on the bound mutator before publishing work. No allocation,
@@ -31,6 +50,10 @@ static int accepting;                /* Closed before mutator leaves on shutdown
 void dvm_runtime_rc_start(void)
 {
     owner = dvm_native_context_current();
+    world = dvm_native_owner_world(dvm_native_owner_current());
+    helper_enqueued = 0;
+    helper_saturated = 0;
+    helper_byte_limited = 0;
     head = 0;
     count = 0;
     queued_bytes = 0;
@@ -51,10 +74,12 @@ int dvm_runtime_rc_defer(void *value)
     Heap *heap;
     unsigned long bytes;
     char previous[ERRMAX];
-    if (!accepting || dvm_native_context_current() != owner)
+    int helper;
+    if (!admitted() || !accepting)
     {
         return 0;
     }
+    helper = dvm_native_context_current() != owner;
     heap = D2H(value);
     if (heap->ref != 1)
     {
@@ -64,11 +89,13 @@ int dvm_runtime_rc_defer(void *value)
     if (count == RC_CAPACITY)
     {
         saturated++;
+        helper_saturated += helper != 0;
         return 0;
     }
     if (bytes > RC_BYTES-queued_bytes)
     {
         byte_limited++;
+        helper_byte_limited += helper != 0;
         return 0;
     }
     memcpy(previous,up->env->errstr,sizeof(previous));
@@ -85,13 +112,14 @@ int dvm_runtime_rc_defer(void *value)
     queued_bytes += bytes;
     count++;
     enqueued++;
+    helper_enqueued += helper != 0;
     return 1;
 }
 
 
 /* [GC:] Release rooted queue owners only on a stopped-world collector. Each
  * destructor and its nested releases use the retained algorithm; they bypass
- * admission because the collector context differs from the Dis owner. Budget
+ * admission because the collector has no ACTIVE mutator ownership. Budget
  * bounds top-level owners, not the size of a recursively destroyed graph. */
 unsigned int dvm_runtime_rc_drain(unsigned int budget)
 {
@@ -113,11 +141,11 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
 
 
 /* [GC:] Read queue occupancy on its active Dis owner. Collectors cannot mutate
- * it until that owner parks/leaves. No unsynchronized foreign inspection is
- * admitted; foreign callers receive zero and must not use this for heap access. */
+ * it until that owner parks/leaves. Every ACTIVE executor of this world can
+ * request Fast work; native/idle/foreign/collector callers receive zero. */
 unsigned int dvm_runtime_rc_pending(void)
 {
-    return dvm_native_context_current() == owner ? count : 0;
+    return admitted() ? count : 0;
 }
 
 
@@ -136,9 +164,11 @@ int dvm_runtime_rc_finish(int diagnostics)
 {
     if (diagnostics)
     {
-        printf("NATIVERC enqueued=%lu released=%lu pending=%u saturated=%lu bytes=%lu byte_limited=%lu\n",
-            enqueued,released,count,saturated,queued_bytes,byte_limited);
+        printf("NATIVERC enqueued=%lu released=%lu pending=%u saturated=%lu bytes=%lu byte_limited=%lu helper_enqueued=%lu helper_saturated=%lu helper_byte_limited=%lu\n",
+            enqueued,released,count,saturated,queued_bytes,byte_limited,
+            helper_enqueued,helper_saturated,helper_byte_limited);
     }
     owner = NULL;
+    world = NULL;
     return count == 0 && queued_bytes == 0;
 }

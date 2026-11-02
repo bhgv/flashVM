@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.58.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.59.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2097,9 +2097,11 @@ endif()
 
 
 # Real two-executor examples and native backpressure; no simulated dispatcher.
-foreach(pool_example main backpressure backpressure-eight shared-file file-overlap metadata-overlap elastic elastic-stop elastic-park ui-rpc)
+foreach(pool_example main rc-overlap backpressure backpressure-eight shared-file file-overlap metadata-overlap elastic elastic-stop elastic-park ui-rpc)
  if(pool_example STREQUAL "main")
   set(pool_image managed-workers)
+ elseif(pool_example STREQUAL "rc-overlap")
+  set(pool_image managed-rc-overlap)
  elseif(pool_example STREQUAL "backpressure")
   set(pool_image managed-backpressure)
  elseif(pool_example STREQUAL "backpressure-eight")
@@ -2214,4 +2216,27 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
    set_tests_properties(${elastic_runner}_elastic_pool PROPERTIES TIMEOUT 300)
   endif()
  endforeach()
+endif()
+
+
+# Real helper-only allocation/release pressure while the parent process waits in I/O.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(rc_runner disvm disvm-editor)
+  if(TARGET ${rc_runner})
+   add_test(NAME ${rc_runner}_helper_rc COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_helper_rc.py" "$<TARGET_FILE:${rc_runner}>"
+    "${CMAKE_CURRENT_BINARY_DIR}/managed-rc-overlap.dis"
+    "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
+   set_tests_properties(${rc_runner}_helper_rc PROPERTIES TIMEOUT 300)
+  endif()
+ endforeach()
+endif()
+
+
+# Rejected RC roles must fail before payload/allocator access; real native worlds.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_rc_roles COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_rc_roles.py")
+ set_tests_properties(disvm_rc_roles PROPERTIES TIMEOUT 120)
 endif()

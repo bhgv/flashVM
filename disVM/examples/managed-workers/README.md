@@ -244,3 +244,18 @@ submitted/completed, pending0 and joined1. The same driver now runs nine phases.
 Prepared close jobs avoid allocation in finalizers. Physical native handles may
 outlive released descriptor slots until the close worker consumes them. Shutdown
 waits for this queue; the fixture is not a forced cancellation test.
+
+
+## Helper RC admission (runtime0.59.0)
+
+`rc-overlap.b` runs32 producers replacing arrays of sixteen node references over
+sixteen rounds. Each producer checksum is3840; total122880. Audited native sleeps
+distribute continuations across OS owners. The external driver withholds stdin
+until aggregation prints completion; this is a logical parent-process wait, not
+an assumption that the original OS controller cannot run other Progs.
+
+`source/threading/test_helper_rc.py` takes executable, managed-rc-overlap.dis and
+font. It selects C/JIT and4/8/auto, requires positive helper_enqueued and exact
+final RC balance/zero bytes/worker joins. Role-only test_rc_roles.py separately
+uses real world transitions and three active removal controls. Its forbidden
+payload sentinels do not replace the whole-program allocation/GC checks.
