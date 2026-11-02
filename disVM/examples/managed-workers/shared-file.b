@@ -1,6 +1,6 @@
 implement ManagedFile;
 include "sys.m";
-sys: Sys; # Immutable module reference; all mutable cursors stay under the heap gate.
+sys: Sys; # Immutable module reference; native cursor access uses a per-file FIFO.
 
 ManagedFile: module {
     init: fn(); # Write/read a scratch file; the test supplies a private working directory.
@@ -9,7 +9,7 @@ ManagedFile: module {
 
 # Share ONE cursor-bearing FD between two actors. payload/tail are immutable;
 # fd remains a mapped argument until every native operation returns. The initial
-# pool serializes ordinary files because FVM_PortFile requires external locking.
+# runtime FIFO serializes the native cursor while callers release the heap.
 write(fd: ref Sys->FD, payload, tail: string)
 {
     bytes := array of byte payload;
@@ -46,6 +46,10 @@ init()
     if (<-done != 1) {
         raise "fail: shared cursor acknowledgement";
     }
+    # Relative seek observes all acknowledged writes on the SAME retained FD.
+    if (sys->seek(fd, big 0, Sys->SEEKRELA) != big 2176) {
+        raise "fail: shared cursor seek after writers";
+    }
     input := sys->open("managed-shared.bin",Sys->OREAD);
     bytes := array[2176] of byte;
     if (input == nil || sys->readn(input,bytes,len bytes) != len bytes) {
@@ -61,6 +65,14 @@ init()
     }
     if (counts[0] != 1024 || counts[1] != 1024 || counts[2] != 64 || counts[3] != 64) {
         raise "fail: shared cursor lost/duplicated bytes";
+    }
+    # Rewind/readback and a refused negative seek must preserve cursor semantics.
+    one := array[1] of byte;
+    if (sys->seek(input, big 0, Sys->SEEKSTART) != big 0 || sys->read(input, one, 1) != 1 || one[0] != bytes[0]) {
+        raise "fail: shared cursor rewind";
+    }
+    if (sys->seek(input, big -1, Sys->SEEKSTART) != big -1 || sys->seek(input, big 0, Sys->SEEKRELA) != big 1) {
+        raise "fail: shared cursor refused seek changed position";
     }
     sys->print("PASS managed shared cursor: write, fprint and readn serialized\n");
 }

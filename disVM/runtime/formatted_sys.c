@@ -9,9 +9,11 @@
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "managed_workers.h"
+#include "file_gate.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 extern Type *TFD; /* Retained typed FD identity, read only on the active heap owner. */
 
@@ -41,20 +43,33 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     FVM_Result status;
     size_t written = 0;
     int released;
+    size_t ticket;
+    DVM_FileGate *gate;
     if (descriptor != 1 && descriptor != 2 && !file)
     {
         kwerrstr("formatted descriptor write failed");
         return -1;
     }
+    gate = dvm_runtime_file_gate(descriptor);
     if (fd)
     {
         ptradd(D2H(fd));
         pins++;
         Setmark(D2H(fd));
     }
-    /* [GC:] FILE cursor metadata requires external serialization. With two
-     * executors, retain the heap for ordinary files; stdio remains audited. */
-    released = file && dvm_managed_workers_serialize_file() ? 0 : dvm_runtime_gc_native_leave();
+    /* [GC:] Reserve under heap exclusion, wait after native release. The
+     * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
+    if (file)
+    {
+        dvm_managed_workers_file_call();
+    }
+    ticket = dvm_file_gate_reserve(gate);
+    released = dvm_runtime_gc_native_leave();
+    if (!dvm_file_gate_enter(gate, ticket))
+    {
+        fprintf(stderr, "disvm: cannot admit native file operation\n");
+        exit(1);
+    }
     if (descriptor == 1 || descriptor == 2)
     {
         status = fvm_port_stdio_write(descriptor,bytes,count,&written);
@@ -66,6 +81,11 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
         {
             written = count;
         }
+    }
+    if (!dvm_file_gate_leave(gate, ticket))
+    {
+        fprintf(stderr, "disvm: native file admission lost\n");
+        exit(1);
     }
     dvm_runtime_gc_native_enter(released);
     calls++;

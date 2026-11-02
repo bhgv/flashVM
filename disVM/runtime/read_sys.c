@@ -9,6 +9,7 @@
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "managed_workers.h"
+#include "file_gate.h"
 #include "io_buffer.h"
 #include <stddef.h>
 #include <stdlib.h>
@@ -110,13 +111,25 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         size_t fragment = (size_t)(extent-result);
         FVM_Result status;
         int released;
+        size_t ticket;
+        DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
         if (fragment > capacity)
         {
             fragment = capacity;
         }
-        /* [GC:] FILE cursor metadata requires external serialization. With two
-         * executors, retain the heap for ordinary files; stdio remains audited. */
-        released = file && dvm_managed_workers_serialize_file() ? 0 : dvm_runtime_gc_native_leave();
+        /* [GC:] Reserve under heap exclusion, wait after native release. The
+         * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
+        if (file)
+        {
+            dvm_managed_workers_file_call();
+        }
+        ticket = dvm_file_gate_reserve(gate);
+        released = dvm_runtime_gc_native_leave();
+        if (!dvm_file_gate_enter(gate, ticket))
+        {
+            fprintf(stderr, "disvm: cannot admit native file operation\n");
+            exit(1);
+        }
         if (descriptor == 0)
         {
             status = fvm_port_stdio_read(0,stage,fragment,&received);
@@ -124,6 +137,11 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         else
         {
             status = fvm_port_file_read(file,stage,fragment,&received);
+        }
+        if (!dvm_file_gate_leave(gate, ticket))
+        {
+            fprintf(stderr, "disvm: native file admission lost\n");
+            exit(1);
         }
         dvm_runtime_gc_native_enter(released);
         fragments++;
@@ -145,7 +163,8 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
             break;
         }
         /* Nonmoving GC preserves the owner, but revalidate before any copyback.
-         * No other Dis mutator is admitted to resize/change this buffer yet. */
+         * Other actors may mutate aliases while this owner is suspended; the
+         * acknowledged fragment commits only after revalidation under the heap. */
         {
             int current_descriptor = -1;
             int current = dvm_io_span(fd,buffer,requested,&current_descriptor,&data);

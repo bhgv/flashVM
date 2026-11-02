@@ -101,11 +101,43 @@ the helper and collectors and retire every managed claim.
 Two executors require `--gc-worker`; the graphical host also requires its default
 threaded UI. This is cooperative scheduling around one exclusive heap, not
 simultaneous managed heap writers. Standard-stream I/O and sleep are audited
-release sites. Ordinary FILE-backed operations keep the heap gate because their
-cursor/error state needs external serialization. Compiler callbacks and arbitrary
+release sites. Ordinary read/write/fprint/seek use a per-file FIFO and can release the heap.
+Metadata, opening/closing and private loader callbacks retain their synchronous
+boundary; zero-length write validation also stays on the active owner. Compiler callbacks and arbitrary
 C extensions do not automatically become resumable. A blocked OS operation can
 delay shutdown: no unsafe forced cancellation is attempted.
 
 The example uses the existing private native-cell module ABI, not a newly
 accepted shared Dis64 file-call profile. Verification here is native Linux x64;
 this does not claim ARM/RV execution of the new pool.
+
+
+## Ordinary files outside the heap (runtime0.54.0)
+
+`shared-file.b` now also tests relative seek after writes, rewind/readback and a
+refused negative seek. Native lease counters must include ordinary file calls;
+`NATIVEFILES` requires no pending gates and matched gate creation/retirement.
+The historical `serialized_files` counter now means per-file FIFO admissions,
+not retention of the global heap gate.
+
+`file-overlap.b` (`managed-file-overlap.dis`) has two writers sharing ONE FD and
+an unrelated computing actor. The test-only `fwrite` interposer blocks the first
+ordinary file write in a real OS pipe read. The second writer waits on the file
+FIFO; the parent must compute/print BEFORE the driver releases the native barrier.
+This is a controlled blocking test, not a benchmark or measured slow disk.
+After release, the driver checks both file bytes, FIFO contention, paired native
+leases and complete gate retirement at4/8 executors in interpreter/JIT.
+
+Inside an installed editor package:
+
+```sh
+python3 source/threading/test_native_file_wait.py \
+  ./disvm-editor ./managed-file-overlap.dis ./fonts/NotoSansMono-Regular.ttf
+```
+
+From a full source checkout, `python3 disVM/runtime/test_file_gate.py` compiles
+the actual native FIFO and OS-context adapters. It reverse-starts eight ticketed
+workers and checks foreign/duplicate completion and busy/reserved retirement.
+Three private removal controls must fail semantically. The default uses UBSan;
+`CFLAGS='-O1 -g -fsanitize=thread'` selects the focused native TSan check.
+This is not whole-VM race-freedom proof.

@@ -26,11 +26,9 @@ int dvm_managed_workers_yield(int idle);
 void dvm_managed_workers_record(void);
 
 
-/* Called on an ACTIVE heap owner before ordinary FVM_PortFile I/O. Return one
- * while the pool is enabled: cursor-bearing file operations must keep the heap
- * until a separate per-handle concurrency audit. Standard streams stay releasable.
- * Counts actual guarded calls under heap exclusion; no handle is retained. */
-int dvm_managed_workers_serialize_file(void);
+/* Count one ordinary file operation on the ACTIVE heap owner. No handle/root is
+ * retained; the separate per-handle FIFO serializes native cursor access. */
+void dvm_managed_workers_file_call(void);
 
 
 /* Authorize only the live helper's ACTIVE claimed turn for copied UI RPC.

@@ -173,3 +173,12 @@ protocol. Pool slots are native-only and stable through all joins; they never
 replace root-list membership or retain a borrowed NativeContext after detach.
 Per-slot identities are cleared while the helper still owns the heap. Every
 started helper joins before slot/service reset, including partial-start failure.
+
+
+## File waits (0.54.0)
+
+An ordinary file native continuation uses the same Prog withdrawal, pinned
+context and reentry protocol as standard I/O. Its native file FIFO ticket is
+reserved while ACTIVE and finished before managed reentry. A waiting file owner
+is never left in the runnable queue; a different owner can execute another Prog.
+File gates do not replace managed FD roots or NativeWorld root membership.

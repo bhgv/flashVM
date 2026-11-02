@@ -8,6 +8,7 @@
 #include "raise.h"
 #include "runtime_gc.h"
 #include "managed_workers.h"
+#include "file_gate.h"
 #include "io_buffer.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,8 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     FVM_Result status;
     WORD result = 0;
     int released;
+    size_t ticket;
+    DVM_FileGate *gate;
     volatile int fd_pinned = 0;
     volatile int buffer_pinned = 0;
     if (bytes == H || count < 0)
@@ -63,6 +66,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     {
         return -1;
     }
+    gate = dvm_runtime_file_gate(descriptor);
     /* Preserve zero-write descriptor/access checks without staging any bytes.
      * The legacy file-port zero operation stays on the active owner. */
     if (!extent)
@@ -71,7 +75,18 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         {
             return 0;
         }
-        return fvm_port_file_write(file,NULL,0) == FVM_OK ? 0 : -1;
+        ticket = dvm_file_gate_reserve(gate);
+        if (!dvm_file_gate_enter(gate, ticket))
+        {
+            return -1;
+        }
+        status = fvm_port_file_write(file, NULL, 0);
+        if (!dvm_file_gate_leave(gate, ticket))
+        {
+            fprintf(stderr, "disvm: zero-write file admission lost\n");
+            exit(1);
+        }
+        return status == FVM_OK ? 0 : -1;
     }
     capacity = (size_t)extent < WRITE_STAGE_BYTES ? (size_t)extent : WRITE_STAGE_BYTES;
     stage = malloc(capacity);
@@ -109,9 +124,19 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     pinned++;
     Setmark(D2H(bytes));
     memmove(stage,data,capacity);
-    /* [GC:] FILE cursor metadata requires external serialization. With two
-     * executors, retain the heap for ordinary files; stdio remains audited. */
-    released = file && dvm_managed_workers_serialize_file() ? 0 : dvm_runtime_gc_native_leave();
+    /* [GC:] Reserve under heap exclusion, wait after native release. The
+     * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
+    if (file)
+    {
+        dvm_managed_workers_file_call();
+    }
+    ticket = dvm_file_gate_reserve(gate);
+    released = dvm_runtime_gc_native_leave();
+    if (!dvm_file_gate_enter(gate, ticket))
+    {
+        fprintf(stderr, "disvm: cannot admit native file operation\n");
+        exit(1);
+    }
     if (descriptor == 1 || descriptor == 2)
     {
         status = fvm_port_stdio_write(descriptor,stage,capacity,&written);
@@ -123,6 +148,11 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         {
             written = capacity;
         }
+    }
+    if (!dvm_file_gate_leave(gate, ticket))
+    {
+        fprintf(stderr, "disvm: native file admission lost\n");
+        exit(1);
     }
     dvm_runtime_gc_native_enter(released);
     fragments++;

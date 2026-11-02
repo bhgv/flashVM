@@ -156,6 +156,10 @@ def main():
                 raise RuntimeError(text[-6000:])
             evidence(text)
             guarded = re.search(r'serialized_files=(\d+)',text)
+            leases = re.search(r'NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0', text)
+            gates = re.search(r'NATIVEFILES created=(\d+) closed=\1 live=0 operations=(\d+) waits=\d+ pending=0', text)
+            if not leases or int(leases[1]) < 263 or not gates or int(gates[2]) < 262:
+                raise RuntimeError('ordinary file read/write/fprint/seek did not release or retire FIFO: ' + text[-6000:])
             data = (work/'managed-shared.bin').read_bytes()
             if not guarded or int(guarded[1]) < 257 or len(data) != 2176 or any(
                     data.count(bytes([value])) != count for value,count in

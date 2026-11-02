@@ -12,6 +12,7 @@
 #include "owned.h"
 #include "disvm/native_process.h"
 #include "file_port.h"
+#include "file_gate.h"
 #include "filesystem_sys.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
@@ -112,6 +113,7 @@ static size_t inspect_count;  /* Requested native words, bounded to 4096 before 
 static uchar *inspect_data;   /* [GC:] Registered native MP root; only verified scalar cells are reported. */
 static int test_control;      /* Explicit isolated-test halt capability; disabled for normal applications. */
 static FVM_PortDirectory *directories[32]; /* Owned OS-port cursors; share the descriptor quota with files. */
+static DVM_FileGate *file_gates[32];       /* Native per-slot FIFO, retained by rooted FD owners. */
 static FVM_PortFile *files[32];            /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
 
 /* Print copied instruction/native counters only for an explicit --stats request.
@@ -125,6 +127,7 @@ static void runtime_statistics(void)
         dvm_runtime_read_statistics();
         dvm_runtime_write_statistics();
         dvm_formatted_statistics();
+        dvm_file_gate_statistics();
         dvm_runqueue_statistics();
         dvm_queue_probe_statistics();
         dvm_bigtable_owners(&tables, &keys);
@@ -643,10 +646,18 @@ static int open_file(const char *path, const char *mode)
                 kwerrstr("cannot open directory: %s", path);
                 return -1;
             }
+            file_gates[index] = dvm_file_gate_create();
+            if (!file_gates[index])
+            {
+                kwerrstr("cannot allocate native file gate");
+                return -1;
+            }
             if (fvm_port_file_open(path, mode, &files[index]) == FVM_OK)
             {
                 return index;
             }
+            dvm_file_gate_destroy(file_gates[index]);
+            file_gates[index] = NULL;
             kwerrstr("cannot open file: %s", path);
             return -1;
         }
@@ -718,11 +729,24 @@ int kopen(char *path, int mode)
 long kread(int fd, void *bytes, long size)
 {
     size_t received;
+    size_t ticket;
+    FVM_Result status;
     if (fd < 0 || fd >= 32 || !files[fd] || size < 0)
     {
         return -1;
     }
-    if (fvm_port_file_read(files[fd], bytes, size, &received) != FVM_OK)
+    ticket = dvm_file_gate_reserve(file_gates[fd]);
+    if (!dvm_file_gate_enter(file_gates[fd], ticket))
+    {
+        return -1;
+    }
+    status = fvm_port_file_read(files[fd], bytes, size, &received);
+    if (!dvm_file_gate_leave(file_gates[fd], ticket))
+    {
+        fprintf(stderr, "disvm: loader file admission lost\n");
+        exit(1);
+    }
+    if (status != FVM_OK)
     {
         return -1;
     }
@@ -735,6 +759,14 @@ long kread(int fd, void *bytes, long size)
 FVM_PortFile *dvm_runtime_file(int descriptor)
 {
     return descriptor >= 3 && descriptor < 32 ? files[descriptor] : NULL;
+}
+
+
+/* Borrow only under the heap gate while a mapped FD/private loader slot pins
+ * the paired native handle. No managed references cross into gate storage. */
+DVM_FileGate *dvm_runtime_file_gate(int descriptor)
+{
+    return descriptor >= 3 && descriptor < 32 ? file_gates[descriptor] : NULL;
 }
 
 
@@ -755,6 +787,12 @@ int kclose(int fd)
     {
         return -1;
     }
+    if (!dvm_file_gate_destroy(file_gates[fd]))
+    {
+        fprintf(stderr, "disvm: closing a file with pending native operations\n");
+        exit(1);
+    }
+    file_gates[fd] = NULL;
     fvm_port_file_close(files[fd]);
     fvm_port_directory_close(directories[fd]);
     files[fd] = nil;
@@ -767,11 +805,24 @@ Dir *kdirfstat(int fd)
 {
     Dir *metadata;
     size_t available;
+    size_t ticket;
+    FVM_Result status;
     if (fd < 0 || fd >= 32 || !files[fd])
     {
         return nil;
     }
-    if (fvm_port_file_size(files[fd], &available) != FVM_OK || available >= 8UL * 1024UL * 1024UL)
+    ticket = dvm_file_gate_reserve(file_gates[fd]);
+    if (!dvm_file_gate_enter(file_gates[fd], ticket))
+    {
+        return nil;
+    }
+    status = fvm_port_file_size(files[fd], &available);
+    if (!dvm_file_gate_leave(file_gates[fd], ticket))
+    {
+        fprintf(stderr, "disvm: loader metadata admission lost\n");
+        exit(1);
+    }
+    if (status != FVM_OK || available >= 8UL * 1024UL * 1024UL)
     {
         return nil;
     }
@@ -1576,41 +1627,6 @@ void Sys_create(void *frame)
     publish_descriptor(call->ret, result, old);
 }
 
-/* Position an ordinary native file; standard streams and test capabilities fail.
- * frame borrows a typed FD and signed big offset. The big result is the new
- * position, or -1 with a native error. Checked narrowing precedes the port call. */
-void Sys_seek(void *frame)
-{
-    F_Sys_seek local;
-    F_Sys_seek *call = &local;
-    LONG result = -1;
-    long position;
-    dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_seek, ret), sizeof(*call->ret));
-    if (call->fd == H || call->fd == nil || D2H(call->fd)->t != TFD)
-    {
-        error(exNilref);
-    }
-    if (call->fd->fd < 3 || call->fd->fd >= 32 || !files[call->fd->fd])
-    {
-        kwerrstr("seek requires an ordinary live file");
-    }
-    else if (call->start < FVM_FILE_SEEK_START || call->start > FVM_FILE_SEEK_END || call->off < LONG_MIN ||
-             call->off > LONG_MAX)
-    {
-        kwerrstr("invalid seek origin or native offset range");
-    }
-    else if (fvm_port_file_seek(files[call->fd->fd], (long)call->off, (int)call->start, &position) != FVM_OK)
-    {
-        kwerrstr("file seek failed");
-    }
-    else
-    {
-        result = position;
-    }
-    memmove(call->ret, &result, sizeof(result));
-}
-
-
 /* Borrow metadata for one live runtime slot; native APIs remain in OS ports. */
 FVM_Result dvm_runtime_fd_info(int descriptor, FVM_FileInfo *output)
 {
@@ -1620,7 +1636,19 @@ FVM_Result dvm_runtime_fd_info(int descriptor, FVM_FileInfo *output)
     }
     if (files[descriptor])
     {
-        return fvm_port_file_info(files[descriptor], output);
+        size_t ticket = dvm_file_gate_reserve(file_gates[descriptor]);
+        FVM_Result status;
+        if (!dvm_file_gate_enter(file_gates[descriptor], ticket))
+        {
+            return FVM_ERROR;
+        }
+        status = fvm_port_file_info(files[descriptor], output);
+        if (!dvm_file_gate_leave(file_gates[descriptor], ticket))
+        {
+            fprintf(stderr, "disvm: file metadata admission lost\n");
+            exit(1);
+        }
+        return status;
     }
     if (directories[descriptor])
     {

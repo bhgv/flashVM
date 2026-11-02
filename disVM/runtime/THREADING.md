@@ -610,3 +610,40 @@ The eight-writer fixture uses quantum2000 to avoid dominating this native-wait
 check with array-initialization scheduler handoffs; existing quantum1/31/2000
 compute checks remain. Heap mutation stays exclusive: this pool increases native
 wait overlap, not the speed of a CPU-bound serial heap workload.
+
+
+## Native per-file FIFO (0.54.0)
+
+Ordinary Sys.read/readn/write/fprint/seek now release heap ownership in audited
+calls. Each file slot owns a native FIFO gate allocated BEFORE destructive
+open. The mapped FD is rooted through operation reservation, native wait and
+reentry. Reserve while ACTIVE, save/release the native lease, wait for the file
+ticket OUTSIDE the heap, perform native I/O, finish the file ticket BEFORE
+reentering the heap. Neither the gate mutex nor heap gate is held through the
+other gate's blocking admission. The native mutex protects only short ticket
+updates and is not held during file I/O. Standard streams use no file gate.
+
+Gate storage contains native counters/context identity only. Completion requires
+the admitted ticket and exact current native context. Duplicate/foreign finish
+refuses without advancing. Retirement refuses while any ticket is reserved or
+busy; a runtime close in that state is a fatal ownership violation, never a
+use-after-free. Supported FD aliases retain the same mapped owner; arbitrary
+mutation/fabrication of runtime descriptor internals is not a new capability.
+
+All runtime accesses to a file cursor/metadata share this gate, including private
+loader reads/size and fstat. Metadata and private loader operations still execute
+synchronously under their existing heap boundary, and may wait for an earlier
+file operation. Open/create/close and directory callbacks are not made resumable
+by this change. Zero-write validation stays active. Protected native64holds or
+gchalt regions retain their established no-release rule. No forced cancellation
+or abandoned ticket is allowed. Normal rooted calls always finish their ticket
+before publishing managed errors or releasing their mapped FD.
+
+`NATIVEFILES` reports created/closed/live gates, completed operations, contended
+admissions, pending reservations and maximum per-file backlog after worker joins.
+The legacy `serialized_files` pool counter now counts FIFO-admitted file calls.
+[Examples and native-barrier test](../examples/managed-workers/README.md#ordinary-files-outside-the-heap-runtime0540)
+verify unrelated managed progress while one native fwrite is deliberately held
+and a second owner waits on the SAME file gate. This controlled test is distinct
+from the existing real stdout-pipe backpressure test. Native Linux x64 is tested;
+focused FIFO TSan does not establish whole-VM race freedom.

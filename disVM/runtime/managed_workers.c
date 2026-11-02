@@ -268,17 +268,14 @@ void dvm_managed_workers_record(void)
 }
 
 
-/* Ordinary FILE-backed cursors require external serialization. Until per-handle
- * waiting/reentry is audited, preserve that serialization via the heap gate.
- * Controller reads the counter only after helper join; calls require ACTIVE. */
-int dvm_managed_workers_serialize_file(void)
+/* Record one ordinary file call on an ACTIVE heap owner. Per-handle gates
+ * serialize the native cursor outside the heap. Controller reads after joins. */
+void dvm_managed_workers_file_call(void)
 {
     if (service.sync)
     {
         service.files++;
-        return 1;
     }
-    return 0;
 }
 
 
