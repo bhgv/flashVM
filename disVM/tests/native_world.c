@@ -5,6 +5,7 @@
 #include "dat.h"
 #include "isa.h"
 #include "interp.h"
+#include "raise.h"
 #include "disvm/native_process.h"
 #include "disvm/native_world.h"
 
@@ -41,6 +42,20 @@ typedef struct Scan
     DVM_NativeContext *Cycles;
 #endif
 } Scan;
+
+/* The retained instruction's invalid-span branch must remain linked and fatal.
+ * These leaf fixtures supply error reporting, not a replacement VM exception ABI. */
+char exBounds[] = "array bounds error"; /* Actual addw guard identity in this fixture. */
+
+
+/* Reject an unexpected production instruction fault; message is borrowed.
+ * No interpreter unwinding is mocked as success in this focused fixture. */
+void error(char *message)
+{
+    fprintf(stderr,"FAIL native instruction: %s\n",message);
+    exit(EXIT_FAILURE);
+}
+
 
 PRODUCTION_ADDW
 

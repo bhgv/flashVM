@@ -1,5 +1,7 @@
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
+Runtime0.40.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host now keeps UI on main and executes the complete Dis runtime on a dedicated OS worker by default.
+
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
 [Explicit binary/debug export — Ctrl+F7 / Ctrl+Shift+F7](../../ide/ARTIFACT-EXPORT.md)
@@ -32,7 +34,7 @@ production Dis decoding, instructions, architecture-selected AMD64/ARM64/RV64 gu
 module linking, reference counting and cycle collector are retained. `up` and its
 named `R` subobject use the existing OS TLS context. Blocking Dis channels and
 spawned Limbo processes run above one native owner using a FIFO scheduler. This
-initial executable does not yet run multiple VM owners concurrently.
+console runtime keeps that ownership model. The graphical executable runs its FlashVM/SDL owner concurrently on main and its exclusive Dis heap owner on a real OS worker; parallel shared-heap Limbo spawn remains the next scheduler stage.
 
 The workspace example executes production idecore/ideworkspace modules and the callable
 workspace tutorial: it creates document owners, takes a revision-bound build

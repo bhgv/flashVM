@@ -1,3 +1,5 @@
+[Native UI/Dis owners / Системные потоки UI и Dis](../disVM/runtime/THREADING.md) · [RU](../disVM/runtime/THREADING.ru.md)
+
 [Node bar, SVG clipboard and local gestures / Узлы, SVG-буфер и локальные жесты](NODE-TOOLS.md) · [RU](NODE-TOOLS.ru.md)
 
 [Local FlashVM motion / Локальное движение в FlashVM](FLASHVM-LOCAL-MOTION.md)
@@ -30,7 +32,7 @@
 
 # FlashVM Limbo IDE and host build tools
 
-Version **0.7.15**. [Русский](README.ru.md).
+Version **0.7.16**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 

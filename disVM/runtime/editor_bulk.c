@@ -6,6 +6,8 @@
 #include "disvm/ui_pump.h"
 #include "editor_bulk.h"
 #include "editor_view.h"
+#include "editor_thread.h"
+#include <stdio.h>
 #include "desktop_view.h"
 
 #define BULK_SLOTS 8 /* Stable source-pane identities; no native addresses on wire. */
@@ -107,7 +109,7 @@ int dvm_editor_bulk_poll(void)
             continue;
         }
         if (result != FVM_OK || message.kind != DVM_UI_VIEW || message.code != DVM_DESK_VECTOR_DATA ||
-            message.first != (long)index + 1 || !dvm_editor_present(&message))
+            message.first != (long)index + 1 || !dvm_editor_deliver(&message))
         {
             return -1;
         }

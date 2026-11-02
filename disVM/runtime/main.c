@@ -22,11 +22,12 @@
 
 #ifdef DVM_RUNTIME_EDITOR
 #include "editor_view.h"
+#include "editor_thread.h"
 #include "thread_port.h"
 
 
 /* Initialize, poll and release the UI channel boundary on this sole native owner. */
-extern int dvm_editor_start(void);
+extern int dvm_editor_start(const char *directory);
 extern int dvm_editor_poll(void);
 extern int dvm_editor_attached(void);
 extern void dvm_editor_stop(void);
@@ -845,124 +846,16 @@ static char *entry_resource(char *path)
     return separator + 1;
 }
 
-/* Execute a bounded experimental application using real decoding, JIT and channels.
- * argc/argv select the NC64 module and runtime options. Returns zero on completion,
- * one for execution/input failure, or two for an invalid command/ABI configuration. */
-int main(int argc, char **argv)
+/* Execute the complete Dis runtime exclusively on its bound native owner.
+ * argument is a borrowed module path valid until join/return. No UI heap access
+ * occurs here in threaded mode; channel movers and GC remain on this owner. */
+static int runtime_execute(void *argument)
 {
     DVM_NativeContext *context;
     Module *module;
     Prog *process;
     Prog **slot;
     char *entry;
-    cflag = 1;
-    while (argc > 1 && argv[1][0] == '-')
-    {
-#ifdef DVM_RUNTIME_EDITOR
-        if (argc > 2 && dvm_editor_option(argv[1], argv[2]))
-        {
-            argv += 2;
-            argc -= 2;
-            continue;
-        }
-#endif
-        if (strcmp(argv[1], "--stats") == 0)
-        {
-            show_stats = 1;
-        }
-        else if (strcmp(argv[1], "--max-instructions") == 0)
-        {
-            size_t limit;
-            if (dvm_runtime_instruction_limit || argc < 3 || !runtime_extent(argv[2], &limit) || !limit)
-            {
-                fprintf(stderr, "--max-instructions requires one decimal value in 1..2147483647\n");
-                return 2;
-            }
-            dvm_runtime_instruction_limit = (unsigned long)limit;
-            argv += 2;
-            argc -= 2;
-            continue;
-        }
-        else if (strcmp(argv[1], "--quantum") == 0)
-        {
-            size_t quantum;
-            if (quantum_selected || argc < 3 || !runtime_extent(argv[2], &quantum) || !quantum || quantum > 65536)
-            {
-                fprintf(stderr, "--quantum requires one value in 1..65536 and cannot be repeated\n");
-                return 2;
-            }
-            scheduler_quantum = (int)quantum;
-            quantum_selected = 1;
-            argv += 2;
-            argc -= 2;
-            continue;
-        }
-        else if (strcmp(argv[1], "--inspect-words") == 0 || strcmp(argv[1], "--inspect-reals") == 0)
-        {
-            if (inspect_requested || argc < 4 || !runtime_extent(argv[2], &inspect_offset) ||
-                !runtime_extent(argv[3], &inspect_count) || inspect_count < 1 || inspect_count > 4096 ||
-                inspect_offset % 8U != 0)
-            {
-                fprintf(
-                    stderr,
-                    "%s requires one aligned decimal byte offset and 1..4096 cells; inspection options cannot be combined\n",
-                    argv[1]);
-                return 2;
-            }
-            inspect_reals = strcmp(argv[1], "--inspect-reals") == 0;
-            inspect_requested = 1;
-            argv += 3;
-            argc -= 3;
-            continue;
-        }
-        else if (strcmp(argv[1], "--test-control") == 0)
-        {
-            test_control = 1;
-        }
-        else if (strcmp(argv[1], "--no-jit") == 0)
-        {
-            cflag = 0;
-        }
-        else if (strcmp(argv[1], "--jit") == 0)
-        {
-            cflag = 1;
-        }
-        else if (strcmp(argv[1], "--version") == 0)
-        {
-            puts("DisVM runtime " DVM_RUNTIME_VERSION ": experimental NC64, magic 819264, Linux " DVM_RUNTIME_BACKEND);
-            return 0;
-        }
-        else if (strcmp(argv[1], "--help") == 0)
-        {
-            puts(
-                "usage: disvm [--jit|--no-jit] [--stats] [--quantum COUNT] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT | --inspect-reals OFFSET COUNT] native-cell.dis");
-#ifdef DVM_RUNTIME_EDITOR
-            puts(
-                "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
-#endif
-            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one native owner.");
-            return 0;
-        }
-        else
-        {
-            fprintf(stderr, "unknown runtime option: %s\n", argv[1]);
-            return 2;
-        }
-        argv++;
-        argc--;
-    }
-    if (argc != 2)
-    {
-        fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
-        return 2;
-    }
-    dontcompile = !cflag;
-    if (sizeof(WORD) != 8 || sizeof(void *) != 8 || IBY2WD != 8 || offsetof(Alt, ac) != 16 ||
-        offsetof(F_Sys_print, s) != 64)
-    {
-        fprintf(stderr, "native-cell compiler/runtime frame contract mismatch\n");
-        return 2;
-    }
     context = dvm_native_process_create(nil);
     if (!context || !dvm_native_context_bind(context))
     {
@@ -998,9 +891,9 @@ int main(int argc, char **argv)
     excinit();
     dvm_srv_initialize();
     srvmodinit();
-    entry = entry_resource(argv[1]);
+    entry = entry_resource((char *)argument);
 #ifdef DVM_RUNTIME_EDITOR
-    if (!dvm_editor_default_font(module_directory) || !dvm_editor_start())
+    if (!dvm_editor_start(module_directory))
     {
         dvm_editor_stop();
         error("cannot initialize graphical editor");
@@ -1120,6 +1013,147 @@ int main(int argc, char **argv)
     runtime_statistics();
     puts("PASS Dis application completed");
     return 0;
+}
+
+
+/* Parse options on main before publishing immutable launch arguments to an OS worker. */
+int main(int argc, char **argv)
+{
+#ifdef DVM_RUNTIME_EDITOR
+    int threaded = 1;
+    int threading_selected = 0;
+#endif
+    cflag = 1;
+    while (argc > 1 && argv[1][0] == '-')
+    {
+#ifdef DVM_RUNTIME_EDITOR
+        if (!strcmp(argv[1],"--threaded-ui") || !strcmp(argv[1],"--sequential-ui"))
+        {
+            if (threading_selected)
+            {
+                fprintf(stderr,"Select UI execution mode only once\n");
+                return 2;
+            }
+            threaded = !strcmp(argv[1],"--threaded-ui");
+            threading_selected = 1;
+            argv++;
+            argc--;
+            continue;
+        }
+        if (argc > 2 && dvm_editor_option(argv[1], argv[2]))
+        {
+            argv += 2;
+            argc -= 2;
+            continue;
+        }
+#endif
+        if (strcmp(argv[1], "--stats") == 0)
+        {
+            show_stats = 1;
+        }
+        else if (strcmp(argv[1], "--max-instructions") == 0)
+        {
+            size_t limit;
+            if (dvm_runtime_instruction_limit || argc < 3 || !runtime_extent(argv[2], &limit) || !limit)
+            {
+                fprintf(stderr, "--max-instructions requires one decimal value in 1..2147483647\n");
+                return 2;
+            }
+            dvm_runtime_instruction_limit = (unsigned long)limit;
+            argv += 2;
+            argc -= 2;
+            continue;
+        }
+        else if (strcmp(argv[1], "--quantum") == 0)
+        {
+            size_t quantum;
+            if (quantum_selected || argc < 3 || !runtime_extent(argv[2], &quantum) || !quantum || quantum > 65536)
+            {
+                fprintf(stderr, "--quantum requires one value in 1..65536 and cannot be repeated\n");
+                return 2;
+            }
+            scheduler_quantum = (int)quantum;
+            quantum_selected = 1;
+            argv += 2;
+            argc -= 2;
+            continue;
+        }
+        else if (strcmp(argv[1], "--inspect-words") == 0 || strcmp(argv[1], "--inspect-reals") == 0)
+        {
+            if (inspect_requested || argc < 4 || !runtime_extent(argv[2], &inspect_offset) ||
+                !runtime_extent(argv[3], &inspect_count) || inspect_count < 1 || inspect_count > 4096 ||
+                inspect_offset % 8U != 0)
+            {
+                fprintf(
+                    stderr,
+                    "%s requires one aligned decimal byte offset and 1..4096 cells; inspection options cannot be combined\n",
+                    argv[1]);
+                return 2;
+            }
+            inspect_reals = strcmp(argv[1], "--inspect-reals") == 0;
+            inspect_requested = 1;
+            argv += 3;
+            argc -= 3;
+            continue;
+        }
+        else if (strcmp(argv[1], "--test-control") == 0)
+        {
+            test_control = 1;
+        }
+        else if (strcmp(argv[1], "--no-jit") == 0)
+        {
+            cflag = 0;
+        }
+        else if (strcmp(argv[1], "--jit") == 0)
+        {
+            cflag = 1;
+        }
+        else if (strcmp(argv[1], "--version") == 0)
+        {
+            puts("DisVM runtime " DVM_RUNTIME_VERSION ": experimental NC64, magic 819264, Linux " DVM_RUNTIME_BACKEND);
+            return 0;
+        }
+        else if (strcmp(argv[1], "--help") == 0)
+        {
+            puts(
+                "usage: disvm [--jit|--no-jit] [--stats] [--quantum COUNT] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT | --inspect-reals OFFSET COUNT] native-cell.dis");
+#ifdef DVM_RUNTIME_EDITOR
+            puts(
+                "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
+#endif
+            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one Dis heap owner.");
+#ifdef DVM_RUNTIME_EDITOR
+            puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
+#endif
+            return 0;
+        }
+        else
+        {
+            fprintf(stderr, "unknown runtime option: %s\n", argv[1]);
+            return 2;
+        }
+        argv++;
+        argc--;
+    }
+    if (argc != 2)
+    {
+        fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
+        return 2;
+    }
+    dontcompile = !cflag;
+    if (sizeof(WORD) != 8 || sizeof(void *) != 8 || IBY2WD != 8 || offsetof(Alt, ac) != 16 ||
+        offsetof(F_Sys_print, s) != 64)
+    {
+        fprintf(stderr, "native-cell compiler/runtime frame contract mismatch\n");
+        return 2;
+    }
+#ifdef DVM_RUNTIME_EDITOR
+    if (threaded)
+    {
+        return dvm_editor_thread_launch(runtime_execute,argv[1]);
+    }
+#endif
+    return runtime_execute(argv[1]);
 }
 
 /* Preserve formatted VM errors before unwinding their current owner. */

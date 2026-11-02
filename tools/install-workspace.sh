@@ -760,6 +760,9 @@ EOF
             "${PYTHON:-python3}" "$ROOT/tools/link-installed-fir-docs.py" "$ROOT" "$destination" --runtime
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
+            copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
+            copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
+            copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
             copy_tree "$ROOT/tools/limbo-bootstrap/upstream/module" "$destination/include/limbo"
             copy_file "$ROOT/disVM/upstream/module/readdir.m" "$destination/include/limbo/readdir.m"
@@ -806,6 +809,9 @@ EOF
             copy_tree "$ROOT/disVM/examples/module-image" "$destination/examples/module-image"
             copy_tree "$ROOT/disVM/examples/module-store" "$destination/examples/module-store"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
+            copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
+            copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
+            copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&
                 grep -q '^DVM_BUILD_DIAGNOSTICS:BOOL=ON$' "$base/CMakeCache.txt"; then
                 for file in disvm-check disvm-jit-word32 disvm-jit-word64; do

@@ -100,6 +100,7 @@ init()
     state(exchange(commands, core->Replace, 6, 0, 13, ""), core->Ok, 1, 7, 4, "");
     state(exchange(commands, core->Shutdown, 6, 0, 0, ""), core->Conflict, 1, 7, 4, "");
     state(exchange(commands, core->Shutdown, 7, 0, 0, ""), core->Ok, 1, 7, 4, "");
+    # Shutdown above is acknowledged; return normally so the native owner must
+    # retire all processes/TLS instead of exiting through the test-control node.
     sys->print("PASS idecore %d checks\n", checks);
-    halt();
 }

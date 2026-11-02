@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1731**. [English](README.md).
+Версия разработки: **0.1732**. [English](README.md).
 
-Текущая серия: [v0.1731](docs/releases/v0.1731.md): редактирование узлов, SVG-буфер и локальные графические жесты.
+Текущая серия: [v0.1732](docs/releases/v0.1732.md): независимые системные потоки UI и Dis.
 
 ## Просмотр документации
 

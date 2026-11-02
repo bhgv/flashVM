@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.39.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.40.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -421,7 +421,7 @@ if(DVM_RUNTIME_EDITOR)
   endif()
   get_target_property(runtime_sources disvm SOURCES)
   get_target_property(runtime_includes disvm INCLUDE_DIRECTORIES)
-  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_bulk.c editor_view.c editor_raster.c editor_stamp.c editor_ink.c
+  add_executable(disvm-editor ${runtime_sources} editor_host.c editor_thread.c editor_bulk.c editor_view.c editor_raster.c editor_stamp.c editor_ink.c
     "${root}/disVM/host/dis_ui_channel.c")
   if(DVM_RUNTIME_TESTS)
     add_executable(disvm_editor_raster_test test_editor_raster.c editor_raster.c editor_stamp.c editor_ink.c)
@@ -1841,3 +1841,18 @@ if(DVM_RUNTIME_TESTS)
   target_link_libraries(disvm_vector_local_test PRIVATE m)
   add_test(NAME disvm_vector_local COMMAND disvm_vector_local_test)
 endif()
+
+# Whole managed applications, not synthetic register-only callbacks, on a Dis OS owner.
+if(DVM_RUNTIME_TESTS AND DVM_RUNTIME_EDITOR)
+  add_test(NAME disvm_threaded_ui_owners COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_threaded_editor.py" "$<TARGET_FILE:disvm-editor>"
+    "${CMAKE_CURRENT_BINARY_DIR}/idecore-test.dis" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
+  set_tests_properties(disvm_threaded_ui_owners PROPERTIES TIMEOUT 120)
+endif()
+
+# Runnable managed computation example; no synthetic replacement VM or halt exit.
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/threaded-owner.dis"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" ${includes} -o "${CMAKE_CURRENT_BINARY_DIR}/threaded-owner.dis"
+    "${root}/disVM/examples/threaded-owner/main.b"
+  DEPENDS limbo-bootstrap "${root}/disVM/examples/threaded-owner/main.b" ${module_headers} VERBATIM)
+add_custom_target(disvm_threaded_owner_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/threaded-owner.dis")
