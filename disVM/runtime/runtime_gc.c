@@ -5,6 +5,7 @@
 #include "interp.h"
 #include "disvm/gc_workers.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
 #include <stdio.h>
@@ -18,14 +19,8 @@ typedef struct RuntimeGC
 {
     DVM_NativeContext *owner;         /* Immutable Dis context through collector joins. */
     DVM_NativeWorld *world;           /* Owned root coordination domain. */
-    DVM_WorldParticipant *mutator;    /* Current Dis owner's registration. */
     DVM_GCWorkers *workers;           /* Separate native Fast and Cycles contexts. */
     Prog **roots;                    /* Borrowed complete process-list slot. */
-    unsigned long native_releases;    /* Audited blocking callbacks left the heap. */
-    unsigned long native_reentries;   /* Matching active-heap reentries. */
-    unsigned long native_gc_progress; /* Real cycle passes completed during release. */
-    unsigned long native_before;      /* Cycle counter snapshot while mutator active. */
-    int native_inactive;              /* Owner-only paired release state. */
     unsigned long fast_empty_skips;   /* Mutator skipped an empty Fast request. */
     unsigned long passes;            /* Real retained rungc callbacks. */
     unsigned long snapshots;         /* Stopped active register snapshots. */
@@ -124,6 +119,8 @@ static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, vo
 int dvm_runtime_gc_start(Prog **roots, int locked_poll)
 {
     DVM_GCWorkersConfig config;
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    int attached = 0;
     if (!roots || state.world)
     {
         return 0;
@@ -135,7 +132,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     state.world = dvm_world_create_serial(locked_poll);
     if (state.world)
     {
-        state.mutator = dvm_world_join(state.world,dvm_native_context_current());
+        attached = dvm_native_owner_attach(owner,state.world);
     }
     config.world = state.world;
     config.create_context = collector_create;
@@ -145,11 +142,11 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.Cycles.run = cycle_pass;
     config.Cycles.budget = 1;
     config.user = &state;
-    if (state.mutator)
+    if (attached)
     {
         state.workers = dvm_gc_workers_create(&config);
     }
-    if (state.workers && dvm_world_enter(state.mutator))
+    if (state.workers && dvm_native_owner_enter(owner))
     {
         dvm_runtime_rc_start();
         return 1;
@@ -158,9 +155,9 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     {
         dvm_gc_workers_destroy(state.workers);
     }
-    if (state.mutator)
+    if (attached)
     {
-        dvm_world_detach(state.mutator);
+        dvm_native_owner_detach(owner);
     }
     dvm_world_destroy(state.world);
     memset(&state,0,sizeof(state));
@@ -173,6 +170,14 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
  * Returns zero on a latched worker/protocol failure. */
 int dvm_runtime_gc_request(void)
 {
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats call;
+    if (!state.world || dvm_native_owner_world(owner) != state.world ||
+        !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
+        call.pending_progress)
+    {
+        return 0;
+    }
     if (dvm_runtime_rc_pending())
     {
         if (!dvm_gc_workers_request(state.workers,DVM_GC_FAST))
@@ -195,73 +200,121 @@ int dvm_runtime_gc_request(void)
  * leave. Violated pairing/root ownership is process-fatal, never silent success. */
 int dvm_runtime_gc_native_leave(void)
 {
-    DVM_NativeContext *context;
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats call;
     Prog *process;
     if (!state.world)
     {
         return 0;
     }
-    if (dvm_native_context_current() != state.owner)
+    if (dvm_native_owner_world(owner) != state.world ||
+        !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
+        call.pending_progress)
     {
-        fprintf(stderr,"disvm: foreign audited native release\n");
-        exit(1);
-    }
-    if (state.native_inactive)
-    {
-        fprintf(stderr,"disvm: nested audited native release\n");
+        fprintf(stderr,"disvm: invalid/foreign/nested audited native release\n");
         exit(1);
     }
     if (gchalt)
     {
         return 0;
     }
-    context = dvm_native_context_current();
-    process = dvm_native_context_process(context);
-    if (state.native_inactive || !process || up->prog != process)
+    process = dvm_native_context_process(dvm_native_context_current());
+    if (up->prog != process)
     {
-        fprintf(stderr,"disvm: invalid audited native release\n");
+        fprintf(stderr,"disvm: unpublished native call owner\n");
         exit(1);
     }
-    process->R = DVM_R;
-    state.native_before = state.passes;
-    if (!dvm_runtime_gc_request() || !dvm_world_leave(state.mutator))
+    if (process)
+    {
+        process->R = DVM_R;
+    }
+    if (!dvm_runtime_gc_request() || !dvm_native_owner_suspend(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap release failed\n");
         exit(1);
     }
-    state.native_inactive = 1;
-    state.native_releases++;
     return 1;
 }
 
 
-/* [GC:] Reenter the same native owner before any managed load/store. released
- * must be the matching leave result; collector writes happen-before this enter.
- * No error unwinding or managed return publication occurs while inactive. */
+/* [GC:] Reacquire this TLS owner's native lease before any managed load/store.
+ * released is the matching result, never a cross-thread token. Sample the shared
+ * cycle epoch only AFTER admission succeeds; foreign/broken pairing is fatal. */
 void dvm_runtime_gc_native_enter(int released)
 {
-    if (state.world && dvm_native_context_current() != state.owner)
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats call;
+    if (!state.world)
+    {
+        if (released)
+        {
+            fprintf(stderr,"disvm: native reentry without a live service\n");
+            exit(1);
+        }
+        return;
+    }
+    if (dvm_native_owner_world(owner) != state.world ||
+        !dvm_native_owner_statistics(owner,&call))
     {
         fprintf(stderr,"disvm: foreign native heap reentry\n");
         exit(1);
     }
     if (!released)
     {
-        if (state.native_inactive)
+        if (call.phase != DVM_HEAP_ACTIVE || call.pending_progress)
         {
             fprintf(stderr,"disvm: missing native heap reentry token\n");
             exit(1);
         }
         return;
     }
-    if (!state.native_inactive || !dvm_world_enter(state.mutator))
+    if (!dvm_native_owner_resume(owner) || !dvm_native_owner_progress(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap reentry failed\n");
         exit(1);
     }
-    state.native_inactive = 0;
-    state.native_reentries++;
-    state.native_gc_progress += state.passes-state.native_before;
+}
+
+
+/* [GC:] Attach a newly bound native owner after service publication. Its process
+ * slots must be empty; host keeps the service alive through this call and joins
+ * all attaching/detaching threads before stop. Returns active heap ownership or
+ * zero with no registration. This does not create a managed scheduler worker. */
+int dvm_runtime_gc_attach(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    if (!state.world || !up || up->prog ||
+        dvm_native_context_process(dvm_native_context_current()))
+    {
+        return 0;
+    }
+    collector_environment();
+    if (!dvm_native_owner_attach(owner,state.world))
+    {
+        return 0;
+    }
+    if (!dvm_native_owner_enter(owner))
+    {
+        dvm_native_owner_detach(owner);
+        return 0;
+    }
+    return 1;
+}
+
+
+/* [GC:] Retire an attached non-controller owner while its process slots are
+ * empty and no native call is outstanding. Caller keeps TLS bound through this
+ * call, then may unbind. Returns zero without promising cleanup on misuse. */
+int dvm_runtime_gc_detach(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    if (!state.world || !up || dvm_native_context_current() == state.owner ||
+        up->prog || dvm_native_context_process(dvm_native_context_current()) ||
+        dvm_native_owner_world(owner) != state.world)
+    {
+        return 0;
+    }
+    return dvm_native_owner_leave(owner) && dvm_native_owner_detach(owner);
 }
 
 
@@ -272,6 +325,8 @@ int dvm_runtime_gc_stop(int diagnostics)
 {
     DVM_GCWorkersState workers;
     DVM_WorldAdmission admission;
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats call;
     int ok;
     size_t fast_polls = 0;
     size_t locked_polls = 0;
@@ -279,18 +334,21 @@ int dvm_runtime_gc_stop(int diagnostics)
     {
         return 1;
     }
-    if (!dvm_world_admission(state.world,&admission) || !admission.serial || admission.waiting)
+    if (dvm_native_context_current() != state.owner ||
+        !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
+        call.pending_progress || !dvm_native_owner_seal(owner) ||
+        !dvm_world_admission(state.world,&admission) || !admission.serial || admission.waiting)
     {
         return 0;
     }
-    if (!dvm_world_owner_polls(state.mutator,&fast_polls,&locked_polls))
+    if (!dvm_native_owner_polls(owner,&fast_polls,&locked_polls))
     {
         return 0;
     }
     dvm_runtime_rc_close();
     dvm_native_context_set_process(dvm_native_context_current(),NULL);
     ok = dvm_runtime_gc_request();
-    if (!dvm_world_leave(state.mutator))
+    if (!dvm_native_owner_leave(owner))
     {
         ok = 0;
     }
@@ -313,15 +371,15 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,
             (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips,
-            state.native_releases,state.native_reentries,state.native_gc_progress,
+            call.releases,call.reentries,call.gc_progress,
             (unsigned long)admission.admissions,(unsigned long)admission.contentions,
             (unsigned long)admission.waiting);
     }
-    if (!dvm_world_detach(state.mutator) || !dvm_world_destroy(state.world))
+    if (!dvm_native_owner_detach(owner) || !dvm_world_destroy(state.world))
     {
         ok = 0;
     }

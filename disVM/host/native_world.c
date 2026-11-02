@@ -33,6 +33,7 @@ struct DVM_NativeWorld
     size_t active;                      /* Mutators between enter and leave. */
     size_t parked;                      /* Active mutators stopped at poll. */
     long request;                       /* Atomic stop request, not root publication. */
+    int sealed;                        /* Registration closed by the last active owner before shutdown. */
     int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
     size_t next_ticket;                /* Next FIFO admission ticket under sync; unsigned wrap is intentional. */
     size_t serving_ticket;             /* Oldest queued admission; advances only on a successful enter. */
@@ -196,7 +197,7 @@ DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *
     participant->register_size = dvm_native_context_register_size(context);
     publish(participant);
     fvm_port_sync_lock(world->sync);
-    if (world->collector || !dvm_native_context_set_poll(context, poll_mutator, participant))
+    if (world->sealed || world->collector || !dvm_native_context_set_poll(context, poll_mutator, participant))
     {
         fvm_port_sync_unlock(world->sync);
         free(participant);
@@ -448,6 +449,29 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
     out->waiting = world->waiting;
     out->admissions = world->admissions;
     out->contentions = world->contentions;
+    fvm_port_sync_unlock(world->sync);
+    return 1;
+}
+
+
+/* Atomically refuse new registrations only for the last active serialized
+ * owner. participant is borrowed/current; peers or invalid phase leave the
+ * domain open. Existing owner can still finish and detach after success. */
+int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
+{
+    DVM_NativeWorld *world;
+    if (!owns(participant))
+    {
+        return 0;
+    }
+    world = participant->world;
+    fvm_port_sync_lock(world->sync);
+    if (!world->serial || world->count != 1 || !participant->active || participant->parked)
+    {
+        fvm_port_sync_unlock(world->sync);
+        return 0;
+    }
+    world->sealed = 1;
     fvm_port_sync_unlock(world->sync);
     return 1;
 }

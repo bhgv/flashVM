@@ -378,3 +378,38 @@ is four bytes. They do not justify widening ordinary LEA or admitting serialized
 pointers. Typed result/address-slot metadata requires shared agreement and
 verification before any new file-call profile. Existing Dis64 source inlining
 and 43-op np0 admission remain unchanged.
+
+
+## Runtime 0.48.0: native-call state belongs to each TLS owner
+
+NativeContext embeds opaque DVM_HeapOwner metadata; there is no new TLS key and
+no per-thread managed heap copy. RuntimeGC retains shared service/root/cycle
+state, but native phase, before-epoch and release/reentry/progress counters are
+owner-private. Audited callbacks use the same owner attach/enter/leave/suspend/
+resume helpers as the multi-owner fixture. A shared epoch is read only after
+successful reentry. One pending progress sample blocks further transitions until
+consumed; duplicate/foreign/out-of-phase calls refuse without hidden admission.
+
+Last-active-owner sealing closes registration under the same world mutex that
+joins roots. Peers prevent sealing. It is not a raw-pointer lifetime reference:
+hosts keep the world/service alive through all attach attempts and join every
+extra owner before controller stop. Internal runtime attach/detach requires empty
+process slots and an initialized/live externally published service. Registration
+alone does not create a managed Prog, make arbitrary Sys entry safe or migrate
+scheduler ownership. Invisible managed C-stack roots still need explicit leases.
+
+NATIVEGC owner_state=tls identifies the production route; native-call counters
+belong to the controller. Extra owners must copy their own statistics before
+detach, then aggregate only under an appropriate host join/ownership protocol.
+They do not mutate a shared native_inactive/native_before flag. Context unbind
+refuses attached metadata as well as outstanding world hooks.
+
+The native_owner fixture checks two overlapping native leases, independent epoch
+samples, FIFO and 201 two-root scans with real retained addw. Active removals
+expose admission, epoch-capture and registration-seal defects. Atomic/locked,
+no-atomics fallback, strict UBSan and focused TSan pass; symbolization warnings
+remain, and this is not whole-VM TSan evidence. The same public C tutorial is
+linked into the fixture and checks negative operation status and epoch wrap.
+Nineteen runtime gates pass. See ../examples/native-owner/README.md for full
+API contracts, source commands and installed SDK usage. The managed scheduler
+still has one executor; queues/current-process/cache/channel migration is open.

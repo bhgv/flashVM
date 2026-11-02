@@ -766,6 +766,11 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
             copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
             copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
+            copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
+            # Complete public header closure for the native-owner C tutorial.
+            for native_owner_header in native_context.h native_world.h native_owner.h; do
+                copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
+            done
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py; do
@@ -823,6 +828,11 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
             copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
             copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
+            copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
+            # Complete public header closure for the native-owner C tutorial.
+            for native_owner_header in native_context.h native_world.h native_owner.h; do
+                copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
+            done
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py; do

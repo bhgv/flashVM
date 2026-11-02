@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.47.1 LANGUAGES C)
+project(disvm_runtime VERSION 0.48.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -1979,4 +1979,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
    "${PYTHON_EXECUTABLE}" "${u}/utils/tests/native64-local-calls.py" ${call_control})
   set_tests_properties(disvm_${call_gate} PROPERTIES TIMEOUT 120)
  endforeach()
+endif()
+
+
+# Per-context native-call state and registration sealing, with active controls.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_owner_leases COMMAND "${PYTHON_EXECUTABLE}"
+  "${root}/disVM/tests/native_owner.py" --flashvm-root "${root}/flashVM")
+ set_tests_properties(disvm_native_owner_leases PROPERTIES TIMEOUT 100 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()

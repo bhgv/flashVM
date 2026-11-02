@@ -1,6 +1,7 @@
 /* Real OS TLS and FlashVM mutexes: no green-thread scheduler in this layer. */
 #include "disvm/native_context.h"
 #include "channel_sync.h"
+#include "native_owner_private.h"
 #include <stdlib.h>
 
 #ifdef _WIN32
@@ -29,6 +30,7 @@ struct DVM_NativeContext
     void **process_slot;  /* Generic process field or extended up.iprog subobject. */
     DVM_NativePoll poll;  /* Owner's safepoint hook, if registered. */
     void *poll_user;      /* Borrowed until explicit hook removal. */
+    DVM_HeapOwner heap_owner; /* Private TLS lifecycle/counters; no managed owners. */
     int bound;            /* Nonzero while one native TLS slot owns this context. */
 };
 
@@ -183,7 +185,7 @@ int dvm_native_context_bind(DVM_NativeContext *context)
 /* Detach while still owning the context; another native thread cannot unbind it. */
 int dvm_native_context_unbind(DVM_NativeContext *context)
 {
-    if (!context || tls_get() != context || context->poll)
+    if (!context || tls_get() != context || context->poll || context->heap_owner.world)
     {
         return 0;
     }
@@ -321,4 +323,13 @@ DVM_NativeContext *dvm_native_context_create_embedded(
 void *dvm_native_context_host_process(DVM_NativeContext *context)
 {
     return context && tls_get() == context ? context->host_process : 0;
+}
+
+
+/* Borrow only the current context's native heap metadata. No cross-owner read,
+ * allocation or heap access; native context destruction ends this lifetime. */
+DVM_HeapOwner *dvm_native_owner_current(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    return context ? &context->heap_owner : NULL;
 }

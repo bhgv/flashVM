@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1740**. [Русская версия](README.ru.md).
+Development version: **0.1741**. [Русская версия](README.ru.md).
 
-Current series: [v0.1740](docs/releases/v0.1740.md): prepared native call-frame cleanup with the FIFO heap gate.
+Current series: [v0.1741](docs/releases/v0.1741.md): per-TLS native-call state and sealed heap-owner registration.
 
 ## Browse documentation
 

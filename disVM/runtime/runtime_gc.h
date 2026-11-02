@@ -12,6 +12,16 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll);
  * returns zero after native failure. Does not wait for collection completion. */
 int dvm_runtime_gc_request(void);
 
+/* [GC:] Register a newly bound native owner with empty process slots and enter
+ * its heap turn. Host publishes the live service first and joins all registration
+ * attempts/owners before stop. Zero refuses; no managed executor is created. */
+int dvm_runtime_gc_attach(void);
+
+/* [GC:] Leave/detach an extra active owner with empty process slots. The original
+ * controller retires through stop instead. Returns zero for outstanding calls,
+ * wrong ownership/phase or protocol failure; TLS stays bound through the call. */
+int dvm_runtime_gc_detach(void);
+
 /* [GC:] Temporarily leave heap execution for an audited native callback whose
  * C locals contain no unregistered managed owners. Publishes the complete native
  * call REG/stack roots first. Returns one when released, zero in inline mode or
@@ -19,7 +29,8 @@ int dvm_runtime_gc_request(void);
 int dvm_runtime_gc_native_leave(void);
 
 /* [GC:] Reenter after the native operation, before touching any managed memory.
- * released is exactly the matching leave result. No nesting/migration is allowed. */
+ * released is exactly the matching leave result. No nesting/migration is allowed. Pairing and epoch snapshots live in this
+ * TLS context; shared collector epochs are sampled only after reentry. */
 void dvm_runtime_gc_native_enter(int released);
 
 /* [GC:] Leave heap execution, drain/join both collectors, remove the poll hook and

@@ -80,6 +80,12 @@ DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *
 int dvm_world_detach(DVM_WorldParticipant *participant);
 
 
+/* Close new registrations atomically only when participant is the current last
+ * active serialized owner. Others/faults return zero without closing. Existing
+ * root operations remain usable; this does not cancel tickets or join threads. */
+int dvm_world_seal_last_owner(DVM_WorldParticipant *participant);
+
+
 /* Enter mutator execution after collection; a serialized world also waits for
  * its FIFO heap turn. Double/foreign entry fails without consuming a ticket. */
 int dvm_world_enter(DVM_WorldParticipant *participant);
