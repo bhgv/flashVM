@@ -338,6 +338,27 @@ static int example_failure(void *user)
 }
 
 
+/* Temporarily borrow ALL of this context's REG while keeping its native-call
+ * metadata active. No safepoint or managed access occurs until restoration.
+ * No args/result; this proves call state lives outside copied VM registers. */
+static void register_isolation(void)
+{
+    REG saved;
+    DVM_HeapOwnerStats before;
+    DVM_HeapOwnerStats during;
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    check(dvm_native_owner_statistics(owner,&before) && before.phase == DVM_HEAP_ACTIVE,
+        "register isolation starts active");
+    memmove(&saved,&DVM_R,sizeof(saved));
+    memset(&DVM_R,0x5a,sizeof(saved));
+    check(dvm_native_owner_statistics(owner,&during) && during.phase == before.phase &&
+        during.releases == before.releases && during.reentries == before.reentries &&
+        during.gc_progress == before.gc_progress && during.pending_progress == before.pending_progress,
+        "whole-REG borrowing corrupted native owner metadata");
+    memmove(&DVM_R,&saved,sizeof(saved));
+}
+
+
 /* Main owns the world/control/contexts. argv optionally selects locked polling;
  * every run proves FIFO, real peer progress during native wait, exact arithmetic,
  * stable roots and full teardown. Return zero only after all joined resources. */
@@ -424,6 +445,7 @@ int main(int argc, char **argv)
     }
     check(dvm_native_owner_attach(dvm_native_owner_current(),shared.world),"attach last owner");
     check(dvm_native_owner_enter(dvm_native_owner_current()),"last owner enter");
+    register_isolation();
     check(dvm_example_native_wait(dvm_native_owner_current(),example_epoch,&example_clock,
         example_failure,&example_clock,&example_status) && example_status == -7,
         "tutorial negative native status returned after reentry");

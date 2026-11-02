@@ -413,3 +413,30 @@ linked into the fixture and checks negative operation status and epoch wrap.
 Nineteen runtime gates pass. See ../examples/native-owner/README.md for full
 API contracts, source commands and installed SDK usage. The managed scheduler
 still has one executor; queues/current-process/cache/channel migration is open.
+
+
+## Runtime 0.48.1: prepared-frame caught recovery preserves full REG
+
+Inferno 0071 at 7fe99c3 repairs caught emu/os exception recovery, complementing
+0070 terminal cleanup. Validated suffixes release pending frames top-down at
+every caller/extension; lower owners stay visible. Full resumed REG survives
+argument/old-slot cleanup, module retirement and exception-owner transfers even
+when actual destructor callbacks borrow all registers. No allocation, REG layout
+or shared file-call admission changes. Caller-owned alignment padding in the
+existing exception-frame fixture no longer represents an untyped pending gap.
+
+Independent owning and selected-source strict-UBSan gates pass 5376 trusted
+C/RX caught-call cases and 16 semantic owner/REG removal controls. Both ports and
+WORD models resume to IEXIT with exact owners/registers/guards and zero remaining
+fixture allocations. The actual exception/GC gate and 526000-case exception-frame
+matrix per port/model pass. All 22 runtime/host gates pass after import. Three
+new runtime CTests retain the selected-source handler matrix and controls.
+
+Native-call metadata lives outside saved REG. The native-owner fixture explicitly
+borrows ALL of its active REG, reads unchanged private phase/counters and restores
+registers before any safepoint; this passes default and strict UBSan routes. That
+is distinct from the trusted handler test and from whole-VM TSan evidence.
+Parallel managed spawn, concurrent marking and arbitrary native cancellation
+remain open. Snapshot manifests now pin 7fe99c3; the shared contract records the
+jointly agreed FUTURE eight-byte result-address/byte32 rule, without enabling
+LEA/CALL in the current 43-op file profile or assigning feature IDs.

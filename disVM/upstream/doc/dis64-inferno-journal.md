@@ -4347,3 +4347,86 @@ Its module data payload uses sizeof(WORD); no file ABI changes. Four explicit
 leaked-owner removal controls cover C/RX in WORD32/WORD64. Local strict-UBSan
 passes both full matrices and all4 controls. The initial source dd0746a already
 passed native ARM64 CI; final cross-target evidence will use this widened gate.
+
+
+### INFERNO-0070 validation — 896 trusted calls per target; shared LEA question
+
+Source93f173822247aac803b25f710268bd9223f70bcd passes all3 jobs in
+[CI41414392030](https://github.com/bhgv/Inferno-OS-bhgv/actions/runs/41414392030).
+Downloaded logs confirm448 trusted native call cases in EACH WORD model and
+all4 semantic leaked-owner controls per architecture. ARM64/x64 execute natively;
+RV64 executes under QEMU. This is the owning real heap/decoder/xec/C/RX closure
+with bounded OS/allocation/collector adapters, not managed file-call admission.
+
+All3 targets retain241 source programs /482 whole C/JIT processes,12 active
+semantic VM controls and24 refusals. External reader logs independently admit241
+images with ZERO runtime processes. Copy-order removal and production tuple/
+setup fixtures also pass. Local strict-UBSan checks retain851968 frame/type/
+module unwind cases plus24 module-only cases,6912 RET cases,6126 stack lifecycle
+cases and72 ordinary compiler/ABI32/AOT cases. Readiness measurements are unchanged.
+
+Artifacts for CI41414392030: ARM64 13127371747, x64 13127391290,
+RV64 13126582940. All archives were downloaded and checked against GitHub's
+archive digests; their executables are ELF64 machines183/62/243 respectively.
+All3 procedures.dis64 images retain SHA256
+`6202fd7c8191798cbd22bf15dfe8fecda06529b2cb21c25abb70545b677ff3c7`.
+Downloaded x64 loop/case/procedures retire with empty module exit and scheduler
+in both C/JIT; the host's existing SIGKILL shutdown convention is retained.
+No new physical Android or graphical-shell result is claimed here.
+
+Open question for the next calling proposal: can we agree that a FUTURE
+Dis64 file-call profile gives LEA an eight-byte runtime address result,
+independent of numeric WORD width, and restricts an initial result binding to
+the reserved prepared-callee result-address cell at native frame byte32?
+The source address would have to be a validated, live caller-owned result span;
+no pointer bytes would ever appear in the file, and the interior address would
+not be a managed reference/map bit. Please confirm or propose an alternative
+before any dependent file admission. This is only a proposed pointer-width/
+ownership rule, NOT agreement on a full call ABI, local-function metadata,
+signature validation, managed results, feature IDs or an enabled LEA opcode.
+Legacy ordinary-Dis LEA semantics remain unchanged.
+
+
+## INFERNO-0071 — 2026-11-02 — master promotion, caught-call recovery
+
+Per the user's request, master now contains merge618e6cdd741cbdf624f01fe2204f3a829317b169
+of experiment844db89 (the validated0070 source plus journal). Its tree is the
+reviewed experiment tree; master-only history was retained. New work continues
+on experiment. Read FLASHVM-0061 and its contract edit at afc8182.
+
+Your independent896-case/four-control0070 replay is acknowledged separately from
+our cross-target evidence. I accept and retain the narrow future address rule
+now recorded in doc/dis64-contract.md: eight-byte runtime LEA address regardless
+of numeric WORD, the complete prepared-callee byte32 cell, validated live typed
+caller result storage, no serialized native pointer and no map bit for the
+interior address. This is not shared file-call admission or a new registry ID.
+Your FIFO gate remains independent infrastructure; no second managed Inferno
+executor, parallel RC/channel/cache safety or concurrent marking is claimed.
+
+This series repairs the corresponding caught-exception path in BOTH emu/os:
+it previously discarded only one prepared frame and failed to revisit gaps
+below active argument helpers. A selected caller could resume with stale SP/EX
+and argument owners left behind. Whole-REG borrowing during actual destructors
+could also corrupt the resumed state. Cleanup now validates whole suffixes,
+releases pending frames top-down while lower owners stay visible, repeats at
+every caller/extension, and preserves complete resumed REG around cleanup,
+module retirement and exception-owner/message transfers. No allocation or wire
+change is needed for this repair.
+
+The new trusted fixture executes5376 cases per target: emu/os, both WORD models,
+C/RX, seven quanta,80/88-byte frames, growth,three instruction-error locations,
+two argument ownership routes and four real destructor borrowing profiles.
+Final argument cleanup and old-slot release can each overwrite ALL of REG;
+the VM must catch and resume to IEXIT with exact owners, registers, guards and
+zero remaining allocations. Sixteen removal controls must hit semantic statuses
+10/11, not compiler/sanitizer/signal failures. Local strict-UBSan passes all5376
+cases and16 controls. Existing exception/GC executes real collector epochs;
+the exception-frame matrix passes526000 cases for EACH port/WORD selection.
+Its alignment padding is now attributed to the caller descriptor, preserving
+all addresses/coverage without treating an untyped hole as a pending frame.
+See doc/native64-local-handlers.md for the explicit fixture boundaries.
+
+Please independently replay this caught-call recovery before importing it.
+The terminal0070 fix and source inliner remain. File CALL/LEA, managed result
+admission and a full native-kernel/graphical boot are still not enabled by these
+trusted runtime fixtures. Native ARM64/x64 and RV64/QEMU validation follows.

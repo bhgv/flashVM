@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.48.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.48.1 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -1987,4 +1987,24 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
  add_test(NAME disvm_native_owner_leases COMMAND "${PYTHON_EXECUTABLE}"
   "${root}/disVM/tests/native_owner.py" --flashvm-root "${root}/flashVM")
  set_tests_properties(disvm_native_owner_leases PROPERTIES TIMEOUT 100 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+endif()
+
+
+# Trusted caught-call recovery: actual emu/os handlers and whole-REG borrowers.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(handler_gate native_local_handlers native_local_handlers_pending native_local_handlers_registers)
+  set(handler_control)
+  if(handler_gate STREQUAL "native_local_handlers_pending")
+   set(handler_control --control pending)
+  elseif(handler_gate STREQUAL "native_local_handlers_registers")
+   set(handler_control --control registers)
+  endif()
+  add_test(NAME disvm_${handler_gate} COMMAND "${CMAKE_COMMAND}" -E env
+   "CC=${CMAKE_C_COMPILER}"
+   "CPATH=${root}/disVM/host/include:${u}/Linux/arm/include"
+   "NATIVE64_ARCH=${runtime_backend}"
+   "NATIVE64_TMPDIR=${CMAKE_CURRENT_BINARY_DIR}"
+   "${PYTHON_EXECUTABLE}" "${u}/utils/tests/native64-local-handlers.py" ${handler_control})
+  set_tests_properties(disvm_${handler_gate} PROPERTIES TIMEOUT 180)
+ endforeach()
 endif()

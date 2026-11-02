@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1741**. [Русская версия](README.ru.md).
+Development version: **0.1742**. [Русская версия](README.ru.md).
 
-Current series: [v0.1741](docs/releases/v0.1741.md): per-TLS native-call state and sealed heap-owner registration.
+Current series: [v0.1742](docs/releases/v0.1742.md): prepared-call exception recovery with preserved registers and TLS ownership.
 
 ## Browse documentation
 
