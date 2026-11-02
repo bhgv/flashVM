@@ -12,7 +12,7 @@ int dvm_editor_plain_letter(const SDL_KeyboardEvent *event);
 
 /* Copy a first TextInput and bounded FIFO continuations into one UTF-8 message.
  * context owns keyboard snapshots; no Dis document or raster is touched.
- * Consume only same-window text/plain-letter transitions, preserve all command,
+ * Consume only same-window text/printable-key transitions, preserve all command,
  * focus, pointer, IME and capacity boundaries. Return1 or0 on invalid/native error.
  * Owner-thread only, nonblocking; no codepoint or SDL text record is split. */
 int dvm_editor_text_batch(FVM_Context *context, const SDL_TextInputEvent *first, DVM_UIMessage *message);

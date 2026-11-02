@@ -491,3 +491,15 @@ saved roots remain authoritative during borrowed-REG cleanup. Production queue/
 I/O/GC/UI gates are rechecked after this bookkeeping change. Another managed
 worker still requires per-owner error/budget dispatch and wake/kill migration.
 Both snapshot manifests pin 829d69f; no wire/ID or default file admission changes.
+
+
+## Source typing bursts (0.49.2)
+
+Queued SDL text now crosses printable-key transitions, including digits,
+punctuation and Unicode-layout keycodes, instead of only Latin A-Z. Committed
+SDL_TEXTINPUT remains authoritative; no text is synthesized from key symbols.
+Modifiers, commands, navigation, pointers and foreign windows retain FIFO
+barriers; the256-event budget remains. Standalone text repaint now uses the same
+allocation-threshold GC step as MDI, avoiding an unconditional full collection
+per repaint. The Dis owner still owns edits; no optimistic document replica or
+additional managed executor is introduced.

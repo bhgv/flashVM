@@ -81,6 +81,96 @@ int main(void)
         goto done;
     }
     SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+    /* A source-code burst crosses digits, whitespace and punctuation without
+     * an alphabetic key between them. Previously each transition split it.
+     * Committed Unicode remains authoritative; key symbols never become text. */
+    {
+        const char *source = " 12;[]=+-/.,`{}~";
+        size_t index;
+        for (index = 0; source[index]; ++index)
+        {
+            char committed[2] = {source[index], 0};
+            memset(&event, 0, sizeof(event));
+            event.type = SDL_KEYDOWN;
+            event.key.windowID = 1;
+            event.key.keysym.sym = (SDL_Keycode)source[index];
+            if (SDL_PushEvent(&event) != 1 || !push_text(1, committed))
+            {
+                goto done;
+            }
+            event.type = SDL_KEYUP;
+            if (SDL_PushEvent(&event) != 1)
+            {
+                goto done;
+            }
+        }
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_MOUSEBUTTONDOWN;
+        event.button.windowID = 1;
+        if (SDL_PushEvent(&event) != 1 || !push_text(1, "after pointer") ||
+            !dvm_editor_text_batch(context, &first, &message) ||
+            message.size != 1 + strlen(source) || message.text[0] != 'A' ||
+            memcmp(message.text + 1, source, strlen(source)) ||
+            SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1 ||
+            event.type != SDL_MOUSEBUTTONDOWN)
+        {
+            goto done;
+        }
+    }
+    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+    /* Do not absorb printable Ctrl/Alt/GUI/IME shortcuts, Shift transitions,
+     * Enter, Backspace or navigation into a text edit. Leave the head intact. */
+    for (i = 0; i < 8; ++i)
+    {
+        static const SDL_Keycode keys[] = {SDLK_1, SDLK_SEMICOLON, SDLK_SPACE,
+            SDLK_a, SDLK_LSHIFT, SDLK_RETURN, SDLK_BACKSPACE, SDLK_LEFT};
+        static const Uint16 mods[] = {KMOD_CTRL, KMOD_ALT, KMOD_GUI,
+            KMOD_MODE, 0, 0, 0, 0};
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_KEYDOWN;
+        event.key.windowID = 1;
+        event.key.keysym.sym = keys[i];
+        event.key.keysym.mod = mods[i];
+        if (SDL_PushEvent(&event) != 1 || !push_text(1, "later") ||
+            !dvm_editor_text_batch(context, &first, &message) || message.size != 1 ||
+            SDL_PeepEvents(&event, 1, SDL_PEEKEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1 ||
+            event.type != SDL_KEYDOWN || event.key.keysym.sym != keys[i])
+        {
+            goto done;
+        }
+        SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
+    }
+    /* SDL keycodes can follow the active Unicode layout rather than Latin A-Z.
+     * Keep Cyrillic transitions inside the burst; commit only SDL's UTF-8 text,
+     * including a supplementary scalar, never synthesize it from a keycode. */
+    for (i = 0; i < 20; ++i)
+    {
+        memset(&event, 0, sizeof(event));
+        event.type = SDL_KEYDOWN;
+        event.key.windowID = 1;
+        event.key.keysym.sym = 0x044f;
+        if (SDL_PushEvent(&event) != 1 || !push_text(1, "\xd1\x8f\xf0\x9f\x98\x80"))
+        {
+            goto done;
+        }
+        event.type = SDL_KEYUP;
+        if (SDL_PushEvent(&event) != 1)
+        {
+            goto done;
+        }
+    }
+    if (!dvm_editor_text_batch(context, &first, &message) || message.size != 121)
+    {
+        goto done;
+    }
+    for (i = 1; i < message.size; i += 6)
+    {
+        if (memcmp(message.text + i, "\xd1\x8f\xf0\x9f\x98\x80", 6))
+        {
+            goto done;
+        }
+    }
+    SDL_FlushEvents(SDL_FIRSTEVENT, SDL_LASTEVENT);
     memset(first.text, 'x', sizeof(first.text) - 1);
     first.text[sizeof(first.text) - 1] = 0;
     for (i = 0; i < 40; i++)

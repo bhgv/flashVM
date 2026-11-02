@@ -2067,7 +2067,9 @@ static int render(void)
     recording_frame = frame;
     prepared = prepare_frame();
     recording_frame = NULL;
-    if (!prepared || fvm_gc_collect(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
+    /* [GC:] Layout capture owns detached data. Honor the allocation threshold,
+     * as the desktop path does, instead of sweeping on every typing repaint. */
+    if (!prepared || fvm_gc_step(context, 0) != FVM_OK || fvm_render_queue_submit(raster_queue, frame) != FVM_OK)
     {
         dvm_editor_frame_destroy(frame);
         return 0;

@@ -23,7 +23,21 @@ static size_t text_size(const SDL_TextInputEvent *event)
 }
 
 
-/* Fold current queued text/ordinary-letter transitions into a single edit.
+/* Recognize transitions whose committed text belongs to SDL_TEXTINPUT. The
+ * borrowed event is inspected only; no keyboard state changes here. Commands,
+ * modifiers, navigation and IME mode switches remain strict FIFO barriers.
+ * Printable nonletters are not tracked by editor_view's Flash key snapshot. */
+static int text_transition(const SDL_KeyboardEvent *event)
+{
+    SDL_Keycode key = event->keysym.sym;
+    int printable = (key >= SDLK_SPACE && key < SDLK_DELETE) ||
+                    (key >= 0xa0 && key <= 0x10ffff && !(key >= 0xd800 && key <= 0xdfff));
+    return printable &&
+           !(event->keysym.mod & (KMOD_CTRL | KMOD_ALT | KMOD_GUI | KMOD_MODE));
+}
+
+
+/* Fold current queued text/printable-key transitions into a single edit.
  * The first record is already removed. Subsequent records stay queued unless
  * they fit entirely and share its window. Native key snapshots remain accurate;
  * Dis receives text, not no-op alphabetic key round trips. No waiting/painting. */
@@ -60,21 +74,27 @@ int dvm_editor_text_batch(FVM_Context *context, const SDL_TextInputEvent *first,
             message->size += bytes;
         }
         else if ((next.type == SDL_KEYDOWN || next.type == SDL_KEYUP) &&
-                 next.key.windowID == first->windowID && dvm_editor_plain_letter(&next.key))
+                 next.key.windowID == first->windowID && text_transition(&next.key))
         {
-            FVM_KeyboardState state;
-            unsigned code = (unsigned)(next.key.keysym.sym - SDLK_a + 'A');
-            memset(&state, 0, sizeof(state));
-            state.struct_size = sizeof(state);
-            if (fvm_input_get_keyboard(context, &state) != FVM_OK)
+            if (dvm_editor_plain_letter(&next.key))
             {
-                return 0;
+                FVM_KeyboardState state;
+                unsigned code = (unsigned)(next.key.keysym.sym - SDLK_a + 'A');
+                memset(&state, 0, sizeof(state));
+                state.struct_size = sizeof(state);
+                if (fvm_input_get_keyboard(context, &state) != FVM_OK)
+                {
+                    return 0;
+                }
+                state.down[code] = next.type == SDL_KEYDOWN;
+                state.last_code = code;
+                state.last_ascii = 0;
+                if (fvm_input_set_keyboard(context, &state) != FVM_OK)
+                {
+                    return 0;
+                }
             }
-            state.down[code] = next.type == SDL_KEYDOWN;
-            state.last_code = code;
-            state.last_ascii = 0;
-            if (fvm_input_set_keyboard(context, &state) != FVM_OK ||
-                SDL_PeepEvents(&next, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1)
+            if (SDL_PeepEvents(&next, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) != 1)
             {
                 return 0;
             }
