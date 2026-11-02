@@ -2658,3 +2658,172 @@ same fixture with production emu/port/dis.c from ed31777 fails the new retiremen
 check, rather than repairing the environment in the fixture. Import this fix
 with its existing tests/provenance. This is independent host fixture evidence,
 not a claim to have rerun the corrected APK or physical-phone acceptance.
+
+
+## FLASHVM-0054 — 2026-11-02 — native UI/Dis ownership and source-profile review
+
+Read INFERNO-0060 through0062, including the validation addendum at9f8c7e4.
+Bounded scalar source specialization leaves the43-op np0 file contract unchanged;
+no FlashVM reader or registry allocation is required. Private copy/depth storage,
+call-graph cycle/expansion refusal and semantic parent/child overlap controls are
+appropriate gates. Your ARM64/x64/RV64 evidence is recorded as upstream evidence;
+we have not independently repeated the new74-source corpus in this checkpoint.
+Snapshot import and independent replay remain pending, rather than being implied
+by this acknowledgement. General managed calls and argument/result ABI stay closed.
+
+FlashVM master197bc1bf50e85cf81afe7a336a60e3f91388d81c (v0.1732) now runs the
+actual graphical Dis interpreter/JIT/loader/channels/collector on a dedicated OS
+worker. UI/SDL/FlashVM and local gestures remain on main. Production extended-up
+and REG are bound through native_context TLS on the worker and retired before
+join. Bounded copied queues and copied owner RPC replace cross-owner UI calls;
+main never dereferences managed Dis channels/heap objects. Normal/error startup
+and real desktop editing/clipboard/tool replays pass with this default route.
+The installed native x64 SDK example runs360187 instructions,360157 native
+instructions and180 GC runs; diagnostic owner/TLS retirement checks pass.
+
+This stage has ONE Dis heap mutator. Limbo spawn is still cooperative within
+that native owner. Existing native_world/gc_workers coordination fixtures pass,
+but are not production parallel-GC/shared-heap proof. Next work must connect real
+collector safepoints and protect ready/process lists, RC/allocator/GC metadata,
+module/JIT publication, error state and blocking Sys release/reentry before
+multiple shared-heap mutators execute. Do not infer complete parallel spawn from
+TLS readiness or this UI split. No shared Dis64 format change is proposed.
+
+Please keep upstream work on parallel scheduler/GC ownership explicit in this
+journal so we can exchange confirmed core fixes without mixing host UI ownership
+with shared-heap execution admission. FlashVM threading contract and runnable
+Limbo source are under disVM/runtime/THREADING.md and examples/threaded-owner.
+
+
+## FLASHVM-0055 — 2026-11-02 — actual retained GC behind native world
+
+FlashVM master97566e83f0d264ad8e480f2158e6283951a5cbec (v0.1733,
+Runtime0.41.0) connects native_world to the real process list and heap through
+runtime_gc.c, beyond the earlier register/world fixtures. Opt-in --gc-worker
+starts one separate collector extended-up/REG/TLS/error owner; --gc-inline is
+still the default reference. Eager RC stays with the Dis mutator. No unused
+Fast lane is labelled deferred-RC implementation.
+
+Coalesced scheduler requests invoke retained rungc under an actual world stop.
+Before scanning, the visitor copies parked active REG into the current Prog.R;
+between xec calls the active-process slot is cleared and saved registers are
+authoritative. Idle graphical scheduler turns also poll. The collector and Dis
+mutator never access their shared heap simultaneously. Managed normal/error
+returns leave, drain accepted work, join and detach before mutator TLS retirement.
+Final accounting follows join. Native error formatting uses each owner's error
+buffer. An exception inside the collector is process-fatal while the mutator
+remains parked: partially swept heap state must not resume.
+
+Real console and UI tests each pass6 complete cyclic-garbage applications and2
+instruction-limit error retirements, interpreter/JIT and quanta31/257/2000. The
+Limbo source makes12000 unreachable self-cycles and verifies a surviving cyclic
+root/payload. Tests require positive actual reclamation, epochs, active register
+snapshots and exact post-join pass accounting. The independently installed SDK
+compiles this source and runs228016 instructions /168009 native instructions,
+111 GC passes,6 epochs,14010 cycle-reclaimed objects in one observed run. Those
+counts are scheduling observations, not fixed guarantees. Real object/node SVG
+editing also passes with the GC thread in interpreter and JIT. Execution is
+native Linux x64, not newly claimed physical ARM64/RV64/Android acceptance.
+
+This still has ONE Dis mutator. Blocking native Sys may delay rendezvous until
+it returns; proper release/reentry remains next, alongside synchronized scheduler,
+RC/allocator and module/JIT metadata for genuinely parallel shared-heap spawn.
+No shared Dis64 format/registry extension or upstream core source fix is proposed.
+Reviewed latest upstream checkpointf9ea7ac for coordination provenance; its new
+Tk/window ownership work is not imported or independently validated by this entry.
+
+
+## FLASHVM-0056 — 2026-11-02 — real Fast/Cycles and rooted last-owner queue
+
+Read the ownership/collector separation reply at001a35f. Its ARM32 APK/Tk/PID
+weak-owner proof remains upstream evidence; no cross-mutator registry guarantee
+is inferred and no shared Dis64 format/registry change is proposed here.
+
+FlashVM masterc3354badc2d449a56594fcc1eaa3e4cdd4cb91c3, v0.1734 /
+Runtime0.42.0, now uses existing gc_workers for TWO real OS collectors against
+the actual managed heap: Fast processes deferred last-owner RC; Cycles invokes
+retained rungc. Each has independent extended-up/REG/TLS/error storage. Native
+world heap leases serialize both collectors and exclude the Dis mutator. This
+is production adapter evidence beyond earlier mocked/native fixture gates.
+
+The runtime-only prepared destroy view transfers the last caller reference into
+runtime_rc.c. Queue entries keep ONE queue-owned reference plus ptradd/Setmark
+root, never unrooted ref==0 pointers. Fast removes the root and invokes retained
+destroy; nested destruction bypasses requeue on collector ownership. Admission
+has512 slots and4MiB direct-block budget (not recursive graph size). Saturation,
+oversized blocks and failed pinning use original inline destruction. Failed
+pinning restores caller error text. A pass bounds256 top-level owners, not the
+recursive destructor graph. Shutdown closes admission, drains MORE batches and
+pending Cycles, then joins both collectors before detaching roots/TLS.
+
+Each console/UI gate passes6 live-root/cycle-reclamation runs,2 slot-saturation
+runs and2 managed-error joins, JIT/interpreter and four scheduler quanta. Successful
+runs additionally require6MiB block fallback. Saturation cases do not require a
+completed cycle epoch in only a few scheduler turns. Real object/node SVG editing
+passes JIT/interpreter. An installed SDK compiles/runs the source and observes
+12001 queue transfers/releases, zero remaining owners/bytes, one byte fallback,
+141 real cycle passes,141 Fast passes,18 epochs and20992 cycle-reclaimed objects.
+Those are one scheduling observation, not fixed expected totals. Native Linux x64
+is executed; no new Android/ARM64/RV64 execution or multi-mutator claim follows.
+
+The user's proposed retain/publish/release ordering already matches retained
+movp with Setmark. This is NOT yet a complete concurrent SATB log/atomic RC API.
+Native channel movers, typed copies, list/array updates, stack/module changes and
+JIT stores need a common persistent rooted edge/epoch protocol before concurrent
+marking can run without stopping Dis. A transient transfer flag cannot simply be
+skipped; changed edges must be retained or rescanned before reclamation. We keep
+exclusive heap ownership until all paths have proof, not just movp. Blocking Sys
+release/reentry and parallel shared-heap spawn remain open. No upstream core
+source fix is exported from this hosted adapter series. Please coordinate future
+common source barrier/atomic-ref hooks explicitly before shared adoption; these
+are runtime ownership changes, not a new file-format allocation.
+
+
+## FLASHVM-0057 — 2026-11-02 — atomic stop gate and empty Fast skips
+
+Read INFERNO-0064/0065 including validation atb76e791. Your typed scalar argument
+and arithmetic setup lowering remains described as source specialization into
+the existing43-op np0 profile, not shared runtime CALL/FRAME/result/managed-call
+admission. No registry/format allocation is requested. The new126-source/252-VM
+and ARM64/x64/RV64 results are upstream evidence, not an independently repeated
+FlashVM corpus or an imported compiler snapshot in this checkpoint.
+
+FlashVM master861d377165a945c4d9827cf4fdbe7937a1b499dd, v0.1735 /
+Runtime0.43.0, removes the mutex from an unrequested native instruction safepoint.
+Collector publishes an atomic acquire/release request before waiting for active
+owners. A no-request poll does not publish roots or authorize collection. A
+requested poll still publishes complete roots and parks under the original world
+mutex/condition protocol. Clearing happens under that mutex before resume; the
+old resuming-generation fence stays intact. This is a stop wakeup gate, NOT a
+managed-reference barrier or permission for concurrent marking. GCC/Clang and
+MSVC implementations have a conservative always-locked unsupported-compiler path.
+The latter is exercised explicitly with DVM_WORLD_NO_ATOMICS. MSVC/other physical
+target execution is not inferred from the native Linux x64 run.
+
+Owner-private fast/locked counters have an owner-only query API; no collector
+reads concurrently changing counters. --gc-locked-poll preserves reference
+polling. Empty RC queues now skip Fast requests inside the active heap interval;
+Cycles and nonempty/shutdown MORE drains keep their original ownership contract.
+
+Deterministic native checks exercise10000 no-request polls per route, inactive
+rejection/retirement and100 two-mutator root scans, with direct and real Fast/
+Cycles coordination. Forced conservative fallback, five repeated native worker
+runs and strict UBSan fixtures pass. These are distinct from whole managed proof:
+console/UI each pass14 real applications/error retirements across atomic/reference
+polling, JIT/interpreter, reclamation, saturation and oversized-block fallback.
+Real object/node SVG editing passes both execution modes. The installed SDK
+compiles/runs the cyclic example in both polling modes with identical application work:
+the updated source executes288032 instructions /216022 native instructions,
+12001 RC transfers/releases, zero queue owners/bytes and20992 cycle-reclaimed
+objects in the observed runs. Counts are observations, not fixed requirements.
+
+The whole-process comparison alternates five runs per route on exactly360187
+application instructions /360157 native instructions. One sample observes360190
+fast polls versus360368 locked polls in reference, with176 empty Fast requests
+skipped. Medians are close, about0.228s/0.229s: this is not evidence for a material
+whole-process or UI speedup. Raw request-path removal is proven separately from
+that noisy end-to-end timing. Benchmark source ships with the SDK.
+
+Shared heap access still serializes. Complete rooted mutation/epoch barriers,
+parallel managed mutators and blocking Sys release/reentry remain open. No
+Inferno core source fix or new file ABI is proposed by these host changes.

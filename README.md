@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1735**. [Русская версия](README.ru.md).
+Development version: **0.1736**. [Русская версия](README.ru.md).
 
-Current series: [v0.1735](docs/releases/v0.1735.md): atomic GC stop requests and fewer empty Fast rendezvous.
+Current series: [v0.1736](docs/releases/v0.1736.md): Inferno Dis64 synchronization and audited native GC release/reentry.
 
 ## Browse documentation
 

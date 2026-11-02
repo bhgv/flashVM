@@ -127,6 +127,7 @@ def main():
     functions = set(re.findall(r"void (Sys_\w+)\(void\*\);", text))
     implemented = {
         "Sys_millisec",
+        "Sys_sleep",
         "Sys_print",
         "Sys_fprint",
         "Sys_sprint",

@@ -215,3 +215,34 @@ fallback in the same native fixture. GCC native fast/reference, forced fallback,
 five repeated Fast/Cycles rendezvous runs and strict UBSan native fixtures pass.
 These are separate from the managed application gates. Executed target is Linux
 x64; MSVC/ARM64/RV64 source branches are not new device execution evidence.
+
+## Runtime0.44.0: audited native-call release/reentry
+
+Workspace v0.1736 adds actual heap leave/reentry for Sys.sleep through
+runtime_gc_native_leave/enter. This is an audited scalar callback, not a blanket
+release/acquire implementation. The caller captures its scalar frame/result,
+saves the current complete native-call REG in Prog.R and publishes roots through
+native_world_leave before blocking. The root visitor can scan the inactive saved
+stack. After OS wait the same mutator enters again before touching managed memory.
+Calls with invisible unregistered managed C-stack owners are not admitted.
+
+The first adapter is sleep_sys.c. It uses the shared thread port, checks native32
+period range, returns zero for nonpositive periods and -1 for out-of-range values.
+It contains no managed allocation, buffer access or throwing callback between
+leave and enter. GC-protected regions retain ownership. Foreign/nested or broken
+pairing is process-fatal before an unsafe managed return. The mutator context is
+immutable through worker joins. Native call timing is independent of Flash frames.
+
+Owner-private native release/reentry/progress counters are reported after joins.
+Cycle progress is read only inside active world intervals before/after the wait,
+not through racy reads while the collector writes. The managed fixture preserves
+a cyclic graph/string/arrays and nested call frames; worker runs require actual
+GC progress while released and six matching reentries. Console/UI each execute12
+successes and2 managed-limit error retirements, JIT/interpreter, inline/atomic/
+locked and quanta1/2000. Existing cyclic-heap and real SVG editing gates also run.
+
+Sys.sleep blocks this Dis owner. UI/GC can continue; other Limbo processes are
+still cooperatively scheduled by that owner. Arbitrary Sys read/write callbacks,
+opaque native module C roots, cancellation and exception paths require their own
+buffer/root audits before release can be generalized. Concurrent graph marking
+and parallel shared-heap spawn remain closed.

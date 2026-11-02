@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.43.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.44.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -101,7 +101,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm main.c runtime_gc.c runtime_rc.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c runtime_gc.c runtime_rc.c sleep_sys.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)
@@ -1873,4 +1873,24 @@ if(TARGET disvm-editor)
   "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm-editor>"
   "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis")
  set_tests_properties(disvm_editor_native_cycle_gc PROPERTIES TIMEOUT 180)
+endif()
+
+# Audited native callback: real managed roots remain alive outside the heap lease.
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-wait.dis"
+ COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g -I "${u}/module"
+  -o "${CMAKE_CURRENT_BINARY_DIR}/native-wait.dis"
+  "${root}/disVM/examples/gc-native-wait/main.b"
+ DEPENDS limbo-bootstrap "${root}/disVM/examples/gc-native-wait/main.b" VERBATIM)
+add_custom_target(disvm_native_wait_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/native-wait.dis")
+if(DVM_RUNTIME_TESTS)
+ add_test(NAME disvm_native_wait COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_native_wait.py" "$<TARGET_FILE:disvm>"
+  "${CMAKE_CURRENT_BINARY_DIR}/native-wait.dis")
+ set_tests_properties(disvm_native_wait PROPERTIES TIMEOUT 90)
+ if(TARGET disvm-editor)
+  add_test(NAME disvm_editor_native_wait COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_native_wait.py" "$<TARGET_FILE:disvm-editor>"
+   "${CMAKE_CURRENT_BINARY_DIR}/native-wait.dis")
+  set_tests_properties(disvm_editor_native_wait PROPERTIES TIMEOUT 90)
+ endif()
 endif()

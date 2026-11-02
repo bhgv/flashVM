@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "9380f259490ef04423fdb81d93c6f666401e3833",
+  "revision": "1f8b07ad2befd1559f12c42a5018a8cc2e1946bd",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -400,10 +400,10 @@
     "upstream/limbo/com.c": "ba5398035b0cbf0f9385d62aefecc3ce1cec0ce7955532c9d0102ff0f3858c1a",
     "upstream/limbo/decls.c": "cc7dc4663947506bae7cc4f89156cf81627d7775332b27f8de37b48796f2474f",
     "upstream/limbo/dis.c": "d4069bd42560e90d5a9fe48179fbea9b02ae0c6fad2cb6482713c17217a17ce7",
-    "upstream/limbo/dis64-inline.c": "5e6c4706c78aca0db78126584331bd48442984c1d4158d7633d35a08a3dfa910",
-    "upstream/limbo/dis64-inline.h": "f7e409ec6503beb2b858fa81f36b81d0f280ddea3aa27a1e98c76ce02daa4ab5",
-    "upstream/limbo/dis64-lower.c": "349705c58dd4fae18c2c851eaf49c28a6def53812202a78adcab084888b73253",
-    "upstream/limbo/dis64-lower.h": "3824f00fc7f0e9584daf6a354ac859f5b7d90d231d7e463f7f21203fae6304cf",
+    "upstream/limbo/dis64-inline.c": "cf85f0ddc1f3cea91585c2d8e6e67a1adacda285e566cf331148ef772db9654a",
+    "upstream/limbo/dis64-inline.h": "edf2ea5727fb429f18e8172853593257d04f2f860db103c7483f7c5710a84e26",
+    "upstream/limbo/dis64-lower.c": "85202c9ccd2f3cf4986fd43bad4e1d41a532ddd8d314100af8e46b2d318e7ac0",
+    "upstream/limbo/dis64-lower.h": "cea4ea540bd2f7e91f770dffda2c589703f4c64469b79eb030d41515c729d9e6",
     "upstream/limbo/dis64.c": "f309e525ef30f56b11ed383d88de4157ba8cbf833c1c99ee6477772a98aee8a8",
     "upstream/limbo/dtocanon.c": "3166b64c45d320663eae43c468c50842be5195be7f28e472d3d6719e327736a6",
     "upstream/limbo/ecom.c": "df2595434d8316dc4656be80b4f5f571524d70bf16a70e054513d03de1de734d",
@@ -422,7 +422,7 @@
     "upstream/limbo/tests/README.declaration-walks.md": "f48cfadb8ac6f29f4c0ecea424945ed7de27b5e32d6019c6c065b7c7e21003b6",
     "upstream/limbo/tests/README.diagnostic-print.md": "735ec159705a814854ce13ae5e5182f08db0bbd8ba36e64cfcf372418cd9ad01",
     "upstream/limbo/tests/README.dis-constants.md": "10d582195fdc32d7f6fa071eac4ac5295071ce7c5f16a9e8990bf9bdd3bffe4e",
-    "upstream/limbo/tests/README.dis64-scalar.md": "316b3b49638fadf843d4613ddcc5f158d5a2a9b1d6560476e085bf83dff0ae9d",
+    "upstream/limbo/tests/README.dis64-scalar.md": "bddcd7ab7283bf0f57f3e85ce001ad6e612a9426b8ba4b222cddc515f8c2230c",
     "upstream/limbo/tests/README.inline-graphs.md": "2d784785c8f8e794bf3d8dbf85d43479d2a01f8b9d1364fccbf4af56465c8fc5",
     "upstream/limbo/tests/README.node-chains.md": "e3a7a58d2098dea5ed7ac68806a62ac54461714c85defd5d1cf36fe3bbcd0924",
     "upstream/limbo/tests/README.node-queries.md": "17f6835b0c0d764498adbb5dec6b39c2cd9367fc3122de350db70bfc0d3383f0",
@@ -457,7 +457,7 @@
     "upstream/limbo/tests/dis-constants.py": "43541982da5828e4ddaf88481272810d5c428a925e2d36ed5d41009dcf4146ae",
     "upstream/limbo/tests/dis64-scalar/case.b": "65c66fb01ac80113b3181c493db481f3bffdef311259c050128a3935dd2aaad4",
     "upstream/limbo/tests/dis64-scalar/loop.b": "97542d331ceea1de9e09d5d9d10e4806a220d168c5c154305738a86d064629b6",
-    "upstream/limbo/tests/dis64-scalar/procedures.b": "9330082ab27d18857c9008f261b58b7411e20c9b3995ddf61f5ed7065f836e09",
+    "upstream/limbo/tests/dis64-scalar/procedures.b": "9844e922b5e53c4da79038804f5e047036ac21eec3901fb50879ccafff2b2cc0",
     "upstream/limbo/tests/fold-casts.c": "818f7ef56b417784602f6af3fb44ebc9df5d5dc3d881fb1bd21517589bbc7c04",
     "upstream/limbo/tests/fold-effects.c": "d14e7527acf2f7a4d5fbc0f93be11a85efe3abb5e153b366443f6ef4ff671d6e",
     "upstream/limbo/tests/fold-identities.c": "b38aa4ca7afbd67b5ce66f2995b21db528794d9733e85a4fd6f28287fb5ecfe1",
@@ -529,7 +529,7 @@
     "upstream/module/workdir.m": "6411267e26fc25795f31681fa8a9ce2cbc143a690a55743ffef9944451fec17d",
     "upstream/utils/dis64-locations.py": "74e2524263e106e4b63c82ba084671076c2fb2debe9ef861197bbf83a3b9dfc6",
     "upstream/utils/tests/dis64-cases.py": "d7398d2a21e1dd81a00dbc307becddcfb37630a9219f43dfecaa9498234b8c4a",
-    "upstream/utils/tests/dis64-inline.py": "2ef3a077e862fbb27aaeb1549f1a2f9a01a9d784ae212edc91d423c124685234",
+    "upstream/utils/tests/dis64-inline.py": "dbaad27cb3fe809575f43744f316275aa4a05343f7da14b68294c899b3a5563b",
     "upstream/utils/tests/native64-scalar-boot.py": "65eab7750c037fd313fa7fc661c8b4de411db443365a2210ae78e375ef945c60"
   }
 }

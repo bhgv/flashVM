@@ -16,10 +16,16 @@
  * mutator during each pass. Roots and queue storage outlive both worker joins. */
 typedef struct RuntimeGC
 {
+    DVM_NativeContext *owner;         /* Immutable Dis context through collector joins. */
     DVM_NativeWorld *world;           /* Owned root coordination domain. */
     DVM_WorldParticipant *mutator;    /* Current Dis owner's registration. */
     DVM_GCWorkers *workers;           /* Separate native Fast and Cycles contexts. */
     Prog **roots;                    /* Borrowed complete process-list slot. */
+    unsigned long native_releases;    /* Audited blocking callbacks left the heap. */
+    unsigned long native_reentries;   /* Matching active-heap reentries. */
+    unsigned long native_gc_progress; /* Real cycle passes completed during release. */
+    unsigned long native_before;      /* Cycle counter snapshot while mutator active. */
+    int native_inactive;              /* Owner-only paired release state. */
     unsigned long fast_empty_skips;   /* Mutator skipped an empty Fast request. */
     unsigned long passes;            /* Real retained rungc callbacks. */
     unsigned long snapshots;         /* Stopped active register snapshots. */
@@ -125,6 +131,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     memset(&state,0,sizeof(state));
     memset(&config,0,sizeof(config));
     state.roots = roots;
+    state.owner = dvm_native_context_current();
     state.world = dvm_world_create_mode(locked_poll);
     if (state.world)
     {
@@ -181,6 +188,83 @@ int dvm_runtime_gc_request(void)
 }
 
 
+/* [GC:] Publish a complete native call frame before releasing the heap. This
+ * opt-in boundary is not a general release() implementation: callers must have
+ * no unmanaged C-stack ownership invisible to the collector. Protected regions
+ * stay active. Returns zero when no release is needed, one after successful
+ * leave. Violated pairing/root ownership is process-fatal, never silent success. */
+int dvm_runtime_gc_native_leave(void)
+{
+    DVM_NativeContext *context;
+    Prog *process;
+    if (!state.world)
+    {
+        return 0;
+    }
+    if (dvm_native_context_current() != state.owner)
+    {
+        fprintf(stderr,"disvm: foreign audited native release\n");
+        exit(1);
+    }
+    if (state.native_inactive)
+    {
+        fprintf(stderr,"disvm: nested audited native release\n");
+        exit(1);
+    }
+    if (gchalt)
+    {
+        return 0;
+    }
+    context = dvm_native_context_current();
+    process = dvm_native_context_process(context);
+    if (state.native_inactive || !process || up->prog != process)
+    {
+        fprintf(stderr,"disvm: invalid audited native release\n");
+        exit(1);
+    }
+    process->R = DVM_R;
+    state.native_before = state.passes;
+    if (!dvm_runtime_gc_request() || !dvm_world_leave(state.mutator))
+    {
+        fprintf(stderr,"disvm: native heap release failed\n");
+        exit(1);
+    }
+    state.native_inactive = 1;
+    state.native_releases++;
+    return 1;
+}
+
+
+/* [GC:] Reenter the same native owner before any managed load/store. released
+ * must be the matching leave result; collector writes happen-before this enter.
+ * No error unwinding or managed return publication occurs while inactive. */
+void dvm_runtime_gc_native_enter(int released)
+{
+    if (state.world && dvm_native_context_current() != state.owner)
+    {
+        fprintf(stderr,"disvm: foreign native heap reentry\n");
+        exit(1);
+    }
+    if (!released)
+    {
+        if (state.native_inactive)
+        {
+            fprintf(stderr,"disvm: missing native heap reentry token\n");
+            exit(1);
+        }
+        return;
+    }
+    if (!state.native_inactive || !dvm_world_enter(state.mutator))
+    {
+        fprintf(stderr,"disvm: native heap reentry failed\n");
+        exit(1);
+    }
+    state.native_inactive = 0;
+    state.native_reentries++;
+    state.native_gc_progress += state.passes-state.native_before;
+}
+
+
 /* [GC:] Close admission, leave heap execution and drain both real workers before
  * destroying root coordination or mutator TLS. diagnostics reads counters only
  * after joins. Returns zero on failure or any undrained managed queue owner. */
@@ -224,10 +308,11 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,
-            (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips);
+            (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips,
+            state.native_releases,state.native_reentries,state.native_gc_progress);
     }
     if (!dvm_world_detach(state.mutator) || !dvm_world_destroy(state.world))
     {

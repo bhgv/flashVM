@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1735**. [English](README.md).
+Версия разработки: **0.1736**. [English](README.md).
 
-Текущая серия: [v0.1735](docs/releases/v0.1735.md): атомарные запросы остановки GC без мьютекса на каждом opcode.
+Текущая серия: [v0.1736](docs/releases/v0.1736.md): синхронизация Dis64 с Inferno и выход/возврат в кучу для Sys.sleep.
 
 ## Просмотр документации
 
