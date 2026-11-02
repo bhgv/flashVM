@@ -27,8 +27,8 @@ world before writing the managed result cell. No managed memory is accessed by
 this callback while it is inactive. Collectors can scan the saved stack and
 process list while the native callback waits.
 
-NATIVEGC reports native_releases==native_reentries==6 for a successful worker run:
-four positive waits and two nonpositive calls. The oversized call refuses before
+NATIVEGC reports native_releases==native_reentries==7 for a successful worker run:
+four positive waits, two nonpositive calls and the final formatted print. The oversized call refuses before
 release. native_gc_progress must be positive: retained cycle passes actually ran
 inside released intervals. Queue owners/bytes must drain and both workers join.
 The gate executes12 successes and2 managed-limit error retirements for each host,

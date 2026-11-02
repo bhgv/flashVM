@@ -290,3 +290,29 @@ the existing x64 consumer and pass the existing independent reader; old 167 sour
 products retain exact ordinary Dis/Dis64 bytes across independently built compiler
 versions. Tuple shape/producer/binding removal controls remain separate evidence
 from whole VM execution. Concurrent marking and parallel spawn remain open.
+
+
+## Runtime 0.46.0: formatted output and source value copies
+
+Workspace v0.1738 extends audited heap release to Sys.print/fprint in the separate
+formatted_sys.c module. xprint completes under active heap ownership; only its
+bounded native C buffer reaches OS I/O while inactive. Captured FD handles remain
+externally rooted. The published native call frame retains all managed format/
+variadic arguments. Reentry precedes managed results and FD root retirement.
+NATIVEFORMATTED records zero remaining pins and actual released port attempts.
+The existing message bound and access/short-write semantics remain unchanged.
+
+The new gc-native-format example/test checks exact UTF-8 stdout/file bytes with
+a genuinely restricted OS pipe, variadic arguments, saved caller/cyclic roots and
+a second channel-blocked process. Console/UI each run 12 successes and 2 managed
+instruction-limit retirements across interpreter/JIT, inline/atomic/locked and
+quanta 31/2000. Existing native wait now counts its final print as a seventh
+release; previous six sleep releases remain. GC/join/TLS checks still pass.
+
+Both Inferno snapshots import series0069 at a1d8cd9. Bounded pointer-free copies
+snapshot before writing; flat numeric tuple arguments/results stay source-level
+specialization of the unchanged scalar wire profile. Local x64 replay passes
+241 sources / 482 existing C/JIT VM processes, 12 semantic controls and 24 refusals;
+40 memmove/overlap comparisons and wrong-order control; tuple removal controls;
+byte identity for old 200 Dis/Dis64 products. No parallel managed mutator, generic
+release/acquire, loader/cancellation or concurrent marker is admitted by this.

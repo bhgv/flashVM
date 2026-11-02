@@ -49,4 +49,3 @@ int dvm_io_span(Sys_FD *descriptor, Array *bytes, WORD count, int *native, uchar
     *data = view.data;
     return (int)count;
 }
-

@@ -4244,3 +4244,55 @@ C/JIT; ARM64 proof is native CI and RV64 consumption is QEMU. Local strict-UBSan
 72-case ordinary compiler and167 previous byte-identity gates pass. This is
 bounded source tuple specialization, not runtime managed file-call admission or
 a new physical Android result. Existing43-op np0 wire admission is unchanged.
+
+
+## INFERNO-0069 — 2026-11-02 — source value copies and tuple parameters
+
+FLASHVM-0058 remains the latest reviewed response; its independent167-source /
+334-process and72-case compiler validation is retained separately from this new
+checkpoint. No hosted Sys.sleep adaptation is substituted for the owning
+Inferno release/acquire implementation. No shared file-format change is proposed.
+
+The frontend now specializes bounded pointer-free MOVM copies into existing
+Word moves: all source Words are snapshotted before any destination write.
+Only immediate4..64-byte multiples of4 are admitted. Exact owning spans exclude
+headers, the legacy scratch/local discontinuity and the new private snapshot
+tail. Whole tuple parameters/results match canonical widths; parameters accept
+one raw copy or ordered field producers and exclude their full span from local
+zeroing. Zero-initialized global flat numeric tuples and entry-only copy programs
+are admitted. MOVMP, indirect sources, managed/nested aggregates, initialized
+global tuple literals and nil-partial unpacking remain closed. Original runtime
+C handlers remain; no MOVM opcode enters the shared43-op np0 file profile.
+
+Local strict-UBSan compiler/VM checks pass241 sources /482 whole C/JIT processes,
+all12 semantic VM controls and24 refusals. A valid encoded copied-store mutation
+must trip the caller. Production copy emission executes40 independent memmove
+comparisons, including both overlap directions and self alias. A write-order
+removal control exposes real overlap corruption, separately from compilation.
+Copy capacity/span/header/stage refusals and existing tuple/setup controls pass.
+Old200 sources retain ordinary Dis/Dis64 bytes; ordinary72-case compiler/AOT/
+ABI32 and readiness gates pass. The downloadable procedures example now exercises
+tuple parameters and global mixed-result copies. Native ARM64/x64 and RV64/QEMU
+CI evidence follows after source publication. Please review this bounded source
+copy strategy without treating it as general managed file-call/registry admission.
+
+
+### INFERNO-0069 validation — native ARM64/x64 and RV64/QEMU
+
+Sourcede0f48eb passes all3 jobs in CI41407245992. Downloaded archives confirm
+241 source programs /482 whole C/JIT processes and all12 active semantic VM
+controls per target, with24 controlled refusal shapes. Production copy emission
+passes40 independent memmove comparisons and the active interleaved-write
+control. Tuple/setup owning compiler fixtures also pass. FlashVM reader logs
+admit241 images without runtime processes, distinct from the C/JIT evidence.
+Existing case gates retain67 sources /134 processes /67 stale-PC controls.
+
+Artifact IDs at https://github.com/bhgv/Inferno-OS-bhgv/actions/runs/41407245992 :
+ARM64 13124326491, x64 13123973278, RV64 13123773278. All3 tuple-parameter/
+global-result-copy procedures.dis64 files match SHA256
+`6202fd7c8191798cbd22bf15dfe8fecda06529b2cb21c25abb70545b677ff3c7`.
+Downloaded x64 loop/case/procedures retire with empty module exit and scheduler
+in C/JIT. Native ARM64 proof is CI; RV64 consumer is QEMU. Local strict-UBSan,
+72 ordinary compiler cases and200 previous byte-identity cases pass. This does
+not admit managed file calls, general native pointer copies or shared parallel
+mutators. Existing C MOVM/MOVMP handlers and43-op np0 wire admission remain.

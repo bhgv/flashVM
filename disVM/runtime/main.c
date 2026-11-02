@@ -16,6 +16,7 @@
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "io_buffer.h"
+#include "formatted_sys.h"
 #include <stdio.h>
 #include <stddef.h>
 #include <limits.h>
@@ -122,6 +123,7 @@ static void runtime_statistics(void)
         unsigned long keys;
         dvm_runtime_read_statistics();
         dvm_runtime_write_statistics();
+        dvm_formatted_statistics();
         dvm_bigtable_owners(&tables, &keys);
         fprintf(stderr,
                 "instructions=%lu native=%lu gc_runs=%lu gc_epochs=%lu tables_live=%lu keys_live=%lu\n",
@@ -569,24 +571,6 @@ void killcomm(Progq **queue)
     }
 }
 
-/* Reuse production formatting and publish the actual stdout write result. */
-void Sys_print(void *frame)
-{
-    F_Sys_print local;
-    F_Sys_print *call = &local;
-    char text[4096];
-    int count;
-    size_t written;
-    WORD result;
-    dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_print, ret), sizeof(*call->ret));
-    count = xprint(currun(), frame, (uchar *)frame + offsetof(F_Sys_print, vargs), call->s, text, sizeof(text));
-    if (count < 0 || count >= sizeof(text) - UTFmax - 2)
-    {
-        error("experimental stdout message limit");
-    }
-    result = fvm_port_stdio_write(1, text, count, &written) == FVM_OK ? (WORD)written : -1;
-    memmove(call->ret, &result, sizeof(result));
-}
 
 /* Retained runt.c provides string services; hosted FD services use platform ports. */
 static void free_fd(Heap *heap, int swept)
@@ -1503,49 +1487,6 @@ void Sys_seek(void *frame)
     memmove(call->ret, &result, sizeof(result));
 }
 
-/* Format and write an actual FD message through the shared file/stdio port.
- * frame borrows a typed descriptor and variadic VM slots. Returns actual bytes
- * written, or -1 on an I/O failure; formatting shares the bounded print contract. */
-void Sys_fprint(void *frame)
-{
-    F_Sys_fprint local;
-    F_Sys_fprint *call = &local;
-    char bytes[4096];
-    size_t written;
-    WORD result = -1;
-    int count;
-    WORD descriptor;
-    dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_fprint, ret), sizeof(*call->ret));
-    if (call->fd == H || call->fd == nil || D2H(call->fd)->t != TFD)
-    {
-        error(exNilref);
-    }
-    memmove(&descriptor, &call->fd->fd, sizeof(descriptor));
-    count = xprint(currun(), frame, (uchar *)frame + offsetof(F_Sys_fprint, vargs), call->s, bytes, sizeof(bytes));
-    if (count < 0 || count >= sizeof(bytes) - UTFmax - 2)
-    {
-        error("experimental formatted FD message limit");
-    }
-    if (descriptor == 1 || descriptor == 2)
-    {
-        if (fvm_port_stdio_write((int)descriptor, bytes, count, &written) == FVM_OK)
-        {
-            result = written;
-        }
-    }
-    else if (descriptor >= 3 && descriptor < 32 && files[descriptor])
-    {
-        if (fvm_port_file_write(files[descriptor], bytes, count) == FVM_OK)
-        {
-            result = count;
-        }
-    }
-    if (result < 0)
-    {
-        kwerrstr("formatted descriptor write failed");
-    }
-    memmove(call->ret, &result, sizeof(result));
-}
 
 /* Borrow metadata for one live runtime slot; native APIs remain in OS ports. */
 FVM_Result dvm_runtime_fd_info(int descriptor, FVM_FileInfo *output)

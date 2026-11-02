@@ -30,7 +30,7 @@ def execute(runtime, module, mode, gc_flags, quantum, limited=False):
         counters = re.search(r"native_releases=(\d+) native_reentries=(\d+) native_gc_progress=(\d+)", output)
         if (not counters or int(counters[1]) == 0 or counters[1] != counters[2] or
                 int(counters[3]) == 0 or
-                (not limited and int(counters[1]) != 6) or
+                (not limited and int(counters[1]) != 7) or
                 "pending=0" not in output or "joined=1 failed=0" not in output):
             raise RuntimeError("native release/root/GC/join evidence failed:\n"+output[-5000:])
     if runtime.name == "disvm-editor" and not re.search(

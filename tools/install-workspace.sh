@@ -765,9 +765,10 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-wait" "$destination/examples/gc-native-wait"
             copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
             copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
+            copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
-            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py; do
+            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py; do
                 copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
             done
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
@@ -821,9 +822,10 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-wait" "$destination/examples/gc-native-wait"
             copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
             copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
+            copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
-            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py; do
+            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py; do
                 copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
             done
             if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&
