@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1736**. [Русская версия](README.ru.md).
+Development version: **0.1737**. [Русская версия](README.ru.md).
 
-Current series: [v0.1736](docs/releases/v0.1736.md): Inferno Dis64 synchronization and audited native GC release/reentry.
+Current series: [v0.1737](docs/releases/v0.1737.md): staged native I/O outside the heap and checked Dis64 tuple results.
 
 ## Browse documentation
 

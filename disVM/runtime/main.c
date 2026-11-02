@@ -15,6 +15,7 @@
 #include "filesystem_sys.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "io_buffer.h"
 #include <stdio.h>
 #include <stddef.h>
 #include <limits.h>
@@ -119,6 +120,8 @@ static void runtime_statistics(void)
     {
         unsigned long tables;
         unsigned long keys;
+        dvm_runtime_read_statistics();
+        dvm_runtime_write_statistics();
         dvm_bigtable_owners(&tables, &keys);
         fprintf(stderr,
                 "instructions=%lu native=%lu gc_runs=%lu gc_epochs=%lu tables_live=%lu keys_live=%lu\n",
@@ -741,6 +744,23 @@ long kread(int fd, void *bytes, long size)
     return received;
 }
 
+/* Borrow a live native file handle on the Dis owner. descriptor is a validated
+ * runtime slot. The caller keeps its managed FD rooted until native I/O ends;
+ * only then may GC close this same handle. Null rejects non-file slots. */
+FVM_PortFile *dvm_runtime_file(int descriptor)
+{
+    return descriptor >= 3 && descriptor < 32 ? files[descriptor] : NULL;
+}
+
+
+/* Record successful stdin progress after managed reentry, never from a worker
+ * or inactive heap interval. No parameters/result, allocation or blocking. */
+void dvm_runtime_input_progress(void)
+{
+    execution_slices = 0;
+}
+
+
 /* Close exactly the module handle owned by the loader. */
 int kclose(int fd)
 {
@@ -1354,16 +1374,11 @@ void Sys_open(void *frame)
     destroy(old);
 }
 
-/* Validate one live native descriptor/byte-array request; input storage stays caller-owned. */
-static int io_span(Sys_FD *descriptor, Array *bytes, WORD count, int *native, uchar **data);
-
 /* Write to actual native files/standard output, or consume the explicit test halt capability. */
 void Sys_write(void *frame)
 {
     F_Sys_write local;
     F_Sys_write *call = &local;
-    int descriptor;
-    uchar *data;
     dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_write, ret), sizeof(*call->ret));
     if (test_control && call->fd != H && call->fd != nil && call->fd->fd == -2 && call->buf != H && call->buf != nil &&
         call->n == 4 && call->buf->len >= 4 && memcmp(call->buf->data, "halt", 4) == 0)
@@ -1374,161 +1389,13 @@ void Sys_write(void *frame)
         exit(0);
     }
     {
-        WORD result = 0;
-        int count;
-        size_t written;
-        if (call->buf != H && call->n >= 0)
-        {
-            count = io_span(call->fd, call->buf, call->n, &descriptor, &data);
-            if (count < 0)
-            {
-                result = -1;
-            }
-            else if (descriptor == 1 || descriptor == 2)
-            {
-                result = fvm_port_stdio_write((int)descriptor, data, count, &written) == FVM_OK ? (WORD)written : -1;
-            }
-            else if (descriptor >= 3 && files[descriptor])
-            {
-                result = fvm_port_file_write(files[descriptor], data, count) == FVM_OK ? count : -1;
-            }
-            else
-            {
-                result = -1;
-            }
-        }
-        memmove(call->ret, &result, sizeof(result));
+        WORD result = dvm_runtime_write(call->fd,call->buf,call->n);
+        memmove(call->ret,&result,sizeof(result));
     }
 }
 
 /* Share the NC64 leaf policy with complete JIT tails and its standalone check. */
 #include "native_leaf.c"
-
-/* Validate a typed byte-array I/O and keep its native count within the C port range.
- * descriptor/bytes borrow a live FD and mutable array; count is clamped to its extent.
- * Returns the bounded byte count, or -1 for invalid array metadata. */
-static int io_span(Sys_FD *descriptor, Array *bytes, WORD count, int *native, uchar **data)
-{
-    Array view;
-    WORD number;
-    if (descriptor == H || descriptor == nil || D2H(descriptor)->t != TFD)
-    {
-        error(exNilref);
-    }
-    memmove(&number, &descriptor->fd, sizeof(number));
-    if (number < 0 || number >= 32)
-    {
-        kwerrstr("invalid native file descriptor");
-        return -1;
-    }
-    if (bytes == nil || bytes == H || D2H(bytes)->t != &Tarray)
-    {
-        kwerrstr("invalid byte-array I/O owner");
-        return -1;
-    }
-    memmove(&view, bytes, sizeof(view));
-    if (view.t == nil || view.t == H || view.t->size != 1 || view.t->np != 0 || view.len < 0 || view.len > 0x7fffffff ||
-        count > 0x7fffffff ||
-        (view.len && (!view.data || view.data == H || (uintptr)view.data > (uintptr)-1 - (size_t)view.len)))
-    {
-        kwerrstr("invalid byte-array I/O span");
-        return -1;
-    }
-    if (count > view.len)
-    {
-        count = view.len;
-    }
-    *native = (int)number;
-    *data = view.data;
-    return (int)count;
-}
-
-/* Read one genuine fragment through the shared FlashVM file port.
- * frame supplies a borrowed descriptor/array; result is the byte count or -1. */
-void Sys_read(void *frame)
-{
-    F_Sys_read local;
-    F_Sys_read *call = &local;
-    int descriptor;
-    uchar *data;
-    int count;
-    size_t received;
-    WORD result = 0;
-    dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_read, ret), sizeof(*call->ret));
-    if (call->buf != H && call->n >= 0)
-    {
-        count = io_span(call->fd, call->buf, call->n, &descriptor, &data);
-        if (count < 0)
-        {
-            result = -1;
-        }
-        else if (descriptor == 0)
-        {
-            result = fvm_port_stdio_read(0, data, count, &received) == FVM_OK ? (WORD)received : -1;
-            if (result > 0)
-            {
-                execution_slices = 0;
-            }
-        }
-        else
-        {
-            result = count == 0 ? 0 : kread(descriptor, data, count);
-        }
-    }
-    memmove(call->ret, &result, sizeof(result));
-}
-
-/* Read until the requested extent, EOF or an actual port error.
- * frame is borrowed; partial reads return their exact count and leave trailing bytes unread. */
-void Sys_readn(void *frame)
-{
-    F_Sys_readn local;
-    F_Sys_readn *call = &local;
-    int descriptor;
-    uchar *data;
-    int count;
-    WORD result = 0;
-    long fragment;
-    size_t received;
-    dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_readn, ret), sizeof(*call->ret));
-    if (call->buf == H || call->n < 0)
-    {
-        memmove(call->ret, &result, sizeof(result));
-        return;
-    }
-    count = io_span(call->fd, call->buf, call->n, &descriptor, &data);
-    if (count < 0)
-    {
-        result = -1;
-        memmove(call->ret, &result, sizeof(result));
-        return;
-    }
-    while (result < count)
-    {
-        if (descriptor == 0)
-        {
-            fragment = fvm_port_stdio_read(0, data + result, count - result, &received) == FVM_OK ? (long)received : -1;
-            if (fragment > 0)
-            {
-                execution_slices = 0;
-            }
-        }
-        else
-        {
-            fragment = kread(descriptor, data + result, count - result);
-        }
-        if (fragment <= 0)
-        {
-            if (!result)
-            {
-                result = fragment;
-            }
-            break;
-        }
-        result += fragment;
-    }
-    memmove(call->ret, &result, sizeof(result));
-}
 
 /* Publish a new descriptor while preserving the previous result owner until construction completes. */
 static void publish_descriptor(void *slot, Sys_FD *result, Sys_FD *old)

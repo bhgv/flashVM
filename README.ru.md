@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1736**. [English](README.md).
+Версия разработки: **0.1737**. [English](README.md).
 
-Текущая серия: [v0.1736](docs/releases/v0.1736.md): синхронизация Dis64 с Inferno и выход/возврат в кучу для Sys.sleep.
+Текущая серия: [v0.1737](docs/releases/v0.1737.md): буферизованный ввод/вывод вне кучи и числовые кортежи Dis64.
 
 ## Просмотр документации
 

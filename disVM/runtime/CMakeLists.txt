@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.44.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.45.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -101,7 +101,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm main.c runtime_gc.c runtime_rc.c sleep_sys.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)
@@ -1892,5 +1892,45 @@ if(DVM_RUNTIME_TESTS)
    "${CMAKE_CURRENT_SOURCE_DIR}/test_native_wait.py" "$<TARGET_FILE:disvm-editor>"
    "${CMAKE_CURRENT_BINARY_DIR}/native-wait.dis")
   set_tests_properties(disvm_editor_native_wait PROPERTIES TIMEOUT 90)
+ endif()
+endif()
+
+# Native read/readn staging, external roots, real delayed OS pipes and file handles.
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-read.dis"
+ COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g -I "${u}/module"
+  -o "${CMAKE_CURRENT_BINARY_DIR}/native-read.dis"
+  "${root}/disVM/examples/gc-native-read/main.b"
+ DEPENDS limbo-bootstrap "${root}/disVM/examples/gc-native-read/main.b" VERBATIM)
+add_custom_target(disvm_native_read_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/native-read.dis")
+if(DVM_RUNTIME_TESTS)
+ add_test(NAME disvm_native_read COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_native_read.py" "$<TARGET_FILE:disvm>"
+  "${CMAKE_CURRENT_BINARY_DIR}/native-read.dis")
+ set_tests_properties(disvm_native_read PROPERTIES TIMEOUT 120)
+ if(TARGET disvm-editor)
+  add_test(NAME disvm_editor_native_read COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_native_read.py" "$<TARGET_FILE:disvm-editor>"
+   "${CMAKE_CURRENT_BINARY_DIR}/native-read.dis")
+  set_tests_properties(disvm_editor_native_read PROPERTIES TIMEOUT 120)
+ endif()
+endif()
+
+# Immutable managed-to-native output snapshots with actual pipe backpressure.
+add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-write.dis"
+ COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g -I "${u}/module"
+  -o "${CMAKE_CURRENT_BINARY_DIR}/native-write.dis"
+  "${root}/disVM/examples/gc-native-write/main.b"
+ DEPENDS limbo-bootstrap "${root}/disVM/examples/gc-native-write/main.b" VERBATIM)
+add_custom_target(disvm_native_write_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/native-write.dis")
+if(DVM_RUNTIME_TESTS)
+ add_test(NAME disvm_native_write COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_native_write.py" "$<TARGET_FILE:disvm>"
+  "${CMAKE_CURRENT_BINARY_DIR}/native-write.dis")
+ set_tests_properties(disvm_native_write PROPERTIES TIMEOUT 120)
+ if(TARGET disvm-editor)
+  add_test(NAME disvm_editor_native_write COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_native_write.py" "$<TARGET_FILE:disvm-editor>"
+   "${CMAKE_CURRENT_BINARY_DIR}/native-write.dis")
+  set_tests_properties(disvm_editor_native_write PROPERTIES TIMEOUT 120)
  endif()
 endif()

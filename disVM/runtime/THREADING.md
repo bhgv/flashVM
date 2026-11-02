@@ -238,7 +238,7 @@ Cycle progress is read only inside active world intervals before/after the wait,
 not through racy reads while the collector writes. The managed fixture preserves
 a cyclic graph/string/arrays and nested call frames; worker runs require actual
 GC progress while released and six matching reentries. Console/UI each execute12
-successes and2 managed-limit error retirements, JIT/interpreter, inline/atomic/
+successes and 2 managed-limit error retirements, JIT/interpreter, inline/atomic/
 locked and quanta1/2000. Existing cyclic-heap and real SVG editing gates also run.
 
 Sys.sleep blocks this Dis owner. UI/GC can continue; other Limbo processes are
@@ -246,3 +246,47 @@ still cooperatively scheduled by that owner. Arbitrary Sys read/write callbacks,
 opaque native module C roots, cancellation and exception paths require their own
 buffer/root audits before release can be generalized. Concurrent graph marking
 and parallel shared-heap spawn remain closed.
+
+## Runtime 0.45.0: bounded native input and immutable output
+
+Workspace v0.1737 adds audited heap release to Sys.read/readn/write. Typed FD/
+byte-array admission lives in io_buffer.c; input and output algorithms are in
+read_sys.c/write_sys.c. Main retains only coordination/test-control handling.
+The generated native frame/result is captured before callbacks. Original FD and
+array owners receive external roots before release; slice backing graphs remain
+reachable. Native handles are captured on the active Dis owner, not queried
+through managed metadata while the owner is inactive.
+
+Each positive I/O call owns at most 65536 staging bytes. Reads target only native
+storage while outside the heap, then revalidate and copy acknowledged bytes after
+reentry. readn repeats fragments; EOF/error returns its already committed prefix
+or-1 and leaves unfilled managed bytes untouched. Writes copy a bounded immutable
+snapshot before leaving; only that snapshot reaches the port. Result publication
+and all managed root retirement occur after reentry. Root-registration errors
+unwind with exact native cleanup; port statuses are handled after ownership is
+restored. NATIVEINPUT/NATIVEOUTPUT report actual current/peak staging, root pins,
+fragments and copied/acknowledged bytes for explicit --stats.
+
+Sys.write returns short acknowledged fragments; IDE file-service code already
+loops correctly. No atomic-file/durability guarantee follows. Zero-byte requests
+preserve legacy descriptor checks; zero-byte file writes keep their active-owner
+port operation. Formatted output, generic C-stack owners, loader callbacks and
+cancellation still require distinct release audits. The only Dis mutator still
+blocks on OS I/O while UI/collectors can progress.
+
+Real pipe/file gates check every byte of nonuniform binary input/output, sliced
+arrays and untouched boundaries, partial EOF, wrong-direction native handles and
+read-only/write-only port failures. Native writer tests size/check only their
+private Linux pipe before an actual ready/backpressure/drain handshake. A second
+real Dis process waits on a channel with array/cycle roots and checks them after
+I/O. This tests saved-process roots without claiming extra Dis OS mutators.
+Console/UI each run 12 successes and 2 managed-error retirements for each direction,
+across inline/atomic/locked, interpreter/JIT and quanta 31/2000. Existing cyclic-heap,
+native-wait, file-window/filesystem and graphical SVG editing gates also execute.
+
+Both upstream snapshots import series 0068 bounded numeric source tuple results.
+The scalar wire profile/reader stays unchanged. New 200-source images execute in
+the existing x64 consumer and pass the existing independent reader; old 167 source
+products retain exact ordinary Dis/Dis64 bytes across independently built compiler
+versions. Tuple shape/producer/binding removal controls remain separate evidence
+from whole VM execution. Concurrent marking and parallel spawn remain open.
