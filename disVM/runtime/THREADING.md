@@ -578,3 +578,35 @@ writers under real pipe backpressure, shared-file contents, helper UI requests,
 errors and quota teardown. Menu entry19 exposes the installed launcher. Counters
 `NATIVEPOOL`, `NATIVEDISPATCH` and `NATIVEQUEUE` provide post-join evidence; they
 do not claim simultaneous managed execution. Native Linux x64 is tested locally.
+
+
+## Bounded executor pool (0.53.0)
+
+`--managed-workers 1..8` selects the TOTAL number of OS executors, including
+the controller. Above1 requires `--gc-worker` and threaded UI in graphical
+builds. Default is still1. The installed entry19 launcher defaults to2;
+`DVM_MANAGED_WORKERS=8` chooses eight without duplicate runtime options.
+
+Each helper owns a stable native slot through join, including context identity,
+bytecode-turn count and final owner counters. No managed roots live in these
+slots. All helper identities used for UI authorization are inspected only under
+ACTIVE heap exclusion. Stop sets one native predicate, releases the controller's
+empty heap turn, joins EVERY successfully started helper, then reacquires heap
+ownership before stopping collectors. Partial creation failure follows the same
+join path; it never destroys shared storage while a helper can reference it.
+
+The controller rendezvous waits outside the heap until every requested helper
+has attached, or a failure is latched. Rootless scheduler handoffs are counted
+separately from native-call releases/reentries: the latter can legitimately be
+zero for a compute-only helper. Per-helper `NATIVEPOOL_WORKER` statistics are
+read after join, not concurrently sampled.
+
+The capacity gate verifies4/8 executors, positive bytecode turns for every
+helper, exact instruction totals versus one executor, per-Prog errors/rounding,
+UI RPC in the graphical host, global quota/error retirement, and eight real
+blocked writers. Its private OS pipe is held full until inflight8; only then are
+800024 payload bytes drained/counted. Peak bounded staging is524288 bytes.
+The eight-writer fixture uses quantum2000 to avoid dominating this native-wait
+check with array-initialization scheduler handoffs; existing quantum1/31/2000
+compute checks remain. Heap mutation stays exclusive: this pool increases native
+wait overlap, not the speed of a CPU-bound serial heap workload.

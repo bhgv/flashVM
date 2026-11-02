@@ -1,4 +1,4 @@
-/* Actual second OS executor; roots and heap are serialized by NativeWorld. */
+/* Bounded OS executor pool; roots and heap are serialized by NativeWorld. */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -14,24 +14,35 @@
 #include <string.h>
 
 
+/* One helper slot has one writer while alive; the controller reads after join.
+ * Native identity is published/read only under the shared heap gate. */
+typedef struct ManagedWorker
+{
+    FVM_PortThread *thread;    /* Joined before this slot or service is reset. */
+    uintptr identity;          /* Live helper context identity; zero before/after attachment. */
+    unsigned long turns;       /* Successful bytecode turns executed by this helper. */
+    unsigned long handoffs;    /* Completed rootless scheduler releases, distinct from native I/O. */
+    DVM_HeapOwnerStats owner;   /* Copied counters before the helper detaches. */
+} ManagedWorker;
+
+
 /* Native lifecycle only. Never hold sync while entering/waiting on the heap.
- * Callback and service storage outlive the helper join. */
+ * All slots and immutable callback data are published before thread creation. */
 typedef struct ManagedWorkers
 {
-    FVM_PortSync *sync;             /* Protect flags and copied native statistics. */
-    FVM_PortThread *thread;         /* Joined by controller before GC service teardown. */
-    DVM_NativeWorld *world;         /* Immutable borrowed shared heap domain through join. */
-    int (*turn)(void);             /* Shared scheduler implementation, invoked under heap turn. */
+    FVM_PortSync *sync;             /* Protect stop/failure/ready publication. */
+    DVM_NativeWorld *world;         /* Borrowed shared heap domain, immutable through join. */
+    int (*turn)(void);             /* Shared scheduler callback under heap exclusion. */
     int stopping;                 /* Cooperative stop request, under sync. */
-    int failed;                   /* Latched attach/dispatch/retirement error. */
-    int ready;                    /* Helper acquired its first real heap turn. */
-    int awaiting_start;           /* Controller-only initial admission rendezvous flag. */
-    uintptr identity;             /* Helper identity, published/cleared only under heap exclusion. */
-    unsigned long controller;     /* Controller's successfully completed managed turns. */
-    unsigned long worker;         /* Helper's successfully completed managed turns. */
-    unsigned long files;          /* Ordinary file operations kept under heap exclusion. */
-    unsigned long ui_requests;    /* Helper UI role admissions, under this shared heap gate. */
-    DVM_HeapOwnerStats owner;      /* Copied helper counters before native detach. */
+    int failed;                   /* Latched attach/dispatch/retirement/start error. */
+    int ready;                    /* Helpers that acquired their first heap turn, under sync. */
+    int awaiting_start;           /* Controller-only admission rendezvous flag. */
+    int count;                    /* Requested executor count, including the controller. */
+    int started;                  /* Successfully created helpers; controller-only through join. */
+    unsigned long controller;     /* Successful controller turns. */
+    unsigned long files;          /* Ordinary file operations retained under the heap gate. */
+    unsigned long ui_requests;    /* Helper UI role admissions, under heap exclusion. */
+    ManagedWorker helpers[DVM_MANAGED_EXECUTORS_MAX - 1]; /* Stable native slots through all joins. */
 } ManagedWorkers;
 
 static ManagedWorkers service; /* One process-wide runtime; lifetime ends after join. */
@@ -72,13 +83,14 @@ static int leave_empty(void)
 
 
 /* Run real bytecode turns with independent up/REG/error stacks on this OS thread.
- * argument is unused; all shared Prog/heap/cache access is inside world admission.
+ * argument borrows its stable native helper slot until join. All managed access
+ * is inside world admission; no slot contains a managed root.
  * No UI event pump runs here. Managed faults return through the same turn logic. */
 static void execute(void *argument)
 {
     DVM_NativeContext *context = dvm_native_process_create(NULL);
+    ManagedWorker *worker = argument;
     int attached = 0;
-    USED(argument);
     if (!context || !dvm_native_context_bind(context))
     {
         fail("cannot bind executor");
@@ -99,9 +111,9 @@ static void execute(void *argument)
     }
     if (attached)
     {
-        service.identity = (uintptr)context;
+        worker->identity = (uintptr)context;
         fvm_port_sync_lock(service.sync);
-        service.ready = 1;
+        service.ready++;
         fvm_port_sync_signal_all(service.sync);
         fvm_port_sync_unlock(service.sync);
         if (waserror())
@@ -132,14 +144,13 @@ static void execute(void *argument)
                 }
                 if (progress)
                 {
-                    fvm_port_sync_lock(service.sync);
-                    service.worker++;
-                    fvm_port_sync_unlock(service.sync);
+                    worker->turns++;
                 }
                 if (!leave_empty())
                 {
                     error("cannot leave helper scheduler turn");
                 }
+                worker->handoffs++;
                 if (!progress)
                 {
                     fvm_port_thread_sleep_us(1000);
@@ -151,8 +162,8 @@ static void execute(void *argument)
             }
             poperror();
         }
-        service.identity = 0;
-        if (!dvm_native_owner_statistics(dvm_native_owner_current(),&service.owner))
+        worker->identity = 0;
+        if (!dvm_native_owner_statistics(dvm_native_owner_current(),&worker->owner))
         {
             fail("cannot snapshot executor ownership");
         }
@@ -170,11 +181,12 @@ static void execute(void *argument)
 
 /* Publish immutable callback/service data before starting, without waiting on
  * the helper's world admission while the controller still holds the heap. */
-int dvm_managed_workers_start(int (*turn)(void))
+int dvm_managed_workers_start(int count, int (*turn)(void))
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
-    if (!turn || service.sync || !context || !up || up->prog ||
+    int index;
+    if (count < 2 || count > DVM_MANAGED_EXECUTORS_MAX || !turn || service.sync || !context || !up || up->prog ||
         dvm_native_context_process(context) || dvm_native_context_turn(context) ||
         !dvm_native_owner_statistics(dvm_native_owner_current(),&state) ||
         state.phase != DVM_HEAP_ACTIVE || state.pending_progress ||
@@ -187,16 +199,24 @@ int dvm_managed_workers_start(int (*turn)(void))
     service.turn = turn;
     service.world = dvm_native_owner_world(dvm_native_owner_current());
     service.awaiting_start = 1;
+    service.count = count;
     if (!service.sync)
     {
         return 0;
     }
-    service.thread = fvm_port_thread_start(execute,NULL);
-    if (!service.thread)
+    for (index = 0; index < count - 1; index++)
     {
-        fvm_port_sync_destroy(service.sync);
-        memset(&service,0,sizeof(service));
-        return 0;
+        ManagedWorker *worker = &service.helpers[index];
+        worker->thread = fvm_port_thread_start(execute, worker);
+        if (!worker->thread)
+        {
+            /* Existing helpers can be waiting for this controller's heap turn.
+             * Retire them through the normal empty-turn stop/join protocol. */
+            fail("cannot start executor");
+            dvm_managed_workers_stop(0);
+            return 0;
+        }
+        service.started++;
     }
     return 1;
 }
@@ -217,7 +237,7 @@ int dvm_managed_workers_yield(int idle)
     if (service.awaiting_start)
     {
         fvm_port_sync_lock(service.sync);
-        while (!service.ready && !service.failed)
+        while (service.ready != service.count - 1 && !service.failed)
         {
             fvm_port_sync_wait(service.sync);
         }
@@ -269,16 +289,23 @@ int dvm_managed_workers_current(void)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
-    int allowed = context && dvm_native_context_turn(context) &&
-        dvm_native_owner_statistics(dvm_native_owner_current(),&state) &&
-        state.phase == DVM_HEAP_ACTIVE &&
-        dvm_native_owner_world(dvm_native_owner_current()) == service.world &&
-        service.identity == (uintptr)context;
-    if (allowed)
+    int index;
+    if (!context || !dvm_native_context_turn(context) ||
+        !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
+        state.phase != DVM_HEAP_ACTIVE ||
+        dvm_native_owner_world(dvm_native_owner_current()) != service.world)
     {
-        service.ui_requests++;
+        return 0;
     }
-    return allowed;
+    for (index = 0; index < service.count - 1; index++)
+    {
+        if (service.helpers[index].identity == (uintptr)context)
+        {
+            service.ui_requests++;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 
@@ -287,6 +314,10 @@ int dvm_managed_workers_current(void)
 int dvm_managed_workers_stop(int diagnostics)
 {
     int ok;
+    int index;
+    unsigned long turns = 0;
+    unsigned long releases = 0;
+    unsigned long reentries = 0;
     if (!service.sync)
     {
         return 1;
@@ -299,7 +330,14 @@ int dvm_managed_workers_stop(int diagnostics)
         fprintf(stderr,"disvm: cannot release controller for managed worker join\n");
         exit(1);
     }
-    fvm_port_thread_join(service.thread);
+    for (index = 0; index < service.started; index++)
+    {
+        ManagedWorker *worker = &service.helpers[index];
+        fvm_port_thread_join(worker->thread);
+        turns += worker->turns;
+        releases += worker->owner.releases;
+        reentries += worker->owner.reentries;
+    }
     if (!dvm_native_owner_enter(dvm_native_owner_current()))
     {
         fprintf(stderr,"disvm: cannot reenter after managed worker join\n");
@@ -308,10 +346,19 @@ int dvm_managed_workers_stop(int diagnostics)
     ok = !service.failed;
     if (diagnostics)
     {
-        fprintf(stderr,"NATIVEPOOL executors=2 joined=1 failed=%d controller_turns=%lu worker_turns=%lu worker_releases=%lu worker_reentries=%lu serialized_files=%lu ui_requests=%lu\n",
-            service.failed,service.controller,service.worker,service.owner.releases,service.owner.reentries,service.files,service.ui_requests);
+        fprintf(stderr,"NATIVEPOOL executors=%d joined=1 failed=%d controller_turns=%lu worker_turns=%lu worker_releases=%lu worker_reentries=%lu serialized_files=%lu ui_requests=%lu\n",
+            service.count,service.failed,service.controller,turns,releases,reentries,service.files,service.ui_requests);
+    }
+    if (diagnostics)
+    {
+        for (index = 0; index < service.started; index++)
+        {
+            ManagedWorker *worker = &service.helpers[index];
+            fprintf(stderr, "NATIVEPOOL_WORKER id=%d joined=1 turns=%lu releases=%lu reentries=%lu handoffs=%lu\n",
+                index + 1, worker->turns, worker->owner.releases, worker->owner.reentries, worker->handoffs);
+        }
     }
     fvm_port_sync_destroy(service.sync);
-    memset(&service,0,sizeof(service));
+    memset(&service, 0, sizeof(service));
     return ok;
 }

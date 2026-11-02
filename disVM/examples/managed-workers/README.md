@@ -6,7 +6,7 @@
 
 These are real Limbo programs compiled by the bundled compiler and executed by
 our DisVM. `spawn` creates logical Dis processes; the runtime assigns their
-managed turns to one or two OS executors. The default remains one executor.
+managed turns to one to eight OS executors. The default remains one executor.
 There is one shared managed heap. Its writes remain serialized by NativeWorld;
 audited native waits can release it so another executor makes progress.
 
@@ -23,7 +23,7 @@ sh out/disvm-editor/run-managed-workers.sh --quantum 31
 
 The launcher enables `--gc-worker --managed-workers 2 --stats`. Explicit
 `--managed-workers 1` is the reference configuration when invoking `disvm`
-directly; do not add it to this launcher, which already selects two.
+directly; do not add it to this launcher, which already selects the count.
 
 ## Programs and observable results
 
@@ -45,6 +45,38 @@ driver rather than an interactive terminal. The shared-file module creates
 `managed-shared.bin` in its working directory; the driver gives it a private
 temporary directory. The UI module needs `disvm-editor` and an explicit font;
 the driver supplies the packaged font and dummy SDL environment for headless CI.
+
+## Larger bounded pool
+
+Runtime0.53.0 accepts `--managed-workers 1..8`; counts above1 still require
+`--gc-worker`. The installed launcher defaults to2. To choose eight:
+
+```sh
+DVM_MANAGED_WORKERS=8 sh out/disvm-editor/run-managed-workers.sh --quantum 31
+```
+
+The new `backpressure-eight.b` module (`managed-backpressure-eight.dis`) starts
+eight actors, each retaining a cyclic root and writing100003 bytes. The capacity
+driver holds the actual OS pipe full until all EIGHT native continuations are
+suspended, then counts800024 bytes. Run it inside the installed editor package:
+
+```sh
+python3 source/threading/test_managed_pool.py \
+  ./disvm-editor ./managed-workers.dis ./managed-backpressure-eight.dis \
+  ./limbo-native ./include/limbo ./fonts/NotoSansMono-Regular.ttf
+```
+
+For4/8 compute runs, each `NATIVEPOOL_WORKER` record must show real bytecode
+turns, balanced releases/reentries and a completed join. These are native lifetime
+and conservation checks, not a promise that serial heap computation gets faster.
+The console driver also compiles `test_managed_start.c`, a Linux-only private
+pthread interposer. It refuses creation after0/1/5/6 helpers and requires every
+successful thread creation (including the two collectors) to have a successful
+join. A non-hit ordinal checks normal forwarding. This facility is test-only;
+production has no thread-failure injection option. The shared library is loaded
+from the private child working directory, so paths containing spaces remain
+covered without passing a whitespace-split absolute `LD_PRELOAD` path.
+Do not run the backpressure payload module directly into an interactive terminal.
 
 ## Reproduce the complete admission test
 

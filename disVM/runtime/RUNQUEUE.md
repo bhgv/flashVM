@@ -164,3 +164,12 @@ status. These follow Prog; the context token, host FP save slots and C jump stac
 stay OS-local. Restore the default environment before freeing a wrapper. Helper
 yield/join refuses any nonempty process slot/token. See
 [the lifecycle protocol](THREADING.md#two-managed-os-executors-0520).
+
+
+## Bounded pool (0.53.0)
+
+Up to eight native executors share the same claim/finish and continuation-affinity
+protocol. Pool slots are native-only and stable through all joins; they never
+replace root-list membership or retain a borrowed NativeContext after detach.
+Per-slot identities are cleared while the helper still owns the heap. Every
+started helper joins before slot/service reset, including partial-start failure.

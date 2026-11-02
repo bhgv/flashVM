@@ -1,13 +1,18 @@
-/* Opt-in two-owner managed scheduling; all heap turns remain exclusive. */
+/* Opt-in bounded managed scheduling; all heap turns remain exclusive. */
 #ifndef DVM_MANAGED_WORKERS_H
 #define DVM_MANAGED_WORKERS_H
 
+#define DVM_MANAGED_EXECUTORS_MAX 8 /* Explicit total OS-executor cap, including controller. */
 
-/* Start one extra OS executor after GC/world startup. turn runs exactly one
+
+/* Start count-1 extra OS executors after GC/world startup.
+ * count selects 2..DVM_MANAGED_EXECUTORS_MAX total executors. turn runs one
  * shared-heap scheduler turn on its caller: positive progress, zero idle,
  * negative fatal managed failure. No managed pointer crosses this interface.
- * Start never waits for heap admission while controller owns the heap. */
-int dvm_managed_workers_start(int (*turn)(void));
+ * Return one when all helpers were created; zero on invalid input or after
+ * joining every partially started helper and restoring controller ownership.
+ * Requires the controller's empty ACTIVE turn. No startup wait holds the heap. */
+int dvm_managed_workers_start(int count, int (*turn)(void));
 
 
 /* Yield an empty controller turn through FIFO heap admission. May wait for
@@ -34,8 +39,8 @@ int dvm_managed_workers_serialize_file(void);
 int dvm_managed_workers_current(void);
 
 
-/* Stop and join the helper BEFORE collector shutdown. Controller temporarily
- * leaves its empty heap turn so helper entry/reentry/detach can finish, then
+/* Stop and join all started helpers BEFORE collector shutdown. Controller temporarily
+ * leaves its empty heap turn so every helper can enter/reenter/detach, then
  * reacquires it. Native OS I/O cancellation is cooperative, not preemptive.
  * diagnostics prints native counters after join. No-op when not started. */
 int dvm_managed_workers_stop(int diagnostics);

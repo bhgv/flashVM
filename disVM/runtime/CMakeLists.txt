@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.52.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.53.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2097,11 +2097,13 @@ endif()
 
 
 # Real two-executor examples and native backpressure; no simulated dispatcher.
-foreach(pool_example main backpressure shared-file ui-rpc)
+foreach(pool_example main backpressure backpressure-eight shared-file ui-rpc)
  if(pool_example STREQUAL "main")
   set(pool_image managed-workers)
  elseif(pool_example STREQUAL "backpressure")
   set(pool_image managed-backpressure)
+ elseif(pool_example STREQUAL "backpressure-eight")
+  set(pool_image managed-backpressure-eight)
  elseif(pool_example STREQUAL "shared-file")
   set(pool_image managed-shared-file)
  else()
@@ -2126,5 +2128,19 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
    set_tests_properties(${pool_runner}_managed_os_executors PROPERTIES TIMEOUT 300)
   endif()
+ endforeach()
+endif()
+
+
+# Bounded 4/8-owner execution and eight simultaneous real native continuations.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+ foreach(pool_runtime disvm disvm-editor)
+  add_test(NAME ${pool_runtime}_managed_pool_capacity COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_managed_pool.py" "$<TARGET_FILE:${pool_runtime}>"
+   "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis"
+   "${CMAKE_CURRENT_BINARY_DIR}/managed-backpressure-eight.dis"
+   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module"
+   "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
+  set_tests_properties(${pool_runtime}_managed_pool_capacity PROPERTIES TIMEOUT 300)
  endforeach()
 endif()

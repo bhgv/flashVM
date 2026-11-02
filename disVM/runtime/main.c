@@ -1056,7 +1056,7 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    if (managed_workers > 1 && !dvm_managed_workers_start(runtime_dispatch_turn))
+    if (managed_workers > 1 && !dvm_managed_workers_start(managed_workers, runtime_dispatch_turn))
     {
         error("cannot start managed executor");
     }
@@ -1246,9 +1246,9 @@ int main(int argc, char **argv)
         {
             size_t count;
             if (managed_workers_selected || argc < 3 || !runtime_extent(argv[2],&count) ||
-                (count != 1 && count != 2))
+                (count < 1 || count > DVM_MANAGED_EXECUTORS_MAX))
             {
-                fprintf(stderr,"--managed-workers requires one count: 1 or 2\n");
+                fprintf(stderr,"--managed-workers requires one count in 1..8\n");
                 return 2;
             }
             managed_workers = (int)count;
@@ -1288,7 +1288,7 @@ int main(int argc, char **argv)
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");
-            puts("Managed execution: --managed-workers 1 (default) or 2 (requires --gc-worker); OS I/O may overlap, heap turns are serialized.");
+            puts("Managed execution: --managed-workers 1 (default) or 2..8 (requires --gc-worker); OS I/O may overlap, heap turns are serialized.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
 #endif
@@ -1309,13 +1309,13 @@ int main(int argc, char **argv)
     }
     if (managed_workers > 1 && !gc_worker)
     {
-        fprintf(stderr,"--managed-workers 2 requires --gc-worker\n");
+        fprintf(stderr,"--managed-workers >1 requires --gc-worker\n");
         return 2;
     }
 #ifdef DVM_RUNTIME_EDITOR
     if (managed_workers > 1 && !threaded)
     {
-        fprintf(stderr,"--managed-workers 2 requires --threaded-ui for the graphical host\n");
+        fprintf(stderr,"--managed-workers >1 requires --threaded-ui for the graphical host\n");
         return 2;
     }
 #endif

@@ -14,8 +14,8 @@ import time
 
 # Validate real post-join counters. No native observer is counted as bytecode work.
 # output includes stdout/stderr; expected is the actual process exit status.
-def evidence(output, expected=0, migration=False):
-    pool = re.search(r"NATIVEPOOL executors=2 joined=1 failed=([01]) controller_turns=(\d+) worker_turns=(\d+)", output)
+def evidence(output, expected=0, migration=False, executors=2):
+    pool = re.search(rf"NATIVEPOOL executors={executors} joined=1 failed=([01]) controller_turns=(\d+) worker_turns=(\d+)", output)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=(\d+)", output)
     if not pool or not dispatch or dispatch[1] != dispatch[2] or not int(dispatch[1]):
         raise RuntimeError("executor/claim retirement failed:\n"+output[-6000:])
@@ -54,9 +54,9 @@ def compute(runtime, module, mode, environment, options):
 
 # Hold a genuinely full private pipe until BOTH native continuations are
 # withdrawn. No elapsed sleep or simulated native call establishes success.
-def overlap(runtime, module, mode, environment, options):
-    process = subprocess.Popen([str(runtime),*options,mode,'--gc-worker','--managed-workers','2',
-        '--stats','--quantum','31',str(module)], env=environment,
+def overlap(runtime, module, mode, environment, options, executors=2):
+    process = subprocess.Popen([str(runtime),*options,mode,'--gc-worker','--managed-workers',str(executors),
+        '--stats','--quantum',str(2000 if executors > 2 else 31),str(module)], env=environment,
         stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     before = bytearray()
     try:
@@ -70,11 +70,11 @@ def overlap(runtime, module, mode, environment, options):
             while True:
                 available = array.array('i',[0])
                 fcntl.ioctl(process.stdout.fileno(),termios.FIONREAD,available,True)
-                if b'NATIVEWAITERS inflight=2\n' in before and available[0] >= capacity:
+                if ('NATIVEWAITERS inflight=%d\n' % executors).encode() in before and available[0] >= capacity:
                     break
                 remaining = deadline-time.monotonic()
                 if remaining <= 0 or process.poll() is not None:
-                    raise RuntimeError('two actual blocked native writers were not observed: '+before.decode(errors='replace'))
+                    raise RuntimeError('all actual blocked native writers were not observed: '+before.decode(errors='replace'))
                 for key, unused in poll.select(min(remaining,1)):
                     chunk = os.read(key.fileobj.fileno(),4096)
                     if not chunk:
@@ -86,20 +86,25 @@ def overlap(runtime, module, mode, environment, options):
         process.communicate()
         raise
     text = (before+after+output).decode(errors='replace')
-    if process.returncode or len(output) < 200006 or output[:200006].count(b'a') != 100003 or output[:200006].count(b'b') != 100003:
-        raise RuntimeError('native byte/root conservation failed:\n'+text[-6000:])
-    if not output[200006:].startswith(b'\nPASS managed native overlap\n'):
+    payload = executors * 100003
+    if process.returncode or len(output) < payload or any(
+        output[:payload].count(bytes([value])) != 100003
+        for value in range(ord('a'), ord('a') + executors)
+    ):
+        raise RuntimeError('native byte/root conservation failed:\n' + text[-6000:])
+    if not output[payload:].startswith(b'\nPASS managed native overlap\n'):
         raise RuntimeError('native acknowledgements overtook payload bytes')
-    evidence(text)
-    if not re.search(r'NATIVEOUTPUT pins=0 staging=0 peak=131072 ',text):
-        raise RuntimeError('two independent bounded native staging buffers were not live')
-    if not re.search(r'NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0 peak=2',text):
+    evidence(text, executors=executors)
+    if not re.search(rf'NATIVEOUTPUT pins=0 staging=0 peak={executors * 65536} ', text):
+        raise RuntimeError('independent bounded native staging buffers were not live')
+    if not re.search(rf'NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0 peak={executors}', text):
         raise RuntimeError('overlapped continuation leases did not pair')
+
 
 
 # Ordinary fatal errors and uncatchable quotas must join the extra executor.
 # Generated negative programs use the real bundled compiler and error machinery.
-def errors(runtime, compiler, include, work, mode, environment, options):
+def errors(runtime, compiler, include, work, mode, environment, options, executors=2):
     cases = [('fault', 'raise "pool: unhandled";', 'pool: unhandled', []),
              ('quota', '{for (;;) {}} exception message {* => raise "MUST_NOT_CATCH";}',
               'instruction limit exceeded', ['--max-instructions','80'])]
@@ -109,13 +114,13 @@ def errors(runtime, compiler, include, work, mode, environment, options):
         source.write_text('implement E; E: module {init: fn();};\ninit() {'+body+'}\n')
         subprocess.run([str(compiler),'-I',str(include),'-o',str(image),str(source)],check=True,
                        capture_output=True,text=True,env=environment)
-        run = subprocess.run([str(runtime),*options,mode,'--gc-worker','--managed-workers','2',
+        run = subprocess.run([str(runtime),*options,mode,'--gc-worker','--managed-workers',str(executors),
             '--stats','--quantum','1',*flags,str(image)],env=environment,
             capture_output=True,text=True,timeout=30)
         text = run.stdout+run.stderr
         if run.returncode != 1 or needle not in text or 'MUST_NOT_CATCH' in text:
             raise RuntimeError('managed failure bypassed normal owner retirement:\n'+text[-6000:])
-        evidence(text,expected=1)
+        evidence(text,expected=1,executors=executors)
         if name == 'quota' and not re.search(r'instructions=80 ',text):
             raise RuntimeError('instruction quota became per executor')
 
