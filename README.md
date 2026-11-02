@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1757**. [Русская версия](README.ru.md).
+Development version: **0.1758**. [Русская версия](README.ru.md).
 
-Current series: [v0.1757](docs/releases/v0.1757.md): native object guards, parking and guard-aware context fences.
+Current series: [v0.1758](docs/releases/v0.1758.md): explicit per-context strong-reference scopes and cross-thread ownership handoff.
 
 ## Browse documentation
 

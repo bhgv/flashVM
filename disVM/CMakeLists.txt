@@ -803,7 +803,7 @@ endif()
 
 
 # Native guards retain TLS affinity; no managed heap implementation is linked.
-add_library(disvm_object_guards STATIC host/object_guard.c host/native_context.c
+add_library(disvm_object_guards STATIC host/object_guard.c host/owner_scope.c host/native_context.c
  host/native_owner.c host/native_world.c)
 target_include_directories(disvm_object_guards PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports")
@@ -819,4 +819,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
    "${CMAKE_CURRENT_SOURCE_DIR}/tests/object_guard.py")
   set_tests_properties(disvm_native_object_guards PROPERTIES TIMEOUT 240)
  endif()
+endif()
+
+
+# Reference scopes use actual native contexts/ports; no managed payloads or roots.
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_owner_scopes COMMAND "${Python3_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/owner_scope.py")
+ set_tests_properties(disvm_native_owner_scopes PROPERTIES TIMEOUT 240)
 endif()

@@ -265,3 +265,9 @@ The independent `disvm_object_guards` library and Linux
 `disvm_object_guard_example` target demonstrate guarded native payloads and
 parking across actual OS contexts. This is not yet a managed Heap layout change
 or parallel managed-mutator mode; current NativeWorld admission stays exclusive.
+
+[Explicit native owner scopes](include/disvm/owner_scope.h) and the
+[locality/publication design](runtime/LOCAL-OWNERSHIP.ru.md) distinguish strong
+owners, borrowed access and payload guards. Scopes use caller-provided entries,
+retain before publication and explicitly clean up on native thread epilogues;
+they are not yet automatic managed process cleanup or compiler escape analysis.

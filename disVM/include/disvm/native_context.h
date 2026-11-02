@@ -97,6 +97,8 @@ int dvm_native_context_clear_poll(DVM_NativeContext *context, DVM_NativePoll pol
 
 /* Call between complete instructions, never halfway through an instruction. */
 int dvm_native_context_poll(void);
+
+
 /* Guard-layer affinity accounting only. context must be current/bound.
  * Acquire refuses overflow; release refuses zero; no heap/root access occurs.
  * Exact guard ownership is checked separately by object_guard, not by this count. */
@@ -115,6 +117,17 @@ unsigned long dvm_native_context_object_count(DVM_NativeContext *context);
 /* Observe this owner's registered hook without invoking it. Foreign returns0;
  * this does not authorize access to registered roots or managed objects. */
 int dvm_native_context_has_poll(DVM_NativeContext *context);
+
+
+/* Register one owner-local native reference ledger. context borrowed/current;
+ * refuse foreign/unbound/overflow unchanged. Prevents unbind, not safepoints;
+ * does not publish managed roots. Owner must explicitly close every ledger. */
+int dvm_native_context_scope_acquire(DVM_NativeContext *context);
+
+
+/* Consume one current-owner ledger registration. context borrowed; refuse
+ * foreign/unbound/unmatched without mutation. No memory is freed here. */
+int dvm_native_context_scope_release(DVM_NativeContext *context);
 
 
 #ifdef __cplusplus

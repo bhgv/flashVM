@@ -33,6 +33,7 @@ struct DVM_NativeContext
     DVM_NativePoll poll;  /* Owner's safepoint hook, if registered. */
     void *poll_user;      /* Borrowed until explicit hook removal. */
     DVM_HeapOwner heap_owner; /* Private TLS lifecycle/counters; no managed owners. */
+    unsigned long owner_scopes; /* Owner-local ledgers; close before TLS unbind. */
     unsigned long object_locks; /* Owner-only guards; cannot survive safepoint/turn/unbind. */
     int bound;            /* Nonzero while one native TLS slot owns this context. */
 };
@@ -190,6 +191,10 @@ int dvm_native_context_bind(DVM_NativeContext *context)
  * process root slot alone does not prove the scheduler continuation is finished. */
 int dvm_native_context_unbind(DVM_NativeContext *context)
 {
+    if (context && tls_get() == context && context->owner_scopes)
+    {
+        return 0;
+    }
     if (dvm_native_context_object_count(context))
     {
         return 0;
@@ -433,4 +438,31 @@ unsigned long dvm_native_context_object_count(DVM_NativeContext *context)
 int dvm_native_context_has_poll(DVM_NativeContext *context)
 {
     return context && tls_get() == context && context->poll != NULL;
+}
+
+
+/* Register one native reference ledger on current bound context. context is
+ * borrowed; return 0 unchanged for foreign/unbound/overflow. No GC roots or
+ * heap permissions are granted. Only explicit close consumes registration. */
+int dvm_native_context_scope_acquire(DVM_NativeContext *context)
+{
+    if (!context || tls_get() != context || context->owner_scopes == ULONG_MAX)
+    {
+        return 0;
+    }
+    context->owner_scopes++;
+    return 1;
+}
+
+
+/* Consume one current-owner ledger registration after all its drops finish.
+ * context remains borrowed; return 0 unchanged on foreign/unmatched use. */
+int dvm_native_context_scope_release(DVM_NativeContext *context)
+{
+    if (!context || tls_get() != context || !context->owner_scopes)
+    {
+        return 0;
+    }
+    context->owner_scopes--;
+    return 1;
 }

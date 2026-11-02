@@ -53,12 +53,13 @@ On native Linux, from repository root:
 ```sh
 cc -std=c99 -pthread -IdisVM/include -IflashVM/ports \
     disVM/examples/native-object-guard/main.c \
-    disVM/host/object_guard.c disVM/host/refcount.c \
+    disVM/host/object_guard.c disVM/host/owner_scope.c disVM/host/refcount.c \
     disVM/host/native_context.c disVM/host/native_owner.c disVM/host/native_world.c \
     flashVM/ports/linux/thread.c flashVM/ports/linux/channel_sync.c \
     -o native-object-guard-example
 ./native-object-guard-example
 python3 disVM/tests/object_guard.py
+python3 disVM/tests/owner_scope.py
 ```
 
 Or build disvm_object_guard_example in the independent disVM CMake project.
@@ -76,12 +77,13 @@ From the installed product directory:
 ```sh
 cc -std=c99 -pthread -Iinclude -Isource/ports \
     examples/native-object-guard/main.c source/host/object_guard.c \
-    source/host/refcount.c source/host/native_context.c \
+    source/host/refcount.c source/host/owner_scope.c source/host/native_context.c \
     source/host/native_owner.c source/host/native_world.c \
     source/ports/linux/thread.c source/ports/linux/channel_sync.c \
     -o native-object-guard-example
 ./native-object-guard-example
 python3 source/tests/object_guard.py
+python3 source/tests/owner_scope.py
 ```
 
 The driver uses actual native objects and TLS/world transitions, atomic and
@@ -89,3 +91,18 @@ forced-lock backends, eight OS owners, paired mutable-field checks, observed
 parking and eighteen semantic removal controls. No compiler/signal/sanitizer or
 timeout counts as a positive control. It is not a concurrent managed allocator,
 marking/JIT or full debugger proof. Heap/Type/Jit/serialized layouts are unchanged.
+
+## Explicit per-thread strong owners
+
+The sender now retains a distinct owner in its native owner scope, then exports
+that owner into a stable per-worker transfer envelope BEFORE thread creation.
+The receiver accepts it into its own scope without another retain. On normal
+worker exit, explicit scope close consumes the worker owner. Main's root still
+protects result inspection. A failed start cancels only the unpublished envelope;
+all previously started workers are joined. Envelopes stay alive until joins.
+
+An open scope prevents TLS unbind. It does not register managed roots, prove
+payload locality or automatically unwind a Dis stack. The example's callbacks
+are synchronous, native-only and nonthrowing. Ownership mutation/cleanup refuses
+while an object guard is held. Close is explicit in each native thread epilogue.
+See [the ownership/locality plan](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/LOCAL-OWNERSHIP.ru.md).
