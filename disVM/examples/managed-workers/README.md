@@ -102,8 +102,8 @@ Two executors require `--gc-worker`; the graphical host also requires its defaul
 threaded UI. This is cooperative scheduling around one exclusive heap, not
 simultaneous managed heap writers. Standard-stream I/O and sleep are audited
 release sites. Ordinary read/write/fprint/seek use a per-file FIFO and can release the heap.
-Metadata, opening/closing and private loader callbacks retain their synchronous
-boundary; zero-length write validation also stays on the active owner. Compiler callbacks and arbitrary
+Opening/closing and private loader callbacks retain their synchronous
+boundary; metadata and directory batches can release the heap; zero-length write validation also stays on the active owner. Compiler callbacks and arbitrary
 C extensions do not automatically become resumable. A blocked OS operation can
 delay shutdown: no unsafe forced cancellation is attempted.
 
@@ -141,3 +141,42 @@ workers and checks foreign/duplicate completion and busy/reserved retirement.
 Three private removal controls must fail semantically. The default uses UBSan;
 `CFLAGS='-O1 -g -fsanitize=thread'` selects the focused native TSan check.
 This is not whole-VM race-freedom proof.
+
+
+## Metadata and directory waits (runtime0.55.0)
+
+`metadata-overlap.b` (`managed-metadata-overlap.dis`) tests four actual native
+wait sites: UTF-8 path stat, open-file fstat, open-directory fstat and directory
+batch read. The private Linux/glibc interposer holds stat64/fstat64/readdir64 in
+an OS-pipe barrier. Only AFTER observing each native pause does the driver send
+a stdin token. An unrelated actor must then convert another UTF-8 path, compute
+and print BEFORE the metadata barrier is released. No elapsed sleep establishes
+success. These are controlled waits, not measured slow-filesystem performance.
+
+The example also starts two directory enumerators sharing one FD and verifies
+all65 names exactly once across the32-entry native batch boundary. VM records
+and strings are built only after managed reentry; native batches are freed on
+success/EOF and protected publication failure. The directory FIFO also covers
+abort and close. FIFO orders native operations, not multi-call transactions or
+whole-directory snapshots; completed concurrent batches cannot be rolled back.
+
+Inside an installed editor package (requires a C compiler and Linux/glibc for
+the test-only interposer):
+
+```sh
+python3 source/threading/test_metadata_wait.py \
+  ./disvm-editor ./managed-metadata-overlap.dis ./fonts/NotoSansMono-Regular.ttf
+
+# Opt into the same pool in the actual graphical IDE; default launch is unchanged.
+sh ./run-desktop-ide.sh --gc-worker --managed-workers 4
+```
+
+`NATIVEMETADATA` reports path/descriptor attempts, actual native lease releases,
+FD pins, native PATH staging bytes/peak and directory read attempts (`batches`).
+The native port owns directory-batch allocation separately; path staging is not
+a whole-process native-memory accounting claim. Normal retirement requires pins0,
+staging0 and no pending descriptor gates. This new test checks both interpreter
+and JIT with4/8 executors, two simultaneous UTF-8 snapshots and complete gate
+retirement. Open/create/close, private loader work and protected native64holds/
+gchalt regions retain their prior synchronous policy; forced OS cancellation is
+not added. The stable default remains one executor, with opt-in worker GC.

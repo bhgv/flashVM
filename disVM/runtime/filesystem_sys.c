@@ -8,10 +8,13 @@
 #include "runt.h"
 #include "raise.h"
 #include "filesystem_sys.h"
+#include "metadata_wait.h"
+#include "file_gate.h"
 #include "sys_capture.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 extern Type *TFD;                                  /* Existing descriptor-owner identity, initialized by Sys. */
 extern char *dvm_runtime_file_path(String *value); /* Borrow validated UTF-8 from a rooted Sys argument. */
@@ -177,7 +180,7 @@ void Sys_stat(void *frame)
     {
         return;
     }
-    result = fvm_port_path_info(path, &metadata);
+    result = dvm_metadata_path_info(path, &metadata);
     if (result != FVM_OK)
     {
         kwerrstr(result == FVM_UNSUPPORTED ? "unsupported filesystem path or metadata" : "file stat failed");
@@ -199,7 +202,7 @@ void Sys_fstat(void *frame)
     dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_fstat, ret), sizeof(DvmStatResult));
     descriptor = filesystem_descriptor(call->fd);
     record = stat_record(call->ret);
-    if (descriptor < 0 || dvm_runtime_fd_info(descriptor, &metadata) != FVM_OK)
+    if (descriptor < 0 || dvm_metadata_fd_info(call->fd, descriptor, &metadata) != FVM_OK)
     {
         kwerrstr("fstat requires a live ordinary file or directory");
         return;
@@ -247,6 +250,9 @@ void Sys_dirread(void *frame)
     F_Sys_dirread *call = &local;
     FVM_PortDirectory *directory;
     DvmDirectoryBuild build;
+    DVM_FileGate *gate;
+    size_t ticket;
+    FVM_Result native_status;
     WORD status = 0;
     int descriptor;
     dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_dirread, ret), sizeof(DvmDirectoryResult));
@@ -258,10 +264,14 @@ void Sys_dirread(void *frame)
         kwerrstr("dirread requires a live directory");
         return;
     }
+    gate = dvm_runtime_file_gate(descriptor);
     build.result = call->ret;
     build.entries = nil;
     build.count = 0;
-    if (fvm_port_directory_read(directory, &build.entries, &build.count) != FVM_OK)
+    /* Native batch storage contains no VM pointers. Publication stays ACTIVE;
+     * the mapped FD is pinned by the adapter through its queued native wait. */
+    native_status = dvm_metadata_directory_read(call->fd, descriptor, &build.entries, &build.count);
+    if (native_status != FVM_OK)
     {
         kwerrstr("directory read failed");
         return;
@@ -275,7 +285,18 @@ void Sys_dirread(void *frame)
     if (!kprotect(build_directory_array, &build))
     {
         clear_directory_array(call->ret);
+        ticket = dvm_file_gate_reserve(gate);
+        if (!dvm_file_gate_enter(gate, ticket))
+        {
+            fprintf(stderr, "disvm: cannot admit directory abort\n");
+            exit(1);
+        }
         fvm_port_directory_abort(directory);
+        if (!dvm_file_gate_leave(gate, ticket))
+        {
+            fprintf(stderr, "disvm: directory abort admission lost\n");
+            exit(1);
+        }
         fvm_port_directory_entries_free(build.entries);
         krethrow();
     }

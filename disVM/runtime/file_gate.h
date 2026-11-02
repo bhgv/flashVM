@@ -1,4 +1,4 @@
-/* Native per-file FIFO admission; never stores or follows managed pointers. */
+/* Native per-descriptor FIFO admission for files/directories; never stores or follows managed pointers. */
 #ifndef DVM_FILE_GATE_H
 #define DVM_FILE_GATE_H
 #include <stddef.h>
@@ -48,6 +48,6 @@ void dvm_file_gate_statistics(void);
 
 
 /* Borrow the descriptor's gate under heap exclusion, while its FD is rooted.
- * NULL rejects stdio/directory/invalid slots. No ownership transfer occurs. */
+ * NULL rejects stdio/invalid slots; open directories have their own gate. No ownership transfer occurs. */
 DVM_FileGate *dvm_runtime_file_gate(int descriptor);
 #endif

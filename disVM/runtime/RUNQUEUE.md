@@ -182,3 +182,13 @@ context and reentry protocol as standard I/O. Its native file FIFO ticket is
 reserved while ACTIVE and finished before managed reentry. A waiting file owner
 is never left in the runnable queue; a different owner can execute another Prog.
 File gates do not replace managed FD roots or NativeWorld root membership.
+
+
+## Metadata and directory waits (0.55.0)
+
+Path metadata uses native UTF-8 snapshots. File/directory metadata and batch
+reads retain explicit mapped FD roots and the same per-slot native FIFO. Every
+queued native continuation stays off the ready FIFO until its original owner
+reenters. Native batches are never managed objects; publish VM records after
+reentry and never retain a descriptor ticket through heap admission. Protected
+publication failure aborts the directory via a fresh serialized operation.

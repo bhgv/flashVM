@@ -647,3 +647,37 @@ verify unrelated managed progress while one native fwrite is deliberately held
 and a second owner waits on the SAME file gate. This controlled test is distinct
 from the existing real stdout-pipe backpressure test. Native Linux x64 is tested;
 focused FIFO TSan does not establish whole-VM race freedom.
+
+
+## Metadata and directory batches (0.55.0)
+
+Sys.stat copies the validated UTF-8 path into owned native storage BEFORE native
+release. Only the snapshot and copied FVM_FileInfo reach the OS; VM Dir/string
+construction happens after reentry. A different actor may convert other paths
+while this request is suspended. Native staging is freed on every returned
+status. Allocation failure publishes no metadata record.
+
+Sys.fstat pins the mapped FD, captures the ordinary file or directory handle,
+reserves its gate, then releases the native lease. Completion finishes the gate
+BEFORE heap reentry, consumes the lease and unpins before VM publication. Open
+directory slots now allocate the same FIFO gate as files. Sys.dirread uses this
+protocol for one bounded native batch, then constructs mapped records/strings
+under the heap gate. C batch storage stays native and is released after success,
+EOF or protected VM publication failure. Abort on publication failure shares
+the directory gate and retains the active error-cleanup boundary.
+
+Concurrent readers serialize native cursor operations, not VM publication order
+or a whole-directory transaction. Already completed batches cannot be revoked by
+a later failure; abort prevents future reads under the native port contract.
+No callback may hold a descriptor gate through managed reentry. Open/create/
+close, private loader calls and protected native64holds/gchalt remain synchronous.
+One managed heap still has exclusive mutation; native OS waits are cooperative.
+
+`NATIVEMETADATA` counts path/descriptor attempts, native releases, FD pins, PATH
+staging/current peak and directory batch attempts. Native batch allocation is
+owned by the port and not included in path-byte counters. The Linux/glibc barrier
+test pauses real stat64/fstat64/readdir64, then uses stdin tokens to prove another
+actor runs DURING each wait. It also checks65 shared-cursor entries exactly once
+across32-entry batches, C/JIT4/8 owners and post-join gate/root retirement. Native
+Linux x64 is the local execution target; no whole-VM race/platform claim follows.
+See [installed examples](../examples/managed-workers/README.md#metadata-and-directory-waits-runtime0550).

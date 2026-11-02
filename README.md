@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1750**. [Русская версия](README.ru.md).
+Development version: **0.1751**. [Русская версия](README.ru.md).
 
-Current series: [v0.1750](docs/releases/v0.1750.md): per-file native FIFO and ordinary file I/O outside managed heap ownership.
+Current series: [v0.1751](docs/releases/v0.1751.md): native metadata/directory waits outside the managed heap.
 
 ## Browse documentation
 

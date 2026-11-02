@@ -14,6 +14,7 @@
 #include "file_port.h"
 #include "file_gate.h"
 #include "filesystem_sys.h"
+#include "metadata_wait.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "runqueue.h"
@@ -128,6 +129,7 @@ static void runtime_statistics(void)
         dvm_runtime_write_statistics();
         dvm_formatted_statistics();
         dvm_file_gate_statistics();
+        dvm_metadata_statistics();
         dvm_runqueue_statistics();
         dvm_queue_probe_statistics();
         dvm_bigtable_owners(&tables, &keys);
@@ -637,19 +639,21 @@ static int open_file(const char *path, const char *mode)
         if (!files[index] && !directories[index])
         {
             FVM_FileInfo metadata;
+            file_gates[index] = dvm_file_gate_create();
+            if (!file_gates[index])
+            {
+                kwerrstr("cannot allocate native file gate");
+                return -1;
+            }
             if (!strcmp(mode, "r") && fvm_port_path_info(path, &metadata) == FVM_OK && metadata.directory)
             {
                 if (fvm_port_directory_open(path, &directories[index]) == FVM_OK)
                 {
                     return index;
                 }
+                dvm_file_gate_destroy(file_gates[index]);
+                file_gates[index] = NULL;
                 kwerrstr("cannot open directory: %s", path);
-                return -1;
-            }
-            file_gates[index] = dvm_file_gate_create();
-            if (!file_gates[index])
-            {
-                kwerrstr("cannot allocate native file gate");
                 return -1;
             }
             if (fvm_port_file_open(path, mode, &files[index]) == FVM_OK)
@@ -1625,36 +1629,6 @@ void Sys_create(void *frame)
         kwerrstr("create supports OWRITE, optional OEXCL and permission 0666 only");
     }
     publish_descriptor(call->ret, result, old);
-}
-
-/* Borrow metadata for one live runtime slot; native APIs remain in OS ports. */
-FVM_Result dvm_runtime_fd_info(int descriptor, FVM_FileInfo *output)
-{
-    if (descriptor < 3 || descriptor >= 32)
-    {
-        return FVM_INVALID_ARGUMENT;
-    }
-    if (files[descriptor])
-    {
-        size_t ticket = dvm_file_gate_reserve(file_gates[descriptor]);
-        FVM_Result status;
-        if (!dvm_file_gate_enter(file_gates[descriptor], ticket))
-        {
-            return FVM_ERROR;
-        }
-        status = fvm_port_file_info(files[descriptor], output);
-        if (!dvm_file_gate_leave(file_gates[descriptor], ticket))
-        {
-            fprintf(stderr, "disvm: file metadata admission lost\n");
-            exit(1);
-        }
-        return status;
-    }
-    if (directories[descriptor])
-    {
-        return fvm_port_directory_info(directories[descriptor], output);
-    }
-    return FVM_INVALID_ARGUMENT;
 }
 
 /* Borrow a directory cursor only for the current serial owner call. */

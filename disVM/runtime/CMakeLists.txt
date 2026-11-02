@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.54.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.55.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -102,7 +102,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)
@@ -2097,13 +2097,15 @@ endif()
 
 
 # Real two-executor examples and native backpressure; no simulated dispatcher.
-foreach(pool_example main backpressure backpressure-eight shared-file file-overlap ui-rpc)
+foreach(pool_example main backpressure backpressure-eight shared-file file-overlap metadata-overlap ui-rpc)
  if(pool_example STREQUAL "main")
   set(pool_image managed-workers)
  elseif(pool_example STREQUAL "backpressure")
   set(pool_image managed-backpressure)
  elseif(pool_example STREQUAL "backpressure-eight")
   set(pool_image managed-backpressure-eight)
+ elseif(pool_example STREQUAL "metadata-overlap")
+  set(pool_image managed-metadata-overlap)
  elseif(pool_example STREQUAL "file-overlap")
   set(pool_image managed-file-overlap)
  elseif(pool_example STREQUAL "shared-file")
@@ -2169,4 +2171,26 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
    set_tests_properties(${file_runner}_native_file_wait PROPERTIES TIMEOUT 180)
   endif()
  endforeach()
+endif()
+
+
+# Linux/glibc-only interposition is a test facility, never a runtime prerequisite.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ include(CheckCSourceCompiles)
+ check_c_source_compiles("#include <features.h>
+#ifndef __GLIBC__
+#error metadata fixture requires glibc
+#endif
+int main(void) { return 0; }" DVM_METADATA_GLIBC)
+ if(DVM_METADATA_GLIBC)
+  foreach(metadata_runner disvm disvm-editor)
+   if(TARGET ${metadata_runner})
+    add_test(NAME ${metadata_runner}_native_metadata_wait COMMAND "${PYTHON_EXECUTABLE}"
+     "${CMAKE_CURRENT_SOURCE_DIR}/test_metadata_wait.py" "$<TARGET_FILE:${metadata_runner}>"
+     "${CMAKE_CURRENT_BINARY_DIR}/managed-metadata-overlap.dis"
+     "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
+    set_tests_properties(${metadata_runner}_native_metadata_wait PROPERTIES TIMEOUT 180)
+   endif()
+  endforeach()
+ endif()
 endif()
