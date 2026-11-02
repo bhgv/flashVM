@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.46.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.47.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -1953,4 +1953,12 @@ if(DVM_RUNTIME_TESTS)
    "${CMAKE_CURRENT_BINARY_DIR}/native-format.dis")
   set_tests_properties(disvm_editor_native_format PROPERTIES TIMEOUT 120)
  endif()
+endif()
+
+
+# Actual native owners share retained instruction operands through FIFO heap turns.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_serial_heap_admission COMMAND "${PYTHON_EXECUTABLE}"
+  "${root}/disVM/tests/native_serial.py" --flashvm-root "${root}/flashVM")
+ set_tests_properties(disvm_serial_heap_admission PROPERTIES TIMEOUT 80 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()

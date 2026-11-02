@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1738**. [Русская версия](README.ru.md).
+Development version: **0.1739**. [Русская версия](README.ru.md).
 
-Current series: [v0.1738](docs/releases/v0.1738.md): formatted native output outside the heap and checked Dis64 value copies.
+Current series: [v0.1739](docs/releases/v0.1739.md): FIFO exclusive heap turns for native execution owners.
 
 ## Browse documentation
 

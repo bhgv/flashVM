@@ -71,6 +71,8 @@ def execute(runtime, module, mode, flags, quantum, budget=None):
         if "--gc-worker" not in flags and int(resources[2]):
             raise RuntimeError("inline reference unexpectedly released heap ownership")
         if "--gc-worker" in flags:
+            if not re.search(r"serial_heap=1 admissions=[1-9]\d* contentions=\d+ waiters=0", text):
+                raise RuntimeError("production exclusive heap admission not drained")
             counters = re.search(r"native_releases=(\d+) native_reentries=(\d+) native_gc_progress=(\d+)", text)
             if (not counters or not int(counters[1]) or counters[1] != counters[2] or
                     not int(counters[3]) or "pending=0" not in text or "joined=1 failed=0" not in text):

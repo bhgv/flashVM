@@ -316,3 +316,37 @@ specialization of the unchanged scalar wire profile. Local x64 replay passes
 40 memmove/overlap comparisons and wrong-order control; tuple removal controls;
 byte identity for old 200 Dis/Dis64 products. No parallel managed mutator, generic
 release/acquire, loader/cancellation or concurrent marker is admitted by this.
+
+
+## Runtime 0.47.0: exclusive heap turns with FIFO admission
+
+The production GC-worker world uses dvm_world_create_serial. A bound owner's
+enter reserves its FIFO turn; leave publishes immutable roots and permits the
+next owner. Queued owners remain inactive and visible to stopped-root scans.
+Collector stops/resume generations take priority over admission. Tickets/counters
+are native unsigned values under the world mutex; no per-ticket allocation or
+new per-instruction mutex is introduced. Foreign/nested entry consumes no ticket.
+No thread cancellation is allowed while queued. The existing create/create_mode
+parallel-admission API remains unchanged; its caller must synchronize mutation.
+
+NATIVEGC adds serial_heap=1, admissions, contentions and waiters=0. Admission
+counters are sampled before final owner leave/detach. dvm_world_admission exposes
+coherent diagnostics, not a reservation. Existing audited native callbacks keep
+their root/buffer contracts; this gate does not discover invisible C-stack roots.
+
+The native_serial fixture uses two extended-up OS owners, one shared plain
+operand and actual retained addw. Deterministic initial contention proves FIFO;
+one owner then keeps its published roots unchanged while another makes at least
+16384 arithmetic updates. Both stress 10000 reentries each. A collecting context
+performs 201 exact two-root scans. Exact arithmetic, at-most-one active mutation,
+root/TLS retirement and an active admission-removal control pass in atomic,
+locked, no-atomics fallback and strict UBSan builds. The focused native TSan
+run also completes without a data-race report; executable-name lookup warns and
+limits symbolization. This is not TSan coverage of the whole managed VM. Reference two-active-mutator
+and Fast/Cycles fixtures continue to test their original, separate contract.
+
+Only one managed Dis executor is currently attached to the production scheduler.
+Before attaching another, current-process assumptions, per-owner native-call
+state, runnable/process lists, caches, channels and RC operations must be moved
+under consistent ownership. Parallel managed spawn and concurrent graph marking
+remain open. See ../tests/README.native-serial.md for commands and limitations.

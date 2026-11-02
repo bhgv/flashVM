@@ -1,4 +1,4 @@
-/* Stop native mutators only at explicit boundaries, never under one execution lock. */
+/* Native root rendezvous, with optional FIFO exclusive heap-mutator admission. */
 #include "disvm/native_world.h"
 #include "channel_sync.h"
 #include "world_request.h"
@@ -33,6 +33,12 @@ struct DVM_NativeWorld
     size_t active;                      /* Mutators between enter and leave. */
     size_t parked;                      /* Active mutators stopped at poll. */
     long request;                       /* Atomic stop request, not root publication. */
+    int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
+    size_t next_ticket;                /* Next FIFO admission ticket under sync; unsigned wrap is intentional. */
+    size_t serving_ticket;             /* Oldest queued admission; advances only on a successful enter. */
+    size_t waiting;                    /* Inactive owners queued for admission, including a ready ticket. */
+    size_t admissions;                 /* Successful serialized entries under sync. */
+    size_t contentions;                /* Entries that observed another owner, collector or older waiter. */
     int locked_poll;                    /* Immutable reference-mode selection. */
     int stopped;                        /* Collector may inspect roots. */
     int resuming;                       /* Drain the previous parked generation before another collector. */
@@ -129,6 +135,21 @@ DVM_NativeWorld *dvm_world_create_mode(int locked_poll)
 }
 
 
+/* Create a FIFO exclusive-mutator domain. locked_poll selects the reference
+ * instruction poll, not admission fairness. Returns an owned empty world or NULL.
+ * Waiting owners keep published roots stable; native thread cancellation while
+ * queued is unsupported. No allocation/GC or external execution mutex is added. */
+DVM_NativeWorld *dvm_world_create_serial(int locked_poll)
+{
+    DVM_NativeWorld *world = dvm_world_create_mode(locked_poll);
+    if (world)
+    {
+        world->serial = 1;
+    }
+    return world;
+}
+
+
 /* Create the default atomic-request domain; null reports native allocation failure. */
 DVM_NativeWorld *dvm_world_create(void)
 {
@@ -220,6 +241,7 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
 int dvm_world_enter(DVM_WorldParticipant *participant)
 {
     DVM_NativeWorld *world;
+    size_t ticket = 0;
     if (!owns(participant))
     {
         return 0;
@@ -231,9 +253,25 @@ int dvm_world_enter(DVM_WorldParticipant *participant)
         fvm_port_sync_unlock(world->sync);
         return 0;
     }
-    while (world->collector)
+    if (world->serial)
+    {
+        ticket = world->next_ticket++;
+        world->waiting++;
+        if (world->active || world->collector || world->resuming || ticket != world->serving_ticket)
+        {
+            world->contentions++;
+        }
+    }
+    while (world->collector || (world->serial &&
+           (world->active || world->resuming || ticket != world->serving_ticket)))
     {
         fvm_port_sync_wait(world->sync);
+    }
+    if (world->serial)
+    {
+        world->waiting--;
+        world->serving_ticket++;
+        world->admissions++;
     }
     participant->active = 1;
     world->active++;
@@ -392,5 +430,24 @@ int dvm_world_owner_polls(DVM_WorldParticipant *participant, size_t *fast, size_
     }
     *fast = participant->fast_polls;
     *locked = participant->locked_polls;
+    return 1;
+}
+
+
+/* Copy serialized admission diagnostics under the world mutex. world/out are
+ * borrowed live native objects; no reservation, heap access or state mutation.
+ * Returns zero for invalid arguments, one for a coherent snapshot in either mode. */
+int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
+{
+    if (!world || !out)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(world->sync);
+    out->serial = world->serial;
+    out->waiting = world->waiting;
+    out->admissions = world->admissions;
+    out->contentions = world->contentions;
+    fvm_port_sync_unlock(world->sync);
     return 1;
 }

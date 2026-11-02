@@ -29,7 +29,32 @@ typedef struct DVM_WorldState
 } DVM_WorldState;
 
 
-/* Allocate an empty domain. Destroy succeeds only with no participants/collector. */
+/* Mutex-protected FIFO admission observation, never permission to mutate. */
+typedef struct DVM_WorldAdmission
+{
+    int serial;          /* Nonzero means only one heap-mutator interval is admitted. */
+    size_t waiting;      /* Queued inactive native owners with stable published roots. */
+    size_t admissions;   /* Successful serialized entries; unsigned counter may wrap. */
+    size_t contentions;  /* Entries which could not initially acquire their turn. */
+} DVM_WorldAdmission;
+
+
+/* Allocate an exclusive FIFO mutator domain; locked_poll selects the reference
+ * instruction poll. NULL reports allocation failure. Enter/leave are heap-turn
+ * boundaries; no thread may cancel while waiting. Inactive roots stay immutable
+ * through reentry/detach. This does not retrofit synchronization into a VM's
+ * scheduler or publish otherwise hidden native C-stack roots. */
+DVM_NativeWorld *dvm_world_create_serial(int locked_poll);
+
+
+/* Copy live native admission counters under the mutex; invalid arguments fail.
+ * out is caller-owned. This snapshot does not reserve an admission or root scan. */
+int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
+
+
+/* Allocate a parallel-admission domain. The caller supplies synchronization for
+ * shared heap mutations; this constructor only coordinates root stops. Destroy
+ * succeeds only with no participants/collector. */
 DVM_NativeWorld *dvm_world_create(void);
 
 
@@ -55,7 +80,8 @@ DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *
 int dvm_world_detach(DVM_WorldParticipant *participant);
 
 
-/* Enter mutator execution, waiting for a pending collection to finish. */
+/* Enter mutator execution after collection; a serialized world also waits for
+ * its FIFO heap turn. Double/foreign entry fails without consuming a ticket. */
 int dvm_world_enter(DVM_WorldParticipant *participant);
 
 

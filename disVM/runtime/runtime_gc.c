@@ -132,7 +132,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     memset(&config,0,sizeof(config));
     state.roots = roots;
     state.owner = dvm_native_context_current();
-    state.world = dvm_world_create_mode(locked_poll);
+    state.world = dvm_world_create_serial(locked_poll);
     if (state.world)
     {
         state.mutator = dvm_world_join(state.world,dvm_native_context_current());
@@ -271,12 +271,17 @@ void dvm_runtime_gc_native_enter(int released)
 int dvm_runtime_gc_stop(int diagnostics)
 {
     DVM_GCWorkersState workers;
+    DVM_WorldAdmission admission;
     int ok;
     size_t fast_polls = 0;
     size_t locked_polls = 0;
     if (!state.world)
     {
         return 1;
+    }
+    if (!dvm_world_admission(state.world,&admission) || !admission.serial || admission.waiting)
+    {
+        return 0;
     }
     if (!dvm_world_owner_polls(state.mutator,&fast_polls,&locked_polls))
     {
@@ -308,11 +313,13 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,
             (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips,
-            state.native_releases,state.native_reentries,state.native_gc_progress);
+            state.native_releases,state.native_reentries,state.native_gc_progress,
+            (unsigned long)admission.admissions,(unsigned long)admission.contentions,
+            (unsigned long)admission.waiting);
     }
     if (!dvm_world_detach(state.mutator) || !dvm_world_destroy(state.world))
     {

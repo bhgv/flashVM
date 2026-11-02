@@ -128,6 +128,9 @@ endif()
 
 if(BUILD_TESTING AND PYTHONINTERP_FOUND AND CMAKE_SYSTEM_NAME STREQUAL "Linux"
     AND NOT ANDROID AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME disvm_native_world_serial COMMAND "${PYTHON_EXECUTABLE}"
+    "${dvm_root}/tests/native_serial.py" --flashvm-root "${fvm}")
+  set_tests_properties(disvm_native_world_serial PROPERTIES TIMEOUT 80 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
   add_test(NAME disvm_native_world_stop COMMAND "${PYTHON_EXECUTABLE}"
     "${dvm_root}/tests/native_world.py" --flashvm-root "${fvm}")
   set_tests_properties(disvm_native_world_stop PROPERTIES TIMEOUT 40 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
