@@ -14,6 +14,7 @@ typedef struct DVM_ExtendedUp
 {
     Proc Proc; /* Error frames, current Prog links, OS/FPU environment. */
     REG R;     /* The currently executing Dis register file. */
+    DVM_NativeExecution execution; /* Native owner guards, excluded from whole REG copies. */
 } DVM_ExtendedUp;
 
 
@@ -47,4 +48,16 @@ REG *dvm_native_registers(void)
         abort();
     }
     return &process->R;
+}
+
+
+/* Borrow execution guards from exactly the same TLS allocation as up and R.
+ * No caller-owned pointer is accepted. The REG adapter checks bound/typed
+ * storage first; a saved/restored Prog.R cannot overwrite these native fields. */
+DVM_NativeExecution *dvm_native_execution(void)
+{
+    DVM_ExtendedUp *process;
+    (void)dvm_native_registers();
+    process = (DVM_ExtendedUp *)getup();
+    return &process->execution;
 }

@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.49.2 LANGUAGES C)
+project(disvm_runtime VERSION 0.50.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -30,6 +30,7 @@ int main(void) { return 0; }" DVM_RUNTIME_COMPILER_AMD64)
     message(FATAL_ERROR "AMD64 runtime selected but the C compiler does not target x86-64")
   endif()
 endif()
+
 message(STATUS "DisVM Linux64 runtime backend: ${runtime_backend}")
 option(DVM_RUNTIME_NATIVE_DEMO "Build the documented native module tutorial" OFF)
 option(DVM_RUNTIME_COMPILER "Link our C99 compiler/linker library service" OFF)
@@ -2049,5 +2050,21 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
    "NATIVE64_TMPDIR=${CMAKE_CURRENT_BINARY_DIR}"
    "${PYTHON_EXECUTABLE}" "${u}/utils/tests/native64-fresh-handlers.py" ${fresh_control})
   set_tests_properties(disvm_${fresh_gate} PROPERTIES TIMEOUT 240)
+ endforeach()
+endif()
+
+
+# Real extended-up guards must remain owner-local outside serialized heap turns.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(owner_gate native_execution_owners native_execution_shared_control)
+  set(owner_control)
+  if(owner_gate STREQUAL "native_execution_shared_control")
+   set(owner_control --control shared-execution)
+  endif()
+  add_test(NAME disvm_${owner_gate} COMMAND "${CMAKE_COMMAND}" -E env
+   "CC=${CMAKE_C_COMPILER}" "CFLAGS=-O1 -g -fsanitize=undefined -fno-sanitize-recover=all"
+   "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/native_registers.py"
+   --flashvm-root "${DVM_FLASHVM_SOURCE_ROOT}" ${owner_control})
+  set_tests_properties(disvm_${owner_gate} PROPERTIES TIMEOUT 60)
  endforeach()
 endif()

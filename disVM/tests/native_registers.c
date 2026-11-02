@@ -1,6 +1,7 @@
 /* Run the retained addw instruction concurrently with independent real REG files. */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "lib9.h"
 #include "dat.h"
 #include "isa.h"
@@ -31,6 +32,7 @@ typedef struct Worker
     Barrier *barrier;
     UWORD identity;
     void *register_address;
+    void *execution_address; /* Owner-only guards must have disjoint native storage. */
 } Worker;
 
 
@@ -118,9 +120,27 @@ static void execute(void *argument)
         exit(EXIT_FAILURE);
     }
     up->nerr = (int)worker->identity;
+    up->env = &up->defenv;
+    up->env->errstr = up->env->errbuf1;
+    up->env->syserrstr = up->env->errbuf0;
     worker->register_address = &DVM_R;
+    worker->execution_address = dvm_native_execution();
+    if (dvm_native_execution()->idle_slices || dvm_native_execution()->instruction_boundary_error)
+    {
+        fprintf(stderr, "FAIL native execution guards not initially zero\n");
+        exit(EXIT_FAILURE);
+    }
     for (index = 0; index < 2000; index++)
     {
+        char expected[64];
+        REG saved;
+        unsigned long slices = (unsigned long)worker->identity * 2000UL + index;
+        int boundary = worker->identity == 1000;
+        dvm_native_execution()->idle_slices = slices;
+        dvm_native_execution()->instruction_boundary_error = boundary;
+        snprintf(expected, sizeof(expected), "owner %lu turn %u", (unsigned long)worker->identity, index);
+        strcpy(up->env->errstr, expected);
+        strcpy(up->env->syserrstr, expected);
         left = worker->identity;
         right = index;
         result = 0;
@@ -130,6 +150,16 @@ static void execute(void *argument)
         DVM_R.t = worker->identity;
         rendezvous(worker->barrier);
         addw();
+        saved = DVM_R;
+        memset(&DVM_R, 0, sizeof(DVM_R));
+        DVM_R = saved;
+        if (dvm_native_execution()->idle_slices != slices ||
+            dvm_native_execution()->instruction_boundary_error != boundary ||
+            strcmp(up->env->errstr, expected) || strcmp(up->env->syserrstr, expected))
+        {
+            fprintf(stderr, "FAIL foreign guard/error state or REG copy overwrote native owner\n");
+            exit(EXIT_FAILURE);
+        }
         if (!(result == left + right && DVM_R.t == worker->identity))
         {
             fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
@@ -184,6 +214,7 @@ int main(void)
         workers[index].barrier = &barrier;
         workers[index].identity = 1000 * (index + 1);
         workers[index].register_address = 0;
+        workers[index].execution_address = 0;
         workers[index].context = dvm_native_process_create(&workers[index]);
         if (!(workers[index].context))
         {
@@ -206,13 +237,27 @@ int main(void)
     {
         dvm_host_thread_join(threads[index]);
     }
-    if (!(workers[0].register_address != workers[1].register_address))
+    if (!(workers[0].register_address != workers[1].register_address) ||
+        workers[0].execution_address == workers[1].execution_address)
     {
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
     for (index = 0; index < 2; index++)
     {
+        /* The former workers have joined. Transfer each unbound native context
+         * to this real OS thread; its guards/environment must follow the owner,
+         * not the previous worker's TLS slot or a saved register snapshot. */
+        unsigned long expected = (unsigned long)workers[index].identity * 2000UL + 1999;
+        if (!dvm_native_context_bind(workers[index].context) ||
+            dvm_native_execution()->idle_slices != expected ||
+            dvm_native_execution()->instruction_boundary_error != (index == 0) ||
+            up->env != &up->defenv || up->env->errstr != up->env->errbuf1 ||
+            up->env->syserrstr != up->env->errbuf0 || !dvm_native_context_unbind(workers[index].context))
+        {
+            fprintf(stderr, "FAIL joined owner guard/environment transfer\n");
+            exit(EXIT_FAILURE);
+        }
         if (!(dvm_native_context_destroy(workers[index].context)))
         {
             fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);

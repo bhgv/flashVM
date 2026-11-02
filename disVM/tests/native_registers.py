@@ -27,6 +27,7 @@ def instruction(source, name):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--flashvm-root", type=Path, required=True)
+    parser.add_argument("--control", choices=("shared-execution",))
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     fvm = args.flashvm_root.resolve()
@@ -41,6 +42,15 @@ def main():
         output = Path(directory)
         source = output / "registers.c"
         source.write_text(code)
+        adapter = root / "host/native_registers.c"
+        if args.control:
+            adapter = output / "native_registers.c"
+            original = (root / "host/native_registers.c").read_text()
+            needle = "return &process->execution;"
+            if original.count(needle) != 1:
+                raise RuntimeError("execution ownership control target changed")
+            adapter.write_text(original.replace(needle,
+                "static DVM_NativeExecution shared;\n    return &shared;"))
         command = shlex.split(os.environ.get("CC", "cc"))
         command += shlex.split(os.environ.get("CFLAGS", "-O1 -g"))
         command += ["-DDVM_NATIVE_REGISTERS=1", "-pthread"]
@@ -58,7 +68,7 @@ def main():
         ]
         command += [
             str(source),
-            str(root / "host/native_registers.c"),
+            str(adapter),
             str(root / "host/native_context.c"),
             str(root / "host/flashvm_thread.c"),
             str(fvm / "ports/linux/thread.c"),
@@ -67,8 +77,16 @@ def main():
             str(output / "test"),
         ]
         subprocess.run(command, check=True)
-        subprocess.run([str(output / "test")], check=True, timeout=20)
-    print("PASS two native threads: separate REG/process/runtime; 4000 production addw operations")
+        run = subprocess.run([str(output / "test")], capture_output=True, text=True, timeout=20)
+        if args.control:
+            if run.returncode != 1 or not any(marker in run.stderr for marker in (
+                "FAIL native execution guards not initially zero",
+                "FAIL foreign guard/error state or REG copy overwrote native owner")):
+                raise RuntimeError("shared execution control missed semantic guard: " + run.stdout + run.stderr)
+        elif run.returncode:
+            raise RuntimeError(run.stdout + run.stderr)
+    print("PASS shared execution ownership removal control" if args.control else
+          "PASS two native threads: separate REG/process/runtime/errors/guards; 4000 production addw operations")
 
 
 if __name__ == "__main__":

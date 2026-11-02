@@ -503,3 +503,27 @@ barriers; the256-event budget remains. Standalone text repaint now uses the same
 allocation-threshold GC step as MDI, avoiding an unconditional full collection
 per repaint. The Dis owner still owns edits; no optimistic document replica or
 additional managed executor is introduced.
+
+
+## Execution/error guards (0.50.0)
+
+The extended native up now owns `DVM_NativeExecution`: the idle-turn count and
+instruction-before-fetch quota flag. They are scalar native metadata AFTER REG,
+never copied with Prog.R or traced as roots. `dvm_native_execution()` only borrows
+the current bound typed owner; it cannot inspect another thread's context.
+Each executor also uses its own up.defenv error/system-error buffers. The runner
+has no process-global error-buffer fallback. The instruction-boundary flag is
+cleared at each new process turn and retained through its error guard.
+
+The total instruction/native counters and process/queue/heap remain shared and
+must still be accessed under the exclusive heap turn. Only the idle-turn policy
+is owner-local; the explicit total instruction quota is not multiplied per owner.
+This is preparation for multiple executors, not a worker-pool switch.
+
+The real OS-thread fixture runs4000 retained addw bodies, with distinct error
+buffers and contradictory boundary flags. Whole REG overwrite/restore leaves
+guards unchanged. After both workers join, their unbound contexts transfer to a
+third OS thread and retain the owner state. An active shared-storage removal
+control must fail a semantic predicate. Focused UBSan/TSan checks do not establish
+race freedom of the whole VM. Wake/kill/native continuation routing and actual
+parallel managed scheduling remain separate work.

@@ -85,13 +85,10 @@ static Pool memory;                       /* Pool mutated by Dis or its stopped-
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
-static unsigned long execution_slices;    /* Busy-work budget since the last actual standard-input progress. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static int gc_worker;                     /* Explicit production collector-worker admission. */
-static char failure[256];                 /* Current native error copied before unwinding. */
 static char *module_directory;            /* Read-only module resource base; ordinary Sys paths retain caller cwd. */
-static Osenv environment;                 /* Error string environment for this runtime owner. */
 extern int dontcompile;                   /* Production loader switch that prohibits forced JIT compilation. */
 int cflag;                                /* Native leaf compilation switch consumed by the loader. */
 int keepbroken;                           /* No debugger retention is implemented in this initial runner. */
@@ -100,7 +97,6 @@ Type *TFileIO;                            /* Unavailable file-to-channel host ty
 unsigned long dvm_runtime_instructions;   /* Dispatched instruction attempts across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
 unsigned long dvm_runtime_instruction_limit; /* Explicit total quota; zero retains the legacy slice policy. */
-static int instruction_boundary_error;       /* A budget rejection happens before fetching/advancing the current PC. */
 static int show_stats;                       /* Emit actual instruction counts on explicit request. */
 static int scheduler_quantum = PQUANTA;      /* Instructions per scheduler turn; adjustable for GC/boundary testing. */
 static int quantum_selected;  /* Reject duplicate quantum options rather than silently overriding them. */
@@ -145,7 +141,7 @@ static void runtime_error_location(const char **path, long *pc)
 {
     Modlink *module = DVM_R.M;
     Inst *instruction = DVM_R.PC;
-    int boundary = instruction_boundary_error;
+    int boundary = dvm_native_execution()->instruction_boundary_error;
     *path = "(unknown)";
     *pc = -1;
     if (module == nil || module == H)
@@ -180,7 +176,7 @@ void dvm_runtime_step(void)
 {
     if (dvm_runtime_instruction_limit && dvm_runtime_instructions >= dvm_runtime_instruction_limit)
     {
-        instruction_boundary_error = 1;
+        dvm_native_execution()->instruction_boundary_error = 1;
         error("instruction limit exceeded");
     }
     dvm_runtime_instructions++;
@@ -404,15 +400,17 @@ void *mallocz(ulong size, int clear)
     return value;
 }
 
-/* Return this native owner's error buffer. Before binding, only the launching
- * owner's fallback exists. Collector errors must never overwrite mutator text. */
+/* Return the bound native owner's error buffer. Missing environment is a fatal
+ * host protocol violation; no shared fallback may hide a foreign owner access.
+ * Collector errors must never overwrite mutator text. No allocation/blocking. */
 static char *owner_error(void)
 {
     if (up && up->env && up->env->errstr)
     {
         return up->env->errstr;
     }
-    return failure;
+    fprintf(stderr, "disvm: error without a bound native environment\n");
+    exit(1);
 }
 
 
@@ -739,7 +737,7 @@ FVM_PortFile *dvm_runtime_file(int descriptor)
  * or inactive heap interval. No parameters/result, allocation or blocking. */
 void dvm_runtime_input_progress(void)
 {
-    execution_slices = 0;
+    dvm_native_execution()->idle_slices = 0;
 }
 
 
@@ -884,12 +882,13 @@ static int runtime_execute_inner(void *argument)
         fprintf(stderr, "cannot initialize cooperative VM cancellation discipline\n");
         return 1;
     }
-    up->env = &environment;
-    environment.errstr = failure;
+    up->env = &up->defenv;
+    up->env->errstr = up->env->errbuf1;
+    up->env->syserrstr = up->env->errbuf0;
     if (waserror())
     {
         inspect_release();
-        fprintf(stderr, "disvm: %s\n", failure);
+        fprintf(stderr, "disvm: %s\n", owner_error());
         return 1;
     }
     arena_init();
@@ -919,7 +918,7 @@ static int runtime_execute_inner(void *argument)
     module = load(entry);
     if (!module)
     {
-        error(failure);
+        error(owner_error());
     }
     process = start_module(module);
     if (inspect_requested)
@@ -950,7 +949,7 @@ static int runtime_execute_inner(void *argument)
             }
             if (progress)
             {
-                execution_slices = 0;
+                dvm_native_execution()->idle_slices = 0;
             }
         }
         if (!dvm_runqueue_head())
@@ -961,7 +960,7 @@ static int runtime_execute_inner(void *argument)
 #endif
         /* An explicit instruction budget must remain independent of quantum.
          * Otherwise quantum=1 silently stops at 100000 despite a larger limit. */
-        if (!dvm_runtime_instruction_limit && ++execution_slices > 100000)
+        if (!dvm_runtime_instruction_limit && ++dvm_native_execution()->idle_slices > 100000)
         {
             error("execution budget exceeded");
         }
@@ -971,23 +970,24 @@ static int runtime_execute_inner(void *argument)
             error("cannot publish active Dis process in TLS owner");
         }
         up->prog = process;
+        dvm_native_execution()->instruction_boundary_error = 0;
         if (waserror())
         {
             process->R = DVM_R;
             dvm_native_context_set_process(context, nil);
             dvm_bigtable_abort(process);
-            if (failure[0] && !instruction_boundary_error && handler(failure))
+            if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error && handler(owner_error()))
             {
-                failure[0] = 0;
+                owner_error()[0] = 0;
                 up->prog = nil;
                 continue;
             }
-            if (failure[0])
+            if (owner_error()[0])
             {
                 const char *path;
                 long pc;
                 runtime_error_location(&path, &pc);
-                fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, failure);
+                fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, owner_error());
                 inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
                 up->prog = nil;
                 return 1;

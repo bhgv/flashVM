@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1745**. [English](README.md).
+Версия разработки: **0.1746**. [English](README.md).
 
-Текущая серия: [v0.1745](docs/releases/v0.1745.md): пакетирование Unicode-ввода без лишних проходов на каждую клавишу.
+Текущая серия: [v0.1746](docs/releases/v0.1746.md): изоляция ошибок и флагов исполнения по TLS-владельцам DisVM.
 
 ## Просмотр документации
 

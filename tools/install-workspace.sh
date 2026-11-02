@@ -768,7 +768,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
             copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
             # Complete public header closure for the native-owner C tutorial.
-            for native_owner_header in native_context.h native_world.h native_owner.h; do
+            for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
                 copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
             done
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
@@ -831,7 +831,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
             copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
             # Complete public header closure for the native-owner C tutorial.
-            for native_owner_header in native_context.h native_world.h native_owner.h; do
+            for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
                 copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
             done
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
