@@ -16,6 +16,7 @@
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
 #include "open_wait.h"
+#include "close_worker.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "runqueue.h"
@@ -116,6 +117,7 @@ static size_t inspect_offset; /* Requested byte offset, aligned to the NC64 word
 static size_t inspect_count;  /* Requested native words, bounded to 4096 before execution. */
 static uchar *inspect_data;   /* [GC:] Registered native MP root; only verified scalar cells are reported. */
 static int test_control;      /* Explicit isolated-test halt capability; disabled for normal applications. */
+static DVM_CloseJob *close_jobs[32]; /* Reserved native retirement nodes, under heap exclusion. */
 static FVM_PortDirectory *directories[32]; /* Owned OS-port cursors; share the descriptor quota with files. */
 static DVM_FileGate *file_gates[32];       /* Native per-slot FIFO, retained by rooted FD owners. */
 static FVM_PortFile *files[32];            /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
@@ -134,6 +136,7 @@ static void runtime_statistics(void)
         dvm_file_gate_statistics();
         dvm_metadata_statistics();
         dvm_open_statistics();
+        dvm_close_statistics();
         dvm_runqueue_statistics();
         dvm_queue_probe_statistics();
         dvm_bigtable_owners(&tables, &keys);
@@ -655,6 +658,14 @@ static int open_file_mode(const char *path, const char *mode, int asynchronous)
                 kwerrstr("cannot allocate native file gate");
                 return -1;
             }
+            close_jobs[index] = dvm_close_prepare();
+            if (!close_jobs[index])
+            {
+                dvm_file_gate_destroy(file_gates[index]);
+                file_gates[index] = NULL;
+                kwerrstr("cannot reserve native handle retirement");
+                return -1;
+            }
             status = dvm_open_wait(path, mode, asynchronous, &file, &directory);
             if (status == FVM_OK)
             {
@@ -664,6 +675,8 @@ static int open_file_mode(const char *path, const char *mode, int asynchronous)
             }
             dvm_file_gate_destroy(file_gates[index]);
             file_gates[index] = NULL;
+            dvm_close_discard(close_jobs[index]);
+            close_jobs[index] = NULL;
             /* string2c storage may have been reused by another executor during
              * release. Do not inspect the caller's original path here. */
             kwerrstr("cannot open native file or directory (status %d)", status);
@@ -809,10 +822,15 @@ int kclose(int fd)
         exit(1);
     }
     file_gates[fd] = NULL;
-    fvm_port_file_close(files[fd]);
-    fvm_port_directory_close(directories[fd]);
-    files[fd] = nil;
-    directories[fd] = nil;
+    {
+        FVM_PortFile *file = files[fd];
+        FVM_PortDirectory *directory = directories[fd];
+        DVM_CloseJob *job = close_jobs[fd];
+        files[fd] = nil;
+        directories[fd] = nil;
+        close_jobs[fd] = NULL;
+        dvm_close_submit(job, file, directory);
+    }
     return 0;
 }
 
@@ -1128,6 +1146,10 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start managed executor");
     }
+    if (gc_worker && !dvm_close_worker_start())
+    {
+        error("cannot start native close worker");
+    }
     while (dvm_runqueue_head() || (managed_workers != 1 && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
@@ -1222,6 +1244,7 @@ static int runtime_execute(void *argument)
     {
         result = 1;
     }
+    dvm_close_worker_stop();
     runtime_statistics();
     dvm_queue_probe_finish();
     if (!result)

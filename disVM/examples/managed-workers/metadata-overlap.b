@@ -7,12 +7,12 @@ ManagedMetadata: module {
 };
 
 
-# Query metadata, then open file/directory and exclusive create in seven phases.
+# Query metadata, then open file/directory and exclusive create in nine phases.
 # request/ready/done carry copied integers; file/directory remain mapped FD roots.
 # The driver pauses the actual native stat/fstat before each result is available.
 inspect(file, directory: ref Sys->FD, request, ready, done: chan of int)
 {
-    for (phase := 0; phase < 7; phase++) {
+    for (phase := 0; phase < 9; phase++) {
         if (<-request != phase) {
             raise "fail: metadata phase request";
         }
@@ -43,7 +43,7 @@ inspect(file, directory: ref Sys->FD, request, ready, done: chan of int)
                 raise "fail: metadata native directory batch";
             }
         }
-        if (phase >= 4) {
+        if (phase >= 4 && phase <= 6) {
             opened: ref Sys->FD;
             if (phase == 4) {
                 opened = sys->open("open-input-Я.bin", Sys->OREAD);
@@ -61,6 +61,20 @@ inspect(file, directory: ref Sys->FD, request, ready, done: chan of int)
                 (phase == 6 && openedinfo.name != "open-output-Я.bin")) {
                 raise "fail: native open slot was reused";
             }
+        }
+        # Releasing the last mapped FD must publish native-only close work.
+        # Its fclose/closedir is held by the driver while the parent keeps running.
+        if (phase >= 7) {
+            closing: ref Sys->FD;
+            if (phase == 7) {
+                closing = sys->create("close-file-Я.bin", Sys->OWRITE, 8r666);
+            } else {
+                closing = sys->open("close-directory-λ", Sys->OREAD);
+            }
+            if (closing == nil) {
+                raise "fail: native close setup";
+            }
+            closing = nil;
         }
         done <-= phase;
     }
@@ -105,7 +119,7 @@ init()
     spawn inspect(file, directory, request, ready, done);
     input := sys->fildes(0);
     token := array[1] of byte;
-    for (phase := 0; phase < 7; phase++) {
+    for (phase := 0; phase < 9; phase++) {
         request <-= phase;
         if (<-ready != phase || sys->read(input, token, 1) != 1 || int token[0] != '0' + phase) {
             raise "fail: metadata native barrier handshake";

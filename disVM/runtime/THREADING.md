@@ -721,3 +721,17 @@ NATIVEOPEN records completed attempts/releases and staging/peak snapshot bytes.
 The seven-phase metadata/open barrier test requires competing UTF-8 creation and
 managed progress before releasing real fopen64/opendir/open64, plus error cleanup.
 See [release and scope](../../docs/releases/v0.1753.md).
+
+
+## Native finalizer retirement (0.58.0)
+
+With --gc-worker, FD finalizers detach handles only after native pins/FIFO users
+are gone and enqueue a retirement job allocated BEFORE file creation. A separate
+native closer owns only port handles; it never admits the heap or calls VM code.
+The gate/job/handles leave their descriptor slot before queue publication, so
+slot reuse is independent of a slow physical close. Shutdown stops producers
+and collectors, then drains/joins the closer. Reference/startup close stays inline.
+
+NATIVECLOSE shows transfer/completion/backlog/join evidence. A permanently blocked
+OS close still blocks final join; cancellation and native-resource backpressure
+remain separate work. See [release](../../docs/releases/v0.1754.md).

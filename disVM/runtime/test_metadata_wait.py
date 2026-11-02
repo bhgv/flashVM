@@ -24,6 +24,7 @@ def main():
         (work / 'metadata-other-λ.bin').write_bytes(b'ab')
         (work / 'open-input-Я.bin').write_bytes(b'open test')
         (work / 'open-directory-λ').mkdir()
+        (work / 'close-directory-λ').mkdir()
         (work / 'metadata-dir').mkdir()
         for name in ('one', 'two'):
             (work / 'metadata-dir' / name).write_bytes(b'')
@@ -53,7 +54,7 @@ def main():
                     with selectors.DefaultSelector() as poll:
                         poll.register(process.stdout, selectors.EVENT_READ, output)
                         poll.register(process.stderr, selectors.EVENT_READ, errors)
-                        for phase, kind in enumerate(('path', 'file', 'directory', 'batch', 'open-file', 'open-directory', 'create')):
+                        for phase, kind in enumerate(('path', 'file', 'directory', 'batch', 'open-file', 'open-directory', 'create', 'close-file', 'close-directory')):
                             deadline = time.monotonic() + 30
                             token_sent = False
                             progress = f'PASS metadata parent phase {phase} before release\n'.encode()
@@ -89,6 +90,9 @@ def main():
                 if process.returncode or 'PASS metadata native waits completed' not in text:
                     raise RuntimeError(text[-6000:])
                 evidence(text, executors=count)
+                retired = re.search(r'NATIVECLOSE submitted=(\d+) completed=\1 pending=0 peak=\d+ joined=1', text)
+                if not retired or int(retired[1]) < 2:
+                    raise RuntimeError('native close worker failed to drain/join: ' + text[-6000:])
                 opened = re.search(r'NATIVEOPEN attempts=(\d+) releases=(\d+) staging=0 peak=(\d+)', text)
                 if not opened or int(opened[2]) < 10 or int(opened[3]) < len('open-directory-λ'.encode()) + len('open-concurrent-λ.bin'.encode()) + 2:
                     raise RuntimeError('native open staging/releases did not retire')
@@ -97,7 +101,7 @@ def main():
                     raise RuntimeError('metadata roots/staging/releases did not retire: ' + text[-6000:])
                 if not re.search(r'NATIVEFILES created=(\d+) closed=\1 live=0 .*pending=0', text):
                     raise RuntimeError('directory/file metadata gate lifetime did not retire')
-        print('PASS native metadata barriers: path/file/directory/batch/open/create, C/JIT 4/8 owners, '
+        print('PASS native metadata barriers: path/file/directory/batch/open/create/close, C/JIT 4/8 owners, '
               'stdin-ordered managed progress, UTF-8 snapshots, shared65-entry batches and complete retirement')
 
 

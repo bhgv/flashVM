@@ -229,3 +229,18 @@ Run `source/threading/test_metadata_wait.py` with the runtime executable,
 `managed-metadata-overlap.dis` and font path. The driver selects C/JIT and4/8
 executors. All seven phases require observed managed progress before OS permits
 are sent; elapsed delays alone do not count as overlap evidence.
+
+
+## Native retirement (runtime0.58.0)
+
+The metadata-overlap example now drops the last references to a file and directory
+in phases7/8. Private fclose/closedir barriers pause native retirement after the
+mapped FD has detached its handles. Parent progress requires creating a competing
+file and computing/printing before either close is allowed to finish. Thus moving
+GC to another thread alone cannot accidentally satisfy this test while retaining
+the common heap during close. The final NATIVECLOSE record must have matching
+submitted/completed, pending0 and joined1. The same driver now runs nine phases.
+
+Prepared close jobs avoid allocation in finalizers. Physical native handles may
+outlive released descriptor slots until the close worker consumes them. Shutdown
+waits for this queue; the fixture is not a forced cancellation test.

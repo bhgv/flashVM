@@ -40,9 +40,9 @@ def partial_start(runtime, module, work, environment):
             str(source), '-ldl', '-o', str(library),
         ], check=True, capture_output=True, text=True,
     )
-    # Console starts two collectors, then seven helpers. Refuse zero/one/five/
-    # six already-started managed helpers and require every real thread joined.
-    for ordinal in (3, 4, 8, 9):
+    # Console starts two collectors, seven helpers, then the native closer.
+    # Refuse partial helper startup and closer startup; require every real join.
+    for ordinal in (3, 4, 8, 9, 10):
         # LD_PRELOAD splits absolute paths at spaces. Resolve a literal relative
         # filename from the private child cwd instead of weakening path coverage.
         selected = dict(environment, LD_PRELOAD='./thread-start-control.so', DVM_TEST_THREAD_FAIL=str(ordinal))
@@ -52,23 +52,23 @@ def partial_start(runtime, module, work, environment):
         )
         text = run.stdout + run.stderr
         record = re.search(r'POOL_START_CONTROL started=(\d+) joined=(\d+) injected=1', text)
-        if run.returncode != 1 or 'cannot start managed executor' not in text or not record:
+        if run.returncode != 1 or ('cannot start native close worker' if ordinal == 10 else 'cannot start managed executor') not in text or not record:
             raise RuntimeError('partial-start failure missed normal teardown: ' + text[-6000:])
         if int(record[1]) != ordinal - 1 or record[1] != record[2]:
             raise RuntimeError('started helper/collector escaped its join: ' + text[-6000:])
         if not re.search(r'NATIVEGC .*joined=1 failed=0', text):
             raise RuntimeError('partial-start failure bypassed collector retirement')
     # A non-hit ordinal proves the preload forwards normal startup and joins.
-    selected = dict(environment, LD_PRELOAD='./thread-start-control.so', DVM_TEST_THREAD_FAIL='10')
+    selected = dict(environment, LD_PRELOAD='./thread-start-control.so', DVM_TEST_THREAD_FAIL='11')
     run = subprocess.run(
         [str(runtime), '--gc-worker', '--managed-workers', '8', '--stats', str(module)],
         env=selected, cwd=work, capture_output=True, text=True, timeout=30,
     )
     text = run.stdout + run.stderr
-    if run.returncode or 'POOL_START_CONTROL started=9 joined=9 injected=0' not in text:
+    if run.returncode or 'POOL_START_CONTROL started=10 joined=10 injected=0' not in text:
         raise RuntimeError('non-hit creation control changed normal lifetime: ' + text[-6000:])
     evidence(text, executors=8)
-    print('PASS actual thread-creation failures: 0/1/5/6 managed helpers, all joins; non-hit forwarding')
+    print('PASS actual thread-creation failures: 0/1/5/6 managed helpers and closer startup, all joins; non-hit forwarding')
 
 
 # Paths are explicit installed/build products. Child environments use private

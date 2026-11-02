@@ -14,15 +14,17 @@
 static int file_descriptor = -1;      /* Atomic descriptor captured from the private target fopen64. */
 static int directory_descriptor = -1; /* Atomic descriptor captured after target opendir. */
 static DIR *directory_stream;         /* Atomic target cursor identity, borrowed until close. */
-static int blocked[7];                /* Atomic one-shot phase flags for path/file/directory/batch. */
+static FILE *closing_file; /* Atomic borrowed target until its sole native close. */
+static DIR *closing_directory; /* Atomic borrowed directory until native retirement. */
+static int blocked[9];                /* Atomic one-shot phase flags for path/file/directory/batch. */
 
 
-/* Block the selected native phase in an inherited OS pipe read. kind is0..6;
+/* Block the selected native phase in an inherited OS pipe read. kind is0..8;
  * no managed state is accessed. Diagnostics precede the wait; one permit releases
  * one phase. This controlled barrier is not an actual slow-filesystem benchmark. */
 static void barrier(int kind)
 {
-    static const char *markers[] = {"METADATA_BLOCKED path\n", "METADATA_BLOCKED file\n", "METADATA_BLOCKED directory\n", "METADATA_BLOCKED batch\n", "METADATA_BLOCKED open-file\n", "METADATA_BLOCKED open-directory\n", "METADATA_BLOCKED create\n"};
+    static const char *markers[] = {"METADATA_BLOCKED path\n", "METADATA_BLOCKED file\n", "METADATA_BLOCKED directory\n", "METADATA_BLOCKED batch\n", "METADATA_BLOCKED open-file\n", "METADATA_BLOCKED open-directory\n", "METADATA_BLOCKED create\n", "METADATA_BLOCKED close-file\n", "METADATA_BLOCKED close-directory\n"};
     const char *selection = getenv("DVM_TEST_METADATA_BARRIER");
     char permit;
     ssize_t received;
@@ -69,6 +71,10 @@ FILE *fopen64(const char *path, const char *mode)
         barrier(6);
     }
     stream = open_file(path, mode);
+    if (stream && strcmp(path, "close-file-Я.bin") == 0)
+    {
+        __atomic_store_n(&closing_file, stream, __ATOMIC_SEQ_CST);
+    }
     if (stream && strcmp(path, "metadata-fd.bin") == 0)
     {
         __sync_lock_test_and_set(&file_descriptor, fileno(stream));
@@ -122,6 +128,10 @@ DIR *opendir(const char *path)
         barrier(5);
     }
     directory = open_directory(path);
+    if (directory && strcmp(path, "close-directory-λ") == 0)
+    {
+        __atomic_store_n(&closing_directory, directory, __ATOMIC_SEQ_CST);
+    }
     if (directory && strcmp(path, "metadata-dir") == 0)
     {
         __sync_lock_test_and_set(&directory_descriptor, dirfd(directory));
@@ -189,4 +199,44 @@ struct dirent64 *readdir64(DIR *directory)
         barrier(3);
     }
     return read_directory(directory);
+}
+
+
+/* Pause actual file close only after finalizer ownership transfer. stream is
+ * libc-owned until the forwarded close; no VM/descriptor table is accessed. */
+int fclose(FILE *stream)
+{
+    int (*close_file)(FILE *);
+    void *symbol = dlsym(RTLD_NEXT, "fclose");
+    if (!symbol || sizeof(close_file) != sizeof(symbol))
+    {
+        return -1;
+    }
+    memcpy(&close_file, &symbol, sizeof(close_file));
+    if (stream == __atomic_load_n(&closing_file, __ATOMIC_SEQ_CST))
+    {
+        __atomic_store_n(&closing_file, NULL, __ATOMIC_SEQ_CST);
+        barrier(7);
+    }
+    return close_file(stream);
+}
+
+
+/* Directory retirement has the same native-only contract as file retirement.
+ * The cursor is exclusively owned by this close, with no pending FIFO users. */
+int closedir(DIR *directory)
+{
+    int (*close_directory)(DIR *);
+    void *symbol = dlsym(RTLD_NEXT, "closedir");
+    if (!symbol || sizeof(close_directory) != sizeof(symbol))
+    {
+        return -1;
+    }
+    memcpy(&close_directory, &symbol, sizeof(close_directory));
+    if (directory == __atomic_load_n(&closing_directory, __ATOMIC_SEQ_CST))
+    {
+        __atomic_store_n(&closing_directory, NULL, __ATOMIC_SEQ_CST);
+        barrier(8);
+    }
+    return close_directory(directory);
 }
