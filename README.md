@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1752**. [Русская версия](README.ru.md).
+Development version: **0.1753**. [Русская версия](README.ru.md).
 
-Current series: [v0.1752](docs/releases/v0.1752.md): elastic OS executors and hundreds of parked channel tasks.
+Current series: [v0.1753](docs/releases/v0.1753.md): native file/directory open and create outside managed heap ownership.
 
 ## Browse documentation
 

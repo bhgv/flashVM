@@ -212,3 +212,20 @@ selects interpreter and JIT itself. The Linux driver uses private pipe capacity
 controls; it is not a portable platform acceptance test. See
 [release](../../../docs/releases/v0.1752.md) and
 [remaining work](../../runtime/MULTITHREADING-ROADMAP.ru.md).
+
+
+## Open/create overlap (runtime0.57.0)
+
+`metadata-overlap.b` now adds file-open, directory-open and exclusive-create
+phases. During each held native operation the parent creates a different UTF-8
+file, converts another path and computes/prints. Thus an unpublished descriptor
+reservation must survive a competing open, and string2c scratch reuse must not
+alter the held path. Missing-file and existing exclusive-create attempts verify
+failure publication/retirement. The driver interposes fopen64/opendir AND open64:
+exclusive creation uses the latter rather than fopen64. Native barriers are test
+controls only, with no runtime/environment dependency added to the adapter.
+
+Run `source/threading/test_metadata_wait.py` with the runtime executable,
+`managed-metadata-overlap.dis` and font path. The driver selects C/JIT and4/8
+executors. All seven phases require observed managed progress before OS permits
+are sent; elapsed delays alone do not count as overlap evidence.

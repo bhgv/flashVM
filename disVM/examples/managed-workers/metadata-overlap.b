@@ -7,12 +7,12 @@ ManagedMetadata: module {
 };
 
 
-# Query a UTF-8 path, an open file and an open directory in four separate phases.
+# Query metadata, then open file/directory and exclusive create in seven phases.
 # request/ready/done carry copied integers; file/directory remain mapped FD roots.
 # The driver pauses the actual native stat/fstat before each result is available.
 inspect(file, directory: ref Sys->FD, request, ready, done: chan of int)
 {
-    for (phase := 0; phase < 4; phase++) {
+    for (phase := 0; phase < 7; phase++) {
         if (<-request != phase) {
             raise "fail: metadata phase request";
         }
@@ -41,6 +41,25 @@ inspect(file, directory: ref Sys->FD, request, ready, done: chan of int)
                 (entries[0].name != "one" && entries[0].name != "two") ||
                 (entries[1].name != "one" && entries[1].name != "two")) {
                 raise "fail: metadata native directory batch";
+            }
+        }
+        if (phase >= 4) {
+            opened: ref Sys->FD;
+            if (phase == 4) {
+                opened = sys->open("open-input-Я.bin", Sys->OREAD);
+            } else if (phase == 5) {
+                opened = sys->open("open-directory-λ", Sys->OREAD);
+            } else {
+                opened = sys->create("open-output-Я.bin", Sys->OWRITE | Sys->OEXCL, 8r666);
+            }
+            if (opened == nil) {
+                raise "fail: native open completion";
+            }
+            (openedstatus, openedinfo) := sys->fstat(opened);
+            if (openedstatus != 0 || (phase == 4 && openedinfo.name != "open-input-Я.bin") ||
+                (phase == 5 && (openedinfo.mode & Sys->DMDIR) == 0) ||
+                (phase == 6 && openedinfo.name != "open-output-Я.bin")) {
+                raise "fail: native open slot was reused";
             }
         }
         done <-= phase;
@@ -86,10 +105,16 @@ init()
     spawn inspect(file, directory, request, ready, done);
     input := sys->fildes(0);
     token := array[1] of byte;
-    for (phase := 0; phase < 4; phase++) {
+    for (phase := 0; phase < 7; phase++) {
         request <-= phase;
         if (<-ready != phase || sys->read(input, token, 1) != 1 || int token[0] != '0' + phase) {
             raise "fail: metadata native barrier handshake";
+        }
+        # Force another UTF-8 conversion and a competing descriptor allocation
+        # while the selected native open is paused before publishing its handle.
+        concurrent := sys->create("open-concurrent-λ.bin", Sys->OWRITE, 8r666);
+        if (concurrent == nil) {
+            raise "fail: concurrent descriptor reservation";
         }
         (status, record) := sys->stat("metadata-other-λ.bin");
         if (status != 0 || record.name != "metadata-other-λ.bin" || record.length != big 2) {
@@ -106,6 +131,11 @@ init()
         if (<-done != phase) {
             raise "fail: metadata acknowledgement";
         }
+    }
+    # Failed opens must release their unpublished slot reservations as well.
+    if (sys->open("missing-native-Я.bin", Sys->OREAD) != nil ||
+        sys->create("open-output-Я.bin", Sys->OWRITE | Sys->OEXCL, 8r666) != nil) {
+        raise "fail: native open error publication";
     }
     # Child consumed the native batch; EOF and metadata must share the same gate.
     (count, entries) := sys->dirread(directory);

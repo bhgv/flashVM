@@ -3,6 +3,8 @@
 #include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,15 +14,15 @@
 static int file_descriptor = -1;      /* Atomic descriptor captured from the private target fopen64. */
 static int directory_descriptor = -1; /* Atomic descriptor captured after target opendir. */
 static DIR *directory_stream;         /* Atomic target cursor identity, borrowed until close. */
-static int blocked[4];                /* Atomic one-shot phase flags for path/file/directory/batch. */
+static int blocked[7];                /* Atomic one-shot phase flags for path/file/directory/batch. */
 
 
-/* Block the selected native phase in an inherited OS pipe read. kind is0..3;
+/* Block the selected native phase in an inherited OS pipe read. kind is0..6;
  * no managed state is accessed. Diagnostics precede the wait; one permit releases
  * one phase. This controlled barrier is not an actual slow-filesystem benchmark. */
 static void barrier(int kind)
 {
-    static const char *markers[] = {"METADATA_BLOCKED path\n", "METADATA_BLOCKED file\n", "METADATA_BLOCKED directory\n", "METADATA_BLOCKED batch\n"};
+    static const char *markers[] = {"METADATA_BLOCKED path\n", "METADATA_BLOCKED file\n", "METADATA_BLOCKED directory\n", "METADATA_BLOCKED batch\n", "METADATA_BLOCKED open-file\n", "METADATA_BLOCKED open-directory\n", "METADATA_BLOCKED create\n"};
     const char *selection = getenv("DVM_TEST_METADATA_BARRIER");
     char permit;
     ssize_t received;
@@ -58,12 +60,48 @@ FILE *fopen64(const char *path, const char *mode)
         return NULL;
     }
     memcpy(&open_file, &symbol, sizeof(open_file));
+    if (strcmp(path, "open-input-Я.bin") == 0)
+    {
+        barrier(4);
+    }
+    if (strcmp(path, "open-output-Я.bin") == 0)
+    {
+        barrier(6);
+    }
     stream = open_file(path, mode);
     if (stream && strcmp(path, "metadata-fd.bin") == 0)
     {
         __sync_lock_test_and_set(&file_descriptor, fileno(stream));
     }
     return stream;
+}
+
+
+/* Forward exclusive creation through libc open64, not fopen64. Arguments keep
+ * libc ownership; read optional permissions only when the flags require them.
+ * This private fixture pauses only the exact create target before OS mutation. */
+int open64(const char *path, int flags, ...)
+{
+    int (*open_file)(const char *, int, ...);
+    void *symbol = dlsym(RTLD_NEXT, "open64");
+    mode_t permissions = 0;
+    if (!symbol || sizeof(open_file) != sizeof(symbol))
+    {
+        return -1;
+    }
+    memcpy(&open_file, &symbol, sizeof(open_file));
+    if ((flags & O_CREAT) || ((flags & O_TMPFILE) == O_TMPFILE))
+    {
+        va_list arguments;
+        va_start(arguments, flags);
+        permissions = va_arg(arguments, mode_t);
+        va_end(arguments);
+    }
+    if (strcmp(path, "open-output-Я.bin") == 0)
+    {
+        barrier(6);
+    }
+    return open_file(path, flags, permissions);
 }
 
 
@@ -79,6 +117,10 @@ DIR *opendir(const char *path)
         return NULL;
     }
     memcpy(&open_directory, &symbol, sizeof(open_directory));
+    if (strcmp(path, "open-directory-λ") == 0)
+    {
+        barrier(5);
+    }
     directory = open_directory(path);
     if (directory && strcmp(path, "metadata-dir") == 0)
     {

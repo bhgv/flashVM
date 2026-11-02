@@ -705,3 +705,19 @@ and executor migration do not establish parallel managed compute.
 
 [Release and validation scope](../../docs/releases/v0.1752.md) |
 [Remaining work, Russian](MULTITHREADING-ROADMAP.ru.md).
+
+
+## Native file/directory open and create (0.57.0)
+
+Sys.open/create now snapshot the path and construct unpublished native handles
+outside the heap lease. An allocated descriptor gate reserves the table slot
+before release; other opens skip reserved slots even though neither handle is
+published yet. A marked retained mapped FD survives the wait with fd=-1; the
+completed handle and descriptor publish only after reentry. Port failure returns
+nil and frees the gate/snapshot. Original string2c scratch is never reused after
+release. Loader opens and GC-driven descriptor close remain synchronous.
+
+NATIVEOPEN records completed attempts/releases and staging/peak snapshot bytes.
+The seven-phase metadata/open barrier test requires competing UTF-8 creation and
+managed progress before releasing real fopen64/opendir/open64, plus error cleanup.
+See [release and scope](../../docs/releases/v0.1753.md).

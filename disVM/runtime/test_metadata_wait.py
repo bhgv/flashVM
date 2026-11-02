@@ -1,4 +1,4 @@
-"""Observe unrelated managed progress while native path/file/directory metadata waits."""
+"""Observe unrelated managed progress while native path/file/directory metadata/open/create waits."""
 import os
 from pathlib import Path
 import re
@@ -22,6 +22,8 @@ def main():
         work = Path(directory)
         (work / 'metadata-path-Я.bin').write_bytes(b'12345')
         (work / 'metadata-other-λ.bin').write_bytes(b'ab')
+        (work / 'open-input-Я.bin').write_bytes(b'open test')
+        (work / 'open-directory-λ').mkdir()
         (work / 'metadata-dir').mkdir()
         for name in ('one', 'two'):
             (work / 'metadata-dir' / name).write_bytes(b'')
@@ -35,6 +37,7 @@ def main():
         ], check=True, capture_output=True, text=True)
         for mode in ('--jit', '--no-jit'):
             for count in (4, 8):
+                (work / 'open-output-Я.bin').unlink(missing_ok=True)
                 read_fd, write_fd = os.pipe()
                 environment = dict(os.environ, LD_PRELOAD='./metadata-barrier.so',
                     DVM_TEST_METADATA_BARRIER=str(read_fd), SDL_VIDEODRIVER='dummy',
@@ -50,7 +53,7 @@ def main():
                     with selectors.DefaultSelector() as poll:
                         poll.register(process.stdout, selectors.EVENT_READ, output)
                         poll.register(process.stderr, selectors.EVENT_READ, errors)
-                        for phase, kind in enumerate(('path', 'file', 'directory', 'batch')):
+                        for phase, kind in enumerate(('path', 'file', 'directory', 'batch', 'open-file', 'open-directory', 'create')):
                             deadline = time.monotonic() + 30
                             token_sent = False
                             progress = f'PASS metadata parent phase {phase} before release\n'.encode()
@@ -86,12 +89,15 @@ def main():
                 if process.returncode or 'PASS metadata native waits completed' not in text:
                     raise RuntimeError(text[-6000:])
                 evidence(text, executors=count)
+                opened = re.search(r'NATIVEOPEN attempts=(\d+) releases=(\d+) staging=0 peak=(\d+)', text)
+                if not opened or int(opened[2]) < 10 or int(opened[3]) < len('open-directory-λ'.encode()) + len('open-concurrent-λ.bin'.encode()) + 2:
+                    raise RuntimeError('native open staging/releases did not retire')
                 metadata = re.search(r'NATIVEMETADATA paths=(\d+) descriptors=(\d+) releases=(\d+) pins=0 staging=0 peak=(\d+) batches=(\d+)', text)
                 if not metadata or int(metadata[1]) < 5 or int(metadata[2]) < 3 or int(metadata[3]) < 15 or int(metadata[4]) < len('metadata-path-Я.bin'.encode()) + len('metadata-other-λ.bin'.encode()) + 2 or int(metadata[5]) < 7:
                     raise RuntimeError('metadata roots/staging/releases did not retire: ' + text[-6000:])
                 if not re.search(r'NATIVEFILES created=(\d+) closed=\1 live=0 .*pending=0', text):
                     raise RuntimeError('directory/file metadata gate lifetime did not retire')
-        print('PASS native metadata barriers: path/file/directory/batch, C/JIT 4/8 owners, '
+        print('PASS native metadata barriers: path/file/directory/batch/open/create, C/JIT 4/8 owners, '
               'stdin-ordered managed progress, UTF-8 snapshots, shared65-entry batches and complete retirement')
 
 

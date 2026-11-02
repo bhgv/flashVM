@@ -15,6 +15,7 @@
 #include "file_gate.h"
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
+#include "open_wait.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "runqueue.h"
@@ -132,6 +133,7 @@ static void runtime_statistics(void)
         dvm_formatted_statistics();
         dvm_file_gate_statistics();
         dvm_metadata_statistics();
+        dvm_open_statistics();
         dvm_runqueue_statistics();
         dvm_queue_probe_statistics();
         dvm_bigtable_owners(&tables, &keys);
@@ -632,44 +634,52 @@ int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
     return 0;
 }
 
-/* Open module input through the shared FlashVM file implementation. */
-static int open_file(const char *path, const char *mode)
+/* Reserve a descriptor under heap exclusion before constructing an unpublished
+ * native handle. path is borrowed UTF-8, mode an immutable r/w/wx literal.
+ * asynchronous admits audited Sys calls; loader calls retain their protected
+ * synchronous boundary. Return a published slot or -1 with a logical error.
+ * A non-NULL gate reserves the slot even before any handle exists. */
+static int open_file_mode(const char *path, const char *mode, int asynchronous)
 {
     int index;
     for (index = 3; index < 32; index++)
     {
-        if (!files[index] && !directories[index])
+        if (!files[index] && !directories[index] && !file_gates[index])
         {
-            FVM_FileInfo metadata;
+            FVM_PortFile *file = NULL;
+            FVM_PortDirectory *directory = NULL;
+            FVM_Result status;
             file_gates[index] = dvm_file_gate_create();
             if (!file_gates[index])
             {
                 kwerrstr("cannot allocate native file gate");
                 return -1;
             }
-            if (!strcmp(mode, "r") && fvm_port_path_info(path, &metadata) == FVM_OK && metadata.directory)
+            status = dvm_open_wait(path, mode, asynchronous, &file, &directory);
+            if (status == FVM_OK)
             {
-                if (fvm_port_directory_open(path, &directories[index]) == FVM_OK)
-                {
-                    return index;
-                }
-                dvm_file_gate_destroy(file_gates[index]);
-                file_gates[index] = NULL;
-                kwerrstr("cannot open directory: %s", path);
-                return -1;
-            }
-            if (fvm_port_file_open(path, mode, &files[index]) == FVM_OK)
-            {
+                files[index] = file;
+                directories[index] = directory;
                 return index;
             }
             dvm_file_gate_destroy(file_gates[index]);
             file_gates[index] = NULL;
-            kwerrstr("cannot open file: %s", path);
+            /* string2c storage may have been reused by another executor during
+             * release. Do not inspect the caller's original path here. */
+            kwerrstr("cannot open native file or directory (status %d)", status);
             return -1;
         }
     }
     kwerrstr("file handle quota exceeded");
     return -1;
+}
+
+
+/* Loader-only native input: borrowed path/mode, synchronous protected lifetime.
+ * Return the owned descriptor slot or -1; the caller closes it with kclose. */
+static int open_file(const char *path, const char *mode)
+{
+    return open_file_mode(path, mode, 0);
 }
 
 /* Map only the bundled library names from Inferno resource paths to package siblings.
@@ -1555,7 +1565,11 @@ void Sys_open(void *frame)
         descriptor = -1;
         if (call->mode == OREAD)
         {
-            descriptor = open_file(path, "r");
+            /* [GC:] The unpublished FD is a C-held root across native waiting. */
+            ptradd(D2H(result));
+            Setmark(D2H(result));
+            descriptor = open_file_mode(path, "r", 1);
+            ptrdel(D2H(result));
         }
         else
         {
@@ -1652,7 +1666,11 @@ void Sys_create(void *frame)
     {
         result = H2D(Sys_FD *, heapz(TFD));
         result->fd = -1;
-        descriptor = open_file(path, (call->mode & Sys_OEXCL) ? "wx" : "w");
+        /* [GC:] Preserve the unpublished FD while other owners collect. */
+        ptradd(D2H(result));
+        Setmark(D2H(result));
+        descriptor = open_file_mode(path, (call->mode & Sys_OEXCL) ? "wx" : "w", 1);
+        ptrdel(D2H(result));
         if (descriptor < 0)
         {
             destroy(result);
