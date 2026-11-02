@@ -55,7 +55,9 @@ int dvm_native_owner_leave(DVM_HeapOwner *owner);
 
 
 /* [GC:] Leave ACTIVE for audited NATIVE work. epoch is sampled while ACTIVE;
- * caller first publishes its managed frame and external roots. Native work must
+ * caller first publishes its managed frame and external roots and satisfies
+ * higher-level synchronous-call restrictions. This does not convert a retained
+ * Native64Caller hold into a releasing lease. Native work must
  * not access managed data. Returns zero on misuse, leaving state unchanged. */
 int dvm_native_owner_suspend(DVM_HeapOwner *owner, unsigned long epoch);
 

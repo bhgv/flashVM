@@ -440,3 +440,30 @@ Parallel managed spawn, concurrent marking and arbitrary native cancellation
 remain open. Snapshot manifests now pin 7fe99c3; the shared contract records the
 jointly agreed FUTURE eight-byte result-address/byte32 rule, without enabling
 LEA/CALL in the current 43-op file profile or assigning feature IDs.
+
+
+## Runtime 0.49.0: runnable withdrawal before native release
+
+The separate runqueue module keeps native continuations out of runnable dispatch:
+complete REG publication → withdraw/Prelease with original owner → world leave;
+then world reentry/epoch sample → same-owner prepend → managed result publication.
+The separate process/root list is unchanged. Normal queue operations are O(1),
+with metadata outside the retained Prog prefix/REG and no per-call allocation.
+Foreign/duplicate restoration, ordinary append of leased Progs and premature
+retirement refuse. Nonzero native64holds retains the existing synchronous-call
+restriction; the generic TLS lease is not permission to bypass it.
+
+The opt-in native-queue-probe starts a real extra runtime owner during actual
+native suspension. It checks rooted/non-runnable/saved-frame state under its
+heap turn and joins before the caller resumes. Alternating observers exercise
+ACTIVE and IDLE service detach. High-level detach now retries an IDLE collector
+refusal without attempting a second leave. Native owner/service lifetimes still
+require external publication and joins. Baseline execution does not enable the
+probe or create per-native-call observer threads.
+
+An independent 20000-operation oracle and four active ownership controls pass
+with real native identities, strict UBSan and focused TSan. Production console/
+UI diagnostic runs cover eight normal/two managed errors per host and match all
+withdrawal/reentry/GC/root/join counters. The managed dispatcher remains single-
+executor; error/budget/current-process, callback wake/kill and queue/channel/cache
+migration remain prerequisites for another. See RUNQUEUE.md for exact scope.

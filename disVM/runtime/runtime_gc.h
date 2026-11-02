@@ -17,15 +17,17 @@ int dvm_runtime_gc_request(void);
  * attempts/owners before stop. Zero refuses; no managed executor is created. */
 int dvm_runtime_gc_attach(void);
 
-/* [GC:] Leave/detach an extra active owner with empty process slots. The original
+/* [GC:] Leave/detach an extra active or idle owner with empty process slots. The original
  * controller retires through stop instead. Returns zero for outstanding calls,
- * wrong ownership/phase or protocol failure; TLS stays bound through the call. */
+ * wrong ownership/phase or collector conflict; TLS stays bound through the call.
+ * An IDLE refusal can be retried after the collector finishes, without leaving
+ * the heap twice. Host lifetime/join requirements still apply. */
 int dvm_runtime_gc_detach(void);
 
 /* [GC:] Temporarily leave heap execution for an audited native callback whose
  * C locals contain no unregistered managed owners. Publishes the complete native
  * call REG/stack roots first. Returns one when released, zero in inline mode or
- * protected GC regions. Protocol violations terminate before unsafe heap access. */
+ * protected GC regions or retained synchronous Native64Caller holds. Protocol violations terminate before unsafe heap access. */
 int dvm_runtime_gc_native_leave(void);
 
 /* [GC:] Reenter after the native operation, before touching any managed memory.

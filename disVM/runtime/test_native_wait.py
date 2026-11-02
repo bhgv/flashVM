@@ -36,6 +36,7 @@ def execute(runtime, module, mode, gc_flags, quantum, limited=False):
     if runtime.name == "disvm-editor" and not re.search(
             r"main_dis_tls=0 worker_bound=1 worker_released=1 result="+str(expected), output):
         raise RuntimeError("UI/Dis owner retirement failed:\n"+output[-5000:])
+    return output
 
 
 # Exercise dispatch, root-boundary and polling variants plus unwinding after

@@ -15,6 +15,8 @@
 #include "filesystem_sys.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "runqueue.h"
+#include "queue_probe.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
 #include <stdio.h>
@@ -37,7 +39,7 @@ extern void dvm_editor_stop(void);
 #endif
 
 #define ARENA_BYTES (64UL * 1024UL * 1024UL) /* Bounded experimental heap arena. */
-#define PROCESS_MAX 128                      /* Maximum simultaneous Limbo processes. */
+#define PROCESS_MAX DVM_RUNTIME_PROCESS_MAX                      /* Maximum simultaneous Limbo processes. */
 
 /* Private allocator owner; the arena has stable metadata for production GC walks. */
 struct Pool
@@ -81,8 +83,6 @@ extern ulong gcepochs;                    /* Completed collector epochs; distinc
 
 static Pool memory;                       /* Pool mutated by Dis or its stopped-world collector. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
-static Prog *ready;                       /* FIFO head for runnable Limbo processes. */
-static Prog *tail;                        /* FIFO tail. */
 static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static unsigned long execution_slices;    /* Busy-work budget since the last actual standard-input progress. */
@@ -124,6 +124,8 @@ static void runtime_statistics(void)
         dvm_runtime_read_statistics();
         dvm_runtime_write_statistics();
         dvm_formatted_statistics();
+        dvm_runqueue_statistics();
+        dvm_queue_probe_statistics();
         dvm_bigtable_owners(&tables, &keys);
         fprintf(stderr,
                 "instructions=%lu native=%lu gc_runs=%lu gc_epochs=%lu tables_live=%lu keys_live=%lu\n",
@@ -473,39 +475,35 @@ void acquire(void)
 {
 }
 
-/* Locate the current runnable process for production channel operations. */
+/* Borrow this bound native owner's typed active Prog, or nil without an owner.
+ * No process identity is inferred from the shared runnable head. Heap access
+ * still requires the current exclusive turn; native waiters cannot execute. */
 Prog *currun(void)
 {
-    return ready;
+    return up ? up->prog : nil;
 }
 
-/* Append a runnable process to the scheduler FIFO. */
+
+/* Append a non-leased runtime Prog under exclusive heap ownership. process is
+ * borrowed; malformed/duplicate admission raises before modifying queue roots. */
 void addrun(Prog *process)
 {
-    process->state = Pready;
-    process->link = nil;
-    if (tail)
+    if (!dvm_runqueue_append(process))
     {
-        tail->link = process;
+        error("invalid runnable process admission");
     }
-    else
-    {
-        ready = process;
-    }
-    tail = process;
 }
 
-/* Block/remove the FIFO head while retaining it in the GC root list. */
+
+/* Remove current FIFO head without touching its separate process/GC root links.
+ * state is the retained scheduler reason; invalid/empty head raises normally. */
 Prog *delrun(int state)
 {
-    Prog *process = ready;
-    ready = process->link;
-    if (!ready)
+    Prog *process = dvm_runqueue_pop(state);
+    if (!process)
     {
-        tail = nil;
+        error("invalid runnable process removal");
     }
-    process->link = nil;
-    process->state = state;
     return process;
 }
 
@@ -518,7 +516,7 @@ Prog *newprog(Prog *parent, Modlink *module)
     {
         error("process quota exceeded");
     }
-    process = calloc(1, sizeof(Prog));
+    process = calloc(1, sizeof(DVM_RuntimeProcess));
     if (!process)
     {
         error(exNomem);
@@ -932,7 +930,7 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    while (ready
+    while (dvm_runqueue_head()
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
 #endif
@@ -955,7 +953,7 @@ static int runtime_execute_inner(void *argument)
                 execution_slices = 0;
             }
         }
-        if (!ready)
+        if (!dvm_runqueue_head())
         {
             fvm_port_thread_sleep_us(1000);
             continue;
@@ -967,7 +965,7 @@ static int runtime_execute_inner(void *argument)
         {
             error("execution budget exceeded");
         }
-        process = ready;
+        process = dvm_runqueue_head();
         if (!dvm_native_context_set_process(context, process))
         {
             error("cannot publish active Dis process in TLS owner");
@@ -992,6 +990,10 @@ static int runtime_execute_inner(void *argument)
                 inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
                 return 1;
             }
+            if (dvm_runqueue_owner(process))
+            {
+                error("cannot retire a native continuation");
+            }
             delrun(Pexiting);
             for (slot = &processes; *slot && *slot != process; slot = &(*slot)->next)
             {
@@ -1014,7 +1016,7 @@ static int runtime_execute_inner(void *argument)
             xec(process);
             dvm_native_context_set_process(context, nil);
             poperror();
-            if (ready == process)
+            if (dvm_runqueue_head() == process)
             {
                 addrun(delrun(Pready));
             }
@@ -1061,6 +1063,7 @@ static int runtime_execute(void *argument)
         result = 1;
     }
     runtime_statistics();
+    dvm_queue_probe_finish();
     if (!result)
     {
         puts("PASS Dis application completed");
@@ -1157,6 +1160,14 @@ int main(int argc, char **argv)
         {
             gc_locked_poll = 1;
         }
+        else if (strcmp(argv[1], "--native-queue-probe") == 0)
+        {
+            if (!dvm_queue_probe_enable())
+            {
+                fprintf(stderr,"cannot initialize native queue probe\n");
+                return 2;
+            }
+        }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
@@ -1187,7 +1198,8 @@ int main(int argc, char **argv)
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
-            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one Dis heap owner.");
+            puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
+            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one managed Dis executor; native heap turns are exclusive.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
 #endif
@@ -1204,6 +1216,12 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
+        return 2;
+    }
+    if (dvm_queue_probe_requested && !gc_worker)
+    {
+        fprintf(stderr,"--native-queue-probe requires --gc-worker\n");
+        dvm_queue_probe_finish();
         return 2;
     }
     dontcompile = !cflag;

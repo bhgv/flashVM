@@ -8,6 +8,8 @@
 #include "disvm/native_owner.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
+#include "runqueue.h"
+#include "queue_probe.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -224,14 +226,27 @@ int dvm_runtime_gc_native_leave(void)
         fprintf(stderr,"disvm: unpublished native call owner\n");
         exit(1);
     }
+    if (!dvm_runqueue_release_allowed(process))
+    {
+        return 0;
+    }
     if (process)
     {
         process->R = DVM_R;
+        if (!dvm_runqueue_suspend(process))
+        {
+            fprintf(stderr,"disvm: native continuation withdrawal failed\n");
+            exit(1);
+        }
     }
     if (!dvm_runtime_gc_request() || !dvm_native_owner_suspend(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap release failed\n");
         exit(1);
+    }
+    if (process && dvm_queue_probe_requested)
+    {
+        dvm_queue_probe_run(process,dvm_native_context_current(),state.roots);
     }
     return 1;
 }
@@ -273,6 +288,14 @@ void dvm_runtime_gc_native_enter(int released)
         fprintf(stderr,"disvm: native heap reentry failed\n");
         exit(1);
     }
+    {
+        Prog *process = dvm_native_context_process(dvm_native_context_current());
+        if (process && !dvm_runqueue_resume(process))
+        {
+            fprintf(stderr,"disvm: native continuation restoration failed\n");
+            exit(1);
+        }
+    }
 }
 
 
@@ -304,7 +327,8 @@ int dvm_runtime_gc_attach(void)
 
 /* [GC:] Retire an attached non-controller owner while its process slots are
  * empty and no native call is outstanding. Caller keeps TLS bound through this
- * call, then may unbind. Returns zero without promising cleanup on misuse. */
+ * call, then may unbind. Returns zero on misuse or transient collector refusal; an IDLE retry does
+ * not attempt a second leave. Service lifetime remains a host obligation. */
 int dvm_runtime_gc_detach(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
@@ -314,7 +338,18 @@ int dvm_runtime_gc_detach(void)
     {
         return 0;
     }
-    return dvm_native_owner_leave(owner) && dvm_native_owner_detach(owner);
+    {
+        DVM_HeapOwnerStats call;
+        if (!dvm_native_owner_statistics(owner,&call) || call.pending_progress)
+        {
+            return 0;
+        }
+        if (call.phase == DVM_HEAP_ACTIVE && !dvm_native_owner_leave(owner))
+        {
+            return 0;
+        }
+        return dvm_native_owner_detach(owner);
+    }
 }
 
 
@@ -336,7 +371,7 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (dvm_native_context_current() != state.owner ||
         !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
-        call.pending_progress || !dvm_native_owner_seal(owner) ||
+        call.pending_progress || dvm_runqueue_inflight() || !dvm_native_owner_seal(owner) ||
         !dvm_world_admission(state.world,&admission) || !admission.serial || admission.waiting)
     {
         return 0;
