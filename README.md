@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1751**. [Русская версия](README.ru.md).
+Development version: **0.1752**. [Русская версия](README.ru.md).
 
-Current series: [v0.1751](docs/releases/v0.1751.md): native metadata/directory waits outside the managed heap.
+Current series: [v0.1752](docs/releases/v0.1752.md): elastic OS executors and hundreds of parked channel tasks.
 
 ## Browse documentation
 

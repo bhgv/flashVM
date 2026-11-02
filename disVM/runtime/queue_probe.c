@@ -72,6 +72,8 @@ static void observe(void *argument)
     unsigned int attempt;
     unsigned int root_count = 0;
     Prog *cursor;
+    Prog *slow;
+    Prog *fast;
     int rooted = 0;
     int attached = 0;
     if (!context || !dvm_native_context_bind(context))
@@ -93,11 +95,26 @@ static void observe(void *argument)
     }
     /* Both the run queue and retained root-list links are protected by this
      * actual heap turn. The original owner's C stack and REG remain frozen. */
+    slow = *observation->roots;
+    fast = slow;
     for (cursor = *observation->roots; cursor && root_count++ < DVM_RUNTIME_PROCESS_MAX; cursor = cursor->next)
     {
         if (cursor == observation->process)
         {
             rooted = 1;
+        }
+        if (fast && fast->next)
+        {
+            slow = slow->next;
+            fast = fast->next->next;
+            if (slow == fast)
+            {
+                failed("cycle in retained process roots");
+            }
+        }
+        else
+        {
+            fast = NULL;
         }
     }
     observation->ok = rooted && !cursor && observation->process->state == Prelease &&

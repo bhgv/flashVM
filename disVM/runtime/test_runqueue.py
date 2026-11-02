@@ -16,7 +16,7 @@ def main():
         work = Path(directory)
         command = shlex.split(os.environ.get("CC","cc"))
         command += shlex.split(os.environ.get("CFLAGS","-O1 -g"))
-        command += ["-pthread"]
+        command += ["-pthread", "-DDVM_RUNTIME_PROCESS_MAX=128"]
         for include in (runtime, root/"disVM/host", root/"disVM/host/include", root/"disVM/upstream/include",
                         root/"disVM/upstream/libinterp", root/"disVM/upstream/emu/port",
                         root/"disVM/include", root/"flashVM/ports"):

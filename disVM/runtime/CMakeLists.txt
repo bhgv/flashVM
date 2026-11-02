@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.55.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.56.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2097,13 +2097,19 @@ endif()
 
 
 # Real two-executor examples and native backpressure; no simulated dispatcher.
-foreach(pool_example main backpressure backpressure-eight shared-file file-overlap metadata-overlap ui-rpc)
+foreach(pool_example main backpressure backpressure-eight shared-file file-overlap metadata-overlap elastic elastic-stop elastic-park ui-rpc)
  if(pool_example STREQUAL "main")
   set(pool_image managed-workers)
  elseif(pool_example STREQUAL "backpressure")
   set(pool_image managed-backpressure)
  elseif(pool_example STREQUAL "backpressure-eight")
   set(pool_image managed-backpressure-eight)
+ elseif(pool_example STREQUAL "elastic-park")
+  set(pool_image managed-elastic-park)
+ elseif(pool_example STREQUAL "elastic-stop")
+  set(pool_image managed-elastic-stop)
+ elseif(pool_example STREQUAL "elastic")
+  set(pool_image managed-elastic)
  elseif(pool_example STREQUAL "metadata-overlap")
   set(pool_image managed-metadata-overlap)
  elseif(pool_example STREQUAL "file-overlap")
@@ -2193,4 +2199,19 @@ int main(void) { return 0; }" DVM_METADATA_GLIBC)
    endif()
   endforeach()
  endif()
+endif()
+
+
+# Actual pressure-driven growth, channel suspension and idle retirement/reaping.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(elastic_runner disvm disvm-editor)
+  if(TARGET ${elastic_runner})
+   add_test(NAME ${elastic_runner}_elastic_pool COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_elastic_pool.py" "$<TARGET_FILE:${elastic_runner}>"
+    "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/managed-elastic.dis"
+    "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
+   set_tests_properties(${elastic_runner}_elastic_pool PROPERTIES TIMEOUT 300)
+  endif()
+ endforeach()
 endif()

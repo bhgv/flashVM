@@ -79,12 +79,12 @@ def main():
         Path(value).resolve() for value in sys.argv[1:]
     )
     options = ['--font', str(font)] if runtime.name == 'disvm-editor' else []
-    for invalid in ('0', '9', '-1', '2147483648', '2x'):
+    for invalid in ('0', '-1', '2147483648', '2x'):
         run = subprocess.run(
             [str(runtime), '--managed-workers', invalid, str(compute)],
             capture_output=True, text=True, timeout=15,
         )
-        if run.returncode != 2 or '1..8' not in run.stderr:
+        if run.returncode != 2 or 'positive count or auto' not in run.stderr:
             raise RuntimeError('invalid executor bound admitted: ' + invalid)
     with tempfile.TemporaryDirectory(prefix='managed pool capacity ') as directory:
         work = Path(directory)

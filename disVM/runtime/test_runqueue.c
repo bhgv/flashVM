@@ -10,6 +10,13 @@
 #include <string.h>
 
 
+/* Isolated queue fixture has no pool; actual wake/idle behavior is exercised by
+ * the production elastic-runtime test, not simulated by this FIFO oracle. */
+void dvm_managed_workers_wake(void)
+{
+}
+
+
 /* Fail closed on a semantic invariant; valid/message are borrowed and no VM
  * error ABI is simulated. Positive fixture resources retire before success. */
 static void check(int valid, const char *message)

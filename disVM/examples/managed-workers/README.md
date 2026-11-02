@@ -180,3 +180,35 @@ and JIT with4/8 executors, two simultaneous UTF-8 snapshots and complete gate
 retirement. Open/create/close, private loader work and protected native64holds/
 gchalt regions retain their prior synchronous policy; forced OS cancellation is
 not added. The stable default remains one executor, with opt-in worker GC.
+
+
+## Elastic pool (runtime0.56.0, current policy)
+
+The historical1..8 restriction above no longer applies. `run-managed-workers.sh`
+now defaults to `DVM_MANAGED_WORKERS=auto`; set a positive integer for a fixed
+count. The runtime itself still defaults to one. Automatic mode grows for audited
+blocking I/O and retires idle extra OS threads; parked logical channel tasks have
+no dedicated OS thread. `--managed-workers-limit N` optionally bounds live auto
+executors; resource refusal is fatal, not graceful cancellation.
+
+`elastic.b` parks256 receivers and64 constant senders, then runs two waves of12
+writers against real OS pipe backpressure. The driver holds the pipe until native
+suspension is observed, drains exact payloads, waits for actual idle joins and
+releases stdin for the next wave. This tests context reuse and regrowth rather
+than assuming elapsed time proves blocking. `elastic-stop.b` holds four native
+readers until a managed failure is observed, then releases them to test stop/join.
+`elastic-park.b` deliberately leaves256 tasks parked after init returns; its private
+driver terminates that nonterminating fixture and does not claim managed cancellation.
+
+From an installed product, run (replace ROOT with its absolute directory):
+
+```sh
+python3 ROOT/source/threading/test_elastic_pool.py \
+    ROOT/disvm ROOT/managed-workers.dis ROOT/managed-elastic.dis ROOT/fonts/NotoSansMono-Regular.ttf
+```
+
+For the graphical host use `ROOT/disvm-editor` and its installed font. The test
+selects interpreter and JIT itself. The Linux driver uses private pipe capacity
+controls; it is not a portable platform acceptance test. See
+[release](../../../docs/releases/v0.1752.md) and
+[remaining work](../../runtime/MULTITHREADING-ROADMAP.ru.md).

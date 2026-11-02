@@ -2,7 +2,9 @@
 #ifndef DVM_RUNTIME_RUNQUEUE_H
 #define DVM_RUNTIME_RUNQUEUE_H
 #include "disvm/native_context.h"
-#define DVM_RUNTIME_PROCESS_MAX 128 /* Shared process/runnable quota, including native waiters. */
+#ifndef DVM_RUNTIME_PROCESS_MAX
+#define DVM_RUNTIME_PROCESS_MAX 2147483647U /* Native signed process/count representation, not a128-task policy. */
+#endif
 
 
 /* Native allocation preserves the complete retained Prog prefix. Every Prog

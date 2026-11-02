@@ -92,6 +92,8 @@ static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static int managed_workers = 1; /* Opt-in OS executors; shared heap remains exclusive. */
+static unsigned long managed_workers_limit; /* Optional automatic pool resource cap; zero is uncapped. */
+static int managed_limit_selected; /* Reject duplicate physical resource limits. */
 static int managed_workers_selected; /* Reject duplicate executor options. */
 static unsigned long progress_epoch; /* Shared acknowledged input generation, protected by the heap gate. */
 static int gc_worker;                     /* Explicit production collector-worker admission. */
@@ -519,7 +521,7 @@ Prog *delrun(int state)
 Prog *newprog(Prog *parent, Modlink *module)
 {
     Prog *process;
-    if (live == PROCESS_MAX)
+    if (live == PROCESS_MAX || nextpid == INT_MAX)
     {
         error("process quota exceeded");
     }
@@ -1050,6 +1052,7 @@ static int runtime_dispatch_turn(void)
  * native GC obtains exclusive heap access through the world rendezvous. */
 static int runtime_execute_inner(void *argument)
 {
+    int quiescent_reported = 0; /* One diagnostic per all-channel-wait episode. */
     DVM_NativeContext *context;
     Module *module;
     Prog *process;
@@ -1111,16 +1114,34 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    if (managed_workers > 1 && !dvm_managed_workers_start(managed_workers, runtime_dispatch_turn))
+    if (managed_workers != 1 && !dvm_managed_workers_start(managed_workers ? managed_workers : 2, managed_workers == 0, managed_workers_limit, show_stats, runtime_dispatch_turn))
     {
         error("cannot start managed executor");
     }
-    while (dvm_runqueue_head() || (managed_workers > 1 && dvm_runqueue_inflight())
+    while (dvm_runqueue_head() || (managed_workers != 1 && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
 #endif
     )
     {
+        if (managed_workers == 0 && live && !dvm_runqueue_head() && !dvm_runqueue_inflight()
+#ifdef DVM_RUNTIME_EDITOR
+            && !dvm_editor_attached()
+#endif
+        )
+        {
+            if (show_stats && !quiescent_reported)
+            {
+                fprintf(stderr, "NATIVEPOOL_QUIESCENT processes=%d\n", live);
+            }
+            quiescent_reported = 1;
+            if (!dvm_managed_workers_park())
+            {
+                error("automatic executor park failed");
+            }
+            continue;
+        }
+        quiescent_reported = 0;
         if (gc_worker && !dvm_native_context_poll())
         {
             error("native collector safepoint failed");
@@ -1299,15 +1320,28 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[1], "--managed-workers") == 0)
         {
-            size_t count;
-            if (managed_workers_selected || argc < 3 || !runtime_extent(argv[2],&count) ||
-                (count < 1 || count > DVM_MANAGED_EXECUTORS_MAX))
+            size_t count = 0;
+            if (managed_workers_selected || argc < 3 ||
+                (strcmp(argv[2], "auto") && (!runtime_extent(argv[2], &count) || count < 1)))
             {
-                fprintf(stderr,"--managed-workers requires one count in 1..8\n");
+                fprintf(stderr, "--managed-workers requires one positive count or auto\n");
                 return 2;
             }
             managed_workers = (int)count;
             managed_workers_selected = 1;
+            argv++;
+            argc--;
+        }
+        else if (strcmp(argv[1], "--managed-workers-limit") == 0)
+        {
+            size_t limit;
+            if (managed_limit_selected || argc < 3 || !runtime_extent(argv[2], &limit) || limit < 2)
+            {
+                fprintf(stderr, "--managed-workers-limit requires one count >=2\n");
+                return 2;
+            }
+            managed_workers_limit = (unsigned long)limit;
+            managed_limit_selected = 1;
             argv++;
             argc--;
         }
@@ -1343,7 +1377,7 @@ int main(int argc, char **argv)
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");
-            puts("Managed execution: --managed-workers 1 (default) or 2..8 (requires --gc-worker); OS I/O may overlap, heap turns are serialized.");
+            puts("Managed execution: --managed-workers 1 (default) or a positive count / auto (requires --gc-worker); auto grows for native waits and retires idle helpers; --managed-workers-limit optionally caps resources. Heap stays serial.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
 #endif
@@ -1362,13 +1396,18 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
         return 2;
     }
-    if (managed_workers > 1 && !gc_worker)
+    if (managed_limit_selected && managed_workers != 0)
+    {
+        fprintf(stderr, "--managed-workers-limit requires --managed-workers auto\n");
+        return 2;
+    }
+    if (managed_workers != 1 && !gc_worker)
     {
         fprintf(stderr,"--managed-workers >1 requires --gc-worker\n");
         return 2;
     }
 #ifdef DVM_RUNTIME_EDITOR
-    if (managed_workers > 1 && !threaded)
+    if (managed_workers != 1 && !threaded)
     {
         fprintf(stderr,"--managed-workers >1 requires --threaded-ui for the graphical host\n");
         return 2;
@@ -1380,7 +1419,7 @@ int main(int argc, char **argv)
         dvm_queue_probe_finish();
         return 2;
     }
-    if (managed_workers > 1 && show_stats)
+    if (managed_workers != 1 && show_stats)
     {
         dvm_runqueue_trace_waits();
     }

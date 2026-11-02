@@ -81,3 +81,25 @@ void Sys_werrstr(void *frame)
     snprintf(destination,ERRMAX,"%s",text);
     memmove(call.ret,&result,sizeof(result));
 }
+
+
+/* Copy this bound OS owner's current logical error without consuming it. err
+ * borrows size writable bytes; clamp to ERRMAX and preserve termination. No
+ * allocation, managed access or throw; startup cleanup also permits absent up. */
+void kgerrstr(char *err, uint size)
+{
+    const char *source = "<no-up>";
+    if (!err || !size)
+    {
+        return;
+    }
+    if (size > ERRMAX)
+    {
+        size = ERRMAX;
+    }
+    if (up && up->env && up->env->errstr)
+    {
+        source = up->env->errstr;
+    }
+    snprintf(err, size, "%s", source);
+}

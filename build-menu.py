@@ -404,7 +404,7 @@ def product_entries(prefix):
                prefix / "disvm-runtime/run-token-query.sh"), False),)
     rows += (("18", "flashvm-native", "FlashVM: C-модуль, GC и вызов из AS/SWF (без GUI)",
               (prefix / "disvm-editor/run-flashvm-native-module.sh",), False),)
-    rows += (("19", "managed-workers", "DisVM: OS-исполнители (2..8), каналы и GC (эксперимент)",
+    rows += (("19", "managed-workers", "DisVM: OS-исполнители (auto / заданное число), каналы и GC (эксперимент)",
               (prefix / "disvm-editor/run-managed-workers.sh",
                prefix / "disvm-runtime/run-managed-workers.sh"), False),)
     entries = {}

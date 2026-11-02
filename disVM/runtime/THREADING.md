@@ -582,9 +582,9 @@ do not claim simultaneous managed execution. Native Linux x64 is tested locally.
 
 ## Bounded executor pool (0.53.0)
 
-`--managed-workers 1..8` selects the TOTAL number of OS executors, including
+Originally `--managed-workers 1..8` selected the TOTAL number of OS executors, including
 the controller. Above1 requires `--gc-worker` and threaded UI in graphical
-builds. Default is still1. The installed entry19 launcher defaults to2;
+builds. Default is still1. That release's installed entry19 launcher defaulted to2;
 `DVM_MANAGED_WORKERS=8` chooses eight without duplicate runtime options.
 
 Each helper owns a stable native slot through join, including context identity,
@@ -681,3 +681,27 @@ actor runs DURING each wait. It also checks65 shared-cursor entries exactly once
 across32-entry batches, C/JIT4/8 owners and post-join gate/root retirement. Native
 Linux x64 is the local execution target; no whole-VM race/platform claim follows.
 See [installed examples](../examples/managed-workers/README.md#metadata-and-directory-waits-runtime0550).
+
+
+## Elastic executors and parked task lifetime (0.56.0)
+
+The current policy supersedes the historical eight-executor pool: use
+`--gc-worker --managed-workers auto` for demand growth or a positive fixed count.
+Menu19 defaults to automatic mode; the ordinary runtime default remains1.
+There is no eight-executor or128-task policy limit. Stable linked native slots
+are allocated separately; completed helpers destroy TLS, publish completion and
+are joined outside the heap by any rootless executor before their slots are freed.
+After64 consecutive empty scheduler intervals, extra helpers retire to the
+controller-plus-one-helper baseline. Native completion markers avoid growing the
+pool when an executor is already returning to the heap. Runnable publication,
+retirement and stop wake generation-based native conditions.
+
+Automatic mode preserves channel-waiting tasks after module init returns.
+Logical channel listeners do not consume individual OS threads. Optional
+`--managed-workers-limit N` (N>=2) limits live executors. Replacement resource
+failure is fatal, not recoverable cancellation. Fixed/default entry-lifetime
+policy is unchanged. Heap mutation remains serialized; audited native overlap
+and executor migration do not establish parallel managed compute.
+
+[Release and validation scope](../../docs/releases/v0.1752.md) |
+[Remaining work, Russian](MULTITHREADING-ROADMAP.ru.md).

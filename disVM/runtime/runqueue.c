@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "runqueue.h"
+#include "managed_workers.h"
 #include <stdio.h>
 
 static Prog *head;             /* Runnable FIFO, modified only under the exclusive heap turn. */
@@ -117,7 +118,7 @@ int dvm_runqueue_contains(Prog *process)
     int found = 0;
     for (cursor = head; cursor; cursor = cursor->link)
     {
-        if (++seen > DVM_RUNTIME_PROCESS_MAX || cursor->state != Pready || !runtime_process(cursor)->queued ||
+        if (++seen > count || cursor->state != Pready || !runtime_process(cursor)->queued ||
             runtime_process(cursor)->native_owner)
         {
             return -1;
@@ -165,6 +166,7 @@ int dvm_runqueue_append(Prog *process)
     }
     tail = process;
     count++;
+    dvm_managed_workers_wake();
     return 1;
 }
 
@@ -262,6 +264,7 @@ int dvm_runqueue_resume(Prog *process)
     count++;
     returns++;
     inflight--;
+    dvm_managed_workers_wake();
     return 1;
 }
 

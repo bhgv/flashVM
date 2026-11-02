@@ -9,6 +9,7 @@
 #include "runtime_gc.h"
 #include "runtime_rc.h"
 #include "runqueue.h"
+#include "managed_workers.h"
 #include "queue_probe.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -230,6 +231,7 @@ int dvm_runtime_gc_native_leave(void)
     {
         return 0;
     }
+    dvm_managed_workers_native_wait();
     if (process)
     {
         process->R = DVM_R;
@@ -239,6 +241,7 @@ int dvm_runtime_gc_native_leave(void)
             exit(1);
         }
     }
+    dvm_managed_workers_native_suspended();
     if (!dvm_runtime_gc_request() || !dvm_native_owner_suspend(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap release failed\n");
@@ -259,6 +262,7 @@ void dvm_runtime_gc_native_enter(int released)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
+    int returning;
     if (!state.world)
     {
         if (released)
@@ -283,10 +287,15 @@ void dvm_runtime_gc_native_enter(int released)
         }
         return;
     }
+    returning = dvm_managed_workers_returning(1);
     if (!dvm_native_owner_resume(owner) || !dvm_native_owner_progress(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap reentry failed\n");
         exit(1);
+    }
+    if (returning)
+    {
+        dvm_managed_workers_returning(0);
     }
     {
         Prog *process = dvm_native_context_process(dvm_native_context_current());

@@ -1,18 +1,39 @@
-/* Opt-in bounded managed scheduling; all heap turns remain exclusive. */
+/* Opt-in fixed/elastic managed scheduling; all heap turns remain exclusive. */
 #ifndef DVM_MANAGED_WORKERS_H
 #define DVM_MANAGED_WORKERS_H
 
-#define DVM_MANAGED_EXECUTORS_MAX 8 /* Explicit total OS-executor cap, including controller. */
 
 
 /* Start count-1 extra OS executors after GC/world startup.
- * count selects 2..DVM_MANAGED_EXECUTORS_MAX total executors. turn runs one
+ * count selects at least2 initial executors. automatic grows on native waits
+ * and retires idle helpers; limit zero is uncapped, diagnostics emits --stats.
+ * turn runs one
  * shared-heap scheduler turn on its caller: positive progress, zero idle,
  * negative fatal managed failure. No managed pointer crosses this interface.
  * Return one when all helpers were created; zero on invalid input or after
  * joining every partially started helper and restoring controller ownership.
  * Requires the controller's empty ACTIVE turn. No startup wait holds the heap. */
-int dvm_managed_workers_start(int count, int (*turn)(void));
+int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics, int (*turn)(void));
+
+
+/* Compensate an impending audited native suspension while still ACTIVE.
+ * No managed pointers escape; refuses resource exhaustion with a fatal error. */
+void dvm_managed_workers_native_wait(void);
+
+
+/* Mark/consume native completion queued for heap reentry. arriving selects1/0;
+ * returns one when tracked. Native mutex only; never borrows managed data. */
+int dvm_managed_workers_returning(int arriving);
+
+
+/* Record committed native withdrawal for automatic --stats lifecycle evidence.
+ * Requires ACTIVE heap ownership; does not change scheduling or roots. */
+void dvm_managed_workers_native_suspended(void);
+
+
+/* Signal newly runnable work under heap exclusion; no-op before/after service.
+ * Wake generations prevent a rootless idle executor from missing publication. */
+void dvm_managed_workers_wake(void);
 
 
 /* Yield an empty controller turn through FIFO heap admission. May wait for
@@ -20,6 +41,11 @@ int dvm_managed_workers_start(int count, int (*turn)(void));
  * idle requests a bounded native sleep OUTSIDE the heap before reentry.
  * No current Prog, native token or C-held managed root may be live here. */
 int dvm_managed_workers_yield(int idle);
+
+
+/* Park a rootless non-UI controller awaiting logical channel work. Heap is
+ * released; work/retirement/stop generations prevent lost wakeups. */
+int dvm_managed_workers_park(void);
 
 
 /* Count one controller scheduler turn, only when the optional service is live. */
