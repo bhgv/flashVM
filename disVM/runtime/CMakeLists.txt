@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.47.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.47.1 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -1961,4 +1961,22 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
  add_test(NAME disvm_serial_heap_admission COMMAND "${PYTHON_EXECUTABLE}"
   "${root}/disVM/tests/native_serial.py" --flashvm-root "${root}/flashVM")
  set_tests_properties(disvm_serial_heap_admission PROPERTIES TIMEOUT 80 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+endif()
+
+
+# Trusted local native calls exercise terminal cleanup, not shared file-call ABI.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(call_gate native_local_calls native_local_calls_control)
+  set(call_control)
+  if(call_gate STREQUAL "native_local_calls_control")
+   set(call_control --control)
+  endif()
+  add_test(NAME disvm_${call_gate} COMMAND "${CMAKE_COMMAND}" -E env
+   "CC=${CMAKE_C_COMPILER}"
+   "CPATH=${root}/disVM/host/include:${u}/Linux/arm/include"
+   "NATIVE64_ARCH=${runtime_backend}"
+   "NATIVE64_TMPDIR=${CMAKE_CURRENT_BINARY_DIR}"
+   "${PYTHON_EXECUTABLE}" "${u}/utils/tests/native64-local-calls.py" ${call_control})
+  set_tests_properties(disvm_${call_gate} PROPERTIES TIMEOUT 120)
+ endforeach()
 endif()

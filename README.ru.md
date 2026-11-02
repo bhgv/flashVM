@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1739**. [English](README.md).
+Версия разработки: **0.1740**. [English](README.md).
 
-Текущая серия: [v0.1739](docs/releases/v0.1739.md): FIFO-допуск native-исполнителей к общей куче.
+Текущая серия: [v0.1740](docs/releases/v0.1740.md): очистка подготовленных кадров вызова с сохранением FIFO-допуска к куче.
 
 ## Просмотр документации
 

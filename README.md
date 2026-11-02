@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1739**. [Русская версия](README.ru.md).
+Development version: **0.1740**. [Русская версия](README.ru.md).
 
-Current series: [v0.1739](docs/releases/v0.1739.md): FIFO exclusive heap turns for native execution owners.
+Current series: [v0.1740](docs/releases/v0.1740.md): prepared native call-frame cleanup with the FIFO heap gate.
 
 ## Browse documentation
 

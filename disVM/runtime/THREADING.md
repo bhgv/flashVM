@@ -350,3 +350,31 @@ Before attaching another, current-process assumptions, per-owner native-call
 state, runnable/process lists, caches, channels and RC operations must be moved
 under consistent ownership. Parallel managed spawn and concurrent graph marking
 remain open. See ../tests/README.native-serial.md for commands and limitations.
+
+
+## Runtime 0.47.1: prepared native frames remain owned during terminal unwind
+
+Inferno 0070 (93f1738) repairs terminal destroystack ownership for prepared FRAME
+arguments before CALL publishes FP, pending gaps below argument helpers and
+unentered extensions. Allocated suffixes use captured SP/TS; validated pending
+frames join ordinary mapped cleanup. Parent/type/module cursors are captured
+before callbacks. No allocation, REG layout or shared wire change is introduced;
+coherent-span refusal retains legacy diagnostic chain-only destruction. This is
+terminal cleanup, not proof of recovery into arbitrary language handlers.
+
+The owning trusted-local-call fixture and controls are imported verbatim and
+registered as runtime CTests. The selected DisVM POSIX adapter supplies headers;
+no sibling Inferno checkout or external emulator is needed. Local x64 strict
+UBSan passes 448 C/RX cases each in WORD32/WORD64 and all four leaked-owner
+removal controls. Previous stack-unwind/lifecycle and RET/MCALL matrices pass in
+both models; 16 whole-runtime GC/FIFO/I/O/file-service gates pass after import.
+This evidence stays separate from production parallel managed scheduling.
+
+Inferno reviewed the serialized admission direction in INFERNO-0070. Root/REG
+publication must precede release and reentry precede managed access; channels,
+run queues, RC and loader/module caches remain under exclusion until audited.
+Trusted local native calls require eight-byte result addresses even when WORD
+is four bytes. They do not justify widening ordinary LEA or admitting serialized
+pointers. Typed result/address-slot metadata requires shared agreement and
+verification before any new file-call profile. Existing Dis64 source inlining
+and 43-op np0 admission remain unchanged.
