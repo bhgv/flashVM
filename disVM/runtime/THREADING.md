@@ -746,3 +746,14 @@ collector recursion cannot requeue. Queue limits and inline fallback are unchang
 NATIVERC adds helper transfer/fallback counters. Managed heap mutation and collector
 passes remain exclusive. [Shared-heap proposal, Russian](SHARED-HEAP-CONCURRENCY.ru.md)
 describes object locks/atomic RC with initially STW cycles, not an activated mode.
+
+
+## Typed native count conversion (0.60.0)
+
+The new disvm/refcount.h API uses checked native unsigned/signed counters and
+acquire/release RMWs, with a separately tested port-mutex fallback. Selected
+host module/inspection/table ownership updates and RC eligibility use it.
+Unconverted retained C/JIT/Type/marking paths still require exclusive world
+admission. Counter operations are not object lifetime acquisition from a raw
+pointer, GC roots, marking, or a parallel queue. Heap layout is unchanged.
+[Exact conversion boundary](REFCOUNT-CONVERSION.md).

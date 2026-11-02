@@ -1,4 +1,5 @@
 /* A bounded last-owner queue; all heap work remains under native_world. */
+#include "disvm/refcount.h"
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -81,7 +82,7 @@ int dvm_runtime_rc_defer(void *value)
     }
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
-    if (heap->ref != 1)
+    if (dvm_refcount_load_u(&heap->ref) != 1)
     {
         return 0;
     }

@@ -200,3 +200,19 @@ This protects native context lifetime, not managed heap access. A token is not
 a GC root, serialized pointer or cross-thread lookup capability. The shared
 runtime queue also checks its own Prog dispatch owner under heap exclusion.
 See [the runtime protocol](../runtime/RUNQUEUE.md#managed-turn-ownership-0510).
+
+
+## Typed native counts
+
+[refcount.c](refcount.c) implements [refcount.h](../include/disvm/refcount.h):
+checked unsigned-long/signed-int counts with zero/overflow refusal and a distinct
+LAST result. It does not infer object lifetime, touch GC roots/marks or run a
+destructor. A successful drop never touches its counter after the RMW, permitting
+another last owner to retire storage before a nonfinal drop returns. Caller-side
+ownership remains mandatory. See the [handoff example](../examples/native-refcount/README.md)
+and [managed conversion inventory](../runtime/REFCOUNT-CONVERSION.md).
+
+The portable mutex fallback must not be called while holding the port registry
+mutex. Atomic operations on a managed field do not grant permission to access
+Heap/Type outside the current world lease. Retained C/JIT/marking conversion and
+object/container locking remain required before parallel managed mutation.

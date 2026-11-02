@@ -773,6 +773,16 @@ EOF
             for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
                 copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
             done
+            copy_file "$ROOT/flashVM/ports/thread_port.h" "$destination/source/ports/thread_port.h"
+            copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
+            copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
+            copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
+            copy_file "$ROOT/disVM/host/refcount.c" "$destination/source/host/refcount.c"
+            copy_file "$ROOT/disVM/include/disvm/refcount.h" "$destination/include/disvm/refcount.h"
+            copy_file "$ROOT/disVM/tests/refcount.c" "$destination/source/tests/refcount.c"
+            copy_file "$ROOT/disVM/tests/refcount.py" "$destination/source/tests/refcount.py"
+            copy_tree "$ROOT/disVM/examples/native-refcount" "$destination/examples/native-refcount"
+            copy_file "$ROOT/disVM/runtime/REFCOUNT-CONVERSION.md" "$destination/REFCOUNT-CONVERSION.md"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             copy_file "$ROOT/disVM/runtime/SHARED-HEAP-CONCURRENCY.ru.md" "$destination/SHARED-HEAP-CONCURRENCY.ru.md"
@@ -839,6 +849,16 @@ EOF
             for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
                 copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
             done
+            copy_file "$ROOT/flashVM/ports/thread_port.h" "$destination/source/ports/thread_port.h"
+            copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
+            copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
+            copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
+            copy_file "$ROOT/disVM/host/refcount.c" "$destination/source/host/refcount.c"
+            copy_file "$ROOT/disVM/include/disvm/refcount.h" "$destination/include/disvm/refcount.h"
+            copy_file "$ROOT/disVM/tests/refcount.c" "$destination/source/tests/refcount.c"
+            copy_file "$ROOT/disVM/tests/refcount.py" "$destination/source/tests/refcount.py"
+            copy_tree "$ROOT/disVM/examples/native-refcount" "$destination/examples/native-refcount"
+            copy_file "$ROOT/disVM/runtime/REFCOUNT-CONVERSION.md" "$destination/REFCOUNT-CONVERSION.md"
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             copy_file "$ROOT/disVM/runtime/SHARED-HEAP-CONCURRENCY.ru.md" "$destination/SHARED-HEAP-CONCURRENCY.ru.md"

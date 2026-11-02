@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1755**. [Русская версия](README.ru.md).
+Development version: **0.1756**. [Русская версия](README.ru.md).
 
-Current series: [v0.1755](docs/releases/v0.1755.md): deferred RC from every admitted executor and explicit shared-heap concurrency plan.
+Current series: [v0.1756](docs/releases/v0.1756.md): typed atomic count primitives and checked host reference transfers.
 
 ## Browse documentation
 

@@ -38,7 +38,7 @@ def main():
                 'disVM/include', 'flashVM/include', 'flashVM/ports')]
             command += [str(runtime / 'test_rc_roles.c'), str(path)]
             command += [str(root / name) for name in (
-                'disVM/host/native_registers.c', 'disVM/host/native_context.c',
+                'disVM/host/refcount.c', 'disVM/host/native_registers.c', 'disVM/host/native_context.c',
                 'disVM/host/native_owner.c', 'disVM/host/native_world.c',
                 'disVM/host/flashvm_thread.c', 'flashVM/ports/linux/thread.c',
                 'flashVM/ports/linux/channel_sync.c')]

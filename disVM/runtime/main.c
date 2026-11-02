@@ -1,4 +1,5 @@
 /* Retained Dis interpreter/JIT with explicit native execution and GC owners. */
+#include "disvm/refcount.h"
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -253,12 +254,16 @@ static void inspect_retain(Prog *process)
             error("inspection requires an aligned in-bounds range in pointer-free module data");
         }
     }
-    if (heap->ref == 0 || heap->ref == (ulong)-1)
+    if (dvm_refcount_load_u(&heap->ref) == 0 || dvm_refcount_load_u(&heap->ref) == (ulong)-1)
     {
         error("inspection encountered an invalid module-data owner");
     }
     ptradd(heap); /* [GC:] Register before retaining; allocation failure transfers no extra reference. */
-    heap->ref++;
+    if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+    {
+        ptrdel(heap);
+        error(exHeap);
+    }
     Setmark(heap);
     inspect_data = data; /* [GC:] Native root keeps the mapped module graph alive until report/cleanup. */
 }
@@ -542,7 +547,11 @@ Prog *newprog(Prog *parent, Modlink *module)
     process->exval = H;
     process->R.M = module;
     process->R.MP = module->MP;
-    D2H(module)->ref++;
+    if (dvm_refcount_retain_u(&D2H(module)->ref) != DVM_REFCOUNT_LIVE)
+    {
+        free(process);
+        error(exHeap);
+    }
     process->next = processes;
     processes = process;
     live++;
@@ -914,7 +923,10 @@ static Prog *start_module(Module *module)
     initmem(module->entryt, initial.R.FP);
     process = newprog(nil, link);
     process->R = initial.R;
-    D2H(link)->ref--;
+    if (dvm_refcount_release_u(&D2H(link)->ref) != DVM_REFCOUNT_LIVE)
+    {
+        error(exHeap);
+    }
     free(frame);
     return process;
 }

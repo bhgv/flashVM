@@ -1,4 +1,5 @@
 /* Native big-table boundary. Only exact scalar payloads and copied UTF-8 keys enter C storage. */
+#include "disvm/refcount.h"
 #include "lib9.h"
 #include "isa.h"
 #include "interp.h"
@@ -1104,12 +1105,16 @@ void Bigtable_acquire(void *frame)
     if (!owner->lease_depth)
     {
         Heap *heap = D2H(owner);
-        if (heap->ref == 0 || heap->ref == (ulong)-1)
+        if (dvm_refcount_load_u(&heap->ref) == 0 || dvm_refcount_load_u(&heap->ref) == (ulong)-1)
         {
             error(exHeap);
         }
         ptradd(heap);
-        heap->ref++;
+        if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+        {
+            ptrdel(heap);
+            error(exHeap);
+        }
         Setmark(heap);
     }
     failure = fvm_owned_try_enter(&owner->owned.guard, actor->token);

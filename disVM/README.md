@@ -247,3 +247,13 @@ bigbits/memmove body. Its49 independent half pairs pass three data models
 under O3/NDEBUG strict UBSan; no loader/wire behavior changes in that test fix.
 
 [Native-consumer layout audit](upstream/doc/dis64-native-consumer-audit.md): representative generated-header blockers remain separate from75 selected object builds (78 with explicit geometry). [GC roots](upstream/doc/dis64-gc-roots.md): actual collector epochs with bounded arena, separate from full boot/live compaction.
+
+
+## Typed native count foundation (runtime0.60.0)
+
+[Public count API](include/disvm/refcount.h) ·
+[Conversion boundary](runtime/REFCOUNT-CONVERSION.md) ·
+[Native strong-reference handoff](examples/native-refcount/README.md).
+The independent disvm_refcount library and Linux disvm_refcount_example target
+need no hosted kernel/GC. Selected hosted sites use checked atomic counts;
+unconverted managed C/JIT paths still run under exclusive heap ownership.

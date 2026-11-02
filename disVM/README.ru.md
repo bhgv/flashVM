@@ -228,3 +228,13 @@ bigbits/memmove body и49 независимых пар половин. Три d
 O3/NDEBUG strict UBSan; production loader/wire этим test fix не меняются.
 
 [Аудит native-разметки](upstream/doc/dis64-native-consumer-audit.md): выявленные несоответствия generated headers не закрываются сборкой75 selected объектов (78 с явной geometry). [Корни GC](upstream/doc/dis64-gc-roots.md): реальные эпохи collector при ограниченной арене, отдельно от полного boot/compaction.
+
+
+## Основа атомарных счётчиков (runtime0.60.0)
+
+[Публичный API](include/disvm/refcount.h) ·
+[Граница конверсии](runtime/REFCOUNT-CONVERSION.md) ·
+[Передача сильной ссылки в native-поток](examples/native-refcount/README.md).
+Независимые disvm_refcount и Linux-пример не требуют ядра/GC hosted runtime.
+Выбранные host-пути переведены; остальные C/JIT обращения к хипу всё ещё требуют
+исключительного владения. Объектные блокировки пока не включены.

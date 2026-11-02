@@ -782,3 +782,21 @@ endif()
 
 # Shared structural codecs and standalone tools do not enable a new VM ABI.
 add_subdirectory(envelope)
+
+
+# Native counts are an independent host library; fallback needs the selected port.
+add_library(disvm_refcount STATIC host/refcount.c)
+target_include_directories(disvm_refcount PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+ PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+ add_executable(disvm_refcount_example examples/native-refcount/main.c
+  "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports/linux/thread.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports/linux/channel_sync.c")
+ target_include_directories(disvm_refcount_example PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports")
+ target_link_libraries(disvm_refcount_example PRIVATE disvm_refcount pthread)
+ if(BUILD_TESTING AND NOT CMAKE_CROSSCOMPILING)
+  add_test(NAME disvm_native_refcounts COMMAND "${Python3_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/tests/refcount.py")
+  set_tests_properties(disvm_native_refcounts PROPERTIES TIMEOUT 180)
+ endif()
+endif()
