@@ -21,14 +21,16 @@ typedef struct DVM_VectorCommand
 /* Value plan supplied by the document/UI policy owner, never inferred from paint. */
 typedef struct DVM_VectorLocalPlan
 {
-    unsigned long valid; /* One only after complete validation. */
+    unsigned long valid; /* 1 active or2 prepared idle, only after complete validation. */
     unsigned long source; /* Zero-based source path index. */
     unsigned long revision; /* Exact owner source generation. */
     unsigned long x; /* Pointer X represented by the supplied baseline geometry. */
     unsigned long y; /* Pointer Y represented by the supplied baseline geometry. */
     unsigned long count; /* Source command count. */
     unsigned long overlay; /* Overlay command count, including source prefix. */
-    unsigned long masks[DVM_VECTOR_LOCAL_NODES]; /* Three source-coordinate selection bits per node. */
+    unsigned long mode; /* 0 node translation,1 object,2 scale,3 rotation,5 marquee. */
+    unsigned long handle; /* Owner-issued corner ordinal for mode2. */
+    unsigned long masks[DVM_VECTOR_LOCAL_NODES]; /* Low3 selection bits; next2 encode cusp/smooth/symmetric. */
     unsigned long bindings[DVM_VECTOR_LOCAL_NODES]; /* One-based point<<8 plus copied marker modifier. */
 } DVM_VectorLocalPlan;
 
@@ -40,6 +42,12 @@ typedef struct DVM_VectorLocal DVM_VectorLocal; /* Owned detached gesture baseli
 int dvm_vector_local_valid(const DVM_VectorLocalPlan *, const DVM_VectorCommand *, const DVM_VectorCommand *);
 
 
+/* Expand a copied decoration recipe into caller-provided overlay storage.
+ * Source prefix, direct guide endpoints and marker corners are value modifiers.
+ * Return0 on malformed counts/point bindings; never access an owner VM. */
+int dvm_vector_local_decorate(const DVM_VectorLocalPlan *, const DVM_VectorCommand *, DVM_VectorCommand *);
+
+
 /* Copy one valid baseline and plan; caller owns the returned handle. Null means
  * invalid input/OOM. No VM, I/O, callbacks or worker references are retained. */
 DVM_VectorLocal *dvm_vector_local_create(const DVM_VectorLocalPlan *, const DVM_VectorCommand *, const DVM_VectorCommand *);
@@ -48,6 +56,16 @@ DVM_VectorLocal *dvm_vector_local_create(const DVM_VectorLocalPlan *, const DVM_
 /* Return whether a newly decoded canonical plan/geometry is the same baseline.
  * Used before reapplying an unacknowledged native motion after unrelated views. */
 int dvm_vector_local_matches(const DVM_VectorLocal *, const DVM_VectorLocalPlan *, const DVM_VectorCommand *, const DVM_VectorCommand *);
+
+
+/* Match source, origin, revision and selection while allowing decorations to
+ * change after the owner acknowledges an eagerly started marker drag. */
+int dvm_vector_local_source_matches(const DVM_VectorLocal *, const DVM_VectorLocalPlan *, const DVM_VectorCommand *);
+
+
+/* Match an idle source generation during pre-admission unrelated views.
+ * Does not admit a changed geometry, source index or joint relationship. */
+int dvm_vector_local_idle_matches(const DVM_VectorLocal *, const DVM_VectorLocalPlan *, const DVM_VectorCommand *);
 
 
 /* Transform from the immutable baseline into caller-owned output arrays. Return

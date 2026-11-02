@@ -42,6 +42,7 @@ init()
 {
     sys = load Sys Sys->PATH;
     panes = load Idedeskpane Idedeskpane->PATH;
+    vectorclipchecks();
     a := panes->start(panes->Vector, "", "");
     b := panes->start(panes->Vector, "", "");
     require(a != nil && b != nil, "independent startup");
@@ -78,7 +79,7 @@ init()
             "toolbar tool command changes copied style without editing geometry");
     refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 15, 1, 0, 0, ""));
     require(refused.status == Idecore->Conflict && refused.drawing == styled.drawing, "stale toolbar revision refused atomically");
-    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 24, 2, 0, 0, ""));
+    refused = call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 33, 2, 0, 0, ""));
     require(refused.status == Idecore->Invalid && refused.drawing == styled.drawing, "unknown control cannot issue a command");
     selected := call(a, panes->VectorControl, ref Uibridge->Message(Uibridge->Request, 0, 18, 2, 0, 0, ""));
     require(selected.status == 0 && selected.drawing[0:8] == "00020006" && selected.revision == 2,
@@ -90,3 +91,5 @@ init()
             "independent acknowledged shutdown");
     sys->print("PASS vector panes: revision, dirty file refusal, isolated owners and shutdown\n");
 }
+
+include "idevectorclip_checks.b";

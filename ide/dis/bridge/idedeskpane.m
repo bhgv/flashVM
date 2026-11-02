@@ -18,11 +18,13 @@ Idedeskpane: module
         # first absolute scalar offset, second Shift 0/1 (begin only). Nil rejects.
         # CutSelection/PasteSelection require Request kind, flags=source revision,
         # first/second=the exact ordered full selection captured from a fresh reply.
+        # For Vector these are opaque figure ordinals [selected,selected+1),
+        # or0/0 with no figure; transfer is bounded self-contained SVG.
         # Cut follows a successful session clipboard acknowledgement; Paste text is bounded.
         # CancelPointer drops the gesture without changing selection/modifiers.
         # Draw requires Request kind, code=phase1..3, flags=shown revision,
         # first/second=logical X/Y and empty text. VectorControl requires Request
-        # kind, code1..16, flags=committed revision, zero coordinates/empty text
+        # kind, code1..32, flags=committed revision, zero coordinates/empty text
         # and an idle gesture. Both produce one ordinary pane acknowledgement.
         event: ref Uibridge->Message; # Input keyboard/text/focus, or a checked value proposal.
         reply: chan of Reply; # Required unique acknowledgement.

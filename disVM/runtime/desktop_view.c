@@ -119,10 +119,11 @@ typedef struct VectorScene
 } VectorScene;
 
 static FVM_Object
-    *vector_buttons[DESK_SLOTS][20]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
+    *vector_buttons[DESK_SLOTS][32]; /* [GC:] Borrowed child MovieClips retained by each pane/thumbnail. */
 static VectorScene vectors[9];       /* Stable pane identities1..8, reset at scene Begin. */
 static DVM_VectorLocal *local_edit; /* Exclusively owned immutable baseline/scratch. */
 static unsigned long local_widget; /* Captured source pane identity, never a VM handle. */
+static int local_released; /* Final proposal sent; retire on the next idle canonical plan. */
 static unsigned long local_epochs[9]; /* Content-key generations for native source motion. */
 
 
@@ -590,7 +591,17 @@ static int vector_parse(VectorScene *scene)
     {
         return 0;
     }
+    int extended = (scene->tool & 0x200000UL) != 0;
+    scene->tool &= ~0x200000UL;
+    int compact = (scene->tool & 0x100000UL) != 0;
+    scene->tool &= ~0x100000UL;
+    int armed = (scene->tool & 0x80000UL) != 0;
+    scene->tool &= ~0x80000UL;
     local = (scene->tool & 0x40000UL) != 0;
+    if ((armed || compact || extended) && !local)
+    {
+        return 0;
+    }
     scene->tool &= ~0x40000UL;
     memset(&scene->local,0,sizeof(scene->local));
     cubic = (scene->tool & 0x20000UL) != 0;
@@ -615,7 +626,7 @@ static int vector_parse(VectorScene *scene)
         DVM_VectorLocalPlan *plan = &scene->local;
         unsigned long n;
         size_t start = at-8;
-        if (scene->used-start < 56 || scene->tool != 7 ||
+        if (scene->used-start < 56 || (scene->tool != 7 && scene->tool != 6) ||
             !word(scene->bytes+start,&plan->source) || !word(scene->bytes+start+8,&plan->revision) ||
             !word(scene->bytes+start+16,&plan->x) || !word(scene->bytes+start+24,&plan->y) ||
             !word(scene->bytes+start+32,&plan->count) || !word(scene->bytes+start+40,&plan->overlay) ||
@@ -627,6 +638,21 @@ static int vector_parse(VectorScene *scene)
             return 0;
         }
         start += 48;
+        if (extended)
+        {
+            if (scene->used-start < 24 || !word(scene->bytes+start,&plan->mode) ||
+                !word(scene->bytes+start+8,&plan->handle))
+            {
+                return 0;
+            }
+            start += 16;
+        }
+        if (scene->used-start < 8 || plan->count+plan->overlay > (scene->used-start-8)/8 ||
+            (scene->tool == 6 && (plan->mode < 1 || plan->mode > 3)) ||
+            (scene->tool == 7 && plan->mode != 0 && plan->mode != 5))
+        {
+            return 0;
+        }
         for (n = 0; n < plan->count; ++n, start += 8)
         {
             if (!word(scene->bytes+start,&plan->masks[n]))
@@ -664,12 +690,24 @@ static int vector_parse(VectorScene *scene)
             return 0;
         }
         at += 32;
+        shape->first = total;
+        shape->count = (unsigned int)count;
+        if (compact && i+1 == shapes)
+        {
+            DVM_VectorLocalPlan *plan = &scene->local;
+            if (plan->source >= i || scene->shapes[plan->source].count != plan->count ||
+                plan->overlay != count || !dvm_vector_local_decorate(plan,
+                    scene->nodes+scene->shapes[plan->source].first,scene->nodes+total))
+            {
+                return 0;
+            }
+            total += (unsigned int)count;
+            continue;
+        }
         if (count > (scene->used - at) / stride)
         {
             return 0;
         }
-        shape->first = total;
-        shape->count = (unsigned int)count;
         for (j = 0; j < count; ++j)
         {
             VectorNode *node = &scene->nodes[total++];
@@ -708,7 +746,7 @@ static int vector_parse(VectorScene *scene)
         {
             return 0;
         }
-        scene->local.valid = 1;
+        scene->local.valid = armed ? 2 : 1;
     }
     scene->count = (unsigned int)shapes;
     scene->complete = 1;
@@ -809,11 +847,18 @@ static int vector_preview(unsigned long widget, const DeskItem *item, const FVM_
     return ok;
 }
 
+#include "desktop_node_icons.h"
+
+
 /* Draw one small copied line/curve icon through ordinary MovieClip methods.
  * cell selects presentation only; all control admission/semantics remain on Dis.
  * Caller owns the context and child clip; zero propagates a VM drawing error. */
 static int vector_icon(FVM_Object *clip, unsigned int cell, double wide, unsigned long color)
 {
+    if (cell >= 23)
+    {
+        return dvm_node_icon(owner,clip,cell-23,wide,color);
+    }
     FVM_Value args[4];
     FVM_Value ignored;
     double scale = fmin(1.0, (wide - 8) / 18.0);
@@ -992,7 +1037,6 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
 {
     static const unsigned long palette[6] = {0x245ac4UL, 0xe04444UL, 0x229955UL, 0xf0b323UL, 0x222222UL, 0x9933bbUL};
     unsigned int i;
-    double cell = 28;
     unsigned long key[9];
     static unsigned long keys[DESK_SLOTS][9]; /* Copied toolbar pixels/style identity. */
     key[8] = content->height;
@@ -1008,10 +1052,11 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
     {
         goto report;
     }
-    for (i = 0; i < 20; ++i)
+    for (i = 0; i < 32; ++i)
     {
         FVM_Object *button = vector_buttons[slot][i];
-        if (!scene || content->width < 80 || (i == 16 && scene->tool != 4))
+        if (!scene || content->width < 80 || (i == 16 && scene->tool != 4) ||
+            (i >= 20 && i <= 22) || (i >= 23 && scene->tool != 7))
         {
             if (button && !number(button, "_visible", 0))
             {
@@ -1059,8 +1104,8 @@ static int vector_toolbar(FVM_Object *clip, unsigned long slot, const DeskItem *
         double by;
         if (!dvm_vector_control_rect(i, content->width, &bx, &by) ||
             !number(button, "_visible", 1) || !number(button, "_x", bx) || !number(button, "_y", by) ||
-            !dvm_chrome_vector(owner, button, cell, 24, fill, selected) ||
-            !vector_icon(button, i, cell, ink))
+            !dvm_chrome_vector(owner, button, dvm_vector_control_width(i,content->width), 24, fill, selected) ||
+            !vector_icon(button, i, dvm_vector_control_width(i,content->width), ink))
         {
             return 0;
         }
@@ -1759,16 +1804,17 @@ int dvm_desktop_hit(double x, double y, unsigned long *widget, long *position)
         if (vectors[item->id].complete)
         {
             unsigned int index;
-            for (index = 0; index < 20; ++index)
+            for (index = 0; index < 32; ++index)
             {
                 double bx;
                 double by;
-                if (index == 16 && !(vectors[item->id].fill & 2))
+                if ((index >= 20 && index <= 22) || (index >= 23 && vectors[item->id].tool != 7) ||
+                    (index == 16 && !(vectors[item->id].fill & 2)))
                 {
                     continue;
                 }
                 if (dvm_vector_control_rect(index, item->width, &bx, &by) &&
-                    localx >= bx && localx < bx + 28 && localy >= by && localy < by + 24)
+                    localx >= bx && localx < bx + dvm_vector_control_width(index,item->width) && localy >= by && localy < by + 24)
                 {
                     *widget = item->id;
                     *position = -2 - (long)index;
@@ -3285,6 +3331,7 @@ void dvm_desktop_destroy(void)
     dvm_vector_local_destroy(local_edit);
     local_edit = NULL;
     local_widget = 0;
+    local_released = 0;
     memset(local_epochs,0,sizeof(local_epochs));
     memset(vectors, 0, sizeof(vectors));
     memset(vector_buttons, 0, sizeof(vector_buttons));

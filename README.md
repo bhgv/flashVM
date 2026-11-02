@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1730**. [Русская версия](README.ru.md).
+Development version: **0.1731**. [Русская версия](README.ru.md).
 
-Current series: [v0.1730](docs/releases/v0.1730.md): detached AVM1 closure workers and Inferno0059 synchronization.
+Current series: [v0.1731](docs/releases/v0.1731.md): node editing, SVG clipboard and local graphic gestures.
 
 ## Browse documentation
 

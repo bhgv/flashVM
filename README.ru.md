@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1730**. [English](README.md).
+Версия разработки: **0.1731**. [English](README.md).
 
-Текущая серия: [v0.1730](docs/releases/v0.1730.md): AVM1-замыкания в отдельных потоках и синхронизация Inferno0059.
+Текущая серия: [v0.1731](docs/releases/v0.1731.md): редактирование узлов, SVG-буфер и локальные графические жесты.
 
 ## Просмотр документации
 

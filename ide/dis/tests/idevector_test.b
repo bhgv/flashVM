@@ -39,7 +39,7 @@ wirecache()
     for (i := 1; i < len nodes; i++) {
         nodes[i] = Idevector->Node(vector->Segment, i, 20 + i % 100, 0, 0, 0, 0);
     }
-    shape := ref Idevector->Shape(16r245ac4, 8, 0, nodes, nil, 0);
+    shape := ref Idevector->Shape(16r245ac4, 8, 0, nodes, nil, 0, nil);
     cached.shapes = array[] of {shape};
     original := vector->wire(cached);
     require(cached.wirebuilds == 1, "initial geometry serialized once");
@@ -89,6 +89,9 @@ init()
     wirecache();
     picking();
     editing();
+    nodeoperations();
+    vectorclipboard();
+    previewformat();
     brushviewport();
     fitaccuracy();
     doc := vector->create();
@@ -248,3 +251,5 @@ init()
 include "idevectoredit_checks.b";
 
 include "idevectorfit_checks.b";
+
+include "idevectornodes_checks.b";

@@ -5,6 +5,7 @@ Idevector: module
     Ok, Invalid, Limit, Conflict, Cancelled: con iota; # Success, bounded raw retention or explicit refusal.
     Brush, Rectangle, Ellipse, Line, Pen, Select, Nodes, Zoom: con iota + 1; # Authoring tools; paths remain editable values.
     Move, Segment, Quadratic, Close, Cubic: con iota; # Path verbs; cubic has two independent controls.
+    AddNode, DeleteNode, BreakNode, JoinNodes, StraightSpan, BezierSpan, CuspNode, SmoothNode, SymmetricNode: con iota + 1; # Transactional contour commands.
     MaxShapes: con 32; # Per-document path budget.
     MaxNodes: con 4096; # Per-path command budget.
     MaxSVG: con 1048576; # Complete SVG UTF-8 source bound, including comments.
@@ -38,6 +39,7 @@ Idevector: module
         nodes: array of Node; # Owned complete ordered path, including closed compound contours.
         area: array of byte; # Immutable brush coverage, nil for imported/unprocessed paths.
         author: int; # Pending Brush/Pen origin; zero after processing/import/primitive creation.
+        joins: array of int; # Immutable per-anchor0 cusp/1 smooth/2 symmetric; nil means cusp.
     };
 
 
@@ -67,7 +69,9 @@ Idevector: module
         overlay: string; # Cached transient path bytes, absent from SVG/history.
         count: string; # Copied shape-count word including the transient overlay.
         builds: int; # Saturating overlay rebuild diagnostic, never a source revision.
-        plan: string; # Copied native motion plan; empty outside an admitted node drag.
+        plan: string; # Copied native point plan; idle markers can admit motion before acknowledgement.
+        selection: array of int; # Private copied mask represented by the cached overlay.
+        mode: int; # Previous overlay gesture mode; marquee geometry cannot reuse this cache.
     };
 
 
@@ -112,6 +116,14 @@ Idevector: module
     # Fit one closed contour after release, up to65536 samples and4096 output nodes.
     # Per-axis sample tolerance is complete figure width/100 and height/100; nil refuses.
     # Pure worker/model helper; emits editable cubic controls and retained lines.
+    # Apply one contour operation to selected anchors. Atomic, one Undo entry; no I/O.
+    nodeoperation: fn(doc: ref Document, operation: int): int;
+    # Delete selected anchors in Nodes, otherwise the selected whole figure.
+    remove: fn(doc: ref Document): int;
+    # Export one selected immutable figure as SVG; empty when nothing is selected.
+    copy: fn(doc: ref Document): string;
+    # Insert parsed SVG, replacing the selected figure when present. Atomic Undo unit.
+    paste: fn(doc: ref Document, text: string): int;
     brushfit: fn(points: array of Point, width, height: int): array of Node;
     # Allocate a clean empty document and private history. No I/O or channel operation.
     create: fn(): ref Document;

@@ -1,3 +1,5 @@
+[Node bar, SVG clipboard and local gestures / Узлы, SVG-буфер и локальные жесты](NODE-TOOLS.md) · [RU](NODE-TOOLS.ru.md)
+
 [Local FlashVM motion / Локальное движение в FlashVM](FLASHVM-LOCAL-MOTION.md)
 
 [Cancellable vector fitting / Отмена векторизации](VECTOR-CANCELLATION.md)
@@ -28,7 +30,7 @@
 
 # FlashVM Limbo IDE and host build tools
 
-Version **0.7.14**. [Русский](README.ru.md).
+Version **0.7.15**. [Русский](README.ru.md).
 
 **Target application:** a Limbo IDE running in an embedded Dis runtime inside FlashVM, with channel-only UI control. This Python driver is a host development tool. [Accepted architecture](ARCHITECTURE.md).
 

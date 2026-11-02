@@ -20,15 +20,18 @@ editbindbox(bindings: array of int, at, point, radius: int)
 editplan(doc: ref Document): string
 {
     e := doc.edit;
-    if (doc.tool != Nodes || e == nil || e.mode != 4 || e.selected < 0 ||
-        e.selected >= len doc.shapes || len doc.points == 0) {
+    if (e == nil || e.selected < 0 || e.selected >= len doc.shapes ||
+        (doc.tool != Nodes && doc.tool != Select) ||
+        (doc.tool == Select && (e.mode < 1 || e.mode > 3)) ||
+        (doc.tool == Nodes && e.mode != 0 && e.mode != 4 && e.mode != 5)) {
         return "";
     }
     count := len doc.shapes[e.selected].nodes;
     if (len e.mask != 3*count || len e.bindings < count) {
         return "";
     }
-    bytes := array[48+8*count+8*len e.bindings] of byte;
+    extended := doc.tool == Select || e.mode == 5;
+    bytes := array[48+16*extended+8*count+8*len e.bindings] of byte;
     putword(bytes,0,e.selected);
     putword(bytes,8,doc.revision);
     putword(bytes,16,e.applied.x);
@@ -36,8 +39,17 @@ editplan(doc: ref Document): string
     putword(bytes,32,count);
     putword(bytes,40,len e.bindings);
     at := 48;
+    if (extended) {
+        putword(bytes,48,e.mode);
+        putword(bytes,56,e.handle);
+        at = 64;
+    }
     for (i := 0; i < count; i++) {
-        putword(bytes,at,e.mask[3*i] | (e.mask[3*i+1] << 1) | (e.mask[3*i+2] << 2));
+        mode := 0;
+        if (len doc.shapes[e.selected].joins == count) {
+            mode = doc.shapes[e.selected].joins[i];
+        }
+        putword(bytes,at,e.mask[3*i] | (e.mask[3*i+1] << 1) | (e.mask[3*i+2] << 2) | (mode << 3));
         at += 8;
     }
     for (i = 0; i < len e.bindings; i++) {

@@ -69,7 +69,7 @@ draft(doc: ref Document): ref Shape
             fill = 0; # An open line is always a stroke, regardless of the closed-shape preference.
         }
         return ref Shape(doc.color, 1, fill,
-                         figure(doc.tool, points[0], points[len points - 1]), nil, 0);
+                         figure(doc.tool, points[0], points[len points - 1]), nil, 0, nil);
     }
     if (len points == 1) {
         p := points[0];
@@ -107,14 +107,14 @@ draft(doc: ref Document): ref Shape
             bottom = top + 1;
         }
         return ref Shape(doc.color, 0, 1,
-            figure(tool, Point(left, top), Point(right, bottom)), area, doc.tool);
+            figure(tool, Point(left, top), Point(right, bottom)), area, doc.tool, nil);
     }
     nodes := array[len points] of Node;
     nodes[0] = Node(Move, points[0].x, points[0].y, 0, 0, 0, 0);
     for (i := 1; i < len points; i++) {
         nodes[i] = Node(Segment, points[i].x, points[i].y, 0, 0, 0, 0);
     }
-    return ref Shape(doc.color, doc.width, 0, nodes, nil, doc.tool);
+    return ref Shape(doc.color, doc.width, 0, nodes, nil, doc.tool, nil);
 }
 
 
@@ -320,6 +320,13 @@ svg(doc: ref Document): string
         if (shape.width != 0) {
             stroke = color;
             thickness = " stroke-width=\"" + string shape.width + "\"";
+        }
+        if (len shape.joins == len shape.nodes) {
+            modes := array[len shape.joins] of byte;
+            for (part := 0; part < len modes; part++) {
+                modes[part] = byte ('0'+shape.joins[part]);
+            }
+            thickness += " data-flashvm-joins=\"" + string modes + "\"";
         }
         result += "  <path fill=\"" + fill + "\" stroke=\"" + stroke + "\"" + thickness + " d=\"";
         for (j := 0; j < len shape.nodes; j++) {
@@ -742,7 +749,7 @@ parse(text: string): (int, ref Document)
         }
         allowed := "|fill|stroke|stroke-width|";
         if (label == "path") {
-            allowed += "d|";
+            allowed += "d|data-flashvm-joins|";
         } else if (label == "rect") {
             allowed += "x|y|width|height|";
         } else if (label == "ellipse") {
@@ -819,7 +826,22 @@ parse(text: string): (int, ref Document)
         if (total > MaxTotal) {
             return (Limit, nil);
         }
-        storage[count++] = ref Shape(rgb, wide, fill != "none", nodes, nil, 0);
+        modes := attribute(values,"data-flashvm-joins","");
+        joins: array of int;
+        if (modes != "") {
+            if (len modes != len nodes) {
+                return (Invalid,nil);
+            }
+            joins = array[len nodes] of int;
+            for (part := 0; part < len modes; part++) {
+                if (modes[part] < '0' || modes[part] > '2' ||
+                    (nodes[part].verb == Close && modes[part] != '0')) {
+                    return (Invalid,nil);
+                }
+                joins[part] = modes[part]-'0';
+            }
+        }
+        storage[count++] = ref Shape(rgb, wide, fill != "none", nodes, nil, 0, joins);
     }
 }
 
@@ -1246,7 +1268,7 @@ refineone(doc: ref Document): int
         if (last.width == 0) {
             replacement := array[count] of ref Shape;
             replacement[0:] = doc.shapes;
-            replacement[count - 1] = ref Shape(last.color, 0, last.fill, last.nodes, last.area, 0);
+            replacement[count - 1] = ref Shape(last.color, 0, last.fill, last.nodes, last.area, 0, nil);
             doc.shapes = replacement;
             return Ok;
         }
@@ -1263,7 +1285,7 @@ refineone(doc: ref Document): int
         nodes[len last.nodes] = last.nodes[len last.nodes - 1];
         replacement := array[count] of ref Shape;
         replacement[0:] = doc.shapes;
-        replacement[count - 1] = ref Shape(last.color, last.width, 0, nodes, nil, 0);
+        replacement[count - 1] = ref Shape(last.color, last.width, 0, nodes, nil, 0, nil);
         doc.shapes = replacement;
         return Ok;
     }
@@ -1346,7 +1368,7 @@ refineone(doc: ref Document): int
             replacement[used++] = doc.shapes[index];
         }
     }
-    replacement[used] = ref Shape(last.color, 0, 1, nodes, combined, 0);
+    replacement[used] = ref Shape(last.color, 0, 1, nodes, combined, 0, nil);
     doc.shapes = replacement;
     return Ok;
 }

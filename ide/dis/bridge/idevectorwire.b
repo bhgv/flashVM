@@ -41,7 +41,10 @@ wireshape(bytes: array of byte, at: int, shape: ref Shape, cubic: int, work: ref
 # handing a result back, so the UI owner never walks its new contour nodes.
 preparewire(doc: ref Document)
 {
-    cubic := doc.wirecubic || doc.tool == Ellipse;
+    # A one-sample Brush/Pen preview is an ellipse too. Advertise both cubic
+    # controls before that preview exists, not only after a committed path scan.
+    cubic := doc.wirecubic || doc.tool == Ellipse ||
+             ((doc.tool == Brush || doc.tool == Pen) && doc.width > 1);
     if (doc.wired != doc.shapes) {
         for (index := 0; index < len doc.shapes && !cubic; index++) {
             nodes := doc.shapes[index].nodes;
@@ -160,8 +163,10 @@ cameraheader(doc: ref Document): array of byte
         plan = doc.presentation.plan;
     }
     local := len plan != 0;
+    extended := local && (doc.tool == Select || doc.edit.mode == 5);
+    compact := local && doc.tool == Nodes;
     header := array[48+24*extra+len plan] of byte;
-    putword(header,0,doc.tool | (extra << 16) | (doc.wirecubic << 17) | (local << 18));
+    putword(header,0,doc.tool | (extra << 16) | (doc.wirecubic << 17) | (local << 18) | ((local && doc.edit.mode == 0) << 19) | (compact << 20) | (extended << 21));
     putword(header,8,doc.color);
     putword(header,16,doc.width);
     putword(header,24,doc.fill | ((len doc.chain != 0) << 1));

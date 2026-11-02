@@ -493,6 +493,8 @@ int dvm_test_live_ink(const char *font)
         primitive_bursts(&ticket);
         multicontact_cancel(&ticket);
         local_motion(&ticket);
+        local_frames(&ticket);
+        local_taps(&ticket);
     }
     dvm_editor_destroy();
     printf(

@@ -1,5 +1,7 @@
 [v0.1726: cubic model, updated fitting/picking / Безье и новые правила](../docs/releases/v0.1726.md)
 
+Current v0.1731 behavior: [node bar, SVG clipboard and local gestures](NODE-TOOLS.md). Local-motion sections below retain the original v0.1729 checkpoint; the linked contract supersedes its coverage/status with eager admission, additional modes and compact recipes.
+
 [Dense picking and crash correction](VECTOR-PICKING.md)
 
 # Object and contour editing

@@ -50,6 +50,10 @@ int main(void)
     {
         plan.bindings[4+i] = (5UL<<8)|(5UL<<3)|(i+1);
     }
+    plan.bindings[2] |= 128;
+    require(dvm_vector_local_decorate(&plan,source,decorated) &&
+        !memcmp(overlay,decorated,sizeof(overlay)),"copied recipe reconstructs exact guide/square geometry");
+    plan.bindings[2] &= ~128UL;
     edit = dvm_vector_local_create(&plan,source,overlay);
     require(edit != NULL,"valid plan copied");
     require(dvm_vector_local_move(edit,400,200,actual,decorated),"control drag");
@@ -95,6 +99,82 @@ int main(void)
         require(edit && dvm_vector_local_move(edit,850,350,output,outline),"closed anchor drag");
         require(output[0].x == 850 && output[1].x == 850 && output[0].y == output[1].y,
             "closed cubic endpoint aliases stay welded");
+        dvm_vector_local_destroy(edit);
+    }
+    {
+        DVM_VectorCommand curve[3] = {{0,100,200,0,0,0,0},
+            {4,300,200,150,200,220,200},{4,500,200,340,200,450,200}};
+        DVM_VectorCommand output[3];
+        DVM_VectorCommand outline[3];
+        memset(&plan,0,sizeof(plan));
+        plan.count = plan.overlay = 3;
+        plan.x = 340;
+        plan.y = 200;
+        plan.masks[1] = 8; /* Smooth relationship at anchor1. */
+        plan.masks[2] = 2; /* Only outgoing first cubic control is selected. */
+        edit = dvm_vector_local_create(&plan,curve,curve);
+        require(edit && dvm_vector_local_move(edit,300,300,output,outline),"native smooth control move");
+        require(output[1].c2x == 300 && output[1].c2y == 120,
+            "smooth opposite control keeps its independent80-unit length");
+        dvm_vector_local_destroy(edit);
+        plan.masks[1] = 16; /* Symmetric relationship. */
+        edit = dvm_vector_local_create(&plan,curve,curve);
+        require(edit && dvm_vector_local_move(edit,300,300,output,outline) && output[1].c2y == 100,
+            "symmetric controls mirror both angle and length");
+        require(!dvm_vector_local_move(edit,300,500,output,outline) && output[1].c2y == 100,
+            "out-of-page reflected handle preserves the last valid transaction");
+        dvm_vector_local_destroy(edit);
+        plan.masks[1] = 24;
+        require(!dvm_vector_local_valid(&plan,curve,curve),"unknown relationship mode refuses");
+    }
+    {
+        DVM_VectorCommand output[2];
+        DVM_VectorCommand outline[7];
+        DVM_VectorCommand frame[7];
+        memset(&plan,0,sizeof(plan));
+        plan.count = plan.overlay = 2;
+        plan.mode = 1;
+        plan.x = 300;
+        plan.y = 100;
+        edit = dvm_vector_local_create(&plan,source,source);
+        require(edit && dvm_vector_local_move(edit,350,150,output,outline) &&
+            output[1].x == 650 && output[1].cx == 350 && output[1].c2y == 550,
+            "object translation transforms endpoints and both cubic controls locally");
+        dvm_vector_local_destroy(edit);
+        plan.mode = 2;
+        plan.handle = 3;
+        plan.x = 600;
+        plan.y = 500;
+        edit = dvm_vector_local_create(&plan,source,source);
+        require(edit && dvm_vector_local_move(edit,800,600,output,outline) &&
+            output[1].x == 800 && output[1].y == 475 && output[1].c2y == 600,
+            "scale uses fixed opposite corner and immutable conservative bounds");
+        require(dvm_vector_local_move(edit,600,500,output,outline) && !memcmp(output,source,sizeof(source)),
+            "scale returns to exact source without incremental drift");
+        dvm_vector_local_destroy(edit);
+        plan.mode = 3;
+        plan.x = 600;
+        plan.y = 300;
+        edit = dvm_vector_local_create(&plan,source,source);
+        require(edit && dvm_vector_local_move(edit,400,500,output,outline) &&
+            output[0].x == 500 && output[0].y == 100 && output[1].x == 300 && output[1].y == 500,
+            "rotation transforms all explicit controls about source bounds centre");
+        dvm_vector_local_destroy(edit);
+        memset(frame,0,sizeof(frame));
+        memcpy(frame,source,sizeof(source));
+        for (i = 2; i < 6; ++i)
+        {
+            frame[i].verb = i == 2 ? 0 : 1;
+            frame[i].x = frame[i].y = 100;
+        }
+        frame[6].verb = 3;
+        plan.mode = 5;
+        plan.x = plan.y = 100;
+        plan.overlay = 7;
+        edit = dvm_vector_local_create(&plan,source,frame);
+        require(edit && dvm_vector_local_move(edit,200,300,output,outline) &&
+            !memcmp(output,source,sizeof(source)) && outline[2].x == 100 && outline[4].x == 200 &&
+            outline[4].y == 300,"marquee rectangle updates without changing document geometry");
         dvm_vector_local_destroy(edit);
     }
     puts("PASS local vector: detached modifier plan, independent controls, bindings, reconciliation and rollback");

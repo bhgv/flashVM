@@ -1,5 +1,7 @@
 # Local FlashVM control-point motion
 
+Current v0.1731 behavior: [node bar, SVG clipboard and local gestures](NODE-TOOLS.md). Local-motion sections below retain the original v0.1729 checkpoint; the linked contract supersedes its coverage/status with eager admission, additional modes and compact recipes.
+
 [Русский](FLASHVM-LOCAL-MOTION.ru.md) · [Object/node tools](VECTOR-EDITING.md)
 
 The recorded slow operation is a Nodes drag. Previously every native movement

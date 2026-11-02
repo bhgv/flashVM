@@ -150,6 +150,9 @@ editmove(doc: ref Document, x, y: int): int
         }
         nodes[i] = n;
     }
+    if (e.mode == 4 && nodeconstraints(shape, nodes, e.mask) != Ok) {
+        return Invalid;
+    }
     # A closed cubic stores the first anchor twice as path commands. Editing
     # either visible copy must keep the contour welded, including compound paths.
     if (e.mode == 4) {
@@ -179,7 +182,7 @@ editmove(doc: ref Document, x, y: int): int
     }
     result := array[len e.base] of ref Shape;
     result[0:] = e.base;
-    result[e.selected] = ref Shape(shape.color, shape.width, shape.fill, nodes, nil, 0);
+    result[e.selected] = ref Shape(shape.color, shape.width, shape.fill, nodes, nil, 0, shape.joins);
     doc.shapes = result;
     return Ok;
 }
@@ -290,6 +293,9 @@ editpointer(doc: ref Document, phase, x, y: int): int
                 e.mode = 5;
             }
         }
+        if (e.selected >= 0 && len e.mask != 3*len doc.shapes[e.selected].nodes) {
+            e.mask = editmask(3*len doc.shapes[e.selected].nodes);
+        }
         e.base = doc.shapes;
         doc.points = array[] of {Point(x, y)};
         return Ok;
@@ -387,7 +393,7 @@ editoverlay(doc: ref Document): ref Shape
             (a.y,b.y) = (b.y,a.y);
         }
         editbox(nodes,0,a.x,a.y,b.x,b.y);
-        return ref Shape(16r1687df,1,0,nodes,nil,0);
+        return ref Shape(16r1687df,1,0,nodes,nil,0, nil);
     }
     if (doc.tool == Zoom) {
         return nil;
@@ -400,6 +406,13 @@ editoverlay(doc: ref Document): ref Shape
     nodes := array[MaxNodes] of Node;
     at := 0;
     if (doc.tool == Select) {
+        e.bindings = nil;
+        if (len shape.nodes+30 <= MaxNodes) {
+            e.bindings = array[len shape.nodes+30] of {* => 0};
+            for (part := 0; part < len shape.nodes; part++) {
+                nodes[at++] = shape.nodes[part];
+            }
+        }
         (l,t,r,b) := pickbounds(e,shape);
         at = editbox(nodes,at,l,t,r,b);
         for (h := 0; h < 4; h++) {
@@ -447,7 +460,7 @@ editoverlay(doc: ref Document): ref Shape
                 if (n.verb == Cubic && control == 1 && i > 0) {
                     anchorcode = 3*(i-1)+1;
                 }
-                e.bindings[at] = anchorcode << 8;
+                e.bindings[at] = (anchorcode << 8) | 128;
                 e.bindings[at+1] = (3*i+control+1) << 8;
                 nodes[at++] = Node(Move,anchor.x,anchor.y,0,0,0,0);
                 nodes[at++] = Node(Segment,cx,cy,0,0,0,0);
@@ -476,7 +489,7 @@ editoverlay(doc: ref Document): ref Shape
     if (doc.tool == Nodes) {
         e.bindings = e.bindings[0:at];
     }
-    return ref Shape(16r1687df, 1, 0, nodes[0:at], nil, 0);
+    return ref Shape(16r1687df, 1, 0, nodes[0:at], nil, 0, nil);
 }
 
 
@@ -507,3 +520,6 @@ pickbounds(e: ref Edit, shape: ref Shape): (int,int,int,int)
 }
 
 include "idevectorlocal.b";
+
+
+include "idevectornodes.b";

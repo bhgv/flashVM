@@ -1,3 +1,5 @@
+[Node bar, SVG clipboard and local gestures / Узлы, SVG-буфер и локальные жесты](NODE-TOOLS.md) · [RU](NODE-TOOLS.ru.md)
+
 [Local FlashVM motion / Локальное движение в FlashVM](FLASHVM-LOCAL-MOTION.md)
 
 [Cancellable vector fitting / Отмена векторизации](VECTOR-CANCELLATION.md)
@@ -26,7 +28,7 @@
 
 # Backend сборки для IDE
 
-Версия **0.7.14**. [English](README.md).
+Версия **0.7.15**. [English](README.md).
 
 **Целевое приложение:** IDE на Limbo со встроенной Dis внутри FlashVM; управление UI только через каналы. Этот Python-драйвер — host-инструмент разработки. [Принятая архитектура](ARCHITECTURE.ru.md).
 

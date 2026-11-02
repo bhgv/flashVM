@@ -117,4 +117,18 @@ int dvm_desktop_local_position(unsigned long *widget, long *point);
 /* Restore the admitted baseline on Escape/focus/capture loss; no Dis access. */
 void dvm_desktop_local_cancel(void);
 
+
+/* Start from an owner-issued idle marker plan, before any Dis acknowledgement.
+ * Return1 only for a visible eligible marker hit. Plain selection only; caller
+ * preserves normal Ctrl routing. No file/VM or document access occurs. */
+int dvm_desktop_local_begin(unsigned long widget, long point);
+/* True only while the captured complete scene is still a safe input baseline.
+ * Staged scene decoding must keep the queue fenced. */
+int dvm_desktop_local_ready(void);
+
+/* Mark a final proposal without discarding its visible pending geometry.
+ * The owner acknowledgement retires the preview even after a zero-motion tap. */
+void dvm_desktop_local_release(void);
+
+
 #endif

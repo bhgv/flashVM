@@ -583,12 +583,13 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             continue;
         }
         if (request.operation == Save || request.operation == Shutdown || request.operation == Open ||
+            request.operation == ExportSelection || request.operation == CutSelection || request.operation == PasteSelection ||
             (request.operation == VectorControl && request.event != nil &&
              (request.event.code == 5 || request.event.code == 6)) ||
             (request.operation == Draw && request.event != nil && request.event.code == 1 && request.event.text == "" &&
              (nativepending || (doc.tool != vector->Brush && doc.tool != vector->Pen))) ||
             (request.operation == Input && request.event != nil &&
-             request.event.kind == Uibridge->Key && (request.event.code == 90 || request.event.code == 89))) {
+             request.event.kind == Uibridge->Key && (request.event.code == 90 || request.event.code == 89 || request.event.code == 8 || request.event.code == 46))) {
             while (busy) {
                 done := <-completed;
                 busy = 0;
@@ -606,6 +607,9 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         }
         status := Idecore->Ok;
+        transfer := "";
+        rangefirst := 0;
+        rangelast := 0;
         stop := 0;
         if (request.operation == Shutdown) {
             vector->cancel(doc);
@@ -664,11 +668,13 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             }
         } else if (request.operation == VectorControl) {
             e := request.event;
-            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 23 ||
+            if (e == nil || e.kind != Uibridge->Request || e.code < 1 || e.code > 32 ||
                 ((e.code < 21 || e.code > 22) && (e.first != 0 || e.second != 0)) || e.text != "") {
                 status = Idecore->Invalid;
             } else if (e.flags != doc.revision || len doc.points != 0) {
                 status = Idecore->Conflict;
+            } else if (e.code >= 24) {
+                status = vectorstatus(vector->nodeoperation(doc,e.code-23));
             } else if (e.code >= 20) {
                 if (e.code == 23) {
                     vector->viewport(doc,0,500,300);
@@ -698,6 +704,41 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
             } else {
                 keys := array[] of {0, 66, 82, 69, 76, 0, 0, 189, 187, 49, 50, 51, 52, 53, 54, 70, 80};
                 vectorstyle(vector, doc, keys[e.code]);
+            }
+        } else if (request.operation == ExportSelection) {
+            transfer = vector->copy(doc);
+            status = clipstatus(transfer);
+            if (status != Idecore->Ok) {
+                transfer = "";
+            }
+        } else if (request.operation == CutSelection || request.operation == PasteSelection) {
+            e := request.event;
+            selected := -1;
+            if (doc.edit != nil && doc.edit.selected >= 0 && doc.edit.selected < len doc.shapes) {
+                selected = doc.edit.selected;
+            }
+            expectedfirst := 0;
+            expectedlast := 0;
+            if (selected >= 0) {
+                expectedfirst = selected;
+                expectedlast = selected+1;
+            }
+            if (e == nil || e.kind != Uibridge->Request || e.code != 0 || e.text != "" ||
+                (request.operation == CutSelection && request.text != "")) {
+                status = Idecore->Invalid;
+            } else if (e.flags != doc.revision || e.first != expectedfirst || e.second != expectedlast ||
+                       len doc.points || (doc.edit != nil && doc.edit.mode)) {
+                status = Idecore->Conflict;
+            } else if (request.operation == PasteSelection) {
+                status = clipstatus(request.text);
+                if (status == Idecore->Ok) {
+                    status = vectorstatus(vector->paste(doc,request.text));
+                }
+            } else {
+                tool := doc.tool;
+                doc.tool = vector->Select;
+                status = vectorstatus(vector->remove(doc));
+                doc.tool = tool;
             }
         } else if (request.operation == CancelPointer) {
             vector->cancel(doc);
@@ -751,6 +792,8 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 if (e.flags == 1) {
                     if (e.code == 27) {
                         vector->cancel(doc);
+                    } else if (e.code == 8 || e.code == 46) {
+                        status = vectorstatus(vector->remove(doc));
                     } else if (control && (e.code == 90 || e.code == 89)) {
                         vector->history(doc, e.code == 89);
                     } else if (!control) {
@@ -820,8 +863,12 @@ servevector(requests: chan of Request, vector: Idevector, doc: ref Idevector->Do
                 native->inkdone(inkack, drawing);
             }
         }
+        if (doc.edit != nil && doc.edit.selected >= 0 && doc.edit.selected < len doc.shapes) {
+            rangefirst = doc.edit.selected;
+            rangelast = rangefirst+1;
+        }
         request.reply <-= Reply(request.id, status, Vector, path, body, revision,
-            doc.saved, 0, -1, -1, 0, 0, "", 0, diagnostic, drawing, parts, inkack, "");
+            doc.saved, 0, -1, -1, rangefirst, rangelast, transfer, 0, diagnostic, drawing, parts, inkack, "");
         if (stop) {
             if (jobs != nil) {
                 jobs <-= nil;

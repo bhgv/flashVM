@@ -2842,7 +2842,17 @@ int dvm_editor_event(DVM_UIMessage *message)
     }
     if (!complete)
     {
+#ifdef DVM_EDITOR_SDL
+        SDL_Event next;
+        if (events || !dvm_desktop_local_ready() ||
+            SDL_PeepEvents(&next,1,SDL_PEEKEVENT,SDL_FIRSTEVENT,SDL_LASTEVENT) != 1 ||
+            (next.type != SDL_MOUSEMOTION && next.type != SDL_FINGERMOTION))
+        {
+            return 0;
+        }
+#else
         return 0;
+#endif
     }
 #ifdef DVM_EDITOR_SDL
     if (!events && dvm_desktop_active())
@@ -3344,10 +3354,14 @@ int dvm_editor_event(DVM_UIMessage *message)
                     unsigned long tool;
                     unsigned long color;
                     unsigned long wide;
-                    if (dvm_desktop_ink_style(widget,&tool,&color,&wide) && tool == 7)
+                    if (dvm_desktop_ink_style(widget,&tool,&color,&wide) && (tool == 6 || tool == 7))
                     {
                         local_pointer = event;
                         local_pointer_valid = 1;
+                        if (tool == 7 && !(SDL_GetModState() & KMOD_CTRL))
+                        {
+                            dvm_desktop_local_begin(widget,(long)encoded);
+                        }
                     }
                 }
                 if (phase == 2 || phase == 3)
@@ -3365,6 +3379,7 @@ int dvm_editor_event(DVM_UIMessage *message)
                             return 0; /* Captured source/decorations update in FlashVM; no Dis motion roundtrip. */
                         }
                         snprintf(message->text+24,9,"%08lx",(unsigned long)point);
+                        dvm_desktop_local_release();
                         local_pointer_valid = 0;
                     }
                 }
