@@ -8,9 +8,11 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None):
+def execute(runtime, module, mode, quantum, budget=None, locked=False):
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
+    if locked:
+        command.append("--gc-locked-poll")
     if budget is not None:
         command += ["--max-instructions", str(budget)]
     command.append(str(module))
@@ -33,6 +35,9 @@ def execute(runtime, module, mode, quantum, budget=None):
     lanes = re.search(r"failed=0 fast_passes=(\d+) workers=2", output)
     if not lanes or int(lanes[1]) == 0:
         raise RuntimeError("real Fast/Cycles workers did not execute:\n" + output[-5000:])
+    polls = re.search(r"fast_polls=(\d+) locked_polls=(\d+)", output)
+    if not polls or (locked and (int(polls[1]) != 0 or int(polls[2]) == 0)) or (not locked and int(polls[1]) == 0):
+        raise RuntimeError("poll path evidence mismatch:\n" + output[-5000:])
     if not gc or int(gc[1]) == 0:
         raise RuntimeError("collector did not run/join:\n" + output[-5000:])
     counters = re.search(r"instructions=(\d+) native=(\d+) gc_runs=(\d+) gc_epochs=(\d+)", output)
@@ -61,8 +66,10 @@ def main():
         for quantum in (31, 257, 2000, 65536):
             execute(runtime, module, mode, quantum)
         execute(runtime, module, mode, 31, 10000)
+        execute(runtime, module, mode, 257, locked=True)
+        execute(runtime, module, mode, 31, 10000, locked=True)
     print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 bounded-queue saturation runs, "
-          "2 managed-error joins, interpreter/JIT, 4 scheduler quanta including saturation")
+          "4 managed-error joins, 2 locked-reference successes, interpreter/JIT, 4 scheduler quanta including saturation")
 
 
 if __name__ == "__main__":

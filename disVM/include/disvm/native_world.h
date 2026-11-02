@@ -33,6 +33,16 @@ typedef struct DVM_WorldState
 DVM_NativeWorld *dvm_world_create(void);
 
 
+/* Create an immutable polling mode: nonzero retains the fully locked reference
+ * route; zero uses an atomic request check when the compiler supports it. */
+DVM_NativeWorld *dvm_world_create_mode(int locked_poll);
+
+
+/* Copy current owner's counters without shared counter reads or heap access.
+ * Returns zero for foreign/unbound participants or null output addresses. */
+int dvm_world_owner_polls(DVM_WorldParticipant *participant, size_t *fast, size_t *locked);
+
+
 int dvm_world_destroy(DVM_NativeWorld *world);
 
 

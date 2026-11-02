@@ -20,6 +20,7 @@ typedef struct RuntimeGC
     DVM_WorldParticipant *mutator;    /* Current Dis owner's registration. */
     DVM_GCWorkers *workers;           /* Separate native Fast and Cycles contexts. */
     Prog **roots;                    /* Borrowed complete process-list slot. */
+    unsigned long fast_empty_skips;   /* Mutator skipped an empty Fast request. */
     unsigned long passes;            /* Real retained rungc callbacks. */
     unsigned long snapshots;         /* Stopped active register snapshots. */
 } RuntimeGC;
@@ -111,9 +112,10 @@ static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, vo
 
 
 /* [GC:] Start real Fast/Cycles OS threads before entering the heap interval.
- * roots is the runtime's process-list slot, borrowed until stop. Failure removes
+ * roots is the runtime's process-list slot, borrowed until stop; locked_poll
+ * selects the mutex reference path. Failure removes
  * inactive roots and joins any started service before returning zero. */
-int dvm_runtime_gc_start(Prog **roots)
+int dvm_runtime_gc_start(Prog **roots, int locked_poll)
 {
     DVM_GCWorkersConfig config;
     if (!roots || state.world)
@@ -123,7 +125,7 @@ int dvm_runtime_gc_start(Prog **roots)
     memset(&state,0,sizeof(state));
     memset(&config,0,sizeof(config));
     state.roots = roots;
-    state.world = dvm_world_create();
+    state.world = dvm_world_create_mode(locked_poll);
     if (state.world)
     {
         state.mutator = dvm_world_join(state.world,dvm_native_context_current());
@@ -159,13 +161,23 @@ int dvm_runtime_gc_start(Prog **roots)
 }
 
 
-/* [GC:] Coalesce both kinds of work between scheduler turns. Each actual heap
+/* [GC:] Coalesce nonempty Fast work and Cycles between scheduler turns. Each heap
  * pass waits for an instruction safepoint; the caller does not wait for a pass.
  * Returns zero on a latched worker/protocol failure. */
 int dvm_runtime_gc_request(void)
 {
-    return dvm_gc_workers_request(state.workers,DVM_GC_FAST) &&
-        dvm_gc_workers_request(state.workers,DVM_GC_CYCLES);
+    if (dvm_runtime_rc_pending())
+    {
+        if (!dvm_gc_workers_request(state.workers,DVM_GC_FAST))
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        state.fast_empty_skips++;
+    }
+    return dvm_gc_workers_request(state.workers,DVM_GC_CYCLES);
 }
 
 
@@ -176,9 +188,15 @@ int dvm_runtime_gc_stop(int diagnostics)
 {
     DVM_GCWorkersState workers;
     int ok;
+    size_t fast_polls = 0;
+    size_t locked_polls = 0;
     if (!state.world)
     {
         return 1;
+    }
+    if (!dvm_world_owner_polls(state.mutator,&fast_polls,&locked_polls))
+    {
+        return 0;
     }
     dvm_runtime_rc_close();
     dvm_native_context_set_process(dvm_native_context_current(),NULL);
@@ -206,9 +224,10 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
-            workers.failed,(unsigned long)workers.Fast.passes);
+            workers.failed,(unsigned long)workers.Fast.passes,
+            (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips);
     }
     if (!dvm_world_detach(state.mutator) || !dvm_world_destroy(state.world))
     {

@@ -1,6 +1,7 @@
 /* Stop native mutators only at explicit boundaries, never under one execution lock. */
 #include "disvm/native_world.h"
 #include "channel_sync.h"
+#include "world_request.h"
 #include <stdlib.h>
 
 
@@ -14,6 +15,8 @@ struct DVM_WorldParticipant
     void *registers;            /* Stable address inside extended up. */
     size_t register_size;       /* Native byte extent for the visitor. */
     void *process;              /* Root value published at leave/poll. */
+    size_t fast_polls;           /* Owner-only count, never read by the collector. */
+    size_t locked_polls;         /* Owner-only slow-path count. */
     int active;                 /* Owner may execute mutator instructions. */
     int parked;                 /* Owner is currently waiting for resume. */
 };
@@ -29,6 +32,8 @@ struct DVM_NativeWorld
     size_t count;                       /* Number of root sets. */
     size_t active;                      /* Mutators between enter and leave. */
     size_t parked;                      /* Active mutators stopped at poll. */
+    long request;                       /* Atomic stop request, not root publication. */
+    int locked_poll;                    /* Immutable reference-mode selection. */
     int stopped;                        /* Collector may inspect roots. */
     int resuming;                       /* Drain the previous parked generation before another collector. */
 };
@@ -58,6 +63,18 @@ static int poll_mutator(void *user)
         return 0;
     }
     world = participant->world;
+    /* Only this owner changes active; the collector reads it under sync.
+     * A no-request observation does not publish roots or admit collection. */
+    if (!participant->active)
+    {
+        return 0;
+    }
+    if (!world->locked_poll && !dvm_world_request_load(&world->request))
+    {
+        participant->fast_polls++;
+        return 1;
+    }
+    participant->locked_polls++;
     fvm_port_sync_lock(world->sync);
     if (!participant->active)
     {
@@ -91,8 +108,10 @@ static int poll_collector(void *user)
 }
 
 
-/* Allocate only native coordination data, never a replacement VM heap. */
-DVM_NativeWorld *dvm_world_create(void)
+/* Allocate an owned empty coordination domain, never a VM heap. locked_poll
+ * selects the mutex reference route when nonzero. Null reports native allocation
+ * failure; no participant or collector may outlive the eventual destruction. */
+DVM_NativeWorld *dvm_world_create_mode(int locked_poll)
 {
     DVM_NativeWorld *world = (DVM_NativeWorld *)calloc(1, sizeof(*world));
     if (!world)
@@ -105,7 +124,15 @@ DVM_NativeWorld *dvm_world_create(void)
         free(world);
         return 0;
     }
+    world->locked_poll = locked_poll != 0;
     return world;
+}
+
+
+/* Create the default atomic-request domain; null reports native allocation failure. */
+DVM_NativeWorld *dvm_world_create(void)
+{
+    return dvm_world_create_mode(0);
 }
 
 
@@ -267,6 +294,7 @@ int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector)
         return 0;
     }
     world->collector = collector;
+    dvm_world_request_store(&world->request,1);
     fvm_port_sync_signal_all(world->sync);
     while (world->active != world->parked)
     {
@@ -317,6 +345,7 @@ int dvm_world_stop_end(DVM_NativeWorld *world)
     world->stopped = 0;
     world->resuming = 1;
     world->collector = 0;
+    dvm_world_request_store(&world->request,0);
     fvm_port_sync_signal_all(world->sync);
     while (world->parked)
     {
@@ -348,5 +377,20 @@ int dvm_world_state(DVM_NativeWorld *world, DVM_WorldState *out)
     out->stopping = world->collector != 0;
     out->stopped = world->stopped;
     fvm_port_sync_unlock(world->sync);
+    return 1;
+}
+
+
+/* Copy owner-private poll counters. participant must belong to the calling
+ * bound context; out parameters are caller-owned. No cross-owner counter reads,
+ * heap access, blocking or collection admission occurs. Returns zero on misuse. */
+int dvm_world_owner_polls(DVM_WorldParticipant *participant, size_t *fast, size_t *locked)
+{
+    if (!owns(participant) || !fast || !locked)
+    {
+        return 0;
+    }
+    *fast = participant->fast_polls;
+    *locked = participant->locked_polls;
     return 1;
 }

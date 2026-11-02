@@ -112,6 +112,15 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
 }
 
 
+/* [GC:] Read queue occupancy on its active Dis owner. Collectors cannot mutate
+ * it until that owner parks/leaves. No unsynchronized foreign inspection is
+ * admitted; foreign callers receive zero and must not use this for heap access. */
+unsigned int dvm_runtime_rc_pending(void)
+{
+    return dvm_native_context_current() == owner ? count : 0;
+}
+
+
 /* [GC:] Caller is the active mutator; the collector cannot access admission
  * fields until this owner leaves. Existing queued references stay rooted. */
 void dvm_runtime_rc_close(void)

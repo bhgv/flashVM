@@ -165,3 +165,53 @@ At this checkpoint queue metadata and non-atomic heap/refcounts are protected by
 exclusive world ownership. Parallel shared-heap mutators, a persistent epoch/rooted
 mutation journal, and a concurrent marker remain open. --gc-inline retains ordinary
 immediate RC and inline cycle collection as the default reference mode.
+
+## Runtime0.43.0: no mutex for an unrequested instruction poll
+
+Workspace v0.1735 removes the world mutex from the normal instruction boundary.
+The collector publishes an atomic stop-request word before waiting for active
+owners. A mutator which observes no request continues without locking or touching
+shared root snapshots. A requested stop follows the existing mutex/condition
+rendezvous: publish complete roots, park, let both collectors serialize their
+heap leases, then resume. The flag is a wakeup gate, not collection admission or
+a managed-reference/write barrier. A collector still waits for every active owner.
+
+The request uses GCC/Clang acquire/release builtins or MSVC Interlocked operations.
+Unknown compilers conservatively use the locked route without reading a shared
+plain word. This preserves C99 host compatibility. Clearing the request happens
+under the world mutex before resume; the existing resuming-generation fence
+prevents another collector from overtaking parked-owner retirement.
+
+`dvm_world_create_mode(1)` retains fully locked polling. The runtime exposes it as
+`--gc-worker --gc-locked-poll`; default worker polling uses the atomic gate.
+`dvm_world_owner_polls` copies owner-private fast/locked counts only on that same
+bound context, avoiding shared counter races. NATIVEGC reports those counts after
+joins. The standalone native fixture deterministically checks exactly10000
+unrequested polls in each route, inactive rejection and participant retirement,
+then performs100 real root rendezvous with two mutators and separate collectors.
+These focused instruction fixtures remain distinct from whole managed heap proof.
+
+The Dis owner also skips Fast requests when its rooted RC queue is empty. Queue
+occupancy is read only during the active exclusive heap interval. A nonempty
+queue and shutdown drain keep the original MORE/fairness/retirement protocol.
+Cycles requests remain independent; an empty Fast skip does not suppress a
+needed cycle pass. NATIVERC still requires zero pending owners/direct bytes.
+
+Real interpreter/JIT cyclic-heap gates exercise atomic and locked routes,
+reclamation, saturation, large-block fallback and managed-error joins. For whole
+process timing, from the installed SDK run
+`python source/threading/benchmark_gc_poll.py ./disvm-editor ./threaded-owner.dis`:
+this alternates five runs per route, checks identical application instruction
+counts and reports every sample and medians. Times include process startup and
+GC joins; they are observations, not opcode/UI latency or hardware guarantees.
+
+The shared heap is still stopped during collection. Complete concurrent graph
+barriers, atomic shared-heap mutation, parallel spawn and blocking Sys release/
+reentry remain unfinished; the stop-request flag does not implement any of them.
+
+
+The explicit DVM_WORLD_NO_ATOMICS build control exercises the conservative
+fallback in the same native fixture. GCC native fast/reference, forced fallback,
+five repeated Fast/Cycles rendezvous runs and strict UBSan native fixtures pass.
+These are separate from the managed application gates. Executed target is Linux
+x64; MSVC/ARM64/RV64 source branches are not new device execution evidence.

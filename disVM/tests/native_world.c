@@ -239,6 +239,53 @@ static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, vo
 #endif
 
 
+/* Verify exact no-request routing on this bound context before parallel
+ * participants start. Both modes use the actual poll hook and root registry.
+ * No timing threshold or simulated mutex decides success. */
+static void check_idle_modes(void)
+{
+    int mode;
+    for (mode = 0; mode < 2; mode++)
+    {
+        DVM_NativeWorld *world = dvm_world_create_mode(mode);
+        DVM_WorldParticipant *participant = dvm_world_join(world,dvm_native_context_current());
+        size_t fast = 0;
+        size_t locked = 0;
+        unsigned int index;
+        int expected_locked = mode;
+#ifdef DVM_WORLD_NO_ATOMICS
+        expected_locked = 1;
+#endif
+        if (!participant || !dvm_world_enter(participant))
+        {
+            fprintf(stderr,"FAIL idle world initialization\n");
+            exit(EXIT_FAILURE);
+        }
+        for (index = 0; index < 10000; index++)
+        {
+            if (!dvm_native_context_poll())
+            {
+                fprintf(stderr,"FAIL idle poll\n");
+                exit(EXIT_FAILURE);
+            }
+        }
+        if (!dvm_world_owner_polls(participant,&fast,&locked) ||
+            fast != (expected_locked ? 0 : 10000) || locked != (expected_locked ? 10000 : 0))
+        {
+            fprintf(stderr,"FAIL exact fast/reference poll counts\n");
+            exit(EXIT_FAILURE);
+        }
+        if (dvm_world_owner_polls(participant,NULL,&locked) ||
+            !dvm_world_leave(participant) || dvm_native_context_poll() ||
+            !dvm_world_detach(participant) || !dvm_world_destroy(world))
+        {
+            fprintf(stderr,"FAIL inactive poll/owner retirement\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+
 /* Collect 100 root snapshots while both workers remain genuinely active. */
 int main(void)
 {
@@ -277,6 +324,7 @@ int main(void)
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
+    check_idle_modes();
     for (index = 0; index < 2; index++)
     {
         memset(&workers[index], 0, sizeof(workers[index]));

@@ -16,6 +16,10 @@ int dvm_runtime_rc_defer(void *value);
  * Caller is the collector with the world stopped. Returns remaining owners. */
 unsigned int dvm_runtime_rc_drain(unsigned int budget);
 
+/* [GC:] Query queue size only on the active Dis owner, before releasing the
+ * world interval. Returns the current rooted owner count; no wait/allocation. */
+unsigned int dvm_runtime_rc_pending(void);
+
 /* [GC:] Stop admission on the mutator before leaving its heap interval. */
 void dvm_runtime_rc_close(void);
 

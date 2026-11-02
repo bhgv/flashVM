@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1734**. [Русская версия](README.ru.md).
+Development version: **0.1735**. [Русская версия](README.ru.md).
 
-Current series: [v0.1734](docs/releases/v0.1734.md): production Fast/Cycles OS workers and a rooted deferred-RC queue.
+Current series: [v0.1735](docs/releases/v0.1735.md): atomic GC stop requests and fewer empty Fast rendezvous.
 
 ## Browse documentation
 

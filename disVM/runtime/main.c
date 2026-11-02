@@ -85,6 +85,7 @@ static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static unsigned long execution_slices;    /* Busy-work budget since the last actual standard-input progress. */
 static int live;                          /* Process quota accounting. */
+static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static int gc_worker;                     /* Explicit production collector-worker admission. */
 static char failure[256];                 /* Current native error copied before unwinding. */
 static char *module_directory;            /* Read-only module resource base; ordinary Sys paths retain caller cwd. */
@@ -923,7 +924,7 @@ static int runtime_execute_inner(void *argument)
     {
         inspect_retain(process);
     }
-    if (gc_worker && !dvm_runtime_gc_start(&processes))
+    if (gc_worker && !dvm_runtime_gc_start(&processes,gc_locked_poll))
     {
         error("cannot start native collector");
     }
@@ -1148,6 +1149,10 @@ int main(int argc, char **argv)
         {
             test_control = 1;
         }
+        else if (strcmp(argv[1], "--gc-locked-poll") == 0)
+        {
+            gc_locked_poll = 1;
+        }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
@@ -1177,7 +1182,7 @@ int main(int argc, char **argv)
             puts(
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
-            puts("GC execution: --gc-worker (native stopped-world collector), --gc-inline (default reference)");
+            puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one Dis heap owner.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");

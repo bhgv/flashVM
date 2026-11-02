@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1734**. [English](README.md).
+Версия разработки: **0.1735**. [English](README.md).
 
-Текущая серия: [v0.1734](docs/releases/v0.1734.md): потоки Fast/Cycles и закреплённая очередь отложенного RC.
+Текущая серия: [v0.1735](docs/releases/v0.1735.md): атомарные запросы остановки GC без мьютекса на каждом opcode.
 
 ## Просмотр документации
 
