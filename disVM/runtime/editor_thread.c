@@ -3,6 +3,7 @@
 #include "editor_view.h"
 #include "editor_ink.h"
 #include "disvm/native_context.h"
+#include "managed_workers.h"
 #include "thread_port.h"
 #include "channel_sync.h"
 #include <stdlib.h>
@@ -107,7 +108,7 @@ int dvm_editor_thread_rpc(unsigned int operation, unsigned long token,
     char *copy;
     int ok;
     if (!s || (size && !input) || size > DVM_EDITOR_RPC_BYTES ||
-        !fvm_port_thread_is_current(s->worker))
+        (!fvm_port_thread_is_current(s->worker) && !dvm_managed_workers_current()))
     {
         return 0;
     }

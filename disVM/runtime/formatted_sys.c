@@ -8,6 +8,7 @@
 #include "raise.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "managed_workers.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
 #include <stdio.h>
@@ -51,7 +52,9 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
         pins++;
         Setmark(D2H(fd));
     }
-    released = dvm_runtime_gc_native_leave();
+    /* [GC:] FILE cursor metadata requires external serialization. With two
+     * executors, retain the heap for ordinary files; stdio remains audited. */
+    released = file && dvm_managed_workers_serialize_file() ? 0 : dvm_runtime_gc_native_leave();
     if (descriptor == 1 || descriptor == 2)
     {
         status = fvm_port_stdio_write(descriptor,bytes,count,&written);

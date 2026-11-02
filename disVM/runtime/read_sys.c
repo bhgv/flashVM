@@ -8,6 +8,7 @@
 #include "raise.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "managed_workers.h"
 #include "io_buffer.h"
 #include <stddef.h>
 #include <stdlib.h>
@@ -113,7 +114,9 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         {
             fragment = capacity;
         }
-        released = dvm_runtime_gc_native_leave();
+        /* [GC:] FILE cursor metadata requires external serialization. With two
+         * executors, retain the heap for ordinary files; stdio remains audited. */
+        released = file && dvm_managed_workers_serialize_file() ? 0 : dvm_runtime_gc_native_leave();
         if (descriptor == 0)
         {
             status = fvm_port_stdio_read(0,stage,fragment,&received);

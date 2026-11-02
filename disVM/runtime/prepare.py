@@ -130,6 +130,7 @@ def main():
         "Sys_sleep",
         "Sys_print",
         "Sys_fprint",
+        "Sys_werrstr",
         "Sys_sprint",
         "Sys_aprint",
         "Sys_tokenize",

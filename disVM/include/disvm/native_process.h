@@ -21,6 +21,9 @@ typedef struct DVM_NativeExecution
 {
     unsigned long idle_slices;      /* Owner-local turns since acknowledged input progress. */
     int instruction_boundary_error; /* Quota rejected before PC fetch/advance on this owner. */
+    unsigned long progress_epoch;   /* Last shared stdin/UI progress generation observed by this owner. */
+    unsigned long host_fcr;         /* Native caller rounding state saved for a managed turn. */
+    unsigned long host_fsr;         /* Native caller exception-status bits saved for a managed turn. */
 } DVM_NativeExecution;
 
 

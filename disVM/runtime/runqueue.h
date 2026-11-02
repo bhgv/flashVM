@@ -13,6 +13,10 @@ typedef struct DVM_RuntimeProcess
     int queued;                       /* O(1) membership, changed only by this queue module. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
+    uintptr last_dispatcher;           /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
+    Osenv environment;                /* Native guest error storage follows this logical Prog across owner migration. */
+    ulong floating_control;           /* Supported native rounding controls follow this Prog, not its OS owner. */
+    ulong floating_status;            /* Supported floating exception flags captured at complete-turn boundaries. */
 } DVM_RuntimeProcess;
 
 
@@ -20,6 +24,11 @@ typedef struct DVM_RuntimeProcess
  * Caller holds the exclusive heap turn. Publishes current process on success;
  * duplicate/foreign/nested claims refuse without queue/root changes. No throw. */
 int dvm_runqueue_claim(Prog *process);
+
+
+/* Enable bounded native-wait peak diagnostics before launching managed owners.
+ * No heap access; one immutable launch setting, used only by explicit --stats. */
+void dvm_runqueue_trace_waits(void);
 
 
 /* End this owner's complete managed turn after register/root publication and

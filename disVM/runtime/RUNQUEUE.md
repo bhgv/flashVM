@@ -149,3 +149,18 @@ the Prog and context-token layers. One semantic control intentionally weakens
 BOTH layers; weakening only one must still refuse. Additional controls remove
 the nested-token and early-unbind guards independently. No token is serialized
 or treated as a managed root; the scheduler retains the Prog in its root list.
+
+
+## Two-executor dispatch (0.52.0)
+
+The opt-in managed worker calls the same dispatch function as the controller.
+Ready-head claim remains the sole admission; all queue/Prog fields are protected
+by NativeWorld heap exclusion. `last_dispatcher` is a numeric diagnostic identity,
+never a borrowed NativeContext pointer. It detects ordinary-turn migrations;
+native continuations still require their original live dispatch/native owner.
+
+The runtime wrapper now embeds logical Osenv and supported floating control/
+status. These follow Prog; the context token, host FP save slots and C jump stack
+stay OS-local. Restore the default environment before freeing a wrapper. Helper
+yield/join refuses any nonempty process slot/token. See
+[the lifecycle protocol](THREADING.md#two-managed-os-executors-0520).

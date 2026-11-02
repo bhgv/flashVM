@@ -15,6 +15,9 @@ static unsigned long inflight; /* Native continuations absent from runnable disp
 static unsigned long claims;   /* Successful exclusive managed-turn assignments. */
 static unsigned long finishes; /* Matching turn releases, independent of native leases. */
 static unsigned int active;    /* Live turn claims, including suspended C continuations. */
+static unsigned long migrated; /* Turns of the same Prog assigned to another live native context. */
+static unsigned long peak;     /* Maximum simultaneous audited native continuation leases. */
+static int trace_waits;        /* Immutable opt-in diagnostics, enabled before thread launch. */
 
 
 /* Borrow runtime-only extension metadata from its preserved Prog prefix. The
@@ -48,9 +51,21 @@ int dvm_runqueue_claim(Prog *process)
         return 0;
     }
     runtime_process(process)->dispatch_owner = context;
+    if (runtime_process(process)->last_dispatcher && runtime_process(process)->last_dispatcher != (uintptr)context)
+    {
+        migrated++;
+    }
+    runtime_process(process)->last_dispatcher = (uintptr)context;
     claims++;
     active++;
     return 1;
+}
+
+
+/* Enable prelaunch peak diagnostics without retaining a managed object. */
+void dvm_runqueue_trace_waits(void)
+{
+    trace_waits = 1;
 }
 
 
@@ -209,6 +224,14 @@ int dvm_runqueue_suspend(Prog *process)
     runtime_process(process)->native_owner = context;
     leases++;
     inflight++;
+    if (inflight > peak)
+    {
+        peak = inflight;
+        if (trace_waits)
+        {
+            fprintf(stderr,"NATIVEWAITERS inflight=%lu\n",inflight);
+        }
+    }
     return 1;
 }
 
@@ -263,7 +286,7 @@ unsigned long dvm_runqueue_inflight(void)
  * A successful managed return or ordinary error unwind must have inflight=0. */
 void dvm_runqueue_statistics(void)
 {
-    fprintf(stderr,"NATIVEQUEUE queued=%u leases=%lu returns=%lu inflight=%lu\n",
-        count,leases,returns,inflight);
-    fprintf(stderr,"NATIVEDISPATCH claims=%lu finishes=%lu active=%u\n",claims,finishes,active);
+    fprintf(stderr,"NATIVEQUEUE queued=%u leases=%lu returns=%lu inflight=%lu peak=%lu\n",
+        count,leases,returns,inflight,peak);
+    fprintf(stderr,"NATIVEDISPATCH claims=%lu finishes=%lu active=%u migrated=%lu\n",claims,finishes,active,migrated);
 }

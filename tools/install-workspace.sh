@@ -723,6 +723,7 @@ EOF
             fi
             copy_file "$ROOT/disVM/runtime/run-editor.sh" "$destination/run-editor.sh" 755
             copy_file "$ROOT/disVM/runtime/run-modules.sh" "$destination/run-modules.sh" 755
+            copy_file "$ROOT/disVM/runtime/run-managed-workers.sh" "$destination/run-managed-workers.sh" 755
             copy_tree "$ROOT/disVM/examples/standard-modules" "$destination/examples/standard-modules"
             copy_tree "$ROOT/disVM/examples/decimal-append" "$destination/examples/decimal-append"
             copy_tree "$ROOT/ide/dis/examples/directory-browser" "$destination/examples/directory-browser"
@@ -761,6 +762,7 @@ EOF
             copy_tree "$ROOT/ide/dis/examples/native-console" "$destination/examples/native-console"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
+            copy_tree "$ROOT/disVM/examples/managed-workers" "$destination/examples/managed-workers"
             copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
             copy_tree "$ROOT/disVM/examples/gc-native-wait" "$destination/examples/gc-native-wait"
             copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
@@ -774,7 +776,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             copy_file "$ROOT/disVM/runtime/RUNQUEUE.md" "$destination/RUNQUEUE.md"
-            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h; do
+            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h test_managed_workers.py; do
                 copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
             done
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
@@ -824,6 +826,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/module-store" "$destination/examples/module-store"
             copy_tree "$ROOT/disVM/examples/console-check" "$destination/examples/console-check"
             copy_tree "$ROOT/disVM/examples/threaded-owner" "$destination/examples/threaded-owner"
+            copy_tree "$ROOT/disVM/examples/managed-workers" "$destination/examples/managed-workers"
             copy_tree "$ROOT/disVM/examples/gc-worker" "$destination/examples/gc-worker"
             copy_tree "$ROOT/disVM/examples/gc-native-wait" "$destination/examples/gc-native-wait"
             copy_tree "$ROOT/disVM/examples/gc-native-read" "$destination/examples/gc-native-read"
@@ -837,7 +840,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/THREADING.md" "$destination/THREADING.md"
             copy_file "$ROOT/disVM/runtime/THREADING.ru.md" "$destination/THREADING.ru.md"
             copy_file "$ROOT/disVM/runtime/RUNQUEUE.md" "$destination/RUNQUEUE.md"
-            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h; do
+            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h test_managed_workers.py; do
                 copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
             done
             if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&

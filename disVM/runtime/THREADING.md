@@ -537,3 +537,44 @@ membership and native continuation leases. Success/error/block/retirement paths
 finish on the original owner; a later ordinary wake permits reassignment to a
 different native context. Production probes check balanced claims/finishes.
 The heap is still exclusive and the production managed worker pool remains off.
+
+
+## Two managed OS executors (0.52.0)
+
+`--gc-worker --managed-workers 2` starts one additional real OS executor beside
+the controller. Both call the same production dispatch function and can execute
+C/JIT turns of the same Prog after an ordinary rotation. The default is1. This
+mode requires the worker collectors; the graphical host also requires threaded
+UI. It does not enable concurrent managed heap writers.
+
+The shared NativeWorld FIFO gate protects queue, heap, roots, modules and JIT
+caches. Before yielding an empty scheduler interval, both process slots and the
+context turn token must be empty and `up.env` restored to native default. No
+managed pointer is borrowed through this interval. Startup rendezvous and helper
+join happen AFTER leaving the gate. Helper publishes its final native counters,
+detaches and destroys its TLS on its own thread before collectors stop. Stop is
+cooperative; a blocked native OS operation may delay join.
+
+Prog embeds its own bounded error buffers and supported FP control/status. A
+claim binds these logical values; every completion/error path saves them and
+restores the OS owner's host FP/default environment before rotation/free.
+`Sys_werrstr` captures the generated frame and writes a full native WORD result.
+Native C exception jump stacks remain OS-local. The input-progress generation is
+shared under the heap gate; each owner observes it before applying its idle
+budget. The instruction limit remains global, not multiplied by executor count.
+
+An audited native wait retains dispatch affinity to its original context, saves
+REG, withdraws the Prog from the runnable queue and roots it through reentry.
+Meanwhile the other executor can execute DIFFERENT runnable bytecode. Ordinary
+FILE-backed operations keep heap exclusion in this mode: FVM_PortFile cursors
+and errors require external serialization. Only audited standard I/O/sleep
+release. General C callbacks and native64holds remain under their existing
+restrictions. UI helper RPC is admitted only from its ACTIVE claimed turn in
+the same world; copied requests share the existing serialized UI cell.
+
+[Runnable examples and complete admission driver](../examples/managed-workers/README.md)
+cover both executors, migrations, exact reference instruction counts, two native
+writers under real pipe backpressure, shared-file contents, helper UI requests,
+errors and quota teardown. Menu entry19 exposes the installed launcher. Counters
+`NATIVEPOOL`, `NATIVEDISPATCH` and `NATIVEQUEUE` provide post-join evidence; they
+do not claim simultaneous managed execution. Native Linux x64 is tested locally.

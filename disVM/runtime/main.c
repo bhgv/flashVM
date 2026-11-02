@@ -17,6 +17,8 @@
 #include "runtime_gc.h"
 #include "runqueue.h"
 #include "queue_probe.h"
+#include "managed_workers.h"
+#include "process_environment.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
 #include <stdio.h>
@@ -87,6 +89,9 @@ static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
+static int managed_workers = 1; /* Opt-in OS executors; shared heap remains exclusive. */
+static int managed_workers_selected; /* Reject duplicate executor options. */
+static unsigned long progress_epoch; /* Shared acknowledged input generation, protected by the heap gate. */
 static int gc_worker;                     /* Explicit production collector-worker admission. */
 static char *module_directory;            /* Read-only module resource base; ordinary Sys paths retain caller cwd. */
 extern int dontcompile;                   /* Production loader switch that prohibits forced JIT compilation. */
@@ -509,7 +514,6 @@ Prog *delrun(int state)
 Prog *newprog(Prog *parent, Modlink *module)
 {
     Prog *process;
-    USED(parent);
     if (live == PROCESS_MAX)
     {
         error("process quota exceeded");
@@ -519,6 +523,7 @@ Prog *newprog(Prog *parent, Modlink *module)
     {
         error(exNomem);
     }
+    dvm_process_environment_init(process,parent);
     process->pid = ++nextpid;
     process->quanta = scheduler_quantum;
     process->xec = xec;
@@ -737,7 +742,9 @@ FVM_PortFile *dvm_runtime_file(int descriptor)
  * or inactive heap interval. No parameters/result, allocation or blocking. */
 void dvm_runtime_input_progress(void)
 {
+    progress_epoch++;
     dvm_native_execution()->idle_slices = 0;
+    dvm_native_execution()->progress_epoch = progress_epoch;
 }
 
 
@@ -861,6 +868,127 @@ static char *entry_resource(char *path)
     return separator + 1;
 }
 
+/* Execute one complete managed turn under exclusive heap ownership. Both OS
+ * executors call the SAME interpreter/JIT/error/retirement logic. Return1 for a
+ * completed turn,0 for idle,-1 for a managed failure with its claim retired.
+ * Registers and roots are published before returning; no UI pump runs here. */
+static int runtime_dispatch_turn(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    Prog *process;
+    Prog **slot;
+    if (!dvm_runqueue_head())
+    {
+        return 0;
+    }
+    if (dvm_native_execution()->progress_epoch != progress_epoch)
+    {
+        dvm_native_execution()->idle_slices = 0;
+        dvm_native_execution()->progress_epoch = progress_epoch;
+    }
+    /* An explicit instruction budget must remain independent of quantum.
+     * Otherwise quantum=1 silently stops at 100000 despite a larger limit. */
+    if (!dvm_runtime_instruction_limit && ++dvm_native_execution()->idle_slices > 100000)
+    {
+        fprintf(stderr,"disvm: execution budget exceeded\n");
+        return -1;
+    }
+    process = dvm_runqueue_head();
+    if (!dvm_runqueue_claim(process))
+    {
+        error("cannot publish active Dis process in TLS owner");
+    }
+    up->prog = process;
+    if (!dvm_process_environment_bind(process))
+    {
+        error("invalid managed process environment");
+    }
+    dvm_native_execution()->instruction_boundary_error = 0;
+    if (waserror())
+    {
+        process->R = DVM_R;
+        dvm_native_context_set_process(context, nil);
+        dvm_bigtable_abort(process);
+        if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error && handler(owner_error()))
+        {
+            owner_error()[0] = 0;
+            if (!dvm_runqueue_finish(process))
+            {
+                error("cannot finish handled dispatch");
+            }
+            dvm_process_environment_release(process);
+            up->prog = nil;
+            return 1;
+        }
+        if (owner_error()[0])
+        {
+            const char *path;
+            long pc;
+            runtime_error_location(&path, &pc);
+            fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, owner_error());
+            if (!dvm_runqueue_finish(process))
+            {
+                error("cannot finish failed dispatch");
+            }
+            dvm_process_environment_release(process);
+            inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
+            up->prog = nil;
+            return -1;
+        }
+        if (dvm_runqueue_owner(process))
+        {
+            error("cannot retire a native continuation");
+        }
+        if (!dvm_runqueue_finish(process))
+        {
+            error("cannot finish exiting dispatch");
+        }
+        dvm_process_environment_release(process);
+        delrun(Pexiting);
+        for (slot = &processes; *slot && *slot != process; slot = &(*slot)->next)
+        {
+        }
+        if (*slot)
+        {
+            *slot = process->next;
+        }
+        destroystack(&process->R);
+        destroy(process->R.M);
+        dvm_native_context_set_process(context, nil);
+        up->prog = nil;
+        destroy(process->exval);
+        free(process->exstr);
+        free(process);
+        live--;
+    }
+    else
+    {
+        xec(process);
+        if (!dvm_runqueue_finish(process))
+        {
+            error("cannot finish completed dispatch");
+        }
+        dvm_process_environment_release(process);
+        dvm_native_context_set_process(context, nil);
+        up->prog = nil;
+        poperror();
+        if (dvm_runqueue_head() == process)
+        {
+            addrun(delrun(Pready));
+        }
+    }
+    if (processes && gc_worker && !dvm_runtime_gc_request())
+    {
+        error("native collector failed");
+    }
+    if (processes && !gc_worker)
+    {
+        rungc(processes);
+    }
+    return 1;
+}
+
+
 /* Execute the complete Dis runtime exclusively on its bound native owner.
  * argument is a borrowed module path valid until join/return. No UI heap access
  * occurs here in threaded mode. Channel movers stay on this mutator; optional
@@ -870,7 +998,6 @@ static int runtime_execute_inner(void *argument)
     DVM_NativeContext *context;
     Module *module;
     Prog *process;
-    Prog **slot;
     char *entry;
     context = dvm_native_process_create(nil);
     if (!context || !dvm_native_context_bind(context))
@@ -929,7 +1056,11 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    while (dvm_runqueue_head()
+    if (managed_workers > 1 && !dvm_managed_workers_start(runtime_dispatch_turn))
+    {
+        error("cannot start managed executor");
+    }
+    while (dvm_runqueue_head() || (managed_workers > 1 && dvm_runqueue_inflight())
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
 #endif
@@ -949,110 +1080,30 @@ static int runtime_execute_inner(void *argument)
             }
             if (progress)
             {
-                dvm_native_execution()->idle_slices = 0;
+                dvm_runtime_input_progress();
             }
         }
-        if (!dvm_runqueue_head())
+        if (managed_workers == 1 && !dvm_runqueue_head())
         {
             fvm_port_thread_sleep_us(1000);
             continue;
         }
 #endif
-        /* An explicit instruction budget must remain independent of quantum.
-         * Otherwise quantum=1 silently stops at 100000 despite a larger limit. */
-        if (!dvm_runtime_instruction_limit && ++dvm_native_execution()->idle_slices > 100000)
         {
-            error("execution budget exceeded");
-        }
-        process = dvm_runqueue_head();
-        if (!dvm_runqueue_claim(process))
-        {
-            error("cannot publish active Dis process in TLS owner");
-        }
-        up->prog = process;
-        dvm_native_execution()->instruction_boundary_error = 0;
-        if (waserror())
-        {
-            process->R = DVM_R;
-            dvm_native_context_set_process(context, nil);
-            dvm_bigtable_abort(process);
-            if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error && handler(owner_error()))
+            int progress = runtime_dispatch_turn();
+            if (progress < 0)
             {
-                owner_error()[0] = 0;
-                if (!dvm_runqueue_finish(process))
-                {
-                    error("cannot finish handled dispatch");
-                }
-                up->prog = nil;
-                continue;
-            }
-            if (owner_error()[0])
-            {
-                const char *path;
-                long pc;
-                runtime_error_location(&path, &pc);
-                fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, owner_error());
-                if (!dvm_runqueue_finish(process))
-                {
-                    error("cannot finish failed dispatch");
-                }
-                inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
-                up->prog = nil;
+                poperror(); /* The dispatch retired its own guard; do not retain this returning outer jump frame. */
                 return 1;
             }
-            if (dvm_runqueue_owner(process))
+            if (progress)
             {
-                error("cannot retire a native continuation");
-            }
-            if (!dvm_runqueue_finish(process))
-            {
-                error("cannot finish exiting dispatch");
-            }
-            delrun(Pexiting);
-            for (slot = &processes; *slot && *slot != process; slot = &(*slot)->next)
-            {
-            }
-            if (*slot)
-            {
-                *slot = process->next;
-            }
-            destroystack(&process->R);
-            destroy(process->R.M);
-            dvm_native_context_set_process(context, nil);
-            up->prog = nil;
-            destroy(process->exval);
-            free(process->exstr);
-            free(process);
-            live--;
-        }
-        else
-        {
-            xec(process);
-            if (!dvm_runqueue_finish(process))
-            {
-                error("cannot finish completed dispatch");
-            }
-            dvm_native_context_set_process(context, nil);
-            up->prog = nil;
-            poperror();
-            if (dvm_runqueue_head() == process)
-            {
-                addrun(delrun(Pready));
+                dvm_managed_workers_record();
             }
         }
-        if (processes)
+        if (!dvm_managed_workers_yield(!dvm_runqueue_head()))
         {
-            if (gc_worker)
-            {
-                if (!dvm_runtime_gc_request())
-                {
-                    error("native collector failed");
-                }
-            }
-            else
-            {
-                rungc(processes);
-            }
+            error("managed scheduler worker failed");
         }
     }
     if (live)
@@ -1077,6 +1128,10 @@ static int runtime_execute_inner(void *argument)
 static int runtime_execute(void *argument)
 {
     int result = runtime_execute_inner(argument);
+    if (!dvm_managed_workers_stop(show_stats))
+    {
+        result = 1;
+    }
     if (!dvm_runtime_gc_stop(show_stats))
     {
         result = 1;
@@ -1187,6 +1242,20 @@ int main(int argc, char **argv)
                 return 2;
             }
         }
+        else if (strcmp(argv[1], "--managed-workers") == 0)
+        {
+            size_t count;
+            if (managed_workers_selected || argc < 3 || !runtime_extent(argv[2],&count) ||
+                (count != 1 && count != 2))
+            {
+                fprintf(stderr,"--managed-workers requires one count: 1 or 2\n");
+                return 2;
+            }
+            managed_workers = (int)count;
+            managed_workers_selected = 1;
+            argv++;
+            argc--;
+        }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
@@ -1218,7 +1287,8 @@ int main(int argc, char **argv)
 #endif
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
-            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset, one managed Dis executor; native heap turns are exclusive.");
+            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");
+            puts("Managed execution: --managed-workers 1 (default) or 2 (requires --gc-worker); OS I/O may overlap, heap turns are serialized.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
 #endif
@@ -1237,11 +1307,27 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
         return 2;
     }
+    if (managed_workers > 1 && !gc_worker)
+    {
+        fprintf(stderr,"--managed-workers 2 requires --gc-worker\n");
+        return 2;
+    }
+#ifdef DVM_RUNTIME_EDITOR
+    if (managed_workers > 1 && !threaded)
+    {
+        fprintf(stderr,"--managed-workers 2 requires --threaded-ui for the graphical host\n");
+        return 2;
+    }
+#endif
     if (dvm_queue_probe_requested && !gc_worker)
     {
         fprintf(stderr,"--native-queue-probe requires --gc-worker\n");
         dvm_queue_probe_finish();
         return 2;
+    }
+    if (managed_workers > 1 && show_stats)
+    {
+        dvm_runqueue_trace_waits();
     }
     dontcompile = !cflag;
     if (sizeof(WORD) != 8 || sizeof(void *) != 8 || IBY2WD != 8 || offsetof(Alt, ac) != 16 ||

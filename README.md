@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1747**. [Русская версия](README.ru.md).
+Development version: **0.1748**. [Русская версия](README.ru.md).
 
-Current series: [v0.1747](docs/releases/v0.1747.md): claim complete managed turns and retain native continuation affinity.
+Current series: [v0.1748](docs/releases/v0.1748.md): opt-in two OS executors, process migration and audited native I/O overlap.
 
 ## Browse documentation
 

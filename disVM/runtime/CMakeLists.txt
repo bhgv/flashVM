@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.51.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.52.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -102,7 +102,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm main.c runqueue.c queue_probe.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm main.c runqueue.c queue_probe.c managed_workers.c process_environment.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)
@@ -2092,5 +2092,39 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     "${PYTHON_EXECUTABLE}" "${u}/utils/tests/dis64-local-${local_family}.py" ${local_arguments})
    set_tests_properties(${local_gate} PROPERTIES TIMEOUT 180 LABELS "dis64-private")
   endforeach()
+ endforeach()
+endif()
+
+
+# Real two-executor examples and native backpressure; no simulated dispatcher.
+foreach(pool_example main backpressure shared-file ui-rpc)
+ if(pool_example STREQUAL "main")
+  set(pool_image managed-workers)
+ elseif(pool_example STREQUAL "backpressure")
+  set(pool_image managed-backpressure)
+ elseif(pool_example STREQUAL "shared-file")
+  set(pool_image managed-shared-file)
+ else()
+  set(pool_image managed-ui-rpc)
+ endif()
+ add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${pool_image}.dis"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -g -I "${u}/module" -I "${root}/ide/dis/bridge"
+   -o "${CMAKE_CURRENT_BINARY_DIR}/${pool_image}.dis"
+   "${root}/disVM/examples/managed-workers/${pool_example}.b"
+  DEPENDS limbo-bootstrap "${root}/disVM/examples/managed-workers/${pool_example}.b"
+   "${root}/ide/dis/bridge/idehost.m" VERBATIM)
+ list(APPEND pool_images "${CMAKE_CURRENT_BINARY_DIR}/${pool_image}.dis")
+endforeach()
+add_custom_target(disvm_managed_worker_modules ALL DEPENDS ${pool_images})
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(pool_runner disvm disvm-editor)
+  if(TARGET ${pool_runner})
+   add_test(NAME ${pool_runner}_managed_os_executors COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_managed_workers.py" "$<TARGET_FILE:${pool_runner}>"
+    "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis" "${CMAKE_CURRENT_BINARY_DIR}/managed-backpressure.dis"
+    "${CMAKE_CURRENT_BINARY_DIR}/managed-shared-file.dis" "${CMAKE_CURRENT_BINARY_DIR}/managed-ui-rpc.dis"
+    "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
+   set_tests_properties(${pool_runner}_managed_os_executors PROPERTIES TIMEOUT 300)
+  endif()
  endforeach()
 endif()

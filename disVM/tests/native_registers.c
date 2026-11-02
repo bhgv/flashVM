@@ -125,7 +125,8 @@ static void execute(void *argument)
     up->env->syserrstr = up->env->errbuf0;
     worker->register_address = &DVM_R;
     worker->execution_address = dvm_native_execution();
-    if (dvm_native_execution()->idle_slices || dvm_native_execution()->instruction_boundary_error)
+    if (dvm_native_execution()->idle_slices || dvm_native_execution()->instruction_boundary_error ||
+        dvm_native_execution()->progress_epoch)
     {
         fprintf(stderr, "FAIL native execution guards not initially zero\n");
         exit(EXIT_FAILURE);
@@ -137,6 +138,9 @@ static void execute(void *argument)
         unsigned long slices = (unsigned long)worker->identity * 2000UL + index;
         int boundary = worker->identity == 1000;
         dvm_native_execution()->idle_slices = slices;
+        dvm_native_execution()->progress_epoch = slices;
+        dvm_native_execution()->host_fcr = slices;
+        dvm_native_execution()->host_fsr = slices+1;
         dvm_native_execution()->instruction_boundary_error = boundary;
         snprintf(expected, sizeof(expected), "owner %lu turn %u", (unsigned long)worker->identity, index);
         strcpy(up->env->errstr, expected);
@@ -154,6 +158,8 @@ static void execute(void *argument)
         memset(&DVM_R, 0, sizeof(DVM_R));
         DVM_R = saved;
         if (dvm_native_execution()->idle_slices != slices ||
+            dvm_native_execution()->progress_epoch != slices ||
+            dvm_native_execution()->host_fcr != slices || dvm_native_execution()->host_fsr != slices+1 ||
             dvm_native_execution()->instruction_boundary_error != boundary ||
             strcmp(up->env->errstr, expected) || strcmp(up->env->syserrstr, expected))
         {
@@ -251,6 +257,7 @@ int main(void)
         unsigned long expected = (unsigned long)workers[index].identity * 2000UL + 1999;
         if (!dvm_native_context_bind(workers[index].context) ||
             dvm_native_execution()->idle_slices != expected ||
+            dvm_native_execution()->progress_epoch != expected ||
             dvm_native_execution()->instruction_boundary_error != (index == 0) ||
             up->env != &up->defenv || up->env->errstr != up->env->errbuf1 ||
             up->env->syserrstr != up->env->errbuf0 || !dvm_native_context_unbind(workers[index].context))

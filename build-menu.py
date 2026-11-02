@@ -404,6 +404,9 @@ def product_entries(prefix):
                prefix / "disvm-runtime/run-token-query.sh"), False),)
     rows += (("18", "flashvm-native", "FlashVM: C-модуль, GC и вызов из AS/SWF (без GUI)",
               (prefix / "disvm-editor/run-flashvm-native-module.sh",), False),)
+    rows += (("19", "managed-workers", "DisVM: два OS-исполнителя, каналы и GC (эксперимент)",
+              (prefix / "disvm-editor/run-managed-workers.sh",
+               prefix / "disvm-runtime/run-managed-workers.sh"), False),)
     entries = {}
     for key, name, label, candidates, graphical in rows:
         script = next((path for path in candidates if path.is_file()), None)
@@ -571,7 +574,7 @@ def main(argv=None):
     parser.add_argument(
         "--list-backends", action="store_true", help="Show locally available build engines"
     )
-    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax", "tokens", "flashvm-native"),
+    parser.add_argument("--launch", choices=("desktop", "editor", "lifecycle", "pointer", "clipboard", "envelope", "pilot", "storage", "syntax", "tokens", "flashvm-native", "managed-workers"),
                         help="After a successful build launch an installed application; desktop is the MovieClip IDE")
     parser.add_argument("--document", help="Literal UTF-8 source path for --launch desktop/editor")
     parser.add_argument("--dry-run", action="store_true", help="Print command without executing")
