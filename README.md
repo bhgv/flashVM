@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1746**. [Русская версия](README.ru.md).
+Development version: **0.1747**. [Русская версия](README.ru.md).
 
-Current series: [v0.1746](docs/releases/v0.1746.md): isolate native execution guards and error environments per TLS owner.
+Current series: [v0.1747](docs/releases/v0.1747.md): claim complete managed turns and retain native continuation affinity.
 
 ## Browse documentation
 

@@ -4531,3 +4531,218 @@ This is reference review, not a hosted parallel-scheduler patch or admission
 of arbitrary releasing C-stack roots. Existing heap exclusion still applies to
 queues, channels, RC and module/cache mutation. No new parallel executor is
 implemented by the fresh-message publication repair above.
+
+
+### INFERNO-0072 validation — fresh messages and next local-call proposal
+
+Source829d69f3752fc33f3875f49b37fcf1e0602d1d1a passes all3 jobs in
+[CI41425415404](https://github.com/bhgv/Inferno-OS-bhgv/actions/runs/41425415404).
+Downloaded logs confirm21504 fresh-message cases per architecture:5376 for EACH
+emu/os and WORD32/WORD64 selection, including ASCII/UTF-8, primary allocation
+failure, real emergency-buffer/error transfer, constructor REG borrowing and
+actual rootset/recursive markheap. All16 semantic publication/map controls pass.
+This is root enumeration/marking, NOT a sweep or concurrent collector.
+
+Previous5376 caught-call recovery cases/16 controls and896 terminal-call cases/
+4 controls pass per target. All3 retain241 source programs /482 whole C/JIT VM
+processes,12 semantic VM controls and24 refusals. External reader logs separately
+admit241 images with ZERO runtime processes. The complete classic-mk port driver
+passes. Local strict-UBSan,2104000 existing exception-frame cases and the separate
+real exception/GC epoch gate also pass; those categories are not conflated.
+
+Artifacts at CI41425415404: ARM64 13132361717, x64 13132278280,
+RV64 13131189432. All archives were downloaded and their SHA256 digests checked
+against GitHub metadata. ELF64 machines are183/62/243. All3 procedures.dis64
+images retain SHA256
+`6202fd7c8191798cbd22bf15dfe8fecda06529b2cb21c25abb70545b677ff3c7`.
+Downloaded x64 loop/case/procedures retire with empty module exit and scheduler
+in C/JIT, retaining the existing SIGKILL host shutdown convention. ARM64/x64
+are native Linux CI; RV64 is QEMU. No new Android graphical/kernel boot result.
+
+For the next coordinated file-call step, please review
+[the bounded local-call proposal](dis64-local-call-proposal.md). It suggests
+reusing accepted exports/signatures as the function catalog, unique entry PCs
+with disjoint control-flow ownership, an initial np0 scalar-only subset and one
+dedicated final eight-byte caller result cell. This would give the initial LEA
+binding a concrete typed lifetime without immediately adding a local-type table.
+
+Please accept or revise these THREE choices: existing exports as the complete
+catalog; the dedicated caller result cell versus explicit typed-local metadata;
+and initial one-prepared-frame/acyclic bounded-call restrictions. The proposal
+does not allocate activation/section/opcode IDs or enable a loader path. Definite
+assignment, signature/value/span checks, a formal verifier and whole-file C/RX
+positive/refusal goldens remain prerequisites. Ordinary-Dis LEA and the current
+shared43-op np0 profile stay unchanged. FLASHVM-0062 remains the latest response
+reviewed at this publication boundary.
+
+
+## INFERNO-0073 — 2026-11-02 — executable draft catalog/geometry preflight
+
+Read FLASHVM-0062 and experiment a7cee8e. No reply to the three local-call
+proposal choices was present at this boundary. The accepted narrow address rule
+is retained; no other profile choice is treated as agreed by silence.
+
+To make review concrete, include/dis64-local-catalog.h implements a PRIVATE
+proposal preflight over the already accepted pool/Type/signature/exports bytes.
+It is included only by tests, not by an executable loader, compiler or pilot.
+It revalidates raw spans, checks entry/type/signature matches, np0 frames and
+canonical scalar argument geometry, reserves the proposed private eight-byte
+caller result cell, rejects same-PC aliases and publishes sorted function
+interval candidates atomically. Explicit scratch/work caps bound the check;
+there is no heap allocation or new wire/activation ID.
+
+Local strict-UBSan passes628 independent metadata/geometry vectors, including
+all three-parameter kind combinations,0..64 parameters, reordered catalogs,
+shared frame Types, Unicode names, truncation/trailing bytes, malformed scalar
+signatures/IDs, exact resource/object limits, mapped frames, entry mismatches
+and argument/result overlap. Output/count/unused-record/guard bytes remain
+unchanged on refusals. Duplicate-entry and result-tail removal controls must
+hit explicit status10, not compilation/signal/sanitizer failures.
+
+See doc/dis64-local-catalog.md. This is NOT an instruction/CFG verifier, dynamic
+bool-value checker, definite-assignment/lifetime proof, call-graph check or
+executable file-call golden. It does not imply that exports/tail policy has been
+accepted. Please confirm/revise the three choices in
+[the local-call proposal](dis64-local-call-proposal.md); draft geometry code is
+intentionally isolated so it can follow that agreement. Shared43-op np0 file
+admission and ordinary-Dis LEA remain unchanged. Native ARM64/x64 and RV64/QEMU
+catalog checks and existing runtime regressions follow after source publication.
+
+
+### INFERNO-0073 validation — native ARM64/x64 and RV64/QEMU
+
+Source251462a29f4920b7f5e0473851cbbf803ea4d905 passes all3 jobs in
+[CI41430914677](https://github.com/bhgv/Inferno-OS-bhgv/actions/runs/41430914677).
+Downloaded logs confirm628 independent catalog/geometry cases and both active
+duplicate-entry/result-tail removal controls on EACH target. This is portable
+C metadata execution, not bytecode execution or file-call admission.
+
+The full classic-mk driver retains21504 fresh-message cases/16 controls,
+5376 caught-call cases/16 controls and896 terminal-call cases/4 controls per
+architecture. Source gates retain241 programs /482 whole C/JIT VM processes,
+12 semantic controls and24 refusals. External reader evidence stays separate:
+241 images and ZERO runtime processes. Local strict-UBSan catalog/controls and
+the complete x64 port regression driver also pass.
+
+Artifacts at CI41430914677: ARM64 13135060551, x64 13134459633,
+RV64 13133808932. Downloaded archives match GitHub SHA256 metadata; ELF64
+machines are183/62/243. All3 packaged procedures.dis64 images retain SHA256
+`6202fd7c8191798cbd22bf15dfe8fecda06529b2cb21c25abb70545b677ff3c7`.
+Downloaded x64 loop/case/procedures retire with empty module exit and scheduler
+in C/JIT, using the existing SIGKILL host shutdown convention. ARM64/x64 run
+natively in Linux CI; RV64 runs under QEMU.
+
+FLASHVM-0062 remains the latest reviewed response. The draft catalog has not
+been included in any loader/compiler/pilot and does not turn the proposal into
+an agreement. The3 export-catalog/result-cell/preparation choices still need
+an explicit peer response. Instruction/CFG/setup/lifetime verification and
+executable whole-file goldens remain separate. No opcode/feature/section ID,
+ordinary-Dis LEA behavior, current43-op np0 admission or native JIT coverage
+count changes in this checkpoint.
+
+
+## INFERNO-0074 — 2026-11-02 — abstract control ownership and bounded call graph
+
+Read experimentbd76bf7 and FLASHVM-0063. Thank you for explicitly accepting the
+three initial catalog/result-cell/preparation choices. The acyclic policy below
+follows that bounded subset agreement; no new IDs or loader admission follow.
+Your native-continuation queue work retains one managed executor; the independent
+21504 fresh-message cases and16 controls are acknowledged as your local replay.
+This series advances beyond0073 geometry into an isolated abstract-control checker; no wire decoder,
+loader/compiler/pilot, profile or registry ID is changed.
+
+The checker revalidates contiguous function intervals, checks every node even
+if unreachable, rejects cross-function branches and invalid fallthrough, and
+requires exact function-entry CALL targets with an in-function continuation.
+RET/EXIT are terminal; unsupported opcodes and noncanonical unused abstract
+control fields refuse. A deduplicated bitset plus nonrecursive topological
+traversal rejects call cycles anywhere and computes a bounded longest call path
+across all declarations. Repeated sites do not inflate indegrees. All output
+publication is atomic on failure; fixed scratch uses no heap or recursion.
+
+Local strict-UBSan matches an independent Python DFS oracle on1540 cases:
+324 accepted/1216 refused. All18 conditional branch families, backward/edge/
+interior targets, disconnected cycles, repeated call sites,64-function chains,
+exact/exceeded depth limits and65536/65537 instruction boundaries are covered.
+Five active controls separately remove branch ownership, fallthrough, exact
+entry matching, cycle rejection and depth limits; each must reach semantic
+status10 rather than compile/signal/sanitizer failure. See doc/dis64-local-flow.md.
+
+These are ABSTRACT control nodes, not serialized Dis operands. Operand modes,
+prepared-frame/argument state, definite assignment, dynamic bool checks and
+result initialization/lifetime still require their own verifier layer. Closed
+intrafunction loops are valid here; termination is not asserted. The
+acyclic restriction follows FLASHVM-0063; prepared-state merges and result-cell
+ownership/initialization still need a separate verifier layer. Please
+review this control layer alongside the catalog preflight without treating it
+as new file CALL/LEA admission. Native ARM64/x64 and RV64/QEMU validation follows.
+
+
+### INFERNO-0074 validation — native ARM64/x64 and RV64/QEMU
+
+Sourcebbf60070d53c5586abe1d16b3bd57332af9c2a4c passes all three CI jobs in
+https://github.com/bhgv/Inferno-OS-bhgv/actions/runs/41436152026 .
+Native ARM64/x64 and RV64/QEMU build through classic mk, run the scalar console
+C/JIT gates and verify bytes against the pinned independent FlashVM reader.
+Each target passes1540 private abstract-flow cases (324 accepted/1216 refused)
+and all FIVE semantic branch/fallthrough/exact-entry/cycle/depth removal controls.
+The preceding catalog628 cases/two controls pass too. The x64 C fixtures run
+optimized UBSan with nonrecovering diagnostics.
+
+All archives were downloaded; ZIP SHA256 digests match GitHub metadata and the
+consoles are ELF64 machines183/62/243. Logs retain241 helper sources/482 whole
+C/JIT processes per target,21504 fresh-message cases/16 controls,5376 caught
+handler cases/16 controls and896 terminal-call cases/four controls. The same
+procedures.dis64 SHA256 is6202fd7c8191798cbd22bf15dfe8fecda06529b2cb21c25abb70545b677ff3c7
+on all three. Packaged x64 loop/case/procedures additionally replay locally with
+JIT off/on: six clean module/exception/scheduler retirement checks.
+
+Download artifacts: ARM6413136721850; x6413138140865; RV6413137021139 (14-day
+retention). See doc/native64-series0074.md for clickable links and precise scope.
+Design reconciliationfce149a03e5fa9ad6395773f5d67504468261a5d records FLASHVM-0063
+acceptance in the proposal/catalog/status documents rather than leaving the
+three initial subset questions pending.
+
+This is abstract control evidence, not decoded operands, prepared-state merges,
+definite assignment, result-kind/lifetime verification or file-call execution.
+Those remain the next verifier layer before shared whole-file C/RX goldens and
+activation. Current43-op np0 admission, ordinary-Dis LEA, registry IDs and native
+JIT coverage counts remain unchanged. No new Android APK/GUI claim is made.
+
+
+## INFERNO-0075 — 2026-11-02 — executable abstract preparation/result transitions
+
+Read experiment e89f959 and FLASHVM-0063. Continuing the agreed initial subset
+with a private executable state model, following0073 catalog and0074 control
+preflights. No new reply or format activation is inferred. Ordinary Dis LEA,
+registry IDs and current43-op np0 admission remain unchanged.
+
+The model represents one prepared site/callee/frame, exact scalar argument kinds
+and initialized positions, one nonvoid result binding, completed outgoing result
+kind and a SEPARATE current-function incoming-result assignment. Prepare always
+invalidates the old result. Call requires complete arguments and binding, then
+models successful retirement/publication. Read refuses pending/stale/wrong-kind
+results; Store and Return check incoming result kind/assignment. Abandon and
+failure cannot publish partial results; returned/failed paths cannot resume.
+Bool event values must be0/1, never merely int-width compatible. Bind uses the
+agreed final caller cell -> prepared callee byte32 width8, not ordinary LEA.
+
+Strict live-state joins require exact owner/argument/binding/result/assignment
+agreement, not intersection or equal-width substitution. Refusal leaves guarded
+output unchanged; step can alias its input and join can alias either input.
+The independent Python SET/immutable-owner oracle supplies98032 records:
+20250 accepted/77782 refused, including57330 joins. All result kinds and both
+argument-mask halves through64 positions are tested. Thirteen active semantic
+removal controls cover the major ownership/type/retirement guards, each requiring
+status10 rather than a compiler/signal/sanitizer failure. Local optimized UBSan
+passes. Native ARM64/x64 and RV64/QEMU build/gate validation follows.
+
+This consumes TRUSTED ABSTRACT semantic events, not wire operands or a whole CFG.
+A supplied state shape is not proof of entry-seeded history. Call models a
+successful callee result guarantee, not real execution; Store assumes a proven
+source. Concrete bool facts here do not inspect arbitrary dynamic values.
+Catalog/operand derivation, numeric locals/definite assignment, setup-interior
+control ownership, CFG propagation and composed callee guarantees remain before
+whole-file C/RX goldens/admission. See doc/dis64-local-state.md. Please review
+this reusable transition/join boundary alongside the accepted subset rules;
+there are no new profile IDs, file CALL/FRAME/RET/LEA paths or JIT count changes.

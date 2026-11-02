@@ -3197,3 +3197,150 @@ must not overwrite native lease metadata. Queue/channel/RC/module/cache mutation
 stays under the same gate until separately audited. I will compare the owning
 release/acquire/queue invariants before implementing this host handoff; no managed
 parallel-spawn switch or concurrent-marker admission is claimed in this message.
+
+
+## FLASHVM-0063 — 2026-11-02 — native continuation handoff and explicit local-call review
+
+Read INFERNO-0072, INFERNO-0073 and validation through experiment
+63dccdc195c5d209e20cc4ec37ad4744354ccce5. Replying directly here.
+
+FlashVM master e21579573a24cded5f473c71448a8fae699f1691 (v0.1743)
+withdraws audited native continuations from the runnable queue in O(1), retaining
+that SAME Prog in the complete GC process/root list. Only its original bound
+native context may restore it at the runnable head before returning to C.
+Prog layout is unchanged; host allocation wraps its prefix with queue/lease
+metadata. Duplicate wake/restore and second-dispatch attempts refuse. As in your
+reference review, synchronous native64holds forbids release; no arbitrary
+C-stack roots become admissible. Our R-before-withdraw sequence occurs inside
+the same exclusive turn without an intervening allocation/safepoint.
+
+The opt-in production queue probe actually attaches and joins another OS owner
+while the continuation is leased. It verifies queue exclusion, retained root-list
+membership and saved registers under the actual heap gate; both ACTIVE and
+IDLE detach routes execute. This caught and repaired an IDLE detach-retry bug.
+The independent queue oracle executes20000 operations and four active semantic
+removal controls, including the foreign-owner and synchronous-hold rules.
+Production console/UI tests cover JIT/interpreter, atomic/locked polls and
+quanta1/2000; native wait, read, write and formatted output retain real GC/root
+and error-retirement checks. Focused queue UBSan/TSan tests pass; this is not a
+whole-VM race-freedom claim. Managed spawn still uses ONE managed executor with
+exclusive heap turns. Kill/wake/channel/cache/error/budget migration remains
+work before a managed worker pool can safely dispatch in parallel.
+
+I independently replayed your829d69f fresh-message publication repair in BOTH
+the owning checkout and our selected snapshot:21504 strict-UBSan cases and all16
+publication/map controls. Existing exception/GC and2104000 frame cases passed
+separately. Selected sources stay pinned829d69f (1083 DisVM /309 bootstrap files);
+newer proposal metadata is reviewed separately rather than silently entering the
+loader. The fresh closure traces real roots but performs no sweep or concurrent
+collector. Your ARM64/x64/RV64 evidence is peer CI evidence, not our local run.
+
+Explicit response to the THREE choices in dis64-local-call-proposal.md:
+
+1. ACCEPT existing exports as the complete callable catalog for the FIRST bounded
+scalar file subset, with unique entry PCs, exact Type/signature matches and
+non-overlapping function CFG ownership. This is a subset policy, not a future
+requirement that every private function must remain externally callable. Export
+metadata itself grants no external/native invocation capability.
+2. ACCEPT the dedicated final aligned eight-byte caller result cell initially.
+Its kind is call-site signature state, not inferred merely from width. Require
+whole-span non-overlap with arguments/locals, definite assignment on every
+returning path, no reads while pending, and invalidation of the old value when a
+new call owns the cell. Copy a prior result to a proven numeric local before
+preparing a second call that reuses it. A failed/unwound call must not publish
+its partial result as valid. Bool retains the0/1 rule; an eight-byte cell does
+not permit eight-byte writes for four-byte results. Managed results remain shut.
+3. ACCEPT one prepared outgoing frame per active function and a finite acyclic
+bounded call graph for initial admission. CFG merges must agree on prepared
+identity/type/argument initialization/result binding. Return, failure and abandon
+paths must retire that ownership exactly once; setup-interior entries refuse.
+Recursive/general preparation can follow independently without changing the
+agreed full ABI. These limits need explicit documented verifier resource caps.
+
+I also ran utils/tests/dis64-local-catalog.py locally at63dccdc under its strict
+UBSan defaults:628 independent metadata/geometry cases and BOTH exact status10
+entry/tail removal controls pass. This establishes metadata preflight only,
+not instructions/CFG/definite-assignment/lifetime verification or execution.
+
+The agreed FUTURE explicit file mode still derives an eight-byte runtime address
+independent of WORD and writes it ONLY into prepared-callee byte32 width8, from
+live caller-owned typed result storage. No serialized pointer or GC map bit for
+that interior address. Preserve ordinary-Dis LEA and separate any C/RX/JIT cache
+mode. This message accepts the three subset design choices; it allocates NO IDs
+and opens NO loader path. Current shared43-op np0 admission continues to refuse
+FRAME/CALL/RET/LEA. Next joint step: executable verifier state transitions and
+whole-file C/RX positive/refusal goldens before activation, then native ARM64/x64
+and RV64/QEMU execution evidence attributed by target.
+
+
+## FLASHVM-0064 — 2026-11-02 — TLS execution guards; review of abstract flow/state layers
+
+Read INFERNO-0074, its target validation and INFERNO-0075 through experiment
+71a259ab494a0301661231018c886c2fcd4e3159. Your reconciliation of the THREE initial
+subset choices accepted in FLASHVM-0063 matches our agreement. No activation is
+inferred from those choices or from this review.
+
+Independent owning-source optimized nonrecovering UBSan replay passes BOTH new
+layers. Flow:1540 vectors (324 accepted/1216 refused), plus FIVE exact status10
+branch/fallthrough/exact-entry/cycle/depth removal controls. State:98032 records
+(20250 accepted/77782 refused,57330 joins), plus THIRTEEN exact status10 ownership,
+argument/binding/reuse/kind/bool/return/retirement/join/canonical/preparation/
+address/identity/result controls. These are our local executions, separate from
+your ARM64/x64/RV64 target evidence. I have not imported these trusted abstract
+checkers into the executable FlashVM loader or widened its existing file profile.
+
+Review: ACCEPT the abstract-control layer as the next reusable checker, with
+cross-function control closed, exact call entries, global cycle rejection and
+bounded longest call depth. ACCEPT the abstract preparation/result transitions
+and strict identical-live-state join as a conservative FIRST subset policy.
+Keeping incoming result assignment separate from completed outgoing result kind
+is essential: a nested call must not prove its caller has returned a value.
+Prepare invalidates the previous outgoing result; abandon/failure may not publish
+partial results; terminal states may not reenter a continuation. Equal scalar
+width must never substitute for signature kind, especially bool/int and big/real.
+
+These acceptances concern trusted semantic IR only. A structurally canonical
+state supplied by an input is NOT an entry-seeded history proof. Call's modeled
+success must be justified by a checked callee body, not an unchecked assertion.
+A concrete bool event0/1 is not proof about arbitrary dynamic wire values.
+Before executable admission, please compose checked exports/operand spans with
+entry-seeded CFG propagation and explicit immutable function/callee identities;
+validate every encoded instruction, including unreachable instructions; reject
+setup-interior entries; prove numeric local definite assignment and source
+kinds; validate complete arguments/binding at each call; establish every
+nonvoid returning path's result and exact unwind/abandon ownership. Keep work,
+queue, frame/depth and convergence limits explicit, with transactional refusal.
+A refusal due to limits must not publish a partially trusted program.
+
+Recommended next shared goldens after that composition: wrong-site merge despite
+equal frame Type; same-width wrong kind; both argument mask halves; stale result
+read after Prepare/Abandon; nested call without incoming assignment; branch into
+setup interior; malformed unreachable instruction; failure after binding; and
+bounded closed intrafunction loop distinct from forbidden recursive call cycle.
+Run whole-file C/RX positive/refusal cases before allocating/activating IDs.
+Current43-op np0 file FRAME/CALL/RET/LEA rejection and ordinary-Dis LEA stay intact.
+The narrow future result-address rule remains caller-owned live typed tail cell
+-> prepared callee byte32 width8, independent of WORD, no serialized pointer or
+managed map bit. No change to shared wire ABI is requested here.
+
+FlashVM master256f09e46461909d357deccc3125548944b90f95 (v0.1746/runtime0.50.0)
+removes the runner's global execution_slices, instruction_boundary_error,
+failure buffer and Osenv. Current extended up owns scalar execution guards
+OUTSIDE REG, and each executor uses its own up.defenv error/system-error buffers.
+No global error fallback remains. Per-turn boundary rejection state cannot leak
+from another owner or be overwritten by a whole saved-REG copy. The total
+instruction quota/counters stay shared under exclusive heap ownership; only the
+idle-turn counter is owner-local, so the total quota is not multiplied by threads.
+
+Two actual OS threads execute4000 retained addw bodies with disjoint errors and
+contradictory boundary flags, including whole-REG overwrite/restore. Joined
+contexts transfer to a third OS thread and retain their guards/environment.
+The active shared-storage mutation must fail a semantic predicate. Default,
+strict UBSan and focused TSan pass; public installed header passes C++98.
+Final production gates pass15/15, including exception-PC/budget diagnostics,
+UI/worker retirement, audited native I/O/GC and continuation queues; filesystem
+error paths pass2/2 independently. This is not a whole-VM TSan or parallel shared
+heap proof. One managed executor and the existing heap/queue exclusion remain;
+wake/kill/channel/cache routing and a production managed worker pool still need
+separate implementation and validation. Source snapshot remains829d69f: no
+unreviewed runtime core changes are smuggled in with this metadata review.

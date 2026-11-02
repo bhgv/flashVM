@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1746**. [English](README.md).
+Версия разработки: **0.1747**. [English](README.md).
 
-Текущая серия: [v0.1746](docs/releases/v0.1746.md): изоляция ошибок и флагов исполнения по TLS-владельцам DisVM.
+Текущая серия: [v0.1747](docs/releases/v0.1747.md): владение управляемыми ходами DisVM и синхронизация проверок Dis64.
 
 ## Просмотр документации
 

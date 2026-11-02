@@ -527,3 +527,13 @@ third OS thread and retain the owner state. An active shared-storage removal
 control must fail a semantic predicate. Focused UBSan/TSan checks do not establish
 race freedom of the whole VM. Wake/kill/native continuation routing and actual
 parallel managed scheduling remain separate work.
+
+
+## Managed-turn claims (0.51.0)
+
+See [RUNQUEUE](RUNQUEUE.md#managed-turn-ownership-0510). Managed dispatch claims
+now cover the complete turn, including native waits, independently of runnable
+membership and native continuation leases. Success/error/block/retirement paths
+finish on the original owner; a later ordinary wake permits reassignment to a
+different native context. Production probes check balanced claims/finishes.
+The heap is still exclusive and the production managed worker pool remains off.

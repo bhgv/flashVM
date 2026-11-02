@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "829d69f3752fc33f3875f49b37fcf1e0602d1d1a",
+  "revision": "ba26accbb4dc330e7a11f2951db8b18baa1249e4",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -258,6 +258,9 @@
     "upstream/include/dis64-bindings.h": "a07dbd560cee69cf0bd5595d469b61e009d0ee3978bb6e06a5b9fa8a8abf349b",
     "upstream/include/dis64-code.h": "b968cc675988bfc678a2acc6e33348c692a432023edc05c7a9d1d0fe818a766f",
     "upstream/include/dis64-data.h": "9fd21cdb4c47e165e99b3047dba0e1010836becefb803540c7a0142a278e661c",
+    "upstream/include/dis64-local-catalog.h": "471fb30e5af4e8fc4bd155c19c5776a7331888b115fcb309d0cd9a417f7eec43",
+    "upstream/include/dis64-local-flow.h": "e488323827640d99c6773ebadb16bd7ff924964b03827890769026c732859064",
+    "upstream/include/dis64-local-state.h": "3d59cece49b4d973c16ae5256f45239fb1c0dfa96d383d5793eecdcb4d1c7861",
     "upstream/include/dis64-module.h": "42d108137ff0394134681f105238a9b5762c901aa30846dc59aa2266329f7979",
     "upstream/include/dis64-pilot.h": "1b7c20c3154f9d70e24b711d5519bb741b684ae4998e00c44a021be87eb8cee3",
     "upstream/include/dis64-scalar.h": "270cb980ba71a952e3d098d802504c509875de2cb099f15c722655256fef5ae1",

@@ -965,7 +965,7 @@ static int runtime_execute_inner(void *argument)
             error("execution budget exceeded");
         }
         process = dvm_runqueue_head();
-        if (!dvm_native_context_set_process(context, process))
+        if (!dvm_runqueue_claim(process))
         {
             error("cannot publish active Dis process in TLS owner");
         }
@@ -979,6 +979,10 @@ static int runtime_execute_inner(void *argument)
             if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error && handler(owner_error()))
             {
                 owner_error()[0] = 0;
+                if (!dvm_runqueue_finish(process))
+                {
+                    error("cannot finish handled dispatch");
+                }
                 up->prog = nil;
                 continue;
             }
@@ -988,6 +992,10 @@ static int runtime_execute_inner(void *argument)
                 long pc;
                 runtime_error_location(&path, &pc);
                 fprintf(stderr, "Dis process %d module %s pc %ld: %s\n", process->pid, path, pc, owner_error());
+                if (!dvm_runqueue_finish(process))
+                {
+                    error("cannot finish failed dispatch");
+                }
                 inspect_release(); /* [GC:] The per-process guard terminates here without reaching the outer guard. */
                 up->prog = nil;
                 return 1;
@@ -995,6 +1003,10 @@ static int runtime_execute_inner(void *argument)
             if (dvm_runqueue_owner(process))
             {
                 error("cannot retire a native continuation");
+            }
+            if (!dvm_runqueue_finish(process))
+            {
+                error("cannot finish exiting dispatch");
             }
             delrun(Pexiting);
             for (slot = &processes; *slot && *slot != process; slot = &(*slot)->next)
@@ -1016,6 +1028,10 @@ static int runtime_execute_inner(void *argument)
         else
         {
             xec(process);
+            if (!dvm_runqueue_finish(process))
+            {
+                error("cannot finish completed dispatch");
+            }
             dvm_native_context_set_process(context, nil);
             up->prog = nil;
             poperror();

@@ -187,3 +187,16 @@ rather than silently placing a safepoint in the wrong location.
 [GC backend and native Fast/Cycles workers](GC.md).
 
 [Versioned module namespace / Версии модулей](../MODULE-STORE.md).
+
+
+## Native scheduler turn reservations
+
+`native_context.h` exposes owner-only acquire/release/query for a borrowed native
+turn token. It is independent of the mutable GC process root slot. Clearing a
+root during unwind does not permit nested dispatch or unbinding an unfinished
+continuation. The context refuses unbind/destroy with a live turn; the scheduler
+must release the exact token after native reentry and before process retirement.
+This protects native context lifetime, not managed heap access. A token is not
+a GC root, serialized pointer or cross-thread lookup capability. The shared
+runtime queue also checks its own Prog dispatch owner under heap exclusion.
+See [the runtime protocol](../runtime/RUNQUEUE.md#managed-turn-ownership-0510).

@@ -14,6 +14,9 @@ def verify(runtime, module, mode, flags, quantum, limited=False):
     queue = re.search(r"NATIVEQUEUE queued=\d+ leases=(\d+) returns=(\d+) inflight=0",output)
     probe = re.search(r"QUEUEPROBE observed=(\d+) joined=(\d+) failures=0 idle=(\d+)",output)
     gc = re.search(r"native_releases=(\d+) native_reentries=(\d+)",output)
+    dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0",output)
+    if not dispatch or not int(dispatch[1]) or dispatch[1] != dispatch[2]:
+        raise RuntimeError("managed dispatch ownership did not retire exactly once:\n"+output[-5000:])
     if (not queue or not probe or not gc or not int(queue[1]) or
             len({queue[1],queue[2],probe[1],probe[2],gc[1],gc[2]}) != 1):
         raise RuntimeError("native queue/root/OS-owner handoff failed:\n"+output[-5000:])

@@ -105,6 +105,8 @@ static void observe(void *argument)
         dvm_runqueue_contains(observation->process) == 0 &&
         dvm_runqueue_head() != observation->process &&
         dvm_runqueue_owner(observation->process) == observation->owner &&
+        dvm_runqueue_dispatch_owner(observation->process) == observation->owner &&
+        !dvm_runqueue_claim(observation->process) && !dvm_runqueue_finish(observation->process) &&
         observation->process->R.M && observation->process->R.M != H &&
         observation->process->R.FP && observation->process->R.FP != H &&
         observation->process->R.EX && observation->process->R.EX != H;

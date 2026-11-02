@@ -28,7 +28,8 @@ DVM_NativeContext *dvm_native_context_create_embedded(
 void *dvm_native_context_host_process(DVM_NativeContext *context);
 
 
-/* Destroy only an unbound context; returns 0 if still bound, 1 on release. */
+/* Destroy only a quiescent unbound context; returns0 for a bound/held-turn
+ * context,1 on release. Caller must join users before destroying native storage. */
 int dvm_native_context_destroy(DVM_NativeContext *context);
 
 
@@ -37,12 +38,29 @@ int dvm_native_context_destroy(DVM_NativeContext *context);
 int dvm_native_context_bind(DVM_NativeContext *context);
 
 
-/* Unbind only on the owning thread. Fails without changing another owner. */
+/* Unbind only on the owning thread after poll/world/turn reservations retire.
+ * Failure preserves binding and root/turn state, including during error cleanup. */
 int dvm_native_context_unbind(DVM_NativeContext *context);
 
 
 /* Borrow current native state; null means the thread has no Dis context. */
 DVM_NativeContext *dvm_native_context_current(void);
+
+
+/* Reserve one native scheduler turn on this bound owner. token is a borrowed
+ * non-NULL native identity, not a managed root; caller retains its lifetime.
+ * Refuse nested/foreign ownership. No allocation, waiting or process mutation. */
+int dvm_native_context_acquire_turn(DVM_NativeContext *context, void *token);
+
+
+/* End only this owner's exact turn token. Refuse a foreign/missing/wrong token
+ * without mutation. Host must finish its native continuation first. No waiting. */
+int dvm_native_context_release_turn(DVM_NativeContext *context, void *token);
+
+
+/* Borrow this bound owner's turn token, or NULL for idle/foreign context.
+ * Clearing the GC process slot does not clear this native lifetime reservation. */
+void *dvm_native_context_turn(DVM_NativeContext *context);
 
 
 /* Owner-thread accessors; pointers never migrate implicitly to another thread. */

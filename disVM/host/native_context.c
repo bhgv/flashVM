@@ -28,6 +28,7 @@ struct DVM_NativeContext
     void *runtime;        /* Borrowed for the complete context lifetime. */
     void *process;        /* Generic constructor's current-process storage. */
     void **process_slot;  /* Generic process field or extended up.iprog subobject. */
+    void *turn;           /* Borrowed native scheduler identity; prevents unbind until exact release. */
     DVM_NativePoll poll;  /* Owner's safepoint hook, if registered. */
     void *poll_user;      /* Borrowed until explicit hook removal. */
     DVM_HeapOwner heap_owner; /* Private TLS lifecycle/counters; no managed owners. */
@@ -137,7 +138,8 @@ DVM_NativeContext *dvm_native_context_create(size_t register_size, void *runtime
 }
 
 
-/* Caller must quiesce users before destroy; the bound-state check prevents misuse. */
+/* Caller must quiesce users before destroy; bound/turn checks refuse live owners.
+ * context is native storage, not a managed root; NULL destruction is a no-op. */
 int dvm_native_context_destroy(DVM_NativeContext *context)
 {
     if (!context)
@@ -145,7 +147,7 @@ int dvm_native_context_destroy(DVM_NativeContext *context)
         return 1;
     }
     fvm_port_sync_lock(context->sync);
-    if (context->bound)
+    if (context->bound || context->turn)
     {
         fvm_port_sync_unlock(context->sync);
         return 0;
@@ -182,10 +184,11 @@ int dvm_native_context_bind(DVM_NativeContext *context)
 }
 
 
-/* Detach while still owning the context; another native thread cannot unbind it. */
+/* Detach only this owner after poll/world/turn reservations retire. An empty
+ * process root slot alone does not prove the scheduler continuation is finished. */
 int dvm_native_context_unbind(DVM_NativeContext *context)
 {
-    if (!context || tls_get() != context || context->poll || context->heap_owner.world)
+    if (!context || tls_get() != context || context->poll || context->heap_owner.world || context->turn)
     {
         return 0;
     }
@@ -206,6 +209,39 @@ int dvm_native_context_unbind(DVM_NativeContext *context)
 DVM_NativeContext *dvm_native_context_current(void)
 {
     return (DVM_NativeContext *)tls_get();
+}
+
+
+/* Reserve one native scheduler turn, independently of the mutable root slot.
+ * The bound owner alone writes turn, so no foreign TLS or heap is accessed. */
+int dvm_native_context_acquire_turn(DVM_NativeContext *context, void *token)
+{
+    if (!context || tls_get() != context || !token || context->turn)
+    {
+        return 0;
+    }
+    context->turn = token;
+    return 1;
+}
+
+
+/* Release exactly the bound owner's borrowed native token. Caller guarantees
+ * its scheduler/continuation has stopped using it; this does not free memory. */
+int dvm_native_context_release_turn(DVM_NativeContext *context, void *token)
+{
+    if (!context || tls_get() != context || !token || context->turn != token)
+    {
+        return 0;
+    }
+    context->turn = NULL;
+    return 1;
+}
+
+
+/* Return only the current owner's reservation; never inspect foreign TLS. */
+void *dvm_native_context_turn(DVM_NativeContext *context)
+{
+    return context && tls_get() == context ? context->turn : NULL;
 }
 
 

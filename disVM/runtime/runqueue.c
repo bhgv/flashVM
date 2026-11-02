@@ -12,6 +12,9 @@ static unsigned int count;     /* Runnable nodes, bounded independently of the p
 static unsigned long leases;   /* Native withdrawals before audited world leave. */
 static unsigned long returns;  /* Matched same-owner restorations after world enter. */
 static unsigned long inflight; /* Native continuations absent from runnable dispatch. */
+static unsigned long claims;   /* Successful exclusive managed-turn assignments. */
+static unsigned long finishes; /* Matching turn releases, independent of native leases. */
+static unsigned int active;    /* Live turn claims, including suspended C continuations. */
 
 
 /* Borrow runtime-only extension metadata from its preserved Prog prefix. The
@@ -19,6 +22,73 @@ static unsigned long inflight; /* Native continuations absent from runnable disp
 static DVM_RuntimeProcess *runtime_process(Prog *process)
 {
     return (DVM_RuntimeProcess *)process;
+}
+
+
+/* Assign one runnable head to an idle bound native owner, under heap exclusion.
+ * Publish its TLS identity before exposing the claim; failure mutates nothing.
+ * No register restore occurs here: xec still consumes the saved Prog.R. */
+int dvm_runqueue_claim(Prog *process)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    if (!context || !process || head != process || process->state != Pready ||
+        !runtime_process(process)->queued || runtime_process(process)->native_owner ||
+        runtime_process(process)->dispatch_owner || dvm_native_context_process(context) ||
+        active == DVM_RUNTIME_PROCESS_MAX)
+    {
+        return 0;
+    }
+    if (!dvm_native_context_acquire_turn(context,process))
+    {
+        return 0;
+    }
+    if (!dvm_native_context_set_process(context,process))
+    {
+        (void)dvm_native_context_release_turn(context,process);
+        return 0;
+    }
+    runtime_process(process)->dispatch_owner = context;
+    claims++;
+    active++;
+    return 1;
+}
+
+
+/* Release one complete managed turn on its original owner. Error cleanup may
+ * already clear TLS process roots, but cannot clear the native dispatch claim.
+ * The caller must first finish any native lease and publish stable registers. */
+int dvm_runqueue_finish(Prog *process)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    void *current = dvm_native_context_process(context);
+    if (!context || !process || runtime_process(process)->dispatch_owner != context ||
+        runtime_process(process)->native_owner || !active || (current && current != process))
+    {
+        return 0;
+    }
+    if (current && !dvm_native_context_set_process(context,NULL))
+    {
+        return 0;
+    }
+    if (!dvm_native_context_release_turn(context,process))
+    {
+        if (current)
+        {
+            (void)dvm_native_context_set_process(context,current);
+        }
+        return 0;
+    }
+    runtime_process(process)->dispatch_owner = NULL;
+    finishes++;
+    active--;
+    return 1;
+}
+
+
+/* Borrow scalar owner identity only while the shared heap/queue is protected. */
+DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process)
+{
+    return process ? runtime_process(process)->dispatch_owner : NULL;
 }
 
 
@@ -61,6 +131,8 @@ Prog *dvm_runqueue_head(void)
 int dvm_runqueue_append(Prog *process)
 {
     if (!process || runtime_process(process)->native_owner || process->link ||
+        (runtime_process(process)->dispatch_owner &&
+         runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
         count == DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
         ((head == NULL) != (tail == NULL)))
     {
@@ -88,6 +160,8 @@ Prog *dvm_runqueue_pop(int state)
 {
     Prog *process = head;
     if (!process || !count || !runtime_process(process)->queued ||
+        (runtime_process(process)->dispatch_owner &&
+         runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
         runtime_process(process)->native_owner || process->state != Pready ||
         (!process->link && (tail != process || count != 1)))
     {
@@ -123,6 +197,7 @@ int dvm_runqueue_suspend(Prog *process)
     DVM_NativeContext *context = dvm_native_context_current();
     if (!process || !context || !dvm_runqueue_release_allowed(process) ||
         dvm_native_context_process(context) != process ||
+        runtime_process(process)->dispatch_owner != context ||
         runtime_process(process)->native_owner || head != process || process->state != Pready)
     {
         return 0;
@@ -145,6 +220,7 @@ int dvm_runqueue_resume(Prog *process)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     if (!process || !context || runtime_process(process)->native_owner != context ||
+        runtime_process(process)->dispatch_owner != context ||
         dvm_native_context_process(context) != process || process->state != Prelease ||
         process->link || !inflight || count == DVM_RUNTIME_PROCESS_MAX ||
         runtime_process(process)->queued || ((head == NULL) != (tail == NULL)))
@@ -189,4 +265,5 @@ void dvm_runqueue_statistics(void)
 {
     fprintf(stderr,"NATIVEQUEUE queued=%u leases=%lu returns=%lu inflight=%lu\n",
         count,leases,returns,inflight);
+    fprintf(stderr,"NATIVEDISPATCH claims=%lu finishes=%lu active=%u\n",claims,finishes,active);
 }

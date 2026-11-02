@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.50.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.51.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2066,5 +2066,31 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
    "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/native_registers.py"
    --flashvm-root "${DVM_FLASHVM_SOURCE_ROOT}" ${owner_control})
   set_tests_properties(disvm_${owner_gate} PROPERTIES TIMEOUT 60)
+ endforeach()
+endif()
+
+
+# Private proposal checkers validate trusted metadata/IR only, never loader admission.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ foreach(local_family catalog flow state)
+  if(local_family STREQUAL "catalog")
+   set(local_controls normal entries tail)
+  elseif(local_family STREQUAL "flow")
+   set(local_controls normal branch fallthrough calls cycle depth)
+  else()
+   set(local_controls normal arguments binding reuse kind boolean return retire join
+    canonical preparation address identity result)
+  endif()
+  foreach(local_control ${local_controls})
+   set(local_arguments)
+   if(NOT local_control STREQUAL "normal")
+    set(local_arguments --control ${local_control})
+   endif()
+   set(local_gate disvm_dis64_private_${local_family}_${local_control})
+   add_test(NAME ${local_gate} COMMAND "${CMAKE_COMMAND}" -E env
+    "CC=${CMAKE_C_COMPILER}" "NATIVE64_TMPDIR=${CMAKE_CURRENT_BINARY_DIR}"
+    "${PYTHON_EXECUTABLE}" "${u}/utils/tests/dis64-local-${local_family}.py" ${local_arguments})
+   set_tests_properties(${local_gate} PROPERTIES TIMEOUT 180 LABELS "dis64-private")
+  endforeach()
  endforeach()
 endif()

@@ -12,7 +12,26 @@ typedef struct DVM_RuntimeProcess
     Prog process;                     /* Retained interpreter/GC-visible prefix. */
     int queued;                       /* O(1) membership, changed only by this queue module. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
+    DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
 } DVM_RuntimeProcess;
+
+
+/* Claim only the runnable head on the currently bound, idle native context.
+ * Caller holds the exclusive heap turn. Publishes current process on success;
+ * duplicate/foreign/nested claims refuse without queue/root changes. No throw. */
+int dvm_runqueue_claim(Prog *process);
+
+
+/* End this owner's complete managed turn after register/root publication and
+ * native reentry, before retirement or rotation. Process may already be blocked.
+ * Clears current-process identity if still present. A foreign/live-native lease
+ * cannot finish. Caller holds heap turn and keeps process allocated throughout. */
+int dvm_runqueue_finish(Prog *process);
+
+
+/* Observe a live process's managed-turn owner under heap exclusion; NULL means
+ * unclaimed. This does not transfer ownership or access another context's TLS. */
+DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process);
 
 
 /* Borrow FIFO head under exclusive heap ownership; NULL means no runnable Prog. */

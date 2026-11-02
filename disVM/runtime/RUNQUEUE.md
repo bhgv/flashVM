@@ -99,3 +99,53 @@ No latency threshold is used. The actual managed scheduler still has one executo
 per-owner errors/budgets, dispatch, queues/channels/caches and kill/wakeup paths
 need further migration before enabling another. Current 43-op Dis64 admission is
 unchanged.
+
+
+## Managed-turn ownership (0.51.0)
+
+The host-only Prog wrapper now carries a `dispatch_owner` independently of its
+native-continuation `native_owner`. `claim` assigns only the runnable FIFO head
+to an idle bound context, publishing its current Prog; duplicate, nested and
+foreign claims refuse. The retained Prog/REG layouts are unchanged. A claim is
+not itself a heap/root lease: all operations still require heap exclusion and
+the host must keep the context bound/alive until `finish` completes.
+
+Retained execution keeps the claimed head in the FIFO because current-head
+scheduler primitives still consume it. Only its original dispatcher may pop it.
+Native suspension removes it from the FIFO while retaining its dispatch claim;
+paired same-owner reentry restores it before the C continuation resumes. Another
+OS owner can hold a turn claim on a DIFFERENT runnable Prog during that wait.
+It cannot claim or finish the suspended Prog. No saved REG contains these owners.
+
+`finish` retires exactly one complete turn after stable register publication and
+native reentry, before rotation/free. It also accepts a blocked Prog no longer
+in the FIFO and an error path whose TLS process root was already cleared. This
+permission is based on the native claim, not arbitrary current-process identity.
+After finish and ordinary wake, a different native context can claim that SAME
+Prog for its next turn. There is no permanent thread affinity for managed Progs.
+
+The runner uses this protocol for success, caught error, fatal error and normal
+module retirement. `NATIVEDISPATCH` reports claims/finishes/active separately from
+native wait leases; production probes require equality and zero active at exit.
+One managed executor remains enabled. A production pool must still preserve
+context lifetime, safe wake/kill routing and queue/channel/module/cache exclusion;
+this protocol does not make arbitrary C stacks or concurrent heap writes safe.
+
+The independent FIFO fixture retains20000 oracle operations and eight active
+semantic controls. Real extra OS contexts challenge a claimed head, forge a TLS
+process pointer, claim another Prog while the original native continuation is
+withdrawn, and reassign a finished/woken Prog. These are real queue/context
+operations, not managed bytecode execution on a pool. The production extra-owner
+probe checks claims under the actual shared heap gate during interpreter/JIT I/O.
+
+
+The opaque NativeContext ALSO retains an independent native turn token. This is
+not the mutable GC process slot: clearing that slot during error cleanup must
+neither permit another turn on the same owner nor permit unbind/destroy. Claim
+acquires that token; finish releases the exact identity after native reentry.
+A failed finish restores a previously cleared process slot if token validation
+fails, without releasing shared ownership. Foreign finish is checked at both
+the Prog and context-token layers. One semantic control intentionally weakens
+BOTH layers; weakening only one must still refuse. Additional controls remove
+the nested-token and early-unbind guards independently. No token is serialized
+or treated as a managed root; the scheduler retains the Prog in its root list.
