@@ -13,23 +13,25 @@ WRAPPER = r'''
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "disvm/refcount.h"
 #include <stdlib.h>
 extern void Sys_print(void *);
 static int stage; /* Owner-local guest gate, no collector accesses. */
 static int retains; /* Actual checked Tptr acquisitions in guest's list loop. */
 int __real_dvm_bigtable_call_ready(void (*function)(void *), void *frame);
-void __real_dvm_runtime_type_retain(int *reference);
+DVM_RefcountResult __real_dvm_refcount_retain_i(int *reference);
 
 
 /* Count only real pointer descriptor acquisitions between guest markers.
  * reference is borrowed under ordinary managed admission; no payload access. */
-void __wrap_dvm_runtime_type_retain(int *reference)
+DVM_RefcountResult __wrap_dvm_refcount_retain_i(int *reference)
 {
-    if (stage == 1 && reference == &Tptr.ref)
+    DVM_RefcountResult result = __real_dvm_refcount_retain_i(reference);
+    if (stage == 1 && reference == &Tptr.ref && result == DVM_REFCOUNT_LIVE)
     {
         retains++;
     }
-    __real_dvm_runtime_type_retain(reference);
+    return result;
 }
 
 
@@ -91,7 +93,7 @@ init() {
 }
 ''')
         subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)], check=True, capture_output=True)
-        binary = relink(runtime, work, source, 0, ['dvm_bigtable_call_ready', 'dvm_runtime_type_retain'])
+        binary = relink(runtime, work, source, 0, ['dvm_bigtable_call_ready', 'dvm_refcount_retain_i'])
         for mode in ('--jit', '--no-jit'):
             for locked in (False, True):
                 flags = ['--gc-locked-poll'] if locked else []
@@ -111,7 +113,7 @@ init() {
             (work / name).write_text((runtime.parent / 'native' / name).read_text())
         (work / 'leaf64-ops.h').write_text(original)
         control = relink(runtime, work, source, 1,
-                         ['dvm_bigtable_call_ready', 'dvm_runtime_type_retain'],
+                         ['dvm_bigtable_call_ready', 'dvm_refcount_retain_i'],
                          compiler_source=work / 'comp-amd64.c')
         result = subprocess.run([str(control), '--jit', '--gc-worker', str(image)],
                                 env=dict(os.environ, TMPDIR=str(work)), capture_output=True, text=True, timeout=45)
