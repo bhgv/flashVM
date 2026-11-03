@@ -33,3 +33,8 @@ Dis64 Frame64/map8 declarations. The agreed internal typed variadic-tail design
 has not enabled variadic execution or changed file admission. Keep builtin and
 JIT-generated C/native code distinctions explicit: linking a C callback is not
 proof that a script was JIT compiled.
+
+
+Native Dis shared ownership: [source-slot protocol](../disVM/runtime/OWNER-SLOTS.md),
+[public header](../disVM/include/disvm/owner_slot.h), and
+[commented helpers](../disVM/examples/native-owner-slot/README.md).

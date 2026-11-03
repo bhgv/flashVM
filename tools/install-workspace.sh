@@ -777,15 +777,20 @@ EOF
             copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
             copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
             copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
-            for guard_source in object_guard.c owner_scope.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
+            for guard_source in object_guard.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
                 copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
             done
             copy_file "$ROOT/disVM/include/disvm/managed_reference.h" "$destination/include/disvm/managed_reference.h"
             copy_file "$ROOT/disVM/include/disvm/native_cleanup.h" "$destination/include/disvm/native_cleanup.h"
             copy_file "$ROOT/disVM/include/disvm/owner_scope.h" "$destination/include/disvm/owner_scope.h"
+            copy_file "$ROOT/disVM/include/disvm/owner_slot.h" "$destination/include/disvm/owner_slot.h"
             copy_file "$ROOT/disVM/tests/owner_scope.c" "$destination/source/tests/owner_scope.c"
+            copy_file "$ROOT/disVM/tests/owner_slot.c" "$destination/source/tests/owner_slot.c"
+            copy_file "$ROOT/disVM/tests/owner_slot.py" "$destination/source/tests/owner_slot.py"
             copy_file "$ROOT/disVM/tests/owner_scope.py" "$destination/source/tests/owner_scope.py"
             copy_tree "$ROOT/disVM/examples/managed-owner" "$destination/examples/managed-owner"
+            copy_tree "$ROOT/disVM/examples/native-owner-slot" "$destination/examples/native-owner-slot"
+            copy_file "$ROOT/disVM/runtime/OWNER-SLOTS.md" "$destination/OWNER-SLOTS.md"
             copy_file "$ROOT/disVM/runtime/MANAGED-OWNERS.md" "$destination/MANAGED-OWNERS.md"
             copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
             copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
@@ -870,15 +875,20 @@ EOF
             copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
             copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
             copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
-            for guard_source in object_guard.c owner_scope.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
+            for guard_source in object_guard.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
                 copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
             done
             copy_file "$ROOT/disVM/include/disvm/managed_reference.h" "$destination/include/disvm/managed_reference.h"
             copy_file "$ROOT/disVM/include/disvm/native_cleanup.h" "$destination/include/disvm/native_cleanup.h"
             copy_file "$ROOT/disVM/include/disvm/owner_scope.h" "$destination/include/disvm/owner_scope.h"
+            copy_file "$ROOT/disVM/include/disvm/owner_slot.h" "$destination/include/disvm/owner_slot.h"
             copy_file "$ROOT/disVM/tests/owner_scope.c" "$destination/source/tests/owner_scope.c"
+            copy_file "$ROOT/disVM/tests/owner_slot.c" "$destination/source/tests/owner_slot.c"
+            copy_file "$ROOT/disVM/tests/owner_slot.py" "$destination/source/tests/owner_slot.py"
             copy_file "$ROOT/disVM/tests/owner_scope.py" "$destination/source/tests/owner_scope.py"
             copy_tree "$ROOT/disVM/examples/managed-owner" "$destination/examples/managed-owner"
+            copy_tree "$ROOT/disVM/examples/native-owner-slot" "$destination/examples/native-owner-slot"
+            copy_file "$ROOT/disVM/runtime/OWNER-SLOTS.md" "$destination/OWNER-SLOTS.md"
             copy_file "$ROOT/disVM/runtime/MANAGED-OWNERS.md" "$destination/MANAGED-OWNERS.md"
             copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
             copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"

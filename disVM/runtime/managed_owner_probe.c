@@ -9,6 +9,7 @@
 #include "managed_owner_probe.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
+#include "disvm/owner_slot.h"
 #include "thread_port.h"
 #include "channel_sync.h"
 #include <stdio.h>
@@ -25,17 +26,16 @@ int dvm_managed_owner_probe_requested; /* Startup-only option, set before runtim
 typedef struct Probe
 {
     FVM_PortSync *sync; /* Protect ready/go, never held across VM/managed access. */
-    DVM_OwnerTransfer transfers[PROBE_THREADS]; /* Separate owners of the same rooted ticket. */
+    DVM_OwnerSlot *slot; /* One shared native owner; receiver copies happen under its mutex. */
     int ready; /* All accepted owners, protected by sync. */
     int go; /* Release receivers to close scopes, protected by sync. */
 } Probe;
 
 
-/* One child borrows stable parent-owned index/probe until join. */
+/* One child borrows stable parent-owned probe until join. */
 typedef struct Receiver
 {
     Probe *probe; /* Native synchronization/transfer owner. */
-    int index; /* Unique exclusive envelope index. */
 } Receiver;
 
 
@@ -63,7 +63,7 @@ static void receive(void *argument)
     DVM_OwnerEntry entry = {0};
     check(context && dvm_native_context_bind(context), "receiver context");
     check(dvm_owner_scope_open(&scope) &&
-        dvm_owner_scope_accept(&scope, &entry, &probe->transfers[receiver->index]), "receiver accepts owner");
+        dvm_owner_slot_copy(probe->slot, &scope, &entry), "receiver accepts owner");
     check(!dvm_managed_owner_value(&entry), "bare native receiver refuses managed payload");
     fvm_port_sync_lock(probe->sync);
     probe->ready++;
@@ -143,6 +143,8 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     int index;
     char previous[ERRMAX];
     check(world && workers && value != H && value != nil, "real managed String");
+    probe.slot = dvm_owner_slot_create();
+    check(probe.slot != NULL, "managed publication slot");
     probe.sync = fvm_port_sync_create();
     check(probe.sync && dvm_owner_scope_open(&scope), "controller scope");
     check(dvm_managed_owner_capture(value, &transfer), "capture managed owner/root");
@@ -150,12 +152,12 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     destroy(value);
     value = H;
     check(!dvm_managed_owner_can_close() && !dvm_managed_owner_close(), "live owners refuse shutdown");
+    check(dvm_owner_scope_retain(&scope, &outgoing, main_entry.object, main_entry.ops), "distinct shared slot owner");
+    check(dvm_owner_scope_export(&outgoing, &transfer) &&
+        dvm_owner_slot_exchange(probe.slot, &transfer) && !transfer.object, "publish rooted ticket into slot");
     for (index = 0; index < PROBE_THREADS; index++)
     {
-        check(dvm_owner_scope_retain(&scope, &outgoing, main_entry.object, main_entry.ops), "distinct receiver ticket owner");
-        check(dvm_owner_scope_export(&outgoing, &probe.transfers[index]), "publish receiver envelope");
         receivers[index].probe = &probe;
-        receivers[index].index = index;
         threads[index] = fvm_port_thread_start(receive, &receivers[index]);
         check(threads[index] != NULL, "receiver creation");
     }
@@ -165,6 +167,8 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
         fvm_port_sync_wait(probe.sync);
     }
     fvm_port_sync_unlock(probe.sync);
+    check(dvm_owner_slot_exchange(probe.slot, &transfer) &&
+        dvm_owner_transfer_cancel(&transfer), "unpublish slot after receiver copies");
     check(dvm_native_owner_leave(owner), "controller leaves before collection");
     check(!dvm_managed_owner_value(&main_entry), "IDLE refuses managed payload");
     for (index = 0; index < PROBE_CYCLES; index++)
@@ -206,6 +210,7 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     check(dvm_gc_workers_wait_idle(workers), "Fast retires managed error owner");
     check(dvm_native_owner_enter(owner), "reenter after error retirement");
     check(dvm_managed_owner_can_close() && !dvm_managed_owner_pending(), "error owner fully retired");
+    check(dvm_owner_slot_destroy(&probe.slot), "joined empty managed slot");
     fvm_port_sync_destroy(probe.sync);
-    puts("PASS managed owner probe: 8 native receivers, 32 real cycle passes, rooted until Fast, native error cleanup, complete joins");
+    puts("PASS managed owner probe: 8 native receivers, 32 real cycle passes, rooted until Fast, shared-slot snapshots, native error cleanup, complete joins");
 }

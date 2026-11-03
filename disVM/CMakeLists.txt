@@ -803,7 +803,7 @@ endif()
 
 
 # Native guards retain TLS affinity; no managed heap implementation is linked.
-add_library(disvm_object_guards STATIC host/object_guard.c host/owner_scope.c host/native_context.c
+add_library(disvm_object_guards STATIC host/object_guard.c host/owner_scope.c host/owner_slot.c host/native_context.c
  host/native_owner.c host/native_world.c)
 target_include_directories(disvm_object_guards PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
  PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../flashVM/ports")
@@ -835,4 +835,11 @@ if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPI
  add_test(NAME disvm_native_error_cleanup COMMAND "${Python3_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_cleanup.py")
  set_tests_properties(disvm_native_error_cleanup PROPERTIES TIMEOUT 240)
+endif()
+
+# Native shared slots do not depend on the hosted managed interpreter.
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_owner_slots COMMAND "${Python3_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/owner_slot.py")
+ set_tests_properties(disvm_native_owner_slots PROPERTIES TIMEOUT 240)
 endif()

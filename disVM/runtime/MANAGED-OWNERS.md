@@ -146,3 +146,12 @@ It does not convert remaining plain C/JIT Heap accesses: exclusion still applies
 Both selected-native and forced-count variants pass adapter/control UBSan and
 the joined interpreter-TSan overlap. This is separate from --gc-locked-poll,
 which selects the native-world polling implementation rather than RC backend.
+
+
+## Runtime 0.64: synchronized publication slots
+
+[owner_slot.h](../include/disvm/owner_slot.h) publishes native ticket owners and
+retains directly into receiver-local scopes while the source owner is protected.
+The actual probe now uses this path for all eight receivers; removal of the slot
+owner precedes the 32 cycle passes. Native ticket/root/Fast lifetime is unchanged.
+See [slot lock/lifetime contract](OWNER-SLOTS.md); these are not raw managed slots.
