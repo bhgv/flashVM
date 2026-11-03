@@ -13,6 +13,9 @@ SOURCE = r'''
 #include <stdio.h>
 #include <stdlib.h>
 
+
+/* One main-owned record per worker. id is immutable; completed is worker-local
+ * until pthread_join publishes it to main. No record outlives the joined owner. */
 typedef struct Owner
 {
     int id; /* Immutable owner-specific jump status. */
