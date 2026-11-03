@@ -41,12 +41,18 @@ def main():
     SHA256 is byte identity, never authentication or executable type authority.
     Every corpus image must remain refused by the current scalar execution gate.
     """
-    inspector, corpus = (Path(value).resolve() for value in sys.argv[1:])
+    inferred = '--infer' in sys.argv[1:]
+    inspector, corpus = (Path(value).resolve() for value in sys.argv[1:] if value != '--infer')
     manifest = json.loads((corpus / 'manifest.json').read_text())
     cases = manifest['cases']
     names = {case['name'] for case in cases}
-    if len(cases) != 25 or len(names) != 25 or not {'answer42', 'chain42', 'reordered42', 'divide-zero'} <= names:
+    expected = 14 if inferred else 25
+    required = {'1-normal', '1-unused', '1-overlap', '1-reinterpret'} if inferred else {
+        'answer42', 'chain42', 'reordered42', 'divide-zero'}
+    if len(cases) != expected or len(names) != expected or not required <= names:
         raise RuntimeError('peer corpus population changed; review revision explicitly')
+    if inferred and ('locals' in manifest or any('locals' in case for case in cases)):
+        raise RuntimeError('inference manifest unexpectedly supplies local authority')
     accepted_framing = 0
     rejected_framing = 0
     with tempfile.TemporaryDirectory(prefix='peer file-call framing ') as directory:
@@ -89,10 +95,12 @@ def main():
             diagnostic = 'unsupported or invalid scalar pilot payloads' if framing else 'invalid envelope'
             if diagnostic not in refused.stderr:
                 raise RuntimeError('refusal stage disagreement: '+name)
-    if (accepted_framing, rejected_framing) != (23, 2):
+    expected_framing = (14, 0) if inferred else (23, 2)
+    if (accepted_framing, rejected_framing) != expected_framing:
         raise RuntimeError('unexpected outer framing population')
-    print('PASS peer0100:25 SHA256/length identities;23 independent outer directories;2 framing refusals;'
-          '25 current scalar refusals preserve output; no call execution/type-authority claim')
+    print('PASS peer'+('0101' if inferred else '0100')+':'+str(expected)+' SHA256/length identities;'+
+          str(accepted_framing)+' independent outer directories;'+str(rejected_framing)+' framing refusals;'+
+          str(expected)+' current scalar refusals preserve output; no call execution/type-authority claim')
 
 
 if __name__ == '__main__':

@@ -76,3 +76,30 @@ private runtime evidence under bounded transports; it is not an independent
 FlashVM call validator/loader implementation or new physical-target acceptance.
 The remaining untrusted local-kind, typed-result/LEA and whole-file lifecycle
 obligations above remain before changing public admission.
+
+
+## INFERNO-0101 raw-byte kind inference receipt
+
+Peer51aebfc3eabded32f8013b7b715d55f818c052dd adds a conservative private
+inference API taking raw image bytes without external numeric-local declarations.
+Signature parameter seeds apply even when unused. Fixed Int32/Big/Real spans
+reject overlaps/reinterpretation; Bool refuses conservatively rather than being
+inferred from W width. Inferred read kind is not definite initialization: the
+existing full call/return/setup verifier still must succeed before publication.
+That separation and the absence of a new trusted wire sidecar are appropriate
+for this bounded next prerequisite; they do not by themselves open the loader.
+
+Our explicit `--infer` inspection checks the14 new manifest identities, all14
+canonical outer directories and all14 present scalar-gate refusals with output
+preservation. The manifest is checked not to contain local declarations. Original
+25 identities/directories/refusals still agree. This is outer/identity inspection,
+NOT an independent implementation of the new inferred kind/typed proof.
+
+Separately replayed dis64-call-infer.py on local x64, default O3 nonrecovering
+UBSan:9 accepts/30 atomic refusals/312 actual C/RX/extent/quanta/saved/error
+runs and4 external/seed/publication/kind semantic controls pass. External locals
+are poisoned by the peer harness. That is owning-source reproduction under its
+bounded transports, not independent FlashVM executable validation, production
+namespace/file loading or physical ARM64/RV64 acceptance here. Public calls and
+ordinary WORD32 LEA stay unchanged. The `--infer` inspection command takes the
+same inspector argument and `utils/tests/goldens/dis64-infer` corpus directory.

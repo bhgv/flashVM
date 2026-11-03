@@ -7,6 +7,7 @@
 #include "pool.h"
 #include "raise.h"
 #include "pointer_builder.h"
+#include "owner_fast.h"
 #include "gc_fields.h"
 #include "heap_snapshot.h"
 #include "disvm/refcount.h"
@@ -223,7 +224,7 @@ void dvm_runtime_pointer_cons(void *source, void *destination)
  * No code-cache or module storage is read after a callback may release it. */
 int dvm_runtime_pointer_fast(REG *registers)
 {
-    if (registers != &DVM_R)
+    if (!dvm_runtime_owner_entry_ready(registers))
     {
         return 0;
     }

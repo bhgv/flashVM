@@ -14,6 +14,7 @@ WRAPPER = r'''
 #include "kernel.h"
 #include "interp.h"
 #include "pointer_builder.h"
+#include "thread_port.h"
 #include "disvm/refcount.h"
 #include <stdlib.h>
 #include <string.h>
@@ -40,6 +41,15 @@ static void fail_monitor(int event, void *node, ulong bytes)
     check(event == 0 && bytes > 0, "monitor observes allocation only");
     monitor_calls++;
     error("pointer tail injected error");
+}
+
+
+/* Fresh native thread has no VM context. NULL and parent REG must decline
+ * before operand access; parent retains its context and all roots through join. */
+static void cold_context(void *parent)
+{
+    check(!__real_dvm_runtime_pointer_fast(NULL) &&
+        !__real_dvm_runtime_pointer_fast(parent), "unbound context declines");
 }
 
 
@@ -72,6 +82,11 @@ __attribute__((noinline)) int __wrap_dvm_runtime_pointer_fast(REG *registers)
     if (calls != 1)
     {
         return __real_dvm_runtime_pointer_fast(registers);
+    }
+    {
+        FVM_PortThread *cold = fvm_port_thread_start(cold_context, registers);
+        check(cold != NULL, "cold thread starts");
+        fvm_port_thread_join(cold);
     }
     module = registers->M->m;
     jit = module->jit;

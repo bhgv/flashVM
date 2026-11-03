@@ -17,7 +17,8 @@ struct REG;
 
 
 /* [GC:] Shared C tail target for hosted SysV x64 pointer-cons entry. registers
- * must be this bound runtime's live REG; foreign REG declines0 before reads.
+ * must be this bound runtime's full-size ACTIVE REG; NULL/foreign/inactive
+ * profiles decline0 before operand reads through the shared owner preflight.
  * Decoded PC/operands and complete roots are already published by C dispatch.
  * Return1 only after commit. VM errors propagate normally, never decline/retry
  * after partial work. Generated entry must tail-enter, leaving no JIT return PC.

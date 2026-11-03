@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.83.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.84.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -102,7 +102,7 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_owner_tail.py owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-${runtime_backend})
@@ -111,7 +111,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm "${root}/disVM/host/refcount.c" "${root}/disVM/host/object_guard.c" "${root}/disVM/host/owner_scope.c" "${root}/disVM/host/owner_slot.c" main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c open_wait.c close_worker.c runtime_gc.c runtime_rc.c retirement_queue.c gc_fields.c type_counts.c type_counts_probe.c heap_counts.c heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts_probe.c heap_snapshot.c heap_pool.c root_registry.c root_registry_probe.c pointer_builder.c pointer_builder_probe.c heap_snapshot_probe.c service_counts_probe.c managed_owner.c managed_owner_probe.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm "${root}/disVM/host/refcount.c" "${root}/disVM/host/object_guard.c" "${root}/disVM/host/owner_scope.c" "${root}/disVM/host/owner_slot.c" main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c open_wait.c close_worker.c runtime_gc.c runtime_rc.c retirement_queue.c gc_fields.c type_counts.c type_counts_probe.c heap_counts.c heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts_probe.c heap_snapshot.c heap_pool.c root_registry.c root_registry_probe.c pointer_builder.c owner_fast.c pointer_builder_probe.c heap_snapshot_probe.c service_counts_probe.c managed_owner.c managed_owner_probe.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)
@@ -2354,4 +2354,13 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_gc_fields.py")
  set_tests_properties(disvm_native_gc_fields PROPERTIES TIMEOUT 180)
+endif()
+
+
+# Actual SysV x64 machine owner tails, cache retirement and pre-unsafe controls.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
+ add_test(NAME disvm_owner_tail_entries COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_owner_tail.py" "$<TARGET_FILE:disvm>"
+  "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+ set_tests_properties(disvm_owner_tail_entries PROPERTIES TIMEOUT 180)
 endif()

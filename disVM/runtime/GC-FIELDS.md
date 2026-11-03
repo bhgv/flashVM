@@ -1,3 +1,6 @@
+Runtime0.84 update: [four x64 owner operations now tail-enter checked C](OWNER-TAIL.md).
+Other native JIT families remain outside the runtime0.83 scalar conversion below.
+
 # Hosted C scalar GC fields — runtime0.83
 
 Hosted C Setmark now calls a native scalar helper. Heap.color, the mutator color
