@@ -84,3 +84,11 @@ Whole runtime tests separately exercise converted host sites under exclusive mod
 Type retain/release/preflight sites through checked native primitives. Pinned
 source stays unchanged. Other C/JIT Type sites and every remaining Heap counter
 still require serial admission; this is not a global atomic Type conversion.
+
+
+## Runtime0.67: retained heap Heap sites
+
+[Heap-count adaptation](HEAP-COUNTS.md) converts heap.c's3 retains,2 drops and
+5 observations, preserving the RC-defer hook and legacy gchalt protection.
+Together with Type conversion this covers count RMW/observations in hosted
+heap.c only. Other C/JIT/GC sites remain unconverted under serial admission.

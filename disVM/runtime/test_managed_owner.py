@@ -40,7 +40,7 @@ init() {
                 text = result.stdout + result.stderr
                 if 'WARNING: ThreadSanitizer:' in result.stderr or 'runtime error:' in result.stderr:
                     raise RuntimeError('managed root sanitizer failure: ' + text[-6000:])
-                if result.returncode or 'PASS managed owner probe:' not in text or 'PASS Type-count probe:' not in text or 'PASS normal Dis after native managed cleanup' not in text:
+                if result.returncode or 'PASS managed owner probe:' not in text or 'PASS Type-count probe:' not in text or 'PASS Heap-count probe:' not in text or 'PASS normal Dis after native managed cleanup' not in text:
                     raise RuntimeError(text[-6000:])
                 if not re.search(r'MANAGEDOWNERS captured=2 released=2 live=0 pending=0 tickets=0 producers=0 failed=0 rooted_until_fast=1', text):
                     raise RuntimeError('ticket/root retirement mismatch: ' + text[-6000:])

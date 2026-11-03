@@ -6,6 +6,7 @@ import re
 import subprocess
 import sys
 from prepare_type_counts import adapt as adapt_type_counts
+from prepare_heap_counts import adapt as adapt_heap_counts
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -55,7 +56,7 @@ def main():
         raise ValueError("destroy ownership boundary changed; review RC adapter")
     heap_text = heap_text.replace(rc_anchor,
         "\tif(dvm_runtime_rc_defer(v))\n\t\treturn;\n\n" + rc_anchor, 1)
-    heap_path.write_text('#include "runtime_rc.h"\n' + adapt_type_counts(heap_text))
+    heap_path.write_text('#include "runtime_rc.h"\n' + adapt_heap_counts(adapt_type_counts(heap_text)))
     text = subprocess.check_output([args.compiler, "-a", "-t", "Sys", args.sys], text=True)
     marker = "typedef struct{char *name;"
     at = text.index(marker)

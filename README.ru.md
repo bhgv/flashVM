@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1764**. [English](README.md).
+Версия разработки: **0.1765**. [English](README.md).
 
-Текущая серия: [v0.1764](docs/releases/v0.1764.md): атомарные операции владения Type в hosted heap.c.
+Текущая серия: [v0.1765](docs/releases/v0.1765.md): атомарные операции владения Heap в hosted heap.c.
 
 ## Просмотр документации
 

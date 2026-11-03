@@ -50,7 +50,11 @@ int __wrap_dvm_runtime_type_release(int *reference)
 # never changes production objects. Only exact probe status10 counts as control;
 # startup/compiler/signal/timeout/sanitizer failures refuse rather than pass.
 def main():
-    runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:])
+    arguments = sys.argv[1:]
+    heap = bool(arguments and arguments[0] == '--heap')
+    if heap:
+        arguments = arguments[1:]
+    runtime, compiler, include = (Path(value).resolve() for value in arguments)
     root = Path(__file__).resolve().parents[2]
     metadata = runtime.parent / 'CMakeFiles/disvm.dir'
     flags = {}
@@ -62,12 +66,15 @@ def main():
     with tempfile.TemporaryDirectory(prefix='actual Type counts ') as directory:
         work = Path(directory)
         source = work / 'wrapper.c'
-        source.write_text(WRAPPER)
+        wrapper = WRAPPER
+        if heap:
+            wrapper = wrapper.replace('Type', 'Heap').replace('type', 'heap').replace('int *reference', 'unsigned long *reference')
+        source.write_text(wrapper)
         guest = work / 'main.b'
         image = work / 'main.dis'
         guest.write_text('implement T; T: module {init: fn();}; init() {}\n')
         subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)], check=True, capture_output=True)
-        for variant, marker in ((0, None), (1, 'checked Type retain'), (2, 'retained freetype nonfinal drop')):
+        for variant, marker in ((0, None), (1, 'checked Heap retain' if heap else 'checked Type retain'), (2, 'converted destroy nonfinal drop' if heap else 'retained freetype nonfinal drop')):
             obj = work / 'wrapper.o'
             command = [link[0], *flags['C_DEFINES'], *flags['C_INCLUDES'], *flags['C_FLAGS'], '-I'+str(root/'disVM/runtime'), '-DCONTROL='+str(variant), '-c', str(source), '-o', str(obj)]
             subprocess.run(command, check=True, capture_output=True, text=True)
@@ -75,7 +82,8 @@ def main():
             selected = list(link)
             at = selected.index('-o')
             selected[at+1] = str(binary)
-            selected += [str(obj), '-Wl,--wrap=dvm_runtime_type_probe', '-Wl,--wrap=dvm_runtime_type_retain', '-Wl,--wrap=dvm_runtime_type_release']
+            kind = 'heap' if heap else 'type'
+            selected += [str(obj), *['-Wl,--wrap=dvm_runtime_'+kind+'_'+operation for operation in ('probe', 'retain', 'release')]]
             subprocess.run(selected, cwd=runtime.parent, check=True, capture_output=True, text=True)
             env = dict(os.environ, TMPDIR=str(work))
             run = subprocess.run([str(binary), '--gc-worker', '--no-jit', '--managed-owner-probe', '--stats', str(image)], capture_output=True, text=True, timeout=45, env=env)
@@ -83,11 +91,11 @@ def main():
             if 'runtime error:' in text or 'WARNING: ThreadSanitizer:' in text:
                 raise RuntimeError('Type control sanitizer failure: '+text[-6000:])
             if marker:
-                if run.returncode != 10 or 'FAIL Type-count probe: '+marker not in text:
+                if run.returncode != 10 or ('FAIL Heap-count probe: ' if heap else 'FAIL Type-count probe: ')+marker not in text:
                     raise RuntimeError('Type control missed its semantic predicate: '+text[-6000:])
-            elif run.returncode or 'PASS Type-count probe:' not in text:
+            elif run.returncode or ('PASS Heap-count probe:' if heap else 'PASS Type-count probe:') not in text:
                 raise RuntimeError('actual Type positive failed: '+text[-6000:])
-    print('PASS actual retained dtype/freetype/array/Fast; two exact Type-count semantic controls')
+    print('PASS actual retained Heap/string/mapped/list/Fast; two exact Heap-count semantic controls' if heap else 'PASS actual retained dtype/freetype/array/Fast; two exact Type-count semantic controls')
 
 
 if __name__ == '__main__':
