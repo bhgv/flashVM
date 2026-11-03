@@ -29,7 +29,8 @@ def main():
     signatures = ('static char *owner_error(void)', 'void error(char *message)', 'void nexterror(void)',
                   'int kprotect(int (*callback)(void *), void *argument)')
     bodies = '\n\n'.join(function(original, signature) for signature in signatures)
-    fixture = (root / 'tests/native_cleanup.c').read_text().replace('PRODUCTION_ERROR_FUNCTIONS', bodies)
+    # Extracted nexterror must link the actual transfer module, never a test stub.
+    fixture = (root / 'tests/native_cleanup.c').read_text().replace('PRODUCTION_ERROR_FUNCTIONS', '#include "native_jump.h"\n'+bodies)
     originals = {name: (root / ('host/' + name)).read_text() for name in ('native_context.c', 'native_registers.c')}
     controls = {
         'boundary': ('native_context.c', 'int dvm_native_cleanup_unwind(', 'context->cleanup_newest > mark->serial', 'context->cleanup_newest > context->cleanup_serial'),
@@ -55,9 +56,9 @@ def main():
                 command += ['-std=c99', '-pthread', '-DDVM_NATIVE_REGISTERS=1']
                 if backend == 'locked':
                     command += ['-DDVM_REFCOUNT_FORCE_LOCKED=1', '-DDVM_OBJECT_FORCE_LOCKED=1']
-                command += ['-I' + str(path) for path in (work, root / 'host', root / 'host/include', root / 'upstream/include',
+                command += ['-I' + str(path) for path in (work, root / 'runtime', root / 'host', root / 'host/include', root / 'upstream/include',
                     root / 'upstream/libinterp', root / 'upstream/emu/port', root / 'include', fvm / 'ports')]
-                command += [str(work / 'test.c'), str(work / 'native_context.c'), str(work / 'native_registers.c')]
+                command += [str(work / 'test.c'), str(work / 'native_context.c'), str(work / 'native_registers.c'), str(root / 'runtime/native_jump.c')]
                 command += [str(root / ('host/' + name)) for name in ('owner_scope.c', 'object_guard.c', 'refcount.c', 'native_owner.c', 'native_world.c')]
                 command += [str(fvm / 'ports/linux/thread.c'), str(fvm / 'ports/linux/channel_sync.c')]
                 binary = work / 'cleanup'

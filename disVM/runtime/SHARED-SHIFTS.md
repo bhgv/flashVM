@@ -51,3 +51,10 @@ or hosted UBSan acceptance is inferred. Native WORD64 is not shared Int32/Ref64.
 [Cost ledger](PERFORMANCE-COSTS.md). NativeWorld still serializes general managed
 execution; readers/comparisons/FP, construction, channels, root/graph/GC epochs and
 frame/module/code lifetime remain before general parallel admission.
+
+Runtime0.100 follow-up: the v0.1797 cumulative actual-C-fixture TSan failure
+is isolated to fortified __longjmp_chk bypassing this runtime's interceptor.
+The [separate error-transfer boundary](NATIVE-UNWIND.md#sanitizer-aware-posix-transfer--runtime0100)
+restores siglongjmp interception in TSan builds only. The full99000-case fixture
+now passes C/JIT and both polls without sharding or dropping invalid-count cases.
+Retain v0.1797's original failure report; this is new bounded evidence.

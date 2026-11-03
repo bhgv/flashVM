@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.99.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.100.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -121,6 +121,7 @@ add_executable(disvm
     "${root}/disVM/host/owner_scope.c"
     "${root}/disVM/host/owner_slot.c"
     main.c
+    native_jump.c
     runqueue.c
     queue_probe.c
     managed_workers.c
@@ -2617,4 +2618,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "${CMAKE_CURRENT_SOURCE_DIR}/test_shift_errors.py" "$<TARGET_FILE:disvm>"
   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
  set_tests_properties(disvm_shared_shifts disvm_shift_tails disvm_shift_zero_errors PROPERTIES TIMEOUT 240)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_jump_boundary COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_native_jump.py")
+ set_tests_properties(disvm_native_jump_boundary PROPERTIES TIMEOUT 240)
 endif()

@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1797**. [English](README.md).
+Версия разработки: **0.1798**. [English](README.md).
 
-Текущая серия: [v0.1797](docs/releases/v0.1797.md): защищённые сдвиги и независимая проверка связей секций Dis64.
+Текущая серия: [v0.1798](docs/releases/v0.1798.md): исправление TSan-переходов ошибок и проверка повторных переходов в четырёх потоках.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

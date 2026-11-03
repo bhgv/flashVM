@@ -78,3 +78,50 @@ Still pending: managed root registration/pinning, process (not merely native C
 frame) ownership, actual managed scope drops under the right heap phase, all C/JIT
 count/mark paths, allocator/object protection and parallel managed admission.
 Native scope cleanup is not proof that those paths are now safe concurrently.
+
+
+## Sanitizer-aware POSIX transfer — runtime0.100
+
+`nexterror` still runs `dvm_native_error_unwind` first and consumes the same Proc
+label. The actual same-thread transfer now lives in `native_jump.c/h` as
+`dvm_native_error_jump(buffer, value)`. Buffer must belong to a live sigsetjmp on
+the current OS thread, value must be nonzero. Signal-mask and callback cleanup
+semantics stay intact; stale or cross-thread continuations remain invalid.
+No managed scheduling, allocation, lock, root or admission policy is added.
+
+On this GCC13/glibc build, fortified siglongjmp emits __longjmp_chk, while the
+installed TSan exports interceptors for siglongjmp/longjmp but not __longjmp_chk.
+Repeated fortified transfers bypass TSan's shadow-stack reset and eventually
+produce its nested DEADLYSIGNAL. This was isolated on the unchanged actual shift
+fixture: only the private transfer symbol was replaced, and the full C/JIT probe
+then passed. Production now selects the intercepted symbol by disabling
+_FORTIFY_SOURCE only inside native_jump.c when GCC/Clang reports thread sanitizer.
+All other translation units and ordinary builds retain their fortification.
+TSan instrumentation, native cleanup and guard checks are not suppressed.
+This is a bounded workaround for that interceptor combination, not a claim that
+all sanitizer faults are environmental or that any data race has been repaired.
+
+`test_native_jump.py` runs four independent OS owners through 96000 nested actual
+transfers, checks both statuses and saved SIGUSR1 masks, and joins all owners.
+Independent controls alter transfer status or omit saved-mask capture and must
+exit10 with the corresponding diagnostic. Compile/link/crash failure does not
+count. On glibc, object-symbol checks require fortified __longjmp_chk in the normal
+build and siglongjmp in the sanitizer-selected build. Forced feature selection is
+only a symbol-policy check; real --tsan additionally instruments both C modules.
+The native fixture owns no Dis heap. Actual hosted shift/error/cache and managed
+scope tests provide separate integration evidence; generated code is uninstrumented.
+
+```sh
+python3 disVM/runtime/test_native_jump.py
+python3 disVM/runtime/test_native_jump.py --tsan
+```
+
+The v0.1797 cumulative shift-fixture TSan failure is resolved by this boundary
+on this platform; retain that historical failure report. General NativeWorld
+serialization, graph/root/GC epoch work and platform acceptance remain separate.
+
+The extracted hosted-cleanup fixture now links/includes the actual native jump
+module as well. Both native/forced-lock backends pass under TSan, each with eight
+OS owners,640 nested transfers,960 native frees and ten semantic omission controls
+across the two backends. Initial missing-module compile failure is not a semantic
+control. See [v0.1798](../../docs/releases/v0.1798.md) for the final test scope.

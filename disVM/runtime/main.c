@@ -9,6 +9,7 @@
 #include "pool.h"
 #include "raise.h"
 #include "exception_host.h"
+#include "native_jump.h"
 #include "table_leases.h"
 #include "owned.h"
 #include "disvm/native_process.h"
@@ -393,7 +394,7 @@ void nexterror(void)
         fprintf(stderr, "disvm: native owner cleanup failed before error transfer\n");
         abort();
     }
-    siglongjmp(up->estack[up->nerr], 1);
+    dvm_native_error_jump(up->estack[up->nerr], 1);
 }
 
 /* Run fallible construction with the real Proc jump-frame discipline. */
