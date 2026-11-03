@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.90.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.91.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -418,3 +418,5 @@ UI capability, cancellation or automatic artifact execution. F7 Build/F8 diagnos
 [Rooted managed owners across native workers](MANAGED-OWNERS.md).
 
 Preallocated root groups: [ROOT-BATCH.md](ROOT-BATCH.md), reservation/publication/clear without allocation in the publication interval.
+
+Guarded mapped replacement: [SHARED-MAPPED.md](SHARED-MAPPED.md), opt-in MOVMP with rooted retirement outside access locks.

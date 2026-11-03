@@ -1372,7 +1372,7 @@ int main(int argc, char **argv)
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
-            puts("Memory experiment: --guarded-copies with --gc-worker guards scalar/raw copy ranges; parallel heap stays disabled");
+            puts("Memory experiment: --guarded-copies with --gc-worker guards scalar/raw copies and mapped MOVMP; parallel heap stays disabled");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");

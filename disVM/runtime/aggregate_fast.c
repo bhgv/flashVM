@@ -5,6 +5,8 @@
 #include "interp.h"
 #include "owner_fast.h"
 #include "aggregate_fast.h"
+#include "shared_bytes.h"
+#include "disvm/native_context.h"
 
 extern void movmp(void); /* Retained aggregate opcode, process-live C text. */
 
@@ -20,7 +22,8 @@ extern void consm(void); /* Retained aggregate opcode, process-live C text. */
  * Tail scaffold does not read cache/module state after calling the opcode. */
 int dvm_runtime_aggregate_movmp_fast(REG *registers)
 {
-    if (!dvm_runtime_owner_entry_ready(registers))
+    if (!dvm_runtime_owner_entry_ready(registers) ||
+        (dvm_runtime_guarded_copies && dvm_native_context_object_count(dvm_native_context_current())))
     {
         return 0;
     }

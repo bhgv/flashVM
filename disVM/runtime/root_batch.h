@@ -23,6 +23,14 @@ DVM_RootBatch *dvm_runtime_root_batch_create(size_t capacity);
 int dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *keys, size_t count);
 
 
+/* Withdraw one occurrence by its original published vector index. No allocation,
+ * referent access or callback. Caller holds independent owner until its consuming
+ * destructor; remaining occurrences stay rooted. Duplicate/invalid indices refuse
+ * unchanged. An emptied group stays active until clear; same exclusive-owner and
+ * GC/lock-order rules as publish. Return 1 removed, 0 unchanged refusal. */
+int dvm_runtime_root_batch_remove(DVM_RootBatch *batch, size_t index);
+
+
 /* Remove exactly this active group, atomically to visitors, without allocation,
  * callbacks or referent access. Return 0 unchanged for NULL/inactive; 1 clears
  * even a published empty group. Caller retains referents/owners through return.

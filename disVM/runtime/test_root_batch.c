@@ -120,6 +120,11 @@ static void serial(void)
         !dvm_runtime_root_batch_publish(batch, keys, WIDTH), "live reservation refusal");
     check(dvm_runtime_root_batch_publish(other, keys, WIDTH) &&
         dvm_runtime_root_count(&key) == 2 * WIDTH, "independent duplicate batches");
+    check(dvm_runtime_root_batch_remove(batch, 1) &&
+        !dvm_runtime_root_batch_remove(batch, 1) &&
+        !dvm_runtime_root_batch_remove(batch, WIDTH) &&
+        dvm_runtime_root_count(&key) == 2 * WIDTH - 1,
+        "single occurrence withdrawal");
     check(dvm_runtime_root_batch_clear(batch) && dvm_runtime_root_count(&key) == WIDTH,
         "exact batch removal");
     dvm_runtime_roots_visit(visit, counts);

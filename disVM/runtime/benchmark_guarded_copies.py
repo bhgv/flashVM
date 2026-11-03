@@ -28,8 +28,8 @@ init() {
 '''
 
 
-def main():
-    """Use the same binary/image, alternating profiles after a warmup.
+def main(guest=GUEST, marker="PASS copy cost 19999 7"):
+    """Use guest source/checksum marker, alternating profiles after a warmup.
 
     Exact checksum is mandatory. Times include process startup and measure only
     this local workload, not general IDE speed or parallel managed execution.
@@ -39,7 +39,7 @@ def main():
         work = Path(directory)
         source = work / 'main.b'
         image = work / 'main.dis'
-        source.write_text(GUEST)
+        source.write_text(guest)
         built = subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)],
                                capture_output=True, text=True)
         if built.returncode:
@@ -57,7 +57,7 @@ def main():
                                          timeout=60, env=dict(os.environ, TMPDIR=str(work)))
                     elapsed = time.monotonic()-started
                     output = run.stdout+run.stderr
-                    if run.returncode or 'PASS copy cost 19999 7' not in output:
+                    if run.returncode or marker not in output:
                         raise RuntimeError(output)
                     if index:
                         samples[profile].append(elapsed)

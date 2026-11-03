@@ -80,8 +80,48 @@ int dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *keys, size
 }
 
 
-/* Exact-node removal cannot consume ordinary or other batch occurrences.
- * Unexpected disappearance is internal corruption, never a resumable refusal. */
+/* Unlink one known live node while caller owns the actual root mutex. */
+static void unlink_entry(DVM_RootBatch *batch, RootEntry *entry)
+{
+    RootEntry **link = dvm_root_registry_bucket(entry->key);
+    while (*link && *link != entry)
+    {
+        link = &(*link)->next;
+    }
+    if (*link != entry || entry->batch != batch)
+    {
+        abort();
+    }
+    *link = entry->next;
+    entry->key = NULL;
+    entry->next = NULL;
+    entry->batch = NULL;
+}
+
+
+/* Remove this occurrence before invoking its consuming destructor. Remaining
+ * group roots stay visible; slot numbering is stable through final clear. */
+int dvm_runtime_root_batch_remove(DVM_RootBatch *batch, size_t index)
+{
+    RootEntry *entry;
+    if (!batch || !batch->active || index >= batch->count)
+    {
+        return 0;
+    }
+    entry = &batch->entries[index];
+    if (!entry->key)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(batch->mutex);
+    unlink_entry(batch, entry);
+    fvm_port_sync_unlock(batch->mutex);
+    return 1;
+}
+
+
+/* Clear every remaining node atomically to visitors, including sparse groups.
+ * A consumed occurrence is not looked up, freed, or removed a second time. */
 int dvm_runtime_root_batch_clear(DVM_RootBatch *batch)
 {
     size_t index;
@@ -93,19 +133,10 @@ int dvm_runtime_root_batch_clear(DVM_RootBatch *batch)
     for (index = batch->count; index > 0; index--)
     {
         RootEntry *entry = &batch->entries[index - 1];
-        RootEntry **link = dvm_root_registry_bucket(entry->key);
-        while (*link && *link != entry)
+        if (entry->key)
         {
-            link = &(*link)->next;
+            unlink_entry(batch, entry);
         }
-        if (*link != entry || entry->batch != batch)
-        {
-            abort();
-        }
-        *link = entry->next;
-        entry->key = NULL;
-        entry->next = NULL;
-        entry->batch = NULL;
     }
     batch->count = 0;
     batch->active = 0;

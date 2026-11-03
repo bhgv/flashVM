@@ -18,7 +18,8 @@ def main():
     registry = (runtime / 'root_registry.c').read_text()
     changes = {
         'publish': ('        *head = entry;', '        (void)head;', 'complete publication'),
-        'clear': ('    batch->count = count;', '    batch->count = 0;', 'exact batch removal'),
+        'clear': ('    batch->count = count;', '    batch->count = 0;', 'single occurrence withdrawal'),
+        'withdraw': ('    unlink_entry(batch, entry);\n    fvm_port_sync_unlock(batch->mutex);\n    return 1;', '    fvm_port_sync_unlock(batch->mutex);\n    return 1;', 'single occurrence withdrawal'),
         'remove': ('entry->key == key && !entry->batch', 'entry->key == key', 'ordinary remove preserves batch'),
         'allocate': ('    batch->count = count;', '    void *volatile attempted = malloc(1);\n    free(attempted);\n    batch->count = count;', 'publication allocation attempt'),
     }
@@ -64,7 +65,7 @@ def main():
                         raise RuntimeError('batch positive failed: '+output)
                     else:
                         print(backend+': '+run.stdout, end='')
-    print('PASS actual root batches'+(' positives only' if '--positive-only' in sys.argv else '; eight semantic controls'))
+    print('PASS actual root batches'+(' positives only' if '--positive-only' in sys.argv else '; ten semantic controls'))
 
 
 if __name__ == '__main__':

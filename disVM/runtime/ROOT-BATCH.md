@@ -4,7 +4,8 @@ Root batches reserve native metadata before entering an access interval. Publica
 and clear use the actual external-root registry mutex and never allocate. The
 existing stopped-world collector sees either the complete group or none of it.
 This is a prerequisite for retaining displaced aggregate references across
-destructor callbacks; MOVMP/HEADMP do not yet use this API.
+destructor callbacks. Runtime0.91 uses this API for opt-in MOVMP; HEADMP remains
+unconverted. See [SHARED-MAPPED.md](SHARED-MAPPED.md).
 
 `root_batch.c` contains the group algorithm, `root_registry.c` owns the shared
 ordinary-root lists, and `root_registry_private.h` describes their private native
@@ -19,7 +20,9 @@ changes. General managed execution still requires NativeWorld exclusion.
    nonnull keys, at most capacity. Duplicate keys are separate root occurrences.
    In hosted GC the keys must be genuine independently valid managed Heap headers.
    No managed pointer is retained, validated, marked or dereferenced by this API.
-3. Clear that exact group before releasing the corresponding independent owners.
+3. Withdraw each exact occurrence immediately before its consuming destructor,
+   keeping all remaining owners rooted, or clear the entire group before releasing
+   its independently protected owners.
    It removes all occurrences atomically to locked visitors, without callbacks or
    allocation. Ordinary `ptrdel`/root-remove cannot steal batch occurrences.
 4. Destroy only an inactive, externally quiescent reservation. Active destruction

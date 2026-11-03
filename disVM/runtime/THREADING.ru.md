@@ -639,3 +639,5 @@ fallback. Выбранные host retain/release переведены; оста�
 допуска к Heap и перечисляет оставшиеся owning C/JIT/GC границы.
 
 Runtime0.90: [preallocated root groups](ROOT-BATCH.md), a prerequisite for mapped-copy retirement; general managed execution remains serialized.
+
+Runtime0.91: [mapped MOVMP transaction](SHARED-MAPPED.md), opt-in guarded publication and rooted retirement; general managed execution remains serialized.

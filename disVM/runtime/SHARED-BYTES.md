@@ -1,5 +1,7 @@
 # Guarded scalar/raw copies and SELF — runtime0.89
 
+Runtime0.91 also adds opt-in mapped MOVMP: [SHARED-MAPPED.md](SHARED-MAPPED.md).
+
 `MOVB`, `MOVW`, `MOVL`, `MOVF` and `MOVM` have explicit checked byte-range paths.
 Select `--gc-worker --guarded-copies` before loading a native-cell module. Both
 C and hosted SysV x64 JIT use the guarded profile. It is experimental and DOES

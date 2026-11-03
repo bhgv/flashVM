@@ -15,6 +15,8 @@ WRAPPER = r'''
 #include "fns.h"
 #include "interp.h"
 #include "aggregate_fast.h"
+#include "managed_owner.h"
+#include "shared_bytes.h"
 #include "disvm/refcount.h"
 #include <stdlib.h>
 #include <string.h>
@@ -76,6 +78,16 @@ static void observe(int index, REG *registers, uintptr returning)
         !__real_dvm_runtime_aggregate_consmp_fast(&foreign) &&
         !__real_dvm_runtime_aggregate_consm_fast(&foreign) &&
         !memcmp(&saved, registers, sizeof(saved)), "foreign/NULL REG declines unchanged");
+    if (dvm_runtime_guarded_copies)
+    {
+        DVM_CellAccess access = {0};
+        void *cell = H;
+        check(dvm_managed_cells_begin(&cell, &cell, &access) == DVM_CELL_ACQUIRED,
+            "hold actual cell guard before mapped tail refusal");
+        check(!__real_dvm_runtime_aggregate_movmp_fast(registers) &&
+            !memcmp(&saved, registers, sizeof(saved)), "held-guard mapped tail declines unchanged");
+        check(dvm_cell_access_end(&access), "release held-guard refusal probe");
+    }
     if (CONTROL == 0 || CONTROL == 3 || CONTROL >= 10)
     {
         module->jit = nil;
@@ -191,7 +203,7 @@ init() {
 def main():
     """Run actual guests and private emitted-source controls; matching build only."""
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:]
-                                if value != '--positive-only')
+                                if value not in ('--positive-only', '--guarded-copies'))
     with tempfile.TemporaryDirectory(prefix='aggregate tails ') as directory:
         work = Path(directory)
         wrapper = work / 'wrapper.c'
@@ -205,6 +217,8 @@ def main():
             raise RuntimeError(built.stdout+built.stderr)
         for locked in (False, True):
             command = [str(runtime), '--no-jit', '--gc-worker', '--stats']
+            if '--guarded-copies' in sys.argv:
+                command += ['--guarded-copies']
             if locked:
                 command += ['--gc-locked-poll']
             baseline = subprocess.run(command+[str(image)], capture_output=True, text=True,
@@ -248,6 +262,8 @@ def main():
                 compiler_source=backend)
             for locked in (False, True):
                 command = [str(binary), '--jit', '--gc-worker', '--stats']
+                if '--guarded-copies' in sys.argv:
+                    command += ['--guarded-copies']
                 if locked:
                     command += ['--gc-locked-poll']
                 run = subprocess.run(command+[str(image)], capture_output=True, text=True,
