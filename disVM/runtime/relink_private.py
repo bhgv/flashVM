@@ -10,9 +10,12 @@ import subprocess
 # Makefiles/GNU-style native linker only; compile/link failures never count as
 # semantic detection. Optional executor/compiler_source replace only private xec.c/AMD64 compiler
 # objects; originals and source headers remain unchanged.
-# Optional exception/loader/collector replacements compile only private views.
+# Optional exception/loader/collector/managed-owner replacements compile private views.
 # Matching private headers/flags remain mandatory.
-def relink(runtime, work, source, variant, symbols, executor=None, compiler_source=None, exception_source=None, loader_source=None, stack_source=None, runtime_rc_source=None, gc_source=None):
+def relink(runtime, work, source, variant, symbols, executor=None,
+           compiler_source=None, exception_source=None, loader_source=None,
+           stack_source=None, runtime_rc_source=None, gc_source=None,
+           managed_owner_source=None):
     metadata = runtime.parent / 'CMakeFiles/disvm.dir'
     flags = {}
     for line in (metadata / 'flags.make').read_text().splitlines():
@@ -31,7 +34,7 @@ def relink(runtime, work, source, variant, symbols, executor=None, compiler_sour
     for candidate, filename in ((executor, 'xec.c'), (compiler_source, 'comp-amd64.c'),
                                 (exception_source, 'exception.c'), (loader_source, 'loader.c'),
                                 (stack_source, 'validstk.c'), (runtime_rc_source, 'runtime_rc.c'),
-                                (gc_source, 'gc.c')):
+                                (gc_source, 'gc.c'), (managed_owner_source, 'managed_owner.c')):
         if candidate is None:
             continue
         replacement = work / (filename+'.o')
@@ -40,7 +43,7 @@ def relink(runtime, work, source, variant, symbols, executor=None, compiler_sour
         built = subprocess.run(command, capture_output=True, text=True)
         if built.returncode:
             raise RuntimeError('private replacement compile failed: '+built.stdout+built.stderr)
-        suffix = '/'+filename+'.o' if filename == 'runtime_rc.c' else '/native/'+filename+'.o'
+        suffix = '/'+filename+'.o' if filename in ('runtime_rc.c', 'managed_owner.c') else '/native/'+filename+'.o'
         targets = [index for index, value in enumerate(link) if value.endswith(suffix)]
         if len(targets) != 1:
             raise RuntimeError('private replacement object boundary drift: '+filename)

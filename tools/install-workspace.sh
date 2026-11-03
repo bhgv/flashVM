@@ -769,6 +769,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
             copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
             copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
+            copy_tree "$ROOT/disVM/examples/native-guard-registry" "$destination/examples/native-guard-registry"
             # Complete public header closure for the native-owner C tutorial.
             for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
                 copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
@@ -777,7 +778,7 @@ EOF
             copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
             copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
             copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
-            for guard_source in object_guard.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
+            for guard_source in object_guard.c guard_registry.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
                 copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
             done
             copy_file "$ROOT/disVM/include/disvm/managed_reference.h" "$destination/include/disvm/managed_reference.h"
@@ -796,7 +797,11 @@ EOF
             copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
             copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
             copy_file "$ROOT/disVM/runtime/HEAP-PARALLELISM-STATUS.ru.md" "$destination/HEAP-PARALLELISM-STATUS.ru.md"
+            copy_file "$ROOT/disVM/include/disvm/guard_registry.h" "$destination/include/disvm/guard_registry.h"
             copy_file "$ROOT/disVM/include/disvm/object_guard.h" "$destination/include/disvm/object_guard.h"
+            copy_file "$ROOT/disVM/tests/guard_registry.c" "$destination/source/tests/guard_registry.c"
+            copy_file "$ROOT/disVM/tests/guard_registry_faults.c" "$destination/source/tests/guard_registry_faults.c"
+            copy_file "$ROOT/disVM/tests/guard_registry.py" "$destination/source/tests/guard_registry.py"
             copy_file "$ROOT/disVM/tests/object_guard.c" "$destination/source/tests/object_guard.c"
             copy_file "$ROOT/disVM/tests/object_guard.py" "$destination/source/tests/object_guard.py"
             copy_tree "$ROOT/disVM/examples/native-object-guard" "$destination/examples/native-object-guard"
@@ -824,6 +829,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/RETIREMENT-QUEUE.md" "$destination/RETIREMENT-QUEUE.md"
             copy_file "$ROOT/disVM/runtime/GC-FIELDS.md" "$destination/GC-FIELDS.md"
             copy_file "$ROOT/disVM/runtime/OWNER-TAIL.md" "$destination/OWNER-TAIL.md"
+            copy_file "$ROOT/disVM/runtime/GUARD-REGISTRY.md" "$destination/GUARD-REGISTRY.md"
             copy_file "$ROOT/disVM/runtime/GC-PENDING.md" "$destination/GC-PENDING.md"
             copy_file "$ROOT/disVM/runtime/AGGREGATE-TAIL.md" "$destination/AGGREGATE-TAIL.md"
             copy_file "$ROOT/disVM/host/include/lib9.h" "$destination/source/host/include/lib9.h"
@@ -835,7 +841,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/SHARED-HEAP-CONCURRENCY.ru.md" "$destination/SHARED-HEAP-CONCURRENCY.ru.md"
             copy_file "$ROOT/disVM/runtime/MULTITHREADING-ROADMAP.ru.md" "$destination/MULTITHREADING-ROADMAP.ru.md"
             copy_file "$ROOT/disVM/runtime/RUNQUEUE.md" "$destination/RUNQUEUE.md"
-            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h gc_fields.c gc_fields.h prepare_gc_fields.py test_gc_fields.c test_gc_fields.py test_gc_exchange.c test_gc_exchange.py test_gc_pending.py retirement_queue.c retirement_queue.h test_retirement_queue.c test_retirement_queue.py test_rc_reservation.py type_counts.c type_counts.h type_counts_probe.c heap_counts.c heap_counts.h heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts.h module_counts_probe.c heap_snapshot.c heap_snapshot.h heap_snapshot_probe.c heap_pool.c heap_pool.h test_heap_pool.c test_heap_pool.py root_registry.c root_registry.h root_registry_probe.c prepare_stack_check.py test_stack_check.py prepare_boundary_counts.py test_boundary_counts.py prepare_roots.py test_root_registry.c test_root_registry.py aggregate_fast.c aggregate_fast.h prepare_aggregate_tail.py test_aggregate_tail.py owner_fast.c owner_fast.h prepare_owner_tail.py test_owner_tail.py pointer_builder.c pointer_builder.h pointer_builder_probe.c prepare_pointer_builder.py prepare_pointer_tail.py test_pointer_builder.py test_pointer_tail.py service_counts.h service_counts_probe.c test_service_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py test_jit_counts.py test_direct_capture.py test_mcall_counts.py test_heap_snapshot.py relink_private.py prepare_module_counts.py prepare_opcode_counts.py prepare_heap_counts.py prepare_type_counts.py test_type_counts.py sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h file_gate.c file_gate.h seek_sys.c metadata_wait.c metadata_wait.h open_wait.c open_wait.h close_worker.c close_worker.h test_metadata_wait.c test_metadata_wait.py test_file_gate.c test_file_gate.py test_native_file_wait.c test_native_file_wait.py test_managed_workers.py test_managed_pool.py test_helper_rc.py test_rc_roles.c test_rc_roles.py test_elastic_pool.py test_managed_start.c; do
+            for threading_file in managed_owner.c managed_owner.h managed_owner_probe.c managed_owner_probe.h guard_registry_probe.c test_managed_guards.py runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h gc_fields.c gc_fields.h prepare_gc_fields.py test_gc_fields.c test_gc_fields.py test_gc_exchange.c test_gc_exchange.py test_gc_pending.py retirement_queue.c retirement_queue.h test_retirement_queue.c test_retirement_queue.py test_rc_reservation.py type_counts.c type_counts.h type_counts_probe.c heap_counts.c heap_counts.h heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts.h module_counts_probe.c heap_snapshot.c heap_snapshot.h heap_snapshot_probe.c heap_pool.c heap_pool.h test_heap_pool.c test_heap_pool.py root_registry.c root_registry.h root_registry_probe.c prepare_stack_check.py test_stack_check.py prepare_boundary_counts.py test_boundary_counts.py prepare_roots.py test_root_registry.c test_root_registry.py aggregate_fast.c aggregate_fast.h prepare_aggregate_tail.py test_aggregate_tail.py owner_fast.c owner_fast.h prepare_owner_tail.py test_owner_tail.py pointer_builder.c pointer_builder.h pointer_builder_probe.c prepare_pointer_builder.py prepare_pointer_tail.py test_pointer_builder.py test_pointer_tail.py service_counts.h service_counts_probe.c test_service_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py test_jit_counts.py test_direct_capture.py test_mcall_counts.py test_heap_snapshot.py relink_private.py prepare_module_counts.py prepare_opcode_counts.py prepare_heap_counts.py prepare_type_counts.py test_type_counts.py sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h file_gate.c file_gate.h seek_sys.c metadata_wait.c metadata_wait.h open_wait.c open_wait.h close_worker.c close_worker.h test_metadata_wait.c test_metadata_wait.py test_file_gate.c test_file_gate.py test_native_file_wait.c test_native_file_wait.py test_managed_workers.py test_managed_pool.py test_helper_rc.py test_rc_roles.c test_rc_roles.py test_elastic_pool.py test_managed_start.c; do
                 copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
             done
             copy_tree "$ROOT/ide/dis/examples/workspace" "$destination/examples/workspace"
@@ -892,6 +898,7 @@ EOF
             copy_tree "$ROOT/disVM/examples/gc-native-write" "$destination/examples/gc-native-write"
             copy_tree "$ROOT/disVM/examples/gc-native-format" "$destination/examples/gc-native-format"
             copy_tree "$ROOT/disVM/examples/native-owner" "$destination/examples/native-owner"
+            copy_tree "$ROOT/disVM/examples/native-guard-registry" "$destination/examples/native-guard-registry"
             # Complete public header closure for the native-owner C tutorial.
             for native_owner_header in native_context.h native_world.h native_owner.h native_process.h; do
                 copy_file "$ROOT/disVM/include/disvm/$native_owner_header" "$destination/include/disvm/$native_owner_header"
@@ -900,7 +907,7 @@ EOF
             copy_file "$ROOT/flashVM/ports/channel_sync.h" "$destination/source/ports/channel_sync.h"
             copy_file "$ROOT/flashVM/ports/linux/thread.c" "$destination/source/ports/linux/thread.c"
             copy_file "$ROOT/flashVM/ports/linux/channel_sync.c" "$destination/source/ports/linux/channel_sync.c"
-            for guard_source in object_guard.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
+            for guard_source in object_guard.c guard_registry.c owner_scope.c owner_slot.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
                 copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
             done
             copy_file "$ROOT/disVM/include/disvm/managed_reference.h" "$destination/include/disvm/managed_reference.h"
@@ -919,7 +926,11 @@ EOF
             copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
             copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
             copy_file "$ROOT/disVM/runtime/HEAP-PARALLELISM-STATUS.ru.md" "$destination/HEAP-PARALLELISM-STATUS.ru.md"
+            copy_file "$ROOT/disVM/include/disvm/guard_registry.h" "$destination/include/disvm/guard_registry.h"
             copy_file "$ROOT/disVM/include/disvm/object_guard.h" "$destination/include/disvm/object_guard.h"
+            copy_file "$ROOT/disVM/tests/guard_registry.c" "$destination/source/tests/guard_registry.c"
+            copy_file "$ROOT/disVM/tests/guard_registry_faults.c" "$destination/source/tests/guard_registry_faults.c"
+            copy_file "$ROOT/disVM/tests/guard_registry.py" "$destination/source/tests/guard_registry.py"
             copy_file "$ROOT/disVM/tests/object_guard.c" "$destination/source/tests/object_guard.c"
             copy_file "$ROOT/disVM/tests/object_guard.py" "$destination/source/tests/object_guard.py"
             copy_tree "$ROOT/disVM/examples/native-object-guard" "$destination/examples/native-object-guard"
@@ -947,6 +958,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/RETIREMENT-QUEUE.md" "$destination/RETIREMENT-QUEUE.md"
             copy_file "$ROOT/disVM/runtime/GC-FIELDS.md" "$destination/GC-FIELDS.md"
             copy_file "$ROOT/disVM/runtime/OWNER-TAIL.md" "$destination/OWNER-TAIL.md"
+            copy_file "$ROOT/disVM/runtime/GUARD-REGISTRY.md" "$destination/GUARD-REGISTRY.md"
             copy_file "$ROOT/disVM/runtime/GC-PENDING.md" "$destination/GC-PENDING.md"
             copy_file "$ROOT/disVM/runtime/AGGREGATE-TAIL.md" "$destination/AGGREGATE-TAIL.md"
             copy_file "$ROOT/disVM/host/include/lib9.h" "$destination/source/host/include/lib9.h"
@@ -958,7 +970,7 @@ EOF
             copy_file "$ROOT/disVM/runtime/SHARED-HEAP-CONCURRENCY.ru.md" "$destination/SHARED-HEAP-CONCURRENCY.ru.md"
             copy_file "$ROOT/disVM/runtime/MULTITHREADING-ROADMAP.ru.md" "$destination/MULTITHREADING-ROADMAP.ru.md"
             copy_file "$ROOT/disVM/runtime/RUNQUEUE.md" "$destination/RUNQUEUE.md"
-            for threading_file in runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h gc_fields.c gc_fields.h prepare_gc_fields.py test_gc_fields.c test_gc_fields.py test_gc_exchange.c test_gc_exchange.py test_gc_pending.py retirement_queue.c retirement_queue.h test_retirement_queue.c test_retirement_queue.py test_rc_reservation.py type_counts.c type_counts.h type_counts_probe.c heap_counts.c heap_counts.h heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts.h module_counts_probe.c heap_snapshot.c heap_snapshot.h heap_snapshot_probe.c heap_pool.c heap_pool.h test_heap_pool.c test_heap_pool.py root_registry.c root_registry.h root_registry_probe.c prepare_stack_check.py test_stack_check.py prepare_boundary_counts.py test_boundary_counts.py prepare_roots.py test_root_registry.c test_root_registry.py aggregate_fast.c aggregate_fast.h prepare_aggregate_tail.py test_aggregate_tail.py owner_fast.c owner_fast.h prepare_owner_tail.py test_owner_tail.py pointer_builder.c pointer_builder.h pointer_builder_probe.c prepare_pointer_builder.py prepare_pointer_tail.py test_pointer_builder.py test_pointer_tail.py service_counts.h service_counts_probe.c test_service_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py test_jit_counts.py test_direct_capture.py test_mcall_counts.py test_heap_snapshot.py relink_private.py prepare_module_counts.py prepare_opcode_counts.py prepare_heap_counts.py prepare_type_counts.py test_type_counts.py sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h file_gate.c file_gate.h seek_sys.c metadata_wait.c metadata_wait.h open_wait.c open_wait.h close_worker.c close_worker.h test_metadata_wait.c test_metadata_wait.py test_file_gate.c test_file_gate.py test_native_file_wait.c test_native_file_wait.py test_managed_workers.py test_managed_pool.py test_helper_rc.py test_rc_roles.c test_rc_roles.py test_elastic_pool.py test_managed_start.c; do
+            for threading_file in managed_owner.c managed_owner.h managed_owner_probe.c managed_owner_probe.h guard_registry_probe.c test_managed_guards.py runtime_gc.c runtime_gc.h runtime_rc.c runtime_rc.h gc_fields.c gc_fields.h prepare_gc_fields.py test_gc_fields.c test_gc_fields.py test_gc_exchange.c test_gc_exchange.py test_gc_pending.py retirement_queue.c retirement_queue.h test_retirement_queue.c test_retirement_queue.py test_rc_reservation.py type_counts.c type_counts.h type_counts_probe.c heap_counts.c heap_counts.h heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts.h module_counts_probe.c heap_snapshot.c heap_snapshot.h heap_snapshot_probe.c heap_pool.c heap_pool.h test_heap_pool.c test_heap_pool.py root_registry.c root_registry.h root_registry_probe.c prepare_stack_check.py test_stack_check.py prepare_boundary_counts.py test_boundary_counts.py prepare_roots.py test_root_registry.c test_root_registry.py aggregate_fast.c aggregate_fast.h prepare_aggregate_tail.py test_aggregate_tail.py owner_fast.c owner_fast.h prepare_owner_tail.py test_owner_tail.py pointer_builder.c pointer_builder.h pointer_builder_probe.c prepare_pointer_builder.py prepare_pointer_tail.py test_pointer_builder.py test_pointer_tail.py service_counts.h service_counts_probe.c test_service_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py test_jit_counts.py test_direct_capture.py test_mcall_counts.py test_heap_snapshot.py relink_private.py prepare_module_counts.py prepare_opcode_counts.py prepare_heap_counts.py prepare_type_counts.py test_type_counts.py sleep_sys.c read_sys.c write_sys.c formatted_sys.c formatted_sys.h io_buffer.c io_buffer.h benchmark_gc_poll.py test_native_read.py test_native_write.py test_native_format.py test_native_wait.py test_queue_probe.py runqueue.c runqueue.h queue_probe.c queue_probe.h managed_workers.c managed_workers.h process_environment.c process_environment.h file_gate.c file_gate.h seek_sys.c metadata_wait.c metadata_wait.h open_wait.c open_wait.h close_worker.c close_worker.h test_metadata_wait.c test_metadata_wait.py test_file_gate.c test_file_gate.py test_native_file_wait.c test_native_file_wait.py test_managed_workers.py test_managed_pool.py test_helper_rc.py test_rc_roles.c test_rc_roles.py test_elastic_pool.py test_managed_start.c; do
                 copy_file "$ROOT/disVM/runtime/$threading_file" "$destination/source/threading/$threading_file"
             done
             if [[ -f "$base/disvm-check" && -f "$base/disvm-jit-word32" && -f "$base/disvm-jit-word64" ]] &&

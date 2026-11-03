@@ -1,3 +1,6 @@
+[Runtime0.87: canonical per-object guards tied to real rooted tickets](GUARD-REGISTRY.md).
+This establishes identity/lifecycle, not parallel managed payload permission.
+
 [Runtime0.86: atomic GC work consumption, history and actual collector tests](GC-PENDING.md).
 General managed admission remains serialized; pending exchange alone does not enable parallel epochs.
 

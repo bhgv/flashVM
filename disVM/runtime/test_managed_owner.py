@@ -45,11 +45,11 @@ init() {
                     'PASS Heap-count probe:', 'PASS opcode-count probe:',
                     'PASS Module-count probe:', 'PASS snapshot-count probe:',
                     'PASS service-count probe:', 'PASS pointer-builder probe:', 'PASS root-registry probe:',
-                    'PASS normal Dis after native managed cleanup',
+                    'PASS normal Dis after native managed cleanup', 'PASS managed guard registry:',
                 )
                 if result.returncode or any(marker not in text for marker in required):
                     raise RuntimeError(text[-6000:])
-                if not re.search(r'MANAGEDOWNERS captured=2 released=2 live=0 pending=0 tickets=0 producers=0 failed=0 rooted_until_fast=1', text):
+                if not re.search(r'MANAGEDOWNERS captured=5 released=5 live=0 pending=0 tickets=0 producers=0 failed=0 rooted_until_fast=1', text):
                     raise RuntimeError('ticket/root retirement mismatch: ' + text[-6000:])
                 if not re.search(r'NATIVEGC .*joined=1 failed=0', text):
                     raise RuntimeError('collector lifecycle mismatch: ' + text[-6000:])

@@ -40,4 +40,15 @@ int dvm_managed_owner_close(void);
  * quiescence print optional diagnostics and clear borrowed world/workers.
  * Caller destroys collectors/world afterwards. No managed callbacks occur. */
 int dvm_managed_owner_finish(int diagnostics);
+
+
+/* Snapshot canonical native node count under service/registry locks; zero when
+ * inactive. No lifetime reservation or managed data access; caller must not
+ * hold the port registry mutex. */
+unsigned long dvm_managed_owner_guard_entries(void);
+
+
+/* [GC:] Actual canonical guard diagnostic on ACTIVE controller; workers is
+ * borrowed service. All created managed owners retire before returning. */
+void dvm_runtime_guard_registry_probe(DVM_GCWorkers *workers);
 #endif

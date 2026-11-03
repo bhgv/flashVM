@@ -237,5 +237,6 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     check(dvm_managed_owner_can_close() && !dvm_managed_owner_pending(), "error owner fully retired");
     check(dvm_owner_slot_destroy(&probe.slot), "joined empty managed slot");
     fvm_port_sync_destroy(probe.sync);
+    dvm_runtime_guard_registry_probe(workers);
     puts("PASS managed owner probe: 8 native receivers, 32 real cycle passes, rooted until Fast, shared-slot snapshots, native error cleanup, complete joins");
 }

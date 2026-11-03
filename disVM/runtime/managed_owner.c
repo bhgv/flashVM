@@ -7,6 +7,7 @@
 #include "managed_owner.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include "disvm/guard_registry.h"
 #include "channel_sync.h"
 #include <limits.h>
 #include <stdio.h>
@@ -19,6 +20,7 @@ typedef struct ManagedTicket
 {
     unsigned long references; /* Atomic native owners; no payload access after successful drop. */
     void *value;              /* Immutable managed referent, rooted until Fast retirement. */
+    DVM_GuardLease *access; /* Canonical per-referent sidecar, held until before managed drop. */
     DVM_NativeWorld *world;    /* Immutable identity, borrowed through ticket retirement. */
     struct ManagedTicket *next; /* Native queue link, written only after last native drop. */
 } ManagedTicket;
@@ -37,6 +39,7 @@ typedef struct ManagedOwners
     unsigned long producers; /* Drop callbacks pin worker lifetime until wake completes. */
     unsigned long captured; /* Completed capture count for joined diagnostics. */
     unsigned long released; /* Completed managed drops for joined diagnostics. */
+    DVM_GuardRegistry *guards; /* Owned canonical sidecars; every ticket retains one lease. */
     int accepting;         /* Capture admission, independent of native alias retention. */
     int failed;            /* Wake failure, never permission to remove roots early. */
 } ManagedOwners;
@@ -175,6 +178,7 @@ int dvm_managed_owner_start(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     DVM_WorldAdmission admission;
     FVM_PortSync *candidate;
     FVM_PortSync *mutex;
+    DVM_GuardRegistry *registry;
     if (!world || !workers || !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
         state.phase != DVM_HEAP_ACTIVE || state.pending_progress ||
         dvm_native_owner_world(dvm_native_owner_current()) != world ||
@@ -198,15 +202,22 @@ int dvm_managed_owner_start(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     {
         fvm_port_sync_destroy(candidate);
     }
+    registry = dvm_guard_registry_create();
+    if (!registry)
+    {
+        return 0;
+    }
     mutex = lock_service();
     if (owners.world)
     {
         fvm_port_sync_unlock(mutex);
+        dvm_guard_registry_destroy(&registry);
         return 0;
     }
     memset(&owners, 0, sizeof(owners));
     owners.world = world;
     owners.workers = workers;
+    owners.guards = registry;
     owners.accepting = 1;
     fvm_port_sync_unlock(mutex);
     return 1;
@@ -241,10 +252,20 @@ int dvm_managed_owner_capture(void *value, DVM_OwnerTransfer *transfer)
     {
         return 0;
     }
+    ticket->access = dvm_guard_registry_acquire(owners.guards, value);
+    if (!ticket->access)
+    {
+        free(ticket);
+        return 0;
+    }
     mutex = lock_service();
     if (!owners.accepting || owners.tickets == ULONG_MAX || owners.live == ULONG_MAX)
     {
         fvm_port_sync_unlock(mutex);
+        if (!dvm_guard_registry_release(&ticket->access))
+        {
+            failure("capture sidecar rollback");
+        }
         free(ticket);
         return 0;
     }
@@ -264,6 +285,10 @@ int dvm_managed_owner_capture(void *value, DVM_OwnerTransfer *transfer)
         owners.tickets--;
         owners.live--;
         fvm_port_sync_unlock(mutex);
+        if (!dvm_guard_registry_release(&ticket->access))
+        {
+            failure("capture sidecar rollback");
+        }
         free(ticket);
         return 0;
     }
@@ -374,6 +399,10 @@ int dvm_managed_owner_drain(unsigned int budget)
         owners.pending--;
         fvm_port_sync_unlock(mutex);
         value = ticket->value;
+        if (!dvm_guard_registry_release(&ticket->access))
+        {
+            failure("retiring ticket has a live sidecar borrower");
+        }
         ptrdel(D2H(value));
         destroy(value);
         free(ticket);
@@ -442,9 +471,52 @@ int dvm_managed_owner_finish(int diagnostics)
         printf("MANAGEDOWNERS captured=%lu released=%lu live=%lu pending=%lu tickets=%lu producers=%lu failed=%d rooted_until_fast=1\n",
             owners.captured, owners.released, owners.live, owners.pending, owners.tickets, owners.producers, owners.failed);
     }
+    if (owners.guards && !dvm_guard_registry_destroy(&owners.guards))
+    {
+        fvm_port_sync_unlock(mutex);
+        return 0;
+    }
     result = !owners.failed;
     owners.world = NULL;
     owners.workers = NULL;
     fvm_port_sync_unlock(mutex);
+    return result;
+}
+
+
+/* [GC:] Borrow one canonical sidecar from an already rooted ticket. entry is
+ * current-owner-local and linked; exact ACTIVE world is checked before access.
+ * Keep entry/key alive and obtain all guards BEFORE locking any of them. This
+ * adds no payload access permission; legacy world exclusion still applies. */
+DVM_ObjectGuard *dvm_managed_owner_guard(const DVM_OwnerEntry *entry)
+{
+    ManagedTicket *ticket;
+    if (!admitted() || !entry || !entry->scope ||
+        entry->scope->context != dvm_native_context_current() ||
+        entry->ops != &ticket_ops || !entry->object)
+    {
+        return NULL;
+    }
+    ticket = entry->object;
+    if (ticket->world != dvm_native_owner_world(dvm_native_owner_current()))
+    {
+        return NULL;
+    }
+    return dvm_guard_registry_guard(ticket->access);
+}
+
+
+/* Native metadata only. Holding service sync prevents finish from destroying
+ * the registry while its own mutex supplies the count snapshot. No VM callback,
+ * root/payload access or persistent node lifetime permission is acquired. */
+unsigned long dvm_managed_owner_guard_entries(void)
+{
+    FVM_PortSync *mutex = lock_service();
+    unsigned long result = 0;
+    if (mutex)
+    {
+        result = dvm_guard_registry_entries(owners.guards);
+        fvm_port_sync_unlock(mutex);
+    }
     return result;
 }

@@ -2,6 +2,7 @@
 #ifndef DVM_MANAGED_REFERENCE_H
 #define DVM_MANAGED_REFERENCE_H
 #include "disvm/owner_scope.h"
+#include "disvm/object_guard.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -44,6 +45,16 @@ int dvm_managed_owner_capture_into(void *value, DVM_OwnerScope *scope,
  * independent root/pin or permission for future parallel mutable access is
  * granted. Native code must never cache the raw pointer across those boundaries. */
 void *dvm_managed_owner_value(const DVM_OwnerEntry *entry);
+
+
+/* [GC:] Borrow canonical native guard from current linked rooted ticket only
+ * under the same ACTIVE serialized world/role restrictions as value(). Separate
+ * captures of the same live referent return the same guard. Return NULL before
+ * managed access for refused roles/entries. Keep entry alive through all guard
+ * operations and obtain pointers before acquiring any guards. Does not extend
+ * lifetime, authorize parallel payload access or permit holding across VM calls,
+ * scope drop, world leave, parking or a collector transition. No Heap ABI change. */
+DVM_ObjectGuard *dvm_managed_owner_guard(const DVM_OwnerEntry *entry);
 #ifdef __cplusplus
 }
 #endif
