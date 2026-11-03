@@ -1,5 +1,6 @@
 /* Synchronized opaque root multiset, independent of managed Heap/GC headers. */
 #include "root_registry.h"
+#include "root_registry_private.h"
 #include "channel_sync.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -10,13 +11,6 @@
 #define ROOT_ATOMIC 1 /* Acquire/release publication; otherwise use port registry mutex. */
 #endif
 
-
-/* One native metadata node per registered occurrence. */
-typedef struct RootEntry
-{
-    void *key; /* Borrowed identity, never dereferenced by this module. */
-    struct RootEntry *next; /* Active bucket or native reusable-node chain. */
-} RootEntry;
 
 static RootEntry *buckets[ROOT_BUCKETS]; /* Protected by root mutex. */
 static RootEntry *unused; /* Reusable metadata; no live referent pointer retained. */
@@ -115,6 +109,7 @@ int dvm_runtime_root_add(void *key)
         }
         fvm_port_sync_lock(mutex);
     }
+    entry->batch = NULL;
     entry->key = key;
     entry->next = buckets[index];
     buckets[index] = entry;
@@ -137,7 +132,7 @@ int dvm_runtime_root_remove(const void *key)
     fvm_port_sync_lock(mutex);
     for (link = &buckets[bucket(key)]; (entry = *link) != NULL; link = &entry->next)
     {
-        if (entry->key == key)
+        if (entry->key == key && !entry->batch)
         {
             *link = entry->next;
             entry->key = NULL;
@@ -195,4 +190,20 @@ void dvm_runtime_roots_visit(DVM_RootVisitor visitor, void *argument)
         }
     }
     fvm_port_sync_unlock(mutex);
+}
+
+
+/* Private batch bridge: storage/mutex are process-lifetime metadata. No referent
+ * access. create permits outside-guard initialization and can allocate/fail. */
+FVM_PortSync *dvm_root_registry_sync(int create)
+{
+    return create ? create_sync() : published();
+}
+
+
+/* Private list head, usable only while holding the published registry mutex.
+ * key is opaque borrowed identity, never a provenance or managed-owner proof. */
+RootEntry **dvm_root_registry_bucket(const void *key)
+{
+    return &buckets[bucket(key)];
 }

@@ -637,3 +637,5 @@ fallback. Выбранные host retain/release переведены; оста�
 [Состояние параллельного managed-хипа, runtime0.65](HEAP-PARALLELISM-STATUS.ru.md)
 отделяет реализованные OS-потоки/примитивы владения от ещё последовательного
 допуска к Heap и перечисляет оставшиеся owning C/JIT/GC границы.
+
+Runtime0.90: [preallocated root groups](ROOT-BATCH.md), a prerequisite for mapped-copy retirement; general managed execution remains serialized.

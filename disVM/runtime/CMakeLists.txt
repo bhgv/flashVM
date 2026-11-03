@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.89.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.90.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -143,6 +143,7 @@ add_executable(disvm
     heap_snapshot.c
     heap_pool.c
     root_registry.c
+    root_batch.c
     root_registry_probe.c
     pointer_builder.c
     owner_fast.c
@@ -2502,4 +2503,19 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
    "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
   set_tests_properties(disvm_shared_byte_copies disvm_guarded_byte_tails PROPERTIES TIMEOUT 180)
  endif()
+endif()
+
+
+# Actual native preallocated root publication and occurrence isolation.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_root_batches COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_root_batch.py")
+ set_tests_properties(disvm_native_root_batches PROPERTIES TIMEOUT 180)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_managed_root_batches COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_managed_root_batch.py" "$<TARGET_FILE:disvm>"
+  "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+ set_tests_properties(disvm_managed_root_batches PROPERTIES TIMEOUT 180)
 endif()

@@ -36,10 +36,10 @@ def main():
                 elif mutation == 'allocate':
                     before = '        fvm_port_sync_unlock(mutex);\n        entry = malloc'
                     after = '        entry = malloc'
-                    second = '        fvm_port_sync_lock(mutex);\n    }\n    entry->key = key;'
+                    second = '        fvm_port_sync_lock(mutex);\n    }\n    entry->batch = NULL;\n    entry->key = key;'
                     if code.count(before) != 1 or code.count(second) != 1:
                         raise RuntimeError('root allocation control drift')
-                    code = code.replace(before, after).replace(second, '    }\n    entry->key = key;')
+                    code = code.replace(before, after).replace(second, '    }\n    entry->batch = NULL;\n    entry->key = key;')
                 private = work / 'root_registry.c'
                 private.write_text(code)
                 command = shlex.split(os.environ.get('CC', 'cc'))

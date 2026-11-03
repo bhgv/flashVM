@@ -19,7 +19,8 @@ typedef void (*DVM_RootVisitor)(void *key, void *argument);
 int dvm_runtime_root_add(void *key);
 
 
-/* Remove one occurrence. Return1 removed,0 absent/null; no source dereference,
+/* Remove one ordinary add occurrence; batch occurrences are excluded.
+ * Return 1 removed, 0 absent/null; no source dereference,
  * allocation or destructor. Caller must coordinate referent lifetime/collector. */
 int dvm_runtime_root_remove(const void *key);
 

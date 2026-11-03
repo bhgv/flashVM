@@ -769,3 +769,5 @@ Unconverted retained C/JIT/Type/marking paths still require exclusive world
 admission. Counter operations are not object lifetime acquisition from a raw
 pointer, GC roots, marking, or a parallel queue. Heap layout is unchanged.
 [Exact conversion boundary](REFCOUNT-CONVERSION.md).
+
+Runtime0.90: [preallocated root groups](ROOT-BATCH.md), a prerequisite for mapped-copy retirement; general managed execution remains serialized.
