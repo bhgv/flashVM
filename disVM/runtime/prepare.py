@@ -9,6 +9,7 @@ from prepare_type_counts import adapt as adapt_type_counts
 from prepare_heap_counts import adapt as adapt_heap_counts
 from prepare_opcode_counts import adapt as adapt_opcode_counts
 from prepare_module_counts import adapt_link, adapt_load, adapt_xec
+from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -227,7 +228,7 @@ def main():
             part = relative_replace(part, 'result = slicer((ulong)start, (ulong)end, old);',
                 'if(old == H) dvm_relative_bounds(0, &start, &end);\n\tresult = slicer((ulong)start, (ulong)end, old);', 1)
             code = code[:start] + part + code[finish:]
-        path.write_text(code)
+        path.write_text(adapt_string(code) if filename == "string.c" else code)
     path = args.output / "load.c"
     code = path.read_text().replace("*(WORD*)si = disw(isp);", "*(WORD*)si = (int)disw(isp);")
     path.write_text(adapt_load(code))
@@ -281,7 +282,7 @@ def main():
             count=1,
         )
     code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
-    path.write_text(adapt_xec(adapt_opcode_counts(code)))
+    path.write_text(adapt_xec_snapshots(adapt_xec(adapt_opcode_counts(code))))
     path = args.output / "alt.c"
     code = path.read_text()
     code = code.replace(

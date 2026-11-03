@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1767**. [English](README.md).
+Версия разработки: **0.1768**. [English](README.md).
 
-Текущая серия: [v0.1767](docs/releases/v0.1767.md): владение Module/link и проверка независимых MP-клонов.
+Текущая серия: [v0.1768](docs/releases/v0.1768.md): снимки Heap без неатомарного чтения ref и строковое владение.
 
 ## Просмотр документации
 

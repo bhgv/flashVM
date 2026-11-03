@@ -108,3 +108,11 @@ accesses under serialized admission; JIT emitted retains are not changed.
 unload release without a post-nonfinal count read. link.c/load.c add3 Type
 retains and8 preflight loads; $self adds2 Module observations. Registry/code/MP
 retirement stay excluded. The actual probe verifies separate MP data values.
+
+
+## Runtime0.70: avoid nonatomic count bytes in header snapshots
+
+[Header observations](HEAP-SNAPSHOTS.md) replace13 whole-header copies with
+count-excluding byte copies plus atomic ref observation. String direct count
+sites also convert. Other header bytes still require exclusion; observations
+are not roots, retains, COW locks or globally consistent graph snapshots.

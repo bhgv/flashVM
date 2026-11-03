@@ -1,10 +1,10 @@
 """Relink actual hosted runtime; remove only selected probe retain/drop."""
 from pathlib import Path
 import os
-import shlex
 import subprocess
 import sys
 import tempfile
+from relink_private import relink
 
 WRAPPER = r'''/* Test-only linker interception is enabled only inside the real Type probe. */
 #include "type_counts.h"
@@ -61,14 +61,6 @@ def main():
         configuration = modes[arguments.pop(0)]
     kind, probe, label, retain_marker, release_marker = configuration
     runtime, compiler, include = (Path(value).resolve() for value in arguments)
-    root = Path(__file__).resolve().parents[2]
-    metadata = runtime.parent / 'CMakeFiles/disvm.dir'
-    flags = {}
-    for line in (metadata / 'flags.make').read_text().splitlines():
-        if ' = ' in line:
-            key, value = line.split(' = ', 1)
-            flags[key] = shlex.split(value)
-    link = [value for value in shlex.split((metadata / 'link.txt').read_text()) if not value.startswith('-Wl,--dependency-file=')]
     with tempfile.TemporaryDirectory(prefix='actual Type counts ') as directory:
         work = Path(directory)
         source = work / 'wrapper.c'
@@ -82,16 +74,8 @@ def main():
         guest.write_text('implement T; T: module {init: fn();}; init() {}\n')
         subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)], check=True, capture_output=True)
         for variant, marker in ((0, None), (1, retain_marker), (2, release_marker)):
-            obj = work / 'wrapper.o'
-            command = [link[0], *flags['C_DEFINES'], *flags['C_INCLUDES'], *flags['C_FLAGS'], '-I'+str(root/'disVM/runtime'), '-DCONTROL='+str(variant), '-c', str(source), '-o', str(obj)]
-            subprocess.run(command, check=True, capture_output=True, text=True)
-            binary = work / 'runtime'
-            selected = list(link)
-            at = selected.index('-o')
-            selected[at+1] = str(binary)
             symbols = ['dvm_runtime_'+probe+'_probe', 'dvm_runtime_'+kind+'_retain', 'dvm_runtime_'+kind+'_release']
-            selected += [str(obj), *['-Wl,--wrap='+symbol for symbol in symbols]]
-            subprocess.run(selected, cwd=runtime.parent, check=True, capture_output=True, text=True)
+            binary = relink(runtime, work, source, variant, symbols)
             env = dict(os.environ, TMPDIR=str(work))
             run = subprocess.run([str(binary), '--gc-worker', '--no-jit', '--managed-owner-probe', '--stats', str(image)], capture_output=True, text=True, timeout=45, env=env)
             text = run.stdout+run.stderr
