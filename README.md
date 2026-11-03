@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1774**. [Русская версия](README.ru.md).
+Development version: **0.1775**. [Русская версия](README.ru.md).
 
-Current series: [v0.1774](docs/releases/v0.1774.md): transactional C pointer-list construction before publication.
+Current series: [v0.1775](docs/releases/v0.1775.md): audited x64 JIT tail entry into the checked pointer constructor.
 
 ## Browse documentation
 

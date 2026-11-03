@@ -215,3 +215,17 @@ void dvm_runtime_pointer_cons(void *source, void *destination)
         release_heap(&D2H(build.tail)->ref);
     }
 }
+
+
+/* [GC:] REG identity is checked before operands. Native trampoline retains
+ * original C stack/return address; normal VM errors never cross a JIT frame.
+ * No code-cache or module storage is read after a callback may release it. */
+int dvm_runtime_pointer_fast(REG *registers)
+{
+    if (registers != &DVM_R)
+    {
+        return 0;
+    }
+    dvm_runtime_pointer_cons(registers->s, registers->d);
+    return 1;
+}

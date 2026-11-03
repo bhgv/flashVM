@@ -1,4 +1,4 @@
-/* Private checked C construction boundary; include interp.h before this header. */
+/* Private checked C construction boundary; no serialized or guest API. */
 #ifndef DVM_POINTER_BUILDER_H
 #define DVM_POINTER_BUILDER_H
 
@@ -12,6 +12,17 @@
  * Monitor may inspect/raise but must not mutate slots or leave admission.
  * Not a leaf-JIT ABI, native async call, graph transfer or payload permission. */
 void dvm_runtime_pointer_cons(void *source, void *destination);
+
+struct REG;
+
+
+/* [GC:] Shared C tail target for hosted SysV x64 pointer-cons entry. registers
+ * must be this bound runtime's live REG; foreign REG declines0 before reads.
+ * Decoded PC/operands and complete roots are already published by C dispatch.
+ * Return1 only after commit. VM errors propagate normally, never decline/retry
+ * after partial work. Generated entry must tail-enter, leaving no JIT return PC.
+ * Same source/admission/monitor restrictions as pointer_cons apply. */
+int dvm_runtime_pointer_fast(struct REG *registers);
 
 struct DVM_GCWorkers;
 

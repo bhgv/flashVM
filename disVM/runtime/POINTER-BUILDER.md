@@ -47,3 +47,12 @@ ABI, wire/opcode ID or shared Dis64 representation changes are introduced.
 Pinned upstream stays untouched; source adaptation refuses a changed opcode hash.
 This C boundary is a prerequisite for a future audited native-call lowering,
 not that lowering or a completed parallel allocator/GC protocol.
+
+
+## Runtime0.77: audited SysV x64 tail entry
+
+The checked constructor now has a generated x64 tail entry; it no longer needs
+the generic pointer-op fallback on that target. ARM64/RV64 keep their C paths.
+The direct unchecked machine-count implementation remains disabled. See
+[tail ABI, code lifetime and error proofs](POINTER-TAIL.md). Constructor roots,
+slot ownership and serialized admission requirements remain unchanged.

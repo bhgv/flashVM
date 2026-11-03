@@ -1,4 +1,4 @@
-"""Decline pointer-list machine lowering until native count RMWs are checked."""
+"""Decline unchecked pointer-list lowering; audited hosted adapters may replace it."""
 import hashlib
 import re
 
