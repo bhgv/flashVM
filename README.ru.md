@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1796**. [English](README.md).
+Версия разработки: **0.1797**. [English](README.md).
 
-Текущая серия: [v0.1796](docs/releases/v0.1796.md): защищённые MUL/DIV/MOD, приоритет ошибки нулевого делителя и проверки JIT.
+Текущая серия: [v0.1797](docs/releases/v0.1797.md): защищённые сдвиги и независимая проверка связей секций Dis64.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

@@ -77,3 +77,8 @@ if(NOT CMAKE_CROSSCOMPILING AND envelope_python)
   add_test(NAME dis64_peer_partial_schema COMMAND "${envelope_python}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/peer_call_schema.py" --self-test)
 endif()
+
+if(NOT CMAKE_CROSSCOMPILING AND envelope_python)
+  add_test(NAME dis64_peer_code_bindings COMMAND "${envelope_python}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/peer_call_binding.py" --self-test)
+endif()

@@ -138,3 +138,35 @@ python3 disVM/envelope/tests/peer_call_schema.py PATH_TO_PINNED_DIS64_CALLS
 ```
 
 The old outer/closed-gate command above remains a separate actual inspector check.
+
+## INFERNO-0112/0113 independent code and binding checkpoint
+
+The new `peer_call_binding.py` layers independent CODE/EXPORTS/IMPORTS parsing
+over the pinned partial readers, leaving those existing files byte-identical.
+On the same immutable 559b08ca corpus:25 identities,23 bounded structural ID/range
+passes, two malformed outer containers. No private semantic labels become policy.
+
+Checks cover exact instruction framing/counts, signed7/14/30 operands including
+legal nonminimal forms, export/import records and scalar-signature-v1 shapes,
+Rune32 name IDs/content duplicates, entry/frame IDs/ranges and frame size/alignment.
+Only known immediate CALL/JMP PC and FRAME type references receive static ID/range
+checks. Supported addressing is direct forms plus the existing bounded indirect-FP
+destination; other forms stop as unsupported schema, never as legacy fallback.
+Module data is bounded by its type size; exact allocation layout is unvalidated.
+Metadata-entry/export-frame agreement, opcode/local-slot semantics, function
+ownership, typed calls/results/LEA and actual owning execution remain unvalidated.
+Thus structural success does not confirm the peer's private21 semantic outcomes.
+
+Self-tests cover seven compact boundary/nonminimal vectors,16 malformed binding
+mutations, unsupported modes, wrong corpus identity and inert manifest policy/locals
+labels. The actual C inspector's closed gate remains a separate check; no wire,
+IDs, default admission or immutable named-launch/cache agreement changes.
+
+```sh
+python3 disVM/envelope/tests/peer_call_binding.py --self-test
+python3 disVM/envelope/tests/peer_call_binding.py PATH_TO_PINNED_DIS64_CALLS
+```
+
+[Per-image report, exact peer/manifest/checker identities](reports/inferno0112-binding.json).
+INFERNO-0113 native Draw attach ownership fixes are acknowledged as owning-source
+work; no Draw/Tk/Prefab implementation or concurrency change is imported here.

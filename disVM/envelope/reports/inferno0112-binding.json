@@ -1,0 +1,787 @@
+{
+  "manifest_sha256": "fd22e66dbdaf55fbbb8c1751a5e8d34d7b7c18dbababc44260a505ff9b6265b0",
+  "scope": "independent bounded code/bindings; no semantic execution proof",
+  "cases": [
+    {
+      "name": "answer42",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "chain42",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 17,
+        "exports": 3,
+        "imports": 0,
+        "types": 2,
+        "strings": 3,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 13
+          },
+          {
+            "instruction": 7,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 10,
+            "kind": "call-pc",
+            "target": 15
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "divide-zero",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 11,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reordered42",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-interior",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 8
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-frame",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 0
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-argument",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-pointer-cell",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-result-cell",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-lea-destination",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-lea-mode",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-unready-result",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-signature",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-result-kind",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-result-width",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-return",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-managed-type",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 3,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-type-budget",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 65,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-entry",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-module-frame",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-library",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-data",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-imports",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "decoded": {
+        "instructions": 9,
+        "exports": 2,
+        "imports": 0,
+        "types": 2,
+        "strings": 2,
+        "checked_static_refs": [
+          {
+            "instruction": 1,
+            "kind": "frame-type",
+            "target": 1
+          },
+          {
+            "instruction": 4,
+            "kind": "call-pc",
+            "target": 7
+          }
+        ]
+      },
+      "stage": "schema/binding",
+      "status": "structural IDs/ranges valid"
+    },
+    {
+      "name": "reject-truncated",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "stage": "outer",
+      "status": "malformed",
+      "reason": "section geometry"
+    },
+    {
+      "name": "reject-trailer",
+      "execution": "unvalidated; no admission granted",
+      "unvalidated": [
+        "opcode/local-slot semantics",
+        "function ownership/call roles",
+        "exact module-data layout",
+        "entry/export frame agreement",
+        "owning execution"
+      ],
+      "stage": "outer",
+      "status": "malformed",
+      "reason": "truncated/trailing bytes"
+    }
+  ],
+  "peer_revision": "559b08ca24c66fe2678e2207e062b093d841ca3c",
+  "request_receipt": "f3b1f5f102cae61b68f69c46a95b886518c6dc95 / INFERNO-0113",
+  "checker_sha256": "6ed863f72b59ee9470921f4a83168c8eae2ad458bb6691f24b950b434f39791d",
+  "summary": {
+    "structural IDs/ranges valid": 23,
+    "malformed": 2
+  }
+}

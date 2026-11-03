@@ -14,6 +14,14 @@ extern void movw(void); /* Actual hosted native WORD copy opcode. */
 extern void movl(void); /* Actual hosted LONG copy opcode. */
 extern void movf(void); /* Actual hosted bit-preserving REAL copy opcode. */
 extern void movm(void); /* Actual hosted variable-size raw copy opcode. */
+extern void shlb(void); /* Actual guarded mixed-width shift. */
+extern void shlw(void); /* Actual guarded mixed-width shift. */
+extern void shll(void); /* Actual guarded mixed-width shift. */
+extern void shrb(void); /* Actual guarded mixed-width shift. */
+extern void shrw(void); /* Actual guarded mixed-width shift. */
+extern void shrl(void); /* Actual guarded mixed-width shift. */
+extern void lsrw(void); /* Actual guarded mixed-width shift. */
+extern void lsrl(void); /* Actual guarded mixed-width shift. */
 extern void mulb(void); /* Actual guarded product/quotient/remainder. */
 extern void mulw(void); /* Actual guarded product/quotient/remainder. */
 extern void mull(void); /* Actual guarded product/quotient/remainder. */
@@ -76,6 +84,30 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVM:
         movm();
+        break;
+    case ISHLB:
+        shlb();
+        break;
+    case ISHLW:
+        shlw();
+        break;
+    case ISHLL:
+        shll();
+        break;
+    case ISHRB:
+        shrb();
+        break;
+    case ISHRW:
+        shrw();
+        break;
+    case ISHRL:
+        shrl();
+        break;
+    case ILSRW:
+        lsrw();
+        break;
+    case ILSRL:
+        lsrl();
         break;
     case IMULB:
         mulb();
