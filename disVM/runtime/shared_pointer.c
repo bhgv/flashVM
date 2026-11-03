@@ -33,6 +33,10 @@ static int overlaps(const void *one, const void *two)
 
 
 
+/* [PERF MOVP-088] Measured guarded-copy cost: PERFORMANCE-COSTS.md. No allocation
+ * in initialized cell begin/end; separate barrier/guard/tail costs are unmeasured. */
+
+
 /* [GC:] Caller protects cell lifetime. Capture unaligned values only after all
  * required guards are held. No VM callback, throwing allocation or destruction.
  * Refusal leaves destination/output unchanged and undoes a failed mark retain. */

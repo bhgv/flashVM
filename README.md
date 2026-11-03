@@ -10,6 +10,8 @@ Development version: **0.1790**. [Русская версия](README.ru.md).
 
 Current series: [v0.1790](docs/releases/v0.1790.md): rooted guarded HEADMP with source-list and payload lifetime checks.
 
+[Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
+
 ## Browse documentation
 
 From this repository's root:

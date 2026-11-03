@@ -102,6 +102,10 @@ static int project(void *argument)
 }
 
 
+/* [PERF HEAD-092] Up to seven preparation blocks with the mapped transaction.
+ * Whole-profile timing and pending breakdown: PERFORMANCE-COSTS.md. */
+
+
 /* [GC:] Preflight before REG reads. Capture one coherent source owner under its
  * slot guard; root it through descriptor errors and mapped retirement callbacks. */
 void dvm_runtime_guarded_headmp(DVM_HeadTypeResolver resolver)

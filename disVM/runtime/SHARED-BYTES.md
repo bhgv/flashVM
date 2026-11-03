@@ -131,3 +131,5 @@ source; no production object is replaced. Instrumented positives accept
 and source closure is installed. The [commented native example](../examples/native-range-access/README.md)
 includes exact checkout/SDK commands. See [MOVP](SHARED-POINTER.md),
 [canonical object guards](GUARD-REGISTRY.md) and [threading](THREADING.md).
+
+Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).

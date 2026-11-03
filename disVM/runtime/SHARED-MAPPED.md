@@ -125,3 +125,5 @@ Positive instrumented runs accept `--positive-only`. Native SDK tests are under
 `source/threading/`, with their complete private header/port closure installed.
 See [root groups](ROOT-BATCH.md), [byte copies](SHARED-BYTES.md),
 [aggregate tails](AGGREGATE-TAIL.md) and [threading](THREADING.md).
+
+Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).

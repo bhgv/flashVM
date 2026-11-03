@@ -123,3 +123,5 @@ include paths. Set TMPDIR if /tmp is unavailable. Instrumented positives accept
 The [native example](../examples/native-cell-access/README.md) explains independent
 storage lifetime and exact checkout/SDK builds. See [object guards](GUARD-REGISTRY.md),
 [GC work](GC-PENDING.md) and [threading](THREADING.md).
+
+Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).

@@ -125,3 +125,5 @@ channel/scheduler operations, shared graph/root/GC epochs and frame/module/code
 lifetimes still prevent removing NativeWorld. No Dis64 wire/encoding/feature/ABI
 ID, ordinary WORD32 LEA, default file-call admission or Inferno named launch/cache
 agreement is changed by these native helpers. Retained upstream stays pinned.
+
+Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).

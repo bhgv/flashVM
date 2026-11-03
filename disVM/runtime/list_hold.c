@@ -14,6 +14,10 @@
 #include <stdlib.h>
 
 
+/* [PERF HEAD-092] Two root-reservation blocks before source capture. This is
+ * a known operation count, not isolated timing; see PERFORMANCE-COSTS.md. */
+
+
 /* [GC:] cell has independent source ownership; hold is zero owner-local output.
  * Metadata is prepared first. Source count is acquired only while its slot is
  * excluded; failure never throws under guards or consumes the original owner. */

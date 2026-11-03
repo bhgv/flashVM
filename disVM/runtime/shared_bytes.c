@@ -32,6 +32,10 @@ static const char *copy_wide(const void *source, void *destination, size_t size)
 }
 
 
+/* [PERF COPIES-089] Whole-profile cost is tracked in PERFORMANCE-COSTS.md;
+ * stripe selection, guards and C-tail overhead are candidates, not attribution. */
+
+
 /* Small copies select only their actual bytes, not a whole pointer-width span.
  * Geometry checks do not validate mapping or independently retain referents. */
 const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t size)

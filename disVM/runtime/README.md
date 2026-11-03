@@ -422,3 +422,5 @@ Preallocated root groups: [ROOT-BATCH.md](ROOT-BATCH.md), reservation/publicatio
 Guarded mapped replacement: [SHARED-MAPPED.md](SHARED-MAPPED.md), opt-in MOVMP with rooted retirement outside access locks.
 
 Rooted list-head projection: [SHARED-HEAD.md](SHARED-HEAD.md), opt-in HEADMP with actual allocation bounds and source-container lifetime.
+
+Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).

@@ -158,6 +158,10 @@ static int retire(void *value)
 }
 
 
+/* [PERF MAPPED-091] Five native preparation blocks for mapped references.
+ * Whole-profile timing and reuse/locality investigation: PERFORMANCE-COSTS.md. */
+
+
 /* [GC:] Descriptor/lifetime checks are independently provided by the opcode.
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
