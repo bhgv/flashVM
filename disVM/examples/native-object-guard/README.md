@@ -106,3 +106,8 @@ payload locality or automatically unwind a Dis stack. The example's callbacks
 are synchronous, native-only and nonthrowing. Ownership mutation/cleanup refuses
 while an object guard is held. Close is explicit in each native thread epilogue.
 See [the ownership/locality plan](https://github.com/bhgv/flashVM/blob/master/disVM/runtime/LOCAL-OWNERSHIP.ru.md).
+
+Since runtime 0.62.0, hosted native error checkpoints can close newer registered
+scopes before longjmp. Normal native callbacks still explicitly close before
+return; arbitrary OS cancellation and managed Dis-root cleanup remain unsupported.
+Rebuild native clients: scope metadata now includes its cleanup registration.

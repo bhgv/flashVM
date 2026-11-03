@@ -33,7 +33,7 @@ def main():
         'cleanup': ('owner_scope.c', 'int dvm_owner_scope_close(', 'ops->drop(object);', '(void)ops;\n        (void)object;'),
         'export': ('owner_scope.c', 'int dvm_owner_scope_export(', 'detach(entry);', '(void)entry;'),
         'accept': ('owner_scope.c', 'int dvm_owner_scope_accept(', 'transfer->object = 0;', '(void)transfer;'),
-        'unbind': ('native_context.c', 'int dvm_native_context_unbind(', '&& context->owner_scopes', '&& 0'),
+        'unbind': ('native_context.c', 'int dvm_native_context_unbind(', 'context->owner_scopes || context->cleanup_running', 'context->cleanup_running'),
         'affinity': ('owner_scope.c', 'static int available(', 'scope->context == context', 'scope->context != 0'),
         'guard': ('owner_scope.c', 'static int available(', '!dvm_native_context_object_count(context)', '1'),
     }

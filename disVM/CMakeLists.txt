@@ -828,3 +828,11 @@ if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPI
   "${CMAKE_CURRENT_SOURCE_DIR}/tests/owner_scope.py")
  set_tests_properties(disvm_native_owner_scopes PROPERTIES TIMEOUT 240)
 endif()
+
+
+# Actual native Proc error labels and before-longjmp cleanup, not managed GC.
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_error_cleanup COMMAND "${Python3_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/native_cleanup.py")
+ set_tests_properties(disvm_native_error_cleanup PROPERTIES TIMEOUT 240)
+endif()

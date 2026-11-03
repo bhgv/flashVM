@@ -31,6 +31,25 @@ typedef struct DVM_NativeExecution
  * or register-only contexts are fatal programming errors, just like DVM_R.
  * No allocation, blocking, foreign-context access or managed heap access. */
 DVM_NativeExecution *dvm_native_execution(void);
+
+
+/* Capture owner-local native cleanup checkpoint before caller's setjmp. Return
+ * 0 unchanged for invalid/overflow/guarded state, 1 after pushing Proc.nerr.
+ * Host macros only: no jump is performed inside this function. */
+int dvm_native_error_push(void);
+
+
+/* Pop normal error label only with no newer registered scopes. Return 0 without
+ * mutation on pending cleanup/invalid owner stack; caller must not ignore it. */
+int dvm_native_error_pop(void);
+
+
+/* Unwind newer native scopes before caller longjmps. Return 1 after consuming
+ * label, 0 on invalid role/protocol. Failure is fatal, possibly after partial
+ * callback cleanup; never treat it as permission to resume managed execution. */
+int dvm_native_error_unwind(void);
+
+
 #ifdef __cplusplus
 }
 #endif

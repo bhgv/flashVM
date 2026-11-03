@@ -780,9 +780,11 @@ EOF
             for guard_source in object_guard.c owner_scope.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
                 copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
             done
+            copy_file "$ROOT/disVM/include/disvm/native_cleanup.h" "$destination/include/disvm/native_cleanup.h"
             copy_file "$ROOT/disVM/include/disvm/owner_scope.h" "$destination/include/disvm/owner_scope.h"
             copy_file "$ROOT/disVM/tests/owner_scope.c" "$destination/source/tests/owner_scope.c"
             copy_file "$ROOT/disVM/tests/owner_scope.py" "$destination/source/tests/owner_scope.py"
+            copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
             copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
             copy_file "$ROOT/disVM/include/disvm/object_guard.h" "$destination/include/disvm/object_guard.h"
             copy_file "$ROOT/disVM/tests/object_guard.c" "$destination/source/tests/object_guard.c"
@@ -868,9 +870,11 @@ EOF
             for guard_source in object_guard.c owner_scope.c native_context.c native_owner.c native_world.c native_owner_private.h world_request.h; do
                 copy_file "$ROOT/disVM/host/$guard_source" "$destination/source/host/$guard_source"
             done
+            copy_file "$ROOT/disVM/include/disvm/native_cleanup.h" "$destination/include/disvm/native_cleanup.h"
             copy_file "$ROOT/disVM/include/disvm/owner_scope.h" "$destination/include/disvm/owner_scope.h"
             copy_file "$ROOT/disVM/tests/owner_scope.c" "$destination/source/tests/owner_scope.c"
             copy_file "$ROOT/disVM/tests/owner_scope.py" "$destination/source/tests/owner_scope.py"
+            copy_file "$ROOT/disVM/runtime/NATIVE-UNWIND.md" "$destination/NATIVE-UNWIND.md"
             copy_file "$ROOT/disVM/runtime/LOCAL-OWNERSHIP.ru.md" "$destination/LOCAL-OWNERSHIP.ru.md"
             copy_file "$ROOT/disVM/include/disvm/object_guard.h" "$destination/include/disvm/object_guard.h"
             copy_file "$ROOT/disVM/tests/object_guard.c" "$destination/source/tests/object_guard.c"

@@ -2,6 +2,7 @@
 #ifndef DVM_OWNER_SCOPE_H
 #define DVM_OWNER_SCOPE_H
 #include "disvm/native_context.h"
+#include "disvm/native_cleanup.h"
 #ifdef __cplusplus
 extern "C"
 {
@@ -24,9 +25,11 @@ typedef struct DVM_OwnerOps
 
 
 /* Zero before open. Fields private; owner must close before TLS unbind/context
- * destruction and keep every entry's storage live. Not an automatic C unwinder. */
+ * destruction and keep every entry's storage live. Hosted native checkpoints may
+ * close newer scopes BEFORE longjmp; arbitrary C/OS unwinding is unsupported. */
 struct DVM_OwnerScope
 {
+    DVM_NativeCleanup cleanup; /* Context registration, unwound before abandoning native frames. */
     DVM_NativeContext *context; /* Borrowed bound context, fixed until close. */
     DVM_OwnerEntry *head;       /* LIFO owned references, not heap allocations. */
     int busy;                  /* Refuse synchronous callback reentry. */

@@ -1,5 +1,6 @@
 /* Real OS TLS and FlashVM mutexes: no green-thread scheduler in this layer. */
 #include "disvm/native_context.h"
+#include "disvm/native_cleanup.h"
 #include "channel_sync.h"
 #include "native_owner_private.h"
 #include <stdlib.h>
@@ -33,6 +34,10 @@ struct DVM_NativeContext
     DVM_NativePoll poll;  /* Owner's safepoint hook, if registered. */
     void *poll_user;      /* Borrowed until explicit hook removal. */
     DVM_HeapOwner heap_owner; /* Private TLS lifecycle/counters; no managed owners. */
+    DVM_NativeCleanup *cleanup_head; /* Owner-local live registrations, newest first. */
+    unsigned long cleanup_serial; /* Last issued generation; never reused in this context. */
+    unsigned long cleanup_newest; /* Scalar newest live generation for safe normal-pop checks. */
+    int cleanup_running; /* Prevent recursive unwind, new registration and TLS detach. */
     unsigned long owner_scopes; /* Owner-local ledgers; close before TLS unbind. */
     unsigned long object_locks; /* Owner-only guards; cannot survive safepoint/turn/unbind. */
     int bound;            /* Nonzero while one native TLS slot owns this context. */
@@ -191,7 +196,7 @@ int dvm_native_context_bind(DVM_NativeContext *context)
  * process root slot alone does not prove the scheduler continuation is finished. */
 int dvm_native_context_unbind(DVM_NativeContext *context)
 {
-    if (context && tls_get() == context && context->owner_scopes)
+    if (context && tls_get() == context && (context->owner_scopes || context->cleanup_running))
     {
         return 0;
     }
@@ -464,5 +469,120 @@ int dvm_native_context_scope_release(DVM_NativeContext *context)
         return 0;
     }
     context->owner_scopes--;
+    return 1;
+}
+
+
+/* Link owner-local native cleanup metadata. record/callback/argument are borrowed;
+ * record remains address-stable until unlink. Exhaustion never wraps generation.
+ * Register only after every prerequisite succeeds; no managed ownership inferred. */
+int dvm_native_cleanup_link(DVM_NativeCleanup *record,
+    int (*cleanup)(void *argument), void *argument)
+{
+    DVM_NativeContext *context = tls_get();
+    if (!context || !record || !cleanup || context->cleanup_running || context->object_locks ||
+        context->cleanup_serial == ULONG_MAX || record->context || record->next ||
+        record->previous || record->serial || record->cleanup || record->argument ||
+        !dvm_native_context_scope_acquire(context))
+    {
+        return 0;
+    }
+    record->context = context;
+    record->serial = ++context->cleanup_serial;
+    record->cleanup = cleanup;
+    record->argument = argument;
+    record->next = context->cleanup_head;
+    if (record->next)
+    {
+        record->next->previous = record;
+    }
+    context->cleanup_head = record;
+    context->cleanup_newest = record->serial;
+    return 1;
+}
+
+
+/* Unlink this exact owner's registration. record borrowed/live; callback is not
+ * invoked. Clear metadata before its caller may free native scope storage. */
+int dvm_native_cleanup_unlink(DVM_NativeCleanup *record)
+{
+    DVM_NativeContext *context = tls_get();
+    if (!context || !record || record->context != context || context->object_locks)
+    {
+        return 0;
+    }
+    if (record->previous)
+    {
+        record->previous->next = record->next;
+    }
+    else
+    {
+        context->cleanup_head = record->next;
+        context->cleanup_newest = record->next ? record->next->serial : 0;
+    }
+    if (record->next)
+    {
+        record->next->previous = record->previous;
+    }
+    record->context = 0;
+    record->next = 0;
+    record->previous = 0;
+    record->serial = 0;
+    record->cleanup = 0;
+    record->argument = 0;
+    return dvm_native_context_scope_release(context);
+}
+
+
+/* Capture native generation without borrowing a live scope pointer. mark is
+ * caller-owned output; failure preserves it. Native marks are not GC roots. */
+int dvm_native_cleanup_mark(DVM_NativeCleanupMark *mark)
+{
+    DVM_NativeContext *context = tls_get();
+    if (!context || !mark || context->cleanup_running || context->object_locks)
+    {
+        return 0;
+    }
+    mark->context = context;
+    mark->serial = context->cleanup_serial;
+    return 1;
+}
+
+
+/* Query only owner-local scalars. An outer scope closed since mark is harmless;
+ * generations are never reused. No callback, allocation or record dereference. */
+int dvm_native_cleanup_clean(const DVM_NativeCleanupMark *mark)
+{
+    DVM_NativeContext *context = tls_get();
+    return context && mark && mark->context == context && !context->cleanup_running &&
+        mark->serial <= context->cleanup_serial && context->cleanup_newest <= mark->serial;
+}
+
+
+/* Dispatch LIFO cleanup while native caller frames are STILL alive. Snapshot
+ * callback/argument before call; successful cleanup may free its old record.
+ * Callback must make forward progress by unlinking itself and return normally. */
+int dvm_native_cleanup_unwind(const DVM_NativeCleanupMark *mark)
+{
+    DVM_NativeContext *context = tls_get();
+    if (!context || !mark || mark->context != context || context->cleanup_running ||
+        context->object_locks || mark->serial > context->cleanup_serial)
+    {
+        return 0;
+    }
+    context->cleanup_running = 1;
+    while (context->cleanup_newest > mark->serial)
+    {
+        DVM_NativeCleanup *record = context->cleanup_head;
+        int (*cleanup)(void *argument) = record->cleanup;
+        void *argument = record->argument;
+        unsigned long serial = record->serial;
+        if (!cleanup(argument) || context->cleanup_newest >= serial)
+        {
+            context->cleanup_running = 0;
+            return 0;
+        }
+    }
+    context->cleanup_running = 0;
     return 1;
 }

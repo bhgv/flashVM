@@ -454,7 +454,12 @@ void nexterror(void)
         fprintf(stderr, "disvm: %s\n", owner_error());
         exit(1);
     }
-    siglongjmp(up->estack[--up->nerr], 1);
+    if (!dvm_native_error_unwind())
+    {
+        fprintf(stderr, "disvm: native owner cleanup failed before error transfer\n");
+        abort();
+    }
+    siglongjmp(up->estack[up->nerr], 1);
 }
 
 /* Run fallible construction with the real Proc jump-frame discipline. */

@@ -63,6 +63,14 @@ static void detach(DVM_OwnerEntry *entry)
 }
 
 
+/* Registered native unwind callback. argument borrows still-live scope storage;
+ * close unregisters it before returning. No throw, VM entry or new registration. */
+static int unwind_scope(void *argument)
+{
+    return dvm_owner_scope_close(argument);
+}
+
+
 /* Bind private zeroed scope to current context. No roots are registered; callers
  * must close explicitly before unbinding. Return 0 with no partial open. */
 int dvm_owner_scope_open(DVM_OwnerScope *scope)
@@ -70,7 +78,7 @@ int dvm_owner_scope_open(DVM_OwnerScope *scope)
     DVM_NativeContext *context = dvm_native_context_current();
     if (!scope || !context || scope->context || scope->head || scope->busy ||
         dvm_native_context_object_count(context) ||
-        !dvm_native_context_scope_acquire(context))
+        !dvm_native_cleanup_link(&scope->cleanup, unwind_scope, scope))
     {
         return 0;
     }
@@ -97,7 +105,11 @@ int dvm_owner_scope_close(DVM_OwnerScope *scope)
         detach(entry);
         ops->drop(object);
     }
-    dvm_native_context_scope_release(scope->context);
+    if (!dvm_native_cleanup_unlink(&scope->cleanup))
+    {
+        scope->busy = 0;
+        return 0;
+    }
     scope->context = 0;
     scope->busy = 0;
     return 1;

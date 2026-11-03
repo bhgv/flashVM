@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.61.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.62.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -48,6 +48,15 @@ add_subdirectory("${root}/common/owned" owned)
 set(u "${root}/disVM/upstream")
 set(view "${CMAKE_CURRENT_BINARY_DIR}/native")
 file(MAKE_DIRECTORY "${view}")
+# Keep setjmp in the original caller while attaching owner-local cleanup marks.
+execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${root}/disVM/host/prepare_native_errors.py"
+ --source "${u}/emu/port/dat.h" --output "${view}/dat.h" RESULT_VARIABLE error_prepared)
+if(NOT error_prepared EQUAL 0)
+ message(FATAL_ERROR "Native error checkpoint preparation failed")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+ "${u}/emu/port/dat.h" "${root}/disVM/host/prepare_native_errors.py")
+
 execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${root}/disVM/host/prepare_native_registers.py"
   --source "${u}/libinterp" --output "${view}" RESULT_VARIABLE prepared)
 if(NOT prepared EQUAL 0)
@@ -102,7 +111,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm "${root}/disVM/host/refcount.c" "${root}/disVM/host/object_guard.c" main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c open_wait.c close_worker.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm "${root}/disVM/host/refcount.c" "${root}/disVM/host/object_guard.c" "${root}/disVM/host/owner_scope.c" main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c open_wait.c close_worker.c runtime_gc.c runtime_rc.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)
@@ -2257,4 +2266,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
   "${root}/disVM/tests/object_guard.py")
  set_tests_properties(disvm_native_object_guards PROPERTIES TIMEOUT 240)
+endif()
+
+
+# Scope cleanup must precede actual hosted native error transfer.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_owner_scopes COMMAND "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/owner_scope.py")
+ add_test(NAME disvm_native_error_cleanup COMMAND "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/native_cleanup.py")
+ set_tests_properties(disvm_native_owner_scopes disvm_native_error_cleanup PROPERTIES TIMEOUT 240)
 endif()
