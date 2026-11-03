@@ -777,3 +777,5 @@ Runtime0.91: [mapped MOVMP transaction](SHARED-MAPPED.md), opt-in guarded public
 Runtime0.92: [rooted HEADMP](SHARED-HEAD.md), guarded source-list capture and mapped projection. Other shared writers/GC epochs still require NativeWorld.
 
 Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).
+
+Runtime0.93: [rooted HEADP/TAIL](SHARED-LIST-POINTER.md), opt-in source lifetime plus guarded pointer projection. General managed execution remains serialized.

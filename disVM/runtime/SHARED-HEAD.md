@@ -127,3 +127,5 @@ ID, ordinary WORD32 LEA, default file-call admission or Inferno named launch/cac
 agreement is changed by these native helpers. Retained upstream stays pinned.
 
 Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).
+
+Runtime0.93 reuses the source hold for [HEADP/TAIL](SHARED-LIST-POINTER.md); scalar/raw list reads and construction remain separate.

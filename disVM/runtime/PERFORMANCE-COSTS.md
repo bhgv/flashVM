@@ -26,8 +26,9 @@
 | COPIES-089 / v0.1787 | 20000 итераций word/raw-record; default против полного `--guarded-copies` того выпуска | 0,228893 → 0,262788 с; +14,81% | 0,157588 → 0,218018 с; +38,35% | [JSON](performance/copies-runtime089.json), [контракт](SHARED-BYTES.md) |
 | MAPPED-091 / v0.1789 | 20000 присваиваний записей со String; default против полного защищённого профиля | 0,140093 → 0,168638 с; +20,38% | 0,104591 → 0,141706 с; +35,49% | [JSON](performance/mapped-runtime091.json), [контракт](SHARED-MAPPED.md) |
 | HEAD-092 / v0.1790 | 20000 итераций чтения головы списка; default против полного защищённого профиля | 0,105578 → 0,143605 с; +36,02% | 0,098950 → 0,152425 с; +54,04% | [JSON](performance/head-runtime092.json), [контракт](SHARED-HEAD.md) |
+| LISTP-093 / v0.1791 | 20000 итераций: два HEADP и один TAIL; default против полного защищённого профиля | 0,123102 → 0,155452 с; +26,28% | 0,118057 → 0,160638 с; +36,07% | [JSON](performance/list-pointer-runtime093.json), [контракт](SHARED-LIST-POINTER.md) |
 
-У трёх последних записей флаг включает и другие защищённые операции. Поэтому
+У четырёх последних записей флаг включает и другие защищённые операции. Поэтому
 долю MOVMP, HEADMP, отдельных блокировок или allocator по этим числам выделить
 нельзя. Защищённые копирования пока включаются явно; MOVP и SELF имеют свой
 проверенный путь независимо от этого флага. NativeWorld всё ещё необходим.
@@ -40,6 +41,7 @@
 | COPIES-089 | [shared_bytes.c](shared_bytes.c): `dvm_runtime_bytes_copy`; [range_access.c](../host/range_access.c); [bytes_fast.c](bytes_fast.c) | Выбор объединения stripes, их захват/снятие и переход в C; больших копий может касаться весь домен | Разнести малые/большие копии, коллизии и стоимость C-tail; не приписывать всё memmove |
 | MAPPED-091 | [shared_mapped.c](shared_mapped.c): `dvm_runtime_mapped_copy`; [root_batch.c](root_batch.c) | Для непустой карты ссылок — пять native-блоков подготовки, снимок, обход ссылок, roots и retirement | Счётчики/время allocator, snapshot, retain/mark, root mutex и destructor; проверить безопасное повторное использование workspace при вложенных callbacks и ошибках |
 | HEAD-092 | [shared_head.c](shared_head.c): `dvm_runtime_guarded_headmp`; [list_hold.c](list_hold.c): `dvm_runtime_list_hold` | Два блока временного корня списка плюс до пяти блоков mapped-копирования; проверка размера/карты и дополнительное удержание списка | Отдельно стоимость hold/root/проверок и payload-копирования; проверить workspace/reuse и локальные варианты без ослабления жизни исходного списка |
+| LISTP-093 | [shared_list_pointer.c](shared_list_pointer.c): `dvm_runtime_list_pointer_copy`; [list_hold.c](list_hold.c); [shared_pointer.c](shared_pointer.c) | Два native-блока корня списка на проекцию, защита исходного узла и внутреннего поля, проверка extent/карты, retain/mark и cleanup | Разделить hold/root и MOVP; сравнить HEADP и TAIL отдельно, проверить reuse/locality без потери времени жизни контейнера |
 
 Число блоков выше — подтверждённый путь аллокаций, **не измеренная доля времени**.
 Возможная экономия от reuse, locality или inline JIT пока не измерена. Reuse
@@ -57,6 +59,7 @@ python3 disVM/runtime/benchmark_shared_pointer.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_guarded_copies.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_mapped.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_head.py RUNTIME LIMBO INCLUDE_DIR
+python3 disVM/runtime/benchmark_shared_list_pointer.py RUNTIME LIMBO INCLUDE_DIR
 ```
 
 | ID | Исходный опубликованный commit |
@@ -65,6 +68,7 @@ python3 disVM/runtime/benchmark_shared_head.py RUNTIME LIMBO INCLUDE_DIR
 | COPIES-089 | [c166c24](https://github.com/bhgv/flashVM/commit/c166c243be8cc84604fc648cb39df91384b34638) |
 | MAPPED-091 | [95f3274](https://github.com/bhgv/flashVM/commit/95f32743d9c2c28486854cd610313316a14fc7b5) |
 | HEAD-092 | [20f8de7](https://github.com/bhgv/flashVM/commit/20f8de760ffbf4ecd5a20276b668f105c3f6caeb) |
+| LISTP-093 | Commit добавления [v0.1791](../../docs/releases/v0.1791.md), также указан в отчёте FLASHVM-0109 |
 
 Для MOVP нужны совпадающие GNU/CMake объекты для приватной перелинковки старого
 тела. Остальные команды используют один binary/image и чередуют startup-профили.

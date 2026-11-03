@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "owner_fast.h"
+#include "shared_bytes.h"
 #include "disvm/native_context.h"
 #include "disvm/native_owner.h"
 
@@ -66,6 +67,10 @@ int dvm_runtime_owner_self_fast(REG *registers)
 /* [GC:] Resolve/retain decoded pointer-list head through actual checked C headp. */
 int dvm_runtime_owner_headp_fast(REG *registers)
 {
+    if (dvm_runtime_guarded_copies && dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     return invoke(registers, headp);
 }
 
@@ -73,5 +78,9 @@ int dvm_runtime_owner_headp_fast(REG *registers)
 /* [GC:] Resolve/retain decoded list tail through actual checked C tail. */
 int dvm_runtime_owner_tail_fast(REG *registers)
 {
+    if (dvm_runtime_guarded_copies && dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
     return invoke(registers, tail);
 }
