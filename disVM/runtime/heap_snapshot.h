@@ -5,7 +5,7 @@ struct Heap;
 
 
 /* [GC:] Copy a live borrowed native header into disjoint PRIVATE Heap storage.
- * Read ref through native atomic/fallback primitive, never memcpy that field.
+ * Read color/ref through native atomic/fallback primitives; never memcpy those cells.
  * Other bytes still require VM exclusion/frozen metadata. Return0 unchanged on
  * nil/sentinel/alignment/span/overlap refusal; return1 after complete output.
  * Geometry is not memory provenance: caller keeps source/storage live and
@@ -21,7 +21,7 @@ int dvm_runtime_heap_snapshot(struct Heap *destination, const void *source);
 int dvm_runtime_heap_count(const void *source, unsigned long *result);
 
 
-/* [GC:] Optional actual frozen-header/count-only concurrency diagnostic.
+/* [GC:] Optional actual protected-header/color-count scalar concurrency diagnostic.
  * workers borrows live service; controller stays ACTIVE until every join. */
 struct DVM_GCWorkers;
 void dvm_runtime_snapshot_probe(struct DVM_GCWorkers *workers);

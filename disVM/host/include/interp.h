@@ -3,6 +3,12 @@
 #define DISVM_HOST_INTERP_H
 #include "../../upstream/include/interp.h"
 
+#ifdef DVM_RUNTIME_GC_FIELDS
+#include "gc_fields.h"
+#undef Setmark
+#define Setmark(h) dvm_runtime_gc_mark(&(h)->color, &mutator, &nprop) /* Protected hosted C scalar barrier; no graph/epoch admission. */
+#endif
+
 #ifdef DVM_NATIVE_REGISTERS
 #include "disvm/native_context.h"
 

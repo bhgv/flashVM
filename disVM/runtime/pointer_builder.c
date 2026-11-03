@@ -7,6 +7,7 @@
 #include "pool.h"
 #include "raise.h"
 #include "pointer_builder.h"
+#include "gc_fields.h"
 #include "heap_snapshot.h"
 #include "disvm/refcount.h"
 #include <stddef.h>
@@ -97,7 +98,7 @@ static int construct(void *argument)
     }
     build->node->t = &Tlist;
     build->node->ref = 1;
-    build->node->color = mutator;
+    dvm_runtime_gc_store(&build->node->color, dvm_runtime_gc_load(&mutator));
     node = H2D(List *, build->node);
     node->tail = H;
     node->t = &Tptr;

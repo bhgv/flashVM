@@ -17,6 +17,7 @@ from prepare_pointer_tail import adapt as adapt_pointer_tail
 from prepare_roots import adapt as adapt_roots
 from prepare_boundary_counts import adapt as adapt_boundary_counts
 from prepare_stack_check import adapt as adapt_stack_check
+from prepare_gc_fields import adapt as adapt_gc_fields, validate_header as validate_gc_header
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -320,6 +321,11 @@ def main():
         "\t*nsend = sends;\n\t*nrecv = receives;",
     )
     path.write_text(code)
+
+    validate_gc_header((args.source.parent / 'include/interp.h').read_text())
+    for unit in ('gc', 'heap'):
+        path = args.output / (unit+'.c')
+        path.write_text(adapt_gc_fields(path.read_text(), unit))
 
 
 if __name__ == "__main__":

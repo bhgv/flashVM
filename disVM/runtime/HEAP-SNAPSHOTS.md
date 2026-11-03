@@ -1,3 +1,6 @@
+Runtime0.83 update: [color and ref are both excluded from raw header copies](GC-FIELDS.md).
+The runtime0.70 history below describes the earlier count-only conversion.
+
 # Heap header observations — runtime0.70
 
 A whole-header memmove reads Heap.ref nonatomically even if writers use atomic

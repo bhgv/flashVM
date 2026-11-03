@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1780**. [Русская версия](README.ru.md).
+Development version: **0.1781**. [Русская версия](README.ru.md).
 
-Current series: [v0.1780](docs/releases/v0.1780.md): reserved native RC retirement metadata and verified root-refusal rollback.
+Current series: [v0.1781](docs/releases/v0.1781.md): hosted C scalar GC fields and color/count-safe header snapshots.
 
 ## Browse documentation
 

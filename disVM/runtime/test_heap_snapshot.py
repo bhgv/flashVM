@@ -40,6 +40,10 @@ int __wrap_dvm_runtime_heap_snapshot(Heap *destination, const void *source)
         {
             destination->ref = 0;
         }
+        if (CONTROL == 4)
+        {
+            destination->color = 9;
+        }
         if (CONTROL == 2)
         {
             destination->t = nil;
@@ -58,7 +62,8 @@ def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:])
     symbols = ['dvm_runtime_snapshot_probe', 'dvm_runtime_heap_snapshot']
     cases = ((0, None), (1, 'snapshot preserves count'),
-             (2, 'snapshot preserves metadata'), (3, 'overlap refuses'))
+             (2, 'snapshot preserves metadata'), (3, 'overlap refuses'),
+             (4, 'snapshot preserves metadata'))
     with tempfile.TemporaryDirectory(prefix='actual Heap snapshot ') as directory:
         work = Path(directory)
         source = work / 'wrapper.c'
@@ -79,7 +84,7 @@ def main():
                     raise RuntimeError('snapshot semantic control missed: '+text[-6000:])
             elif run.returncode or 'PASS snapshot-count probe:' not in text:
                 raise RuntimeError('snapshot positive failed: '+text[-6000:])
-    print('PASS actual frozen Heap snapshot; three exact observation/refusal controls')
+    print('PASS actual color/count Heap snapshot; four exact observation/refusal controls')
 
 
 if __name__ == '__main__':

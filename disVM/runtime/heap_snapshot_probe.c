@@ -1,9 +1,10 @@
-/* Real frozen Heap header while count-only native workers update ref atomically. */
+/* Real protected Heap header while native workers update color/ref cells only. */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
 #include "heap_snapshot.h"
+#include "gc_fields.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include "disvm/gc_workers.h"
@@ -15,12 +16,15 @@
 
 #define WORKERS 8 /* Test count updaters, not a runtime worker quota. */
 #define PAIRS 2000 /* Balanced count-only pairs per native worker. */
-#define SNAPSHOTS 4000 /* Header observations with immutable non-count fields. */
+#define SNAPSHOTS 4000 /* Header observations with immutable fields except color/count. */
 
 
 /* Parent owns all storage through joins and never leaves managed admission. */
 typedef struct SnapshotWork
 {
+    int *color; /* Protected color-cell storage only; no other Heap access by workers. */
+    int selector; /* Immutable copied selector for generic scalar marking. */
+    int pending; /* Generic scalar dirty flag, NOT the runtime GC global. */
     ulong *counter; /* Borrowed count storage; controller keeps original String owner. */
     FVM_PortSync *gate; /* Start barrier, not header/count synchronization. */
     int ready; /* Workers ready, protected by gate. */
@@ -40,9 +44,9 @@ static void check(int condition, const char *message)
 }
 
 
-/* Native generic count API only: no managed payload/Type/header dereference,
- * context entry or root inference. Parent keeps storage/source owner until join
- * and freezes all other header bytes under ACTIVE admission. */
+/* Native generic scalar/count APIs only: no payload/Type/other-header access,
+ * context entry or root inference. Parent keeps source/storage owner through
+ * joins and freezes other header bytes/collector epochs under ACTIVE admission. */
 static void update_count(void *argument)
 {
     SnapshotWork *work = argument;
@@ -57,6 +61,9 @@ static void update_count(void *argument)
     fvm_port_sync_unlock(work->gate);
     for (pair = 0; pair < PAIRS; pair++)
     {
+        check(dvm_gc_field_store(work->color, (work->selector+1)%3) &&
+            dvm_gc_field_mark(work->color, &work->selector, &work->pending),
+            "color-only scalar mark");
         check(dvm_refcount_retain_u(work->counter) == DVM_REFCOUNT_LIVE, "count-only retain");
         check(dvm_refcount_release_u(work->counter) == DVM_REFCOUNT_LIVE, "source keeper prevents LAST");
     }
@@ -64,7 +71,7 @@ static void update_count(void *argument)
 
 
 /* [GC:] workers is live GC service; caller owns ACTIVE controller. Only count
- * metadata races; this is NOT permission for arbitrary native heap access or
+ * and color scalar metadata races; this is NOT permission for arbitrary native heap access or
  * parallel managed mutators. Private snapshot owns no referenced objects. */
 void dvm_runtime_snapshot_probe(DVM_GCWorkers *workers)
 {
@@ -92,6 +99,8 @@ void dvm_runtime_snapshot_probe(DVM_GCWorkers *workers)
     check(!dvm_runtime_heap_snapshot(&refusal, (void *)((uintptr)-1-sizeof(Heap)+1)) &&
         !memcmp(unchanged, &refusal, sizeof(unchanged)), "span overflow refuses unchanged");
     check(!dvm_runtime_heap_snapshot(source, source), "overlap refuses");
+    work.color = &source->color;
+    work.selector = snapshot.color;
     work.counter = &source->ref;
     work.gate = fvm_port_sync_create();
     check(work.gate != nil, "snapshot start gate");
@@ -111,13 +120,17 @@ void dvm_runtime_snapshot_probe(DVM_GCWorkers *workers)
     for (index = 0; index < SNAPSHOTS; index++)
     {
         check(dvm_runtime_heap_snapshot(&snapshot, source) && snapshot.ref >= 1 &&
-            snapshot.ref <= WORKERS+1 && snapshot.t == &Tstring,
-            "count-only concurrent header observation");
+            snapshot.ref <= WORKERS+1 && snapshot.t == &Tstring &&
+            (snapshot.color >= 0 && snapshot.color <= propagator),
+            "color/count concurrent header observation");
     }
     for (index = 0; index < WORKERS; index++)
     {
         fvm_port_thread_join(threads[index]);
     }
+    check(dvm_runtime_gc_load(&work.pending) == 1, "native scalar mark flag");
+    dvm_runtime_gc_store(work.color, work.selector);
+    work.color = nil;
     check(heapref(value) == 1, "all native count owners joined");
     work.counter = nil;
     fvm_port_sync_destroy(work.gate);
@@ -128,5 +141,5 @@ void dvm_runtime_snapshot_probe(DVM_GCWorkers *workers)
     check(dvm_gc_workers_request(workers, DVM_GC_FAST) &&
         dvm_gc_workers_wait_idle(workers), "snapshot source Fast retirement");
     check(dvm_native_owner_enter(owner), "snapshot controller reentry");
-    puts("PASS snapshot-count probe: 4000 observations, 8 count-only workers, 16000 pairs, complete joins");
+    puts("PASS snapshot-count probe: 4000 observations, 8 color/count workers, 16000 pairs, complete joins");
 }

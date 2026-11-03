@@ -1,9 +1,10 @@
-/* Exclude the mutable atomic count from ordinary header byte copies. */
+/* Exclude atomic color/count cells from ordinary header byte copies. */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
 #include "heap_snapshot.h"
+#include "gc_fields.h"
 #include "disvm/refcount.h"
 #include <stddef.h>
 #include <string.h>
@@ -17,17 +18,21 @@ int dvm_runtime_heap_snapshot(Heap *destination, const void *source)
 {
     uintptr from = (uintptr)source;
     uintptr to = (uintptr)destination;
+    size_t color = offsetof(Heap, color);
+    size_t after_color = color+sizeof(destination->color);
     size_t prefix = offsetof(Heap, ref);
     size_t suffix = prefix + sizeof(destination->ref);
     Heap temporary;
-    if (from <= sizeof(Heap) || to <= sizeof(Heap) ||
+    if (after_color > prefix || suffix > sizeof(temporary) || from <= sizeof(Heap) || to <= sizeof(Heap) ||
         from > (uintptr)-1-sizeof(Heap) || to > (uintptr)-1-sizeof(Heap) ||
         from % sizeof(void *) != 0 || to % sizeof(void *) != 0 ||
         (from < to+sizeof(Heap) && to < from+sizeof(Heap)))
     {
         return 0;
     }
-    memmove(&temporary, source, prefix);
+    memmove(&temporary, source, color);
+    temporary.color = dvm_runtime_gc_load((const int *)((const uchar *)source+color));
+    memmove((uchar *)&temporary+after_color, (const uchar *)source+after_color, prefix-after_color);
     temporary.ref = dvm_refcount_load_u((const ulong *)((const uchar *)source+prefix));
     memmove((uchar *)&temporary+suffix, (const uchar *)source+suffix, sizeof(temporary)-suffix);
     memmove(destination, &temporary, sizeof(temporary));
