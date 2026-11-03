@@ -271,3 +271,9 @@ or parallel managed-mutator mode; current NativeWorld admission stays exclusive.
 owners, borrowed access and payload guards. Scopes use caller-provided entries,
 retain before publication and explicitly clean up on native thread epilogues;
 they are not yet automatic managed process cleanup or compiler escape analysis.
+
+[Rooted managed native references](include/disvm/managed_reference.h),
+[their protocol](runtime/MANAGED-OWNERS.md) and
+[the real-heap example](examples/managed-owner/README.md) connect explicit native
+owners to external roots and stopped-world Fast retirement. Shared managed heap
+admission remains exclusive; this is not whole-process ownership conversion.

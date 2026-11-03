@@ -1,6 +1,6 @@
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.62.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.63.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -364,3 +364,5 @@ UI capability, cancellation or automatic artifact execution. F7 Build/F8 diagnos
 [Exact integer identities in the compiler library](../../fir/v1/doc/INTEGER_IDENTITIES.md) / [RU](../../fir/v1/doc/INTEGER_IDENTITIES.ru.md): verified optimization before Dis/SWO emission; rebuild matching FIR libraries and relink this service.
 
 [Native owner-scope error checkpoints and exact limitations](NATIVE-UNWIND.md).
+
+[Rooted managed owners across native workers](MANAGED-OWNERS.md).

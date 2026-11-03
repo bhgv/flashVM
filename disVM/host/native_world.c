@@ -503,3 +503,21 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
     fvm_port_sync_unlock(world->sync);
     return 1;
 }
+
+
+/* [GC:] Verify exact collecting owner under the world mutex, without traversing
+ * roots. world borrowed/live; false for unbound/guarded/foreign or unstopped use.
+ * A true result stays valid until this same collector ends its stop interval. */
+int dvm_world_collector_owns(DVM_NativeWorld *world)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    int result;
+    if (!world || !context || dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(world->sync);
+    result = world->stopped && world->collector == context;
+    fvm_port_sync_unlock(world->sync);
+    return result;
+}

@@ -113,6 +113,14 @@ int dvm_world_stop_end(DVM_NativeWorld *world);
 
 /* Observe counters without waiting for the stop protocol to complete. */
 int dvm_world_state(DVM_NativeWorld *world, DVM_WorldState *out);
+
+
+/* [GC:] Return nonzero only for this exact bound stopped-world collector, with
+ * no held object guards. world borrowed/live; no root traversal or allocation.
+ * Collector retains its own stop until stop_end; this is not mutator admission. */
+int dvm_world_collector_owns(DVM_NativeWorld *world);
+
+
 #ifdef __cplusplus
 }
 #endif

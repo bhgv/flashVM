@@ -8,6 +8,8 @@
 #include "disvm/native_owner.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
+#include "managed_owner.h"
+#include "managed_owner_probe.h"
 #include "runqueue.h"
 #include "managed_workers.h"
 #include "queue_probe.h"
@@ -79,6 +81,7 @@ static void collector_environment(void)
 static DVM_GCWorkResult fast_pass(DVM_NativeContext *context, size_t budget, void *user)
 {
     unsigned int remaining;
+    unsigned int tickets;
     USED(context);
     USED(user);
     collector_environment();
@@ -87,7 +90,13 @@ static DVM_GCWorkResult fast_pass(DVM_NativeContext *context, size_t budget, voi
         fprintf(stderr,"disvm RC collector: %s\n",up->env->errstr);
         exit(1);
     }
-    remaining = dvm_runtime_rc_drain((unsigned int)budget);
+    tickets = dvm_managed_owner_pending() ? (unsigned int)(budget / 2) : 0;
+    if (!tickets && dvm_managed_owner_pending())
+    {
+        tickets = (unsigned int)budget;
+    }
+    remaining = dvm_runtime_rc_drain((unsigned int)budget - tickets);
+    remaining |= dvm_managed_owner_drain(tickets);
     poperror();
     return remaining ? DVM_GC_MORE : DVM_GC_DONE;
 }
@@ -151,8 +160,16 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     }
     if (state.workers && dvm_native_owner_enter(owner))
     {
-        dvm_runtime_rc_start();
-        return 1;
+        if (dvm_managed_owner_start(state.world, state.workers))
+        {
+            dvm_runtime_rc_start();
+            if (dvm_managed_owner_probe_requested)
+            {
+                dvm_managed_owner_probe_run(state.world, state.workers);
+            }
+            return 1;
+        }
+        dvm_native_owner_leave(owner);
     }
     if (state.workers)
     {
@@ -181,7 +198,7 @@ int dvm_runtime_gc_request(void)
     {
         return 0;
     }
-    if (dvm_runtime_rc_pending())
+    if (dvm_runtime_rc_pending() || dvm_managed_owner_pending())
     {
         if (!dvm_gc_workers_request(state.workers,DVM_GC_FAST))
         {
@@ -380,12 +397,16 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (dvm_native_context_current() != state.owner ||
         !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
-        call.pending_progress || dvm_runqueue_inflight() || !dvm_native_owner_seal(owner) ||
+        call.pending_progress || dvm_runqueue_inflight() || !dvm_managed_owner_can_close() || !dvm_native_owner_seal(owner) ||
         !dvm_world_admission(state.world,&admission) || !admission.serial || admission.waiting)
     {
         return 0;
     }
     if (!dvm_native_owner_polls(owner,&fast_polls,&locked_polls))
+    {
+        return 0;
+    }
+    if (!dvm_managed_owner_close())
     {
         return 0;
     }
@@ -399,6 +420,10 @@ int dvm_runtime_gc_stop(int diagnostics)
     if (!dvm_gc_workers_wait_idle(state.workers))
     {
         ok = 0;
+    }
+    if (!dvm_managed_owner_finish(diagnostics))
+    {
+        return 0;
     }
     memset(&workers,0,sizeof(workers));
     if (!dvm_gc_workers_state(state.workers,&workers))

@@ -22,6 +22,7 @@
 #include "runtime_gc.h"
 #include "runqueue.h"
 #include "queue_probe.h"
+#include "managed_owner_probe.h"
 #include "managed_workers.h"
 #include "process_environment.h"
 #include "io_buffer.h"
@@ -1360,6 +1361,10 @@ int main(int argc, char **argv)
         {
             gc_locked_poll = 1;
         }
+        else if (strcmp(argv[1], "--managed-owner-probe") == 0)
+        {
+            dvm_managed_owner_probe_requested = 1;
+        }
         else if (strcmp(argv[1], "--native-queue-probe") == 0)
         {
             if (!dvm_queue_probe_enable())
@@ -1425,6 +1430,7 @@ int main(int argc, char **argv)
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
+            puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");
             puts("Managed execution: --managed-workers 1 (default) or a positive count / auto (requires --gc-worker); auto grows for native waits and retires idle helpers; --managed-workers-limit optionally caps resources. Heap stays serial.");
@@ -1463,6 +1469,11 @@ int main(int argc, char **argv)
         return 2;
     }
 #endif
+    if (dvm_managed_owner_probe_requested && !gc_worker)
+    {
+        fprintf(stderr, "--managed-owner-probe requires --gc-worker\n");
+        return 2;
+    }
     if (dvm_queue_probe_requested && !gc_worker)
     {
         fprintf(stderr,"--native-queue-probe requires --gc-worker\n");

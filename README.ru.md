@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1759**. [English](README.md).
+Версия разработки: **0.1760**. [English](README.md).
 
-Текущая серия: [v0.1759](docs/releases/v0.1759.md): native error checkpoints и очистка областей владельцев до longjmp.
+Текущая серия: [v0.1760](docs/releases/v0.1760.md): managed-владельцы с корнями GC и освобождением на Fast-потоке.
 
 ## Просмотр документации
 

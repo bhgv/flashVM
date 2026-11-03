@@ -1,4 +1,4 @@
-# Многопоточность DisVM: состояние после runtime0.62.0
+# Многопоточность DisVM: состояние после runtime0.63.0
 
 Работа ещё существенная. Реальные OS-потоки, TLS-контексты, миграция Dis-процессов,
 раздельные потоки Fast/Cycles GC и передача владения общим хипом уже есть.
@@ -44,3 +44,5 @@ runtime. Подтверждённые версии и границы прове�
 [Native object guards и границы их подключения к managed-хипу](OBJECT-GUARDS.md).
 
 [Native cleanup перед longjmp: runtime 0.62.0](NATIVE-UNWIND.md).
+
+[Managed ticket/root и Fast retirement: runtime 0.63.0](MANAGED-OWNERS.md).
