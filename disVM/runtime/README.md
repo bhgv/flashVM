@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.94.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.95.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -429,3 +429,6 @@ Pointer-list head/tail: [SHARED-LIST-POINTER.md](SHARED-LIST-POINTER.md), rooted
 
 Runtime0.94 adds [guarded scalar/raw list heads](SHARED-LIST-BYTES.md), an installed
 [Limbo example](../examples/guarded-list-bytes/README.md) and measured cost tracking.
+
+Runtime0.95 adds [jointly guarded integer conversions](SHARED-INTEGER.md) and an
+installed [commented example](../examples/guarded-integer/README.md).

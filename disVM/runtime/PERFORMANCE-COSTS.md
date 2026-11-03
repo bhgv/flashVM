@@ -28,8 +28,9 @@
 | HEAD-092 / v0.1790 | 20000 итераций чтения головы списка; default против полного защищённого профиля | 0,105578 → 0,143605 с; +36,02% | 0,098950 → 0,152425 с; +54,04% | [JSON](performance/head-runtime092.json), [контракт](SHARED-HEAD.md) |
 | LISTP-093 / v0.1791 | 20000 итераций: два HEADP и один TAIL; default против полного защищённого профиля | 0,123102 → 0,155452 с; +26,28% | 0,118057 → 0,160638 с; +36,07% | [JSON](performance/list-pointer-runtime093.json), [контракт](SHARED-LIST-POINTER.md) |
 | LISTB-094 / v0.1792 | 20000 итераций пяти HEADB/W/L/F/M; default против полного защищённого профиля | 0,130036 → 0,241494 с; +85,71% | 0,091800 → 0,224481 с; +144,53% | [JSON](performance/list-bytes-runtime094.json), [контракт](SHARED-LIST-BYTES.md) |
+| INT-095 / v0.1793 | 20000 итераций BYTE/WORD/LONG конвертаций; default против полного защищённого профиля | 0,174223 → 0,191245 с; +9,77% | 0,126488 → 0,167298 с; +32,26% | [JSON](performance/integer-runtime095.json), [контракт](SHARED-INTEGER.md) |
 
-У пяти последних записей флаг включает и другие защищённые операции. Поэтому
+У шести последних записей флаг включает и другие защищённые операции. Поэтому
 долю MOVMP, HEADMP, отдельных блокировок или allocator по этим числам выделить
 нельзя. Защищённые копирования пока включаются явно; MOVP и SELF имеют свой
 проверенный путь независимо от этого флага. NativeWorld всё ещё необходим.
@@ -62,6 +63,7 @@ python3 disVM/runtime/benchmark_shared_mapped.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_head.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_list_pointer.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_list_bytes.py RUNTIME LIMBO INCLUDE_DIR
+python3 disVM/runtime/benchmark_shared_integer.py RUNTIME LIMBO INCLUDE_DIR
 ```
 
 | ID | Исходный опубликованный commit |
@@ -81,3 +83,7 @@ commit, команду, сырые отсчёты и медианы в ново�
 
 LISTB-094: v0.1792 / FLASHVM-0110. Пять проекций на итерацию; каждая готовит
 два native-блока корней до блокировок. Доля allocator/guard/GC отдельно не измерена.
+
+INT-095: v0.1793 / FLASHVM-0111. Конвертация не готовит корни или scratch-буфер.
+Возможные затраты: preflight, выбор полос, блокировки и C-вход JIT; их доли
+не измерены. Полный профиль включает также другие защищённые копирования.

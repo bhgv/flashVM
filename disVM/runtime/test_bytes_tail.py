@@ -50,6 +50,10 @@ static int invoke(void *unused)
  * retain no return address in its own JIT mapping, even during callback/error. */
 __attribute__((noinline)) int __wrap_dvm_runtime_bytes_fast(REG *registers, int opcode)
 {
+    if (opcode != IMOVB && opcode != IMOVW && opcode != IMOVL && opcode != IMOVF && opcode != IMOVM)
+    {
+        return __real_dvm_runtime_bytes_fast(registers, opcode);
+    }
     int index = opcode == IMOVB ? 0 : opcode == IMOVW ? 1 : opcode == IMOVL ? 2 : opcode == IMOVF ? 3 : 4;
     Module *module = registers->M->m;
     Jit *jit = module->jit;
@@ -150,7 +154,8 @@ init() {
 '''
 
 
-def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32"):
+def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32", variants=None,
+         coverage_marker="five guarded entries reached", tail_label="five actual byte tails"):
     """Run supplied real guest/wrapper/checksum, with actual emitter controls."""
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix='guarded byte tails ') as directory:
@@ -172,7 +177,9 @@ def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32"):
                 raise RuntimeError(result.stdout+result.stderr)
         wrapper = work / 'wrapper.c'
         wrapper.write_text(wrapper_text)
-        for variant in ((9, 0, 1, 2, 3, 4, 12, 13) if '--positive-only' in sys.argv else (9, 0, 1, 2, 3, 4, 12, 13, 10, 11)):
+        if variants is None:
+            variants = ((9, 0, 1, 2, 3, 4, 12, 13) if '--positive-only' in sys.argv else (9, 0, 1, 2, 3, 4, 12, 13, 10, 11))
+        for variant in variants:
             backend = None
             if variant in (10, 11):
                 for name in ('comp-amd64.c', 'comp-leaf64.h', 'leaf64-ops.h', 'amd64-emit.h'):
@@ -205,12 +212,12 @@ def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32"):
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                     raise RuntimeError(output)
                 if variant in (10, 11):
-                    marker = 'return PC belongs to JIT mapping' if variant == 10 else 'five guarded entries reached'
+                    marker = 'return PC belongs to JIT mapping' if variant == 10 else coverage_marker
                     if run.returncode != 10 or 'FAIL byte-tail: '+marker not in output:
                         raise RuntimeError('byte-tail semantic control missed: '+output)
                 elif run.returncode or success not in output or 'NATIVEGC ' not in output:
                     raise RuntimeError('byte-tail positive failed: '+output)
-    print('PASS five actual byte tails: coverage, individual unmap, error/combined, both polls'+
+    print('PASS '+tail_label+': coverage, individual unmap, error/combined, both polls'+
           ('; positives only' if '--positive-only' in sys.argv else '; bad-CALL/old-emitter controls'))
 
 

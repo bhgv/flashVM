@@ -651,3 +651,7 @@ Runtime0.93: [rooted HEADP/TAIL](SHARED-LIST-POINTER.md), opt-in source lifetime
 Runtime0.94: [HEADB/W/L/F/M contract and evidence](SHARED-LIST-BYTES.md).
 Source containers stay rooted through bit-preserving guarded projection and cleanup;
 NativeWorld remains required for general managed execution.
+
+Runtime0.95: [integer conversion transaction](SHARED-INTEGER.md) holds the exact
+source/result byte union through capture, conversion and publication. NativeWorld
+is still required; native OS executors do not yet imply parallel managed compute.

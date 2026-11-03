@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1792**. [Русская версия](README.ru.md).
+Development version: **0.1793**. [Русская версия](README.ru.md).
 
-Current series: [v0.1792](docs/releases/v0.1792.md): rooted guarded scalar/raw list heads, bit-preserving C/JIT projection.
+Current series: [v0.1793](docs/releases/v0.1793.md): jointly guarded integer conversions, exact overlap and native JIT-tail checks.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

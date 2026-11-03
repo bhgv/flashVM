@@ -14,6 +14,12 @@ extern void movw(void); /* Actual hosted native WORD copy opcode. */
 extern void movl(void); /* Actual hosted LONG copy opcode. */
 extern void movf(void); /* Actual hosted bit-preserving REAL copy opcode. */
 extern void movm(void); /* Actual hosted variable-size raw copy opcode. */
+extern void cvtbw(void); /* Actual guarded integer conversion opcode. */
+extern void cvtwb(void); /* Actual guarded integer conversion opcode. */
+extern void cvtws(void); /* Actual guarded integer conversion opcode. */
+extern void cvtsw(void); /* Actual guarded integer conversion opcode. */
+extern void cvtwl(void); /* Actual guarded integer conversion opcode. */
+extern void cvtlw(void); /* Actual guarded integer conversion opcode. */
 extern void headb(void); /* Actual guarded scalar/raw list-head opcode. */
 extern void headw(void); /* Actual guarded scalar/raw list-head opcode. */
 extern void headl(void); /* Actual guarded scalar/raw list-head opcode. */
@@ -46,6 +52,24 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVM:
         movm();
+        break;
+    case ICVTBW:
+        cvtbw();
+        break;
+    case ICVTWB:
+        cvtwb();
+        break;
+    case ICVTWS:
+        cvtws();
+        break;
+    case ICVTSW:
+        cvtsw();
+        break;
+    case ICVTWL:
+        cvtwl();
+        break;
+    case ICVTLW:
+        cvtlw();
         break;
     case IHEADB:
         headb();
