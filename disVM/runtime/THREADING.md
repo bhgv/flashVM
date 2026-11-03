@@ -1,3 +1,6 @@
+[Runtime0.86: atomic GC work consumption, history and actual collector tests](GC-PENDING.md).
+General managed admission remains serialized; pending exchange alone does not enable parallel epochs.
+
 # Native UI and Dis execution owners
 
 Runtime0.40.0 / IDE0.7.16 / workspace v0.1732.

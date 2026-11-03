@@ -34,8 +34,8 @@ def adapt(source, unit):
             ('(ulong)h->t, h->color);', '(ulong)h->t, dvm_runtime_gc_load(&h->color));', 1),
             ('mutator = gccolor % 3;', 'dvm_runtime_gc_store(&mutator, gccolor % 3);', 1),
             ('nprop = 1;', 'dvm_runtime_gc_store(&nprop, 1);', 1),
-            ('if(nprop == 0)', 'if(dvm_runtime_gc_load(&nprop) == 0)', 1),
-            ('nprop = 0;', 'dvm_runtime_gc_store(&nprop, 0);', 1),
+            ('if(nprop == 0)', 'if(dvm_runtime_gc_exchange(&nprop, 0) == 0)', 1),
+            ('nprop = 0;', '/* Pending work was consumed by the preceding atomic exchange. */', 1),
         ]
     for before, after, count in changes:
         if source.count(before) != count:

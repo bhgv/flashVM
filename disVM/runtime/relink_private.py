@@ -10,9 +10,9 @@ import subprocess
 # Makefiles/GNU-style native linker only; compile/link failures never count as
 # semantic detection. Optional executor/compiler_source replace only private xec.c/AMD64 compiler
 # objects; originals and source headers remain unchanged.
-# Optional exception/loader replacements likewise compile only private views.
+# Optional exception/loader/collector replacements compile only private views.
 # Matching private headers/flags remain mandatory.
-def relink(runtime, work, source, variant, symbols, executor=None, compiler_source=None, exception_source=None, loader_source=None, stack_source=None, runtime_rc_source=None):
+def relink(runtime, work, source, variant, symbols, executor=None, compiler_source=None, exception_source=None, loader_source=None, stack_source=None, runtime_rc_source=None, gc_source=None):
     metadata = runtime.parent / 'CMakeFiles/disvm.dir'
     flags = {}
     for line in (metadata / 'flags.make').read_text().splitlines():
@@ -30,7 +30,8 @@ def relink(runtime, work, source, variant, symbols, executor=None, compiler_sour
         raise RuntimeError('private wrapper compile failed: '+built.stdout+built.stderr)
     for candidate, filename in ((executor, 'xec.c'), (compiler_source, 'comp-amd64.c'),
                                 (exception_source, 'exception.c'), (loader_source, 'loader.c'),
-                                (stack_source, 'validstk.c'), (runtime_rc_source, 'runtime_rc.c')):
+                                (stack_source, 'validstk.c'), (runtime_rc_source, 'runtime_rc.c'),
+                                (gc_source, 'gc.c')):
         if candidate is None:
             continue
         replacement = work / (filename+'.o')

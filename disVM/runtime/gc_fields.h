@@ -15,6 +15,14 @@ int dvm_gc_field_load(const int *source, int *result);
 int dvm_gc_field_store(int *destination, int value);
 
 
+/* Exchange live/aligned destination with value and return predecessor through
+ * live/aligned private previous. Return0 before access on NULL/aliased cells.
+ * All competing accesses use this API. May take registry mutex; no allocation,
+ * callbacks or VM calls. Caller supplies lifetime and must not hold that mutex.
+ * Atomic scalar consumption is not graph publication or epoch completion. */
+int dvm_gc_field_exchange(int *destination, int value, int *previous);
+
+
 /* Mark protected color if different from selector0..2, then publish pending1.
  * All three native int addresses are live/aligned/distinct. Return0 on malformed
  * geometry or invalid color/selector before writes. Propagator color is3.
@@ -30,4 +38,9 @@ int dvm_gc_field_mark(int *color, const int *selector, int *pending);
 int dvm_runtime_gc_load(const int *source);
 void dvm_runtime_gc_store(int *destination, int value);
 void dvm_runtime_gc_mark(int *color, const int *selector, int *pending);
+
+
+/* [GC:] Hosted exchange uses the same lifetime/error/locking contract above;
+ * returns the predecessor, never an epoch-completion or root guarantee. */
+int dvm_runtime_gc_exchange(int *destination, int value);
 #endif

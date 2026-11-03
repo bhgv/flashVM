@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.85.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.86.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2372,4 +2372,17 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "${CMAKE_CURRENT_SOURCE_DIR}/test_aggregate_tail.py" "$<TARGET_FILE:disvm>"
   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
  set_tests_properties(disvm_aggregate_tail_entries PROPERTIES TIMEOUT 180)
+endif()
+
+
+# Linearizable native pending exchange plus actual retained collector consumption.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_gc_pending_exchange COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_gc_exchange.py")
+ set_tests_properties(disvm_gc_pending_exchange PROPERTIES TIMEOUT 180)
+ add_test(NAME disvm_gc_pending_collector COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_gc_pending.py" "$<TARGET_FILE:disvm>"
+  "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+ set_tests_properties(disvm_gc_pending_collector PROPERTIES TIMEOUT 180)
 endif()

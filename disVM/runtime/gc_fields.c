@@ -77,6 +77,29 @@ int dvm_gc_field_store(int *destination, int value)
 }
 
 
+/* Atomically replace one scalar and return its predecessor in private storage.
+ * Native ACQ_REL exchange and locked fallback have one linearization point.
+ * Caller supplies live cells and must not hold the fallback registry lock. */
+int dvm_gc_field_exchange(int *destination, int value, int *previous)
+{
+    int observed;
+    if (!aligned(destination) || !aligned(previous) || destination == previous)
+    {
+        return 0;
+    }
+#ifdef GC_FIELDS_ATOMIC
+    observed = __atomic_exchange_n(destination, value, __ATOMIC_ACQ_REL);
+#else
+    fvm_port_registry_lock();
+    observed = read_field(destination);
+    write_field(destination, value);
+    fvm_port_registry_unlock();
+#endif
+    *previous = observed;
+    return 1;
+}
+
+
 /* Preserve Setmark's conditional color/dirty behavior. Under native atomics,
  * two stores are intentionally NOT advertised as one epoch/graph transaction. */
 int dvm_gc_field_mark(int *color, const int *selector, int *pending)
@@ -144,4 +167,18 @@ void dvm_runtime_gc_mark(int *color, const int *selector, int *pending)
     {
         invalid();
     }
+}
+
+
+/* [GC:] Consume scalar work notification under existing collector exclusion.
+ * Return its old value; terminate on malformed geometry after releasing locks.
+ * This acquires no source lifetime or graph/epoch-completion permission. */
+int dvm_runtime_gc_exchange(int *destination, int value)
+{
+    int previous;
+    if (!dvm_gc_field_exchange(destination, value, &previous))
+    {
+        invalid();
+    }
+    return previous;
 }

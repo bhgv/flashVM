@@ -1,3 +1,6 @@
+Runtime0.86 update: [pending work now uses atomic read-and-clear](GC-PENDING.md).
+Epoch/root/selector exclusion still applies; this is not concurrent graph admission.
+
 Runtime0.84 update: [four x64 owner operations now tail-enter checked C](OWNER-TAIL.md).
 Other native JIT families remain outside the runtime0.83 scalar conversion below.
 

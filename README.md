@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1783**. [Русская версия](README.ru.md).
+Development version: **0.1784**. [Русская версия](README.ru.md).
 
-Current series: [v0.1783](docs/releases/v0.1783.md): checked x64 aggregate tail entries and record/list ownership tests.
+Current series: [v0.1784](docs/releases/v0.1784.md): atomic collector work consumption and concurrent scalar history checks.
 
 ## Browse documentation
 
