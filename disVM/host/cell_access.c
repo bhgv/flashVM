@@ -1,19 +1,11 @@
 /* Allocation-free ordered stripe exclusion for possibly unaligned pointer cells. */
 #include "disvm/cell_access.h"
+#include "cell_access_private.h"
 #include "disvm/refcount.h"
 #include <stdint.h>
 #include <stdlib.h>
 
-#define STRIPES 256 /* Collision exclusion only; not an object or thread quota. */
-
-
-/* Creator owns one reference; each live/partial access pins one more. */
-struct DVM_CellDomain
-{
-    unsigned long references; /* Native checked atomic count, not a managed root. */
-    DVM_ObjectDomain *parking; /* Shared native wait metadata, stable through finalization. */
-    DVM_ObjectGuard stripes[STRIPES]; /* Fixed inline guards; no per-MOVP allocation. */
-};
+#define STRIPES DVM_CELL_STRIPES /* Private shared domain geometry. */
 
 
 /* Retire initialized private prefix after unpublished initialization failure. */
@@ -124,16 +116,17 @@ static int empty(DVM_CellAccess *access)
 
 /* Compute both canonical boundary stripes without touching operand storage.
  * Address geometry is not mapping/provenance/root validation. */
-static int range(const void *slot, unsigned int *keys)
+static int range(const void *slot, size_t length, unsigned int *keys)
 {
     uintptr_t address = (uintptr_t)slot;
     uintptr_t width = sizeof(void *);
     uintptr_t last;
-    if (address < width || address > (uintptr_t)-1 - (width - 1))
+    if (!length || length > width || address < width ||
+        address > (uintptr_t)-1 - (length - 1))
     {
         return 0;
     }
-    last = address + width - 1;
+    last = address + length - 1;
     keys[0] = (unsigned int)((address / width) % STRIPES);
     keys[1] = (unsigned int)((last / width) % STRIPES);
     return 1;
@@ -142,15 +135,17 @@ static int range(const void *slot, unsigned int *keys)
 
 /* Claim unique stripes in ascending index order. A failed claim drops all held
  * guards before returning; callers may retry only before ownership effects. */
-DVM_CellResult dvm_cell_access_begin(DVM_CellDomain *domain,
-    const void *source, void *destination, DVM_CellAccess *access)
+DVM_CellResult dvm_cell_access_spans_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, void *destination, size_t destination_size,
+    DVM_CellAccess *access)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     unsigned int keys[4];
     unsigned int index;
     unsigned int other;
     if (!domain || !context || dvm_native_context_object_count(context) ||
-        !empty(access) || !range(source, keys) || !range(destination, keys + 2))
+        !empty(access) || !range(source, source_size, keys) ||
+        !range(destination, destination_size, keys + 2))
     {
         return DVM_CELL_REFUSED;
     }
@@ -206,4 +201,13 @@ int dvm_cell_access_end(DVM_CellAccess *access)
     }
     unwind(access);
     return 1;
+}
+
+
+/* Pointer-cell compatibility entry; exact historical width/geometry semantics. */
+DVM_CellResult dvm_cell_access_begin(DVM_CellDomain *domain,
+    const void *source, void *destination, DVM_CellAccess *access)
+{
+    return dvm_cell_access_spans_begin(domain, source, sizeof(void *),
+        destination, sizeof(void *), access);
 }

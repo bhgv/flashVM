@@ -20,6 +20,7 @@
 #include "close_worker.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "shared_bytes.h"
 #include "runqueue.h"
 #include "queue_probe.h"
 #include "managed_owner_probe.h"
@@ -1332,6 +1333,15 @@ int main(int argc, char **argv)
             argv++;
             argc--;
         }
+        else if (strcmp(argv[1], "--guarded-copies") == 0)
+        {
+            if (dvm_runtime_guarded_copies)
+            {
+                fprintf(stderr, "--guarded-copies may be selected only once\n");
+                return 2;
+            }
+            dvm_runtime_guarded_copies = 1;
+        }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
@@ -1362,6 +1372,7 @@ int main(int argc, char **argv)
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
+            puts("Memory experiment: --guarded-copies with --gc-worker guards scalar/raw copy ranges; parallel heap stays disabled");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");
@@ -1387,6 +1398,18 @@ int main(int argc, char **argv)
     if (managed_limit_selected && managed_workers != 0)
     {
         fprintf(stderr, "--managed-workers-limit requires --managed-workers auto\n");
+        return 2;
+    }
+#if !defined(__x86_64__)
+    if (dvm_runtime_guarded_copies && cflag)
+    {
+        fprintf(stderr, "--guarded-copies with --jit requires AMD64; use --no-jit on this target\n");
+        return 2;
+    }
+#endif
+    if (dvm_runtime_guarded_copies && !gc_worker)
+    {
+        fprintf(stderr, "--guarded-copies requires --gc-worker\n");
         return 2;
     }
     if (managed_workers != 1 && !gc_worker)

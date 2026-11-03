@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1786**. [Русская версия](README.ru.md).
+Development version: **0.1787**. [Русская версия](README.ru.md).
 
-Current series: [v0.1786](docs/releases/v0.1786.md): guarded MOVP source retain/publication and allocation-free pointer-cell ranges.
+Current series: [v0.1787](docs/releases/v0.1787.md): opt-in guarded scalar/raw copies, exact shared byte ranges and checked SELF.
 
 ## Browse documentation
 

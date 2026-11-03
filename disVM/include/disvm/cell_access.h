@@ -1,6 +1,7 @@
 /* Native pointer-cell range exclusion; no managed roots or payload capability. */
 #ifndef DVM_CELL_ACCESS_H
 #define DVM_CELL_ACCESS_H
+#include <stddef.h>
 #include "disvm/object_guard.h"
 #include "disvm/native_context.h"
 #ifdef __cplusplus
@@ -54,6 +55,14 @@ int dvm_cell_domain_destroy(DVM_CellDomain **domain);
  * Do not hold port registry mutex or keep access across VM/world/error calls. */
 DVM_CellResult dvm_cell_access_begin(DVM_CellDomain *domain,
     const void *source, void *destination, DVM_CellAccess *access);
+
+
+/* Same lifetime/role/rollback contract as pointer begin, with each span length
+ * in1..sizeof(void*). Covers exact byte extents; no extra mapped bytes required.
+ * Empty/oversized spans refuse unchanged. Useful for small scalar data cells. */
+DVM_CellResult dvm_cell_access_spans_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, void *destination, size_t destination_size,
+    DVM_CellAccess *access);
 
 
 /* Release guards in reverse order, drop native domain borrow and zero access.

@@ -43,7 +43,7 @@ def main():
                 'disVM/upstream/include', 'disVM/upstream/libinterp', 'disVM/upstream/emu/port',
                 'disVM/include', 'flashVM/ports')]
             command += [str(runtime / 'test_managed_owner_roles.c'), str(path)]
-            command += [str(root / p) for p in ('disVM/host/refcount.c', 'disVM/host/guard_registry.c', 'disVM/host/object_guard.c', 'disVM/host/cell_access.c', 'disVM/host/owner_scope.c', 'disVM/host/native_context.c',
+            command += [str(root / p) for p in ('disVM/host/refcount.c', 'disVM/host/guard_registry.c', 'disVM/host/object_guard.c', 'disVM/host/cell_access.c', 'disVM/host/range_access.c', 'disVM/host/owner_scope.c', 'disVM/host/native_context.c',
                 'disVM/host/native_registers.c', 'disVM/host/native_owner.c', 'disVM/host/native_world.c',
                 'disVM/host/gc_workers.c', 'flashVM/ports/linux/thread.c', 'flashVM/ports/linux/channel_sync.c')]
             binary = work / 'roles'

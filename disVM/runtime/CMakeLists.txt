@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.88.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.89.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -102,7 +102,7 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py shared_pointer.h aggregate_fast.h owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py prepare_shared_bytes.py prepare_bytes_tail.py shared_bytes.h bytes_fast.h shared_pointer.h aggregate_fast.h owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-${runtime_backend})
@@ -116,6 +116,7 @@ add_executable(disvm
     "${root}/disVM/host/object_guard.c"
     "${root}/disVM/host/guard_registry.c"
     "${root}/disVM/host/cell_access.c"
+    "${root}/disVM/host/range_access.c"
     "${root}/disVM/host/owner_scope.c"
     "${root}/disVM/host/owner_slot.c"
     main.c
@@ -146,6 +147,10 @@ add_executable(disvm
     pointer_builder.c
     owner_fast.c
     shared_pointer.c
+    shared_access.c
+    shared_bytes.c
+    byte_transfer.c
+    bytes_fast.c
     aggregate_fast.c
     pointer_builder_probe.c
     heap_snapshot_probe.c
@@ -2480,4 +2485,21 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "${CMAKE_CURRENT_SOURCE_DIR}/test_shared_pointer.py" "$<TARGET_FILE:disvm>"
   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
  set_tests_properties(disvm_shared_pointer_cells PROPERTIES TIMEOUT 180)
+endif()
+
+
+# Native mixed range/cell exclusion and actual six-op guarded profile.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_range_access COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/range_access.py")
+ set_tests_properties(disvm_native_range_access PROPERTIES TIMEOUT 180)
+ if(runtime_backend STREQUAL "amd64")
+  add_test(NAME disvm_shared_byte_copies COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_shared_bytes.py" "$<TARGET_FILE:disvm>"
+   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+  add_test(NAME disvm_guarded_byte_tails COMMAND "${PYTHON_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/test_bytes_tail.py" "$<TARGET_FILE:disvm>"
+   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+  set_tests_properties(disvm_shared_byte_copies disvm_guarded_byte_tails PROPERTIES TIMEOUT 180)
+ endif()
 endif()

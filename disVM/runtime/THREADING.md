@@ -1,3 +1,6 @@
+[Runtime0.89: opt-in guarded scalar/raw copies and checked SELF](SHARED-BYTES.md).
+NativeWorld remains required; the flag is not parallel heap activation.
+
 [Runtime0.88: actual MOVP retain/publication under allocation-free range guards](SHARED-POINTER.md).
 Other operations and general parallel managed admission remain unfinished.
 

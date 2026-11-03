@@ -5,6 +5,7 @@
 #include "interp.h"
 #include "raise.h"
 #include "shared_pointer.h"
+#include "shared_access.h"
 #include "managed_owner.h"
 #include "gc_fields.h"
 #include "disvm/refcount.h"
@@ -30,28 +31,6 @@ static int overlaps(const void *one, const void *two)
 }
 
 
-/* [GC:] Preflight exact native process/role BEFORE touching cells. Return one
- * for serial inline, two for serialized worker world, zero for refusal. Cleanup
- * state and held guards cannot be used as payload/cell permission. */
-static int mode(void)
-{
-    DVM_NativeContext *context = dvm_native_context_current();
-    DVM_HeapOwner *owner = dvm_native_owner_current();
-    DVM_HeapOwnerStats state;
-    DVM_NativeCleanupMark mark;
-    if (!context || dvm_native_context_register_size(context) != sizeof(REG) ||
-        !dvm_native_context_host_process(context) ||
-        dvm_native_context_object_count(context) || !dvm_native_cleanup_mark(&mark) ||
-        !dvm_native_owner_statistics(owner, &state) || state.pending_progress)
-    {
-        return 0;
-    }
-    if (dvm_native_owner_world(owner))
-    {
-        return state.phase == DVM_HEAP_ACTIVE ? 2 : 0;
-    }
-    return state.phase == DVM_HEAP_DETACHED && !dvm_native_context_has_poll(context) ? 1 : 0;
-}
 
 
 /* [GC:] Caller protects cell lifetime. Capture unaligned values only after all
@@ -66,7 +45,7 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination,
     void *incoming;
     void *outgoing;
     Heap *heap = NULL;
-    int selected = mode();
+    int selected = dvm_runtime_shared_mode();
     if (!selected || !span(source) || !span(destination) || !span(previous) ||
         overlaps(previous, source) || overlaps(previous, destination))
     {

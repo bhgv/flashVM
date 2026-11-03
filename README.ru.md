@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1786**. [English](README.md).
+Версия разработки: **0.1787**. [English](README.md).
 
-Текущая серия: [v0.1786](docs/releases/v0.1786.md): защищённый MOVP: захват источника и публикация ссылки под блокировками ячеек.
+Текущая серия: [v0.1787](docs/releases/v0.1787.md): режим --guarded-copies для пяти копирований, общие диапазоны байтов и защищённый SELF.
 
 ## Просмотр документации
 

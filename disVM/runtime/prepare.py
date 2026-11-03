@@ -20,6 +20,8 @@ from prepare_roots import adapt as adapt_roots
 from prepare_boundary_counts import adapt as adapt_boundary_counts
 from prepare_stack_check import adapt as adapt_stack_check
 from prepare_shared_pointer import adapt as adapt_shared_pointer
+from prepare_shared_bytes import adapt as adapt_shared_bytes
+from prepare_bytes_tail import adapt as adapt_bytes_tail
 from prepare_gc_fields import adapt as adapt_gc_fields, validate_header as validate_gc_header
 
 
@@ -64,7 +66,7 @@ def main():
     layout_path = args.output / "leaf64-ops.h"
     layout_path.write_text(adapt_jit_counts(layout_path.read_text()))
     emitter_path = args.output / "amd64-emit.h"
-    emitter_path.write_text(adapt_aggregate_tail(adapt_owner_tail(adapt_pointer_tail(emitter_path.read_text()))))
+    emitter_path.write_text(adapt_bytes_tail(adapt_aggregate_tail(adapt_owner_tail(adapt_pointer_tail(emitter_path.read_text())))))
     for unit in ('loader', 'exception'):
         path = args.output / (unit+'.c')
         path.write_text(adapt_boundary_counts(path.read_text(), unit))
@@ -326,7 +328,7 @@ def main():
     path.write_text(code)
 
     pointer_path = args.output / "xec.c"
-    pointer_path.write_text(adapt_shared_pointer(pointer_path.read_text()))
+    pointer_path.write_text(adapt_shared_bytes(adapt_shared_pointer(pointer_path.read_text())))
 
     validate_gc_header((args.source.parent / 'include/interp.h').read_text())
     for unit in ('gc', 'heap'):

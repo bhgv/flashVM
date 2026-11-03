@@ -3,6 +3,7 @@
 #define DVM_MANAGED_OWNER_H
 #include "disvm/owner_scope.h"
 #include "disvm/cell_access.h"
+#include "disvm/range_access.h"
 #include "disvm/managed_reference.h"
 #include "disvm/gc_workers.h"
 
@@ -59,4 +60,12 @@ void dvm_runtime_guard_registry_probe(DVM_GCWorkers *workers);
  * is implied. Result and cleanup follow cell_access.h. No VM callbacks. */
 DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination,
     DVM_CellAccess *access);
+
+
+/* [GC:] Exact ACTIVE service owner only; mapped spans/lifetimes caller-owned.
+ * Native span/range contracts apply; no retain/root or VM callback is implied. */
+DVM_CellResult dvm_managed_spans_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_CellAccess *access);
+DVM_CellResult dvm_managed_ranges_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_RangeAccess *access);
 #endif

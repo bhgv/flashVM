@@ -549,3 +549,31 @@ DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination,
     }
     return dvm_cell_access_begin(owners.cells, source, destination, access);
 }
+
+
+/* [GC:] Service identity and ACTIVE exclusion stabilize domain/span metadata.
+ * No ownership/root permission follows; native small-span begin never allocates. */
+DVM_CellResult dvm_managed_spans_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_CellAccess *access)
+{
+    if (!admitted())
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return dvm_cell_access_spans_begin(owners.cells, source, source_size,
+        destination, destination_size, access);
+}
+
+
+/* [GC:] Same role/lifetime contract for wide spans, sharing the SAME domain.
+ * Size geometry is not a managed root, provenance check or payload capability. */
+DVM_CellResult dvm_managed_ranges_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_RangeAccess *access)
+{
+    if (!admitted())
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return dvm_range_access_begin(owners.cells, source, source_size,
+        destination, destination_size, access);
+}
