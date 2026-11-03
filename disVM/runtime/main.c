@@ -49,11 +49,7 @@ extern void dvm_editor_stop(void);
 #define ARENA_BYTES (64UL * 1024UL * 1024UL) /* Bounded experimental heap arena. */
 #define PROCESS_MAX DVM_RUNTIME_PROCESS_MAX                      /* Maximum simultaneous Limbo processes. */
 
-/* Private allocator owner; the arena has stable metadata for production GC walks. */
-struct Pool
-{
-    Bhdr *arena; /* Owned bounded arena, including collector block headers. */
-};
+#include "heap_pool.h"
 
 /* Initialize the resolver's owned native lock. No arguments/result; raises on failure. */
 extern void dvm_srv_initialize(void);
@@ -339,77 +335,13 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
 
-/* Create a bounded arena with stable headers for the retained cycle collector. */
+/* Create arena/mutex privately; VM allocation errors occur outside pool lock. */
 static void arena_init(void)
 {
-    Bhdr *block;
-    ulong header = (sizeof(Bhdr) + 15UL) & ~15UL;
-    memory.arena = calloc(1, ARENA_BYTES);
-    if (!memory.arena)
+    if (!dvm_heap_pool_init(&memory, ARENA_BYTES))
     {
         error(exNomem);
     }
-    memory.arena->magic = MAGIC_E;
-    memory.arena->size = header;
-    memory.arena->csize = ARENA_BYTES;
-    memory.arena->clink = nil;
-    block = B2NB(memory.arena);
-    block->magic = MAGIC_F;
-    block->size = ARENA_BYTES - header;
-}
-
-/* First-fit allocation preserves block addresses and GC traversal metadata. */
-void *poolalloc(Pool *pool, ulong size)
-{
-    Bhdr *block;
-    Bhdr *remainder;
-    ulong need;
-    if (size > ARENA_BYTES - BHDRSIZE - 16)
-    {
-        return nil;
-    }
-    need = (size + BHDRSIZE + 15UL) & ~15UL;
-    for (block = B2NB(pool->arena); block < B2LIMIT(pool->arena); block = B2NB(block))
-    {
-        if (block->magic != MAGIC_F || block->size < need)
-        {
-            continue;
-        }
-        if (block->size - need >= sizeof(Bhdr) + 16)
-        {
-            remainder = (Bhdr *)((uchar *)block + need);
-            remainder->magic = MAGIC_F;
-            remainder->size = block->size - need;
-            block->size = need;
-        }
-        block->magic = MAGIC_A;
-        return B2D(block);
-    }
-    return nil;
-}
-
-/* Free one heap block without moving headers observed by the cycle collector. */
-void poolfree(Pool *pool, void *value)
-{
-    Bhdr *block;
-    USED(pool);
-    D2B(block, value);
-    block->magic = MAGIC_F;
-}
-
-/* Return the stable arena chain consumed by production rungc. */
-Bhdr *poolchain(Pool *pool)
-{
-    return pool->arena;
-}
-
-/* Report usable payload bytes for production heap bounds checks. */
-ulong poolmsize(Pool *pool, void *value)
-{
-    Bhdr *block;
-    USED(pool);
-    D2B(block, value);
-    return block->size - BHDRSIZE;
 }
 
 /* Allocate ordinary host metadata; the VM heap uses its separate bounded arena. */

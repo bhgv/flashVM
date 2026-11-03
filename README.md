@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1776**. [Русская версия](README.ru.md).
+Development version: **0.1777**. [Русская версия](README.ru.md).
 
-Current series: [v0.1776](docs/releases/v0.1776.md): synchronized external-root registry and real collector integration.
+Current series: [v0.1777](docs/releases/v0.1777.md): serialized allocator metadata with joined native ownership checks.
 
 ## Browse documentation
 
