@@ -51,10 +51,15 @@ int __wrap_dvm_runtime_type_release(int *reference)
 # startup/compiler/signal/timeout/sanitizer failures refuse rather than pass.
 def main():
     arguments = sys.argv[1:]
-    opcodes = bool(arguments and arguments[0] == '--opcodes')
-    heap = bool(arguments and arguments[0] in ('--heap', '--opcodes'))
-    if heap:
-        arguments = arguments[1:]
+    modes = {
+        '--heap': ('heap', 'heap', 'Heap', 'checked Heap retain', 'converted destroy nonfinal drop'),
+        '--opcodes': ('heap', 'opcode', 'opcode', 'movp retains source', 'movp self-assignment preserves count'),
+        '--modules': ('module', 'module', 'Module', 'lookmod retains module', 'unload nonfinal preserves module'),
+    }
+    configuration = ('type', 'type', 'Type', 'checked Type retain', 'retained freetype nonfinal drop')
+    if arguments and arguments[0] in modes:
+        configuration = modes[arguments.pop(0)]
+    kind, probe, label, retain_marker, release_marker = configuration
     runtime, compiler, include = (Path(value).resolve() for value in arguments)
     root = Path(__file__).resolve().parents[2]
     metadata = runtime.parent / 'CMakeFiles/disvm.dir'
@@ -67,17 +72,16 @@ def main():
     with tempfile.TemporaryDirectory(prefix='actual Type counts ') as directory:
         work = Path(directory)
         source = work / 'wrapper.c'
-        wrapper = WRAPPER
-        if heap:
-            wrapper = wrapper.replace('Type', 'Heap').replace('type', 'heap').replace('int *reference', 'unsigned long *reference')
-        if opcodes:
-            wrapper = wrapper.replace('dvm_runtime_heap_probe', 'dvm_runtime_opcode_probe')
+        wrapper = WRAPPER.replace('Type', label).replace('type', kind)
+        if kind == 'heap':
+            wrapper = wrapper.replace('int *reference', 'unsigned long *reference')
+        wrapper = wrapper.replace('dvm_runtime_'+kind+'_probe', 'dvm_runtime_'+probe+'_probe')
         source.write_text(wrapper)
         guest = work / 'main.b'
         image = work / 'main.dis'
         guest.write_text('implement T; T: module {init: fn();}; init() {}\n')
         subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)], check=True, capture_output=True)
-        for variant, marker in ((0, None), (1, 'movp retains source' if opcodes else ('checked Heap retain' if heap else 'checked Type retain')), (2, 'movp self-assignment preserves count' if opcodes else ('converted destroy nonfinal drop' if heap else 'retained freetype nonfinal drop'))):
+        for variant, marker in ((0, None), (1, retain_marker), (2, release_marker)):
             obj = work / 'wrapper.o'
             command = [link[0], *flags['C_DEFINES'], *flags['C_INCLUDES'], *flags['C_FLAGS'], '-I'+str(root/'disVM/runtime'), '-DCONTROL='+str(variant), '-c', str(source), '-o', str(obj)]
             subprocess.run(command, check=True, capture_output=True, text=True)
@@ -85,8 +89,8 @@ def main():
             selected = list(link)
             at = selected.index('-o')
             selected[at+1] = str(binary)
-            kind = 'heap' if heap else 'type'
-            selected += [str(obj), *['-Wl,--wrap='+('dvm_runtime_opcode_probe' if opcodes and operation == 'probe' else 'dvm_runtime_'+kind+'_'+operation) for operation in ('probe', 'retain', 'release')]]
+            symbols = ['dvm_runtime_'+probe+'_probe', 'dvm_runtime_'+kind+'_retain', 'dvm_runtime_'+kind+'_release']
+            selected += [str(obj), *['-Wl,--wrap='+symbol for symbol in symbols]]
             subprocess.run(selected, cwd=runtime.parent, check=True, capture_output=True, text=True)
             env = dict(os.environ, TMPDIR=str(work))
             run = subprocess.run([str(binary), '--gc-worker', '--no-jit', '--managed-owner-probe', '--stats', str(image)], capture_output=True, text=True, timeout=45, env=env)
@@ -94,11 +98,11 @@ def main():
             if 'runtime error:' in text or 'WARNING: ThreadSanitizer:' in text:
                 raise RuntimeError('Type control sanitizer failure: '+text[-6000:])
             if marker:
-                if run.returncode != 10 or ('FAIL opcode-count probe: ' if opcodes else ('FAIL Heap-count probe: ' if heap else 'FAIL Type-count probe: '))+marker not in text:
+                if run.returncode != 10 or 'FAIL '+label+'-count probe: '+marker not in text:
                     raise RuntimeError('Type control missed its semantic predicate: '+text[-6000:])
-            elif run.returncode or ('PASS opcode-count probe:' if opcodes else ('PASS Heap-count probe:' if heap else 'PASS Type-count probe:')) not in text:
+            elif run.returncode or 'PASS '+label+'-count probe:' not in text:
                 raise RuntimeError('actual Type positive failed: '+text[-6000:])
-    print('PASS actual movp/self/nil; two exact opcode-count semantic controls' if opcodes else 'PASS actual retained Heap/string/mapped/list/Fast; two exact Heap-count semantic controls' if heap else 'PASS actual retained dtype/freetype/array/Fast; two exact Type-count semantic controls')
+    print('PASS actual '+label+' ownership; two exact '+label+'-count semantic controls')
 
 
 if __name__ == '__main__':

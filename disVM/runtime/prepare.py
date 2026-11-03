@@ -8,6 +8,7 @@ import sys
 from prepare_type_counts import adapt as adapt_type_counts
 from prepare_heap_counts import adapt as adapt_heap_counts
 from prepare_opcode_counts import adapt as adapt_opcode_counts
+from prepare_module_counts import adapt_link, adapt_load, adapt_xec
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -229,7 +230,9 @@ def main():
         path.write_text(code)
     path = args.output / "load.c"
     code = path.read_text().replace("*(WORD*)si = disw(isp);", "*(WORD*)si = (int)disw(isp);")
-    path.write_text(code)
+    path.write_text(adapt_load(code))
+    link_path = args.output / "link.c"
+    link_path.write_text(adapt_link(link_path.read_text()))
     path = args.output / "xec.c"
     code = path.read_text()
     code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include "table_leases.h"')
@@ -278,7 +281,7 @@ def main():
             count=1,
         )
     code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
-    path.write_text(adapt_opcode_counts(code))
+    path.write_text(adapt_xec(adapt_opcode_counts(code)))
     path = args.output / "alt.c"
     code = path.read_text()
     code = code.replace(

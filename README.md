@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1766**. [Русская версия](README.ru.md).
+Development version: **0.1767**. [Русская версия](README.ru.md).
 
-Current series: [v0.1766](docs/releases/v0.1766.md): checked Heap/Type retains in hosted opcodes.
+Current series: [v0.1767](docs/releases/v0.1767.md): checked Module/link ownership and independent MP clones.
 
 ## Browse documentation
 

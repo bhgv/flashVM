@@ -100,3 +100,11 @@ heap.c only. Other C/JIT/GC sites remain unconverted under serial admission.
 hosted xec.c. It preserves guards/captures/Setmark/publication order. Module.ref,
 preflight observations and whole-header snapshots are separate unconverted
 accesses under serialized admission; JIT emitted retains are not changed.
+
+
+## Runtime0.69: module and linker sites
+
+[Module/link adaptation](MODULE-COUNTS.md) converts lookmod/$self retains and
+unload release without a post-nonfinal count read. link.c/load.c add3 Type
+retains and8 preflight loads; $self adds2 Module observations. Registry/code/MP
+retirement stay excluded. The actual probe verifies separate MP data values.
