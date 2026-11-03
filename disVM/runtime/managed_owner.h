@@ -2,6 +2,7 @@
 #ifndef DVM_MANAGED_OWNER_H
 #define DVM_MANAGED_OWNER_H
 #include "disvm/owner_scope.h"
+#include "disvm/cell_access.h"
 #include "disvm/managed_reference.h"
 #include "disvm/gc_workers.h"
 
@@ -51,4 +52,11 @@ unsigned long dvm_managed_owner_guard_entries(void);
 /* [GC:] Actual canonical guard diagnostic on ACTIVE controller; workers is
  * borrowed service. All created managed owners retire before returning. */
 void dvm_runtime_guard_registry_probe(DVM_GCWorkers *workers);
+
+
+/* [GC:] Claim pointer-sized source/destination cells only on exact ACTIVE
+ * managed service owner. Ranges are caller-owned/live; no object retain/root
+ * is implied. Result and cleanup follow cell_access.h. No VM callbacks. */
+DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination,
+    DVM_CellAccess *access);
 #endif

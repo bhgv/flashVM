@@ -1,3 +1,6 @@
+[Runtime0.88: actual MOVP retain/publication under allocation-free range guards](SHARED-POINTER.md).
+Other operations and general parallel managed admission remain unfinished.
+
 [Runtime0.87: canonical per-object guards tied to real rooted tickets](GUARD-REGISTRY.md).
 This establishes identity/lifecycle, not parallel managed payload permission.
 

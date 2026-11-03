@@ -1,5 +1,6 @@
 /* Single-thread allocation ledger for actual registry/domain/port construction. */
 #include "disvm/guard_registry.h"
+#include "disvm/cell_access.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -144,4 +145,52 @@ void dvm_test_guard_registry_faults(void)
     check(dvm_guard_registry_destroy(&registry) && !live, "final ledger empty");
     active = 0;
     printf("PASS guard registry allocations:%u constructor boundaries and node refusal, zero native ledger\n", index - 1);
+}
+
+
+/* Sweep actual cell-domain construction before any native competitors start.
+ * Fixed guards allocate only at startup; completed begin/end uses no allocator. */
+void dvm_test_cell_domain_faults(void)
+{
+    DVM_CellDomain *domain;
+    unsigned int index;
+    active = 1;
+    for (index = 1; index < RECORDS; index++)
+    {
+        refuse = index;
+        attempts = 0;
+        refused = 0;
+        domain = dvm_cell_domain_create();
+        if (domain)
+        {
+            check(!refused && attempts < refuse, "cell success beyond injected allocation");
+            check(dvm_cell_domain_destroy(&domain) && !domain && !live,
+                "cell successful constructor fully retires");
+            break;
+        }
+        check(refused && !live, "cell partial constructor fully retires");
+    }
+    check(index < RECORDS, "cell allocation sweep completes");
+    active = 0;
+    printf("PASS cell domain allocations:%u boundaries, zero native ledger\n", index - 1);
+}
+
+
+/* Enable fail-first ledger only around an already initialized cell interval.
+ * Run on main before competitors; allocation during begin/end must be absent. */
+void dvm_test_cell_noalloc_start(void)
+{
+    check(!active && !live, "clean no-allocation ledger start");
+    active = 1;
+    refuse = 1;
+    attempts = 0;
+    refused = 0;
+}
+
+
+/* Prove the guarded operation did not call a native allocator at all. */
+void dvm_test_cell_noalloc_end(void)
+{
+    check(!attempts && !refused && !live, "cell interval allocates no native storage");
+    active = 0;
 }

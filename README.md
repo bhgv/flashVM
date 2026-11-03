@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1785**. [Русская версия](README.ru.md).
+Development version: **0.1786**. [Русская версия](README.ru.md).
 
-Current series: [v0.1785](docs/releases/v0.1785.md): canonical per-object guards bound to rooted managed tickets.
+Current series: [v0.1786](docs/releases/v0.1786.md): guarded MOVP source retain/publication and allocation-free pointer-cell ranges.
 
 ## Browse documentation
 

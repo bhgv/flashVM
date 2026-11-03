@@ -49,7 +49,7 @@ def main():
                 if backend == 'locked':
                     command += ['-DDVM_OBJECT_FORCE_LOCKED=1', '-DDVM_REFCOUNT_FORCE_LOCKED=1']
                 command += [str(tests / 'guard_registry.c'), str(tests / 'guard_registry_faults.c'), str(private),
-                            *[str(host / name) for name in ('object_guard.c', 'refcount.c',
+                            *[str(host / name) for name in ('object_guard.c', 'cell_access.c', 'refcount.c',
                               'native_context.c', 'native_owner.c', 'native_world.c')],
                             str(ports / 'linux/thread.c'), str(ports / 'linux/channel_sync.c'),
                             '-Wl,--wrap=malloc', '-Wl,--wrap=calloc', '-Wl,--wrap=free',

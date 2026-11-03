@@ -1,3 +1,6 @@
+Runtime0.88 update: [MOVP now uses separate allocation-free pointer-cell range guards](SHARED-POINTER.md).
+Per-referent sidecars and cell stripes have distinct ownership/exclusion purposes.
+
 # Canonical object sidecars — runtime0.87
 
 A shared payload guard must belong to the referent, not to each independently

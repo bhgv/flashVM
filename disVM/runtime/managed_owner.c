@@ -40,6 +40,7 @@ typedef struct ManagedOwners
     unsigned long captured; /* Completed capture count for joined diagnostics. */
     unsigned long released; /* Completed managed drops for joined diagnostics. */
     DVM_GuardRegistry *guards; /* Owned canonical sidecars; every ticket retains one lease. */
+    DVM_CellDomain *cells; /* Allocation-free pointer-cell exclusion for hosted MOVP. */
     int accepting;         /* Capture admission, independent of native alias retention. */
     int failed;            /* Wake failure, never permission to remove roots early. */
 } ManagedOwners;
@@ -179,6 +180,7 @@ int dvm_managed_owner_start(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     FVM_PortSync *candidate;
     FVM_PortSync *mutex;
     DVM_GuardRegistry *registry;
+    DVM_CellDomain *cells;
     if (!world || !workers || !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
         state.phase != DVM_HEAP_ACTIVE || state.pending_progress ||
         dvm_native_owner_world(dvm_native_owner_current()) != world ||
@@ -207,17 +209,25 @@ int dvm_managed_owner_start(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     {
         return 0;
     }
+    cells = dvm_cell_domain_create();
+    if (!cells)
+    {
+        dvm_guard_registry_destroy(&registry);
+        return 0;
+    }
     mutex = lock_service();
     if (owners.world)
     {
         fvm_port_sync_unlock(mutex);
         dvm_guard_registry_destroy(&registry);
+        dvm_cell_domain_destroy(&cells);
         return 0;
     }
     memset(&owners, 0, sizeof(owners));
     owners.world = world;
     owners.workers = workers;
     owners.guards = registry;
+    owners.cells = cells;
     owners.accepting = 1;
     fvm_port_sync_unlock(mutex);
     return 1;
@@ -471,6 +481,11 @@ int dvm_managed_owner_finish(int diagnostics)
         printf("MANAGEDOWNERS captured=%lu released=%lu live=%lu pending=%lu tickets=%lu producers=%lu failed=%d rooted_until_fast=1\n",
             owners.captured, owners.released, owners.live, owners.pending, owners.tickets, owners.producers, owners.failed);
     }
+    if (owners.cells && !dvm_cell_domain_destroy(&owners.cells))
+    {
+        fvm_port_sync_unlock(mutex);
+        return 0;
+    }
     if (owners.guards && !dvm_guard_registry_destroy(&owners.guards))
     {
         fvm_port_sync_unlock(mutex);
@@ -519,4 +534,18 @@ unsigned long dvm_managed_owner_guard_entries(void)
         fvm_port_sync_unlock(mutex);
     }
     return result;
+}
+
+
+/* [GC:] Stable service/world identity is checked before native registry use.
+ * Existing serialized admission stabilizes the service and caller-owned spans.
+ * Cell guards do not replace source lifetime, roots or future GC epoch proof. */
+DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination,
+    DVM_CellAccess *access)
+{
+    if (!admitted())
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return dvm_cell_access_begin(owners.cells, source, destination, access);
 }

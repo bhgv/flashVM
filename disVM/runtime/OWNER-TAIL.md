@@ -1,3 +1,6 @@
+Runtime0.88 update: [the C MOVP target now guards source retain and destination publication](SHARED-POINTER.md).
+The reviewed tail ABI/cache/error constraints below remain unchanged.
+
 # Checked x64 owner tail entries — runtime0.84
 
 Hosted SysV x64 LeafOwner lowering for MOVP/SELF/HEADP/TAIL now emits a short tail
