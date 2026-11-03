@@ -14,6 +14,7 @@ from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
 from prepare_pointer_builder import adapt as adapt_pointer_builder
 from prepare_pointer_tail import adapt as adapt_pointer_tail
+from prepare_roots import adapt as adapt_roots
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -58,6 +59,8 @@ def main():
     layout_path.write_text(adapt_jit_counts(layout_path.read_text()))
     emitter_path = args.output / "amd64-emit.h"
     emitter_path.write_text(adapt_pointer_tail(emitter_path.read_text()))
+    roots_path = args.output / "gc.c"
+    roots_path.write_text(adapt_roots(roots_path.read_text()))
     # Adapt only the hosted view. Pinned upstream and standalone native fixtures
     # retain ordinary destroy. Reject drift before installing the owner hook.
     heap_path = args.output / "heap.c"

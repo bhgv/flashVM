@@ -44,7 +44,7 @@ init() {
                     'PASS managed owner probe:', 'PASS Type-count probe:',
                     'PASS Heap-count probe:', 'PASS opcode-count probe:',
                     'PASS Module-count probe:', 'PASS snapshot-count probe:',
-                    'PASS service-count probe:', 'PASS pointer-builder probe:',
+                    'PASS service-count probe:', 'PASS pointer-builder probe:', 'PASS root-registry probe:',
                     'PASS normal Dis after native managed cleanup',
                 )
                 if result.returncode or any(marker not in text for marker in required):
