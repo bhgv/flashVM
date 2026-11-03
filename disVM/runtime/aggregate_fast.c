@@ -37,7 +37,8 @@ int dvm_runtime_aggregate_movmp_fast(REG *registers)
  * Tail scaffold does not read cache/module state after calling the opcode. */
 int dvm_runtime_aggregate_headmp_fast(REG *registers)
 {
-    if (!dvm_runtime_owner_entry_ready(registers))
+    if (!dvm_runtime_owner_entry_ready(registers) ||
+        (dvm_runtime_guarded_copies && dvm_native_context_object_count(dvm_native_context_current())))
     {
         return 0;
     }

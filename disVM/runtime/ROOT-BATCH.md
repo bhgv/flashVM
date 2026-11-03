@@ -4,8 +4,8 @@ Root batches reserve native metadata before entering an access interval. Publica
 and clear use the actual external-root registry mutex and never allocate. The
 existing stopped-world collector sees either the complete group or none of it.
 This is a prerequisite for retaining displaced aggregate references across
-destructor callbacks. Runtime0.91 uses this API for opt-in MOVMP; HEADMP remains
-unconverted. See [SHARED-MAPPED.md](SHARED-MAPPED.md).
+destructor callbacks. Runtime0.91 uses this API for opt-in MOVMP; runtime0.92 also roots the HEADMP
+source list. See [mapped copies](SHARED-MAPPED.md) and [list heads](SHARED-HEAD.md).
 
 `root_batch.c` contains the group algorithm, `root_registry.c` owns the shared
 ordinary-root lists, and `root_registry_private.h` describes their private native

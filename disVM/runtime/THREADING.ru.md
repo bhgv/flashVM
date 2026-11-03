@@ -641,3 +641,5 @@ fallback. Выбранные host retain/release переведены; оста�
 Runtime0.90: [preallocated root groups](ROOT-BATCH.md), a prerequisite for mapped-copy retirement; general managed execution remains serialized.
 
 Runtime0.91: [mapped MOVMP transaction](SHARED-MAPPED.md), opt-in guarded publication and rooted retirement; general managed execution remains serialized.
+
+Runtime0.92: [rooted HEADMP](SHARED-HEAD.md), guarded source-list capture and mapped projection. Other shared writers/GC epochs still require NativeWorld.

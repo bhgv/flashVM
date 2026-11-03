@@ -22,6 +22,7 @@ from prepare_stack_check import adapt as adapt_stack_check
 from prepare_shared_pointer import adapt as adapt_shared_pointer
 from prepare_shared_bytes import adapt as adapt_shared_bytes
 from prepare_shared_mapped import adapt as adapt_shared_mapped
+from prepare_shared_head import adapt as adapt_shared_head
 from prepare_bytes_tail import adapt as adapt_bytes_tail
 from prepare_gc_fields import adapt as adapt_gc_fields, validate_header as validate_gc_header
 
@@ -329,7 +330,7 @@ def main():
     path.write_text(code)
 
     pointer_path = args.output / "xec.c"
-    pointer_path.write_text(adapt_shared_mapped(adapt_shared_bytes(adapt_shared_pointer(pointer_path.read_text()))))
+    pointer_path.write_text(adapt_shared_head(adapt_shared_mapped(adapt_shared_bytes(adapt_shared_pointer(pointer_path.read_text())))))
 
     validate_gc_header((args.source.parent / 'include/interp.h').read_text())
     for unit in ('gc', 'heap'):

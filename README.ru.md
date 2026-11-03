@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1789**. [English](README.md).
+Версия разработки: **0.1790**. [English](README.md).
 
-Текущая серия: [v0.1789](docs/releases/v0.1789.md): защищённый MOVMP и освобождение старых ссылок через пакеты корней.
+Текущая серия: [v0.1790](docs/releases/v0.1790.md): защищённый HEADMP с удержанием списка и проверкой payload.
 
 ## Просмотр документации
 

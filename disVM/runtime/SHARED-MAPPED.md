@@ -5,8 +5,8 @@ scalar/raw copies. Default startup retains the original mapped-copy path. The
 hosted x64 aggregate tail already enters process-live C, so the selected C
 transaction is also the JIT implementation. Other guarded JIT backends still
 refuse the profile; their explicit C path needs independent target validation.
-`HEADMP`, mapped list construction, channel movers and other writers are not
-converted by this change. NativeWorld still serializes general managed code.
+Runtime0.92 also converts `HEADMP`: [SHARED-HEAD.md](SHARED-HEAD.md). Mapped list
+construction, channel movers and other writers remain outside this transaction. NativeWorld still serializes general managed code.
 
 ## Transaction and ownership
 

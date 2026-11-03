@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1789**. [Русская версия](README.ru.md).
+Development version: **0.1790**. [Русская версия](README.ru.md).
 
-Current series: [v0.1789](docs/releases/v0.1789.md): guarded mapped MOVMP replacement and rooted callback retirement.
+Current series: [v0.1790](docs/releases/v0.1790.md): rooted guarded HEADMP with source-list and payload lifetime checks.
 
 ## Browse documentation
 

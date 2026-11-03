@@ -85,6 +85,7 @@ static void observe(int index, REG *registers, uintptr returning)
         check(dvm_managed_cells_begin(&cell, &cell, &access) == DVM_CELL_ACQUIRED,
             "hold actual cell guard before mapped tail refusal");
         check(!__real_dvm_runtime_aggregate_movmp_fast(registers) &&
+            !__real_dvm_runtime_aggregate_headmp_fast(registers) &&
             !memcmp(&saved, registers, sizeof(saved)), "held-guard mapped tail declines unchanged");
         check(dvm_cell_access_end(&access), "release held-guard refusal probe");
     }
