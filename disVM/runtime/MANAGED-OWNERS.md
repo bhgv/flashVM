@@ -161,3 +161,44 @@ Runtime0.65 uses direct slot put/take for controller publication/unpublication.
 The error probe also moves a ticket through an empty slot back into a tracked
 scope before throwing; pre-longjmp cleanup retires that owner normally. Ticket
 and producer/root counts retain the same exact shutdown predicates.
+
+
+## Runtime0.75: capture directly into the cleanup ledger
+
+`dvm_managed_owner_capture_into(value, scope, entry)` creates a distinct managed
+owner and external root and links its native ticket directly into an empty local
+entry. The caller's source owner remains independent. No transfer ownership is
+returned for caller-side acceptance, so a later user error cannot abandon that
+intermediate envelope. Existing explicit-envelope capture stays supported.
+
+Destination preflight uses `dvm_owner_scope_can_accept`: exact current context,
+open/nonbusy scope, no held guards and an empty entry. It inspects no managed
+payload. Invalid/occupied destinations refuse even when the supplied value must
+not be dereferenced. This preflight is not a reservation across callbacks or
+context transitions; actual acceptance validates again. Source value still must
+be a valid protected referent when destination is valid.
+
+Capture performs its existing protected root registration. Between its successful
+return and ledger insertion there is no allocating/user/VM callback or hosted
+longjmp checkpoint. Arbitrary asynchronous OS cancellation is unsupported. If
+late acceptance nevertheless refuses, the function consumes its local ticket
+through normal cancellation: root/reference remain until real Fast retirement.
+Return0 in that case can therefore leave queued work, but never an escaping
+untracked owner or inline managed destruction. It does not drop caller's source.
+
+The real runtime probe now uses direct capture, early invalid/occupied refusal
+before managed reads, existing native publication/alias exchange, Cycles/Fast
+and native-error paths. Its separate error case retains coverage of explicit
+capture/accept. Normal ticket totals remain2 captured/2 released.
+
+`test_direct_capture.py` uses matching GNU/Makefiles console metadata to relink
+private wrappers. Missing ledger insertion fails before using an untracked
+referent. A forced late refusal exercises real root registration, cancellation,
+joined Fast drain and exact restoration of source count/empty queue. The source
+has an independent explicit test root across that wait. Removing cancellation
+must fail the rooted-retirement queue predicate before unsafe access. These
+controls stop at semantic status10 and do not claim complete shutdown joins or
+TSan certification; only the normal positive joins the complete runtime.
+
+These are rooted native-ticket APIs, not a parallel managed allocator, moving-GC
+pin or arbitrary graph publication barrier. Existing admission remains serialized.

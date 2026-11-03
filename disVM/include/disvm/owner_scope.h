@@ -68,6 +68,13 @@ int dvm_owner_scope_open(DVM_OwnerScope *scope);
 int dvm_owner_scope_close(DVM_OwnerScope *scope);
 
 
+/* Check an empty destination in current bound scope without mutation. Return0
+ * for foreign/busy/guarded/closed scope or nonempty/invalid entry. Caller owns
+ * stable entry storage. No reservation survives a callback/context transition;
+ * actual insertion must validate again. No owner/root/payload rights acquired. */
+int dvm_owner_scope_can_accept(DVM_OwnerScope *scope, DVM_OwnerEntry *entry);
+
+
 /* Retain one DISTINCT owner into empty entry in current scope. object is already
  * protected by caller; callbacks are borrowed. Return 0 unchanged on refusal.
  * No allocation; not permission to read/write shared payload without its guard. */

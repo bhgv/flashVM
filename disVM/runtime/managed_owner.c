@@ -279,6 +279,33 @@ int dvm_managed_owner_capture(void *value, DVM_OwnerTransfer *transfer)
 }
 
 
+/* [GC:] Capture and register one rooted ticket directly in local cleanup ledger.
+ * value is independently owned by caller under ACTIVE serialized admission;
+ * scope/entry remain current-owner-local. Preflight rejects bad destinations
+ * before managed access. No user callback/checkpoint occurs after capture and
+ * before accept. Revalidate accept anyway; refusal retires ticket via Fast.
+ * No untracked owner escapes to caller and source ownership stays independent. */
+int dvm_managed_owner_capture_into(void *value, DVM_OwnerScope *scope,
+    DVM_OwnerEntry *entry)
+{
+    DVM_OwnerTransfer transfer = {0};
+    if (!dvm_owner_scope_can_accept(scope, entry) ||
+        !dvm_managed_owner_capture(value, &transfer))
+    {
+        return 0;
+    }
+    if (!dvm_owner_scope_accept(scope, entry, &transfer))
+    {
+        if (!dvm_owner_transfer_cancel(&transfer))
+        {
+            failure("direct capture rollback lost rooted ticket");
+        }
+        return 0;
+    }
+    return 1;
+}
+
+
 /* [GC:] Ticket entry is borrowed and remains linked/lifetime-protected. ACTIVE
  * role is checked first. Do not keep returned pointer across drop/world leave;
  * no implicit lock is granted for future parallel shared mutable access. */

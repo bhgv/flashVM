@@ -22,6 +22,15 @@ static int empty(DVM_OwnerEntry *entry)
 }
 
 
+/* Check current-owner empty destination without modifying ledger or ownership.
+ * scope/entry storage is private and stable. This is not a reservation across
+ * callbacks, context changes or scope close. No allocation, wait or VM access. */
+int dvm_owner_scope_can_accept(DVM_OwnerScope *scope, DVM_OwnerEntry *entry)
+{
+    return available(scope) && empty(entry);
+}
+
+
 /* Insert one already-owned object without callback/allocation. scope and entry
  * are validated private owner storage; ops/object remain live through insertion. */
 static void insert(DVM_OwnerScope *scope, DVM_OwnerEntry *entry,

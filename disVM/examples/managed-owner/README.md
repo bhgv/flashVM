@@ -64,3 +64,16 @@ not only root removal. When using an instrumented interpreter under TSan, pass
 --positive-only before the three paths to run the joined overlap independently.
 Fatal negative processes deliberately stop before joining and are tested separately
 normally/under UBSan; a TSan thread-leak report is never counted as control success.
+
+
+For a local receiver, runtime0.75 provides `dvm_managed_owner_capture_into`.
+Open your local scope, keep a zeroed entry alive through its cleanup, and pass
+that pair with your independently owned managed value. On success the entry
+already owns a rooted ticket; close/drop it normally. The active managed-owner
+probe demonstrates this complete sequence before publishing native aliases.
+
+Invalid or occupied destinations refuse before managed reads. A late acceptance
+refusal consumes the newly captured ticket through Fast, leaving the caller's
+original owner intact. Return0 can leave a queued rooted retirement; never tear
+down the collectors until it drains. `dvm_owner_scope_can_accept` is a destination
+check only, not a reservation across callbacks or context changes.

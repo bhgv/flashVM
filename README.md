@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1772**. [Русская версия](README.ru.md).
+Development version: **0.1773**. [Русская версия](README.ru.md).
 
-Current series: [v0.1772](docs/releases/v0.1772.md): tracked atomic replacement of published native owners.
+Current series: [v0.1773](docs/releases/v0.1773.md): rooted managed capture directly into native cleanup entries.
 
 ## Browse documentation
 

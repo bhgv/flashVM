@@ -146,7 +146,6 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     DVM_OwnerScope scope = {0};
     DVM_OwnerEntry main_entry = {0};
     DVM_OwnerEntry outgoing = {0};
-    DVM_OwnerTransfer transfer = {0};
     DVM_HeapOwner *owner = dvm_native_owner_current();
     String *value;
     int index;
@@ -163,8 +162,12 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     check(probe.slot != NULL, "managed publication slot");
     probe.sync = fvm_port_sync_create();
     check(probe.sync && dvm_owner_scope_open(&scope), "controller scope");
-    check(dvm_managed_owner_capture(value, &transfer), "capture managed owner/root");
-    check(dvm_owner_scope_accept(&scope, &main_entry, &transfer), "controller accepts ticket");
+    check(!dvm_managed_owner_capture_into((void *)1, NULL, &main_entry),
+        "direct capture rejects destination before managed reads");
+    check(dvm_managed_owner_capture_into(value, &scope, &main_entry) &&
+        dvm_managed_owner_value(&main_entry) == value, "direct capture links rooted ticket");
+    check(!dvm_managed_owner_capture_into((void *)1, &scope, &main_entry),
+        "occupied direct capture refuses before managed reads");
     destroy(value);
     value = H;
     check(!dvm_managed_owner_can_close() && !dvm_managed_owner_close(), "live owners refuse shutdown");
