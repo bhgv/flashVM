@@ -18,7 +18,16 @@ EXPECTED = {
     'xorb': 'a1b915735caa3e400eed49f04488b3e4444a8e5057df57420d7142c20d9b9312',
     'xorw': '4af11528e6273e775b7494aab697f21b945206d828da7cfbc7e87c23b77bf166',
     'xorl': '28fd84528be5e96ef5a289e7573f48d74677b323d2900c7039c36c5587d85b16',
-}  # Retained 15 full bodies; no file opcode changes.
+    'mulb': 'a8bc250c963cf04875952b9379be33dd4d7410368c20981059225e063ecde7a6',
+    'mulw': '268b7e1999b0b6ce39711f052bba99765fb4a0e27dd687fb8f378707d61155eb',
+    'mull': '2af6384807fe5e76216f66c532400c6f558049ffb4ed30578978646bb84ad4f0',
+    'divb': 'eea3cc4fe38145e740442ee788f196405434646b9b2be41f54dec339854c1859',
+    'divw': '411257bd6cbc6052534969cc6df82ed977cb537a9cc820f9808c2b0d60fe6c51',
+    'divl': '96007332eca2e205487eb9ec03b4183888fa8f89003ff1f10b406ded76a8c7d2',
+    'modb': '936305396705ce473e5f305a59b37ec324c78a92122f8b30b5fe22144eba2e62',
+    'modw': '4fc6e53eb3c79df1e7326715980ab70fb55fcb7fa8e6a21337238d407cc1b5f1',
+    'modl': 'a1b0b97be03256978acd538b7d5905a71a348d366ddbaa3e47796e3ee1933d1e',
+}  # Retained 24 full bodies; no file opcode changes.
 
 
 def adapt(source):
@@ -28,7 +37,7 @@ def adapt(source):
         if len(matches) != 1 or hashlib.sha256(matches[0].group().encode()).hexdigest() != expected:
             raise ValueError('guarded arithmetic source drift: '+name)
         body = matches[0].group()
-        anchor = '\t/* Bound all decoded spans'
+        anchor = '\t/* A zero divisor wins' if name.startswith(('div', 'mod')) else '\t/* Bound all decoded spans'
         if body.count(anchor) != 1:
             raise ValueError('guarded arithmetic insertion drift: '+name)
         body = body.replace(anchor, '\tif(dvm_runtime_guarded_copies) {\n\t\tconst char *problem = dvm_runtime_arithmetic(I'+name.upper()+', DVM_R.m, DVM_R.s, DVM_R.d);\n\t\tif(problem != nil) {\n\t\t\terror((char *)problem);\n\t\t}\n\t\treturn;\n\t}\n'+anchor)

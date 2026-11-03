@@ -18,6 +18,10 @@
  * workload comparison and remaining profile overhead: PERFORMANCE-COSTS.md. */
 
 
+/* [PERF MULDIV-098] Full guarded product/division workload is recorded in
+ * PERFORMANCE-COSTS.md. Divisor checks/error-path cost is not isolated. */
+
+
 /* [GC:] opcode selects width/operation; first/second/output borrow live storage.
  * Reject context/opcode/geometry before reads. Return static error or NULL.
  * Existing NativeWorld/root lifetime rules remain; this is only byte exclusion. */
@@ -25,6 +29,9 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
 {
     DVM_TripleAccess access = {0};
     size_t width;
+    int division = 0;
+    int invalid_outer;
+    const char *problem = NULL;
     if (dvm_runtime_shared_mode() != 2)
     {
         return exHeap;
@@ -35,6 +42,9 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
     case ISUBB:
     case IANDB:
     case IORB:
+    case IMULB:
+    case IDIVB:
+    case IMODB:
     case IXORB:
         width = sizeof(BYTE);
         break;
@@ -42,6 +52,9 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
     case ISUBW:
     case IANDW:
     case IORW:
+    case IMULW:
+    case IDIVW:
+    case IMODW:
     case IXORW:
         width = sizeof(UWORD);
         break;
@@ -49,26 +62,50 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
     case ISUBL:
     case IANDL:
     case IORL:
+    case IMULL:
+    case IDIVL:
+    case IMODL:
     case IXORL:
         width = sizeof(ULONG);
         break;
     default:
         return exHeap;
     }
-    if (!output || output == H || (uintptr_t)output > (uintptr_t)-1 - width ||
-        !second || second == H || (uintptr_t)second > (uintptr_t)-1 - width ||
-        !first || first == H || (uintptr_t)first > (uintptr_t)-1 - width)
+    division = opcode == IDIVB || opcode == IDIVW || opcode == IDIVL ||
+        opcode == IMODB || opcode == IMODW || opcode == IMODL;
+    if (!second || second == H || (uintptr_t)second > (uintptr_t)-1 - width)
     {
         return exBounds;
     }
-    if (dvm_managed_small_three_begin(first, width, second, width, output, width, &access) != DVM_CELL_ACQUIRED)
+    invalid_outer = !output || output == H || (uintptr_t)output > (uintptr_t)-1 - width ||
+        !first || first == H || (uintptr_t)first > (uintptr_t)-1 - width;
+    if (invalid_outer && !division)
+    {
+        return exBounds;
+    }
+    /* Invalid dividend/output geometry is not payload access. For DIV/MOD,
+     * claim only the valid divisor (three aliases) before choosing Zdiv/Bounds.
+     * Valid operations keep all three spans locked through their single snapshot. */
+    if (dvm_managed_small_three_begin(invalid_outer ? second : first, width,
+        second, width, invalid_outer ? (void *)second : output, width, &access) != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
-    dvm_runtime_arithmetic_value(opcode, first, second, output);
+    if (division && dvm_runtime_divisor_zero(opcode, second))
+    {
+        problem = exZdiv;
+    }
+    else if (invalid_outer)
+    {
+        problem = exBounds;
+    }
+    else
+    {
+        dvm_runtime_arithmetic_value(opcode, first, second, output);
+    }
     if (!dvm_small_range_access_end(&access))
     {
         abort();
     }
-    return NULL;
+    return problem;
 }

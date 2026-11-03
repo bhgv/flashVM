@@ -8,7 +8,9 @@ import sys
 import tempfile
 import time
 from relink_private import relink
-from test_shared_arithmetic import GUEST
+from test_shared_arithmetic import guest, FAMILIES
+
+GUEST = guest(FAMILIES[:5])  # Preserve the historical fifteen-op workload.
 
 
 def main():

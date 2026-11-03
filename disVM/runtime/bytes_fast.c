@@ -14,6 +14,15 @@ extern void movw(void); /* Actual hosted native WORD copy opcode. */
 extern void movl(void); /* Actual hosted LONG copy opcode. */
 extern void movf(void); /* Actual hosted bit-preserving REAL copy opcode. */
 extern void movm(void); /* Actual hosted variable-size raw copy opcode. */
+extern void mulb(void); /* Actual guarded product/quotient/remainder. */
+extern void mulw(void); /* Actual guarded product/quotient/remainder. */
+extern void mull(void); /* Actual guarded product/quotient/remainder. */
+extern void divb(void); /* Actual guarded product/quotient/remainder. */
+extern void divw(void); /* Actual guarded product/quotient/remainder. */
+extern void divl(void); /* Actual guarded product/quotient/remainder. */
+extern void modb(void); /* Actual guarded product/quotient/remainder. */
+extern void modw(void); /* Actual guarded product/quotient/remainder. */
+extern void modl(void); /* Actual guarded product/quotient/remainder. */
 extern void addb(void); /* Actual guarded integer arithmetic opcode. */
 extern void addw(void); /* Actual guarded integer arithmetic opcode. */
 extern void addl(void); /* Actual guarded integer arithmetic opcode. */
@@ -67,6 +76,33 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVM:
         movm();
+        break;
+    case IMULB:
+        mulb();
+        break;
+    case IMULW:
+        mulw();
+        break;
+    case IMULL:
+        mull();
+        break;
+    case IDIVB:
+        divb();
+        break;
+    case IDIVW:
+        divw();
+        break;
+    case IDIVL:
+        divl();
+        break;
+    case IMODB:
+        modb();
+        break;
+    case IMODW:
+        modw();
+        break;
+    case IMODL:
+        modl();
         break;
     case IADDB:
         addb();

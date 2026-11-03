@@ -1,4 +1,4 @@
-"""Actual 15-op arithmetic, jointly guarded operands and overlap semantics."""
+"""Actual 24-op arithmetic, jointly guarded operands and overlap semantics."""
 from pathlib import Path
 import os
 import re
@@ -8,24 +8,35 @@ import tempfile
 from relink_private import relink
 from test_shared_integer import WRAPPER as TEMPLATE
 
-OPS = [kind+width for kind in ('add', 'sub', 'and', 'or', 'xor') for width in ('b', 'w', 'l')]  # Actual retained opcodes.
+FAMILIES = (('add', '+'), ('sub', '-'), ('and', '&'), ('or', '|'), ('xor', '^'),
+            ('mul', '*'), ('div', '/'), ('mod', '%'))  # Actual native integer families.
+OPS = [kind+width for kind, _ in FAMILIES for width in ('b', 'w', 'l')]  # Existing opcodes.
 
 
-def guest():
-    """Produce real Limbo operations/checksums across byte, int and big types."""
+def guest(families=FAMILIES):
+    """Compile changing positive inputs and typed checks; families fixes workload.
+
+    Byte multiplication wraps to8 bits. Division inputs here stay nonzero; native
+    fixture and failing guests cover zero/negative/boundary exception behavior.
+    """
+    count = 3*len(families)
     lines = ['implement Arithmetic;', 'include "sys.m";', 'Arithmetic: module {init: fn();};',
              'init() {', 'sys := load Sys Sys->PATH;', 'sys->print("BEGIN arithmetic\\n");',
              'for (i := 0; i < 32; i++) {']
     for suffix, typ in [('b', 'byte'), ('w', 'int'), ('l', 'big')]:
         lines += [f'a{suffix} := {typ} (i+64);', f'b{suffix} := {typ} (i+3);']
-        for kind, sign in [('add', '+'), ('sub', '-'), ('and', '&'), ('or', '|'), ('xor', '^')]:
+        for kind, sign in families:
+            expected = f'((i+64) {sign} (i+3))'
+            if suffix == 'b' and kind == 'mul':
+                expected = '('+expected+' & 255)'
             lines += [f'r{kind}{suffix} := a{suffix} {sign} b{suffix};',
-                      f'if (int r{kind}{suffix} != ((i+64) {sign} (i+3))) {{raise "arithmetic mismatch";}}']
-    lines += ['}', 'sys->print("PASS arithmetic15\\n");', '}']
+                      f'if (int r{kind}{suffix} != {expected}) {{raise "arithmetic mismatch";}}']
+    lines += ['}', f'sys->print("PASS arithmetic{count}\\n");', '}']
     return '\n'.join(lines)+'\n'
 
 
-GUEST = guest()  # Native compiler must actually emit all 15 operations.
+GUEST = guest()  # Real native compiler must reach all24 operation variants.
+
 
 
 def wrapper():
@@ -58,14 +69,46 @@ def wrapper():
     end = code.index('\n\n\n/* Run real C opcodes', begin)
     code = code[:begin]+'''/* Capture the fixture's actual overlapping input bytes and evaluate a separate
  * uint64 oracle. width selects low-byte truncation; opcode's family selects math.
- * first/second are live native buffers, result receives expected output bytes. */
-static void expected(int family, size_t width, const void *first, const void *second, void *result)
+ * first/second are live native buffers; result receives expected bytes.
+ * Return1 for zero divisor,0 for a computed result. No VM state is read. */
+static int expected(int family, size_t width, const void *first, const void *second, void *result)
 {
     uvlong a = 0;
     uvlong b = 0;
     uvlong value = 0;
     memcpy(&a, first, width);
     memcpy(&b, second, width);
+    memset(result, 0, width);
+    if (family >= 6)
+    {
+        uvlong sign = width == 1 ? 0 : (1ULL << 63);
+        uvlong am;
+        uvlong bm;
+        if (!b)
+        {
+            return 1;
+        }
+        am = (a & sign) ? 0-a : a;
+        bm = (b & sign) ? 0-b : b;
+        if (family == 6)
+        {
+            value = am / bm;
+            if (!!(a & sign) != !!(b & sign))
+            {
+                value = 0-value;
+            }
+        }
+        else
+        {
+            value = am % bm;
+            if (a & sign)
+            {
+                value = 0-value;
+            }
+        }
+        memcpy(result, &value, width);
+        return 0;
+    }
     switch (family)
     {
     case 0:
@@ -83,21 +126,25 @@ static void expected(int family, size_t width, const void *first, const void *se
     case 4:
         value = a ^ b;
         break;
+    case 5:
+        value = a * b;
+        break;
     }
     memcpy(result, &value, width);
+    return 0;
 }'''+code[end:]
     code = code.replace('{ICVTBW, ICVTWB, ICVTWS, ICVTSW, ICVTWL, ICVTLW}', '{'+', '.join('I'+x.upper() for x in OPS)+'}')
-    code = code.replace('    unsigned int sample;', '    unsigned int sample;\n    int middle;\n    uvlong second_bits;')
+    code = code.replace('    unsigned int sample;', '    unsigned int sample;\n    int middle;\n    int zero_divisor;\n    unsigned long completed = 0;\n    unsigned long zero_cases = 0;\n    uvlong second_bits;')
     code = code.replace('    unsigned char source[8];', '    unsigned char source[8];')
     code = code.replace('        for (sample = 0; sample < 260; sample++)', '        input_width = output_width = op % 3 == 0 ? sizeof(BYTE) : op % 3 == 1 ? sizeof(UWORD) : sizeof(ULONG);\n        for (sample = 0; sample < 260; sample++)')
     code = code.replace('            expected(current_opcode, bits, source, result);',
                         '            memcpy(source, &bits, sizeof(bits));\n            second_bits = ~bits ^ 0x123456789abcdef0ULL;\n            for (middle = -7; middle <= 7; middle++)\n            {')
     code = code.replace('                memcpy(bytes+24, source, input_width);',
-                        '                memcpy(bytes+24, source, input_width);\n                memcpy(bytes+24+middle, &second_bits, input_width);\n                expected((int)(op / 3), input_width, bytes+24, bytes+24+middle, result);')
+                        '                memcpy(bytes+24, source, input_width);\n                memcpy(bytes+24+middle, &second_bits, input_width);\n                zero_divisor = expected((int)(op / 3), input_width, bytes+24, bytes+24+middle, result);')
     code = code.replace('                input_cell = bytes+24;', '                input_cell = bytes+24;\n                second_cell = bytes+24+middle;\n                DVM_R.m = (void *)input_cell;')
     # Retained arithmetic takes its first input from m, second from s.
     code = code.replace('                DVM_R.s = (void *)input_cell;', '                DVM_R.s = (void *)second_cell;')
-    code = code.replace('        memset(bytes, 0xa5, sizeof(bytes));\n        memcpy(wanted', '        }\n        memset(bytes, 0xa5, sizeof(bytes));\n        memcpy(wanted', 1)
+    code = code.replace('        memset(bytes, 0xa5, sizeof(bytes));\n        memcpy(wanted', '        }\n        active = 0;\n        memset(bytes, 0xa5, sizeof(bytes));\n        memcpy(wanted', 1)
     code = code.replace('dvm_runtime_arithmetic(current_opcode, H, bytes)', 'dvm_runtime_arithmetic(current_opcode, H, bytes, bytes)')
     code = code.replace('dvm_runtime_arithmetic(current_opcode, bytes, H)', 'dvm_runtime_arithmetic(current_opcode, bytes, H, bytes)')
     code = code.replace('dvm_runtime_arithmetic(current_opcode, (void *)(uintptr)-1, bytes)', 'dvm_runtime_arithmetic(current_opcode, bytes, bytes, (void *)(uintptr)-1)')
@@ -105,7 +152,74 @@ static void expected(int family, size_t width, const void *first, const void *se
     code = code.replace('dvm_runtime_arithmetic(ICVTBW, H, H)', 'dvm_runtime_arithmetic(IADDB, H, H, H)')
     code = code.replace('__real_dvm_managed_three_begin(bytes, 1, bytes, 1, &held)', '__real_dvm_managed_three_begin(bytes, 1, bytes, 1, bytes, 1, &held)')
     code = code.replace('DVM_CellAccess held', 'DVM_RangeAccess held').replace('dvm_cell_access_end(&held)', 'dvm_range_access_end(&held)')
-    code = code.replace('transfers == 23400', 'transfers == 877500').replace('23400', '877500').replace('six-op', '15-op')
+    code = code.replace('                check(kprotect(invoke, NULL), "actual opcode completes");', '''                if (zero_divisor)
+                {
+                    memcpy(before, bytes, sizeof(bytes));
+                    check(!kprotect(invoke, NULL) && !strcmp(getup()->env->errstr, exZdiv) &&
+                        !memcmp(before, bytes, sizeof(bytes)), "zero divisor preserves all output");
+                    check(!dvm_native_context_object_count(dvm_native_context_current()), "zero error unlocks");
+                    zero_cases++;
+                    continue;
+                }
+                check(kprotect(invoke, NULL), "actual opcode completes");
+                completed++;''')
+    code = code.replace('"opcode error unchanged");', '''"opcode error unchanged");
+        if (op / 3 >= 6)
+        {
+            uvlong zero = 0;
+            uvlong minimum = 1ULL << 63;
+            uvlong minus_one = ~0ULL;
+            uvlong output = 0;
+            DVM_R.s = &zero;
+            DVM_R.m = H;
+            DVM_R.d = H;
+            check(!kprotect(invoke, NULL) && !strcmp(getup()->env->errstr, exZdiv) &&
+                !dvm_native_context_object_count(dvm_native_context_current()), "zero beats invalid outer cells");
+            zero = 1;
+            check(!kprotect(invoke, NULL) && !strcmp(getup()->env->errstr, exBounds), "nonzero invalid outer cells");
+            if (op % 3)
+            {
+                DVM_R.m = &minimum;
+                DVM_R.s = &minus_one;
+                DVM_R.d = &output;
+                check(kprotect(invoke, NULL) && output == (op / 3 == 6 ? minimum : 0),
+                    "minimum divided/remainder minus one");
+            }
+        }
+        active = 1;''')
+    code = code.replace('transfers == 23400', 'transfers == (int)completed && completed + zero_cases == 1404000')
+    code = code.replace('23400', '1404000').replace('six-op', '24-op')
+    code = code.replace('/* Intercept the actual admission boundary', '''/* Actual VM error entry must never be called with leaked native guards.
+ * A controlled zero-diagnostic mutation tests the exception-precedence oracle. */
+void __real_error(char *message);
+void __wrap_error(char *message)
+{
+    if (active)
+    {
+        check(!dvm_native_context_object_count(dvm_native_context_current()), "VM error after unlock");
+        if (CONTROL == 4 && !strcmp(message, exZdiv))
+        {
+            message = exBounds;
+        }
+    }
+    __real_error(message);
+    abort();
+}
+
+
+/* Intercept the actual admission boundary''')
+    code = code.replace('/* Intercept the actual admission boundary', '''/* Every production divisor read must occur while canonical guards are held.
+ * opcode/second are borrowed and forwarded unchanged; no modeled value is used. */
+int __real_dvm_runtime_divisor_zero(int opcode, const void *second);
+int __wrap_dvm_runtime_divisor_zero(int opcode, const void *second)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    check(context && dvm_native_context_object_count(context), "divisor read holds guards");
+    return __real_dvm_runtime_divisor_zero(opcode, second);
+}
+
+
+/* Intercept the actual admission boundary''')
     code = code.replace('FAIL integer:', 'FAIL arithmetic:').replace('PASS integer', 'PASS arithmetic')
     return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
@@ -121,9 +235,9 @@ def main():
         subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
         cfile = work/'wrapper.c'
         cfile.write_text(wrapper())
-        for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3)):
+        for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
             binary = relink(runtime, work, cfile, variant,
-                            ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value', 'dvm_managed_small_three_begin'])
+                            ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value', 'dvm_managed_small_three_begin', 'dvm_runtime_divisor_zero', 'error'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
@@ -134,13 +248,13 @@ def main():
                     output = run.stdout+run.stderr
                     if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                         raise RuntimeError(output)
-                    if variant in (1, 2):
-                        marker = 'conversion holds joint guards' if variant == 1 else 'exact conversion and canaries'
+                    if variant in (1, 2, 4):
+                        marker = 'conversion holds joint guards' if variant == 1 else 'exact conversion and canaries' if variant == 2 else 'zero divisor preserves all output'
                         if run.returncode != 10 or 'FAIL arithmetic: '+marker not in output:
                             raise RuntimeError('semantic control missed: '+output)
-                    elif run.returncode or ('PASS arithmetic admission refusal' if variant == 3 else 'PASS arithmetic probe:') not in output or 'PASS arithmetic15' not in output:
+                    elif run.returncode or ('PASS arithmetic admission refusal' if variant == 3 else 'PASS arithmetic probe:') not in output or 'PASS arithmetic24' not in output:
                         raise RuntimeError('arithmetic positive failed: '+output)
-    print('PASS 15 actual arithmetic opcodes, 877500 alias/value cases, C/JIT guest, both polls')
+    print('PASS 24 actual arithmetic opcodes, 1404000 alias/value cases, C/JIT guest, both polls')
 
 
 if __name__ == '__main__':

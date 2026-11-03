@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.97.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.98.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2595,4 +2595,11 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
  add_test(NAME disvm_native_small_ranges COMMAND "${CMAKE_COMMAND}" -E env
   "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/small_range.py")
  set_tests_properties(disvm_native_small_ranges PROPERTIES TIMEOUT 180)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
+ add_test(NAME disvm_arithmetic_zero_errors COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_arithmetic_errors.py" "$<TARGET_FILE:disvm>"
+  "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+ set_tests_properties(disvm_arithmetic_zero_errors PROPERTIES TIMEOUT 180)
 endif()

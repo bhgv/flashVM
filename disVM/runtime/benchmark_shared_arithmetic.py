@@ -1,6 +1,8 @@
 """Local whole-profile cost of 15 jointly guarded integer operations."""
 from benchmark_guarded_copies import main
-from test_shared_arithmetic import GUEST
+from test_shared_arithmetic import guest, FAMILIES
+
+GUEST = guest(FAMILIES[:5])  # Preserve the historical fifteen-op workload.
 
 
 if __name__ == '__main__':

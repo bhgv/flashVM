@@ -87,3 +87,7 @@ A separate current full-profile comparison measures default→guarded:
 C 2.776729707→2.885887481 seconds (+3.93%); JIT 1.905204034→3.281296924 (+72.23%).
 Do not subtract percentages across these two comparisons or historical ARITH-096.
 The ledger remains open for remaining overhead; no safety was removed for timing.
+
+Runtime0.98 adds nine [product/division/remainder operations](PRODUCT-DIVISION.md)
+to this compact domain. Earlier fifteen-op measurements remain historical; their
+benchmark guest is explicitly frozen. No global parallel admission is enabled.

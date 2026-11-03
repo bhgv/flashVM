@@ -32,8 +32,9 @@ SMALL-097 дополнительно сохраняет три отсчёта к
 | INT-095 / v0.1793 | 20000 итераций BYTE/WORD/LONG конвертаций; default против полного защищённого профиля | 0,174223 → 0,191245 с; +9,77% | 0,126488 → 0,167298 с; +32,26% | [JSON](performance/integer-runtime095.json), [контракт](SHARED-INTEGER.md) |
 | ARITH-096 / v0.1794 | 20000 итераций 15 явных ADD/SUB/AND/OR/XOR B/W/L плюс проверки/цикл; default против полного защищённого профиля | 2,514193 → 3,296930 с; +31,13% | 1,647545 → 3,721847 с; +125,90% | [JSON](performance/arithmetic-runtime096.json), [контракт](SHARED-ARITHMETIC.md) |
 | SMALL-097 / v0.1795 | 20000 итераций того же семейства с компактной защитой; полный guarded против default | 2,776730 → 2,885887 с; +3,93% | 1,905204 → 3,281297 с; +72,23% | [JSON](performance/arithmetic-small-runtime097.json), [контракт](SMALL-RANGES.md) |
+| MULDIV-098 / v0.1796 | 20000 итераций 24 явных целочисленных операций, включая MUL/DIV/MOD, плюс цикл/проверки; полный guarded против default | 4,038585 → 4,380781 с; +8,47% | 2,460639 → 4,385723 с; +78,24% | [JSON](performance/product-division-runtime098.json), [контракт](PRODUCT-DIVISION.md) |
 
-У восьми последних записей флаг включает и другие защищённые операции. Поэтому
+У девяти последних записей флаг включает и другие защищённые операции. Поэтому
 долю MOVMP, HEADMP, отдельных блокировок или allocator по этим числам выделить
 нельзя. Защищённые копирования пока включаются явно; MOVP и SELF имеют свой
 проверенный путь независимо от этого флага. NativeWorld всё ещё необходим.
@@ -69,6 +70,7 @@ python3 disVM/runtime/benchmark_shared_list_bytes.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_integer.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_shared_arithmetic.py RUNTIME LIMBO INCLUDE_DIR
 python3 disVM/runtime/benchmark_small_arithmetic.py RUNTIME LIMBO INCLUDE_DIR
+python3 disVM/runtime/benchmark_product_division.py RUNTIME LIMBO INCLUDE_DIR
 ```
 
 | ID | Исходный опубликованный commit |
@@ -107,3 +109,9 @@ compact 2,703037 с (время меньше на 20,66%); JIT 3,421905 →3,031
 Не выводить универсальное ускорение и не вычитать эти проценты из ARITH-096: его
 измерение было другой парой запусков. На локальном native64 metadata 72 вместо 2072
 байт. Стоимость оставшихся preflight/guard/C-tail путей отдельно не измерена.
+
+MULDIV-098: v0.1796 / FLASHVM-0114. Новый workload содержит 24 явных операции
+и непустые делители, поэтому отдельная стоимость zero-error/cleanup не измерена.
+Preflight, выбор семейства, guarded divisor-read, 6-key guards и C-вход JIT остаются
+кандидатами для разбора, без измеренной доли каждого. Исторические 15-op программы
+зафиксированы побайтово; их JSON/условия не перезаписаны и проценты не складываются.

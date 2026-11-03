@@ -663,3 +663,7 @@ threads; general managed computation remains serialized by NativeWorld.
 Runtime0.97: [compact small ranges](SMALL-RANGES.md) use six boundary stripes
 in the same domain as wide/cell operations. This reduces metadata work without
 removing owner/root/NativeWorld requirements.
+
+Runtime0.98: [MUL/DIV/MOD](PRODUCT-DIVISION.md) keep both inputs/result under one
+claim; DIV/MOD return semantic errors after unlock, preserving zero precedence
+over invalid outer sentinels. General managed admission remains serialized.

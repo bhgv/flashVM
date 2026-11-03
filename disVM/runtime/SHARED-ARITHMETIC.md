@@ -86,3 +86,7 @@ optimization candidates; no isolated attribution or cross-workload addition.
 Runtime0.97 uses [compact metadata](SMALL-RANGES.md) for the same three live small
 spans and same canonical domain. The generic path/cost above remains historical
 evidence; no arithmetic semantics, default admission or NativeWorld change.
+
+Runtime0.98 adds nine [product/division/remainder operations](PRODUCT-DIVISION.md)
+to this compact domain. Earlier fifteen-op measurements remain historical; their
+benchmark guest is explicitly frozen. No global parallel admission is enabled.

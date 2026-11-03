@@ -62,7 +62,10 @@ x64guardedcopy(u32int *out, int cap, LeafLayout *abi, int op)
         op == ISUBB || op == ISUBW || op == ISUBL ||
         op == IANDB || op == IANDW || op == IANDL ||
         op == IORB || op == IORW || op == IORL ||
-        op == IXORB || op == IXORW || op == IXORL)) {
+        op == IXORB || op == IXORW || op == IXORL ||
+        op == IMULB || op == IMULW || op == IMULL ||
+        op == IDIVB || op == IDIVW || op == IDIVL ||
+        op == IMODB || op == IMODW || op == IMODL)) {
         return x64guardedcopy(out, cap, abi, op);
     }
 '''+anchor, 1)

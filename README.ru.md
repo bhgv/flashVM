@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1795**. [English](README.md).
+Версия разработки: **0.1796**. [English](README.md).
 
-Текущая серия: [v0.1795](docs/releases/v0.1795.md): компактная защита трёх малых диапазонов в общем домене, сохранение защиты арифметики.
+Текущая серия: [v0.1796](docs/releases/v0.1796.md): защищённые MUL/DIV/MOD, приоритет ошибки нулевого делителя и проверки JIT.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 
