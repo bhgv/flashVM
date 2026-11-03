@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1779**. [Русская версия](README.ru.md).
+Development version: **0.1780**. [Русская версия](README.ru.md).
 
-Current series: [v0.1779](docs/releases/v0.1779.md): invocation-local stack diagnostics with real cyclic-graph reentry checks.
+Current series: [v0.1780](docs/releases/v0.1780.md): reserved native RC retirement metadata and verified root-refusal rollback.
 
 ## Browse documentation
 

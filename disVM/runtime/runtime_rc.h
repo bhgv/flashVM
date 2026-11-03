@@ -3,7 +3,8 @@
 #define DVM_RUNTIME_RC_H
 
 /* [GC:] Enable an empty bounded queue on the current Dis mutator. Called only
- * after collector startup, before any collection request. No ownership transfer. */
+ * after collector startup, before any collection request. No ownership transfer. Native metadata
+ * allocation failure selects inline RC; previous session must be finished. */
 void dvm_runtime_rc_start(void);
 
 /* [GC:] Transfer the caller's last reference into the native queue, retaining
@@ -20,7 +21,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget);
 
 /* [GC:] Query queue size only on the active Dis owner, before releasing the
  * world interval, including helper executors. Returns zero for other roles;
- * no wait/allocation. Queue state stays protected by exclusive world admission. */
+ * may wait for native metadata mutex, never managed admission or allocation.
+ * Source access, statistics and caller phase still require world admission. */
 unsigned int dvm_runtime_rc_pending(void);
 
 /* [GC:] Stop admission on the mutator before leaving its heap interval. */

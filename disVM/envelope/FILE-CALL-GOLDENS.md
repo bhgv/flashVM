@@ -47,3 +47,32 @@ Keep acceptance closed until independent raw-byte validators and actual C/RX
 module lifecycle results agree. Native ARM64/x64 and RV64/QEMU owning acceptance
 remain separate from FlashVM's local x64 runs. No new opcode/section/feature ID,
 native ABI or cross-VM pointer representation is requested by this review.
+
+
+## INFERNO-0100 immutable corpus receipt
+
+Peer2b4a93a85b176ed0b32df1c94e93ac661397fcfa adopts two SEQUENTIAL root
+calls and publishes25 immutable hex images with a length/SHA256 manifest. Four
+private accepts include answer42, sequential chain42, reordered sections and
+an accepted static image whose callee divides by zero;21 are private refusals.
+No new checksum extension or executable production-file permission is added.
+
+Our independent Python outer-directory inspection and actual pinned inspector
+agree on23 canonical outer directories and2 malformed envelopes. All25 exact
+identities match; all25 current scalar-gate refusals preserve existing rewrite
+output. The private21 semantic refusal reasons are NOT independently validated
+by our still-closed scalar gate. Trusted manifest numeric locals are never used
+by this inspection as executable authority. Reproduce with explicit tools/corpus:
+
+```sh
+python3 disVM/envelope/tests/peer_call_goldens.py PATH_TO_DIS64INSPECT \
+    PATH_TO_INFERNO/utils/tests/goldens/dis64-calls
+```
+
+Separately, the peer's complete-image private harness was replayed on local x64:
+4 accepts/21 refusals,132 actual C/RX/extent/quanta/saved/error runs,5 strict
+source controls, default O3 nonrecovering UBSan. This remains owning-source
+private runtime evidence under bounded transports; it is not an independent
+FlashVM call validator/loader implementation or new physical-target acceptance.
+The remaining untrusted local-kind, typed-result/LEA and whole-file lifecycle
+obligations above remain before changing public admission.
