@@ -116,3 +116,11 @@ retirement stay excluded. The actual probe verifies separate MP data values.
 count-excluding byte copies plus atomic ref observation. String direct count
 sites also convert. Other header bytes still require exclusion; observations
 are not roots, retains, COW locks or globally consistent graph snapshots.
+
+
+## Runtime0.80: Loader and exception retains
+
+[Boundary adaptation and actual execution checks](BOUNDARY-COUNTS.md) converts
+Loader's data-Heap/Type retains and both exception-Heap retains. Emergency buffer
+contents, module construction, mark state and publication still require serial
+admission; checked counts are not a parallel Loader/exception protocol.

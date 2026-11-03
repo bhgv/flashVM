@@ -15,6 +15,7 @@ from prepare_jit_counts import adapt as adapt_jit_counts
 from prepare_pointer_builder import adapt as adapt_pointer_builder
 from prepare_pointer_tail import adapt as adapt_pointer_tail
 from prepare_roots import adapt as adapt_roots
+from prepare_boundary_counts import adapt as adapt_boundary_counts
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -59,6 +60,9 @@ def main():
     layout_path.write_text(adapt_jit_counts(layout_path.read_text()))
     emitter_path = args.output / "amd64-emit.h"
     emitter_path.write_text(adapt_pointer_tail(emitter_path.read_text()))
+    for unit in ('loader', 'exception'):
+        path = args.output / (unit+'.c')
+        path.write_text(adapt_boundary_counts(path.read_text(), unit))
     roots_path = args.output / "gc.c"
     roots_path.write_text(adapt_roots(roots_path.read_text()))
     # Adapt only the hosted view. Pinned upstream and standalone native fixtures
