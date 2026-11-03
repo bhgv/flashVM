@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1782**. [Русская версия](README.ru.md).
+Development version: **0.1783**. [Русская версия](README.ru.md).
 
-Current series: [v0.1782](docs/releases/v0.1782.md): checked x64 owner tail entries and per-opcode cache-retirement tests.
+Current series: [v0.1783](docs/releases/v0.1783.md): checked x64 aggregate tail entries and record/list ownership tests.
 
 ## Browse documentation
 
