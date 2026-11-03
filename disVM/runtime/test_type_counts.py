@@ -1,4 +1,4 @@
-"""Relink actual hosted runtime; remove only the probe's Type retain/drop."""
+"""Relink actual hosted runtime; remove only selected probe retain/drop."""
 from pathlib import Path
 import os
 import shlex
@@ -51,7 +51,8 @@ int __wrap_dvm_runtime_type_release(int *reference)
 # startup/compiler/signal/timeout/sanitizer failures refuse rather than pass.
 def main():
     arguments = sys.argv[1:]
-    heap = bool(arguments and arguments[0] == '--heap')
+    opcodes = bool(arguments and arguments[0] == '--opcodes')
+    heap = bool(arguments and arguments[0] in ('--heap', '--opcodes'))
     if heap:
         arguments = arguments[1:]
     runtime, compiler, include = (Path(value).resolve() for value in arguments)
@@ -69,12 +70,14 @@ def main():
         wrapper = WRAPPER
         if heap:
             wrapper = wrapper.replace('Type', 'Heap').replace('type', 'heap').replace('int *reference', 'unsigned long *reference')
+        if opcodes:
+            wrapper = wrapper.replace('dvm_runtime_heap_probe', 'dvm_runtime_opcode_probe')
         source.write_text(wrapper)
         guest = work / 'main.b'
         image = work / 'main.dis'
         guest.write_text('implement T; T: module {init: fn();}; init() {}\n')
         subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)], check=True, capture_output=True)
-        for variant, marker in ((0, None), (1, 'checked Heap retain' if heap else 'checked Type retain'), (2, 'converted destroy nonfinal drop' if heap else 'retained freetype nonfinal drop')):
+        for variant, marker in ((0, None), (1, 'movp retains source' if opcodes else ('checked Heap retain' if heap else 'checked Type retain')), (2, 'movp self-assignment preserves count' if opcodes else ('converted destroy nonfinal drop' if heap else 'retained freetype nonfinal drop'))):
             obj = work / 'wrapper.o'
             command = [link[0], *flags['C_DEFINES'], *flags['C_INCLUDES'], *flags['C_FLAGS'], '-I'+str(root/'disVM/runtime'), '-DCONTROL='+str(variant), '-c', str(source), '-o', str(obj)]
             subprocess.run(command, check=True, capture_output=True, text=True)
@@ -83,7 +86,7 @@ def main():
             at = selected.index('-o')
             selected[at+1] = str(binary)
             kind = 'heap' if heap else 'type'
-            selected += [str(obj), *['-Wl,--wrap=dvm_runtime_'+kind+'_'+operation for operation in ('probe', 'retain', 'release')]]
+            selected += [str(obj), *['-Wl,--wrap='+('dvm_runtime_opcode_probe' if opcodes and operation == 'probe' else 'dvm_runtime_'+kind+'_'+operation) for operation in ('probe', 'retain', 'release')]]
             subprocess.run(selected, cwd=runtime.parent, check=True, capture_output=True, text=True)
             env = dict(os.environ, TMPDIR=str(work))
             run = subprocess.run([str(binary), '--gc-worker', '--no-jit', '--managed-owner-probe', '--stats', str(image)], capture_output=True, text=True, timeout=45, env=env)
@@ -91,11 +94,11 @@ def main():
             if 'runtime error:' in text or 'WARNING: ThreadSanitizer:' in text:
                 raise RuntimeError('Type control sanitizer failure: '+text[-6000:])
             if marker:
-                if run.returncode != 10 or ('FAIL Heap-count probe: ' if heap else 'FAIL Type-count probe: ')+marker not in text:
+                if run.returncode != 10 or ('FAIL opcode-count probe: ' if opcodes else ('FAIL Heap-count probe: ' if heap else 'FAIL Type-count probe: '))+marker not in text:
                     raise RuntimeError('Type control missed its semantic predicate: '+text[-6000:])
-            elif run.returncode or ('PASS Heap-count probe:' if heap else 'PASS Type-count probe:') not in text:
+            elif run.returncode or ('PASS opcode-count probe:' if opcodes else ('PASS Heap-count probe:' if heap else 'PASS Type-count probe:')) not in text:
                 raise RuntimeError('actual Type positive failed: '+text[-6000:])
-    print('PASS actual retained Heap/string/mapped/list/Fast; two exact Heap-count semantic controls' if heap else 'PASS actual retained dtype/freetype/array/Fast; two exact Type-count semantic controls')
+    print('PASS actual movp/self/nil; two exact opcode-count semantic controls' if opcodes else 'PASS actual retained Heap/string/mapped/list/Fast; two exact Heap-count semantic controls' if heap else 'PASS actual retained dtype/freetype/array/Fast; two exact Type-count semantic controls')
 
 
 if __name__ == '__main__':

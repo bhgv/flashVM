@@ -92,3 +92,11 @@ still require serial admission; this is not a global atomic Type conversion.
 5 observations, preserving the RC-defer hook and legacy gchalt protection.
 Together with Type conversion this covers count RMW/observations in hosted
 heap.c only. Other C/JIT/GC sites remain unconverted under serial admission.
+
+
+## Runtime0.68: explicit opcode retains
+
+[Opcode adaptation](OPCODE-COUNTS.md) converts11 Heap and5 Type increments in
+hosted xec.c. It preserves guards/captures/Setmark/publication order. Module.ref,
+preflight observations and whole-header snapshots are separate unconverted
+accesses under serialized admission; JIT emitted retains are not changed.

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from prepare_type_counts import adapt as adapt_type_counts
 from prepare_heap_counts import adapt as adapt_heap_counts
+from prepare_opcode_counts import adapt as adapt_opcode_counts
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -277,7 +278,7 @@ def main():
             count=1,
         )
     code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
-    path.write_text(code)
+    path.write_text(adapt_opcode_counts(code))
     path = args.output / "alt.c"
     code = path.read_text()
     code = code.replace(

@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1765**. [Русская версия](README.ru.md).
+Development version: **0.1766**. [Русская версия](README.ru.md).
 
-Current series: [v0.1765](docs/releases/v0.1765.md): checked Heap ownership in retained hosted heap paths.
+Current series: [v0.1766](docs/releases/v0.1766.md): checked Heap/Type retains in hosted opcodes.
 
 ## Browse documentation
 

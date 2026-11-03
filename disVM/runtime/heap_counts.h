@@ -21,4 +21,9 @@ int dvm_runtime_heap_release(unsigned long *reference);
  * caller is ACTIVE hosted controller and releases admission during waits. */
 struct DVM_GCWorkers;
 void dvm_runtime_heap_probe(struct DVM_GCWorkers *workers);
+
+
+/* [GC:] Optional actual-opcode diagnostic. workers borrowed live service;
+ * caller owns ACTIVE controller and saves/restores REG before leaving. */
+void dvm_runtime_opcode_probe(struct DVM_GCWorkers *workers);
 #endif

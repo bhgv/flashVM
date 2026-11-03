@@ -150,6 +150,7 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     char previous[ERRMAX];
     dvm_runtime_type_probe(workers);
     dvm_runtime_heap_probe(workers);
+    dvm_runtime_opcode_probe(workers);
     value = c2string("managed-ticket-root", 19);
     check(world && workers && value != H && value != nil, "real managed String");
     probe.slot = dvm_owner_slot_create();
