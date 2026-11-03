@@ -52,3 +52,9 @@ store. Неизвестные вызовы и выходящие ссылки т
 [Источники и публикация](LOCAL-OWNERSHIP.ru.md),
 [преобразование RC](REFCOUNT-CONVERSION.md),
 [rooted owners](MANAGED-OWNERS.md), [общие слоты](OWNER-SLOTS.md).
+
+
+Runtime0.66 продвигает первый участок: [Type.ref в hosted heap.c](TYPE-COUNTS.md)
+переведён на проверенные атомарные retain/release и preflight-load. Другие C/JIT
+обращения остаются plain и разрешены только под последовательным допуском.
+Автоматические минихипы и параллельный managed-аллокатор этим не включаются.

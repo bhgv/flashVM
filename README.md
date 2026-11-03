@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1763**. [Русская версия](README.ru.md).
+Development version: **0.1764**. [Русская версия](README.ru.md).
 
-Current series: [v0.1763](docs/releases/v0.1763.md): tracked owner moves between scopes and shared mailboxes.
+Current series: [v0.1764](docs/releases/v0.1764.md): checked Type ownership in retained hosted heap paths.
 
 ## Browse documentation
 

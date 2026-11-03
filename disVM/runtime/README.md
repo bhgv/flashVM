@@ -1,8 +1,10 @@
+[Retained heap Type counts — runtime0.66](TYPE-COUNTS.md)
+
 [Shared strong-owner slots — runtime0.65](OWNER-SLOTS.md)
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.65.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.66.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 

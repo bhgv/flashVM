@@ -76,3 +76,11 @@ Both native-selected and forced-lock backends run. Five boundary controls/backen
 must reach semantic status10; signals/sanitizer/compiler failures do not count.
 This is actual counter/order evidence, not a concurrent managed allocator/GC test.
 Whole runtime tests separately exercise converted host sites under exclusive mode.
+
+
+## Runtime0.66: retained heap Type sites
+
+[Exact adaptation and limits](TYPE-COUNTS.md): hosted heap.c now converts all
+Type retain/release/preflight sites through checked native primitives. Pinned
+source stays unchanged. Other C/JIT Type sites and every remaining Heap counter
+still require serial admission; this is not a global atomic Type conversion.
