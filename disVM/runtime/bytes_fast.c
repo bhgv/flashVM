@@ -14,6 +14,11 @@ extern void movw(void); /* Actual hosted native WORD copy opcode. */
 extern void movl(void); /* Actual hosted LONG copy opcode. */
 extern void movf(void); /* Actual hosted bit-preserving REAL copy opcode. */
 extern void movm(void); /* Actual hosted variable-size raw copy opcode. */
+extern void headb(void); /* Actual guarded scalar/raw list-head opcode. */
+extern void headw(void); /* Actual guarded scalar/raw list-head opcode. */
+extern void headl(void); /* Actual guarded scalar/raw list-head opcode. */
+extern void headf(void); /* Actual guarded scalar/raw list-head opcode. */
+extern void headm(void); /* Actual guarded scalar/raw list-head opcode. */
 
 
 /* [GC:] Native identity is checked before dispatch/operands. No cleanup, code
@@ -41,6 +46,21 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVM:
         movm();
+        break;
+    case IHEADB:
+        headb();
+        break;
+    case IHEADW:
+        headw();
+        break;
+    case IHEADL:
+        headl();
+        break;
+    case IHEADF:
+        headf();
+        break;
+    case IHEADM:
+        headm();
         break;
     default:
         return 0;

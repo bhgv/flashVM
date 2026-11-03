@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1791**. [English](README.md).
+Версия разработки: **0.1792**. [English](README.md).
 
-Текущая серия: [v0.1791](docs/releases/v0.1791.md): защищённые HEADP/TAIL с удержанием исходного списка и обработкой алиасов.
+Текущая серия: [v0.1792](docs/releases/v0.1792.md): защищённые скалярные/raw головы списков, сохранение битов и проверка C/JIT.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

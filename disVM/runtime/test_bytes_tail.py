@@ -150,14 +150,14 @@ init() {
 '''
 
 
-def main():
-    """Execute real guarded/default guests and private actual-emitter controls."""
+def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32"):
+    """Run supplied real guest/wrapper/checksum, with actual emitter controls."""
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix='guarded byte tails ') as directory:
         work = Path(directory)
         source = work / 'main.b'
         image = work / 'main.dis'
-        source.write_text(GUEST)
+        source.write_text(guest)
         built = subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)],
                                capture_output=True, text=True)
         if built.returncode:
@@ -168,10 +168,10 @@ def main():
                 command += ['--guarded-copies']
             result = subprocess.run(command+[str(image)], capture_output=True, text=True,
                                     timeout=45, env=dict(os.environ, TMPDIR=str(work)))
-            if result.returncode or 'PASS copy guest32' not in result.stdout:
+            if result.returncode or success not in result.stdout:
                 raise RuntimeError(result.stdout+result.stderr)
         wrapper = work / 'wrapper.c'
-        wrapper.write_text(WRAPPER)
+        wrapper.write_text(wrapper_text)
         for variant in ((9, 0, 1, 2, 3, 4, 12, 13) if '--positive-only' in sys.argv else (9, 0, 1, 2, 3, 4, 12, 13, 10, 11)):
             backend = None
             if variant in (10, 11):
@@ -208,7 +208,7 @@ def main():
                     marker = 'return PC belongs to JIT mapping' if variant == 10 else 'five guarded entries reached'
                     if run.returncode != 10 or 'FAIL byte-tail: '+marker not in output:
                         raise RuntimeError('byte-tail semantic control missed: '+output)
-                elif run.returncode or 'PASS copy guest32' not in output or 'NATIVEGC ' not in output:
+                elif run.returncode or success not in output or 'NATIVEGC ' not in output:
                     raise RuntimeError('byte-tail positive failed: '+output)
     print('PASS five actual byte tails: coverage, individual unmap, error/combined, both polls'+
           ('; positives only' if '--positive-only' in sys.argv else '; bad-CALL/old-emitter controls'))

@@ -647,3 +647,7 @@ Runtime0.92: [rooted HEADMP](SHARED-HEAD.md), guarded source-list capture and ma
 Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).
 
 Runtime0.93: [rooted HEADP/TAIL](SHARED-LIST-POINTER.md), opt-in source lifetime plus guarded pointer projection. General managed execution remains serialized.
+
+Runtime0.94: [HEADB/W/L/F/M contract and evidence](SHARED-LIST-BYTES.md).
+Source containers stay rooted through bit-preserving guarded projection and cleanup;
+NativeWorld remains required for general managed execution.

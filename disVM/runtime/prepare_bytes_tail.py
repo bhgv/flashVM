@@ -6,7 +6,7 @@ EXPECTED = "332aec031d78dd5296ba2385b36543c2fdece63fbfd6ef6b902820788b6886d0"  #
 
 
 def adapt(source):
-    """Bind actual native layout and reviewed emitter before inserting five tails.
+    """Bind actual native layout and reviewed emitter before inserting ten tails.
 
     Other opcodes/architectures and the default profile retain old emission.
     Startup selection precedes code cache publication; no dynamic mode switching.
@@ -54,7 +54,8 @@ x64guardedcopy(u32int *out, int cap, LeafLayout *abi, int op)
     if body.count(anchor) != 1:
         raise ValueError('x64 guarded copy entry anchor drift')
     body = body.replace(anchor, '''    if(dvm_runtime_guarded_copies &&
-       (op == IMOVB || op == IMOVW || op == IMOVL || op == IMOVF || op == IMOVM)) {
+       (op == IMOVB || op == IMOVW || op == IMOVL || op == IMOVF || op == IMOVM ||
+        op == IHEADB || op == IHEADW || op == IHEADL || op == IHEADF || op == IHEADM)) {
         return x64guardedcopy(out, cap, abi, op);
     }
 '''+anchor, 1)
