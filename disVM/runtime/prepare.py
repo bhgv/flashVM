@@ -25,6 +25,7 @@ from prepare_shared_mapped import adapt as adapt_shared_mapped
 from prepare_shared_head import adapt as adapt_shared_head
 from prepare_shared_list_pointer import adapt as adapt_shared_list_pointer
 from prepare_shared_shift import adapt as adapt_shared_shift
+from prepare_shared_branch import adapt as adapt_shared_branch
 from prepare_shared_arithmetic import adapt as adapt_shared_arithmetic
 from prepare_shared_integer import adapt as adapt_shared_integer
 from prepare_shared_list_bytes import adapt as adapt_shared_list_bytes
@@ -338,7 +339,7 @@ def main():
     hosted = pointer_path.read_text()
     for adapter in (adapt_shared_pointer, adapt_shared_bytes, adapt_shared_mapped,
                     adapt_shared_head, adapt_shared_list_pointer, adapt_shared_list_bytes,
-                    adapt_shared_integer, adapt_shared_arithmetic, adapt_shared_shift):
+                    adapt_shared_integer, adapt_shared_arithmetic, adapt_shared_shift, adapt_shared_branch):
         hosted = adapter(hosted)
     pointer_path.write_text(hosted)
 

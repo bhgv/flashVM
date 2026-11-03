@@ -14,6 +14,24 @@ extern void movw(void); /* Actual hosted native WORD copy opcode. */
 extern void movl(void); /* Actual hosted LONG copy opcode. */
 extern void movf(void); /* Actual hosted bit-preserving REAL copy opcode. */
 extern void movm(void); /* Actual hosted variable-size raw copy opcode. */
+extern void beqb(void); /* Actual guarded integer conditional branch. */
+extern void bneb(void); /* Actual guarded integer conditional branch. */
+extern void bltb(void); /* Actual guarded integer conditional branch. */
+extern void bleb(void); /* Actual guarded integer conditional branch. */
+extern void bgtb(void); /* Actual guarded integer conditional branch. */
+extern void bgeb(void); /* Actual guarded integer conditional branch. */
+extern void beqw(void); /* Actual guarded integer conditional branch. */
+extern void bnew(void); /* Actual guarded integer conditional branch. */
+extern void bltw(void); /* Actual guarded integer conditional branch. */
+extern void blew(void); /* Actual guarded integer conditional branch. */
+extern void bgtw(void); /* Actual guarded integer conditional branch. */
+extern void bgew(void); /* Actual guarded integer conditional branch. */
+extern void beql(void); /* Actual guarded integer conditional branch. */
+extern void bnel(void); /* Actual guarded integer conditional branch. */
+extern void bltl(void); /* Actual guarded integer conditional branch. */
+extern void blel(void); /* Actual guarded integer conditional branch. */
+extern void bgtl(void); /* Actual guarded integer conditional branch. */
+extern void bgel(void); /* Actual guarded integer conditional branch. */
 extern void shlb(void); /* Actual guarded mixed-width shift. */
 extern void shlw(void); /* Actual guarded mixed-width shift. */
 extern void shll(void); /* Actual guarded mixed-width shift. */
@@ -84,6 +102,60 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVM:
         movm();
+        break;
+    case IBEQB:
+        beqb();
+        break;
+    case IBNEB:
+        bneb();
+        break;
+    case IBLTB:
+        bltb();
+        break;
+    case IBLEB:
+        bleb();
+        break;
+    case IBGTB:
+        bgtb();
+        break;
+    case IBGEB:
+        bgeb();
+        break;
+    case IBEQW:
+        beqw();
+        break;
+    case IBNEW:
+        bnew();
+        break;
+    case IBLTW:
+        bltw();
+        break;
+    case IBLEW:
+        blew();
+        break;
+    case IBGTW:
+        bgtw();
+        break;
+    case IBGEW:
+        bgew();
+        break;
+    case IBEQL:
+        beql();
+        break;
+    case IBNEL:
+        bnel();
+        break;
+    case IBLTL:
+        bltl();
+        break;
+    case IBLEL:
+        blel();
+        break;
+    case IBGTL:
+        bgtl();
+        break;
+    case IBGEL:
+        bgel();
         break;
     case ISHLB:
         shlb();
