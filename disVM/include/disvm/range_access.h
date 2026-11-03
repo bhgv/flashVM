@@ -34,6 +34,15 @@ DVM_CellResult dvm_range_access_begin(DVM_CellDomain *domain,
     DVM_RangeAccess *access);
 
 
+/* Claim three arbitrary-sized spans in one ordered union. first/second are
+ * borrowed inputs, output is borrowed writable storage; zero sizes ignore their
+ * addresses. Same role/lifetime/rollback contract as two-span begin, same domain
+ * and unchanged access layout. No allocation, payload read or callback. */
+DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
+    const void *first, size_t first_size, const void *second, size_t second_size,
+    void *output, size_t output_size, DVM_RangeAccess *access);
+
+
 /* End exact current-owner access, including a successfully acquired empty set.
  * Return0 unchanged for wrong owner/depth/state. Caller retains domain/storage;
  * no callback, allocation, payload read or VM transition. Do not hold access

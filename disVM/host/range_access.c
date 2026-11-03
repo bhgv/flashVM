@@ -90,17 +90,20 @@ static void unwind(DVM_RangeAccess *access)
 }
 
 
-/* Geometry and full selection precede claims; all partial failures unwind.
+/* domain/access are live native metadata; source/second/destination borrow
+ * spans of the supplied sizes. Return ACQUIRED, BUSY or REFUSED without payload
+ * reads. Geometry and full selection precede claims; all partial failures unwind.
  * Guard order is stripe order, independent of source/destination argument order. */
-DVM_CellResult dvm_range_access_begin(DVM_CellDomain *domain,
-    const void *source, size_t source_size, void *destination, size_t destination_size,
-    DVM_RangeAccess *access)
+DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, const void *second, size_t second_size,
+    void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
     unsigned char bits[DVM_CELL_STRIPES / 8] = {0};
     DVM_NativeContext *context = dvm_native_context_current();
     unsigned int index;
     if (!domain || !context || dvm_native_context_object_count(context) || !empty(access) ||
-        !select_span(source, source_size, bits) || !select_span(destination, destination_size, bits))
+        !select_span(source, source_size, bits) || !select_span(second, second_size, bits) ||
+        !select_span(destination, destination_size, bits))
     {
         return DVM_CELL_REFUSED;
     }
@@ -142,4 +145,15 @@ int dvm_range_access_end(DVM_RangeAccess *access)
     }
     unwind(access);
     return 1;
+}
+
+
+/* Preserve historical two-span admission/empty/rollback behavior. source and
+ * destination remain caller-owned; the ignored second span grants no access. */
+DVM_CellResult dvm_range_access_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, void *destination, size_t destination_size,
+    DVM_RangeAccess *access)
+{
+    return dvm_range_access_three_begin(domain, source, source_size, NULL, 0,
+        destination, destination_size, access);
 }

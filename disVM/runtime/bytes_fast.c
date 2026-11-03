@@ -1,4 +1,4 @@
-/* Checked guarded-copy C tail entry, selected only by startup experiment. */
+/* Checked guarded data-operation C tail entry, selected only by startup experiment. */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -14,6 +14,21 @@ extern void movw(void); /* Actual hosted native WORD copy opcode. */
 extern void movl(void); /* Actual hosted LONG copy opcode. */
 extern void movf(void); /* Actual hosted bit-preserving REAL copy opcode. */
 extern void movm(void); /* Actual hosted variable-size raw copy opcode. */
+extern void addb(void); /* Actual guarded integer arithmetic opcode. */
+extern void addw(void); /* Actual guarded integer arithmetic opcode. */
+extern void addl(void); /* Actual guarded integer arithmetic opcode. */
+extern void subb(void); /* Actual guarded integer arithmetic opcode. */
+extern void subw(void); /* Actual guarded integer arithmetic opcode. */
+extern void subl(void); /* Actual guarded integer arithmetic opcode. */
+extern void andb(void); /* Actual guarded integer arithmetic opcode. */
+extern void andw(void); /* Actual guarded integer arithmetic opcode. */
+extern void andl(void); /* Actual guarded integer arithmetic opcode. */
+extern void orb(void); /* Actual guarded integer arithmetic opcode. */
+extern void orw(void); /* Actual guarded integer arithmetic opcode. */
+extern void orl(void); /* Actual guarded integer arithmetic opcode. */
+extern void xorb(void); /* Actual guarded integer arithmetic opcode. */
+extern void xorw(void); /* Actual guarded integer arithmetic opcode. */
+extern void xorl(void); /* Actual guarded integer arithmetic opcode. */
 extern void cvtbw(void); /* Actual guarded integer conversion opcode. */
 extern void cvtwb(void); /* Actual guarded integer conversion opcode. */
 extern void cvtws(void); /* Actual guarded integer conversion opcode. */
@@ -52,6 +67,51 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVM:
         movm();
+        break;
+    case IADDB:
+        addb();
+        break;
+    case IADDW:
+        addw();
+        break;
+    case IADDL:
+        addl();
+        break;
+    case ISUBB:
+        subb();
+        break;
+    case ISUBW:
+        subw();
+        break;
+    case ISUBL:
+        subl();
+        break;
+    case IANDB:
+        andb();
+        break;
+    case IANDW:
+        andw();
+        break;
+    case IANDL:
+        andl();
+        break;
+    case IORB:
+        orb();
+        break;
+    case IORW:
+        orw();
+        break;
+    case IORL:
+        orl();
+        break;
+    case IXORB:
+        xorb();
+        break;
+    case IXORW:
+        xorw();
+        break;
+    case IXORL:
+        xorl();
         break;
     case ICVTBW:
         cvtbw();

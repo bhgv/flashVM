@@ -1,4 +1,4 @@
-/* Hosted SysV x64 guarded-copy tail target; include matching native interp.h. */
+/* Hosted SysV x64 guarded data-operation tail target; include matching native interp.h. */
 #ifndef DVM_BYTES_FAST_H
 #define DVM_BYTES_FAST_H
 

@@ -19,6 +19,8 @@ def main():
     ports = root / ('source/ports' if installed else 'flashVM/ports')
     original = (host / 'range_access.c').read_text()
     controls = {
+        'output': ('!select_span(destination, destination_size, bits)', '((void)destination, (void)destination_size, 0)', 'three exact independent spans'),
+        'middle': ('!select_span(second, second_size, bits)', '((void)second, (void)second_size, 0)', 'three exact independent spans'),
         'boundary': ('last = (address + length - 1) / sizeof(void *);',
                      'last = address / sizeof(void *);', 'wrapped wide selection exact'),
         'full': ('memset(bits, 255, DVM_CELL_STRIPES / 8);',
@@ -66,7 +68,7 @@ def main():
                     raise RuntimeError(output)
                 else:
                     print(backend+': '+output, end='')
-    print('PASS native byte ranges'+(' positives only' if '--positive-only' in sys.argv else '; eight semantic controls'))
+    print('PASS native byte ranges'+(' positives only' if '--positive-only' in sys.argv else '; twelve semantic controls'))
 
 
 if __name__ == '__main__':

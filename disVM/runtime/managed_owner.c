@@ -577,3 +577,18 @@ DVM_CellResult dvm_managed_ranges_begin(const void *source, size_t source_size,
     return dvm_range_access_begin(owners.cells, source, source_size,
         destination, destination_size, access);
 }
+
+
+/* [GC:] first/second/output spans and access follow range_access_three_begin.
+ * Admit exact current service owner before any domain lookup or payload access. */
+DVM_CellResult dvm_managed_three_begin(const void *first, size_t first_size,
+    const void *second, size_t second_size, void *output, size_t output_size,
+    DVM_RangeAccess *access)
+{
+    if (!admitted())
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return dvm_range_access_three_begin(owners.cells, first, first_size,
+        second, second_size, output, output_size, access);
+}

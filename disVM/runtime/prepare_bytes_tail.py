@@ -1,4 +1,4 @@
-"""Opt-in hosted x64 scalar/raw copies tail-enter their guarded C opcodes."""
+"""Opt-in hosted x64 data operations tail-enter their guarded C opcodes."""
 import hashlib
 import re
 
@@ -6,7 +6,7 @@ EXPECTED = "332aec031d78dd5296ba2385b36543c2fdece63fbfd6ef6b902820788b6886d0"  #
 
 
 def adapt(source):
-    """Bind actual native layout and reviewed emitter before inserting sixteen tails.
+    """Bind actual native layout and reviewed emitter before inserting guarded tails.
 
     Other opcodes/architectures and the default profile retain old emission.
     Startup selection precedes code cache publication; no dynamic mode switching.
@@ -57,7 +57,12 @@ x64guardedcopy(u32int *out, int cap, LeafLayout *abi, int op)
        (op == IMOVB || op == IMOVW || op == IMOVL || op == IMOVF || op == IMOVM ||
         op == IHEADB || op == IHEADW || op == IHEADL || op == IHEADF || op == IHEADM ||
         op == ICVTBW || op == ICVTWB || op == ICVTWS || op == ICVTSW ||
-        op == ICVTWL || op == ICVTLW)) {
+        op == ICVTWL || op == ICVTLW ||
+        op == IADDB || op == IADDW || op == IADDL ||
+        op == ISUBB || op == ISUBW || op == ISUBL ||
+        op == IANDB || op == IANDW || op == IANDL ||
+        op == IORB || op == IORW || op == IORL ||
+        op == IXORB || op == IXORW || op == IXORL)) {
         return x64guardedcopy(out, cap, abi, op);
     }
 '''+anchor, 1)

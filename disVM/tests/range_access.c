@@ -27,6 +27,7 @@ typedef struct Fixture
     DVM_CellDomain *domain; /* Same domain for raw ranges and pointer/small cells. */
     unsigned char *first; /* Unaligned native first counter. */
     unsigned char *second; /* Unaligned paired counter. */
+    unsigned char *third; /* Disjoint counter touched only by three-span owners. */
 } Fixture;
 
 
@@ -90,13 +91,14 @@ static void write_pair(void *argument)
         DVM_CellResult result;
         uintptr_t first;
         uintptr_t second;
+        uintptr_t third;
         int use_wide = index % 2;
         do
         {
             if (use_wide)
             {
-                result = dvm_range_access_begin(fixture->domain, fixture->first, 20 * sizeof(void *),
-                    fixture->second, sizeof(uintptr_t), &wide);
+                result = dvm_range_access_three_begin(fixture->domain, fixture->first, 20 * sizeof(void *),
+                    fixture->second, sizeof(uintptr_t), fixture->third, sizeof(uintptr_t), &wide);
             }
             else
             {
@@ -119,6 +121,9 @@ static void write_pair(void *argument)
         memmove(fixture->second, &second, sizeof(second));
         if (use_wide)
         {
+            memmove(&third, fixture->third, sizeof(third));
+            third++;
+            memmove(fixture->third, &third, sizeof(third));
             check(dvm_range_access_end(&wide) && zero(&wide), "wide ends cleanly");
         }
         else
@@ -146,6 +151,7 @@ int main(void)
     unsigned int index;
     fixture.first = storage.bytes + (256 + (248 + 256 - (address / sizeof(void *)) % 256) % 256) * sizeof(void *) + 1;
     fixture.second = fixture.first + 3 * sizeof(void *);
+    fixture.third = fixture.first + 30 * sizeof(void *);
     fixture.domain = dvm_cell_domain_create();
     check(fixture.domain != NULL, "domain creates");
     dvm_test_cell_noalloc_start();
@@ -170,6 +176,16 @@ int main(void)
     check(dvm_range_access_begin(fixture.domain, fixture.first, 256 * sizeof(void *),
         NULL, 0, &wide) == DVM_CELL_ACQUIRED && wide.count == 256, "large span covers domain");
     check(dvm_range_access_end(&wide), "full-domain end");
+    check(dvm_range_access_three_begin(fixture.domain, fixture.first, sizeof(uintptr_t),
+        fixture.second, sizeof(uintptr_t), fixture.third, sizeof(uintptr_t), &wide) == DVM_CELL_ACQUIRED &&
+        wide.count == 6, "three exact independent spans");
+    check(dvm_range_access_end(&wide) && zero(&wide), "three-span end");
+    check(dvm_range_access_three_begin(fixture.domain, fixture.first, sizeof(uintptr_t),
+        fixture.first, sizeof(uintptr_t), fixture.first, sizeof(uintptr_t), &wide) == DVM_CELL_ACQUIRED &&
+        wide.count == 2, "three aliased spans deduplicate");
+    check(dvm_range_access_end(&wide), "three alias end");
+    check(dvm_range_access_three_begin(fixture.domain, fixture.first, 1, NULL, 1,
+        fixture.third, 1, &wide) == DVM_CELL_REFUSED && zero(&wide), "invalid middle span");
     dvm_test_cell_noalloc_end();
     for (index = 0; index < THREADS; index++)
     {
@@ -183,8 +199,10 @@ int main(void)
     memmove(&first, fixture.first, sizeof(first));
     memmove(&second, fixture.second, sizeof(second));
     check(first == THREADS * ROUNDS && second == first * 3, "joined exact values");
+    memmove(&first, fixture.third, sizeof(first));
+    check(first == THREADS * (ROUNDS / 2), "joined third-span values");
     check(dvm_cell_domain_destroy(&fixture.domain) && !fixture.domain, "complete domain retirement");
     unbind(context);
-    puts("PASS range access:8 OS writers,16000 mixed byte/cell updates, exact empty/wrap/full selections");
+    puts("PASS range access:8 OS writers,16000 mixed byte/cell updates, exact empty/wrap/full/three selections");
     return 0;
 }

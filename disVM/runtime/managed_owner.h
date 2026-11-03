@@ -68,4 +68,11 @@ DVM_CellResult dvm_managed_spans_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_CellAccess *access);
 DVM_CellResult dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access);
+
+/* [GC:] Claim two input spans and output through the canonical shared domain.
+ * Exact ACTIVE owner, zero access, caller-owned live storage required. No retain,
+ * root, callback or payload read. Return native admission result with rollback. */
+DVM_CellResult dvm_managed_three_begin(const void *first, size_t first_size,
+    const void *second, size_t second_size, void *output, size_t output_size,
+    DVM_RangeAccess *access);
 #endif

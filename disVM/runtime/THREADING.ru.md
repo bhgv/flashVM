@@ -655,3 +655,7 @@ NativeWorld remains required for general managed execution.
 Runtime0.95: [integer conversion transaction](SHARED-INTEGER.md) holds the exact
 source/result byte union through capture, conversion and publication. NativeWorld
 is still required; native OS executors do not yet imply parallel managed compute.
+
+Runtime0.96: [binary integer transaction](SHARED-ARITHMETIC.md) guards both
+inputs and result together. Native mixed two-/three-span tests use real joined OS
+threads; general managed computation remains serialized by NativeWorld.
