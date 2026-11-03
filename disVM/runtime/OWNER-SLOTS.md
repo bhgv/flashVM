@@ -75,3 +75,33 @@ establish a parallel managed allocator or complete VM sanitizer certification.
 [API](../include/disvm/owner_slot.h),
 [commented extension functions](../examples/native-owner-slot/example.c),
 [rooted managed protocol](MANAGED-OWNERS.md).
+
+
+## Runtime0.65: direct tracked ownership moves
+
+`dvm_owner_slot_put(slot, entry)` moves an existing owner out of its local ledger
+only if the shared slot is empty. `dvm_owner_slot_take(slot, scope, entry)` links
+the existing slot owner into the receiver ledger and clears the shared source
+under the same mutex. Refusal leaves both ends unchanged. Neither operation
+calls retain/drop, allocates or executes guest/native callbacks. There is no
+caller-owned intermediate transfer to clean between the two tracked locations.
+They wait only for mutex exclusion, not for message availability/capacity.
+
+Destination/source scopes remain bound-context-local. Unbound and guarded callers
+refuse before mutex acquisition; occupied/foreign/busy entries/scopes refuse via
+the existing ledger validation. Arbitrary asynchronous OS cancellation is still
+unsupported: this protocol supports normal native returns and the hosted
+pre-longjmp cleanup checkpoints, not unwinding at any machine instruction.
+
+The native test suite now includes eight competing OS workers moving one token
+through 4000 exclusive payload updates. Count stays exactly one at every receipt;
+all threads join before the parent checks the final value and frees once.
+Additional actual-source put/take controls bring the total to ten per complete
+atomic-selected/forced-lock test run. Controls stop at explicit semantic
+predicates before any invalid lifetime is used. The managed probe publishes and
+unpublishes through put/take, and its native error path throws only after a taken
+ticket is linked into the scope that the hosted unwinder will close.
+
+These are native-ticket boundaries, not replacements for arbitrary managed
+module/channel fields. Compiler locality invalidation, graph publication,
+complete C/JIT RC/mark conversion, allocator concurrency and GC remain separate.

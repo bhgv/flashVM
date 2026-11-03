@@ -42,6 +42,24 @@ int dvm_owner_slot_exchange(DVM_OwnerSlot *slot, DVM_OwnerTransfer *transfer);
  * Slot mutex protects ownership publication only, not mutable object payload. */
 int dvm_owner_slot_copy(DVM_OwnerSlot *slot, DVM_OwnerScope *scope,
     DVM_OwnerEntry *entry);
+
+
+/* Move a linked current-owner entry into an EMPTY shared slot. No callback,
+ * allocation, new count or untracked transfer envelope. Return 0 unchanged for
+ * occupied slot, invalid/foreign source, unbound or guarded caller. May wait
+ * for mutex but never waits for vacancy. Slot lifetime remains caller-owned. */
+int dvm_owner_slot_put(DVM_OwnerSlot *slot, DVM_OwnerEntry *entry);
+
+
+/* Move a populated slot owner directly into an EMPTY local scope entry. No
+ * callback/count change or temporary untracked envelope. Return 0 unchanged
+ * for nil or invalid/foreign/occupied destination, unbound/guarded caller.
+ * May wait for mutex, never waits for a message. Acceptance links destination
+ * before source clearing under the same mutex; no VM/callback can intervene.
+ * Same registry/slot lifetime restrictions as copy/exchange apply. */
+int dvm_owner_slot_take(DVM_OwnerSlot *slot, DVM_OwnerScope *scope,
+    DVM_OwnerEntry *entry);
+
 #ifdef __cplusplus
 }
 #endif

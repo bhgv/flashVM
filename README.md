@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1762**. [Русская версия](README.ru.md).
+Development version: **0.1763**. [Русская версия](README.ru.md).
 
-Current series: [v0.1762](docs/releases/v0.1762.md): synchronized strong-owner slots and rooted native publication.
+Current series: [v0.1763](docs/releases/v0.1763.md): tracked owner moves between scopes and shared mailboxes.
 
 ## Browse documentation
 

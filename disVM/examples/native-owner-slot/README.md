@@ -25,3 +25,19 @@ actual managed String/root/Fast example, use the hosted runtime's
 production slot implementation, not replacement models.
 
 [Exact API/lock contracts](../../runtime/OWNER-SLOTS.md).
+
+
+Runtime0.65 adds `dvm_owner_slot_put` / `dvm_owner_slot_take` for an empty-slot
+mailbox. These move directly between the slot and a tracked local entry; no
+transfer envelope escapes to caller storage. Put refuses a populated slot and
+take refuses nil/occupied destinations without mutation. Neither operation
+retains, drops or runs callbacks. They may wait for the mutex, but never wait
+for a message or free capacity. The existing exchange helper remains useful
+when deliberately replacing an owner and receiving its predecessor.
+
+The complete [exclusive mailbox fixture](../../tests/owner_mailbox.c) passes
+one mutable token across eight OS contexts for 4000 updates. Every worker checks
+its count stays exactly one before changing payload; only the sole owner can
+access it. TSan checks the actual implementation with both count backends.
+This is an explicit native ownership protocol, not proof that arbitrary managed
+objects/aliases can move without a graph/root/publication analysis.

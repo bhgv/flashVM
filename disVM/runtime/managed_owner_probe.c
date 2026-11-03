@@ -111,10 +111,14 @@ static int error_scope(void *argument)
     DVM_OwnerTransfer transfer = {0};
     String *value = c2string("managed-error-root", 18);
     UnwindProbe probe = {0};
+    DVM_OwnerSlot *slot = dvm_owner_slot_create();
     (void)argument;
     check(dvm_owner_scope_open(&scope), "error scope open");
     check(dvm_managed_owner_capture(value, &transfer) &&
         dvm_owner_scope_accept(&scope, &entry, &transfer), "error scope rooted owner");
+    check(slot && dvm_owner_slot_put(slot, &entry) &&
+        dvm_owner_slot_take(slot, &scope, &entry) && dvm_owner_slot_destroy(&slot),
+        "error owner moved into tracked scope before throw");
     probe.entry = &entry;
     probe.value = value;
     check(dvm_native_cleanup_link(&probe.record, refuse_during_unwind, &probe), "register cleanup role probe");
@@ -153,8 +157,8 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     value = H;
     check(!dvm_managed_owner_can_close() && !dvm_managed_owner_close(), "live owners refuse shutdown");
     check(dvm_owner_scope_retain(&scope, &outgoing, main_entry.object, main_entry.ops), "distinct shared slot owner");
-    check(dvm_owner_scope_export(&outgoing, &transfer) &&
-        dvm_owner_slot_exchange(probe.slot, &transfer) && !transfer.object, "publish rooted ticket into slot");
+    check(dvm_owner_slot_put(probe.slot, &outgoing) && !outgoing.object,
+        "publish rooted ticket directly from scope");
     for (index = 0; index < PROBE_THREADS; index++)
     {
         receivers[index].probe = &probe;
@@ -167,8 +171,8 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
         fvm_port_sync_wait(probe.sync);
     }
     fvm_port_sync_unlock(probe.sync);
-    check(dvm_owner_slot_exchange(probe.slot, &transfer) &&
-        dvm_owner_transfer_cancel(&transfer), "unpublish slot after receiver copies");
+    check(dvm_owner_slot_take(probe.slot, &scope, &outgoing) &&
+        dvm_owner_scope_drop(&outgoing), "unpublish slot directly into scope after receiver copies");
     check(dvm_native_owner_leave(owner), "controller leaves before collection");
     check(!dvm_managed_owner_value(&main_entry), "IDLE refuses managed payload");
     for (index = 0; index < PROBE_CYCLES; index++)

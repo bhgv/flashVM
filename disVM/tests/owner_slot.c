@@ -154,12 +154,23 @@ int main(void)
     check(!dvm_owner_slot_copy(work.slot, &scope, &entry) && !entry.object &&
         dvm_refcount_load_u(&first->references) == ULONG_MAX, "overflow leaves both owners unchanged");
     first->references = 1;
+    check(dvm_owner_slot_take(work.slot, &scope, &entry) && entry.object == first &&
+        dvm_refcount_load_u(&first->references) == 1, "take moves existing owner");
+    check(!dvm_owner_slot_copy(work.slot, &scope, &entry), "taken source empty");
+    check(dvm_owner_slot_put(work.slot, &entry) && !entry.object, "put consumes local owner");
+    check(dvm_owner_slot_copy(work.slot, &scope, &entry), "copy after put");
+    check(!dvm_owner_slot_put(work.slot, &entry) && entry.object == first &&
+        !dvm_owner_slot_take(work.slot, &scope, &entry), "occupied put/take preserve owners");
+    check(dvm_owner_scope_drop(&entry) && dvm_refcount_load_u(&first->references) == 1,
+        "refusals preserve exact owner count");
     first = NULL;
     domain = dvm_object_domain_create();
     check(domain && dvm_object_guard_init(&guard, domain), "guard setup");
     check(dvm_object_guard_try_enter(&guard) == DVM_OBJECT_ACQUIRED, "hold guard");
     check(!dvm_owner_slot_copy(work.slot, &scope, &entry) &&
-        !dvm_owner_slot_exchange(work.slot, &transfer), "guarded copy and exchange refuse");
+        !dvm_owner_slot_exchange(work.slot, &transfer) &&
+        !dvm_owner_slot_put(work.slot, &entry) &&
+        !dvm_owner_slot_take(work.slot, &scope, &entry), "guarded slot operations refuse");
     check(dvm_object_guard_leave(&guard) && dvm_object_guard_fini(&guard) &&
         dvm_object_domain_destroy(domain), "guard teardown");
     malformed.ops = &operations;

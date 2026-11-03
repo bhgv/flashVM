@@ -92,3 +92,46 @@ int dvm_owner_slot_copy(DVM_OwnerSlot *slot, DVM_OwnerScope *scope,
     fvm_port_sync_unlock(slot->sync);
     return copied;
 }
+
+
+/* Owner-local source entry moves into empty protected shared storage. Reject
+ * role/guards before waiting; export validates entry/scope and clears source.
+ * Return 0 unchanged if occupied/refused. No user callback or managed access. */
+int dvm_owner_slot_put(DVM_OwnerSlot *slot, DVM_OwnerEntry *entry)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    int moved = 0;
+    if (!slot || !context || dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(slot->sync);
+    if (!slot->owner.object && !slot->owner.ops)
+    {
+        moved = dvm_owner_scope_export(entry, &slot->owner);
+    }
+    fvm_port_sync_unlock(slot->sync);
+    return moved;
+}
+
+
+/* Consume protected source directly into current-owner scope. The existing
+ * accept primitive links the local entry then clears slot ownership while the
+ * mutex excludes other receivers. No retain/drop/allocation/callback window. */
+int dvm_owner_slot_take(DVM_OwnerSlot *slot, DVM_OwnerScope *scope,
+    DVM_OwnerEntry *entry)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    int moved = 0;
+    if (!slot || !context || dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(slot->sync);
+    if (slot->owner.object)
+    {
+        moved = dvm_owner_scope_accept(scope, entry, &slot->owner);
+    }
+    fvm_port_sync_unlock(slot->sync);
+    return moved;
+}

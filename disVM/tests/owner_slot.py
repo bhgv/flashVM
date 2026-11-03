@@ -20,6 +20,8 @@ def main():
     include = root / ('include' if installed else 'disVM/include')
     ports = root / ('source/ports' if installed else 'flashVM/ports')
     mutations = (
+        ('put', 'owner_slot.c', 'moved = dvm_owner_scope_export(entry, &slot->owner);', 'moved = 1; (void)entry;'),
+        ('take', 'owner_slot.c', 'moved = dvm_owner_scope_accept(scope, entry, &slot->owner);', 'moved = 1; (void)scope; (void)entry;'),
         ('publish', 'owner_slot.c', 'slot->owner = *transfer;', '(void)transfer;'),
         ('move', 'owner_slot.c', '*transfer = previous;', '(void)previous;'),
         ('retain', 'owner_scope.c', 'retained = ops->retain(object);', 'retained = 1;'),
@@ -57,7 +59,18 @@ def main():
                     raise RuntimeError(run.stdout+run.stderr)
                 else:
                     print(backend+': '+run.stdout, end='')
-    print('PASS slot checks; '+('joined positives only' if args.positive_only else 'six exact semantic controls'))
+            # Rebuild unmodified sources for the independent exclusive-move run.
+            for name in ('owner_slot.c', 'owner_scope.c'):
+                (work / name).write_text((host / name).read_text())
+            command = [str(tests / 'owner_mailbox.c') if value == str(tests / 'owner_slot.c') else value for value in command]
+            built = subprocess.run(command, capture_output=True, text=True)
+            if built.returncode:
+                raise RuntimeError('mailbox compile failure: '+built.stdout+built.stderr)
+            run = subprocess.run([str(work / 'slots')], capture_output=True, text=True, timeout=45)
+            if run.returncode or 'WARNING: ThreadSanitizer:' in run.stderr or 'runtime error:' in run.stderr:
+                raise RuntimeError('mailbox execution failure: '+run.stdout+run.stderr)
+            print(backend+': '+run.stdout, end='')
+    print('PASS slot checks; '+('joined positives only' if args.positive_only else 'ten exact semantic controls'))
 
 
 if __name__ == '__main__':

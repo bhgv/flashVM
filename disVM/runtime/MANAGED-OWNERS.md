@@ -155,3 +155,9 @@ retains directly into receiver-local scopes while the source owner is protected.
 The actual probe now uses this path for all eight receivers; removal of the slot
 owner precedes the 32 cycle passes. Native ticket/root/Fast lifetime is unchanged.
 See [slot lock/lifetime contract](OWNER-SLOTS.md); these are not raw managed slots.
+
+
+Runtime0.65 uses direct slot put/take for controller publication/unpublication.
+The error probe also moves a ticket through an empty slot back into a tracked
+scope before throwing; pre-longjmp cleanup retires that owner normally. Ticket
+and producer/root counts retain the same exact shutdown predicates.
