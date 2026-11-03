@@ -11,6 +11,7 @@ from prepare_opcode_counts import adapt as adapt_opcode_counts
 from prepare_module_counts import adapt_link, adapt_load, adapt_xec
 from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
+from prepare_jit_counts import adapt as adapt_jit_counts
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -51,6 +52,8 @@ def main():
         ],
         check=True,
     )
+    layout_path = args.output / "leaf64-ops.h"
+    layout_path.write_text(adapt_jit_counts(layout_path.read_text()))
     # Adapt only the hosted view. Pinned upstream and standalone native fixtures
     # retain ordinary destroy. Reject drift before installing the owner hook.
     heap_path = args.output / "heap.c"
