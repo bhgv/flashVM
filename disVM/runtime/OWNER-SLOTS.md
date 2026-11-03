@@ -105,3 +105,35 @@ ticket is linked into the scope that the hosted unwinder will close.
 These are native-ticket boundaries, not replacements for arbitrary managed
 module/channel fields. Compiler locality invalidation, graph publication,
 complete C/JIT RC/mark conversion, allocator concurrency and GC remain separate.
+
+
+## Runtime0.74: replacement without an untracked predecessor
+
+`dvm_owner_slot_replace(slot, entry)` requires two populated endpoints and swaps
+their existing strong owners under the slot mutex. The local entry remains linked
+in its original cleanup scope and now owns the displaced publication. No raw
+transfer escapes, no count changes, and no callback executes under mutex. Drop
+the predecessor after return or let the scope clean it on normal/error exit.
+
+Its ledger primitive `dvm_owner_scope_exchange(entry, transfer)` requires an
+exclusive, disjoint populated envelope (or one protected by external locking).
+Validation precedes writes. Foreign, busy, guarded, empty or malformed inputs
+refuse unchanged; this is not permission for another thread to edit an entry.
+Neither API adds asynchronous OS cancellation support. The several C assignments
+form an uninterruptible protocol section with respect to hosted cleanup: there
+is no allocation, VM entry, callback or longjmp checkpoint between them.
+
+The native replacement stress test now uses tracked entries for all1000 swaps
+while8 readers acquire16000 snapshots. Each swap verifies the displaced ledger
+entry and the newly published owner before releasing either diagnostic owner.
+The last predecessor is retired by scope close, checking cleanup-ledger links.
+Two extra real-source controls omit either exchange direction; all14 controls
+across atomic-selected/forced-lock backends stop at semantic predicates before
+invalid frees. Joined positives pass TSan with both backends. The existing
+managed-ticket probe also exchanges its tracked rooted alias before receiver
+publication; its C/JIT/Fast/error checks remain in place. This alias exchange is
+not independent proof for arbitrary two managed graphs.
+
+Immutable native messages and managed tickets remain separate from general
+managed payload access. Slot storage must outlive all users, ticket roots remain
+registered through retirement, and NativeWorld admission is still serialized.

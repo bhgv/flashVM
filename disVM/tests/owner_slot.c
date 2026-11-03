@@ -127,9 +127,11 @@ int main(void)
     DVM_NativeContext *context = dvm_native_context_create(sizeof(long), NULL);
     DVM_OwnerScope scope = {0};
     DVM_OwnerEntry entry = {0};
+    DVM_OwnerEntry sample = {0};
     DVM_OwnerTransfer transfer = {0};
     DVM_OwnerTransfer malformed = {0};
     Message *first;
+    Message *incoming;
     DVM_ObjectDomain *domain;
     DVM_ObjectGuard guard = {0};
     int index;
@@ -139,11 +141,19 @@ int main(void)
     work.gate = fvm_port_sync_create();
     check(work.slot && work.gate, "slot and gate allocation");
     check(!dvm_owner_slot_copy(work.slot, &scope, &entry) && !entry.object, "nil copy unchanged");
+    check(!dvm_owner_slot_replace(work.slot, &entry), "empty replacement unchanged");
     transfer = create(0);
     first = transfer.object;
+    check(dvm_owner_scope_accept(&scope, &entry, &transfer), "track first owner before publication");
+    check(!dvm_owner_slot_replace(work.slot, &entry) && entry.object == first &&
+        dvm_refcount_load_u(&first->references) == 1, "empty slot replacement preserves source");
+    check(!dvm_owner_scope_exchange(&entry, &transfer) && entry.object == first,
+        "empty envelope exchange preserves ledger");
+    check(dvm_owner_scope_export(&entry, &transfer), "restore initial publication envelope");
     check(dvm_owner_slot_exchange(work.slot, &transfer), "publish first owner");
     check(!transfer.object && !transfer.ops, "first exchange consumes incoming owner");
     check(!dvm_owner_slot_destroy(&work.slot), "populated destroy refuses");
+    check(!dvm_owner_slot_replace(work.slot, &entry), "empty entry replacement preserves slot");
     check(dvm_owner_slot_copy(work.slot, &scope, &entry), "copy first owner");
     check(dvm_refcount_load_u(&first->references) == 2, "copy creates DISTINCT owner");
     check(!dvm_owner_slot_copy(work.slot, &scope, &entry), "occupied destination refuses");
@@ -170,7 +180,8 @@ int main(void)
     check(!dvm_owner_slot_copy(work.slot, &scope, &entry) &&
         !dvm_owner_slot_exchange(work.slot, &transfer) &&
         !dvm_owner_slot_put(work.slot, &entry) &&
-        !dvm_owner_slot_take(work.slot, &scope, &entry), "guarded slot operations refuse");
+        !dvm_owner_slot_take(work.slot, &scope, &entry) &&
+        !dvm_owner_slot_replace(work.slot, &entry), "guarded slot operations refuse");
     check(dvm_object_guard_leave(&guard) && dvm_object_guard_fini(&guard) &&
         dvm_object_domain_destroy(domain), "guard teardown");
     malformed.ops = &operations;
@@ -194,12 +205,31 @@ int main(void)
     work.start = 1;
     fvm_port_sync_signal_all(work.gate);
     fvm_port_sync_unlock(work.gate);
+    check(dvm_owner_slot_copy(work.slot, &scope, &entry), "writer samples current owner");
+    first = entry.object;
+    check(dvm_owner_scope_drop(&entry), "writer drops sample");
     for (index = 1; index <= REPLACEMENTS; index++)
     {
         transfer = create((unsigned long)index);
-        check(dvm_owner_slot_exchange(work.slot, &transfer), "replace shared owner");
-        check(transfer.object && transfer.ops == &operations, "previous owner returned");
-        check(dvm_owner_transfer_cancel(&transfer), "retire replaced owner outside mutex");
+        incoming = transfer.object;
+        check(dvm_owner_scope_accept(&scope, &entry, &transfer), "track incoming publication");
+        check(dvm_owner_slot_replace(work.slot, &entry), "replace tracked shared owner");
+        check(entry.object == first && entry.ops == &operations && entry.scope == &scope,
+            "displaced owner stays tracked");
+        check(dvm_owner_slot_copy(work.slot, &scope, &sample) && sample.object == incoming,
+            "replacement publishes incoming before retirement");
+        check(dvm_owner_scope_drop(&sample), "drop replacement verification owner");
+        first = incoming;
+        if (index == REPLACEMENTS)
+        {
+            check(dvm_owner_scope_close(&scope) && !entry.object,
+                "scope cleanup retires displaced owner");
+            check(dvm_owner_scope_open(&scope), "reopen after displaced cleanup");
+        }
+        else
+        {
+            check(dvm_owner_scope_drop(&entry), "retire tracked owner outside mutex");
+        }
     }
     for (index = 0; index < READERS; index++)
     {

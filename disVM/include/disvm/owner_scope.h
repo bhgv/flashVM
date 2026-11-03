@@ -93,6 +93,14 @@ int dvm_owner_scope_accept(DVM_OwnerScope *scope, DVM_OwnerEntry *entry,
     DVM_OwnerTransfer *transfer);
 
 
+/* Exchange a linked current-owner entry with a POPULATED exclusive transfer.
+ * Both owners remain accounted for; entry stays linked in the same scope.
+ * No retain/drop/callback/allocation/wait. Return0 unchanged on foreign/busy/
+ * guarded caller, empty/malformed pair. Storage must be disjoint, privately
+ * owned or externally locked; never publish the transfer without synchronization. */
+int dvm_owner_scope_exchange(DVM_OwnerEntry *entry, DVM_OwnerTransfer *transfer);
+
+
 /* Consume exclusively owned unpublished/returned transfer, clearing it before
  * drop. Use for failed thread-start rollback; not to cancel an in-flight owner.
  * Return 0 unchanged when empty/invalid, guarded or without bound context. */

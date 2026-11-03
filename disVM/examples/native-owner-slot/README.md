@@ -41,3 +41,12 @@ its count stays exactly one before changing payload; only the sole owner can
 access it. TSan checks the actual implementation with both count backends.
 This is an explicit native ownership protocol, not proof that arbitrary managed
 objects/aliases can move without a graph/root/publication analysis.
+
+
+Runtime0.74 adds `example_replace_owner` for a populated slot and source entry.
+It exchanges existing owners directly: the new publication moves to the slot,
+and its predecessor immediately occupies the same cleanup-ledger entry. The
+helper drops that predecessor after the slot mutex is released. Empty endpoints
+refuse unchanged; use put for initial publication, take for removal. Call the
+lower-level replace API directly when the predecessor should remain available
+until later scope cleanup. No reference count changes during the exchange.

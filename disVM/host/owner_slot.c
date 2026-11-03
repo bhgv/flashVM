@@ -135,3 +135,21 @@ int dvm_owner_slot_take(DVM_OwnerSlot *slot, DVM_OwnerScope *scope,
     fvm_port_sync_unlock(slot->sync);
     return moved;
 }
+
+
+/* Replace populated publication while retaining the displaced owner directly
+ * in the caller's existing cleanup ledger. No untracked transfer escapes and
+ * no callback executes under slot mutex. Empty slot/entry refuses unchanged. */
+int dvm_owner_slot_replace(DVM_OwnerSlot *slot, DVM_OwnerEntry *entry)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    int replaced;
+    if (!slot || !context || dvm_native_context_object_count(context))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(slot->sync);
+    replaced = dvm_owner_scope_exchange(entry, &slot->owner);
+    fvm_port_sync_unlock(slot->sync);
+    return replaced;
+}

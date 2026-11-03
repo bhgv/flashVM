@@ -20,6 +20,8 @@ def main():
     include = root / ('include' if installed else 'disVM/include')
     ports = root / ('source/ports' if installed else 'flashVM/ports')
     mutations = (
+        ('replace', 'owner_scope.c', '*transfer = previous;', '(void)previous;'),
+        ('replace_entry', 'owner_scope.c', 'entry->object = transfer->object;', '(void)transfer;'),
         ('put', 'owner_slot.c', 'moved = dvm_owner_scope_export(entry, &slot->owner);', 'moved = 1; (void)entry;'),
         ('take', 'owner_slot.c', 'moved = dvm_owner_scope_accept(scope, entry, &slot->owner);', 'moved = 1; (void)scope; (void)entry;'),
         ('publish', 'owner_slot.c', 'slot->owner = *transfer;', '(void)transfer;'),
@@ -70,7 +72,7 @@ def main():
             if run.returncode or 'WARNING: ThreadSanitizer:' in run.stderr or 'runtime error:' in run.stderr:
                 raise RuntimeError('mailbox execution failure: '+run.stdout+run.stderr)
             print(backend+': '+run.stdout, end='')
-    print('PASS slot checks; '+('joined positives only' if args.positive_only else 'ten exact semantic controls'))
+    print('PASS slot checks; '+('joined positives only' if args.positive_only else 'fourteen exact semantic controls'))
 
 
 if __name__ == '__main__':

@@ -171,6 +171,8 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     check(dvm_owner_scope_retain(&scope, &outgoing, main_entry.object, main_entry.ops), "distinct shared slot owner");
     check(dvm_owner_slot_put(probe.slot, &outgoing) && !outgoing.object,
         "publish rooted ticket directly from scope");
+    check(dvm_owner_slot_replace(probe.slot, &main_entry) && main_entry.scope == &scope,
+        "rooted publication replacement keeps local cleanup owner");
     for (index = 0; index < PROBE_THREADS; index++)
     {
         receivers[index].probe = &probe;

@@ -60,6 +60,15 @@ int dvm_owner_slot_put(DVM_OwnerSlot *slot, DVM_OwnerEntry *entry);
 int dvm_owner_slot_take(DVM_OwnerSlot *slot, DVM_OwnerScope *scope,
     DVM_OwnerEntry *entry);
 
+/* Atomically exchange a POPULATED slot and linked current-owner entry.
+ * On success entry owns the displaced object in its existing cleanup ledger;
+ * slot owns the incoming object. Counts and ledger links do not change. No
+ * callback/allocation/managed admission; may wait only for the slot mutex.
+ * Return0 unchanged for empty/malformed/foreign/busy/guarded/unbound input.
+ * Same stable-slot lifetime and payload restrictions as the other operations. */
+int dvm_owner_slot_replace(DVM_OwnerSlot *slot, DVM_OwnerEntry *entry);
+
+
 #ifdef __cplusplus
 }
 #endif

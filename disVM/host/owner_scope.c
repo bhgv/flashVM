@@ -210,3 +210,25 @@ int dvm_owner_transfer_cancel(DVM_OwnerTransfer *transfer)
     ops->drop(object);
     return 1;
 }
+
+
+/* Exchange two populated strong owners without callbacks or count changes.
+ * entry stays linked in its exact current-owner ledger; transfer is private or
+ * externally locked/disjoint. Validate before mutation; refuse malformed pairs.
+ * There is no allocation/wait/VM entry or cancellation point between writes. */
+int dvm_owner_scope_exchange(DVM_OwnerEntry *entry, DVM_OwnerTransfer *transfer)
+{
+    DVM_OwnerTransfer previous;
+    if (!entry || !available(entry->scope) || !entry->object || !entry->ops ||
+        !entry->ops->retain || !entry->ops->drop || !transfer || !transfer->object ||
+        !transfer->ops || !transfer->ops->retain || !transfer->ops->drop)
+    {
+        return 0;
+    }
+    previous.object = entry->object;
+    previous.ops = entry->ops;
+    entry->object = transfer->object;
+    entry->ops = transfer->ops;
+    *transfer = previous;
+    return 1;
+}
