@@ -791,3 +791,7 @@ is still required; native OS executors do not yet imply parallel managed compute
 Runtime0.96: [binary integer transaction](SHARED-ARITHMETIC.md) guards both
 inputs and result together. Native mixed two-/three-span tests use real joined OS
 threads; general managed computation remains serialized by NativeWorld.
+
+Runtime0.97: [compact small ranges](SMALL-RANGES.md) use six boundary stripes
+in the same domain as wide/cell operations. This reduces metadata work without
+removing owner/root/NativeWorld requirements.

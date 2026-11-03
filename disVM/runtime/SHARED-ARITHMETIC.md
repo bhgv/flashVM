@@ -82,3 +82,7 @@ JIT 1.647544784→3.721847356 (+125.90%). Same image/binary, warmup then median 
 three startup-inclusive runs, 20000 iterations of fifteen explicit operations plus
 checks/loop/conversions. Generic 256-entry range metadata and scanning are recorded
 optimization candidates; no isolated attribution or cross-workload addition.
+
+Runtime0.97 uses [compact metadata](SMALL-RANGES.md) for the same three live small
+spans and same canonical domain. The generic path/cost above remains historical
+evidence; no arithmetic semantics, default admission or NativeWorld change.

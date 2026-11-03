@@ -4,6 +4,7 @@
 #include "disvm/owner_scope.h"
 #include "disvm/cell_access.h"
 #include "disvm/range_access.h"
+#include "disvm/small_range.h"
 #include "disvm/managed_reference.h"
 #include "disvm/gc_workers.h"
 
@@ -75,4 +76,11 @@ DVM_CellResult dvm_managed_ranges_begin(const void *source, size_t source_size,
 DVM_CellResult dvm_managed_three_begin(const void *first, size_t first_size,
     const void *second, size_t second_size, void *output, size_t output_size,
     DVM_RangeAccess *access);
+
+/* [GC:] Same exact ACTIVE owner gate as three-range begin; lengths1..pointer.
+ * Caller keeps all three mapped spans alive. No retain/root or allocation.
+ * Return native claim result with full partial rollback on refusal/BUSY. */
+DVM_CellResult dvm_managed_small_three_begin(const void *first, size_t first_size,
+    const void *second, size_t second_size, void *output, size_t output_size,
+    DVM_TripleAccess *access);
 #endif

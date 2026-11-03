@@ -13,8 +13,9 @@
 #include <stdlib.h>
 
 
-/* [PERF ARITH-096] Generic 256-entry range metadata/scan and C-tail costs are
- * tracked in PERFORMANCE-COSTS.md; component timing has not been isolated. */
+/* [PERF ARITH-096] Historical generic guard cost remains in the ledger.
+ * [PERF SMALL-097] Compact metadata preserves the canonical guard union; matched
+ * workload comparison and remaining profile overhead: PERFORMANCE-COSTS.md. */
 
 
 /* [GC:] opcode selects width/operation; first/second/output borrow live storage.
@@ -22,7 +23,7 @@
  * Existing NativeWorld/root lifetime rules remain; this is only byte exclusion. */
 const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *second, void *output)
 {
-    DVM_RangeAccess access = {0};
+    DVM_TripleAccess access = {0};
     size_t width;
     if (dvm_runtime_shared_mode() != 2)
     {
@@ -60,12 +61,12 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(first, width, second, width, output, width, &access) != DVM_CELL_ACQUIRED)
+    if (dvm_managed_small_three_begin(first, width, second, width, output, width, &access) != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
     dvm_runtime_arithmetic_value(opcode, first, second, output);
-    if (!dvm_range_access_end(&access))
+    if (!dvm_small_range_access_end(&access))
     {
         abort();
     }

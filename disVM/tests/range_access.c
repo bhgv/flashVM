@@ -1,5 +1,6 @@
 /* Native byte/cell cross-protocol exclusion; no managed Heap is forged. */
 #include "disvm/range_access.h"
+#include "disvm/small_range.h"
 #include "thread_port.h"
 #include <stdint.h>
 #include <stdio.h>
@@ -88,14 +89,20 @@ static void write_pair(void *argument)
     {
         DVM_CellAccess small = {0};
         DVM_RangeAccess wide = {0};
+        DVM_TripleAccess compact = {0};
         DVM_CellResult result;
         uintptr_t first;
         uintptr_t second;
         uintptr_t third;
-        int use_wide = index % 2;
+        int use_wide = index % 3;
         do
         {
-            if (use_wide)
+            if (use_wide == 2)
+            {
+                result = dvm_small_range_access_begin(fixture->domain, fixture->first, sizeof(uintptr_t),
+                    fixture->second, sizeof(uintptr_t), fixture->third, sizeof(uintptr_t), &compact);
+            }
+            else if (use_wide)
             {
                 result = dvm_range_access_three_begin(fixture->domain, fixture->first, 20 * sizeof(void *),
                     fixture->second, sizeof(uintptr_t), fixture->third, sizeof(uintptr_t), &wide);
@@ -124,7 +131,14 @@ static void write_pair(void *argument)
             memmove(&third, fixture->third, sizeof(third));
             third++;
             memmove(fixture->third, &third, sizeof(third));
-            check(dvm_range_access_end(&wide) && zero(&wide), "wide ends cleanly");
+            if (use_wide == 2)
+            {
+                check(dvm_small_range_access_end(&compact), "compact ends cleanly");
+            }
+            else
+            {
+                check(dvm_range_access_end(&wide) && zero(&wide), "wide ends cleanly");
+            }
         }
         else
         {
@@ -186,6 +200,25 @@ int main(void)
     check(dvm_range_access_end(&wide), "three alias end");
     check(dvm_range_access_three_begin(fixture.domain, fixture.first, 1, NULL, 1,
         fixture.third, 1, &wide) == DVM_CELL_REFUSED && zero(&wide), "invalid middle span");
+    {
+        DVM_TripleAccess compact = {0};
+        check(dvm_small_range_access_begin(fixture.domain, fixture.first, sizeof(uintptr_t),
+            fixture.second, sizeof(uintptr_t), fixture.third, sizeof(uintptr_t), &compact) == DVM_CELL_ACQUIRED &&
+            compact.count == 6, "compact exact independent spans");
+        for (index = 1; index < compact.count; index++)
+        {
+            check((uintptr_t)compact.guards[index-1] < (uintptr_t)compact.guards[index], "compact ascending order");
+        }
+        check(dvm_small_range_access_end(&compact) && !compact.context && !compact.domain &&
+            !compact.count && !compact.held, "compact zero end");
+        check(dvm_small_range_access_begin(fixture.domain, fixture.first, sizeof(uintptr_t),
+            fixture.first, sizeof(uintptr_t), fixture.first, sizeof(uintptr_t), &compact) == DVM_CELL_ACQUIRED &&
+            compact.count == 2, "compact deduplicates aliases");
+        check(dvm_small_range_access_end(&compact), "compact alias end");
+        check(dvm_small_range_access_begin(fixture.domain, fixture.first, sizeof(uintptr_t)+1,
+            fixture.second, 1, fixture.third, 1, &compact) == DVM_CELL_REFUSED && !compact.domain,
+            "compact refuses oversized span");
+    }
     dvm_test_cell_noalloc_end();
     for (index = 0; index < THREADS; index++)
     {
@@ -200,7 +233,7 @@ int main(void)
     memmove(&second, fixture.second, sizeof(second));
     check(first == THREADS * ROUNDS && second == first * 3, "joined exact values");
     memmove(&first, fixture.third, sizeof(first));
-    check(first == THREADS * (ROUNDS / 2), "joined third-span values");
+    check(first == THREADS * (ROUNDS - (ROUNDS + 2) / 3), "joined third-span values");
     check(dvm_cell_domain_destroy(&fixture.domain) && !fixture.domain, "complete domain retirement");
     unbind(context);
     puts("PASS range access:8 OS writers,16000 mixed byte/cell updates, exact empty/wrap/full/three selections");

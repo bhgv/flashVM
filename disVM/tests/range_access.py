@@ -7,8 +7,10 @@ import sys
 import tempfile
 
 
-def main():
-    """Compile native and forced-lock backends; private source controls require
+def main(compact=False):
+    """compact selects six-key versus generic range source controls.
+
+    Compile native and forced-lock backends; private source controls require
     semantic10 before any invalid alias is used. No managed parallelism inferred.
     """
     root = Path(__file__).resolve().parents[2]
@@ -17,7 +19,7 @@ def main():
     tests = root / ('source/tests' if installed else 'disVM/tests')
     include = root / ('include' if installed else 'disVM/include')
     ports = root / ('source/ports' if installed else 'flashVM/ports')
-    original = (host / 'range_access.c').read_text()
+    original = (host / ('small_range.c' if compact else 'range_access.c')).read_text()
     controls = {
         'output': ('!select_span(destination, destination_size, bits)', '((void)destination, (void)destination_size, 0)', 'three exact independent spans'),
         'middle': ('!select_span(second, second_size, bits)', '((void)second, (void)second_size, 0)', 'three exact independent spans'),
@@ -29,6 +31,14 @@ def main():
                   'for (index = DVM_CELL_STRIPES; index-- > 0;)', 'ascending union order'),
         'clear': ('    access->context = NULL;', '    (void)access->context;', 'empty access ends'),
     }
+    if compact:
+        controls = {
+            'boundary': ('keys[1] = (unsigned int)((last / width) % STRIPES);',
+                         '(void)last; keys[1] = keys[0];', 'compact exact independent spans'),
+            'order': ('if (keys[other] < keys[index])', 'if (keys[other] > keys[index])', 'compact ascending order'),
+            'dedup': ('if (index && keys[index] == keys[index - 1])', 'if (0)', 'compact deduplicates aliases'),
+            'clear': ('    access->context = NULL;', '    (void)access->context;', 'compact zero end'),
+        }
     with tempfile.TemporaryDirectory(prefix='canonical guard registry ') as directory:
         work = Path(directory)
         for backend in ('native', 'locked'):
@@ -39,7 +49,7 @@ def main():
                     if source.count(before) != 1:
                         raise RuntimeError('cell access control boundary drift')
                     source = source.replace(before, after, 1)
-                private = work / 'range_access.c'
+                private = work / ('small_range.c' if compact else 'range_access.c')
                 private.write_text(source)
                 command = shlex.split(os.environ.get('CC', 'cc'))
                 command += shlex.split(os.environ.get('CFLAGS', '-O2 -g'))
@@ -47,7 +57,7 @@ def main():
                             '-I'+str(include), '-I'+str(ports), '-I'+str(host)]
                 if backend == 'locked':
                     command += ['-DDVM_OBJECT_FORCE_LOCKED=1', '-DDVM_REFCOUNT_FORCE_LOCKED=1']
-                command += [str(tests / 'range_access.c'), str(tests / 'guard_registry_faults.c'), str(host / 'cell_access.c'), str(private),
+                command += [str(tests / 'range_access.c'), str(tests / 'guard_registry_faults.c'), str(host / 'cell_access.c'), str(host / ('range_access.c' if compact else 'small_range.c')), str(private),
                             *[str(host / name) for name in ('object_guard.c', 'guard_registry.c', 'refcount.c',
                               'native_context.c', 'native_owner.c', 'native_world.c')],
                             str(ports / 'linux/thread.c'), str(ports / 'linux/channel_sync.c'),
@@ -68,7 +78,7 @@ def main():
                     raise RuntimeError(output)
                 else:
                     print(backend+': '+output, end='')
-    print('PASS native byte ranges'+(' positives only' if '--positive-only' in sys.argv else '; twelve semantic controls'))
+    print(('PASS compact three-span ranges' if compact else 'PASS native byte ranges')+(' positives only' if '--positive-only' in sys.argv else ('; eight semantic controls' if compact else '; twelve semantic controls')))
 
 
 if __name__ == '__main__':

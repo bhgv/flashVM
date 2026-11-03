@@ -592,3 +592,18 @@ DVM_CellResult dvm_managed_three_begin(const void *first, size_t first_size,
     return dvm_range_access_three_begin(owners.cells, first, first_size,
         second, second_size, output, output_size, access);
 }
+
+
+/* [GC:] first/second/output borrow live small spans; access is zero owner-local
+ * storage. Preflight exact ACTIVE service before canonical domain lookup. */
+DVM_CellResult dvm_managed_small_three_begin(const void *first, size_t first_size,
+    const void *second, size_t second_size, void *output, size_t output_size,
+    DVM_TripleAccess *access)
+{
+    if (!admitted())
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return dvm_small_range_access_begin(owners.cells, first, first_size,
+        second, second_size, output, output_size, access);
+}

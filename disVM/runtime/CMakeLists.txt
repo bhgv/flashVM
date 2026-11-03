@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.96.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.97.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -117,6 +117,7 @@ add_executable(disvm
     "${root}/disVM/host/guard_registry.c"
     "${root}/disVM/host/cell_access.c"
     "${root}/disVM/host/range_access.c"
+    "${root}/disVM/host/small_range.c"
     "${root}/disVM/host/owner_scope.c"
     "${root}/disVM/host/owner_slot.c"
     main.c
@@ -2588,4 +2589,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "${CMAKE_CURRENT_SOURCE_DIR}/test_arithmetic_tail.py" "$<TARGET_FILE:disvm>"
   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
  set_tests_properties(disvm_shared_arithmetic disvm_arithmetic_tails PROPERTIES TIMEOUT 240)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_small_ranges COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/small_range.py")
+ set_tests_properties(disvm_native_small_ranges PROPERTIES TIMEOUT 180)
 endif()

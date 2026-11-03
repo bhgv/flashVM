@@ -107,7 +107,7 @@ static void expected(int family, size_t width, const void *first, const void *se
     code = code.replace('DVM_CellAccess held', 'DVM_RangeAccess held').replace('dvm_cell_access_end(&held)', 'dvm_range_access_end(&held)')
     code = code.replace('transfers == 23400', 'transfers == 877500').replace('23400', '877500').replace('six-op', '15-op')
     code = code.replace('FAIL integer:', 'FAIL arithmetic:').replace('PASS integer', 'PASS arithmetic')
-    return code
+    return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
 
 def main():
@@ -123,7 +123,7 @@ def main():
         cfile.write_text(wrapper())
         for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3)):
             binary = relink(runtime, work, cfile, variant,
-                            ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value', 'dvm_managed_three_begin'])
+                            ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value', 'dvm_managed_small_three_begin'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
