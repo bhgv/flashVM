@@ -1,3 +1,5 @@
+[Private table forwarding and locality](../doc/LOCALITY.md)
+
 [Signed quotient/remainder transfer](../doc/DIVISION_FACTS.md)
 
 [Sparse constant product transfer](../doc/SPARSE_PRODUCT_FACTS.md)

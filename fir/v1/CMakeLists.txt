@@ -1,6 +1,6 @@
 # Independent C99 component. Detached copies need only the root MIT LICENSE.
 cmake_minimum_required(VERSION 3.10)
-project(fir1 VERSION 0.72.0 LANGUAGES C)
+project(fir1 VERSION 0.73.0 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
@@ -28,7 +28,7 @@ target_compile_definitions(fir1_generated PRIVATE CUSTOM_BUFF)
 target_include_directories(fir1_generated PRIVATE include src)
 target_include_directories(fir1_generated PUBLIC "${generated}")
 add_library(fir1_io src/input.c)
-add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c optimiser/integer_facts.c compiler/object.c compiler/dis.c compiler/dis_table.c)
+add_library(fir1_ir src/ir.c src/pipeline.c src/builder.c optimiser/peephole.c optimiser/effects.c optimiser/integer_facts.c optimiser/locality.c optimiser/private_table.c compiler/object.c compiler/dis.c compiler/dis_table.c)
 # Preserve object inclusion and private generated headers on CMake 3.10.
 target_sources(fir1_ir PRIVATE $<TARGET_OBJECTS:fir1_generated>)
 target_include_directories(fir1_ir PRIVATE "${generated}")
@@ -745,4 +745,30 @@ if(BUILD_TESTING)
   add_test(NAME fir1_integer_division_facts COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/integer_division_facts.py" $<TARGET_FILE:fir1_source> $<TARGET_FILE:fir1>)
   set_tests_properties(fir1_integer_division_facts PROPERTIES TIMEOUT 120)
+endif()
+
+
+# Locality proof storage is pure/reentrant; private load forwarding preserves leases.
+if(BUILD_TESTING)
+ add_executable(fir1_locality_api tests/locality_api.c)
+ target_link_libraries(fir1_locality_api PRIVATE fir1_ir)
+ if(UNIX)
+  find_package(Threads REQUIRED)
+  target_compile_definitions(fir1_locality_api PRIVATE FIR_LOCALITY_THREADS=1)
+  target_link_libraries(fir1_locality_api PRIVATE Threads::Threads)
+ endif()
+ add_test(NAME fir1_locality_api COMMAND fir1_locality_api)
+ if(TARGET fir1_table_run)
+  add_test(NAME fir1_private_tables COMMAND "${Python3_EXECUTABLE}"
+   "${CMAKE_CURRENT_SOURCE_DIR}/tests/private_tables.py" "$<TARGET_FILE:fir1>" "$<TARGET_FILE:fir1_table_run>")
+ endif()
+endif()
+
+
+# Changed passes link before the archive; only explicit wrong semantics count.
+if(BUILD_TESTING AND TARGET fir1_table_run)
+ add_test(NAME fir1_locality_controls COMMAND "${Python3_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/tests/locality_controls.py" "$<TARGET_FILE:fir1_ir>"
+  "$<TARGET_FILE:fir1_io>" "$<TARGET_FILE:fir1_table_run>" "${CMAKE_C_COMPILER}")
+ set_tests_properties(fir1_locality_controls PROPERTIES TIMEOUT 180)
 endif()

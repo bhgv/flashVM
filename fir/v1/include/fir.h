@@ -256,6 +256,28 @@ typedef struct
 } FirModule;
 
 
+/* Point-of-use local ownership proofs, rebuilt after IR/operand/CFG changes.
+ * Instruction arrays are indexed by live instruction; frame_local is by SSA
+ * value and says nothing about the referenced payload's ownership. No native
+ * pointer, runtime shared bit, miniheap allocator or wire metadata is stored. */
+typedef struct
+{
+    int table_owner[FIR_LIMIT]; /* Same-block fresh allocation identity, -1 unknown. */
+    int64_t numeric_key[FIR_LIMIT]; /* Captured nonnegative constant key if absolute_key. */
+    unsigned char absolute_key[FIR_LIMIT]; /* Numeric key is stable across length changes. */
+    unsigned char private_table[FIR_LIMIT]; /* Referent private BEFORE this instruction only. */
+    unsigned char retained_table[FIR_LIMIT]; /* Same-block retained entry covers this use. */
+    unsigned char frame_local[FIR_LIMIT]; /* Verified variable home is function-private. */
+} FirLocalityFacts;
+
+
+/* Analyze borrowed VERIFIED module into disjoint caller-owned facts; module is
+ * unchanged. Block entries are unknown, local ref-cell snapshots follow stores,
+ * opaque calls/publication invalidate existing fresh owners. No callbacks,
+ * allocation, waits, runtime tests or global parser state. Facts expire on edits. */
+void fir_locality_facts(const FirModule *module, FirLocalityFacts *facts);
+
+
 /* Successful-evaluation facts for immutable int32/big SSA, never mutable cells.
  * Scratch belongs to the caller; rebuild after changing live definitions or
  * operands. Retiring unused values preserves facts about the retained graph. */

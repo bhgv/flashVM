@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1760**. [Русская версия](README.ru.md).
+Development version: **0.1761**. [Русская версия](README.ru.md).
 
-Current series: [v0.1760](docs/releases/v0.1760.md): rooted managed ownership across native workers with Fast retirement.
+Current series: [v0.1761](docs/releases/v0.1761.md): compiler locality facts and guarded private table forwarding.
 
 ## Browse documentation
 

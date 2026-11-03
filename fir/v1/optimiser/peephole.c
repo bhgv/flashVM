@@ -3,6 +3,7 @@
  * Constant branches discard only unexecuted paths. Unsigned arithmetic implements
  * integer wrap without signed overflow in the compiler itself. */
 #include "fir.h"
+#include "locality.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -732,7 +733,8 @@ int fir_optimise(FirModule *m, char *error, size_t cap)
     }
     do
     {
-        changed = fold_constant_cell_loads(m);
+        changed = fir_forward_private_tables(m);
+        changed |= fold_constant_cell_loads(m);
         changed |= forward_scalar_loads(m);
         changed |= remove_overwritten_scalar_stores(m);
         fir_integer_facts(m, &facts);

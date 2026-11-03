@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1760**. [English](README.md).
+Версия разработки: **0.1761**. [English](README.md).
 
-Текущая серия: [v0.1760](docs/releases/v0.1760.md): managed-владельцы с корнями GC и освобождением на Fast-потоке.
+Текущая серия: [v0.1761](docs/releases/v0.1761.md): доказательства локальности FIR и оптимизация чтений приватных таблиц.
 
 ## Просмотр документации
 

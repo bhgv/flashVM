@@ -1,10 +1,12 @@
+[Point-of-use locality — FIR0.73](doc/LOCALITY.md)
+
 [Факты знакового деления — FIR0.72](doc/DIVISION_FACTS.ru.md)
 
 [Разреженные множители — FIR0.71](doc/SPARSE_PRODUCT_FACTS.ru.md)
 
 # Инструменты FIR v1
 
-[English](README.md). Реализация **0.72.0**, текстовый формат **FIR 1.0**.
+[English](README.md). Реализация **0.73.0**, текстовый формат **FIR 1.0**.
 Код — C99. Все три парсера генерируются внешним
 [bhgv/coco-r-C](https://github.com/bhgv/coco-r-C), тем же генератором, что
 используют синтаксические фронтенды AS1/AS2/AS3/Limbo. Сгенерированный код остаётся
