@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1769**. [Русская версия](README.ru.md).
+Development version: **0.1770**. [Русская версия](README.ru.md).
 
-Current series: [v0.1769](docs/releases/v0.1769.md): atomic MCALL ownership and Sys/executor count observations.
+Current series: [v0.1770](docs/releases/v0.1770.md): actual Sys descriptor ownership and collector retirement controls.
 
 ## Browse documentation
 

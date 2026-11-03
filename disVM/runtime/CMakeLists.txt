@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.71.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.72.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -111,7 +111,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
-add_executable(disvm "${root}/disVM/host/refcount.c" "${root}/disVM/host/object_guard.c" "${root}/disVM/host/owner_scope.c" "${root}/disVM/host/owner_slot.c" main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c open_wait.c close_worker.c runtime_gc.c runtime_rc.c type_counts.c type_counts_probe.c heap_counts.c heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts_probe.c heap_snapshot.c heap_snapshot_probe.c managed_owner.c managed_owner_probe.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
+add_executable(disvm "${root}/disVM/host/refcount.c" "${root}/disVM/host/object_guard.c" "${root}/disVM/host/owner_scope.c" "${root}/disVM/host/owner_slot.c" main.c runqueue.c queue_probe.c managed_workers.c process_environment.c file_gate.c seek_sys.c metadata_wait.c open_wait.c close_worker.c runtime_gc.c runtime_rc.c type_counts.c type_counts_probe.c heap_counts.c heap_counts_probe.c opcode_counts_probe.c module_counts.c module_counts_probe.c heap_snapshot.c heap_snapshot_probe.c service_counts_probe.c managed_owner.c managed_owner_probe.c sleep_sys.c read_sys.c write_sys.c formatted_sys.c io_buffer.c clock_sys.c sys_capture.c filesystem_sys.c srv_adapter.c bigtable.c "${u}/libmath/blas.c" "${u}/libmath/gemm.c" "${u}/libmath/pow10.c" "${view}/srv.c" "${view}/unsupported.c" ${sources} "${root}/disVM/host/native_registers.c")
 add_dependencies(disvm disvm_runtime_sources)
 if(DVM_RUNTIME_COMPILER)
   target_sources(disvm PRIVATE compiler_native.c)

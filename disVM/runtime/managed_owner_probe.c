@@ -11,6 +11,7 @@
 #include "heap_counts.h"
 #include "module_counts.h"
 #include "heap_snapshot.h"
+#include "service_counts.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
 #include "disvm/owner_slot.h"
@@ -155,6 +156,7 @@ void dvm_managed_owner_probe_run(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     dvm_runtime_opcode_probe(workers);
     dvm_runtime_module_probe(workers);
     dvm_runtime_snapshot_probe(workers);
+    dvm_runtime_service_probe(workers);
     value = c2string("managed-ticket-root", 19);
     check(world && workers && value != H && value != nil, "real managed String");
     probe.slot = dvm_owner_slot_create();
