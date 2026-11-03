@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1768**. [Русская версия](README.ru.md).
+Development version: **0.1769**. [Русская версия](README.ru.md).
 
-Current series: [v0.1768](docs/releases/v0.1768.md): count-safe Heap header observations and string ownership.
+Current series: [v0.1769](docs/releases/v0.1769.md): atomic MCALL ownership and Sys/executor count observations.
 
 ## Browse documentation
 

@@ -10,6 +10,7 @@ from prepare_heap_counts import adapt as adapt_heap_counts
 from prepare_opcode_counts import adapt as adapt_opcode_counts
 from prepare_module_counts import adapt_link, adapt_load, adapt_xec
 from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
+from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -174,7 +175,7 @@ def main():
                 "Dis integer arguments occupy four bytes, even on LP64 hosts.",
                 "NC64 arguments occupy the explicitly selected native cell width.",
             )
-        path.write_text(code)
+        path.write_text(adapt_runt(code) if name == "runt.c" else code)
     # Relative indexes are host language extensions, kept outside the snapshot.
     for filename in ("xec.c", "string.c"):
         path = args.output / filename
@@ -282,7 +283,7 @@ def main():
             count=1,
         )
     code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
-    path.write_text(adapt_xec_snapshots(adapt_xec(adapt_opcode_counts(code))))
+    path.write_text(adapt_xec_observations(adapt_xec_snapshots(adapt_xec(adapt_opcode_counts(code)))))
     path = args.output / "alt.c"
     code = path.read_text()
     code = code.replace(

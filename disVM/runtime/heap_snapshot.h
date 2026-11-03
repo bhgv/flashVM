@@ -15,6 +15,12 @@ struct Heap;
 int dvm_runtime_heap_snapshot(struct Heap *destination, const void *source);
 
 
+/* [GC:] Observe only ref in a live protected header into private unsigned-long
+ * output. Return0 unchanged on nil/alignment/span refusal. Does not read other
+ * header fields, retain, mark, allocate or acquire lifetime/admission. */
+int dvm_runtime_heap_count(const void *source, unsigned long *result);
+
+
 /* [GC:] Optional actual frozen-header/count-only concurrency diagnostic.
  * workers borrows live service; controller stays ACTIVE until every join. */
 struct DVM_GCWorkers;

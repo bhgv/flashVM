@@ -33,3 +33,19 @@ int dvm_runtime_heap_snapshot(Heap *destination, const void *source)
     memmove(destination, &temporary, sizeof(temporary));
     return 1;
 }
+
+
+/* [GC:] Private count-only observation avoids byte copies of atomic storage.
+ * Source is already mapped/live/protected; geometry does not establish that.
+ * Return0 before source read/output mutation on malformed header geometry. */
+int dvm_runtime_heap_count(const void *source, unsigned long *result)
+{
+    uintptr from = (uintptr)source;
+    if (!result || from <= sizeof(Heap) || from > (uintptr)-1-sizeof(Heap) ||
+        from % sizeof(void *) != 0)
+    {
+        return 0;
+    }
+    *result = dvm_refcount_load_u((const ulong *)((const uchar *)source+offsetof(Heap, ref)));
+    return 1;
+}
