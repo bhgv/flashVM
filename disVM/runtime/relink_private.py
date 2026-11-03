@@ -12,7 +12,7 @@ import subprocess
 # objects; originals and source headers remain unchanged.
 # Optional exception/loader replacements likewise compile only private views.
 # Matching private headers/flags remain mandatory.
-def relink(runtime, work, source, variant, symbols, executor=None, compiler_source=None, exception_source=None, loader_source=None):
+def relink(runtime, work, source, variant, symbols, executor=None, compiler_source=None, exception_source=None, loader_source=None, stack_source=None):
     metadata = runtime.parent / 'CMakeFiles/disvm.dir'
     flags = {}
     for line in (metadata / 'flags.make').read_text().splitlines():
@@ -29,7 +29,8 @@ def relink(runtime, work, source, variant, symbols, executor=None, compiler_sour
     if built.returncode:
         raise RuntimeError('private wrapper compile failed: '+built.stdout+built.stderr)
     for candidate, filename in ((executor, 'xec.c'), (compiler_source, 'comp-amd64.c'),
-                                (exception_source, 'exception.c'), (loader_source, 'loader.c')):
+                                (exception_source, 'exception.c'), (loader_source, 'loader.c'),
+                                (stack_source, 'validstk.c')):
         if candidate is None:
             continue
         replacement = work / (filename+'.o')

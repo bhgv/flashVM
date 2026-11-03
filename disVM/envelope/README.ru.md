@@ -166,3 +166,5 @@ root/safepoint coverage и call ABI. Pilot по-прежнему запреща�
 Production WORD32 build, allocation/entry и actual IEXIT->error/unwind/scheduler
 ещё предстоят. Native fixture применяет40 и отдельно исполняет ADDW C/RX до42;
 EXIT там только декодируется, физический ARM64 run не заявлен.
+
+[File-call executable goldens: review and remaining admission gates](FILE-CALL-GOLDENS.md).

@@ -16,6 +16,7 @@ from prepare_pointer_builder import adapt as adapt_pointer_builder
 from prepare_pointer_tail import adapt as adapt_pointer_tail
 from prepare_roots import adapt as adapt_roots
 from prepare_boundary_counts import adapt as adapt_boundary_counts
+from prepare_stack_check import adapt as adapt_stack_check
 
 
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
@@ -63,6 +64,8 @@ def main():
     for unit in ('loader', 'exception'):
         path = args.output / (unit+'.c')
         path.write_text(adapt_boundary_counts(path.read_text(), unit))
+    stack_path = args.output / "validstk.c"
+    stack_path.write_text(adapt_stack_check(stack_path.read_text()))
     roots_path = args.output / "gc.c"
     roots_path.write_text(adapt_roots(roots_path.read_text()))
     # Adapt only the hosted view. Pinned upstream and standalone native fixtures

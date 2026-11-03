@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1778**. [Русская версия](README.ru.md).
+Development version: **0.1779**. [Русская версия](README.ru.md).
 
-Current series: [v0.1778](docs/releases/v0.1778.md): checked Loader and exception ownership with actual error-path execution.
+Current series: [v0.1779](docs/releases/v0.1779.md): invocation-local stack diagnostics with real cyclic-graph reentry checks.
 
 ## Browse documentation
 

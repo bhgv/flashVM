@@ -167,3 +167,5 @@ ABI; pilot still rejects bindings sections. Production WORD32 build and actual
 allocation/entry/IEXIT->error/unwind/scheduler remain future gates. Upstream
 native acceptance initializes40 and executes actual ADDW C/RX to42 separately;
 EXIT is only decoded, and no physical ARM64 execution is claimed.
+
+[File-call executable goldens: review and remaining admission gates](FILE-CALL-GOLDENS.md).
