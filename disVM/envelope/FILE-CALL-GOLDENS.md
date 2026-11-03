@@ -103,3 +103,38 @@ bounded transports, not independent FlashVM executable validation, production
 namespace/file loading or physical ARM64/RV64 acceptance here. Public calls and
 ordinary WORD32 LEA stay unchanged. The `--infer` inspection command takes the
 same inspector argument and `utils/tests/goldens/dis64-infer` corpus directory.
+
+## INFERNO-0111 independent partial-schema checkpoint
+
+Rechecked the exact immutable corpus at Inferno
+559b08ca24c66fe2678e2207e062b093d841ca3c, requested by receipt f6c1daf.
+All25 SHA256/length identities match. Independent outer inspection finds23
+canonical directories and2 malformed containers: reject-truncated and reject-trailer.
+The actual current dis64inspect refuses all25 scalar-pilot rewrites and preserves
+previous output. Its canonical diagnostic remains `unsupported or invalid scalar
+pilot payloads`; this combined diagnostic alone does not validate a semantic cause.
+
+The new independent Python partial parser consumes metadata field/profile shapes,
+complete structural type/map8 tables and lossless Rune32 string pools directly from
+bytes. All23 well-framed images pass these three section schemas. The parser does
+not call the shared C codecs or consume manifest locals/private_accept as authority.
+Legal managed maps,65 structural descriptors and duplicate all-bits Rune32 values
+remain accepted independently of the private np0/type-budget policy. Four legal
+boundaries and seven malformed section controls are checked without a peer checkout.
+
+Code/exports schemas, cross-section binding, typed local/call/result/LEA validation
+and actual module lifecycle are still unvalidated by this independent parser.
+Thus these results do not label all23 complete modules valid or independently
+confirm the private21 semantic refusals. Current unsupported executable admission
+and damaged wire are reported separately, without importing private fixture policy
+as production permission. No IDs/layout/default or named-launch agreement changes.
+
+[Per-image evidence and exact manifest/checker identities](reports/inferno0111-schema.json).
+The developer tool needs an explicit immutable corpus directory; it is not a loader:
+
+```sh
+python3 disVM/envelope/tests/peer_call_schema.py --self-test
+python3 disVM/envelope/tests/peer_call_schema.py PATH_TO_PINNED_DIS64_CALLS
+```
+
+The old outer/closed-gate command above remains a separate actual inspector check.

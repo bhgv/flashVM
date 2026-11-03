@@ -1,0 +1,589 @@
+{
+  "manifest_sha256": "fd22e66dbdaf55fbbb8c1751a5e8d34d7b7c18dbababc44260a505ff9b6265b0",
+  "scope": "independent partial schema, no code/call acceptance",
+  "cases": [
+    {
+      "name": "answer42",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "chain42",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 3,
+        "runes": 27
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "divide-zero",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reordered42",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-interior",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-frame",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-argument",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-pointer-cell",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-result-cell",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-lea-destination",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-lea-mode",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-unready-result",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-signature",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-result-kind",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-result-width",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-return",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-managed-type",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 3,
+        "managed_maps": 1
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-type-budget",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 65,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-entry",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-module-frame",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-library",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 0,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-data",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 4
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-imports",
+      "outer": "canonical",
+      "execution": "not evaluated; no admission granted",
+      "unvalidated": [
+        "code/exports schema",
+        "cross-section bindings",
+        "typed call roles/lifecycle"
+      ],
+      "metadata": {
+        "name": 0,
+        "profile": 1,
+        "data_bytes": 0
+      },
+      "types": {
+        "count": 2,
+        "managed_maps": 0
+      },
+      "strings": {
+        "count": 2,
+        "runes": 18
+      },
+      "partial_schema": "metadata/types/strings valid"
+    },
+    {
+      "name": "reject-truncated",
+      "outer": "malformed",
+      "reason": "section geometry",
+      "partial_schema": "not reached",
+      "execution": "not admitted"
+    },
+    {
+      "name": "reject-trailer",
+      "outer": "malformed",
+      "reason": "truncated/trailing bytes",
+      "partial_schema": "not reached",
+      "execution": "not admitted"
+    }
+  ],
+  "peer_commit": "559b08ca24c66fe2678e2207e062b093d841ca3c",
+  "peer_checker_sha256": "cba9f658206685d053a88f86f9b6e4f97e2ab7dab98b925546ce526ba19a9dea",
+  "actual_scalar_gate": {
+    "cases": 25,
+    "refused": 25,
+    "previous_output_preserved": 25,
+    "canonical_diagnostic": "unsupported or invalid scalar pilot payloads",
+    "malformed_outer_diagnostic": "invalid envelope",
+    "semantic_refusal_reasons_independently_validated": false
+  },
+  "summary": {
+    "identities": 25,
+    "canonical_outer": 23,
+    "malformed_outer": 2,
+    "partial_metadata_types_strings_valid": 23,
+    "call_execution_or_typed_proof": false
+  }
+}

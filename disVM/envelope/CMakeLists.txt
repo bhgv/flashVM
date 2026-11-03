@@ -71,3 +71,9 @@ if(NOT CMAKE_CROSSCOMPILING AND envelope_python)
     "$<TARGET_FILE:dis64_pilot_example>"
     "${envelope_root}/upstream/libinterp/tests/dis64/pilot42.hex")
 endif()
+
+# Independent Python schema boundaries need no peer corpus or executable admission.
+if(NOT CMAKE_CROSSCOMPILING AND envelope_python)
+  add_test(NAME dis64_peer_partial_schema COMMAND "${envelope_python}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/peer_call_schema.py" --self-test)
+endif()
