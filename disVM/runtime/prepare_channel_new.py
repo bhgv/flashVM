@@ -515,7 +515,8 @@ typedef struct ChannelReservation
     int publish_after_move;
     int next_size;
     int next_front;
-    Type *mapped_send;
+    Type *mapped;
+    int consumed;
 } ChannelReservation;
 
 
@@ -556,6 +557,14 @@ static int reserve_channel_buffer(void *argument)
         return 1;
     if (buffer.width && !channelspan(read->destination, buffer.width))
         error(read->destination == nil || read->destination == H ? exNilref : exBounds);
+    if (buffer.type->np &&
+        channel->mover == movtmp && dvm_runtime_guarded_copies)
+    {
+        if (channel->mid.t != buffer.type ||
+            (!reservation->receive && !channel_slot_is_empty(&buffer)))
+            error(exHeap);
+        reservation->mapped = buffer.type;
+    }
     if (reservation->receive)
     {
         Heap *header = D2H(buffer.array);
@@ -568,14 +577,7 @@ static int reserve_channel_buffer(void *argument)
     read->slot = buffer.slot;
     reservation->next_size = buffer.size;
     reservation->next_front = buffer.front;
-    if (!reservation->receive && buffer.type->np &&
-        channel->mover == movtmp && dvm_runtime_guarded_copies)
-    {
-        if (channel->mid.t != buffer.type || !channel_slot_is_empty(&buffer))
-            error(exHeap);
-        reservation->mapped_send = buffer.type;
-    }
-    reservation->publish_after_move = !buffer.type->np || reservation->mapped_send != nil;
+    reservation->publish_after_move = !buffer.type->np || reservation->mapped != nil;
     if (!reservation->publish_after_move)
     {
         if (reservation->receive)
@@ -599,16 +601,27 @@ static int publish_channel_buffer(void *argument)
 }
 
 
+/* Move mapped ownership out of the ring without retiring the source twice. */
+static int consume_channel_buffer(void *argument)
+{
+    ChannelReservation *reservation = argument;
+    dvm_runtime_mapped_consume(reservation->read.slot, reservation->read.destination,
+        reservation->mapped, reservation->mapped->size, &reservation->consumed);
+    return 1;
+}
+
+
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int cgetb(Channel *channel, void *destination)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil};
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0};
     int completed;
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
-    completed = kprotect(channelread, &reservation.read);
-    if (completed && reservation.publish_after_move)
+    completed = reservation.mapped ? kprotect(consume_channel_buffer, &reservation) :
+        kprotect(channelread, &reservation.read);
+    if (reservation.consumed || (completed && reservation.publish_after_move))
         dvm_runtime_channel_queue_guard(publish_channel_buffer, &reservation);
     destroy(reservation.read.array);
     if (!completed)
@@ -620,16 +633,16 @@ static int cgetb(Channel *channel, void *destination)
 /* Capture send geometry under the mutex and transfer outside it. */
 static int cputb(Channel *channel, void *source)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
     DVM_R.s = source;
     DVM_R.m = &channel->mid;
     DVM_R.d = reservation.read.slot;
-    if (reservation.mapped_send)
+    if (reservation.mapped)
         dvm_runtime_mapped_copy(source, reservation.read.slot,
-            reservation.mapped_send, reservation.mapped_send->size);
+            reservation.mapped, reservation.mapped->size);
     else
         channel->mover();
     if (reservation.publish_after_move)

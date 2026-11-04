@@ -13,4 +13,8 @@ struct Type; /* Borrowed retained native descriptor, defined by interp.h. */
  * worker admission, never grants parallel execution or mapping provenance.
  * Returns normally after retirement; VM errors propagate after native cleanup. */
 void dvm_runtime_mapped_copy(const void *source, void *destination, struct Type *type, int size);
+/* Move ownership from a disjoint, live ring slot. Clears source pointers
+ * in the guarded publication. consumed stays set if retirement later raises. */
+void dvm_runtime_mapped_consume(void *source, void *destination, struct Type *type,
+    int size, int *consumed);
 #endif

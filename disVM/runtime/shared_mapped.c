@@ -100,7 +100,7 @@ static void rollback(MappedCopy *copy)
  * borrowed static error with new retains undone and destination unchanged.
  * All validation
  * precedes retains, then roots precede the single destination publication. */
-static const char *publish(MappedCopy *copy, const void *source, void *destination, size_t size)
+static const char *publish(MappedCopy *copy, const void *source, void *destination, size_t size, int consume)
 {
     size_t index;
     memmove(copy->snapshot, source, size);
@@ -125,12 +125,15 @@ static const char *publish(MappedCopy *copy, const void *source, void *destinati
         if (slot->incoming != H)
         {
             Heap *heap = D2H(slot->incoming);
-            if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+            if (!consume)
             {
-                rollback(copy);
-                return exHeap;
+                if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+                {
+                    rollback(copy);
+                    return exHeap;
+                }
+                slot->retained = 1;
             }
-            slot->retained = 1;
             if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop))
             {
                 rollback(copy);
@@ -144,6 +147,14 @@ static const char *publish(MappedCopy *copy, const void *source, void *destinati
         return exHeap;
     }
     dvm_runtime_byte_transfer(destination, copy->snapshot, size);
+    if (consume)
+    {
+        void *empty = H;
+        for (index = 0; index < copy->count; index++)
+        {
+            memmove((unsigned char *)source + copy->slots[index].offset, &empty, sizeof(empty));
+        }
+    }
     return NULL;
 }
 
@@ -165,7 +176,8 @@ static int retire(void *value)
 /* [GC:] Descriptor/lifetime checks are independently provided by the opcode.
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
-void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
+static void mapped_transfer(const void *source, void *destination, Type *type, int size,
+    int *consumed)
 {
     MappedCopy copy = {0};
     DVM_RangeAccess access = {0};
@@ -180,6 +192,15 @@ void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, 
         (size % (8 * sizeof(void *)) != 0))
     {
         error(exHeap);
+    }
+    if (consumed)
+    {
+        uintptr_t from = (uintptr_t)source;
+        uintptr_t to = (uintptr_t)destination;
+        if ((from < to ? to-from : from-to) < (size_t)size)
+        {
+            error(exHeap);
+        }
     }
     for (byte = 0; byte < type->np; byte++)
     {
@@ -201,6 +222,10 @@ void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, 
         if (problem)
         {
             error((char *)problem);
+        }
+        if (consumed)
+        {
+            *consumed = 1;
         }
         return;
     }
@@ -233,7 +258,7 @@ void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, 
         dispose(&copy);
         error(exHeap);
     }
-    problem = publish(&copy, source, destination, (size_t)size);
+    problem = publish(&copy, source, destination, (size_t)size, consumed != NULL);
     if (!dvm_range_access_end(&access))
     {
         abort();
@@ -242,6 +267,10 @@ void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, 
     {
         dispose(&copy);
         error((char *)problem);
+    }
+    if (consumed)
+    {
+        *consumed = 1;
     }
     for (index = 0; index < copy.count; index++)
     {
@@ -269,4 +298,20 @@ void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, 
         memmove(getup()->env->errstr, first_error, sizeof(first_error));
         krethrow();
     }
+}
+
+
+/* Keep the source ownership and retain each incoming destination owner. */
+void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
+{
+    mapped_transfer(source, destination, type, size, NULL);
+}
+
+
+/* Transfer source ownership and report commitment even if retirement raises. */
+void dvm_runtime_mapped_consume(void *source, void *destination, Type *type, int size,
+    int *consumed)
+{
+    *consumed = 0;
+    mapped_transfer(source, destination, type, size, consumed);
 }

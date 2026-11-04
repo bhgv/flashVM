@@ -657,7 +657,7 @@ static void direct_channel_failure(void)
 static int refill_moves; /* Counts actual read and refill mover calls. */
 static Channel *refill_observed_channel; /* Borrowed during the probe. */
 static int refill_fail_at; /* Zero for success, one for read, two for refill. */
-static Channel *refill_release_failure; /* Inject only after the temporary channel retain is consumed. */
+static void *refill_release_failure; /* Inject only after the temporary channel retain is consumed. */
 
 void __real_destroy(void *value);
 
@@ -992,6 +992,53 @@ static void mapped_channel_send_case(void)
 }
 
 
+/* Check both sides of the ownership commit through the actual SEND/RECV. */
+static void mapped_channel_receive_case(void)
+{
+    struct {
+        void *pointer;
+        WORD scalar;
+    } source = {H, 83}, output = {NULL, 31};
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    Channel *channel = H;
+    int receive = 0;
+    void *incoming;
+    void *slot;
+    channel = dvm_runtime_channel_new(&channel, record, 1, movtmp, 0);
+    dvm_runtime_record_new(&source.pointer, record, 1);
+    incoming = source.pointer;
+    registers->s = &source;
+    registers->d = &channel;
+    check(kprotect(direct_channel_transfer, &receive) && channel->size == 1,
+        "seed mapped ring with an owned reference");
+    destroy(source.pointer);
+    source.pointer = H;
+    receive = 1;
+    registers->s = &channel;
+    registers->d = &output;
+    check(!kprotect(direct_channel_transfer, &receive) && channel->size == 1 &&
+        !output.pointer && output.scalar == 31, "failed mapped read preserves occupancy");
+    memmove(&slot, channel->buf->data, sizeof(slot));
+    check(slot == incoming, "failed mapped read retains source ownership");
+    output.pointer = H;
+    dvm_runtime_record_new(&output.pointer, record, 1);
+    refill_release_failure = output.pointer;
+    registers->s = &channel;
+    registers->d = &output;
+    check(!kprotect(direct_channel_transfer, &receive) && !refill_release_failure &&
+        strstr(getup()->env->errstr, "fixture channel release failure") &&
+        channel->size == 0 && output.pointer == incoming && output.scalar == 83,
+        "committed mapped read publishes despite displaced-owner error");
+    memmove(&slot, channel->buf->data, sizeof(slot));
+    check(slot == H, "committed mapped read clears the ring owner");
+    *registers = saved;
+    destroy(output.pointer);
+    destroy(channel);
+    puts("PASS mapped channel receive ownership");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -1032,6 +1079,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     channel_case();
     mapped_channel_move_case();
     mapped_channel_send_case();
+    mapped_channel_receive_case();
     prog_hold_race();
     channel_drain_case();
     channel_finalize_case();
