@@ -9,6 +9,12 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void beqf(void); /* Actual guarded REAL branch. */
+extern void bnef(void); /* Actual guarded REAL branch. */
+extern void bltf(void); /* Actual guarded REAL branch. */
+extern void blef(void); /* Actual guarded REAL branch. */
+extern void bgtf(void); /* Actual guarded REAL branch. */
+extern void bgef(void); /* Actual guarded REAL branch. */
 extern void beqc(void); /* Actual guarded string branch. */
 extern void bnec(void); /* Actual guarded string branch. */
 extern void bltc(void); /* Actual guarded string branch. */
@@ -97,6 +103,24 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case IBEQF:
+        beqf();
+        break;
+    case IBNEF:
+        bnef();
+        break;
+    case IBLTF:
+        bltf();
+        break;
+    case IBLEF:
+        blef();
+        break;
+    case IBGTF:
+        bgtf();
+        break;
+    case IBGEF:
+        bgef();
+        break;
     case IBEQC:
         beqc();
         break;

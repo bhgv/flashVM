@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1803**. [Русская версия](README.ru.md).
+Development version: **0.1804**. [Русская версия](README.ru.md).
 
-Current series: [v0.1803](docs/releases/v0.1803.md): continuous owner/header/prefix protection for all six native string branches.
+Current series: [v0.1804](docs/releases/v0.1804.md): coherent REAL snapshots, unlocked FP predicates and separately guarded lazy branch targets.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 
