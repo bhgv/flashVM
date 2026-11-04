@@ -12,6 +12,7 @@
 typedef struct DVM_RuntimeProcess
 {
     Prog process;                     /* Retained interpreter/GC-visible prefix. */
+    int channel_claimed;              /* Exclusive channel match under NativeWorld. */
     int queued;                       /* O(1) membership, changed only by this queue module. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */

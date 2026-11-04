@@ -522,9 +522,36 @@ static void channel_finalize_case(void)
 }
 
 
+static DVM_RuntimeProcess *claimed_waiter; /* Live fixture waiter during mover callback. */
+
+
+static int unexpected_nested_match(void *argument)
+{
+    (void)argument;
+    check(0, "nested match must not enter");
+    return 0;
+}
+
+
+/* Attempt a competing match from inside the current matched transfer. */
+static int nested_channel_match(void *argument)
+{
+    extern void dvm_runtime_channel_with_claim(Prog *, int (*)(void *), void *);
+    dvm_runtime_channel_with_claim(argument, unexpected_nested_match, NULL);
+    return 1;
+}
+
+
 /* Inject a mover error only after the real opcode dequeues its peer. */
 static void failing_channel_move(void)
 {
+    if (claimed_waiter)
+    {
+        check(claimed_waiter->channel_claimed &&
+            !kprotect(nested_channel_match, &claimed_waiter->process) &&
+            !strcmp(getup()->env->errstr, "channel waiter cannot be claimed"),
+            "live channel claim refuses competing completion");
+    }
     error("fixture channel mover failure");
 }
 
@@ -568,10 +595,12 @@ static void direct_channel_failure(void)
         cqadd(queue, &waiter.process);
         registers->s = receive ? (void *)&channel : (void *)&payload;
         registers->d = receive ? (void *)&payload : (void *)&channel;
+        claimed_waiter = &waiter;
         check(!kprotect(direct_channel_transfer, &receive) &&
             strstr(getup()->env->errstr, "fixture channel mover failure"),
             "initiator receives original mover error");
-        check(!(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
+        claimed_waiter = NULL;
+        check(!waiter.channel_claimed && !(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
             waiter.process.kill && !strcmp(waiter.process.kill, "channel transfer failed") &&
             dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
             "failed direct mover wakes the detached peer once");
@@ -649,7 +678,7 @@ static void buffered_channel_completion(void)
         ok = kprotect(direct_channel_transfer, &receive);
         check(ok == (stage == 0) && refill_moves == (stage == 1 ? 1 : 2),
             "buffered transfer reaches selected stage");
-        check(dvm_refcount_load_u(&D2H(channel)->ref) == 1 && !channel->send->prog &&
+        check(!waiter.channel_claimed && dvm_refcount_load_u(&D2H(channel)->ref) == 1 && !channel->send->prog &&
             !waiter.process.ptr && dvm_runqueue_pop(Psend) == &waiter.process &&
             !dvm_runqueue_head(), "buffered transfer consumes its hold and wakes once");
         check(!refill_release_failure, "selected release failure was exercised");

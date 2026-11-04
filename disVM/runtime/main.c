@@ -499,6 +499,27 @@ Prog *newprog(Prog *parent, Modlink *module)
     return process;
 }
 
+/* Reserve a live waiter before dequeue. NativeWorld keeps the Prog live
+ * and excludes other executors until the claim is released. */
+void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+    int completed;
+    if (process->channel_claimed ||
+        (peer->state != Psend && peer->state != Precv && peer->state != Palt))
+    {
+        error("channel waiter cannot be claimed");
+    }
+    process->channel_claimed = 1;
+    completed = kprotect(match, request);
+    process->channel_claimed = 0;
+    if (!completed)
+    {
+        krethrow();
+    }
+}
+
+
 /* Complete one detached wait under NativeWorld. Scheduler admission is the
  * state transition. Refusal leaves wait fields and any pending kill intact. */
 void dvm_runtime_channel_wake(Prog *peer, char *cause)

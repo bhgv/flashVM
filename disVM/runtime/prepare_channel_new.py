@@ -116,11 +116,52 @@ def adapt_wait_completion(source):
     if body.count("addrun(p);") != 2:
         raise ValueError("channel wake boundary drift")
     body = body.replace("addrun(p);", "dvm_runtime_channel_wake(p, nil);")
+    body = adapt_match_claims(body)
     return source[:start] + WAIT_COMPLETION + body + source[end:]
+
+
+def adapt_match_claims(body):
+    """Place all post-preflight queue mutations inside a bounded waiter claim."""
+    for opcode, direction in (("isend", "recv"), ("irecv", "send")):
+        start = body.index(f"OP({opcode})\n{{")
+        end = body.index("\n}", start)
+        original = body[start:end]
+        dequeue = f"\tcqdel(&c->{direction});"
+        offset = original.index(dequeue)
+        prefix, match = original[:offset], original[offset:]
+        local = "\tChannelRefill refill;\n" if opcode == "irecv" else ""
+        if local:
+            if prefix.count(local) != 1:
+                raise ValueError("channel refill ledger drift")
+            prefix = prefix.replace(local, "", 1)
+        callback = f"""/* Complete a matched {opcode} while the caller owns the wait claim. */
+static int channel_match_{opcode}(void *argument)
+{{
+    ChannelMatch *request = argument;
+    Channel *c = request->channel;
+    Prog *p = request->peer;
+{local}{match}
+    return 1;
+}}
+
+"""
+        dispatch = f"""    request.channel = c;
+    request.peer = p;
+    dvm_runtime_channel_with_claim(p, channel_match_{opcode}, &request);"""
+        prefix = prefix.replace("\tProg *p;\n", "\tProg *p;\n    ChannelMatch request;\n", 1)
+        body = body[:start] + callback + prefix + dispatch + body[end:]
+    return body
 
 
 WAIT_COMPLETION = r"""
 extern void dvm_runtime_alt_preflight(Alt *alt);
+extern void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request);
+
+typedef struct ChannelMatch
+{
+    Channel *channel; /* Borrowed under NativeWorld. */
+    Prog *peer; /* Live waiter held by the current scheduler turn. */
+} ChannelMatch;
 extern void dvm_runtime_channel_wake(Prog *peer, char *cause);
 extern void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
     int (*refill)(void *), void *request);

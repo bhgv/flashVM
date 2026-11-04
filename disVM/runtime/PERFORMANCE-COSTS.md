@@ -471,3 +471,9 @@ timing is recorded.
 Hosted finalization validates both chains before detaching either and
 protects buffer release separately. Measure matched finalization latency
 with waiters on both directions. No matched timing is recorded.
+
+## CHANCLAIM-122
+
+Hosted matched SEND and RECV reserve a waiter and add an outer error
+checkpoint around dequeue, transfer and wake. Measure successful and
+failed rendezvous with and without ALT. No matched timing is recorded.
