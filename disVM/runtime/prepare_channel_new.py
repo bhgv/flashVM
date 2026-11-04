@@ -113,12 +113,15 @@ def adapt_wait_completion(source):
         body = body.replace(dequeue, """    if (p->state == Palt)
         dvm_runtime_alt_preflight(p->R.s);
 """ + dequeue, 1)
+    if body.count("addrun(p);") != 2:
+        raise ValueError("channel wake boundary drift")
+    body = body.replace("addrun(p);", "dvm_runtime_channel_wake(p, nil);")
     return source[:start] + WAIT_COMPLETION + body + source[end:]
 
 
 WAIT_COMPLETION = r"""
 extern void dvm_runtime_alt_preflight(Alt *alt);
-extern void dvm_runtime_channel_fail_peer(Prog *peer);
+extern void dvm_runtime_channel_wake(Prog *peer, char *cause);
 extern void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
     int (*refill)(void *), void *request);
 
@@ -138,7 +141,7 @@ static void channel_move_or_wake_error(Channel *channel, Prog *peer)
 {
     if (!kprotect(channel_move, channel))
     {
-        dvm_runtime_channel_fail_peer(peer);
+        dvm_runtime_channel_wake(peer, "channel transfer failed");
         krethrow();
     }
 }
@@ -157,19 +160,23 @@ def adapt_alt_completion(source):
         raise ValueError("ALT publication boundary drift")
     source = source.replace(predicate, "!altresultvalid(slot)", 1)
     source = source.replace(anchor, ALT_RESULT_VALID.replace("PREDICATE", predicate) + anchor, 1)
+    wake = '\t\tp->kill = "alt channel hungup";\n\t\taddrun(p);'
+    if source.count(wake) != 1:
+        raise ValueError("ALT hangup wake boundary drift")
+    source = source.replace(wake, '\t\tdvm_runtime_channel_wake(p, "alt channel hungup");', 1)
     return source.replace(old, """        /* Cancellation above has removed every registration. Only now
          * may a failed publication return the peer to the scheduler. */
         if (!altresultvalid(selected.result) ||
             (selected.array && !altresultvalid(selected.tuple)))
         {
-            dvm_runtime_channel_fail_peer(p);
+            dvm_runtime_channel_wake(p, "channel transfer failed");
             error(exBounds);
         }
         if (selected.array) {""", 1)
 
 
 ALT_RESULT_VALID = r"""
-extern void dvm_runtime_channel_fail_peer(Prog *peer);
+extern void dvm_runtime_channel_wake(Prog *peer, char *cause);
 
 /* Apply one geometry check to immediate and detached selection results. */
 static int altresultvalid(void *slot)

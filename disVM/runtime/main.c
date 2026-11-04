@@ -499,14 +499,21 @@ Prog *newprog(Prog *parent, Modlink *module)
     return process;
 }
 
-/* Complete a detached failed transfer under NativeWorld. Preserve the active
- * mover error for the initiator after successful scheduler admission. */
-void dvm_runtime_channel_fail_peer(Prog *peer)
+/* Complete one detached wait under NativeWorld. Scheduler admission is the
+ * state transition. Refusal leaves wait fields and any pending kill intact. */
+void dvm_runtime_channel_wake(Prog *peer, char *cause)
 {
+    if (peer->state != Psend && peer->state != Precv && peer->state != Palt)
+    {
+        error("invalid channel waiter state");
+    }
+    addrun(peer);
     peer->ptr = nil;
     peer->chan = nil;
-    peer->kill = "channel transfer failed";
-    addrun(peer);
+    if (cause)
+    {
+        peer->kill = cause;
+    }
 }
 
 
@@ -534,11 +541,11 @@ void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
     released = kprotect(release_refill_channel, channel);
     if (transferred)
     {
-        addrun(peer);
+        dvm_runtime_channel_wake(peer, nil);
     }
     else
     {
-        dvm_runtime_channel_fail_peer(peer);
+        dvm_runtime_channel_wake(peer, "channel transfer failed");
         error(first_error);
     }
     if (!released)
@@ -556,12 +563,9 @@ static int wake_closed_channel(void *argument)
     {
     case Psend:
     case Precv:
-        process->ptr = nil;
-        process->kill = "channel hangup";
-        addrun(process);
+        dvm_runtime_channel_wake(process, "channel hangup");
         break;
     case Palt:
-        process->ptr = nil;
         altgone(process);
         break;
     case Prelease:

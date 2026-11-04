@@ -474,6 +474,15 @@ static int finalize_channel(void *argument)
 }
 
 
+/* Submit a second completion to the real shared wake entry. */
+static int repeat_channel_wake(void *argument)
+{
+    extern void dvm_runtime_channel_wake(Prog *, char *);
+    dvm_runtime_channel_wake(argument, "duplicate channel wake");
+    return 1;
+}
+
+
 /* A malformed receive queue must not partially close the send side. A wake
  * error after detachment must still let the receive side reach the scheduler. */
 static void channel_finalize_case(void)
@@ -499,8 +508,14 @@ static void channel_finalize_case(void)
         strstr(getup()->env->errstr, "foreign C channel waiter") &&
         !channel->send && !channel->recv && !channel->mover &&
         dvm_refcount_load_i(&Tword.ref) == refs &&
-        dvm_runqueue_pop(Psend) == &receiver.process && !dvm_runqueue_head(),
+        dvm_runqueue_head() == &receiver.process &&
+        !receiver.process.ptr && !receiver.process.chan,
         "finalizer drains both queues and releases descriptor on wake error");
+    check(!kprotect(repeat_channel_wake, &receiver.process) &&
+        !strcmp(getup()->env->errstr, "invalid channel waiter state") &&
+        !strcmp(receiver.process.kill, "channel hangup") &&
+        dvm_runqueue_pop(Psend) == &receiver.process && !dvm_runqueue_head(),
+        "duplicate completion preserves the first wake and FIFO");
     check(dvm_runqueue_append(prior), "restore startup process");
     destroy(channel);
     puts("PASS two-sided channel finalization");
@@ -649,7 +664,7 @@ static void buffered_channel_completion(void)
         else
         {
             memmove(&slot, channel->buf->data, sizeof(slot));
-            check(!waiter.process.kill && channel->size == 1 && slot == pending,
+            check(!waiter.process.kill && !waiter.process.chan && channel->size == 1 && slot == pending,
                 "successful refill publishes pending payload");
             if (stage == 3)
             {
