@@ -535,3 +535,9 @@ matched direct and buffered tuple traffic. No matched timing is recorded.
 
 Guarded buffered movtmp sends check the empty pointer fields and publish
 occupancy after the mapped transaction. No matched timing is recorded.
+
+## CHANRESERVATION-122
+
+The hosted C path tracks active buffer reservations in a mutex-protected
+list and clears them in a completion checkpoint. Measure the scan cost
+under nested transfers and matched channel traffic. No timing is recorded.

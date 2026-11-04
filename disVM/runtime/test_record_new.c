@@ -689,6 +689,21 @@ static void staged_refill_move(void)
     REG *registers = dvm_native_registers();
     extern void dvm_runtime_channel_queue_guard(int (*)(void *), void *);
     dvm_runtime_channel_queue_guard(confirm_unlocked_reservation, NULL);
+    {
+        REG saved = *registers;
+        WORD nested_output = 0;
+        int receive = 1;
+        registers->s = &refill_observed_channel;
+        registers->d = &nested_output;
+        check(!kprotect(direct_channel_transfer, &receive) &&
+            strstr(getup()->env->errstr, "channel buffer transfer already active"),
+            "nested transfer cannot reuse a reserved slot");
+        check(!kprotect(finalize_channel, refill_observed_channel) &&
+            strstr(getup()->env->errstr, "channel buffer transfer already active") &&
+            refill_observed_channel->send && refill_observed_channel->recv,
+            "finalization cannot detach a reserved ring");
+        *registers = saved;
+    }
     refill_moves++;
     check(refill_observed_channel->size == (refill_moves == 1 ? 1 : 0),
         "ring occupancy is unchanged until the current mover completes");

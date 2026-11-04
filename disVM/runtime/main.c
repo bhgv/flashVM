@@ -744,8 +744,11 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
 }
 
 
+extern int dvm_runtime_channel_buffer_busy(Channel *channel);
+
 typedef struct ClosedQueues
 {
+    Channel *channel; /* Whole-channel finalization only. */
     Progq **send_owner;
     Progq **recv_owner; /* NULL for the single-queue entry point. */
     Progq *send;
@@ -762,6 +765,10 @@ static int detach_closed_queues(void *argument)
     Progq *recv = queues->recv_owner ? *queues->recv_owner : nil;
     Progq *send_tail = send ? dvm_runtime_channel_close_preflight(queues->send_owner) : nil;
     Progq *recv_tail = recv ? dvm_runtime_channel_close_preflight(queues->recv_owner) : nil;
+    if (queues->channel && dvm_runtime_channel_buffer_busy(queues->channel))
+    {
+        error("channel buffer transfer already active");
+    }
     if (send_tail && send_tail == recv_tail)
     {
         error(exHeap);
@@ -784,7 +791,7 @@ static int detach_closed_queues(void *argument)
 /* Detach under the queue mutex and wake after unlocking. */
 void killcomm(Progq **queue)
 {
-    ClosedQueues queues = {queue, nil, nil, nil};
+    ClosedQueues queues = {nil, queue, nil, nil, nil};
     char first_error[ERRMAX];
     int failed = 0;
     dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
@@ -800,7 +807,7 @@ void killcomm(Progq **queue)
  * registered processes live through resource release. */
 void dvm_runtime_channel_finalize(Channel *channel, int swept)
 {
-    ClosedQueues queues = {&channel->send, &channel->recv, nil, nil};
+    ClosedQueues queues = {channel, &channel->send, &channel->recv, nil, nil};
     Array *buffer = channel->buf;
     Type *mapped = channel->mover == movtmp ? channel->mid.t : nil;
     char first_error[ERRMAX];

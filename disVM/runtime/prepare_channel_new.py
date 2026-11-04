@@ -138,6 +138,8 @@ typedef struct ChannelPeerRead
 static int read_channel_peer(void *argument)
 {
     ChannelPeerRead *read = argument;
+    if (dvm_runtime_channel_buffer_busy(read->channel))
+        error("channel buffer transfer already active");
     read->peer = channelpeer(read->channel, read->receive);
     return 1;
 }
@@ -517,7 +519,25 @@ typedef struct ChannelReservation
     int next_front;
     Type *mapped;
     int consumed;
+    int completed;
+    struct ChannelReservation *next;
 } ChannelReservation;
+
+
+/* Stack ledgers are linked only while their operations own a reservation.
+ * The queue mutex protects membership. No mover runs with the mutex held. */
+static ChannelReservation *active_channel_reservations;
+
+int dvm_runtime_channel_buffer_busy(Channel *channel)
+{
+    ChannelReservation *entry;
+    for (entry = active_channel_reservations; entry; entry = entry->next)
+    {
+        if (entry->read.channel == channel)
+            return 1;
+    }
+    return 0;
+}
 
 
 /* An unoccupied mapped slot must own no pointers. That makes the guarded
@@ -550,7 +570,10 @@ static int reserve_channel_buffer(void *argument)
     ChannelRead *read = &reservation->read;
     Channel *channel = read->channel;
     ChannelBuffer buffer;
-    int status = channelbuffer(channel, reservation->receive, 0, &buffer);
+    int status;
+    if (dvm_runtime_channel_buffer_busy(channel))
+        error("channel buffer transfer already active");
+    status = channelbuffer(channel, reservation->receive, 0, &buffer);
     if (status < 0)
         error(buffer.error);
     if (!status)
@@ -584,19 +607,30 @@ static int reserve_channel_buffer(void *argument)
             channel->front = buffer.front;
         channel->size = buffer.size;
     }
+    reservation->next = active_channel_reservations;
+    active_channel_reservations = reservation;
     reservation->available = 1;
     return 1;
 }
 
 
-/* Publish ring metadata only after a successful staged transfer. */
-static int publish_channel_buffer(void *argument)
+/* Publish a committed transfer and remove its reservation on every exit. */
+static int finish_channel_buffer(void *argument)
 {
     ChannelReservation *reservation = argument;
     Channel *channel = reservation->read.channel;
-    if (reservation->receive)
-        channel->front = reservation->next_front;
-    channel->size = reservation->next_size;
+    ChannelReservation **link = &active_channel_reservations;
+    while (*link && *link != reservation)
+        link = &(*link)->next;
+    if (!*link)
+        abort();
+    if (reservation->consumed || (reservation->completed && reservation->publish_after_move))
+    {
+        if (reservation->receive)
+            channel->front = reservation->next_front;
+        channel->size = reservation->next_size;
+    }
+    *link = reservation->next;
     return 1;
 }
 
@@ -614,18 +648,34 @@ static int consume_channel_buffer(void *argument)
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int cgetb(Channel *channel, void *destination)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0};
-    int completed;
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
-    completed = reservation.mapped ? kprotect(consume_channel_buffer, &reservation) :
+    reservation.completed = reservation.mapped ? kprotect(consume_channel_buffer, &reservation) :
         kprotect(channelread, &reservation.read);
-    if (reservation.consumed || (completed && reservation.publish_after_move))
-        dvm_runtime_channel_queue_guard(publish_channel_buffer, &reservation);
+    dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
     destroy(reservation.read.array);
-    if (!completed)
+    if (!reservation.completed)
         krethrow();
+    return 1;
+}
+
+
+/* Invoke the mover with the captured geometry outside the queue mutex. */
+static int write_channel_buffer(void *argument)
+{
+    ChannelReservation *reservation = argument;
+    ChannelRead *read = &reservation->read;
+    Channel *channel = read->channel;
+    DVM_R.s = read->destination;
+    DVM_R.m = &channel->mid;
+    DVM_R.d = read->slot;
+    if (reservation->mapped)
+        dvm_runtime_mapped_copy(read->destination, read->slot,
+            reservation->mapped, reservation->mapped->size);
+    else
+        channel->mover();
     return 1;
 }
 
@@ -633,20 +683,14 @@ static int cgetb(Channel *channel, void *destination)
 /* Capture send geometry under the mutex and transfer outside it. */
 static int cputb(Channel *channel, void *source)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
-    DVM_R.s = source;
-    DVM_R.m = &channel->mid;
-    DVM_R.d = reservation.read.slot;
-    if (reservation.mapped)
-        dvm_runtime_mapped_copy(source, reservation.read.slot,
-            reservation.mapped, reservation.mapped->size);
-    else
-        channel->mover();
-    if (reservation.publish_after_move)
-        dvm_runtime_channel_queue_guard(publish_channel_buffer, &reservation);
+    reservation.completed = kprotect(write_channel_buffer, &reservation);
+    dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
+    if (!reservation.completed)
+        krethrow();
     return 1;
 }
 
