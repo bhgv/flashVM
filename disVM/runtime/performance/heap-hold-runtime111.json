@@ -1,0 +1,51 @@
+{
+  "scope": "same guarded profile/objects; list-specific versus generic rooted-lease adapter",
+  "iterations": 20000,
+  "checksum": "19999 reference 7",
+  "samples_after_warmup": 3,
+  "source_sha256": {
+    "list-specific": "834fb319203fd87f3da160683f636846f336e22c6a2b32975b894d25d5e6ff4a",
+    "generic-lease": "5ac3677808ce9eec9d3d9d96efe020274a5b2c16348752d234121e7426bce6aa"
+  },
+  "core_sha256": "5eb5f5ce8bda4caa067d094b865471349bcdbfe00ee39bbbb77cfff16c38b8aa",
+  "modes": {
+    "--no-jit": {
+      "seconds": {
+        "list-specific": 0.13186022300214972,
+        "generic-lease": 0.13120901500224136
+      },
+      "samples": {
+        "list-specific": [
+          0.13186022300214972,
+          0.13035561600554502,
+          0.14091229000041494
+        ],
+        "generic-lease": [
+          0.13120901500224136,
+          0.13593233900610358,
+          0.12687725399882765
+        ]
+      },
+      "generic_over_previous": 0.995061376470615
+    },
+    "--jit": {
+      "seconds": {
+        "list-specific": 0.15816122999967774,
+        "generic-lease": 0.1408853460015962
+      },
+      "samples": {
+        "list-specific": [
+          0.13808738800435094,
+          0.1644770030034124,
+          0.15816122999967774
+        ],
+        "generic-lease": [
+          0.14026860000012675,
+          0.1408853460015962,
+          0.1567635009996593
+        ]
+      },
+      "generic_over_previous": 0.8907704245969966
+    }
+  }
+}

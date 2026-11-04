@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.110.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.111.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -501,3 +501,9 @@ Runtime0.110: [six FP conversions](REAL-CONVERSION.md) snapshot under source
 exclusion, convert unlocked and publish under output exclusion. Four actual
 Limbo/x64 tails complete exactly once; CVTRF/FR have actual C dispatch evidence.
 Rounded integer refusal preserves output. NativeWorld remains required.
+
+Runtime0.111: [generic rooted Heap holds](HEAP-HOLD.md). Actual list-hold now
+uses common slot capture/retain/mark/root and consuming error-safe retirement.
+String/List/H, indirect graph Cycles and Fast baselines are checked. This is
+owner/GC-root lifetime scaffolding, not pointer provenance or parallel admission.
+NativeWorld remains required.

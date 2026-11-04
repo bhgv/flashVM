@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1809**. [Русская версия](README.ru.md).
+Development version: **0.1810**. [Русская версия](README.ru.md).
 
-Current series: [v0.1809](docs/releases/v0.1809.md): six two-phase FP conversions, bounded integer rounding and four completed x64 conversion tails.
+Current series: [v0.1810](docs/releases/v0.1810.md): generic rooted Heap-owner capture, production list-hold integration and actual indirect-graph GC evidence.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

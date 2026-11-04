@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1809**. [English](README.md).
+Версия разработки: **0.1810**. [English](README.md).
 
-Текущая серия: [v0.1809](docs/releases/v0.1809.md): шесть защищённых FP-преобразований, границы округления и четыре завершённых x64 C-tail.
+Текущая серия: [v0.1810](docs/releases/v0.1810.md): общее удержание Heap-владельца с корнем GC, интеграция list-hold и проверки косвенного графа.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 
