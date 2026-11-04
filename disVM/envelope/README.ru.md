@@ -168,3 +168,10 @@ Production WORD32 build, allocation/entry и actual IEXIT->error/unwind/schedule
 EXIT там только декодируется, физический ARM64 run не заявлен.
 
 [File-call executable goldens: review and remaining admission gates](FILE-CALL-GOLDENS.md).
+
+## Независимый типизированный checkpoint (v0.1805)
+
+[Роли, инициализация, результат и checked LEA](TYPED-CHECKPOINT.md) теперь
+проверяются по байтам файла отдельным ограниченным Python-проходом. Сводка
+прямолинейных скалярных root-to-leaf функций не разрешает owning-исполнение.
+Bool, ModuleData64, managed-кадры, CFG и время жизни остаются явными границами.

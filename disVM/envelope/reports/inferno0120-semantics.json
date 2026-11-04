@@ -1,0 +1,999 @@
+{
+  "scope": "independent bounded wire-derived roles/init/result/LEA; NO owning admission",
+  "manifest_sha256": "fd22e66dbdaf55fbbb8c1751a5e8d34d7b7c18dbababc44260a505ff9b6265b0",
+  "checker_sources": {
+    "peer_call_semantics.py": "9b5c78c6e1522720d6800e59acb86c35cd21b46e3fcad414363970ff112ce71e",
+    "peer_call_roles.py": "6825f5a46f5051e378ee037cebe1ac12e565d5a0558c28a27eff3b44f796c1f8",
+    "peer_call_flow.py": "4fa1a7dbfe4b6d15bc0d73c2b16fe4bb43031428561d7a9d5274cc98252e6b00",
+    "peer_call_binding.py": "6ed863f72b59ee9470921f4a83168c8eae2ad458bb6691f24b950b434f39791d",
+    "peer_call_schema.py": "75a5160af3daf0b137fe584479533ec38ce432b3863c0fc36a85acf3b2853187",
+    "peer_call_goldens.py": "e35b59b62bad30d9daa3120f02fc29830d5540903caf1e641001d7d0e52835f8"
+  },
+  "limits": {
+    "image_bytes": 4194304,
+    "section_counts": {
+      "2": 8192,
+      "3": 4096,
+      "5": 1024,
+      "6": 1024,
+      "7": 4096
+    },
+    "signature_parameters": 256,
+    "inferred_slots_per_function": 1024,
+    "corpus_cases": 1024
+  },
+  "cases": [
+    {
+      "sha256": "47508a1a5453840e9347c50130e682faa28a89a5c846f3e2216694a25a1a6226",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 7,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 7,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 7,
+          "end": 9,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [],
+      "name": "answer42"
+    },
+    {
+      "sha256": "a2b1fc5629de99e689deed91be5ba3afd97a128bbcd5b231eb294a900528a98c",
+      "bytes": 443,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 13,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ],
+            [
+              88,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 13,
+              "result_kind": 1
+            },
+            {
+              "pc": 10,
+              "target": 15,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 13,
+          "end": 15,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        },
+        {
+          "entry": 15,
+          "end": 17,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [],
+      "name": "chain42"
+    },
+    {
+      "sha256": "46338c506cbcc71c04b71f535c8a53f90616fe80b9c2d706941093ff9089a9bd",
+      "bytes": 340,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 7,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 7,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 7,
+          "end": 11,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              72,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [],
+      "name": "divide-zero"
+    },
+    {
+      "sha256": "129dc4c207263316736b55b23a13e8f38d3f0d0c4ea3216e730b3eff4a3a3f34",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 7,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 7,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 7,
+          "end": 9,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [],
+      "name": "reordered42"
+    },
+    {
+      "sha256": "add1b2174524a6059681f3bd831338a461ad9f541358a809986c354e03a5ce44",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "function-ownership",
+      "status": "bounded-refusal",
+      "reason": "pc 4: CALL target is not a function entry",
+      "name": "reject-interior"
+    },
+    {
+      "sha256": "20360eb6faa60ce6ba8a2beed3e645bcdf37160f442f6e059ec5e648657fe60e",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "frame-signature",
+      "status": "bounded-refusal",
+      "reason": "pc 4: prepared/callee frame disagreement",
+      "name": "reject-frame"
+    },
+    {
+      "sha256": "a3fc6bfa0604dbb17d77070c6fade75d496f22b6cf1930c92cab3d6378069122",
+      "bytes": 328,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "argument-kind/init",
+      "status": "bounded-refusal",
+      "reason": "pc 4: missing or mismatched argument",
+      "name": "reject-argument"
+    },
+    {
+      "sha256": "4bec121d4690ebeb533c2ee6cf99fca14734f7cab3a2abfee04f7629488be2e2",
+      "bytes": 329,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "local-role",
+      "status": "bounded-refusal",
+      "reason": "pc 0: scalar span crosses frame header/extent or alignment",
+      "name": "reject-pointer-cell"
+    },
+    {
+      "sha256": "2b1f42960c2876b2a8695d328f8bb2561885d2af7d0b7b315b8486f1afa40372",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "lea-role",
+      "status": "bounded-refusal",
+      "reason": "pc 3: result LEA does not address exact outgoing tail",
+      "name": "reject-result-cell"
+    },
+    {
+      "sha256": "3ff3fd4b12514de14a7d06f96f10d41292da839c9d0826691a5ebd92c59ba34e",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "lea-role",
+      "status": "bounded-refusal",
+      "reason": "pc 3: checked result LEA must target prepared-frame byte32",
+      "name": "reject-lea-destination"
+    },
+    {
+      "sha256": "2164a90a646507fb00a99e25a26fcedab48b6301f8252edc39bf806994f65a8b",
+      "bytes": 329,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "lea-role",
+      "status": "bounded-refusal",
+      "reason": "pc 3: checked result LEA must target prepared-frame byte32",
+      "name": "reject-lea-mode"
+    },
+    {
+      "sha256": "c5bc4c6ec1a35d22b2973001534e633da7cf6440a8544c804f786341785dc94a",
+      "bytes": 331,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "initialization",
+      "status": "bounded-refusal",
+      "reason": "pc 0: outgoing result is absent or has a different kind",
+      "name": "reject-unready-result"
+    },
+    {
+      "sha256": "cdf4b89ac4284d166847c8b407dffab29c76ce7d0641ee247b0995d972847014",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "signature-kind",
+      "status": "unsupported",
+      "reason": "Bool has no independent producer proof in this scalar subset",
+      "name": "reject-signature"
+    },
+    {
+      "sha256": "3a388512d1e83b5c23014da4a6216fdb4e8b08c2daa6352859b41751e42a7a00",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "signature-kind",
+      "status": "unsupported",
+      "reason": "Bool has no independent producer proof in this scalar subset",
+      "name": "reject-result-kind"
+    },
+    {
+      "sha256": "c5b088798ccd546ac921869978bbdd3f998db7b500d0b83ac702b9c0516fdf13",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "local-kind",
+      "status": "bounded-refusal",
+      "reason": "pc 7: overlapping or reinterpreted scalar kinds",
+      "name": "reject-result-width"
+    },
+    {
+      "sha256": "9020db6ec46f310db0cae8ef38e53f8fa816ec26e3119299545d205279f90c89",
+      "bytes": 329,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "return-initialization",
+      "status": "bounded-refusal",
+      "reason": "pc 8: nonvoid RET without typed result store",
+      "name": "reject-return"
+    },
+    {
+      "sha256": "5f0d5cdcfa6949186349e755d2aa9d513e8e0fa3be954650a3221bcabb1609ee",
+      "bytes": 339,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 7,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 7,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 7,
+          "end": 9,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [
+        2
+      ],
+      "name": "reject-managed-type"
+    },
+    {
+      "sha256": "6ec8c3a6e02ba512505d474788313656196407dd4759a67e5939f4a4604ef5e2",
+      "bytes": 897,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 7,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 7,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 7,
+          "end": 9,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64
+      ],
+      "name": "reject-type-budget"
+    },
+    {
+      "sha256": "30727072b43ba604f85a748124622bcc2d6309b9b40facbcb8ca577cbca31b35",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "module-entry",
+      "status": "bounded-refusal",
+      "reason": "module entry is not an exported function start",
+      "name": "reject-entry"
+    },
+    {
+      "sha256": "58bb03111661ec96e0357a0bdfc0a0c5ed45160eefe5cdba4b3844f864ed8297",
+      "bytes": 330,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "module-entry",
+      "status": "bounded-refusal",
+      "reason": "module/export entry frame disagreement",
+      "name": "reject-module-frame"
+    },
+    {
+      "sha256": "749fe2a836ac1f5fc058fa204af7ec68470e7a66e2a471f675f2e1be6b200412",
+      "bytes": 322,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "module-role",
+      "status": "unsupported",
+      "reason": "library has no executable entry in this checkpoint",
+      "name": "reject-library"
+    },
+    {
+      "sha256": "d1a5279c466472e91fb595428ed68eb8a9fd4f7480bb8e24b5f5bb492cb14256",
+      "bytes": 334,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "module-data",
+      "status": "unsupported",
+      "reason": "ModuleData64/DATA initialization/layout requires a separate pass",
+      "name": "reject-data"
+    },
+    {
+      "sha256": "9ede7c6a7e2af85b0e3e72c5d7cb483abe0f0d7d08ee3a95e8b4f7c004eb2a6c",
+      "bytes": 346,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "outer": "canonical",
+      "structural_bindings": "passed",
+      "stage": "bounded-semantics",
+      "status": "bounded-checks-passed",
+      "functions": [
+        {
+          "entry": 0,
+          "end": 7,
+          "frame": 0,
+          "role": "module-entry",
+          "signature": [
+            0,
+            []
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ],
+            [
+              80,
+              1
+            ]
+          ],
+          "calls": [
+            {
+              "pc": 4,
+              "target": 7,
+              "result_kind": 1
+            }
+          ],
+          "typed_return_store": false,
+          "outgoing_tail": 104
+        },
+        {
+          "entry": 7,
+          "end": 9,
+          "frame": 1,
+          "role": "helper",
+          "signature": [
+            1,
+            [
+              1
+            ]
+          ],
+          "inferred_slots": [
+            [
+              64,
+              1
+            ]
+          ],
+          "calls": [],
+          "typed_return_store": true,
+          "outgoing_tail": null
+        }
+      ],
+      "module_entry": 0,
+      "used_frame_type_ids": [
+        0,
+        1
+      ],
+      "unanalysed_type_ids": [],
+      "name": "reject-imports"
+    },
+    {
+      "sha256": "3bee14fa64238120712c5e068071e773be33b6d847465537c3afdcb5edea3e48",
+      "bytes": 329,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "stage": "outer",
+      "status": "malformed",
+      "reason": "section geometry",
+      "name": "reject-truncated"
+    },
+    {
+      "sha256": "41bcbed533bfd18ba6f8d068855d8101d12e11785520b218961603f20885ee15",
+      "bytes": 331,
+      "execution": "closed; no loader/runtime admission",
+      "owning_execution_supported": false,
+      "required_execution_mode": "explicit immutable dis64-calls; NOT activated by this checker",
+      "unproved": [
+        "owning allocation/GC/root/frame/code lifetimes",
+        "runtime arithmetic safety/termination",
+        "non-straight-line or cross-module execution",
+        "unused descriptor semantic roles"
+      ],
+      "stage": "outer",
+      "status": "malformed",
+      "reason": "truncated/trailing bytes",
+      "name": "reject-trailer"
+    }
+  ],
+  "peer_repository": "bhgv/Inferno-OS-bhgv",
+  "peer_revision": "82d5275be9404068d716232b9f8102ea1511fc17"
+}

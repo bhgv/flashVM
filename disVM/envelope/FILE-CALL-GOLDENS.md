@@ -170,3 +170,16 @@ python3 disVM/envelope/tests/peer_call_binding.py PATH_TO_PINNED_DIS64_CALLS
 [Per-image report, exact peer/manifest/checker identities](reports/inferno0112-binding.json).
 INFERNO-0113 native Draw attach ownership fixes are acknowledged as owning-source
 work; no Draw/Tk/Prefab implementation or concurrency change is imported here.
+
+## INFERNO-0120 independent typed checkpoint
+
+The new [bounded semantic pass](TYPED-CHECKPOINT.md) derives function/frame roles,
+scalar kinds, definite initialization and result/checked-LEA facts from wire
+sections, without private sidecar locals. The exact25 images yield7 bounded
+passes,12 bounded semantic refusals,4 unsupported cases and2 malformed outers.
+Three private-refusal labels pass the bounded function checks because unused
+managed descriptors,65 types and an empty IMPORTS section are not universal
+semantic errors. Unused descriptor semantics remain unproved. Bool and nonempty
+module data are explicitly unsupported. Every case retains owning execution
+closed. This is the requested independent checkpoint, not whole-file admission
+or a replacement for root/frame/module/code-lifetime and C/RX execution proofs.

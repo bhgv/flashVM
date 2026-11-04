@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 # This tool also builds independently; embedding parents already set C99/Python.
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  project(dis64_envelope VERSION 0.3.0 LANGUAGES C)
+  project(dis64_envelope VERSION 0.4.0 LANGUAGES C)
   set(CMAKE_C_STANDARD 99)
   set(CMAKE_C_STANDARD_REQUIRED ON)
   set(CMAKE_C_EXTENSIONS OFF)
@@ -81,4 +81,10 @@ endif()
 if(NOT CMAKE_CROSSCOMPILING AND envelope_python)
   add_test(NAME dis64_peer_code_bindings COMMAND "${envelope_python}"
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/peer_call_binding.py" --self-test)
+endif()
+
+# Offline independent semantic checkpoint; no peer checkout is required for synthetic controls.
+if(NOT CMAKE_CROSSCOMPILING AND envelope_python)
+    add_test(NAME dis64_peer_bounded_semantics COMMAND "${envelope_python}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_peer_call_semantics.py")
 endif()

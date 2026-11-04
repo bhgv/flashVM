@@ -138,6 +138,12 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 exec "$here/dis64inspect" "$here/examples/dis64-envelope/pilot-init42.dis64" --pilot "$@"
 EOF
     chmod 755 "$destination/run-dis64-storage.sh"
+    for file in peer_call_semantics.py peer_call_roles.py peer_call_flow.py peer_call_binding.py peer_call_schema.py peer_call_goldens.py test_peer_call_semantics.py; do
+        copy_file "$ROOT/disVM/envelope/tests/$file" "$destination/source/dis64-checkpoint/$file"
+    done
+    copy_file "$ROOT/disVM/envelope/TYPED-CHECKPOINT.md" "$destination/docs/dis64/TYPED-CHECKPOINT.md"
+    copy_file "$ROOT/disVM/envelope/reports/inferno0120-semantics.json" "$destination/docs/dis64/typed-checkpoint.json"
+
 
 }
 

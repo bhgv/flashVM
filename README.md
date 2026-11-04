@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1804**. [Русская версия](README.ru.md).
+Development version: **0.1805**. [Русская версия](README.ru.md).
 
-Current series: [v0.1804](docs/releases/v0.1804.md): coherent REAL snapshots, unlocked FP predicates and separately guarded lazy branch targets.
+Current series: [v0.1805](docs/releases/v0.1805.md): independent wire-derived Dis64 call roles, initialization, result and checked-LEA validation.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

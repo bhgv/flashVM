@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1804**. [English](README.md).
+Версия разработки: **0.1805**. [English](README.md).
 
-Текущая серия: [v0.1804](docs/releases/v0.1804.md): согласованный снимок REAL, FP-сравнение вне защит и отдельная защита адреса перехода.
+Текущая серия: [v0.1805](docs/releases/v0.1805.md): независимая проверка ролей Dis64-вызовов, инициализации, результатов и checked LEA по байтам файла.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

@@ -169,3 +169,10 @@ native acceptance initializes40 and executes actual ADDW C/RX to42 separately;
 EXIT is only decoded, and no physical ARM64 execution is claimed.
 
 [File-call executable goldens: review and remaining admission gates](FILE-CALL-GOLDENS.md).
+
+## Independent typed checkpoint (v0.1805)
+
+[Wire-derived roles, initialization, result and checked LEA](TYPED-CHECKPOINT.md)
+now have a bounded independent Python pass and per-image report. Straight-line
+scalar root-to-leaf summaries never grant owning execution. Bool/ModuleData64/
+managed frames/CFG and runtime lifetime remain explicitly outside this pass.
