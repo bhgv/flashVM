@@ -465,3 +465,9 @@ Hosted close scans the closing chain and each blocked ALT's guard queues
 before detachment. Duplicate ALT registrations can repeat validation.
 Measure matched close latency across guard and waiter counts. No matched
 timing is recorded.
+
+## CHANFINALIZE-122
+
+Hosted finalization validates both chains before detaching either and
+protects buffer release separately. Measure matched finalization latency
+with waiters on both directions. No matched timing is recorded.

@@ -242,15 +242,28 @@ void dvm_runtime_alt_preflight(Alt *alt)
 
 /* Check the closing chain and all ALT siblings before any waiter is detached.
  * The caller keeps NativeWorld until detachment and completion. */
-void dvm_runtime_channel_close_preflight(Progq **queue)
+Progq *dvm_runtime_channel_close_preflight(Progq **queue)
 {
     Progq *entry;
-    vmchanend(queue);
+    Progq *tail = vmchanend(queue);
     for (entry = *queue; entry; entry = entry->next)
     {
         if (entry->prog && entry->prog->state == Palt)
             dvm_runtime_alt_preflight(entry->prog->R.s);
     }
+    return tail;
 }
 
 """
+
+
+
+def adapt_channel_finalizer(source):
+    """Keep the vendor finalizer for standalone builds."""
+    old = ("\tif(c->mover == movtmp)\n\t\tfreetype(c->mid.t);\n"
+           "\tkillcomm(&c->send);\n\tkillcomm(&c->recv);\n"
+           "\tif (!swept && c->buf != H)\n\t\tdestroy(c->buf);")
+    if source.count(old) != 1:
+        raise ValueError("channel finalizer boundary drift")
+    return source.replace(old, "\textern void dvm_runtime_channel_finalize(Channel *, int);\n"
+                          "\tdvm_runtime_channel_finalize(c, swept);", 1)

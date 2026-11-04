@@ -465,6 +465,48 @@ static void channel_drain_case(void)
 }
 
 
+/* Exercise the actual hosted Heap finalizer without retiring the test header. */
+static int finalize_channel(void *argument)
+{
+    extern void freechan(Heap *, int);
+    freechan(D2H(argument), 0);
+    return 1;
+}
+
+
+/* A malformed receive queue must not partially close the send side. A wake
+ * error after detachment must still let the receive side reach the scheduler. */
+static void channel_finalize_case(void)
+{
+    Prog *prior = dvm_runqueue_head();
+    DVM_RuntimeProcess foreign = {0}, receiver = {0};
+    Channel *channel = H;
+    int refs = dvm_refcount_load_i(&Tword.ref);
+    check(prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
+        "withdraw startup process for channel finalization");
+    channel = dvm_runtime_channel_new(&channel, &Tword, 0, movtmp, 0);
+    foreign.process.state = Prelease;
+    receiver.process.state = Precv;
+    cqadd(&channel->send, &foreign.process);
+    cqadd(&channel->recv, &receiver.process);
+    channel->recv->next = channel->recv;
+    check(!kprotect(finalize_channel, channel) && !strcmp(getup()->env->errstr, exHeap) &&
+        channel->send->prog == &foreign.process && channel->recv->prog == &receiver.process &&
+        channel->mover == movtmp && dvm_refcount_load_i(&Tword.ref) == refs+1 &&
+        !dvm_runqueue_head(), "finalizer refusal preserves both owners");
+    channel->recv->next = NULL;
+    check(!kprotect(finalize_channel, channel) &&
+        strstr(getup()->env->errstr, "foreign C channel waiter") &&
+        !channel->send && !channel->recv && !channel->mover &&
+        dvm_refcount_load_i(&Tword.ref) == refs &&
+        dvm_runqueue_pop(Psend) == &receiver.process && !dvm_runqueue_head(),
+        "finalizer drains both queues and releases descriptor on wake error");
+    check(dvm_runqueue_append(prior), "restore startup process");
+    destroy(channel);
+    puts("PASS two-sided channel finalization");
+}
+
+
 /* Inject a mover error only after the real opcode dequeues its peer. */
 static void failing_channel_move(void)
 {
@@ -715,6 +757,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     array_case(workers);
     channel_case();
     channel_drain_case();
+    channel_finalize_case();
     direct_channel_failure();
     buffered_channel_completion();
     alt_publication_failure();

@@ -58,7 +58,7 @@ def main():
             if mode == "--jit" and "PASS guarded record JIT cache" not in output:
                 raise RuntimeError(output)
             if result.returncode or any(marker not in output for marker in (
-                "PASS detached ALT publication failure", "PASS buffered channel completion", "PASS direct channel mover failure", "PASS guarded channel drain", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
+                "PASS detached ALT publication failure", "PASS buffered channel completion", "PASS direct channel mover failure", "PASS two-sided channel finalization", "PASS guarded channel drain", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
     print("PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest")

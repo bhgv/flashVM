@@ -575,11 +575,28 @@ static int wake_closed_channel(void *argument)
 }
 
 
-extern void dvm_runtime_channel_close_preflight(Progq **queue);
+extern Progq *dvm_runtime_channel_close_preflight(Progq **queue);
 
 
-/* Detach under NativeWorld before a wake can cancel other registrations.
- * The scheduler owns every borrowed Prog until this drain returns. */
+/* Drain an exclusively detached chain, recording the first wake failure. */
+static void drain_closed_queue(Progq *entry, char *first_error, int *failed)
+{
+    while (entry)
+    {
+        Progq *next = entry->next;
+        Prog *process = entry->prog;
+        free(entry);
+        entry = next;
+        if (process && !kprotect(wake_closed_channel, process) && !*failed)
+        {
+            memmove(first_error, owner_error(), ERRMAX);
+            *failed = 1;
+        }
+    }
+}
+
+
+/* Detach under NativeWorld before a wake can cancel other registrations. */
 void killcomm(Progq **queue)
 {
     Progq *entry = *queue;
@@ -591,17 +608,45 @@ void killcomm(Progq **queue)
     }
     dvm_runtime_channel_close_preflight(queue);
     *queue = nil;
-    while (entry)
+    drain_closed_queue(entry, first_error, &failed);
+    if (failed)
     {
-        Progq *next = entry->next;
-        Prog *process = entry->prog;
-        free(entry);
-        entry = next;
-        if (process && !kprotect(wake_closed_channel, process) && !failed)
-        {
-            memmove(first_error, owner_error(), sizeof(first_error));
-            failed = 1;
-        }
+        error(first_error);
+    }
+}
+
+
+/* Finalize both queue owners together. All checks precede detachment and
+ * descriptor release. NativeWorld keeps the registered processes live. */
+void dvm_runtime_channel_finalize(Channel *channel, int swept)
+{
+    Progq *send = channel->send;
+    Progq *recv = channel->recv;
+    Progq *send_tail = send ? dvm_runtime_channel_close_preflight(&channel->send) : nil;
+    Progq *recv_tail = recv ? dvm_runtime_channel_close_preflight(&channel->recv) : nil;
+    Array *buffer = channel->buf;
+    Type *mapped = channel->mover == movtmp ? channel->mid.t : nil;
+    char first_error[ERRMAX];
+    int failed = 0;
+    if (send_tail && send_tail == recv_tail)
+    {
+        error(exHeap);
+    }
+    channel->send = nil;
+    channel->recv = nil;
+    channel->mover = nil;
+    channel->buf = H;
+    drain_closed_queue(send, first_error, &failed);
+    drain_closed_queue(recv, first_error, &failed);
+    if (mapped)
+    {
+        freetype(mapped);
+    }
+    if (!swept && buffer != H &&
+        !kprotect(release_refill_channel, buffer) && !failed)
+    {
+        memmove(first_error, owner_error(), ERRMAX);
+        failed = 1;
     }
     if (failed)
     {

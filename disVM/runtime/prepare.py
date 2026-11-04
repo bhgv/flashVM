@@ -13,7 +13,7 @@ from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
 from prepare_record_new import adapt as adapt_record_new, adapt_leaf as adapt_record_leaf
-from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight
+from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_channel_finalizer
 from prepare_mapped_cons import adapt as adapt_mapped_cons
 from prepare_raw_cons import adapt as adapt_raw_cons
 from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
@@ -358,7 +358,8 @@ def main():
     validate_gc_header((args.source.parent / 'include/interp.h').read_text())
     for unit in ('gc', 'heap'):
         path = args.output / (unit+'.c')
-        path.write_text(adapt_gc_fields(path.read_text(), unit))
+        code = adapt_gc_fields(path.read_text(), unit)
+        path.write_text(adapt_channel_finalizer(code) if unit == "heap" else code)
 
 
 if __name__ == "__main__":
