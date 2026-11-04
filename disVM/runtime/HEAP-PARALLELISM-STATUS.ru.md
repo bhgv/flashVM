@@ -296,3 +296,12 @@ span guard, held tail, подготовка node, conditional commit и bounded 
 сохранён только для unselected mode. CONSM/CONSMP пока отдельно. NativeWorld
 не снят; остались другие конструкторы, shared writes/address leases, GC epochs,
 каналы/планировщик и frame/module/code lifetime. Процент по opcode не считаем.
+
+## runtime0.117: unmapped CONSM подключён
+
+Raw cons фиксирует native WORD count и весь block до callback; один immutable
+native snapshot используется при всех stale retry. Snapshot освобождается даже
+после нескольких ошибок managed retirement. Actual C opcode/existing x64 tail
+используют новый coordinator при --guarded-copies; unselected/inline body сохранён.
+CONSMP со ссылками остаётся отдельным протоколом. NativeWorld не снят; независимые
+size/source guards не доказывают согласованный снимок при будущих parallel writers.

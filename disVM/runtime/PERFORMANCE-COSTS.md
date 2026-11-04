@@ -377,3 +377,15 @@ allocator/copy заменён tail JMP в общий C coordinator, без RX re
 Это реальные дополнительные пути, пока без matched исторического измерения;
 проценты CONSP-114 к ним не переносим. Unselected/inline opcode bodies сохранены.
 Нужно отдельно измерить группы allocator/guard/root/C-tail, не ослабляя протокол.
+
+## RAWCONS-117 — captured CONSM, исторический matched замер ещё не выполнен
+
+v0.1816 / FLASHVM-0134. Добавлены отдельные size/source guards, один malloc/free
+для непустого native snapshot, копирование всего payload в snapshot, четыре
+native allocation для tail/candidate root groups, prepare/copy/mark/commit и
+retirement. Stale использует тот же snapshot, но повторяет tail hold/build/commit.
+Snapshot освобождается после ВСЕХ lease даже при ошибках их деструкторов; zero
+size не делает malloc и игнорирует source. Metadata+source захватываются отдельно,
+текущая согласованность требует NativeWorld. В существующем aggregate x64 tail
+остаётся JMP в C, новый allocator bypass не добавляется. Это перечень новых
+затрат, не измеренный процент: CONSP/scalar timings к ним не переносим.

@@ -68,3 +68,7 @@ CONSM/CONSMP are not switched: arbitrary raw snapshots and mapped reference
 ownership need further work. This is four scalar opcodes, not general parallel
 managed execution or a new serialized instruction/ABI. Known additional paths
 are marked SCALARCONS-116 in [the cost ledger](PERFORMANCE-COSTS.md).
+
+Runtime0.117 follow-up: [CONSM coordinator](RAW-CONS.md) now handles arbitrary
+unmapped record extents through native snapshots and the existing aggregate
+x64 tail. Mapped CONSMP and general parallel admission remain separate.

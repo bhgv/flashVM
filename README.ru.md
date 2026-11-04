@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1815**. [English](README.md).
+Версия разработки: **0.1816**. [English](README.md).
 
-Текущая серия: [v0.1815](docs/releases/v0.1815.md): защищённые CONSB/W/L/F в C и проверенные хвостовые входы x64.
+Текущая серия: [v0.1816](docs/releases/v0.1816.md): защищённый CONSM с неизменными снимками исходника и размера в C и x64.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

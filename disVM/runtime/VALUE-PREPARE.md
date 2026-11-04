@@ -63,3 +63,6 @@ collector acceptance is implied. Known costs: [VALUEPREP-115](PERFORMANCE-COSTS.
 Runtime0.116 follow-up: [scalar C/JIT coordinator](SCALAR-CONS.md) now captures
 shared scalar operands before calling this API. Arbitrary raw/mapped record
 opcodes remain separate; the private-snapshot contract above is unchanged.
+
+Runtime0.117 follow-up: [raw CONSM](RAW-CONS.md) now captures shared unmapped
+source/count into native immutable storage before calling this preparation API.
