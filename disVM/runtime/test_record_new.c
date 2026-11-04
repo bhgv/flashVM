@@ -13,8 +13,11 @@
 #include "shared_pointer.h"
 #include "managed_owner.h"
 #include "root_registry.h"
+#include "runqueue.h"
 #include "disvm/native_owner.h"
 #include "disvm/refcount.h"
+#include <stdio.h>
+#include "pointer_builder.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -396,6 +399,53 @@ static void channel_case(void)
 }
 
 
+/* Close through the hosted callback using the actual VM error stack. */
+static int close_waiters(void *argument)
+{
+    killcomm(argument);
+    return 1;
+}
+
+
+/* One foreign waiter raises. ALT cancellation must still remove a sibling
+ * registration and wake exactly once, followed by the ordinary sender. */
+static void channel_drain_case(void)
+{
+    DVM_RuntimeProcess foreign = {0}, alternative = {0}, sender = {0};
+    Channel closed = {0}, sibling = {0};
+    Alt *guards = calloc(1, offsetof(Alt, ac) + 2*sizeof(Altc));
+    Prog *prior = dvm_runqueue_head();
+    check(guards && prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
+        "temporarily withdraw the single startup process");
+    closed.send = calloc(1, sizeof(Progq));
+    sibling.send = calloc(1, sizeof(Progq));
+    check(closed.send && sibling.send, "drain queues");
+    foreign.process.state = Prelease;
+    alternative.process.state = Palt;
+    sender.process.state = Psend;
+    guards->nsend = 2;
+    guards->ac[0].c = &closed;
+    guards->ac[1].c = &sibling;
+    alternative.process.R.s = guards;
+    cqadd(&closed.send, &foreign.process);
+    cqadd(&closed.send, &alternative.process);
+    cqadd(&closed.send, &alternative.process);
+    cqadd(&closed.send, &sender.process);
+    cqadd(&sibling.send, &alternative.process);
+    check(!kprotect(close_waiters, &closed.send) &&
+        strstr(getup()->env->errstr, "foreign C channel waiter"),
+        "drain preserves first wake error");
+    check(!closed.send && sibling.send && !sibling.send->prog &&
+        dvm_runqueue_pop(Psend) == &alternative.process &&
+        dvm_runqueue_pop(Psend) == &sender.process && !dvm_runqueue_head(),
+        "detached drain cancels siblings and wakes unique peers in order");
+    check(dvm_runqueue_append(prior), "restore startup process");
+    free(sibling.send);
+    free(guards);
+    puts("PASS guarded channel drain");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -434,6 +484,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     imported_case(workers, 1);
     array_case(workers);
     channel_case();
+    channel_drain_case();
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);

@@ -499,37 +499,56 @@ Prog *newprog(Prog *parent, Modlink *module)
     return process;
 }
 
-/* Wake channel peers with an explicit hangup, using the production queue representation. */
+/* Wake one detached waiter while the scheduler still owns its Prog. */
+static int wake_closed_channel(void *argument)
+{
+    Prog *process = argument;
+    switch (process->state)
+    {
+    case Psend:
+    case Precv:
+        process->ptr = nil;
+        process->kill = "channel hangup";
+        addrun(process);
+        break;
+    case Palt:
+        process->ptr = nil;
+        altgone(process);
+        break;
+    case Prelease:
+        error("foreign C channel waiter is not supported by this host");
+        break;
+    default:
+        /* A previous registration may already have woken the same ALT. */
+        break;
+    }
+    return 1;
+}
+
+
+/* Detach under NativeWorld before a wake can cancel other registrations.
+ * The scheduler owns every borrowed Prog until this drain returns. */
 void killcomm(Progq **queue)
 {
-    Progq *entry;
-    Prog *process;
-    while ((entry = *queue) != nil)
+    Progq *entry = *queue;
+    char first_error[ERRMAX];
+    int failed = 0;
+    *queue = nil;
+    while (entry)
     {
-        *queue = entry->next;
-        process = entry->prog;
+        Progq *next = entry->next;
+        Prog *process = entry->prog;
         free(entry);
-        if (!process)
+        entry = next;
+        if (process && !kprotect(wake_closed_channel, process) && !failed)
         {
-            return;
+            memmove(first_error, owner_error(), sizeof(first_error));
+            failed = 1;
         }
-        process->ptr = nil;
-        switch (process->state)
-        {
-        case Psend:
-        case Precv:
-            process->kill = "channel hangup";
-            addrun(process);
-            break;
-        case Palt:
-            altgone(process);
-            break;
-        case Prelease:
-            error("foreign C channel waiter is not supported by this host");
-            break;
-        default:
-            break;
-        }
+    }
+    if (failed)
+    {
+        error(first_error);
     }
 }
 

@@ -433,3 +433,10 @@ publishes by identity comparison. A buffered channel reports two allocations
 after construction. Guarded JIT uses the C route. Measure buffered and
 unbuffered construction separately in a matched run before attributing a
 time difference to publication or dispatch. No matched timing is recorded.
+
+## CHANDRAIN-122
+
+Hosted close enters a VM error checkpoint for each nonempty detached waiter
+so a failed wake cannot abandon the rest of the chain. Measure close latency
+against queue length and repeated ALT registrations. No matched timing is
+recorded.
