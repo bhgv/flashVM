@@ -6,6 +6,19 @@ native DisVM stays runtime0.106 with NativeWorld unchanged. Shared Dis64 IDs,
 Frame64 layout, default43/173, WORD32 LEA and immutable named `dis64-calls` launch/
 cache agreement are unchanged.
 
+## Inferno coordination
+
+Inferno experiment records the shared address rule in its
+[Dis64 contract](https://github.com/bhgv/Inferno-OS-bhgv/blob/8a3e31b936e647b702cb3de1ef49f23b723e90f5/doc/dis64-contract.md)
+and the paired runtime evidence in its
+[FlashVM journal](https://github.com/bhgv/Inferno-OS-bhgv/blob/8a3e31b936e647b702cb3de1ef49f23b723e90f5/doc/dis64-flashvm-journal.md).
+The future checked form derives a full eight-byte address from the validated
+caller result span and writes it only to prepared-callee byte 32, independent
+of numeric WORD width. The address is transient runtime state. It has no
+serialized pointer representation or managed pointer-map bit. The independent
+checks below apply this rule within their bounded scalar subset. The journal's
+runtime replay has its own execution scope.
+
 ## Inputs and trust
 
 `tests/peer_call_semantics.py` accepts a corpus path. Only image names and exact
