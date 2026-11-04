@@ -239,4 +239,18 @@ void dvm_runtime_alt_preflight(Alt *alt)
         error(exBounds);
     altvalidate(alt, sends, receives, 1);
 }
+
+/* Check the closing chain and all ALT siblings before any waiter is detached.
+ * The caller keeps NativeWorld until detachment and completion. */
+void dvm_runtime_channel_close_preflight(Progq **queue)
+{
+    Progq *entry;
+    vmchanend(queue);
+    for (entry = *queue; entry; entry = entry->next)
+    {
+        if (entry->prog && entry->prog->state == Palt)
+            dvm_runtime_alt_preflight(entry->prog->R.s);
+    }
+}
+
 """

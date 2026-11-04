@@ -575,6 +575,9 @@ static int wake_closed_channel(void *argument)
 }
 
 
+extern void dvm_runtime_channel_close_preflight(Progq **queue);
+
+
 /* Detach under NativeWorld before a wake can cancel other registrations.
  * The scheduler owns every borrowed Prog until this drain returns. */
 void killcomm(Progq **queue)
@@ -582,6 +585,11 @@ void killcomm(Progq **queue)
     Progq *entry = *queue;
     char first_error[ERRMAX];
     int failed = 0;
+    if (!entry)
+    {
+        return;
+    }
+    dvm_runtime_channel_close_preflight(queue);
     *queue = nil;
     while (entry)
     {

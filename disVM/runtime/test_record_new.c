@@ -412,35 +412,54 @@ static int close_waiters(void *argument)
 static void channel_drain_case(void)
 {
     DVM_RuntimeProcess foreign = {0}, alternative = {0}, sender = {0};
-    Channel closed = {0}, sibling = {0};
+    Channel *closed = H, *sibling = H;
     Alt *guards = calloc(1, offsetof(Alt, ac) + 2*sizeof(Altc));
     Prog *prior = dvm_runqueue_head();
     check(guards && prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
         "temporarily withdraw the single startup process");
-    closed.send = calloc(1, sizeof(Progq));
-    sibling.send = calloc(1, sizeof(Progq));
-    check(closed.send && sibling.send, "drain queues");
+    closed = dvm_runtime_channel_new(&closed, &Tword, 0, movtmp, 0);
+    sibling = dvm_runtime_channel_new(&sibling, &Tword, 0, movtmp, 0);
     foreign.process.state = Prelease;
     alternative.process.state = Palt;
     sender.process.state = Psend;
     guards->nsend = 2;
-    guards->ac[0].c = &closed;
-    guards->ac[1].c = &sibling;
+    guards->ac[0].c = closed;
+    guards->ac[1].c = sibling;
     alternative.process.R.s = guards;
-    cqadd(&closed.send, &foreign.process);
-    cqadd(&closed.send, &alternative.process);
-    cqadd(&closed.send, &alternative.process);
-    cqadd(&closed.send, &sender.process);
-    cqadd(&sibling.send, &alternative.process);
-    check(!kprotect(close_waiters, &closed.send) &&
+    cqadd(&closed->send, &foreign.process);
+    cqadd(&closed->send, &alternative.process);
+    cqadd(&closed->send, &alternative.process);
+    cqadd(&closed->send, &sender.process);
+    cqadd(&sibling->send, &alternative.process);
+    {
+        Progq *head = closed->send;
+        Progq *next = head->next;
+        head->next = head;
+        check(!kprotect(close_waiters, &closed->send) &&
+            !strcmp(getup()->env->errstr, exHeap) && closed->send == head &&
+            head->next == head && !dvm_runqueue_head(),
+            "close rejects a cycle in its own queue before detachment");
+        head->next = next;
+    }
+    sibling->send->next = sibling->send;
+    check(!kprotect(close_waiters, &closed->send) &&
+        !strcmp(getup()->env->errstr, exHeap) &&
+        closed->send->prog == &foreign.process &&
+        closed->send->next->prog == &alternative.process &&
+        sibling->send->prog == &alternative.process &&
+        alternative.process.state == Palt && !dvm_runqueue_head(),
+        "close refusal leaves queues and wait state intact");
+    sibling->send->next = NULL;
+    check(!kprotect(close_waiters, &closed->send) &&
         strstr(getup()->env->errstr, "foreign C channel waiter"),
         "drain preserves first wake error");
-    check(!closed.send && sibling.send && !sibling.send->prog &&
+    check(!closed->send && sibling->send && !sibling->send->prog &&
         dvm_runqueue_pop(Psend) == &alternative.process &&
         dvm_runqueue_pop(Psend) == &sender.process && !dvm_runqueue_head(),
         "detached drain cancels siblings and wakes unique peers in order");
     check(dvm_runqueue_append(prior), "restore startup process");
-    free(sibling.send);
+    destroy(sibling);
+    destroy(closed);
     free(guards);
     puts("PASS guarded channel drain");
 }

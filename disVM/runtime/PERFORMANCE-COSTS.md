@@ -458,3 +458,10 @@ with a waiting sender. No matched timing is recorded.
 Matching a blocked ALT now walks the affected guard queues before dequeue.
 Measure rendezvous latency as guard count and queue length grow, including
 duplicate registrations and receive arrays. No matched timing is recorded.
+
+## CHANCLOSESCAN-122
+
+Hosted close scans the closing chain and each blocked ALT's guard queues
+before detachment. Duplicate ALT registrations can repeat validation.
+Measure matched close latency across guard and waiter counts. No matched
+timing is recorded.
