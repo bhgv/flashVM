@@ -362,12 +362,8 @@ extern int dvm_runtime_channel_buffer_busy(Channel *channel);
 /* Wait on the native reservation ledger only. The caller keeps the channel
  * identity live and must have no bound VM context. Idle is an observation,
  * so the caller must still revalidate when it later acquires a reservation. */
-int dvm_runtime_channel_wait_idle(Channel *channel)
+static void wait_channel_buffer_idle(Channel *channel)
 {
-    if (!channel || channel == H || dvm_native_context_current())
-    {
-        return 0;
-    }
     fvm_port_sync_lock(channel_queue_mutex);
     while (dvm_runtime_channel_buffer_busy(channel))
     {
@@ -376,6 +372,32 @@ int dvm_runtime_channel_wait_idle(Channel *channel)
         channel_buffer_waiters--;
     }
     fvm_port_sync_unlock(channel_queue_mutex);
+}
+
+
+/* Unbound native callers use only the reservation ledger. */
+int dvm_runtime_channel_wait_idle(Channel *channel)
+{
+    if (!channel || channel == H || dvm_native_context_current())
+    {
+        return 0;
+    }
+    wait_channel_buffer_idle(channel);
+    return 1;
+}
+
+
+/* The caller holds a rooted channel and has ruled out a mover dependency.
+ * Native leave withdraws the current Prog until the same owner resumes it. */
+int dvm_runtime_channel_wait_guest(Channel *channel)
+{
+    int released = dvm_runtime_gc_native_leave();
+    if (!released)
+    {
+        return 0;
+    }
+    wait_channel_buffer_idle(channel);
+    dvm_runtime_gc_native_enter(released);
     return 1;
 }
 

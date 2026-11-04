@@ -126,10 +126,15 @@ QUEUE_PEER_READER = r"""
 
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 
+extern int dvm_runtime_channel_wait_guest(Channel *channel);
+static int channel_buffer_wait_state(Channel *channel);
+
 typedef struct ChannelPeerRead
 {
     Channel *channel;
     int receive;
+    int busy;
+    void *owner_cell; /* Saved decoded channel operand. */
     Prog *peer; /* Borrowed under the surrounding NativeWorld turn. */
 } ChannelPeerRead;
 
@@ -138,16 +143,47 @@ typedef struct ChannelPeerRead
 static int read_channel_peer(void *argument)
 {
     ChannelPeerRead *read = argument;
-    if (dvm_runtime_channel_buffer_busy(read->channel))
-        error("channel buffer transfer already active");
-    read->peer = channelpeer(read->channel, read->receive);
+    read->busy = channel_buffer_wait_state(read->channel);
+    if (!read->busy)
+        read->peer = channelpeer(read->channel, read->receive);
+    return 1;
+}
+
+/* Release the world only for a foreign reservation, then recheck readiness. */
+static int wait_and_read_channel_peer(void *argument)
+{
+    ChannelPeerRead *read = argument;
+    do
+    {
+        if (read->busy != 1 || !dvm_runtime_channel_wait_guest(read->channel))
+            error("channel buffer transfer already active");
+        {
+            Channel *current;
+            memmove(&current, read->owner_cell, sizeof(current));
+            if (current != read->channel)
+                error("channel operand changed while waiting");
+        }
+        dvm_runtime_channel_queue_guard(read_channel_peer, read);
+    } while (read->busy);
     return 1;
 }
 
 static Prog *guarded_channel_peer(Channel *channel, int receive)
 {
-    ChannelPeerRead read = {channel, receive, nil};
+    ChannelPeerRead read = {channel, receive, 0, receive ? DVM_R.s : DVM_R.d, nil};
+    DVM_HeapHold hold = {0};
+    const char *problem;
+    int completed;
     dvm_runtime_channel_queue_guard(read_channel_peer, &read);
+    if (!read.busy)
+        return read.peer;
+    if (read.busy != 1 || !guarded_channel_selected())
+        error("channel buffer transfer already active");
+    problem = dvm_runtime_heap_hold(&channel, &Tchannel, 0, &hold);
+    if (problem)
+        error((char *)problem);
+    completed = kprotect(wait_and_read_channel_peer, &read);
+    dvm_runtime_heap_finish(&hold, completed);
     return read.peer;
 }
 """
@@ -510,6 +546,7 @@ BUFFER_RESERVATION = r"""
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 
 extern void dvm_runtime_channel_buffer_notify(void);
+#include "disvm/native_context.h"
 
 typedef struct ChannelReservation
 {
@@ -523,6 +560,7 @@ typedef struct ChannelReservation
     int consumed;
     int completed;
     struct ChannelReservation *next;
+    DVM_NativeContext *owner;
 } ChannelReservation;
 
 
@@ -539,6 +577,22 @@ int dvm_runtime_channel_buffer_busy(Channel *channel)
             return 1;
     }
     return 0;
+}
+
+
+/* Under the queue mutex: a mover must never park behind another mover. */
+static int channel_buffer_wait_state(Channel *channel)
+{
+    ChannelReservation *entry;
+    DVM_NativeContext *current = dvm_native_context_current();
+    int busy = 0;
+    int owns_reservation = 0;
+    for (entry = active_channel_reservations; entry; entry = entry->next)
+    {
+        busy |= entry->read.channel == channel;
+        owns_reservation |= entry->owner == current;
+    }
+    return busy ? (owns_reservation ? -1 : 1) : 0;
 }
 
 
@@ -609,6 +663,7 @@ static int reserve_channel_buffer(void *argument)
             channel->front = buffer.front;
         channel->size = buffer.size;
     }
+    reservation->owner = dvm_native_context_current();
     reservation->next = active_channel_reservations;
     active_channel_reservations = reservation;
     reservation->available = 1;
@@ -651,7 +706,7 @@ static int consume_channel_buffer(void *argument)
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int read_buffer_owned(Channel *channel, void *destination)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil};
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
@@ -686,7 +741,7 @@ static int write_channel_buffer(void *argument)
 /* Capture send geometry under the mutex and transfer outside it. */
 static int write_buffer_owned(Channel *channel, void *source)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
