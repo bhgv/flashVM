@@ -405,3 +405,10 @@ snapshot, но повторяет candidate build/capture-tail/commit. Это и
 не измеренный процент. Matched benchmark ещё не выполнен; CONSP/scalar/raw ratios
 не переносим. Возможная оптимизация первого snapshot/candidate и reuse metadata
 требует сохранения проверенных root/error/alias протоколов. NativeWorld остаётся.
+
+## RECORDNEW-119 — local NEW/NEWZ
+
+The selected worker path allocates a fresh record even when the legacy path
+could reuse a unique plain record. Destination and candidate reservations add
+four native metadata allocations. Stale retry refreshes the destination hold
+and reuses the record. Matched timing is pending.
