@@ -81,3 +81,46 @@ def adapt(source):
         source = (source[:match.start()] + helpers + body[:offset] + selection
                   + body[offset:] + source[match.end():])
     return source
+
+
+def adapt_wait_completion(source):
+    """Protect direct transfers after a peer and its ALT registrations are dequeued."""
+    anchor = "OP(isend)\n{"
+    start = source.index(anchor)
+    end = source.index("typedef struct CsendAlt", start)
+    body = source[start:end]
+    for old in ("\tc->mover();\n\taddrun(p);",
+                "\t\tc->mover();\n\t}\n\taddrun(p);"):
+        if body.count(old) != 1:
+            raise ValueError("direct channel completion drift")
+        indent = "\t\t" if old.startswith("\t\t") else "\t"
+        body = body.replace(old, indent + "channel_move_or_wake_error(c, p);" +
+                            old[len(indent + "c->mover();"):], 1)
+    return source[:start] + WAIT_COMPLETION + body + source[end:]
+
+
+WAIT_COMPLETION = r"""
+extern void dvm_runtime_channel_fail_peer(Prog *peer);
+
+/* Invoke the selected mover inside the current owner's error frame. */
+static int channel_move(void *argument)
+{
+    Channel *channel = argument;
+    channel->mover();
+    return 1;
+}
+
+
+/* The peer has already left its channel queues. On transfer failure wake it
+ * with an error before unwinding the initiating instruction. NativeWorld
+ * keeps the borrowed Prog live across this transition. */
+static void channel_move_or_wake_error(Channel *channel, Prog *peer)
+{
+    if (!kprotect(channel_move, channel))
+    {
+        dvm_runtime_channel_fail_peer(peer);
+        krethrow();
+    }
+}
+
+"""

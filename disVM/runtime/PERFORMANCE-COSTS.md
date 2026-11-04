@@ -440,3 +440,9 @@ Hosted close enters a VM error checkpoint for each nonempty detached waiter
 so a failed wake cannot abandon the rest of the chain. Measure close latency
 against queue length and repeated ALT registrations. No matched timing is
 recorded.
+
+## CHANMOVE-122
+
+The hosted direct send and receive paths add an error checkpoint around the
+mover after dequeue. Measure matched successful rendezvous latency with the
+same payload type and scheduler mode. No matched timing is recorded.

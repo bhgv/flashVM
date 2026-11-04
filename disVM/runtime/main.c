@@ -499,6 +499,17 @@ Prog *newprog(Prog *parent, Modlink *module)
     return process;
 }
 
+/* Complete a detached failed transfer under NativeWorld. Preserve the active
+ * mover error for the initiator after successful scheduler admission. */
+void dvm_runtime_channel_fail_peer(Prog *peer)
+{
+    peer->ptr = nil;
+    peer->chan = nil;
+    peer->kill = "channel transfer failed";
+    addrun(peer);
+}
+
+
 /* Wake one detached waiter while the scheduler still owns its Prog. */
 static int wake_closed_channel(void *argument)
 {

@@ -446,6 +446,67 @@ static void channel_drain_case(void)
 }
 
 
+/* Inject a mover error only after the real opcode dequeues its peer. */
+static void failing_channel_move(void)
+{
+    error("fixture channel mover failure");
+}
+
+
+/* Call the production C opcode with the active register view. */
+static int direct_channel_transfer(void *argument)
+{
+    int receive = *(int *)argument;
+    extern void isend(void), irecv(void);
+    if (receive)
+    {
+        irecv();
+    }
+    else
+    {
+        isend();
+    }
+    return 1;
+}
+
+
+/* Both direct directions must make a dequeued peer runnable on mover error. */
+static void direct_channel_failure(void)
+{
+    Prog *prior = dvm_runqueue_head();
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    Channel *channel = H;
+    WORD payload = 13;
+    int receive;
+    check(prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
+        "withdraw startup process for direct transfer probe");
+    channel = dvm_runtime_channel_new(&channel, NULL, 0, failing_channel_move, 0);
+    for (receive = 0; receive <= 1; receive++)
+    {
+        DVM_RuntimeProcess waiter = {0};
+        Progq **queue = receive ? &channel->send : &channel->recv;
+        waiter.process.state = receive ? Psend : Precv;
+        waiter.process.ptr = &payload;
+        waiter.process.chan = channel;
+        cqadd(queue, &waiter.process);
+        registers->s = receive ? (void *)&channel : (void *)&payload;
+        registers->d = receive ? (void *)&payload : (void *)&channel;
+        check(!kprotect(direct_channel_transfer, &receive) &&
+            strstr(getup()->env->errstr, "fixture channel mover failure"),
+            "initiator receives original mover error");
+        check(!(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
+            waiter.process.kill && !strcmp(waiter.process.kill, "channel transfer failed") &&
+            dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
+            "failed direct mover wakes the detached peer once");
+    }
+    *registers = saved;
+    check(dvm_runqueue_append(prior), "restore startup process");
+    destroy(channel);
+    puts("PASS direct channel mover failure");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -485,6 +546,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     array_case(workers);
     channel_case();
     channel_drain_case();
+    direct_channel_failure();
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);
