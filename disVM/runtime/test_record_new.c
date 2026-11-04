@@ -18,6 +18,7 @@
 #include "disvm/refcount.h"
 #include <stdio.h>
 #include <pthread.h>
+#include "channel_sync.h"
 #include "pointer_builder.h"
 #include <stdlib.h>
 #include <string.h>
@@ -1095,6 +1096,91 @@ static void buffer_owner_case(void)
 }
 
 
+typedef struct BufferWaitProbe
+{
+    Channel *channel; /* The test's application owner outlives the worker. */
+    pthread_t thread;
+    pthread_barrier_t parked;
+    int result;
+    int fail;
+} BufferWaitProbe;
+
+static BufferWaitProbe *buffer_wait_probe; /* Bound mover only. */
+static __thread BufferWaitProbe *buffer_wait_thread; /* Native waiter only. */
+
+void __real_fvm_port_sync_wait(FVM_PortSync *sync);
+
+
+/* Prove the native waiter reaches the condition wait before the mover exits. */
+void __wrap_fvm_port_sync_wait(FVM_PortSync *sync)
+{
+    BufferWaitProbe *probe = buffer_wait_thread;
+    if (probe)
+    {
+        buffer_wait_thread = NULL;
+        pthread_barrier_wait(&probe->parked);
+    }
+    __real_fvm_port_sync_wait(sync);
+}
+
+
+static void *wait_buffer_idle(void *argument)
+{
+    BufferWaitProbe *probe = argument;
+    extern int dvm_runtime_channel_wait_idle(Channel *);
+    buffer_wait_thread = probe;
+    probe->result = dvm_runtime_channel_wait_idle(probe->channel);
+    return NULL;
+}
+
+
+/* Park an unbound native thread during the reservation, then exit either way. */
+static void wait_buffer_mover(void)
+{
+    BufferWaitProbe *probe = buffer_wait_probe;
+    REG *registers = dvm_native_registers();
+    extern int dvm_runtime_channel_wait_idle(Channel *);
+    check(!dvm_runtime_channel_wait_idle(probe->channel), "bound owner cannot park");
+    check(!pthread_create(&probe->thread, NULL, wait_buffer_idle, probe),
+        "start native buffer waiter");
+    pthread_barrier_wait(&probe->parked);
+    if (probe->fail)
+    {
+        error("fixture buffered wait mover failure");
+    }
+    memmove(registers->d, registers->s, sizeof(WORD));
+}
+
+
+static void buffer_wait_case(void)
+{
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    int receive = 0;
+    int fail;
+    for (fail = 0; fail <= 1; fail++)
+    {
+        BufferWaitProbe probe = {0};
+        WORD value = 67;
+        probe.channel = H;
+        probe.fail = fail;
+        check(!pthread_barrier_init(&probe.parked, NULL, 2), "init buffer wait barrier");
+        dvm_runtime_channel_new(&probe.channel, &Tword, 1, wait_buffer_mover, 0);
+        buffer_wait_probe = &probe;
+        registers->s = &value;
+        registers->d = &probe.channel;
+        check(kprotect(direct_channel_transfer, &receive) == !fail, "buffer mover outcome");
+        check(!pthread_join(probe.thread, NULL) && probe.result &&
+            probe.channel->size == !fail, "native waiter wakes after reservation exits");
+        pthread_barrier_destroy(&probe.parked);
+        buffer_wait_probe = NULL;
+        destroy(probe.channel);
+    }
+    *registers = saved;
+    puts("PASS native channel buffer wait");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -1142,6 +1228,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     direct_channel_failure();
     buffered_channel_completion();
     buffer_owner_case();
+    buffer_wait_case();
     alt_publication_failure();
     ptrdel(D2H(container));
     destroy(container);

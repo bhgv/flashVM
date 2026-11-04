@@ -509,6 +509,8 @@ def adapt_buffer_reservation(source):
 BUFFER_RESERVATION = r"""
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 
+extern void dvm_runtime_channel_buffer_notify(void);
+
 typedef struct ChannelReservation
 {
     ChannelRead read; /* Receive retains the array through its mover. */
@@ -631,6 +633,7 @@ static int finish_channel_buffer(void *argument)
         channel->size = reservation->next_size;
     }
     *link = reservation->next;
+    dvm_runtime_channel_buffer_notify();
     return 1;
 }
 

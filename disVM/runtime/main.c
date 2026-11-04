@@ -339,6 +339,7 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
 
 static FVM_PortSync *channel_queue_mutex; /* Lives for the hosted runtime. */
+static unsigned int channel_buffer_waiters; /* Protected by the queue mutex. */
 
 
 /* Serialize short queue operations and unlock before propagating a VM error. */
@@ -351,6 +352,40 @@ void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument)
     if (!completed)
     {
         krethrow();
+    }
+}
+
+
+extern int dvm_runtime_channel_buffer_busy(Channel *channel);
+
+
+/* Wait on the native reservation ledger only. The caller keeps the channel
+ * identity live and must have no bound VM context. Idle is an observation,
+ * so the caller must still revalidate when it later acquires a reservation. */
+int dvm_runtime_channel_wait_idle(Channel *channel)
+{
+    if (!channel || channel == H || dvm_native_context_current())
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(channel_queue_mutex);
+    while (dvm_runtime_channel_buffer_busy(channel))
+    {
+        channel_buffer_waiters++;
+        fvm_port_sync_wait(channel_queue_mutex);
+        channel_buffer_waiters--;
+    }
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return 1;
+}
+
+
+/* Called only while the queue guard holds the mutex, after unlinking. */
+void dvm_runtime_channel_buffer_notify(void)
+{
+    if (channel_buffer_waiters)
+    {
+        fvm_port_sync_signal_all(channel_queue_mutex);
     }
 }
 
@@ -743,8 +778,6 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
     }
 }
 
-
-extern int dvm_runtime_channel_buffer_busy(Channel *channel);
 
 typedef struct ClosedQueues
 {
