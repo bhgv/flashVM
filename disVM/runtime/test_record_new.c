@@ -755,12 +755,19 @@ static void alt_publication_failure(void)
     cqadd(&sibling->recv, &waiter.process);
     registers->s = &payload;
     registers->d = &selected;
+    waiter.channel_claimed = &waiter;
+    check(!kprotect(direct_channel_transfer, &receive) &&
+        !strcmp(getup()->env->errstr, "channel waiter cannot be claimed") &&
+        selected->recv->prog == &waiter.process && sibling->recv->prog == &waiter.process &&
+        waiter.lifetime_holds == 2 && waiter.channel_claimed == &waiter,
+        "competing match leaves both queue holds intact");
+    waiter.channel_claimed = NULL;
     sibling->recv->next = sibling->recv;
     check(!kprotect(direct_channel_transfer, &receive) &&
         !strcmp(getup()->env->errstr, exHeap), "reject cyclic sibling queue");
     check(selected->recv->prog == &waiter.process &&
         sibling->recv->prog == &waiter.process && sibling->recv->next == sibling->recv &&
-        waiter.lifetime_holds == 2 && waiter.process.state == Palt &&
+        waiter.lifetime_holds == 2 && !waiter.channel_claimed && waiter.process.state == Palt &&
         !waiter.process.kill && !dvm_runqueue_head() &&
         untouched == 61, "refused ALT cancellation preserves all registrations");
     sibling->recv->next = NULL;
