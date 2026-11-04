@@ -4,6 +4,9 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
+#include "runtab-legacy.h"
+#include "disvm/native_context.h"
 #include "raise.h"
 #include "record_new.h"
 #include "heap_commit.h"
@@ -17,11 +20,14 @@
 
 static Type *record; /* Genuine descriptor retained through the probe. */
 static void *destination; /* Owning field in a rooted List. */
-static int mode; /* 1 interleaves a writer, 2 raises in the monitor. */
+static int mode; /* 1 interleaves a writer, 2 raises, 3 drops module, 4 drops module and raises. */
+static void *module_slot; /* Rooted source slot for the imported opcode. */
+static Modlink *imported; /* Borrowed through the imported constructor hold. */
 static int callbacks; /* Complete record allocations observed by monitor. */
 static int stale; /* Actual failed identity comparisons. */
 static int guest_entries; /* Real adapted opcode calls after the probe. */
 
+extern void mnewz(void); /* Real hosted opcode with decoded operands. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
 void __real_dvm_runtime_record_new(void *,Type *,int);
 int __real_dvm_runtime_heap_commit(void *,const DVM_HeapHold *,DVM_HeapHold *,DVM_HeapHold *);
@@ -43,6 +49,14 @@ void __wrap_dvm_runtime_record_new(void *slot, Type *type, int clear)
 {
     if (!record && ++guest_entries == 1)
     {
+        REG *registers = dvm_native_registers();
+        Jit *jit = registers->M->m->jit;
+        if (jit)
+        {
+            check(!jit->entry[INEW] && !jit->entry[INEWZ] && !jit->entry[IMNEWZ],
+                "guarded record JIT uses checked dispatch");
+            puts("PASS guarded record JIT cache");
+        }
         puts("PASS record opcode route");
     }
     __real_dvm_runtime_record_new(slot,type,clear);
@@ -85,7 +99,15 @@ static void monitor(int event, void *value, ulong bytes)
         check(!dvm_runtime_movp_copy(&empty,destination,&previous),"interleaved guarded writer");
         destroy(previous);
     }
-    if (mode == 2)
+    if (mode == 3 || mode == 4)
+    {
+        check(dvm_runtime_root_count(D2H(imported)) == 1, "imported module lease");
+        check(!dvm_runtime_movp_copy(&empty,module_slot,&previous) && previous == imported,
+            "remove imported module from the application slot");
+        destroy(previous);
+        check(dvm_runtime_root_count(D2H(imported)) == 1, "module survives source replacement");
+    }
+    if (mode == 2 || mode == 4)
     {
         error("record monitor primary");
     }
@@ -107,6 +129,74 @@ static void collect(DVM_GCWorkers *workers, int kind)
     DVM_HeapOwner *owner = dvm_native_owner_current();
     check(dvm_native_owner_leave(owner) && dvm_gc_workers_request(workers,kind) &&
         dvm_gc_workers_wait_idle(workers) && dvm_native_owner_enter(owner),"collector progress");
+}
+
+
+/* Invoke the real opcode through the VM checkpoint. */
+static int construct_imported(void *argument)
+{
+    (void)argument;
+    mnewz();
+    return 1;
+}
+
+
+/* Invoke MNEWZ using the active register set and a real Modlink/Module. */
+static void imported_case(DVM_GCWorkers *workers, int fail)
+{
+    char name[] = "$FlashVM-record-import-test";
+    Runtab table = {0};
+    Import imports[1] = {{0}};
+    Module *module = builtinmod(name, &table, 0);
+    List *container = H;
+    void *empty = H;
+    void *previous;
+    WORD index = 0;
+    void *before;
+    int completed;
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    int baseline = dvm_refcount_load_i(&Tmodlink.ref);
+    check(module != NULL, "real imported module");
+    module->type = mallocz(sizeof(*module->type), 1);
+    check(module->type != NULL &&
+        dvm_refcount_retain_i(&record->ref) == DVM_REFCOUNT_LIVE, "module descriptor owner");
+    module->type[0] = record;
+    module->ntype = 1;
+    imported = linkmod(lookmod(name), imports, 1);
+    check(imported != H, "real imported Modlink");
+    unload(module);
+    dvm_runtime_pointer_cons(&empty, &container);
+    ptradd(D2H(container));
+    module_slot = container->data;
+    check(!dvm_runtime_movp_copy(&imported, module_slot, &previous) && previous == H,
+        "publish source owner");
+    destroy(imported);
+    registers->s = module_slot;
+    registers->m = &index;
+    registers->d = destination;
+    memmove(&before, destination, sizeof(before));
+    mode = fail ? 4 : 3;
+    completed = kprotect(construct_imported, NULL);
+    check(completed == !fail, "imported opcode outcome");
+    if (fail)
+    {
+        memmove(&previous, destination, sizeof(previous));
+        check(previous == before && strstr(getup()->env->errstr,"record monitor primary"),
+            "imported error preserves destination and primary message");
+    }
+    *registers = saved;
+    heapmonitor = NULL;
+    memmove(&previous, module_slot, sizeof(previous));
+    check(previous == H, "source write retained");
+    ptrdel(D2H(container));
+    destroy(container);
+    collect(workers, DVM_GC_FAST);
+    check(lookmod(name) == NULL && dvm_refcount_load_i(&Tmodlink.ref) == baseline,
+        "import lease drains through actual unload");
+    module_slot = NULL;
+    imported = NULL;
+    puts("PASS imported record lease");
 }
 
 
@@ -138,6 +228,10 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     collect(workers,DVM_GC_CYCLES);
     memmove(&current,destination,sizeof(current));
     check(current == published && D2H(current)->t == record,"published record survives Cycles");
+    heapmonitor = monitor;
+    imported_case(workers, 0);
+    heapmonitor = monitor;
+    imported_case(workers, 1);
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);

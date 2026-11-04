@@ -12,7 +12,7 @@ from prepare_module_counts import adapt_link, adapt_load, adapt_xec
 from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
-from prepare_record_new import adapt as adapt_record_new
+from prepare_record_new import adapt as adapt_record_new, adapt_leaf as adapt_record_leaf
 from prepare_mapped_cons import adapt as adapt_mapped_cons
 from prepare_raw_cons import adapt as adapt_raw_cons
 from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
@@ -83,7 +83,7 @@ def main():
         check=True,
     )
     layout_path = args.output / "leaf64-ops.h"
-    layout_path.write_text(adapt_jit_counts(layout_path.read_text()))
+    layout_path.write_text(adapt_record_leaf(adapt_jit_counts(layout_path.read_text())))
     emitter_path = args.output / "amd64-emit.h"
     emitter_path.write_text(adapt_scalar_emitter(adapt_bytes_tail(adapt_aggregate_tail(adapt_owner_tail(adapt_pointer_tail(emitter_path.read_text()))))))
     for unit in ('loader', 'exception'):

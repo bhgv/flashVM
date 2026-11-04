@@ -412,3 +412,9 @@ The selected worker path allocates a fresh record even when the legacy path
 could reuse a unique plain record. Destination and candidate reservations add
 four native metadata allocations. Stale retry refreshes the destination hold
 and reuses the record. Matched timing is pending.
+
+## MNEWZ-120
+
+Imported records add a Modlink hold with two native root reservation allocations
+and guarded capture of the Type index. Guarded record operations use C dispatch
+from hosted leaf JIT sessions. Matched timing is pending.

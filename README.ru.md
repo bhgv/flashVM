@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1818**. [English](README.md).
+Версия разработки: **0.1819**. [English](README.md).
 
-Текущая серия: [v0.1818](docs/releases/v0.1818.md). Защищённая публикация записей NEW/NEWZ.
+Текущая серия [v0.1819](docs/releases/v0.1819.md) добавляет защищённое создание импортированных записей.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

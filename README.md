@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1818**. [Русская версия](README.ru.md).
+Development version: **0.1819**. [Русская версия](README.ru.md).
 
-Current series: [v0.1818](docs/releases/v0.1818.md): guarded NEW/NEWZ record publication.
+Current series: [v0.1819](docs/releases/v0.1819.md): guarded imported record construction.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

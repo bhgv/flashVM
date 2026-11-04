@@ -40,8 +40,10 @@ def main():
                 "--managed-owner-probe", str(image)
             ], capture_output=True, text=True, timeout=90)
             output = result.stdout + result.stderr
+            if mode == "--jit" and "PASS guarded record JIT cache" not in output:
+                raise RuntimeError(output)
             if result.returncode or any(marker not in output for marker in (
-                "PASS rooted record construction", "PASS record opcode route", "PASS record guest"
+                "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
     print("PASS guarded record construction, stale writer, monitor error and C/JIT guest")
