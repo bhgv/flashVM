@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.113.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.114.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -518,3 +518,8 @@ Runtime0.113: [prepared pointer-list candidates](POINTER-PREPARE.md) reuse the
 transactional constructor stage, root the linked node, and support explicit stale-
 tail discard/rebuild before conditional commit. CONSP remains serialized; this
 is not a new JIT opcode or general parallel managed allocation.
+
+Runtime0.114: [guarded CONSP integration](POINTER-TRANSACTION.md) connects the
+actual selected C constructor and existing x64 tail target to capture/prepare/
+conditional commit, bounded stale-tail rebuilds and complete multi-error retirement.
+Inline/unselected mode stays serialized; NativeWorld is still mandatory.

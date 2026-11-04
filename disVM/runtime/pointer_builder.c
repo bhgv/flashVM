@@ -7,6 +7,9 @@
 #include "raise.h"
 #include "pointer_builder.h"
 #include "pointer_stage.h"
+#include "pointer_transaction.h"
+#include "shared_bytes.h"
+#include "shared_access.h"
 #include "owner_fast.h"
 #include "heap_snapshot.h"
 #include <string.h>
@@ -21,10 +24,24 @@ void dvm_runtime_pointer_cons(void *source, void *destination)
     PointerBuild build = {0};
     Heap observed;
     List *node;
+    int selected;
     if (!source || source == H || (uintptr)source > (uintptr)-1-sizeof(void *) ||
         !destination || destination == H || (uintptr)destination > (uintptr)-1-sizeof(void *))
     {
         error(exHeap);
+    }
+    if (dvm_runtime_guarded_copies)
+    {
+        selected = dvm_runtime_shared_mode();
+        if (!selected)
+        {
+            error(exHeap);
+        }
+        if (selected == 2)
+        {
+            dvm_runtime_pointer_transaction(source, destination);
+            return;
+        }
     }
     memcpy(&build.source, source, sizeof(build.source));
     memcpy(&build.tail, destination, sizeof(build.tail));

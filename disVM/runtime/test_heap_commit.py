@@ -53,6 +53,13 @@ void __real_free(void *);
 void __real_destroy(void *);
 
 
+/* Enable private commit omissions only during this fixture's observed call. */
+int dvm_heap_commit_control(void)
+{
+    return testing;
+}
+
+
 /* Stop at semantic10 before unsafe owner/root state reaches collection/cleanup. */
 static void check(int valid,const char *message)
 {
@@ -402,7 +409,11 @@ def main():
                 if original.count(before) != 1:
                     raise RuntimeError('Heap commit omission anchor drift')
                 private = work/'heap_commit.c'
-                private.write_text(original.replace(before,after,1))
+                if before.startswith(' '):
+                    replacement = 'if (dvm_heap_commit_control()) { '+after.strip()+' } else { '+before.strip()+' }'
+                else:
+                    replacement = '(dvm_heap_commit_control() ? ('+after+') : ('+before+'))'
+                private.write_text('extern int dvm_heap_commit_control(void);\n'+original.replace(before,replacement,1))
                 bad = relink(runtime,work,wrapper,index+1,symbols,heap_commit_source=private)
                 run = subprocess.run([str(bad),'--no-jit','--gc-worker','--guarded-copies',
                     '--managed-owner-probe',str(image)],capture_output=True,text=True,timeout=90,

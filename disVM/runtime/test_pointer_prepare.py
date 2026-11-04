@@ -46,6 +46,14 @@ void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
 int __real_dvm_runtime_root_batch_publish(DVM_RootBatch *,void *const *,size_t);
 
 
+/* Private source controls are enabled only inside this fixture's preparation,
+ * never during earlier production constructor diagnostics. Return0/1; no VM work. */
+int dvm_pointer_prepare_control(void)
+{
+    return testing;
+}
+
+
 /* Stop before deliberately omitted ownership reaches an unsafe collector pass. */
 static void check(int valid,const char *message)
 {
@@ -280,15 +288,15 @@ def main():
                     raise RuntimeError(output)
         if '--positive-only' not in sys.argv:
             original = (root/'pointer_stage.c').read_text()
-            controls = [('pointer_stage.c','build->tail_linked && build->tail != H','0','refusal restores owners'),
-                        ('pointer_prepare.c','dvm_runtime_pointer_link(&state->build);','/* deliberately unlinked */','complete rooted candidate'),
-                        ('pointer_prepare.c','ptrdel(state.build.node);','/* ordinary pin leaked */','complete rooted candidate')]
+            controls = [('pointer_stage.c','build->tail_linked && build->tail != H','build->tail_linked && build->tail != H && !dvm_pointer_prepare_control()','refusal restores owners'),
+                        ('pointer_prepare.c','dvm_runtime_pointer_link(&state->build);','if (!dvm_pointer_prepare_control()) { dvm_runtime_pointer_link(&state->build); }','complete rooted candidate'),
+                        ('pointer_prepare.c','ptrdel(state.build.node);','if (!dvm_pointer_prepare_control()) { ptrdel(state.build.node); }','complete rooted candidate')]
             for index,(filename,before,after,marker) in enumerate(controls):
                 original = (root/filename).read_text()
                 if original.count(before) != 1:
                     raise RuntimeError('pointer stage control anchor drift')
                 private = work/filename
-                private.write_text(original.replace(before,after,1))
+                private.write_text('extern int dvm_pointer_prepare_control(void);\n'+original.replace(before,after,1))
                 bad = relink(runtime,work,wrapper,index+1,symbols,**{filename.removesuffix('.c')+'_source':private})
                 run = subprocess.run([str(bad),'--no-jit','--gc-worker','--guarded-copies',
                     '--managed-owner-probe',str(image)],capture_output=True,text=True,timeout=90)

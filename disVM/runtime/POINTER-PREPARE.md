@@ -6,6 +6,11 @@ with a `Tptr` head, then returns one exclusive `DVM_HeapHold`. This internal nat
 API is a prerequisite for a later constructor migration, not a new opcode or a
 parallel managed allocator. Ordinary ACTIVE/NativeWorld admission is mandatory.
 
+Runtime0.114 follow-up: [guarded constructor integration](POINTER-TRANSACTION.md)
+now uses this API from selected hosted CONSP and its existing x64 tail entry.
+The implementation and refusal evidence below describe preparation itself;
+NativeWorld/allocator/collector exclusion remains mandatory.
+
 ## Ownership and ordering
 
 1. The caller captures independently live source and destination-tail cells using
@@ -33,9 +38,10 @@ identity and committing a candidate containing the old tail is incorrect.
 Finish displaced and temporary holds outside object guards. Do not copy a live
 hold, reuse its root reservation, or retry a consuming cleanup.
 
-`pointer_builder.c` still provides the old serialized CONSP entry and tail/JIT
-checks. Extracting its staging algorithm preserves its monitor and alias rules;
-no native JIT machine-code entry invokes the new prepare API yet.
+`pointer_builder.c` preserves the old serialized body for unselected/inline
+execution. Since runtime0.114, selected worker CONSP and its existing x64 tail
+entry use the coordinator in [pointer_transaction.c](POINTER-TRANSACTION.md).
+This adds no new machine-code opcode and retains ordinary NativeWorld exclusion.
 
 ## Reproduction and worked example
 

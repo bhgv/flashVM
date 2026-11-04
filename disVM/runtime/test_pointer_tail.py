@@ -134,6 +134,9 @@ __attribute__((noinline)) int __wrap_dvm_runtime_pointer_fast(REG *registers)
 # status10 is accepted for bad CALL; all positives finish real guest and shutdown.
 def main():
     arguments = sys.argv[1:]
+    guarded = '--guarded-copies' in arguments
+    if guarded:
+        arguments.remove('--guarded-copies')
     positive_only = bool(arguments and arguments[0] == '--positive-only')
     if positive_only:
         arguments.pop(0)
@@ -176,7 +179,7 @@ init() {
                 emitter.write_text(code[:start]+function.replace(before, after)+code[end:])
                 backend = work / 'comp-amd64.c'
             binary = relink(runtime, work, source, variant, ['dvm_runtime_pointer_fast'], compiler_source=backend)
-            result = subprocess.run([str(binary), '--jit', '--gc-worker', '--stats', str(image)],
+            result = subprocess.run([str(binary), '--jit', '--gc-worker', '--stats', *(['--guarded-copies'] if guarded else []), str(image)],
                                     env=dict(os.environ, TMPDIR=str(work)), capture_output=True, text=True, timeout=45)
             output = result.stdout+result.stderr
             if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:

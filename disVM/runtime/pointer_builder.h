@@ -7,9 +7,13 @@
  * Slots are mapped/owned/stable under caller's serialized managed admission;
  * complete source/tail VM roots survive allocation and monitor callbacks.
  * Slots may alias. Retains are checked at acquisition. VM errors roll back all
- * new owners and leave destination unchanged. The former destination owner
+ * new owners before publication. The former destination owner
  * is consumed nonfinally while the new node keeps its distinct tail owner.
- * Monitor may inspect/raise but must not mutate slots or leave admission.
+ * Guarded worker mode composes pointer_transaction: source captured once, stale
+ * tails rebuilt with bounded retries, all temporary leases drained after errors.
+ * Compliant monitor writes are preserved; a cleanup error after commit does not
+ * undo commit. Unselected/inline mode keeps the original serialized builder;
+ * there monitors must not mutate slots. Neither mode permits leaving admission.
  * Not a leaf-JIT ABI, native async call, graph transfer or payload permission. */
 void dvm_runtime_pointer_cons(void *source, void *destination);
 

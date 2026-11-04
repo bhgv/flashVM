@@ -1,0 +1,51 @@
+{
+  "scope": "same current runtime objects/guarded profile; only pointer_builder.c differs",
+  "iterations": 5000,
+  "checksum": 30000,
+  "samples_after_warmup": 3,
+  "source_sha256": {
+    "serialized-constructor": "63271a5f58165fdabadfc6a37758ee4fd9c0e18c7f821e0c87275cbe06d4906e",
+    "guarded-transaction": "11e075a12e53f91609e8ce7351c9663836108a7ab87480b572b4416b3a4b59be"
+  },
+  "transaction_sha256": "48a185a35dcc7fca47de818699f2e10ad78f3ffba3c6943da5baec99aa5fe398",
+  "modes": {
+    "--no-jit": {
+      "seconds": {
+        "serialized-constructor": 0.0573992309946334,
+        "guarded-transaction": 0.07225118899805238
+      },
+      "samples": {
+        "serialized-constructor": [
+          0.06397701399691869,
+          0.0573992309946334,
+          0.05457810799998697
+        ],
+        "guarded-transaction": [
+          0.07615337800234556,
+          0.0666661680006655,
+          0.07225118899805238
+        ]
+      },
+      "transaction_over_previous": 1.2587483794827772
+    },
+    "--jit": {
+      "seconds": {
+        "serialized-constructor": 0.06688767199375434,
+        "guarded-transaction": 0.0695304210021277
+      },
+      "samples": {
+        "serialized-constructor": [
+          0.06688767199375434,
+          0.068821801993181,
+          0.0596670289960457
+        ],
+        "guarded-transaction": [
+          0.07360894799785456,
+          0.0695304210021277,
+          0.06945184899814194
+        ]
+      },
+      "transaction_over_previous": 1.0395102554715931
+    }
+  }
+}

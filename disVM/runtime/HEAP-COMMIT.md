@@ -90,3 +90,8 @@ python3 disVM/runtime/test_heap_commit.py RUNTIME LIMBO INCLUDE_DIR
 [HEAPCOMMIT-112 timing scope/raw samples](PERFORMANCE-COSTS.md) measures only
 preallocated successful native transfers. No old baseline, JIT/IDE speed or
 component-level lock/mark/retarget attribution is inferred.
+
+Runtime0.114 follow-up: [guarded CONSP](POINTER-TRANSACTION.md) is the first
+constructor coordinator using this primitive. It discards/rebuilds stale-tail
+candidates and drains all temporary holds across destructor errors. The API's
+existing mapping/lifetime/NativeWorld preconditions remain mandatory.

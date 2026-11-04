@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1812**. [Русская версия](README.ru.md).
+Development version: **0.1813**. [Русская версия](README.ru.md).
 
-Current series: [v0.1812](docs/releases/v0.1812.md): rooted pointer-list preparation, dependent-tail rebuild and conditional publication.
+Current series: [v0.1813](docs/releases/v0.1813.md): guarded CONSP integration, stale-tail retries and complete error cleanup.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 
