@@ -454,6 +454,7 @@ static void channel_drain_case(void)
         strstr(getup()->env->errstr, "foreign C channel waiter"),
         "drain preserves first wake error");
     check(!alternative.channel_claimed && !sender.channel_claimed &&
+        !alternative.lifetime_holds && !sender.lifetime_holds &&
         !closed->send && sibling->send && !sibling->send->prog &&
         dvm_runqueue_pop(Psend) == &alternative.process &&
         dvm_runqueue_pop(Psend) == &sender.process && !dvm_runqueue_head(),
@@ -560,7 +561,7 @@ static void failing_channel_move(void)
 {
     if (claimed_waiter)
     {
-        check(claimed_waiter->channel_claimed &&
+        check(claimed_waiter->channel_claimed && claimed_waiter->lifetime_holds == 1 &&
             !kprotect(nested_channel_match, &claimed_waiter->process) &&
             !strcmp(getup()->env->errstr, "channel waiter cannot be claimed"),
             "live channel claim refuses competing completion");
@@ -613,7 +614,7 @@ static void direct_channel_failure(void)
             strstr(getup()->env->errstr, "fixture channel mover failure"),
             "initiator receives original mover error");
         claimed_waiter = NULL;
-        check(!waiter.channel_claimed && !(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
+        check(!waiter.channel_claimed && !waiter.lifetime_holds && !(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
             waiter.process.kill && !strcmp(waiter.process.kill, "channel transfer failed") &&
             dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
             "failed direct mover wakes the detached peer once");

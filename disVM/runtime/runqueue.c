@@ -6,6 +6,8 @@
 #include "runqueue.h"
 #include "managed_workers.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
 
 static Prog *head;             /* Runnable FIFO, modified only under the exclusive heap turn. */
 static Prog *tail;             /* Last runnable member, never a native waiter. */
@@ -26,6 +28,38 @@ static int trace_waits;        /* Immutable opt-in diagnostics, enabled before t
 static DVM_RuntimeProcess *runtime_process(Prog *process)
 {
     return (DVM_RuntimeProcess *)process;
+}
+
+
+/* Acquire a native borrow while the scheduler still owns the process. */
+int dvm_runqueue_pin(Prog *process)
+{
+    DVM_RuntimeProcess *native = runtime_process(process);
+    if (!native || native->lifetime_holds == UINT_MAX)
+    {
+        return 0;
+    }
+    native->lifetime_holds++;
+    return 1;
+}
+
+
+/* Consume exactly one native borrow. Underflow is a runtime invariant error. */
+void dvm_runqueue_unpin(Prog *process)
+{
+    DVM_RuntimeProcess *native = runtime_process(process);
+    if (!native || !native->lifetime_holds)
+    {
+        abort();
+    }
+    native->lifetime_holds--;
+}
+
+
+/* The scheduler may retire the process only after all native borrows drain. */
+int dvm_runqueue_has_holds(Prog *process)
+{
+    return process && runtime_process(process)->lifetime_holds != 0;
 }
 
 

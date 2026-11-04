@@ -510,9 +510,14 @@ void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *requ
     {
         error("channel waiter cannot be claimed");
     }
+    if (!dvm_runqueue_pin(peer))
+    {
+        error("channel waiter cannot be pinned");
+    }
     process->channel_claimed = &completed;
     completed = kprotect(match, request);
     process->channel_claimed = nil;
+    dvm_runqueue_unpin(peer);
     if (!completed)
     {
         krethrow();
@@ -616,7 +621,8 @@ static void check_close_claims(Progq *entry)
     for (; entry; entry = entry->next)
     {
         Prog *peer = entry->prog;
-        if (hosted_channel_waiter(peer) && ((DVM_RuntimeProcess *)peer)->channel_claimed)
+        if (hosted_channel_waiter(peer) && (((DVM_RuntimeProcess *)peer)->channel_claimed ||
+            ((DVM_RuntimeProcess *)peer)->lifetime_holds == UINT_MAX))
         {
             error("channel waiter cannot be claimed");
         }
@@ -630,8 +636,13 @@ static void claim_close_waiters(Progq *entry, const void *owner)
     for (; entry; entry = entry->next)
     {
         Prog *peer = entry->prog;
-        if (hosted_channel_waiter(peer))
+        if (hosted_channel_waiter(peer) && !((DVM_RuntimeProcess *)peer)->channel_claimed)
         {
+            /* The complete preflight checked capacity before any mutation. */
+            if (!dvm_runqueue_pin(peer))
+            {
+                abort();
+            }
             ((DVM_RuntimeProcess *)peer)->channel_claimed = owner;
         }
     }
@@ -656,6 +667,7 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
             if (claimed)
             {
                 process->channel_claimed = nil;
+                dvm_runqueue_unpin(peer);
             }
             if (!completed && !*failed)
             {
@@ -1170,7 +1182,8 @@ static int runtime_dispatch_turn(void)
             up->prog = nil;
             return -1;
         }
-        if (dvm_runqueue_owner(process) || ((DVM_RuntimeProcess *)process)->channel_claimed)
+        if (dvm_runqueue_owner(process) || dvm_runqueue_has_holds(process) ||
+            ((DVM_RuntimeProcess *)process)->channel_claimed)
         {
             error("cannot retire a process with a live native or channel claim");
         }
