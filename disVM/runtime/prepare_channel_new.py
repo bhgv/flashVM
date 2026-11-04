@@ -514,11 +514,12 @@ typedef struct ChannelReservation
     int available;
     int publish_after_move;
     int next_size;
+    int next_front;
 } ChannelReservation;
 
 
-/* Capture the next state. Pointer-free sends can leave the slot unoccupied
- * until the copy completes. NativeWorld still excludes another reservation. */
+/* Capture the next state. Pointer-free transfers publish it after the copy.
+ * NativeWorld still excludes another reservation. */
 static int reserve_channel_buffer(void *argument)
 {
     ChannelReservation *reservation = argument;
@@ -540,14 +541,30 @@ static int reserve_channel_buffer(void *argument)
             error(exHeap);
         dvm_runtime_heap_retain(&header->ref);
         read->array = buffer.array;
-        channel->front = buffer.front;
     }
     read->slot = buffer.slot;
     reservation->next_size = buffer.size;
-    reservation->publish_after_move = !reservation->receive && !buffer.type->np;
+    reservation->next_front = buffer.front;
+    reservation->publish_after_move = !buffer.type->np;
     if (!reservation->publish_after_move)
+    {
+        if (reservation->receive)
+            channel->front = buffer.front;
         channel->size = buffer.size;
+    }
     reservation->available = 1;
+    return 1;
+}
+
+
+/* Publish ring metadata only after a successful pointer-free transfer. */
+static int publish_channel_buffer(void *argument)
+{
+    ChannelReservation *reservation = argument;
+    Channel *channel = reservation->read.channel;
+    if (reservation->receive)
+        channel->front = reservation->next_front;
+    channel->size = reservation->next_size;
     return 1;
 }
 
@@ -555,12 +572,14 @@ static int reserve_channel_buffer(void *argument)
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int cgetb(Channel *channel, void *destination)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0};
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0};
     int completed;
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
     completed = kprotect(channelread, &reservation.read);
+    if (completed && reservation.publish_after_move)
+        dvm_runtime_channel_queue_guard(publish_channel_buffer, &reservation);
     destroy(reservation.read.array);
     if (!completed)
         krethrow();
@@ -568,19 +587,10 @@ static int cgetb(Channel *channel, void *destination)
 }
 
 
-/* Publish the occupied slot only after a successful pointer-free transfer. */
-static int publish_channel_send(void *argument)
-{
-    ChannelReservation *reservation = argument;
-    reservation->read.channel->size = reservation->next_size;
-    return 1;
-}
-
-
 /* Capture send geometry under the mutex and transfer outside it. */
 static int cputb(Channel *channel, void *source)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
@@ -589,7 +599,7 @@ static int cputb(Channel *channel, void *source)
     DVM_R.d = reservation.read.slot;
     channel->mover();
     if (reservation.publish_after_move)
-        dvm_runtime_channel_queue_guard(publish_channel_send, &reservation);
+        dvm_runtime_channel_queue_guard(publish_channel_buffer, &reservation);
     return 1;
 }
 

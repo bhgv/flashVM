@@ -689,10 +689,8 @@ static void staged_refill_move(void)
     extern void dvm_runtime_channel_queue_guard(int (*)(void *), void *);
     dvm_runtime_channel_queue_guard(confirm_unlocked_reservation, NULL);
     refill_moves++;
-    if (refill_moves == 2)
-    {
-        check(refill_observed_channel->size == 0, "refill is not visible before mover completes");
-    }
+    check(refill_observed_channel->size == (refill_moves == 1 ? 1 : 0),
+        "ring occupancy is unchanged until the current mover completes");
     if (refill_moves == refill_fail_at)
     {
         error("fixture buffered transfer failure");
@@ -743,7 +741,13 @@ static void buffered_channel_completion(void)
         check(received == (stage == 1 ? -1 : buffered), "receive retains completed read");
         if (refill_fail_at)
         {
-            check(channel->size == 0, "failed transfer leaves no readable slot");
+            check(channel->size == (stage == 1 ? 1 : 0),
+                "failed read retains its slot and failed refill publishes none");
+            if (stage == 1)
+            {
+                memmove(&slot, channel->buf->data, sizeof(slot));
+                check(slot == buffered, "failed read preserves the buffered word");
+            }
             check(!waiter.process.chan && waiter.process.kill &&
                 !strcmp(waiter.process.kill, "channel transfer failed") &&
                 strstr(getup()->env->errstr, "fixture buffered transfer failure"),
@@ -759,6 +763,16 @@ static void buffered_channel_completion(void)
                 check(strstr(getup()->env->errstr, "fixture channel release failure") != NULL,
                     "receiver observes release failure after successful refill");
             }
+        }
+        if (stage == 1)
+        {
+            refill_moves = 0;
+            refill_fail_at = 0;
+            registers->s = &channel;
+            registers->d = &received;
+            check(kprotect(direct_channel_transfer, &receive) && refill_moves == 1 &&
+                received == buffered && channel->size == 0,
+                "retry receives the preserved buffered word");
         }
     }
     *registers = saved;

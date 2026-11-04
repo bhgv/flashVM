@@ -512,3 +512,9 @@ No matched timing is recorded.
 
 Hosted C sends with a pointer-free element acquire the queue mutex again
 to publish occupancy after copying. No matched timing is recorded.
+
+## CHANBUFFERREADPUBLISH-122
+
+Hosted C receives of pointer-free elements acquire the queue mutex again
+to publish the head and occupancy after a successful mover. No matched
+timing is recorded.
