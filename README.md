@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1805**. [Русская версия](README.ru.md).
+Development version: **0.1806**. [Русская версия](README.ru.md).
 
-Current series: [v0.1805](docs/releases/v0.1805.md): independent wire-derived Dis64 call roles, initialization, result and checked-LEA validation.
+Current series: [v0.1806](docs/releases/v0.1806.md): atomic preallocated root-group replacement with native publisher/scanner and actual managed GC evidence.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

@@ -1,0 +1,46 @@
+{
+  "scope": "native metadata loop only; equivalent atomic orders; no old-release/VM baseline",
+  "occurrences": 128,
+  "steps": 12000,
+  "samples_after_warmup": 3,
+  "backends": {
+    "native": {
+      "seconds": {
+        "forward": 0.110665902,
+        "reverse": 0.006714688
+      },
+      "samples": {
+        "forward": [
+          0.110665902,
+          0.107046834,
+          0.117524587
+        ],
+        "reverse": [
+          0.006493325,
+          0.006714688,
+          0.006870973
+        ]
+      },
+      "reverse_over_forward": 0.06067531081073193
+    },
+    "locked": {
+      "seconds": {
+        "forward": 0.114079031,
+        "reverse": 0.008183073
+      },
+      "samples": {
+        "forward": [
+          0.105379338,
+          0.114079031,
+          0.122867743
+        ],
+        "reverse": [
+          0.010052267,
+          0.008183073,
+          0.007583849
+        ]
+      },
+      "reverse_over_forward": 0.07173161384934976
+    }
+  }
+}

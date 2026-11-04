@@ -23,6 +23,20 @@ DVM_RootBatch *dvm_runtime_root_batch_create(size_t capacity);
 int dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *keys, size_t count);
 
 
+/* Replace the complete active group in one registry-mutex interval. new_count
+ * <= capacity, including zero; every nonempty key must be nonnull. Validate all
+ * inputs before mutation. Return1 on success,0 unchanged on NULL/inactive/invalid
+ * vector. Old sparse occurrences are discarded; new indices follow the new vector.
+ * Caller exclusively owns the batch, independently keeps old/new referents and
+ * strong owners alive through return, and supplies stable disjoint key storage.
+ * No allocation/free, retain/release, payload read or callback. Mutex may wait.
+ * New keys inherit publish lifetime obligations until withdrawn; old retirement
+ * still needs caller GC/collector-lifetime exclusion after return.
+ * This closes only registry visibility gaps; hosted use still needs ACTIVE/
+ * stopped-world publication exclusion, correct lock order and GC epochs. */
+int dvm_runtime_root_batch_replace(DVM_RootBatch *batch, void *const *keys, size_t new_count);
+
+
 /* Withdraw one occurrence by its original published vector index. No allocation,
  * referent access or callback. Caller holds independent owner until its consuming
  * destructor; remaining occurrences stay rooted. Duplicate/invalid indices refuse

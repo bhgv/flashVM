@@ -99,6 +99,52 @@ static void unlink_entry(DVM_RootBatch *batch, RootEntry *entry)
 }
 
 
+/* [PERF ROOTREPLACE-107] Equivalent atomic withdrawal orders are measured in
+ * PERFORMANCE-COSTS.md; no old-release/whole-VM baseline is claimed.
+ * [GC:] batch is an exclusively owned active reservation; keys/new_count borrow
+ * a stable vector and independently live old/new referents. Return0 before any
+ * mutation for malformed input; otherwise replace all sparse/duplicate/empty
+ * occurrences under ONE visitor exclusion interval. No allocation, owner/root
+ * callback, managed payload access or destructor. Mutex keeps its wait policy;
+ * root visibility is not a concurrent collector or referent-lifetime grant. */
+int dvm_runtime_root_batch_replace(DVM_RootBatch *batch, void *const *keys, size_t new_count)
+{
+    size_t position;
+    if (!batch || !batch->active || new_count > batch->capacity || (new_count && !keys))
+    {
+        return 0;
+    }
+    for (position = 0; position < new_count; position++)
+    {
+        if (!keys[position])
+        {
+            return 0;
+        }
+    }
+    fvm_port_sync_lock(batch->mutex);
+    for (position = batch->count; position > 0; position--)
+    {
+        RootEntry *node = &batch->entries[position-1];
+        if (node->key)
+        {
+            unlink_entry(batch, node);
+        }
+    }
+    for (position = 0; position < new_count; position++)
+    {
+        RootEntry *node = &batch->entries[position];
+        RootEntry **bucket = dvm_root_registry_bucket(keys[position]);
+        node->key = keys[position];
+        node->batch = batch;
+        node->next = *bucket;
+        *bucket = node;
+    }
+    batch->count = new_count;
+    fvm_port_sync_unlock(batch->mutex);
+    return 1;
+}
+
+
 /* Remove this occurrence before invoking its consuming destructor. Remaining
  * group roots stay visible; slot numbering is stable through final clear. */
 int dvm_runtime_root_batch_remove(DVM_RootBatch *batch, size_t index)
