@@ -604,6 +604,51 @@ static void buffered_channel_completion(void)
 }
 
 
+/* Refuse an ALT result only after SEND has removed both registrations. */
+static void alt_publication_failure(void)
+{
+    Prog *prior = dvm_runqueue_head();
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    DVM_RuntimeProcess waiter = {0};
+    Alt *guards = calloc(1, offsetof(Alt, ac) + 2*sizeof(Altc));
+    Channel *selected = H;
+    Channel *sibling = H;
+    WORD payload = 47;
+    WORD untouched = 61;
+    int receive = 0;
+    check(guards && prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
+        "withdraw startup process for ALT publication probe");
+    selected = dvm_runtime_channel_new(&selected, NULL, 0, failing_channel_move, 0);
+    sibling = dvm_runtime_channel_new(&sibling, NULL, 0, failing_channel_move, 0);
+    guards->nrecv = 2;
+    guards->ac[0].c = selected;
+    guards->ac[0].ptr = &untouched;
+    guards->ac[1].c = sibling;
+    guards->ac[1].ptr = &untouched;
+    waiter.process.state = Palt;
+    waiter.process.R.s = guards;
+    waiter.process.R.d = H;
+    cqadd(&selected->recv, &waiter.process);
+    cqadd(&sibling->recv, &waiter.process);
+    registers->s = &payload;
+    registers->d = &selected;
+    check(!kprotect(direct_channel_transfer, &receive) &&
+        !strcmp(getup()->env->errstr, exBounds), "initiator observes ALT bounds error");
+    check(!selected->recv->prog && !sibling->recv->prog && untouched == 61 &&
+        !waiter.process.ptr && waiter.process.kill &&
+        !strcmp(waiter.process.kill, "channel transfer failed") &&
+        dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
+        "ALT failure removes both registrations and wakes once");
+    *registers = saved;
+    check(dvm_runqueue_append(prior), "restore startup process");
+    free(guards);
+    destroy(sibling);
+    destroy(selected);
+    puts("PASS detached ALT publication failure");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -645,6 +690,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     channel_drain_case();
     direct_channel_failure();
     buffered_channel_completion();
+    alt_publication_failure();
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);

@@ -136,3 +136,38 @@ static void channel_move_or_wake_error(Channel *channel, Prog *peer)
 }
 
 """
+
+
+def adapt_alt_completion(source):
+    """Fail the detached waiter if publishing its selection is refused."""
+    predicate = "slot == nil || slot == H || (uintptr)slot > (uintptr)-1-sizeof(WORD)"
+    anchor = "static void\naltresult(void *slot)"
+    old = ("\t\taltresult(selected.result);\n\t\tif(selected.array){\n"
+           "\t\t\taltresult(selected.tuple);")
+    if (source.count(anchor) != 1 or source.count(predicate) != 1
+            or source.count(old) != 1):
+        raise ValueError("ALT publication boundary drift")
+    source = source.replace(predicate, "!altresultvalid(slot)", 1)
+    source = source.replace(anchor, ALT_RESULT_VALID.replace("PREDICATE", predicate) + anchor, 1)
+    return source.replace(old, """        /* Cancellation above has removed every registration. Only now
+         * may a failed publication return the peer to the scheduler. */
+        if (!altresultvalid(selected.result) ||
+            (selected.array && !altresultvalid(selected.tuple)))
+        {
+            dvm_runtime_channel_fail_peer(p);
+            error(exBounds);
+        }
+        if (selected.array) {""", 1)
+
+
+ALT_RESULT_VALID = r"""
+extern void dvm_runtime_channel_fail_peer(Prog *peer);
+
+/* Apply one geometry check to immediate and detached selection results. */
+static int altresultvalid(void *slot)
+{
+    return !(PREDICATE);
+}
+
+
+"""
