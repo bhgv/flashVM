@@ -673,10 +673,20 @@ void __wrap_destroy(void *value)
 }
 
 
+/* The mover can reenter the queue mutex because reservation has finished. */
+static int confirm_unlocked_reservation(void *unused)
+{
+    (void)unused;
+    return 1;
+}
+
+
 /* Move a full native word or fail at the chosen stage before copying it. */
 static void staged_refill_move(void)
 {
     REG *registers = dvm_native_registers();
+    extern void dvm_runtime_channel_queue_guard(int (*)(void *), void *);
+    dvm_runtime_channel_queue_guard(confirm_unlocked_reservation, NULL);
     if (++refill_moves == refill_fail_at)
     {
         error("fixture buffered transfer failure");

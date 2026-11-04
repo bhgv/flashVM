@@ -489,3 +489,93 @@ void cqdelp(Progq **queue, Prog *peer)
 
 
 """
+
+
+def adapt_buffer_reservation(source):
+    """Protect ring geometry and reservation while keeping movers unlocked."""
+    start = source.index("static int\ncgetb(Channel *c, void *v)\n{")
+    end = source.index("/* Reject payload aliases", start)
+    body = source[start:end]
+    for required in ("dvm_runtime_heap_retain(&h->ref);", "c->front = buffer.front;",
+                     "c->size = buffer.size;", "kprotect(channelread, &read);",
+                     "DVM_R.d = buffer.slot;", "c->mover();"):
+        if required not in body:
+            raise ValueError("channel buffer reservation drift: " + required)
+    return source[:start] + BUFFER_RESERVATION + source[end:]
+
+
+BUFFER_RESERVATION = r"""
+extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
+
+typedef struct ChannelReservation
+{
+    ChannelRead read; /* Receive retains the array through its mover. */
+    int receive;
+    int available;
+} ChannelReservation;
+
+
+/* Check the ring and publish its existing next state before calling a mover.
+ * NativeWorld still prevents another transfer from reusing the reserved slot. */
+static int reserve_channel_buffer(void *argument)
+{
+    ChannelReservation *reservation = argument;
+    ChannelRead *read = &reservation->read;
+    Channel *channel = read->channel;
+    ChannelBuffer buffer;
+    int status = channelbuffer(channel, reservation->receive, 0, &buffer);
+    if (status < 0)
+        error(buffer.error);
+    if (!status)
+        return 1;
+    if (buffer.width && !channelspan(read->destination, buffer.width))
+        error(read->destination == nil || read->destination == H ? exNilref : exBounds);
+    if (reservation->receive)
+    {
+        Heap *header = D2H(buffer.array);
+        ulong refs = dvm_refcount_load_u(&header->ref);
+        if (!refs || refs == (ulong)-1)
+            error(exHeap);
+        dvm_runtime_heap_retain(&header->ref);
+        read->array = buffer.array;
+        channel->front = buffer.front;
+    }
+    read->slot = buffer.slot;
+    channel->size = buffer.size;
+    reservation->available = 1;
+    return 1;
+}
+
+
+/* Keep the receive array live through the mover and its mapped cleanup. */
+static int cgetb(Channel *channel, void *destination)
+{
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0};
+    int completed;
+    dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
+    if (!reservation.available)
+        return 0;
+    completed = kprotect(channelread, &reservation.read);
+    destroy(reservation.read.array);
+    if (!completed)
+        krethrow();
+    return 1;
+}
+
+
+/* Capture send geometry under the mutex and transfer outside it. */
+static int cputb(Channel *channel, void *source)
+{
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0};
+    dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
+    if (!reservation.available)
+        return 0;
+    DVM_R.s = source;
+    DVM_R.m = &channel->mid;
+    DVM_R.d = reservation.read.slot;
+    channel->mover();
+    return 1;
+}
+
+
+"""

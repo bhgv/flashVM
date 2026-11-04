@@ -501,3 +501,9 @@ registrations. No matched timing is recorded.
 Hosted SEND and RECV take the queue mutex for readiness and head reads.
 Close holds it through preflight, claims and detachment, with wakeups
 outside the lock. No matched timing is recorded.
+
+## CHANBUFFERLOCK-122
+
+Hosted C buffered transfers lock ring validation and reservation, with
+movers outside the lock. Measure against equivalent C and JIT profiles.
+No matched timing is recorded.
