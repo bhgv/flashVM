@@ -581,6 +581,9 @@ void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
 }
 
 
+extern void dvm_runtime_altgone_claimed(Prog *peer);
+
+
 /* Wake one detached waiter while the scheduler still owns its Prog. */
 static int wake_closed_channel(void *argument)
 {
@@ -592,7 +595,7 @@ static int wake_closed_channel(void *argument)
         dvm_runtime_channel_wake(process, "channel hangup");
         break;
     case Palt:
-        altgone(process);
+        dvm_runtime_altgone_claimed(process);
         break;
     case Prelease:
         error("foreign C channel waiter is not supported by this host");

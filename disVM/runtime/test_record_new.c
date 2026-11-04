@@ -726,6 +726,14 @@ static void buffered_channel_completion(void)
 }
 
 
+/* Invoke the hosted external ALT cancellation in a VM error checkpoint. */
+static int cancel_external_alt(void *argument)
+{
+    altgone(argument);
+    return 1;
+}
+
+
 /* Refuse an ALT result only after SEND has removed both registrations. */
 static void alt_publication_failure(void)
 {
@@ -778,6 +786,24 @@ static void alt_publication_failure(void)
         !strcmp(waiter.process.kill, "channel transfer failed") &&
         dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
         "ALT failure removes both registrations and wakes once");
+    waiter.process.state = Palt;
+    waiter.process.kill = NULL;
+    cqadd(&selected->recv, &waiter.process);
+    cqadd(&sibling->recv, &waiter.process);
+    sibling->recv->next = sibling->recv;
+    check(!kprotect(cancel_external_alt, &waiter.process) &&
+        !strcmp(getup()->env->errstr, exHeap) && !waiter.channel_claimed &&
+        waiter.lifetime_holds == 2 && selected->recv->prog == &waiter.process &&
+        sibling->recv->prog == &waiter.process && !dvm_runqueue_head(),
+        "external ALT cancellation refuses before removing either registration");
+    sibling->recv->next = NULL;
+    check(kprotect(cancel_external_alt, &waiter.process) &&
+        kprotect(cancel_external_alt, &waiter.process) &&
+        !waiter.channel_claimed && !waiter.lifetime_holds &&
+        !selected->recv->prog && !sibling->recv->prog &&
+        waiter.process.kill && !strcmp(waiter.process.kill, "alt channel hungup") &&
+        dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
+        "external ALT cancellation releases both holds and wakes once");
     *registers = saved;
     check(dvm_runqueue_append(prior), "restore startup process");
     free(guards);

@@ -257,7 +257,11 @@ def adapt_alt_preflight(source):
     if source.count(anchor) != 1:
         raise ValueError("ALT traversal declaration drift")
     source = source.replace(anchor, ALT_GUARD_CHECK + anchor, 1)
-    return source + ALT_PREFLIGHT
+    anchor = "void\naltgone(Prog *p)"
+    if source.count(anchor) != 1:
+        raise ValueError("ALT cancellation entry drift")
+    source = source.replace(anchor, "void\ndvm_runtime_altgone_claimed(Prog *p)", 1)
+    return source + ALT_PREFLIGHT + ALT_EXTERNAL_CANCEL
 
 
 ALT_GUARD_CHECK = r"""
@@ -356,3 +360,30 @@ def adapt_queue_holds(source):
     declarations = ("extern int dvm_runqueue_pin(Prog *process);\n"
                     "extern void dvm_runqueue_unpin(Prog *process);\n\n")
     return source[:start] + declarations + body + source[end:]
+
+
+
+ALT_EXTERNAL_CANCEL = r"""
+
+extern void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request);
+
+/* External cancellation keeps every registration intact on preflight failure. */
+static int cancel_claimed_alt(void *argument)
+{
+    Prog *peer = argument;
+    dvm_runtime_alt_preflight(peer->R.s);
+    dvm_runtime_altgone_claimed(peer);
+    return 1;
+}
+
+
+/* Acquire the same completion claim as SEND and RECV. The scheduler owns
+ * the input Prog and NativeWorld protects the queues through cancellation. */
+void altgone(Prog *peer)
+{
+    if (peer->state == Palt)
+    {
+        dvm_runtime_channel_with_claim(peer, cancel_claimed_alt, peer);
+    }
+}
+"""
