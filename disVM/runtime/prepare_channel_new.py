@@ -359,7 +359,14 @@ def adapt_queue_holds(source):
         body = body.replace(old, new, 1)
     declarations = ("extern int dvm_runqueue_pin(Prog *process);\n"
                     "extern void dvm_runqueue_unpin(Prog *process);\n\n")
-    return source[:start] + declarations + body + source[end:]
+    for name, parameters in (("cqadd", "Progq **q, Prog *p"),
+                             ("cqdel", "Progq **q"),
+                             ("cqdelp", "Progq **q, Prog *p")):
+        signature = f"void\n{name}({parameters})"
+        if body.count(signature) != 1:
+            raise ValueError("channel queue wrapper drift: " + name)
+        body = body.replace(signature, f"static void\n{name}_locked({parameters})", 1)
+    return source[:start] + declarations + body + QUEUE_WRAPPERS + source[end:]
 
 
 
@@ -386,4 +393,58 @@ void altgone(Prog *peer)
         dvm_runtime_channel_with_claim(peer, cancel_claimed_alt, peer);
     }
 }
+"""
+
+
+
+QUEUE_WRAPPERS = r"""
+extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
+
+typedef struct ChannelQueueRequest
+{
+    Progq **queue; /* Live queue owner cell. */
+    Prog *peer; /* Live input for registration or cancellation. */
+} ChannelQueueRequest;
+
+
+/* These callbacks only inspect and mutate queue nodes and their native holds. */
+static int queue_add(void *argument)
+{
+    ChannelQueueRequest *request = argument;
+    cqadd_locked(request->queue, request->peer);
+    return 1;
+}
+
+static int queue_delete(void *argument)
+{
+    cqdel_locked(argument);
+    return 1;
+}
+
+static int queue_delete_peer(void *argument)
+{
+    ChannelQueueRequest *request = argument;
+    cqdelp_locked(request->queue, request->peer);
+    return 1;
+}
+
+
+void cqadd(Progq **queue, Prog *peer)
+{
+    ChannelQueueRequest request = {queue, peer};
+    dvm_runtime_channel_queue_guard(queue_add, &request);
+}
+
+void cqdel(Progq **queue)
+{
+    dvm_runtime_channel_queue_guard(queue_delete, queue);
+}
+
+void cqdelp(Progq **queue, Prog *peer)
+{
+    ChannelQueueRequest request = {queue, peer};
+    dvm_runtime_channel_queue_guard(queue_delete_peer, &request);
+}
+
+
 """

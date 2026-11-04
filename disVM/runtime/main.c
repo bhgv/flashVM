@@ -24,6 +24,7 @@
 #include "shared_bytes.h"
 #include "runqueue.h"
 #include "queue_probe.h"
+#include "channel_sync.h"
 #include "managed_owner_probe.h"
 #include "managed_workers.h"
 #include "process_environment.h"
@@ -337,10 +338,28 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
 
+static FVM_PortSync *channel_queue_mutex; /* Lives for the hosted runtime. */
+
+
+/* Serialize short queue operations and unlock before propagating a VM error. */
+void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument)
+{
+    int completed;
+    fvm_port_sync_lock(channel_queue_mutex);
+    completed = kprotect(operation, argument);
+    fvm_port_sync_unlock(channel_queue_mutex);
+    if (!completed)
+    {
+        krethrow();
+    }
+}
+
+
 /* Create arena/mutex privately; VM allocation errors occur outside pool lock. */
 static void arena_init(void)
 {
-    if (!dvm_heap_pool_init(&memory, ARENA_BYTES))
+    channel_queue_mutex = fvm_port_sync_create();
+    if (!channel_queue_mutex || !dvm_heap_pool_init(&memory, ARENA_BYTES))
     {
         error(exNomem);
     }

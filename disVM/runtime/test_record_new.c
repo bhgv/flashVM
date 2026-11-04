@@ -408,6 +408,22 @@ static int close_waiters(void *argument)
 }
 
 
+typedef struct QueueAddProbe
+{
+    Progq **queue;
+    Prog *peer;
+} QueueAddProbe;
+
+
+/* Enter the real guarded registration boundary under a VM checkpoint. */
+static int probe_queue_add(void *argument)
+{
+    QueueAddProbe *probe = argument;
+    cqadd(probe->queue, probe->peer);
+    return 1;
+}
+
+
 /* One foreign waiter raises. ALT cancellation must still remove a sibling
  * registration and wake exactly once, followed by the ordinary sender. */
 static void channel_drain_case(void)
@@ -428,6 +444,14 @@ static void channel_drain_case(void)
     guards->ac[1].c = sibling;
     alternative.process.R.s = guards;
     cqadd(&closed->send, &foreign.process);
+    {
+        QueueAddProbe probe = {&closed->send, &alternative.process};
+        closed->send->next = closed->send;
+        check(!kprotect(probe_queue_add, &probe) && !alternative.lifetime_holds,
+            "malformed registration leaves its hold unpublished");
+        closed->send->next = NULL;
+        /* The next registration below must acquire the same mutex. */
+    }
     cqadd(&closed->send, &alternative.process);
     cqadd(&closed->send, &alternative.process);
     cqadd(&closed->send, &sender.process);
