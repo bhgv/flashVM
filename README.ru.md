@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1801**. [English](README.md).
+Версия разработки: **0.1802**. [English](README.md).
 
-Текущая серия: [v0.1801](docs/releases/v0.1801.md): непрерывная защита цепочек списка и LENL без временных корней и выделений.
+Текущая серия: [v0.1802](docs/releases/v0.1802.md): непрерывная защита String.len и длины ASCII/Rune-строк без временных корней и выделений.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

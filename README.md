@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1801**. [Русская версия](README.ru.md).
+Development version: **0.1802**. [Русская версия](README.ru.md).
 
-Current series: [v0.1801](docs/releases/v0.1801.md): continuous list-link exclusion and allocation-free native list lengths.
+Current series: [v0.1802](docs/releases/v0.1802.md): continuous signed int field protection and allocation-free ASCII/Rune string lengths.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

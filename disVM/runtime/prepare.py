@@ -27,6 +27,7 @@ from prepare_shared_list_pointer import adapt as adapt_shared_list_pointer
 from prepare_shared_shift import adapt as adapt_shared_shift
 from prepare_shared_branch import adapt as adapt_shared_branch
 from prepare_shared_array_length import adapt as adapt_shared_array_length
+from prepare_shared_string_length import adapt as adapt_shared_string_length
 from prepare_shared_list_length import adapt as adapt_shared_list_length
 from prepare_shared_arithmetic import adapt as adapt_shared_arithmetic
 from prepare_shared_integer import adapt as adapt_shared_integer
@@ -262,7 +263,7 @@ def main():
             part = relative_replace(part, 'result = slicer((ulong)start, (ulong)end, old);',
                 'if(old == H) dvm_relative_bounds(0, &start, &end);\n\tresult = slicer((ulong)start, (ulong)end, old);', 1)
             code = code[:start] + part + code[finish:]
-        path.write_text(adapt_string(code) if filename == "string.c" else code)
+        path.write_text(adapt_shared_string_length(adapt_string(code)) if filename == "string.c" else code)
     path = args.output / "load.c"
     code = path.read_text().replace("*(WORD*)si = disw(isp);", "*(WORD*)si = (int)disw(isp);")
     path.write_text(adapt_load(code))
