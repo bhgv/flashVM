@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.104.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.105.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -470,3 +470,9 @@ while adding the signed int length field. ASCII/Rune normalization, H/NULL and
 INT_MIN semantics stay exact; no temporary root/allocation is introduced.
 Caller root/referent lifetime and NativeWorld remain required. See the
 [commented Limbo example](../examples/guarded-string-length/README.md).
+
+Runtime0.105: [six guarded string branches](STRING-BRANCHES.md) retain both
+source cells, validated len/max fields and common-prefix payloads through
+conditional PC publication. Signed32 Rune ordering and lazy targets remain exact.
+No temporary owner/root/allocation is introduced. NativeWorld remains required;
+string builders and mutations need their own compatible protocols.

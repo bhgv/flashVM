@@ -9,6 +9,12 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void beqc(void); /* Actual guarded string branch. */
+extern void bnec(void); /* Actual guarded string branch. */
+extern void bltc(void); /* Actual guarded string branch. */
+extern void blec(void); /* Actual guarded string branch. */
+extern void bgtc(void); /* Actual guarded string branch. */
+extern void bgec(void); /* Actual guarded string branch. */
 extern void lenl(void); /* Actual guarded list length opcode. */
 extern void lenc(void); /* Existing string-length entry. */
 extern void lena(void); /* Actual guarded array length opcode. */
@@ -91,6 +97,24 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case IBEQC:
+        beqc();
+        break;
+    case IBNEC:
+        bnec();
+        break;
+    case IBLTC:
+        bltc();
+        break;
+    case IBLEC:
+        blec();
+        break;
+    case IBGTC:
+        bgtc();
+        break;
+    case IBGEC:
+        bgec();
+        break;
     case ILENL:
         lenl();
         break;
