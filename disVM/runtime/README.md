@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.107.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.108.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -487,3 +487,7 @@ registry remove/publish visibility gap with preallocated metadata and no callbac
 or owner transfer. Independent referent/epoch/lock-order requirements remain;
 NativeWorld still serializes general managed execution. A commented native C
 example and native/actual-GC diagnostics are included in the installed SDK.
+
+Runtime0.108: [four guarded REAL arithmetic operations](REAL-ARITHMETIC.md).
+Coherent input capture ends before native FP; output publishes in a later
+interval. This is not atomic shared RMW. NativeWorld remains required.

@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1806**. [English](README.md).
+Версия разработки: **0.1807**. [English](README.md).
 
-Текущая серия: [v0.1806](docs/releases/v0.1806.md): атомарная замена групп корней без окна публикации, native-потоки и настоящие GC-проверки.
+Текущая серия: [v0.1807](docs/releases/v0.1807.md): защищённая двухфазная арифметика REAL и четыре настоящих C-tail x64.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

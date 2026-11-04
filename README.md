@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1806**. [Русская версия](README.ru.md).
+Development version: **0.1807**. [Русская версия](README.ru.md).
 
-Current series: [v0.1806](docs/releases/v0.1806.md): atomic preallocated root-group replacement with native publisher/scanner and actual managed GC evidence.
+Current series: [v0.1807](docs/releases/v0.1807.md): two-phase guarded REAL arithmetic and four actual x64 C tails.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 
