@@ -36,7 +36,8 @@ int dvm_runqueue_claim(Prog *process)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     if (!context || !process || head != process || process->state != Pready ||
-        !runtime_process(process)->queued || runtime_process(process)->native_owner ||
+        !runtime_process(process)->queued || runtime_process(process)->channel_claimed ||
+        runtime_process(process)->native_owner ||
         runtime_process(process)->dispatch_owner || dvm_native_context_process(context) ||
         active == DVM_RUNTIME_PROCESS_MAX)
     {
@@ -177,6 +178,7 @@ Prog *dvm_runqueue_pop(int state)
 {
     Prog *process = head;
     if (!process || !count || !runtime_process(process)->queued ||
+        runtime_process(process)->channel_claimed ||
         (runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
         runtime_process(process)->native_owner || process->state != Pready ||

@@ -519,6 +519,11 @@ static void channel_finalize_case(void)
         dvm_runqueue_head() == &receiver.process &&
         !receiver.channel_claimed && !receiver.process.ptr && !receiver.process.chan,
         "finalizer drains both queues and releases descriptor on wake error");
+    receiver.channel_claimed = &receiver;
+    check(!dvm_runqueue_claim(&receiver.process) && !dvm_runqueue_pop(Psend) &&
+        dvm_runqueue_head() == &receiver.process && receiver.process.state == Pready,
+        "live channel claim blocks dispatch and queue removal");
+    receiver.channel_claimed = NULL;
     check(!kprotect(repeat_channel_wake, &receiver.process) &&
         !strcmp(getup()->env->errstr, "invalid channel waiter state") &&
         !strcmp(receiver.process.kill, "channel hangup") &&

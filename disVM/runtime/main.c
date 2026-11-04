@@ -1170,9 +1170,9 @@ static int runtime_dispatch_turn(void)
             up->prog = nil;
             return -1;
         }
-        if (dvm_runqueue_owner(process))
+        if (dvm_runqueue_owner(process) || ((DVM_RuntimeProcess *)process)->channel_claimed)
         {
-            error("cannot retire a native continuation");
+            error("cannot retire a process with a live native or channel claim");
         }
         if (!dvm_runqueue_finish(process))
         {
