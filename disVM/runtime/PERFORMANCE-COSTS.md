@@ -518,3 +518,9 @@ to publish occupancy after copying. No matched timing is recorded.
 Hosted C receives of pointer-free elements acquire the queue mutex again
 to publish the head and occupancy after a successful mover. No matched
 timing is recorded.
+
+## CHANJITFALLBACK-122
+
+The guarded hosted profile routes SEND and RECV through C. Measure the
+cost against the direct pointer-free leaf using matched buffered traffic.
+No matched timing is recorded.

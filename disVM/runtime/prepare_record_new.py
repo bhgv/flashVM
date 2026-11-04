@@ -116,14 +116,14 @@ static void guarded_imported_record(void *source, void *index, void *destination
 
 
 def adapt_leaf(source):
-    """Use the checked C dispatch for guarded constructors on hosted leaf backends."""
+    """Use checked C dispatch for guarded allocation and channel transfers."""
     anchor = "leafop(LeafOp *p, int op, int wordbytes)\n{\n"
-    if source.count(anchor) != 1 or "Guarded allocation uses C" in source:
+    if source.count(anchor) != 1 or "Guarded allocation and channel transfers" in source:
         raise ValueError("record leaf classification drift")
-    selection = """    /* Guarded allocation uses C, including on an RC1 destination. */
+    selection = """    /* Guarded allocation and channel transfers use their C coordinators. */
     if (dvm_runtime_guarded_copies && (op == INEW || op == INEWZ || op == IMNEWZ || op == INEWA || op == INEWAZ ||
         op == INEWCB || op == INEWCW || op == INEWCL || op == INEWCF ||
-        op == INEWCP || op == INEWCM || op == INEWCMP))
+        op == INEWCP || op == INEWCM || op == INEWCMP || op == ISEND || op == IRECV))
     {
         return 0;
     }

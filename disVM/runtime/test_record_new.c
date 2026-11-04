@@ -66,8 +66,9 @@ void __wrap_dvm_runtime_record_new(void *slot, Type *type, int clear)
                 !jit->entry[INEWA] && !jit->entry[INEWAZ] &&
                 !jit->entry[INEWCB] && !jit->entry[INEWCW] && !jit->entry[INEWCL] &&
                 !jit->entry[INEWCF] && !jit->entry[INEWCP] &&
-                !jit->entry[INEWCM] && !jit->entry[INEWCMP],
-                "guarded record JIT uses checked dispatch");
+                !jit->entry[INEWCM] && !jit->entry[INEWCMP] &&
+                !jit->entry[ISEND] && !jit->entry[IRECV],
+                "guarded allocation and transfer JIT use checked dispatch");
             puts("PASS guarded record JIT cache");
         }
         puts("PASS record opcode route");
