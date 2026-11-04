@@ -446,3 +446,9 @@ recorded.
 The hosted direct send and receive paths add an error checkpoint around the
 mover after dequeue. Measure matched successful rendezvous latency with the
 same payload type and scheduler mode. No matched timing is recorded.
+
+## CHANREFILL-122
+
+Hosted buffered RECV with a queued sender protects the temporary channel
+release separately from the transfer. Measure a matched full-ring rendezvous
+with a waiting sender. No matched timing is recorded.

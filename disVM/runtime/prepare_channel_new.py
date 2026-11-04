@@ -84,7 +84,7 @@ def adapt(source):
 
 
 def adapt_wait_completion(source):
-    """Protect direct transfers after a peer and its ALT registrations are dequeued."""
+    """Finish direct and buffered transfers after dequeue and ALT cancellation."""
     anchor = "OP(isend)\n{"
     start = source.index(anchor)
     end = source.index("typedef struct CsendAlt", start)
@@ -96,11 +96,23 @@ def adapt_wait_completion(source):
         indent = "\t\t" if old.startswith("\t\t") else "\t"
         body = body.replace(old, indent + "channel_move_or_wake_error(c, p);" +
                             old[len(indent + "c->mover();"):], 1)
+    # The refill coordinator consumes the temporary channel retain and wakes
+    # the sender. The direct branch still completes its own wake.
+    old = ("\t\tok = kprotect(channelrefill, &refill);\n"
+           "\t\tdestroy(c);\n\t\tif(!ok)\n\t\t\tkrethrow();")
+    wake = "\t\tchannel_move_or_wake_error(c, p);\n\t}\n\taddrun(p);"
+    if body.count(old) != 1 or body.count(wake) != 1 or body.count("\tint ok;\n") != 1:
+        raise ValueError("buffered channel completion drift")
+    body = body.replace("\tint ok;\n", "", 1)
+    body = body.replace(old, "\t\tdvm_runtime_channel_finish_refill(c, p, channelrefill, &refill);", 1)
+    body = body.replace(wake, "\t\tchannel_move_or_wake_error(c, p);\n\t\taddrun(p);\n\t}", 1)
     return source[:start] + WAIT_COMPLETION + body + source[end:]
 
 
 WAIT_COMPLETION = r"""
 extern void dvm_runtime_channel_fail_peer(Prog *peer);
+extern void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
+    int (*refill)(void *), void *request);
 
 /* Invoke the selected mover inside the current owner's error frame. */
 static int channel_move(void *argument)

@@ -47,7 +47,7 @@ def main():
         subprocess.run([str(compiler), "-I", str(include), "-o", str(image), str(guest)], check=True)
         binary = relink(runtime, work, fixture, 0, [
             "dvm_runtime_root_registry_probe", "dvm_runtime_record_new", "dvm_runtime_heap_commit",
-            "dvm_runtime_array_new", "dvm_runtime_root_batch_publish"
+            "dvm_runtime_array_new", "dvm_runtime_root_batch_publish", "destroy"
         ])
         for mode in ("--no-jit", "--jit"):
             result = subprocess.run([
@@ -58,7 +58,7 @@ def main():
             if mode == "--jit" and "PASS guarded record JIT cache" not in output:
                 raise RuntimeError(output)
             if result.returncode or any(marker not in output for marker in (
-                "PASS direct channel mover failure", "PASS guarded channel drain", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
+                "PASS buffered channel completion", "PASS direct channel mover failure", "PASS guarded channel drain", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
     print("PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest")

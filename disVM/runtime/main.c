@@ -510,6 +510,44 @@ void dvm_runtime_channel_fail_peer(Prog *peer)
 }
 
 
+/* Consume the temporary channel owner inside a cleanup checkpoint. */
+static int release_refill_channel(void *argument)
+{
+    destroy(argument);
+    return 1;
+}
+
+
+/* Finish a buffered rendezvous under NativeWorld after ALT cancellation.
+ * A refill error is primary. A later release error still reaches the receiver
+ * but does not fail the sender if its payload was already transferred. */
+void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
+    int (*refill)(void *), void *request)
+{
+    char first_error[ERRMAX];
+    int transferred = kprotect(refill, request);
+    int released;
+    if (!transferred)
+    {
+        memmove(first_error, owner_error(), sizeof(first_error));
+    }
+    released = kprotect(release_refill_channel, channel);
+    if (transferred)
+    {
+        addrun(peer);
+    }
+    else
+    {
+        dvm_runtime_channel_fail_peer(peer);
+        error(first_error);
+    }
+    if (!released)
+    {
+        krethrow();
+    }
+}
+
+
 /* Wake one detached waiter while the scheduler still owns its Prog. */
 static int wake_closed_channel(void *argument)
 {

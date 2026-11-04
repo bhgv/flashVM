@@ -507,6 +507,103 @@ static void direct_channel_failure(void)
 }
 
 
+static int refill_moves; /* Counts actual read and refill mover calls. */
+static int refill_fail_at; /* Zero for success, one for read, two for refill. */
+static Channel *refill_release_failure; /* Inject only after the temporary channel retain is consumed. */
+
+void __real_destroy(void *value);
+
+
+/* Report a cleanup error after releasing the selected channel exactly once. */
+void __wrap_destroy(void *value)
+{
+    if (value && value == refill_release_failure)
+    {
+        refill_release_failure = NULL;
+        __real_destroy(value);
+        error("fixture channel release failure");
+    }
+    __real_destroy(value);
+}
+
+
+/* Move a full native word or fail at the chosen stage before copying it. */
+static void staged_refill_move(void)
+{
+    REG *registers = dvm_native_registers();
+    if (++refill_moves == refill_fail_at)
+    {
+        error("fixture buffered transfer failure");
+    }
+    memmove(registers->d, registers->s, sizeof(WORD));
+}
+
+
+/* Exercise real RECV with a full ring and a waiting sender. */
+static void buffered_channel_completion(void)
+{
+    Prog *prior = dvm_runqueue_head();
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    Channel *channel = H;
+    int receive = 1;
+    int stage;
+    check(prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
+        "withdraw startup process for buffered transfer probe");
+    for (stage = 0; stage <= 4; stage++)
+    {
+        DVM_RuntimeProcess waiter = {0};
+        WORD buffered = 17;
+        WORD pending = 31;
+        WORD received = -1;
+        WORD slot;
+        int ok;
+        channel = dvm_runtime_channel_new(&channel, &Tword, 1, staged_refill_move, 0);
+        memmove(channel->buf->data, &buffered, sizeof(buffered));
+        channel->size = 1;
+        waiter.process.state = Psend;
+        waiter.process.ptr = &pending;
+        waiter.process.chan = channel;
+        cqadd(&channel->send, &waiter.process);
+        refill_moves = 0;
+        refill_fail_at = stage == 4 ? 2 : stage == 3 ? 0 : stage;
+        refill_release_failure = stage >= 3 ? channel : NULL;
+        registers->s = &channel;
+        registers->d = &received;
+        ok = kprotect(direct_channel_transfer, &receive);
+        check(ok == (stage == 0) && refill_moves == (stage == 1 ? 1 : 2),
+            "buffered transfer reaches selected stage");
+        check(dvm_refcount_load_u(&D2H(channel)->ref) == 1 && !channel->send->prog &&
+            !waiter.process.ptr && dvm_runqueue_pop(Psend) == &waiter.process &&
+            !dvm_runqueue_head(), "buffered transfer consumes its hold and wakes once");
+        check(!refill_release_failure, "selected release failure was exercised");
+        check(received == (stage == 1 ? -1 : buffered), "receive retains completed read");
+        if (refill_fail_at)
+        {
+            check(!waiter.process.chan && waiter.process.kill &&
+                !strcmp(waiter.process.kill, "channel transfer failed") &&
+                strstr(getup()->env->errstr, "fixture buffered transfer failure"),
+                "buffered failure reaches sender and receiver");
+        }
+        else
+        {
+            memmove(&slot, channel->buf->data, sizeof(slot));
+            check(!waiter.process.kill && channel->size == 1 && slot == pending,
+                "successful refill publishes pending payload");
+            if (stage == 3)
+            {
+                check(strstr(getup()->env->errstr, "fixture channel release failure") != NULL,
+                    "receiver observes release failure after successful refill");
+            }
+        }
+    }
+    *registers = saved;
+    check(dvm_runqueue_append(prior), "restore startup process");
+    destroy(channel);
+    puts("PASS buffered channel completion");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -547,6 +644,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     channel_case();
     channel_drain_case();
     direct_channel_failure();
+    buffered_channel_completion();
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);
