@@ -12,6 +12,7 @@ from prepare_module_counts import adapt_link, adapt_load, adapt_xec
 from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
+from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
 from prepare_pointer_builder import adapt as adapt_pointer_builder
 from prepare_pointer_tail import adapt as adapt_pointer_tail
 from prepare_owner_tail import adapt as adapt_owner_tail
@@ -81,7 +82,7 @@ def main():
     layout_path = args.output / "leaf64-ops.h"
     layout_path.write_text(adapt_jit_counts(layout_path.read_text()))
     emitter_path = args.output / "amd64-emit.h"
-    emitter_path.write_text(adapt_bytes_tail(adapt_aggregate_tail(adapt_owner_tail(adapt_pointer_tail(emitter_path.read_text())))))
+    emitter_path.write_text(adapt_scalar_emitter(adapt_bytes_tail(adapt_aggregate_tail(adapt_owner_tail(adapt_pointer_tail(emitter_path.read_text()))))))
     for unit in ('loader', 'exception'):
         path = args.output / (unit+'.c')
         path.write_text(adapt_boundary_counts(path.read_text(), unit))
@@ -322,7 +323,7 @@ def main():
         )
     code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
     code = adapt_xec_observations(adapt_xec_snapshots(adapt_xec(adapt_opcode_counts(code))))
-    path.write_text(adapt_pointer_builder(code))
+    path.write_text(adapt_scalar_xec(adapt_pointer_builder(code)))
     path = args.output / "alt.c"
     code = path.read_text()
     code = code.replace(

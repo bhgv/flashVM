@@ -367,3 +367,13 @@ Stale требует finish/rebuild. Это перечень путей, а не
 NativeWorld сохраняется. Ни C-опкоды скалярных/raw cons, ни прямой scalar JIT
 пока не переключены: стоимость действующих опкодов этой серией не изменяется.
 Отдельный matched замер после их согласованного подключения ещё предстоит.
+
+## SCALARCONS-116 — подключены четыре scalar opcode, matched замер впереди
+
+v0.1815 / FLASHVM-0133. Selected CONSB/W/L/F добавляет source span capture,
+четыре native allocation для tail/candidate root groups, prepare/mark/commit и
+полное retirement. Stale требует finish, fresh tail hold и rebuild. В x64 прямой
+allocator/copy заменён tail JMP в общий C coordinator, без RX return PC.
+Это реальные дополнительные пути, пока без matched исторического измерения;
+проценты CONSP-114 к ним не переносим. Unselected/inline opcode bodies сохранены.
+Нужно отдельно измерить группы allocator/guard/root/C-tail, не ослабляя протокол.

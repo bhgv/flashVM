@@ -287,3 +287,12 @@ value_prepare.c строит полностью укоренённый raw node 
 исключены. C-opcode и direct scalar JIT пока не переключены: их подключение
 требует общего capture/commit coordinator и отдельной проверки JIT tail entry.
 NativeWorld остаётся; эта стадия не добавляет параллельных mutator permissions.
+
+## runtime0.116: четыре scalar constructor подключены в C и x64
+
+CONSB/W/L/F при --guarded-copies используют scalar_cons.c: source snapshot под
+span guard, held tail, подготовка node, conditional commit и bounded stale retry.
+Выбранный x64 использует checked C tail JMP; прямой scalar allocator bypass
+сохранён только для unselected mode. CONSM/CONSMP пока отдельно. NativeWorld
+не снят; остались другие конструкторы, shared writes/address leases, GC epochs,
+каналы/планировщик и frame/module/code lifetime. Процент по opcode не считаем.

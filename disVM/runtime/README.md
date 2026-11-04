@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.115.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.116.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -527,3 +527,7 @@ Inline/unselected mode stays serialized; NativeWorld is still mandatory.
 Runtime0.115: [scalar/raw candidate preparation](VALUE-PREPARE.md) stages
 complete unmapped payloads before monitor/root handoff. No scalar/raw opcode or
 direct scalar JIT emitter is switched yet; NativeWorld remains required.
+
+Runtime0.116: [scalar CONSB/W/L/F integration](SCALAR-CONS.md) routes selected
+C and x64 profiles through capture/prepare/conditional commit and complete
+retirement. CONSM/CONSMP and general NativeWorld removal remain separate.

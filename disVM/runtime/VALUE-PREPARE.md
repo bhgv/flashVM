@@ -59,3 +59,7 @@ Compiler errors/crashes/timeouts/sanitizer reports are never control successes.
 C/JIT here does not claim compiled scalar-constructor integration. Native-C TSan
 and installed-source closure are separate checks; no ARM64/RV64/GUI or concurrent
 collector acceptance is implied. Known costs: [VALUEPREP-115](PERFORMANCE-COSTS.md).
+
+Runtime0.116 follow-up: [scalar C/JIT coordinator](SCALAR-CONS.md) now captures
+shared scalar operands before calling this API. Arbitrary raw/mapped record
+opcodes remain separate; the private-snapshot contract above is unchanged.
