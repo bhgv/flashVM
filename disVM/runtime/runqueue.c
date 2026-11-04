@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "runqueue.h"
+#include "disvm/refcount.h"
 #include "managed_workers.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,35 +32,58 @@ static DVM_RuntimeProcess *runtime_process(Prog *process)
 }
 
 
-/* Acquire a native borrow while the scheduler still owns the process. */
+/* Acquire a borrow from an independently live scheduler or queue reference. */
 int dvm_runqueue_pin(Prog *process)
 {
     DVM_RuntimeProcess *native = runtime_process(process);
-    if (!native || native->lifetime_holds == UINT_MAX)
+    int count;
+    if (!native)
     {
         return 0;
     }
-    native->lifetime_holds++;
+    do
+    {
+        count = dvm_refcount_load_i(&native->lifetime_holds);
+        if (count < 0 || count == INT_MAX)
+        {
+            return 0;
+        }
+    } while (!dvm_refcount_compare_i(&native->lifetime_holds, count, count+1));
     return 1;
 }
 
 
-/* Consume exactly one native borrow. Underflow is a runtime invariant error. */
+/* Consume one owned borrow. No access to the Prog follows a successful drop. */
 void dvm_runqueue_unpin(Prog *process)
 {
     DVM_RuntimeProcess *native = runtime_process(process);
-    if (!native || !native->lifetime_holds)
+    int count;
+    if (!native)
     {
         abort();
     }
-    native->lifetime_holds--;
+    do
+    {
+        count = dvm_refcount_load_i(&native->lifetime_holds);
+        if (count <= 0)
+        {
+            abort();
+        }
+    } while (!dvm_refcount_compare_i(&native->lifetime_holds, count, count-1));
 }
 
 
-/* The scheduler may retire the process only after all native borrows drain. */
-int dvm_runqueue_has_holds(Prog *process)
+/* Observe a live process. A negative count denotes closed admission. */
+int dvm_runqueue_hold_count(Prog *process)
 {
-    return process && runtime_process(process)->lifetime_holds != 0;
+    return dvm_refcount_load_i(&runtime_process(process)->lifetime_holds);
+}
+
+
+/* Seal admission exactly once before the scheduler dismantles the Prog. */
+int dvm_runqueue_begin_retire(Prog *process)
+{
+    return process && dvm_refcount_compare_i(&runtime_process(process)->lifetime_holds, 0, -1);
 }
 
 

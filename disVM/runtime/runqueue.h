@@ -12,7 +12,7 @@
 typedef struct DVM_RuntimeProcess
 {
     Prog process;                     /* Retained interpreter/GC-visible prefix. */
-    unsigned int lifetime_holds;      /* Native borrows acquired under the heap turn. */
+    int lifetime_holds;      /* Native borrows acquired under the heap turn. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     int queued;                       /* O(1) membership, changed only by this queue module. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
@@ -28,7 +28,8 @@ typedef struct DVM_RuntimeProcess
  * be released before that Prog can retire. The caller already owns its input. */
 int dvm_runqueue_pin(Prog *process);
 void dvm_runqueue_unpin(Prog *process);
-int dvm_runqueue_has_holds(Prog *process);
+int dvm_runqueue_hold_count(Prog *process);
+int dvm_runqueue_begin_retire(Prog *process);
 
 
 /* Claim only the runnable head on the currently bound, idle native context.

@@ -55,6 +55,9 @@ DVM_RefcountResult dvm_refcount_retain_i(int *counter);
 DVM_RefcountResult dvm_refcount_release_i(int *counter);
 
 
+/* Compare live native state, including zero and reserved sentinel values. */
+int dvm_refcount_compare_i(int *counter, int expected, int desired);
+
 /* Report implementation selection per native type. No parameters, ownership
  * transfer or allocation; returned static text is immutable for process life. */
 const char *dvm_refcount_backend(void);

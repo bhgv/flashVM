@@ -206,3 +206,23 @@ const char *dvm_refcount_backend(void)
     return "mixed";
 #endif
 }
+
+
+/* Compare an already-live native state word using the same portable backend. */
+int dvm_refcount_compare_i(int *counter, int expected, int desired)
+{
+#ifdef DVM_REFCOUNT_ATOMIC_I
+    return __atomic_compare_exchange_n(counter, &expected, desired, 0,
+        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+#else
+    int matched;
+    fvm_port_registry_lock();
+    matched = *counter == expected;
+    if (matched)
+    {
+        *counter = desired;
+    }
+    fvm_port_registry_unlock();
+    return matched;
+#endif
+}

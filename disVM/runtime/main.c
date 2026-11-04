@@ -622,7 +622,7 @@ static void check_close_claims(Progq *entry)
     {
         Prog *peer = entry->prog;
         if (hosted_channel_waiter(peer) && (((DVM_RuntimeProcess *)peer)->channel_claimed ||
-            ((DVM_RuntimeProcess *)peer)->lifetime_holds == UINT_MAX))
+            dvm_runqueue_hold_count(peer) == INT_MAX || dvm_runqueue_hold_count(peer) < 0))
         {
             error("channel waiter cannot be claimed");
         }
@@ -1186,8 +1186,8 @@ static int runtime_dispatch_turn(void)
             up->prog = nil;
             return -1;
         }
-        if (dvm_runqueue_owner(process) || dvm_runqueue_has_holds(process) ||
-            ((DVM_RuntimeProcess *)process)->channel_claimed)
+        if (dvm_runqueue_owner(process) || ((DVM_RuntimeProcess *)process)->channel_claimed ||
+            !dvm_runqueue_begin_retire(process))
         {
             error("cannot retire a process with a live native or channel claim");
         }

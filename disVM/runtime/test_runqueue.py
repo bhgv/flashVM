@@ -23,6 +23,7 @@ def main():
             command += ["-I"+str(include)]
         command += [str(runtime/"test_runqueue.c"),str(runtime/"runqueue.c"),
                     str(root/"disVM/host/native_context.c"),
+                    str(root/"disVM/host/refcount.c"),
                     str(root/"flashVM/ports/linux/thread.c"),
                     str(root/"flashVM/ports/linux/channel_sync.c"),"-o",str(work/"queue")]
         subprocess.run(command,check=True)

@@ -17,6 +17,7 @@
 #include "disvm/native_owner.h"
 #include "disvm/refcount.h"
 #include <stdio.h>
+#include <pthread.h>
 #include "pointer_builder.h"
 #include <stdlib.h>
 #include <string.h>
@@ -779,6 +780,61 @@ static void alt_publication_failure(void)
 }
 
 
+typedef struct ProgHoldRace
+{
+    DVM_RuntimeProcess process; /* Storage kept live by the fixture through join. */
+    pthread_barrier_t start;
+} ProgHoldRace;
+
+
+/* Workers touch the native hold word only. They never enter the managed heap. */
+static void *race_prog_hold(void *argument)
+{
+    ProgHoldRace *race = argument;
+    unsigned int iteration;
+    pthread_barrier_wait(&race->start);
+    for (iteration = 0; iteration < 10000; iteration++)
+    {
+        if (!dvm_runqueue_pin(&race->process.process))
+        {
+            break;
+        }
+        dvm_runqueue_unpin(&race->process.process);
+    }
+    return NULL;
+}
+
+
+/* A live hold rejects retirement. Once admission closes, it cannot reopen. */
+static void prog_hold_race(void)
+{
+    ProgHoldRace race = {0};
+    Prog *process = &race.process.process;
+    pthread_t workers[4];
+    unsigned int index;
+    int sealed;
+    check(dvm_runqueue_pin(process) && !dvm_runqueue_begin_retire(process),
+        "live Prog hold rejects retirement");
+    check(!pthread_barrier_init(&race.start, NULL, 5), "initialize Prog hold barrier");
+    for (index = 0; index < 4; index++)
+    {
+        check(!pthread_create(&workers[index], NULL, race_prog_hold, &race), "start Prog hold worker");
+    }
+    pthread_barrier_wait(&race.start);
+    dvm_runqueue_unpin(process);
+    sealed = dvm_runqueue_begin_retire(process);
+    for (index = 0; index < 4; index++)
+    {
+        check(!pthread_join(workers[index], NULL), "join Prog hold worker");
+    }
+    check((sealed || dvm_runqueue_begin_retire(process)) &&
+        !dvm_runqueue_pin(process) && !dvm_runqueue_begin_retire(process) &&
+        dvm_runqueue_hold_count(process) == -1, "closed Prog hold admission stays closed");
+    pthread_barrier_destroy(&race.start);
+    puts("PASS native Prog hold race");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -817,6 +873,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     imported_case(workers, 1);
     array_case(workers);
     channel_case();
+    prog_hold_race();
     channel_drain_case();
     channel_finalize_case();
     direct_channel_failure();
