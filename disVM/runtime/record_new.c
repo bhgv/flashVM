@@ -1,4 +1,4 @@
-/* Allocate a rooted record or array before exposing it to an allocation monitor. */
+/* Allocate a rooted record, array or channel before exposing it to an allocation monitor. */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -25,6 +25,11 @@ typedef struct AllocationTransaction
     Type *type; /* Live immutable record or element descriptor owned by caller. */
     WORD count; /* Array length after acheck, unused for records. */
     int array; /* Select the owning Array header. */
+    void (*mover)(void); /* Non-null for channels. */
+    WORD message_size; /* Raw mover geometry. */
+    Heap *private_array; /* Buffer before the channel owns a registered root. */
+    int channel_retained; /* Private Tchannel count. */
+    int mover_retained; /* Private mapped mover descriptor count. */
     int array_retained; /* Extra Tarray count before candidate handoff. */
     void *destination; /* Borrowed rooted owning slot. */
     int clear; /* NEWZ initializes scalar bytes, NEW leaves them unspecified. */
@@ -33,6 +38,7 @@ typedef struct AllocationTransaction
     int retained; /* Extra descriptor count before candidate handoff. */
     DVM_HeapHold tail; /* Observed destination owner. */
     DVM_HeapHold candidate; /* Complete rooted new record. */
+    void *result; /* Borrowed identity of the committed object. */
     DVM_HeapHold retired; /* Displaced destination owner. */
 } AllocationTransaction;
 
@@ -136,65 +142,127 @@ static void initialize_payload(AllocationTransaction *state, uchar *data, size_t
 }
 
 
-/* [GC:] Build a complete candidate and hand its ownership to the rooted ledger
- * before invoking the monitor. Pre-root failures leave private resources in state. */
+/* [GC:] Retain the descriptor before reserving private managed storage. */
+static void retain_type(Type *type, int *retained)
+{
+    if (dvm_refcount_retain_i(&type->ref) != DVM_REFCOUNT_LIVE)
+    {
+        error(exHeap);
+    }
+    *retained = 1;
+}
+
+
+/* [GC:] Allocate a private header under NativeWorld. The caller records it
+ * before any further fallible operation. */
+static Heap *private_heap(Type *type, size_t extent)
+{
+    Heap *header = poolalloc(heapmem, sizeof(Heap)+extent);
+    if (!header)
+    {
+        error(exHeap);
+    }
+    header->t = type;
+    header->ref = 1;
+    dvm_runtime_gc_store(&header->color, dvm_runtime_gc_load(&mutator));
+    return header;
+}
+
+
+/* [GC:] Initialize an owning array. No callbacks run during initialization. */
+static Array *build_array(AllocationTransaction *state, Heap **slot)
+{
+    size_t payload = (size_t)state->type->size * (size_t)state->count;
+    Array *array;
+    retain_type(state->type, &state->retained);
+    retain_type(&Tarray, &state->array_retained);
+    *slot = private_heap(&Tarray, sizeof(Array)+payload);
+    array = H2D(Array *, *slot);
+    array->len = state->count;
+    array->t = state->type;
+    array->root = H;
+    array->data = (uchar *)array + sizeof(*array);
+    initialize_payload(state, array->data, payload, state->count);
+    Setmark(*slot);
+    return array;
+}
+
+
+/* [GC:] Build queues and any owning buffer before exposing the channel to GC
+ * or a monitor. Partial queues and descriptor retains stay in the ledger. */
+static void build_channel(AllocationTransaction *state)
+{
+    Channel *channel;
+    retain_type(&Tchannel, &state->channel_retained);
+    state->unpublished = private_heap(&Tchannel, sizeof(Channel));
+    channel = H2D(Channel *, state->unpublished);
+    memset(channel, 0, sizeof(*channel));
+    channel->buf = H;
+    channel->send = mallocz(sizeof(Progq), 1);
+    if (!channel->send)
+    {
+        error(exNomem);
+    }
+    channel->recv = mallocz(sizeof(Progq), 1);
+    if (!channel->recv)
+    {
+        error(exNomem);
+    }
+    if (state->count)
+    {
+        channel->buf = build_array(state, &state->private_array);
+    }
+    channel->mid.w = state->message_size;
+    if (state->mover == movtmp)
+    {
+        retain_type(state->type, &state->mover_retained);
+        channel->mid.t = state->type;
+    }
+    channel->mover = state->mover;
+}
+
+
+/* [GC:] Hand the complete candidate to the rooted ledger before invoking any
+ * allocation monitor, including the monitor for a channel's owned buffer. */
 static void allocate_candidate(AllocationTransaction *state)
 {
     void *object;
     void *key;
-    size_t payload = (size_t)state->type->size;
+    Heap *buffer;
     size_t extent;
-    if (state->array)
-    {
-        payload *= (size_t)state->count;
-    }
-    extent = payload + (state->array ? sizeof(Array) : 0);
     state->roots = dvm_runtime_root_batch_create(1);
     if (!state->roots)
     {
         error(exNomem);
     }
-    if (dvm_refcount_retain_i(&state->type->ref) != DVM_REFCOUNT_LIVE)
+    if (state->mover)
     {
-        error(exHeap);
+        build_channel(state);
+        extent = sizeof(Channel);
     }
-    state->retained = 1;
-    if (state->array)
+    else if (state->array)
     {
-        if (dvm_refcount_retain_i(&Tarray.ref) != DVM_REFCOUNT_LIVE)
-        {
-            error(exHeap);
-        }
-        state->array_retained = 1;
-    }
-    state->unpublished = poolalloc(heapmem, sizeof(Heap)+extent);
-    if (!state->unpublished)
-    {
-        error(exHeap);
-    }
-    state->unpublished->t = state->array ? &Tarray : state->type;
-    state->unpublished->ref = 1;
-    dvm_runtime_gc_store(&state->unpublished->color, dvm_runtime_gc_load(&mutator));
-    object = H2D(void *, state->unpublished);
-    if (state->array)
-    {
-        Array *array = object;
-        array->len = state->count;
-        array->t = state->type;
-        array->root = H;
-        array->data = (uchar *)array + sizeof(*array);
-        initialize_payload(state, array->data, payload, state->count);
+        build_array(state, &state->unpublished);
+        extent = sizeof(Array) + (size_t)state->type->size * (size_t)state->count;
     }
     else
     {
-        initialize_payload(state, object, payload, 1);
+        retain_type(state->type, &state->retained);
+        extent = (size_t)state->type->size;
+        state->unpublished = private_heap(state->type, extent);
+        initialize_payload(state, H2D(void *, state->unpublished), extent, 1);
     }
+    object = H2D(void *, state->unpublished);
     Setmark(state->unpublished);
     key = state->unpublished;
     if (!dvm_runtime_root_batch_publish(state->roots, &key, 1))
     {
         error(exHeap);
     }
+    buffer = state->private_array;
+    state->private_array = NULL;
+    state->mover_retained = 0;
+    state->channel_retained = 0;
     state->candidate.value = object;
     state->candidate.roots = state->roots;
     state->unpublished = NULL;
@@ -204,6 +272,10 @@ static void allocate_candidate(AllocationTransaction *state)
     if (heapmonitor)
     {
         heapmonitor(0, key, extent);
+        if (buffer)
+        {
+            heapmonitor(0, buffer, sizeof(Array)+(size_t)state->type->size*(size_t)state->count);
+        }
     }
 }
 
@@ -224,10 +296,12 @@ static int construct(void *argument)
     allocate_candidate(state);
     for (attempt = 0; attempt < 8; attempt++)
     {
+        void *candidate = state->candidate.value;
         result = dvm_runtime_heap_commit(state->destination, &state->tail,
             &state->candidate, &state->retired);
         if (result == 1)
         {
+            state->result = candidate;
             return 1;
         }
         if (result < 0)
@@ -246,51 +320,79 @@ static int construct(void *argument)
 }
 
 
-/* [GC:] Dispose private pre-publication resources before draining live leases.
- * Caller keeps the descriptor, cell and frame alive under NativeWorld. */
+/* [GC:] Drop a private retain while the constructor still owns its input Type. */
+static void drop_private_type(Type *type, int retained)
+{
+    if (retained && dvm_refcount_release_i(&type->ref) != DVM_REFCOUNT_LIVE)
+    {
+        abort();
+    }
+}
+
+
+/* [GC:] Dispose pre-publication resources before draining live leases. */
+static void publish(AllocationTransaction *state)
+{
+    int completed = kprotect(construct, state);
+    if (state->unpublished)
+    {
+        if (state->mover)
+        {
+            Channel *channel = H2D(Channel *, state->unpublished);
+            free(channel->send);
+            free(channel->recv);
+        }
+        poolfree(heapmem, state->unpublished);
+    }
+    if (state->private_array)
+    {
+        poolfree(heapmem, state->private_array);
+    }
+    drop_private_type(state->type, state->mover_retained);
+    drop_private_type(state->type, state->retained);
+    drop_private_type(&Tarray, state->array_retained);
+    drop_private_type(&Tchannel, state->channel_retained);
+    if (state->roots && !dvm_runtime_root_batch_destroy(&state->roots))
+    {
+        abort();
+    }
+    finish_all(state, completed);
+}
+
+
+/* [GC:] Check the native extent and aliasing descriptor retains before use. */
+static void check_array(Type *type, WORD count, int extra_refs)
+{
+    int header_refs = dvm_refcount_load_i(&Tarray.ref);
+    int element_refs = dvm_refcount_load_i(&type->ref);
+    if (header_refs <= 0 || header_refs == INT_MAX ||
+        element_refs > INT_MAX - 1 - (type == &Tarray) - extra_refs)
+    {
+        error(exHeap);
+    }
+    acheck(type->size, count);
+}
+
+
 static void allocate(void *destination, Type *type, int clear, int array, WORD count)
 {
     AllocationTransaction state = {0};
-    int completed;
     if (!valid_type(type) || !span(destination, sizeof(void *)) || destination == H)
     {
         error(exHeap);
     }
     if (array)
     {
-        int header_refs = dvm_refcount_load_i(&Tarray.ref);
-        int element_refs = dvm_refcount_load_i(&type->ref);
-        if (header_refs <= 0 || header_refs == INT_MAX ||
-            element_refs > INT_MAX - 1 - (type == &Tarray))
-        {
-            error(exHeap);
-        }
-        acheck(type->size, count);
+        check_array(type, count, 0);
     }
     state.destination = destination;
     state.type = type;
     state.clear = clear;
     state.array = array;
     state.count = count;
-    completed = kprotect(construct, &state);
-    if (state.unpublished)
-    {
-        poolfree(heapmem, state.unpublished);
-    }
-    if (state.retained && dvm_refcount_release_i(&type->ref) != DVM_REFCOUNT_LIVE)
-    {
-        abort();
-    }
-    if (state.array_retained && dvm_refcount_release_i(&Tarray.ref) != DVM_REFCOUNT_LIVE)
-    {
-        abort();
-    }
-    if (state.roots && !dvm_runtime_root_batch_destroy(&state.roots))
-    {
-        abort();
-    }
-    finish_all(&state, completed);
+    publish(&state);
 }
+
 
 /* Construct one record in the rooted destination, with optional scalar zeroing. */
 void dvm_runtime_record_new(void *destination, Type *type, int clear)
@@ -303,4 +405,83 @@ void dvm_runtime_record_new(void *destination, Type *type, int clear)
 void dvm_runtime_array_new(void *destination, Type *type, WORD count, int clear)
 {
     allocate(destination, type, clear, 1, count);
+}
+
+
+/* [GC:] Construct a complete channel, optionally with an owning buffer.
+ * Raw buffered callers keep their temporary descriptor alive through cleanup. */
+Channel *dvm_runtime_channel_new(void *destination, Type *type, WORD count,
+    void (*mover)(void), WORD message_size)
+{
+    AllocationTransaction state = {0};
+    if (count < 0)
+    {
+        error(exNegsize);
+    }
+    if (count > INT_MAX || !mover ||
+        !span(destination, sizeof(void *)) || destination == H)
+    {
+        error(exHeap);
+    }
+    if ((count || mover == movtmp) && !valid_type(type))
+    {
+        error(exHeap);
+    }
+    if (count)
+    {
+        check_array(type, count, (mover == movtmp) + (type == &Tchannel));
+    }
+    state.destination = destination;
+    state.type = type;
+    state.count = count;
+    state.mover = mover;
+    state.message_size = message_size;
+    publish(&state);
+    return state.result;
+}
+
+
+/* [GC:] Keep the synthetic payload descriptor live through all cleanup. */
+static int publish_raw_channel(void *argument)
+{
+    AllocationTransaction *state = argument;
+    dvm_runtime_channel_new(state->destination, state->type, state->count,
+        state->mover, state->message_size);
+    return 1;
+}
+
+
+/* [GC:] An unbuffered raw channel needs only the message width. */
+void dvm_runtime_raw_channel_new(void *destination, WORD count, WORD size,
+    void (*mover)(void))
+{
+    AllocationTransaction state = {0};
+    int completed;
+    if (size < 0 || count < 0)
+    {
+        error(exNegsize);
+    }
+    if (size > INT_MAX || count > INT_MAX)
+    {
+        error(exHeap);
+    }
+    if (count)
+    {
+        acheck(size, count);
+        state.type = dtype(NULL, size, NULL, 0);
+        if (!state.type)
+        {
+            error(exNomem);
+        }
+    }
+    state.destination = destination;
+    state.count = count;
+    state.message_size = size;
+    state.mover = mover;
+    completed = kprotect(publish_raw_channel, &state);
+    freetype(state.type);
+    if (!completed)
+    {
+        krethrow();
+    }
 }

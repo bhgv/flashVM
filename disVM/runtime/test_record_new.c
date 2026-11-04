@@ -26,8 +26,8 @@ static Modlink *imported; /* Borrowed through the imported constructor hold. */
 static int callbacks; /* Complete record allocations observed by monitor. */
 static int stale; /* Actual failed identity comparisons. */
 static int array_mode; /* Inspect arrays instead of records in the monitor. */
-static int reject_array_root; /* Fail the candidate handoff after initialization. */
-static Heap *previous_array; /* Existing owner excluded from candidate refusal. */
+static Type *reject_root_type; /* Fail the candidate handoff after initialization. */
+static Heap *previous_owner; /* Existing owner excluded from candidate refusal. */
 static int root_refusals; /* Counts candidate-specific refusal injections. */
 static WORD length; /* Requested array extent in the current diagnostic. */
 static int guest_entries; /* Real adapted opcode calls after the probe. */
@@ -59,7 +59,10 @@ void __wrap_dvm_runtime_record_new(void *slot, Type *type, int clear)
         if (jit)
         {
             check(!jit->entry[INEW] && !jit->entry[INEWZ] && !jit->entry[IMNEWZ] &&
-                !jit->entry[INEWA] && !jit->entry[INEWAZ],
+                !jit->entry[INEWA] && !jit->entry[INEWAZ] &&
+                !jit->entry[INEWCB] && !jit->entry[INEWCW] && !jit->entry[INEWCL] &&
+                !jit->entry[INEWCF] && !jit->entry[INEWCP] &&
+                !jit->entry[INEWCM] && !jit->entry[INEWCMP],
                 "guarded record JIT uses checked dispatch");
             puts("PASS guarded record JIT cache");
         }
@@ -81,12 +84,12 @@ void __wrap_dvm_runtime_array_new(void *slot, Type *type, WORD count, int clear)
 }
 
 
-/* Refuse only the fully initialized Array candidate root. */
+/* Refuse only the fully initialized candidate root of the selected type. */
 int __real_dvm_runtime_root_batch_publish(DVM_RootBatch *, void *const *, size_t);
 int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *keys, size_t count)
 {
-    if (reject_array_root && count == 1 && keys[0] != previous_array &&
-        ((Heap *)keys[0])->t == &Tarray)
+    if (reject_root_type && count == 1 && keys[0] != previous_owner &&
+        ((Heap *)keys[0])->t == reject_root_type)
     {
         root_refusals++;
         return 0;
@@ -280,10 +283,10 @@ static void array_case(DVM_GCWorkers *workers)
         dvm_refcount_load_i(&record->ref) == before_element, "array and element descriptors owned");
 
     mode = 0;
-    previous_array = D2H(published);
-    reject_array_root = 1;
+    previous_owner = D2H(published);
+    reject_root_type = &Tarray;
     check(!kprotect(construct_array, NULL) && root_refusals == 1, "candidate root refusal");
-    reject_array_root = 0;
+    reject_root_type = NULL;
     check(dvm_refcount_load_i(&Tarray.ref) == before_array+1 &&
         dvm_refcount_load_i(&record->ref) == before_element, "private descriptors rolled back");
     length = -1;
@@ -314,8 +317,82 @@ static void array_case(DVM_GCWorkers *workers)
     check(((Array *)current)->len == 0, "zero count preserved");
     heapmonitor = NULL;
     array_mode = 0;
-    previous_array = NULL;
+    previous_owner = NULL;
     puts("PASS guarded arrays");
+}
+
+
+static int channel_events; /* Completed candidate notifications. */
+static int channel_failure; /* Raise in the buffer notification. */
+static Channel *observed_channel; /* Borrowed during the monitor only. */
+
+
+/* Check that the channel is rooted before either monitor notification. */
+static void channel_monitor(int event, void *value, ulong bytes)
+{
+    Heap *header = value;
+    if (event)
+    {
+        return;
+    }
+    channel_events++;
+    if (header->t == &Tchannel)
+    {
+        Array *buffer;
+        void *head;
+        observed_channel = H2D(Channel *, header);
+        buffer = observed_channel->buf;
+        check(bytes == sizeof(Channel) && dvm_runtime_root_count(header) == 1 &&
+            observed_channel->send && observed_channel->recv &&
+            observed_channel->mover == movtmp && observed_channel->mid.t == record &&
+            buffer != H && buffer->len == 3 && buffer->t == record, "complete rooted channel");
+        memmove(&head, buffer->data, sizeof(head));
+        check(head == H, "channel buffer mapped initialization");
+    }
+    else
+    {
+        check(header->t == &Tarray && observed_channel->buf == H2D(Array *, header) &&
+            dvm_runtime_root_count(D2H(observed_channel)) == 1, "buffer monitor has channel root");
+        if (channel_failure)
+        {
+            error("channel buffer monitor primary");
+        }
+    }
+}
+
+
+/* Invoke the mapped constructor in an error checkpoint. */
+static int construct_channel(void *unused)
+{
+    (void)unused;
+    check(dvm_runtime_channel_new(destination, record, 3, movtmp, 0) == observed_channel,
+        "committed channel identity");
+    return 1;
+}
+
+
+/* A buffer-monitor error must preserve the previously published channel. */
+static void channel_case(void)
+{
+    Channel *previous;
+    Channel *current;
+    heapmonitor = channel_monitor;
+    check(kprotect(construct_channel, NULL) && channel_events == 2, "channel publication");
+    memmove(&previous, destination, sizeof(previous));
+    previous_owner = D2H(previous);
+    reject_root_type = &Tchannel;
+    check(!kprotect(construct_channel, NULL) && root_refusals == 2 &&
+        channel_events == 2, "channel root refusal precedes monitor");
+    reject_root_type = NULL;
+    previous_owner = NULL;
+    channel_failure = 1;
+    check(!kprotect(construct_channel, NULL) && channel_events == 4 &&
+        strstr(getup()->env->errstr, "channel buffer monitor primary"), "channel error preserved");
+    memmove(&current, destination, sizeof(current));
+    check(previous == current, "channel error preserves owner");
+    heapmonitor = NULL;
+    observed_channel = NULL;
+    puts("PASS guarded channels");
 }
 
 
@@ -328,8 +405,10 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     void *published;
     void *current;
     int array_refs;
+    int channel_refs;
     __real_dvm_runtime_root_registry_probe(workers);
     array_refs = dvm_refcount_load_i(&Tarray.ref);
+    channel_refs = dvm_refcount_load_i(&Tchannel.ref);
     record = dtype(freeheap,sizeof(void *)+sizeof(WORD),&map,1);
     check(record != NULL,"real descriptor");
     dvm_runtime_pointer_cons(&empty,&container);
@@ -354,11 +433,13 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     heapmonitor = monitor;
     imported_case(workers, 1);
     array_case(workers);
+    channel_case();
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);
     check(dvm_refcount_load_i(&record->ref) == 1 &&
-        dvm_refcount_load_i(&Tarray.ref) == array_refs, "descriptor baselines restored");
+        dvm_refcount_load_i(&Tarray.ref) == array_refs &&
+        dvm_refcount_load_i(&Tchannel.ref) == channel_refs, "descriptor baselines restored");
     freetype(record);
     record = NULL;
     destination = NULL;

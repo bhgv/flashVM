@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1820**. [English](README.md).
+Версия разработки: **0.1821**. [English](README.md).
 
-Текущая серия [v0.1820](docs/releases/v0.1820.md) добавляет защищённое создание массивов.
+Текущая серия [v0.1821](docs/releases/v0.1821.md) добавляет защищённое создание каналов.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 

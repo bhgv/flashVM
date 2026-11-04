@@ -425,3 +425,11 @@ Guarded array construction adds four native root reservation blocks and
 allocates a fresh owning array. It retains the element and array header Types
 independently. The x64 guarded leaf profile uses C for construction. A stale
 comparison reuses the candidate. Matched timing is pending.
+
+## CHANNELNEW-122
+
+Guarded NEWC now reserves a root batch, holds the owning destination and
+publishes by identity comparison. A buffered channel reports two allocations
+after construction. Guarded JIT uses the C route. Measure buffered and
+unbuffered construction separately in a matched run before attributing a
+time difference to publication or dispatch. No matched timing is recorded.

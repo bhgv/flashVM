@@ -118,10 +118,12 @@ static void guarded_imported_record(void *source, void *index, void *destination
 def adapt_leaf(source):
     """Use the checked C dispatch for guarded constructors on hosted leaf backends."""
     anchor = "leafop(LeafOp *p, int op, int wordbytes)\n{\n"
-    if source.count(anchor) != 1 or "Guarded record and array construction uses C" in source:
+    if source.count(anchor) != 1 or "Guarded allocation uses C" in source:
         raise ValueError("record leaf classification drift")
-    selection = """    /* Guarded record and array construction uses C, including on an RC1 destination. */
-    if (dvm_runtime_guarded_copies && (op == INEW || op == INEWZ || op == IMNEWZ || op == INEWA || op == INEWAZ))
+    selection = """    /* Guarded allocation uses C, including on an RC1 destination. */
+    if (dvm_runtime_guarded_copies && (op == INEW || op == INEWZ || op == IMNEWZ || op == INEWA || op == INEWAZ ||
+        op == INEWCB || op == INEWCW || op == INEWCL || op == INEWCF ||
+        op == INEWCP || op == INEWCM || op == INEWCMP))
     {
         return 0;
     }

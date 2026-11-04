@@ -1,4 +1,4 @@
-"""Exercise guarded record and array construction through native and guest routes."""
+"""Exercise guarded record, array and channel construction through native and guest routes."""
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +20,17 @@ init() {
     if (item.name != "record" || item.value != 73) {
         raise "record initialization";
     }
+    words := chan[2] of int;
+    words <-= 29;
+    if (<-words != 29) { raise "word channel"; }
+    pairs := chan[2] of (string, int);
+    pairs <-= ("mapped", 42);
+    (label, number) := <-pairs;
+    if (label != "mapped" || number != 42) { raise "mapped channel"; }
+    raw := chan[2] of (int, int);
+    raw <-= (10, 20);
+    (first, second) := <-raw;
+    if (first != 10 || second != 20) { raise "raw channel"; }
     sys->print("PASS record guest\n");
 }
 '''
@@ -47,10 +58,10 @@ def main():
             if mode == "--jit" and "PASS guarded record JIT cache" not in output:
                 raise RuntimeError(output)
             if result.returncode or any(marker not in output for marker in (
-                "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
+                "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
-    print("PASS guarded records and arrays, stale writer, refusal, monitor error and C/JIT guest")
+    print("PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest")
 
 
 if __name__ == "__main__":
