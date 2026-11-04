@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1811**. [Русская версия](README.ru.md).
+Development version: **0.1812**. [Русская версия](README.ru.md).
 
-Current series: [v0.1811](docs/releases/v0.1811.md): conditional prepared-owner publication, stale snapshots and rooted displaced-owner transfer.
+Current series: [v0.1812](docs/releases/v0.1812.md): rooted pointer-list preparation, dependent-tail rebuild and conditional publication.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

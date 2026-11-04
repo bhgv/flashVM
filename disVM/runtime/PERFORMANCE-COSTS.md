@@ -314,3 +314,14 @@ mutex/retarget не выделено; stale/refusal/rollback/contention и по�
 остаются отдельными кандидатами для измерения. Это не скорость IDE/VM и не
 новый full-guarded/default замер; восемнадцать старых VM-записей не изменяются.
 Воспроизведение: benchmark_heap_commit.py RUNTIME LIMBO INCLUDE_DIR.
+
+## PREPARE-113 — новый путь подготовки, исторической пары пока нет
+
+`pointer_prepare.c` резервирует группу корней (две native allocation), затем
+использует прежние retain/Type/poolalloc/ordinary-root/monitor стадии. После
+link+mark добавляется публикация candidate root и снятие construction pin.
+При stale добавляются finish, повторный hold и полная перестройка кандидата.
+Это известные дополнительные пути, а не измеренный процент замедления.
+Старый CONSP сохраняет прежний путь, только общий stage вынесен в отдельный файл.
+Отдельный matched benchmark и длительность удержания NativeWorld ещё не измерены;
+скорость IDE и параллельность из этих проверок не следуют.
