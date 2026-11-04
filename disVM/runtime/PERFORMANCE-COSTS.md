@@ -495,3 +495,9 @@ No matched timing is recorded.
 Hosted queue insertion and removal now use a dedicated mutex and an error
 checkpoint. Measure the cost by queue length, including repeated ALT
 registrations. No matched timing is recorded.
+
+## CHANREADCLOSELOCK-122
+
+Hosted SEND and RECV take the queue mutex for readiness and head reads.
+Close holds it through preflight, claims and detachment, with wakeups
+outside the lock. No matched timing is recorded.

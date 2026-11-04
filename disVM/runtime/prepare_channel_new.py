@@ -110,7 +110,45 @@ def adapt_wait_completion(source):
         raise ValueError("channel wake boundary drift")
     body = body.replace("addrun(p);", "dvm_runtime_channel_wake(p, nil);")
     body = adapt_match_claims(body)
-    return source[:start] + WAIT_COMPLETION + body + source[end:]
+    source = source[:start] + WAIT_COMPLETION + body + source[end:]
+    anchor = "static Prog*\nchannelpeer(Channel *c, int receive)"
+    end_peer = source.index("\n}", source.index(anchor)) + 2
+    source = source[:end_peer] + QUEUE_PEER_READER + source[end_peer:]
+    for direction in (0, 1):
+        old = f"channelpeer(c, {direction})"
+        if source.count(old) != 1:
+            raise ValueError("channel head reader drift")
+        source = source.replace(old, f"guarded_channel_peer(c, {direction})", 1)
+    return source
+
+
+QUEUE_PEER_READER = r"""
+
+extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
+
+typedef struct ChannelPeerRead
+{
+    Channel *channel;
+    int receive;
+    Prog *peer; /* Borrowed under the surrounding NativeWorld turn. */
+} ChannelPeerRead;
+
+
+/* Inspect readiness and the head while queue mutation is excluded. */
+static int read_channel_peer(void *argument)
+{
+    ChannelPeerRead *read = argument;
+    read->peer = channelpeer(read->channel, read->receive);
+    return 1;
+}
+
+static Prog *guarded_channel_peer(Channel *channel, int receive)
+{
+    ChannelPeerRead read = {channel, receive, nil};
+    dvm_runtime_channel_queue_guard(read_channel_peer, &read);
+    return read.peer;
+}
+"""
 
 
 def adapt_match_claims(body):

@@ -705,21 +705,51 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
 }
 
 
-/* Detach under NativeWorld before a wake can cancel other registrations. */
+typedef struct ClosedQueues
+{
+    Progq **send_owner;
+    Progq **recv_owner; /* NULL for the single-queue entry point. */
+    Progq *send;
+    Progq *recv;
+} ClosedQueues;
+
+
+/* Validate and detach both owners while the queue mutex is held.
+ * Wakeups run later and may themselves remove sibling registrations. */
+static int detach_closed_queues(void *argument)
+{
+    ClosedQueues *queues = argument;
+    Progq *send = *queues->send_owner;
+    Progq *recv = queues->recv_owner ? *queues->recv_owner : nil;
+    Progq *send_tail = send ? dvm_runtime_channel_close_preflight(queues->send_owner) : nil;
+    Progq *recv_tail = recv ? dvm_runtime_channel_close_preflight(queues->recv_owner) : nil;
+    if (send_tail && send_tail == recv_tail)
+    {
+        error(exHeap);
+    }
+    check_close_claims(send);
+    check_close_claims(recv);
+    claim_close_waiters(send, queues);
+    claim_close_waiters(recv, queues);
+    queues->send = send;
+    queues->recv = recv;
+    *queues->send_owner = nil;
+    if (queues->recv_owner)
+    {
+        *queues->recv_owner = nil;
+    }
+    return 1;
+}
+
+
+/* Detach under the queue mutex and wake after unlocking. */
 void killcomm(Progq **queue)
 {
-    Progq *entry = *queue;
+    ClosedQueues queues = {queue, nil, nil, nil};
     char first_error[ERRMAX];
     int failed = 0;
-    if (!entry)
-    {
-        return;
-    }
-    dvm_runtime_channel_close_preflight(queue);
-    check_close_claims(entry);
-    claim_close_waiters(entry, &failed);
-    *queue = nil;
-    drain_closed_queue(entry, &failed, first_error, &failed);
+    dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
+    drain_closed_queue(queues.send, &queues, first_error, &failed);
     if (failed)
     {
         error(first_error);
@@ -727,32 +757,20 @@ void killcomm(Progq **queue)
 }
 
 
-/* Finalize both queue owners together. All checks precede detachment and
- * descriptor release. NativeWorld keeps the registered processes live. */
+/* Finalize both queue owners together. NativeWorld keeps the channel and
+ * registered processes live through resource release. */
 void dvm_runtime_channel_finalize(Channel *channel, int swept)
 {
-    Progq *send = channel->send;
-    Progq *recv = channel->recv;
-    Progq *send_tail = send ? dvm_runtime_channel_close_preflight(&channel->send) : nil;
-    Progq *recv_tail = recv ? dvm_runtime_channel_close_preflight(&channel->recv) : nil;
+    ClosedQueues queues = {&channel->send, &channel->recv, nil, nil};
     Array *buffer = channel->buf;
     Type *mapped = channel->mover == movtmp ? channel->mid.t : nil;
     char first_error[ERRMAX];
     int failed = 0;
-    if (send_tail && send_tail == recv_tail)
-    {
-        error(exHeap);
-    }
-    check_close_claims(send);
-    check_close_claims(recv);
-    claim_close_waiters(send, &failed);
-    claim_close_waiters(recv, &failed);
-    channel->send = nil;
-    channel->recv = nil;
+    dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
     channel->mover = nil;
     channel->buf = H;
-    drain_closed_queue(send, &failed, first_error, &failed);
-    drain_closed_queue(recv, &failed, first_error, &failed);
+    drain_closed_queue(queues.send, &queues, first_error, &failed);
+    drain_closed_queue(queues.recv, &queues, first_error, &failed);
     if (mapped)
     {
         freetype(mapped);
