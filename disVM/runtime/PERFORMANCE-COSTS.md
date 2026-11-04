@@ -541,3 +541,9 @@ occupancy after the mapped transaction. No matched timing is recorded.
 The hosted C path tracks active buffer reservations in a mutex-protected
 list and clears them in a completion checkpoint. Measure the scan cost
 under nested transfers and matched channel traffic. No timing is recorded.
+
+## CHANBUFFERROOT-122
+
+Guarded C buffered operations acquire a rooted channel hold around ring
+reservation, transfer and publication, including the unavailable path.
+Measure matched buffered and full/empty attempts. No timing is recorded.

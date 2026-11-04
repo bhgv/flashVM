@@ -657,6 +657,7 @@ static void direct_channel_failure(void)
 static int refill_moves; /* Counts actual read and refill mover calls. */
 static Channel *refill_observed_channel; /* Borrowed during the probe. */
 static int refill_fail_at; /* Zero for success, one for read, two for refill. */
+static ulong refill_failure_refs; /* Select the intended owner release. */
 static void *refill_release_failure; /* Inject only after the temporary channel retain is consumed. */
 
 void __real_destroy(void *value);
@@ -665,7 +666,8 @@ void __real_destroy(void *value);
 /* Report a cleanup error after releasing the selected channel exactly once. */
 void __wrap_destroy(void *value)
 {
-    if (value && value == refill_release_failure)
+    if (value && value == refill_release_failure &&
+        dvm_refcount_load_u(&D2H(value)->ref) == refill_failure_refs)
     {
         refill_release_failure = NULL;
         __real_destroy(value);
@@ -744,6 +746,7 @@ static void buffered_channel_completion(void)
         refill_observed_channel = channel;
         refill_moves = 0;
         refill_fail_at = stage == 4 ? 2 : stage == 3 ? 0 : stage;
+        refill_failure_refs = 2;
         refill_release_failure = stage >= 3 ? channel : NULL;
         registers->s = &channel;
         registers->d = &received;
@@ -1038,6 +1041,7 @@ static void mapped_channel_receive_case(void)
     check(slot == incoming, "failed mapped read retains source ownership");
     output.pointer = H;
     dvm_runtime_record_new(&output.pointer, record, 1);
+    refill_failure_refs = 1;
     refill_release_failure = output.pointer;
     registers->s = &channel;
     registers->d = &output;
@@ -1051,6 +1055,43 @@ static void mapped_channel_receive_case(void)
     destroy(output.pointer);
     destroy(channel);
     puts("PASS mapped channel receive ownership");
+}
+
+
+static Channel **buffer_owner_slot; /* Test application owner. */
+
+
+/* Drop the application's only channel reference from a real buffered mover. */
+static void drop_buffer_owner(void)
+{
+    Channel *channel = *buffer_owner_slot;
+    REG *registers = dvm_native_registers();
+    check(dvm_runtime_root_count(D2H(channel)) == 1, "buffer mover has a rooted channel");
+    *buffer_owner_slot = H;
+    destroy(channel);
+    check(dvm_runtime_root_count(D2H(channel)) == 1 && channel->size == 0,
+        "buffer reservation survives loss of application owner");
+    memmove(registers->d, registers->s, sizeof(WORD));
+}
+
+
+/* The reservation keeps the ring alive until metadata has been published. */
+static void buffer_owner_case(void)
+{
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    Channel *channel = H;
+    WORD value = 53;
+    int receive = 0;
+    channel = dvm_runtime_channel_new(&channel, &Tword, 1, drop_buffer_owner, 0);
+    buffer_owner_slot = &channel;
+    registers->s = &value;
+    registers->d = &channel;
+    check(kprotect(direct_channel_transfer, &receive) && channel == H,
+        "send completes after application owner disappears");
+    buffer_owner_slot = NULL;
+    *registers = saved;
+    puts("PASS rooted channel buffer lifetime");
 }
 
 
@@ -1100,6 +1141,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     channel_finalize_case();
     direct_channel_failure();
     buffered_channel_completion();
+    buffer_owner_case();
     alt_publication_failure();
     ptrdel(D2H(container));
     destroy(container);

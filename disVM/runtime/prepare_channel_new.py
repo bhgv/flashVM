@@ -646,7 +646,7 @@ static int consume_channel_buffer(void *argument)
 
 
 /* Keep the receive array live through the mover and its mapped cleanup. */
-static int cgetb(Channel *channel, void *destination)
+static int read_buffer_owned(Channel *channel, void *destination)
 {
     ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
@@ -681,7 +681,7 @@ static int write_channel_buffer(void *argument)
 
 
 /* Capture send geometry under the mutex and transfer outside it. */
-static int cputb(Channel *channel, void *source)
+static int write_buffer_owned(Channel *channel, void *source)
 {
     ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
@@ -694,5 +694,58 @@ static int cputb(Channel *channel, void *source)
     return 1;
 }
 
+
+
+typedef struct RootedBufferTransfer
+{
+    Channel *channel;
+    void *operand;
+    int receive;
+    int transferred;
+} RootedBufferTransfer;
+
+
+/* Report availability separately from the VM checkpoint result. */
+static int run_rooted_buffer_transfer(void *argument)
+{
+    RootedBufferTransfer *transfer = argument;
+    transfer->transferred = transfer->receive ?
+        read_buffer_owned(transfer->channel, transfer->operand) :
+        write_buffer_owned(transfer->channel, transfer->operand);
+    return 1;
+}
+
+
+/* Root the channel outside the queue mutex. Its owning buffer and mover
+ * descriptor then survive callbacks through reservation completion. */
+static int transfer_channel_buffer(Channel *channel, void *operand, int receive)
+{
+    RootedBufferTransfer transfer = {channel, operand, receive, 0};
+    DVM_HeapHold owner = {0};
+    const char *problem;
+    int completed;
+    if (!guarded_channel_selected())
+    {
+        run_rooted_buffer_transfer(&transfer);
+        return transfer.transferred;
+    }
+    problem = dvm_runtime_heap_hold(&channel, &Tchannel, 0, &owner);
+    if (problem)
+        error((char *)problem);
+    completed = kprotect(run_rooted_buffer_transfer, &transfer);
+    dvm_runtime_heap_finish(&owner, completed);
+    return transfer.transferred;
+}
+
+
+static int cgetb(Channel *channel, void *destination)
+{
+    return transfer_channel_buffer(channel, destination, 1);
+}
+
+static int cputb(Channel *channel, void *source)
+{
+    return transfer_channel_buffer(channel, source, 0);
+}
 
 """
