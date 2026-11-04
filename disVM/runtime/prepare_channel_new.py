@@ -512,11 +512,13 @@ typedef struct ChannelReservation
     ChannelRead read; /* Receive retains the array through its mover. */
     int receive;
     int available;
+    int publish_after_move;
+    int next_size;
 } ChannelReservation;
 
 
-/* Check the ring and publish its existing next state before calling a mover.
- * NativeWorld still prevents another transfer from reusing the reserved slot. */
+/* Capture the next state. Pointer-free sends can leave the slot unoccupied
+ * until the copy completes. NativeWorld still excludes another reservation. */
 static int reserve_channel_buffer(void *argument)
 {
     ChannelReservation *reservation = argument;
@@ -541,7 +543,10 @@ static int reserve_channel_buffer(void *argument)
         channel->front = buffer.front;
     }
     read->slot = buffer.slot;
-    channel->size = buffer.size;
+    reservation->next_size = buffer.size;
+    reservation->publish_after_move = !reservation->receive && !buffer.type->np;
+    if (!reservation->publish_after_move)
+        channel->size = buffer.size;
     reservation->available = 1;
     return 1;
 }
@@ -550,7 +555,7 @@ static int reserve_channel_buffer(void *argument)
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int cgetb(Channel *channel, void *destination)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0};
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0};
     int completed;
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
@@ -563,10 +568,19 @@ static int cgetb(Channel *channel, void *destination)
 }
 
 
+/* Publish the occupied slot only after a successful pointer-free transfer. */
+static int publish_channel_send(void *argument)
+{
+    ChannelReservation *reservation = argument;
+    reservation->read.channel->size = reservation->next_size;
+    return 1;
+}
+
+
 /* Capture send geometry under the mutex and transfer outside it. */
 static int cputb(Channel *channel, void *source)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
@@ -574,6 +588,8 @@ static int cputb(Channel *channel, void *source)
     DVM_R.m = &channel->mid;
     DVM_R.d = reservation.read.slot;
     channel->mover();
+    if (reservation.publish_after_move)
+        dvm_runtime_channel_queue_guard(publish_channel_send, &reservation);
     return 1;
 }
 

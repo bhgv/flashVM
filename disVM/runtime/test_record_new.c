@@ -654,6 +654,7 @@ static void direct_channel_failure(void)
 
 
 static int refill_moves; /* Counts actual read and refill mover calls. */
+static Channel *refill_observed_channel; /* Borrowed during the probe. */
 static int refill_fail_at; /* Zero for success, one for read, two for refill. */
 static Channel *refill_release_failure; /* Inject only after the temporary channel retain is consumed. */
 
@@ -687,7 +688,12 @@ static void staged_refill_move(void)
     REG *registers = dvm_native_registers();
     extern void dvm_runtime_channel_queue_guard(int (*)(void *), void *);
     dvm_runtime_channel_queue_guard(confirm_unlocked_reservation, NULL);
-    if (++refill_moves == refill_fail_at)
+    refill_moves++;
+    if (refill_moves == 2)
+    {
+        check(refill_observed_channel->size == 0, "refill is not visible before mover completes");
+    }
+    if (refill_moves == refill_fail_at)
     {
         error("fixture buffered transfer failure");
     }
@@ -721,6 +727,7 @@ static void buffered_channel_completion(void)
         waiter.process.ptr = &pending;
         waiter.process.chan = channel;
         cqadd(&channel->send, &waiter.process);
+        refill_observed_channel = channel;
         refill_moves = 0;
         refill_fail_at = stage == 4 ? 2 : stage == 3 ? 0 : stage;
         refill_release_failure = stage >= 3 ? channel : NULL;
@@ -736,6 +743,7 @@ static void buffered_channel_completion(void)
         check(received == (stage == 1 ? -1 : buffered), "receive retains completed read");
         if (refill_fail_at)
         {
+            check(channel->size == 0, "failed transfer leaves no readable slot");
             check(!waiter.process.chan && waiter.process.kill &&
                 !strcmp(waiter.process.kill, "channel transfer failed") &&
                 strstr(getup()->env->errstr, "fixture buffered transfer failure"),
@@ -756,6 +764,7 @@ static void buffered_channel_completion(void)
     *registers = saved;
     check(dvm_runqueue_append(prior), "restore startup process");
     destroy(channel);
+    refill_observed_channel = NULL;
     puts("PASS buffered channel completion");
 }
 

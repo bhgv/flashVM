@@ -507,3 +507,8 @@ outside the lock. No matched timing is recorded.
 Hosted C buffered transfers lock ring validation and reservation, with
 movers outside the lock. Measure against equivalent C and JIT profiles.
 No matched timing is recorded.
+
+## CHANBUFFERPUBLISH-122
+
+Hosted C sends with a pointer-free element acquire the queue mutex again
+to publish occupancy after copying. No matched timing is recorded.
