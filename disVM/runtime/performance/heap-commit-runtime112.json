@@ -1,0 +1,22 @@
+{
+  "scope": "native C prepared-commit loop only; no capture/retire/GC/startup/guest time or old baseline",
+  "steps": 20000,
+  "samples_after_warmup": 3,
+  "samples": {
+    "atomic-poll": [
+      0.004785052,
+      0.004974447,
+      0.005447482
+    ],
+    "locked-poll": [
+      0.006865662,
+      0.005203334,
+      0.005046897
+    ]
+  },
+  "seconds": {
+    "atomic-poll": 0.004974447,
+    "locked-poll": 0.005203334
+  },
+  "source_sha256": "e22fa5ac698053a008e11124aa3f93a5c8b2c7cd734d391745ea5a84ecf5e0e8"
+}

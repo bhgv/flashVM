@@ -20,7 +20,7 @@ def relink(runtime, work, source, variant, symbols, executor=None,
            compiler_source=None, exception_source=None, loader_source=None,
            stack_source=None, runtime_rc_source=None, gc_source=None,
            managed_owner_source=None, shared_pointer_source=None, shared_bytes_source=None,
-           shared_arithmetic_source=None, shared_real_arithmetic_source=None, bytes_fast_source=None, shared_real_conversion_source=None, heap_hold_source=None, list_hold_source=None):
+           shared_arithmetic_source=None, shared_real_arithmetic_source=None, bytes_fast_source=None, shared_real_conversion_source=None, heap_hold_source=None, list_hold_source=None, heap_commit_source=None):
     metadata = runtime.parent / 'CMakeFiles/disvm.dir'
     flags = {}
     for line in (metadata / 'flags.make').read_text().splitlines():
@@ -46,7 +46,8 @@ def relink(runtime, work, source, variant, symbols, executor=None,
                                 (bytes_fast_source, 'bytes_fast.c'),
                                 (shared_real_conversion_source, 'shared_real_conversion.c'),
                                 (heap_hold_source, 'heap_hold.c'),
-                                (list_hold_source, 'list_hold.c')):
+                                (list_hold_source, 'list_hold.c'),
+                                (heap_commit_source, 'heap_commit.c')):
         if candidate is None:
             continue
         replacement = work / (filename+'.o')
@@ -55,7 +56,7 @@ def relink(runtime, work, source, variant, symbols, executor=None,
         built = subprocess.run(command, capture_output=True, text=True)
         if built.returncode:
             raise RuntimeError('private replacement compile failed: '+built.stdout+built.stderr)
-        suffix = '/'+filename+'.o' if filename in ('runtime_rc.c', 'managed_owner.c', 'shared_pointer.c', 'shared_bytes.c', 'shared_arithmetic.c', 'shared_real_arithmetic.c', 'bytes_fast.c', 'shared_real_conversion.c', 'heap_hold.c', 'list_hold.c') else '/native/'+filename+'.o'
+        suffix = '/'+filename+'.o' if filename in ('runtime_rc.c', 'managed_owner.c', 'shared_pointer.c', 'shared_bytes.c', 'shared_arithmetic.c', 'shared_real_arithmetic.c', 'bytes_fast.c', 'shared_real_conversion.c', 'heap_hold.c', 'list_hold.c', 'heap_commit.c') else '/native/'+filename+'.o'
         targets = [index for index, value in enumerate(link) if value.endswith(suffix)]
         if len(targets) != 1:
             raise RuntimeError('private replacement object boundary drift: '+filename)

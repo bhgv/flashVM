@@ -294,3 +294,23 @@ mapped-копирование, retain/mark/roots/retirement и цикл; сто�
 разбора, не приписывать результат allocator/GC и не складывать проценты. Это
 не новый full-guarded/default замер; прежние восемнадцать VM-записей не меняются.
 Воспроизведение и точная extraction baseline: [HEAP-HOLD.md](HEAP-HOLD.md).
+
+
+## HEAPCOMMIT-112 — только native-цикл подготовленных успешных commit
+
+v0.1811 / FLASHVM-0129.20000 переносов существующих владельцев между двумя
+заранее подготовленными значениями и реальным rooted Tptr-контейнером. Корни/
+lease подготовлены до CLOCK_MONOTONIC; displaced-lease попеременно переиспользуется
+как следующий incoming. Захват, аллокации, GC/retirement, запуск процесса и guest
+не входят в отсчёт. В конце проверены точные owner/Type checksum и настоящий Fast.
+
+После прогрева медиана трёх чередующихся запусков: atomic-poll0,004974447 с,
+locked-poll0,005203334 с. [Все отсчёты и SHA](performance/heap-commit-runtime112.json).
+Это одна и та же native C-операция с двумя настройками collector poll, не два JIT/
+атомарных backend и не измерение сравнительной стоимости polling. Старой базы
+сравнения нет. Нагрузка тёплая/успешная, NativeWorld всё время ACTIVE, без смены
+GC-эпох в цикле. Время отдельных geometry/preflight/native borrow/guard/mark/root
+mutex/retarget не выделено; stale/refusal/rollback/contention и полный конструктор
+остаются отдельными кандидатами для измерения. Это не скорость IDE/VM и не
+новый full-guarded/default замер; восемнадцать старых VM-записей не изменяются.
+Воспроизведение: benchmark_heap_commit.py RUNTIME LIMBO INCLUDE_DIR.

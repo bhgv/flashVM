@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.111.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.112.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -507,3 +507,9 @@ uses common slot capture/retain/mark/root and consuming error-safe retirement.
 String/List/H, indirect graph Cycles and Fast baselines are checked. This is
 owner/GC-root lifetime scaffolding, not pointer provenance or parallel admission.
 NativeWorld remains required.
+
+Runtime0.112: [conditional prepared-owner commit](HEAP-COMMIT.md) compares the
+rooted observation and publishes under one cell interval, reusing incoming root
+metadata for the displaced owner. Stale/refusal preserves the candidate; root
+refusal rolls back before unlock. No constructor is switched to this API yet;
+NativeWorld and constructor-specific rebuild/lifetime protocols remain required.
