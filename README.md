@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1808**. [Русская версия](README.ru.md).
+Development version: **0.1809**. [Русская версия](README.ru.md).
 
-Current series: [v0.1808](docs/releases/v0.1808.md): complete REAL C-tail dispatch, exactly-once execution controls and an 85-operation closure audit.
+Current series: [v0.1809](docs/releases/v0.1809.md): six two-phase FP conversions, bounded integer rounding and four completed x64 conversion tails.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

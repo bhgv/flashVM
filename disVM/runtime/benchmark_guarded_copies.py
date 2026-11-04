@@ -28,9 +28,10 @@ init() {
 '''
 
 
-def main(guest=GUEST, marker="PASS copy cost 19999 7"):
+def main(guest=GUEST, marker="PASS copy cost 19999 7", retain_samples=False):
     """Use guest source/checksum marker, alternating profiles after a warmup.
 
+    retain_samples adds raw samples for new experiments; default historical schema stays.
     Exact checksum is mandatory. Times include process startup and measure only
     this local workload, not general IDE speed or parallel managed execution.
     """
@@ -63,6 +64,8 @@ def main(guest=GUEST, marker="PASS copy cost 19999 7"):
                         samples[profile].append(elapsed)
             medians = {name: statistics.median(values) for name, values in samples.items()}
             results[mode] = {'seconds': medians, 'guarded_over_default': medians['guarded']/medians['default']}
+            if retain_samples:
+                results[mode]['samples'] = samples
         print(json.dumps(results, indent=2))
 
 

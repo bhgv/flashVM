@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.109.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.110.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -496,3 +496,8 @@ Runtime0.109: [complete guarded C dispatch](GUARDED-DISPATCH.md). Four missing
 REAL dispatcher cases are repaired. Reaching a tail is not evidence that it
 completed an opcode; new runtime controls require exactly one genuine operation.
 The generated85-operation source closure is audited separately. NativeWorld stays.
+
+Runtime0.110: [six FP conversions](REAL-CONVERSION.md) snapshot under source
+exclusion, convert unlocked and publish under output exclusion. Four actual
+Limbo/x64 tails complete exactly once; CVTRF/FR have actual C dispatch evidence.
+Rounded integer refusal preserves output. NativeWorld remains required.

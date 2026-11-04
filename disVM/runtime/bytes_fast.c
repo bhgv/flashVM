@@ -9,6 +9,12 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void cvtrf(void); /* Guarded FP conversion. */
+extern void cvtfr(void); /* Guarded FP conversion. */
+extern void cvtwf(void); /* Guarded FP conversion. */
+extern void cvtlf(void); /* Guarded FP conversion. */
+extern void cvtfw(void); /* Guarded FP conversion. */
+extern void cvtfl(void); /* Guarded FP conversion. */
 extern void addf(void); /* Guarded REAL addition. */
 extern void subf(void); /* Guarded REAL subtraction. */
 extern void mulf(void); /* Guarded REAL multiplication. */
@@ -109,6 +115,24 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case ICVTRF:
+        cvtrf();
+        break;
+    case ICVTFR:
+        cvtfr();
+        break;
+    case ICVTWF:
+        cvtwf();
+        break;
+    case ICVTLF:
+        cvtlf();
+        break;
+    case ICVTFW:
+        cvtfw();
+        break;
+    case ICVTFL:
+        cvtfl();
+        break;
     case IADDF:
         addf();
         break;
