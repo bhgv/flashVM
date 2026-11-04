@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1800**. [Русская версия](README.ru.md).
+Development version: **0.1801**. [Русская версия](README.ru.md).
 
-Current series: [v0.1800](docs/releases/v0.1800.md): continuous source/field guards and allocation-free native array lengths.
+Current series: [v0.1801](docs/releases/v0.1801.md): continuous list-link exclusion and allocation-free native list lengths.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.102.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.103.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -459,3 +459,8 @@ Runtime0.102 adds [continuous source/field guards and LENA](ARRAY-LENGTH.md).
 The native extension preserves the original access on BUSY/refusal; callers
 end it before retry/error. No temporary roots/owners or allocation in LENA.
 NativeWorld and caller-proven root/referent lifetimes remain required.
+
+Runtime0.103 adds [continuous list traversal and LENL](LIST-LENGTH.md), using
+try-only generic span extension while keeping source/visited links held. No
+temporary roots/owners or allocation, with retained Brent/error semantics.
+Caller root/lifetime exclusion and NativeWorld remain required.

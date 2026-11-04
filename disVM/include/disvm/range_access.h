@@ -43,6 +43,18 @@ DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
     void *output, size_t output_size, DVM_RangeAccess *access);
 
 
+/* Add an independently live span to a live exact-owner access, without releasing
+ * original claims or its one domain borrow. Empty size ignores the address.
+ * New guards use bounded try-only acquisition, even below existing keys. Success
+ * keeps the metadata sorted; end releases reverse canonical order. BUSY/refusal
+ * rolls back additions only and leaves the original access unchanged/live.
+ * No allocation, VM/owner callback, managed retain/root or provenance proof.
+ * Caller must end before retry/error/world transition/wait. Native metadata
+ * mutexes keep their existing contract, not a wall-clock guarantee. */
+DVM_CellResult dvm_range_access_extend(DVM_RangeAccess *access,
+    const void *span, size_t size);
+
+
 /* End exact current-owner access, including a successfully acquired empty set.
  * Return0 unchanged for wrong owner/depth/state. Caller retains domain/storage;
  * no callback, allocation, payload read or VM transition. Do not hold access

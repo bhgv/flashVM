@@ -9,6 +9,7 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void lenl(void); /* Actual guarded list length opcode. */
 extern void lena(void); /* Actual guarded array length opcode. */
 extern void movb(void); /* Actual hosted byte copy opcode. */
 extern void movw(void); /* Actual hosted native WORD copy opcode. */
@@ -89,6 +90,9 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case ILENL:
+        lenl();
+        break;
     case ILENA:
         lena();
         break;

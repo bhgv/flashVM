@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.102.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.103.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -102,7 +102,7 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
- DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py prepare_shared_bytes.py prepare_shared_mapped.py shared_mapped.h prepare_shared_head.py shared_head.h prepare_shared_list_pointer.py shared_list_pointer.h prepare_shared_list_bytes.py shared_list_bytes.h prepare_shared_integer.py shared_integer.h prepare_shared_arithmetic.py shared_arithmetic.h prepare_shared_shift.py shared_shift.h prepare_shared_branch.py shared_branch.h prepare_shared_array_length.py shared_array_length.h prepare_bytes_tail.py shared_bytes.h bytes_fast.h shared_pointer.h aggregate_fast.h owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+ DEPENDS limbo-bootstrap prepare.py "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py prepare_shared_bytes.py prepare_shared_mapped.py shared_mapped.h prepare_shared_head.py shared_head.h prepare_shared_list_pointer.py shared_list_pointer.h prepare_shared_list_bytes.py shared_list_bytes.h prepare_shared_integer.py shared_integer.h prepare_shared_arithmetic.py shared_arithmetic.h prepare_shared_shift.py shared_shift.h prepare_shared_branch.py shared_branch.h prepare_shared_array_length.py shared_array_length.h prepare_shared_list_length.py shared_list_length.h prepare_bytes_tail.py shared_bytes.h bytes_fast.h shared_pointer.h aggregate_fast.h owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-${runtime_backend})
@@ -167,6 +167,8 @@ add_executable(disvm
     branch_value.c
     shared_array_length.c
     array_length_value.c
+    shared_list_length.c
+    list_length_value.c
     byte_transfer.c
     bytes_fast.c
     aggregate_fast.c
@@ -2654,4 +2656,20 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "${CMAKE_CURRENT_SOURCE_DIR}/test_array_length_tail.py" "$<TARGET_FILE:disvm>"
   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
  set_tests_properties(disvm_shared_array_length disvm_array_length_tail PROPERTIES TIMEOUT 300)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_range_extension COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/range_extend.py")
+ set_tests_properties(disvm_native_range_extension PROPERTIES TIMEOUT 240)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
+ add_test(NAME disvm_shared_list_length COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_shared_list_length.py" "$<TARGET_FILE:disvm>"
+  "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+ add_test(NAME disvm_list_length_tail COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_list_length_tail.py" "$<TARGET_FILE:disvm>"
+  "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+ set_tests_properties(disvm_shared_list_length disvm_list_length_tail PROPERTIES TIMEOUT 300)
 endif()
