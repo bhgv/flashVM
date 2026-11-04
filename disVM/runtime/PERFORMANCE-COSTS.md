@@ -524,3 +524,9 @@ timing is recorded.
 The guarded hosted profile routes SEND and RECV through C. Measure the
 cost against the direct pointer-free leaf using matched buffered traffic.
 No matched timing is recorded.
+
+## CHANMAPPEDMOVE-122
+
+Guarded movtmp uses the shared mapped-value transaction, including
+snapshot and root preparation for pointer-bearing fields. Measure
+matched direct and buffered tuple traffic. No matched timing is recorded.

@@ -926,6 +926,39 @@ static void prog_hold_race(void)
 }
 
 
+/* Execute the real channel mover with the fixture's decoded operands. */
+static int mapped_channel_move(void *unused)
+{
+    (void)unused;
+    movtmp();
+    return 1;
+}
+
+
+/* The guarded mover refuses an invalid mapped source before changing output. */
+static void mapped_channel_move_case(void)
+{
+    struct {
+        void *pointer;
+        WORD scalar;
+    } source = {NULL, 17}, destination_value = {H, 29};
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    registers->s = &source;
+    registers->d = &destination_value;
+    registers->m = &record;
+    check(!kprotect(mapped_channel_move, NULL) &&
+        destination_value.pointer == H && destination_value.scalar == 29,
+        "mapped channel mover refusal leaves destination intact");
+    source.pointer = H;
+    check(kprotect(mapped_channel_move, NULL) &&
+        destination_value.pointer == H && destination_value.scalar == 17,
+        "mapped channel mover copies validated fields");
+    *registers = saved;
+    puts("PASS guarded mapped channel mover");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -964,6 +997,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     imported_case(workers, 1);
     array_case(workers);
     channel_case();
+    mapped_channel_move_case();
     prog_hold_race();
     channel_drain_case();
     channel_finalize_case();
