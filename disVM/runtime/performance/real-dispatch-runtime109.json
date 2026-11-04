@@ -1,0 +1,50 @@
+{
+  "scope": "matched previous-fallback/fixed-dispatch; same guarded profile, all other C objects equal",
+  "iterations": 20000,
+  "checksum": 305000,
+  "samples_after_warmup": 3,
+  "source_sha256": {
+    "previous": "44cc07155958d11b3a827623c6812df584e475e9ae84d82ffdca39d630082fd5",
+    "fixed": "3cab877023ac1f1339b7342d63d054e9cf59f7317230ed3673398dd35528f1ff"
+  },
+  "modes": {
+    "--no-jit": {
+      "seconds": {
+        "previous-fallback": 0.513587309003924,
+        "fixed-dispatch": 0.5273251840044395
+      },
+      "samples": {
+        "previous-fallback": [
+          0.4871820789994672,
+          0.513587309003924,
+          0.5291422360023716
+        ],
+        "fixed-dispatch": [
+          0.5273251840044395,
+          0.6134929149993695,
+          0.5020457680002437
+        ]
+      },
+      "fixed_over_previous": 1.026748859949751
+    },
+    "--jit": {
+      "seconds": {
+        "previous-fallback": 0.5520458789978875,
+        "fixed-dispatch": 0.521206302997598
+      },
+      "samples": {
+        "previous-fallback": [
+          0.5585187499964377,
+          0.5261062570061767,
+          0.5520458789978875
+        ],
+        "fixed-dispatch": [
+          0.5196711729950039,
+          0.521206302997598,
+          0.5950404690011055
+        ]
+      },
+      "fixed_over_previous": 0.9441358459983947
+    }
+  }
+}

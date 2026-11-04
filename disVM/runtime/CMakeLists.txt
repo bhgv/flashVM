@@ -1,6 +1,6 @@
 # Experimental native-cell Dis runner; does not reinterpret legacy modules.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.108.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.109.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -2724,4 +2724,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_real_arithmetic_tail.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_shared_real_arithmetic disvm_real_arithmetic_tails PROPERTIES TIMEOUT 360)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
+    add_test(NAME disvm_guarded_dispatch_closure COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_guarded_dispatch.py" "${CMAKE_CURRENT_BINARY_DIR}/native")
+    set_tests_properties(disvm_guarded_dispatch_closure PROPERTIES TIMEOUT 120)
 endif()

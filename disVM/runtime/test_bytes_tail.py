@@ -155,8 +155,14 @@ init() {
 
 
 def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32", variants=None,
-         coverage_marker="five guarded entries reached", tail_label="five actual byte tails"):
-    """Run supplied real guest/wrapper/checksum, with actual emitter controls."""
+         coverage_marker="five guarded entries reached", tail_label="five actual byte tails", extra_symbols=(), dispatcher_controls=None):
+    """Run the real guest/oracle with matching objects and exact emitter controls.
+
+    extra_symbols extends linker observations. dispatcher_controls maps private
+    variants to opcode/entry/result (0 decline,1 false success,2 duplicate call).
+    All mutations live in scratch; the corresponding exact semantic predicate
+    alone counts, never compiler/crash/resource failures. Defaults stay unchanged.
+    """
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix='guarded byte tails ') as directory:
         work = Path(directory)
@@ -200,8 +206,20 @@ def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32", variant
                     code = code.replace(before, 'if(0 && dvm_runtime_guarded_copies &&')
                 path.write_text(code)
                 backend = work / 'comp-amd64.c'
+            dispatch = None
+            if dispatcher_controls and variant in dispatcher_controls:
+                opcode, operation, result = dispatcher_controls[variant]
+                code = (Path(__file__).resolve().parent/'bytes_fast.c').read_text()
+                before = '    case '+opcode+':\n        '+operation+'();\n        break;'
+                if code.count(before) != 1:
+                    raise RuntimeError('dispatcher omission drift: '+opcode)
+                dispatch = work/'bytes_fast.c'
+                replacement = '    case '+opcode+':\n        return '+str(result)+';'
+                if result == 2:
+                    replacement = before.replace(operation+'();',operation+'();\n        '+operation+'();')
+                dispatch.write_text(code.replace(before,replacement,1))
             binary = relink(runtime, work, wrapper, variant,
-                            ['dvm_runtime_bytes_fast', 'dvm_bigtable_call_ready'], compiler_source=backend)
+                            ['dvm_runtime_bytes_fast', 'dvm_bigtable_call_ready', *extra_symbols], compiler_source=backend, bytes_fast_source=dispatch)
             for locked in (False, True):
                 command = [str(binary), '--jit', '--gc-worker', '--guarded-copies', '--stats']
                 if locked:
@@ -211,7 +229,10 @@ def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32", variant
                 output = run.stdout+run.stderr
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                     raise RuntimeError(output)
-                if variant in (10, 11):
+                if dispatcher_controls and variant in dispatcher_controls:
+                    if run.returncode != 10 or 'FAIL byte-tail: dispatch executes exactly once' not in output:
+                        raise RuntimeError('dispatcher omission missed: '+output)
+                elif variant in (10, 11):
                     marker = 'return PC belongs to JIT mapping' if variant == 10 else coverage_marker
                     if run.returncode != 10 or 'FAIL byte-tail: '+marker not in output:
                         raise RuntimeError('byte-tail semantic control missed: '+output)

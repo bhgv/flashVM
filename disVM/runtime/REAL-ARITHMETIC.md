@@ -62,3 +62,15 @@ python3 disVM/runtime/benchmark_real_arithmetic.py RUNTIME LIMBO INCLUDE_DIR
 [Commented Limbo example](../examples/real-arithmetic/README.md).
 [Cost ledger](PERFORMANCE-COSTS.md) preserves REALARITH-108 profile medians and
 unisolated candidates; it is not an isolated FP/lock/C-tail or IDE speed measure.
+
+## Correction in runtime0.109
+
+The runtime0.108 emitter selected four REAL tails, but bytes_fast.c lacked their
+cases. Tail arrival was followed by dispatcher refusal and interpreter fallback.
+The old tests observed arrival, cache/error behavior and guest results, not
+completed exactly-once dispatch. Runtime0.109 adds all four cases and requires
+return1 plus exactly one genuine arithmetic-helper invocation. Twelve actual
+dispatcher mutations independently decline, lie about completion or execute twice
+for each operation. Historical runtime108 timings remain measured fallback-path
+results; they are not relabeled as completed-tail measurements.
+See [GUARDED-DISPATCH.md](GUARDED-DISPATCH.md).

@@ -9,6 +9,10 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void addf(void); /* Guarded REAL addition. */
+extern void subf(void); /* Guarded REAL subtraction. */
+extern void mulf(void); /* Guarded REAL multiplication. */
+extern void divf(void); /* Guarded REAL division. */
 extern void beqf(void); /* Actual guarded REAL branch. */
 extern void bnef(void); /* Actual guarded REAL branch. */
 extern void bltf(void); /* Actual guarded REAL branch. */
@@ -92,7 +96,9 @@ extern void headf(void); /* Actual guarded scalar/raw list-head opcode. */
 extern void headm(void); /* Actual guarded scalar/raw list-head opcode. */
 
 
-/* [GC:] Native identity is checked before dispatch/operands. No cleanup, code
+/* [PERF REALDISPATCH-109] Matched old/fixed dispatch samples are retained in
+ * PERFORMANCE-COSTS.md; this is not an isolated tail/FP cost.
+ * [GC:] Native identity is checked before dispatch/operands. No cleanup, code
  * metadata read or retry follows a completed opcode or propagated VM error. */
 int dvm_runtime_bytes_fast(REG *registers, int opcode)
 {
@@ -103,6 +109,18 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case IADDF:
+        addf();
+        break;
+    case ISUBF:
+        subf();
+        break;
+    case IMULF:
+        mulf();
+        break;
+    case IDIVF:
+        divf();
+        break;
     case IBEQF:
         beqf();
         break;

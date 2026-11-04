@@ -23,11 +23,35 @@ def wrapper():
     code = code.replace('registers->m = &negative;', 'registers->s = H;').replace('IMOVM', 'IDIVF')
     code = code.replace('five guarded entries reached', 'four guarded entries reached')
     code = code.replace('five guarded byte tails', 'four guarded REAL tails')
+    code = code.replace('static int stage;', 'static unsigned long operation_calls; /* Genuine guarded arithmetic calls. */\nstatic int stage;')
+    # The final target-only return must complete dispatch and invoke exactly one
+    # genuine arithmetic helper. Entering a tail followed by fallback is insufficient.
+    before = '    return __real_dvm_runtime_bytes_fast(registers, opcode);'
+    position = code.rfind(before)
+    if position < 0:
+        raise RuntimeError('target dispatch return drift')
+    after = '    unsigned long previous = operation_calls;\n    int complete = __real_dvm_runtime_bytes_fast(registers, opcode);\n    check(complete == 1 && operation_calls == previous+1,"dispatch executes exactly once");\n    return complete;'
+    code = code[:position]+code[position:].replace(before,after,1)
+    code += r'''
+
+
+/* Count actual guarded arithmetic execution, not entry into a declining tail.
+ * Arguments are independently live borrowed cells; return the real diagnostic.
+ * No guard/owner/callback is inserted here; VM errors retain their real unwind. */
+const char *__real_dvm_runtime_real_arithmetic(int,const void *,const void *,void *);
+const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const void *b,void *out)
+{
+    operation_calls++;
+    return __real_dvm_runtime_real_arithmetic(opcode,a,b,out);
+}
+'''
     return code.replace('actual MOVM', 'actual DIVF').replace('negative-count C MOVM', 'invalid-source C DIVF')
 
 
 if __name__ == '__main__':
     variants = (9, *range(100, 104), 12, 13)
+    controls = {20+3*i+result: ('I'+op.upper(),op,result) for i,op in enumerate(OPS) for result in (0,1,2)}
     if '--positive-only' not in sys.argv:
-        variants += (10, 11)
-    main(GUEST, wrapper(), 'PASS REAL arithmetic4', variants, 'four guarded entries reached', 'four actual REAL arithmetic tails')
+        variants += (10, 11, *controls)
+    main(GUEST, wrapper(), 'PASS REAL arithmetic4', variants, 'four guarded entries reached', 'four actual REAL arithmetic tails',
+         extra_symbols=('dvm_runtime_real_arithmetic',), dispatcher_controls=controls)

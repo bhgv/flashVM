@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Версия разработки: **0.1807**. [English](README.md).
+Версия разработки: **0.1808**. [English](README.md).
 
-Текущая серия: [v0.1807](docs/releases/v0.1807.md): защищённая двухфазная арифметика REAL и четыре настоящих C-tail x64.
+Текущая серия: [v0.1808](docs/releases/v0.1808.md): исправлен REAL C-tail, проверено однократное выполнение и соответствие всех 85 операций диспетчеру.
 
 [Журнал измеренных замедлений и путей для оптимизации](disVM/runtime/PERFORMANCE-COSTS.md).
 
