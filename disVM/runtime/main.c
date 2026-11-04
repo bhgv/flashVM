@@ -518,12 +518,24 @@ Prog *newprog(Prog *parent, Modlink *module)
     return process;
 }
 
-/* Reserve a live waiter before dequeue. NativeWorld keeps the Prog live
- * and excludes other executors until the claim is released. */
-void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request)
+typedef struct ChannelClaim
 {
+    Prog *peer;
+    void (*validate)(void *); /* Optional queue-head check under the queue mutex. */
+    void *request;
+} ChannelClaim;
+
+
+/* Acquire the completion hold while a scheduler or queue owner is live. */
+static int acquire_channel_claim(void *argument)
+{
+    ChannelClaim *claim = argument;
+    Prog *peer = claim->peer;
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
-    int completed;
+    if (claim->validate)
+    {
+        claim->validate(claim->request);
+    }
     if (process->channel_claimed ||
         (peer->state != Psend && peer->state != Precv && peer->state != Palt))
     {
@@ -533,14 +545,41 @@ void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *requ
     {
         error("channel waiter cannot be pinned");
     }
-    process->channel_claimed = &completed;
-    completed = kprotect(match, request);
-    process->channel_claimed = nil;
+    process->channel_claimed = claim;
+    return 1;
+}
+
+
+/* Finish outside the mutex. Cancellation and wake can enter the queue guard. */
+static void finish_channel_claim(ChannelClaim *claim, int (*match)(void *))
+{
+    Prog *peer = claim->peer;
+    int completed = kprotect(match, claim->request);
+    ((DVM_RuntimeProcess *)peer)->channel_claimed = nil;
     dvm_runqueue_unpin(peer);
     if (!completed)
     {
         krethrow();
     }
+}
+
+
+/* External cancellation borrows the scheduler-owned waiter under NativeWorld. */
+void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request)
+{
+    ChannelClaim claim = {peer, nil, request};
+    acquire_channel_claim(&claim);
+    finish_channel_claim(&claim, match);
+}
+
+
+/* Check the queue head and pin it in the same mutex acquisition. */
+void dvm_runtime_channel_with_queue_claim(Prog *peer, void (*validate)(void *),
+    int (*match)(void *), void *request)
+{
+    ChannelClaim claim = {peer, validate, request};
+    dvm_runtime_channel_queue_guard(acquire_channel_claim, &claim);
+    finish_channel_claim(&claim, match);
 }
 
 

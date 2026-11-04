@@ -180,7 +180,8 @@ static int channel_match_{opcode}(void *argument)
 """
         dispatch = f"""    request.channel = c;
     request.peer = p;
-    channel_match_head(&c->{direction}, &request, channel_match_{opcode});"""
+    request.queue = &c->{direction};
+    dvm_runtime_channel_with_queue_claim(p, validate_channel_head, channel_match_{opcode}, &request);"""
         prefix = prefix.replace("\tProg *p;\n", "\tProg *p;\n    ChannelMatch request;\n", 1)
         body = body[:start] + callback + prefix + dispatch + body[end:]
     return body
@@ -188,21 +189,23 @@ static int channel_match_{opcode}(void *argument)
 
 WAIT_COMPLETION = r"""
 extern void dvm_runtime_alt_preflight(Alt *alt);
-extern void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request);
+extern void dvm_runtime_channel_with_queue_claim(Prog *peer, void (*validate)(void *),
+    int (*match)(void *), void *request);
 
 typedef struct ChannelMatch
 {
     Channel *channel; /* Borrowed under NativeWorld. */
-    Prog *peer; /* Live waiter held by the current scheduler turn. */
+    Prog *peer; /* Expected waiter, checked before dereference. */
+    Progq **queue; /* Queue owner protected by the channel mutex. */
 } ChannelMatch;
-/* Revalidate the queue head and take the completion hold while the same
- * NativeWorld turn still protects the queue's own Prog reference. */
-static void channel_match_head(Progq **queue, ChannelMatch *request,
-    int (*match)(void *))
+
+
+/* Validate the expected identity before acquiring its completion hold. */
+static void validate_channel_head(void *argument)
 {
-    if (vmchanhead(queue)->prog != request->peer)
+    ChannelMatch *request = argument;
+    if (vmchanhead(request->queue)->prog != request->peer)
         error(exHeap);
-    dvm_runtime_channel_with_claim(request->peer, match, request);
 }
 
 extern void dvm_runtime_channel_wake(Prog *peer, char *cause);
