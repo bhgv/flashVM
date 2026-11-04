@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.101.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.102.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -454,3 +454,8 @@ sanitizer failure, without changing NativeWorld or shared-heap admission.
 Runtime0.101 adds [eighteen guarded integer branches](SHARED-BRANCHES.md),
 including conditional target reads and owner-local PC publication. Actual x64
 tails use the same handlers. General NativeWorld serialization remains.
+
+Runtime0.102 adds [continuous source/field guards and LENA](ARRAY-LENGTH.md).
+The native extension preserves the original access on BUSY/refusal; callers
+end it before retry/error. No temporary roots/owners or allocation in LENA.
+NativeWorld and caller-proven root/referent lifetimes remain required.

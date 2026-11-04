@@ -1,0 +1,16 @@
+{
+  "--no-jit": {
+    "seconds": {
+      "default": 0.16282607600442134,
+      "guarded": 0.17515551501128357
+    },
+    "guarded_over_default": 1.075721526363673
+  },
+  "--jit": {
+    "seconds": {
+      "default": 0.13067029300145805,
+      "guarded": 0.17487062700092793
+    },
+    "guarded_over_default": 1.3382584747014892
+  }
+}

@@ -13,7 +13,7 @@ typedef struct DVM_TripleAccess
 {
     DVM_CellDomain *domain; /* Borrowed existing domain, pinned until end/rollback. */
     DVM_NativeContext *context; /* Exact bound owner while acquired. */
-    DVM_ObjectGuard *guards[6]; /* Sorted unique stripes, not managed data. */
+    DVM_ObjectGuard *guards[6]; /* Unique stripes in acquisition order; initial prefix is sorted. */
     unsigned int count; /* Selected unique stripe count. */
     unsigned int held; /* Acquired prefix, private rollback metadata. */
 } DVM_TripleAccess;
@@ -28,6 +28,19 @@ typedef struct DVM_TripleAccess
 DVM_CellResult dvm_small_range_access_begin(DVM_CellDomain *domain,
     const void *source, size_t source_size, const void *second, size_t second_size,
     void *destination, size_t destination_size, DVM_TripleAccess *access);
+
+
+/* Extend a live exact-owner access by one independently live span1..pointer.
+ * Preserve every original claim and the same domain borrow throughout. New
+ * stripes are deduplicated and tried in ascending order, possibly below an
+ * existing stripe: try-only acquisition never waits for another object owner.
+ * At most six total stripes. Return ACQUIRED after full extension; BUSY/REFUSED
+ * release only newly acquired stripes and leave the original access unchanged.
+ * No allocation, VM callback, root/retain or payload read. Native metadata keeps
+ * its existing mutex contract. No caller wait/world/error transition while held;
+ * callers must still end the original access on failure. */
+DVM_CellResult dvm_small_range_access_extend(DVM_TripleAccess *access,
+    const void *span, size_t size);
 
 
 /* End current-owner access, release reverse prefix and borrow, zero metadata.

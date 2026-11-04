@@ -135,6 +135,88 @@ DVM_CellResult dvm_small_range_access_begin(DVM_CellDomain *domain,
 }
 
 
+/* Restore the previous prefix after an extension refuses. access is exact-owner
+ * private metadata; original is its prior count. No domain borrow is consumed.
+ * Guard release can use native wake metadata, never a payload/VM callback. */
+static void undo_extension(DVM_TripleAccess *access, unsigned int original)
+{
+    while (access->held > original)
+    {
+        access->held--;
+        if (!dvm_object_guard_leave(access->guards[access->held]))
+        {
+            abort();
+        }
+    }
+    while (access->count > original)
+    {
+        access->guards[--access->count] = NULL;
+    }
+}
+
+
+/* [PERF ARRAYLEN-102] Two-key extension cost is not isolated from the full
+ * runtime profile; see runtime/PERFORMANCE-COSTS.md.
+ * access owns an existing canonical-domain borrow; span/size are borrowed live
+ * storage, not a payload capability. New keys use bounded try-only claims with
+ * no release gap in the original prefix. Failed additions roll back alone;
+ * caller must end the still-live original access before any VM/error/wait. */
+DVM_CellResult dvm_small_range_access_extend(DVM_TripleAccess *access,
+    const void *span, size_t size)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    unsigned int keys[2];
+    unsigned int original;
+    unsigned int index;
+    unsigned int other;
+    if (!context || !access || !access->domain || access->context != context ||
+        !access->count || access->count > 6 || access->held != access->count ||
+        dvm_native_context_object_count(context) != access->held || !range(span, size, keys))
+    {
+        return DVM_CELL_REFUSED;
+    }
+    if (keys[1] < keys[0])
+    {
+        unsigned int temporary = keys[0];
+        keys[0] = keys[1];
+        keys[1] = temporary;
+    }
+    original = access->count;
+    for (index = 0; index < 2; index++)
+    {
+        DVM_ObjectGuard *guard = &access->domain->stripes[keys[index]];
+        for (other = 0; other < access->count; other++)
+        {
+            if (access->guards[other] == guard)
+            {
+                break;
+            }
+        }
+        if (other != access->count)
+        {
+            continue;
+        }
+        if (access->count == 6)
+        {
+            undo_extension(access, original);
+            return DVM_CELL_REFUSED;
+        }
+        access->guards[access->count++] = guard;
+    }
+    for (index = original; index < access->count; index++)
+    {
+        DVM_ObjectResult result = dvm_object_guard_try_enter(access->guards[index]);
+        if (result != DVM_OBJECT_ACQUIRED)
+        {
+            undo_extension(access, original);
+            return result == DVM_OBJECT_BUSY ? DVM_CELL_BUSY : DVM_CELL_REFUSED;
+        }
+        access->held++;
+    }
+    return DVM_CELL_ACQUIRED;
+}
+
+
 /* Foreign/depth refusal precedes mutation; owner may retry after extra unlock. */
 int dvm_small_range_access_end(DVM_TripleAccess *access)
 {

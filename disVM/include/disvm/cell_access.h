@@ -16,7 +16,7 @@ typedef struct DVM_CellDomain DVM_CellDomain; /* Stable caller-owned native cell
 typedef enum DVM_CellResult
 {
     DVM_CELL_REFUSED = -1, /* Invalid geometry, context, role or access storage. */
-    DVM_CELL_BUSY = 0, /* A required guard is busy; no guard/borrow remains owned. */
+    DVM_CELL_BUSY = 0, /* Required guard busy; begin rolls back, extend preserves its original access. */
     DVM_CELL_ACQUIRED = 1 /* All overlapping native pointer-cell guards are owned. */
 } DVM_CellResult;
 
