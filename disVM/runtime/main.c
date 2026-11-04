@@ -675,6 +675,10 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
                 *failed = 1;
             }
         }
+        if (peer)
+        {
+            dvm_runqueue_unpin(peer);
+        }
     }
 }
 

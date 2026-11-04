@@ -315,3 +315,39 @@ def adapt_channel_finalizer(source):
         raise ValueError("channel finalizer boundary drift")
     return source.replace(old, "\textern void dvm_runtime_channel_finalize(Channel *, int);\n"
                           "\tdvm_runtime_channel_finalize(c, swept);", 1)
+
+
+def adapt_queue_holds(source):
+    """Give every published hosted queue node one native Prog hold."""
+    start = source.index("void\ncqadd(Progq **q, Prog *p)")
+    end = source.index("/* Resolve a checked channel/peer", start)
+    body = source[start:end]
+    changes = (
+        ("\t\ttail->prog = p;", """        if (!dvm_runqueue_pin(p))
+            error(exHeap);
+        tail->prog = p;"""),
+        ("\tn->prog = p;", """    if (!dvm_runqueue_pin(p))
+    {
+        free(n);
+        error(exHeap);
+    }
+    n->prog = p;"""),
+        ("\tProgq *head, *next;", "\tProgq *head, *next;\n    Prog *peer;"),
+        ("\thead = vmchanhead(q);", "\thead = vmchanhead(q);\n    peer = head->prog;"),
+        ("\t\thead->prog = nil;", """        head->prog = nil;
+        if (peer)
+            dvm_runqueue_unpin(peer);"""),
+        ("\tfree(head);", "\tfree(head);\n    dvm_runqueue_unpin(peer);"),
+        ("\t\t\treturn;\n\t\t}\n\t\tf = *q;", """            dvm_runqueue_unpin(p);
+            return;
+        }
+        f = *q;"""),
+        ("\t\tfree(f);", "\t\tfree(f);\n        dvm_runqueue_unpin(p);"),
+    )
+    for old, new in changes:
+        if body.count(old) != 1:
+            raise ValueError("channel queue ownership drift: " + old)
+        body = body.replace(old, new, 1)
+    declarations = ("extern int dvm_runqueue_pin(Prog *process);\n"
+                    "extern void dvm_runqueue_unpin(Prog *process);\n\n")
+    return source[:start] + declarations + body + source[end:]

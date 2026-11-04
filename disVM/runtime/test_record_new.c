@@ -431,6 +431,8 @@ static void channel_drain_case(void)
     cqadd(&closed->send, &alternative.process);
     cqadd(&closed->send, &sender.process);
     cqadd(&sibling->send, &alternative.process);
+    check(alternative.lifetime_holds == 3 && sender.lifetime_holds == 1,
+        "each published queue node owns a Prog hold");
     {
         Progq *head = closed->send;
         Progq *next = head->next;
@@ -454,7 +456,7 @@ static void channel_drain_case(void)
         strstr(getup()->env->errstr, "foreign C channel waiter"),
         "drain preserves first wake error");
     check(!alternative.channel_claimed && !sender.channel_claimed &&
-        !alternative.lifetime_holds && !sender.lifetime_holds &&
+        !foreign.lifetime_holds && !alternative.lifetime_holds && !sender.lifetime_holds &&
         !closed->send && sibling->send && !sibling->send->prog &&
         dvm_runqueue_pop(Psend) == &alternative.process &&
         dvm_runqueue_pop(Psend) == &sender.process && !dvm_runqueue_head(),
@@ -757,12 +759,13 @@ static void alt_publication_failure(void)
         !strcmp(getup()->env->errstr, exHeap), "reject cyclic sibling queue");
     check(selected->recv->prog == &waiter.process &&
         sibling->recv->prog == &waiter.process && sibling->recv->next == sibling->recv &&
-        waiter.process.state == Palt && !waiter.process.kill && !dvm_runqueue_head() &&
+        waiter.lifetime_holds == 2 && waiter.process.state == Palt &&
+        !waiter.process.kill && !dvm_runqueue_head() &&
         untouched == 61, "refused ALT cancellation preserves all registrations");
     sibling->recv->next = NULL;
     check(!kprotect(direct_channel_transfer, &receive) &&
         !strcmp(getup()->env->errstr, exBounds), "initiator observes ALT bounds error");
-    check(!selected->recv->prog && !sibling->recv->prog && untouched == 61 &&
+    check(!waiter.lifetime_holds && !selected->recv->prog && !sibling->recv->prog && untouched == 61 &&
         !waiter.process.ptr && waiter.process.kill &&
         !strcmp(waiter.process.kill, "channel transfer failed") &&
         dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),

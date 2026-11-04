@@ -483,3 +483,9 @@ failed rendezvous with and without ALT. No matched timing is recorded.
 Hosted close checks and claims waiters before detaching the queue owners.
 Measure the extra scans with waiters in both directions and duplicate ALT
 registrations. No matched timing is recorded.
+
+## CHANQUEUEHOLD-122
+
+Hosted channel queue publication and removal update a Prog hold per node.
+Measure matched registration and cancellation with repeated ALT guards.
+No matched timing is recorded.
