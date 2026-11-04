@@ -50,7 +50,8 @@ def catalog(payload):
         maps.append(source.take((size+63)//64))
     source.finish()
     functions = {}
-    for item in bindings(payload[6], True):
+    exports = bindings(payload[6], True) if 6 in payload else []
+    for item in exports:
         pc = item['entry']
         signature = item['signature']
         if len(signature[1]) > 256:

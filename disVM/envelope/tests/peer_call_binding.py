@@ -136,7 +136,7 @@ def bind_payloads(payload):
     catalog = type_catalog(payload[3])
     pool = string_catalog(payload[7])
     instructions = code_schema(payload[2])
-    exported = bindings(payload[6], True)
+    exported = bindings(payload[6], True) if 6 in payload else []
     imported = bindings(payload[5], False) if 5 in payload else []
     if module['name'] >= len(pool):
         raise ValueError('module name ID')

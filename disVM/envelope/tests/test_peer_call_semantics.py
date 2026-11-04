@@ -187,6 +187,21 @@ def run_suite():
     payload[5] = pack(0)
     verdict('empty-import-section',payload,'bounded-checks-passed')
     cases += 1
+    payload = copy.deepcopy(original)
+    del payload[6]
+    verdict('absent-exports', payload, 'bounded-refusal', 'module-entry')
+    cases += 1
+    payload[1] = pack(0, 1, 8, 1, 0, 0)
+    frame = instruction(11, 65, 0, 0, 64)
+    call = instruction(9, 72, 0, 64, 0)
+    payload[2] = pack(3)+frame+call+instruction(15, 27)
+    payload[3] = pack(2, 80, 8)+b'\0\0'+pack(8, 8)+b'\x80'
+    import_sig = pack(1, 0, 0)
+    payload[5] = pack(1, 1, 1, len(import_sig))+import_sig
+    result = verdict('paired-consumer-absent-exports', payload, 'unsupported', 'module-data')
+    if result.get('structural_bindings') != 'passed':
+        fail('paired consumer structural bindings')
+    cases += 1
     for count, managed in ((65,False),(3,True)):
         payload = copy.deepcopy(original)
         payload[3] = pack(count)+original[3][4:]+b''.join(pack(8,8)+bytes([128 if managed else 0]) for _ in range(count-2))
