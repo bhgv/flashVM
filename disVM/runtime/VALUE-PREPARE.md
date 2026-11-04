@@ -66,3 +66,6 @@ opcodes remain separate; the private-snapshot contract above is unchanged.
 
 Runtime0.117 follow-up: [raw CONSM](RAW-CONS.md) now captures shared unmapped
 source/count into native immutable storage before calling this preparation API.
+
+Runtime0.118 follow-up: [typed CONSMP](MAPPED-CONS.md) now uses a separate traced
+head snapshot and mapped-copy ownership; unmapped/raw API contracts stay unchanged.

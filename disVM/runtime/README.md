@@ -50,7 +50,7 @@
 
 [Retained object bitmaps and dirty flags](RETAINED-SCENE.md) / [RU](RETAINED-SCENE.ru.md)
 
-Runtime0.117.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
+Runtime0.118.0: [native UI/Dis owner split](THREADING.md) / [русский](THREADING.ru.md). The graphical host keeps UI on main and Dis on an OS worker by default; `--gc-worker` additionally runs deferred RC and cycle collection on separate Fast/Cycles OS threads at stopped-world safepoints (`--gc-inline` remains the default).
 
 [Scalar asinc capture publication prototype](../../compiler/runtime/ASINC-VIEWS.md) / [RU](../../compiler/runtime/ASINC-VIEWS.ru.md)
 
@@ -535,3 +535,7 @@ retirement. CONSM/CONSMP and general NativeWorld removal remain separate.
 Runtime0.117: [raw CONSM integration](RAW-CONS.md) captures count and source before
 callbacks, reuses one immutable native snapshot across stale-tail rebuilds and
 drains it despite managed cleanup errors. CONSMP/NativeWorld removal remain open.
+
+Runtime0.118: [typed CONSMP integration](MAPPED-CONS.md) captures a rooted traced
+head, builds/commits candidates from immutable references and drains five leases
+across errors. Selected C/x64 now use it; NativeWorld remains mandatory.

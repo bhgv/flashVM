@@ -389,3 +389,19 @@ size не делает malloc и игнорирует source. Metadata+source з
 текущая согласованность требует NativeWorld. В существующем aggregate x64 tail
 остаётся JMP в C, новый allocator bypass не добавляется. Это перечень новых
 затрат, не измеренный процент: CONSP/scalar timings к ним не переносим.
+
+## MAPPEDPREP-118 / CONSMP-118 — typed snapshot и кандидат
+
+v0.1817 / FLASHVM-0135. На обычном успешном пути CONSMP строятся ДВА managed
+List node: traced snapshot с H tail и actual candidate. Каждая подготовка требует
+root reservation(2 native blocks), retained Tlist/element Type и головы с H полями,
+ordinary pin, actual mapped_copy(ещё5 native blocks для nonempty pointer map),
+source/destination range guards, head retains/marks и root handoff до monitor.
+Coordinator добавляет empty-tail hold(2 blocks), observed-tail hold(2 blocks) и
+conditional commit/полный drain пяти lease. Для mapped heads это18 native
+preparation blocks, плюс два managed node и возможные cache-dependent ordinary
+pin blocks. При нулевой map scratch mapped-copy не создаётся. Stale сохраняет
+snapshot, но повторяет candidate build/capture-tail/commit. Это известные пути,
+не измеренный процент. Matched benchmark ещё не выполнен; CONSP/scalar/raw ratios
+не переносим. Возможная оптимизация первого snapshot/candidate и reuse metadata
+требует сохранения проверенных root/error/alias протоколов. NativeWorld остаётся.

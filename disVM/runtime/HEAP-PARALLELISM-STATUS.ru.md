@@ -305,3 +305,14 @@ native snapshot используется при всех stale retry. Snapshot �
 используют новый coordinator при --guarded-copies; unselected/inline body сохранён.
 CONSMP со ссылками остаётся отдельным протоколом. NativeWorld не снят; независимые
 size/source guards не доказывают согласованный снимок при будущих parallel writers.
+
+## runtime0.118: CONSMP подключён в C и existing x64 tail
+
+Typed head захватывается в отдельный укоренённый List snapshot; candidate строится
+из неизменных ссылок/Type, conditional commit и bounded stale retry сохраняют
+исходный head. Полная очистка пяти lease сохраняет первую ошибку. Callback видит
+полностью typed rooted graph; post-publication error использует consuming cleanup.
+Таким образом семейство list constructors теперь имеет выбранные защищённые пути,
+но NativeWorld не снят: другие shared writes/address leases, GC/root/retirement
+epochs, каналы/планировщик, frame/module/code lifetime и compiler local/shared
+варианты остаются крупными следующими блоками. Это не готовность в процентах.

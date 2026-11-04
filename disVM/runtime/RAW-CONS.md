@@ -67,3 +67,6 @@ separate from emitted-code evidence. Installed source closure is checked; no
 physical ARM64/RV64/Android/full IDE or concurrent collector acceptance follows.
 See [cost paths](PERFORMANCE-COSTS.md), [preparation](VALUE-PREPARE.md) and
 [conditional commit](HEAP-COMMIT.md).
+
+Runtime0.118 follow-up: [typed CONSMP](MAPPED-CONS.md) now uses a separate traced
+head snapshot and mapped-copy ownership; unmapped/raw API contracts stay unchanged.

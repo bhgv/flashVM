@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1816**. [Русская версия](README.ru.md).
+Development version: **0.1817**. [Русская версия](README.ru.md).
 
-Current series: [v0.1816](docs/releases/v0.1816.md): guarded raw CONSM with immutable source/count snapshots in C and x64.
+Current series: [v0.1817](docs/releases/v0.1817.md): guarded typed CONSMP, rooted reference snapshots and checked x64 entry.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 
