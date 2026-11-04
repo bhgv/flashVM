@@ -94,15 +94,42 @@ init()
 '''
 
 
+ALT_SEND_GUEST = SEND_GUEST.replace(
+    "    messages <-= 31;",
+    """    alt {
+        messages <-= 31 => {}
+    }""",
+)
+
+
+ALT_RECEIVE_GUEST = RECEIVE_GUEST.replace(
+    "    first := <-messages;",
+    """    first := 0;
+    alt {
+        first = <-messages => {}
+    }""",
+)
+
+
+ALT_FAILURE_GUEST = FAILURE_GUEST.replace(
+    "    sent := attempt(messages, 31);",
+    """    sent := 0;
+    alt {
+        messages <-= 31 => sent = 1;
+    }""",
+)
+
+
 def main():
     """Use the actual allocator and wait path with an injected slow mover."""
     runtime, compiler, include = (Path(arg).resolve() for arg in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix="channel-guest-wait-") as directory:
         work = Path(directory)
         binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
-                        ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest"])
+                        ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt"])
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
-                            ("failure", FAILURE_GUEST)):
+                            ("failure", FAILURE_GUEST), ("alt-send", ALT_SEND_GUEST),
+                            ("alt-receive", ALT_RECEIVE_GUEST), ("alt-failure", ALT_FAILURE_GUEST)):
             source, image = work / f"{name}.b", work / f"{name}.dis"
             source.write_text(guest)
             subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
@@ -113,6 +140,8 @@ def main():
                 output = result.stdout + result.stderr
                 if (result.returncode or output.count("PASS foreign channel guest wait") != 1
                         or "PASS guest channel payloads" not in output
+                        or (name.startswith("alt-")
+                            and output.count("PASS ALT owns the waiting continuation") != 1)
                         or "ThreadSanitizer:" in output or "runtime error:" in output):
                     raise RuntimeError(f"{name} {mode}\n{output}")
     print("PASS guarded channel contention on two native Dis workers in C and JIT modes")
