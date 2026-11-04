@@ -418,3 +418,10 @@ and reuses the record. Matched timing is pending.
 Imported records add a Modlink hold with two native root reservation allocations
 and guarded capture of the Type index. Guarded record operations use C dispatch
 from hosted leaf JIT sessions. Matched timing is pending.
+
+## ARRAYNEW-121
+
+Guarded array construction adds four native root reservation blocks and
+allocates a fresh owning array. It retains the element and array header Types
+independently. The x64 guarded leaf profile uses C for construction. A stale
+comparison reuses the candidate. Matched timing is pending.

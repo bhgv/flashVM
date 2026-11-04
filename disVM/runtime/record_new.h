@@ -12,4 +12,9 @@ struct Type; /* Immutable live descriptor owned by the caller. */
  * through the normal guarded APIs. It cannot retain the private candidate or
  * leave admission. Errors propagate after consuming cleanup. */
 void dvm_runtime_record_new(void *destination, struct Type *type, int clear);
+
+
+/* [GC:] Same publication contract for an owning array. count is a full native
+ * WORD. Each element gets H in mapped slots, with optional scalar zeroing. */
+void dvm_runtime_array_new(void *destination, struct Type *type, WORD count, int clear);
 #endif

@@ -39,7 +39,11 @@ def adapt(source):
     }}
 """
         source = source[:match.start()] + body[:at] + selection + body[at:] + source[match.end():]
-    return adapt_imported(source)
+    source = adapt_array(adapt_imported(source))
+    anchor = '#include "interp.h"'
+    if source.count(anchor) != 1:
+        raise ValueError("record declaration include drift")
+    return source.replace(anchor, anchor + '\n#include "record_new.h"', 1)
 
 def adapt_imported(source):
     """Keep the imported module owner live through resolution and publication."""
@@ -106,7 +110,7 @@ static void guarded_imported_record(void *source, void *index, void *destination
         }
     }
 """
-    return ('#include "record_new.h"\n#include "shared_access.h"\n#include "heap_hold.h"\n'
+    return ('#include "shared_access.h"\n#include "heap_hold.h"\n'
             + source[:match.start()] + helper + body[:at] + selection + body[at:]
             + source[match.end():])
 
@@ -114,12 +118,54 @@ static void guarded_imported_record(void *source, void *index, void *destination
 def adapt_leaf(source):
     """Use the checked C dispatch for guarded constructors on hosted leaf backends."""
     anchor = "leafop(LeafOp *p, int op, int wordbytes)\n{\n"
-    if source.count(anchor) != 1 or "Guarded record construction uses C" in source:
+    if source.count(anchor) != 1 or "Guarded record and array construction uses C" in source:
         raise ValueError("record leaf classification drift")
-    selection = """    /* Guarded record construction uses C, including on an RC1 destination. */
-    if (dvm_runtime_guarded_copies && (op == INEW || op == INEWZ || op == IMNEWZ))
+    selection = """    /* Guarded record and array construction uses C, including on an RC1 destination. */
+    if (dvm_runtime_guarded_copies && (op == INEW || op == INEWZ || op == IMNEWZ || op == INEWA || op == INEWAZ))
     {
         return 0;
     }
 """
     return '#include "shared_bytes.h"\n' + source.replace(anchor, anchor + selection, 1)
+
+ARRAY = "705c18a3915a741a703ba881e09c14e12e84806792d273f8d70fd75ab9f020e6"  # Exact adapted array coordinator before guarded selection.
+
+
+def adapt_array(source):
+    """Capture the full count and descriptor index before the first callback."""
+    match = re.search(r"static void\nnewarray\(int clear\)\n\{.*?\n\}", source, re.S)
+    if not match or hashlib.sha256(match.group().encode()).hexdigest() != ARRAY:
+        raise ValueError("array constructor drift")
+    body = match.group()
+    at = body.index("\n{") + 2
+    selection = r"""
+    if (dvm_runtime_guarded_copies)
+    {
+        int selected = dvm_runtime_shared_mode();
+        if (!selected)
+        {
+            error(exHeap);
+        }
+        if (selected == 2)
+        {
+            WORD captured_index;
+            WORD captured_count;
+            Type *element;
+            const char *problem = dvm_runtime_bytes_copy(DVM_R.m, &captured_index,
+                sizeof(captured_index));
+            if (problem)
+            {
+                error((char *)problem);
+            }
+            element = moduletype(DVM_R.M, captured_index);
+            problem = dvm_runtime_bytes_copy(DVM_R.s, &captured_count, sizeof(captured_count));
+            if (problem)
+            {
+                error((char *)problem);
+            }
+            dvm_runtime_array_new(DVM_R.d, element, captured_count, clear);
+            return;
+        }
+    }
+"""
+    return source[:match.start()] + body[:at] + selection + body[at:] + source[match.end():]

@@ -25,6 +25,11 @@ static void *module_slot; /* Rooted source slot for the imported opcode. */
 static Modlink *imported; /* Borrowed through the imported constructor hold. */
 static int callbacks; /* Complete record allocations observed by monitor. */
 static int stale; /* Actual failed identity comparisons. */
+static int array_mode; /* Inspect arrays instead of records in the monitor. */
+static int reject_array_root; /* Fail the candidate handoff after initialization. */
+static Heap *previous_array; /* Existing owner excluded from candidate refusal. */
+static int root_refusals; /* Counts candidate-specific refusal injections. */
+static WORD length; /* Requested array extent in the current diagnostic. */
 static int guest_entries; /* Real adapted opcode calls after the probe. */
 
 extern void mnewz(void); /* Real hosted opcode with decoded operands. */
@@ -53,13 +58,40 @@ void __wrap_dvm_runtime_record_new(void *slot, Type *type, int clear)
         Jit *jit = registers->M->m->jit;
         if (jit)
         {
-            check(!jit->entry[INEW] && !jit->entry[INEWZ] && !jit->entry[IMNEWZ],
+            check(!jit->entry[INEW] && !jit->entry[INEWZ] && !jit->entry[IMNEWZ] &&
+                !jit->entry[INEWA] && !jit->entry[INEWAZ],
                 "guarded record JIT uses checked dispatch");
             puts("PASS guarded record JIT cache");
         }
         puts("PASS record opcode route");
     }
     __real_dvm_runtime_record_new(slot,type,clear);
+}
+
+
+/* Observe the real array opcode before calling the shared allocator. */
+void __real_dvm_runtime_array_new(void *, Type *, WORD, int);
+void __wrap_dvm_runtime_array_new(void *slot, Type *type, WORD count, int clear)
+{
+    if (!record)
+    {
+        puts("PASS array opcode route");
+    }
+    __real_dvm_runtime_array_new(slot, type, count, clear);
+}
+
+
+/* Refuse only the fully initialized Array candidate root. */
+int __real_dvm_runtime_root_batch_publish(DVM_RootBatch *, void *const *, size_t);
+int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *keys, size_t count)
+{
+    if (reject_array_root && count == 1 && keys[0] != previous_array &&
+        ((Heap *)keys[0])->t == &Tarray)
+    {
+        root_refusals++;
+        return 0;
+    }
+    return __real_dvm_runtime_root_batch_publish(batch, keys, count);
 }
 
 
@@ -84,16 +116,35 @@ static void monitor(int event, void *value, ulong bytes)
     void *previous;
     void *empty = H;
     WORD scalar;
-    if (event || header->t != record)
+    if (event || header->t != (array_mode ? &Tarray : record))
     {
         return;
     }
     callbacks++;
-    check(bytes == record->size && dvm_runtime_root_count(header) == 1 &&
-        !dvm_native_context_object_count(dvm_native_context_current()),"rooted unguarded monitor");
-    memmove(&head,H2D(void *,header),sizeof(head));
-    memmove(&scalar,H2D(uchar *,header)+sizeof(head),sizeof(scalar));
-    check(head == H && scalar == 0,"initialized mapped and scalar fields");
+    check(dvm_runtime_root_count(header) == 1 &&
+        !dvm_native_context_object_count(dvm_native_context_current()), "rooted unguarded monitor");
+    if (array_mode)
+    {
+        Array *array = H2D(Array *, header);
+        WORD index;
+        check(array->len == length && array->t == record && array->root == H &&
+            array->data == (uchar *)array + sizeof(*array) &&
+            bytes == sizeof(*array) + (ulong)length * record->size, "complete array header");
+        for (index = 0; index < length; index++)
+        {
+            uchar *element = array->data + index * record->size;
+            memmove(&head, element, sizeof(head));
+            memmove(&scalar, element + sizeof(head), sizeof(scalar));
+            check(head == H && scalar == 0, "initialized array element");
+        }
+    }
+    else
+    {
+        check(bytes == record->size, "complete record extent");
+        memmove(&head, H2D(void *, header), sizeof(head));
+        memmove(&scalar, H2D(uchar *, header) + sizeof(head), sizeof(scalar));
+        check(head == H && scalar == 0, "initialized mapped and scalar fields");
+    }
     if (mode == 1)
     {
         check(!dvm_runtime_movp_copy(&empty,destination,&previous),"interleaved guarded writer");
@@ -200,6 +251,74 @@ static void imported_case(DVM_GCWorkers *workers, int fail)
 }
 
 
+/* Run the checked array allocator within the VM error checkpoint. */
+static int construct_array(void *unused)
+{
+    (void)unused;
+    dvm_runtime_array_new(destination, record, length, 1);
+    return 1;
+}
+
+
+/* Exercise initialized mapped elements, stale publication, overflow and rollback. */
+static void array_case(DVM_GCWorkers *workers)
+{
+    int before_array = dvm_refcount_load_i(&Tarray.ref);
+    int before_element = dvm_refcount_load_i(&record->ref);
+    int before_callbacks = callbacks;
+    void *published;
+    void *current;
+    array_mode = 1;
+    mode = 1;
+    length = 3;
+    heapmonitor = monitor;
+    check(kprotect(construct_array, NULL) && stale == 2 && callbacks == before_callbacks+1,
+        "array reuses candidate after stale comparison");
+    collect(workers, DVM_GC_FAST);
+    memmove(&published, destination, sizeof(published));
+    check(D2H(published)->t == &Tarray && dvm_refcount_load_i(&Tarray.ref) == before_array+1 &&
+        dvm_refcount_load_i(&record->ref) == before_element, "array and element descriptors owned");
+
+    mode = 0;
+    previous_array = D2H(published);
+    reject_array_root = 1;
+    check(!kprotect(construct_array, NULL) && root_refusals == 1, "candidate root refusal");
+    reject_array_root = 0;
+    check(dvm_refcount_load_i(&Tarray.ref) == before_array+1 &&
+        dvm_refcount_load_i(&record->ref) == before_element, "private descriptors rolled back");
+    length = -1;
+    check(!kprotect(construct_array, NULL), "negative extent rejected");
+    length = 0x7fffffff;
+    check(!kprotect(construct_array, NULL), "overflow extent rejected");
+    if (sizeof(WORD) > 4)
+    {
+        length = (WORD)(((uvlong)1 << 32) + 3);
+        check(!kprotect(construct_array, NULL), "full native count checked before narrowing");
+    }
+    memmove(&current, destination, sizeof(current));
+    check(current == published && callbacks == before_callbacks+1, "refusal preserves publication");
+
+    mode = 2;
+    length = 3;
+    check(!kprotect(construct_array, NULL) && strstr(getup()->env->errstr, "record monitor primary"),
+        "array monitor error preserved");
+    collect(workers, DVM_GC_FAST);
+    memmove(&current, destination, sizeof(current));
+    check(current == published && dvm_refcount_load_i(&Tarray.ref) == before_array+1 &&
+        dvm_refcount_load_i(&record->ref) == before_element, "array monitor failure retires candidate");
+
+    mode = 0;
+    length = 0;
+    check(kprotect(construct_array, NULL), "empty array publication");
+    memmove(&current, destination, sizeof(current));
+    check(((Array *)current)->len == 0, "zero count preserved");
+    heapmonitor = NULL;
+    array_mode = 0;
+    previous_array = NULL;
+    puts("PASS guarded arrays");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -208,7 +327,9 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     void *empty = H;
     void *published;
     void *current;
+    int array_refs;
     __real_dvm_runtime_root_registry_probe(workers);
+    array_refs = dvm_refcount_load_i(&Tarray.ref);
     record = dtype(freeheap,sizeof(void *)+sizeof(WORD),&map,1);
     check(record != NULL,"real descriptor");
     dvm_runtime_pointer_cons(&empty,&container);
@@ -232,10 +353,12 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     imported_case(workers, 0);
     heapmonitor = monitor;
     imported_case(workers, 1);
+    array_case(workers);
     ptrdel(D2H(container));
     destroy(container);
     collect(workers,DVM_GC_FAST);
-    check(dvm_refcount_load_i(&record->ref) == 1,"descriptor baseline restored");
+    check(dvm_refcount_load_i(&record->ref) == 1 &&
+        dvm_refcount_load_i(&Tarray.ref) == array_refs, "descriptor baselines restored");
     freetype(record);
     record = NULL;
     destination = NULL;

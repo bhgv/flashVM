@@ -1,4 +1,4 @@
-"""Exercise protected record construction and actual local NEW/NEWZ dispatch."""
+"""Exercise guarded record and array construction through native and guest routes."""
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +14,9 @@ Pair: adt { name: string; value: int; };
 init() {
     sys := load Sys Sys->PATH;
     item := ref Pair("record", 73);
+    items := array[3] of ref Pair;
+    items[2] = item;
+    if (items[0] != nil || items[2] != item) { raise "array initialization"; }
     if (item.name != "record" || item.value != 73) {
         raise "record initialization";
     }
@@ -32,7 +35,8 @@ def main():
         guest.write_text(GUEST)
         subprocess.run([str(compiler), "-I", str(include), "-o", str(image), str(guest)], check=True)
         binary = relink(runtime, work, fixture, 0, [
-            "dvm_runtime_root_registry_probe", "dvm_runtime_record_new", "dvm_runtime_heap_commit"
+            "dvm_runtime_root_registry_probe", "dvm_runtime_record_new", "dvm_runtime_heap_commit",
+            "dvm_runtime_array_new", "dvm_runtime_root_batch_publish"
         ])
         for mode in ("--no-jit", "--jit"):
             result = subprocess.run([
@@ -43,10 +47,10 @@ def main():
             if mode == "--jit" and "PASS guarded record JIT cache" not in output:
                 raise RuntimeError(output)
             if result.returncode or any(marker not in output for marker in (
-                "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
+                "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
-    print("PASS guarded record construction, stale writer, monitor error and C/JIT guest")
+    print("PASS guarded records and arrays, stale writer, refusal, monitor error and C/JIT guest")
 
 
 if __name__ == "__main__":
