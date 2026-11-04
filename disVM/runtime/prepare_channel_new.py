@@ -106,10 +106,18 @@ def adapt_wait_completion(source):
     body = body.replace("\tint ok;\n", "", 1)
     body = body.replace(old, "\t\tdvm_runtime_channel_finish_refill(c, p, channelrefill, &refill);", 1)
     body = body.replace(wake, "\t\tchannel_move_or_wake_error(c, p);\n\t\taddrun(p);\n\t}", 1)
+    for direction in ("send", "recv"):
+        dequeue = f"\tcqdel(&c->{direction});"
+        if body.count(dequeue) != 1:
+            raise ValueError("ALT dequeue boundary drift")
+        body = body.replace(dequeue, """    if (p->state == Palt)
+        dvm_runtime_alt_preflight(p->R.s);
+""" + dequeue, 1)
     return source[:start] + WAIT_COMPLETION + body + source[end:]
 
 
 WAIT_COMPLETION = r"""
+extern void dvm_runtime_alt_preflight(Alt *alt);
 extern void dvm_runtime_channel_fail_peer(Prog *peer);
 extern void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
     int (*refill)(void *), void *request);
@@ -170,4 +178,65 @@ static int altresultvalid(void *slot)
 }
 
 
+"""
+
+
+def adapt_alt_preflight(source):
+    """Reuse guard traversal with cancellation-specific queue checks."""
+    changes = (
+        ("altvalidate(Alt *a, int nsend, int nrecv)",
+         "altvalidate(Alt *a, int nsend, int nrecv, int cancelling)"),
+        ("altvalidate(a, nsend, nrecv);", "altvalidate(a, nsend, nrecv, 0);"),
+        ("\t\treceive = guard >= nsend;\n\t\tif(!altobject(c)){",
+         "\t\treceive = guard >= nsend;\n"
+         "\t\tif(cancelling && (c == nil || c == H)) continue;\n"
+         "\t\tif(!altobject(c)){"),
+        ("altchannel(c, receive);", "altcheckguard(c, receive, cancelling);"),
+        ("if(member != H)\n\t\t\t\taltchannel(member, 1);",
+         "if(member != H && (!cancelling || member != nil))\n"
+         "\t\t\t\taltcheckguard(member, 1, cancelling);"),
+    )
+    for old, new in changes:
+        if source.count(old) != 1:
+            raise ValueError("ALT preflight boundary drift: " + old)
+        source = source.replace(old, new, 1)
+    anchor = "/* Check every guard/member before"
+    if source.count(anchor) != 1:
+        raise ValueError("ALT traversal declaration drift")
+    source = source.replace(anchor, ALT_GUARD_CHECK + anchor, 1)
+    return source + ALT_PREFLIGHT
+
+
+ALT_GUARD_CHECK = r"""
+/* Cancellation checks only the affected queue. A finalized queue may already
+ * be detached. Registration still checks both queues and buffer readiness. */
+static void altcheckguard(Channel *channel, int receive, int cancelling)
+{
+    Progq **queue;
+    if (!cancelling)
+    {
+        altchannel(channel, receive);
+        return;
+    }
+    if (altobject(channel))
+        error(exHeap);
+    queue = receive ? &channel->recv : &channel->send;
+    if (*queue)
+        vmchanend(queue);
+}
+
+
+"""
+
+ALT_PREFLIGHT = r"""
+
+/* Run before the initiating opcode changes any queue. NativeWorld protects
+ * the checked chains through subsequent cancellation without callbacks. */
+void dvm_runtime_alt_preflight(Alt *alt)
+{
+    int sends, receives;
+    if (!altheader(alt, &sends, &receives))
+        error(exBounds);
+    altvalidate(alt, sends, receives, 1);
+}
 """

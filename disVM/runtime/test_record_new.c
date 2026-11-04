@@ -633,6 +633,14 @@ static void alt_publication_failure(void)
     cqadd(&sibling->recv, &waiter.process);
     registers->s = &payload;
     registers->d = &selected;
+    sibling->recv->next = sibling->recv;
+    check(!kprotect(direct_channel_transfer, &receive) &&
+        !strcmp(getup()->env->errstr, exHeap), "reject cyclic sibling queue");
+    check(selected->recv->prog == &waiter.process &&
+        sibling->recv->prog == &waiter.process && sibling->recv->next == sibling->recv &&
+        waiter.process.state == Palt && !waiter.process.kill && !dvm_runqueue_head() &&
+        untouched == 61, "refused ALT cancellation preserves all registrations");
+    sibling->recv->next = NULL;
     check(!kprotect(direct_channel_transfer, &receive) &&
         !strcmp(getup()->env->errstr, exBounds), "initiator observes ALT bounds error");
     check(!selected->recv->prog && !sibling->recv->prog && untouched == 61 &&

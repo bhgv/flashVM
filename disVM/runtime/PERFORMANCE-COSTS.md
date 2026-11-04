@@ -452,3 +452,9 @@ same payload type and scheduler mode. No matched timing is recorded.
 Hosted buffered RECV with a queued sender protects the temporary channel
 release separately from the transfer. Measure a matched full-ring rendezvous
 with a waiting sender. No matched timing is recorded.
+
+## ALTPREFLIGHT-122
+
+Matching a blocked ALT now walks the affected guard queues before dequeue.
+Measure rendezvous latency as guard count and queue length grow, including
+duplicate registrations and receive arrays. No matched timing is recorded.
