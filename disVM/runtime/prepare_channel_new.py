@@ -515,7 +515,30 @@ typedef struct ChannelReservation
     int publish_after_move;
     int next_size;
     int next_front;
+    Type *mapped_send;
 } ChannelReservation;
+
+
+/* An unoccupied mapped slot must own no pointers. That makes the guarded
+ * send transaction incapable of raising from displaced-owner retirement. */
+static int channel_slot_is_empty(ChannelBuffer *buffer)
+{
+    int byte, bit;
+    for (byte = 0; byte < buffer->type->np; byte++)
+    {
+        for (bit = 0; bit < 8; bit++)
+        {
+            void *value;
+            if (!(buffer->type->map[byte] & (0x80U >> bit)))
+                continue;
+            memmove(&value, (uchar *)buffer->slot + (byte*8+bit)*sizeof(void *),
+                sizeof(value));
+            if (value != H)
+                return 0;
+        }
+    }
+    return 1;
+}
 
 
 /* Capture the next state. Pointer-free transfers publish it after the copy.
@@ -545,7 +568,14 @@ static int reserve_channel_buffer(void *argument)
     read->slot = buffer.slot;
     reservation->next_size = buffer.size;
     reservation->next_front = buffer.front;
-    reservation->publish_after_move = !buffer.type->np;
+    if (!reservation->receive && buffer.type->np &&
+        channel->mover == movtmp && dvm_runtime_guarded_copies)
+    {
+        if (channel->mid.t != buffer.type || !channel_slot_is_empty(&buffer))
+            error(exHeap);
+        reservation->mapped_send = buffer.type;
+    }
+    reservation->publish_after_move = !buffer.type->np || reservation->mapped_send != nil;
     if (!reservation->publish_after_move)
     {
         if (reservation->receive)
@@ -557,7 +587,7 @@ static int reserve_channel_buffer(void *argument)
 }
 
 
-/* Publish ring metadata only after a successful pointer-free transfer. */
+/* Publish ring metadata only after a successful staged transfer. */
 static int publish_channel_buffer(void *argument)
 {
     ChannelReservation *reservation = argument;
@@ -572,7 +602,7 @@ static int publish_channel_buffer(void *argument)
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int cgetb(Channel *channel, void *destination)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0};
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil};
     int completed;
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
@@ -590,14 +620,18 @@ static int cgetb(Channel *channel, void *destination)
 /* Capture send geometry under the mutex and transfer outside it. */
 static int cputb(Channel *channel, void *source)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
     DVM_R.s = source;
     DVM_R.m = &channel->mid;
     DVM_R.d = reservation.read.slot;
-    channel->mover();
+    if (reservation.mapped_send)
+        dvm_runtime_mapped_copy(source, reservation.read.slot,
+            reservation.mapped_send, reservation.mapped_send->size);
+    else
+        channel->mover();
     if (reservation.publish_after_move)
         dvm_runtime_channel_queue_guard(publish_channel_buffer, &reservation);
     return 1;

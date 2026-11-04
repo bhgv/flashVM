@@ -530,3 +530,8 @@ No matched timing is recorded.
 Guarded movtmp uses the shared mapped-value transaction, including
 snapshot and root preparation for pointer-bearing fields. Measure
 matched direct and buffered tuple traffic. No matched timing is recorded.
+
+## CHANMAPSENDPUBLISH-122
+
+Guarded buffered movtmp sends check the empty pointer fields and publish
+occupancy after the mapped transaction. No matched timing is recorded.

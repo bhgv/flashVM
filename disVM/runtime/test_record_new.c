@@ -959,6 +959,39 @@ static void mapped_channel_move_case(void)
 }
 
 
+/* A mapped send must leave the empty ring unchanged when ownership fails. */
+static void mapped_channel_send_case(void)
+{
+    struct {
+        void *pointer;
+        WORD scalar;
+    } source = {NULL, 73};
+    REG *registers = dvm_native_registers();
+    REG saved = *registers;
+    Channel *channel = H;
+    int receive = 0;
+    void *pointer;
+    WORD scalar;
+    channel = dvm_runtime_channel_new(&channel, record, 1, movtmp, 0);
+    registers->s = &source;
+    registers->d = &channel;
+    check(!kprotect(direct_channel_transfer, &receive) && channel->size == 0,
+        "refused mapped send does not publish occupancy");
+    memmove(&pointer, channel->buf->data, sizeof(pointer));
+    check(pointer == H, "refused mapped send preserves empty slot");
+    source.pointer = H;
+    registers->s = &source;
+    registers->d = &channel;
+    check(kprotect(direct_channel_transfer, &receive) && channel->size == 1,
+        "successful mapped send publishes occupancy");
+    memmove(&scalar, channel->buf->data + sizeof(pointer), sizeof(scalar));
+    check(scalar == 73, "published mapped slot contains the complete payload");
+    *registers = saved;
+    destroy(channel);
+    puts("PASS mapped channel send publication");
+}
+
+
 /* Use real Type and List storage, then check counts after deferred retirement. */
 void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 {
@@ -998,6 +1031,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     array_case(workers);
     channel_case();
     mapped_channel_move_case();
+    mapped_channel_send_case();
     prog_hold_race();
     channel_drain_case();
     channel_finalize_case();
