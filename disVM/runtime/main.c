@@ -510,9 +510,9 @@ void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *requ
     {
         error("channel waiter cannot be claimed");
     }
-    process->channel_claimed = 1;
+    process->channel_claimed = &completed;
     completed = kprotect(match, request);
-    process->channel_claimed = 0;
+    process->channel_claimed = nil;
     if (!completed)
     {
         krethrow();
@@ -603,19 +603,65 @@ static int wake_closed_channel(void *argument)
 extern Progq *dvm_runtime_channel_close_preflight(Progq **queue);
 
 
-/* Drain an exclusively detached chain, recording the first wake failure. */
-static void drain_closed_queue(Progq *entry, char *first_error, int *failed)
+/* Test whether this queue entry participates in hosted channel completion. */
+static int hosted_channel_waiter(Prog *peer)
+{
+    return peer && (peer->state == Psend || peer->state == Precv || peer->state == Palt);
+}
+
+
+/* Refuse another owner's claim before changing either queue. */
+static void check_close_claims(Progq *entry)
+{
+    for (; entry; entry = entry->next)
+    {
+        Prog *peer = entry->prog;
+        if (hosted_channel_waiter(peer) && ((DVM_RuntimeProcess *)peer)->channel_claimed)
+        {
+            error("channel waiter cannot be claimed");
+        }
+    }
+}
+
+
+/* Reserve all eligible peers with one identity, including duplicate ALT nodes. */
+static void claim_close_waiters(Progq *entry, const void *owner)
+{
+    for (; entry; entry = entry->next)
+    {
+        Prog *peer = entry->prog;
+        if (hosted_channel_waiter(peer))
+        {
+            ((DVM_RuntimeProcess *)peer)->channel_claimed = owner;
+        }
+    }
+}
+
+
+/* Drain an exclusively detached chain, recording the first wake failure.
+ * Only the first registration consumes the claim, even on a wake error. */
+static void drain_closed_queue(Progq *entry, const void *owner, char *first_error, int *failed)
 {
     while (entry)
     {
         Progq *next = entry->next;
-        Prog *process = entry->prog;
+        Prog *peer = entry->prog;
+        DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+        int claimed = hosted_channel_waiter(peer) && process->channel_claimed == owner;
         free(entry);
         entry = next;
-        if (process && !kprotect(wake_closed_channel, process) && !*failed)
+        if (claimed || (peer && peer->state == Prelease))
         {
-            memmove(first_error, owner_error(), ERRMAX);
-            *failed = 1;
+            int completed = kprotect(wake_closed_channel, peer);
+            if (claimed)
+            {
+                process->channel_claimed = nil;
+            }
+            if (!completed && !*failed)
+            {
+                memmove(first_error, owner_error(), ERRMAX);
+                *failed = 1;
+            }
         }
     }
 }
@@ -632,8 +678,10 @@ void killcomm(Progq **queue)
         return;
     }
     dvm_runtime_channel_close_preflight(queue);
+    check_close_claims(entry);
+    claim_close_waiters(entry, &failed);
     *queue = nil;
-    drain_closed_queue(entry, first_error, &failed);
+    drain_closed_queue(entry, &failed, first_error, &failed);
     if (failed)
     {
         error(first_error);
@@ -657,12 +705,16 @@ void dvm_runtime_channel_finalize(Channel *channel, int swept)
     {
         error(exHeap);
     }
+    check_close_claims(send);
+    check_close_claims(recv);
+    claim_close_waiters(send, &failed);
+    claim_close_waiters(recv, &failed);
     channel->send = nil;
     channel->recv = nil;
     channel->mover = nil;
     channel->buf = H;
-    drain_closed_queue(send, first_error, &failed);
-    drain_closed_queue(recv, first_error, &failed);
+    drain_closed_queue(send, &failed, first_error, &failed);
+    drain_closed_queue(recv, &failed, first_error, &failed);
     if (mapped)
     {
         freetype(mapped);

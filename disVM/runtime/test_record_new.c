@@ -453,7 +453,8 @@ static void channel_drain_case(void)
     check(!kprotect(close_waiters, &closed->send) &&
         strstr(getup()->env->errstr, "foreign C channel waiter"),
         "drain preserves first wake error");
-    check(!closed->send && sibling->send && !sibling->send->prog &&
+    check(!alternative.channel_claimed && !sender.channel_claimed &&
+        !closed->send && sibling->send && !sibling->send->prog &&
         dvm_runqueue_pop(Psend) == &alternative.process &&
         dvm_runqueue_pop(Psend) == &sender.process && !dvm_runqueue_head(),
         "detached drain cancels siblings and wakes unique peers in order");
@@ -504,12 +505,19 @@ static void channel_finalize_case(void)
         channel->mover == movtmp && dvm_refcount_load_i(&Tword.ref) == refs+1 &&
         !dvm_runqueue_head(), "finalizer refusal preserves both owners");
     channel->recv->next = NULL;
+    receiver.channel_claimed = &receiver;
+    check(!kprotect(finalize_channel, channel) &&
+        !strcmp(getup()->env->errstr, "channel waiter cannot be claimed") &&
+        channel->send->prog == &foreign.process && channel->recv->prog == &receiver.process &&
+        receiver.channel_claimed == &receiver && !dvm_runqueue_head(),
+        "finalizer refuses a competing claim before detaching either side");
+    receiver.channel_claimed = NULL;
     check(!kprotect(finalize_channel, channel) &&
         strstr(getup()->env->errstr, "foreign C channel waiter") &&
         !channel->send && !channel->recv && !channel->mover &&
         dvm_refcount_load_i(&Tword.ref) == refs &&
         dvm_runqueue_head() == &receiver.process &&
-        !receiver.process.ptr && !receiver.process.chan,
+        !receiver.channel_claimed && !receiver.process.ptr && !receiver.process.chan,
         "finalizer drains both queues and releases descriptor on wake error");
     check(!kprotect(repeat_channel_wake, &receiver.process) &&
         !strcmp(getup()->env->errstr, "invalid channel waiter state") &&
