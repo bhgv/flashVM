@@ -6,9 +6,9 @@
 
 [First steps / Первые шаги](README-FIRSTSTEPS.md) · [English](README-FIRSTSTEPS.en.md)
 
-Development version: **0.1813**. [Русская версия](README.ru.md).
+Development version: **0.1814**. [Русская версия](README.ru.md).
 
-Current series: [v0.1813](docs/releases/v0.1813.md): guarded CONSP integration, stale-tail retries and complete error cleanup.
+Current series: [v0.1814](docs/releases/v0.1814.md): rooted preparation of scalar and unmapped-record list nodes.
 
 [Measured slow paths / performance cost register](disVM/runtime/PERFORMANCE-COSTS.md).
 

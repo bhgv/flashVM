@@ -278,3 +278,12 @@ release внутри commit. Проверены реальные mapped-конт
 NativeWorld не снят: общее одновременное исполнение managed кода ещё не разрешено.
 Опыт bounded constructors не доказывает безопасность остальных конструкторов,
 произвольной записи/адресных ссылок, GC epoch, каналов/планировщика или unload.
+
+## runtime0.115: кандидаты для скаляров и записей без ссылок
+
+value_prepare.c строит полностью укоренённый raw node по частному неизменному
+снимку payload и held tail; передаёт корень только после link/mark. Проверены
+шесть размеров, отказные стадии, stale rebuild и GC. Mapped записи со ссылками
+исключены. C-opcode и direct scalar JIT пока не переключены: их подключение
+требует общего capture/commit coordinator и отдельной проверки JIT tail entry.
+NativeWorld остаётся; эта стадия не добавляет параллельных mutator permissions.

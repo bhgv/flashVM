@@ -356,3 +356,14 @@ retirement вне guards. Stale добавляет уничтожение кан
 оптимизации без ослабления владения. Stale/contention/destructor-error timing
 отдельно не измерены. Команда: benchmark_pointer_transaction.py runtime compiler
 include exact-runtime113-pointer_builder.c (ожидаемый SHA встроен в runner).
+
+## VALUEPREP-115 — подготовка скаляров/raw, без matched замера
+
+v0.1814 / FLASHVM-0132. Новый value_prepare.c резервирует одну root group
+(две native allocation), получает extra tail/Tlist owner, выделяет node,
+копирует частный снимок payload, вызывает monitor под construction pin,
+связывает/маркирует tail, публикует candidate root и снимает временный pin.
+Stale требует finish/rebuild. Это перечень путей, а не измеренный процент.
+NativeWorld сохраняется. Ни C-опкоды скалярных/raw cons, ни прямой scalar JIT
+пока не переключены: стоимость действующих опкодов этой серией не изменяется.
+Отдельный matched замер после их согласованного подключения ещё предстоит.
