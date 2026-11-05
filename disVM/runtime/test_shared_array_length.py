@@ -61,6 +61,11 @@ init() {
     if (mapped[0] != "a" || mapped[1] != "b" || mapped[2] != "c" || mapped[3] != "c") {
         raise "left overlapping managed copy";
     }
+    view := mapped[0:4];
+    nested := view[1:3];
+    if (len view != 4 || len nested != 2 || nested[0] != "b" || nested[1] != "c") {
+        raise "nested view lost its backing owner";
+    }
     scalar := array[] of {11, 22, 33, 44};
     scalar[1:] = scalar[0:3];
     scalar = scalar[1:3];
@@ -169,8 +174,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[24]; /* Post-decode PC for each refused capture. */
-    static int replayed[24]; /* One successful replay for each stage. */
+    static Inst *pcs[26]; /* Post-decode PC for each refused capture. */
+    static int replayed[26]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -282,9 +287,17 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
     if (CONTROL == 0 && !active && destination)
     {
         int opcode = dvm_native_execution()->arithmetic_retry_opcode;
-        if (!source && opcode == ISLICEA && contend_capture(21))
+        if (!source && opcode == ISLICEA)
         {
-            return DVM_CELL_BUSY;
+            WORD start, end;
+            Array *previous;
+            memmove(&start, DVM_R.s, sizeof(start));
+            memmove(&end, DVM_R.m, sizeof(end));
+            memmove(&previous, destination, sizeof(previous));
+            if (contend_capture(start < 0 || end < 0 ? 21 : (previous->root == H ? 24 : 25)))
+            {
+                return DVM_CELL_BUSY;
+            }
         }
         if (source && opcode == ISLICELA &&
             ((source_size == 3 * sizeof(WORD) && contend_capture(22)) ||
@@ -819,7 +832,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(24)):
+                                            for stage in range(26)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

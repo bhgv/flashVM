@@ -159,6 +159,52 @@ def adapt_array_slice_publication(code):
         } else {
 """+publish+"""
         }""", 1)
+    initialize = '\tss = H2D(Array*, h);'
+    body = relative_replace(body, initialize, initialize+"""
+    if(dvm_runtime_guarded_copies && !relative) {
+        DVM_RangeAccess access = {0};
+        DVM_CellResult claim;
+        Array *observed;
+        int backed = ds->root != H;
+
+        /* A refused view owns its type but has no elements or backing owner. */
+        ss->len = 0;
+        ss->data = nil;
+        ss->t = t;
+        ss->root = H;
+        dvm_runtime_type_retain(&t->ref);
+        claim = dvm_managed_ranges_begin(NULL, 0, slot, sizeof(ss), &access);
+        if(claim == DVM_CELL_ACQUIRED) {
+            memmove(&observed, slot, sizeof(observed));
+            if(observed == ds) {
+                h = D2H(root);
+                if(backed) {
+                    dvm_runtime_heap_retain(&h->ref);
+                }
+                ss->len = n;
+                ss->data = data;
+                ss->root = root;
+                memmove(slot, &ss, sizeof(ss));
+            } else {
+                claim = DVM_CELL_BUSY;
+            }
+            if(!dvm_range_access_end(&access)) {
+                abort();
+            }
+        }
+        if(claim != DVM_CELL_ACQUIRED) {
+            destroy(ss);
+            if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICEA)) {
+                return;
+            }
+            error(exHeap);
+        }
+        if(backed) {
+            destroy(ds);
+        }
+        Setmark(h);
+        return;
+    }""", 1)
     code = code[:start]+body+code[end:]
     start = code.index('OP(slicela)')
     end = code.index('\n}', start)
