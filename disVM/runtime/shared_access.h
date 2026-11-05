@@ -17,8 +17,8 @@ int dvm_runtime_scalar_retry(int opcode);
 
 
 /* Check whether opcode owns the armed experimental dispatch and the borrowed
- * byte spans are scalar cells in its rooted current frame. Zero third size
- * ignores its address. No heap release. */
+ * byte spans are scalar cells in its rooted current frame. Zero second or third size
+ * ignores that address. No heap release. */
 int dvm_runtime_parallel_scalar_spans(int opcode, const void *first, size_t first_size,
     const void *second, size_t second_size, const void *third, size_t third_size);
 

@@ -91,7 +91,8 @@ static int parallel_frame_spans(int opcode, const void *first, size_t first_size
         return 0;
     }
     type = current_frame_type();
-    return type && frame_scalar(first, type, first_size) && frame_scalar(second, type, second_size) &&
+    return type && frame_scalar(first, type, first_size) &&
+        (!second_size || frame_scalar(second, type, second_size)) &&
         (!third_size || frame_scalar(third, type, third_size));
 }
 

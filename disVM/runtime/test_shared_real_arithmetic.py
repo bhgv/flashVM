@@ -14,6 +14,8 @@ FixedA: type fixed(0.1);
 FixedB: type fixed(0.3);
 FixedC: type fixed(0.7);
 FixedTiny: type fixed(1e-10);
+Half: type fixed(0.5);
+Quarter: type fixed(0.25);
 init() {
     sys := load Sys Sys->PATH;
     sys->print("BEGIN REAL arithmetic5\\n");
@@ -69,6 +71,13 @@ init() {
     } exception {
         "zero divide" => {}
     }
+    half_left := Half a;
+    half_right := Half (b/b);
+    half_product := half_left * half_right;
+    half_ratio := half_left / half_right;
+    quarter := Quarter half_product;
+    if (real half_ratio != 2.0 || real quarter != 2.0)
+        raise "leased base fixed arithmetic result";
     math := load Math Math->PATH;
     math->FPstatus(0, Math->ZDIV);
     math->FPcontrol(Math->RND_NINF, Math->RND_MASK);
@@ -382,6 +391,15 @@ static const char *observe_scaled(const WORD *coefficients, const void *first, c
     {
         switch (scaled_opcode)
         {
+        case ICVTXX:
+            print("LEASED CVTXX\n");
+            break;
+        case ICVTFX:
+            print("LEASED CVTFX\n");
+            break;
+        case ICVTXF:
+            print("LEASED CVTXF\n");
+            break;
         case IMULX0:
             check(coefficients != NULL, "MULX0 has captured coefficients");
             print("LEASED MULX0\n");
@@ -445,6 +463,41 @@ const char *__wrap_dvm_runtime_scaled_arithmetic(int opcode,const void *base,con
         return __real_dvm_runtime_scaled_arithmetic(opcode,base,exponent,out,observe_scaled);
     }
     return __real_dvm_runtime_scaled_arithmetic(opcode,base,exponent,out,evaluate);
+}
+
+
+const char *__real_dvm_runtime_fixed_product(int, WORD, const void *, const void *, void *,
+    const char *(*)(WORD, const void *, const void *, void *));
+
+static __thread int fixed_opcode; /* Current fixed product or quotient. */
+static __thread const char *(*fixed_evaluator)(WORD, const void *, const void *, void *); /* Synchronous evaluator. */
+
+
+/* Observe the fixed evaluator with its scalar scale and operands copied. */
+static const char *observe_fixed(WORD scale, const void *first, const void *second, void *out)
+{
+    DVM_HeapOwnerStats owner;
+
+    if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        print(fixed_opcode == IMULX ? "LEASED MULX\n" : "LEASED DIVX\n");
+    }
+    return fixed_evaluator(scale, first, second, out);
+}
+
+
+/* Forward the guarded opcode and instrument only the scheduled guest. */
+const char *__wrap_dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
+    const void *second, void *out, const char *(*evaluate)(WORD, const void *, const void *, void *))
+{
+    if (CONTROL == 0 && !active && getup()->prog)
+    {
+        fixed_opcode = opcode;
+        fixed_evaluator = evaluate;
+        return __real_dvm_runtime_fixed_product(opcode, scale, first, second, out, observe_fixed);
+    }
+    return __real_dvm_runtime_fixed_product(opcode, scale, first, second, out, evaluate);
 }
 
 
@@ -709,7 +762,7 @@ def main():
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
     symbols = ['dvm_runtime_root_registry_probe','dvm_managed_small_three_begin','dvm_managed_ranges_begin',
                'dvm_range_access_end','dvm_small_range_access_end','dvm_runtime_real_arithmetic_value',
-               'dvm_runtime_byte_transfer','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
+               'dvm_runtime_byte_transfer','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_runtime_fixed_product','dvm_bigtable_call_ready','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual REAL arithmetic ') as directory:
         work = Path(directory)
         source, image = work/'main.b', work/'main.dis'
@@ -733,7 +786,8 @@ def main():
                 if leased != {'LEASED ADDF', 'LEASED SUBF', 'LEASED MULF', 'LEASED DIVF', 'LEASED NEGF',
                               'LEASED EXPW', 'LEASED EXPL', 'LEASED EXPF', 'LEASED EXPW diagnostic',
                               'LEASED MULX0', 'LEASED DIVX0', 'LEASED DIVX0 diagnostic', 'LEASED CVTXX0',
-                              'LEASED MULX1', 'LEASED DIVX1', 'LEASED CVTXX1'}:
+                              'LEASED MULX1', 'LEASED DIVX1', 'LEASED CVTXX1',
+                              'LEASED MULX', 'LEASED DIVX', 'LEASED CVTXX', 'LEASED CVTFX', 'LEASED CVTXF'}:
                     raise RuntimeError('leased FP coverage missed: '+output)
                 if 'PASS scheduled FP input retry' not in output:
                     raise RuntimeError('FP input retry missed: '+output)

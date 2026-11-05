@@ -146,7 +146,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     }
     if (fixed_variant && !invalid_output &&
         dvm_runtime_parallel_scalar_spans(opcode, output, output_width,
-            output, output_width, NULL, 0))
+            NULL, 0, NULL, 0))
     {
         size_t offset = NREG * IBY2WD;
         size_t scale_offset = (NREG + 2) * IBY2WD;
@@ -177,6 +177,8 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
             return problem ? problem : dvm_runtime_bytes_publish(&result, output, output_width);
         }
     }
+    /* Inputs are already private. Only the eventual write needs frame
+     * lifetime across this lease, including when scales came from immediates. */
     if (!fixed_variant && !invalid_output)
     {
         int fp = opcode == IEXPF || opcode == ICVTFX || opcode == ICVTXF;
@@ -184,11 +186,11 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
 
         if (fp)
         {
-            released = dvm_runtime_parallel_real_leave(opcode, first, first_width,
-                second, second_width, output, output_width);
+            released = dvm_runtime_parallel_real_leave(opcode, output, output_width,
+                NULL, 0, NULL, 0);
         }
-        else if (dvm_runtime_parallel_scalar_spans(opcode, first, first_width,
-            second, second_width, output, output_width))
+        else if (dvm_runtime_parallel_scalar_spans(opcode, output, output_width,
+            NULL, 0, NULL, 0))
         {
             released = dvm_runtime_gc_native_try_leave();
         }
@@ -265,8 +267,8 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     {
         int released = 0;
 
-        if (dvm_runtime_parallel_scalar_spans(opcode, first, sizeof(left),
-            second, sizeof(right), output, sizeof(result)))
+        if (dvm_runtime_parallel_scalar_spans(opcode, output, sizeof(result),
+            NULL, 0, NULL, 0))
         {
             released = dvm_runtime_gc_native_try_leave();
         }
