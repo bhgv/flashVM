@@ -58,6 +58,7 @@ WRAPPER = r'''
 #include "isa.h"
 #include "interp.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
 #include "raise.h"
 #include "managed_owner.h"
 #include "shared_real_branch.h"
@@ -244,6 +245,15 @@ void __wrap_dvm_runtime_real_branch_capture(const void *a,const void *b,void *pa
  * saved pair and later target have distinct observation points. */
 int __wrap_dvm_runtime_real_branch_predicate(int condition,const void *pair)
 {
+    DVM_HeapOwnerStats owner;
+
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        check(!dvm_native_context_object_count(dvm_native_context_current()), "leased comparison is unguarded");
+        fprint(2, "LEASED REAL branch %d\n", condition);
+    }
     if (active)
     {
         uint64_t a = UINT64_C(0x3ff0000000000000);
@@ -593,6 +603,12 @@ def main():
         source, image = work/'main.b', work/'main.dis'
         source.write_text(GUEST)
         subprocess.run([str(compiler),'-F','-I',str(include),'-o',str(image),str(source)],check=True)
+        frame_source, frame_image = work/'frame.b', work/'frame.dis'
+        frame_guest = GUEST.replace('        for (j := 0; j < 4; j++) {',
+            '        for (j := 0; j < 4; j++) {\n            a := values[i];\n            b := values[j];')
+        frame_guest = frame_guest.replace('if (values[i] ', 'if (a ').replace(' values[j])', ' b)')
+        frame_source.write_text(frame_guest)
+        subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(frame_image), str(frame_source)], check=True)
         wrapper = work/'wrapper.c'
         wrapper.write_text(WRAPPER)
         variants = (0,5,6,7,8) if '--positive-only' in sys.argv else tuple(range(9))
@@ -604,9 +620,11 @@ def main():
             for mode in ('--no-jit','--jit'):
                 for locked in (False,True):
                     args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe']
+                    if variant == 0:
+                        args += ['--managed-workers', '2', '--parallel-real']
                     if locked:
                         args += ['--gc-locked-poll']
-                    run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=90,
+                    run = subprocess.run(args+[str(frame_image if variant == 0 else image)],capture_output=True,text=True,timeout=90,
                         env=dict(os.environ,TMPDIR=str(work)))
                     output = run.stdout+run.stderr
                     if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
@@ -617,8 +635,12 @@ def main():
                             raise RuntimeError('control missed: '+output)
                     elif run.returncode or 'PASS real branch probe:' not in output or 'PASS real branches6' not in output:
                         raise RuntimeError('positive failed: '+output)
-                    if variant == 0 and 'PASS scheduled input retry' not in output:
-                        raise RuntimeError('input retry missed: '+output)
+                    if variant == 0:
+                        if 'PASS scheduled input retry' not in output:
+                            raise RuntimeError('input retry missed: '+output)
+                        leased = {line for line in output.splitlines() if line.startswith('LEASED REAL branch ')}
+                        if leased != {f'LEASED REAL branch {condition}' for condition in range(6)}:
+                            raise RuntimeError('leased REAL branch coverage missed: '+output)
     print('PASS six actual REAL branches:135600 IEEE/alias cases, native FP flags, unlocked predicate, both polls')
 
 

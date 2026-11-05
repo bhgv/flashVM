@@ -18,7 +18,7 @@
 /* Recognize the immediate target cell of the currently decoded instruction.
  * Its module is retained by the leased Prog. Indirect target cells stay on
  * the ordinary path. target borrows the decoded cell; no payload is read. */
-static int instruction_target(const void *target)
+int dvm_runtime_instruction_target(const void *target)
 {
     uintptr_t next = (uintptr_t)DVM_R.PC;
 
@@ -134,7 +134,7 @@ const char *dvm_runtime_integer_branch(int opcode, const void *source,
     {
         return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
-    if (!invalid_target && instruction_target(target) &&
+    if (!invalid_target && dvm_runtime_instruction_target(target) &&
         dvm_runtime_parallel_scalar_spans(opcode, source, width, other, width, NULL, 0))
     {
         return leased_branch(opcode, source, other, target, pc, width, &access);

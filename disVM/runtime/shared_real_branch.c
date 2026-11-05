@@ -29,6 +29,8 @@ const char *dvm_runtime_real_branch(int condition, const void *source,
     DVM_RangeAccess access = {0};
     DVM_CellResult claim;
     unsigned char pair[2*sizeof(REAL)];
+    int released = 0;
+    int take;
     const char *problem = NULL;
     if (dvm_runtime_shared_mode() != 2 || pc != &DVM_R.PC || condition < 0 || condition > 5)
     {
@@ -50,7 +52,14 @@ const char *dvm_runtime_real_branch(int condition, const void *source,
     {
         abort();
     }
-    if (!dvm_runtime_real_branch_predicate(condition, pair))
+    if (dvm_runtime_parallel_real && dvm_runtime_instruction_target(target))
+    {
+        released = dvm_runtime_parallel_real_leave(opcodes[condition], source, sizeof(REAL),
+            other, sizeof(REAL), NULL, 0);
+    }
+    take = dvm_runtime_real_branch_predicate(condition, pair);
+    dvm_runtime_parallel_real_enter(released);
+    if (!take)
     {
         return NULL;
     }

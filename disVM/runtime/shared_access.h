@@ -34,4 +34,9 @@ int dvm_runtime_parallel_real_leave(int opcode, const void *first, size_t first_
 /* Restore NativeWorld while preserving the evaluator's native FP environment.
  * released is the matching result from dvm_runtime_parallel_real_leave. */
 void dvm_runtime_parallel_real_enter(int released);
+
+
+/* Check that target is the current decoded instruction's immediate cell.
+ * The dispatch retains its module throughout an audited native lease. */
+int dvm_runtime_instruction_target(const void *target);
 #endif
