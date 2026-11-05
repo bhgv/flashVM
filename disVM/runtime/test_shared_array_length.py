@@ -251,7 +251,16 @@ init() {
     if (tag != 22 || text != "second")
         raise "receive failure corrupted the ring";
     for (cycle := 0; cycle < 10; cycle++) {
-        records <-= (cycle, "refill");
+        if (cycle == 0) {
+            {
+                records <-= (cycle, "refill");
+                raise "expected committed send failure";
+            } exception failure {
+                "send failed after publication" => ;
+                * => raise;
+            }
+        } else
+            records <-= (cycle, "refill");
         records <-= (cycle+100, "wraparound");
         (tag, text) = <-records;
         if (tag != cycle || text != "refill")
@@ -356,15 +365,16 @@ void __wrap_destroy(void *value)
 }
 
 static __thread int ring_kind; /* 1 mapped, 2 native scalar, 3 raw record. */
-int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int *, int);
+int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int, int *, int);
 DVM_CellResult __real_dvm_managed_spans_begin(const void *, size_t, void *, size_t, DVM_CellAccess *);
 
 /* Identify the exact transfer layout before injecting at its range claim. */
 int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destination,
-    Type *type, int *consumed, int opcode)
+    Type *type, int consume, int *committed, int opcode)
 {
     int result;
-    int fault = consumed && opcode == IRECV && getenv("DVM_TEST_RECEIVE_ERRORS");
+    int inject = getenv("DVM_TEST_RECEIVE_ERRORS") != NULL;
+    int fault = inject && consume && opcode == IRECV;
     if (fault && receive_fault == 0)
     {
         receive_fault = 1;
@@ -372,13 +382,18 @@ int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destinat
         error("receive failed before publication");
     }
     ring_kind = type->np ? 1 : (type->size <= sizeof(void *) ? 2 : 3);
-    result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consumed, opcode);
+    result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consume, committed, opcode);
     ring_kind = 0;
-    if (fault && receive_fault == 1 && *consumed)
+    if (fault && receive_fault == 1 && *committed)
     {
         receive_fault = 2;
         release_fault = 1;
         error("receive failed after publication");
+    }
+    if (inject && opcode == ISEND && receive_fault == 2 && *committed)
+    {
+        receive_fault = 3;
+        error("send failed after publication");
     }
     return result;
 }

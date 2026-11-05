@@ -226,7 +226,7 @@ static int retire(void *value)
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
 static int mapped_transfer(const void *source, void *destination, Type *type, int size,
-    size_t elements, int *consumed, int replay_opcode, const SliceCopy *slice)
+    size_t elements, int consume, int *committed, int replay_opcode, const SliceCopy *slice)
 {
     MappedCopy copy = {0};
     DVM_RangeAccess access = {0};
@@ -250,7 +250,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         error(exHeap);
     }
     bytes = elements * (size_t)size;
-    if (consumed)
+    if (consume)
     {
         uintptr_t from = (uintptr_t)source;
         uintptr_t to = (uintptr_t)destination;
@@ -286,9 +286,9 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         {
             return 0;
         }
-        if (consumed)
+        if (committed)
         {
-            *consumed = 1;
+            *committed = 1;
         }
         return 1;
     }
@@ -323,7 +323,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    if (slice || (dvm_runtime_parallel_movmp && !consumed && replay_opcode == IMOVMP &&
+    if (slice || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
         up->prog && dvm_native_execution()->arithmetic_retry_opcode == IMOVMP &&
         dvm_runtime_frame_record(source, type) && dvm_runtime_frame_record(destination, type)))
     {
@@ -350,7 +350,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     }
     if (claim == DVM_CELL_ACQUIRED)
     {
-        problem = publish_and_unlock(&copy, source, destination, bytes, consumed != NULL, &access);
+        problem = publish_and_unlock(&copy, source, destination, bytes, consume, &access);
     }
     if (released > 0)
     {
@@ -384,7 +384,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         claim = dvm_managed_ranges_begin(source, bytes, destination, bytes, &access);
         if (claim == DVM_CELL_ACQUIRED)
         {
-            problem = publish_and_unlock(&copy, source, destination, bytes, consumed != NULL, &access);
+            problem = publish_and_unlock(&copy, source, destination, bytes, consume, &access);
         }
     }
     if (claim != DVM_CELL_ACQUIRED)
@@ -397,9 +397,9 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         dispose(&copy);
         error((char *)problem);
     }
-    if (consumed)
+    if (committed)
     {
-        *consumed = 1;
+        *committed = 1;
     }
     for (index = 0; index < copy.count; index++)
     {
@@ -434,14 +434,14 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
 /* Keep the source ownership and retain each incoming destination owner. */
 void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, 1, NULL, 0, NULL);
+    mapped_transfer(source, destination, type, size, 1, 0, NULL, 0, NULL);
 }
 
 
 /* Execute decoded MOVMP with replay allowed only before ownership changes. */
 void dvm_runtime_mapped_move_opcode(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, 1, NULL, IMOVMP, NULL);
+    mapped_transfer(source, destination, type, size, 1, 0, NULL, IMOVMP, NULL);
 }
 
 
@@ -450,7 +450,7 @@ void dvm_runtime_mapped_consume(void *source, void *destination, Type *type, int
     int *consumed)
 {
     *consumed = 0;
-    mapped_transfer(source, destination, type, size, 1, consumed, 0, NULL);
+    mapped_transfer(source, destination, type, size, 1, 1, consumed, 0, NULL);
 }
 
 
@@ -459,7 +459,7 @@ static int copy_pinned_slice(void *argument)
 {
     SliceCopy *slice = argument;
     mapped_transfer(slice->from, slice->to, slice->type, slice->type->size,
-        slice->count, NULL, ISLICELA, slice);
+        slice->count, 0, NULL, ISLICELA, slice);
     return 1;
 }
 
@@ -484,7 +484,7 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *t
         !dvm_runtime_frame_pointer(DVM_R.s) || !dvm_runtime_frame_pointer(DVM_R.d) ||
         !dvm_runtime_slice_index_stable(DVM_R.m))
     {
-        mapped_transfer(source, destination, type, type->size, count, NULL, ISLICELA, NULL);
+        mapped_transfer(source, destination, type, type->size, count, 0, NULL, ISLICELA, NULL);
         return;
     }
     slice = (SliceCopy){source_array, destination_array, *source_array, *destination_array,
@@ -514,15 +514,11 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *t
 }
 
 
-/* [GC:] Copy or consume a live ring slot. Only a top-level buffered
- * opcode supplies replay_opcode. Return zero if BUSY scheduled a retry.
- * consumed reports ownership transfer even when retirement raises. */
+/* Report publication before retiring displaced owners, for either direction. */
 int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, Type *type,
-    int *consumed, int replay_opcode)
+    int consume, int *committed, int replay_opcode)
 {
-    if (consumed)
-    {
-        *consumed = 0;
-    }
-    return mapped_transfer(source, destination, type, type->size, 1, consumed, replay_opcode, NULL);
+    *committed = 0;
+    return mapped_transfer(source, destination, type, type->size, 1, consume, committed,
+        replay_opcode, NULL);
 }

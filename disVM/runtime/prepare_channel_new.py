@@ -1008,7 +1008,7 @@ typedef struct ChannelReservation
     int next_size;
     int next_front;
     Type *transaction_type; /* Validated layout for a guarded built-in transfer. */
-    int consumed;
+    int committed;
     int completed;
     struct ChannelReservation *next;
     DVM_NativeContext *owner;
@@ -1144,7 +1144,7 @@ static int finish_channel_buffer(void *argument)
         link = &(*link)->next;
     if (!*link)
         abort();
-    if (reservation->consumed || (reservation->completed && !reservation->deferred && reservation->publish_after_move))
+    if (reservation->committed || (reservation->completed && !reservation->deferred && reservation->publish_after_move))
     {
         if (reservation->receive)
             channel->front = reservation->next_front;
@@ -1162,7 +1162,7 @@ static int consume_channel_buffer(void *argument)
     ChannelReservation *reservation = argument;
     reservation->deferred = !dvm_runtime_mapped_buffer_transfer(reservation->read.slot,
         reservation->read.destination, reservation->transaction_type,
-        reservation->transaction_type->np ? &reservation->consumed : NULL,
+        reservation->transaction_type->np != 0, &reservation->committed,
         reservation->replay_opcode);
     return 1;
 }
@@ -1210,7 +1210,8 @@ static int write_channel_buffer(void *argument)
     if (reservation->transaction_type)
     {
         reservation->deferred = !dvm_runtime_mapped_buffer_transfer(read->destination,
-            read->slot, reservation->transaction_type, NULL, reservation->replay_opcode);
+            read->slot, reservation->transaction_type, 0, &reservation->committed,
+            reservation->replay_opcode);
     }
     else
     {
