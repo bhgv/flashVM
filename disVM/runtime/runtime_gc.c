@@ -291,6 +291,11 @@ void dvm_runtime_gc_native_enter(int released)
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
     int returning;
+    if (released != 0 && released != 1)
+    {
+        fprintf(stderr,"disvm: invalid native heap reentry token\n");
+        exit(1);
+    }
     if (!state.world)
     {
         if (released)
@@ -315,15 +320,17 @@ void dvm_runtime_gc_native_enter(int released)
         }
         return;
     }
+    if (call.phase != DVM_HEAP_NATIVE || call.pending_progress ||
+        dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        fprintf(stderr,"disvm: invalid native heap reentry phase\n");
+        exit(1);
+    }
     returning = dvm_managed_workers_returning(1);
     if (!dvm_native_owner_resume(owner) || !dvm_native_owner_progress(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap reentry failed\n");
         exit(1);
-    }
-    if (returning)
-    {
-        dvm_managed_workers_returning(0);
     }
     {
         Prog *process = dvm_native_context_process(dvm_native_context_current());
@@ -332,6 +339,10 @@ void dvm_runtime_gc_native_enter(int released)
             fprintf(stderr,"disvm: native continuation restoration failed\n");
             exit(1);
         }
+    }
+    if (returning)
+    {
+        dvm_managed_workers_returning(0);
     }
 }
 
