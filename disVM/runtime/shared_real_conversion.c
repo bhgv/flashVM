@@ -8,6 +8,7 @@
 #include "real_conversion_value.h"
 #include "shared_real_conversion.h"
 #include "shared_access.h"
+#include "shared_bytes.h"
 #include "managed_owner.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -49,14 +50,5 @@ const char *dvm_runtime_real_conversion(int opcode, const void *source, void *de
     {
         return problem;
     }
-    if (dvm_managed_ranges_begin(NULL, 0, destination, output, &access) != DVM_CELL_ACQUIRED)
-    {
-        return exHeap;
-    }
-    dvm_runtime_real_conversion_copy(destination, result, output);
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
-    return NULL;
+    return dvm_runtime_bytes_publish(result, destination, output);
 }

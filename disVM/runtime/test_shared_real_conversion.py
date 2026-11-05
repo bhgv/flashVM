@@ -41,6 +41,7 @@ WRAPPER = r'''
 #include "isa.h"
 #include "interp.h"
 #include "raise.h"
+#include "shared_bytes.h"
 #include "managed_owner.h"
 #include "shared_real_conversion.h"
 #include "real_conversion_value.h"
@@ -176,6 +177,22 @@ void __wrap_dvm_runtime_real_conversion_copy(void *output,const void *source,siz
         copies++;
     }
     __real_dvm_runtime_real_conversion_copy(output,source,bytes);
+}
+
+
+void __real_dvm_runtime_byte_transfer(void *,const void *,size_t);
+
+
+/* The common publication path must hold the complete destination guard. */
+void __wrap_dvm_runtime_byte_transfer(void *output,const void *source,size_t bytes)
+{
+    if (active)
+    {
+        check(phase == 3 && output == output_cell && bytes == output_width,"copy phase");
+        coverage(output,bytes);
+        copies++;
+    }
+    __real_dvm_runtime_byte_transfer(output,source,bytes);
 }
 
 
@@ -450,7 +467,7 @@ def main():
     runtime,compiler,include = (Path(v).resolve() for v in sys.argv[1:4])
     root = Path(__file__).resolve().parent
     symbols = ['dvm_runtime_root_registry_probe','dvm_managed_ranges_begin','dvm_range_access_end',
-               'dvm_runtime_real_conversion_copy','dvm_runtime_real_conversion_value',
+               'dvm_runtime_real_conversion_copy','dvm_runtime_real_conversion_value','dvm_runtime_byte_transfer',
                'dvm_runtime_real_conversion','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual FP conversion ') as directory:
         work = Path(directory)
@@ -481,8 +498,10 @@ def main():
             controls = [
                 ('dvm_managed_ranges_begin(source, input, NULL, 0, &access)', 'DVM_CELL_ACQUIRED', 'copy phase'),
                 ('dvm_range_access_end(&access)', '1', 'unlocked conversion'),
-                ('dvm_managed_ranges_begin(NULL, 0, destination, output, &access)', 'DVM_CELL_ACQUIRED', 'copy phase'),
-                ('    dvm_runtime_real_conversion_copy(destination, result, output);', '    (void)result;', 'complete conversion')]
+                ('return dvm_runtime_bytes_publish(result, destination, output);',
+                 'dvm_runtime_byte_transfer(destination, result, output); return NULL;', 'copy phase'),
+                ('return dvm_runtime_bytes_publish(result, destination, output);',
+                 'return dvm_runtime_bytes_publish(result, destination, 0);', 'complete conversion')]
             for index,(before,after,marker) in enumerate(controls):
                 if before not in original:
                     raise RuntimeError('conversion control anchor drift')

@@ -42,10 +42,3 @@ void dvm_runtime_real_arithmetic_value(int opcode, const void *pair, void *resul
     }
     memmove(result, &value, sizeof(value));
 }
-
-
-/* Publish saved result bytes into the caller-guarded output; no FP operation. */
-void dvm_runtime_real_arithmetic_store(void *output, const void *result)
-{
-    memmove(output, result, sizeof(REAL));
-}

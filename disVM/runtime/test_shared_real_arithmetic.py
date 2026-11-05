@@ -44,6 +44,7 @@ WRAPPER = r'''
 #include "interp.h"
 #include "raise.h"
 #include "bytes_fast.h"
+#include "shared_bytes.h"
 #include "managed_owner.h"
 #include "shared_real_arithmetic.h"
 #include "real_arithmetic_value.h"
@@ -72,7 +73,7 @@ DVM_CellResult __real_dvm_managed_ranges_begin(const void *,size_t,void *,size_t
 int __real_dvm_range_access_end(DVM_RangeAccess *);
 void __real_dvm_runtime_real_branch_capture(const void *,const void *,void *);
 void __real_dvm_runtime_real_arithmetic_value(int,const void *,void *);
-void __real_dvm_runtime_real_arithmetic_store(void *,const void *);
+void __real_dvm_runtime_byte_transfer(void *,const void *,size_t);
 const char *__real_dvm_runtime_real_arithmetic(int,const void *,const void *,void *);
 void *__real_malloc(size_t);
 void *__real_calloc(size_t,size_t);
@@ -215,14 +216,14 @@ void __wrap_dvm_runtime_real_arithmetic_value(int opcode,const void *pair,void *
 
 
 /* Publication is bytes only and requires the later complete output union. */
-void __wrap_dvm_runtime_real_arithmetic_store(void *output,const void *result)
+void __wrap_dvm_runtime_byte_transfer(void *output,const void *result,size_t size)
 {
     if (active)
     {
         check(phase == 3,"store phase");
         coverage();
     }
-    __real_dvm_runtime_real_arithmetic_store(output,result);
+    __real_dvm_runtime_byte_transfer(output,result,size);
 }
 
 
@@ -546,7 +547,7 @@ def main():
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
     symbols = ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin',
                'dvm_range_access_end','dvm_runtime_real_branch_capture','dvm_runtime_real_arithmetic_value',
-               'dvm_runtime_real_arithmetic_store','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
+               'dvm_runtime_byte_transfer','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual REAL arithmetic ') as directory:
         work = Path(directory)
         source, image = work/'main.b', work/'main.dis'
@@ -572,8 +573,10 @@ def main():
             controls = [
                 ('dvm_managed_three_begin(first, sizeof(REAL), second_width ? second : NULL, second_width, NULL, 0,\n        &access)', 'DVM_CELL_ACQUIRED', 'capture phase'),
                 ('dvm_range_access_end(&access)', '1', 'unlocked FP'),
-                ('dvm_managed_ranges_begin(NULL, 0, output, sizeof(REAL), &access)', 'DVM_CELL_ACQUIRED', 'store phase'),
-                ('    dvm_runtime_real_arithmetic_store(output, result);', '    (void)result;', 'overlap result and flags')]
+                ('return dvm_runtime_bytes_publish(result, output, sizeof(REAL));',
+                 'dvm_runtime_byte_transfer(output, result, sizeof(REAL)); return NULL;', 'store phase'),
+                ('return dvm_runtime_bytes_publish(result, output, sizeof(REAL));',
+                 'return dvm_runtime_bytes_publish(result, output, 0);', 'complete two phases')]
             for index, (before,after,marker) in enumerate(controls):
                 if before not in original:
                     raise RuntimeError('REAL control source drift')

@@ -9,6 +9,7 @@
 #include "real_arithmetic_value.h"
 #include "real_branch_value.h"
 #include "shared_access.h"
+#include "shared_bytes.h"
 #include "managed_owner.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -56,16 +57,7 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
         abort();
     }
     dvm_runtime_real_arithmetic_value(opcode, pair, result);
-    if (dvm_managed_ranges_begin(NULL, 0, output, sizeof(REAL), &access) != DVM_CELL_ACQUIRED)
-    {
-        return exHeap;
-    }
-    dvm_runtime_real_arithmetic_store(output, result);
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
-    return NULL;
+    return dvm_runtime_bytes_publish(result, output, sizeof(REAL));
 }
 
 
@@ -174,16 +166,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(NULL, 0, output, output_width, &access) != DVM_CELL_ACQUIRED)
-    {
-        return exHeap;
-    }
-    memmove(output, &result, output_width);
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
-    return NULL;
+    return dvm_runtime_bytes_publish(&result, output, output_width);
 }
 
 
@@ -243,14 +226,5 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
         abort();
     }
     evaluate(scale, &left, &right, &result);
-    if (dvm_managed_ranges_begin(NULL, 0, output, sizeof(result), &access) != DVM_CELL_ACQUIRED)
-    {
-        return exHeap;
-    }
-    memmove(output, &result, sizeof(result));
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
-    return NULL;
+    return dvm_runtime_bytes_publish(&result, output, sizeof(result));
 }
