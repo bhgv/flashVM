@@ -11,8 +11,108 @@
 #include "managed_owner.h"
 #include "disvm/native_process.h"
 #include "runqueue.h"
+#include "runtime_gc.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+
+int dvm_runtime_parallel_add; /* Startup-only opt-in for leased frame-local ADDW evaluation. */
+
+
+/* Find the current live frame descriptor within the rooted stack extent.
+ * The first frame stores its Type in the extent header. Borrow under ACTIVE. */
+static Type *current_frame_type(void)
+{
+    uintptr_t base = (uintptr_t)DVM_R.EX;
+    uintptr_t frame = (uintptr_t)DVM_R.FP;
+    uintptr_t top = (uintptr_t)DVM_R.SP;
+    Type *type;
+
+    if (!base || DVM_R.EX == H || frame < base || top < frame ||
+        (uintptr_t)DVM_R.TS < top || top - frame < sizeof(Frame))
+    {
+        return NULL;
+    }
+    type = ((Frame *)frame)->t;
+    if (!type && frame - base == offsetof(Stkext, reg.tos.fu))
+    {
+        type = ((Stkext *)base)->reg.TR;
+    }
+    if (!type || type == H || type->size < (int)sizeof(Frame) ||
+        (size_t)type->size > top - frame || type->np < 0 ||
+        (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8)
+    {
+        return NULL;
+    }
+    return type;
+}
+
+
+/* Check that the borrowed aligned WORD lies in the scalar frame payload.
+ * The published process stack retains that frame throughout its lease. */
+static int frame_word(const void *cell, const Type *type)
+{
+    uintptr_t base = (uintptr_t)DVM_R.FP;
+    uintptr_t address = (uintptr_t)cell;
+    size_t slot;
+
+    if (address < base || address - base < NREG * IBY2WD ||
+        address - base > (size_t)type->size - sizeof(WORD) ||
+        (address - base) % sizeof(WORD))
+    {
+        return 0;
+    }
+    slot = (address - base) / sizeof(void *);
+    return slot / 8 >= (size_t)type->np ||
+        !(type->map[slot / 8] & (0x80U >> (slot % 8)));
+}
+
+
+/* Try a frame-local ADDW using only private bytes outside the heap. The
+ * caller holds the input/output union on entry. Return with that union
+ * released. A changed input is recalculated at the guarded commit point. */
+static const char *leased_add(const void *first, const void *second, void *output,
+    DVM_TripleAccess *access, int *retryable)
+{
+    UWORD left, right, result;
+    int released;
+    DVM_CellResult claim;
+
+    memmove(&left, first, sizeof(left));
+    memmove(&right, second, sizeof(right));
+    if (!dvm_small_range_access_end(access))
+    {
+        abort();
+    }
+    released = dvm_runtime_gc_native_try_leave();
+    dvm_runtime_arithmetic_value(IADDW, &left, &right, &result);
+    if (released > 0)
+    {
+        dvm_runtime_gc_native_enter(released);
+    }
+
+    claim = dvm_managed_small_three_begin(first, sizeof(left), second, sizeof(right),
+        output, sizeof(result), access);
+    if (claim != DVM_CELL_ACQUIRED)
+    {
+        *retryable = claim == DVM_CELL_BUSY;
+        return exHeap;
+    }
+    if (memcmp(first, &left, sizeof(left)) || memcmp(second, &right, sizeof(right)))
+    {
+        dvm_runtime_arithmetic_value(IADDW, first, second, output);
+    }
+    else
+    {
+        memmove(output, &result, sizeof(result));
+    }
+    if (!dvm_small_range_access_end(access))
+    {
+        abort();
+    }
+    return NULL;
+}
 
 
 /* [PERF ARITH-096] Historical generic guard cost remains in the ledger.
@@ -98,6 +198,16 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
     {
         *retryable = claim == DVM_CELL_BUSY;
         return exHeap;
+    }
+    if (dvm_runtime_parallel_add && opcode == IADDW &&
+        dvm_native_execution()->arithmetic_retry_opcode == opcode && up->prog)
+    {
+        Type *type = current_frame_type();
+        if (type && frame_word(first, type) && frame_word(second, type) &&
+            frame_word(output, type))
+        {
+            return leased_add(first, second, output, &access, retryable);
+        }
     }
     if (division && dvm_runtime_divisor_zero(opcode, second))
     {

@@ -2,6 +2,8 @@
 #ifndef DVM_SHARED_ARITHMETIC_H
 #define DVM_SHARED_ARITHMETIC_H
 
+extern int dvm_runtime_parallel_add; /* Startup-only frame-local ADDW experiment. */
+
 
 /* [GC:] opcode selects ADD/SUB/MUL/DIV/MOD/AND/OR/XOR B/W/L. first/second/output are borrowed
  * live cells. Exact ACTIVE worker context and valid nonempty geometry required.

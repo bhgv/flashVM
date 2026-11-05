@@ -295,6 +295,87 @@ static int force_busy;''')
     return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
 
+PARALLEL_GUEST = r'''implement ParallelAdd;
+include "sys.m";
+ParallelAdd: module { init: fn(); };
+
+worker(left, right: int, done: chan of int)
+{
+    result := left + right;
+    done <-= result;
+}
+
+init()
+{
+    sys := load Sys Sys->PATH;
+    done := chan of int;
+    spawn worker(20, 22, done);
+    spawn worker(17, 25, done);
+    left := <-done;
+    right := <-done;
+    if (left != 42 || right != 42)
+        raise "parallel ADDW produced an incorrect sum";
+    sys->print("PASS parallel frame ADDW\n");
+}
+'''
+
+
+def parallel_wrapper():
+    """Observe distinct native contexts inside actual leased ADDW evaluation."""
+    source = '#include "disvm/native_owner.h"\n#include <pthread.h>\n'+wrapper()
+    signature = 'void __wrap_dvm_runtime_arithmetic_value(int op, const void *s, const void *b, void *d)'
+    return source.replace(signature+'\n{', '''static pthread_mutex_t parallel_lock = PTHREAD_MUTEX_INITIALIZER; /* Rendezvous lock. */
+static pthread_cond_t parallel_ready = PTHREAD_COND_INITIALIZER; /* Wake the first evaluator. */
+static DVM_NativeContext *parallel_first; /* First live evaluator identity. */
+static int parallel_count; /* Observed evaluators, capped at two. */
+
+'''+signature+r'''
+{
+    DVM_HeapOwnerStats owner;
+    if (op == IADDW && dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        DVM_NativeContext *context = dvm_native_context_current();
+        pthread_mutex_lock(&parallel_lock);
+        if (!parallel_count)
+        {
+            parallel_first = context;
+            parallel_count = 1;
+            while (parallel_count < 2)
+            {
+                pthread_cond_wait(&parallel_ready, &parallel_lock);
+            }
+        }
+        else if (parallel_count == 1)
+        {
+            check(parallel_first != context, "two distinct OS evaluators");
+            parallel_count = 2;
+            print("PASS concurrent leased evaluators\n");
+            pthread_cond_broadcast(&parallel_ready);
+        }
+        pthread_mutex_unlock(&parallel_lock);
+    }''',1)
+
+
+def run_parallel(runtime, compiler, include, work):
+    """Require two workers to overlap in both dispatch modes."""
+    source, image, fixture = (work/name for name in ('parallel.b', 'parallel.dis', 'parallel.c'))
+    source.write_text(PARALLEL_GUEST)
+    fixture.write_text(parallel_wrapper())
+    subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
+    binary = relink(runtime, work, fixture, 0,
+        ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value',
+         'dvm_managed_small_three_begin', 'dvm_runtime_divisor_zero', 'error'])
+    for mode in ('--no-jit', '--jit'):
+        args = [str(binary), mode, '--gc-worker', '--guarded-copies',
+                '--managed-workers', '2', '--parallel-add', str(image)]
+        run = subprocess.run(args, capture_output=True, text=True, timeout=20,
+            env=dict(os.environ, TMPDIR=str(work)))
+        output = run.stdout+run.stderr
+        if run.returncode or 'PASS concurrent leased evaluators' not in output or 'PASS parallel frame ADDW' not in output:
+            raise RuntimeError('parallel ADDW failed: '+output)
+
+
 def main():
     """Run actual production opcodes C/JIT/both polls; strict semantic controls."""
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
@@ -330,6 +411,7 @@ def main():
                         raise RuntimeError('arithmetic positive failed: '+output)
                     if variant == 3 and 'PASS scheduled arithmetic retry' not in output:
                         raise RuntimeError('scheduler retry missed: '+output)
+        run_parallel(runtime, compiler, include, work)
     print('PASS 24 actual arithmetic opcodes, 1404000 alias/value cases, C/JIT guest, both polls')
 
 
