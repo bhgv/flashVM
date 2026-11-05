@@ -178,28 +178,32 @@ static int retire(void *value)
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
 static void mapped_transfer(const void *source, void *destination, Type *type, int size,
-    int *consumed, int replay_opcode)
+    size_t elements, int *consumed, int replay_opcode)
 {
     MappedCopy copy = {0};
     DVM_RangeAccess access = {0};
     DVM_CellResult claim;
     const char *problem = NULL;
     size_t index;
+    size_t element;
+    size_t bytes;
     int byte;
     int bit;
     int failed = 0;
     char first_error[ERRMAX];
     if (dvm_runtime_shared_mode() != 2 || !type || type == H || size < 0 ||
-        type->size != size || type->np < 0 || type->np > size / (8 * sizeof(void *)) +
+        type->size != size || !elements || (size && elements > SIZE_MAX / (size_t)size) ||
+        type->np < 0 || type->np > size / (8 * sizeof(void *)) +
         (size % (8 * sizeof(void *)) != 0))
     {
         error(exHeap);
     }
+    bytes = elements * (size_t)size;
     if (consumed)
     {
         uintptr_t from = (uintptr_t)source;
         uintptr_t to = (uintptr_t)destination;
-        if ((from < to ? to-from : from-to) < (size_t)size)
+        if ((from < to ? to-from : from-to) < bytes)
         {
             error(exHeap);
         }
@@ -221,8 +225,8 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
     if (!copy.count)
     {
         problem = replay_opcode ?
-            dvm_runtime_bytes_copy_opcode(replay_opcode, source, destination, (size_t)size) :
-            dvm_runtime_bytes_copy(source, destination, (size_t)size);
+            dvm_runtime_bytes_copy_opcode(replay_opcode, source, destination, bytes) :
+            dvm_runtime_bytes_copy(source, destination, bytes);
         if (problem)
         {
             error((char *)problem);
@@ -233,13 +237,14 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
         }
         return;
     }
-    if (copy.count > (size_t)-1 / sizeof(*copy.slots))
+    if (elements > SIZE_MAX / sizeof(*copy.slots) / copy.count)
     {
         error(exNomem);
     }
+    copy.count *= elements;
     copy.slots = calloc(copy.count, sizeof(*copy.slots));
     copy.keys = calloc(copy.count, sizeof(*copy.keys));
-    copy.snapshot = malloc((size_t)size);
+    copy.snapshot = malloc(bytes);
     copy.roots = dvm_runtime_root_batch_create(copy.count);
     if (!copy.slots || !copy.keys || !copy.snapshot || !copy.roots)
     {
@@ -247,17 +252,23 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
         error(exNomem);
     }
     index = 0;
-    for (byte = 0; byte < type->np; byte++)
+    for (element = 0; element < elements; element++)
     {
-        for (bit = 0; bit < 8; bit++)
+        /* Keep the legacy SLICELA retirement direction for overlapping views. */
+        size_t offset = ((uintptr_t)destination > (uintptr_t)source ?
+            elements - element - 1 : element) * (size_t)size;
+        for (byte = 0; byte < type->np; byte++)
         {
-            if (type->map[byte] & (1U << bit))
+            for (bit = 0; bit < 8; bit++)
             {
-                copy.slots[index++].offset = ((size_t)byte * 8 + 7 - bit) * sizeof(void *);
+                if (type->map[byte] & (1U << bit))
+                {
+                    copy.slots[index++].offset = offset + ((size_t)byte * 8 + 7 - bit) * sizeof(void *);
+                }
             }
         }
     }
-    claim = dvm_managed_ranges_begin(source, (size_t)size, destination, (size_t)size, &access);
+    claim = dvm_managed_ranges_begin(source, bytes, destination, bytes, &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
         dispose(&copy);
@@ -267,7 +278,7 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
         }
         error(exHeap);
     }
-    problem = publish(&copy, source, destination, (size_t)size, consumed != NULL);
+    problem = publish(&copy, source, destination, bytes, consumed != NULL);
     if (!dvm_range_access_end(&access))
     {
         abort();
@@ -313,14 +324,14 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
 /* Keep the source ownership and retain each incoming destination owner. */
 void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, NULL, 0);
+    mapped_transfer(source, destination, type, size, 1, NULL, 0);
 }
 
 
 /* Execute decoded MOVMP with replay allowed only before ownership changes. */
 void dvm_runtime_mapped_move_opcode(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, NULL, IMOVMP);
+    mapped_transfer(source, destination, type, size, 1, NULL, IMOVMP);
 }
 
 
@@ -329,5 +340,13 @@ void dvm_runtime_mapped_consume(void *source, void *destination, Type *type, int
     int *consumed)
 {
     *consumed = 0;
-    mapped_transfer(source, destination, type, size, consumed, 0);
+    mapped_transfer(source, destination, type, size, 1, consumed, 0);
+}
+
+
+/* [GC:] Copy count live array elements with the supplied descriptor. Their
+ * array owners remain live under NativeWorld through preparation and commit. */
+void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *type, size_t count)
+{
+    mapped_transfer(source, destination, type, type->size, count, NULL, ISLICELA);
 }

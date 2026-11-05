@@ -52,6 +52,21 @@ init() {
     if (len copy != 2 || copy[-1] != "copy" || source[-2] != "new" || source[-1] != "tail") {
         raise "guarded mapped slice mismatch";
     }
+    mapped := array[] of {"a", "b", "c", "d"};
+    mapped[1:] = mapped[0:3];
+    if (mapped[0] != "a" || mapped[1] != "a" || mapped[2] != "b" || mapped[3] != "c") {
+        raise "right overlapping managed copy";
+    }
+    mapped[0:] = mapped[1:4];
+    if (mapped[0] != "a" || mapped[1] != "b" || mapped[2] != "c" || mapped[3] != "c") {
+        raise "left overlapping managed copy";
+    }
+    scalar := array[] of {11, 22, 33, 44};
+    scalar[1:] = scalar[0:3];
+    scalar = scalar[1:3];
+    if (len scalar != 2 || scalar[0] != 11 || scalar[1] != 22) {
+        raise "scalar copy and in-place view narrowing";
+    }
     samples := array[] of {"-42", "9007199254740993", "2.5", "Ж"};
     word := int samples[0];
     wide := big samples[1];
@@ -154,8 +169,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[21]; /* Post-decode PC for each refused capture. */
-    static int replayed[21]; /* One successful replay for each stage. */
+    static Inst *pcs[24]; /* Post-decode PC for each refused capture. */
+    static int replayed[24]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -259,6 +274,21 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
         }
         if (!source && ((opcode == ICVTCA && contend_capture(17)) ||
                         (opcode == ICVTAC && contend_capture(18))))
+        {
+            return DVM_CELL_BUSY;
+        }
+    }
+
+    if (CONTROL == 0 && !active && destination)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if (!source && opcode == ISLICEA && contend_capture(21))
+        {
+            return DVM_CELL_BUSY;
+        }
+        if (source && opcode == ISLICELA &&
+            ((source_size == 3 * sizeof(WORD) && contend_capture(22)) ||
+             (source_size != 3 * sizeof(WORD) && contend_capture(23))))
         {
             return DVM_CELL_BUSY;
         }
@@ -789,7 +819,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(21)):
+                                            for stage in range(24)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

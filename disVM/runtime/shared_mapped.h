@@ -1,6 +1,7 @@
 /* Internal mapped-value transaction; caller supplies a validated live Type. */
 #ifndef DVM_SHARED_MAPPED_H
 #define DVM_SHARED_MAPPED_H
+#include <stddef.h>
 
 struct Type; /* Borrowed retained native descriptor, defined by interp.h. */
 
@@ -21,4 +22,9 @@ void dvm_runtime_mapped_consume(void *source, void *destination, struct Type *ty
 
 /* As for mapped_copy, with pre-effect BUSY replay for the decoded MOVMP. */
 void dvm_runtime_mapped_move_opcode(const void *source, void *destination, struct Type *type, int size);
+
+
+/* [GC:] Copy a validated count of elements as one transaction. Borrow mapped
+ * spans and immutable type under NativeWorld. BUSY can replay before changes. */
+void dvm_runtime_array_slice_copy(const void *source, void *destination, struct Type *type, size_t count);
 #endif

@@ -103,6 +103,75 @@ def adapt_array_slice_captures(code):
     return code[:start] + body + code[end:]
 
 
+def adapt_array_slice_publication(code):
+    """Guard narrowing a view and commit a slice assignment as one transaction."""
+    start = code.index('OP(slicea)')
+    end = code.index('OP(slicela)', start)
+    body = code[start:end]
+    update = '\t\tds->len = n;\n\t\tds->data = data;'
+    guarded = """        if(dvm_runtime_guarded_copies && !relative) {
+            DVM_RangeAccess access = {0};
+            DVM_CellResult claim = dvm_managed_ranges_begin(ds, sizeof(*ds), slot, sizeof(ds), &access);
+            Array *observed;
+            if(claim == DVM_CELL_ACQUIRED) {
+                memmove(&observed, slot, sizeof(observed));
+                if(observed == ds) {
+                    ds->len = n;
+                    ds->data = data;
+                } else {
+                    claim = DVM_CELL_BUSY;
+                }
+                if(!dvm_range_access_end(&access)) {
+                    abort();
+                }
+            }
+            if(claim == DVM_CELL_ACQUIRED ||
+               (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICEA))) {
+                return;
+            }
+            error(exHeap);
+        }
+"""
+    body = relative_replace(body, update, guarded+update, 1)
+    publish = '\t\tmemmove(DVM_R.d, &copy, sizeof(copy));'
+    body = relative_replace(body, publish, """        if(dvm_runtime_guarded_copies) {
+            DVM_RangeAccess access = {0};
+            DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, slot, sizeof(copy), &access);
+            Array *observed;
+            if(claim == DVM_CELL_ACQUIRED) {
+                memmove(&observed, slot, sizeof(observed));
+                if(observed == ds) {
+                    memmove(slot, &copy, sizeof(copy));
+                } else {
+                    claim = DVM_CELL_BUSY;
+                }
+                if(!dvm_range_access_end(&access)) {
+                    abort();
+                }
+            }
+            if(claim != DVM_CELL_ACQUIRED) {
+                destroy(copy);
+                if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICEA)) {
+                    return;
+                }
+                error(exHeap);
+            }
+        } else {
+"""+publish+"""
+        }""", 1)
+    code = code[:start]+body+code[end:]
+    start = code.index('OP(slicela)')
+    end = code.index('\n}', start)
+    body = code[start:end]
+    anchor = '\tif(t->np == 0) {'
+    body = relative_replace(body, anchor, """    if(dvm_runtime_guarded_copies) {
+        dvm_runtime_array_slice_copy(source, destination, t, (size_t)ss->len);
+        return;
+    }
+"""+anchor, 1)
+    return code[:start]+body+code[end:]
+
+
 def adapt_string_conversion_captures(code, conversions):
     """Replace pre-effect operand reads in the selected conversion bodies.
 
@@ -730,6 +799,7 @@ def main():
             part = relative_replace(part, needle, needle + '\n\tif(relative){\n\t\tcopy = arraycpy(ds);\n\t\tmemmove(DVM_R.d, &copy, sizeof(copy));\n\t\tdestroy(ds);\n\t\tds = copy;\n\t\tt = ds->t;\n\t\tdata = arrayspan(ds, t, start, n);\n\t}', 1)
             code = code[:start] + part + code[finish:]
             code = adapt_array_slice_captures(code)
+            code = adapt_array_slice_publication(code)
             code = adapt_string_conversion_captures(code, (('CVTCL', 's', False),))
             needle = 'if(dl < 0 || dl > ds->len || ss->len < 0 || ss->len > ds->len-dl)'
             if code.count(needle) != 1:
