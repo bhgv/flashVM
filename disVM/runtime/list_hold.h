@@ -29,4 +29,7 @@ const char *dvm_runtime_list_hold(const void *cell, DVM_ListHold *hold);
  * Never retry a consumed owner. May invoke destructor/VM error, not allocation
  * under guards. Caller retains ACTIVE admission; normal success returns void. */
 void dvm_runtime_list_finish(DVM_ListHold *hold, int body_ok);
+/* Snapshot the borrowed WORD cell under its guard into private output.
+ * Return NULL or a static VM diagnostic. The guard is released on return. */
+const char *dvm_runtime_list_word(const void *cell, WORD *value);
 #endif

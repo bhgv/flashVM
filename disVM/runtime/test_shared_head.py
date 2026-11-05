@@ -271,7 +271,9 @@ static Type *resolve(void *module, const void *index)
 {
     (void)module;
     check(!dvm_native_context_object_count(dvm_native_context_current()), "metadata callback unlocked");
-    check(index == &type_index, "index operand captured once");
+    WORD captured;
+    memmove(&captured, index, sizeof(captured));
+    check(index != &type_index && captured == type_index, "index operand captured into a private slot");
     if (resolver_error)
     {
         error("head descriptor diagnostic");

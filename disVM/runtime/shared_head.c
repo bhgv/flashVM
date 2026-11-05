@@ -66,10 +66,18 @@ static int project(void *argument)
 {
     HeadCopy *copy = argument;
     List *list = copy->list.value;
-    Type *type = copy->resolve(copy->module, copy->index);
+    const char *problem;
+    WORD index;
+    Type *type;
     uintptr source = (uintptr)list;
     size_t needed;
     int size;
+    problem = dvm_runtime_list_word(copy->index, &index);
+    if (problem)
+    {
+        error((char *)problem);
+    }
+    type = copy->resolve(copy->module, &index);
     memmove(&size, (uchar *)type + offsetof(Type, size), sizeof(size));
     if (!size)
     {

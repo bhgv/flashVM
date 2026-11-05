@@ -171,7 +171,12 @@ DVM_CellResult __wrap_dvm_managed_spans_begin(const void *source, size_t source_
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
-    if (active)
+    if (active && !destination)
+    {
+        check(source == length_cell && source_size == sizeof(WORD) && !destination_size,
+            "exact guarded HEADM length operand");
+    }
+    else if (active)
     {
         check(source == node->data && destination == target && source_size == width &&
             destination_size == width, "exact wide payload spans");

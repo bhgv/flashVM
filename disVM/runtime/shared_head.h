@@ -5,7 +5,7 @@
 struct Type; /* Actual immutable native metadata, defined by interp.h. */
 
 
-/* Validate captured module/index cell with original opcode error precedence.
+/* Validate borrowed module and private WORD snapshot with original opcode error precedence.
  * Return borrowed validated Type, or raise. Caller roots the list and provides
  * current ACTIVE admission/module lifetime; no object guard spans invocation. */
 typedef struct Type *(*DVM_HeadTypeResolver)(void *module, const void *index);

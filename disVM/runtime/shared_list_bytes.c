@@ -39,12 +39,11 @@ static int project(void *argument)
     const char *problem;
     if (!size)
     {
-        if (!request->length || request->length == H ||
-            (uintptr)request->length > (uintptr)-1 - sizeof(count))
+        problem = dvm_runtime_list_word(request->length, &count);
+        if (problem)
         {
-            error(exBounds);
+            error((char *)problem);
         }
-        memmove(&count, request->length, sizeof(count));
         if (count < 0)
         {
             error(exBounds);

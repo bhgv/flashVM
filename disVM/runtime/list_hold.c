@@ -6,6 +6,9 @@
 #include "raise.h"
 #include "list_hold.h"
 #include "heap_hold.h"
+#include "shared_access.h"
+#include "managed_owner.h"
+#include <stdint.h>
 #include <stdlib.h>
 
 
@@ -50,4 +53,26 @@ void dvm_runtime_list_finish(DVM_ListHold *hold, int body_ok)
     hold->value = NULL;
     hold->roots = NULL;
     dvm_runtime_heap_finish(&captured, body_ok);
+}
+
+/* Snapshot a live scalar list operand after the list owner is rooted.
+ * Return a static diagnostic on invalid geometry or guard refusal. */
+const char *dvm_runtime_list_word(const void *cell, WORD *value)
+{
+    DVM_RangeAccess access = {0};
+
+    if (!cell || cell == H || (uintptr_t)cell > UINTPTR_MAX - sizeof(*value))
+    {
+        return exBounds;
+    }
+    if (dvm_managed_ranges_begin(cell, sizeof(*value), NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(value, cell, sizeof(*value));
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
 }
