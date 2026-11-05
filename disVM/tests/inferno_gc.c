@@ -5,6 +5,7 @@
 
 #ifdef DVM_GC_WORKERS
 #include <pthread.h>
+#include <errno.h>
 #include <sched.h>
 #include "dat.h"
 #include "disvm/gc_workers.h"
@@ -320,12 +321,17 @@ typedef struct GraphRun
     int phase; /* 0 holds entry, 1 publishes edges, 2 removes edges, 3 exits. */
     int entered; /* Both mutators must be active before phase 1. */
     int changed[2]; /* Number of completed writes in each phase. */
+    pthread_mutex_t slot_lock; /* Serializes writes to the deliberately shared cell. */
+    int contended; /* 0 uses separate slots, 1 retries BUSY, 2 cancels before retry. */
+    int held; /* First writer holds slot_lock, published under mutex. */
+    int refused; /* Second writer observed BUSY without touching the slot. */
 } GraphRun;
 
 typedef struct GraphMutator
 {
     GraphRun *run; /* Borrowed until join. */
-    void **slot; /* One disjoint mapped slot in the common rooted record. */
+    void **slot; /* Mapped slot in the common rooted record. */
+    int index; /* Selects the initial holder in the contention control. */
     Record *cycle; /* Borrowed disjoint cycle until the first stopped pass. */
     Prog guest; /* Owner-local snapshot storage until detach. */
 } GraphMutator;
@@ -339,6 +345,55 @@ static void graph_check(int valid, const char *message)
         fprintf(stderr, "parallel GC graph: %s\n", message);
         exit(EXIT_FAILURE);
     }
+}
+
+
+/* Wait for a fixture rendezvous protected by the phase mutex. No collector
+ * request is issued while either participant is inside this rendezvous. */
+static void wait_graph_flag(GraphRun *run, const int *flag)
+{
+    for (;;)
+    {
+        int ready;
+        pthread_mutex_lock(&run->mutex);
+        ready = *flag;
+        pthread_mutex_unlock(&run->mutex);
+        if (ready)
+        {
+            return;
+        }
+        sched_yield();
+    }
+}
+
+
+/* Force an actual refusal before the second owner retries the same mapped
+ * cell. The fixture mutex protects this cell and its two candidate owners. */
+static void write_contended_edge(GraphMutator *worker, int phase)
+{
+    GraphRun *run = worker->run;
+    if (phase == 1 && worker->index == 1)
+    {
+        wait_graph_flag(run, &run->held);
+        graph_check(pthread_mutex_trylock(&run->slot_lock) == EBUSY, "second writer observes BUSY");
+        pthread_mutex_lock(&run->mutex);
+        run->refused = 1;
+        pthread_mutex_unlock(&run->mutex);
+        if (run->contended == 2)
+        {
+            return;
+        }
+    }
+    graph_check(!pthread_mutex_lock(&run->slot_lock), "acquire shared edge");
+    if (phase == 1 && worker->index == 0)
+    {
+        pthread_mutex_lock(&run->mutex);
+        run->held = 1;
+        pthread_mutex_unlock(&run->mutex);
+        wait_graph_flag(run, &run->refused);
+    }
+    set_edge(worker->slot, phase == 1 ? worker->cycle : H);
+    pthread_mutex_unlock(&run->slot_lock);
 }
 
 
@@ -371,7 +426,14 @@ static void *mutate_graph(void *argument)
         }
         if (phase > completed)
         {
-            set_edge(worker->slot, phase == 1 ? worker->cycle : H);
+            if (run->contended)
+            {
+                write_contended_edge(worker, phase);
+            }
+            else
+            {
+                set_edge(worker->slot, phase == 1 ? worker->cycle : H);
+            }
             completed = phase;
             pthread_mutex_lock(&run->mutex);
             run->changed[phase-1]++;
@@ -406,11 +468,14 @@ static void wait_graph_counter(GraphRun *run, const int *counter)
 
 /* Verify one common root with two independently mutated cyclic branches,
  * stopped snapshots while both mutators are active, then exact reclamation. */
-static void parallel_graph(Type *record_type, Prog *roots)
+static void parallel_graph(Type *record_type, Prog *roots, int contended)
 {
     uchar map[] = {0xc0};
     Type *pair_type = dtype(freeheap, 2*sizeof(void *), map, sizeof(map));
-    GraphRun run = {PTHREAD_MUTEX_INITIALIZER, 0, 0, {0, 0}};
+    GraphRun run = {
+        PTHREAD_MUTEX_INITIALIZER, 0, 0, {0, 0},
+        PTHREAD_MUTEX_INITIALIZER, contended, 0, 0
+    };
     GraphMutator workers[2] = {{0}};
     pthread_t threads[2];
     Record *cycles_by_worker[2][2];
@@ -432,7 +497,8 @@ static void parallel_graph(Type *record_type, Prog *roots)
         cycles_by_worker[index][0] = left;
         cycles_by_worker[index][1] = right;
         workers[index].run = &run;
-        workers[index].slot = &pair[index];
+        workers[index].slot = &pair[contended ? 0 : index];
+        workers[index].index = index;
         workers[index].cycle = left;
         workers[index].guest.exval = H;
         workers[index].guest.R.M = roots->R.M;
@@ -455,10 +521,11 @@ static void parallel_graph(Type *record_type, Prog *roots)
         snapshots = backend.graph_snapshots;
         for (index = 0; index < 2; index++)
         {
-            graph_check(is_live(cycles_by_worker[index][0]) == (phase == 1) &&
-                is_live(cycles_by_worker[index][1]) == (phase == 1), "trace and reclaim cyclic branch");
+            int expected = phase == 1 && (!contended || index == (contended == 2 ? 0 : 1));
+            graph_check(is_live(cycles_by_worker[index][0]) == expected &&
+                is_live(cycles_by_worker[index][1]) == expected, "trace and reclaim cyclic branch");
         }
-        graph_check(freed_blocks == freed + (phase == 2 ? 4 : 0), "exact cycle retirement");
+        graph_check(freed_blocks == freed + (phase == 2 ? 4 : (contended ? 2 : 0)), "exact cycle retirement");
     }
     pthread_mutex_lock(&run.mutex);
     run.phase = 3;
@@ -467,12 +534,22 @@ static void parallel_graph(Type *record_type, Prog *roots)
     {
         graph_check(!pthread_join(threads[index], NULL), "join graph mutator");
     }
+    graph_check(!contended || run.refused, "contended run observed BUSY");
+    pthread_mutex_destroy(&run.slot_lock);
     pthread_mutex_destroy(&run.mutex);
     ptrdel(D2H(pair));
     deferred_release(pair);
     graph_check(freed_blocks == freed + 5 && !is_live(pair), "Fast retires remaining owner once");
     freetype(pair_type);
-    puts("PASS two active graph mutators: stopped roots, Cycles and Fast retirement");
+    if (contended == 2)
+    {
+        puts("PASS shared cell cancellation before retry: original cycle retained");
+    }
+    else
+    {
+        puts(contended ? "PASS shared cell BUSY and retry: displaced cycle reclaimed once" :
+            "PASS two active graph mutators: stopped roots, Cycles and Fast retirement");
+    }
 }
 #endif
 
@@ -636,7 +713,9 @@ int main(void)
         freetype(frame_type);
     }
 #ifdef DVM_GC_WORKERS
-    parallel_graph(record_type, &root);
+    parallel_graph(record_type, &root, 0);
+    parallel_graph(record_type, &root, 1);
+    parallel_graph(record_type, &root, 2);
 #endif
     destroy(module_link);
     freetype(record_type);
@@ -657,7 +736,7 @@ int main(void)
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
-    if (!(state.Fast.passes == 2 && state.Cycles.passes == 448 && !state.failed))
+    if (!(state.Fast.passes == 4 && state.Cycles.passes == 704 && !state.failed))
     {
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
