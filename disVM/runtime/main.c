@@ -376,6 +376,21 @@ typedef struct NativeGuestWait
 
 static NativeGuestWait *native_guest_waits; /* Protected by the queue mutex. */
 
+static int cancel_guest_wait(NativeGuestWait *wait);
+
+
+/* Search only while holding the ledger lock. */
+static size_t guest_cancel_request_index(int pid)
+{
+    size_t index;
+
+    for (index = 0; index < cancel_request_count && cancel_requests[index] != pid; index++)
+    {
+    }
+    return index;
+}
+
+
 
 /* Publish the current guest identity before suspension, and return the
  * readiness epoch from the same critical section. */
@@ -383,6 +398,7 @@ static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gat
 {
     Prog *process = dvm_native_context_process(dvm_native_context_current());
     uint64_t generation;
+    size_t request;
 
     wait->pid = process ? process->pid : 0;
     wait->cancelled = 0;
@@ -392,7 +408,16 @@ static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gat
     fvm_port_sync_lock(channel_queue_mutex);
     wait->next = native_guest_waits;
     native_guest_waits = wait;
-    if (native_waits_stopping && gate)
+    request = guest_cancel_request_index(wait->pid);
+    if (request < cancel_request_count)
+    {
+        /* Transfer the queued request to this exact continuation. */
+        cancel_request_count--;
+        memmove(cancel_requests + request, cancel_requests + request + 1,
+            (cancel_request_count - request) * sizeof(*cancel_requests));
+        cancel_guest_wait(wait);
+    }
+    if (native_waits_stopping && gate && !wait->cancelled)
     {
         wait->cancelled = dvm_file_gate_cancel(gate, ticket);
     }
@@ -454,62 +479,68 @@ static int cancel_guest_wait(NativeGuestWait *wait)
 static int cancel_scheduler_guest_wait(int pid);
 
 
-/* Cancel a native wait by PID from any host thread. A NativeWorld owner can
- * also cancel a scheduler-managed channel or table wait. No managed state is read
- * by an unbound or suspended caller. */
-int dvm_runtime_cancel_guest_wait(int pid)
+/* Find and cancel a registered continuation while holding the ledger lock.
+ * A negative result means the PID has no native wait. */
+static int cancel_registered_guest_wait(int pid)
 {
     NativeGuestWait *wait;
-    int found;
 
-    if (!channel_queue_mutex || pid <= 0)
-    {
-        return 0;
-    }
-    fvm_port_sync_lock(channel_queue_mutex);
     for (wait = native_guest_waits; wait; wait = wait->next)
     {
         if (wait->pid == pid)
         {
-            found = cancel_guest_wait(wait);
+            int cancelled = cancel_guest_wait(wait);
             fvm_port_sync_signal_all(channel_queue_mutex);
-            fvm_port_sync_unlock(channel_queue_mutex);
-            return found;
+            return cancelled;
         }
     }
-    fvm_port_sync_unlock(channel_queue_mutex);
-    return cancel_scheduler_guest_wait(pid);
+    return -1;
 }
 
 
-/* Request cancellation from an unbound host thread. A native waiter can be
- * cancelled immediately. Otherwise enqueue a numeric PID for a managed
- * scheduler owner; success means accepted, not that the target still waits. */
-int dvm_runtime_request_guest_cancel(int pid)
+/* A NativeWorld owner can also cancel a scheduler-managed wait. */
+int dvm_runtime_cancel_guest_wait(int pid)
 {
-    size_t index;
+    int cancelled;
 
     if (!channel_queue_mutex || pid <= 0)
     {
         return 0;
     }
-    if (dvm_runtime_cancel_guest_wait(pid))
+    fvm_port_sync_lock(channel_queue_mutex);
+    cancelled = cancel_registered_guest_wait(pid);
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return cancelled < 0 ? cancel_scheduler_guest_wait(pid) : cancelled;
+}
+
+
+/* Request cancellation from an unbound host thread. Once a native wait is
+ * registered, this request belongs to that continuation even if it cannot
+ * be cancelled. Otherwise queue the PID for the scheduler or publication. */
+int dvm_runtime_request_guest_cancel(int pid)
+{
+    int cancelled;
+
+    if (!channel_queue_mutex || pid <= 0)
     {
-        return 1;
+        return 0;
     }
     fvm_port_sync_lock(channel_queue_mutex);
+    cancelled = cancel_registered_guest_wait(pid);
+    if (cancelled >= 0)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        return cancelled;
+    }
     if (!cancel_requests_open || native_waits_stopping)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
     }
-    for (index = 0; index < cancel_request_count; index++)
+    if (guest_cancel_request_index(pid) < cancel_request_count)
     {
-        if (cancel_requests[index] == pid)
-        {
-            fvm_port_sync_unlock(channel_queue_mutex);
-            return 1;
-        }
+        fvm_port_sync_unlock(channel_queue_mutex);
+        return 1;
     }
     if (cancel_request_count == CANCEL_REQUEST_CAPACITY)
     {

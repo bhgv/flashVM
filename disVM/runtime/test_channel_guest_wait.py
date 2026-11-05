@@ -1635,7 +1635,9 @@ def main():
                             ("cancel-send", STOP_GUEST.replace("chan[8]", "chan[10]")),
                             ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
                             ("cancel-isolated", ISOLATED_CANCEL_GUEST), ("worker-failure", WORKER_FAILURE_GUEST), ("pool-refusal", POOL_REFUSAL_GUEST), ("alt-pool-refusal", ALT_POOL_REFUSAL_GUEST), ("thread-retry", THREAD_RETRY_GUEST), ("alt-thread-retry", ALT_THREAD_RETRY_GUEST), ("io-refusal", IO_REFUSAL_GUEST), ("sleep-cancel", SLEEP_CANCEL_GUEST),
-                            ("sleep-worker-failure", SLEEP_WORKER_FAILURE_GUEST), ("file-cancel", FILE_CANCEL_GUEST), ("stdin-cancel", STDIN_CANCEL_GUEST),
+                            ("sleep-worker-failure", SLEEP_WORKER_FAILURE_GUEST),
+                            ("sleep-host-handoff", SLEEP_CANCEL_GUEST.replace("chan[16]", "chan[45]").replace(
+                                "    spawn cancel();\n", "")), ("file-cancel", FILE_CANCEL_GUEST), ("stdin-cancel", STDIN_CANCEL_GUEST),
                             ("stdin-worker-failure", STDIN_WORKER_FAILURE_GUEST), ("stdin-partial", STDIN_PARTIAL_GUEST), ("stdout-cancel", STDOUT_CANCEL_GUEST),
                             ("stdout-partial", STDOUT_PARTIAL_GUEST),
                             ("stdout-worker-failure", STDOUT_WORKER_FAILURE_GUEST), ("stdio-alias", STDOUT_ALIAS_GUEST), ("stdio-alias-cancel", STDOUT_ALIAS_CANCEL_GUEST), ("broken-pipe", BROKEN_PIPE_GUEST),
@@ -1756,6 +1758,8 @@ def main():
                         raise RuntimeError(f"{name} {mode} retained native output resources\n{output}")
                 if name.startswith("sleep-"):
                     marker = "PASS cancelled native sleep"
+                    if name == "sleep-host-handoff" and output.count("PASS native cancellation handoff") != 1:
+                        raise RuntimeError(f"{name} {mode} missed native cancellation handoff\n{output}")
                 if name.startswith("killwait-"):
                     if name in ("killwait-cancel", "killwait-nested", "killwait-host", "killwait-host-fixed") and (work / f"{name}.bin").read_bytes() != b"a":
                         raise RuntimeError(f"{name} {mode} lost admitted child output")
