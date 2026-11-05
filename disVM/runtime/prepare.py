@@ -48,6 +48,61 @@ from prepare_gc_fields import adapt as adapt_gc_fields, validate_header as valid
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
 # source/before/after are owned strings, count is the required single occurrence.
 # Return replaced text or raise before publishing an incomplete generated view.
+def adapt_array_slice_captures(code):
+    """Keep the nil-source shortcut and guard only pre-effect slice inputs."""
+    start = code.index('OP(slicea)')
+    end = code.index('OP(slicela)', start)
+    body = code[start:end]
+    capture = ('\tmemmove(&v, DVM_R.m, sizeof(v));\n'
+               '\tmemmove(&start, DVM_R.s, sizeof(start));\n'
+               '\tmemmove(&ds, slot, sizeof(ds));')
+    body = relative_replace(body, capture, """    if(dvm_runtime_guarded_copies) {
+        int replay;
+        const char *problem = dvm_runtime_bytes_snapshot_operands(ISLICEA, DVM_R.m, DVM_R.s,
+            sizeof(v), slot, &v, &start, &ds, &replay);
+        if(replay) {
+            return;
+        }
+        if(problem) {
+            error((char *)problem);
+        }
+    } else {
+"""+capture+"""
+    }""", 1)
+    code = code[:start] + body + code[end:]
+    start = code.index('OP(slicela)')
+    end = code.index('\n}', start)
+    body = code[start:end]
+    capture = '\tmemmove(&ss, DVM_R.s, sizeof(ss));'
+    body = relative_replace(body, capture, """    if(dvm_runtime_guarded_copies) {
+        DVM_CellResult claim;
+        const char *problem = dvm_runtime_bytes_snapshot_attempt(DVM_R.s, &ss, sizeof(ss), &claim);
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICELA)) {
+            return;
+        }
+        if(problem) {
+            error((char *)problem);
+        }
+    } else {
+"""+capture+"""
+    }""", 1)
+    capture = '\tmemmove(&dl, DVM_R.m, sizeof(dl));\n\tmemmove(&ds, DVM_R.d, sizeof(ds));'
+    body = relative_replace(body, capture, """    if(dvm_runtime_guarded_copies) {
+        DVM_CellResult claim;
+        const char *problem = dvm_runtime_bytes_snapshot_pair_attempt(DVM_R.m, sizeof(dl), &dl,
+            DVM_R.d, sizeof(ds), &ds, &claim);
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICELA)) {
+            return;
+        }
+        if(problem) {
+            error((char *)problem);
+        }
+    } else {
+"""+capture+"""
+    }""", 1)
+    return code[:start] + body + code[end:]
+
+
 def adapt_string_operand_captures(code):
     """Preserve decoded preflight and retry only before string mutation."""
     for opcode, first, second, first_cell, second_cell in (
@@ -72,7 +127,7 @@ def adapt_string_operand_captures(code):
             old, before, after = reads, '', ''
         replacement = before + f"""    if(dvm_runtime_guarded_copies) {{
         int replay;
-        const char *problem = dvm_runtime_string_operands(I{opcode}, {first_cell}, {second_cell},
+        const char *problem = dvm_runtime_bytes_snapshot_operands(I{opcode}, {first_cell}, {second_cell},
             sizeof({first}), slot, &{first}, &{second}, &old, &replay);
         if(replay) {{
             return;
@@ -290,6 +345,7 @@ def main():
                 raise ValueError("array slice preflight changed")
             part = relative_replace(part, needle, needle + '\n\tif(relative){\n\t\tcopy = arraycpy(ds);\n\t\tmemmove(DVM_R.d, &copy, sizeof(copy));\n\t\tdestroy(ds);\n\t\tds = copy;\n\t\tt = ds->t;\n\t\tdata = arrayspan(ds, t, start, n);\n\t}', 1)
             code = code[:start] + part + code[finish:]
+            code = adapt_array_slice_captures(code)
             needle = 'if(dl < 0 || dl > ds->len || ss->len < 0 || ss->len > ds->len-dl)'
             if code.count(needle) != 1:
                 raise ValueError("array slice-store boundary changed")

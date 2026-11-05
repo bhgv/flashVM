@@ -18,11 +18,4 @@ extern int dvm_runtime_parallel_string; /* Startup-only bounded comparison exper
 /* Read a selected character with its source owner and destination guarded.
  * The decoded caller checks complete operand geometry before entry. */
 const char *dvm_runtime_string_index(const void *source, const void *index_cell, void *destination);
-
-
-/* Snapshot already validated cells into private output. A scheduled retry
- * sets replay and leaves all three snapshots untouched. No retain or store. */
-const char *dvm_runtime_string_operands(int opcode, const void *first, const void *second,
-    size_t input_size, const void *slot, void *saved_first, void *saved_second,
-    void *old, int *replay);
 #endif

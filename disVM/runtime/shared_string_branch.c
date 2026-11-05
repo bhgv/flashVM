@@ -340,33 +340,3 @@ const char *dvm_runtime_string_index(const void *source, const void *index_cell,
     }
     return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IINDC) ? NULL : problem;
 }
-
-
-
-/* Capture two decoded inputs and the old string reference under one union.
- * input_size describes both inputs. The caller retains NativeWorld through
- * mutation and retirement. All snapshot outputs are private. */
-const char *dvm_runtime_string_operands(int opcode, const void *first, const void *second,
-    size_t input_size, const void *slot, void *saved_first, void *saved_second,
-    void *old, int *replay)
-{
-    DVM_TripleAccess access = {0};
-    DVM_CellResult claim;
-
-    *replay = 0;
-    claim = dvm_managed_small_three_begin(first, input_size, second, input_size,
-        (void *)slot, sizeof(String *), &access);
-    if (claim != DVM_CELL_ACQUIRED)
-    {
-        *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
-        return *replay ? NULL : exHeap;
-    }
-    memmove(saved_first, first, input_size);
-    memmove(saved_second, second, input_size);
-    memmove(old, slot, sizeof(String *));
-    if (!dvm_small_range_access_end(&access))
-    {
-        abort();
-    }
-    return NULL;
-}

@@ -45,6 +45,13 @@ init() {
             }
         }
     }
+    source := array[] of {"left", "middle", "right"};
+    copy := source[-2:-1];
+    copy[-1] = "copy";
+    source[-2:] = array[] of {"new", "tail"};
+    if (len copy != 2 || copy[-1] != "copy" || source[-2] != "new" || source[-1] != "tail") {
+        raise "guarded mapped slice mismatch";
+    }
     n: array of byte;
     if (len n != 0) {
         raise "nil length mismatch";
@@ -84,12 +91,44 @@ const char *__real_dvm_runtime_bytes_publish_opcode(int, const void *, void *, s
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
 
 
+/* Inject one BUSY in each of the three slice acquisition stages. */
+static int contend_slice(int stage)
+{
+    static Inst *pcs[3]; /* Post-decode PC for each refused capture. */
+    static int replayed[3]; /* One successful replay for each stage. */
+
+    if (replayed[stage])
+    {
+        return 0;
+    }
+    if (!pcs[stage])
+    {
+        pcs[stage] = DVM_R.PC;
+        return 1;
+    }
+    if (pcs[stage] != DVM_R.PC)
+    {
+        fprint(2, "FAIL array slice replay changed PC\n");
+        exit(10);
+    }
+    replayed[stage] = 1;
+    fprint(1, "PASS array slice replay %d\n", stage);
+    return 0;
+}
+
+
 /* Observe source/destination geometry inside the actual guard acquisition. */
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
     static Inst *busy_pc; /* First decoded index that reaches publication. */
     static int replayed; /* One matching address publication retry completed. */
+
+    if (CONTROL == 0 && !active && !destination && !destination_size &&
+        dvm_native_execution()->arithmetic_retry_opcode == ISLICELA && contend_slice(1))
+    {
+        return DVM_CELL_BUSY;
+    }
 
     if (address_publication)
     {
@@ -301,6 +340,12 @@ DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
     static Inst *index_retry_pc; /* Guest index PC at the pre-effect refusal. */
     static int index_replayed; /* One matching decoded index resumed. */
     int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !active &&
+        ((opcode == ISLICEA && contend_slice(0)) || (opcode == ISLICELA && contend_slice(2))))
+    {
+        return DVM_CELL_BUSY;
+    }
 
     if (CONTROL == 0 && !active && !index_replayed &&
         (opcode == IINDX || opcode == IINDW || opcode == IINDF || opcode == IINDL || opcode == IINDB))
@@ -603,6 +648,9 @@ def main():
                                          'PASS scheduled address publication retry' not in output or
                                          'PASS four interior addresses survive Cycles before use' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
+                    if variant == 0 and any(f'PASS array slice replay {stage}' not in output
+                                            for stage in range(3)):
+                        raise RuntimeError('array slice replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
 

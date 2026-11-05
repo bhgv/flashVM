@@ -13,6 +13,8 @@ extern void lea(void);
 extern void movpc(void);
 extern void indc(void); /* Guarded string character read. */
 extern void addc(void); /* Guarded concatenation capture. */
+extern void slicea(void); /* Guarded array slice capture. */
+extern void slicela(void); /* Guarded array slice assignment capture. */
 extern void slicec(void); /* Guarded substring capture. */
 extern void insc(void); /* Guarded string store operand capture. */
 extern void indx(void);
@@ -158,6 +160,12 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case ISLICEC:
         slicec();
+        break;
+    case ISLICEA:
+        slicea();
+        break;
+    case ISLICELA:
+        slicela();
         break;
     case IINDX:
         indx();

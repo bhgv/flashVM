@@ -41,4 +41,11 @@ const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t fi
 /* Address-only publication for an armed pre-effect instruction. BUSY may
  * schedule a replay without writing destination. */
 const char *dvm_runtime_bytes_publish_opcode(int opcode, const void *snapshot, void *destination, size_t size);
+
+
+/* Snapshot two equal-width inputs and one pointer slot into private outputs.
+ * BUSY can schedule a replay, leaving all snapshots untouched. */
+const char *dvm_runtime_bytes_snapshot_operands(int opcode, const void *first, const void *second,
+    size_t input_size, const void *slot, void *saved_first, void *saved_second,
+    void *old, int *replay);
 #endif
