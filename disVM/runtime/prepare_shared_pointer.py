@@ -16,16 +16,14 @@ def adapt(source):
         raise ValueError('hosted shared MOVP body drift')
     replacement = '''OP(movp)
 {
-    void *previous;
     int replay;
-    const char *problem = dvm_runtime_movp_opcode(IMOVP, DVM_R.s, DVM_R.d, &previous, &replay);
+    const char *problem = dvm_runtime_movp_opcode(IMOVP, DVM_R.s, DVM_R.d, &replay);
     if(replay) {
         return;
     }
     if(problem != nil) {
         error((char *)problem);
     }
-    destroy(previous);
 }'''
     match = matches[0]
     return '#include "shared_pointer.h"\n'+source[:match.start()]+replacement+source[match.end():]

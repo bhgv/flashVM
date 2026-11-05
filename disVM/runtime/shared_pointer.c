@@ -8,6 +8,7 @@
 #include "shared_access.h"
 #include "managed_owner.h"
 #include "gc_fields.h"
+#include "root_registry_private.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include <stdint.h>
@@ -37,11 +38,44 @@ static int overlaps(const void *one, const void *two)
  * in initialized cell begin/end; separate barrier/guard/tail costs are unmeasured. */
 
 
+/* Link a caller-stack occurrence under the registry mutex. The cell guard
+ * already owns the displaced reference and NativeWorld covers its lifetime. */
+static void root_displaced(RootEntry *entry, FVM_PortSync *mutex, void *value)
+{
+    RootEntry **head = dvm_root_registry_bucket(D2H(value));
+    fvm_port_sync_lock(mutex);
+    entry->key = D2H(value);
+    entry->batch = entry;
+    entry->next = *head;
+    *head = entry;
+    fvm_port_sync_unlock(mutex);
+}
+
+
+/* Withdraw exactly this occurrence before handing its owner to destroy.
+ * No callback, allocation or collector handoff occurs during unlink. */
+static void unroot_displaced(RootEntry *entry, FVM_PortSync *mutex)
+{
+    RootEntry **link = dvm_root_registry_bucket(entry->key);
+    fvm_port_sync_lock(mutex);
+    while (*link && *link != entry)
+    {
+        link = &(*link)->next;
+    }
+    if (*link != entry)
+    {
+        abort();
+    }
+    *link = entry->next;
+    fvm_port_sync_unlock(mutex);
+}
+
+
 /* [GC:] Caller protects cell lifetime. Capture unaligned values only after all
  * required guards are held. No VM callback, throwing allocation or destruction.
  * Refusal leaves destination/output unchanged and undoes a failed mark retain. */
 static const char *movp_attempt(const void *source, void *destination,
-    void **previous, DVM_CellResult *claim)
+    void **previous, DVM_CellResult *claim, RootEntry *root, FVM_PortSync *root_mutex)
 {
     DVM_CellAccess access = {0};
     const char *problem = NULL;
@@ -112,6 +146,10 @@ static const char *movp_attempt(const void *source, void *destination,
     }
     if (!problem)
     {
+        if (root && outgoing != H)
+        {
+            root_displaced(root, root_mutex, outgoing);
+        }
         memmove(destination, &incoming, sizeof(incoming));
     }
     if (selected == 2 && !dvm_cell_access_end(&access))
@@ -132,18 +170,40 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination, void **
 {
     DVM_CellResult claim;
 
-    return movp_attempt(source, destination, previous, &claim);
+    return movp_attempt(source, destination, previous, &claim, NULL, NULL);
 }
 
 
-/* Schedule a retry only on source/destination contention before retain.
- * replay is caller-private. On replay the previous-owner output is untouched. */
-const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination,
-    void **previous, int *replay)
+/* Execute a decoded move and retire its displaced owner after publication.
+ * The stack root spans publication and unlock. It never survives a VM error. */
+const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, int *replay)
 {
+    RootEntry root = {0};
+    FVM_PortSync *mutex = NULL;
     DVM_CellResult claim;
-    const char *problem = movp_attempt(source, destination, previous, &claim);
+    void *previous;
+    const char *problem;
+    int mode = dvm_runtime_shared_mode();
 
+    *replay = 0;
+    if (mode == 2)
+    {
+        mutex = dvm_root_registry_sync(1);
+        if (!mutex)
+        {
+            return exNomem;
+        }
+    }
+    problem = movp_attempt(source, destination, &previous, &claim, mutex ? &root : NULL, mutex);
     *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
-    return *replay ? NULL : problem;
+    if (*replay || problem)
+    {
+        return *replay ? NULL : problem;
+    }
+    if (root.key)
+    {
+        unroot_displaced(&root, mutex);
+    }
+    destroy(previous);
+    return NULL;
 }

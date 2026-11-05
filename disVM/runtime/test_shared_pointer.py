@@ -21,17 +21,21 @@ WRAPPER = r'''
 #include "shared_pointer.h"
 #include "managed_owner.h"
 #include "gc_fields.h"
+#include "root_registry.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include <stdlib.h>
 #include <string.h>
 
+static void *displaced_key; /* Fixture root identity checked at actual unlock. */
+static int displacement_observed; /* Exactly one successful publication boundary. */
+int __real_dvm_cell_access_end(DVM_CellAccess *access);
 static int active; /* Controller-only actual source/callback monitor. */
 static String *incoming; /* Independently owned and rooted while active. */
 static unsigned int copies; /* Actual helper completions during diagnostic. */
 DVM_RefcountResult __real_dvm_refcount_retain_u(unsigned long *reference);
 DVM_CellResult __real_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access);
-const char *__real_dvm_runtime_movp_opcode(int, const void *, void *, void **, int *);
+const char *__real_dvm_runtime_movp_opcode(int, const void *, void *, int *);
 void __real_destroy(void *value);
 void __real_dvm_runtime_opcode_probe(DVM_GCWorkers *workers);
 void __real_error(char *message);
@@ -96,10 +100,24 @@ DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destinat
 }
 
 
-/* Observe actual helper result; no JIT/source-body stand-in is executed. */
-const char *__wrap_dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, void **previous, int *replay)
+/* Observe the old owner while it is absent from the destination and before
+ * the real guard is released. Ordinary root removal must leave the pin alone. */
+int __wrap_dvm_cell_access_end(DVM_CellAccess *access)
 {
-    const char *problem = __real_dvm_runtime_movp_opcode(opcode, source, destination, previous, replay);
+    if (displaced_key && !displacement_observed)
+    {
+        check(dvm_runtime_root_count(displaced_key) == 1 &&
+            !dvm_runtime_root_remove(displaced_key), "displaced owner rooted through unlock");
+        displacement_observed = 1;
+    }
+    return __real_dvm_cell_access_end(access);
+}
+
+
+/* Observe actual helper result; no JIT/source-body stand-in is executed. */
+const char *__wrap_dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, int *replay)
+{
+    const char *problem = __real_dvm_runtime_movp_opcode(opcode, source, destination, replay);
     if (active)
     {
         copies++;
@@ -131,6 +149,10 @@ void __wrap_destroy(void *value)
     if (active)
     {
         check(!dvm_native_context_object_count(dvm_native_context_current()), "retirement callback unlocked");
+    }
+    if (displaced_key && value != H && value && D2H(value) == displaced_key && displacement_observed)
+    {
+        check(!dvm_runtime_root_count(displaced_key), "stack root withdrawn before retirement");
     }
     __real_destroy(value);
 }
@@ -185,7 +207,10 @@ void __wrap_dvm_runtime_opcode_probe(DVM_GCWorkers *workers)
     DVM_R.s = &source;
     DVM_R.d = &destination;
     active = 1;
+    displaced_key = D2H(old);
     movp();
+    check(displacement_observed, "displaced root reached actual unlock");
+    displaced_key = NULL;
     old = H;
     check(destination == incoming && heapref(incoming) == 2, "destination publishes retained source");
     DVM_R.s = &destination;
@@ -320,6 +345,7 @@ init() {
                 private_executor.write_text(executor)
             binary = relink(runtime, work, wrapper, variant,
                             ['dvm_refcount_retain_u', 'dvm_managed_cells_begin', 'dvm_runtime_movp_opcode', 'dvm_runtime_movp_copy',
+                             'dvm_cell_access_end',
                              'destroy', 'error', 'dvm_runtime_opcode_probe'],
                             executor=private_executor if executor is not None else None,
                             shared_pointer_source=private)

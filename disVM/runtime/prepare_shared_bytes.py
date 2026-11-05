@@ -22,7 +22,6 @@ def adapt(source):
             body = '''OP(self)
 {
     Modlink *module;
-    void *previous;
     int replay;
     const char *problem;
     if(DVM_R.d == nil || DVM_R.d == H || (uintptr)DVM_R.d > (uintptr)-1-sizeof(module)) {
@@ -33,14 +32,13 @@ def adapt(source):
         error(exModule);
     }
     /* Current REG.M is context-owned and rooted throughout this opcode. */
-    problem = dvm_runtime_movp_opcode(ISELF, &DVM_R.M, DVM_R.d, &previous, &replay);
+    problem = dvm_runtime_movp_opcode(ISELF, &DVM_R.M, DVM_R.d, &replay);
     if(replay) {
         return;
     }
     if(problem != nil) {
         error((char *)problem);
     }
-    destroy(previous);
 }'''
         elif name in ('lea', 'movpc'):
             value = 'address' if name == 'lea' else 'target'

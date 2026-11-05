@@ -14,8 +14,8 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination,
     void **previous);
 
 
-/* Borrow the same cells as movp_copy. A scheduled replay sets replay and
- * leaves previous untouched. Callers retire a previous owner only on commit. */
-const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination,
-    void **previous, int *replay);
+/* Borrow decoded cells and retire the previous owner after guarded publication.
+ * The previous owner is rooted through unlock in worker mode. Scheduled retry
+ * leaves both cells unchanged and sets replay. VM destruction errors propagate. */
+const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, int *replay);
 #endif

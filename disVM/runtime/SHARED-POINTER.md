@@ -39,11 +39,13 @@ error/native waits, scope transitions or arbitrary unwinding.
 `prepare_shared_pointer.py` hash-binds the complete reviewed final C MOVP body,
 after prior native/count/mark adaptations. Drift or repeated application refuses.
 Only the owned hosted view is changed; vendor files remain byte-identical.
-The opcode calls `dvm_runtime_movp_copy`, raises a returned static exception only
-after native rollback, or destroys the displaced owner after success. There is
-no decline/retry after successful retain/publication. A retirement/error callback
-never runs under a cell guard, including callbacks that reenter or retire JIT
-mappings. Existing C return-PC/tail lifetime constraints remain unchanged.
+The opcode calls `dvm_runtime_movp_opcode`. In worker mode the helper links
+a stack-backed registry occurrence for the displaced reference before publishing
+the incoming reference. The occurrence remains visible through guard release.
+The helper removes it before the consuming destructor, which runs under
+NativeWorld and outside the cell guard. Registry initialization may allocate
+before acquisition. Each subsequent move needs no allocation for this root.
+The same path handles SELF. BUSY can request replay before ownership effects.
 
 Worker worlds require exact acknowledged ACTIVE process/context/service identity.
 Detached inline execution uses the checked copy without cell guards under its
