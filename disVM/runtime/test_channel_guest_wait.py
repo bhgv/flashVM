@@ -512,6 +512,11 @@ init()
 '''
 
 
+SLEEP_HOST_HANDOFF_GUEST = SLEEP_CANCEL_GUEST.replace("chan[16]", "chan[45]").replace(
+    "    spawn cancel();\n", "",
+)
+
+
 SLEEP_WORKER_FAILURE_GUEST = SLEEP_CANCEL_GUEST.replace("chan[16]", "chan[17]").replace(
     '    if (gate == nil)\n        raise "missing cancellation gate";',
     '    if (gate != nil)\n        raise "fixture fatal worker error";',
@@ -1637,8 +1642,8 @@ def main():
                             ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
                             ("cancel-isolated", ISOLATED_CANCEL_GUEST), ("worker-failure", WORKER_FAILURE_GUEST), ("pool-refusal", POOL_REFUSAL_GUEST), ("alt-pool-refusal", ALT_POOL_REFUSAL_GUEST), ("thread-retry", THREAD_RETRY_GUEST), ("alt-thread-retry", ALT_THREAD_RETRY_GUEST), ("io-refusal", IO_REFUSAL_GUEST), ("sleep-cancel", SLEEP_CANCEL_GUEST),
                             ("sleep-worker-failure", SLEEP_WORKER_FAILURE_GUEST),
-                            ("sleep-host-handoff", SLEEP_CANCEL_GUEST.replace("chan[16]", "chan[45]").replace(
-                                "    spawn cancel();\n", "")), ("file-cancel", FILE_CANCEL_GUEST), ("stdin-cancel", STDIN_CANCEL_GUEST),
+                            ("sleep-host-handoff", SLEEP_HOST_HANDOFF_GUEST),
+                            ("sleep-host-handoff-serial", SLEEP_HOST_HANDOFF_GUEST), ("file-cancel", FILE_CANCEL_GUEST), ("stdin-cancel", STDIN_CANCEL_GUEST),
                             ("stdin-worker-failure", STDIN_WORKER_FAILURE_GUEST), ("stdin-partial", STDIN_PARTIAL_GUEST), ("stdout-cancel", STDOUT_CANCEL_GUEST),
                             ("stdout-partial", STDOUT_PARTIAL_GUEST),
                             ("stdout-worker-failure", STDOUT_WORKER_FAILURE_GUEST), ("stdio-alias", STDOUT_ALIAS_GUEST), ("stdio-alias-cancel", STDOUT_ALIAS_CANCEL_GUEST), ("broken-pipe", BROKEN_PIPE_GUEST),
@@ -1650,6 +1655,7 @@ def main():
                             ("parked-isolation", PARKED_ISOLATION_GUEST), ("host-before-park", HOST_CANCEL_GUEST),
                             ("host-after-snapshot", HOST_CANCEL_GUEST.replace("chan[35]", "chan[36]")),
                             ("host-fixed", HOST_CANCEL_GUEST.replace("chan[35]", "chan[44]")),
+                            ("host-serial", HOST_CANCEL_GUEST.replace("chan[35]", "chan[44]")),
                             ("processctl", PROCESSCTL_GUEST), ("processctl-inline", PROCESSCTL_INLINE_GUEST), ("process-kill", PROCESS_KILL_GUEST),
                             ("process-kill-native", PROCESS_KILL_NATIVE_GUEST), ("process-kill-ready", PROCESS_KILL_READY_GUEST), ("process-kill-table", PROCESS_KILL_TABLE_GUEST), ("table-fifo", TABLE_FIFO_GUEST), ("table-fifo-move", TABLE_FIFO_MOVE_GUEST), ("process-kill-granted-table", TABLE_FIFO_KILL_HEAD_GUEST),
                             ("table-cancel", TABLE_CANCEL_GUEST), ("table-cancel-granted", TABLE_CANCEL_GRANTED_GUEST),
@@ -1669,6 +1675,8 @@ def main():
                             "-o", image, source], check=True)
             for mode in ("--no-jit", "--jit"):
                 workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel", "killwait-nested", "killwait-host-fixed") else "2"
+                if name.endswith("-serial"):
+                    workers = "1"
                 options = ["--managed-workers", workers]
                 if name in ("host-before-park", "host-after-snapshot", "killwait-host"):
                     options = ["--managed-workers", "auto", "--stats"]
@@ -1745,7 +1753,7 @@ def main():
                     marker = "PASS submitted host cancellation batch"
                     if output.count("PASS coalesced cancellation during delivery") != 1:
                         raise RuntimeError(f"{name} {mode} missed concurrent cancellation delivery\n{output}")
-                    if name != "host-fixed" and "NATIVEPOOL_QUIESCENT processes=1" not in output:
+                    if name in ("host-before-park", "host-after-snapshot") and "NATIVEPOOL_QUIESCENT processes=1" not in output:
                         raise RuntimeError(f"{name} {mode} did not reach scheduler quiescence\n{output}")
                 if name.startswith("parked-"):
                     marker = "PASS cancelled scheduler channel wait"
@@ -1761,7 +1769,7 @@ def main():
                         raise RuntimeError(f"{name} {mode} retained native output resources\n{output}")
                 if name.startswith("sleep-"):
                     marker = "PASS cancelled native sleep"
-                    if name == "sleep-host-handoff" and output.count("PASS native cancellation handoff") != 1:
+                    if name.startswith("sleep-host-handoff") and output.count("PASS native cancellation handoff") != 1:
                         raise RuntimeError(f"{name} {mode} missed native cancellation handoff\n{output}")
                 if name.startswith("killwait-"):
                     if name in ("killwait-cancel", "killwait-nested", "killwait-host", "killwait-host-fixed") and (work / f"{name}.bin").read_bytes() != b"a":

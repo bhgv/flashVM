@@ -355,7 +355,7 @@ void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B gu
 
 static int cancel_requests[CANCEL_REQUEST_CAPACITY]; /* FIFO under the channel mutex. */
 static size_t cancel_request_count; /* Pending records under the channel mutex. */
-static int cancel_requests_open; /* Worker scheduler is live, under the channel mutex. */
+static int cancel_requests_open; /* NativeWorld scheduler is live, under the channel mutex. */
 
 static FVM_PortSync *channel_queue_mutex; /* Lives for the hosted runtime. */
 static unsigned int channel_buffer_waiters; /* Protected by the queue mutex. */
@@ -2177,7 +2177,7 @@ static int runtime_dispatch_turn(void)
     DVM_NativeContext *context = dvm_native_context_current();
     Prog *process;
     Prog **slot;
-    if (managed_workers != 1)
+    if (gc_worker)
     {
         dispatch_guest_cancellations();
     }
@@ -2393,7 +2393,7 @@ static int runtime_execute_inner(void *argument)
         error("cannot start native close worker");
     }
     fvm_port_sync_lock(channel_queue_mutex);
-    cancel_requests_open = managed_workers != 1 && !native_waits_stopping;
+    cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
     while (dvm_runqueue_head() || (managed_workers != 1 && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
 #ifdef DVM_RUNTIME_EDITOR
@@ -2441,7 +2441,7 @@ static int runtime_execute_inner(void *argument)
                 dvm_runtime_input_progress();
             }
         }
-        if (managed_workers == 1 && !dvm_runqueue_head())
+        if (managed_workers == 1 && !dvm_runqueue_head() && !guest_cancel_pending())
         {
             fvm_port_thread_sleep_us(1000);
             continue;
