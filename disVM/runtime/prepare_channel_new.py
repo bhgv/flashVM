@@ -6,10 +6,19 @@ import re
 CHANNELS = (
     (r"Channel\*\nnewc\(Type \*t, void \(\*mover\)\(void\)\)\n\{.*?\n\}",
      "c7fc974386282afcc682a2e207059ed1ad0b3769d5968acd8ca3ffcf1390d548",
-     "return dvm_runtime_channel_new(DVM_R.d, t, guarded_capacity(), mover, 0);"),
+     """WORD capacity;
+        if (!guarded_capacity(dvm_native_execution()->arithmetic_retry_opcode, &capacity))
+        {
+            return nil;
+        }
+        return dvm_runtime_channel_new(DVM_R.d, t, capacity, mover, 0);"""),
     (r"OP\(newcm\)\n\{.*?\n\}",
      "7e5ae37285bc157aa61d2c7c85699904f568ea0e01026f003038f19d60483329",
-     """WORD size = guarded_channel_word(DVM_R.s);
+     """WORD size, capacity;
+        if (!guarded_channel_input(INEWCM, DVM_R.s, &size, sizeof(size)))
+        {
+            return;
+        }
         if (size < 0)
         {
             error(exNegsize);
@@ -18,13 +27,26 @@ CHANNELS = (
         {
             error(exHeap);
         }
-        dvm_runtime_raw_channel_new(DVM_R.d, guarded_capacity(), size, movm);
+        if (!guarded_capacity(INEWCM, &capacity))
+        {
+            return;
+        }
+        dvm_runtime_raw_channel_new(DVM_R.d, capacity, size, movm);
         return;"""),
     (r"OP\(newcmp\)\n\{.*?\n\}",
      "2c512e9f036513e88149c561700a9da4db032c012504a2fe517425d935cfd9ce",
-     """WORD index = guarded_channel_word(DVM_R.s);
-        Type *type = moduletype(DVM_R.M, index);
-        dvm_runtime_channel_new(DVM_R.d, type, guarded_capacity(), movtmp, 0);
+     """WORD index, capacity;
+        Type *type;
+        if (!guarded_channel_input(INEWCMP, DVM_R.s, &index, sizeof(index)))
+        {
+            return;
+        }
+        type = moduletype(DVM_R.M, index);
+        if (!guarded_capacity(INEWCMP, &capacity))
+        {
+            return;
+        }
+        dvm_runtime_channel_new(DVM_R.d, type, capacity, movtmp, 0);
         return;"""),
 )
 
@@ -46,23 +68,33 @@ static int guarded_channel_selected(void)
 }
 
 
-/* Snapshot native WORD operands before an allocation can call a monitor. */
-static WORD guarded_channel_word(void *operand)
+/* Borrow the decoded operand and copy it to private output before channel
+ * allocation or queue effects. Return zero only after scheduling a retry. */
+static int guarded_channel_input(int opcode, const void *operand, void *output, size_t size)
 {
-    WORD value;
-    const char *problem = dvm_runtime_bytes_snapshot(operand, &value, sizeof(value));
+    DVM_CellResult claim;
+    const char *problem = dvm_runtime_bytes_snapshot_attempt(operand, output, size, &claim);
+    if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode))
+    {
+        return 0;
+    }
     if (problem)
     {
         error((char *)problem);
     }
-    return value;
+    return 1;
 }
 
 
-/* Dis encodes an absent capacity by aliasing the destination operand. */
-static WORD guarded_capacity(void)
+/* An absent capacity aliases the destination and does not read its contents. */
+static int guarded_capacity(int opcode, WORD *capacity)
 {
-    return DVM_R.m == DVM_R.d ? 0 : guarded_channel_word(DVM_R.m);
+    if (DVM_R.m == DVM_R.d)
+    {
+        *capacity = 0;
+        return 1;
+    }
+    return guarded_channel_input(opcode, DVM_R.m, capacity, sizeof(*capacity));
 }
 
 """
@@ -80,6 +112,30 @@ def adapt(source):
         helpers = HELPERS if index == 0 else ""
         source = (source[:match.start()] + helpers + body[:offset] + selection
                   + body[offset:] + source[match.end():])
+    return source
+
+
+def adapt_channel_operand_replay(source):
+    """Capture SEND/RECV channel cells before looking up or claiming a peer."""
+    for operation, opcode, operand in (('isend', 'ISEND', 'd'), ('irecv', 'IRECV', 's')):
+        start = source.index(f'OP({operation})')
+        end = source.index('\n}', start)
+        body = source[start:end]
+        capture = f'\tmemmove(&c, DVM_R.{operand}, sizeof(c));'
+        if body.count(capture) != 1:
+            raise ValueError('channel operand capture drift: '+operation)
+        body = body.replace(capture, f"""    if (guarded_channel_selected())
+    {{
+        if (!guarded_channel_input({opcode}, DVM_R.{operand}, &c, sizeof(c)))
+        {{
+            return;
+        }}
+    }}
+    else
+    {{
+{capture}
+    }}""", 1)
+        source = source[:start]+body+source[end:]
     return source
 
 

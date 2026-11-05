@@ -13,7 +13,7 @@ from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
 from prepare_record_new import adapt as adapt_record_new, adapt_leaf as adapt_record_leaf
-from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_alt_reservations, adapt_channel_finalizer, adapt_queue_holds, adapt_buffer_reservation
+from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_alt_reservations, adapt_channel_finalizer, adapt_queue_holds, adapt_buffer_reservation, adapt_channel_operand_replay
 from prepare_mapped_cons import adapt as adapt_mapped_cons
 from prepare_raw_cons import adapt as adapt_raw_cons
 from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
@@ -1067,7 +1067,8 @@ def main():
     }""", 1)
     code = code[:start]+body+code[end:]
     code = adapt_xec_observations(adapt_xec_snapshots(adapt_xec(adapt_opcode_counts(code))))
-    path.write_text(adapt_buffer_reservation(adapt_queue_holds(adapt_wait_completion(adapt_channel_new(adapt_record_new(adapt_mapped_cons(adapt_raw_cons(adapt_scalar_xec(adapt_pointer_builder(code))))))))))
+    code = adapt_buffer_reservation(adapt_queue_holds(adapt_wait_completion(adapt_channel_new(adapt_record_new(adapt_mapped_cons(adapt_raw_cons(adapt_scalar_xec(adapt_pointer_builder(code)))))))))
+    path.write_text(adapt_channel_operand_replay(code))
     path = args.output / "alt.c"
     code = path.read_text()
     code = code.replace(
