@@ -5,6 +5,8 @@
 #include "isa.h"
 #include "interp.h"
 #include "runt.h"
+#include "kernel.h"
+#include "raise.h"
 #include "metadata_wait.h"
 #include "filesystem_sys.h"
 #include "io_buffer.h"
@@ -53,7 +55,13 @@ FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output)
     {
         peak_staging = staging;
     }
-    released = dvm_runtime_gc_native_leave();
+    released = dvm_runtime_gc_native_try_leave();
+    if (released < 0)
+    {
+        staging -= length + 1;
+        free(snapshot);
+        return FVM_OUT_OF_MEMORY;
+    }
     status = fvm_port_path_info(snapshot, output);
     dvm_runtime_gc_native_enter(released);
     paths++;
@@ -73,7 +81,7 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
     FVM_PortDirectory *directory = dvm_runtime_directory(descriptor);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
     FVM_Result status;
-    size_t ticket;
+    DVM_FileTicket ticket;
     int released;
     if ((!file && !directory) || !gate || !output)
     {
@@ -83,15 +91,15 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
     pins++;
     Setmark(D2H(fd));
     dvm_managed_workers_file_call();
-    ticket = dvm_file_gate_reserve(gate);
-    released = dvm_runtime_gc_native_leave();
-    if (!dvm_file_gate_enter(gate, ticket))
+    released = dvm_file_gate_try_release(gate, &ticket);
+    if (released < 0)
     {
-        fprintf(stderr, "disvm: cannot admit native metadata query\n");
-        exit(1);
+        ptrdel(D2H(fd));
+        pins--;
+        return FVM_OUT_OF_MEMORY;
     }
     status = file ? fvm_port_file_info(file, output) : fvm_port_directory_info(directory, output);
-    if (!dvm_file_gate_leave(gate, ticket))
+    if (!dvm_file_gate_leave(gate, &ticket))
     {
         fprintf(stderr, "disvm: native metadata admission lost\n");
         exit(1);
@@ -105,17 +113,18 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
 }
 
 
-/* Root FD before reserving a directory ticket. The native batch is C-owned,
- * not managed data; transfer it only after finishing the gate and heap reentry.
- * VM publication and native batch cleanup remain the caller's responsibility. */
-FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo **entries, size_t *count)
+/* Keep the logical cursor ticket through publication, without holding its
+ * mutex. Later guests can queue while this owner restores NativeWorld. */
+FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo **entries,
+    size_t *count, int (*publish)(void *), void *argument)
 {
     FVM_PortDirectory *directory = dvm_runtime_directory(descriptor);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
     FVM_Result status;
-    size_t ticket;
-    int released;
-    if (!directory || !gate || !entries || !count)
+    DVM_FileTicket ticket;
+    int released, published = 1;
+
+    if (!directory || !gate || !entries || !count || !publish)
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -123,24 +132,38 @@ FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo 
     pins++;
     Setmark(D2H(fd));
     dvm_managed_workers_file_call();
-    ticket = dvm_file_gate_reserve(gate);
-    released = dvm_runtime_gc_native_leave();
-    if (!dvm_file_gate_enter(gate, ticket))
+    released = dvm_file_gate_try_release(gate, &ticket);
+    if (released < 0)
     {
-        fprintf(stderr, "disvm: cannot admit native directory read\n");
-        exit(1);
+        ptrdel(D2H(fd));
+        pins--;
+        return FVM_OUT_OF_MEMORY;
     }
     status = fvm_port_directory_read(directory, entries, count);
-    if (!dvm_file_gate_leave(gate, ticket))
+    dvm_runtime_gc_native_enter(released);
+    batches++;
+    releases += released != 0;
+    if (status == FVM_OK && *count)
+    {
+        published = kprotect(publish, argument);
+        if (!published)
+        {
+            fvm_port_directory_abort(directory);
+        }
+    }
+    if (!dvm_file_gate_leave(gate, &ticket))
     {
         fprintf(stderr, "disvm: native directory admission lost\n");
         exit(1);
     }
-    dvm_runtime_gc_native_enter(released);
-    batches++;
-    releases += released != 0;
+    fvm_port_directory_entries_free(*entries);
+    *entries = NULL;
     ptrdel(D2H(fd));
     pins--;
+    if (!published)
+    {
+        krethrow();
+    }
     return status;
 }
 

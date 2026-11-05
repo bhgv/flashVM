@@ -33,6 +33,8 @@ def catalog(payload):
     info = metadata(payload[1])
     if not info['profile']:
         raise Unsupported('module-role', 'library has no executable entry in this checkpoint')
+    if 8 in payload:
+        raise Unsupported('control', 'CONTROL semantics require a separate pass')
     if info['data_bytes'] or 4 in payload:
         raise Unsupported('module-data', 'ModuleData64/DATA initialization/layout requires a separate pass')
     if 5 in payload and bindings(payload[5], False):
@@ -42,13 +44,6 @@ def catalog(payload):
     entry, frame = source.word(), source.word()
     source.finish()
     types = type_catalog(payload[3])
-    source = Reader(payload[3])
-    maps = []
-    for _ in range(source.word()):
-        size = source.word()
-        source.word()
-        maps.append(source.take((size+63)//64))
-    source.finish()
     functions = {}
     exports = bindings(payload[6], True) if 6 in payload else []
     for item in exports:
@@ -76,7 +71,7 @@ def catalog(payload):
         function['bytes'] = types[function['frame']]['bytes']
         function['root'] = pc == entry
         function['outgoing'] = any(row['opcode'] == 4 for row in code[pc:function['end']])
-        if any(maps[function['frame']]):
+        if any(types[function['frame']]['map']):
             raise Unsupported('frame-map', 'managed frame payload requires root/collector semantics')
         require(not function['outgoing'] or function['bytes'] >= 72,
                 'frame-role', 'outgoing result tail overlaps Frame64 header')

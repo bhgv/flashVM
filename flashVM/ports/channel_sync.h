@@ -41,6 +41,11 @@ void fvm_port_sync_unlock(FVM_PortSync *sync);
 void fvm_port_sync_wait(FVM_PortSync *sync);
 
 
+/* Wait with the mutex held, releasing it until a wake or a relative
+ * monotonic timeout. Returns one on wake/timeout or zero on port error. */
+int fvm_port_sync_wait_ms(FVM_PortSync *sync, unsigned long milliseconds);
+
+
 /* Notify port sync all. */
 void fvm_port_sync_signal_all(FVM_PortSync *sync);
 #ifdef __cplusplus

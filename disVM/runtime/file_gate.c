@@ -6,13 +6,14 @@
 #include <stdlib.h>
 
 
-/* Only next/serving/busy/counters are shared outside runtime heap exclusion. */
+/* Queue links, admission and counters are protected by the gate mutex. */
 struct DVM_FileGate
 {
     FVM_PortSync *sync;          /* Protect ticket state, never held through I/O. */
     DVM_FileGate *next_gate;     /* Live native registry link, under heap exclusion. */
-    size_t next;                /* Next reserved ticket; unsigned wrap is intentional. */
-    size_t serving;             /* Ticket allowed to use the native file cursor. */
+    DVM_FileTicket *head;       /* First ticket, including any admitted operation. */
+    DVM_FileTicket *tail;       /* Most recently reserved ticket. */
+    size_t pending;             /* Number of linked tickets. */
     size_t operations;          /* Completed native operations under sync. */
     size_t waiting;             /* Admissions that observed an earlier operation. */
     size_t peak;                /* Maximum outstanding reservations for this file. */
@@ -50,31 +51,85 @@ DVM_FileGate *dvm_file_gate_create(void)
 }
 
 
-/* Reserve while ACTIVE so dispatch order determines file-operation order.
- * The FD/private slot keeps gate alive even while the owner waits natively. */
-size_t dvm_file_gate_reserve(DVM_FileGate *gate)
+/* Append while ACTIVE. The descriptor root keeps the gate alive. */
+void dvm_file_gate_reserve(DVM_FileGate *gate, DVM_FileTicket *ticket)
 {
-    size_t ticket;
-    size_t pending;
+    ticket->gate = gate;
+    ticket->previous = NULL;
+    ticket->next = NULL;
+    if (!gate)
+    {
+        return;
+    }
+    fvm_port_sync_lock(gate->sync);
+    ticket->previous = gate->tail;
+    if (gate->tail)
+    {
+        gate->tail->next = ticket;
+    }
+    else
+    {
+        gate->head = ticket;
+    }
+    gate->tail = ticket;
+    gate->pending++;
+    if (gate->pending > gate->peak)
+    {
+        gate->peak = gate->pending;
+    }
+    fvm_port_sync_unlock(gate->sync);
+}
+
+
+/* Remove a linked ticket with the gate mutex held and wake contenders. */
+static void unlink_ticket(DVM_FileGate *gate, DVM_FileTicket *ticket)
+{
+    if (ticket->previous)
+    {
+        ticket->previous->next = ticket->next;
+    }
+    else
+    {
+        gate->head = ticket->next;
+    }
+    if (ticket->next)
+    {
+        ticket->next->previous = ticket->previous;
+    }
+    else
+    {
+        gate->tail = ticket->previous;
+    }
+    ticket->gate = NULL;
+    ticket->previous = NULL;
+    ticket->next = NULL;
+    gate->pending--;
+    fvm_port_sync_signal_all(gate->sync);
+}
+
+
+/* Cancel a queued operation without waiting for earlier native I/O. */
+int dvm_file_gate_cancel(DVM_FileGate *gate, DVM_FileTicket *ticket)
+{
+    int cancelled;
+
     if (!gate)
     {
         return 0;
     }
     fvm_port_sync_lock(gate->sync);
-    ticket = gate->next++;
-    pending = gate->next - gate->serving;
-    if (pending > gate->peak)
+    cancelled = ticket->gate == gate && (!gate->busy || gate->head != ticket);
+    if (cancelled)
     {
-        gate->peak = pending;
+        unlink_ticket(gate, ticket);
     }
     fvm_port_sync_unlock(gate->sync);
-    return ticket;
+    return cancelled;
 }
 
 
-/* Native-only wait. Do not hold heap ownership around a contended call unless
- * the caller is a protected synchronous callback that cannot release its turn. */
-int dvm_file_gate_enter(DVM_FileGate *gate, size_t ticket)
+/* Wait for the queue head or cancellation with no managed access. */
+static int enter_ticket(DVM_FileGate *gate, DVM_FileTicket *ticket, int block)
 {
     if (!gate)
     {
@@ -85,13 +140,24 @@ int dvm_file_gate_enter(DVM_FileGate *gate, size_t ticket)
         return 0;
     }
     fvm_port_sync_lock(gate->sync);
-    if (ticket != gate->serving || gate->busy)
+    if (!block && ticket->gate == gate && (ticket != gate->head || gate->busy))
+    {
+        unlink_ticket(gate, ticket);
+        fvm_port_sync_unlock(gate->sync);
+        return 0;
+    }
+    if (ticket->gate == gate && (ticket != gate->head || gate->busy))
     {
         gate->waiting++;
     }
-    while (ticket != gate->serving || gate->busy)
+    while (ticket->gate == gate && (ticket != gate->head || gate->busy))
     {
         fvm_port_sync_wait(gate->sync);
+    }
+    if (ticket->gate != gate)
+    {
+        fvm_port_sync_unlock(gate->sync);
+        return 0;
     }
     gate->busy = 1;
     gate->owner = dvm_native_context_current();
@@ -100,25 +166,37 @@ int dvm_file_gate_enter(DVM_FileGate *gate, size_t ticket)
 }
 
 
-/* Finish before native lease reentry, allowing waiting operations to progress
- * independently of the heap. Wrong ticket/duplicate completion refuses. */
-int dvm_file_gate_leave(DVM_FileGate *gate, size_t ticket)
+/* Wait outside NativeWorld until this reservation reaches the head. */
+int dvm_file_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket)
+{
+    return enter_ticket(gate, ticket, 1);
+}
+
+
+/* Admit only an idle head; a protected caller cannot park with the heap. */
+int dvm_file_gate_enter_now(DVM_FileGate *gate, DVM_FileTicket *ticket)
+{
+    return enter_ticket(gate, ticket, 0);
+}
+
+
+/* Finish before reentering the heap. Wrong ticket or owner refuses. */
+int dvm_file_gate_leave(DVM_FileGate *gate, DVM_FileTicket *ticket)
 {
     if (!gate)
     {
         return 1;
     }
     fvm_port_sync_lock(gate->sync);
-    if (!gate->busy || ticket != gate->serving || gate->owner != dvm_native_context_current())
+    if (!gate->busy || ticket != gate->head || gate->owner != dvm_native_context_current())
     {
         fvm_port_sync_unlock(gate->sync);
         return 0;
     }
     gate->busy = 0;
     gate->owner = NULL;
-    gate->serving++;
     gate->operations++;
-    fvm_port_sync_signal_all(gate->sync);
+    unlink_ticket(gate, ticket);
     fvm_port_sync_unlock(gate->sync);
     return 1;
 }
@@ -134,7 +212,7 @@ int dvm_file_gate_destroy(DVM_FileGate *gate)
         return 1;
     }
     fvm_port_sync_lock(gate->sync);
-    if (gate->busy || gate->next != gate->serving)
+    if (gate->busy || gate->pending)
     {
         fvm_port_sync_unlock(gate->sync);
         return 0;
@@ -170,7 +248,7 @@ void dvm_file_gate_snapshot(DVM_FileGate *gate, size_t *pending, size_t *waiting
     }
     if (pending)
     {
-        *pending = gate ? gate->next - gate->serving : 0;
+        *pending = gate ? gate->pending : 0;
     }
     if (waiting)
     {
@@ -197,7 +275,7 @@ void dvm_file_gate_statistics(void)
         fvm_port_sync_lock(gate->sync);
         operations += gate->operations;
         contended += gate->waiting;
-        pending += gate->next - gate->serving;
+        pending += gate->pending;
         if (gate->peak > peak)
         {
             peak = gate->peak;

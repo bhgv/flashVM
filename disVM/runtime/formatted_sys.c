@@ -12,6 +12,9 @@
 #include "file_gate.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
+extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
+    size_t capacity, size_t *written, int *released);
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -43,7 +46,7 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     FVM_Result status;
     size_t written = 0;
     int released;
-    size_t ticket;
+    DVM_FileTicket ticket;
     DVM_FileGate *gate;
     if (descriptor != 1 && descriptor != 2 && !file)
     {
@@ -63,31 +66,35 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     {
         dvm_managed_workers_file_call();
     }
-    ticket = dvm_file_gate_reserve(gate);
-    released = dvm_runtime_gc_native_leave();
-    if (!dvm_file_gate_enter(gate, ticket))
-    {
-        fprintf(stderr, "disvm: cannot admit native file operation\n");
-        exit(1);
-    }
     if (descriptor == 1 || descriptor == 2)
     {
-        status = fvm_port_stdio_write(descriptor,bytes,count,&written);
+        status = dvm_runtime_write_stdio(descriptor, bytes, count, &written, &released);
     }
     else
     {
-        status = fvm_port_file_write(file,bytes,count);
+        released = dvm_file_gate_try_release(gate, &ticket);
+        if (released < 0)
+        {
+            if (fd)
+            {
+                ptrdel(D2H(fd));
+                pins--;
+            }
+            kwerrstr(released == -2 ? "native formatted output cancelled" : "native formatted output needs an executor");
+            return -1;
+        }
+        status = fvm_port_file_write(file, bytes, count);
         if (status == FVM_OK)
         {
             written = count;
         }
+        if (!dvm_file_gate_leave(gate, &ticket))
+        {
+            fprintf(stderr, "disvm: native file admission lost\n");
+            exit(1);
+        }
+        dvm_runtime_gc_native_enter(released);
     }
-    if (!dvm_file_gate_leave(gate, ticket))
-    {
-        fprintf(stderr, "disvm: native file admission lost\n");
-        exit(1);
-    }
-    dvm_runtime_gc_native_enter(released);
     calls++;
     releases += released != 0;
     if (fd)

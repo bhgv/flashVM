@@ -6,9 +6,11 @@ import struct
 import sys
 import tempfile
 from peer_call_schema import Reader, metadata, types, strings
-from peer_call_goldens import sections
+from peer_call_goldens import sections, UnsupportedExtension
 
+ISA_OPCODE_LIMIT = 175  # Inferno ABI1 isa.h MAXDIS at 8a3e31b; framing only.
 STATIC_REFS = {4: 'call-pc', 5: 'frame-type', 13: 'jump-pc'}  # Existing agreed ICALL/IFRAME/IJMP IDs.
+PAIRED_IMPORT_REFS = {(11, 65): 'mframe-import', (9, 72): 'mcall-import'}  # Inferno paired direct modes.
 
 
 class UnsupportedSchema(ValueError):
@@ -39,6 +41,8 @@ def code_schema(data):
     result = []
     for _ in range(count):
         op, mode = source.take(2)
+        if op >= ISA_OPCODE_LIMIT:
+            raise ValueError('opcode outside the shared ISA range')
         sm, dm, mm = (mode >> 3) & 7, mode & 7, mode & 192
         row = {'opcode': op, 'mode': mode}
         if dm == 5:
@@ -103,11 +107,39 @@ def type_catalog(data):
     rows = []
     for _ in range(source.word()):
         size, align = source.word(), source.word()
-        source.take((size+63)//64)
-        rows.append({'bytes': size, 'alignment': align})
+        bitmap = source.take((size+63)//64)
+        rows.append({'bytes': size, 'alignment': align, 'map': bitmap})
     source.finish()
     return rows
 
+
+
+def check_initializers(data, descriptor):
+    """Validate scalar DATA records against the checked descriptor without materializing data."""
+    source = Reader(data)
+    count = source.word()
+    if count > (len(data)-4)//12:
+        raise ValueError('initializer count/extent')
+    spans = []
+    for _ in range(count):
+        offset, kind = source.word(), source.word()
+        if kind not in (1, 2, 3, 4):
+            raise ValueError('initializer scalar kind')
+        width = 4 if kind in (1, 4) else 8
+        end = offset+width
+        if offset % width or end > descriptor['bytes']:
+            raise ValueError('initializer alignment/extent')
+        slot = offset//8
+        if descriptor['map'][slot//8] & (128 >> (slot%8)):
+            raise ValueError('initializer overlaps managed reference')
+        value = source.take(width)
+        if kind == 4 and int.from_bytes(value, 'big') > 1:
+            raise ValueError('initializer Bool value')
+        spans.append((offset, end))
+    source.finish()
+    spans.sort()
+    if any(end > following for (_, end), (following, _) in zip(spans, spans[1:])):
+        raise ValueError('overlapping initializers')
 
 def string_catalog(data):
     """Resolve ordinal names by lossless Rune32 content, including duplicate IDs."""
@@ -123,9 +155,9 @@ def string_catalog(data):
 def bind_payloads(payload):
     """Validate structural IDs/ranges from raw sections, without sidecar authority.
 
-    Static immediate FRAME IDs and CALL/JMP PCs are checked, not callable target
-    ownership or dynamic references. Module-data extent is bounded by descriptor;
-    exact allocation layout, entry/export frame agreement and roles stay open.
+    Static immediate FRAME IDs, CALL/JMP PCs and paired import ordinals are checked.
+    Callable target ownership, pairing and dynamic references remain separate. DATA is checked against the exact descriptor
+    extent; allocation, entry/export frame agreement and roles stay open.
     """
     module = metadata(payload[1])
     info = Reader(payload[1])
@@ -140,8 +172,11 @@ def bind_payloads(payload):
     imported = bindings(payload[5], False) if 5 in payload else []
     if module['name'] >= len(pool):
         raise ValueError('module name ID')
-    if data_type is not None and (data_type >= len(catalog) or module['data_bytes'] > catalog[data_type]['bytes']):
-        raise ValueError('module data ID/range')
+    if data_type is not None and (data_type >= len(catalog) or module['data_bytes'] != catalog[data_type]['bytes']):
+        raise ValueError('module data ID/extent')
+    if 4 in payload:
+        data_descriptor = catalog[data_type] if data_type is not None else {'bytes': 0, 'map': b''}
+        check_initializers(payload[4], data_descriptor)
 
     def frame_ok(index):
         """index is an ordinal; return structural frame range/alignment validity."""
@@ -178,6 +213,12 @@ def bind_payloads(payload):
             if target < 0 or target >= len(instructions):
                 raise ValueError('static control PC range')
             refs.append({'instruction': pc, 'kind': kind, 'target': target})
+        elif (item['opcode'], item['mode']) in PAIRED_IMPORT_REFS:
+            target = item['middle']
+            if not 0 <= target < len(imported):
+                raise ValueError('static paired import ordinal range')
+            kind = PAIRED_IMPORT_REFS[item['opcode'], item['mode']]
+            refs.append({'instruction': pc, 'kind': kind, 'target': target})
     return {'instructions': len(instructions), 'exports': len(exported), 'imports': len(imported),
             'types': len(catalog), 'strings': len(pool), 'checked_static_refs': refs}
 
@@ -200,9 +241,12 @@ def inspect(corpus):
             raise ValueError('byte identity: '+name)
         row = {'name': name, 'execution': 'unvalidated; no admission granted',
                'unvalidated': ['opcode/local-slot semantics', 'function ownership/call roles',
-                               'exact module-data layout', 'entry/export frame agreement', 'owning execution']}
+                               'module-data allocation', 'entry/export frame agreement', 'owning execution']}
         try:
             directory = sections(image)
+        except UnsupportedExtension as failure:
+            row.update(stage='mandatory-extension', status='unsupported', reason=str(failure),
+                       required_extensions=failure.required_extensions)
         except ValueError as failure:
             row.update(stage='outer', status='malformed', reason=str(failure))
         else:

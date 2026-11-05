@@ -9,7 +9,8 @@ import subprocess
 import sys
 import tempfile
 import peer_call_flow
-from peer_call_semantics import inspect_image, inspect
+from peer_call_binding import bind_payloads
+from peer_call_semantics import inspect_image, inspect_pair, inspect
 
 
 def pack(*values):
@@ -48,18 +49,21 @@ def fixture():
     return payload, rows
 
 
-def envelope(payload, reverse=False):
+def envelope(payload, reverse=False, extra=(), extensions=()):
     """Build canonical outer directory independently; reverse changes physical order only."""
-    keys = sorted(payload, reverse=reverse)
-    offset = 32+12*len(keys)
+    sections = sorted(payload.items(), reverse=reverse)
+    sections.extend(extra)
+    manifest = b''.join(struct.pack('>HHHH', len(name), 1, 0, 0)+name for name in extensions)
+    header = 32+len(manifest)+12*len(sections)
+    offset = header
     directory = bytearray()
     content = bytearray()
-    for kind in keys:
-        data = payload[kind]
-        directory += struct.pack('>HHII',kind,1,offset,len(data))
+    for kind, data in sections:
+        directory += struct.pack('>HHII',kind,int(1 <= kind <= 8),offset,len(data))
         content += data
         offset += len(data)
-    return b'Dis64\r\n\x1a'+struct.pack('>HHIIIII',1,0,32+12*len(keys),1,0,0,len(keys))+directory+content
+    fixed = struct.pack('>HHIIIII', 1, 0, header, 1, 0, len(extensions), len(sections))
+    return b'Dis64\r\n\x1a'+fixed+manifest+directory+content
 
 
 def fail(label):
@@ -88,6 +92,58 @@ def run_suite():
         fail('section-order')
     cases += 2
 
+    optional = dict(original)
+    optional.update({32768: b'debug', 32769: b'provenance', 65535: b'opaque'})
+    annotated = verdict('optional-sections', optional, 'bounded-checks-passed')
+    if annotated['functions'] != good['functions']:
+        fail('opaque sections affected function facts')
+    control = dict(original)
+    control[8] = pack(0)
+    verdict('unsupported-control', control, 'unsupported', 'control')
+    required_opaque = bytearray(envelope(optional))
+    struct.pack_into('>H', required_opaque, 32+12*(len(optional)-1)+2, 1)
+    rejected = inspect_image(required_opaque)
+    if (rejected['status'], rejected['stage']) != ('malformed', 'outer'):
+        fail('unknown required section')
+    missing_types = dict(original)
+    del missing_types[3]
+    verdict('missing-types', missing_types, 'malformed', 'outer')
+    repeated_opaque = inspect_image(envelope(optional, extra=((65535, b'second opaque'),)))
+    if repeated_opaque.get('functions') != good['functions']:
+        fail('repeatable unknown optional kind')
+    repeated_debug = inspect_image(envelope(optional, extra=((32768, b'second debug'),)))
+    if (repeated_debug['status'], repeated_debug['stage']) != ('malformed', 'outer'):
+        fail('singleton debug kind')
+    cases += 6
+
+    canonical_manifest = bytearray(envelope(original, extensions=(b'flashvm.a', b'flashvm.b')))
+    struct.pack_into('>HH', canonical_manifest, 34, 513, 19)
+    struct.pack_into('>HH', canonical_manifest, 34+8+len(b'flashvm.a'), 2, 65535)
+    supported_framing = inspect_image(canonical_manifest)
+    if ((supported_framing['status'], supported_framing['stage'], supported_framing['outer'])
+            != ('unsupported', 'mandatory-extension', 'canonical')
+            or supported_framing['owning_execution_supported'] or 'functions' in supported_framing
+            or supported_framing.get('required_extensions') != [
+                {'name': 'flashvm.a', 'major': 513, 'minimum_minor': 19},
+                {'name': 'flashvm.b', 'major': 2, 'minimum_minor': 65535},
+            ]):
+        fail('canonical mandatory extension remains closed')
+    cases += 1
+    for names in ((b'Flashvm.a',), (b'flashvm.b', b'flashvm.a'),
+                  (b'flashvm.a', b'flashvm.a'), (b'a'*256,)):
+        invalid = inspect_image(envelope(original, extensions=names))
+        if (invalid['status'], invalid['stage']) != ('malformed', 'outer'):
+            fail('invalid extension name or order')
+        cases += 1
+    invalid_manifest = bytearray(canonical_manifest)
+    struct.pack_into('>H', invalid_manifest, 38, 1)
+    for image in (invalid_manifest, canonical_manifest[:-1]):
+        invalid = inspect_image(image)
+        if ((invalid['status'], invalid['stage']) != ('malformed', 'outer')
+                or 'required_extensions' in invalid):
+            fail('invalid extension record or section framing')
+        cases += 1
+
     def changed(label, index, body, status='bounded-refusal', stage=None):
         """Replace one instruction while preserving all enclosing byte/section framing."""
         nonlocal cases
@@ -110,6 +166,10 @@ def run_suite():
     changed('argument-extra-slot',2,instruction(45,13,64,40,72),stage='argument-role')
     changed('partial-local-overlap',0,instruction(118,17,42,64),stage='local-kind')
     changed('unsupported-CFG',0,instruction(13,26,1),'unsupported','opcode/CFG')
+    changed('last-shared-ISA-opcode',0,instruction(174,27),'unsupported','opcode/CFG')
+    changed('first-reserved-ISA-opcode',0,instruction(175,27),'malformed','schema/binding')
+    changed('reserved-ISA-opcode-with-indirect-FP',0,instruction(255,13,64,40,32),
+            'malformed','schema/binding')
     changed('bad-terminal',8,instruction(15,27),stage='terminal-role')
     changed('fallthrough',8,instruction(45,17,1,72),stage='function-ownership')
     changed('new-FRAME-kills-old',5,instruction(5,17,1,40),stage='prepared-frame')
@@ -119,7 +179,7 @@ def run_suite():
         ('entry-interior',pack(0,1,0,1,0),'bounded-refusal','module-entry'),
         ('entry-frame',pack(0,1,0,0,1),'bounded-refusal','module-entry'),
         ('library',pack(0,0,0),'unsupported','module-role'),
-        ('module-data',pack(0,1,4,0,0,0),'unsupported','module-data')]:
+        ('module-data',pack(0,1,112,0,0,0),'unsupported','module-data')]:
         payload = copy.deepcopy(original)
         payload[1] = data
         verdict(label,payload,status,stage)
@@ -173,6 +233,27 @@ def run_suite():
     payload[4] = pack(0)
     verdict('DATA-not-silently-ignored',payload,'unsupported','module-data')
     cases += 1
+    payload[1] = pack(0, 1, 16, 2, 0, 0)
+    payload[3] = pack(3, 112, 8)+b'\0\0'+pack(88, 8)+b'\0\0'+pack(16, 8)+b'\x80'
+    payload[4] = pack(2, 12, 4, 1, 8, 1, 42)
+    verdict('DATA-valid-unordered-scalars', payload, 'unsupported', 'module-data')
+    cases += 1
+    for label, data in (
+        ('DATA-mapped-reference', pack(1, 4, 1, 0)),
+        ('DATA-Bool-domain', pack(1, 8, 4, 2)),
+        ('DATA-overlap', pack(2, 8, 2, 0, 1, 12, 1, 0)),
+        ('DATA-alignment', pack(1, 12, 3, 0, 0)),
+        ('DATA-width-truncation', pack(1, 8, 3, 0)),
+        ('DATA-unknown-kind', pack(1, 8, 5, 0)),
+        ('DATA-out-of-extent', pack(1, 16, 1, 0)),
+    ):
+        payload[4] = data
+        verdict(label, payload, 'malformed', 'schema/binding')
+        cases += 1
+    del payload[4]
+    payload[1] = pack(0, 1, 8, 2, 0, 0)
+    verdict('DATA-descriptor-extent-mismatch', payload, 'malformed', 'schema/binding')
+    cases += 1
     payload = copy.deepcopy(original)
     payload[3] = pack(2,64,8)+b'\0'+pack(88,8)+b'\0\0'
     verdict('outgoing-tail-in-header',payload,'bounded-refusal','frame-role')
@@ -202,6 +283,41 @@ def run_suite():
     if result.get('structural_bindings') != 'passed':
         fail('paired consumer structural bindings')
     cases += 1
+    imports = pack(2, 0, 0, len(import_sig))+import_sig+pack(0, 1, len(import_sig))+import_sig
+    payload[5] = imports
+    second_frame = instruction(11, 65, 1, 0, 72)
+    second_call = instruction(9, 72, 1, 72, 0)
+    paired = (frame, call, second_frame, second_call, instruction(15, 27))
+    payload[2] = pack(len(paired))+b''.join(paired)
+    verdict('paired-two-import-ordinals', payload, 'unsupported', 'module-data')
+    refs = bind_payloads(payload)['checked_static_refs']
+    if [(row['kind'], row['target']) for row in refs] != [
+        ('mframe-import', 0), ('mcall-import', 0), ('mframe-import', 1), ('mcall-import', 1),
+    ]:
+        fail('paired immediate import reference order')
+    cases += 1
+    provider = dict(original)
+    provider[6] = pack(2, 1, 7, 1, len(import_sig))+import_sig+pack(0, 0, 0, len(import_sig))+import_sig
+    match = inspect_pair(envelope(payload), envelope(provider))
+    if (match.get('matches') != [
+        {'import_ordinal': 0, 'export_ordinal': 1, 'entry': 0, 'frame': 0},
+        {'import_ordinal': 1, 'export_ordinal': 0, 'entry': 7, 'frame': 1},
+    ] or match['owning_execution_supported']):
+        fail('provider match uses names and preserves consumer ordinals')
+    cases += 1
+    provider[6] = original[6]
+    mismatch = inspect_pair(envelope(payload), envelope(provider))
+    if (mismatch['status'] != 'unmatched' or mismatch.get('import_ordinal') != 1
+            or 'matches' in mismatch or mismatch['owning_execution_supported']):
+        fail('provider signature mismatch publishes no partial match')
+    cases += 1
+    for index, replacement in ((2, instruction(11, 65, -1, 0, 72)),
+                               (3, instruction(9, 72, 2, 72, 0))):
+        broken = list(paired)
+        broken[index] = replacement
+        payload[2] = pack(len(broken))+b''.join(broken)
+        verdict('paired-import-ordinal-range', payload, 'malformed', 'schema/binding')
+        cases += 1
     for count, managed in ((65,False),(3,True)):
         payload = copy.deepcopy(original)
         payload[3] = pack(count)+original[3][4:]+b''.join(pack(8,8)+bytes([128 if managed else 0]) for _ in range(count-2))

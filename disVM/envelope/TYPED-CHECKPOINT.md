@@ -19,6 +19,70 @@ serialized pointer representation or managed pointer-map bit. The independent
 checks below apply this rule within their bounded scalar subset. The journal's
 runtime replay has its own execution scope.
 
+The [Inferno experiment checkpoint](https://github.com/bhgv/Inferno-OS-bhgv/commit/0fe09afa6b8ca6ac6e93c52581547bf42ff5b89d)
+resolves the canonical `$Sys.millisec` import in a trusted Sys fixture.
+A local Linux x64 replay with source-built Limbo and strict UBSan passed
+the 13-entry registration, 31 allocation refusals, serialized import
+checks, production callback and startup refusal controls. The fixture
+supplies the result cell. File execution still needs VM-owned result
+binding and the corresponding LOAD/MFRAME/MCALL admission.
+
+The [Inferno loader ownership checkpoint](https://github.com/bhgv/Inferno-OS-bhgv/commit/f3da3d19d3bf6580fdd5d43fedeccfbf13e1f6c4)
+fixes reference retirement on refused builtin LOAD. Local x64 UBSan
+replay of `readmod-io.py` passed 3,307 and 3,305 checks across the two
+startup profiles. The checkpoint adds no wire fields.
+
+The [Inferno three-target checkpoint](https://github.com/bhgv/Inferno-OS-bhgv/commit/fd5221c5bb83987eff78348169509d27449dbbdf)
+configures paired console and Sys clock gates on ARM64, x64 and RV64.
+The RV64 job uses QEMU. A local x64 UBSan replay of that revision passed
+the clock call in four C/JIT stack modes, both 48-epoch provider runs
+and eight refusal/cleanup cases. The cross-target workflow introduces
+no wire changes.
+
+### Reply to Inferno on imported nonvoid results
+
+Inferno [INFERNO-0148 and INFERNO-0150](https://github.com/bhgv/Inferno-OS-bhgv/blob/9f4edc3981ac1407b2eaab98c88f9e99b1a453bc/doc/dis64-inferno-journal.md)
+ask how the producer represents the result destination. FlashVM has a
+checked local-call binding and offline imported metadata checks. The
+imported nonvoid producer and admission path remain open.
+
+A candidate sequence for import 0, `$Sys.millisec: fn(): int`, is:
+
+```text
+checked LOAD / resolve $Sys provider
+MFRAME import[0], prepared frame
+checked result LEA caller.out:Int32 -> prepared result-address cell
+MCALL import[0], same prepared frame
+read caller.out as Int32 after normal return
+```
+
+Checked LEA owns destination binding. It derives a runtime Ref64 from the
+validated caller-owned result span and publishes it to the prepared callee
+result-address cell (Frame64 byte 32 in the current native representation).
+MFRAME and MCALL establish and consume the matching frame and import.
+The address is transient and has no managed map bit. Exact imported
+operand encoding, feature negotiation and file admission remain open.
+Inferno's native binding fixture tests its own frame provenance independently.
+A Linux x64 strict-UBSan replay of Inferno `9f4edc3` passed four C/JIT
+stack modes for the clock call, return and error-unwind runs over 48 GC
+epochs each, and eight consumer refusal and cleanup cases.
+
+[INFERNO-0153](https://github.com/bhgv/Inferno-OS-bhgv/commit/a0fec548a4e6dc32b1cbb584c9339a2617939a47)
+serializes the same MFRAME → indirect LEA → MCALL binding pattern for
+the private clock pilot. Its fixture stores the prepared frame at caller
+byte 40 and takes the address of caller byte 72 in an 80-byte frame,
+placing it at callee byte 32. This matches the FlashVM local convention
+for the reserved final eight-byte result slot and the result address
+in the prepared frame. For the FlashVM imported producer, the current
+candidate is to reuse that indirect LEA addressing form and check both
+the caller result span and the prepared frame before publishing the Ref64.
+The Inferno console pilot supplies its provider out of band. FlashVM's
+candidate includes checked provider resolution, so the two complete
+instruction streams are distinct. On Linux x64, the strict-UBSan
+replay of this revision ran the serialized clock image in four C/JIT
+stack modes and passed both 48-epoch provider runs and eight refusal cases.
+
+
 ## Inputs and trust
 
 `tests/peer_call_semantics.py` accepts a corpus path. Only image names and exact
@@ -26,6 +90,35 @@ length/SHA256 identities come from its manifest; hashes identify bytes, not
 provenance/authentication. `inspect_image(bytes)` has no manifest argument.
 Private locals, budgets, result values, labels and `private_accept` cannot seed
 any fact. Each output explicitly has `owning_execution_supported:false`.
+
+Outer framing follows the shared directory rules. Optional DEBUG,
+PROVENANCE and unknown optional sections do not supply semantic facts.
+A framed CONTROL section is reported as unsupported by this checkpoint.
+CODE framing rejects opcode bytes outside the shared Inferno ISA range.
+An in-range opcode still needs a supported semantic rule. The structural
+binding pass checks immediate import ordinals for the direct MFRAME and MCALL
+forms used by the Inferno paired console at
+[5ac85ea](https://github.com/bhgv/Inferno-OS-bhgv/commit/5ac85ea708e3ff525c786c0ab66e56a43fb4bbef).
+The optional offline command
+`python3 tests/peer_call_semantics.py --pair consumer.dis64 provider.dis64`
+checks one explicit provider against all consumer imports. It compares exact
+Rune32 module and symbol contents and scalar signatures. A successful report
+lists export ordinals, entry PCs and frame IDs in consumer import order.
+A failed match publishes no partial coordinates. Provider discovery,
+frame-to-call pairing and runtime admission stay outside this command.
+A canonical mandatory extension manifest is reported as unsupported before
+any payload analysis. The report lists each required name, exact major and
+minimum minor. Malformed manifests or section geometry are rejected at the
+outer stage, without publishing extension records.
+
+FlashVM features that preserve existing bytecode behavior need no wire
+extension. An optional section can carry ignorable metadata. A feature whose
+absence changes execution needs an explicit mandatory extension contract.
+The shared Dis64 container already provides the manifest for that contract.
+An older reader can identify the requirement and refuse the image before
+linking or interpreting code. An extension name in a manifest grants no
+runtime capability. A future reader must implement the named semantics and
+check version compatibility explicitly.
 
 Parsing reuses FlashVM's independent outer/schema/binding readers, not Inferno's
 private C validator/writer. The pass consumes existing sections/code/signatures,
@@ -69,9 +162,11 @@ report publication. A later refusal publishes no partial function facts.
   implemented transfer rules are unsupported, not silently accepted.
 
 Bool is not inferred merely because it has Int32 width; its producer proof is
-unsupported. Library-only entry, ModuleData64/DATA initialization/layout, nonempty
-imports, managed used frames, arbitrary CFG and other opcodes are outside this
-checkpoint. Their classification does not declare the general wire invalid.
+unsupported. Structural binding checks the exact ModuleData64 descriptor extent
+and scalar DATA records, including alignment, width, overlap and mapped-reference
+exclusion. No module storage is materialized. Library-only entry, ModuleData64
+execution, nonempty imports, managed used frames, arbitrary CFG and other opcodes
+are outside this checkpoint. Their classification does not declare the general wire invalid.
 Local inferred call facts do not prove allocation capacity/provenance, root
 publication, GC barriers, activation/module/code lifetime, exception retirement
 or actual C/RX module execution. Those remain separate gates before admission.

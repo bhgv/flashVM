@@ -12,6 +12,10 @@
 typedef struct DVM_RuntimeProcess
 {
     Prog process;                     /* Retained interpreter/GC-visible prefix. */
+    int exit_notify_parent;           /* A parent parked until this guest retires. */
+    int exit_wait_pid;                /* Child awaited by a prepared killwait frame. */
+    int exit_ready_pid;               /* Retired child acknowledged by the next MCALL retry. */
+    int parent_pid;                   /* Immutable numeric identity of the spawning guest. */
     int lifetime_holds;      /* Native borrows acquired under the heap turn. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     int queued;                       /* O(1) membership, changed only by this queue module. */

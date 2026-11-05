@@ -911,20 +911,40 @@ static void table_call_frame(void (*function)(void *), void *frame)
     error(exType);
 }
 
-/* Publish one cooperative waiter without holding a native metadata mutex.
- * No program callback/GC runs after delrun until the prepared instruction returns. */
+static void table_remove_wait(TableActor *actor);
+
+
+/* Rewind the prepared call and suspend this guest, keeping its frame roots. */
+static void table_suspend(void)
+{
+    DVM_R.PC--;
+    DVM_R.IC = 1;
+    DVM_R.t = 1;
+    delrun(DVM_TABLE_WAIT);
+}
+
+
+/* Publish one cooperative waiter. A granted guest may need to wait on
+ * a different table in the same call, so return its old grant first. */
 static void table_park(TableOwner *owner, TableActor *actor)
 {
     TableWait *waiter;
-    if (actor->waiting || actor->process != currun())
+
+    if (actor->process != currun())
     {
         error("invalid table lease wait state");
+    }
+    if (actor->waiting && actor->waiting->owner == owner)
+    {
+        table_suspend();
+        return;
     }
     waiter = calloc(1, sizeof(*waiter));
     if (!waiter)
     {
         error(exNomem);
     }
+    table_remove_wait(actor);
     waiter->actor = actor;
     waiter->owner = owner;
     if (owner->wait_tail)
@@ -938,33 +958,22 @@ static void table_park(TableOwner *owner, TableActor *actor)
     owner->wait_tail = waiter;
     owner->wait_count++;
     actor->waiting = waiter;
-    /* The retained host uses bytecode PCs even when guarded leaves run in JIT. */
-    DVM_R.PC--;
-    DVM_R.IC = 1; /* End this instruction quantum before another ready actor runs. */
-    DVM_R.t = 1;  /* Match retained scheduler-blocking instruction discipline. */
-    delrun(DVM_TABLE_WAIT);
+    table_suspend();
 }
 
-/* Wake FIFO contenders only after final payload release. They retry the same
- * native call with unchanged rooted argument frames; no stale result is written. */
+
+/* Wake only the queue head. Its linked record reserves the next call
+ * until retry, cancellation, or a move to another table's queue. */
 static void table_wake(TableOwner *owner)
 {
-    TableWait *waiter;
-    while ((waiter = owner->wait_head) != nil)
+    TableWait *waiter = owner->wait_head;
+
+    if (!owner->lease_owner && waiter && waiter->actor->process->state == DVM_TABLE_WAIT)
     {
-        TableActor *actor = waiter->actor;
-        owner->wait_head = waiter->next;
-        actor->waiting = nil;
-        if (actor->process->state == DVM_TABLE_WAIT)
-        {
-            addrun(actor->process);
-        }
-        free(waiter);
-        table_actor_idle(actor);
+        addrun(waiter->actor->process);
     }
-    owner->wait_tail = nil;
-    owner->wait_count = 0;
 }
+
 
 /* Admit or cooperatively park a mutable-table call before MCALL changes FP/M.
  * Stable ordering rejects a wait below an already-held owner, avoiding cycles.
@@ -1012,15 +1021,22 @@ int dvm_bigtable_call_ready(void (*function)(void *), void *frame)
     }
     for (i = 0; i < count; i++)
     {
-        if (owners[i]->lease_owner && owners[i]->lease_owner != process)
+        TableOwner *owner = owners[i];
+        if (owner->lease_owner != process &&
+            (owner->lease_owner || (owner->wait_head && owner->wait_head->actor != actor)))
         {
-            if (highest && (uintptr)&owners[i]->owned.guard < highest)
+            if (highest && (uintptr)&owner->owned.guard < highest)
             {
                 error("table lease order violation");
             }
-            table_park(owners[i], actor ? actor : table_actor(process, 1));
+            table_park(owner, actor ? actor : table_actor(process, 1));
             return 0;
         }
+    }
+    if (actor && actor->waiting)
+    {
+        table_remove_wait(actor);
+        table_actor_idle(actor);
     }
     return 1;
 }
@@ -1044,15 +1060,10 @@ static void table_lease_drop(TableOwner *owner, TableActor *actor)
     destroy(owner);
 }
 
-/* Retire a parked request and all pinned leases before unwinding application
- * frames. Does not allocate, enter a payload lock or throw through a live lease. */
-void dvm_bigtable_abort(Prog *process)
+/* Remove one cooperative table wait under NativeWorld. The actor may
+ * still own independent leases, which are retired by its own exit turn. */
+static void table_remove_wait(TableActor *actor)
 {
-    TableActor *actor = table_actor(process, 0);
-    if (!actor)
-    {
-        return;
-    }
     if (actor->waiting)
     {
         TableWait *waiter = actor->waiting;
@@ -1063,18 +1074,85 @@ void dvm_bigtable_abort(Prog *process)
         {
             last = *slot;
         }
-        if (*slot)
+        if (!*slot || !owner->wait_count)
         {
-            *slot = waiter->next;
-            if (owner->wait_tail == waiter)
-            {
-                owner->wait_tail = last;
-            }
-            owner->wait_count--;
+            sysfatal("table wait record is not linked");
         }
+        *slot = waiter->next;
+        if (owner->wait_tail == waiter)
+        {
+            owner->wait_tail = last;
+        }
+        owner->wait_count--;
         actor->waiting = nil;
         free(waiter);
+        table_wake(owner);
     }
+}
+
+
+/* Requeue a table-blocked guest for termination without executing its call.
+ * Keep its retained leases rooted until the managed exit turn retires them. */
+int dvm_bigtable_wake_for_exit(Prog *process)
+{
+    TableActor *actor;
+
+    if (process->state != DVM_TABLE_WAIT)
+    {
+        return 0;
+    }
+    actor = table_actor(process, 0);
+    if (!actor || !actor->waiting)
+    {
+        sysfatal("table-blocked guest has no wait record");
+    }
+    table_remove_wait(actor);
+    addrun(process);
+    return 1;
+}
+
+
+/* Cancel a parked call or a granted retry. table_suspend rewound the PC
+ * to MCALL. Restore its successor so the exception handler attributes the
+ * error to MCALL and unwinds the uncalled frame through the usual path. */
+int dvm_bigtable_cancel_wait(Prog *process)
+{
+    TableActor *actor;
+
+    if ((process->flags & Pkilled) ||
+        (process->state != DVM_TABLE_WAIT && process->state != Pready))
+    {
+        return 0;
+    }
+    actor = table_actor(process, 0);
+    if (!actor || !actor->waiting)
+    {
+        return 0;
+    }
+    table_remove_wait(actor);
+    process->R.PC++;
+    if (!process->kill)
+    {
+        process->kill = "table lease wait cancelled";
+    }
+    if (process->state == DVM_TABLE_WAIT)
+    {
+        addrun(process);
+    }
+    return 1;
+}
+
+
+/* Retire a parked request and all pinned leases before unwinding application
+ * frames. Does not allocate, enter a payload lock or throw through a live lease. */
+void dvm_bigtable_abort(Prog *process)
+{
+    TableActor *actor = table_actor(process, 0);
+    if (!actor)
+    {
+        return;
+    }
+    table_remove_wait(actor);
     while (actor->held)
     {
         TableOwner *owner = actor->held;

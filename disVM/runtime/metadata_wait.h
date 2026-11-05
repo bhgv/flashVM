@@ -17,11 +17,11 @@ FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output);
 FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output);
 
 
-/* Read one bounded native directory batch with the same FD pin/FIFO/lease order.
- * On success entries/count transfer native storage to the caller, which must
- * free it after ACTIVE VM publication or error cleanup. No VM record is built
- * outside heap ownership. Invalid descriptors return an explicit failure. */
-FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo **entries, size_t *count);
+/* Read a bounded batch, then publish it under NativeWorld while still owning
+ * the cursor ticket. entries/count are borrowed by publish, which may raise.
+ * The adapter frees the batch and releases the ticket on every path. */
+FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo **entries,
+    size_t *count, int (*publish)(void *), void *argument);
 
 
 /* Report copied counters after managed executors join. Caller owns the heap;

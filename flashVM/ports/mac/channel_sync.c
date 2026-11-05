@@ -4,6 +4,8 @@
 
 #include "../channel_sync.h"
 #include <pthread.h>
+#include <errno.h>
+#include <time.h>
 #include <stdlib.h>
 
 
@@ -67,6 +69,19 @@ void fvm_port_sync_unlock(FVM_PortSync *s)
 void fvm_port_sync_wait(FVM_PortSync *s)
 {
     pthread_cond_wait(&s->condition, &s->mutex);
+}
+
+
+/* Wait with the mutex held; the platform returns it on wake or timeout. */
+int fvm_port_sync_wait_ms(FVM_PortSync *s, unsigned long milliseconds)
+{
+    struct timespec duration;
+    int status;
+
+    duration.tv_sec = milliseconds / 1000;
+    duration.tv_nsec = (milliseconds % 1000) * 1000000;
+    status = pthread_cond_timedwait_relative_np(&s->condition, &s->mutex, &duration);
+    return !status || status == ETIMEDOUT;
 }
 
 

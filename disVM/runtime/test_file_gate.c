@@ -12,7 +12,7 @@ typedef struct Worker
 {
     DVM_FileGate *gate;      /* Borrowed gate through join. */
     FVM_PortSync *sync;      /* Protect fixture outputs independently of the gate. */
-    size_t ticket;          /* Reserved by the controller before thread creation. */
+    DVM_FileTicket *ticket;         /* Reserved by the controller before thread creation. */
     int foreign;            /* Attempt completion using another context's ticket. */
     int done;               /* Published after worker completion under sync. */
     int failed;             /* Semantic refusal/order error under sync. */
@@ -74,10 +74,13 @@ int main(void)
     DVM_FileGate *gate = dvm_file_gate_create();
     FVM_PortSync *sync = fvm_port_sync_create();
     FVM_PortThread *threads[8];
+    DVM_FileTicket tickets[8];
     Worker workers[8] = {{0}};
     Worker foreign = {0};
     FVM_PortThread *challenger;
-    size_t ticket;
+    DVM_FileTicket ticket;
+    DVM_FileTicket tail;
+    DVM_FileTicket middle;
     size_t waiting = 0;
     size_t pending;
     int order[8] = {0};
@@ -87,14 +90,35 @@ int main(void)
     {
         return 2;
     }
-    ticket = dvm_file_gate_reserve(gate);
-    if (!dvm_file_gate_enter(gate, ticket))
+    dvm_file_gate_reserve(gate, &ticket);
+    if (!dvm_file_gate_enter(gate, &ticket))
     {
         return 2;
     }
+    dvm_file_gate_reserve(gate, &tail);
+    if (dvm_file_gate_cancel(gate, &ticket) ||
+        !dvm_file_gate_cancel(gate, &tail) ||
+        dvm_file_gate_cancel(gate, &tail) ||
+        dvm_file_gate_enter(gate, &tail))
+    {
+        fprintf(stderr, "FAIL file reservation cancellation violated FIFO ownership\n");
+        return 1;
+    }
+    dvm_file_gate_reserve(gate, &tail);
+    if (dvm_file_gate_enter_now(gate, &tail) || dvm_file_gate_enter(gate, &tail))
+    {
+        fprintf(stderr, "FAIL protected caller bypassed an active file ticket\n");
+        return 1;
+    }
+    dvm_file_gate_snapshot(gate, &pending, NULL);
+    if (pending != 1)
+    {
+        fprintf(stderr, "FAIL file reservation rollback left a pending ticket\n");
+        return 1;
+    }
     foreign.gate = gate;
     foreign.sync = sync;
-    foreign.ticket = ticket;
+    foreign.ticket = &ticket;
     foreign.foreign = 1;
     challenger = fvm_port_thread_start(execute, &foreign);
     if (!challenger)
@@ -112,19 +136,29 @@ int main(void)
         fprintf(stderr, "FAIL busy file gate retired\n");
         return 1;
     }
-    if (!dvm_file_gate_leave(gate, ticket) || dvm_file_gate_leave(gate, ticket))
+    if (!dvm_file_gate_leave(gate, &ticket) || dvm_file_gate_leave(gate, &ticket))
     {
         fprintf(stderr, "FAIL duplicate file completion accepted\n");
         return 1;
     }
     for (index = 0; index < 8; index++)
     {
+        if (index == 4)
+        {
+            dvm_file_gate_reserve(gate, &middle);
+        }
         workers[index].gate = gate;
         workers[index].sync = sync;
-        workers[index].ticket = dvm_file_gate_reserve(gate);
+        dvm_file_gate_reserve(gate, &tickets[index]);
+        workers[index].ticket = &tickets[index];
         workers[index].identity = index;
         workers[index].order = order;
         workers[index].count = &count;
+    }
+    if (!dvm_file_gate_cancel(gate, &middle) || dvm_file_gate_enter(gate, &middle))
+    {
+        fprintf(stderr, "FAIL cancelled middle ticket remains eligible\n");
+        return 1;
     }
     if (dvm_file_gate_destroy(gate))
     {

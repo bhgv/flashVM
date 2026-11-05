@@ -47,7 +47,13 @@ FVM_Result dvm_open_wait(const char *path, const char *mode, int asynchronous,
     {
         peak = staging;
     }
-    released = asynchronous ? dvm_runtime_gc_native_leave() : 0;
+    released = asynchronous ? dvm_runtime_gc_native_try_leave() : 0;
+    if (released < 0)
+    {
+        staging -= length + 1;
+        free(snapshot);
+        return FVM_OUT_OF_MEMORY;
+    }
     if (!strcmp(mode, "r") && fvm_port_path_info(snapshot, &metadata) == FVM_OK && metadata.directory)
     {
         status = fvm_port_directory_open(snapshot, directory);

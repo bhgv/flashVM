@@ -4,7 +4,7 @@ import hashlib
 import json
 import struct
 import sys
-from peer_call_goldens import sections
+from peer_call_goldens import sections, UnsupportedExtension
 
 
 class Reader:
@@ -112,6 +112,11 @@ def inspect(corpus):
             raise ValueError('byte identity: '+name)
         try:
             directory = sections(image)
+        except UnsupportedExtension as failure:
+            cases.append({'name': name, 'outer': 'canonical', 'reason': str(failure),
+                          'partial_schema': 'unsupported mandatory extension', 'execution': 'not admitted',
+                          'required_extensions': failure.required_extensions})
+            continue
         except ValueError as failure:
             cases.append({'name': name, 'outer': 'malformed', 'reason': str(failure),
                           'partial_schema': 'not reached', 'execution': 'not admitted'})

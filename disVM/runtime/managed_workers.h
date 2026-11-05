@@ -9,16 +9,18 @@
  * and retires idle helpers; limit zero is uncapped, diagnostics emits --stats.
  * turn runs one
  * shared-heap scheduler turn on its caller: positive progress, zero idle,
- * negative fatal managed failure. No managed pointer crosses this interface.
+ * negative fatal managed failure. cancel_waits wakes native waits on failure
+ * without taking heap ownership. No managed pointer crosses this interface.
  * Return one when all helpers were created; zero on invalid input or after
  * joining every partially started helper and restoring controller ownership.
  * Requires the controller's empty ACTIVE turn. No startup wait holds the heap. */
-int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics, int (*turn)(void));
+int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
+    int (*turn)(void), void (*cancel_waits)(void));
 
 
 /* Compensate an impending audited native suspension while still ACTIVE.
- * No managed pointers escape; refuses resource exhaustion with a fatal error. */
-void dvm_managed_workers_native_wait(void);
+ * Return a stable diagnostic if compensation is refused, or NULL on success. */
+const char *dvm_managed_workers_native_wait(void);
 
 
 /* Mark/consume native completion queued for heap reentry. arriving selects1/0;
@@ -31,8 +33,8 @@ int dvm_managed_workers_returning(int arriving);
 void dvm_managed_workers_native_suspended(void);
 
 
-/* Signal newly runnable work under heap exclusion; no-op before/after service.
- * Wake generations prevent a rootless idle executor from missing publication. */
+/* Signal runnable work or a pending native request. The caller must own
+ * NativeWorld or otherwise guarantee service lifetime through the signal. */
 void dvm_managed_workers_wake(void);
 
 
@@ -44,8 +46,9 @@ int dvm_managed_workers_yield(int idle);
 
 
 /* Park a rootless non-UI controller awaiting logical channel work. Heap is
- * released; work/retirement/stop generations prevent lost wakeups. */
-int dvm_managed_workers_park(void);
+ * released; pending checks native requests after the wake epoch is captured.
+ * The callback is invoked without the scheduler mutex. */
+int dvm_managed_workers_park(int (*pending)(void));
 
 
 /* Count one controller scheduler turn, only when the optional service is live. */

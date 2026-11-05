@@ -32,7 +32,7 @@ void Sys_seek(void *frame)
     FVM_Result status;
     LONG result = -1;
     long position;
-    size_t ticket;
+    DVM_FileTicket ticket;
     int descriptor;
     int released;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_seek, ret), sizeof(*call.ret));
@@ -63,15 +63,16 @@ void Sys_seek(void *frame)
             ptradd(D2H(call.fd));
             Setmark(D2H(call.fd));
             dvm_managed_workers_file_call();
-            ticket = dvm_file_gate_reserve(gate);
-            released = dvm_runtime_gc_native_leave();
-            if (!dvm_file_gate_enter(gate, ticket))
+            released = dvm_file_gate_try_release(gate, &ticket);
+            if (released < 0)
             {
-                fprintf(stderr, "disvm: cannot admit native seek\n");
-                exit(1);
+                ptrdel(D2H(call.fd));
+                kwerrstr(released == -2 ? "native seek cancelled" : "native seek needs an executor");
+                memmove(call.ret, &result, sizeof(result));
+                return;
             }
             status = fvm_port_file_seek(file, (long)call.off, (int)call.start, &position);
-            if (!dvm_file_gate_leave(gate, ticket))
+            if (!dvm_file_gate_leave(gate, &ticket))
             {
                 fprintf(stderr, "disvm: native seek admission lost\n");
                 exit(1);

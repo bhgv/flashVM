@@ -10,6 +10,16 @@
 int dvm_bigtable_call_ready(void (*function)(void *), void *frame);
 
 
+/* Remove a table wait and make the guest runnable for its exit turn.
+ * Return zero for other states. Requires exclusive managed heap ownership. */
+int dvm_bigtable_wake_for_exit(Prog *process);
+
+
+/* Cancel a parked or granted table retry. The next dispatch delivers a
+ * normal exception at MCALL. Requires exclusive managed heap ownership. */
+int dvm_bigtable_cancel_wait(Prog *process);
+
+
 /* Abort all leases/waits of a live process before exception unwinding or exit.
  * process is borrowed from the scheduler root list. Releases pinned roots only
  * after guard leave, wakes contenders, and never forcibly cancels foreign work. */

@@ -118,7 +118,8 @@ def adapt_wait_completion(source):
         old = f"channelpeer(c, {direction})"
         if source.count(old) != 1:
             raise ValueError("channel head reader drift")
-        source = source.replace(old, f"guarded_channel_peer(c, {direction})", 1)
+        owner_cell = "DVM_R.s" if direction else "DVM_R.d"
+        source = source.replace(old, f"dvm_runtime_channel_peer(c, {direction}, {owner_cell})", 1)
     return source
 
 
@@ -127,7 +128,8 @@ QUEUE_PEER_READER = r"""
 extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 
 extern int dvm_runtime_channel_wait_guest(Channel *channel);
-static int channel_buffer_wait_state(Channel *channel);
+extern void dvm_runtime_channel_require_wait(int outcome);
+int dvm_runtime_channel_wait_state(Channel *channel);
 
 typedef struct ChannelPeerRead
 {
@@ -143,7 +145,7 @@ typedef struct ChannelPeerRead
 static int read_channel_peer(void *argument)
 {
     ChannelPeerRead *read = argument;
-    read->busy = channel_buffer_wait_state(read->channel);
+    read->busy = dvm_runtime_channel_wait_state(read->channel);
     if (!read->busy)
         read->peer = channelpeer(read->channel, read->receive);
     return 1;
@@ -155,8 +157,11 @@ static int wait_and_read_channel_peer(void *argument)
     ChannelPeerRead *read = argument;
     do
     {
-        if (read->busy != 1 || !dvm_runtime_channel_wait_guest(read->channel))
+        if (read->busy != 1)
+        {
             error("channel buffer transfer already active");
+        }
+        dvm_runtime_channel_require_wait(dvm_runtime_channel_wait_guest(read->channel));
         {
             Channel *current;
             memmove(&current, read->owner_cell, sizeof(current));
@@ -168,9 +173,11 @@ static int wait_and_read_channel_peer(void *argument)
     return 1;
 }
 
-static Prog *guarded_channel_peer(Channel *channel, int receive)
+/* Resolve a peer under NativeWorld. owner_cell identifies the captured
+ * channel operand and must stay live through any native suspension. */
+Prog *dvm_runtime_channel_peer(Channel *channel, int receive, void *owner_cell)
 {
-    ChannelPeerRead read = {channel, receive, 0, receive ? DVM_R.s : DVM_R.d, nil};
+    ChannelPeerRead read = {channel, receive, 0, owner_cell, nil};
     DVM_HeapHold hold = {0};
     const char *problem;
     int completed;
@@ -313,6 +320,179 @@ static int altresultvalid(void *slot)
 """
 
 
+def adapt_alt_reservations(source):
+    """Prefer ready guards whose channel has no active buffer transfer."""
+    changes = (
+        ("altmark(Channel *c, Prog *p)", "altmark(Channel *c, Prog *p, int *available)"),
+        ("altrdy(Alt *a, Prog *p)", "altrdy(Alt *a, Prog *p, int *available)"),
+        ("added = altmark(c, p);", "added = altmark(c, p, available);"),
+        ("altchoose(Alt *a, int which, AltSelection *selected)",
+         "altchoose(Alt *a, int which, AltSelection *selected, int skip_reserved)"),
+        ("&& which-- == 0",
+         "&& (!skip_reserved || !dvm_runtime_channel_buffer_busy(c)) && which-- == 0"),
+        ("int ready; // Number of ready guard alternatives.",
+         "int ready; // Number of ready guard alternatives.\n"
+         "    int available; // Number ready without waiting for a reservation.\n"
+         "    int skip_reserved; // Immediate selection excludes active transfers."),
+        ("r->ready = altrdy(r->alt, r->prog);",
+         "r->available = 0;\n    r->ready = altrdy(r->alt, r->prog, &r->available);"),
+        ("altchoose(r->alt, r->choice, &selected);",
+         "altchoose(r->alt, r->choice, &selected, r->skip_reserved);"),
+        ("altvalidate(a, nsend, nrecv, 0);",
+         "altvalidate(a, nsend, nrecv, 0);\n"
+         "    if (block && altwaitshared(a, nsend, nrecv))\n"
+         "    {\n"
+         "        altvalidate(a, nsend, nrecv, 0);\n"
+         "    }"),
+        ("p = currun();\n\n\ta = DVM_R.s;", "p = currun();\nretry_alt:\n\ta = DVM_R.s;"),
+        ("delrun(Palt);", "delrun(Palt);\n            dvm_runtime_channel_waiter_published();"),
+        ("nrdy = ready.ready;",
+         "if (block && dvm_runtime_guarded_copies && !ready.available && altpending(a, nsend + nrecv))\n"
+         "    {\n"
+         "        altdone(a, p, nil, -1);\n"
+         "        dvm_runtime_channel_require_wait(dvm_runtime_channel_wait_change());\n"
+         "        goto retry_alt;\n"
+         "    }\n"
+         "    ready.skip_reserved = ready.available != 0 || !block;\n"
+         "    nrdy = ready.skip_reserved ? ready.available : ready.ready;"),
+    )
+    for old, new in changes:
+        expected = 3 if old == "&& which-- == 0" else 1
+        if source.count(old) != expected:
+            raise ValueError("ALT reservation boundary drift: " + old)
+        source = source.replace(old, new)
+    source, count = re.subn(
+        r"(?m)^([ \t]*)nrdy\+\+;",
+        r"\1nrdy++;\n\1*available += !dvm_runtime_channel_buffer_busy(c);",
+        source,
+    )
+    if count != 3 or source.count("extern\tOP(isend);") != 1:
+        raise ValueError("ALT reservation count/declaration boundary drift")
+    source = source.replace(
+        "extern\tOP(isend);",
+        "/* NativeWorld keeps reservations stable from readiness through selection. */\n"
+        "extern int dvm_runtime_channel_buffer_busy(Channel *channel);\n\nextern\tOP(isend);",
+        1,
+    )
+    anchor = "/* Cancel this process's registrations"
+    if source.count(anchor) != 1:
+        raise ValueError("ALT reservation entry boundary drift")
+    return source.replace(anchor, ALT_SHARED_WAIT + anchor, 1)
+
+
+ALT_SHARED_WAIT = r"""
+extern Prog *dvm_runtime_channel_peer(Channel *channel, int receive, void *owner_cell);
+extern int dvm_runtime_channel_wait_state(Channel *channel);
+extern int dvm_runtime_channel_wait_change(void);
+extern void dvm_runtime_channel_require_wait(int outcome);
+extern void dvm_runtime_channel_waiter_published(void);
+extern int dvm_runtime_guarded_copies;
+
+/* Classify the validated members of an array receive guard while NativeWorld
+ * protects its storage. Nil Dis members are disabled guards. */
+static int altarraypending(Array *array)
+{
+    WORD index;
+    Channel *member;
+    int state, pending = 0;
+
+    for (index = 0; index < array->len; index++)
+    {
+        memmove(&member, array->data + (uintptr)index*sizeof(member), sizeof(member));
+        if (member != H)
+        {
+            state = dvm_runtime_channel_wait_state(member);
+            if (state < 0)
+            {
+                return state;
+            }
+            pending |= state;
+        }
+    }
+    return pending;
+}
+
+
+/* Scan validated guards before suspension. A mover may not park behind
+ * another reservation while it owns one itself. No array storage or member
+ * pointer is used after leaving NativeWorld; ALT revalidates on retry. */
+static int altpending(Alt *alt, int count)
+{
+    uchar *cell = (uchar *)alt + offsetof(Alt, ac) + offsetof(Altc, c);
+    Channel *channel;
+    int index, state, pending = 0;
+
+    for (index = 0; index < count; index++)
+    {
+        memmove(&channel, cell + (uintptr)index*sizeof(Altc), sizeof(channel));
+        state = altobject(channel) ? altarraypending((Array *)channel) :
+            dvm_runtime_channel_wait_state(channel);
+        if (state < 0)
+        {
+            return 0;
+        }
+        pending |= state;
+    }
+    return pending;
+}
+
+
+/* Match the validated concrete guard cells against the captured channel.
+ * The caller holds NativeWorld and supplies the unchanged guard count. */
+static int altguardsmatch(uchar *first, int count, Channel *channel)
+{
+    int index;
+    Channel *candidate;
+
+    for (index = 1; index < count; index++)
+    {
+        memmove(&candidate, first + (uintptr)index*sizeof(Altc), sizeof(candidate));
+        if (candidate != channel)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* A same-direction ALT on one concrete channel has no independent branch to
+ * service while its buffer is reserved. Wait before registering any guard.
+ * The peer reader roots the channel and rechecks the first guard cell.
+ * Return one after waiting, so the caller revalidates the queue geometry. */
+static int altwaitshared(Alt *alt, int nsend, int nrecv)
+{
+    uchar *first = (uchar *)alt + offsetof(Alt, ac) + offsetof(Altc, c);
+    int count = nsend + nrecv;
+    int sends, receives;
+    Channel *channel;
+
+    if (!count || (nsend && nrecv))
+    {
+        return 0;
+    }
+    memmove(&channel, first, sizeof(channel));
+    if (altobject(channel) || !dvm_runtime_channel_buffer_busy(channel) ||
+        !altguardsmatch(first, count, channel))
+    {
+        return 0;
+    }
+    dvm_runtime_channel_peer(channel, nrecv != 0, first);
+    if (!altheader(alt, &sends, &receives) || sends != nsend || receives != nrecv)
+    {
+        error(exBounds);
+    }
+    if (!altguardsmatch(first, count, channel))
+    {
+        error("channel operand changed while waiting");
+    }
+    return 1;
+}
+
+
+"""
+
+
 def adapt_alt_preflight(source):
     """Reuse guard traversal with cancellation-specific queue checks."""
     changes = (
@@ -445,7 +625,13 @@ def adapt_queue_holds(source):
         if body.count(signature) != 1:
             raise ValueError("channel queue wrapper drift: " + name)
         body = body.replace(signature, f"static void\n{name}_locked({parameters})", 1)
-    return source[:start] + declarations + body + QUEUE_WRAPPERS + source[end:]
+    tail = source[end:]
+    for state in ("Psend", "Precv"):
+        anchor = f"p = delrun({state});"
+        if tail.count(anchor) != 1:
+            raise ValueError("channel waiter publication drift: " + state)
+        tail = tail.replace(anchor, anchor + "\n        dvm_runtime_channel_waiter_published();", 1)
+    return source[:start] + declarations + body + QUEUE_WRAPPERS + tail
 
 
 
@@ -486,7 +672,9 @@ typedef struct ChannelQueueRequest
 } ChannelQueueRequest;
 
 
-/* These callbacks only inspect and mutate queue nodes and their native holds. */
+extern void dvm_runtime_channel_waiter_published(void);
+
+/* Publish a queue node with its native hold. */
 static int queue_add(void *argument)
 {
     ChannelQueueRequest *request = argument;
@@ -580,8 +768,9 @@ int dvm_runtime_channel_buffer_busy(Channel *channel)
 }
 
 
-/* Under the queue mutex: a mover must never park behind another mover. */
-static int channel_buffer_wait_state(Channel *channel)
+/* With the queue mutex or NativeWorld held, classify a reservation.
+ * A mover must never park behind another mover. */
+int dvm_runtime_channel_wait_state(Channel *channel)
 {
     ChannelReservation *entry;
     DVM_NativeContext *current = dvm_native_context_current();

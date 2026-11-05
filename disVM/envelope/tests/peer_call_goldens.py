@@ -2,10 +2,20 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import struct
 import subprocess
 import sys
 import tempfile
+
+
+class UnsupportedExtension(ValueError):
+    """The envelope is canonical and requires features unavailable to this reader."""
+
+    def __init__(self, records):
+        """Keep validated extension identity and version requirements for reports."""
+        super().__init__('mandatory extension is not implemented')
+        self.required_extensions = records
 
 
 def sections(image):
@@ -17,21 +27,54 @@ def sections(image):
     """
     if len(image) < 32 or image[:8] != b'Dis64\r\n\x1a':
         raise ValueError('magic/header')
-    major, minor, header, abi, flags, reserved, count = struct.unpack_from('>HHIIIII', image, 8)
-    if (major, minor, abi, flags, reserved) != (1, 0, 1, 0, 0) or not 0 < count <= 1024:
+    major, minor, header, abi, flags, extensions, count = struct.unpack_from('>HHIIIII', image, 8)
+    if (major, minor, abi, flags) != (1, 0, 1, 0) or not 0 < count <= 1024:
         raise ValueError('profile/directory count')
-    if header != 32+12*count or header > len(image):
+    manifest_end = header - 12*count
+    if not 32 <= manifest_end <= header <= len(image) or extensions > (manifest_end-32)//9:
         raise ValueError('directory extent')
-    directory = [struct.unpack_from('>HHII', image, 32+12*index) for index in range(count)]
-    if len({kind for kind, _, _, _ in directory}) != count:
-        raise ValueError('duplicate section')
+    cursor = 32
+    previous = b''
+    required_extensions = []
+    for _ in range(extensions):
+        if manifest_end-cursor < 8:
+            raise ValueError('extension record extent')
+        name_bytes, major, minimum_minor, reserved = struct.unpack_from('>HHHH', image, cursor)
+        cursor += 8
+        if reserved or not 1 <= name_bytes <= min(255, manifest_end-cursor):
+            raise ValueError('extension name extent/reserved field')
+        name = image[cursor:cursor+name_bytes]
+        if not re.fullmatch(rb'[a-z][a-z0-9._-]*', name) or name <= previous:
+            raise ValueError('extension name/order')
+        required_extensions.append({'name': name.decode('ascii'), 'major': major,
+                                    'minimum_minor': minimum_minor})
+        previous = name
+        cursor += name_bytes
+    if cursor != manifest_end:
+        raise ValueError('extension/directory boundary')
+    directory = [struct.unpack_from('>HHII', image, cursor+12*index) for index in range(count)]
+    seen = set()
     end = header
-    for kind, mandatory, offset, length in directory:
-        if not 1 <= kind <= 7 or mandatory != 1 or offset != end or length > len(image)-offset:
+    for kind, flags, offset, length in directory:
+        if offset != end or length > len(image)-offset:
             raise ValueError('section geometry')
+        if 1 <= kind <= 8:
+            minimum = 1 if kind <= 3 else 4 if kind >= 5 else 0
+            if flags != 1 or length < minimum:
+                raise ValueError('standard section flags/length')
+        elif flags != 0:
+            raise ValueError('optional section flags')
+        if 1 <= kind <= 8 or kind in (32768, 32769):
+            if kind in seen:
+                raise ValueError('duplicate section')
+            seen.add(kind)
         end = offset+length
     if end != len(image):
         raise ValueError('truncated/trailing bytes')
+    if not {1, 2, 3} <= seen:
+        raise ValueError('missing mandatory section')
+    if extensions:
+        raise UnsupportedExtension(required_extensions)
     return directory
 
 

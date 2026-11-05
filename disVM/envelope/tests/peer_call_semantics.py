@@ -4,8 +4,9 @@ import hashlib
 import json
 import struct
 import sys
-from peer_call_goldens import sections
-from peer_call_binding import bind_payloads, UnsupportedSchema
+from peer_call_goldens import sections, UnsupportedExtension
+from peer_call_binding import bindings, bind_payloads, string_catalog, UnsupportedSchema
+from peer_call_schema import metadata
 from peer_call_roles import catalog, Refusal, Unsupported
 from peer_call_flow import check_flow
 
@@ -28,6 +29,10 @@ def inspect_image(image):
         return dict(result, stage='resource-limit', status='unsupported', reason='offline image ceiling')
     try:
         directory = sections(image)
+    except UnsupportedExtension as failure:
+        return dict(result, outer='canonical', stage='mandatory-extension',
+                    status='unsupported', reason=str(failure),
+                    required_extensions=failure.required_extensions)
     except ValueError as failure:
         return dict(result, stage='outer', status='malformed', reason=str(failure))
     result['outer'] = 'canonical'
@@ -55,6 +60,51 @@ def inspect_image(image):
                   module_entry=world['entry'], used_frame_type_ids=sorted({f['frame'] for f in world['functions'].values()}),
                   unanalysed_type_ids=world['unanalysed_type_ids'])
     return result
+
+
+def inspect_pair(consumer, provider):
+    """Match every import to one explicit provider after structural validation.
+
+    Inputs are immutable images. Publish only ordinals and descriptor coordinates
+    after all imports match. No provider search, code pairing or runtime construction.
+    """
+    result = {'owning_execution_supported': False}
+    payloads = []
+    for role, image in (('consumer', consumer), ('provider', provider)):
+        report = inspect_image(image)
+        result[role + '_sha256'] = report['sha256']
+        if report.get('structural_bindings') != 'passed':
+            return dict(result, status=report['status'], stage=report['stage'],
+                        reason=report['reason'], image_role=role)
+        payloads.append({kind: image[offset:offset+size]
+                         for kind, _, offset, size in sections(image)})
+
+    consumer_payload, provider_payload = payloads
+    imported = bindings(consumer_payload[5], False) if 5 in consumer_payload else []
+    if not imported:
+        return dict(result, status='unmatched', stage='provider-match', reason='consumer has no imports')
+    exported = bindings(provider_payload[6], True) if 6 in provider_payload else []
+    consumer_names = string_catalog(consumer_payload[7])
+    provider_names = string_catalog(provider_payload[7])
+    module_name = provider_names[metadata(provider_payload[1])['name']]
+    symbols = {provider_names[binding['symbol']]: (ordinal, binding)
+               for ordinal, binding in enumerate(exported)}
+    matches = []
+    for ordinal, binding in enumerate(imported):
+        match = symbols.get(consumer_names[binding['symbol']])
+        if consumer_names[binding['module']] != module_name:
+            return dict(result, status='unmatched', stage='provider-match',
+                        import_ordinal=ordinal, reason='provider module name differs')
+        if match is None:
+            return dict(result, status='unmatched', stage='provider-match',
+                        import_ordinal=ordinal, reason='provider symbol is missing')
+        export_ordinal, export = match
+        if binding['signature'] != export['signature']:
+            return dict(result, status='unmatched', stage='provider-match',
+                        import_ordinal=ordinal, reason='provider signature differs')
+        matches.append({'import_ordinal': ordinal, 'export_ordinal': export_ordinal,
+                        'entry': export['entry'], 'frame': export['frame']})
+    return dict(result, status='matched', stage='provider-match', matches=matches)
 
 
 def inspect(corpus):
@@ -93,5 +143,21 @@ def inspect(corpus):
                        'inferred_slots_per_function': 1024, 'corpus_cases': 1024}, 'cases': rows}
 
 
+def main(args):
+    """Inspect a corpus directory or match two explicitly named image files."""
+    if len(args) == 1 and args[0] != '--pair':
+        return inspect(Path(args[0]))
+    if len(args) != 3 or args[0] != '--pair':
+        raise SystemExit('usage: peer_call_semantics.py CORPUS | --pair CONSUMER PROVIDER')
+    images = []
+    for name in args[1:]:
+        with Path(name).open('rb') as source:
+            image = source.read(MAX_IMAGE+1)
+        if len(image) > MAX_IMAGE:
+            raise SystemExit('offline image ceiling exceeded: ' + name)
+        images.append(image)
+    return inspect_pair(*images)
+
+
 if __name__ == '__main__':
-    print(json.dumps(inspect(Path(sys.argv[1])), indent=2))
+    print(json.dumps(main(sys.argv[1:]), indent=2))

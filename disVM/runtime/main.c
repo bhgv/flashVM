@@ -1,4 +1,5 @@
 /* Retained Dis interpreter/JIT with explicit native execution and GC owners. */
+#define _GNU_SOURCE
 #include "disvm/refcount.h"
 #include "lib9.h"
 #include "dat.h"
@@ -13,6 +14,9 @@
 #include "table_leases.h"
 #include "owned.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
+#include "kernel.h"
+#include "vmchannel.h"
 #include "file_port.h"
 #include "file_gate.h"
 #include "filesystem_sys.h"
@@ -35,6 +39,14 @@
 #include <limits.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <signal.h>
+#include <sys/eventfd.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "disvm/clock_port.h"
 
 #ifdef DVM_RUNTIME_EDITOR
 #include "editor_view.h"
@@ -77,6 +89,7 @@ extern void mathmodinit(void);
 
 /* Register hosted scalar hybrid tables after the VM allocator is initialized. */
 extern void dvm_bigtable_initialize(void);
+extern void dvm_processctl_initialize(void);
 #ifdef DVM_RUNTIME_NATIVE_DEMO
 /* Register the optional teaching module on this owner after heap initialization. */
 extern void dvm_nativedemo_initialize(void);
@@ -338,8 +351,449 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
 
+#define CANCEL_REQUEST_CAPACITY 64 /* Bounded host requests, containing numeric PIDs only. */
+
+static int cancel_requests[CANCEL_REQUEST_CAPACITY]; /* FIFO under the channel mutex. */
+static size_t cancel_request_count; /* Pending records under the channel mutex. */
+static int cancel_requests_open; /* Automatic scheduler is live, under the channel mutex. */
+
 static FVM_PortSync *channel_queue_mutex; /* Lives for the hosted runtime. */
 static unsigned int channel_buffer_waiters; /* Protected by the queue mutex. */
+static int native_waits_stopping; /* Shutdown predicate under the queue mutex. */
+static DVM_FileGate *stdio_gates[3]; /* Output aliases share an admission queue. */
+static uint64_t channel_generation; /* Queue/readiness epoch protected by the same mutex. */
+
+
+typedef struct NativeGuestWait
+{
+    int pid; /* Copied from the current guest before releasing NativeWorld. */
+    int cancelled; /* Protected by the queue mutex. */
+    DVM_FileGate *file_gate; /* Borrowed through descriptor pin, or NULL. */
+    int wake_fd; /* Owned by a pipe reader until it unlinks this record. */
+    DVM_FileTicket *file_ticket; /* Live caller storage through queue admission. */
+    struct NativeGuestWait *next; /* Linked only while this stack record is live. */
+} NativeGuestWait;
+
+static NativeGuestWait *native_guest_waits; /* Protected by the queue mutex. */
+
+
+/* Publish the current guest identity before suspension, and return the
+ * readiness epoch from the same critical section. */
+static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
+{
+    Prog *process = dvm_native_context_process(dvm_native_context_current());
+    uint64_t generation;
+
+    wait->pid = process ? process->pid : 0;
+    wait->cancelled = 0;
+    wait->file_gate = gate;
+    wait->file_ticket = ticket;
+    wait->wake_fd = wake_fd;
+    fvm_port_sync_lock(channel_queue_mutex);
+    wait->next = native_guest_waits;
+    native_guest_waits = wait;
+    if (native_waits_stopping && gate)
+    {
+        wait->cancelled = dvm_file_gate_cancel(gate, ticket);
+    }
+    generation = channel_generation;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return generation;
+}
+
+
+/* Remove the record after restoring NativeWorld. Cancellation can still
+ * win while the guest is reacquiring its continuation. */
+static int native_guest_wait_end(NativeGuestWait *wait, int released)
+{
+    NativeGuestWait **link = &native_guest_waits;
+    int completed;
+
+    fvm_port_sync_lock(channel_queue_mutex);
+    while (*link != wait)
+    {
+        link = &(*link)->next;
+    }
+    *link = wait->next;
+    completed = native_waits_stopping || wait->cancelled ? -1 : released;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return completed;
+}
+
+
+/* With the ledger locked, cancel only operations still queued for I/O.
+ * File gates never call into the ledger while holding their own mutex. */
+static int cancel_guest_wait(NativeGuestWait *wait)
+{
+    if (wait->cancelled)
+    {
+        return 1;
+    }
+    if (wait->file_gate && !dvm_file_gate_cancel(wait->file_gate, wait->file_ticket) &&
+        wait->wake_fd < 0)
+    {
+        return 0;
+    }
+    wait->cancelled = 1;
+    if (wait->wake_fd >= 0)
+    {
+        int status;
+        do
+        {
+            status = eventfd_write(wait->wake_fd, 1);
+        } while (status < 0 && errno == EINTR);
+        if (status < 0 && errno != EAGAIN)
+        {
+            abort();
+        }
+    }
+    return 1;
+}
+
+
+static int cancel_scheduler_guest_wait(int pid);
+
+
+/* Cancel a native wait by PID from any host thread. A NativeWorld owner can
+ * also cancel a scheduler-managed channel or table wait. No managed state is read
+ * by an unbound or suspended caller. */
+int dvm_runtime_cancel_guest_wait(int pid)
+{
+    NativeGuestWait *wait;
+    int found;
+
+    if (!channel_queue_mutex || pid <= 0)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(channel_queue_mutex);
+    for (wait = native_guest_waits; wait; wait = wait->next)
+    {
+        if (wait->pid == pid)
+        {
+            found = cancel_guest_wait(wait);
+            fvm_port_sync_signal_all(channel_queue_mutex);
+            fvm_port_sync_unlock(channel_queue_mutex);
+            return found;
+        }
+    }
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return cancel_scheduler_guest_wait(pid);
+}
+
+
+/* Request cancellation from an unbound host thread. A native waiter can be
+ * cancelled immediately. Otherwise enqueue a numeric PID for an automatic
+ * scheduler owner; success means accepted, not that the target still waits. */
+int dvm_runtime_request_guest_cancel(int pid)
+{
+    size_t index;
+
+    if (!channel_queue_mutex || pid <= 0)
+    {
+        return 0;
+    }
+    if (dvm_runtime_cancel_guest_wait(pid))
+    {
+        return 1;
+    }
+    fvm_port_sync_lock(channel_queue_mutex);
+    if (!cancel_requests_open || native_waits_stopping)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        return 0;
+    }
+    for (index = 0; index < cancel_request_count; index++)
+    {
+        if (cancel_requests[index] == pid)
+        {
+            fvm_port_sync_unlock(channel_queue_mutex);
+            return 1;
+        }
+    }
+    if (cancel_request_count == CANCEL_REQUEST_CAPACITY)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        return 0;
+    }
+    cancel_requests[cancel_request_count++] = pid;
+    dvm_managed_workers_wake();
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return 1;
+}
+
+
+/* Check the request queue without taking the scheduler mutex. */
+static int guest_cancel_pending(void)
+{
+    int pending;
+
+    fvm_port_sync_lock(channel_queue_mutex);
+    pending = cancel_request_count != 0;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return pending;
+}
+
+
+/* Handle one bounded batch under NativeWorld. New producers may fill the next
+ * batch while this owner changes scheduler queues. Unknown PIDs are harmless. */
+static void dispatch_guest_cancellations(void)
+{
+    int requests[CANCEL_REQUEST_CAPACITY];
+    size_t count, index;
+
+    fvm_port_sync_lock(channel_queue_mutex);
+    count = cancel_request_count;
+    memcpy(requests, cancel_requests, count * sizeof(*requests));
+    cancel_request_count = 0;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    for (index = 0; index < count; index++)
+    {
+        dvm_runtime_cancel_guest_wait(requests[index]);
+    }
+}
+
+
+/* Admit an audited file operation, with the guest cancellable only until
+ * it wins the cursor. On refusal restore the original heap ownership. */
+int dvm_file_gate_try_release(DVM_FileGate *gate, DVM_FileTicket *ticket)
+{
+    NativeGuestWait wait;
+    int released, admitted;
+
+    dvm_file_gate_reserve(gate, ticket);
+    if (!gate)
+    {
+        return dvm_runtime_gc_native_try_leave();
+    }
+    native_guest_wait_begin(&wait, gate, ticket, -1);
+    released = dvm_runtime_gc_native_try_leave();
+    if (released < 0)
+    {
+        dvm_file_gate_cancel(gate, ticket);
+        native_guest_wait_end(&wait, released);
+        return -1;
+    }
+    admitted = released ? dvm_file_gate_enter(gate, ticket) : dvm_file_gate_enter_now(gate, ticket);
+    native_guest_wait_end(&wait, released);
+    if (!admitted)
+    {
+        dvm_runtime_gc_native_enter(released);
+        return released ? -2 : -1;
+    }
+    return released;
+}
+
+
+/* Wait for the requested pipe readiness or its eventfd cancellation. */
+static int wait_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descriptor, short events, int timeout)
+{
+    struct pollfd descriptors[2] = {{descriptor, events, 0}, {wake_fd, POLLIN, 0}};
+    int ready, available;
+
+    do
+    {
+        ready = poll(descriptors, 2, timeout);
+    } while (ready < 0 && errno == EINTR);
+    if (ready <= 0 || descriptors[1].revents ||
+        (events == POLLOUT && (descriptors[0].revents & (POLLERR | POLLHUP))) ||
+        !(descriptors[0].revents & (events == POLLIN ? POLLIN | POLLHUP : POLLOUT)))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(channel_queue_mutex);
+    available = !wait->cancelled;
+    if (available && events == POLLIN)
+    {
+        wait->wake_fd = -1; /* The admitted read owns this readiness. */
+    }
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return available;
+}
+
+
+/* Feed bounded chunks through a private staging pipe. SPLICE_F_NONBLOCK
+ * avoids blocking after an advisory POLLOUT even if another writer wins
+ * the capacity. Only bytes that reach the borrowed pipe count as written. */
+static FVM_Result write_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descriptor,
+    const void *bytes, size_t capacity, size_t *written, int timeout)
+{
+    const uchar *source = bytes;
+    int staging[2];
+    size_t staged = 0;
+    ssize_t count;
+
+    if (pipe2(staging, O_CLOEXEC | O_NONBLOCK))
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    while (*written < capacity)
+    {
+        if (!staged)
+        {
+            size_t chunk = capacity - *written;
+            if (chunk > PIPE_BUF)
+            {
+                chunk = PIPE_BUF;
+            }
+            do
+            {
+                count = write(staging[1], source + *written, chunk);
+            } while (count < 0 && errno == EINTR);
+            if (count <= 0)
+            {
+                break;
+            }
+            staged = (size_t)count;
+        }
+        if (!wait_stdio_pipe(wait, wake_fd, descriptor, POLLOUT, timeout))
+        {
+            break;
+        }
+        count = splice(staging[0], NULL, descriptor, NULL, staged, SPLICE_F_NONBLOCK);
+        if (count < 0 && (errno == EAGAIN || errno == EINTR))
+        {
+            if (!timeout)
+            {
+                break;
+            }
+            continue;
+        }
+        if (count <= 0)
+        {
+            break;
+        }
+        staged -= (size_t)count;
+        *written += (size_t)count;
+    }
+    close(staging[0]);
+    close(staging[1]);
+    return *written || !capacity ? FVM_OK : FVM_ERROR;
+}
+
+
+/* Borrow one gate for each pipe direction. stdout and stderr may refer to
+ * the same pipe, so share their gate when the native identities match. */
+static DVM_FileGate *stdio_pipe_gate(int descriptor, const struct stat *metadata)
+{
+    DVM_FileGate *gate = stdio_gates[descriptor];
+    struct stat other_metadata;
+    int other = 3 - descriptor;
+    int shared = descriptor != 0 && !fstat(other, &other_metadata) &&
+        S_ISFIFO(other_metadata.st_mode) && metadata->st_dev == other_metadata.st_dev &&
+        metadata->st_ino == other_metadata.st_ino;
+
+    if (!gate && shared)
+    {
+        gate = stdio_gates[other];
+    }
+    if (!gate)
+    {
+        gate = dvm_file_gate_create();
+    }
+    stdio_gates[descriptor] = gate;
+    if (shared)
+    {
+        stdio_gates[other] = gate;
+    }
+    return gate;
+}
+
+
+/* A pipe has a cancellable readiness phase. The borrowed descriptor is never
+ * reconfigured. Return to the original heap owner on every path. */
+static FVM_Result runtime_stdio_transfer(int descriptor, void *input, const void *output,
+    size_t capacity, size_t *transferred, int *released_out)
+{
+    struct stat metadata;
+    NativeGuestWait wait;
+    DVM_FileTicket ticket;
+    DVM_FileGate *gate;
+    FVM_Result status = FVM_ERROR;
+    int wake_fd, released;
+
+    *released_out = 0;
+    *transferred = 0;
+    if (!capacity || fstat(descriptor, &metadata) || !S_ISFIFO(metadata.st_mode))
+    {
+        released = dvm_runtime_gc_native_try_leave();
+        if (released < 0)
+        {
+            return FVM_OUT_OF_MEMORY;
+        }
+        status = input ? fvm_port_stdio_read(descriptor, input, capacity, transferred) :
+            fvm_port_stdio_write(descriptor, output, capacity, transferred);
+        dvm_runtime_gc_native_enter(released);
+        *released_out = released;
+        return status;
+    }
+    gate = stdio_pipe_gate(descriptor, &metadata);
+    if (!gate)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    wake_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (wake_fd < 0)
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    dvm_file_gate_reserve(gate, &ticket);
+    native_guest_wait_begin(&wait, gate, &ticket, wake_fd);
+    released = dvm_runtime_gc_native_try_leave();
+    if (released < 0)
+    {
+        dvm_file_gate_cancel(gate, &ticket);
+        status = FVM_OUT_OF_MEMORY;
+    }
+    else
+    {
+        int timeout = !released && gc_worker ? 0 : -1;
+        int admitted = released ? dvm_file_gate_enter(gate, &ticket) :
+            dvm_file_gate_enter_now(gate, &ticket);
+
+        if (admitted)
+        {
+            if (input)
+            {
+                if (wait_stdio_pipe(&wait, wake_fd, descriptor, POLLIN, timeout))
+                {
+                    status = fvm_port_stdio_read(descriptor, input, capacity, transferred);
+                }
+            }
+            else
+            {
+                status = write_stdio_pipe(&wait, wake_fd, descriptor, output, capacity, transferred, timeout);
+            }
+            if (!dvm_file_gate_leave(gate, &ticket))
+            {
+                abort();
+            }
+        }
+        dvm_runtime_gc_native_enter(released);
+        *released_out = released;
+    }
+    native_guest_wait_end(&wait, released);
+    close(wake_fd);
+    return status;
+}
+
+
+/* Read staged stdin bytes and return after restoring the guest continuation. */
+FVM_Result dvm_runtime_read_stdin(void *bytes, size_t capacity, size_t *received)
+{
+    int released;
+
+    return runtime_stdio_transfer(0, bytes, NULL, capacity, received, &released);
+}
+
+
+/* Write staged stdout/stderr bytes. Return any committed prefix, even if a
+ * later pipe fragment is cancelled. released reports a completed heap lease. */
+FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes, size_t capacity,
+    size_t *written, int *released)
+{
+    return runtime_stdio_transfer(descriptor, NULL, bytes, capacity, written, released);
+}
 
 
 /* Serialize short queue operations and unlock before propagating a VM error. */
@@ -362,16 +816,20 @@ extern int dvm_runtime_channel_buffer_busy(Channel *channel);
 /* Wait on the native reservation ledger only. The caller keeps the channel
  * identity live and must have no bound VM context. Idle is an observation,
  * so the caller must still revalidate when it later acquires a reservation. */
-static void wait_channel_buffer_idle(Channel *channel)
+static int wait_channel_buffer_idle(Channel *channel, NativeGuestWait *wait)
 {
+    int completed;
     fvm_port_sync_lock(channel_queue_mutex);
-    while (dvm_runtime_channel_buffer_busy(channel))
+    while (!native_waits_stopping && (!wait || !wait->cancelled) &&
+        dvm_runtime_channel_buffer_busy(channel))
     {
         channel_buffer_waiters++;
         fvm_port_sync_wait(channel_queue_mutex);
         channel_buffer_waiters--;
     }
+    completed = !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
+    return completed;
 }
 
 
@@ -382,8 +840,7 @@ int dvm_runtime_channel_wait_idle(Channel *channel)
     {
         return 0;
     }
-    wait_channel_buffer_idle(channel);
-    return 1;
+    return wait_channel_buffer_idle(channel, NULL);
 }
 
 
@@ -391,20 +848,106 @@ int dvm_runtime_channel_wait_idle(Channel *channel)
  * Native leave withdraws the current Prog until the same owner resumes it. */
 int dvm_runtime_channel_wait_guest(Channel *channel)
 {
-    int released = dvm_runtime_gc_native_leave();
-    if (!released)
+    NativeGuestWait wait;
+    int released;
+
+    native_guest_wait_begin(&wait, NULL, NULL, -1);
+    released = dvm_runtime_gc_native_try_leave();
+    if (released > 0)
     {
-        return 0;
+        wait_channel_buffer_idle(channel, &wait);
+        dvm_runtime_gc_native_enter(released);
     }
-    wait_channel_buffer_idle(channel);
-    dvm_runtime_gc_native_enter(released);
-    return 1;
+    return native_guest_wait_end(&wait, released < 0 ? -2 : released);
 }
 
 
-/* Called only while the queue guard holds the mutex, after unlinking. */
+/* Wait for queue publication or reservation completion without managed
+ * access. Capture the epoch before releasing NativeWorld to avoid losing a
+ * wakeup. The caller has withdrawn ALT registrations and will retry. */
+int dvm_runtime_channel_wait_change(void)
+{
+    NativeGuestWait wait;
+    uint64_t generation = native_guest_wait_begin(&wait, NULL, NULL, -1);
+    int released = dvm_runtime_gc_native_try_leave();
+
+    if (released > 0)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+        channel_buffer_waiters++;
+        while (!native_waits_stopping && !wait.cancelled && generation == channel_generation)
+        {
+            fvm_port_sync_wait(channel_queue_mutex);
+        }
+        channel_buffer_waiters--;
+        fvm_port_sync_unlock(channel_queue_mutex);
+        dvm_runtime_gc_native_enter(released);
+    }
+    return native_guest_wait_end(&wait, released < 0 ? -2 : released);
+}
+
+
+/* Wait for a monotonic duration on the native cancellation ledger. The
+ * scalar duration is private and all VM state stays in the saved frame. */
+int dvm_runtime_guest_sleep(unsigned long milliseconds)
+{
+    NativeGuestWait wait;
+    uint64_t started, now, elapsed;
+    int released, completed = milliseconds == 0;
+
+    native_guest_wait_begin(&wait, NULL, NULL, -1);
+    released = dvm_runtime_gc_native_try_leave();
+    if (released > 0)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+        if (milliseconds && dvm_host_clock_ms(&started))
+        {
+            now = started;
+            while (!native_waits_stopping && !wait.cancelled)
+            {
+                elapsed = now - started;
+                if (elapsed > milliseconds)
+                {
+                    completed = 1;
+                    break;
+                }
+                if (!fvm_port_sync_wait_ms(channel_queue_mutex, milliseconds - elapsed + 1) ||
+                    !dvm_host_clock_ms(&now))
+                {
+                    break;
+                }
+            }
+        }
+        fvm_port_sync_unlock(channel_queue_mutex);
+        dvm_runtime_gc_native_enter(released);
+    }
+    return native_guest_wait_end(&wait, released ? (completed ? 1 : -1) : 0);
+}
+
+
+/* Translate a guest wait result after its native continuation is restored.
+ * A cancelled wait has a distinct guest-visible exception. */
+void dvm_runtime_channel_require_wait(int outcome)
+{
+    if (outcome == -2)
+    {
+        error("channel wait needs an executor");
+    }
+    if (outcome < 0)
+    {
+        error("channel wait cancelled");
+    }
+    if (!outcome)
+    {
+        error("channel buffer transfer already active");
+    }
+}
+
+
+/* Advance readiness after queue publication or reservation removal, under the mutex. */
 void dvm_runtime_channel_buffer_notify(void)
 {
+    channel_generation++;
     if (channel_buffer_waiters)
     {
         fvm_port_sync_signal_all(channel_queue_mutex);
@@ -412,9 +955,44 @@ void dvm_runtime_channel_buffer_notify(void)
 }
 
 
+/* Notify selectors once a guest waiter is committed. Temporary ALT queue
+ * registrations are invisible to other selectors under NativeWorld. */
+void dvm_runtime_channel_waiter_published(void)
+{
+    if (!dvm_runtime_guarded_copies)
+    {
+        return;
+    }
+    fvm_port_sync_lock(channel_queue_mutex);
+    dvm_runtime_channel_buffer_notify();
+    fvm_port_sync_unlock(channel_queue_mutex);
+}
+
+
+/* Cancel native guest waits before joining workers. A suspended guest
+ * still reacquires NativeWorld and restores its continuation before unwind. */
+void dvm_runtime_cancel_native_waits(void)
+{
+    if (channel_queue_mutex)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+        native_waits_stopping = 1;
+        cancel_requests_open = 0;
+        cancel_request_count = 0;
+        for (NativeGuestWait *wait = native_guest_waits; wait; wait = wait->next)
+        {
+            cancel_guest_wait(wait);
+        }
+        fvm_port_sync_signal_all(channel_queue_mutex);
+        fvm_port_sync_unlock(channel_queue_mutex);
+    }
+}
+
+
 /* Create arena/mutex privately; VM allocation errors occur outside pool lock. */
 static void arena_init(void)
 {
+    native_waits_stopping = 0;
     channel_queue_mutex = fvm_port_sync_create();
     if (!channel_queue_mutex || !dvm_heap_pool_init(&memory, ARENA_BYTES))
     {
@@ -558,6 +1136,7 @@ Prog *newprog(Prog *parent, Modlink *module)
     }
     dvm_process_environment_init(process,parent);
     process->pid = ++nextpid;
+    ((DVM_RuntimeProcess *)process)->parent_pid = parent ? parent->pid : 0;
     process->quanta = scheduler_quantum;
     process->xec = xec;
     process->exval = H;
@@ -654,6 +1233,274 @@ void dvm_runtime_channel_wake(Prog *peer, char *cause)
     if (cause)
     {
         peer->kill = cause;
+    }
+}
+
+
+extern void dvm_runtime_alt_preflight(Alt *alt);
+
+
+/* Remove this guest's registrations under its completion claim. A pending
+ * exception survives cancellation; a detached waiter is made runnable once. */
+static int cancel_parked_channel_wait(void *argument)
+{
+    Prog *peer = argument;
+
+    if (peer->state == Palt)
+    {
+        dvm_runtime_alt_preflight(peer->R.s);
+        altdone(peer->R.s, peer, nil, -1);
+    }
+    else
+    {
+        Channel *channel = peer->chan;
+        Progq **queue;
+        Progq *entry;
+
+        if (!channel || channel == H)
+        {
+            error(exHeap);
+        }
+        queue = peer->state == Psend ? &channel->send : &channel->recv;
+        vmchanend(queue);
+        for (entry = *queue; entry && entry->prog != peer; entry = entry->next)
+        {
+        }
+        if (!entry)
+        {
+            error("channel waiter is missing its registration");
+        }
+        cqdelp(queue, peer);
+    }
+    dvm_runtime_channel_wake(peer, peer->kill ? nil : "channel wait cancelled");
+    return 1;
+}
+
+
+/* Claim one scheduler-owned blocked guest under the active managed turn. */
+static int cancel_parked_guest(Prog *peer)
+{
+    if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt) ||
+        ((DVM_RuntimeProcess *)peer)->channel_claimed || dvm_runqueue_dispatch_owner(peer))
+    {
+        return 0;
+    }
+    dvm_runtime_channel_with_claim(peer, cancel_parked_channel_wait, peer);
+    return 1;
+}
+
+
+static int cancel_child_exit_wait(Prog *process);
+
+
+/* Cancel a scheduler-managed wait by PID. The caller must
+ * own NativeWorld. An unbound, suspended, or already completed guest is left
+ * alone. The public entry checks the native ledger before this fallback. */
+static int cancel_scheduler_guest_wait(int pid)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats state;
+    Prog *peer;
+
+    if (pid <= 0 || !dvm_native_owner_world(owner) ||
+        !dvm_native_owner_statistics(owner, &state) || state.phase != DVM_HEAP_ACTIVE)
+    {
+        return 0;
+    }
+    for (peer = processes; peer && peer->pid != pid; peer = peer->next)
+    {
+    }
+    return peer && !dvm_runqueue_dispatch_owner(peer) &&
+        (cancel_parked_guest(peer) || dvm_bigtable_cancel_wait(peer) || cancel_child_exit_wait(peer));
+}
+
+
+/* Borrow a direct child while the caller owns the managed turn. */
+static Prog *find_child(Prog *caller, int pid)
+{
+    Prog *child;
+
+    for (child = processes; child && child->pid != pid; child = child->next)
+    {
+    }
+    return child && ((DVM_RuntimeProcess *)child)->parent_pid == caller->pid ? child : nil;
+}
+
+
+/* Authorize the hosted builtin against immutable spawning identity. */
+int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
+{
+    Prog *child = find_child(caller, pid);
+
+    if (!child)
+    {
+        return Processctl_Denied;
+    }
+    return cancel_parked_guest(child) || dvm_bigtable_cancel_wait(child) ||
+        cancel_child_exit_wait(child) || dvm_runtime_cancel_guest_wait(pid) ?
+        Processctl_Cancelled : Processctl_NotWaiting;
+}
+
+
+#define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Hosted scheduler state distinct from Bigtable waits. */
+
+
+/* Requeue an exiting parent without disturbing the child's exit request. */
+static int wake_child_exit_wait(Prog *process)
+{
+    if (process->state != DVM_CHILD_EXIT_WAIT)
+    {
+        return 0;
+    }
+    ((DVM_RuntimeProcess *)process)->exit_wait_pid = 0;
+    addrun(process);
+    return 1;
+}
+
+
+/* Remove a parent's interest without undoing the already requested exit. */
+static int detach_child_exit_wait(Prog *process)
+{
+    Prog *child;
+
+    if (process->state != DVM_CHILD_EXIT_WAIT)
+    {
+        return 0;
+    }
+    child = find_child(process, ((DVM_RuntimeProcess *)process)->exit_wait_pid);
+    if (child)
+    {
+        ((DVM_RuntimeProcess *)child)->exit_notify_parent = 0;
+    }
+    return wake_child_exit_wait(process);
+}
+
+
+/* Attribute cancellation to the original MCALL, whose PC was rewound
+ * before parking. The normal exception path owns prepared-frame cleanup. */
+static int cancel_child_exit_wait(Prog *process)
+{
+    if ((process->flags & Pkilled) || !detach_child_exit_wait(process))
+    {
+        return 0;
+    }
+    process->R.PC++;
+    if (!process->kill)
+    {
+        process->kill = "child exit wait cancelled";
+    }
+    return 1;
+}
+
+
+/* Return a blocked child to the scheduler for its ordinary exit turn. */
+static int wake_for_termination(Prog *child)
+{
+    return cancel_parked_guest(child) || dvm_bigtable_wake_for_exit(child) ||
+        detach_child_exit_wait(child);
+}
+
+
+/* Schedule termination for a runnable or supported blocked child. Never
+ * retire a native stack on a foreign worker. The child unwinds it first. */
+static int request_child_exit(Prog *child)
+{
+    if (!child)
+    {
+        return Processctl_Denied;
+    }
+    if (child->state == Prelease)
+    {
+        child->flags |= Pkilled;
+        dvm_runtime_cancel_guest_wait(child->pid);
+        return Processctl_Requested;
+    }
+    if (child->state == Pready || wake_for_termination(child))
+    {
+        child->flags |= Pkilled;
+        return Processctl_Requested;
+    }
+    return Processctl_NotWaiting;
+}
+
+
+/* Resolve the direct child under the caller's managed turn before requesting exit. */
+int dvm_runtime_kill_child(Prog *caller, int pid)
+{
+    return request_child_exit(find_child(caller, pid));
+}
+
+
+/* Request termination before committing MCALL. A successful request parks
+ * the parent on its prepared frame until the child's exit publishes completion. */
+int dvm_runtime_prepare_killwait(Prog *caller, int pid)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
+    Prog *child;
+
+    if (process->exit_ready_pid == pid)
+    {
+        return 1;
+    }
+    child = find_child(caller, pid);
+    if (request_child_exit(child) != Processctl_Requested)
+    {
+        return 1;
+    }
+    ((DVM_RuntimeProcess *)child)->exit_notify_parent = 1;
+    process->exit_wait_pid = pid;
+    DVM_R.PC--;
+    DVM_R.IC = 1;
+    DVM_R.t = 1;
+    delrun(DVM_CHILD_EXIT_WAIT);
+    return 0;
+}
+
+
+/* Match an exit completion by exact child identity, then consume it. */
+int dvm_runtime_killwait_result(Prog *caller, int pid)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
+
+    if (process->exit_ready_pid == pid)
+    {
+        process->exit_ready_pid = 0;
+        return Processctl_Retired;
+    }
+    return find_child(caller, pid) ? Processctl_NotWaiting : Processctl_Denied;
+}
+
+
+/* Publish retirement after stack, module and process storage are released.
+ * The numeric parent identity remains valid even if the parent already exited. */
+static void publish_child_exit(int parent_pid, int child_pid)
+{
+    Prog *parent;
+
+    if (!parent_pid)
+    {
+        return;
+    }
+    for (parent = processes; parent && parent->pid != parent_pid; parent = parent->next)
+    {
+    }
+    if (parent && parent->state == DVM_CHILD_EXIT_WAIT &&
+        ((DVM_RuntimeProcess *)parent)->exit_wait_pid == child_pid)
+    {
+        DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
+        process->exit_ready_pid = child_pid;
+        wake_child_exit_wait(parent);
+    }
+}
+
+
+/* End a requested guest only when its own instruction and native cleanup
+ * are complete. The process guard then takes the ordinary exit path. */
+void dvm_runtime_termination_checkpoint(Prog *process)
+{
+    if ((process->flags & Pkilled) && dvm_runqueue_head() == process)
+    {
+        error("");
     }
 }
 
@@ -1062,19 +1909,19 @@ int kopen(char *path, int mode)
 long kread(int fd, void *bytes, long size)
 {
     size_t received;
-    size_t ticket;
+    DVM_FileTicket ticket;
     FVM_Result status;
     if (fd < 0 || fd >= 32 || !files[fd] || size < 0)
     {
         return -1;
     }
-    ticket = dvm_file_gate_reserve(file_gates[fd]);
-    if (!dvm_file_gate_enter(file_gates[fd], ticket))
+    dvm_file_gate_reserve(file_gates[fd], &ticket);
+    if (!dvm_file_gate_enter_now(file_gates[fd], &ticket))
     {
         return -1;
     }
     status = fvm_port_file_read(files[fd], bytes, size, &received);
-    if (!dvm_file_gate_leave(file_gates[fd], ticket))
+    if (!dvm_file_gate_leave(file_gates[fd], &ticket))
     {
         fprintf(stderr, "disvm: loader file admission lost\n");
         exit(1);
@@ -1143,19 +1990,19 @@ Dir *kdirfstat(int fd)
 {
     Dir *metadata;
     size_t available;
-    size_t ticket;
+    DVM_FileTicket ticket;
     FVM_Result status;
     if (fd < 0 || fd >= 32 || !files[fd])
     {
         return nil;
     }
-    ticket = dvm_file_gate_reserve(file_gates[fd]);
-    if (!dvm_file_gate_enter(file_gates[fd], ticket))
+    dvm_file_gate_reserve(file_gates[fd], &ticket);
+    if (!dvm_file_gate_enter_now(file_gates[fd], &ticket))
     {
         return nil;
     }
     status = fvm_port_file_size(files[fd], &available);
-    if (!dvm_file_gate_leave(file_gates[fd], ticket))
+    if (!dvm_file_gate_leave(file_gates[fd], &ticket))
     {
         fprintf(stderr, "disvm: loader metadata admission lost\n");
         exit(1);
@@ -1269,6 +2116,10 @@ static int runtime_dispatch_turn(void)
     DVM_NativeContext *context = dvm_native_context_current();
     Prog *process;
     Prog **slot;
+    if (managed_workers == 0)
+    {
+        dispatch_guest_cancellations();
+    }
     if (!dvm_runqueue_head())
     {
         return 0;
@@ -1301,6 +2152,10 @@ static int runtime_dispatch_turn(void)
         process->R = DVM_R;
         dvm_native_context_set_process(context, nil);
         dvm_bigtable_abort(process);
+        if ((process->flags & Pkilled) && dvm_runqueue_head() == process)
+        {
+            owner_error()[0] = 0;
+        }
         if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error && handler(owner_error()))
         {
             owner_error()[0] = 0;
@@ -1351,12 +2206,24 @@ static int runtime_dispatch_turn(void)
         up->prog = nil;
         destroy(process->exval);
         free(process->exstr);
-        free(process);
-        live--;
+        {
+            DVM_RuntimeProcess *retired = (DVM_RuntimeProcess *)process;
+            int parent_pid = retired->exit_notify_parent ? retired->parent_pid : 0;
+            int child_pid = process->pid;
+            free(process);
+            live--;
+            publish_child_exit(parent_pid, child_pid);
+        }
     }
     else
     {
+        if (process->flags & Pkilled)
+        {
+            DVM_R = process->R;
+            dvm_runtime_termination_checkpoint(process);
+        }
         xec(process);
+        dvm_runtime_termination_checkpoint(process);
         if (!dvm_runqueue_finish(process))
         {
             error("cannot finish completed dispatch");
@@ -1365,6 +2232,10 @@ static int runtime_dispatch_turn(void)
         dvm_native_context_set_process(context, nil);
         up->prog = nil;
         poperror();
+        if ((process->flags & Pkilled) && dvm_runqueue_head() != process)
+        {
+            wake_for_termination(process);
+        }
         if (dvm_runqueue_head() == process)
         {
             addrun(delrun(Pready));
@@ -1419,6 +2290,7 @@ static int runtime_execute_inner(void *argument)
     loadermodinit();
     mathmodinit();
     dvm_bigtable_initialize();
+    dvm_processctl_initialize();
 #ifdef DVM_RUNTIME_COMPILER
     dvm_compiler_initialize();
 #endif
@@ -1450,7 +2322,8 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    if (managed_workers != 1 && !dvm_managed_workers_start(managed_workers ? managed_workers : 2, managed_workers == 0, managed_workers_limit, show_stats, runtime_dispatch_turn))
+    if (managed_workers != 1 && !dvm_managed_workers_start(managed_workers ? managed_workers : 2, managed_workers == 0, managed_workers_limit, show_stats, runtime_dispatch_turn,
+        dvm_runtime_cancel_native_waits))
     {
         error("cannot start managed executor");
     }
@@ -1458,6 +2331,9 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native close worker");
     }
+    fvm_port_sync_lock(channel_queue_mutex);
+    cancel_requests_open = managed_workers == 0 && !native_waits_stopping;
+    fvm_port_sync_unlock(channel_queue_mutex);
     while (dvm_runqueue_head() || (managed_workers != 1 && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
@@ -1470,12 +2346,17 @@ static int runtime_execute_inner(void *argument)
 #endif
         )
         {
+            dispatch_guest_cancellations();
+            if (dvm_runqueue_head())
+            {
+                continue;
+            }
             if (show_stats && !quiescent_reported)
             {
                 fprintf(stderr, "NATIVEPOOL_QUIESCENT processes=%d\n", live);
             }
             quiescent_reported = 1;
-            if (!dvm_managed_workers_park())
+            if (!dvm_managed_workers_park(guest_cancel_pending))
             {
                 error("automatic executor park failed");
             }
@@ -1544,9 +2425,26 @@ static int runtime_execute_inner(void *argument)
 static int runtime_execute(void *argument)
 {
     int result = runtime_execute_inner(argument);
+    dvm_runtime_cancel_native_waits();
     if (!dvm_managed_workers_stop(show_stats))
     {
         result = 1;
+    }
+    if (stdio_gates[1] == stdio_gates[2])
+    {
+        stdio_gates[2] = NULL;
+    }
+    for (int descriptor = 0; descriptor < 3; descriptor++)
+    {
+        if (!dvm_file_gate_destroy(stdio_gates[descriptor]))
+        {
+            fprintf(stderr, "disvm: standard pipe gate retains a native operation\n");
+            result = 1;
+        }
+        else
+        {
+            stdio_gates[descriptor] = NULL;
+        }
     }
     if (!dvm_runtime_gc_stop(show_stats))
     {
@@ -1566,10 +2464,24 @@ static int runtime_execute(void *argument)
 /* Parse options on main before publishing immutable launch arguments to an OS worker. */
 int main(int argc, char **argv)
 {
+    struct sigaction pipe_action = {0};
 #ifdef DVM_RUNTIME_EDITOR
     int threaded = 1;
     int threading_selected = 0;
 #endif
+    /* This executable handles broken pipes as I/O errors on every worker,
+     * including a reader disappearing between POLLOUT and splice. */
+    pipe_action.sa_handler = SIG_IGN;
+    sigemptyset(&pipe_action.sa_mask);
+    if (sigaction(SIGPIPE, &pipe_action, NULL))
+    {
+        perror("disvm: cannot configure broken-pipe handling");
+        return 1;
+    }
+    /* Native pipe writes bypass stdio buffering, so keep host diagnostics
+     * in stream order with guest output. */
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
     cflag = 1;
     while (argc > 1 && argv[1][0] == '-')
     {

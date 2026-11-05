@@ -27,8 +27,10 @@ int dvm_runtime_gc_detach(void);
 /* [GC:] Temporarily leave heap execution for an audited native callback whose
  * C locals contain no unregistered managed owners. Publishes the complete native
  * call REG/stack roots first. Returns one when released, zero in inline mode or
- * protected GC regions or retained synchronous Native64Caller holds. Protocol violations terminate before unsafe heap access. */
-int dvm_runtime_gc_native_leave(void);
+ * protected GC regions or retained synchronous Native64Caller holds. Returns
+ * -1 on pool resource refusal with ownership unchanged. Protocol violations
+ * terminate before unsafe heap access. */
+int dvm_runtime_gc_native_try_leave(void);
 
 /* [GC:] Reenter after the native operation, before touching any managed memory.
  * released is exactly the matching leave result. No nesting/migration is allowed. Pairing and epoch snapshots live in this

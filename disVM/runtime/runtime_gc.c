@@ -217,12 +217,13 @@ int dvm_runtime_gc_request(void)
  * opt-in boundary is not a general release() implementation: callers must have
  * no unmanaged C-stack ownership invisible to the collector. Protected regions
  * stay active. Returns zero when no release is needed, one after successful
- * leave. Violated pairing/root ownership is process-fatal, never silent success. */
-int dvm_runtime_gc_native_leave(void)
+ * leave, and -1 if no executor is available. Violated pairing/root ownership is process-fatal, never silent success. */
+int dvm_runtime_gc_native_try_leave(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
     Prog *process;
+    const char *refusal;
     if (!state.world)
     {
         return 0;
@@ -248,7 +249,11 @@ int dvm_runtime_gc_native_leave(void)
     {
         return 0;
     }
-    dvm_managed_workers_native_wait();
+    refusal = dvm_managed_workers_native_wait();
+    if (refusal)
+    {
+        return -1;
+    }
     if (process)
     {
         process->R = DVM_R;

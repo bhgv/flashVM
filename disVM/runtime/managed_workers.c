@@ -9,6 +9,7 @@
 #include "runtime_gc.h"
 #include "runqueue.h"
 #include <limits.h>
+#include <pthread.h>
 #include "channel_sync.h"
 #include "thread_port.h"
 #include <stdio.h>
@@ -55,6 +56,7 @@ typedef struct ManagedWorkers
     unsigned long retired_turns;  /* Counters accumulated from reaped helper slots. */
     unsigned long retired_releases; /* Audited releases accumulated after join. */
     unsigned long retired_reentries; /* Audited reentries accumulated after join. */
+    void (*cancel_waits)(void);    /* Native wakeup hook for a fatal worker failure. */
     int count;                    /* Requested executor count, including the controller. */
     unsigned long controller;     /* Successful controller turns. */
     unsigned long files;          /* Descriptor operations admitted through native per-slot FIFO. */
@@ -85,6 +87,7 @@ static void fail(const char *message)
     service.failed = 1;
     fvm_port_sync_signal_all(service.sync);
     fvm_port_sync_unlock(service.sync);
+    service.cancel_waits();
 }
 
 
@@ -102,7 +105,7 @@ static int leave_empty(void)
 /* Release an empty scheduler turn, join already terminated helpers without the
  * heap, then reclaim their native slots after reentry. Any rootless executor
  * can reap, including when the controller is blocked in native I/O. */
-static int yield_empty(int idle, int rendezvous)
+static int yield_empty(int idle, int rendezvous, int (*pending)(void))
 {
     ManagedWorker **slot = &service.helpers;
     ManagedWorker *finished = NULL;
@@ -114,6 +117,10 @@ static int yield_empty(int idle, int rendezvous)
     fvm_port_sync_lock(service.sync);
     generation = service.generation;
     fvm_port_sync_unlock(service.sync);
+    if (pending && pending())
+    {
+        return !stopping();
+    }
     wait_for_work = service.automatic && idle && !rendezvous && service.live == 1;
     while (*slot)
     {
@@ -203,13 +210,14 @@ static int yield_empty(int idle, int rendezvous)
  * No UI event pump runs here. Managed faults return through the same turn logic. */
 static void execute(void *argument)
 {
-    DVM_NativeContext *context = dvm_native_process_create(NULL);
+    int cancellation = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+    DVM_NativeContext *context = cancellation ? NULL : dvm_native_process_create(NULL);
     ManagedWorker *worker = argument;
     int attached = 0;
     unsigned int idle_turns = 0;
     if (!context || !dvm_native_context_bind(context))
     {
-        fail("cannot bind executor");
+        fail(cancellation ? "cannot disable executor thread cancellation" : "cannot bind executor");
         if (context)
         {
             dvm_native_context_destroy(context);
@@ -282,7 +290,7 @@ static void execute(void *argument)
                     break;
                 }
                 worker->handoffs++;
-                if (!yield_empty(!progress, 0))
+                if (!yield_empty(!progress, 0, NULL))
                 {
                     if (!stopping())
                     {
@@ -331,15 +339,14 @@ static int start_helper(void)
         return 0;
     }
     worker->id = service.created + 1;
-    worker->next = service.helpers;
-    service.helpers = worker;
     worker->thread = fvm_port_thread_start(execute, worker);
     if (!worker->thread)
     {
-        service.helpers = worker->next;
         free(worker);
         return 0;
     }
+    worker->next = service.helpers;
+    service.helpers = worker;
     service.created++;
     service.live++;
     if (service.live + 1 > service.peak)
@@ -353,13 +360,15 @@ static int start_helper(void)
 /* Publish the service before creating count-1 helpers. automatic enables native
  * wait compensation and idle retirement; limit zero uses available OS resources.
  * diagnostics controls copied lifecycle evidence. turn is the shared dispatcher.
+ * cancel_waits wakes suspended native operations after fatal failure.
  * All partial startup threads join before failure returns to the caller. */
-int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics, int (*turn)(void))
+int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
+    int (*turn)(void), void (*cancel_waits)(void))
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
     int index;
-    if (count < 2 || !turn || service.sync || !context || !up || up->prog ||
+    if (count < 2 || !turn || !cancel_waits || service.sync || !context || !up || up->prog ||
         (limit && (unsigned long)count > limit) ||
         dvm_native_context_process(context) || dvm_native_context_turn(context) ||
         !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
@@ -371,6 +380,7 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     memset(&service, 0, sizeof(service));
     service.sync = fvm_port_sync_create();
     service.turn = turn;
+    service.cancel_waits = cancel_waits;
     service.world = dvm_native_owner_world(dvm_native_owner_current());
     service.awaiting_start = 1;
     service.count = count;
@@ -395,8 +405,8 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
 }
 
 
-/* Publish newly runnable work while the heap is excluded. No managed pointer
- * crosses this signal; generation makes a wake preceding native wait visible. */
+/* Advance the wake generation. The caller guarantees the service stays
+ * live through this signal; no managed pointer crosses it. */
 void dvm_managed_workers_wake(void)
 {
     if (service.sync)
@@ -440,44 +450,44 @@ int dvm_managed_workers_returning(int arriving)
 
 /* Before an audited native wait, retain an executor for other ready work.
  * Caller is ACTIVE and has not withdrawn its current Prog yet. Never grow for
- * channel suspension or protected C stacks. Growth refusal is an explicit fatal
- * resource error; the VM must not silently park its final available executor. */
-void dvm_managed_workers_native_wait(void)
+ * protected C stacks. Return a stable diagnostic on resource refusal. The
+ * caller decides how to unwind before it withdraws its current Prog. */
+const char *dvm_managed_workers_native_wait(void)
 {
     Prog *head;
     unsigned long returning;
     if (!service.sync || !service.automatic || stopping())
     {
-        return;
+        return NULL;
     }
     head = dvm_runqueue_head();
     if (!head || !head->link || dvm_runqueue_inflight() + 1 < service.live + 1)
     {
-        return;
+        return NULL;
     }
     fvm_port_sync_lock(service.sync);
     returning = service.returning;
     fvm_port_sync_unlock(service.sync);
     if (returning)
     {
-        return;
+        return NULL;
     }
     if (service.limit && service.live + 1 >= service.limit)
     {
         fprintf(stderr, "disvm: automatic executor resource limit=%lu reached\n", service.limit);
-        exit(1);
+        return "automatic executor resource limit reached";
     }
     if (!start_helper())
     {
         fprintf(stderr, "disvm: automatic executor OS thread or native allocation failure\n");
-        exit(1);
+        return "automatic executor OS thread or native allocation failure";
     }
     if (service.diagnostics)
     {
         fprintf(stderr, "NATIVEPOOL_GROW executors=%lu created=%lu\n", service.live + 1, service.created);
     }
+    return NULL;
 }
-
 
 /* Trace a committed withdrawal under heap exclusion, only in automatic stats
  * mode. No scheduling or ownership change; records distinguish repeated waves. */
@@ -493,15 +503,15 @@ void dvm_managed_workers_native_suspended(void)
 /* Yield an empty controller interval; ready tasks stay in the shared FIFO. */
 int dvm_managed_workers_yield(int idle)
 {
-    return !service.sync || yield_empty(idle, 1);
+    return !service.sync || yield_empty(idle, 1, NULL);
 }
 
 
 /* Park a rootless non-UI controller when only logical channel waiters remain.
  * Work/retirement generations and stop signals wake it without polling frames. */
-int dvm_managed_workers_park(void)
+int dvm_managed_workers_park(int (*pending)(void))
 {
-    return !service.sync || yield_empty(1, 0);
+    return !service.sync || yield_empty(1, 0, pending);
 }
 
 

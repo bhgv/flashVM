@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+extern FVM_Result dvm_runtime_read_stdin(void *bytes, size_t capacity, size_t *received);
+
+
 #define READ_STAGE_BYTES 65536U /* Maximum native staging allocation per builtin call. */
 
 
@@ -111,7 +114,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         size_t fragment = (size_t)(extent-result);
         FVM_Result status;
         int released;
-        size_t ticket;
+        DVM_FileTicket ticket;
         DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
         if (fragment > capacity)
         {
@@ -123,27 +126,30 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         {
             dvm_managed_workers_file_call();
         }
-        ticket = dvm_file_gate_reserve(gate);
-        released = dvm_runtime_gc_native_leave();
-        if (!dvm_file_gate_enter(gate, ticket))
-        {
-            fprintf(stderr, "disvm: cannot admit native file operation\n");
-            exit(1);
-        }
         if (descriptor == 0)
         {
-            status = fvm_port_stdio_read(0,stage,fragment,&received);
+            status = dvm_runtime_read_stdin(stage, fragment, &received);
         }
         else
         {
-            status = fvm_port_file_read(file,stage,fragment,&received);
+            released = dvm_file_gate_try_release(gate, &ticket);
+            if (released < 0)
+            {
+                kwerrstr(released == -2 ? "native input cancelled" : "native input needs an executor");
+                if (!result)
+                {
+                    result = -1;
+                }
+                break;
+            }
+            status = fvm_port_file_read(file, stage, fragment, &received);
+            if (!dvm_file_gate_leave(gate, &ticket))
+            {
+                fprintf(stderr, "disvm: native file admission lost\n");
+                exit(1);
+            }
+            dvm_runtime_gc_native_enter(released);
         }
-        if (!dvm_file_gate_leave(gate, ticket))
-        {
-            fprintf(stderr, "disvm: native file admission lost\n");
-            exit(1);
-        }
-        dvm_runtime_gc_native_enter(released);
         fragments++;
         if (status != FVM_OK)
         {

@@ -2,7 +2,10 @@
  * File: ports/android/channel_sync.c.
  */
 
+#define _POSIX_C_SOURCE 200809L
 #include "../channel_sync.h"
+#include <errno.h>
+#include <time.h>
 #include <pthread.h>
 #include <stdlib.h>
 
@@ -18,6 +21,8 @@ struct FVM_PortSync
 /* Create port sync. */
 FVM_PortSync *fvm_port_sync_create(void)
 {
+    pthread_condattr_t attributes;
+    int status;
     FVM_PortSync *s = (FVM_PortSync *)malloc(sizeof(*s));
     if (!s)
     {
@@ -28,7 +33,19 @@ FVM_PortSync *fvm_port_sync_create(void)
         free(s);
         return 0;
     }
-    if (pthread_cond_init(&s->condition, 0))
+    if (pthread_condattr_init(&attributes))
+    {
+        pthread_mutex_destroy(&s->mutex);
+        free(s);
+        return 0;
+    }
+    status = pthread_condattr_setclock(&attributes, CLOCK_MONOTONIC);
+    if (!status)
+    {
+        status = pthread_cond_init(&s->condition, &attributes);
+    }
+    pthread_condattr_destroy(&attributes);
+    if (status)
     {
         pthread_mutex_destroy(&s->mutex);
         free(s);
@@ -67,6 +84,28 @@ void fvm_port_sync_unlock(FVM_PortSync *s)
 void fvm_port_sync_wait(FVM_PortSync *s)
 {
     pthread_cond_wait(&s->condition, &s->mutex);
+}
+
+
+/* Wait with the mutex held; the platform returns it on wake or timeout. */
+int fvm_port_sync_wait_ms(FVM_PortSync *s, unsigned long milliseconds)
+{
+    struct timespec deadline;
+    int status;
+
+    if (clock_gettime(CLOCK_MONOTONIC, &deadline))
+    {
+        return 0;
+    }
+    deadline.tv_sec += milliseconds / 1000;
+    deadline.tv_nsec += (milliseconds % 1000) * 1000000;
+    if (deadline.tv_nsec >= 1000000000)
+    {
+        deadline.tv_sec++;
+        deadline.tv_nsec -= 1000000000;
+    }
+    status = pthread_cond_timedwait(&s->condition, &s->mutex, &deadline);
+    return !status || status == ETIMEDOUT;
 }
 
 

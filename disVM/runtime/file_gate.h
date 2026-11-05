@@ -11,23 +11,43 @@ typedef struct DVM_FileGate DVM_FileGate; /* Owned native gate, lifetime follows
 DVM_FileGate *dvm_file_gate_create(void);
 
 
-/* Reserve the next operation under ACTIVE heap ownership, before native release.
- * gate is borrowed through the operation by a rooted FD or private loader slot.
- * Returns a native FIFO ticket. NULL denotes stdio/no gate and returns zero. */
-size_t dvm_file_gate_reserve(DVM_FileGate *gate);
+/* Caller-owned record, kept live from reservation through admission and
+ * completion or cancellation. Fields are private to the gate. */
+typedef struct DVM_FileTicket
+{
+    DVM_FileGate *gate; /* Owning gate while queued. */
+    struct DVM_FileTicket *previous; /* Earlier ticket, or NULL at the head. */
+    struct DVM_FileTicket *next; /* Later ticket, or NULL at the tail. */
+} DVM_FileTicket;
 
 
-/* Wait outside heap ownership for the reserved ticket, then admit one native
- * operation. gate/ticket must match reserve; NULL is a no-op. No managed access,
- * allocation or throwing occurs. Return zero without a bound native context,
- * one after admission. The internal mutex is NOT held during I/O. */
-int dvm_file_gate_enter(DVM_FileGate *gate, size_t ticket);
+/* Append a ticket while ACTIVE, preserving dispatch order. NULL is stdio. */
+void dvm_file_gate_reserve(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
-/* Complete exactly the admitted operation BEFORE managed reentry. Return one
- * on success (also for NULL); zero refuses wrong ownership without advancing.
- * Only the admitted caller may finish; no managed access/allocation/throw. */
-int dvm_file_gate_leave(DVM_FileGate *gate, size_t ticket);
+/* Remove a queued ticket, including a non-head ticket. Return zero for an
+ * admitted, completed, or foreign ticket. No heap ownership is needed. */
+int dvm_file_gate_cancel(DVM_FileGate *gate, DVM_FileTicket *ticket);
+
+
+/* Reserve, release the heap if allowed, and admit in FIFO order.
+ * Return -1 on resource refusal or -2 on cancellation, with the heap restored. */
+int dvm_file_gate_try_release(DVM_FileGate *gate, DVM_FileTicket *ticket);
+
+
+/* Wait outside heap ownership for admission. Return zero for cancellation
+ * or invalid ownership. The mutex is released before I/O. */
+int dvm_file_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket);
+
+
+/* Admit without waiting. A contended reservation is removed atomically.
+ * Requires a bound owner. Return one on admission or zero on refusal. */
+int dvm_file_gate_enter_now(DVM_FileGate *gate, DVM_FileTicket *ticket);
+
+
+/* Complete the admitted ticket before heap reentry. Return zero for an
+ * invalid ticket or owner. NULL gate succeeds for stdio. */
+int dvm_file_gate_leave(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
 /* Destroy only an empty gate after its file becomes unreachable. Return zero

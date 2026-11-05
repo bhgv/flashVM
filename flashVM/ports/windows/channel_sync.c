@@ -60,6 +60,16 @@ void fvm_port_sync_wait(FVM_PortSync *s)
 }
 
 
+/* Wait with the mutex held; the platform returns it on wake or timeout. */
+int fvm_port_sync_wait_ms(FVM_PortSync *s, unsigned long milliseconds)
+{
+    DWORD timeout = milliseconds < INFINITE ? (DWORD)milliseconds : INFINITE - 1;
+
+    return SleepConditionVariableCS(&s->condition, &s->mutex, timeout) ||
+        GetLastError() == ERROR_TIMEOUT;
+}
+
+
 /* Notify port sync all. */
 void fvm_port_sync_signal_all(FVM_PortSync *s)
 {

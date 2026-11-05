@@ -10,6 +10,9 @@
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
+extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
+    size_t capacity, size_t *written, int *released);
+
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -48,7 +51,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     FVM_Result status;
     WORD result = 0;
     int released;
-    size_t ticket;
+    DVM_FileTicket ticket;
     DVM_FileGate *gate;
     volatile int fd_pinned = 0;
     volatile int buffer_pinned = 0;
@@ -75,13 +78,13 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         {
             return 0;
         }
-        ticket = dvm_file_gate_reserve(gate);
-        if (!dvm_file_gate_enter(gate, ticket))
+        dvm_file_gate_reserve(gate, &ticket);
+        if (!dvm_file_gate_enter_now(gate, &ticket))
         {
             return -1;
         }
         status = fvm_port_file_write(file, NULL, 0);
-        if (!dvm_file_gate_leave(gate, ticket))
+        if (!dvm_file_gate_leave(gate, &ticket))
         {
             fprintf(stderr, "disvm: zero-write file admission lost\n");
             exit(1);
@@ -130,31 +133,31 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     {
         dvm_managed_workers_file_call();
     }
-    ticket = dvm_file_gate_reserve(gate);
-    released = dvm_runtime_gc_native_leave();
-    if (!dvm_file_gate_enter(gate, ticket))
-    {
-        fprintf(stderr, "disvm: cannot admit native file operation\n");
-        exit(1);
-    }
     if (descriptor == 1 || descriptor == 2)
     {
-        status = fvm_port_stdio_write(descriptor,stage,capacity,&written);
+        status = dvm_runtime_write_stdio(descriptor, stage, capacity, &written, &released);
     }
     else
     {
-        status = fvm_port_file_write(file,stage,capacity);
+        released = dvm_file_gate_try_release(gate, &ticket);
+        if (released < 0)
+        {
+            kwerrstr(released == -2 ? "native output cancelled" : "native output needs an executor");
+            result = -1;
+            goto finish;
+        }
+        status = fvm_port_file_write(file, stage, capacity);
         if (status == FVM_OK)
         {
             written = capacity;
         }
+        if (!dvm_file_gate_leave(gate, &ticket))
+        {
+            fprintf(stderr, "disvm: native file admission lost\n");
+            exit(1);
+        }
+        dvm_runtime_gc_native_enter(released);
     }
-    if (!dvm_file_gate_leave(gate, ticket))
-    {
-        fprintf(stderr, "disvm: native file admission lost\n");
-        exit(1);
-    }
-    dvm_runtime_gc_native_enter(released);
     fragments++;
     if (status != FVM_OK)
     {
@@ -170,6 +173,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         result = (WORD)written;
         copied += (unsigned long)written;
     }
+finish:
     ptrdel(D2H(bytes));
     ptrdel(D2H(fd));
     pinned -= 2;

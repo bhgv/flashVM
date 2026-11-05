@@ -14,12 +14,12 @@ def main():
     runtime = Path(__file__).resolve().parent
     source = (runtime / 'file_gate.c').read_text()
     controls = [
-        ('fifo', '    while (ticket != gate->serving || gate->busy)\n    {\n'
+        ('fifo', '    while (ticket->gate == gate && (ticket != gate->head || gate->busy))\n    {\n'
          '        fvm_port_sync_wait(gate->sync);\n    }', '',
          'FIFO file admission order violated'),
         ('owner', ' || gate->owner != dvm_native_context_current()', '',
          'foreign file completion accepted'),
-        ('lifetime', 'gate->busy || gate->next != gate->serving', '0',
+        ('lifetime', 'gate->busy || gate->pending', '0',
          'busy file gate retired'),
     ]
     with tempfile.TemporaryDirectory(prefix='native file FIFO ') as directory:

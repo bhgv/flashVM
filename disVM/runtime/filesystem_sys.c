@@ -9,7 +9,6 @@
 #include "raise.h"
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
-#include "file_gate.h"
 #include "sys_capture.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -250,8 +249,6 @@ void Sys_dirread(void *frame)
     F_Sys_dirread *call = &local;
     FVM_PortDirectory *directory;
     DvmDirectoryBuild build;
-    DVM_FileGate *gate;
-    size_t ticket;
     FVM_Result native_status;
     WORD status = 0;
     int descriptor;
@@ -264,13 +261,17 @@ void Sys_dirread(void *frame)
         kwerrstr("dirread requires a live directory");
         return;
     }
-    gate = dvm_runtime_file_gate(descriptor);
     build.result = call->ret;
     build.entries = nil;
     build.count = 0;
-    /* Native batch storage contains no VM pointers. Publication stays ACTIVE;
-     * the mapped FD is pinned by the adapter through its queued native wait. */
-    native_status = dvm_metadata_directory_read(call->fd, descriptor, &build.entries, &build.count);
+    if (waserror())
+    {
+        clear_directory_array(call->ret);
+        nexterror();
+    }
+    native_status = dvm_metadata_directory_read(call->fd, descriptor, &build.entries,
+        &build.count, build_directory_array, &build);
+    poperror();
     if (native_status != FVM_OK)
     {
         kwerrstr("directory read failed");
@@ -279,26 +280,5 @@ void Sys_dirread(void *frame)
     if (!build.count)
     {
         memmove(call->ret, &status, sizeof(status));
-        fvm_port_directory_entries_free(build.entries);
-        return;
     }
-    if (!kprotect(build_directory_array, &build))
-    {
-        clear_directory_array(call->ret);
-        ticket = dvm_file_gate_reserve(gate);
-        if (!dvm_file_gate_enter(gate, ticket))
-        {
-            fprintf(stderr, "disvm: cannot admit directory abort\n");
-            exit(1);
-        }
-        fvm_port_directory_abort(directory);
-        if (!dvm_file_gate_leave(gate, ticket))
-        {
-            fprintf(stderr, "disvm: directory abort admission lost\n");
-            exit(1);
-        }
-        fvm_port_directory_entries_free(build.entries);
-        krethrow();
-    }
-    fvm_port_directory_entries_free(build.entries);
 }

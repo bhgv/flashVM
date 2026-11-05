@@ -13,7 +13,7 @@ from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
 from prepare_record_new import adapt as adapt_record_new, adapt_leaf as adapt_record_leaf
-from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_channel_finalizer, adapt_queue_holds, adapt_buffer_reservation
+from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_alt_reservations, adapt_channel_finalizer, adapt_queue_holds, adapt_buffer_reservation
 from prepare_mapped_cons import adapt as adapt_mapped_cons
 from prepare_raw_cons import adapt as adapt_raw_cons
 from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
@@ -137,15 +137,16 @@ def main():
             raise ValueError("native module tutorial requires our Coco/R limbo_bindings")
         subprocess.run([str(args.native_bindings), "--format", "native-c-nc64", str(args.native_demo),
                         str(args.output / "nativedemo_native.h")], check=True)
-    # Generate the hosted-only table ABI from the same native-cell compiler.
-    table_interface = Path(__file__).resolve().parents[1] / "module/bigtable.m"
-    table = subprocess.check_output(
-        [args.compiler, "-a", "-t", "Bigtable", str(table_interface)], text=True
-    )
-    table_at = table.index(marker)
-    with (args.output / "runt.h").open("a") as declarations:
-        declarations.write(table[:table_at])
-    (args.output / "bigtablemod.h").write_text(table[table_at:])
+    # Generate hosted-only scalar and table declarations for the native cell model.
+    for module in ("Bigtable", "Processctl"):
+        interface = Path(__file__).resolve().parents[1] / f"module/{module.lower()}.m"
+        generated = subprocess.check_output(
+            [args.compiler, "-a", "-t", module, str(interface)], text=True
+        )
+        table_at = generated.index(marker)
+        with (args.output / "runt.h").open("a") as declarations:
+            declarations.write(generated[:table_at])
+        (args.output / f"{module.lower()}mod.h").write_text(generated[table_at:])
     math = subprocess.check_output(
         [args.compiler, "-a", "-t", "Math", str(Path(args.sys).with_name("math.m"))], text=True
     )
@@ -280,14 +281,17 @@ def main():
     link_path.write_text(adapt_link(link_path.read_text()))
     path = args.output / "xec.c"
     code = path.read_text()
-    code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include "table_leases.h"')
+    code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include "table_leases.h"\n'
+        'extern void Processctl_killwait(void *frame);\n'
+        'extern int dvm_processctl_call_ready(void *frame);')
     start = code.index('OP(mcall)')
     stop = code.index('\nOP(', start + len('OP(mcall)'))
     body = code[start:stop]
     body = relative_replace(body,
         '\tmemmove((uchar*)f+offsetof(Frame, lr), &DVM_R.PC, sizeof(f->lr));',
         '\t/* Host lease gate runs before call-frame/module publication. */\n'
-        '\tif(program == nil && !dvm_bigtable_call_ready(entry.u.runt, f)){\n'
+        '\tif(program == nil && (!dvm_bigtable_call_ready(entry.u.runt, f) ||\n'
+        '\t   (entry.u.runt == Processctl_killwait && !dvm_processctl_call_ready(f)))){\n'
         '\t\treturn;\n'
         '\t}\n'
         '\tmemmove((uchar*)f+offsetof(Frame, lr), &DVM_R.PC, sizeof(f->lr));')
@@ -313,6 +317,15 @@ def main():
         "\t\t}\n"
     )
     code = code.replace(boundary, dispatch + boundary, 1)
+    termination = "executed:\n\t\tif(!vmyield())"
+    if code.count(termination) != 1:
+        raise ValueError("managed termination boundary drift")
+    code = code.replace(termination,
+        "executed:\n\t\tif(p->flags & Pkilled)\n"
+        "\t\t\tdvm_runtime_termination_checkpoint(p);\n\t\tif(!vmyield())", 1)
+    code = code.replace(
+        '#include "interp.h"', '#include "interp.h"\n'
+        'extern void dvm_runtime_termination_checkpoint(Prog *process);', 1)
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()
     for operation in ("icase", "casel", "igoto"):
@@ -345,7 +358,7 @@ def main():
         "\tif(sends < 0 || receives < 0 || sends > 0x7fffffff || receives > 0x7fffffff) return 0;\n"
         "\t*nsend = sends;\n\t*nrecv = receives;",
     )
-    path.write_text(adapt_alt_preflight(adapt_alt_completion(code)))
+    path.write_text(adapt_alt_reservations(adapt_alt_preflight(adapt_alt_completion(code))))
 
     pointer_path = args.output / "xec.c"
     hosted = pointer_path.read_text()
