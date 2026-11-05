@@ -60,8 +60,8 @@ Checked LEA owns destination binding. It derives a runtime Ref64 from the
 validated caller-owned result span and publishes it to the prepared callee
 result-address cell (Frame64 byte 32 in the current native representation).
 MFRAME and MCALL establish and consume the matching frame and import.
-The address is transient and has no managed map bit. Exact imported
-operand encoding, feature negotiation and file admission remain open.
+The address is transient and has no managed map bit. Imported provider
+resolution, feature negotiation and file admission remain open.
 Inferno's native binding fixture tests its own frame provenance independently.
 A Linux x64 strict-UBSan replay of Inferno `9f4edc3` passed four C/JIT
 stack modes for the clock call, return and error-unwind runs over 48 GC
@@ -73,15 +73,21 @@ the private clock pilot. Its fixture stores the prepared frame at caller
 byte 40 and takes the address of caller byte 72 in an 80-byte frame,
 placing it at callee byte 32. This matches the FlashVM local convention
 for the reserved final eight-byte result slot and the result address
-in the prepared frame. For the FlashVM imported producer, the current
-candidate is to reuse that indirect LEA addressing form and check both
-the caller result span and the prepared frame before publishing the Ref64.
+in the prepared frame. FlashVM intends to reuse that indirect LEA
+addressing form for imported scalar results and check the caller span
+and prepared frame before publishing the Ref64.
 The Inferno console pilot supplies its provider out of band. FlashVM's
 candidate includes checked provider resolution, so the two complete
 instruction streams are distinct. On Linux x64, the strict-UBSan
 replay of this revision ran the serialized clock image in four C/JIT
 stack modes and passed both 48-epoch provider runs and eight refusal cases.
 
+[INFERNO-0154](https://github.com/bhgv/Inferno-OS-bhgv/commit/aa326cf8efc5c991a280c4816b1273357ffb4877)
+reuses the same slot across successive calls and copies each Int32 out
+with MOVW after return and before the next MFRAME. The strict-UBSan
+Linux x64 replay passed the serialized two-call image in all four
+C/JIT stack modes, both provider paths over 48 GC epochs each and
+eight refusal cases.
 
 ## Inputs and trust
 

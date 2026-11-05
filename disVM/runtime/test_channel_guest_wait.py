@@ -1484,7 +1484,7 @@ PROCESS_KILLWAIT_TABLE_GUEST = PROCESS_KILL_TABLE_GUEST.replace(
 ).replace("PASS guest process termination", "PASS guest child retirement")
 
 
-KILLWAIT_CANCEL_GUEST = r'''implement ChannelWait;
+KILLWAIT_CHILDREN = r'''implement ChannelWait;
 include "sys.m";
 include "processctl.m";
 ChannelWait: module { init: fn(); };
@@ -1520,6 +1520,9 @@ parent(fd: ref Sys->FD, ids, reports: chan of int)
     reports <-= 2;
 }
 
+'''
+
+KILLWAIT_CANCEL_GUEST = KILLWAIT_CHILDREN + r'''
 init()
 {
     sys := load Sys Sys->PATH;
@@ -1552,6 +1555,43 @@ ALT_DEFAULT_GUEST = ALT_READY_GUEST.replace(
     '        available <-= 31 => {}\n        messages <-= 31 => raise "busy guard selected";',
     '        messages <-= 31 => raise "busy guard selected";\n        * => available <-= 31;',
 )
+
+
+KILLWAIT_NESTED_GUEST = KILLWAIT_CHILDREN + r'''release_write(done: chan of int)
+{
+    second := chan[42] of int;
+    if (second == nil)
+        raise "missing second killwait";
+    done <-= 1;
+}
+
+init()
+{
+    sys := load Sys Sys->PATH;
+    control := load Processctl Processctl->PATH;
+    mode := chan[40] of int;
+    ids := chan of int;
+    reports := chan[1] of int;
+    done := chan of int;
+    fd := sys->create("killwait-nested.bin", Sys->OWRITE, 8r666);
+    if (mode == nil || fd == nil)
+        raise "missing nested exit setup";
+    spawn parent(fd, ids, reports);
+    target := <-ids;
+    first := chan[41] of int;
+    if (first == nil)
+        raise "missing first killwait";
+    spawn release_write(done);
+    if (control->killwait(target) != Processctl->Retired || <-done != 1)
+        raise "parked parent was not retired";
+    alt {
+        <-reports => raise "terminated guest resumed its own Limbo code";
+        * => {}
+    }
+    sys->print("PASS guest child retirement\n");
+}
+'''
+
 
 
 def main():
@@ -1601,13 +1641,14 @@ def main():
                             ("killwait-ready", killwait_guest(PROCESS_KILL_READY_GUEST)),
                             ("killwait-table", PROCESS_KILLWAIT_TABLE_GUEST),
                             ("killwait-inline", killwait_guest(PROCESS_KILL_READY_GUEST)),
-                            ("killwait-cancel", KILLWAIT_CANCEL_GUEST)):
+                            ("killwait-cancel", KILLWAIT_CANCEL_GUEST),
+                            ("killwait-nested", KILLWAIT_NESTED_GUEST)):
             source, image = work / f"{name}.b", work / f"{name}.dis"
             source.write_text(guest)
             subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
                             "-o", image, source], check=True)
             for mode in ("--no-jit", "--jit"):
-                workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel") else "2"
+                workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel", "killwait-nested") else "2"
                 options = ["--managed-workers", workers]
                 if name.startswith("host-"):
                     options = ["--managed-workers", "auto", "--stats"]
@@ -1699,7 +1740,7 @@ def main():
                 if name.startswith("sleep-"):
                     marker = "PASS cancelled native sleep"
                 if name.startswith("killwait-"):
-                    if name == "killwait-cancel" and (work / "killwait-cancel.bin").read_bytes() != b"a":
+                    if name in ("killwait-cancel", "killwait-nested") and (work / f"{name}.bin").read_bytes() != b"a":
                         raise RuntimeError(f"{name} {mode} lost admitted child output")
                     if (result.returncode or output.count("PASS guest child retirement") != 1
                             or (name.endswith("native") and output.count("PASS cancelled native sleep") != 1)
