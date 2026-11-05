@@ -160,6 +160,7 @@ int main(void)
         "corrupt FIFO consumed native return reservation");
     nodes[DVM_RUNTIME_PROCESS_MAX-1].process.link = NULL;
     check(dvm_runqueue_resume(process),"original owner restore");
+    check(dvm_runqueue_contains(process) == 1, "native return accounting diverged");
     check(!dvm_runqueue_resume(process),"duplicate native restore accepted");
     check(dvm_runqueue_dispatch_owner(process) == context && dvm_runqueue_finish(process),
         "native reentry lost managed dispatch claim");

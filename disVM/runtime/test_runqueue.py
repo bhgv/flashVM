@@ -30,6 +30,8 @@ def main():
         subprocess.run([command[-1]],check=True,timeout=30)
         source = (runtime/"runqueue.c").read_text()
         controls = [
+            ("    returns++;", "    /* private control: omit return accounting */",
+             "native return accounting diverged"),
             ("return !process || !process->native64holds;", "(void)process; return 1;",
              "synchronous Native64Caller hold was promoted to resumable"),
             ("runtime_process(process)->native_owner != context ||\n        runtime_process(process)->dispatch_owner != context ||", "",
@@ -76,7 +78,7 @@ def main():
             result = subprocess.run([altered_command[-1]],capture_output=True,text=True,timeout=30)
             if result.returncode != 1 or marker not in result.stderr:
                 raise RuntimeError("inactive ownership control: "+marker+"\n"+result.stdout+result.stderr)
-    print("PASS nine active ownership controls: synchronous hold, foreign restore/claim/finish, "
+    print("PASS ten active ownership controls: return accounting, synchronous hold, foreign restore/claim/finish, "
           "duplicate admission, reserved return slot, missing withdrawal, nested cleared-root turn, early unbind")
 
 

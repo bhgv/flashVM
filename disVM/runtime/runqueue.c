@@ -26,9 +26,14 @@ static int trace_waits;        /* Immutable opt-in diagnostics, enabled before t
 
 /* Check the FIFO endpoints under the caller's exclusive heap turn.
  * A full traversal is reserved for diagnostics. Return zero on inconsistent
- * endpoint/count state before a mutating entry changes links or ownership. */
+ * endpoint/count or continuation accounting before a mutation. */
 static int endpoints_valid(void)
 {
+    if (count + inflight > DVM_RUNTIME_PROCESS_MAX || inflight > active ||
+        leases - returns != inflight || claims - finishes != active)
+    {
+        return 0;
+    }
     if (!count)
     {
         return !head && !tail;
@@ -196,6 +201,10 @@ int dvm_runqueue_contains(Prog *process)
     Prog *last = NULL;
     unsigned int seen = 0;
     int found = 0;
+    if (!endpoints_valid())
+    {
+        return -1;
+    }
     for (cursor = head; cursor; cursor = cursor->link)
     {
         if (++seen > count || cursor->state != Pready || !runtime_process(cursor)->queued ||
