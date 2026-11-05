@@ -36,4 +36,9 @@ const char *dvm_runtime_bytes_snapshot_attempt(const void *source, void *snapsho
 const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t first_size,
     void *first_snapshot, const void *second, size_t second_size, void *second_snapshot,
     DVM_CellResult *claim);
+
+
+/* Address-only publication for an armed pre-effect instruction. BUSY may
+ * schedule a replay without writing destination. */
+const char *dvm_runtime_bytes_publish_opcode(int opcode, const void *snapshot, void *destination, size_t size);
 #endif

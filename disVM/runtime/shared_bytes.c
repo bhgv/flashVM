@@ -175,10 +175,11 @@ const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t fi
 }
 
 /* Publish caller-private bytes under the destination guard only. */
-const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size)
+static const char *publish_attempt(const void *snapshot, void *destination, size_t size, DVM_CellResult *claim)
 {
     DVM_RangeAccess access = {0};
 
+    *claim = DVM_CELL_REFUSED;
     if (!size)
     {
         return NULL;
@@ -187,7 +188,8 @@ const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, s
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(NULL, 0, destination, size, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_ranges_begin(NULL, 0, destination, size, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -197,4 +199,24 @@ const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, s
         abort();
     }
     return NULL;
+}
+
+
+/* Publish a private scalar after evaluation. Preserve diagnostics on refusal. */
+const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size)
+{
+    DVM_CellResult claim;
+
+    return publish_attempt(snapshot, destination, size, &claim);
+}
+
+
+/* Publish a private address; retry only if the matching decoded instruction
+ * has no earlier side effects and the destination acquisition was busy. */
+const char *dvm_runtime_bytes_publish_opcode(int opcode, const void *snapshot, void *destination, size_t size)
+{
+    DVM_CellResult claim;
+    const char *problem = publish_attempt(snapshot, destination, size, &claim);
+
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
 }

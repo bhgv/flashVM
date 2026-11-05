@@ -70,7 +70,7 @@ static __thread int active; /* Only the serialized fixture controller observes h
 static __thread unsigned long allocations; /* Native allocation/free calls inside LENA. */
 static __thread unsigned int expected_depth; /* Independent six-key union size. */
 static int address_publication; /* Observe only the private-to-shared publication call. */
-const char *__real_dvm_runtime_bytes_publish(const void *, void *, size_t);
+const char *__real_dvm_runtime_bytes_publish_opcode(int, const void *, void *, size_t);
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
 
 
@@ -78,12 +78,32 @@ DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, siz
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
+    static Inst *busy_pc; /* First decoded index that reaches publication. */
+    static int replayed; /* One matching address publication retry completed. */
+
     if (address_publication)
     {
         if (source || source_size || !destination || !destination_size)
         {
             fprint(2, "FAIL address publication acquired a private source guard\n");
             exit(10);
+        }
+        if (CONTROL == 0 && !replayed &&
+            dvm_native_execution()->arithmetic_retry_opcode > 0)
+        {
+            if (!busy_pc)
+            {
+                busy_pc = DVM_R.PC;
+                address_publication = 2;
+                return DVM_CELL_BUSY;
+            }
+            if (busy_pc != DVM_R.PC)
+            {
+                fprint(2, "FAIL address publication replay changed PC\n");
+                exit(10);
+            }
+            replayed = 1;
+            print("PASS scheduled address publication retry\n");
         }
         address_publication = 2;
     }
@@ -92,11 +112,11 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
 
 
 /* Check each real address publication, independently of operand capture. */
-const char *__wrap_dvm_runtime_bytes_publish(const void *source, void *destination, size_t size)
+const char *__wrap_dvm_runtime_bytes_publish_opcode(int opcode, const void *source, void *destination, size_t size)
 {
     const char *problem;
     address_publication = 1;
-    problem = __real_dvm_runtime_bytes_publish(source, destination, size);
+    problem = __real_dvm_runtime_bytes_publish_opcode(opcode, source, destination, size);
     if (!problem && address_publication != 2)
     {
         fprint(2, "FAIL address publication skipped the destination guard\n");
@@ -507,7 +527,7 @@ def main():
                 ['dvm_runtime_root_registry_probe', 'dvm_managed_small_three_begin',
                  'dvm_small_range_access_extend', 'dvm_runtime_array_length_source',
                  'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
-                 'dvm_runtime_bytes_publish', 'dvm_managed_ranges_begin', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
@@ -526,7 +546,8 @@ def main():
                           or 'PASS guarded array index route' not in output):
                         raise RuntimeError('array-length positive failed: '+output)
                     if variant == 0 and ('PASS scheduled length extension retry' not in output or
-                                         'PASS scheduled index retry' not in output):
+                                         'PASS scheduled index retry' not in output or
+                                         'PASS scheduled address publication retry' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

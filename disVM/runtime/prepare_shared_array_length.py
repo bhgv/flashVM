@@ -50,5 +50,6 @@ def adapt_index(source):
 '''+capture+"""
     }""")
     publication = 'memmove(DVM_R.m, &address, sizeof(address));'
-    body = body.replace(publication, guarded_publish('address', 'DVM_R.m', publication))
+    body = body.replace(publication, guarded_publish('address', 'DVM_R.m', publication,
+        'dvm_native_execution()->arithmetic_retry_opcode'))
     return source[:match.start()]+body+source[match.end():]

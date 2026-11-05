@@ -328,7 +328,7 @@ int dvm_runtime_scalar_retry(int opcode)
     DVM_NativeExecution *execution = dvm_native_execution();
     DVM_RuntimeProcess *process;
 
-    if (execution->arithmetic_retry_opcode != opcode)
+    if (opcode <= 0 || execution->arithmetic_retry_opcode != opcode)
     {
         return 0;
     }

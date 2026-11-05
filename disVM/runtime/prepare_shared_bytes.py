@@ -44,11 +44,11 @@ def adapt(source):
                 capture = 'memmove(&pc, DVM_R.s, sizeof(pc));'
                 if body.count(capture) != 1:
                     raise ValueError('hosted MOVPC source capture drift')
-                body = body.replace(capture, guarded_snapshot('pc', capture, 'DVM_R.s'))
+                body = body.replace(capture, guarded_snapshot('pc', capture, 'DVM_R.s', retry_opcode='IMOVPC'))
             publication = f'memmove(DVM_R.d, &{value}, sizeof({value}));'
             if body.count(publication) != 1:
                 raise ValueError('hosted address publication drift: '+name)
-            body = body.replace(publication, guarded_publish(value, 'DVM_R.d', publication))
+            body = body.replace(publication, guarded_publish(value, 'DVM_R.d', publication, 'I'+name.upper()))
         else:
             if name == 'movm':
                 capture = 'memmove(&n, DVM_R.m, sizeof(n));'
@@ -97,10 +97,10 @@ def guarded_snapshot(variable, fallback, source="DVM_R.m", retry_opcode=None):
     }}'''
 
 
-def guarded_publish(variable, destination, fallback):
+def guarded_publish(variable, destination, fallback, opcode):
     """Publish a private scalar through the shared byte-copy guard."""
     return f'''if(dvm_runtime_guarded_copies) {{
-        const char *problem = dvm_runtime_bytes_publish(&{variable}, {destination}, sizeof({variable}));
+        const char *problem = dvm_runtime_bytes_publish_opcode({opcode}, &{variable}, {destination}, sizeof({variable}));
         if(problem != nil) {{
             error((char *)problem);
         }}
