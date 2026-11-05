@@ -133,32 +133,100 @@ def adapt_array_slice_publication(code):
         }
 """
     body = relative_replace(body, update, guarded+update, 1)
-    publish = '\t\tmemmove(DVM_R.d, &copy, sizeof(copy));'
-    body = relative_replace(body, publish, """        if(dvm_runtime_guarded_copies) {
-            DVM_RangeAccess access = {0};
-            DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, slot, sizeof(copy), &access);
-            Array *observed;
-            if(claim == DVM_CELL_ACQUIRED) {
-                memmove(&observed, slot, sizeof(observed));
-                if(observed == ds) {
-                    memmove(slot, &copy, sizeof(copy));
-                } else {
-                    claim = DVM_CELL_BUSY;
-                }
-                if(!dvm_range_access_end(&access)) {
-                    abort();
-                }
-            }
-            if(claim != DVM_CELL_ACQUIRED) {
-                destroy(copy);
-                if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICEA)) {
-                    return;
-                }
-                error(exHeap);
-            }
+    prepare = """typedef struct DvmRelativeSlice {
+    Array *source; /* Borrowed original array under NativeWorld. */
+    Array *result; /* Owned private copy or final view until publication. */
+    WORD start; /* Validated normalized lower bound. */
+    WORD count; /* Validated result length. */
+    int rooted; /* Temporary root protecting the copy during view allocation. */
+} DvmRelativeSlice;
+
+
+/* Prepare a relative slice using caller-owned request storage. Return one on
+ * success. The enclosing kprotect handler owns partial cleanup on VM errors. */
+static int dvm_prepare_relative_slice(void *argument)
+{
+    DvmRelativeSlice *request = argument;
+    Array *copy = arraycpy(request->source);
+    Array *view;
+    Type *type = copy->t;
+    uchar *data;
+    request->result = copy;
+    data = arrayspan(copy, type, request->start, request->count);
+    if(type->np == 0) {
+        copy->len = request->count;
+        copy->data = data;
+        return 1;
+    }
+    if(dvm_refcount_load_i(&type->ref) > 0x7ffffffe - (type == &Tarray) ||
+       dvm_refcount_load_i(&Tarray.ref) <= 0 || dvm_refcount_load_i(&Tarray.ref) == 0x7fffffff) {
+        error(exHeap);
+    }
+    ptradd(D2H(copy));
+    request->rooted = 1;
+    view = H2D(Array*, heap(&Tarray));
+    view->len = request->count;
+    view->data = data;
+    view->t = type;
+    view->root = copy;
+    dvm_runtime_type_retain(&type->ref);
+    ptrdel(D2H(copy));
+    request->rooted = 0;
+    request->result = view;
+    return 1;
+}
+
+
+/* Build a private result for the live old owner, then replace its slot once.
+ * Errors and finalization occur outside range guards. BUSY replays before commit. */
+static void dvm_publish_relative_slice(Array *old, void *slot, WORD start, WORD count)
+{
+    DvmRelativeSlice request = {old, H, start, count, 0};
+    DVM_RangeAccess access = {0};
+    DVM_CellResult claim;
+    Array *observed;
+    if(!kprotect(dvm_prepare_relative_slice, &request)) {
+        if(request.rooted) {
+            ptrdel(D2H(request.result));
+        }
+        destroy(request.result);
+        krethrow();
+        return;
+    }
+    claim = dvm_managed_ranges_begin(NULL, 0, slot, sizeof(request.result), &access);
+    if(claim == DVM_CELL_ACQUIRED) {
+        memmove(&observed, slot, sizeof(observed));
+        if(observed == old) {
+            memmove(slot, &request.result, sizeof(request.result));
         } else {
-"""+publish+"""
-        }""", 1)
+            claim = DVM_CELL_BUSY;
+        }
+        if(!dvm_range_access_end(&access)) {
+            abort();
+        }
+    }
+    if(claim != DVM_CELL_ACQUIRED) {
+        destroy(request.result);
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ISLICEA)) {
+            return;
+        }
+        error(exHeap);
+    }
+    if(request.result->root != H) {
+        Setmark(D2H(request.result->root));
+    }
+    destroy(old);
+}
+
+
+"""
+    body = relative_replace(body, '\tif(relative){\n\t\tcopy = arraycpy(ds);',
+        """    if(relative && dvm_runtime_guarded_copies) {
+        dvm_publish_relative_slice(ds, slot, start, n);
+        return;
+    }
+\tif(relative){
+\t\tcopy = arraycpy(ds);""", 1)
     initialize = '\tss = H2D(Array*, h);'
     body = relative_replace(body, initialize, initialize+"""
     if(dvm_runtime_guarded_copies && !relative) {
@@ -205,7 +273,7 @@ def adapt_array_slice_publication(code):
         Setmark(h);
         return;
     }""", 1)
-    code = code[:start]+body+code[end:]
+    code = code[:start]+prepare+body+code[end:]
     start = code.index('OP(slicela)')
     end = code.index('\n}', start)
     body = code[start:end]

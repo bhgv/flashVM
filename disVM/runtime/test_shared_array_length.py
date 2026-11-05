@@ -72,6 +72,11 @@ init() {
     if (len scalar != 2 || scalar[0] != 11 || scalar[1] != 22) {
         raise "scalar copy and in-place view narrowing";
     }
+    relative_scalar := scalar[-2:-1];
+    relative_scalar[0] = 99;
+    if (len relative_scalar != 2 || relative_scalar[1] != 22 || scalar[0] != 11) {
+        raise "relative scalar slice must publish an independent final copy";
+    }
     samples := array[] of {"-42", "9007199254740993", "2.5", "Ж"};
     word := int samples[0];
     wide := big samples[1];
@@ -174,8 +179,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[26]; /* Post-decode PC for each refused capture. */
-    static int replayed[26]; /* One successful replay for each stage. */
+    static Inst *pcs[27]; /* Post-decode PC for each refused capture. */
+    static int replayed[27]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -294,7 +299,16 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
             memmove(&start, DVM_R.s, sizeof(start));
             memmove(&end, DVM_R.m, sizeof(end));
             memmove(&previous, destination, sizeof(previous));
-            if (contend_capture(start < 0 || end < 0 ? 21 : (previous->root == H ? 24 : 25)))
+            int stage;
+            if (start < 0 || end < 0)
+            {
+                stage = previous->t->np ? 21 : 26;
+            }
+            else
+            {
+                stage = previous->root == H ? 24 : 25;
+            }
+            if (contend_capture(stage))
             {
                 return DVM_CELL_BUSY;
             }
@@ -832,7 +846,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(26)):
+                                            for stage in range(27)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
