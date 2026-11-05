@@ -158,3 +158,11 @@ and its type. Publication and retirement use the same range transaction
 as `SLICELA`. Other addressing modes and buffered channel transfers retain
 exclusive admission. The GC guest checks 32 mapped frame copies with an
 owning reference and a scalar field in each record.
+
+`--parallel-channel-buffer` admits direct mapped buffered `SEND` and `RECV`
+when the guest operand is a complete typed record in the current frame.
+The existing channel hold keeps the backing array and type live, and the
+reservation prevents another transfer from taking the same slot until the
+queue update. Only the range publication enters `SHARED`. Ring metadata and
+retirement remain exclusive. A queued sender's refill and ALT transfers
+have no direct opcode and use the exclusive path.

@@ -31,6 +31,9 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, struct 
     struct Array *source_array, struct Array *destination_array);
 extern int dvm_runtime_parallel_slicela;
 extern int dvm_runtime_parallel_movmp;
+extern int dvm_runtime_parallel_channel_buffer;
+extern unsigned long dvm_runtime_parallel_channel_sends;
+extern unsigned long dvm_runtime_parallel_channel_receives;
 extern unsigned long dvm_runtime_parallel_movmp_commits;
 extern unsigned long dvm_runtime_parallel_slicela_commits;
 /* [GC:] Transfer live ring spans. A consuming receive clears source pointers.

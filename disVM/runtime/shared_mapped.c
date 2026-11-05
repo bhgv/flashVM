@@ -25,6 +25,9 @@
 
 int dvm_runtime_parallel_slicela;
 int dvm_runtime_parallel_movmp;
+int dvm_runtime_parallel_channel_buffer;
+unsigned long dvm_runtime_parallel_channel_sends;
+unsigned long dvm_runtime_parallel_channel_receives;
 unsigned long dvm_runtime_parallel_movmp_commits;
 unsigned long dvm_runtime_parallel_slicela_commits;
 
@@ -247,6 +250,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     int bit;
     int failed = 0;
     int released = 0;
+    int shared_channel;
     DVM_CellDomain *domain = NULL;
     DVM_HeapOwner *owner = NULL;
     char first_error[ERRMAX];
@@ -334,7 +338,14 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    if (slice || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
+    /* The buffered caller retains the channel and reserves its slot until
+     * exclusive reentry. Only a decoded direct operation owns the other
+     * record in its suspended frame. Refill and ALT pass opcode zero. */
+    shared_channel = dvm_runtime_parallel_channel_buffer && committed && up->prog &&
+        dvm_native_execution()->arithmetic_retry_opcode == replay_opcode &&
+        ((replay_opcode == ISEND && !consume && dvm_runtime_frame_record(source, type)) ||
+         (replay_opcode == IRECV && consume && dvm_runtime_frame_record(destination, type)));
+    if (slice || shared_channel || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
         up->prog && dvm_native_execution()->arithmetic_retry_opcode == IMOVMP &&
         dvm_runtime_frame_record(source, type) && dvm_runtime_frame_record(destination, type)))
     {
@@ -375,6 +386,13 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             if (slice)
             {
                 dvm_runtime_parallel_slicela_commits++;
+            }
+            else if (shared_channel)
+            {
+                if (consume)
+                    dvm_runtime_parallel_channel_receives++;
+                else
+                    dvm_runtime_parallel_channel_sends++;
             }
             else
             {

@@ -2796,6 +2796,10 @@ int main(int argc, char **argv)
         {
             dvm_runtime_parallel_movp = 1;
         }
+        else if (strcmp(argv[1], "--parallel-channel-buffer") == 0)
+        {
+            dvm_runtime_parallel_channel_buffer = 1;
+        }
         else if (strcmp(argv[1], "--parallel-movmp") == 0)
         {
             dvm_runtime_parallel_movmp = 1;
@@ -2884,7 +2888,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "--parallel-movp requires --guarded-copies and multiple managed workers\n");
         return 2;
     }
-    if ((dvm_runtime_parallel_slicela || dvm_runtime_parallel_movmp) && (!dvm_runtime_guarded_copies || managed_workers == 1))
+    if ((dvm_runtime_parallel_slicela || dvm_runtime_parallel_movmp || dvm_runtime_parallel_channel_buffer) && (!dvm_runtime_guarded_copies || managed_workers == 1))
     {
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
         return 2;

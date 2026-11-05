@@ -9,9 +9,10 @@ import tempfile
 import time
 
 
-def run(runtime, directory, mode, poll, payload, outcome, image="main.dis"):
+def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False):
+    shared = ["--parallel-channel-buffer"] if shared_channels else []
     command = [str(runtime), mode, "--stats", "--gc-worker", "--managed-workers", "2",
-               "--guarded-copies", "--quantum", "65536", *poll, image]
+               "--guarded-copies", *shared, "--quantum", "65536", *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           bufsize=0) as child:
@@ -41,10 +42,12 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis"):
     queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", text)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0", text)
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", text)
+    channel = re.search(r"parallel_channel_sends=(\d+) parallel_channel_receives=(\d+)", text)
     native = re.search(r"instructions=\d+ native=(\d+)", text)
     if (child.returncode or outcome not in text or "PASS Dis application completed" not in text
             or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
             or not dispatch or dispatch[1] != dispatch[2] or not gc or int(gc[1]) == 0
+            or (shared_channels and (not channel or min(map(int, channel.groups())) == 0))
             or not native or (int(native[1]) > 0) != (mode == "--jit")):
         raise RuntimeError(text)
 
@@ -63,6 +66,8 @@ def main():
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind")
+                run(runtime, directory, mode, poll, b"R", "PASS provider return", shared_channels=True)
+                run(runtime, directory, mode, poll, b"E", "PASS provider unwind", shared_channels=True)
                 run(runtime, directory, mode, poll, b"R", "PASS provider termination and reload", "kill.dis")
 
 
