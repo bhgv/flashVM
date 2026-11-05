@@ -302,6 +302,18 @@ ParallelAdd: module { init: fn(); };
 worker(left, right: int, done: chan of int)
 {
     result := left + right;
+    if (left == 20) {
+        if (left - right != -2 || left * right != 440 ||
+            (left & right) != 20 || (left | right) != 22 || (left ^ right) != 2 ||
+            left / right != 0 || left % right != 20)
+            raise "parallel integer operation returned an incorrect result";
+        smallleft := byte left;
+        smallright := byte right;
+        bigleft := big left;
+        bigright := big right;
+        if (smallleft + smallright != byte 42 || bigleft + bigright != big 42)
+            raise "parallel integer width produced an incorrect result";
+    }
     done <-= result;
 }
 
@@ -332,11 +344,18 @@ static int parallel_count; /* Observed evaluators, capped at two. */
 '''+signature+r'''
 {
     DVM_HeapOwnerStats owner;
-    if (op == IADDW && dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+    if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
         owner.phase == DVM_HEAP_NATIVE)
     {
         DVM_NativeContext *context = dvm_native_context_current();
         pthread_mutex_lock(&parallel_lock);
+        if (op != IADDW)
+        {
+            fprint(2, "LEASED integer opcode %d\n", op);
+            pthread_mutex_unlock(&parallel_lock);
+            __real_dvm_runtime_arithmetic_value(op, s, b, d);
+            return;
+        }
         if (!parallel_count)
         {
             parallel_first = context;
@@ -368,12 +387,15 @@ def run_parallel(runtime, compiler, include, work):
          'dvm_managed_small_three_begin', 'dvm_runtime_divisor_zero', 'error'])
     for mode in ('--no-jit', '--jit'):
         args = [str(binary), mode, '--gc-worker', '--guarded-copies',
-                '--managed-workers', '2', '--parallel-add', str(image)]
+                '--managed-workers', '2', '--parallel-integer', str(image)]
         run = subprocess.run(args, capture_output=True, text=True, timeout=20,
             env=dict(os.environ, TMPDIR=str(work)))
         output = run.stdout+run.stderr
         if run.returncode or 'PASS concurrent leased evaluators' not in output or 'PASS parallel frame ADDW' not in output:
-            raise RuntimeError('parallel ADDW failed: '+output)
+            raise RuntimeError('parallel integer failed: '+output)
+        leased = {line for line in output.splitlines() if line.startswith('LEASED integer opcode ')}
+        if len(leased) != 9:
+            raise RuntimeError('parallel integer fixture missed an operation: '+output)
 
 
 def main():

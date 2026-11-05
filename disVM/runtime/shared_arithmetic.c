@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 
-int dvm_runtime_parallel_add; /* Startup-only opt-in for leased frame-local ADDW evaluation. */
+int dvm_runtime_parallel_add; /* Startup-only leased arithmetic selection, 1 for ADDW or 2 for all. */
 
 
 /* Find the current live frame descriptor within the rooted stack extent.
@@ -49,69 +49,85 @@ static Type *current_frame_type(void)
 }
 
 
-/* Check that the borrowed aligned WORD lies in the scalar frame payload.
- * The published process stack retains that frame throughout its lease. */
-static int frame_word(const void *cell, const Type *type)
+/* Check a borrowed scalar span against the frame extent and pointer map.
+ * The published process stack retains the frame throughout its lease. */
+static int frame_scalar(const void *cell, const Type *type, size_t width)
 {
     uintptr_t base = (uintptr_t)DVM_R.FP;
     uintptr_t address = (uintptr_t)cell;
-    size_t slot;
+    size_t offset, slot, last;
 
-    if (address < base || address - base < NREG * IBY2WD ||
-        address - base > (size_t)type->size - sizeof(WORD) ||
-        (address - base) % sizeof(WORD))
+    if (address < base || width > (size_t)type->size)
     {
         return 0;
     }
-    slot = (address - base) / sizeof(void *);
-    return slot / 8 >= (size_t)type->np ||
-        !(type->map[slot / 8] & (0x80U >> (slot % 8)));
+    offset = address - base;
+    if (offset < NREG * IBY2WD || offset > (size_t)type->size - width)
+    {
+        return 0;
+    }
+    last = (offset + width - 1) / sizeof(void *);
+    for (slot = offset / sizeof(void *); slot <= last; slot++)
+    {
+        if (slot / 8 < (size_t)type->np && (type->map[slot / 8] & (0x80U >> (slot % 8))))
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
-/* Try a frame-local ADDW using only private bytes outside the heap. The
- * caller holds the input/output union on entry. Return with that union
- * released. A changed input is recalculated at the guarded commit point. */
-static const char *leased_add(const void *first, const void *second, void *output,
-    DVM_TripleAccess *access, int *retryable)
+/* Compute an audited scalar operation from private bytes outside the heap.
+ * The caller has guarded all three frame cells and ruled out a zero divisor.
+ * Return with the union released. Revalidate and commit under a fresh claim. */
+static const char *leased_arithmetic(int opcode, const void *first, const void *second,
+    void *output, size_t width, int division, DVM_TripleAccess *access, int *retryable)
 {
-    UWORD left, right, result;
+    unsigned char left[sizeof(ULONG)], right[sizeof(ULONG)], result[sizeof(ULONG)];
     int released;
     DVM_CellResult claim;
+    const char *problem = NULL;
 
-    memmove(&left, first, sizeof(left));
-    memmove(&right, second, sizeof(right));
+    memmove(left, first, width);
+    memmove(right, second, width);
     if (!dvm_small_range_access_end(access))
     {
         abort();
     }
     released = dvm_runtime_gc_native_try_leave();
-    dvm_runtime_arithmetic_value(IADDW, &left, &right, &result);
+    dvm_runtime_arithmetic_value(opcode, left, right, result);
     if (released > 0)
     {
         dvm_runtime_gc_native_enter(released);
     }
 
-    claim = dvm_managed_small_three_begin(first, sizeof(left), second, sizeof(right),
-        output, sizeof(result), access);
+    claim = dvm_managed_small_three_begin(first, width, second, width, output, width, access);
     if (claim != DVM_CELL_ACQUIRED)
     {
         *retryable = claim == DVM_CELL_BUSY;
         return exHeap;
     }
-    if (memcmp(first, &left, sizeof(left)) || memcmp(second, &right, sizeof(right)))
+    if (memcmp(first, left, width) || memcmp(second, right, width))
     {
-        dvm_runtime_arithmetic_value(IADDW, first, second, output);
+        if (division && dvm_runtime_divisor_zero(opcode, second))
+        {
+            problem = exZdiv;
+        }
+        else
+        {
+            dvm_runtime_arithmetic_value(opcode, first, second, output);
+        }
     }
     else
     {
-        memmove(output, &result, sizeof(result));
+        memmove(output, result, width);
     }
     if (!dvm_small_range_access_end(access))
     {
         abort();
     }
-    return NULL;
+    return problem;
 }
 
 
@@ -199,16 +215,6 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
         *retryable = claim == DVM_CELL_BUSY;
         return exHeap;
     }
-    if (dvm_runtime_parallel_add && opcode == IADDW &&
-        dvm_native_execution()->arithmetic_retry_opcode == opcode && up->prog)
-    {
-        Type *type = current_frame_type();
-        if (type && frame_word(first, type) && frame_word(second, type) &&
-            frame_word(output, type))
-        {
-            return leased_add(first, second, output, &access, retryable);
-        }
-    }
     if (division && dvm_runtime_divisor_zero(opcode, second))
     {
         problem = exZdiv;
@@ -219,6 +225,16 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
     }
     else
     {
+        if (dvm_runtime_parallel_add && (opcode == IADDW || dvm_runtime_parallel_add == 2) &&
+            dvm_native_execution()->arithmetic_retry_opcode == opcode && up->prog)
+        {
+            Type *type = current_frame_type();
+            if (type && frame_scalar(first, type, width) && frame_scalar(second, type, width) &&
+                frame_scalar(output, type, width))
+            {
+                return leased_arithmetic(opcode, first, second, output, width, division, &access, retryable);
+            }
+        }
         dvm_runtime_arithmetic_value(opcode, first, second, output);
     }
     if (!dvm_small_range_access_end(&access))

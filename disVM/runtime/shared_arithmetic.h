@@ -2,7 +2,7 @@
 #ifndef DVM_SHARED_ARITHMETIC_H
 #define DVM_SHARED_ARITHMETIC_H
 
-extern int dvm_runtime_parallel_add; /* Startup-only frame-local ADDW experiment. */
+extern int dvm_runtime_parallel_add; /* Startup-only frame-local integer experiment. */
 
 
 /* [GC:] opcode selects ADD/SUB/MUL/DIV/MOD/AND/OR/XOR B/W/L. first/second/output are borrowed

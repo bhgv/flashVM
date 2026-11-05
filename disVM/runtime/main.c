@@ -2755,9 +2755,14 @@ int main(int argc, char **argv)
             }
             dvm_runtime_guarded_copies = 1;
         }
-        else if (strcmp(argv[1], "--parallel-add") == 0)
+        else if (strcmp(argv[1], "--parallel-add") == 0 || strcmp(argv[1], "--parallel-integer") == 0)
         {
-            dvm_runtime_parallel_add = 1;
+            if (dvm_runtime_parallel_add)
+            {
+                fprintf(stderr, "parallel arithmetic mode may be selected only once\n");
+                return 2;
+            }
+            dvm_runtime_parallel_add = strcmp(argv[1], "--parallel-add") == 0 ? 1 : 2;
         }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
@@ -2826,7 +2831,7 @@ int main(int argc, char **argv)
 #endif
     if (dvm_runtime_parallel_add && (!dvm_runtime_guarded_copies || managed_workers == 1))
     {
-        fprintf(stderr, "--parallel-add requires --guarded-copies and multiple managed workers\n");
+        fprintf(stderr, "parallel arithmetic requires --guarded-copies and multiple managed workers\n");
         return 2;
     }
     if (dvm_runtime_guarded_copies && !gc_worker)
