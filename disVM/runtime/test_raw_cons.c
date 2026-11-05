@@ -79,6 +79,33 @@ static void check(int valid,const char *message)
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
 
 
+DVM_CellResult __real_dvm_managed_cells_begin(const void *, void *, DVM_CellAccess *);
+
+
+/* Refuse the first tail capture after the guest has saved its input. */
+DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination,
+    DVM_CellAccess *access)
+{
+    static Inst *retry_pc; /* Decoded PC at tail admission. */
+    static int replayed; /* Only one tail refusal per guest invocation. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !active && !replayed && source == destination &&
+        source == DVM_R.d && opcode == ICONSM)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC, "tail capture retries the original constructor");
+        replayed = 1;
+        puts("PASS scheduled constructor tail replay");
+    }
+    return __real_dvm_managed_cells_begin(source, destination, access);
+}
+
+
 /* Refuse one initial operand snapshot in the real decoded guest. */
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t input,
     void *destination, size_t output, DVM_RangeAccess *access)
