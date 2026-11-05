@@ -26,23 +26,31 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     DVM_RangeAccess access = {0};
     unsigned char pair[2*sizeof(REAL)];
     unsigned char result[sizeof(REAL)];
+    size_t second_width = opcode == INEGF ? 0 : sizeof(REAL);
     if (dvm_runtime_shared_mode() != 2 ||
-        (opcode != IADDF && opcode != ISUBF && opcode != IMULF && opcode != IDIVF))
+        (opcode != IADDF && opcode != ISUBF && opcode != IMULF && opcode != IDIVF && opcode != INEGF))
     {
         return exHeap;
     }
     if (!first || first == H || (uintptr_t)first > (uintptr_t)-1-sizeof(REAL) ||
-        !second || second == H || (uintptr_t)second > (uintptr_t)-1-sizeof(REAL) ||
+        (second_width && (!second || second == H || (uintptr_t)second > (uintptr_t)-1-sizeof(REAL))) ||
         !output || output == H || (uintptr_t)output > (uintptr_t)-1-sizeof(REAL))
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(first, sizeof(REAL), second, sizeof(REAL), NULL, 0,
+    if (dvm_managed_three_begin(first, sizeof(REAL), second_width ? second : NULL, second_width, NULL, 0,
         &access) != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
-    dvm_runtime_real_branch_capture(first, second, pair);
+    if (second_width)
+    {
+        dvm_runtime_real_branch_capture(first, second, pair);
+    }
+    else
+    {
+        memmove(pair, first, sizeof(REAL));
+    }
     if (!dvm_range_access_end(&access))
     {
         abort();

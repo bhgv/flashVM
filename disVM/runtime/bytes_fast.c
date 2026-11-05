@@ -18,6 +18,7 @@ extern void cvtfl(void); /* Guarded FP conversion. */
 extern void addf(void); /* Guarded REAL addition. */
 extern void subf(void); /* Guarded REAL subtraction. */
 extern void mulf(void); /* Guarded REAL multiplication. */
+extern void negf(void); /* Guarded REAL negation. */
 extern void divf(void); /* Guarded REAL division. */
 extern void beqf(void); /* Actual guarded REAL branch. */
 extern void bnef(void); /* Actual guarded REAL branch. */
@@ -144,6 +145,9 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IDIVF:
         divf();
+        break;
+    case INEGF:
+        negf();
         break;
     case IBEQF:
         beqf();

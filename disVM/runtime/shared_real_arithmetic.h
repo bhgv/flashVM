@@ -3,8 +3,9 @@
 #define DVM_SHARED_REAL_ARITHMETIC_H
 
 
-/* [GC:] opcode is ADDF/SUBF/MULF/DIVF; first/second/output borrow independently
- * live mapped REAL spans, possibly unaligned/overlapping. Capture both sources
+/* [GC:] opcode is ADDF/SUBF/MULF/DIVF/NEGF; NEGF uses only first/output.
+ * Each used argument borrows independently
+ * live mapped REAL spans, possibly unaligned/overlapping. Capture the used sources
  * under one union, release completely, evaluate native FP, then claim/publish
  * output. Two observation points, NOT an atomic shared read-modify-write.
  * Return static error/NULL only after complete unlock. No allocation, reference

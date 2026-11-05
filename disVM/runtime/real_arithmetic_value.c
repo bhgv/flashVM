@@ -16,7 +16,10 @@ void dvm_runtime_real_arithmetic_value(int opcode, const void *pair, void *resul
     REAL right;
     REAL value;
     memmove(&left, pair, sizeof(left));
-    memmove(&right, (const unsigned char *)pair+sizeof(left), sizeof(right));
+    if (opcode != INEGF)
+    {
+        memmove(&right, (const unsigned char *)pair+sizeof(left), sizeof(right));
+    }
     switch (opcode)
     {
     case IADDF:
@@ -30,6 +33,9 @@ void dvm_runtime_real_arithmetic_value(int opcode, const void *pair, void *resul
         break;
     case IDIVF:
         value = left / right;
+        break;
+    case INEGF:
+        value = -left;
         break;
     default:
         abort();

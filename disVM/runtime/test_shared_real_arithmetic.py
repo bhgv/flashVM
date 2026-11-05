@@ -11,15 +11,15 @@ include "sys.m";
 Reals: module {init: fn();};
 init() {
     sys := load Sys Sys->PATH;
-    sys->print("BEGIN REAL arithmetic4\\n");
+    sys->print("BEGIN REAL arithmetic5\\n");
     values := array[] of {2.0, 4.0};
     a := values[0];
     b := values[1];
-    if (a+b != 6.0 || a-b != -2.0 || a*b != 8.0 || a/b != 0.5)
+    if (a+b != 6.0 || a-b != -2.0 || a*b != 8.0 || a/b != 0.5 || -a != -2.0)
     {
         raise "REAL arithmetic";
     }
-    sys->print("PASS REAL arithmetic4\\n");
+    sys->print("PASS REAL arithmetic5\\n");
 }
 '''
 
@@ -50,8 +50,8 @@ static __thread int injected; /* VM unwind at unlocked FP boundary. */
 static __thread int modify; /* Deliberate source update after the snapshot. */
 static __thread void *input; /* Borrowed live first cell for phase update. */
 static __thread int prints; /* Guest output markers, exact current OS owner. */
-static __thread int seen[4]; /* Actual guest C entries, shared by its current OS owner. */
-static const int operations[4] = {IADDF,ISUBF,IMULF,IDIVF}; /* Existing file opcodes. */
+static __thread int seen[5]; /* Actual guest C entries, shared by its current OS owner. */
+static const int operations[5] = {IADDF,ISUBF,IMULF,IDIVF,INEGF}; /* Existing file opcodes. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
 DVM_CellResult __real_dvm_managed_three_begin(const void *,size_t,const void *,size_t,void *,size_t,DVM_RangeAccess *);
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *,size_t,void *,size_t,DVM_RangeAccess *);
@@ -117,11 +117,14 @@ DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t n,const void 
     result = __real_dvm_managed_three_begin(a,n,b,m,c,z,access);
     if (active)
     {
-        check(!phase && n == sizeof(REAL) && m == sizeof(REAL) && !c && !z,"input phase geometry");
+        check(!phase && n == sizeof(REAL) && (m == sizeof(REAL) || (!b && !m)) && !c && !z,"input phase geometry");
         check(result == DVM_CELL_ACQUIRED,"input acquired");
         memset(keys,0,sizeof(keys));
         span(a,n);
-        span(b,m);
+        if (m)
+        {
+            span(b,m);
+        }
         coverage();
         phase = 1;
     }
@@ -239,7 +242,7 @@ const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const vo
     unsigned int index;
     if (!active)
     {
-        for (index = 0; index < 4; index++)
+        for (index = 0; index < 5; index++)
         {
             if (opcode == operations[index])
             {
@@ -251,12 +254,12 @@ const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const vo
 }
 
 
-/* Before the guest prints, require all four genuine opcode routes. */
+/* Before the guest prints, require all five genuine opcode routes. */
 int __wrap_dvm_bigtable_call_ready(void (*function)(void *),void *frame)
 {
     if (function == Sys_print && ++prints == 2)
     {
-        check(seen[0] && seen[1] && seen[2] && seen[3],"four guest routes");
+        check(seen[0] && seen[1] && seen[2] && seen[3] && seen[4],"five guest routes");
     }
     return __real_dvm_bigtable_call_ready(function,frame);
 }
@@ -275,8 +278,10 @@ static REAL reference(int operation,REAL a,REAL b)
         return left-right;
     case 2:
         return left*right;
-    default:
+    case 3:
         return left/right;
+    default:
+        return -left;
     }
 }
 
@@ -321,7 +326,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     REAL specials[] = {0.0,-0.0,1.0,-1.0,DBL_MAX,DBL_MIN};
     __real_dvm_runtime_root_registry_probe(workers);
     check(!feholdexcept(&environment),"fixture FP setup");
-    for (op = 0; op < 4; op++)
+    for (op = 0; op < 5; op++)
     {
         for (a = 0; a < 12; a++)
         {
@@ -424,14 +429,14 @@ def main():
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,
                                      env=dict(os.environ,TMPDIR=str(work)))
                 output = run.stdout+run.stderr
-                if run.returncode or 'PASS actual REAL arithmetic: 7056 ' not in output or 'PASS REAL arithmetic4' not in output:
+                if run.returncode or 'PASS actual REAL arithmetic: 8820 ' not in output or 'PASS REAL arithmetic5' not in output:
                     raise RuntimeError('REAL arithmetic failed: '+output)
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                     raise RuntimeError(output)
         if '--positive-only' not in sys.argv:
             original = (Path(__file__).resolve().parent/'shared_real_arithmetic.c').read_text()
             controls = [
-                ('dvm_managed_three_begin(first, sizeof(REAL), second, sizeof(REAL), NULL, 0,\n        &access)', 'DVM_CELL_ACQUIRED', 'capture phase'),
+                ('dvm_managed_three_begin(first, sizeof(REAL), second_width ? second : NULL, second_width, NULL, 0,\n        &access)', 'DVM_CELL_ACQUIRED', 'capture phase'),
                 ('dvm_range_access_end(&access)', '1', 'unlocked FP'),
                 ('dvm_managed_ranges_begin(NULL, 0, output, sizeof(REAL), &access)', 'DVM_CELL_ACQUIRED', 'store phase'),
                 ('    dvm_runtime_real_arithmetic_store(output, result);', '    (void)result;', 'overlap result and flags')]
@@ -446,7 +451,7 @@ def main():
                     env=dict(os.environ,TMPDIR=str(work)))
                 if run.returncode != 10 or 'FAIL real arithmetic: '+marker not in run.stdout+run.stderr:
                     raise RuntimeError('REAL control missed: '+run.stdout+run.stderr)
-    print('PASS actual REAL arithmetic: C/JIT guest,both polls,7056 overlap/boundary cases; four semantic controls' if '--positive-only' not in sys.argv else 'PASS actual REAL arithmetic positives')
+    print('PASS actual REAL arithmetic: C/JIT guest,both polls,8820 overlap/boundary cases; four semantic controls' if '--positive-only' not in sys.argv else 'PASS actual REAL arithmetic positives')
 
 
 if __name__ == '__main__':
