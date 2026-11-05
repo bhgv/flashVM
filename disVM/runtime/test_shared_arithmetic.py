@@ -295,48 +295,41 @@ static int force_busy;''')
     return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
 
-PARALLEL_GUEST = r'''implement ParallelAdd;
-include "sys.m";
-ParallelAdd: module { init: fn(); };
-
-worker(left, right: int, done: chan of int)
-{
-    result := left + right;
-    if (left == 20) {
-        if (left - right != -2 || left * right != 440 ||
-            (left & right) != 20 || (left | right) != 22 || (left ^ right) != 2 ||
-            left / right != 0 || left % right != 20)
-            raise "parallel integer operation returned an incorrect result";
-        smallleft := byte left;
-        smallright := byte right;
-        bigleft := big left;
-        bigright := big right;
-        if (smallleft + smallright != byte 42 || bigleft + bigright != big 42)
-            raise "parallel integer width produced an incorrect result";
-    }
-    done <-= result;
-}
-
-init()
-{
-    sys := load Sys Sys->PATH;
-    done := chan of int;
-    spawn worker(20, 22, done);
-    spawn worker(17, 25, done);
-    left := <-done;
-    right := <-done;
-    if (left != 42 || right != 42)
-        raise "parallel ADDW produced an incorrect sum";
-    sys->print("PASS parallel frame ADDW\n");
-}
-'''
+def parallel_guest():
+    """Build typed frame operations with expected values independent of Dis."""
+    lines = [
+        'implement ParallelAdd;', 'include "sys.m";',
+        'ParallelAdd: module { init: fn(); };',
+        'worker(left, right: int, done: chan of int) {',
+        '    sum := left + right;',
+        '    if (left == 22) {',
+    ]
+    # The selected worker receives 22 and 20. Only BYTE multiplication wraps.
+    expected = dict(add=42, sub=2, and_=20, or_=22, xor=2, mul=440, div=1, mod=2)
+    for suffix, typ in [('b', 'byte'), ('w', 'int'), ('l', 'big')]:
+        lines += [f'        a{suffix} := {typ} left;', f'        b{suffix} := {typ} right;']
+        for kind, sign in FAMILIES:
+            value = expected[kind+'_' if kind in ('and', 'or') else kind]
+            if suffix == 'b':
+                value %= 256
+            lines += [f'        r{kind}{suffix} := a{suffix} {sign} b{suffix};',
+                      f'        if (r{kind}{suffix} != {typ} {value}) raise "parallel {kind}{suffix} mismatch";']
+    lines += [
+        '    }', '    done <-= sum;', '}', 'init() {',
+        '    sys := load Sys Sys->PATH;', '    done := chan of int;',
+        '    spawn worker(22, 20, done);', '    spawn worker(17, 25, done);',
+        '    left := <-done;', '    right := <-done;',
+        '    if (left != 42 || right != 42) raise "parallel ADDW mismatch";',
+        '    sys->print("PASS parallel frame arithmetic\\n");', '}',
+    ]
+    return '\n'.join(lines)+'\n'
 
 
 def parallel_wrapper():
     """Observe distinct native contexts inside actual leased ADDW evaluation."""
     source = '#include "disvm/native_owner.h"\n#include <pthread.h>\n'+wrapper()
     signature = 'void __wrap_dvm_runtime_arithmetic_value(int op, const void *s, const void *b, void *d)'
-    return source.replace(signature+'\n{', '''static pthread_mutex_t parallel_lock = PTHREAD_MUTEX_INITIALIZER; /* Rendezvous lock. */
+    instrumented = source.replace(signature+'\n{', '''static pthread_mutex_t parallel_lock = PTHREAD_MUTEX_INITIALIZER; /* Rendezvous lock. */
 static pthread_cond_t parallel_ready = PTHREAD_COND_INITIALIZER; /* Wake the first evaluator. */
 static DVM_NativeContext *parallel_first; /* First live evaluator identity. */
 static int parallel_count; /* Observed evaluators, capped at two. */
@@ -349,9 +342,12 @@ static int parallel_count; /* Observed evaluators, capped at two. */
     {
         DVM_NativeContext *context = dvm_native_context_current();
         pthread_mutex_lock(&parallel_lock);
+        switch (op)
+        {
+LEASED_OPCODE_NAMES
+        }
         if (op != IADDW)
         {
-            fprint(2, "LEASED integer opcode %d\n", op);
             pthread_mutex_unlock(&parallel_lock);
             __real_dvm_runtime_arithmetic_value(op, s, b, d);
             return;
@@ -375,27 +371,34 @@ static int parallel_count; /* Observed evaluators, capped at two. */
         pthread_mutex_unlock(&parallel_lock);
     }''',1)
 
+    names = '\n'.join(f'        case I{op.upper()}: fprint(2, "LEASED {op}\\n"); break;' for op in OPS)
+    return instrumented.replace('LEASED_OPCODE_NAMES', names)
+
 
 def run_parallel(runtime, compiler, include, work):
     """Require two workers to overlap in both dispatch modes."""
     source, image, fixture = (work/name for name in ('parallel.b', 'parallel.dis', 'parallel.c'))
-    source.write_text(PARALLEL_GUEST)
+    source.write_text(parallel_guest())
     fixture.write_text(parallel_wrapper())
     subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
     binary = relink(runtime, work, fixture, 0,
         ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value',
          'dvm_managed_small_three_begin', 'dvm_runtime_divisor_zero', 'error'])
     for mode in ('--no-jit', '--jit'):
-        args = [str(binary), mode, '--gc-worker', '--guarded-copies',
-                '--managed-workers', '2', '--parallel-integer', str(image)]
-        run = subprocess.run(args, capture_output=True, text=True, timeout=20,
-            env=dict(os.environ, TMPDIR=str(work)))
-        output = run.stdout+run.stderr
-        if run.returncode or 'PASS concurrent leased evaluators' not in output or 'PASS parallel frame ADDW' not in output:
-            raise RuntimeError('parallel integer failed: '+output)
-        leased = {line for line in output.splitlines() if line.startswith('LEASED integer opcode ')}
-        if len(leased) != 9:
-            raise RuntimeError('parallel integer fixture missed an operation: '+output)
+        for locked_poll in (False, True):
+            args = [str(binary), mode, '--gc-worker', '--guarded-copies',
+                    '--managed-workers', '2', '--parallel-integer']
+            if locked_poll:
+                args.append('--gc-locked-poll')
+            run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=20,
+                env=dict(os.environ, TMPDIR=str(work)))
+            output = run.stdout+run.stderr
+            if run.returncode or 'PASS concurrent leased evaluators' not in output or 'PASS parallel frame arithmetic' not in output:
+                raise RuntimeError('parallel integer failed: '+output)
+            leased = {line[len('LEASED '):] for line in output.splitlines() if line.startswith('LEASED ')}
+            if leased != set(OPS):
+                raise RuntimeError(f'parallel integer opcode mismatch in {mode}: missing {sorted(set(OPS)-leased)}, '
+                                   f'unexpected {sorted(leased-set(OPS))}\n{output}')
 
 
 def main():
