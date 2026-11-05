@@ -65,6 +65,34 @@ static void execute(void *argument)
 }
 
 
+static FVM_PortSync *wake_probe; /* Immutable fixture barrier while the probe worker runs. */
+static int paused;              /* Waiter has woken and dropped the gate lock, under wake_probe. */
+static int resume_waiter;       /* Controller allows the waiter to return, under wake_probe. */
+
+void __real_fvm_port_sync_wait(FVM_PortSync *sync);
+
+
+/* Pause a signalled admission before it can finish. sync is the gate mutex,
+ * restored on return to match the actual wait contract. */
+void __wrap_fvm_port_sync_wait(FVM_PortSync *sync)
+{
+    __real_fvm_port_sync_wait(sync);
+    if (wake_probe)
+    {
+        fvm_port_sync_unlock(sync);
+        fvm_port_sync_lock(wake_probe);
+        paused = 1;
+        fvm_port_sync_signal_all(wake_probe);
+        while (!resume_waiter)
+        {
+            __real_fvm_port_sync_wait(wake_probe);
+        }
+        fvm_port_sync_unlock(wake_probe);
+        fvm_port_sync_lock(sync);
+    }
+}
+
+
 /* Native controller serializes reservations/lifetime as the runtime heap gate
  * does. Reverse-start all contenders; completed order must remain0..7. Return1
  * only for a semantic guard failure,2 for fixture setup,0 on all checks. */
@@ -220,6 +248,53 @@ int main(void)
             fprintf(stderr, "FAIL FIFO file admission order violated\n");
             return 1;
         }
+    }
+    /* Cancel the parked tail and finish the head while the tail is still
+     * waking. An empty queue alone is insufficient for safe destruction. */
+    dvm_file_gate_reserve(gate, &ticket);
+    dvm_file_gate_reserve(gate, &tail);
+    if (!dvm_file_gate_enter(gate, &ticket))
+    {
+        return 2;
+    }
+    workers[0].ticket = &tail;
+    wake_probe = sync;
+    challenger = fvm_port_thread_start(execute, &workers[0]);
+    if (!challenger)
+    {
+        return 2;
+    }
+    for (;;)
+    {
+        size_t current;
+        dvm_file_gate_snapshot(gate, NULL, &current);
+        if (current > waiting)
+        {
+            break;
+        }
+        fvm_port_thread_sleep_us(50);
+    }
+    if (!dvm_file_gate_cancel(gate, &tail) || !dvm_file_gate_leave(gate, &ticket))
+    {
+        return 2;
+    }
+    fvm_port_sync_lock(sync);
+    while (!paused)
+    {
+        __real_fvm_port_sync_wait(sync);
+    }
+    if (dvm_file_gate_destroy(gate))
+    {
+        fprintf(stderr, "FAIL gate retired while a cancelled waiter was waking\n");
+        return 1;
+    }
+    resume_waiter = 1;
+    fvm_port_sync_signal_all(sync);
+    fvm_port_sync_unlock(sync);
+    fvm_port_thread_join(challenger);
+    if (!workers[0].failed)
+    {
+        return 2;
     }
     if (!dvm_file_gate_destroy(gate) || !dvm_native_context_unbind(context) ||
         !dvm_native_context_destroy(context))

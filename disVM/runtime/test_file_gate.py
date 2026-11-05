@@ -14,15 +14,17 @@ def main():
     runtime = Path(__file__).resolve().parent
     source = (runtime / 'file_gate.c').read_text()
     controls = [
-        ('fifo', '    while (ticket->gate == gate && (ticket != gate->head || gate->busy))\n    {\n'
-         '        fvm_port_sync_wait(gate->sync);\n    }', '',
+        ('fifo', '        while (ticket->gate == gate && (ticket != gate->head || gate->busy))\n'
+         '        {\n            fvm_port_sync_wait(gate->sync);\n        }', '',
          'FIFO file admission order violated'),
         ('owner', ' || gate->owner != dvm_native_context_current()', '',
          'foreign file completion accepted'),
         ('duplicate', '    if (gate->busy && ticket == gate->head)\n    {\n'
          '        fvm_port_sync_unlock(gate->sync);\n        return 0;\n    }\n', '',
          'duplicate admission damaged the active file ticket'),
-        ('lifetime', 'gate->busy || gate->pending', '0',
+        ('waking', 'gate->busy || gate->pending || gate->sleepers',
+         'gate->busy || gate->pending', 'gate retired while a cancelled waiter was waking'),
+        ('lifetime', 'gate->busy || gate->pending || gate->sleepers', '0',
          'busy file gate retired'),
     ]
     with tempfile.TemporaryDirectory(prefix='native file FIFO ') as directory:
@@ -43,7 +45,7 @@ def main():
                 changed.write_text(source.replace(before, after))
                 selected[1] = changed
             output = work / name
-            subprocess.run(base + [str(path) for path in selected] + ['-o', str(output)], check=True)
+            subprocess.run(base + [str(path) for path in selected] + ['-Wl,--wrap=fvm_port_sync_wait', '-o', str(output)], check=True)
             run = subprocess.run([str(output)], capture_output=True, text=True, timeout=20)
             if name == 'normal':
                 if run.returncode or 'PASS native file FIFO:' not in run.stdout:
@@ -51,7 +53,7 @@ def main():
                 print(run.stdout.strip())
             elif run.returncode != 1 or marker not in run.stderr:
                 raise RuntimeError('inactive semantic file gate control: ' + name + run.stdout + run.stderr)
-        print('PASS four active file gate controls: FIFO, exact owner, duplicate admission, pending lifetime')
+        print('PASS five active file gate controls: FIFO, exact owner, duplicate admission, pending and waking lifetime')
 
 
 if __name__ == '__main__':

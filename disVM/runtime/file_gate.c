@@ -16,6 +16,7 @@ struct DVM_FileGate
     size_t pending;             /* Number of linked tickets. */
     size_t operations;          /* Completed native operations under sync. */
     size_t waiting;             /* Admissions that observed an earlier operation. */
+    size_t sleepers;            /* Parked admissions, including cancelled tickets waking up. */
     size_t peak;                /* Maximum outstanding reservations for this file. */
     DVM_NativeContext *owner;   /* Borrowed native TLS owner only through the admitted operation. */
     int busy;                   /* Exactly one admitted native operation. */
@@ -155,10 +156,12 @@ static int enter_ticket(DVM_FileGate *gate, DVM_FileTicket *ticket, int block)
     if (ticket->gate == gate && (ticket != gate->head || gate->busy))
     {
         gate->waiting++;
-    }
-    while (ticket->gate == gate && (ticket != gate->head || gate->busy))
-    {
-        fvm_port_sync_wait(gate->sync);
+        gate->sleepers++;
+        while (ticket->gate == gate && (ticket != gate->head || gate->busy))
+        {
+            fvm_port_sync_wait(gate->sync);
+        }
+        gate->sleepers--;
     }
     if (ticket->gate != gate)
     {
@@ -218,7 +221,15 @@ int dvm_file_gate_destroy(DVM_FileGate *gate)
         return 1;
     }
     fvm_port_sync_lock(gate->sync);
-    if (gate->busy || gate->pending)
+    if (gate->busy || gate->pending || gate->sleepers)
+    {
+        fvm_port_sync_unlock(gate->sync);
+        return 0;
+    }
+    for (slot = &gates; *slot && *slot != gate; slot = &(*slot)->next_gate)
+    {
+    }
+    if (!*slot)
     {
         fvm_port_sync_unlock(gate->sync);
         return 0;
@@ -229,15 +240,8 @@ int dvm_file_gate_destroy(DVM_FileGate *gate)
     {
         peak_pending = gate->peak;
     }
-    fvm_port_sync_unlock(gate->sync);
-    for (slot = &gates; *slot && *slot != gate; slot = &(*slot)->next_gate)
-    {
-    }
-    if (!*slot)
-    {
-        return 0;
-    }
     *slot = gate->next_gate;
+    fvm_port_sync_unlock(gate->sync);
     fvm_port_sync_destroy(gate->sync);
     free(gate);
     closed++;

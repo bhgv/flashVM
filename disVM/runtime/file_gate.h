@@ -54,7 +54,8 @@ int dvm_file_gate_leave(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
 /* Destroy only an empty gate after its file becomes unreachable. Return zero
- * if any operation remains reserved/admitted; storage stays live on refusal.
+ * if an operation remains reserved/admitted or a cancelled waiter is still
+ * waking. Storage stays live on refusal.
  * Requires runtime heap exclusion and no future borrowers. NULL succeeds. */
 int dvm_file_gate_destroy(DVM_FileGate *gate);
 
