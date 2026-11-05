@@ -10,6 +10,8 @@
 #include "queue_probe.h"
 #include "thread_port.h"
 #include "channel_sync.h"
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +61,57 @@ static void failed(const char *message)
 {
     fprintf(stderr,"native queue probe: %s\n",message);
     exit(1);
+}
+
+
+/* Inspect the suspended guest's live frame under the observer's heap turn.
+ * The rooted stack extent supplies lifetime. Return false on bad geometry
+ * or a pointer map that names a header or a partial/out-of-frame slot. */
+static int suspended_frame_valid(const REG *saved)
+{
+    uintptr_t base = (uintptr_t)saved->EX;
+    uintptr_t frame = (uintptr_t)saved->FP;
+    uintptr_t top = (uintptr_t)saved->SP;
+    uintptr_t limit = (uintptr_t)saved->TS;
+    Type *type;
+    size_t bytes;
+    size_t slots;
+    size_t index;
+
+    if (!base || saved->EX == H || frame < base || top < frame || limit < top ||
+        top - frame < sizeof(Frame))
+    {
+        return 0;
+    }
+    memmove(&type, (const void *)(frame + offsetof(Frame, t)), sizeof(type));
+    if (!type)
+    {
+        if (frame - base != offsetof(Stkext, reg.tos.fu))
+        {
+            return 0;
+        }
+        memmove(&type, (const void *)(base + offsetof(Stkext, reg.TR)), sizeof(type));
+    }
+    if (!type || type == H || type->size < (int)sizeof(Frame) ||
+        (size_t)type->size > top - frame || type->np < 0)
+    {
+        return 0;
+    }
+    bytes = (size_t)type->size;
+    slots = bytes / sizeof(void *);
+    if ((size_t)type->np > (slots + 7) / 8)
+    {
+        return 0;
+    }
+    for (index = 0; index < (size_t)type->np * 8; index++)
+    {
+        if ((type->map[index / 8] & (0x80U >> (index % 8))) &&
+            (index < sizeof(Frame) / sizeof(void *) || index >= slots))
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
@@ -125,8 +178,7 @@ static void observe(void *argument)
         dvm_runqueue_dispatch_owner(observation->process) == observation->owner &&
         !dvm_runqueue_claim(observation->process) && !dvm_runqueue_finish(observation->process) &&
         observation->process->R.M && observation->process->R.M != H &&
-        observation->process->R.FP && observation->process->R.FP != H &&
-        observation->process->R.EX && observation->process->R.EX != H;
+        suspended_frame_valid(&observation->process->R);
     /* GC can begin between leave and detach. A refused IDLE detach is retried;
      * it must not attempt a second leave or touch managed data while inactive. */
     if (observation->idle_first && !dvm_native_owner_leave(dvm_native_owner_current()))
@@ -171,7 +223,7 @@ void dvm_queue_probe_run(Prog *process, DVM_NativeContext *owner, Prog **roots)
     fvm_port_thread_join(thread);
     if (!observation.ok)
     {
-        failed("leased continuation became runnable or lost its roots");
+        failed("leased continuation became runnable or lost its valid rooted frame");
     }
     fvm_port_sync_lock(diagnostics);
     observed++;
