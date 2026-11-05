@@ -124,6 +124,12 @@ int main(void)
     }
     check(!dvm_runqueue_append(&extra.process),"process quota exceeded");
     process = dvm_runqueue_head();
+    saved = process->link;
+    process->link = NULL;
+    check(!dvm_runqueue_claim(process) && !dvm_runqueue_pop(Precv) &&
+        !dvm_runqueue_append(&extra.process) && dvm_runqueue_head() == process,
+        "truncated FIFO changed before endpoint validation");
+    process->link = saved;
     check(dvm_runqueue_claim(process),"claim runnable managed turn");
     check(dvm_runqueue_dispatch_owner(process) == context &&
         !dvm_runqueue_claim(process),"duplicate managed dispatch claim accepted");
@@ -148,6 +154,11 @@ int main(void)
     thread = fvm_port_thread_start(foreign_restore,process);
     check(thread != NULL,"start real foreign owner");
     fvm_port_thread_join(thread);
+    nodes[DVM_RUNTIME_PROCESS_MAX-1].process.link = dvm_runqueue_head();
+    check(!dvm_runqueue_resume(process) && dvm_runqueue_inflight() == 1 &&
+        dvm_runqueue_owner(process) == context && process->state == Prelease,
+        "corrupt FIFO consumed native return reservation");
+    nodes[DVM_RUNTIME_PROCESS_MAX-1].process.link = NULL;
     check(dvm_runqueue_resume(process),"original owner restore");
     check(!dvm_runqueue_resume(process),"duplicate native restore accepted");
     check(dvm_runqueue_dispatch_owner(process) == context && dvm_runqueue_finish(process),

@@ -24,6 +24,27 @@ static unsigned long peak;     /* Maximum simultaneous audited native continuati
 static int trace_waits;        /* Immutable opt-in diagnostics, enabled before thread launch. */
 
 
+/* Check the FIFO endpoints under the caller's exclusive heap turn.
+ * A full traversal is reserved for diagnostics. Return zero on inconsistent
+ * endpoint/count state before a mutating entry changes links or ownership. */
+static int endpoints_valid(void)
+{
+    if (!count)
+    {
+        return !head && !tail;
+    }
+    if (!head || !tail || tail->link)
+    {
+        return 0;
+    }
+    if (count == 1)
+    {
+        return head == tail && !head->link;
+    }
+    return head != tail && head->link && head->link != head;
+}
+
+
 /* Borrow runtime-only extension metadata from its preserved Prog prefix. The
  * caller guarantees allocation/lifetime; no managed pointer dereference occurs. */
 static DVM_RuntimeProcess *runtime_process(Prog *process)
@@ -97,7 +118,7 @@ int dvm_runqueue_claim(Prog *process)
         !runtime_process(process)->queued || runtime_process(process)->channel_claimed ||
         runtime_process(process)->native_owner ||
         runtime_process(process)->dispatch_owner || dvm_native_context_process(context) ||
-        active == DVM_RUNTIME_PROCESS_MAX)
+        active == DVM_RUNTIME_PROCESS_MAX || !endpoints_valid())
     {
         return 0;
     }
@@ -210,7 +231,7 @@ int dvm_runqueue_append(Prog *process)
         (runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
         count + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
-        ((head == NULL) != (tail == NULL)))
+        !endpoints_valid())
     {
         return 0;
     }
@@ -240,8 +261,7 @@ Prog *dvm_runqueue_pop(int state)
         runtime_process(process)->channel_claimed ||
         (runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
-        runtime_process(process)->native_owner || process->state != Pready ||
-        (!process->link && (tail != process || count != 1)))
+        runtime_process(process)->native_owner || process->state != Pready || !endpoints_valid())
     {
         return NULL;
     }
@@ -309,7 +329,7 @@ int dvm_runqueue_resume(Prog *process)
         runtime_process(process)->dispatch_owner != context ||
         dvm_native_context_process(context) != process || process->state != Prelease ||
         process->link || !inflight || count == DVM_RUNTIME_PROCESS_MAX ||
-        runtime_process(process)->queued || ((head == NULL) != (tail == NULL)))
+        runtime_process(process)->queued || !endpoints_valid())
     {
         return 0;
     }
