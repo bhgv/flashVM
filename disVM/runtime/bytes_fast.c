@@ -12,6 +12,14 @@
 extern void lea(void);
 extern void movpc(void);
 extern void indc(void); /* Guarded string character read. */
+extern void cvtca(void); /* Guarded conversion operand capture. */
+extern void cvtac(void); /* Guarded conversion operand capture. */
+extern void cvtwc(void); /* Guarded conversion operand capture. */
+extern void cvtlc(void); /* Guarded conversion operand capture. */
+extern void cvtfc(void); /* Guarded conversion operand capture. */
+extern void cvtcw(void); /* Guarded conversion operand capture. */
+extern void cvtcl(void); /* Guarded conversion operand capture. */
+extern void cvtcf(void); /* Guarded conversion operand capture. */
 extern void addc(void); /* Guarded concatenation capture. */
 extern void slicea(void); /* Guarded array slice capture. */
 extern void slicela(void); /* Guarded array slice assignment capture. */
@@ -154,6 +162,30 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IINSC:
         insc();
+        break;
+    case ICVTCA:
+        cvtca();
+        break;
+    case ICVTAC:
+        cvtac();
+        break;
+    case ICVTWC:
+        cvtwc();
+        break;
+    case ICVTLC:
+        cvtlc();
+        break;
+    case ICVTFC:
+        cvtfc();
+        break;
+    case ICVTCW:
+        cvtcw();
+        break;
+    case ICVTCL:
+        cvtcl();
+        break;
+    case ICVTCF:
+        cvtcf();
         break;
     case IADDC:
         addc();

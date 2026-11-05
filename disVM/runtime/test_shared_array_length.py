@@ -52,6 +52,17 @@ init() {
     if (len copy != 2 || copy[-1] != "copy" || source[-2] != "new" || source[-1] != "tail") {
         raise "guarded mapped slice mismatch";
     }
+    samples := array[] of {"-42", "9007199254740993", "2.5", "Ж"};
+    word := int samples[0];
+    wide := big samples[1];
+    realvalue := real samples[2];
+    encoded := array of byte samples[3];
+    decoded := string encoded;
+    if (word != -42 || wide != big 9007199254740993 || realvalue != 2.5 ||
+        string word != "-42" || string wide != "9007199254740993" ||
+        real string realvalue != 2.5 || decoded != "Ж" || len encoded != 2) {
+        raise "guarded string conversion mismatch";
+    }
     n: array of byte;
     if (len n != 0) {
         raise "nil length mismatch";
@@ -91,11 +102,11 @@ const char *__real_dvm_runtime_bytes_publish_opcode(int, const void *, void *, s
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
 
 
-/* Inject one BUSY in each of the three slice acquisition stages. */
-static int contend_slice(int stage)
+/* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
+static int contend_capture(int stage)
 {
-    static Inst *pcs[3]; /* Post-decode PC for each refused capture. */
-    static int replayed[3]; /* One successful replay for each stage. */
+    static Inst *pcs[11]; /* Post-decode PC for each refused capture. */
+    static int replayed[11]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -108,11 +119,11 @@ static int contend_slice(int stage)
     }
     if (pcs[stage] != DVM_R.PC)
     {
-        fprint(2, "FAIL array slice replay changed PC\n");
+        fprint(2, "FAIL guarded capture replay changed PC\n");
         exit(10);
     }
     replayed[stage] = 1;
-    fprint(1, "PASS array slice replay %d\n", stage);
+    fprint(1, "PASS guarded capture replay %d\n", stage);
     return 0;
 }
 
@@ -125,9 +136,20 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
     static int replayed; /* One matching address publication retry completed. */
 
     if (CONTROL == 0 && !active && !destination && !destination_size &&
-        dvm_native_execution()->arithmetic_retry_opcode == ISLICELA && contend_slice(1))
+        dvm_native_execution()->arithmetic_retry_opcode == ISLICELA && contend_capture(1))
     {
         return DVM_CELL_BUSY;
+    }
+
+    if (CONTROL == 0 && !active && !destination && !destination_size)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if ((opcode == ICVTCW && contend_capture(3)) ||
+            (opcode == ICVTCL && contend_capture(4)) ||
+            (opcode == ICVTCF && contend_capture(5)))
+        {
+            return DVM_CELL_BUSY;
+        }
     }
 
     if (address_publication)
@@ -342,7 +364,10 @@ DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
     int opcode = dvm_native_execution()->arithmetic_retry_opcode;
 
     if (CONTROL == 0 && !active &&
-        ((opcode == ISLICEA && contend_slice(0)) || (opcode == ISLICELA && contend_slice(2))))
+        ((opcode == ISLICEA && contend_capture(0)) || (opcode == ISLICELA && contend_capture(2)) ||
+         (opcode == ICVTCA && contend_capture(6)) || (opcode == ICVTAC && contend_capture(7)) ||
+         (opcode == ICVTWC && contend_capture(8)) || (opcode == ICVTLC && contend_capture(9)) ||
+         (opcode == ICVTFC && contend_capture(10))))
     {
         return DVM_CELL_BUSY;
     }
@@ -648,9 +673,9 @@ def main():
                                          'PASS scheduled address publication retry' not in output or
                                          'PASS four interior addresses survive Cycles before use' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
-                    if variant == 0 and any(f'PASS array slice replay {stage}' not in output
-                                            for stage in range(3)):
-                        raise RuntimeError('array slice replay coverage missed: '+output)
+                    if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
+                                            for stage in range(11)):
+                        raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
 

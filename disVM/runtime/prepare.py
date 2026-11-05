@@ -103,6 +103,49 @@ def adapt_array_slice_captures(code):
     return code[:start] + body + code[end:]
 
 
+def adapt_string_conversion_captures(code, conversions):
+    """Replace pre-effect operand reads in the selected conversion bodies.
+
+    The source and conversion descriptions are borrowed. Return adapted source
+    or fail generation if the pinned reads change. NativeWorld still owns the
+    captured objects and the effects of formatting, parsing and publication.
+    """
+    for opcode, operand, paired in conversions:
+        start = code.index('OP('+opcode.lower()+')')
+        end = code.index('\n}', start)
+        body = code[start:end]
+        read = f'\tmemmove(&{operand}, DVM_R.s, sizeof({operand}));'
+        old_read = '\tmemmove(&old, slot, sizeof(old));'
+        bit_copy = '\tmemmove(&bits, &value, sizeof(bits));'
+        capture = read
+        if paired:
+            if opcode == 'CVTFC':
+                capture += '\n'+bit_copy
+            capture += '\n'+old_read
+            attempt = (f'dvm_runtime_bytes_snapshot_pair_attempt(DVM_R.s, sizeof({operand}), &{operand},\n'
+                       '            slot, sizeof(old), &old, &claim)')
+        else:
+            attempt = f'dvm_runtime_bytes_snapshot_attempt(DVM_R.s, &{operand}, sizeof({operand}), &claim)'
+        replacement = f"""    if(dvm_runtime_guarded_copies) {{
+        DVM_CellResult claim;
+        const char *problem = {attempt};
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+            return;
+        }}
+        if(problem) {{
+            error((char *)problem);
+        }}
+    }} else {{
+{read}
+{old_read if paired else ''}
+    }}"""
+        if opcode == 'CVTFC':
+            replacement += '\n'+bit_copy
+        body = relative_replace(body, capture, replacement, 1)
+        code = code[:start] + body + code[end:]
+    return code
+
+
 def adapt_string_operand_captures(code):
     """Preserve decoded preflight and retry only before string mutation."""
     for opcode, first, second, first_cell, second_cell in (
@@ -346,6 +389,7 @@ def main():
             part = relative_replace(part, needle, needle + '\n\tif(relative){\n\t\tcopy = arraycpy(ds);\n\t\tmemmove(DVM_R.d, &copy, sizeof(copy));\n\t\tdestroy(ds);\n\t\tds = copy;\n\t\tt = ds->t;\n\t\tdata = arrayspan(ds, t, start, n);\n\t}', 1)
             code = code[:start] + part + code[finish:]
             code = adapt_array_slice_captures(code)
+            code = adapt_string_conversion_captures(code, (('CVTCL', 's', False),))
             needle = 'if(dl < 0 || dl > ds->len || ss->len < 0 || ss->len > ds->len-dl)'
             if code.count(needle) != 1:
                 raise ValueError("array slice-store boundary changed")
@@ -373,6 +417,11 @@ def main():
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
             code = adapt_string_operand_captures(code)
+            code = adapt_string_conversion_captures(code, (
+                ('CVTCA', 'ss', True), ('CVTAC', 'a', True),
+                ('CVTWC', 'value', True), ('CVTLC', 'value', True), ('CVTFC', 'value', True),
+                ('CVTCW', 's', False), ('CVTCF', 's', False),
+            ))
             start = code.index('OP(slicec)')
             finish = code.index('void\ncvtup', start)
             part = code[start:finish]
