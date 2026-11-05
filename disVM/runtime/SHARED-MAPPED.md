@@ -131,9 +131,9 @@ Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-CO
 ## Shared admission for array assignment
 
 `--parallel-slicela` enables an experimental path with `--guarded-copies`
-and multiple managed workers. It accepts mapped `SLICELA` between direct
-backing arrays captured from typed frame slots, with an immediate or private
-frame index. Raw arrays and array views use the existing exclusive path.
+and multiple managed workers. It accepts mapped `SLICELA` between arrays or views captured from typed frame
+slots, with an immediate or private frame index. A pinned view retains the
+backing array through its root link. Raw arrays use the exclusive path.
 
 The runtime retains and roots both arrays and reserves copy metadata under
 exclusive admission. Once admitted in `SHARED`, it rechecks both array
@@ -146,6 +146,14 @@ collector acquires stopped-world admission between shared intervals.
 
 The hosted GC test exercises 64 publications of two mapped cells across
 two guest writers, validates the surviving references after unwind and
-collection, and checks overlapping view assignment through the exclusive
-path. The `parallel_slicela_commits` diagnostic distinguishes those shared
+collection, and checks overlapping shared view assignment after dropping
+the direct backing-array reference. The `parallel_slicela_commits` diagnostic distinguishes those shared
 publications from other native suspensions.
+
+`--parallel-movmp` admits mapped `MOVMP` copies between two complete, aligned
+records in the current live frame. Both record maps must match the frame
+map across the entire byte span. The suspended process retains the frame
+and its type. Publication and retirement use the same range transaction
+as `SLICELA`. Other addressing modes and buffered channel transfers retain
+exclusive admission. The GC guest checks 32 mapped frame copies with an
+owning reference and a scalar field in each record.

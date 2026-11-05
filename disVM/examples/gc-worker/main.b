@@ -17,6 +17,13 @@ Node: adt
 };
 
 
+Publication: adt
+{
+    node: ref Node;
+    seed: int;
+};
+
+
 # Allocate a private cyclic graph; its references die when this call returns.
 # seed initializes data so retained live roots can be checked independently.
 # This function never changes a node owned by another Dis process.
@@ -76,6 +83,7 @@ sharedgraph()
     replies := chan[2] of int;
     spawn graphwriter(shared, first, replies);
     spawn graphwriter(shared, second, replies);
+    previous := Publication(nil, -1);
     for (round := 0; round < 32; round++)
     {
         low := 2*round;
@@ -102,19 +110,29 @@ sharedgraph()
         {
             raise "shared graph contains a partial publication";
         }
+        # Force a mapped record copy with a live previous owner.
+        current := Publication(shared[0], seed);
+        previous = current;
         shared[0] = nil;
         shared[1] = nil;
+        cycle(round);
+        if (previous.node.next != previous.node || previous.seed != seed)
+        {
+            raise "mapped frame record lost its published reference";
+        }
     }
     first <-= -1;
     second <-= -1;
-    # Overlapping views take the exclusive path and preserve snapshot order.
+    # Overlapping views share one backing array and preserve snapshot order.
     values := array[] of {ref Node(nil, nil), ref Node(nil, nil), ref Node(nil, nil)};
     left := values[0:2];
     right := values[1:3];
     firstvalue := values[0];
     secondvalue := values[1];
+    # Drop the direct owner before entering the shared copy.
+    values = nil;
     right[0:] = left;
-    if (values[0] != firstvalue || values[1] != firstvalue || values[2] != secondvalue)
+    if (left[0] != firstvalue || left[1] != firstvalue || right[1] != secondvalue)
     {
         raise "overlapping view copy changed snapshot order";
     }

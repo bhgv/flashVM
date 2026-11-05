@@ -25,6 +25,8 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
 struct Prog;
 int dvm_runtime_arithmetic_finish(struct Prog *process);
 /* Verify one pointer-mapped cell of the current rooted frame under ACTIVE. */
+struct Type;
+int dvm_runtime_frame_record(const void *cell, const struct Type *record);
 int dvm_runtime_frame_pointer(const void *cell);
 int dvm_runtime_slice_index_stable(const void *cell);
 #endif

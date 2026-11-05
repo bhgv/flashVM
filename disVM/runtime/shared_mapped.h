@@ -30,6 +30,8 @@ void dvm_runtime_mapped_move_opcode(const void *source, void *destination, struc
 void dvm_runtime_array_slice_copy(const void *source, void *destination, struct Type *type, size_t count,
     struct Array *source_array, struct Array *destination_array);
 extern int dvm_runtime_parallel_slicela;
+extern int dvm_runtime_parallel_movmp;
+extern unsigned long dvm_runtime_parallel_movmp_commits;
 extern unsigned long dvm_runtime_parallel_slicela_commits;
 /* [GC:] Transfer live ring spans using the supplied type. NULL consumed selects copy, otherwise
  * commit clears source pointers and sets consumed. Return zero on replay. */

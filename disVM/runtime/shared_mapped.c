@@ -24,6 +24,8 @@
 
 
 int dvm_runtime_parallel_slicela;
+int dvm_runtime_parallel_movmp;
+unsigned long dvm_runtime_parallel_movmp_commits;
 unsigned long dvm_runtime_parallel_slicela_commits;
 
 typedef struct SliceCopy
@@ -302,7 +304,9 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    if (slice)
+    if (slice || (dvm_runtime_parallel_movmp && !consumed && replay_opcode == IMOVMP &&
+        up->prog && dvm_native_execution()->arithmetic_retry_opcode == IMOVMP &&
+        dvm_runtime_frame_record(source, type) && dvm_runtime_frame_record(destination, type)))
     {
         domain = dvm_managed_cell_domain();
         if (domain)
@@ -317,8 +321,8 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         {
             abort();
         }
-        claim = same_shape(slice->source, &slice->source_shape) &&
-            same_shape(slice->destination, &slice->destination_shape) ?
+        claim = !slice || (same_shape(slice->source, &slice->source_shape) &&
+            same_shape(slice->destination, &slice->destination_shape)) ?
             dvm_range_access_begin(domain, source, bytes, destination, bytes, &access) :
             DVM_CELL_BUSY;
     }
@@ -343,7 +347,14 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         dvm_runtime_gc_native_enter(released);
         if (claim == DVM_CELL_ACQUIRED && !problem)
         {
-            dvm_runtime_parallel_slicela_commits++;
+            if (slice)
+            {
+                dvm_runtime_parallel_slicela_commits++;
+            }
+            else
+            {
+                dvm_runtime_parallel_movmp_commits++;
+            }
         }
     }
     if (claim != DVM_CELL_ACQUIRED)
@@ -441,10 +452,9 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *t
     SliceCopy slice;
     char first_error[ERRMAX];
 
-    /* Only directly owned backing arrays and stable decoded frame slots
-     * enter the experiment. Views and other addressing modes stay exclusive. */
+    /* A retained view keeps its backing array live through its root link.
+     * Stable decoded frame slots supply the array identities and index. */
     if (!dvm_runtime_parallel_slicela || !type->np ||
-        source_array->root != H || destination_array->root != H ||
         !dvm_runtime_frame_pointer(DVM_R.s) || !dvm_runtime_frame_pointer(DVM_R.d) ||
         !dvm_runtime_slice_index_stable(DVM_R.m))
     {

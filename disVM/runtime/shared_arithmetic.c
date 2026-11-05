@@ -121,6 +121,41 @@ static int parallel_frame_spans(int opcode, const void *first, size_t first_size
 }
 
 
+/* Verify that the entire record agrees with the live frame's pointer map. */
+int dvm_runtime_frame_record(const void *cell, const Type *record)
+{
+    const Type *frame = current_frame_type();
+    uintptr_t base = (uintptr_t)DVM_R.FP;
+    uintptr_t address = (uintptr_t)cell;
+    size_t offset, slot, frame_slot;
+
+    if (!frame || address < base || record->size <= 0 ||
+        record->size % sizeof(void *) || record->size > frame->size)
+    {
+        return 0;
+    }
+    offset = address - base;
+    if (offset < NREG * IBY2WD || offset % sizeof(void *) ||
+        offset > (size_t)(frame->size - record->size))
+    {
+        return 0;
+    }
+    for (slot = 0; slot < (size_t)record->size / sizeof(void *); slot++)
+    {
+        frame_slot = offset / sizeof(void *) + slot;
+        int mapped = slot / 8 < (size_t)record->np &&
+            (record->map[slot / 8] & (0x80U >> (slot % 8)));
+        int frame_mapped = frame_slot / 8 < (size_t)frame->np &&
+            (frame->map[frame_slot / 8] & (0x80U >> (frame_slot % 8)));
+        if (mapped != frame_mapped)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* A slice index must belong to the armed instruction or its private frame. */
 int dvm_runtime_slice_index_stable(const void *cell)
 {
