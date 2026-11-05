@@ -351,6 +351,7 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
 
+#define CANCEL_REQUESTS_PER_TURN 8
 #define CANCEL_REQUEST_CAPACITY 64 /* Bounded host requests, containing numeric PIDs only. */
 
 static int cancel_requests[CANCEL_REQUEST_CAPACITY]; /* FIFO under the channel mutex. */
@@ -590,14 +591,15 @@ static int guest_cancel_pending_or_close(void)
 }
 
 
-/* Process at most the original batch under NativeWorld. Keep each PID
+/* Limit cancellation work before the next guest turn. Keep each PID
  * visible until its delivery finishes so concurrent submissions coalesce. */
 static void dispatch_guest_cancellations(void)
 {
     size_t remaining;
 
     fvm_port_sync_lock(channel_queue_mutex);
-    remaining = cancel_request_count;
+    remaining = cancel_request_count < CANCEL_REQUESTS_PER_TURN ?
+        cancel_request_count : CANCEL_REQUESTS_PER_TURN;
     while (remaining-- && cancel_request_count)
     {
         int pid = cancel_requests[0];
@@ -2402,16 +2404,12 @@ static int runtime_execute_inner(void *argument)
            || guest_cancel_pending_or_close())
     {
         if (managed_workers == 0 && live && !dvm_runqueue_head() && !dvm_runqueue_inflight()
+            && !guest_cancel_pending()
 #ifdef DVM_RUNTIME_EDITOR
             && !dvm_editor_attached()
 #endif
         )
         {
-            dispatch_guest_cancellations();
-            if (dvm_runqueue_head())
-            {
-                continue;
-            }
             if (show_stats && !quiescent_reported)
             {
                 fprintf(stderr, "NATIVEPOOL_QUIESCENT processes=%d\n", live);

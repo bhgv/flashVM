@@ -647,6 +647,31 @@ int __wrap_dvm_runqueue_append(Prog *process)
 }
 
 
+int __real_dvm_runqueue_claim(Prog *process);
+
+
+/* A ready guest gets its turn while most of the full host queue still waits. */
+int __wrap_dvm_runqueue_claim(Prog *process)
+{
+    if ((host_cancel_mode || host_cancel_on_publish) && host_cancel_delivery_seen == 1 &&
+        process->pid == parked_pid)
+    {
+        int index;
+
+        for (index = 0; index < 8; index++)
+        {
+            check(dvm_runtime_request_guest_cancel(3000 + index),
+                "one bounded slice freed eight queue slots");
+        }
+        check(!dvm_runtime_request_guest_cancel(4000),
+            "ready guest is claimed before a second cancellation slice");
+        host_cancel_delivery_seen = 2;
+        puts("PASS guest scheduled between cancellation slices");
+    }
+    return __real_dvm_runqueue_claim(process);
+}
+
+
 /* Force a notification after park captured its generation, but before the
  * controller actually waits. Its old pending observation stays false. */
 static int submit_after_park_snapshot(void)
