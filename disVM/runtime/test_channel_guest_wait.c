@@ -173,6 +173,7 @@ int __wrap_dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch)
 
 
 static DVM_WorldRoots real_root_visitor; /* Production callback retained through the fixture. */
+static DVM_GCWorkers *root_probe_workers; /* Borrowed service for the explicit suspended-root run. */
 static int root_probe_reported; /* Written only under the world collector lock. */
 DVM_GCWorkers *__real_dvm_gc_workers_create(const DVM_GCWorkersConfig *config);
 
@@ -186,7 +187,7 @@ static void verify_suspended_roots(DVM_NativeContext *context, void *registers,
     Prog *guest = process;
     REG *current = registers;
 
-    if (guest && guest->state == Prelease && size == sizeof(*current))
+    if (guest && guest == first_process && guest->state == Prelease && size == sizeof(*current))
     {
         REG saved;
         void *original = current->d;
@@ -212,13 +213,19 @@ static void verify_suspended_roots(DVM_NativeContext *context, void *registers,
 DVM_GCWorkers *__wrap_dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
 {
     DVM_GCWorkersConfig probe = *config;
+    DVM_GCWorkers *workers;
 
     if (getenv("DVM_TEST_SUSPENDED_ROOTS") && probe.roots)
     {
         real_root_visitor = probe.roots;
         probe.roots = verify_suspended_roots;
     }
-    return __real_dvm_gc_workers_create(&probe);
+    workers = __real_dvm_gc_workers_create(&probe);
+    if (probe.roots == verify_suspended_roots)
+    {
+        root_probe_workers = workers;
+    }
+    return workers;
 }
 
 
@@ -253,6 +260,12 @@ static void rendezvous_mover(void)
         }
         released = dvm_runtime_gc_native_try_leave();
         check(released == 1, "first transfer releases NativeWorld");
+        if (root_probe_workers)
+        {
+            check(dvm_gc_workers_request(root_probe_workers, DVM_GC_CYCLES) &&
+                dvm_gc_workers_wait_idle(root_probe_workers) && root_probe_reported,
+                "collector visits saved roots before the mover can reenter");
+        }
         pthread_mutex_lock(&gate);
         while (!resume_mover)
         {
