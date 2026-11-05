@@ -692,6 +692,15 @@ static int wait_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descriptor, s
 }
 
 
+/* Decide whether an uncommitted nonblocking pipe transfer should repoll.
+ * failure is the saved syscall errno. An interrupt does not establish that
+ * a protected caller would block; EAGAIN does for a zero-timeout caller. */
+static int retry_stdio_splice(int failure, int timeout)
+{
+    return failure == EINTR || (failure == EAGAIN && timeout != 0);
+}
+
+
 /* Read a borrowed FIFO through a private pipe without changing its flags.
  * The ledger serializes cancellation against the nonblocking consumption
  * attempt. Advisory readiness alone does not commit the read. */
@@ -717,13 +726,13 @@ static FVM_Result read_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descri
             break;
         }
         count = splice(descriptor, NULL, staging[1], NULL, capacity, SPLICE_F_NONBLOCK);
-        retry = count < 0 && (errno == EAGAIN || errno == EINTR);
+        retry = count < 0 && retry_stdio_splice(errno, timeout);
         if (count >= 0)
         {
             wait->wake_fd = -1;
         }
         fvm_port_sync_unlock(channel_queue_mutex);
-        if (!retry || !timeout)
+        if (!retry)
         {
             break;
         }
@@ -796,12 +805,8 @@ static FVM_Result write_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descr
             break;
         }
         count = splice(staging[0], NULL, descriptor, NULL, staged, SPLICE_F_NONBLOCK);
-        if (count < 0 && (errno == EAGAIN || errno == EINTR))
+        if (count < 0 && retry_stdio_splice(errno, timeout))
         {
-            if (!timeout)
-            {
-                break;
-            }
             continue;
         }
         if (count <= 0)

@@ -57,6 +57,7 @@ static int broken_pipe_splices; /* Actual stdout splice attempts by this guest. 
 static int protected_output; /* Force the fixture write to retain NativeWorld. */
 static int stdout_alias_mode; /* stdout/stderr refer to the same pipe. */
 static DVM_FileGate *aliased_output_gate; /* Borrowed while the first write is paused. */
+static int stdout_retry_count; /* Inject two transient failures before the first committed fragment. */
 static int stdout_cancel_mode; /* Test cancellation of backpressured output. */
 static int stdout_wait_pid; /* Captured before the staged output wait. */
 static int stdout_cancelled; /* Later output uses the normal pipe path. */
@@ -581,7 +582,7 @@ FVM_Result __wrap_dvm_runtime_write_stdio(int descriptor, const void *bytes,
     check(process != NULL, "stdout wait has a guest owner");
     stdout_wait_pid = process->pid;
     result = __real_dvm_runtime_write_stdio(descriptor, bytes, capacity, written, released);
-    check((stdout_cancel_mode == 24 ? result == FVM_OK && *written == 4096 :
+    check((stdout_cancel_mode == 24 ? stdout_retry_count == 2 && result == FVM_OK && *written == 4096 :
         result != FVM_OK && !*written) && !dvm_runtime_cancel_guest_wait(stdout_wait_pid),
         "pipe cancellation publishes only committed output and retires the wait");
     stdout_cancelled = 1;
@@ -602,6 +603,13 @@ ssize_t __wrap_splice(int source, off64_t *source_offset, int destination,
         check((flags & SPLICE_F_NONBLOCK) != 0, "stdin consumes advisory readiness without blocking");
         stdin_readiness_raced = 1;
         errno = EAGAIN;
+        return -1;
+    }
+    if (stdout_cancel_mode == 24 && destination == 1 && stdout_retry_count < 2)
+    {
+        check((flags & SPLICE_F_NONBLOCK) != 0, "stdout retries without blocking");
+        stdout_retry_count++;
+        errno = stdout_retry_count == 1 ? EINTR : EAGAIN;
         return -1;
     }
     if (broken_pipe_mode && destination == 1)
