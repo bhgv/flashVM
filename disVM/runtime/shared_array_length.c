@@ -67,3 +67,26 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
     }
     return problem;
 }
+
+
+/* Capture the two borrowed operands under one guard union. The VM retains
+ * NativeWorld throughout the subsequent use of the raw array address. */
+const char *dvm_runtime_array_index_operands(const void *source, const void *index,
+    void *array_snapshot, void *index_snapshot)
+{
+    DVM_RangeAccess access = {0};
+
+    if (dvm_runtime_shared_mode() != 2 ||
+        dvm_managed_three_begin(source, sizeof(Array *), index, sizeof(WORD),
+            NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(array_snapshot, source, sizeof(Array *));
+    memmove(index_snapshot, index, sizeof(WORD));
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}

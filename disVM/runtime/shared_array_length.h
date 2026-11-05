@@ -9,4 +9,8 @@
  * Caller preserves mapped referent/root lifetime; no allocation, retain/root,
  * callback or general parallel GC/code admission is supplied. */
 const char *dvm_runtime_array_length(const void *source, void *destination);
+/* Capture live pointer/index slots into private storage under their guard union.
+ * Caller validates geometry and retains NativeWorld. Returns a static error. */
+const char *dvm_runtime_array_index_operands(const void *source, const void *index,
+    void *array_snapshot, void *index_snapshot);
 #endif

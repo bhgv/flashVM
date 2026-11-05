@@ -9,6 +9,13 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void lea(void);
+extern void movpc(void);
+extern void indx(void);
+extern void indb(void);
+extern void indw(void);
+extern void indl(void);
+extern void indf(void);
 extern void cvtrf(void); /* Guarded FP conversion. */
 extern void cvtfr(void); /* Guarded FP conversion. */
 extern void cvtwf(void); /* Guarded FP conversion. */
@@ -130,6 +137,27 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case ILEA:
+        lea();
+        break;
+    case IMOVPC:
+        movpc();
+        break;
+    case IINDX:
+        indx();
+        break;
+    case IINDB:
+        indb();
+        break;
+    case IINDW:
+        indw();
+        break;
+    case IINDL:
+        indl();
+        break;
+    case IINDF:
+        indf();
+        break;
     case ICVTRF:
         cvtrf();
         break;

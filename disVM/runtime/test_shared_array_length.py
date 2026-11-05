@@ -19,6 +19,23 @@ init() {
         if (len b != i || len w != i || len r != i) {
             raise "array length mismatch";
         }
+        if (i != 0) {
+            at := i - 1;
+            b[at] = byte i;
+            w[at] = i + 7;
+            r[at] = "guarded";
+            wide := array[1] of big;
+            floats := array[1] of real;
+            zero := at - at;
+            wide[zero] = big i;
+            floats[zero] = real i;
+            if (wide[zero] != big i || floats[zero] != real i) {
+                raise "wide array index mismatch";
+            }
+            if (int b[at] != i || w[at] != i + 7 || r[at] != "guarded") {
+                raise "array index mismatch";
+            }
+        }
     }
     n: array of byte;
     if (len n != 0) {
@@ -51,6 +68,26 @@ extern void lena(void); /* Actual native opcode, not a modeled operation. */
 static __thread int active; /* Only the serialized fixture controller observes helpers. */
 static __thread unsigned long allocations; /* Native allocation/free calls inside LENA. */
 static __thread unsigned int expected_depth; /* Independent six-key union size. */
+static int index_reported; /* Emit one actual route marker per fixture process. */
+const char *__real_dvm_runtime_array_index_operands(const void *, const void *, void *, void *);
+
+
+/* Verify that real C and compiled guests both enter the guarded index helper. */
+const char *__wrap_dvm_runtime_array_index_operands(const void *source, const void *index,
+    void *array_snapshot, void *index_snapshot)
+{
+    const char *problem = __real_dvm_runtime_array_index_operands(source, index,
+        array_snapshot, index_snapshot);
+
+    if (!problem && !index_reported)
+    {
+        index_reported = 1;
+        print("PASS guarded array index route\n");
+    }
+    return problem;
+}
+
+
 static Array *array; /* Actual independently rooted fixture owner, or nil/H. */
 static const void *source_cell; /* Complete borrowed reference slot. */
 static void *output_cell; /* Complete borrowed writable WORD. */
@@ -395,7 +432,7 @@ def main():
             binary = relink(runtime, work, wrapper, variant,
                 ['dvm_runtime_root_registry_probe', 'dvm_managed_small_three_begin',
                  'dvm_small_range_access_extend', 'dvm_runtime_array_length_source',
-                 'dvm_runtime_array_length_value', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
@@ -410,7 +447,8 @@ def main():
                         marker = {1: 'source read guarded', 2: 'field read guarded', 3: 'exact length and canaries'}[variant]
                         if run.returncode != 10 or 'FAIL array length: '+marker not in output:
                             raise RuntimeError('array-length control missed: '+output)
-                    elif run.returncode or 'PASS array length probe:' not in output or 'PASS array length32' not in output:
+                    elif (run.returncode or 'PASS array length probe:' not in output or 'PASS array length32' not in output
+                          or 'PASS guarded array index route' not in output):
                         raise RuntimeError('array-length positive failed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
