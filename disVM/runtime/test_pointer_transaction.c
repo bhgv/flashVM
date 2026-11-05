@@ -4,6 +4,9 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "managed_owner.h"
+#include "disvm/native_process.h"
+#include "isa.h"
 #include "raise.h"
 #include "pool.h"
 #include "pointer_builder.h"
@@ -60,6 +63,38 @@ static void check(int valid,const char *message)
         exit(10);
     }
 }
+
+
+DVM_CellResult __real_dvm_managed_cells_begin(const void *, void *, DVM_CellAccess *);
+
+
+/* Inject independent source and first-tail contention before any publication. */
+DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
+{
+    static Inst *pcs[2]; /* Decoded constructor PC for each acquisition. */
+    static int replayed[2]; /* One replay per pre-effect stage. */
+
+    if (CONTROL == 0 && !active && source == destination &&
+        dvm_native_execution()->arithmetic_retry_opcode == ICONSP &&
+        (source == DVM_R.s || source == DVM_R.d))
+    {
+        int stage = source == DVM_R.d;
+
+        if (!replayed[stage])
+        {
+            if (!pcs[stage])
+            {
+                pcs[stage] = DVM_R.PC;
+                return DVM_CELL_BUSY;
+            }
+            check(pcs[stage] == DVM_R.PC, "CONSP retries the original PC");
+            replayed[stage] = 1;
+            puts(stage ? "PASS scheduled CONSP tail replay" : "PASS scheduled CONSP source replay");
+        }
+    }
+    return __real_dvm_managed_cells_begin(source, destination, access);
+}
+
 
 
 /* Count real dispatches, including C/JIT guest constructor operations. */

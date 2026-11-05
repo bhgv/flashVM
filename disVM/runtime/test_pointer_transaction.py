@@ -30,7 +30,7 @@ def main():
         guest, image = work/'main.b', work/'main.dis'
         guest.write_text(GUEST)
         subprocess.run([str(compiler),'-I',str(include),'-o',str(image),str(guest)],check=True)
-        symbols = ['dvm_runtime_root_registry_probe','dvm_runtime_pointer_transaction',
+        symbols = ['dvm_managed_cells_begin','dvm_runtime_root_registry_probe','dvm_runtime_pointer_transaction',
                    'calloc','poolalloc','dvm_refcount_retain_i','destroy']
         binary = relink(runtime,work,root/'test_pointer_transaction.c',0,symbols)
         for mode in ('--no-jit','--jit'):
@@ -40,7 +40,8 @@ def main():
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=90)
                 output = run.stdout+run.stderr
-                if run.returncode or 'PASS pointer transaction:' not in output or 'PASS transaction guest' not in output:
+                if run.returncode or 'PASS pointer transaction:' not in output or 'PASS transaction guest' not in output or \
+                        'PASS scheduled CONSP source replay' not in output or 'PASS scheduled CONSP tail replay' not in output:
                     raise RuntimeError(output)
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                     raise RuntimeError(output)

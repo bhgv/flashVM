@@ -127,9 +127,13 @@ static int construct(void *argument)
     }
     for (attempt = 0; attempt < DVM_RAW_ATTEMPTS; attempt++)
     {
-        problem = dvm_runtime_heap_hold(state->destination, &Tlist, 1, &state->tail);
+        problem = dvm_runtime_heap_hold_attempt(state->destination, &Tlist, 1, &state->tail, &claim);
         if (problem)
         {
+            if (!attempt && claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICONSM))
+            {
+                return 1;
+            }
             error((char *)problem);
         }
         dvm_runtime_value_prepare(state->snapshot, state->extent, &state->tail, &state->candidate);

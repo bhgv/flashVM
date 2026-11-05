@@ -4,6 +4,8 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
+#include "shared_access.h"
 #include "raise.h"
 #include "pointer_transaction.h"
 #include "pointer_prepare.h"
@@ -73,18 +75,27 @@ static int construct(void *argument)
 {
     PointerTransaction *state = argument;
     const char *problem;
+    DVM_CellResult claim;
     unsigned int attempt;
     int result;
-    problem = dvm_runtime_heap_hold(state->source_cell, NULL, 1, &state->source);
+    problem = dvm_runtime_heap_hold_attempt(state->source_cell, NULL, 1, &state->source, &claim);
     if (problem)
     {
+        if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICONSP))
+        {
+            return 1;
+        }
         error((char *)problem);
     }
     for (attempt = 0; attempt < DVM_POINTER_ATTEMPTS; attempt++)
     {
-        problem = dvm_runtime_heap_hold(state->destination, &Tlist, 1, &state->tail);
+        problem = dvm_runtime_heap_hold_attempt(state->destination, &Tlist, 1, &state->tail, &claim);
         if (problem)
         {
+            if (!attempt && claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICONSP))
+            {
+                return 1;
+            }
             error((char *)problem);
         }
         dvm_runtime_pointer_prepare(&state->source, &state->tail, &state->candidate);

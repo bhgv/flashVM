@@ -71,6 +71,21 @@ static void finish_all(ScalarTransaction *state, int body_ok)
 }
 
 
+/* Only an armed scalar constructor can replay this pre-effect refusal. */
+static int scalar_replay(DVM_CellResult claim)
+{
+    int opcode;
+
+    if (claim != DVM_CELL_BUSY)
+    {
+        return 0;
+    }
+    opcode = dvm_native_execution()->arithmetic_retry_opcode;
+    return (opcode == ICONSB || opcode == ICONSW || opcode == ICONSL || opcode == ICONSF) &&
+        dvm_runtime_scalar_retry(opcode);
+}
+
+
 /* [GC:] Capture raw source bytes once before any callback, including overlapping cells.
  * state owns stable mapped cells and zero ledger. Each stale candidate is fully
  * discarded before refreshing tail; never publish a node carrying the old tail.
@@ -85,22 +100,21 @@ static int construct(void *argument)
     problem = dvm_runtime_bytes_snapshot_attempt(state->source_cell, state->snapshot, state->width, &claim);
     if (problem)
     {
-        if (claim == DVM_CELL_BUSY)
+        if (scalar_replay(claim))
         {
-            int opcode = dvm_native_execution()->arithmetic_retry_opcode;
-            if ((opcode == ICONSB || opcode == ICONSW || opcode == ICONSL || opcode == ICONSF) &&
-                dvm_runtime_scalar_retry(opcode))
-            {
-                return 1;
-            }
+            return 1;
         }
         error((char *)problem);
     }
     for (attempt = 0; attempt < DVM_SCALAR_ATTEMPTS; attempt++)
     {
-        problem = dvm_runtime_heap_hold(state->destination, &Tlist, 1, &state->tail);
+        problem = dvm_runtime_heap_hold_attempt(state->destination, &Tlist, 1, &state->tail, &claim);
         if (problem)
         {
+            if (!attempt && scalar_replay(claim))
+            {
+                return 1;
+            }
             error((char *)problem);
         }
         dvm_runtime_value_prepare(state->snapshot, state->extent, &state->tail, &state->candidate);
