@@ -27,6 +27,7 @@ const char *dvm_runtime_real_conversion(int opcode, const void *source, void *de
     size_t output;
     const char *problem;
     DVM_CellResult claim;
+    int released;
     if (dvm_runtime_shared_mode() != 2 || !dvm_runtime_real_conversion_sizes(opcode, &input, &output))
     {
         return exHeap;
@@ -41,7 +42,9 @@ const char *dvm_runtime_real_conversion(int opcode, const void *source, void *de
     {
         return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
+    released = dvm_runtime_parallel_real_leave(opcode, source, input, destination, output, NULL, 0);
     problem = dvm_runtime_real_conversion_value(opcode, captured, result);
+    dvm_runtime_parallel_real_enter(released);
     if (problem)
     {
         return problem;

@@ -27,6 +27,7 @@
 #include "runtime_gc.h"
 #include "shared_bytes.h"
 #include "shared_arithmetic.h"
+#include "shared_access.h"
 #include "runqueue.h"
 #include "queue_probe.h"
 #include "channel_sync.h"
@@ -2764,6 +2765,10 @@ int main(int argc, char **argv)
             }
             dvm_runtime_parallel_add = strcmp(argv[1], "--parallel-add") == 0 ? 1 : 2;
         }
+        else if (strcmp(argv[1], "--parallel-real") == 0)
+        {
+            dvm_runtime_parallel_real = 1;
+        }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
@@ -2829,7 +2834,8 @@ int main(int argc, char **argv)
         return 2;
     }
 #endif
-    if (dvm_runtime_parallel_add && (!dvm_runtime_guarded_copies || managed_workers == 1))
+    if ((dvm_runtime_parallel_add || dvm_runtime_parallel_real) &&
+        (!dvm_runtime_guarded_copies || managed_workers == 1))
     {
         fprintf(stderr, "parallel arithmetic requires --guarded-copies and multiple managed workers\n");
         return 2;

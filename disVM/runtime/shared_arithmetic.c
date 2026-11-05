@@ -12,6 +12,7 @@
 #include "disvm/native_process.h"
 #include "runqueue.h"
 #include "runtime_gc.h"
+#include <fenv.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -78,21 +79,77 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
 }
 
 
-/* Admit mixed-width cells only in the full experimental mode.
+/* Admit mixed-width cells of an armed experimental operation.
  * The active dispatch and typed frame supply the borrowed span lifetime. */
-int dvm_runtime_parallel_scalar_spans(int opcode, const void *first, size_t first_size,
+static int parallel_frame_spans(int opcode, const void *first, size_t first_size,
     const void *second, size_t second_size, const void *third, size_t third_size)
 {
     Type *type;
 
-    if (dvm_runtime_parallel_add != 2 ||
-        dvm_native_execution()->arithmetic_retry_opcode != opcode || !up->prog)
+    if (dvm_native_execution()->arithmetic_retry_opcode != opcode || !up->prog)
     {
         return 0;
     }
     type = current_frame_type();
     return type && frame_scalar(first, type, first_size) && frame_scalar(second, type, second_size) &&
         (!third_size || frame_scalar(third, type, third_size));
+}
+
+
+/* Gate the shared frame check on the full integer experiment. */
+int dvm_runtime_parallel_scalar_spans(int opcode, const void *first, size_t first_size,
+    const void *second, size_t second_size, const void *third, size_t third_size)
+{
+    return dvm_runtime_parallel_add == 2 &&
+        parallel_frame_spans(opcode, first, first_size, second, second_size, third, third_size);
+}
+
+
+int dvm_runtime_parallel_real; /* Startup-only flag for private FP evaluation. */
+
+
+/* Preserve this guest's FP state across native lease admission. */
+int dvm_runtime_parallel_real_leave(int opcode, const void *first, size_t first_size,
+    const void *second, size_t second_size, const void *third, size_t third_size)
+{
+    fenv_t environment;
+    int released;
+
+    if (!dvm_runtime_parallel_real ||
+        !parallel_frame_spans(opcode, first, first_size, second, second_size, third, third_size))
+    {
+        return 0;
+    }
+    if (fegetenv(&environment))
+    {
+        return 0;
+    }
+    released = dvm_runtime_gc_native_try_leave();
+    if (fesetenv(&environment))
+    {
+        abort();
+    }
+    return released > 0;
+}
+
+
+/* Preserve FP flags produced on private bytes through native reentry. */
+void dvm_runtime_parallel_real_enter(int released)
+{
+    if (released)
+    {
+        fenv_t environment;
+
+        if (fegetenv(&environment))
+        {
+            abort();
+        }
+        dvm_runtime_gc_native_enter(released);
+        if (fesetenv(&environment))
+        {
+            abort();
+        }
+    }
 }
 
 

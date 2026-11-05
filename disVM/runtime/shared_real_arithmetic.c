@@ -28,6 +28,7 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     unsigned char pair[2*sizeof(REAL)];
     unsigned char result[sizeof(REAL)];
     size_t second_width = opcode == INEGF ? 0 : sizeof(REAL);
+    int released;
     if (dvm_runtime_shared_mode() != 2 ||
         (opcode != IADDF && opcode != ISUBF && opcode != IMULF && opcode != IDIVF && opcode != INEGF))
     {
@@ -45,7 +46,10 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     {
         return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
+    released = dvm_runtime_parallel_real_leave(opcode, first, sizeof(REAL),
+        output, sizeof(REAL), second, second_width);
     dvm_runtime_real_arithmetic_value(opcode, pair, result);
+    dvm_runtime_parallel_real_enter(released);
     return dvm_runtime_bytes_publish(result, output, sizeof(REAL));
 }
 

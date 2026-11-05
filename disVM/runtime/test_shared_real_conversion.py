@@ -41,6 +41,7 @@ WRAPPER = r'''
 #include "isa.h"
 #include "interp.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
 #include "raise.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
@@ -206,6 +207,29 @@ void __wrap_dvm_runtime_byte_transfer(void *output,const void *source,size_t byt
 /* All native FP conversion and any VM unwind occur with zero shared guards. */
 const char *__wrap_dvm_runtime_real_conversion_value(int opcode,const void *source,void *output)
 {
+    DVM_HeapOwnerStats owner;
+
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        switch (opcode)
+        {
+        case ICVTWF:
+            print("LEASED CVTWF\n");
+            break;
+        case ICVTLF:
+            print("LEASED CVTLF\n");
+            break;
+        case ICVTFW:
+            print("LEASED CVTFW\n");
+            break;
+        case ICVTFL:
+            print("LEASED CVTFL\n");
+            break;
+        }
+    }
+
     if (active)
     {
         check(phase == 2 && copies == 1 && !dvm_native_context_object_count(dvm_native_context_current()),"unlocked conversion");
@@ -490,7 +514,8 @@ def main():
         binary = relink(runtime,work,wrapper,0,symbols)
         for mode in ('--jit','--no-jit'):
             for locked in (False,True):
-                args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe']
+                args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe',
+                        '--managed-workers','2','--parallel-real']
                 if locked:
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,
@@ -498,6 +523,9 @@ def main():
                 output = run.stdout+run.stderr
                 if run.returncode or 'PASS actual FP conversion: 3496 ' not in output or 'PASS FP conversions4' not in output:
                     raise RuntimeError(output)
+                leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
+                if leased != {'LEASED CVTFL', 'LEASED CVTFW', 'LEASED CVTLF', 'LEASED CVTWF'}:
+                    raise RuntimeError('leased FP coverage missed: '+output)
                 if 'PASS scheduled FP input retry' not in output:
                     raise RuntimeError('FP input retry missed: '+output)
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:

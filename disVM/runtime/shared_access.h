@@ -21,4 +21,17 @@ int dvm_runtime_scalar_retry(int opcode);
  * ignores its address. No heap release. */
 int dvm_runtime_parallel_scalar_spans(int opcode, const void *first, size_t first_size,
     const void *second, size_t second_size, const void *third, size_t third_size);
+
+
+extern int dvm_runtime_parallel_real; /* Startup-only private REAL evaluation mode. */
+
+/* Try a native lease for private FP evaluation. The checked scalar spans
+ * belong to the armed current frame. No guard may be live. Return zero for
+ * inline evaluation or one for a matching FP reentry. */
+int dvm_runtime_parallel_real_leave(int opcode, const void *first, size_t first_size,
+    const void *second, size_t second_size, const void *third, size_t third_size);
+
+/* Restore NativeWorld while preserving the evaluator's native FP environment.
+ * released is the matching result from dvm_runtime_parallel_real_leave. */
+void dvm_runtime_parallel_real_enter(int released);
 #endif

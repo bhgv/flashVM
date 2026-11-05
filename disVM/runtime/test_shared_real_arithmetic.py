@@ -8,6 +8,7 @@ from relink_private import relink
 
 GUEST = '''implement Reals;
 include "sys.m";
+include "math.m";
 Reals: module {init: fn();};
 init() {
     sys := load Sys Sys->PATH;
@@ -31,6 +32,14 @@ init() {
     } exception {
         "zero divide" => {}
     }
+    math := load Math Math->PATH;
+    math->FPstatus(0, Math->ZDIV);
+    math->FPcontrol(Math->RND_NINF, Math->RND_MASK);
+    zero := a-a;
+    infinite := a/zero;
+    if (math->finite(infinite) || !(math->getFPstatus() & Math->ZDIV) ||
+        (math->getFPcontrol() & Math->RND_MASK) != Math->RND_NINF)
+        raise "leased REAL evaluation lost the floating-point environment";
     sys->print("PASS REAL arithmetic5\\n");
 }
 '''
@@ -43,6 +52,7 @@ WRAPPER = r'''
 #include "isa.h"
 #include "interp.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
 #include "raise.h"
 #include "bytes_fast.h"
 #include "shared_bytes.h"
@@ -219,6 +229,32 @@ int __wrap_dvm_range_access_end(DVM_RangeAccess *access)
 /* FP evaluation must happen after unlock, even for aliased input and destination. */
 void __wrap_dvm_runtime_real_arithmetic_value(int opcode,const void *pair,void *result)
 {
+    DVM_HeapOwnerStats owner;
+
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        switch (opcode)
+        {
+        case IADDF:
+            print("LEASED ADDF\n");
+            break;
+        case ISUBF:
+            print("LEASED SUBF\n");
+            break;
+        case IMULF:
+            print("LEASED MULF\n");
+            break;
+        case IDIVF:
+            print("LEASED DIVF\n");
+            break;
+        case INEGF:
+            print("LEASED NEGF\n");
+            break;
+        }
+    }
+
     if (active)
     {
         check(phase == 2 && !depth && !dvm_native_context_object_count(dvm_native_context_current()),"unlocked FP");
@@ -579,7 +615,8 @@ def main():
         binary = relink(runtime,work,wrapper,0,symbols)
         for mode in ('--jit','--no-jit'):
             for locked in (False,True):
-                args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe']
+                args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe',
+                        '--managed-workers','2','--parallel-real']
                 if locked:
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,
@@ -587,6 +624,9 @@ def main():
                 output = run.stdout+run.stderr
                 if run.returncode or 'PASS actual REAL arithmetic: 8820 ' not in output or 'PASS REAL arithmetic5' not in output:
                     raise RuntimeError('REAL arithmetic failed: '+output)
+                leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
+                if leased != {'LEASED ADDF', 'LEASED DIVF', 'LEASED MULF', 'LEASED SUBF', 'LEASED NEGF'}:
+                    raise RuntimeError('leased FP coverage missed: '+output)
                 if 'PASS scheduled FP input retry' not in output:
                     raise RuntimeError('FP input retry missed: '+output)
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
