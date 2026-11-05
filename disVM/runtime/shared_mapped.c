@@ -28,6 +28,7 @@ int dvm_runtime_parallel_movmp;
 int dvm_runtime_parallel_channel_buffer;
 unsigned long dvm_runtime_parallel_channel_sends;
 unsigned long dvm_runtime_parallel_channel_refills;
+unsigned long dvm_runtime_parallel_channel_alts;
 unsigned long dvm_runtime_parallel_channel_receives;
 unsigned long dvm_runtime_parallel_movmp_commits;
 unsigned long dvm_runtime_parallel_slicela_commits;
@@ -252,6 +253,8 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     int failed = 0;
     int released = 0;
     int shared_channel;
+    int dispatch_opcode = dvm_native_execution()->arithmetic_retry_opcode;
+    int selected_alt = dispatch_opcode == IALT || dispatch_opcode == INBALT;
     DVM_CellDomain *domain = NULL;
     DVM_HeapOwner *owner = NULL;
     char first_error[ERRMAX];
@@ -340,12 +343,12 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         }
     }
     /* The buffered caller retains the channel and reserves its slot until
-     * exclusive reentry. Only a decoded direct operation owns the other
-     * record in its suspended frame. A refill instead supplies a pinned sender. */
+     * exclusive reentry. Direct operations and selected ALT guards use their own suspended
+     * frame. A refill instead supplies a pinned sender. */
     shared_channel = dvm_runtime_parallel_channel_buffer && committed && up->prog &&
         ((refill_sender && !consume &&
           dvm_runtime_frame_record_for(&refill_sender->R, source, type)) ||
-         (dvm_native_execution()->arithmetic_retry_opcode == replay_opcode &&
+         ((dispatch_opcode == replay_opcode || selected_alt) &&
           ((replay_opcode == ISEND && !consume && dvm_runtime_frame_record(source, type)) ||
            (replay_opcode == IRECV && consume && dvm_runtime_frame_record(destination, type)))));
     if (slice || shared_channel || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
@@ -394,6 +397,8 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             {
                 if (refill_sender)
                     dvm_runtime_parallel_channel_refills++;
+                else if (selected_alt)
+                    dvm_runtime_parallel_channel_alts++;
                 else if (consume)
                     dvm_runtime_parallel_channel_receives++;
                 else

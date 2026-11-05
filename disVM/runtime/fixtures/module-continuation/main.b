@@ -46,5 +46,18 @@ init()
     payload = <-reply;
     if (payload[0] != 271828)
         raise "buffered reply lost its payload";
+    # The selected guards both borrow typed records from this frame.
+    message := (provider, payload);
+    alt {
+        inbox <-= message => {}
+        * => raise "ready ALT send was skipped";
+    }
+    received: (Provider, array of int);
+    alt {
+        received = <-inbox => {}
+    }
+    (result, values) := received;
+    if (result != provider || values[0] != 271828)
+        raise "ALT changed the transferred owners";
     provider = nil;
 }

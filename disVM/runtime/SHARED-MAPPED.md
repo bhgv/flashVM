@@ -166,4 +166,7 @@ reservation prevents another transfer from taking the same slot until the
 queue update. Only the range publication enters `SHARED`. Ring metadata and
 retirement remain exclusive. For a queued sender's refill, the existing completion claim pins the sender
 until wakeup. Its saved frame must match the mapped record before sharing.
-ALT transfers without such a verified record use the exclusive path.
+An immediately selected buffered `ALT` or `NBALT` can also share the
+publication when its payload matches the active frame. The guard selection
+is already published, so contention falls back under exclusive admission
+instead of replaying the selection.
