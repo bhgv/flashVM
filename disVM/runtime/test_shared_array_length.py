@@ -77,6 +77,14 @@ init() {
     if (checkwide != wide) {
         raise "string conversion failed after refusal";
     }
+    narrowtext, widetext: string;
+    for (step := 0; step < 3; step++) {
+        narrowtext = string (word + step);
+        widetext = string (wide + big step);
+        if (int narrowtext != word + step || big widetext != wide + big step) {
+            raise "integer string publication mismatch";
+        }
+    }
     n: array of byte;
     if (len n != 0) {
         raise "nil length mismatch";
@@ -136,8 +144,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[11]; /* Post-decode PC for each refused capture. */
-    static int replayed[11]; /* One successful replay for each stage. */
+    static Inst *pcs[15]; /* Post-decode PC for each refused capture. */
+    static int replayed[15]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -188,6 +196,22 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
             if ((opcode == ICVTCW && contend_capture(3)) ||
                 (opcode == ICVTCL && contend_capture(4)) ||
                 (opcode == ICVTCF && contend_capture(5)))
+            {
+                return DVM_CELL_BUSY;
+            }
+        }
+    }
+
+    if (CONTROL == 0 && !active && source && destination)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if (opcode == ICVTWC || opcode == ICVTLC)
+        {
+            String *previous;
+            int stage;
+            memmove(&previous, destination, sizeof(previous));
+            stage = (opcode == ICVTWC ? 11 : 12) + (source == previous ? 2 : 0);
+            if (contend_capture(stage))
             {
                 return DVM_CELL_BUSY;
             }
@@ -719,7 +743,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(11)):
+                                            for stage in range(15)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

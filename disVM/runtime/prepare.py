@@ -175,6 +175,58 @@ def adapt_string_conversion_captures(code, conversions):
     return code
 
 
+def adapt_integer_string_publication(code):
+    """Guard the formatted bytes and owner slot before either can change.
+
+    NativeWorld keeps the borrowed old string and private allocation alive.
+    A failed claim discards only a fresh unpublished object before retry.
+    """
+    for opcode in ('CVTWC', 'CVTLC'):
+        start = code.index('OP('+opcode.lower()+')')
+        end = code.index('\n}', start)
+        body = code[start:end]
+        mutation = body[body.index('\tif(ds == old && old->len < 0)'):]
+        guarded = f"""    if(dvm_runtime_guarded_copies) {{
+        size_t span = offsetof(String, data)+(size_t)length+1;
+        DVM_CellResult claim = dvm_managed_ranges_begin(ds, span, slot, sizeof(ds), &access);
+        String *observed;
+        if(claim != DVM_CELL_ACQUIRED) {{
+            if(ds != old) {{
+                destroy(ds);
+            }}
+            if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+                return;
+            }}
+            error(exHeap);
+        }}
+        memmove(&observed, slot, sizeof(observed));
+        if(observed != old) {{
+            if(!dvm_range_access_end(&access)) {{
+                abort();
+            }}
+            if(ds != old) {{
+                destroy(ds);
+            }}
+            if(dvm_runtime_scalar_retry(I{opcode})) {{
+                return;
+            }}
+            error(exHeap);
+        }}
+    }}
+"""
+        # One scope owns the claim while the shared body updates bytes and slot.
+        release = """    if(dvm_runtime_guarded_copies && !dvm_range_access_end(&access)) {
+        abort();
+    }
+"""
+        mutation = relative_replace(mutation, '\tif(ds != old)\n\t\tdestroy(old);',
+                                    release+'\tif(ds != old)\n\t\tdestroy(old);', 1)
+        body = body[:body.index('\tif(ds == old && old->len < 0)')] + guarded + mutation
+        body = relative_replace(body, '\tvoid *slot;', '\tvoid *slot;\n    DVM_RangeAccess access = {0};', 1)
+        code = code[:start]+body+code[end:]
+    return code
+
+
 def adapt_string_view(code):
     """Share the pinned UTF-8 view body between throwing and guarded callers."""
     start = code.index('char*\nstring2c(String *s)')
@@ -472,6 +524,7 @@ def main():
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
             code = adapt_string_operand_captures(code)
+            code = adapt_integer_string_publication(code)
             code = adapt_string_view(code)
             code = adapt_string_conversion_captures(code, (
                 ('CVTCA', 'ss', True), ('CVTAC', 'a', True),
