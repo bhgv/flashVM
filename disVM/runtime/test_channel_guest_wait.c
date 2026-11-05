@@ -141,6 +141,8 @@ static void corrupt_native_return(void)
         offsetof(REG, PC), offsetof(REG, M), offsetof(REG, MP),
         offsetof(REG, s), offsetof(REG, m), offsetof(REG, d), offsetof(REG, xpc),
     };
+    static const size_t word_offsets[] = {offsetof(REG, t), offsetof(REG, st), offsetof(REG, dt)};
+    const size_t pointer_count = sizeof(offsets)/sizeof(offsets[0]);
     const char *selection = getenv("DVM_TEST_NATIVE_RETURN_FIELD");
     unsigned long field;
     void *replacement;
@@ -151,7 +153,17 @@ static void corrupt_native_return(void)
         return;
     }
     field = strtoul(selection, NULL, 10);
-    check(field < sizeof(offsets)/sizeof(offsets[0]), "unknown native return fixture field");
+    check(field < pointer_count + sizeof(word_offsets)/sizeof(word_offsets[0]),
+        "unknown native return fixture field");
+    if (field >= pointer_count)
+    {
+        WORD value;
+        slot = (unsigned char *)&DVM_R + word_offsets[field - pointer_count];
+        memmove(&value, slot, sizeof(value));
+        value ^= 1;
+        memmove(slot, &value, sizeof(value));
+        return;
+    }
     slot = (unsigned char *)&DVM_R + offsets[field];
     memmove(&replacement, slot, sizeof(replacement));
     replacement = replacement == NULL ? H : NULL;

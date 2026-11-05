@@ -1168,6 +1168,14 @@ static int consume_channel_buffer(void *argument)
 }
 
 
+/* Consume the captured receive-array owner exactly once, outside the queue guard. */
+static int release_channel_read_array(void *array)
+{
+    destroy(array);
+    return 1;
+}
+
+
 /* Keep the receive array live through the mover and its mapped cleanup. */
 static int read_buffer_owned(Channel *channel, void *destination, int replay_opcode)
 {
@@ -1178,9 +1186,14 @@ static int read_buffer_owned(Channel *channel, void *destination, int replay_opc
     reservation.completed = reservation.transaction_type ? kprotect(consume_channel_buffer, &reservation) :
         kprotect(channelread, &reservation.read);
     dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
-    destroy(reservation.read.array);
     if (!reservation.completed)
-        krethrow();
+    {
+        char first_error[ERRMAX];
+        kgerrstr(first_error, sizeof(first_error));
+        kprotect(release_channel_read_array, reservation.read.array);
+        error(first_error);
+    }
+    destroy(reservation.read.array);
     return 1;
 }
 

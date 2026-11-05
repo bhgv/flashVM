@@ -351,6 +351,8 @@ void dvm_runtime_gc_native_enter(int released)
              DVM_R.M != process->R.M ||
              DVM_R.MP != process->R.MP || DVM_R.s != process->R.s ||
              DVM_R.m != process->R.m || DVM_R.d != process->R.d ||
+             DVM_R.t != process->R.t || DVM_R.st != process->R.st ||
+             DVM_R.dt != process->R.dt ||
              !dvm_runqueue_resume(process))))
         {
             fprintf(stderr,"disvm: native continuation restoration failed\n");
