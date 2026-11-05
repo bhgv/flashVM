@@ -29,6 +29,7 @@ int dvm_runtime_parallel_channel_buffer;
 unsigned long dvm_runtime_parallel_channel_sends;
 unsigned long dvm_runtime_parallel_channel_refills;
 unsigned long dvm_runtime_parallel_channel_alts;
+unsigned long dvm_runtime_parallel_rendezvous;
 unsigned long dvm_runtime_parallel_channel_receives;
 unsigned long dvm_runtime_parallel_movmp_commits;
 unsigned long dvm_runtime_parallel_slicela_commits;
@@ -239,7 +240,7 @@ static int retire(void *value)
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
 static int mapped_transfer(const void *source, void *destination, Type *type, int size,
-    size_t elements, int consume, int *committed, int replay_opcode, const SliceCopy *slice, const Prog *refill_sender)
+    size_t elements, int consume, int *committed, int replay_opcode, const SliceCopy *slice, const Prog *refill_sender, int rendezvous)
 {
     MappedCopy copy = {0};
     DVM_RangeAccess access = {0};
@@ -351,7 +352,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
          ((dispatch_opcode == replay_opcode || selected_alt) &&
           ((replay_opcode == ISEND && !consume && dvm_runtime_frame_record(source, type)) ||
            (replay_opcode == IRECV && consume && dvm_runtime_frame_record(destination, type)))));
-    if (slice || shared_channel || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
+    if (slice || shared_channel || rendezvous || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
         up->prog && dvm_native_execution()->arithmetic_retry_opcode == IMOVMP &&
         dvm_runtime_frame_record(source, type) && dvm_runtime_frame_record(destination, type)))
     {
@@ -392,6 +393,10 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             if (slice)
             {
                 dvm_runtime_parallel_slicela_commits++;
+            }
+            else if (rendezvous)
+            {
+                dvm_runtime_parallel_rendezvous++;
             }
             else if (shared_channel)
             {
@@ -473,14 +478,14 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
 /* Keep the source ownership and retain each incoming destination owner. */
 void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, 1, 0, NULL, 0, NULL, NULL);
+    mapped_transfer(source, destination, type, size, 1, 0, NULL, 0, NULL, NULL, 0);
 }
 
 
 /* Execute decoded MOVMP with replay allowed only before ownership changes. */
 void dvm_runtime_mapped_move_opcode(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, 1, 0, NULL, IMOVMP, NULL, NULL);
+    mapped_transfer(source, destination, type, size, 1, 0, NULL, IMOVMP, NULL, NULL, 0);
 }
 
 
@@ -489,7 +494,7 @@ void dvm_runtime_mapped_consume(void *source, void *destination, Type *type, int
     int *consumed)
 {
     *consumed = 0;
-    mapped_transfer(source, destination, type, size, 1, 1, consumed, 0, NULL, NULL);
+    mapped_transfer(source, destination, type, size, 1, 1, consumed, 0, NULL, NULL, 0);
 }
 
 
@@ -498,7 +503,7 @@ static int copy_pinned_slice(void *argument)
 {
     SliceCopy *slice = argument;
     mapped_transfer(slice->from, slice->to, slice->type, slice->type->size,
-        slice->count, 0, NULL, ISLICELA, slice, NULL);
+        slice->count, 0, NULL, ISLICELA, slice, NULL, 0);
     return 1;
 }
 
@@ -523,7 +528,7 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *t
         !dvm_runtime_frame_pointer(DVM_R.s) || !dvm_runtime_frame_pointer(DVM_R.d) ||
         !dvm_runtime_slice_index_stable(DVM_R.m))
     {
-        mapped_transfer(source, destination, type, type->size, count, 0, NULL, ISLICELA, NULL, NULL);
+        mapped_transfer(source, destination, type, type->size, count, 0, NULL, ISLICELA, NULL, NULL, 0);
         return;
     }
     slice = (SliceCopy){source_array, destination_array, *source_array, *destination_array,
@@ -559,5 +564,13 @@ int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, Ty
 {
     *committed = 0;
     return mapped_transfer(source, destination, type, type->size, 1, consume, committed,
-        replay_opcode, NULL, refill_sender);
+        replay_opcode, NULL, refill_sender, 0);
+}
+
+/* Both frame maps were checked before the caller pinned the channel. */
+void dvm_runtime_mapped_rendezvous(const void *source, void *destination,
+    Type *type, int *committed)
+{
+    mapped_transfer(source, destination, type, type->size, 1, 0, committed,
+        0, NULL, NULL, 1);
 }

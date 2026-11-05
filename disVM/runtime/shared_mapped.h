@@ -36,6 +36,7 @@ extern int dvm_runtime_parallel_channel_buffer;
 extern unsigned long dvm_runtime_parallel_channel_sends;
 extern unsigned long dvm_runtime_parallel_channel_refills;
 extern unsigned long dvm_runtime_parallel_channel_alts;
+extern unsigned long dvm_runtime_parallel_rendezvous;
 extern unsigned long dvm_runtime_parallel_channel_receives;
 extern unsigned long dvm_runtime_parallel_movmp_commits;
 extern unsigned long dvm_runtime_parallel_slicela_commits;
@@ -43,4 +44,6 @@ extern unsigned long dvm_runtime_parallel_slicela_commits;
  * Both directions report commit even when retirement raises. Return zero on replay. */
 int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, struct Type *type,
     int consume, int *committed, int replay_opcode, const struct Prog *refill_sender);
+void dvm_runtime_mapped_rendezvous(const void *source, void *destination,
+    struct Type *type, int *committed);
 #endif

@@ -19,6 +19,15 @@ peer(inbox: chan of (Provider, array of int), reply: chan of array of int)
     sys->print("PEER released provider\n");
 }
 
+rendezvous(outbound, inbound: chan of (Provider, array of int), ready: chan of int)
+{
+    ready <-= 1;
+    (provider, payload) := <-outbound;
+    payload[0] = 314159;
+    ready <-= 2;
+    inbound <-= (provider, payload);
+}
+
 init()
 {
     sys = load Sys Sys->PATH;
@@ -59,5 +68,17 @@ init()
     (result, values) := received;
     if (result != provider || values[0] != 271828)
         raise "ALT changed the transferred owners";
+    outbound := chan of (Provider, array of int);
+    inbound := chan of (Provider, array of int);
+    ready := chan[1] of int;
+    spawn rendezvous(outbound, inbound, ready);
+    if (<-ready != 1)
+        raise "rendezvous receiver did not start";
+    outbound <-= (provider, payload);
+    if (<-ready != 2)
+        raise "rendezvous sender did not start";
+    (back, changed) := <-inbound;
+    if (back != provider || changed[0] != 314159)
+        raise "rendezvous lost the transferred owners";
     provider = nil;
 }

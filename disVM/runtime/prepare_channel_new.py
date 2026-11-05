@@ -151,23 +151,23 @@ def adapt_wait_completion(source):
     start = source.index(anchor)
     end = source.index("typedef struct CsendAlt", start)
     body = source[start:end]
-    for old in ("\tc->mover();\n\taddrun(p);",
-                "\t\tc->mover();\n\t}\n\taddrun(p);"):
+    for old, peer_receives in (("\tc->mover();\n\taddrun(p);", 1),
+                               ("\t\tc->mover();\n\t}\n\taddrun(p);", 0)):
         if body.count(old) != 1:
             raise ValueError("direct channel completion drift")
         indent = "\t\t" if old.startswith("\t\t") else "\t"
-        body = body.replace(old, indent + "channel_move_or_wake_error(c, p);" +
+        body = body.replace(old, indent + f"channel_move_or_wake_error(c, p, {peer_receives});" +
                             old[len(indent + "c->mover();"):], 1)
     # The refill coordinator consumes the temporary channel retain and wakes
     # the sender. The direct branch still completes its own wake.
     old = ("\t\tok = kprotect(channelrefill, &refill);\n"
            "\t\tdestroy(c);\n\t\tif(!ok)\n\t\t\tkrethrow();")
-    wake = "\t\tchannel_move_or_wake_error(c, p);\n\t}\n\taddrun(p);"
+    wake = "\t\tchannel_move_or_wake_error(c, p, 0);\n\t}\n\taddrun(p);"
     if body.count(old) != 1 or body.count(wake) != 1 or body.count("\tint ok;\n") != 1:
         raise ValueError("buffered channel completion drift")
     body = body.replace("\tint ok;\n", "", 1)
     body = body.replace(old, "\t\tdvm_runtime_channel_finish_refill(c, p, channelrefill, &refill, &refill.committed);", 1)
-    body = body.replace(wake, "\t\tchannel_move_or_wake_error(c, p);\n\t\taddrun(p);\n\t}", 1)
+    body = body.replace(wake, "\t\tchannel_move_or_wake_error(c, p, 0);\n\t\taddrun(p);\n\t}", 1)
     if body.count("addrun(p);") != 2:
         raise ValueError("channel wake boundary drift")
     body = body.replace("addrun(p);", "dvm_runtime_channel_wake(p, nil);")
@@ -336,23 +336,54 @@ extern void dvm_runtime_channel_wake(Prog *peer, char *cause);
 extern void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
     int (*refill)(void *), void *request, const int *committed);
 
-/* Invoke the selected mover inside the current owner's error frame. */
-static int channel_move(void *argument)
+typedef struct ChannelMove
 {
-    Channel *channel = argument;
-    channel->mover();
+    Channel *channel;
+    Prog *peer;
+    int peer_receives;
+    int committed;
+} ChannelMove;
+
+static int share_channel_move(void *argument)
+{
+    ChannelMove *move = argument;
+    dvm_runtime_mapped_rendezvous(DVM_R.s, DVM_R.d, move->channel->mid.t, &move->committed);
     return 1;
 }
 
-
-/* The peer has already left its channel queues. On transfer failure wake it
- * with an error before unwinding the initiating instruction. NativeWorld
- * keeps the borrowed Prog live across this transition. */
-static void channel_move_or_wake_error(Channel *channel, Prog *peer)
+/* The completion claim pins the peer until it is woken. The channel hold
+ * keeps the mover type alive across the shared publication and retirement. */
+static int channel_move(void *argument)
 {
-    if (!kprotect(channel_move, channel))
+    ChannelMove *move = argument;
+    Channel *channel = move->channel;
+    Type *type = channel->mid.t;
+    DVM_HeapHold hold = {0};
+    const char *problem;
+    int completed;
+    if (!dvm_runtime_parallel_channel_buffer || channel->mover != movtmp ||
+        !type || type == H || !type->np ||
+        !dvm_runtime_frame_record(move->peer_receives ? DVM_R.s : DVM_R.d, type) ||
+        !dvm_runtime_frame_record_for(&move->peer->R,
+            move->peer_receives ? DVM_R.d : DVM_R.s, type))
     {
-        dvm_runtime_channel_wake(peer, "channel transfer failed");
+        channel->mover();
+        return 1;
+    }
+    problem = dvm_runtime_heap_hold(&channel, &Tchannel, 0, &hold);
+    if (problem)
+        error((char *)problem);
+    completed = kprotect(share_channel_move, move);
+    dvm_runtime_heap_finish(&hold, completed);
+    return 1;
+}
+
+static void channel_move_or_wake_error(Channel *channel, Prog *peer, int peer_receives)
+{
+    ChannelMove move = {channel, peer, peer_receives, 0};
+    if (!kprotect(channel_move, &move))
+    {
+        dvm_runtime_channel_wake(peer, move.committed ? nil : "channel transfer failed");
         krethrow();
     }
 }

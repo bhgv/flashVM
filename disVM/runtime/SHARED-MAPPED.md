@@ -170,3 +170,9 @@ An immediately selected buffered `ALT` or `NBALT` can also share the
 publication when its payload matches the active frame. The guard selection
 is already published, so contention falls back under exclusive admission
 instead of replaying the selection.
+
+Mapped rendezvous can also publish under `--parallel-channel-buffer`.
+Both guest frame maps must match the channel's record type. The channel
+hold retains the descriptor and the completion claim keeps the detached
+waiter pinned. Peer wakeup follows exclusive reentry. If retirement raises
+after publication, the peer still completes the transfer.
