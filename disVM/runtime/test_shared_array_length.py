@@ -155,8 +155,16 @@ init() {
     }
     altvalue := 0;
     messages <-= 31;
-    alt {
-        altvalue = <-messages => {}
+    {
+        alt {
+            altvalue = <-messages => {}
+        }
+    } exception failure {
+        "out of memory: heap" =>
+            alt {
+                altvalue = <-messages => {}
+            }
+        * => raise;
     }
     if (altvalue != 31) {
         raise "blocking ALT header replay";
@@ -690,6 +698,15 @@ DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
     static int index_replayed; /* One matching decoded index resumed. */
     int opcode = dvm_native_execution()->arithmetic_retry_opcode;
 
+    static int selection_refused; /* Refuse only the first selected guard capture. */
+    if (CONTROL == 0 && !active && opcode == IALT && !selection_refused &&
+        a == (uchar *)DVM_R.s + offsetof(Alt, ac) + offsetof(Altc, c))
+    {
+        selection_refused = 1;
+        fprint(1, "PASS ALT selected guard capture refusal\n");
+        return DVM_CELL_BUSY;
+    }
+
     if (CONTROL == 0 && !active &&
         ((opcode == IALT && contend_capture(48)) || (opcode == INBALT && contend_capture(49)) ||
          (opcode == ISLICEA && contend_capture(0)) || (opcode == ISLICELA && contend_capture(2)) ||
@@ -1003,6 +1020,8 @@ def main():
                                          'PASS scheduled address publication retry' not in output or
                                          'PASS four interior addresses survive Cycles before use' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
+                    if variant == 0 and 'PASS ALT selected guard capture refusal' not in output:
+                        raise RuntimeError('ALT selection refusal coverage missed: '+output)
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output

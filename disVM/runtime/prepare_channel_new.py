@@ -482,6 +482,74 @@ static int altcounts(Alt *a, WORD sends, WORD receives, int *nsend, int *nrecv)
             body.replace(anchor, replacement, 1)+source[end:])
 
 
+def adapt_alt_selection_capture(source):
+    """Capture chosen guard operands and array members before detaching queues."""
+    start = source.index('static void\naltchoose(')
+    end = source.index('\n}', start)
+    body = source[start:end]
+    read = '\t\tmemmove(&c, (uchar*)ac+offsetof(Altc, c), sizeof(c));'
+    if body.count(read) != 2:
+        raise ValueError('ALT selection operand drift')
+    body = body.replace(read, '        altcapture(ac, &c, &ptr);')
+    for old, new, count in (
+        ('memmove(&selected->payload, (uchar*)ac+offsetof(Altc, ptr), sizeof(selected->payload));',
+         'selected->payload = ptr;', 2),
+        ('\t\t\t\t\tmemmove(&ptr, (uchar*)ac+offsetof(Altc, ptr), sizeof(ptr));\n', '', 1),
+        ('memmove(&c, (uchar*)ca+an*sizeof(c), sizeof(c));',
+         'altcapturemember((uchar*)ca+an*sizeof(c), &c);', 1),
+    ):
+        if body.count(old) != count:
+            raise ValueError('ALT selected payload drift')
+        body = body.replace(old, new)
+    return source[:start]+ALT_SELECTION_CAPTURE+body+source[end:]
+
+
+ALT_SELECTION_CAPTURE = r"""
+/* Capture a borrowed guard into caller-private outputs. Selection already owns
+ * registrations, so refusal raises for the surrounding ALT cleanup. */
+static void altcapture(Altc *entry, Channel **channel, void **payload)
+{
+    const void *channel_cell = (uchar*)entry+offsetof(Altc, c);
+    const void *payload_cell = (uchar*)entry+offsetof(Altc, ptr);
+    if (dvm_runtime_guarded_copies)
+    {
+        DVM_CellResult claim;
+        const char *problem = dvm_runtime_bytes_snapshot_pair_attempt(channel_cell, sizeof(*channel),
+            channel, payload_cell, sizeof(*payload), payload, &claim);
+        if (problem)
+        {
+            error((char *)problem);
+        }
+    }
+    else
+    {
+        memmove(channel, channel_cell, sizeof(*channel));
+        memmove(payload, payload_cell, sizeof(*payload));
+    }
+}
+
+
+/* Read an array member selected from a validated, live backing array. */
+static void altcapturemember(const void *cell, Channel **channel)
+{
+    if (dvm_runtime_guarded_copies)
+    {
+        const char *problem = dvm_runtime_bytes_snapshot(cell, channel, sizeof(*channel));
+        if (problem)
+        {
+            error((char *)problem);
+        }
+    }
+    else
+    {
+        memmove(channel, cell, sizeof(*channel));
+    }
+}
+
+
+"""
+
+
 ALT_GUARDED_RESULT = r"""
 /* Write caller-owned selection cells in their original order. A missing tuple
  * selects a single-word result. Return a static diagnostic before any write on
