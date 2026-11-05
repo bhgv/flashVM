@@ -1626,7 +1626,8 @@ def main():
                          "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
                          "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
-                         "dvm_runqueue_append", "dvm_runqueue_claim", "dvm_managed_workers_yield"])
+                         "dvm_runqueue_append", "dvm_runqueue_claim", "dvm_managed_workers_yield",
+                         "dvm_native_owner_progress"])
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
@@ -1714,6 +1715,14 @@ def main():
                         result.stdout = stream.read()
                 else:
                     result = subprocess.run(command, cwd=work, capture_output=True, text=True, timeout=30)
+                if name == "send":
+                    for field in range(10):
+                        refused = subprocess.run(command, cwd=work, capture_output=True, text=True,
+                                                 timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field)))
+                        if (refused.returncode != 1 or
+                                "disvm: native continuation restoration failed" not in refused.stderr):
+                            raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
+                                               + refused.stdout + refused.stderr)
                 output = result.stdout + result.stderr
                 bypass = name in ("alt-ready", "alt-default")
                 marker = ("PASS ALT bypassed the reservation" if bypass

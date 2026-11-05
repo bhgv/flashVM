@@ -5,6 +5,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "disvm/native_context.h"
+#include "disvm/native_owner.h"
 #include "runtime_gc.h"
 #include "managed_owner.h"
 #include "runqueue.h"
@@ -16,6 +17,7 @@
 #include "file_port.h"
 #include "filesystem_port.h"
 #include <string.h>
+#include <stddef.h>
 #include <pthread.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -123,6 +125,50 @@ static void check(int condition, const char *reason)
 }
 
 
+static __thread int inject_native_return; /* The first mover requests a private fault. */
+int __real_dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch);
+
+
+/* Inject only after reacquiring NativeWorld. The saved guest and queue remain
+ * untouched for the runtime's refusal check. */
+static void corrupt_native_return(void)
+{
+    static const size_t offsets[] = {
+        offsetof(REG, FP), offsetof(REG, SP), offsetof(REG, EX), offsetof(REG, TS),
+        offsetof(REG, PC), offsetof(REG, M), offsetof(REG, MP),
+        offsetof(REG, s), offsetof(REG, m), offsetof(REG, d),
+    };
+    const char *selection = getenv("DVM_TEST_NATIVE_RETURN_FIELD");
+    unsigned long field;
+    void *replacement;
+    unsigned char *slot;
+
+    if (!selection)
+    {
+        return;
+    }
+    field = strtoul(selection, NULL, 10);
+    check(field < sizeof(offsets)/sizeof(offsets[0]), "unknown native return fixture field");
+    slot = (unsigned char *)&DVM_R + offsets[field];
+    memmove(&replacement, slot, sizeof(replacement));
+    replacement = replacement == NULL ? H : NULL;
+    memmove(slot, &replacement, sizeof(replacement));
+}
+
+
+int __wrap_dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch)
+{
+    int ok = __real_dvm_native_owner_progress(owner, epoch);
+
+    if (ok && inject_native_return)
+    {
+        inject_native_return = 0;
+        corrupt_native_return();
+    }
+    return ok;
+}
+
+
 /* Suspend the first transfer with its reservation and rooted channel intact. */
 static void rendezvous_mover(void)
 {
@@ -160,6 +206,7 @@ static void rendezvous_mover(void)
             pthread_cond_wait(&waiting, &gate);
         }
         pthread_mutex_unlock(&gate);
+        inject_native_return = getenv("DVM_TEST_NATIVE_RETURN_FIELD") != NULL;
         dvm_runtime_gc_native_enter(released);
         check(dvm_native_context_current() == owner &&
             dvm_native_context_process(owner) == first_process &&
