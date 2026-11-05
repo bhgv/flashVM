@@ -1823,6 +1823,8 @@ typedef struct ClosedQueues
     Progq **recv_owner; /* NULL for the single-queue entry point. */
     Progq *send;
     Progq *recv;
+    Array *buffer; /* Transferred buffer owner after successful detach. */
+    Type *mapped; /* Transferred mover descriptor owner, if present. */
 } ClosedQueues;
 
 
@@ -1854,6 +1856,14 @@ static int detach_closed_queues(void *argument)
     {
         *queues->recv_owner = nil;
     }
+    if (queues->channel)
+    {
+        Channel *channel = queues->channel;
+        queues->buffer = channel->buf;
+        queues->mapped = channel->mover == movtmp ? channel->mid.t : nil;
+        channel->buf = H;
+        channel->mover = nil;
+    }
     return 1;
 }
 
@@ -1861,7 +1871,7 @@ static int detach_closed_queues(void *argument)
 /* Detach under the queue mutex and wake after unlocking. */
 void killcomm(Progq **queue)
 {
-    ClosedQueues queues = {nil, queue, nil, nil, nil};
+    ClosedQueues queues = {nil, queue, nil, nil, nil, H, nil};
     char first_error[ERRMAX];
     int failed = 0;
     dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
@@ -1877,22 +1887,18 @@ void killcomm(Progq **queue)
  * registered processes live through resource release. */
 void dvm_runtime_channel_finalize(Channel *channel, int swept)
 {
-    ClosedQueues queues = {channel, &channel->send, &channel->recv, nil, nil};
-    Array *buffer = channel->buf;
-    Type *mapped = channel->mover == movtmp ? channel->mid.t : nil;
+    ClosedQueues queues = {channel, &channel->send, &channel->recv, nil, nil, H, nil};
     char first_error[ERRMAX];
     int failed = 0;
     dvm_runtime_channel_queue_guard(detach_closed_queues, &queues);
-    channel->mover = nil;
-    channel->buf = H;
     drain_closed_queue(queues.send, &queues, first_error, &failed);
     drain_closed_queue(queues.recv, &queues, first_error, &failed);
-    if (mapped)
+    if (queues.mapped)
     {
-        freetype(mapped);
+        freetype(queues.mapped);
     }
-    if (!swept && buffer != H &&
-        !kprotect(release_refill_channel, buffer) && !failed)
+    if (!swept && queues.buffer != H &&
+        !kprotect(release_refill_channel, queues.buffer) && !failed)
     {
         memmove(first_error, owner_error(), ERRMAX);
         failed = 1;

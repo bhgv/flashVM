@@ -516,15 +516,22 @@ static int repeat_channel_wake(void *argument)
 
 /* A malformed receive queue must not partially close the send side. A wake
  * error after detachment must still let the receive side reach the scheduler. */
-static void channel_finalize_case(void)
+static void channel_finalize_case(DVM_GCWorkers *workers)
 {
     Prog *prior = dvm_runqueue_head();
     DVM_RuntimeProcess foreign = {0}, receiver = {0};
     Channel *channel = H;
-    int refs = dvm_refcount_load_i(&Tword.ref);
+    Array *buffer;
+    int retained_refs;
+    int refs;
+    collect(workers, DVM_GC_FAST);
+    refs = dvm_refcount_load_i(&Tword.ref);
     check(prior && !prior->link && dvm_runqueue_pop(Psend) == prior,
         "withdraw startup process for channel finalization");
-    channel = dvm_runtime_channel_new(&channel, &Tword, 0, movtmp, 0);
+    channel = dvm_runtime_channel_new(&channel, &Tword, 2, movtmp, 0);
+    buffer = channel->buf;
+    retained_refs = dvm_refcount_load_i(&Tword.ref);
+    check(buffer != H && retained_refs > refs, "buffer and descriptor are live before close");
     foreign.process.state = Prelease;
     receiver.process.state = Precv;
     cqadd(&channel->send, &foreign.process);
@@ -532,20 +539,22 @@ static void channel_finalize_case(void)
     channel->recv->next = channel->recv;
     check(!kprotect(finalize_channel, channel) && !strcmp(getup()->env->errstr, exHeap) &&
         channel->send->prog == &foreign.process && channel->recv->prog == &receiver.process &&
-        channel->mover == movtmp && dvm_refcount_load_i(&Tword.ref) == refs+1 &&
+        channel->buf == buffer && channel->mover == movtmp &&
+        dvm_refcount_load_i(&Tword.ref) == retained_refs &&
         !dvm_runqueue_head(), "finalizer refusal preserves both owners");
     channel->recv->next = NULL;
     receiver.channel_claimed = &receiver;
     check(!kprotect(finalize_channel, channel) &&
         !strcmp(getup()->env->errstr, "channel waiter cannot be claimed") &&
         channel->send->prog == &foreign.process && channel->recv->prog == &receiver.process &&
-        receiver.channel_claimed == &receiver && !dvm_runqueue_head(),
+        receiver.channel_claimed == &receiver && channel->buf == buffer &&
+        channel->mover == movtmp && !dvm_runqueue_head(),
         "finalizer refuses a competing claim before detaching either side");
     receiver.channel_claimed = NULL;
     check(!kprotect(finalize_channel, channel) &&
         strstr(getup()->env->errstr, "foreign C channel waiter") &&
-        !channel->send && !channel->recv && !channel->mover &&
-        dvm_refcount_load_i(&Tword.ref) == refs &&
+        !channel->send && !channel->recv && !channel->mover && channel->buf == H &&
+        dvm_refcount_load_i(&Tword.ref) < retained_refs &&
         dvm_runqueue_head() == &receiver.process &&
         !receiver.channel_claimed && !receiver.process.ptr && !receiver.process.chan,
         "finalizer drains both queues and releases descriptor on wake error");
@@ -561,6 +570,8 @@ static void channel_finalize_case(void)
         "duplicate completion preserves the first wake and FIFO");
     check(dvm_runqueue_append(prior), "restore startup process");
     destroy(channel);
+    collect(workers, DVM_GC_FAST);
+    check(dvm_refcount_load_i(&Tword.ref) == refs, "finalized buffer releases its element descriptor");
     puts("PASS two-sided channel finalization");
 }
 
@@ -1242,7 +1253,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     mapped_channel_receive_case();
     prog_hold_race();
     channel_drain_case();
-    channel_finalize_case();
+    channel_finalize_case(workers);
     direct_channel_failure();
     buffered_channel_completion();
     buffer_owner_case();
