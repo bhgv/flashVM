@@ -279,7 +279,7 @@ static void dvm_publish_relative_slice(Array *old, void *slot, WORD start, WORD 
     body = code[start:end]
     anchor = '\tif(t->np == 0) {'
     body = relative_replace(body, anchor, """    if(dvm_runtime_guarded_copies) {
-        dvm_runtime_array_slice_copy(source, destination, t, (size_t)ss->len);
+        dvm_runtime_array_slice_copy(source, destination, t, (size_t)ss->len, ss, ds);
         return;
     }
 """+anchor, 1)

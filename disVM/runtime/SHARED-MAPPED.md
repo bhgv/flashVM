@@ -127,3 +127,25 @@ See [root groups](ROOT-BATCH.md), [byte copies](SHARED-BYTES.md),
 [aggregate tails](AGGREGATE-TAIL.md) and [threading](THREADING.md).
 
 Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).
+
+## Shared admission for array assignment
+
+`--parallel-slicela` enables an experimental path with `--guarded-copies`
+and multiple managed workers. It accepts mapped `SLICELA` between direct
+backing arrays captured from typed frame slots, with an immediate or private
+frame index. Raw arrays and array views use the existing exclusive path.
+
+The runtime retains and roots both arrays and reserves copy metadata under
+exclusive admission. Once admitted in `SHARED`, it rechecks both array
+descriptors, acquires the union of the payload guards, snapshots the source,
+retains the incoming references and roots displaced references before
+publishing the destination. It releases the guards and returns to exclusive
+admission before retiring displaced references and releasing the array pins.
+Contention can replay the original instruction before publication. The cycle
+collector acquires stopped-world admission between shared intervals.
+
+The hosted GC test exercises 64 publications of two mapped cells across
+two guest writers, validates the surviving references after unwind and
+collection, and checks overlapping view assignment through the exclusive
+path. The `parallel_slicela_commits` diagnostic distinguishes those shared
+publications from other native suspensions.

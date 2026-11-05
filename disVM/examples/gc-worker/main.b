@@ -52,7 +52,11 @@ graphwriter(shared: array of ref Node, commands, replies: chan of int)
             value.next = value;
             value.payload[0] = seed;
             value.payload[1] = 314159-seed;
-            shared[0:] = array[] of {value};
+            # Publish two owning cells together and verify both after unwind.
+            witness := ref Node(nil, array[1] of int);
+            witness.next = value;
+            witness.payload[0] = seed;
+            shared[0:] = array[] of {value, witness};
             raise "published graph";
         } exception failure {
             "published graph" => replies <-= seed;
@@ -62,11 +66,11 @@ graphwriter(shared: array of ref Node, commands, replies: chan of int)
 }
 
 
-# Two guests replace the same mapped slot and unwind their local roots.
-# A live slot must preserve its cycle while allocations trigger collection.
+# Two guests replace the same mapped range and unwind their local roots.
+# The live range must preserve both nodes while allocations trigger collection.
 sharedgraph()
 {
-    shared := array[1] of ref Node;
+    shared := array[2] of ref Node;
     first := chan[1] of int;
     second := chan[1] of int;
     replies := chan[2] of int;
@@ -88,19 +92,32 @@ sharedgraph()
         {
             cycle(probe);
         }
-        if (shared[0] == nil || shared[0].next != shared[0])
+        if (shared[0] == nil || shared[1] == nil || shared[0].next != shared[0])
         {
             raise "collector lost shared graph after writer unwind";
         }
         seed := shared[0].payload[0];
-        if ((seed != low && seed != high) || shared[0].payload[1] != 314159-seed)
+        if ((seed != low && seed != high) || shared[0].payload[1] != 314159-seed ||
+            shared[1].next != shared[0] || shared[1].payload[0] != seed)
         {
             raise "shared graph contains a partial publication";
         }
         shared[0] = nil;
+        shared[1] = nil;
     }
     first <-= -1;
     second <-= -1;
+    # Overlapping views take the exclusive path and preserve snapshot order.
+    values := array[] of {ref Node(nil, nil), ref Node(nil, nil), ref Node(nil, nil)};
+    left := values[0:2];
+    right := values[1:3];
+    firstvalue := values[0];
+    secondvalue := values[1];
+    right[0:] = left;
+    if (values[0] != firstvalue || values[1] != firstvalue || values[2] != secondvalue)
+    {
+        raise "overlapping view copy changed snapshot order";
+    }
     sys->print("PASS gc-worker shared graph: 64 unordered publications after unwind\n");
 }
 

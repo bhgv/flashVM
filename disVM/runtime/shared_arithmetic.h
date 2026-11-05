@@ -26,4 +26,5 @@ struct Prog;
 int dvm_runtime_arithmetic_finish(struct Prog *process);
 /* Verify one pointer-mapped cell of the current rooted frame under ACTIVE. */
 int dvm_runtime_frame_pointer(const void *cell);
+int dvm_runtime_slice_index_stable(const void *cell);
 #endif

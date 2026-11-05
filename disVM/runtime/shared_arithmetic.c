@@ -121,6 +121,15 @@ static int parallel_frame_spans(int opcode, const void *first, size_t first_size
 }
 
 
+/* A slice index must belong to the armed instruction or its private frame. */
+int dvm_runtime_slice_index_stable(const void *cell)
+{
+    return up->prog && dvm_native_execution()->arithmetic_retry_opcode == ISLICELA &&
+        (cell == &DVM_R.t ||
+            parallel_frame_spans(ISLICELA, cell, sizeof(WORD), NULL, 0, NULL, 0));
+}
+
+
 /* Gate the shared frame check on the full integer experiment. */
 int dvm_runtime_parallel_scalar_spans(int opcode, const void *first, size_t first_size,
     const void *second, size_t second_size, const void *third, size_t third_size)

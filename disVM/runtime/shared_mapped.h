@@ -3,6 +3,7 @@
 #define DVM_SHARED_MAPPED_H
 #include <stddef.h>
 
+struct Array;
 struct Type; /* Borrowed retained native descriptor, defined by interp.h. */
 
 
@@ -26,7 +27,10 @@ void dvm_runtime_mapped_move_opcode(const void *source, void *destination, struc
 
 /* [GC:] Copy a validated count of elements as one transaction. Borrow mapped
  * spans and immutable type under NativeWorld. BUSY can replay before changes. */
-void dvm_runtime_array_slice_copy(const void *source, void *destination, struct Type *type, size_t count);
+void dvm_runtime_array_slice_copy(const void *source, void *destination, struct Type *type, size_t count,
+    struct Array *source_array, struct Array *destination_array);
+extern int dvm_runtime_parallel_slicela;
+extern unsigned long dvm_runtime_parallel_slicela_commits;
 /* [GC:] Transfer live ring spans using the supplied type. NULL consumed selects copy, otherwise
  * commit clears source pointers and sets consumed. Return zero on replay. */
 int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, struct Type *type,

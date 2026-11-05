@@ -13,7 +13,7 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
     if pool:
-        command += ["--managed-workers", "2", "--guarded-copies", "--parallel-movp"]
+        command += ["--managed-workers", "2", "--guarded-copies", "--parallel-movp", "--parallel-slicela"]
     if locked:
         command.append("--gc-locked-poll")
     if budget is not None:
@@ -57,6 +57,9 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         workers = re.search(r"NATIVEPOOL executors=2 joined=1 failed=0 controller_turns=(\d+) worker_turns=(\d+)", output)
         shared = re.search(r"native_releases=(\d+) native_reentries=(\d+)", output)
         commits = re.search(r"parallel_movp_commits=(\d+)", output)
+        slices = re.search(r"parallel_slicela_commits=(\d+)", output)
+        if not slices or int(slices[1]) != 64:
+            raise RuntimeError("expected all 64 shared slice publications:\n" + output[-5000:])
         if (not commits or int(commits[1]) < 64 or not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output
                 or not shared or int(shared[1]) < 64 or shared[1] != shared[2]):
             raise RuntimeError("shared graph did not run with the expected worker pool:\n" + output[-5000:])

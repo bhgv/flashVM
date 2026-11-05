@@ -9,6 +9,7 @@
 #include "runtime_gc.h"
 #include "runtime_rc.h"
 #include "shared_pointer.h"
+#include "shared_mapped.h"
 #include "managed_owner.h"
 #include "managed_owner_probe.h"
 #include "runqueue.h"
@@ -477,13 +478,13 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,
             (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips,
             call.releases,call.reentries,call.gc_progress,
             (unsigned long)admission.admissions,(unsigned long)admission.contentions,
-            (unsigned long)admission.waiting, dvm_runtime_parallel_movp_commits);
+            (unsigned long)admission.waiting, dvm_runtime_parallel_movp_commits, dvm_runtime_parallel_slicela_commits);
     }
     if (!dvm_native_owner_detach(owner) || !dvm_world_destroy(state.world))
     {
