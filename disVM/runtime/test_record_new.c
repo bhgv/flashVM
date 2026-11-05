@@ -840,6 +840,23 @@ static int cancel_external_alt(void *argument)
 }
 
 
+static void *refused_alt_result; /* Borrowed fixture cell selected for BUSY. */
+DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
+
+
+/* Refuse the selection claim without modifying either output. */
+DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_RangeAccess *access)
+{
+    if (refused_alt_result && destination == refused_alt_result && destination_size == sizeof(WORD))
+    {
+        refused_alt_result = NULL;
+        return DVM_CELL_BUSY;
+    }
+    return __real_dvm_managed_ranges_begin(source, source_size, destination, destination_size, access);
+}
+
+
 /* Refuse an ALT result only after SEND has removed both registrations. */
 static void alt_publication_failure(void)
 {
@@ -892,6 +909,23 @@ static void alt_publication_failure(void)
         !strcmp(waiter.process.kill, "channel transfer failed") &&
         dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
         "ALT failure removes both registrations and wakes once");
+    {
+        WORD result = 71;
+        waiter.process.state = Palt;
+        waiter.process.kill = NULL;
+        waiter.process.R.d = &result;
+        cqadd(&selected->recv, &waiter.process);
+        cqadd(&sibling->recv, &waiter.process);
+        refused_alt_result = &result;
+        check(!kprotect(direct_channel_transfer, &receive) &&
+            !strcmp(getup()->env->errstr, exHeap) && !refused_alt_result &&
+            result == 71 && untouched == 61 && !waiter.channel_claimed &&
+            !waiter.lifetime_holds && !selected->recv->prog && !sibling->recv->prog &&
+            waiter.process.kill && !strcmp(waiter.process.kill, "channel transfer failed") &&
+            dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
+            "BUSY ALT result preserves output and completes the detached waiter once");
+        waiter.process.R.d = H;
+    }
     waiter.process.state = Palt;
     waiter.process.kill = NULL;
     cqadd(&selected->recv, &waiter.process);

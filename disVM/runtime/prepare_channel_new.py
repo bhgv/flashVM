@@ -386,6 +386,77 @@ static int altresultvalid(void *slot)
 """
 
 
+def adapt_alt_result_guards(source):
+    """Publish the chosen guard and optional member under one range claim."""
+    start = source.index('/* Store a VM selection word')
+    end = source.index('/* Capture a possibly', start)
+    source = source[:start]+ALT_GUARDED_RESULT+source[end:]
+    matched = ('\t\taltstore(selected.result, selected.guard);\n'
+               '\t\tif(selected.array)\n'
+               '\t\t\tmemmove(selected.tuple, &selected.member, sizeof(selected.member));')
+    immediate = ('\taltstore(selected->result, selected->guard);\n'
+                 '\tif(selected->array)\n'
+                 '\t\tmemmove(selected->tuple, &selected->member, sizeof(selected->member));')
+    replacements = (
+        (matched, """        const char *problem = altpublish(selected.result, selected.guard,
+            selected.array ? selected.tuple : NULL, selected.array ? selected.member : 0);
+        if (problem)
+        {
+            dvm_runtime_channel_wake(p, "channel transfer failed");
+            error((char *)problem);
+        }"""),
+        (immediate, """    const char *problem = altpublish(selected->result, selected->guard,
+        selected->array ? selected->tuple : NULL, selected->member);
+    if (problem)
+    {
+        error((char *)problem);
+    }"""),
+        ('\t\taltstore(result, nsend+nrecv);', """        const char *problem = altpublish(result, nsend+nrecv, NULL, 0);
+        if (problem)
+        {
+            error((char *)problem);
+        }"""),
+    )
+    for old, new in replacements:
+        if source.count(old) != 1:
+            raise ValueError('ALT guarded result drift: '+old)
+        source = source.replace(old, new, 1)
+    return source.replace('#include "interp.h"', '#include "interp.h"\n#include "managed_owner.h"\n#include "shared_bytes.h"', 1)
+
+
+ALT_GUARDED_RESULT = r"""
+/* Write caller-owned selection cells in their original order. A missing tuple
+ * selects a single-word result. Return a static diagnostic before any write on
+ * refusal. NativeWorld still protects the waiter and captured operands. */
+static const char *altpublish(void *slot, WORD guard, void *tuple, WORD member)
+{
+    DVM_RangeAccess access = {0};
+    if (!altresultvalid(slot) || (tuple && !altresultvalid(tuple)))
+    {
+        return exBounds;
+    }
+    if (dvm_runtime_guarded_copies &&
+        dvm_managed_ranges_begin(tuple, tuple ? sizeof(member) : 0,
+            slot, sizeof(guard), &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(slot, &guard, sizeof(guard));
+    if (tuple)
+    {
+        memmove(tuple, &member, sizeof(member));
+    }
+    if (dvm_runtime_guarded_copies && !dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}
+
+
+"""
+
+
 def adapt_alt_reservations(source):
     """Prefer ready guards whose channel has no active buffer transfer."""
     changes = (
