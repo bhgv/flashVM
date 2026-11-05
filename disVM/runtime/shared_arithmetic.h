@@ -24,4 +24,6 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
  * Return one on pre-effect retry; otherwise clear its consecutive count. */
 struct Prog;
 int dvm_runtime_arithmetic_finish(struct Prog *process);
+/* Verify one pointer-mapped cell of the current rooted frame under ACTIVE. */
+int dvm_runtime_frame_pointer(const void *cell);
 #endif

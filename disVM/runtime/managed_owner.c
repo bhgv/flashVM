@@ -537,6 +537,14 @@ unsigned long dvm_managed_owner_guard_entries(void)
 }
 
 
+/* Borrow the live native cell domain before the caller suspends its guest.
+ * The runtime and its registered guest must outlive all use of this pointer. */
+DVM_CellDomain *dvm_managed_cell_domain(void)
+{
+    return admitted() ? owners.cells : NULL;
+}
+
+
 /* [GC:] Stable service/world identity is checked before native registry use.
  * Existing serialized admission stabilizes the service and caller-owned spans.
  * Cell guards do not replace source lifetime, roots or future GC epoch proof. */

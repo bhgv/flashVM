@@ -47,6 +47,14 @@ NativeWorld and outside the cell guard. Registry initialization may allocate
 before acquisition. Each subsequent move needs no allocation for this root.
 The same path handles SELF. BUSY can request replay before ownership effects.
 
+The hosted `--parallel-movp` experiment requires guarded copies and multiple
+managed workers. It selects an armed MOVP only when both cells are aligned
+pointer-map entries of the current rooted guest frame. The scheduler publishes
+that frame before restricted admission. The guarded copy then uses the same
+cell domain as the ordinary path. It returns to the exclusive turn before
+destruction or error delivery. General heap interior and module slots still
+use the exclusive path.
+
 Worker worlds require exact acknowledged ACTIVE process/context/service identity.
 Detached inline execution uses the checked copy without cell guards under its
 existing single-owner model. Wrong role, held guards, bad geometry or output

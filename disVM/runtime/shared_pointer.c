@@ -6,6 +6,10 @@
 #include "raise.h"
 #include "shared_pointer.h"
 #include "shared_access.h"
+#include "shared_arithmetic.h"
+#include "runtime_gc.h"
+#include "isa.h"
+#include "disvm/native_process.h"
 #include "managed_owner.h"
 #include "gc_fields.h"
 #include "root_registry_private.h"
@@ -13,6 +17,9 @@
 #include "disvm/native_owner.h"
 #include <stdint.h>
 #include <stdlib.h>
+
+
+int dvm_runtime_parallel_movp; /* Startup-only restricted frame-pointer experiment. */
 
 
 /* Geometric span only; caller independently supplies mapped/rooted storage. */
@@ -75,14 +82,13 @@ static void unroot_displaced(RootEntry *entry, FVM_PortSync *mutex)
  * required guards are held. No VM callback, throwing allocation or destruction.
  * Refusal leaves destination/output unchanged and undoes a failed mark retain. */
 static const char *movp_attempt(const void *source, void *destination,
-    void **previous, DVM_CellResult *claim, RootEntry *root, FVM_PortSync *root_mutex)
+    void **previous, DVM_CellResult *claim, RootEntry *root, FVM_PortSync *root_mutex, int selected, DVM_CellDomain *shared_domain)
 {
     DVM_CellAccess access = {0};
     const char *problem = NULL;
     void *incoming;
     void *outgoing;
     Heap *heap = NULL;
-    int selected = dvm_runtime_shared_mode();
 
     *claim = DVM_CELL_REFUSED;
     if (!selected || !span(source) || !span(destination) || !span(previous) ||
@@ -92,7 +98,8 @@ static const char *movp_attempt(const void *source, void *destination,
     }
     if (selected == 2)
     {
-        *claim = dvm_managed_cells_begin(source, destination, &access);
+        *claim = shared_domain ? dvm_cell_access_begin(shared_domain, source, destination, &access) :
+            dvm_managed_cells_begin(source, destination, &access);
         if (*claim != DVM_CELL_ACQUIRED)
         {
             return exHeap;
@@ -170,7 +177,7 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination, void **
 {
     DVM_CellResult claim;
 
-    return movp_attempt(source, destination, previous, &claim, NULL, NULL);
+    return movp_attempt(source, destination, previous, &claim, NULL, NULL, dvm_runtime_shared_mode(), NULL);
 }
 
 
@@ -184,6 +191,9 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
     void *previous;
     const char *problem;
     int mode = dvm_runtime_shared_mode();
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_CellDomain *domain = NULL;
+    int released = 0;
 
     *replay = 0;
     if (mode == 2)
@@ -194,7 +204,30 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
             return exNomem;
         }
     }
-    problem = movp_attempt(source, destination, &previous, &claim, mutex ? &root : NULL, mutex);
+    if (mode == 2 && dvm_runtime_parallel_movp && opcode == IMOVP && up->prog &&
+        dvm_native_execution()->arithmetic_retry_opcode == opcode &&
+        dvm_runtime_frame_pointer(source) && dvm_runtime_frame_pointer(destination))
+    {
+        domain = dvm_managed_cell_domain();
+        if (domain)
+        {
+            released = dvm_runtime_gc_native_try_leave();
+        }
+    }
+    if (released > 0 && !dvm_native_owner_enter_shared(owner))
+    {
+        abort();
+    }
+    problem = movp_attempt(source, destination, &previous, &claim, mutex ? &root : NULL,
+        mutex, mode, released > 0 ? domain : NULL);
+    if (released > 0)
+    {
+        if (!dvm_native_owner_leave_shared(owner))
+        {
+            abort();
+        }
+        dvm_runtime_gc_native_enter(released);
+    }
     *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
     if (*replay || problem)
     {

@@ -59,6 +59,7 @@ void dvm_runtime_guard_registry_probe(DVM_GCWorkers *workers);
 /* [GC:] Claim pointer-sized source/destination cells only on exact ACTIVE
  * managed service owner. Ranges are caller-owned/live; no object retain/root
  * is implied. Result and cleanup follow cell_access.h. No VM callbacks. */
+DVM_CellDomain *dvm_managed_cell_domain(void); /* Borrow only with an ACTIVE rooted guest. */
 DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination,
     DVM_CellAccess *access);
 

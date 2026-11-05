@@ -79,6 +79,30 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
 }
 
 
+/* Accept only a mapped pointer slot in the current live guest frame. */
+int dvm_runtime_frame_pointer(const void *cell)
+{
+    Type *type = current_frame_type();
+    uintptr_t base = (uintptr_t)DVM_R.FP;
+    uintptr_t address = (uintptr_t)cell;
+    size_t offset;
+    size_t slot;
+    if (!type || address < base)
+    {
+        return 0;
+    }
+    offset = address - base;
+    if (offset < NREG * IBY2WD || offset % sizeof(void *) ||
+        offset > (size_t)type->size - sizeof(void *))
+    {
+        return 0;
+    }
+    slot = offset / sizeof(void *);
+    return slot / 8 < (size_t)type->np &&
+        (type->map[slot / 8] & (0x80U >> (slot % 8))) != 0;
+}
+
+
 /* Admit mixed-width cells of an armed experimental operation.
  * The active dispatch and typed frame supply the borrowed span lifetime. */
 static int parallel_frame_spans(int opcode, const void *first, size_t first_size,

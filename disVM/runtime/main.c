@@ -27,6 +27,7 @@
 #include "runtime_gc.h"
 #include "shared_bytes.h"
 #include "shared_arithmetic.h"
+#include "shared_pointer.h"
 #include "shared_access.h"
 #include "shared_string_branch.h"
 #include "runqueue.h"
@@ -2794,6 +2795,10 @@ int main(int argc, char **argv)
         {
             dvm_runtime_parallel_real = 1;
         }
+        else if (strcmp(argv[1], "--parallel-movp") == 0)
+        {
+            dvm_runtime_parallel_movp = 1;
+        }
         else if (strcmp(argv[1], "--parallel-string") == 0)
         {
             dvm_runtime_parallel_string = 1;
@@ -2867,6 +2872,11 @@ int main(int argc, char **argv)
         (!dvm_runtime_guarded_copies || managed_workers == 1))
     {
         fprintf(stderr, "parallel scalar modes require --guarded-copies and multiple managed workers\n");
+        return 2;
+    }
+    if (dvm_runtime_parallel_movp && (!dvm_runtime_guarded_copies || managed_workers == 1))
+    {
+        fprintf(stderr, "--parallel-movp requires --guarded-copies and multiple managed workers\n");
         return 2;
     }
     if (dvm_runtime_guarded_copies && !gc_worker)

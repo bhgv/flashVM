@@ -2,6 +2,8 @@
 #ifndef DVM_SHARED_POINTER_H
 #define DVM_SHARED_POINTER_H
 
+extern int dvm_runtime_parallel_movp; /* Startup-only restricted pointer-copy experiment. */
+
 
 /* [GC:] Copy one already-owned source cell into destination while preserving
  * an independent displaced owner in private disjoint previous. Return NULL on
