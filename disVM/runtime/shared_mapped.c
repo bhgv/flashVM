@@ -351,10 +351,10 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
      * frame. A refill instead supplies a pinned sender. */
     shared_channel = dvm_runtime_parallel_channel_buffer && committed && up->prog &&
         ((refill_sender && !consume &&
-          dvm_runtime_frame_record_for(&refill_sender->R, source, type)) ||
+          dvm_runtime_rooted_record(&refill_sender->R, source, type)) ||
          ((dispatch_opcode == replay_opcode || selected_alt) &&
-          ((replay_opcode == ISEND && !consume && dvm_runtime_frame_record(source, type)) ||
-           (replay_opcode == IRECV && consume && dvm_runtime_frame_record(destination, type)))));
+          ((replay_opcode == ISEND && !consume && dvm_runtime_rooted_record(&DVM_R, source, type)) ||
+           (replay_opcode == IRECV && consume && dvm_runtime_rooted_record(&DVM_R, destination, type)))));
     if (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
         up->prog && dispatch_opcode == IMOVMP)
     {

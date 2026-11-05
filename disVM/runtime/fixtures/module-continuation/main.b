@@ -4,6 +4,9 @@ include "provider.m";
 
 Main: module { init: fn(); };
 sys: Sys;
+mailbox: (Provider, array of int);
+returnbox: (Provider, array of int);
+outbox: (Provider, array of int);
 
 peer(inbox: chan of (Provider, array of int), reply: chan of array of int)
 {
@@ -22,10 +25,14 @@ peer(inbox: chan of (Provider, array of int), reply: chan of array of int)
 rendezvous(outbound, inbound: chan of (Provider, array of int), ready: chan of int)
 {
     ready <-= 1;
-    (provider, payload) := <-outbound;
+    mailbox = <-outbound;
+    (provider, payload) := mailbox;
+    mailbox = (nil, nil);
     payload[0] = 314159;
     ready <-= 2;
-    inbound <-= (provider, payload);
+    returnbox = (provider, payload);
+    inbound <-= returnbox;
+    returnbox = (nil, nil);
 }
 
 init()
@@ -74,7 +81,9 @@ init()
     spawn rendezvous(outbound, inbound, ready);
     if (<-ready != 1)
         raise "rendezvous receiver did not start";
-    outbound <-= (provider, payload);
+    outbox = (provider, payload);
+    outbound <-= outbox;
+    outbox = (nil, nil);
     if (<-ready != 2)
         raise "rendezvous sender did not start";
     (back, changed) := <-inbound;

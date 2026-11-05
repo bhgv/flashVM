@@ -363,8 +363,8 @@ static int channel_move(void *argument)
     int completed;
     if (!dvm_runtime_parallel_channel_buffer || channel->mover != movtmp ||
         !type || type == H || !type->np ||
-        !dvm_runtime_frame_record(move->peer_receives ? DVM_R.s : DVM_R.d, type) ||
-        !dvm_runtime_frame_record_for(&move->peer->R,
+        !dvm_runtime_rooted_record(&DVM_R, move->peer_receives ? DVM_R.s : DVM_R.d, type) ||
+        !dvm_runtime_rooted_record(&move->peer->R,
             move->peer_receives ? DVM_R.d : DVM_R.s, type))
     {
         channel->mover();

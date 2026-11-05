@@ -64,6 +64,7 @@ int main()
     char text[] = "old";
     FVM_Value arg;
     check(fvm_value_string_bytes(&arg, text, 3) == FVM_OK, "argument");
+    timer_available = 0;
     unsigned long first = 777;
     check(fvm_async_post(c, probe.function, 1, &arg, &first) == FVM_OK && probe.calls == 0, "deferred post");
     text[0] = 'X';
@@ -88,6 +89,6 @@ int main()
     check(fvm_async_cancel(c, 0) == FVM_OK, "missing ID");
     fvm_context_destroy(c);
     fvm_runtime_destroy(runtime);
-    std::puts("PASS Async.post/cancel: frozen frames/clock, roots, copy, next poll and script methods");
+    std::puts("PASS Async.post/cancel: frozen frames, unavailable clock, roots, copy, next poll and script methods");
     return 0;
 }

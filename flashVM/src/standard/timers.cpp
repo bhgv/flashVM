@@ -146,16 +146,20 @@ FVM_Result schedule(FVM_Context *c, unsigned count, const FVM_Value *args, FVM_V
         {
             return FVM_ERROR;
         }
-        FVM_Value clock;
-        result = fvm_exec_get_time(c, &clock);
-        if (result != FVM_OK)
+        record.deadline = 0;
+        if (!posted)
         {
-            return result;
-        }
-        record.deadline = c->timer_elapsed_ms + record.delay;
-        if (!posted && !(record.deadline > c->timer_elapsed_ms))
-        {
-            return FVM_UNSUPPORTED;
+            FVM_Value clock;
+            result = fvm_exec_get_time(c, &clock);
+            if (result != FVM_OK)
+            {
+                return result;
+            }
+            record.deadline = c->timer_elapsed_ms + record.delay;
+            if (!(record.deadline > c->timer_elapsed_ms))
+            {
+                return FVM_UNSUPPORTED;
+            }
         }
         result = work.step();
         if (result != FVM_OK)
@@ -234,6 +238,24 @@ FVM_Result cancel(FVM_Context *c, unsigned count, const FVM_Value *args, FVM_Val
     {
         return FVM_OUT_OF_MEMORY;
     }
+}
+
+
+/* Sample elapsed time only if the context owns a timed callback. Posts use
+ * deadline zero and the next poll snapshot. The queue is owner-local and
+ * bounded by FVM_TIMERS_MAX_PENDING. Return the platform clock status. */
+FVM_Result sample_scheduled_clock(FVM_Context *c)
+{
+    for (fvm_detail::map<unsigned long, FVM_ScheduledCall *>::const_iterator it = c->scheduled_calls.begin();
+         it != c->scheduled_calls.end(); ++it)
+    {
+        if (!it->second->posted)
+        {
+            FVM_Value clock;
+            return fvm_exec_get_time(c, &clock);
+        }
+    }
+    return FVM_OK;
 }
 
 
@@ -321,8 +343,7 @@ fvm_timers_next_delay(FVM_Context *c, unsigned long max_wait_ms, unsigned long *
     unsigned long wait = max_wait_ms;
     if (!c->scheduled_calls.empty())
     {
-        FVM_Value clock;
-        FVM_Result result = fvm_exec_get_time(c, &clock);
+        FVM_Result result = sample_scheduled_clock(c);
         if (result != FVM_OK)
         {
             return result;
@@ -383,8 +404,7 @@ extern "C" FVM_Result fvm_timers_poll(FVM_Context *c, unsigned int *delivered)
         {
             return FVM_OK;
         }
-        FVM_Value clock;
-        FVM_Result result = fvm_exec_get_time(c, &clock);
+        FVM_Result result = sample_scheduled_clock(c);
         if (result != FVM_OK)
         {
             return result;

@@ -160,19 +160,20 @@ exclusive admission. The GC guest checks 32 mapped frame copies with an
 owning reference and a scalar field in each record.
 
 `--parallel-channel-buffer` admits direct mapped buffered `SEND` and `RECV`
-when the guest operand is a complete typed record in the current frame.
+when the guest operand is a complete typed record in the current frame or
+heap-backed Dis module data.
 The existing channel hold keeps the backing array and type live, and the
 reservation prevents another transfer from taking the same slot until the
 queue update. Only the range publication enters `SHARED`. Ring metadata and
 retirement remain exclusive. For a queued sender's refill, the existing completion claim pins the sender
-until wakeup. Its saved frame must match the mapped record before sharing.
+until wakeup. Its saved frame or module map must match the record before sharing.
 An immediately selected buffered `ALT` or `NBALT` can also share the
 publication when its payload matches the active frame. The guard selection
 is already published, so contention falls back under exclusive admission
 instead of replaying the selection.
 
 Mapped rendezvous can also publish under `--parallel-channel-buffer`.
-Both guest frame maps must match the channel's record type. The channel
+Both guest operand maps must match the channel's record type. The channel
 hold retains the descriptor and the completion claim keeps the detached
 waiter pinned. Peer wakeup follows exclusive reentry. If retirement raises
 after publication, the peer still completes the transfer.

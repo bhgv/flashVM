@@ -7,7 +7,8 @@
 
 Delivery uses [fvm_timers_poll](../include/flashvm/timers.h#L22), independently of
 SWF frame advancement. A posted callback is eligible on the next poll even if
-the sampled clock has not advanced. Posts inside callbacks wait for another
+the sampled clock has not advanced. A queue containing only posts can be
+queried and polled even when the platform clock is unavailable. Posts inside callbacks wait for another
 poll; nested polls reject. The host must pump while the movie is paused too.
 [`fvm_timers_next_delay`](../include/flashvm/timers.h#L34) returns zero for eligible work. There is no worker-thread
 execution of ActionScript or concurrent mutation of its heap.

@@ -87,16 +87,16 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
 
 /* The suspended Prog roots its current Modlink. Ordinary Dis links own
  * their fixed heap-backed MP. Dynamic modules can supply a native MP. */
-static const Type *module_data_type(void)
+static const Type *module_data_type(const REG *registers)
 {
-    const Modlink *link = DVM_R.M;
+    const Modlink *link = registers->M;
     const Type *type;
     if (!link || link == H || !link->m || link->m == H || link->m->rt == DYNMOD ||
-        !DVM_R.MP || DVM_R.MP == H || link->MP != DVM_R.MP)
+        !registers->MP || registers->MP == H || link->MP != registers->MP)
     {
         return NULL;
     }
-    type = D2H(DVM_R.MP)->t;
+    type = D2H(registers->MP)->t;
     if (!type || type == H || type->size < (int)sizeof(void *) || type->np < 0 ||
         (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8)
     {
@@ -132,7 +132,7 @@ int dvm_runtime_frame_pointer(const void *cell)
 
 int dvm_runtime_module_pointer(const void *cell)
 {
-    return mapped_pointer(cell, DVM_R.MP, module_data_type(), 0);
+    return mapped_pointer(cell, DVM_R.MP, module_data_type(&DVM_R), 0);
 }
 
 
@@ -196,12 +196,21 @@ int dvm_runtime_frame_record_for(const REG *registers, const void *cell, const T
 
 int dvm_runtime_module_record(const void *cell, const Type *record)
 {
-    return mapped_record(cell, record, module_data_type(), (uintptr_t)DVM_R.MP, 0);
+    return mapped_record(cell, record, module_data_type(&DVM_R), (uintptr_t)DVM_R.MP, 0);
 }
 
 int dvm_runtime_frame_record(const void *cell, const Type *record)
 {
     return dvm_runtime_frame_record_for(&DVM_R, cell, record);
+}
+
+
+/* Check a record in the frame or heap-backed module rooted by registers.
+ * The caller keeps the corresponding guest alive through the transfer. */
+int dvm_runtime_rooted_record(const REG *registers, const void *cell, const Type *record)
+{
+    return dvm_runtime_frame_record_for(registers, cell, record) ||
+        mapped_record(cell, record, module_data_type(registers), (uintptr_t)registers->MP, 0);
 }
 
 
