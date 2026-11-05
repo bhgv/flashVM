@@ -95,6 +95,18 @@ int main(void)
     {
         return 2;
     }
+    if (dvm_file_gate_enter_now(gate, &ticket) || ticket.gate != gate ||
+        dvm_file_gate_enter(gate, &ticket))
+    {
+        fprintf(stderr, "FAIL duplicate admission damaged the active file ticket\n");
+        return 1;
+    }
+    dvm_file_gate_reserve(gate, &tail);
+    if (dvm_file_gate_enter(gate, &tail) || tail.gate)
+    {
+        fprintf(stderr, "FAIL current file owner could wait on itself\n");
+        return 1;
+    }
     dvm_file_gate_reserve(gate, &tail);
     if (dvm_file_gate_cancel(gate, &ticket) ||
         !dvm_file_gate_cancel(gate, &tail) ||

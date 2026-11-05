@@ -19,6 +19,9 @@ def main():
          'FIFO file admission order violated'),
         ('owner', ' || gate->owner != dvm_native_context_current()', '',
          'foreign file completion accepted'),
+        ('duplicate', '    if (gate->busy && ticket == gate->head)\n    {\n'
+         '        fvm_port_sync_unlock(gate->sync);\n        return 0;\n    }\n', '',
+         'duplicate admission damaged the active file ticket'),
         ('lifetime', 'gate->busy || gate->pending', '0',
          'busy file gate retired'),
     ]
@@ -48,7 +51,7 @@ def main():
                 print(run.stdout.strip())
             elif run.returncode != 1 or marker not in run.stderr:
                 raise RuntimeError('inactive semantic file gate control: ' + name + run.stdout + run.stderr)
-        print('PASS three active file gate controls: FIFO, exact native owner, pending lifetime')
+        print('PASS four active file gate controls: FIFO, exact owner, duplicate admission, pending lifetime')
 
 
 if __name__ == '__main__':

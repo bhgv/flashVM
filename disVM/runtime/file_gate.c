@@ -140,7 +140,13 @@ static int enter_ticket(DVM_FileGate *gate, DVM_FileTicket *ticket, int block)
         return 0;
     }
     fvm_port_sync_lock(gate->sync);
-    if (!block && ticket->gate == gate && (ticket != gate->head || gate->busy))
+    if (gate->busy && ticket == gate->head)
+    {
+        fvm_port_sync_unlock(gate->sync);
+        return 0;
+    }
+    if ((!block || gate->owner == dvm_native_context_current()) &&
+        ticket->gate == gate && (ticket != gate->head || gate->busy))
     {
         unlink_ticket(gate, ticket);
         fvm_port_sync_unlock(gate->sync);

@@ -36,12 +36,15 @@ int dvm_file_gate_try_release(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
 /* Wait outside heap ownership for admission. Return zero for cancellation
- * or invalid ownership. The mutex is released before I/O. */
+ * or invalid ownership. A duplicate of the active ticket leaves it intact.
+ * A separate ticket queued by the current gate owner is removed to avoid
+ * waiting for itself. The mutex is released before I/O. */
 int dvm_file_gate_enter(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
 /* Admit without waiting. A contended reservation is removed atomically.
- * Requires a bound owner. Return one on admission or zero on refusal. */
+ * A duplicate of the active ticket leaves it intact. Requires a bound owner.
+ * Return one on admission or zero on refusal. */
 int dvm_file_gate_enter_now(DVM_FileGate *gate, DVM_FileTicket *ticket);
 
 
