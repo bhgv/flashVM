@@ -12,7 +12,7 @@ from test_native_wait import execute
 def verify(runtime, module, mode, flags, quantum, limited=False):
     output = execute(runtime,module,mode,flags,quantum,limited)
     queue = re.search(r"NATIVEQUEUE queued=\d+ leases=(\d+) returns=(\d+) inflight=0",output)
-    probe = re.search(r"QUEUEPROBE observed=(\d+) joined=(\d+) failures=0 idle=(\d+)",output)
+    probe = re.search(r"QUEUEPROBE observed=(\d+) joined=(\d+) failures=0 idle=(\d+) scalar_spans=checked",output)
     gc = re.search(r"native_releases=(\d+) native_reentries=(\d+)",output)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0",output)
     if not dispatch or not int(dispatch[1]) or dispatch[1] != dispatch[2]:

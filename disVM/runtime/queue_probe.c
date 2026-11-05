@@ -3,6 +3,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "isa.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
 #include "runtime_gc.h"
@@ -64,6 +65,33 @@ static void failed(const char *message)
 }
 
 
+/* Classify a frame-relative byte span against a previously validated type.
+ * This checks geometry and the GC map, not aliasing or write authorization. */
+static int scalar_span(const Type *type, size_t offset, size_t width)
+{
+    size_t first;
+    size_t last;
+    size_t slot;
+    size_t bytes = (size_t)type->size;
+
+    if (!width || offset < NREG * IBY2WD || offset > bytes || width > bytes - offset)
+    {
+        return 0;
+    }
+    first = offset / sizeof(void *);
+    last = (offset + width - 1) / sizeof(void *);
+    for (slot = first; slot <= last; slot++)
+    {
+        if (slot / 8 < (size_t)type->np &&
+            (type->map[slot / 8] & (0x80U >> (slot % 8))))
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* Inspect the suspended guest's live frame under the observer's heap turn.
  * The rooted stack extent supplies lifetime. Return false on bad geometry
  * or a pointer map that names a header or a partial/out-of-frame slot. */
@@ -107,6 +135,27 @@ static int suspended_frame_valid(const REG *saved)
     {
         if ((type->map[index / 8] & (0x80U >> (index % 8))) &&
             (index < sizeof(Frame) / sizeof(void *) || index >= slots))
+        {
+            return 0;
+        }
+    }
+    if (scalar_span(type, 0, 1) || scalar_span(type, bytes, 1) ||
+        scalar_span(type, NREG * IBY2WD, 0) ||
+        scalar_span(type, NREG * IBY2WD, SIZE_MAX))
+    {
+        return 0;
+    }
+    for (index = NREG * IBY2WD / sizeof(void *); index < slots; index++)
+    {
+        int mapped = index / 8 < (size_t)type->np &&
+            (type->map[index / 8] & (0x80U >> (index % 8)));
+        size_t offset = index * sizeof(void *);
+
+        if (scalar_span(type, offset, sizeof(void *)) == mapped)
+        {
+            return 0;
+        }
+        if (mapped && offset > NREG * IBY2WD && scalar_span(type, offset - 1, 2))
         {
             return 0;
         }
@@ -240,7 +289,7 @@ void dvm_queue_probe_statistics(void)
     if (diagnostics)
     {
         fvm_port_sync_lock(diagnostics);
-        fprintf(stderr,"QUEUEPROBE observed=%lu joined=%lu failures=0 idle=%lu\n",observed,joined,idle);
+        fprintf(stderr,"QUEUEPROBE observed=%lu joined=%lu failures=0 idle=%lu scalar_spans=checked\n",observed,joined,idle);
         fvm_port_sync_unlock(diagnostics);
     }
 }
