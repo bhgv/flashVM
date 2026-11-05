@@ -340,3 +340,32 @@ const char *dvm_runtime_string_index(const void *source, const void *index_cell,
     }
     return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IINDC) ? NULL : problem;
 }
+
+
+
+/* Capture the scalar operands and old reference under a single union.
+ * The caller keeps NativeWorld through validation, mutation and retirement.
+ * Output arguments are private; no ownership is changed by this snapshot. */
+const char *dvm_runtime_string_store_operands(const void *source, const void *index_cell,
+    const void *slot, void *value, void *index, void *old, int *replay)
+{
+    DVM_TripleAccess access = {0};
+    DVM_CellResult claim;
+
+    *replay = 0;
+    claim = dvm_managed_small_three_begin(source, sizeof(WORD), index_cell, sizeof(WORD),
+        (void *)slot, sizeof(String *), &access);
+    if (claim != DVM_CELL_ACQUIRED)
+    {
+        *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IINSC);
+        return *replay ? NULL : exHeap;
+    }
+    memmove(value, source, sizeof(WORD));
+    memmove(index, index_cell, sizeof(WORD));
+    memmove(old, slot, sizeof(String *));
+    if (!dvm_small_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}

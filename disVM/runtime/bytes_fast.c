@@ -11,6 +11,8 @@
 
 extern void lea(void);
 extern void movpc(void);
+extern void indc(void); /* Guarded string character read. */
+extern void insc(void); /* Guarded string store operand capture. */
 extern void indx(void);
 extern void indb(void);
 extern void indw(void);
@@ -142,6 +144,12 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IMOVPC:
         movpc();
+        break;
+    case IINDC:
+        indc();
+        break;
+    case IINSC:
+        insc();
         break;
     case IINDX:
         indx();

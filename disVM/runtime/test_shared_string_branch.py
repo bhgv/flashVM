@@ -32,6 +32,12 @@ init() {
     index := -len ascii;
     if (ascii[index] != 'a' || rune[index] != 'Ж')
         raise "guarded string index";
+    changed := ascii;
+    changed[index] = 'Ж';
+    changed[len changed] = 'x';
+    changed[-1] = 'z';
+    if (ascii != "a" || changed != "Жz")
+        raise "guarded string mutation";
     score := 0;
     for (i := 0; i < 4; i++) {
         for (j := 0; j < 4; j++) {
@@ -310,6 +316,33 @@ static void observe_overlap(void)
         pthread_cond_broadcast(&overlap_ready);
     }
     pthread_mutex_unlock(&overlap_lock);
+}
+
+
+DVM_CellResult __real_dvm_managed_small_three_begin(const void *, size_t, const void *,
+    size_t, void *, size_t, DVM_TripleAccess *);
+
+
+/* Refuse the store's operand capture before changing any owner or Rune. */
+DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *source, size_t input,
+    const void *index, size_t index_size, void *slot, size_t slot_size, DVM_TripleAccess *access)
+{
+    static Inst *retry_pc; /* Post-decode store PC at the first contention. */
+    static int replayed; /* The same guest store has resumed. */
+
+    if (CONTROL == 0 && !active && !replayed &&
+        dvm_native_execution()->arithmetic_retry_opcode == IINSC)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC, "string store retries original instruction");
+        replayed = 1;
+        puts("PASS scheduled string store replay");
+    }
+    return __real_dvm_managed_small_three_begin(source, input, index, index_size, slot, slot_size, access);
 }
 
 
@@ -714,7 +747,7 @@ def main():
         wrapper.write_text(WRAPPER)
         for variant in ((0, 4) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
             binary = relink(runtime, work, wrapper, variant,
-                ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin','dvm_range_access_extend',
+                ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_small_three_begin','dvm_managed_ranges_begin','dvm_range_access_extend',
                  'dvm_runtime_string_branch_source','dvm_runtime_string_branch_header',
                  'dvm_runtime_string_branch_key','dvm_runtime_branch_target','error','malloc','calloc','free'])
             for mode in ('--no-jit', '--jit'):
@@ -743,7 +776,8 @@ def main():
                                 'PASS string target contention replay' not in output or
                                 'PASS scheduled string index replay' not in output or
                                 'PASS string index header retry' not in output or
-                                'PASS string index character retry' not in output):
+                                'PASS string index character retry' not in output or
+                                'PASS scheduled string store replay' not in output):
                             raise RuntimeError('leased string coverage or bounded fallback missed: '+output)
                     if variant == 0 and 'PASS scheduled input retry' not in output:
                         raise RuntimeError('input retry missed: '+output)

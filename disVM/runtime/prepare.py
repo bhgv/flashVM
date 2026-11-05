@@ -277,6 +277,34 @@ def main():
             if code.count(needle) != 1:
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
+            start = code.index('OP(insc)')
+            finish = code.index('\nString*\nslicer', start)
+            part = code[start:finish]
+            capture = (
+                '\tmemmove(&value, DVM_R.s, sizeof(value));\n'
+                '\trune = value;\n'
+                '\tmemmove(&index, DVM_R.m, sizeof(index));\n'
+                '\tslot = DVM_R.d;\n'
+                '\tmemmove(&old, slot, sizeof(old));'
+            )
+            part = relative_replace(part, capture, """    slot = DVM_R.d;
+    if(dvm_runtime_guarded_copies) {
+        int replay;
+        const char *problem = dvm_runtime_string_store_operands(DVM_R.s, DVM_R.m,
+            slot, &value, &index, &old, &replay);
+        if(replay) {
+            return;
+        }
+        if(problem) {
+            error((char *)problem);
+        }
+    } else {
+        memmove(&value, DVM_R.s, sizeof(value));
+        memmove(&index, DVM_R.m, sizeof(index));
+        memmove(&old, slot, sizeof(old));
+    }
+    rune = value;""", 1)
+            code = code[:start] + part + code[finish:]
             start = code.index('OP(slicec)')
             finish = code.index('void\ncvtup', start)
             part = code[start:finish]

@@ -13,7 +13,7 @@ SEPARATE_PATHS = {
     'control_and_tables': 'INOP IGOTO IRUNT IJMP ICASE ICASEC ICASEL ITCMP IECLR',
     'allocation': 'INEW INEWA INEWCB INEWCW INEWCF INEWCP INEWCM INEWCMP INEWCL IMNEWZ INEWZ INEWAZ',
     'managed_owners': 'ICONSB ICONSW ICONSP ICONSF ICONSM ICONSMP ICONSL IHEADP IHEADMP ITAIL IMOVP IMOVMP ISELF',
-    'strings_and_slices': 'ICVTCA ICVTAC ICVTWC ICVTCW ICVTFC ICVTCF IINSC IINDC IADDC ISLICEA ISLICELA ISLICEC ICVTLC ICVTCL',
+    'strings_and_slices': 'ICVTCA ICVTAC ICVTWC ICVTCW ICVTFC ICVTCF IADDC ISLICEA ISLICELA ISLICEC ICVTLC ICVTCL',
 }
 
 
@@ -45,7 +45,7 @@ def inspect(emitter, dispatcher, executor):
         raise DispatchMismatch('dispatcher exactly-once shape')
     if {op for op,fn in cases} != set(selected):
         raise DispatchMismatch('selector dispatch agreement')
-    executor = re.sub(r'/\*.*?\*/|//[^\n]*', '', executor, flags=re.S)
+    executor = re.sub(r'/\*.*?\*/|//[^\n]*|extern\s+OP\(\w+\);', '', executor, flags=re.S)
     for op,fn in cases:
         entry = op.lower() if op in ("IEXPW", "IEXPL", "IEXPF") else op[1:].lower()
         if fn != entry:
@@ -114,7 +114,7 @@ def main():
     parser.add_argument('--report',type=Path)
     args = parser.parse_args()
     texts = [(args.native/'amd64-emit.h').read_text(),(args.runtime/'bytes_fast.c').read_text(),
-             (args.native/'xec.c').read_text()]
+             (args.native/'xec.c').read_text()+'\n'+(args.native/'string.c').read_text()]
     emitter,dispatcher,executor = texts
     cases = inspect(*texts)
     isa = (args.native/'isa.h').read_text()
