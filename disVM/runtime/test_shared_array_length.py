@@ -227,10 +227,10 @@ RECEIVE_ERRORS = r'''implement ReceiveErrors;
 include "sys.m";
 ReceiveErrors: module {init: fn();};
 
-sender(records: chan of (int, string), ready, done: chan of int) {
+sender(records: chan of (int, string), ready, done: chan of int, tag: int) {
     ready <-= 1;
     {
-        records <-= (55, "queued sender");
+        records <-= (tag, "queued sender");
         done <-= 1;
     } exception failure {
         "channel transfer failed" => done <-= -1;
@@ -284,7 +284,7 @@ init() {
     records <-= (45, "second queued");
     ready := chan[1] of int;
     done := chan[1] of int;
-    spawn sender(records, ready, done);
+    spawn sender(records, ready, done, 55);
     if (<-ready != 1)
         raise "sender did not start";
     {
@@ -304,7 +304,7 @@ init() {
         raise "refill lost the published sender";
     records <-= (66, "first before failure");
     records <-= (67, "second before failure");
-    spawn sender(records, ready, done);
+    spawn sender(records, ready, done, 55);
     if (<-ready != 1)
         raise "second sender did not start";
     {
@@ -402,7 +402,7 @@ static int contend_capture(int stage)
 }
 
 
-static __thread int receive_fault; /* Prepublication then postpublication. */
+static int receive_fault; /* Prepublication then postpublication. */
 static __thread int release_fault; /* Fail once after dropping the captured array owner. */
 void __real_destroy(void *);
 
@@ -419,12 +419,12 @@ void __wrap_destroy(void *value)
 }
 
 static __thread int ring_kind; /* 1 mapped, 2 native scalar, 3 raw record. */
-int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int, int *, int);
+int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int, int *, int, const Prog *);
 DVM_CellResult __real_dvm_managed_spans_begin(const void *, size_t, void *, size_t, DVM_CellAccess *);
 
 /* Identify the exact transfer layout before injecting at its range claim. */
 int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destination,
-    Type *type, int consume, int *committed, int opcode)
+    Type *type, int consume, int *committed, int opcode, const Prog *sender)
 {
     int result;
     int inject = getenv("DVM_TEST_RECEIVE_ERRORS") != NULL;
@@ -441,7 +441,7 @@ int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destinat
         error("refill failed before publication");
     }
     ring_kind = type->np ? 1 : (type->size <= sizeof(void *) ? 2 : 3);
-    result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consume, committed, opcode);
+    result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consume, committed, opcode, sender);
     ring_kind = 0;
     if (fault && receive_fault == 1 && *committed)
     {
@@ -628,10 +628,10 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
     if (CONTROL == 0 && !active && source && destination)
     {
         int opcode = dvm_native_execution()->arithmetic_retry_opcode;
-        if ((ring_kind == 1 && ((opcode == ISEND && contend_capture(42)) ||
+        if (!getenv("DVM_TEST_RECEIVE_ERRORS") && ((ring_kind == 1 && ((opcode == ISEND && contend_capture(42)) ||
                                 (opcode == IRECV && contend_capture(43)))) ||
             (ring_kind == 3 && ((opcode == ISEND && contend_capture(46)) ||
-                                (opcode == IRECV && contend_capture(47)))))
+                                (opcode == IRECV && contend_capture(47))))))
         {
             return DVM_CELL_BUSY;
         }
@@ -1155,10 +1155,12 @@ def main():
             for mode in ('--no-jit', '--jit'):
                 if variant == 0:
                     run = subprocess.run([str(binary), mode, '--gc-worker', '--guarded-copies',
-                                          '--quantum', '65536', str(error_image)], capture_output=True, text=True, timeout=30,
+                                          '--managed-workers', '2', '--parallel-channel-buffer',
+                                          '--stats', '--quantum', '65536', str(error_image)], capture_output=True, text=True, timeout=30,
                                          env=dict(os.environ, DVM_TEST_RECEIVE_ERRORS='1'))
                     if (run.returncode or 'PASS buffered receive commit boundary' not in run.stdout
-                            or run.stdout.count('PASS injected receive array release failure') != 2):
+                            or run.stdout.count('PASS injected receive array release failure') != 2
+                            or 'parallel_channel_refills=1' not in run.stdout):
                         raise RuntimeError(run.stdout + run.stderr)
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']

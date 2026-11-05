@@ -164,5 +164,6 @@ when the guest operand is a complete typed record in the current frame.
 The existing channel hold keeps the backing array and type live, and the
 reservation prevents another transfer from taking the same slot until the
 queue update. Only the range publication enters `SHARED`. Ring metadata and
-retirement remain exclusive. A queued sender's refill and ALT transfers
-have no direct opcode and use the exclusive path.
+retirement remain exclusive. For a queued sender's refill, the existing completion claim pins the sender
+until wakeup. Its saved frame must match the mapped record before sharing.
+ALT transfers without such a verified record use the exclusive path.

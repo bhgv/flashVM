@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 struct Array;
+struct Prog;
 struct Type; /* Borrowed retained native descriptor, defined by interp.h. */
 
 
@@ -33,11 +34,12 @@ extern int dvm_runtime_parallel_slicela;
 extern int dvm_runtime_parallel_movmp;
 extern int dvm_runtime_parallel_channel_buffer;
 extern unsigned long dvm_runtime_parallel_channel_sends;
+extern unsigned long dvm_runtime_parallel_channel_refills;
 extern unsigned long dvm_runtime_parallel_channel_receives;
 extern unsigned long dvm_runtime_parallel_movmp_commits;
 extern unsigned long dvm_runtime_parallel_slicela_commits;
 /* [GC:] Transfer live ring spans. A consuming receive clears source pointers.
  * Both directions report commit even when retirement raises. Return zero on replay. */
 int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, struct Type *type,
-    int consume, int *committed, int replay_opcode);
+    int consume, int *committed, int replay_opcode, const struct Prog *refill_sender);
 #endif

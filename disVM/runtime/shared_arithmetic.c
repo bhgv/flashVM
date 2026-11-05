@@ -23,15 +23,15 @@ int dvm_runtime_parallel_add; /* Startup-only leased arithmetic selection, 1 for
 
 /* Find the current live frame descriptor within the rooted stack extent.
  * The first frame stores its Type in the extent header. Borrow under ACTIVE. */
-static Type *current_frame_type(void)
+static Type *frame_type(const REG *registers)
 {
-    uintptr_t base = (uintptr_t)DVM_R.EX;
-    uintptr_t frame = (uintptr_t)DVM_R.FP;
-    uintptr_t top = (uintptr_t)DVM_R.SP;
+    uintptr_t base = (uintptr_t)registers->EX;
+    uintptr_t frame = (uintptr_t)registers->FP;
+    uintptr_t top = (uintptr_t)registers->SP;
     Type *type;
 
-    if (!base || DVM_R.EX == H || frame < base || top < frame ||
-        (uintptr_t)DVM_R.TS < top || top - frame < sizeof(Frame))
+    if (!base || registers->EX == H || frame < base || top < frame ||
+        (uintptr_t)registers->TS < top || top - frame < sizeof(Frame))
     {
         return NULL;
     }
@@ -47,6 +47,12 @@ static Type *current_frame_type(void)
         return NULL;
     }
     return type;
+}
+
+
+static Type *current_frame_type(void)
+{
+    return frame_type(&DVM_R);
 }
 
 
@@ -122,10 +128,10 @@ static int parallel_frame_spans(int opcode, const void *first, size_t first_size
 
 
 /* Verify that the entire record agrees with the live frame's pointer map. */
-int dvm_runtime_frame_record(const void *cell, const Type *record)
+int dvm_runtime_frame_record_for(const REG *registers, const void *cell, const Type *record)
 {
-    const Type *frame = current_frame_type();
-    uintptr_t base = (uintptr_t)DVM_R.FP;
+    const Type *frame = frame_type(registers);
+    uintptr_t base = (uintptr_t)registers->FP;
     uintptr_t address = (uintptr_t)cell;
     size_t offset, slot, frame_slot;
 
@@ -153,6 +159,12 @@ int dvm_runtime_frame_record(const void *cell, const Type *record)
         }
     }
     return 1;
+}
+
+
+int dvm_runtime_frame_record(const void *cell, const Type *record)
+{
+    return dvm_runtime_frame_record_for(&DVM_R, cell, record);
 }
 
 
