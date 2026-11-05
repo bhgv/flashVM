@@ -355,7 +355,7 @@ void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B gu
 
 static int cancel_requests[CANCEL_REQUEST_CAPACITY]; /* FIFO under the channel mutex. */
 static size_t cancel_request_count; /* Pending records under the channel mutex. */
-static int cancel_requests_open; /* Automatic scheduler is live, under the channel mutex. */
+static int cancel_requests_open; /* Worker scheduler is live, under the channel mutex. */
 
 static FVM_PortSync *channel_queue_mutex; /* Lives for the hosted runtime. */
 static unsigned int channel_buffer_waiters; /* Protected by the queue mutex. */
@@ -483,7 +483,7 @@ int dvm_runtime_cancel_guest_wait(int pid)
 
 
 /* Request cancellation from an unbound host thread. A native waiter can be
- * cancelled immediately. Otherwise enqueue a numeric PID for an automatic
+ * cancelled immediately. Otherwise enqueue a numeric PID for a managed
  * scheduler owner; success means accepted, not that the target still waits. */
 int dvm_runtime_request_guest_cancel(int pid)
 {
@@ -530,6 +530,23 @@ static int guest_cancel_pending(void)
 
     fvm_port_sync_lock(channel_queue_mutex);
     pending = cancel_request_count != 0;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return pending;
+}
+
+
+/* At the final idle boundary, either keep the controller alive to drain
+ * accepted requests or close admission before releasing the ledger lock. */
+static int guest_cancel_pending_or_close(void)
+{
+    int pending;
+
+    fvm_port_sync_lock(channel_queue_mutex);
+    pending = cancel_request_count != 0;
+    if (!pending)
+    {
+        cancel_requests_open = 0;
+    }
     fvm_port_sync_unlock(channel_queue_mutex);
     return pending;
 }
@@ -2116,7 +2133,7 @@ static int runtime_dispatch_turn(void)
     DVM_NativeContext *context = dvm_native_context_current();
     Prog *process;
     Prog **slot;
-    if (managed_workers == 0)
+    if (managed_workers != 1)
     {
         dispatch_guest_cancellations();
     }
@@ -2332,13 +2349,13 @@ static int runtime_execute_inner(void *argument)
         error("cannot start native close worker");
     }
     fvm_port_sync_lock(channel_queue_mutex);
-    cancel_requests_open = managed_workers == 0 && !native_waits_stopping;
+    cancel_requests_open = managed_workers != 1 && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
     while (dvm_runqueue_head() || (managed_workers != 1 && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
 #endif
-    )
+           || guest_cancel_pending_or_close())
     {
         if (managed_workers == 0 && live && !dvm_runqueue_head() && !dvm_runqueue_inflight()
 #ifdef DVM_RUNTIME_EDITOR

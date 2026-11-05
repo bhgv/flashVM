@@ -1646,6 +1646,7 @@ def main():
                             ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST),
                             ("parked-isolation", PARKED_ISOLATION_GUEST), ("host-before-park", HOST_CANCEL_GUEST),
                             ("host-after-snapshot", HOST_CANCEL_GUEST.replace("chan[35]", "chan[36]")),
+                            ("host-fixed", HOST_CANCEL_GUEST.replace("chan[35]", "chan[44]")),
                             ("processctl", PROCESSCTL_GUEST), ("processctl-inline", PROCESSCTL_INLINE_GUEST), ("process-kill", PROCESS_KILL_GUEST),
                             ("process-kill-native", PROCESS_KILL_NATIVE_GUEST), ("process-kill-ready", PROCESS_KILL_READY_GUEST), ("process-kill-table", PROCESS_KILL_TABLE_GUEST), ("table-fifo", TABLE_FIFO_GUEST), ("table-fifo-move", TABLE_FIFO_MOVE_GUEST), ("process-kill-granted-table", TABLE_FIFO_KILL_HEAD_GUEST),
                             ("table-cancel", TABLE_CANCEL_GUEST), ("table-cancel-granted", TABLE_CANCEL_GRANTED_GUEST),
@@ -1656,15 +1657,17 @@ def main():
                             ("killwait-inline", killwait_guest(PROCESS_KILL_READY_GUEST)),
                             ("killwait-cancel", KILLWAIT_CANCEL_GUEST),
                             ("killwait-nested", KILLWAIT_NESTED_GUEST),
-                            ("killwait-host", KILLWAIT_HOST_GUEST)):
+                            ("killwait-host", KILLWAIT_HOST_GUEST),
+                            ("killwait-host-fixed", KILLWAIT_HOST_GUEST.replace(
+                                "killwait-host.bin", "killwait-host-fixed.bin"))):
             source, image = work / f"{name}.b", work / f"{name}.dis"
             source.write_text(guest)
             subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
                             "-o", image, source], check=True)
             for mode in ("--no-jit", "--jit"):
-                workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel", "killwait-nested") else "2"
+                workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel", "killwait-nested", "killwait-host-fixed") else "2"
                 options = ["--managed-workers", workers]
-                if name.startswith("host-") or name == "killwait-host":
+                if name in ("host-before-park", "host-after-snapshot", "killwait-host"):
                     options = ["--managed-workers", "auto", "--stats"]
                 if name.endswith("pool-refusal"):
                     options = ["--managed-workers", "auto", "--managed-workers-limit", "2"]
@@ -1737,7 +1740,7 @@ def main():
                         raise RuntimeError(f"{name} {mode} retained native output resources\n{output}")
                 if name.startswith("host-"):
                     marker = "PASS submitted host cancellation batch"
-                    if "NATIVEPOOL_QUIESCENT processes=1" not in output:
+                    if name != "host-fixed" and "NATIVEPOOL_QUIESCENT processes=1" not in output:
                         raise RuntimeError(f"{name} {mode} did not reach scheduler quiescence\n{output}")
                 if name.startswith("parked-"):
                     marker = "PASS cancelled scheduler channel wait"
@@ -1754,10 +1757,10 @@ def main():
                 if name.startswith("sleep-"):
                     marker = "PASS cancelled native sleep"
                 if name.startswith("killwait-"):
-                    if name in ("killwait-cancel", "killwait-nested", "killwait-host") and (work / f"{name}.bin").read_bytes() != b"a":
+                    if name in ("killwait-cancel", "killwait-nested", "killwait-host", "killwait-host-fixed") and (work / f"{name}.bin").read_bytes() != b"a":
                         raise RuntimeError(f"{name} {mode} lost admitted child output")
                     if (result.returncode or output.count("PASS guest child retirement") != 1
-                            or (name == "killwait-host" and output.count("PASS submitted host cancellation batch") != 1)
+                            or (name.startswith("killwait-host") and output.count("PASS submitted host cancellation batch") != 1)
                             or (name.endswith("native") and output.count("PASS cancelled native sleep") != 1)
                             or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0", output)

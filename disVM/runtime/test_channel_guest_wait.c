@@ -31,6 +31,7 @@ static int pause_at; /* First SEND, or first RECV after two seed SENDs. */
 static int sleep_mode; /* Targeted sleep cancellation or fatal-worker shutdown. */
 static int sleeping_pid; /* Captured before the long sleep releases its guest. */
 static int host_cancel_mode; /* Submit before or after the park wake snapshot. */
+static int host_cancel_on_publish; /* Submit as the last runnable guest parks. */
 static int host_cancel_sent; /* Exactly one fixture submission per process. */
 static int child_exit_cancel_mode; /* Hold child I/O while its parent waits twice. */
 static int child_exit_host_cancel; /* Queue cancellation from outside NativeWorld. */
@@ -165,6 +166,11 @@ Channel *__wrap_dvm_runtime_channel_new(void *destination, Type *type, WORD capa
     if (type == &Tword && (capacity == 35 || capacity == 36))
     {
         host_cancel_mode = (int)capacity;
+        parked_cancel_mode = 1;
+    }
+    if (type == &Tword && capacity == 44)
+    {
+        host_cancel_on_publish = 1;
         parked_cancel_mode = 1;
     }
     if (type == &Tword && (capacity == 40 || capacity == 43))
@@ -634,6 +640,7 @@ int __wrap_dvm_managed_workers_park(int (*pending)(void))
 void __wrap_dvm_runtime_channel_waiter_published(void)
 {
     Prog *process;
+    int cancel_pid = 0;
 
     if (parked_cancel_mode)
     {
@@ -645,6 +652,10 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
             if (!parked_count)
             {
                 parked_pid = process->pid;
+                if (host_cancel_on_publish)
+                {
+                    cancel_pid = parked_pid;
+                }
             }
             parked_count++;
             pthread_cond_broadcast(&waiting);
@@ -652,6 +663,10 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
         pthread_mutex_unlock(&gate);
     }
     __real_dvm_runtime_channel_waiter_published();
+    if (cancel_pid)
+    {
+        submit_host_cancel_batch(cancel_pid);
+    }
 }
 
 
