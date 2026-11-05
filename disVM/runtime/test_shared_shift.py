@@ -292,6 +292,30 @@ finish:
 '''
 
 
+def scheduled_retry_wrapper():
+    """Inject one pre-effect BUSY in the real shift guest dispatch."""
+    source = '#include "disvm/native_process.h"\n'+WRAPPER
+    source = source.replace('static int active;', """static Inst *scheduled_pc; /* PC after decoding the contended instruction. */
+static int scheduled_replayed; /* The next matching attempt reached admission. */
+static int active;""")
+    source = source.replace('    return __real_dvm_managed_small_three_begin(a, an, b, bn, d, dn, access);', """    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 3 && !active && !scheduled_replayed &&
+        (opcode == ISHLB || opcode == ISHLW || opcode == ISHLL || opcode == ISHRB || opcode == ISHRW || opcode == ISHRL || opcode == ILSRW || opcode == ILSRL))
+    {
+        if (!scheduled_pc)
+        {
+            scheduled_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(scheduled_pc == DVM_R.PC, "same shift instruction is replayed");
+        scheduled_replayed = 1;
+        print("PASS scheduled shift retry\\n");
+    }
+    return __real_dvm_managed_small_three_begin(a, an, b, bn, d, dn, access);""")
+    return source
+
+
 def main():
     """Link matching actual native objects; require semantic controls, both polls."""
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
@@ -301,7 +325,7 @@ def main():
         source.write_text(GUEST)
         subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
         wrapper = work/'wrapper.c'
-        wrapper.write_text(WRAPPER)
+        wrapper.write_text(scheduled_retry_wrapper())
         for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
             binary = relink(runtime, work, wrapper, variant,
                             ['dvm_runtime_root_registry_probe', 'dvm_managed_small_three_begin',
@@ -322,6 +346,8 @@ def main():
                             raise RuntimeError('shift control missed: '+output)
                     elif run.returncode or 'PASS shift probe:' not in output or 'PASS shifts6' not in output:
                         raise RuntimeError('shift positive failed: '+output)
+                    if variant == 3 and 'PASS scheduled shift retry' not in output:
+                        raise RuntimeError('scheduler retry missed: '+output)
     print('PASS eight actual shifts:99000 mixed-width/alias cases, six-op C/JIT guest, both polls')
 
 

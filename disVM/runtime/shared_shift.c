@@ -22,6 +22,7 @@
 const char *dvm_runtime_shift(int opcode, const void *first, const void *second, void *output)
 {
     DVM_TripleAccess access = {0};
+    DVM_CellResult claim;
     size_t width;
     int invalid_outer;
     WORD count;
@@ -55,12 +56,12 @@ const char *dvm_runtime_shift(int opcode, const void *first, const void *second,
     }
     invalid_outer = !first || first == H || (uintptr_t)first > (uintptr_t)-1-width ||
         !output || output == H || (uintptr_t)output > (uintptr_t)-1-width;
-    if (dvm_managed_small_three_begin(invalid_outer ? second : first,
+    claim = dvm_managed_small_three_begin(invalid_outer ? second : first,
         invalid_outer ? sizeof(WORD) : width, second, sizeof(WORD),
-        invalid_outer ? (void *)second : output, invalid_outer ? sizeof(WORD) : width,
-        &access) != DVM_CELL_ACQUIRED)
+        invalid_outer ? (void *)second : output, invalid_outer ? sizeof(WORD) : width, &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
     if (!dvm_runtime_shift_count(opcode, second, &count))
     {

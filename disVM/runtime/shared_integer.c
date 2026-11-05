@@ -25,6 +25,7 @@
 const char *dvm_runtime_integer_convert(int opcode, const void *source, void *destination)
 {
     DVM_CellAccess access = {0};
+    DVM_CellResult claim;
     size_t input;
     size_t output;
     if (dvm_runtime_shared_mode() != 2)
@@ -65,9 +66,10 @@ const char *dvm_runtime_integer_convert(int opcode, const void *source, void *de
     {
         return exBounds;
     }
-    if (dvm_managed_spans_begin(source, input, destination, output, &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_spans_begin(source, input, destination, output, &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
     dvm_runtime_integer_value(opcode, source, destination);
     if (!dvm_cell_access_end(&access))

@@ -119,28 +119,37 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
 }
 
 
-/* Adapt the result for C/JIT. Only the armed bytecode dispatch can yield on
- * BUSY. The runtime Prog retains a bounded retry count across OS turns.
- * Other callers and exhausted retries receive the original diagnostic. */
+/* Request a bounded retry for the armed opcode. NativeWorld still protects
+ * the current process, whose retry count follows it across OS turns. */
+int dvm_runtime_scalar_retry(int opcode)
+{
+    DVM_NativeExecution *execution = dvm_native_execution();
+    DVM_RuntimeProcess *process;
+
+    if (execution->arithmetic_retry_opcode != opcode)
+    {
+        return 0;
+    }
+    process = (DVM_RuntimeProcess *)up->prog;
+    if (!process || process->arithmetic_retries >= 8)
+    {
+        return 0;
+    }
+    process->arithmetic_retries++;
+    execution->arithmetic_retry_opcode = -1;
+    return 1;
+}
+
+
+/* Adapt the result for C/JIT. Operands borrow the attempt's spans. Report
+ * the original diagnostic when retry cannot be scheduled. */
 const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *second, void *output)
 {
     int retryable;
-
     const char *problem = dvm_runtime_arithmetic_attempt(opcode, first, second, output, &retryable);
 
-    if (retryable && dvm_native_execution()->arithmetic_retry_opcode == opcode)
-    {
-        DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)up->prog;
-        if (process && process->arithmetic_retries < 8)
-        {
-            process->arithmetic_retries++;
-            dvm_native_execution()->arithmetic_retry_opcode = -1;
-            return NULL;
-        }
-    }
-    return problem;
+    return retryable && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
 }
-
 
 
 /* Disarm the current dispatch, preserving the retry count only on yield.

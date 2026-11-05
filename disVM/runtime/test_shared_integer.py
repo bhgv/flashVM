@@ -281,6 +281,30 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 '''
 
 
+def scheduled_retry_wrapper():
+    """Inject one pre-effect BUSY in the real integer guest dispatch."""
+    source = '#include "disvm/native_process.h"\n'+WRAPPER
+    source = source.replace('static int active;', """static Inst *scheduled_pc; /* PC after decoding the contended instruction. */
+static int scheduled_replayed; /* The next matching attempt reached admission. */
+static int active;""")
+    source = source.replace('    return __real_dvm_managed_spans_begin(s, n, d, m, access);', """    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 3 && !active && !scheduled_replayed &&
+        (opcode == ICVTBW || opcode == ICVTWB || opcode == ICVTWS || opcode == ICVTSW || opcode == ICVTWL || opcode == ICVTLW))
+    {
+        if (!scheduled_pc)
+        {
+            scheduled_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(scheduled_pc == DVM_R.PC, "same integer instruction is replayed");
+        scheduled_replayed = 1;
+        print("PASS scheduled integer retry\\n");
+    }
+    return __real_dvm_managed_spans_begin(s, n, d, m, access);""")
+    return source
+
+
 def main():
     """Link against matching actual runtime objects; require exact semantic controls."""
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
@@ -291,7 +315,7 @@ def main():
         guest.write_text(GUEST)
         subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(guest)], check=True)
         wrapper = work/'wrapper.c'
-        wrapper.write_text(WRAPPER)
+        wrapper.write_text(scheduled_retry_wrapper())
         variants = (0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3)
         for variant in variants:
             binary = relink(runtime, work, wrapper, variant,
@@ -312,6 +336,8 @@ def main():
                             raise RuntimeError('semantic control missed: '+output)
                     elif run.returncode or ('PASS integer admission refusal' if variant == 3 else 'PASS integer probe:') not in output or 'PASS integer conversions64' not in output:
                         raise RuntimeError('integer positive failed: '+output)
+                    if variant == 3 and 'PASS scheduled integer retry' not in output:
+                        raise RuntimeError('scheduler retry missed: '+output)
     print('PASS six actual integer C opcodes: 23400 overlaps, both polls; C/JIT guest; two omission controls unless positive-only')
 
 
