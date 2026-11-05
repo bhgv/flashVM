@@ -99,6 +99,7 @@ WRAPPER = r'''
 #include "managed_owner.h"
 #include "disvm/native_context.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -197,6 +198,15 @@ DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
 int __wrap_dvm_runtime_branch_predicate(int op, const void *a, const void *b)
 {
     int result;
+    DVM_HeapOwnerStats owner;
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        check(!dvm_native_context_object_count(dvm_native_context_current()), "leased predicate has no guard");
+        fprint(2, "LEASED branch %d\n", op);
+        return __real_dvm_runtime_branch_predicate(op, a, b);
+    }
     check(dvm_native_context_object_count(dvm_native_context_current()), "predicate under guards");
     result = __real_dvm_runtime_branch_predicate(op, a, b);
     if (active)
@@ -408,6 +418,17 @@ finish:
 '''
 
 
+def frame_guest():
+    """Use frame locals for the same eighteen comparisons and score oracle."""
+    source = GUEST
+    for name, typ in [('b', 'byte'), ('w', 'int'), ('l', 'big')]:
+        source = source.replace(f'        {name} := array[2] of {typ};\n', '')
+        for index in (0, 1):
+            source = source.replace(f'{name}[{index}] = ', f'{name}{index} := ')
+            source = source.replace(f'{name}[{index}]', f'{name}{index}')
+    return source
+
+
 def main():
     """Link actual objects, require semantic controls and both C/JIT poll modes."""
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
@@ -416,6 +437,9 @@ def main():
         source, image = work/'main.b', work/'main.dis'
         source.write_text(GUEST)
         subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
+        frame_source, frame_image = work/'frame.b', work/'frame.dis'
+        frame_source.write_text(frame_guest())
+        subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(frame_image), str(frame_source)], check=True)
         wrapper = work/'wrapper.c'
         wrapper.write_text(WRAPPER)
         for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
@@ -425,9 +449,11 @@ def main():
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
+                    if variant == 0:
+                        args += ['--managed-workers', '2', '--parallel-integer']
                     if locked:
                         args += ['--gc-locked-poll']
-                    run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=90,
+                    run = subprocess.run(args+[str(frame_image if variant == 0 else image)], capture_output=True, text=True, timeout=90,
                         env=dict(os.environ, TMPDIR=str(work)))
                     output = run.stdout+run.stderr
                     if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
@@ -438,6 +464,10 @@ def main():
                             raise RuntimeError('branch control missed: '+output)
                     elif run.returncode or 'PASS branch probe:' not in output or 'PASS branches18' not in output:
                         raise RuntimeError('branch positive failed: '+output)
+                    if variant == 0:
+                        leased = {line for line in output.splitlines() if line.startswith('LEASED branch ')}
+                        if len(leased) != 18:
+                            raise RuntimeError(f'expected 18 leased branch opcodes, saw {sorted(leased)}')
                     if variant == 3 and 'PASS scheduled branch retry' not in output:
                         raise RuntimeError('branch retry missed: '+output)
     print('PASS eighteen actual branches:101250 alias cases, lazy targets, C/JIT guest, both polls')
