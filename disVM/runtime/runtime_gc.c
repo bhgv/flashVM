@@ -336,7 +336,10 @@ void dvm_runtime_gc_native_enter(int released)
         Prog *process = dvm_native_context_process(dvm_native_context_current());
         if (up->prog != process || (process &&
             (DVM_R.FP != process->R.FP || DVM_R.SP != process->R.SP ||
-             DVM_R.EX != process->R.EX || DVM_R.PC != process->R.PC ||
+             DVM_R.EX != process->R.EX || DVM_R.TS != process->R.TS ||
+             DVM_R.PC != process->R.PC || DVM_R.M != process->R.M ||
+             DVM_R.MP != process->R.MP || DVM_R.s != process->R.s ||
+             DVM_R.m != process->R.m || DVM_R.d != process->R.d ||
              !dvm_runqueue_resume(process))))
         {
             fprintf(stderr,"disvm: native continuation restoration failed\n");
