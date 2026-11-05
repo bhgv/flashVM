@@ -15,6 +15,9 @@ extern int dvm_runtime_guarded_copies; /* Startup-only immutable selection befor
  * ownership retain/drop, VM callback or error occurs under guards. Raw bytes do
  * NOT acquire pointed-to ownership; typed compiler/VM lifetime premises remain. */
 const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t size);
+/* Same borrowed spans and copy semantics. An armed opcode can return NULL
+ * after scheduling a replay on pre-effect BUSY. */
+const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *destination, size_t size);
 /* Borrow source and caller-private snapshot spans of size bytes.
  * Zero size ignores both addresses. Return NULL or a static diagnostic
  * after releasing source exclusion. */

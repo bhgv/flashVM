@@ -16,10 +16,11 @@ int dvm_runtime_guarded_copies; /* CLI startup publication; never changed while 
 
 /* Keep large guard storage out of the hot small-copy stack frame. Caller owns
  * checked nonempty spans and ACTIVE service. No payload access before claims. */
-static const char *copy_wide(const void *source, void *destination, size_t size)
+static const char *copy_wide(const void *source, void *destination, size_t size, DVM_CellResult *claim)
 {
     DVM_RangeAccess access = {0};
-    if (dvm_managed_ranges_begin(source, size, destination, size, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_ranges_begin(source, size, destination, size, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -38,10 +39,12 @@ static const char *copy_wide(const void *source, void *destination, size_t size)
 
 /* Small copies select only their actual bytes, not a whole pointer-width span.
  * Geometry checks do not validate mapping or independently retain referents. */
-const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t size)
+static const char *copy_attempt(const void *source, void *destination, size_t size, DVM_CellResult *claim)
 {
     DVM_CellAccess access = {0};
     int selected = dvm_runtime_shared_mode();
+
+    *claim = DVM_CELL_REFUSED;
     if (!selected)
     {
         return exHeap;
@@ -62,9 +65,10 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
     }
     if (size > sizeof(void *))
     {
-        return copy_wide(source, destination, size);
+        return copy_wide(source, destination, size, claim);
     }
-    if (dvm_managed_spans_begin(source, size, destination, size, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_spans_begin(source, size, destination, size, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -75,6 +79,26 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
     }
     return NULL;
 }
+
+/* Copy borrowed bytes for a synchronous caller. Return its original diagnostic. */
+const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t size)
+{
+    DVM_CellResult claim;
+
+    return copy_attempt(source, destination, size, &claim);
+}
+
+
+/* Retry a decoded copy only if the union was busy before any byte changed.
+ * The caller returns to dispatch when this function returns NULL. */
+const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *destination, size_t size)
+{
+    DVM_CellResult claim;
+    const char *problem = copy_attempt(source, destination, size, &claim);
+
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
+}
+
 
 /* Snapshot a borrowed shared span into caller-private storage. The caller
  * validates the lifetime of both spans. Return a static diagnostic only

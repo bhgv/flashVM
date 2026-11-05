@@ -15,6 +15,8 @@ WRAPPER = r'''
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "managed_owner.h"
 #include "runqueue.h"
@@ -95,10 +97,38 @@ void __wrap_dvm_runtime_byte_transfer(void *destination, const void *source, siz
 }
 
 
+/* Inject one BUSY per copy stage and observe the matching replay. */
+static int contend_copy(int stage, int opcode)
+{
+    static Inst *pcs[3]; /* Decoded PC at each injected refusal. */
+    static int replayed[3]; /* One matching replay per stage. */
+
+    if (CONTROL != 0 || active || replayed[stage] ||
+        dvm_native_execution()->arithmetic_retry_opcode != opcode)
+    {
+        return 0;
+    }
+    if (!pcs[stage])
+    {
+        pcs[stage] = DVM_R.PC;
+        return 1;
+    }
+    check(pcs[stage] == DVM_R.PC, "copy replay uses the same PC");
+    replayed[stage] = 1;
+    fprint(1, "PASS scheduled copy stage %d\n", stage);
+    return 0;
+}
+
+
 /* Two controls remove only actual native acquisition; monitors stop BEFORE copy. */
 DVM_CellResult __wrap_dvm_managed_spans_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_CellAccess *access)
 {
+    if (contend_copy(0, IMOVW))
+    {
+        return DVM_CELL_BUSY;
+    }
+
     if (active && CONTROL == 1)
     {
         return DVM_CELL_ACQUIRED;
@@ -111,6 +141,11 @@ DVM_CellResult __wrap_dvm_managed_spans_begin(const void *source, size_t source_
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
+    if (contend_copy(destination ? 2 : 1, IMOVM))
+    {
+        return DVM_CELL_BUSY;
+    }
+
     if (active && !destination && !destination_size)
     {
         DVM_CellResult result = __real_dvm_managed_ranges_begin(source, source_size,
@@ -295,8 +330,20 @@ def main():
         wrapper.write_text(WRAPPER)
         guest = work / 'main.b'
         image = work / 'main.dis'
-        guest.write_text('implement Probe; include "sys.m"; Probe: module {init: fn();};\n'
-                         'init() {sys := load Sys Sys->PATH; sys->print("PASS normal Dis\\n");}\n')
+        guest.write_text(r'''implement Probe;
+include "sys.m";
+Probe: module {init: fn();};
+Triple: adt { first, second, third: int; };
+init() {
+    sys := load Sys Sys->PATH;
+    values := array[] of {3, 5, 7};
+    item := Triple(values[0], values[1], values[2]);
+    copy := item;
+    if (copy.first != 3 || copy.second != 5 || copy.third != 7)
+        raise "copy replay changed payload";
+    sys->print("PASS normal Dis\n");
+}
+''')
         built = subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)], capture_output=True, text=True)
         if built.returncode:
             raise RuntimeError(built.stdout+built.stderr)
@@ -332,6 +379,9 @@ def main():
                             raise RuntimeError('shared byte control missed '+str(variant)+': '+output)
                     elif run.returncode or 'PASS shared byte/SELF probe:' not in output or 'PASS normal Dis' not in output:
                         raise RuntimeError('status='+str(run.returncode)+' mode='+mode+' locked='+str(locked)+'\n'+output)
+                    if variant == 0 and any(f'PASS scheduled copy stage {stage}' not in output
+                                            for stage in range(3)):
+                        raise RuntimeError('copy replay coverage missed: '+output)
         refused = subprocess.run([str(runtime), '--guarded-copies', '--gc-inline', str(image)], capture_output=True, text=True)
         if refused.returncode != 2 or '--guarded-copies requires --gc-worker' not in refused.stderr:
             raise RuntimeError('missing explicit inline-profile refusal')

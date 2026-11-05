@@ -54,14 +54,14 @@ def adapt(source):
                 capture = 'memmove(&n, DVM_R.m, sizeof(n));'
                 if body.count(capture) != 1:
                     raise ValueError('hosted MOVM count capture drift')
-                body = body.replace(capture, guarded_snapshot('n', capture))
+                body = body.replace(capture, guarded_snapshot('n', capture, retry_opcode='IMOVM'))
             size = {'movb':'sizeof(BYTE)', 'movw':'sizeof(WORD)', 'movl':'sizeof(LONG)',
                     'movf':'sizeof(REAL)', 'movm':'n'}[name]
             statement = 'memmove(DVM_R.d, DVM_R.s, '+size+');'
             if body.count(statement) != 1:
                 raise ValueError('hosted byte payload boundary drift: '+name)
             body = body.replace(statement, '''if(dvm_runtime_guarded_copies) {
-            const char *problem = dvm_runtime_bytes_copy(DVM_R.s, DVM_R.d, '''+size+''');
+            const char *problem = dvm_runtime_bytes_copy_opcode(I'''+name.upper()+''', DVM_R.s, DVM_R.d, '''+size+''');
             if(problem != nil) {
                 error((char *)problem);
             }
@@ -69,11 +69,24 @@ def adapt(source):
             '''+statement+'''
         }''')
         source = source[:matches[0].start()]+body+source[matches[0].end():]
-    return '#include "shared_bytes.h"\n#include "shared_pointer.h"\n'+source
+    return '#include "shared_bytes.h"\n#include "shared_access.h"\n#include "shared_pointer.h"\n'+source
 
 
-def guarded_snapshot(variable, fallback, source="DVM_R.m"):
+def guarded_snapshot(variable, fallback, source="DVM_R.m", retry_opcode=None):
     """Capture one scalar on the guarded path, with the original serial read."""
+    if retry_opcode:
+        return f'''if(dvm_runtime_guarded_copies) {{
+        DVM_CellResult claim;
+        const char *problem = dvm_runtime_bytes_snapshot_attempt({source}, &{variable}, sizeof({variable}), &claim);
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry({retry_opcode})) {{
+            return;
+        }}
+        if(problem != nil) {{
+            error((char *)problem);
+        }}
+    }} else {{
+        {fallback}
+    }}'''
     return f'''if(dvm_runtime_guarded_copies) {{
         const char *problem = dvm_runtime_bytes_snapshot({source}, &{variable}, sizeof({variable}));
         if(problem != nil) {{
