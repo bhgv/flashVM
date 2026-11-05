@@ -102,3 +102,29 @@ const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_
     }
     return NULL;
 }
+
+
+/* Publish caller-private bytes under the destination guard only. */
+const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size)
+{
+    DVM_RangeAccess access = {0};
+
+    if (!size)
+    {
+        return NULL;
+    }
+    if (!destination || destination == H || (uintptr_t)destination > UINTPTR_MAX - size)
+    {
+        return exBounds;
+    }
+    if (dvm_managed_ranges_begin(NULL, 0, destination, size, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    dvm_runtime_byte_transfer(destination, snapshot, size);
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}

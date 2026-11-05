@@ -68,6 +68,44 @@ extern void lena(void); /* Actual native opcode, not a modeled operation. */
 static __thread int active; /* Only the serialized fixture controller observes helpers. */
 static __thread unsigned long allocations; /* Native allocation/free calls inside LENA. */
 static __thread unsigned int expected_depth; /* Independent six-key union size. */
+static int address_publication; /* Observe only the private-to-shared publication call. */
+const char *__real_dvm_runtime_bytes_publish(const void *, void *, size_t);
+DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
+
+
+/* Observe source/destination geometry inside the actual guard acquisition. */
+DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_RangeAccess *access)
+{
+    if (address_publication)
+    {
+        if (source || source_size || !destination || !destination_size)
+        {
+            fprint(2, "FAIL address publication acquired a private source guard\n");
+            exit(10);
+        }
+        address_publication = 2;
+    }
+    return __real_dvm_managed_ranges_begin(source, source_size, destination, destination_size, access);
+}
+
+
+/* Check each real address publication, independently of operand capture. */
+const char *__wrap_dvm_runtime_bytes_publish(const void *source, void *destination, size_t size)
+{
+    const char *problem;
+    address_publication = 1;
+    problem = __real_dvm_runtime_bytes_publish(source, destination, size);
+    if (!problem && address_publication != 2)
+    {
+        fprint(2, "FAIL address publication skipped the destination guard\n");
+        exit(10);
+    }
+    address_publication = 0;
+    return problem;
+}
+
+
 static int index_reported; /* Emit one actual route marker per fixture process. */
 const char *__real_dvm_runtime_array_index_operands(const void *, const void *, void *, void *);
 
@@ -432,7 +470,8 @@ def main():
             binary = relink(runtime, work, wrapper, variant,
                 ['dvm_runtime_root_registry_probe', 'dvm_managed_small_three_begin',
                  'dvm_small_range_access_extend', 'dvm_runtime_array_length_source',
-                 'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
+                 'dvm_runtime_bytes_publish', 'dvm_managed_ranges_begin', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']

@@ -87,7 +87,7 @@ def guarded_snapshot(variable, fallback, source="DVM_R.m"):
 def guarded_publish(variable, destination, fallback):
     """Publish a private scalar through the shared byte-copy guard."""
     return f'''if(dvm_runtime_guarded_copies) {{
-        const char *problem = dvm_runtime_bytes_copy(&{variable}, {destination}, sizeof({variable}));
+        const char *problem = dvm_runtime_bytes_publish(&{variable}, {destination}, sizeof({variable}));
         if(problem != nil) {{
             error((char *)problem);
         }}

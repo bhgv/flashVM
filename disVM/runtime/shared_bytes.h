@@ -18,4 +18,7 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
  * Zero size ignores both addresses. Return NULL or a static diagnostic
  * after releasing source exclusion. */
 const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_t size);
+/* Publish size bytes from caller-private storage into a live mapped destination.
+ * Zero size ignores both addresses. Return a static error or NULL after unlock. */
+const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size);
 #endif
