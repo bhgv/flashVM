@@ -59,6 +59,28 @@ static void error(const char *message)
     longjmp(failure, 1);
 }
 
+static int dvm_runtime_guarded_copies = 1; /* Exercise guarded selector dispatch. */
+static int refuse_snapshot; /* Inject an admission refusal before reading the selector. */
+static unsigned int snapshots; /* Count successful selector snapshots. */
+
+
+/* Model the snapshot boundary without linking the production managed heap. */
+static const char *dvm_runtime_bytes_snapshot(const void *source, void *value, size_t width)
+{
+    if (refuse_snapshot)
+    {
+        return exBounds;
+    }
+    if (source != DVM_R.s || width != sizeof(WORD))
+    {
+        return exBounds;
+    }
+    memmove(value, source, width);
+    snapshots++;
+    return NULL;
+}
+
+
 #include "native_tables.c"
 
 
@@ -158,6 +180,12 @@ int main(void)
     cell(input + 1, 0, 1);
     cell(table, 16, (WORD)4294967297LL);
     if (!rejected(igoto) || DVM_R.PC != code + 6)
+    {
+        goto bad;
+    }
+    cell(table, 16, 6);
+    refuse_snapshot = 1;
+    if (!snapshots || !rejected(igoto) || DVM_R.PC != code + 6)
     {
         goto bad;
     }

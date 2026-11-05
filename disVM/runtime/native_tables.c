@@ -11,6 +11,25 @@ static WORD nc64_table_word(uintptr address)
 }
 
 
+/* Snapshot the borrowed selector into private storage. Table rows are
+ * compiler-owned module data, whose lifetime remains under NativeWorld. */
+static void nc64_table_selector(void *value, size_t width)
+{
+    if (dvm_runtime_guarded_copies)
+    {
+        const char *problem = dvm_runtime_bytes_snapshot(DVM_R.s, value, width);
+        if (problem)
+        {
+            error((char *)problem);
+        }
+    }
+    else
+    {
+        memmove(value, DVM_R.s, width);
+    }
+}
+
+
 /* Resolve an ordinary Dis instruction index in the current module.
  * destination is a full NC64 cell. Returns a checked PC or raises a VM error;
  * relocated legacy native-PC modules are not supported by this standalone host. */
@@ -73,7 +92,7 @@ static void nc64_numeric_case(int wide)
     {
         error(exBounds);
     }
-    memmove(&value, DVM_R.s, sizeof(value));
+    nc64_table_selector(&value, sizeof(value));
     destination = nc64_table_word(table + span);
     rows = table + header;
     remaining = (int)count;
@@ -125,7 +144,7 @@ OP(igoto)
     WORD index;
     WORD count;
     WORD destination;
-    memmove(&index, DVM_R.s, sizeof(index));
+    nc64_table_selector(&index, sizeof(index));
     if (table < sizeof(WORD) || DVM_R.d == H || index < 0)
     {
         error(exBounds);
