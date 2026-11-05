@@ -104,20 +104,21 @@ const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_
 }
 
 
-/* Capture two borrowed source spans under one guard union. The output spans
+/* Capture two borrowed pointer-width-or-smaller source spans under one guard union. The output spans
  * are private to the caller. A zero-width second operand is ignored. */
 const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size,
     void *first_snapshot, const void *second, size_t second_size, void *second_snapshot)
 {
-    DVM_RangeAccess access = {0};
+    DVM_TripleAccess access = {0};
 
-    if (!first || first == H || !first_size || (uintptr_t)first > UINTPTR_MAX - first_size ||
-        (second_size && (!second || second == H || (uintptr_t)second > UINTPTR_MAX - second_size)))
+    if (!first || first == H || !first_size || first_size > sizeof(void *) || (uintptr_t)first > UINTPTR_MAX - first_size ||
+        (second_size && (!second || second == H || second_size > sizeof(void *) || (uintptr_t)second > UINTPTR_MAX - second_size)))
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(first, first_size, second_size ? second : NULL,
-        second_size, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    /* Compact claims require nonempty spans. Repeated spans share one claim. */
+    if (dvm_managed_small_three_begin(first, first_size, second_size ? second : first,
+        second_size ? second_size : first_size, (void *)first, first_size, &access) != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -126,7 +127,7 @@ const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size
     {
         memmove(second_snapshot, second, second_size);
     }
-    if (!dvm_range_access_end(&access))
+    if (!dvm_small_range_access_end(&access))
     {
         abort();
     }

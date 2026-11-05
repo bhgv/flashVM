@@ -68,7 +68,8 @@ static __thread unsigned int powers;
 static __thread int seen[5]; /* Actual guest C entries, shared by its current OS owner. */
 static const int operations[5] = {IADDF,ISUBF,IMULF,IDIVF,INEGF}; /* Existing file opcodes. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
-DVM_CellResult __real_dvm_managed_three_begin(const void *,size_t,const void *,size_t,void *,size_t,DVM_RangeAccess *);
+DVM_CellResult __real_dvm_managed_small_three_begin(const void *,size_t,const void *,size_t,void *,size_t,DVM_TripleAccess *);
+int __real_dvm_small_range_access_end(DVM_TripleAccess *);
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *,size_t,void *,size_t,DVM_RangeAccess *);
 int __real_dvm_range_access_end(DVM_RangeAccess *);
 void __real_dvm_runtime_real_arithmetic_value(int,const void *,void *);
@@ -121,17 +122,17 @@ static void coverage(void)
 
 
 /* Intercept actual input union without manufacturing a replacement lock. */
-DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t n,const void *b,size_t m,void *c,size_t z,DVM_RangeAccess *access)
+DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a,size_t n,const void *b,size_t m,void *c,size_t z,DVM_TripleAccess *access)
 {
     DVM_CellResult result;
     if (active && refusal == 1)
     {
         return DVM_CELL_BUSY;
     }
-    result = __real_dvm_managed_three_begin(a,n,b,m,c,z,access);
+    result = __real_dvm_managed_small_three_begin(a,n,b,m,c,z,access);
     if (active)
     {
-        check(!phase && n == sizeof(REAL) && (m == sizeof(REAL) || (!b && !m)) && !c && !z,"input phase geometry");
+        check(!phase && n == sizeof(REAL) && m == sizeof(REAL) && c == a && z == n,"input phase geometry");
         check(result == DVM_CELL_ACQUIRED,"input acquired");
         memset(keys,0,sizeof(keys));
         span(a,n);
@@ -141,6 +142,21 @@ DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t n,const void 
         }
         coverage();
         phase = 1;
+    }
+    return result;
+}
+
+
+/* Verify the compact input claim is released before computation. */
+int __wrap_dvm_small_range_access_end(DVM_TripleAccess *access)
+{
+    int result = __real_dvm_small_range_access_end(access);
+    if (active)
+    {
+        check(result && depth && phase == 1 &&
+            !dvm_native_context_object_count(dvm_native_context_current()),"complete input release");
+        depth = 0;
+        phase = 2;
     }
     return result;
 }
@@ -533,8 +549,8 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 def main():
     """Relink matching actual objects; exercise C/JIT guests and both collector polls."""
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
-    symbols = ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin',
-               'dvm_range_access_end','dvm_runtime_real_arithmetic_value',
+    symbols = ['dvm_runtime_root_registry_probe','dvm_managed_small_three_begin','dvm_managed_ranges_begin',
+               'dvm_range_access_end','dvm_small_range_access_end','dvm_runtime_real_arithmetic_value',
                'dvm_runtime_byte_transfer','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual REAL arithmetic ') as directory:
         work = Path(directory)
