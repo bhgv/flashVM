@@ -22,7 +22,7 @@ def adapt(source):
         if(selected == 2) {
             WORD captured;
             Type *type;
-            const char *problem = dvm_runtime_bytes_copy(DVM_R.m, &captured, sizeof(captured));
+            const char *problem = dvm_runtime_bytes_snapshot(DVM_R.m, &captured, sizeof(captured));
             if(problem) {
                 error((char *)problem);
             }

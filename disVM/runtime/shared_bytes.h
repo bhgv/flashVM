@@ -15,6 +15,7 @@ extern int dvm_runtime_guarded_copies; /* Startup-only immutable selection befor
  * NOT acquire pointed-to ownership; typed compiler/VM lifetime premises remain. */
 const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t size);
 /* Borrow source and caller-private snapshot spans of size bytes.
- * Return NULL or a static diagnostic after releasing source exclusion. */
+ * Zero size ignores both addresses. Return NULL or a static diagnostic
+ * after releasing source exclusion. */
 const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_t size);
 #endif

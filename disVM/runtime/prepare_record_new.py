@@ -28,7 +28,7 @@ def adapt(source):
         if (selected == 2)
         {{
             WORD captured;
-            const char *problem = dvm_runtime_bytes_copy(DVM_R.s, &captured, sizeof(captured));
+            const char *problem = dvm_runtime_bytes_snapshot(DVM_R.s, &captured, sizeof(captured));
             if (problem)
             {{
                 error((char *)problem);
@@ -65,7 +65,7 @@ static int imported_record_new(void *argument)
 {
     ImportedRecord *request = argument;
     WORD index;
-    const char *problem = dvm_runtime_bytes_copy(request->index_cell, &index, sizeof(index));
+    const char *problem = dvm_runtime_bytes_snapshot(request->index_cell, &index, sizeof(index));
     if (problem)
     {
         error((char *)problem);
@@ -153,14 +153,14 @@ def adapt_array(source):
             WORD captured_index;
             WORD captured_count;
             Type *element;
-            const char *problem = dvm_runtime_bytes_copy(DVM_R.m, &captured_index,
+            const char *problem = dvm_runtime_bytes_snapshot(DVM_R.m, &captured_index,
                 sizeof(captured_index));
             if (problem)
             {
                 error((char *)problem);
             }
             element = moduletype(DVM_R.M, captured_index);
-            problem = dvm_runtime_bytes_copy(DVM_R.s, &captured_count, sizeof(captured_count));
+            problem = dvm_runtime_bytes_snapshot(DVM_R.s, &captured_count, sizeof(captured_count));
             if (problem)
             {
                 error((char *)problem);

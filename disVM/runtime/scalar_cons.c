@@ -79,7 +79,7 @@ static int construct(void *argument)
     const char *problem;
     unsigned int attempt;
     int result;
-    problem = dvm_runtime_bytes_copy(state->source_cell, state->snapshot, state->width);
+    problem = dvm_runtime_bytes_snapshot(state->source_cell, state->snapshot, state->width);
     if (problem)
     {
         error((char *)problem);

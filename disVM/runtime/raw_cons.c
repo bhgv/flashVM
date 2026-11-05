@@ -85,7 +85,7 @@ static int construct(void *argument)
     unsigned int attempt;
     int result;
     WORD bytes;
-    problem = dvm_runtime_bytes_copy(state->size_cell, &bytes, sizeof(bytes));
+    problem = dvm_runtime_bytes_snapshot(state->size_cell, &bytes, sizeof(bytes));
     if (problem)
     {
         error((char *)problem);
@@ -110,7 +110,7 @@ static int construct(void *argument)
             error(exNomem);
         }
     }
-    problem = dvm_runtime_bytes_copy(state->source_cell, state->snapshot, state->extent);
+    problem = dvm_runtime_bytes_snapshot(state->source_cell, state->snapshot, state->extent);
     if (problem)
     {
         error((char *)problem);

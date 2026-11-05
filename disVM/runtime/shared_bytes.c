@@ -83,6 +83,10 @@ const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_
 {
     DVM_RangeAccess access = {0};
 
+    if (!size)
+    {
+        return NULL;
+    }
     if (!source || source == H || (uintptr_t)source > UINTPTR_MAX - size)
     {
         return exBounds;

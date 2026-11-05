@@ -50,7 +50,7 @@ static int guarded_channel_selected(void)
 static WORD guarded_channel_word(void *operand)
 {
     WORD value;
-    const char *problem = dvm_runtime_bytes_copy(operand, &value, sizeof(value));
+    const char *problem = dvm_runtime_bytes_snapshot(operand, &value, sizeof(value));
     if (problem)
     {
         error((char *)problem);
