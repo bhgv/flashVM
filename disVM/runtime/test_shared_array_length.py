@@ -153,6 +153,21 @@ init() {
         nextleft != 25 || nextright != 26) {
         raise "guarded channel capture changed buffered transfer";
     }
+    altvalue := 0;
+    messages <-= 31;
+    alt {
+        altvalue = <-messages => {}
+    }
+    if (altvalue != 31) {
+        raise "blocking ALT header replay";
+    }
+    alt {
+        <-messages => raise "unexpected value after ALT";
+        * => altvalue = 37;
+    }
+    if (altvalue != 37) {
+        raise "nonblocking ALT header replay";
+    }
     encoded := array of byte samples[3];
     decoded := string encoded;
     if (word != -42 || wide != big 9007199254740993 || realvalue != 2.5 ||
@@ -251,8 +266,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[48]; /* Post-decode PC for each refused capture. */
-    static int replayed[48]; /* One successful replay for each stage. */
+    static Inst *pcs[50]; /* Post-decode PC for each refused capture. */
+    static int replayed[50]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -676,7 +691,8 @@ DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
     int opcode = dvm_native_execution()->arithmetic_retry_opcode;
 
     if (CONTROL == 0 && !active &&
-        ((opcode == ISLICEA && contend_capture(0)) || (opcode == ISLICELA && contend_capture(2)) ||
+        ((opcode == IALT && contend_capture(48)) || (opcode == INBALT && contend_capture(49)) ||
+         (opcode == ISLICEA && contend_capture(0)) || (opcode == ISLICELA && contend_capture(2)) ||
          (opcode == ICVTCA && contend_capture(6)) || (opcode == ICVTAC && contend_capture(7)) ||
          (opcode == ICVTWC && contend_capture(8)) || (opcode == ICVTLC && contend_capture(9)) ||
          (opcode == ICVTFC && contend_capture(10))))
@@ -990,7 +1006,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(48)):
+                                            for stage in range(50)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

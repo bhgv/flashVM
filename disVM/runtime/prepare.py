@@ -13,7 +13,7 @@ from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
 from prepare_record_new import adapt as adapt_record_new, adapt_leaf as adapt_record_leaf
-from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_alt_reservations, adapt_channel_finalizer, adapt_queue_holds, adapt_buffer_reservation, adapt_channel_operand_replay, adapt_alt_result_guards
+from prepare_channel_new import adapt as adapt_channel_new, adapt_wait_completion, adapt_alt_completion, adapt_alt_preflight, adapt_alt_reservations, adapt_channel_finalizer, adapt_queue_holds, adapt_buffer_reservation, adapt_channel_operand_replay, adapt_alt_result_guards, adapt_alt_header_replay
 from prepare_mapped_cons import adapt as adapt_mapped_cons
 from prepare_raw_cons import adapt as adapt_raw_cons
 from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
@@ -1086,7 +1086,8 @@ def main():
         "\tif(sends < 0 || receives < 0 || sends > 0x7fffffff || receives > 0x7fffffff) return 0;\n"
         "\t*nsend = sends;\n\t*nrecv = receives;",
     )
-    path.write_text(adapt_alt_result_guards(adapt_alt_reservations(adapt_alt_preflight(adapt_alt_completion(code)))))
+    code = adapt_alt_result_guards(adapt_alt_reservations(adapt_alt_preflight(adapt_alt_completion(code))))
+    path.write_text(adapt_alt_header_replay(code))
 
     pointer_path = args.output / "xec.c"
     hosted = pointer_path.read_text()

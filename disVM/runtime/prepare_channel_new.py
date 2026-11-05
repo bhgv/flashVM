@@ -424,6 +424,64 @@ def adapt_alt_result_guards(source):
     return source.replace('#include "interp.h"', '#include "interp.h"\n#include "managed_owner.h"\n#include "shared_bytes.h"', 1)
 
 
+def adapt_alt_header_replay(source):
+    """Capture both header words before registering a blocking or nonblocking ALT."""
+    start = source.index('static int\naltheader(')
+    end = source.index('\n}', start)+2
+    body = source[start:end]
+    reads = ('\tmemmove(&sends, (uchar*)a+offsetof(Alt, nsend), sizeof(sends));\n'
+             '\tmemmove(&receives, (uchar*)a+offsetof(Alt, nrecv), sizeof(receives));')
+    before, after = body.split(reads)
+    validate = after.removesuffix('\n}')
+    body = """/* Validate counts against the original borrowed guard table address. */
+static int altcounts(Alt *a, WORD sends, WORD receives, int *nsend, int *nrecv)
+{
+    uvlong bytes;"""+validate+"""
+}
+
+"""+before+reads+"""
+    return altcounts(a, sends, receives, nsend, nrecv);
+}"""
+    body = body.replace('\tuvlong bytes;\n\tWORD sends, receives;', '\tWORD sends, receives;', 1)
+    source = source[:start]+body+source[end:]
+    start = source.index('void\nxecalt(')
+    end = source.index('\n}', start)
+    body = source[start:end]
+    anchor = '\tif(!altheader(a, &nsend, &nrecv))\n\t\terror(exBounds);'
+    if body.count(anchor) != 1:
+        raise ValueError('ALT header replay boundary drift')
+    replacement = """    if (dvm_runtime_guarded_copies)
+    {
+        WORD sends, receives;
+        DVM_CellResult claim;
+        const char *problem;
+        if ((uintptr)a > (uintptr)-1 - offsetof(Alt, ac))
+        {
+            error(exBounds);
+        }
+        problem = dvm_runtime_bytes_snapshot_pair_attempt((uchar*)a+offsetof(Alt, nsend), sizeof(sends),
+            &sends, (uchar*)a+offsetof(Alt, nrecv), sizeof(receives), &receives, &claim);
+        if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(block ? IALT : INBALT))
+        {
+            return;
+        }
+        if (problem)
+        {
+            error((char *)problem);
+        }
+        if (!altcounts(a, sends, receives, &nsend, &nrecv))
+        {
+            error(exBounds);
+        }
+    }
+    else
+    {
+"""+anchor+"""
+    }"""
+    return ('#include "shared_access.h"\n'+source[:start]+
+            body.replace(anchor, replacement, 1)+source[end:])
+
+
 ALT_GUARDED_RESULT = r"""
 /* Write caller-owned selection cells in their original order. A missing tuple
  * selects a single-word result. Return a static diagnostic before any write on
