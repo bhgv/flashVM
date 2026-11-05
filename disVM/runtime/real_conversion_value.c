@@ -106,10 +106,3 @@ const char *dvm_runtime_real_conversion_value(int opcode, const void *source, vo
     }
     return NULL;
 }
-
-
-/* Byte-only capture/publication in the complete interval supplied by the caller. */
-void dvm_runtime_real_conversion_copy(void *destination, const void *source, size_t width)
-{
-    memmove(destination, source, width);
-}

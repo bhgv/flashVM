@@ -16,11 +16,4 @@ int dvm_runtime_real_conversion_sizes(int opcode, size_t *source, size_t *result
  * Unknown internal opcode aborts. Native FP status/rounding/traps are unchanged;
  * no shared access, allocation, owner transfer, callback or VM unwind here. */
 const char *dvm_runtime_real_conversion_value(int opcode, const void *source, void *result);
-
-
-/* Copy width bytes between independently mapped source/destination spans.
- * Called under source-only or destination-only guards, never for FP evaluation.
- * Return void; no callbacks, allocation, ownership or overlap restrictions beyond
- * memmove. The caller supplies extent, lifetime and complete exclusion. */
-void dvm_runtime_real_conversion_copy(void *destination, const void *source, size_t width);
 #endif

@@ -151,14 +151,10 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
         {
             return exBounds;
         }
-        if (dvm_managed_ranges_begin(second, second_width, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+        const char *problem = dvm_runtime_bytes_snapshot(second, &saved_second, second_width);
+        if (problem)
         {
-            return exHeap;
-        }
-        memmove(&saved_second, second, second_width);
-        if (!dvm_range_access_end(&access))
-        {
-            abort();
+            return problem;
         }
     }
     evaluate(&saved_first, &saved_second, fixed_variant && invalid_output ? NULL : &result);
@@ -188,14 +184,10 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
         {
             return exBounds;
         }
-        if (dvm_managed_ranges_begin(second, sizeof(right), NULL, 0, &access) != DVM_CELL_ACQUIRED)
+        const char *problem = dvm_runtime_bytes_snapshot(second, &right, sizeof(right));
+        if (problem)
         {
-            return exHeap;
-        }
-        memmove(&right, second, sizeof(right));
-        if (!dvm_range_access_end(&access))
-        {
-            abort();
+            return problem;
         }
         if (right == 0)
         {

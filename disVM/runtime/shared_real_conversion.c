@@ -21,7 +21,6 @@
  * No guard survives FP evaluation, returned diagnostics or caller VM unwind. */
 const char *dvm_runtime_real_conversion(int opcode, const void *source, void *destination)
 {
-    DVM_RangeAccess access = {0};
     unsigned char captured[sizeof(REAL)+sizeof(LONG)+sizeof(WORD)+sizeof(SREAL)];
     unsigned char result[sizeof(captured)];
     size_t input;
@@ -36,14 +35,10 @@ const char *dvm_runtime_real_conversion(int opcode, const void *source, void *de
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(source, input, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    problem = dvm_runtime_bytes_snapshot(source, captured, input);
+    if (problem)
     {
-        return exHeap;
-    }
-    dvm_runtime_real_conversion_copy(captured, source, input);
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
+        return problem;
     }
     problem = dvm_runtime_real_conversion_value(opcode, captured, result);
     if (problem)
