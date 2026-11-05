@@ -32,7 +32,7 @@ typedef struct DVM_WorldState
 /* Mutex-protected FIFO admission observation, never permission to mutate. */
 typedef struct DVM_WorldAdmission
 {
-    int serial;          /* Nonzero means only one heap-mutator interval is admitted. */
+    int serial;          /* Nonzero means ordinary mutator intervals are exclusive. */
     size_t waiting;      /* Queued inactive native owners with stable published roots. */
     size_t admissions;   /* Successful serialized entries; unsigned counter may wrap. */
     size_t contentions;  /* Entries which could not initially acquire their turn. */
@@ -89,6 +89,14 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant);
 /* Enter mutator execution after collection; a serialized world also waits for
  * its FIFO heap turn. Double/foreign entry fails without consuming a ticket. */
 int dvm_world_enter(DVM_WorldParticipant *participant);
+
+
+/* Enter a restricted shared interval in a serialized world. Earlier FIFO
+ * tickets and collector stops take priority. Shared intervals may overlap each
+ * other, while ordinary enter stays exclusive. Use the same poll/leave API.
+ * Caller independently protects the complete graph and must finish or poll
+ * before collection. This grants no permission to run ordinary VM code. */
+int dvm_world_enter_shared(DVM_WorldParticipant *participant);
 
 
 /* [GC:] Publish stable roots before blocking/I/O or detaching. No heap mutation

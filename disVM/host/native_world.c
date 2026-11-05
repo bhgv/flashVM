@@ -19,6 +19,7 @@ struct DVM_WorldParticipant
     size_t locked_polls;         /* Owner-only slow-path count. */
     int active;                 /* Owner may execute mutator instructions. */
     int parked;                 /* Owner is currently waiting for resume. */
+    int shared;                 /* Active interval is restricted to audited shared work. */
 };
 
 
@@ -32,6 +33,7 @@ struct DVM_NativeWorld
     size_t count;                       /* Number of root sets. */
     size_t active;                      /* Mutators between enter and leave. */
     size_t parked;                      /* Active mutators stopped at poll. */
+    size_t shared;                      /* Active restricted shared intervals. */
     long request;                       /* Atomic stop request, not root publication. */
     int sealed;                        /* Registration closed by the last active owner before shutdown. */
     int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
@@ -247,7 +249,7 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
 
 
 /* A new active interval cannot overlap an already requested root scan. */
-int dvm_world_enter(DVM_WorldParticipant *participant)
+static int enter_world(DVM_WorldParticipant *participant, int shared)
 {
     DVM_NativeWorld *world;
     size_t ticket = 0;
@@ -261,7 +263,7 @@ int dvm_world_enter(DVM_WorldParticipant *participant)
     }
     world = participant->world;
     fvm_port_sync_lock(world->sync);
-    if (participant->active)
+    if (participant->active || (shared && (!world->serial || world->sealed)))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
@@ -270,13 +272,15 @@ int dvm_world_enter(DVM_WorldParticipant *participant)
     {
         ticket = world->next_ticket++;
         world->waiting++;
-        if (world->active || world->collector || world->resuming || ticket != world->serving_ticket)
+        if ((world->active && (!shared || world->active != world->shared)) ||
+            world->collector || world->resuming || ticket != world->serving_ticket)
         {
             world->contentions++;
         }
     }
     while (world->collector || (world->serial &&
-           (world->active || world->resuming || ticket != world->serving_ticket)))
+           ((world->active && (!shared || world->active != world->shared)) ||
+            world->resuming || ticket != world->serving_ticket)))
     {
         fvm_port_sync_wait(world->sync);
     }
@@ -287,9 +291,30 @@ int dvm_world_enter(DVM_WorldParticipant *participant)
         world->admissions++;
     }
     participant->active = 1;
+    participant->shared = shared;
     world->active++;
+    if (shared)
+    {
+        world->shared++;
+        /* A following shared ticket can enter this same group. */
+        fvm_port_sync_signal_all(world->sync);
+    }
     fvm_port_sync_unlock(world->sync);
     return 1;
+}
+
+
+/* Enter the ordinary exclusive interval in a serialized world. */
+int dvm_world_enter(DVM_WorldParticipant *participant)
+{
+    return enter_world(participant, 0);
+}
+
+
+/* Enter an audited shared interval without bypassing earlier FIFO tickets. */
+int dvm_world_enter_shared(DVM_WorldParticipant *participant)
+{
+    return enter_world(participant, 1);
 }
 
 
@@ -314,6 +339,11 @@ int dvm_world_leave(DVM_WorldParticipant *participant)
     }
     publish(participant);
     participant->active = 0;
+    if (participant->shared)
+    {
+        participant->shared = 0;
+        world->shared--;
+    }
     world->active--;
     fvm_port_sync_signal_all(world->sync);
     fvm_port_sync_unlock(world->sync);
@@ -494,7 +524,7 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
     }
     world = participant->world;
     fvm_port_sync_lock(world->sync);
-    if (!world->serial || world->count != 1 || !participant->active || participant->parked)
+    if (!world->serial || world->count != 1 || !participant->active || participant->parked || participant->shared)
     {
         fvm_port_sync_unlock(world->sync);
         return 0;

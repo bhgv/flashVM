@@ -204,7 +204,11 @@ static void publish_roots(DVM_NativeContext *context, void *registers, size_t si
     Backend *state = user;
     Prog *guest = process;
     (void)context;
-    if (!guest || !registers || size != sizeof(REG))
+    if (!guest)
+    {
+        return;
+    }
+    if (!registers || size != sizeof(REG))
     {
         fprintf(stderr, "invalid stopped graph mutator snapshot\n");
         exit(EXIT_FAILURE);
@@ -325,6 +329,7 @@ typedef struct GraphRun
     int contended; /* 0 uses separate slots, 1 retries BUSY, 2 cancels before retry. */
     int held; /* First writer holds slot_lock, published under mutex. */
     int refused; /* Second writer observed BUSY without touching the slot. */
+    int observed; /* Number of FIFO observers already admitted. */
 } GraphRun;
 
 typedef struct GraphMutator
@@ -410,7 +415,7 @@ static void *mutate_graph(void *argument)
     participant = dvm_world_join(backend.world, context);
     ((REG *)dvm_native_context_registers(context))->M = worker->guest.R.M;
     graph_check(participant && dvm_native_context_set_process(context, &worker->guest) &&
-        dvm_world_enter(participant), "enter parallel world");
+        dvm_world_enter_shared(participant), "enter restricted shared interval");
     pthread_mutex_lock(&run->mutex);
     run->entered++;
     pthread_mutex_unlock(&run->mutex);
@@ -466,6 +471,37 @@ static void wait_graph_counter(GraphRun *run, const int *counter)
 }
 
 
+typedef struct GraphObserver
+{
+    GraphRun *run; /* Borrowed until both observers join. */
+    int shared; /* The second observer uses restricted admission. */
+} GraphObserver;
+
+
+/* A queued ordinary entrant must wait for both restricted mutators. A later
+ * shared observer must wait for that ordinary entrant even if it could join. */
+static void *observe_graph_admission(void *argument)
+{
+    GraphObserver *observer = argument;
+    DVM_NativeContext *context = dvm_native_process_create(NULL);
+    DVM_WorldParticipant *participant;
+    DVM_WorldState world;
+    graph_check(context && dvm_native_context_bind(context), "bind admission observer");
+    participant = dvm_world_join(backend.world, context);
+    graph_check(participant && (observer->shared ? dvm_world_enter_shared(participant) :
+        dvm_world_enter(participant)) && dvm_world_state(backend.world, &world) &&
+        world.active == 1, "observer cannot overlap the previous admission group");
+    pthread_mutex_lock(&observer->run->mutex);
+    graph_check(observer->run->observed == observer->shared, "exclusive ticket precedes later shared ticket");
+    observer->run->observed++;
+    pthread_mutex_unlock(&observer->run->mutex);
+    graph_check(dvm_world_leave(participant) && dvm_world_detach(participant) &&
+        dvm_native_context_unbind(context) && dvm_native_context_destroy(context),
+        "detach admission observer");
+    return NULL;
+}
+
+
 /* Verify one common root with two independently mutated cyclic branches,
  * stopped snapshots while both mutators are active, then exact reclamation. */
 static void parallel_graph(Type *record_type, Prog *roots, int contended)
@@ -474,10 +510,13 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     Type *pair_type = dtype(freeheap, 2*sizeof(void *), map, sizeof(map));
     GraphRun run = {
         PTHREAD_MUTEX_INITIALIZER, 0, 0, {0, 0},
-        PTHREAD_MUTEX_INITIALIZER, contended, 0, 0
+        PTHREAD_MUTEX_INITIALIZER, contended, 0, 0, 0
     };
     GraphMutator workers[2] = {{0}};
     pthread_t threads[2];
+    pthread_t observers[2];
+    GraphObserver requests[2] = {{&run, 0}, {&run, 1}};
+    DVM_WorldAdmission admission;
     Record *cycles_by_worker[2][2];
     void **pair = allocate_object(pair_type);
     DVM_WorldState world;
@@ -510,6 +549,16 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     wait_graph_counter(&run, &run.entered);
     graph_check(dvm_world_state(backend.world, &world) && world.active == 2,
         "two active OS mutators");
+    for (index = 0; index < 2; index++)
+    {
+        graph_check(!pthread_create(&observers[index], NULL, observe_graph_admission, &requests[index]),
+            "queue observer during shared work");
+        do
+        {
+            graph_check(dvm_world_admission(backend.world, &admission), "observe admission queue");
+            sched_yield();
+        } while (admission.waiting < (size_t)index + 1);
+    }
     for (phase = 1; phase <= 2; phase++)
     {
         pthread_mutex_lock(&run.mutex);
@@ -534,6 +583,11 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     {
         graph_check(!pthread_join(threads[index], NULL), "join graph mutator");
     }
+    for (index = 0; index < 2; index++)
+    {
+        graph_check(!pthread_join(observers[index], NULL), "join FIFO observers after shared work");
+    }
+    graph_check(run.observed == 2, "both queued observers entered");
     graph_check(!contended || run.refused, "contended run observed BUSY");
     pthread_mutex_destroy(&run.slot_lock);
     pthread_mutex_destroy(&run.mutex);
@@ -571,7 +625,7 @@ int main(void)
     DVM_GCWorkersConfig config;
     DVM_GCWorkersState state;
     memset(&config, 0, sizeof(config));
-    backend.world = dvm_world_create();
+    backend.world = dvm_world_create_serial(0);
     backend.pending_release = H;
     config.world = backend.world;
     config.create_context = dvm_native_process_create;
