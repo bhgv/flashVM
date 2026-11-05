@@ -125,12 +125,13 @@ static int branch_taken(int condition, int order)
 /* Consume the acquired source union and compare bounded private prefixes.
  * The active Prog retains the immediate target cell throughout the lease.
  * Only a taken branch reacquires and reads that cell. */
-static const char *leased_string_branch(int condition, StringView left, StringView right,
+static const char *leased_string_branch(int opcode, int condition, StringView left, StringView right,
     size_t count, size_t left_bytes, size_t right_bytes, const void *target, void *pc,
     DVM_RangeAccess *access)
 {
     unsigned char left_copy[DVM_STRING_LEASE_BYTES], right_copy[DVM_STRING_LEASE_BYTES];
     int released, order;
+    DVM_CellResult claim;
     const char *problem;
 
     memcpy(left_copy, left.data, left_bytes);
@@ -153,9 +154,10 @@ static const char *leased_string_branch(int condition, StringView left, StringVi
     {
         return NULL;
     }
-    if (dvm_managed_ranges_begin(target, sizeof(Inst *), NULL, 0, access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_ranges_begin(target, sizeof(Inst *), NULL, 0, access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
     problem = dvm_runtime_branch_target(target, pc) ? NULL : exHeap;
     if (!dvm_range_access_end(access))
@@ -230,7 +232,7 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
                 dvm_native_execution()->arithmetic_retry_opcode == opcodes[condition] &&
                 dvm_runtime_instruction_target(target))
             {
-                return leased_string_branch(condition, left, right, count,
+                return leased_string_branch(opcodes[condition], condition, left, right, count,
                     left_bytes, right_bytes, target, pc, &access);
             }
             order = compare_prefix(&left, &right, count);

@@ -9,10 +9,24 @@ from relink_private import relink
 GUEST = '''implement Strings;
 include "sys.m";
 Strings: module {init: fn();};
+compare(left, right: string, done: chan of int)
+{
+    if (left < right)
+        done <-= 1;
+    else
+        done <-= 0;
+}
 init() {
     sys := load Sys Sys->PATH;
     sys->print("BEGIN string branches\\n");
     values := array[] of {"", "a", "Ж", "ab"};
+    done := chan of int;
+    spawn compare(values[1], values[3], done);
+    spawn compare(values[1], values[2], done);
+    first := <-done;
+    second := <-done;
+    if (first != 1 || second != 1)
+        raise "concurrent string comparison";
     score := 0;
     for (i := 0; i < 4; i++) {
         for (j := 0; j < 4; j++) {
@@ -51,6 +65,11 @@ init() {
     longright := prefix + values[3];
     if (longleft >= longright)
         raise "long string branch fallback";
+    rune_prefix := "ЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖЖ";
+    rune_left := rune_prefix + values[1];
+    rune_right := rune_prefix + values[3];
+    if (rune_left >= rune_right)
+        raise "long Rune branch fallback";
     sys->print("PASS string branches6\\n");
 }
 '''
@@ -71,6 +90,7 @@ WRAPPER = r'''
 #include "branch_value.h"
 #include "disvm/native_context.h"
 #include "disvm/native_owner.h"
+#include <pthread.h>
 #include "disvm/refcount.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -225,6 +245,78 @@ void __wrap_dvm_runtime_string_branch_header(const void *object,int *length,int 
 }
 
 
+static pthread_mutex_t overlap_lock = PTHREAD_MUTEX_INITIALIZER; /* Protect evaluator rendezvous. */
+static pthread_cond_t overlap_ready = PTHREAD_COND_INITIALIZER; /* Wake the first evaluator. */
+static DVM_NativeContext *first_evaluator; /* First context, borrowed until the rendezvous. */
+static int evaluators; /* Number of distinct simultaneous evaluators, capped at two. */
+
+
+/* Park the first private comparison until another OS owner also reaches it. */
+static void observe_overlap(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+
+    pthread_mutex_lock(&overlap_lock);
+    if (!evaluators)
+    {
+        first_evaluator = context;
+        evaluators = 1;
+        while (evaluators < 2)
+        {
+            pthread_cond_wait(&overlap_ready, &overlap_lock);
+        }
+    }
+    else if (evaluators == 1)
+    {
+        check(context != first_evaluator, "distinct simultaneous string evaluators");
+        evaluators = 2;
+        print("PASS overlapping string leases\n");
+        pthread_cond_broadcast(&overlap_ready);
+    }
+    pthread_mutex_unlock(&overlap_lock);
+}
+
+
+DVM_CellResult __real_dvm_managed_ranges_begin(const void *source, size_t bytes,
+    void *destination, size_t output, DVM_RangeAccess *access);
+
+
+/* Inject contention at the taken branch's second acquisition. Keep the
+ * process identity under NativeWorld so another guest can run meanwhile. */
+DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t bytes,
+    void *destination, size_t output, DVM_RangeAccess *access)
+{
+    static Prog *contended_process; /* Borrowed live fixture guest until replay. */
+    static Inst *contended_pc; /* Post-decode PC of the first taken branch. */
+    static int replayed; /* Only one contention injection in this invocation. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+    uintptr_t next = (uintptr_t)DVM_R.PC;
+
+    if (CONTROL == 0 && !active && !replayed && bytes == sizeof(Inst *) &&
+        !destination && !output && next >= sizeof(Inst) &&
+        (uintptr_t)source == next - sizeof(Inst) + offsetof(Inst, d) &&
+        (opcode == IBEQC || opcode == IBNEC || opcode == IBLTC ||
+         opcode == IBLEC || opcode == IBGTC || opcode == IBGEC))
+    {
+        Prog *process = getup()->prog;
+
+        if (!contended_process)
+        {
+            contended_process = process;
+            contended_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        if (process == contended_process)
+        {
+            check(contended_pc == DVM_R.PC, "target contention replays the same string branch");
+            replayed = 1;
+            print("PASS string target contention replay\n");
+        }
+    }
+    return __real_dvm_managed_ranges_begin(source, bytes, destination, output, access);
+}
+
+
 /* Every key read has common-prefix coverage before touching real string data. */
 uint32_t __wrap_dvm_runtime_string_branch_key(const void *data,size_t index,int wide)
 {
@@ -236,11 +328,12 @@ uint32_t __wrap_dvm_runtime_string_branch_key(const void *data,size_t index,int 
         if (!index && owner.phase == DVM_HEAP_NATIVE)
         {
             check(!dvm_native_context_object_count(dvm_native_context_current()), "private string comparison has no guard");
+            observe_overlap();
             fprint(2, "LEASED string branch %d\n", dvm_native_execution()->arithmetic_retry_opcode);
         }
         if (index == 128 && owner.phase == DVM_HEAP_ACTIVE)
         {
-            print("PASS long string guarded fallback\n");
+            print(wide ? "PASS long Rune guarded fallback\n" : "PASS long ASCII guarded fallback\n");
         }
     }
     if (active)
@@ -585,7 +678,7 @@ def main():
         wrapper.write_text(WRAPPER)
         for variant in ((0, 4) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
             binary = relink(runtime, work, wrapper, variant,
-                ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_range_access_extend',
+                ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin','dvm_range_access_extend',
                  'dvm_runtime_string_branch_source','dvm_runtime_string_branch_header',
                  'dvm_runtime_string_branch_key','dvm_runtime_branch_target','error','malloc','calloc','free'])
             for mode in ('--no-jit', '--jit'):
@@ -608,7 +701,10 @@ def main():
                         raise RuntimeError('positive failed: '+output)
                     if variant == 0:
                         leased = {line for line in output.splitlines() if line.startswith('LEASED string branch ')}
-                        if len(leased) != 6 or 'PASS long string guarded fallback' not in output:
+                        if (len(leased) != 6 or 'PASS long ASCII guarded fallback' not in output or
+                                'PASS long Rune guarded fallback' not in output or
+                                'PASS overlapping string leases' not in output or
+                                'PASS string target contention replay' not in output):
                             raise RuntimeError('leased string coverage or bounded fallback missed: '+output)
                     if variant == 0 and 'PASS scheduled input retry' not in output:
                         raise RuntimeError('input retry missed: '+output)
