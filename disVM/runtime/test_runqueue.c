@@ -141,6 +141,8 @@ int main(void)
     check(dvm_runqueue_head() != process && dvm_runqueue_contains(process) == 0 &&
         process->state == Prelease,"native continuation remained runnable");
     check(dvm_runqueue_owner(process) == context,"same continuation owner retained");
+    check(!dvm_runqueue_append(&extra.process) && !dvm_runqueue_contains(&extra.process) &&
+        dvm_runqueue_inflight() == 1, "native return slot was not reserved");
     check(!dvm_runqueue_claim(dvm_runqueue_head()),"nested managed dispatch claim accepted");
     check(!dvm_runqueue_finish(process),"native waiter finished managed turn before reentry");
     thread = fvm_port_thread_start(foreign_restore,process);

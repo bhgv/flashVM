@@ -202,13 +202,14 @@ Prog *dvm_runqueue_head(void)
 
 
 /* Append one borrowed runtime Prog, refusing native leases and duplicates before
- * mutation. No allocation/throw; success gives the FIFO one runnable member. */
+ * mutation. Each withdrawn native continuation reserves one slot for return.
+ * No allocation/throw; success gives the FIFO one runnable member. */
 int dvm_runqueue_append(Prog *process)
 {
     if (!process || runtime_process(process)->native_owner || process->link ||
         (runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
-        count == DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
+        count + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
         ((head == NULL) != (tail == NULL)))
     {
         return 0;

@@ -38,8 +38,10 @@ def main():
              "dvm_native_context_process(context) ||", "foreign managed dispatch claim accepted"),
             ("if (!context || !process || runtime_process(process)->dispatch_owner != context ||",
              "if (!context || !process ||", "foreign managed dispatch finish accepted"),
-            ("count == DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||",
-             "count == DVM_RUNTIME_PROCESS_MAX ||", "duplicate runnable admission accepted"),
+            ("count + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||",
+             "count + inflight >= DVM_RUNTIME_PROCESS_MAX ||", "duplicate runnable admission accepted"),
+            ("count + inflight >= DVM_RUNTIME_PROCESS_MAX", "count >= DVM_RUNTIME_PROCESS_MAX",
+             "native return slot was not reserved"),
             ("    if (dvm_runqueue_pop(Prelease) != process)\n    {\n        return 0;\n    }", "",
              "native continuation remained runnable"),
         ]
@@ -74,8 +76,8 @@ def main():
             result = subprocess.run([altered_command[-1]],capture_output=True,text=True,timeout=30)
             if result.returncode != 1 or marker not in result.stderr:
                 raise RuntimeError("inactive ownership control: "+marker+"\n"+result.stdout+result.stderr)
-    print("PASS eight active ownership controls: synchronous hold, foreign restore/claim/finish, "
-          "duplicate admission, missing withdrawal, nested cleared-root turn, early unbind")
+    print("PASS nine active ownership controls: synchronous hold, foreign restore/claim/finish, "
+          "duplicate admission, reserved return slot, missing withdrawal, nested cleared-root turn, early unbind")
 
 
 
