@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 
+unsigned long dvm_runtime_parallel_movp_module_commits;
 unsigned long dvm_runtime_parallel_movp_commits; /* Written after exclusive reentry. */
 int dvm_runtime_parallel_movp; /* Startup-only restricted frame-pointer experiment. */
 
@@ -195,6 +196,7 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_CellDomain *domain = NULL;
     int released = 0;
+    int module_operand = 0;
 
     *replay = 0;
     if (mode == 2)
@@ -206,13 +208,19 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
         }
     }
     if (mode == 2 && dvm_runtime_parallel_movp && opcode == IMOVP && up->prog &&
-        dvm_native_execution()->arithmetic_retry_opcode == opcode &&
-        dvm_runtime_frame_pointer(source) && dvm_runtime_frame_pointer(destination))
+        dvm_native_execution()->arithmetic_retry_opcode == opcode)
     {
-        domain = dvm_managed_cell_domain();
-        if (domain)
+        int source_module = dvm_runtime_module_pointer(source);
+        int destination_module = dvm_runtime_module_pointer(destination);
+        module_operand = source_module || destination_module;
+        if ((source_module || dvm_runtime_frame_pointer(source)) &&
+            (destination_module || dvm_runtime_frame_pointer(destination)))
         {
-            released = dvm_runtime_gc_native_try_leave();
+            domain = dvm_managed_cell_domain();
+            if (domain)
+            {
+                released = dvm_runtime_gc_native_try_leave();
+            }
         }
     }
     if (released > 0 && !dvm_native_owner_enter_shared(owner))
@@ -231,6 +239,8 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
         if (!problem)
         {
             dvm_runtime_parallel_movp_commits++;
+            if (module_operand)
+                dvm_runtime_parallel_movp_module_commits++;
         }
     }
     *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);

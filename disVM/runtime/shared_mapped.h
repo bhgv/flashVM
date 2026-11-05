@@ -39,6 +39,7 @@ extern unsigned long dvm_runtime_parallel_channel_alts;
 extern unsigned long dvm_runtime_parallel_rendezvous;
 extern unsigned long dvm_runtime_parallel_channel_receives;
 extern unsigned long dvm_runtime_parallel_movmp_commits;
+extern unsigned long dvm_runtime_parallel_movmp_module_commits;
 extern unsigned long dvm_runtime_parallel_slicela_commits;
 /* [GC:] Transfer live ring spans. A consuming receive clears source pointers.
  * Both directions report commit even when retirement raises. Return zero on replay. */

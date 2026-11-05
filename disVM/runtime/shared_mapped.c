@@ -32,6 +32,7 @@ unsigned long dvm_runtime_parallel_channel_alts;
 unsigned long dvm_runtime_parallel_rendezvous;
 unsigned long dvm_runtime_parallel_channel_receives;
 unsigned long dvm_runtime_parallel_movmp_commits;
+unsigned long dvm_runtime_parallel_movmp_module_commits;
 unsigned long dvm_runtime_parallel_slicela_commits;
 
 typedef struct SliceCopy
@@ -254,6 +255,8 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     int failed = 0;
     int released = 0;
     int shared_channel;
+    int shared_record = 0;
+    int module_record = 0;
     int dispatch_opcode = dvm_native_execution()->arithmetic_retry_opcode;
     int selected_alt = dispatch_opcode == IALT || dispatch_opcode == INBALT;
     DVM_CellDomain *domain = NULL;
@@ -352,9 +355,16 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
          ((dispatch_opcode == replay_opcode || selected_alt) &&
           ((replay_opcode == ISEND && !consume && dvm_runtime_frame_record(source, type)) ||
            (replay_opcode == IRECV && consume && dvm_runtime_frame_record(destination, type)))));
-    if (slice || shared_channel || rendezvous || (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
-        up->prog && dvm_native_execution()->arithmetic_retry_opcode == IMOVMP &&
-        dvm_runtime_frame_record(source, type) && dvm_runtime_frame_record(destination, type)))
+    if (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
+        up->prog && dispatch_opcode == IMOVMP)
+    {
+        int source_module = dvm_runtime_module_record(source, type);
+        int destination_module = dvm_runtime_module_record(destination, type);
+        module_record = source_module || destination_module;
+        shared_record = (source_module || dvm_runtime_frame_record(source, type)) &&
+            (destination_module || dvm_runtime_frame_record(destination, type));
+    }
+    if (slice || shared_channel || rendezvous || shared_record)
     {
         domain = dvm_managed_cell_domain();
         if (domain)
@@ -412,6 +422,8 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             else
             {
                 dvm_runtime_parallel_movmp_commits++;
+                if (module_record)
+                    dvm_runtime_parallel_movmp_module_commits++;
             }
         }
     }

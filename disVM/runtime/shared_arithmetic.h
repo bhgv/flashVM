@@ -30,6 +30,8 @@ struct REG;
 int dvm_runtime_frame_record_for(const struct REG *registers, const void *cell,
     const struct Type *record);
 int dvm_runtime_frame_record(const void *cell, const struct Type *record);
+int dvm_runtime_module_pointer(const void *cell);
+int dvm_runtime_module_record(const void *cell, const struct Type *record);
 int dvm_runtime_frame_pointer(const void *cell);
 int dvm_runtime_slice_index_stable(const void *cell);
 #endif

@@ -64,6 +64,9 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         records = re.search(r"parallel_movmp_commits=(\d+)", output)
         if not records or int(records[1]) < 32:
             raise RuntimeError("expected shared mapped frame records:\n" + output[-5000:])
+        module_copies = re.search(r"parallel_movp_module=(\d+) parallel_movmp_module=(\d+)", output)
+        if not module_copies or min(map(int, module_copies.groups())) < 64:
+            raise RuntimeError("expected shared module-data pointer and record copies:\n" + output[-5000:])
         if (not commits or int(commits[1]) < 64 or not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output
                 or not shared or int(shared[1]) < 64 or shared[1] != shared[2]):
             raise RuntimeError("shared graph did not run with the expected worker pool:\n" + output[-5000:])

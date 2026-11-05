@@ -152,9 +152,9 @@ the direct backing-array reference. The `parallel_slicela_commits` diagnostic di
 publications from other native suspensions.
 
 `--parallel-movmp` admits mapped `MOVMP` copies between two complete, aligned
-records in the current live frame. Both record maps must match the frame
-map across the entire byte span. The suspended process retains the frame
-and its type. Publication and retirement use the same range transaction
+records in the current frame or the current heap-backed Dis module instance.
+Each record map must match its owner map across the entire byte span. The
+suspended process retains the frame and current module link. Publication and retirement use the same range transaction
 as `SLICELA`. Other addressing modes and buffered channel transfers retain
 exclusive admission. The GC guest checks 32 mapped frame copies with an
 owning reference and a scalar field in each record.

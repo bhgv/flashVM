@@ -24,6 +24,11 @@ Publication: adt
 };
 
 
+# Shared module slots exercise MP ownership separately from frame slots.
+module_node: ref Node;
+module_record: Publication;
+
+
 # Allocate a private cyclic graph; its references die when this call returns.
 # seed initializes data so retained live roots can be checked independently.
 # This function never changes a node owned by another Dis process.
@@ -64,6 +69,7 @@ graphwriter(shared: array of ref Node, commands, replies: chan of int)
             witness.next = value;
             witness.payload[0] = seed;
             shared[0:] = array[] of {value, witness};
+            module_node = value;
             raise "published graph";
         } exception failure {
             "published graph" => replies <-= seed;
@@ -112,7 +118,12 @@ sharedgraph()
         }
         # Force a mapped record copy with a live previous owner.
         current := Publication(shared[0], seed);
-        previous = current;
+        module_record = current;
+        previous = module_record;
+        module_seed := module_node.payload[0];
+        if (module_node.next != module_node || (module_seed != low && module_seed != high))
+            raise "module data lost its published owner";
+        module_node = nil;
         shared[0] = nil;
         shared[1] = nil;
         cycle(round);
@@ -121,6 +132,7 @@ sharedgraph()
             raise "mapped frame record lost its published reference";
         }
     }
+    module_record = Publication(nil, -1);
     first <-= -1;
     second <-= -1;
     # Overlapping views share one backing array and preserve snapshot order.

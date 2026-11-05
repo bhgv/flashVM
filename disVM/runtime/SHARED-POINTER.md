@@ -49,11 +49,10 @@ The same path handles SELF. BUSY can request replay before ownership effects.
 
 The hosted `--parallel-movp` experiment requires guarded copies and multiple
 managed workers. It selects an armed MOVP only when both cells are aligned
-pointer-map entries of the current rooted guest frame. The scheduler publishes
-that frame before restricted admission. The guarded copy then uses the same
+pointer-map entries in the current rooted guest frame or the current Dis
+module instance. The scheduler publishes both roots before restricted admission. The guarded copy then uses the same
 cell domain as the ordinary path. It returns to the exclusive turn before
-destruction or error delivery. General heap interior and module slots still
-use the exclusive path.
+destruction or error delivery. General heap interiors and dynamic-module data use the exclusive path.
 
 Worker worlds require exact acknowledged ACTIVE process/context/service identity.
 Detached inline execution uses the checked copy without cell guards under its

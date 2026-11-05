@@ -85,20 +85,37 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
 }
 
 
-/* Accept only a mapped pointer slot in the current live guest frame. */
-int dvm_runtime_frame_pointer(const void *cell)
+/* The suspended Prog roots its current Modlink. Ordinary Dis links own
+ * their fixed heap-backed MP. Dynamic modules can supply a native MP. */
+static const Type *module_data_type(void)
 {
-    Type *type = current_frame_type();
-    uintptr_t base = (uintptr_t)DVM_R.FP;
+    const Modlink *link = DVM_R.M;
+    const Type *type;
+    if (!link || link == H || !link->m || link->m == H || link->m->rt == DYNMOD ||
+        !DVM_R.MP || DVM_R.MP == H || link->MP != DVM_R.MP)
+    {
+        return NULL;
+    }
+    type = D2H(DVM_R.MP)->t;
+    if (!type || type == H || type->size < (int)sizeof(void *) || type->np < 0 ||
+        (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8)
+    {
+        return NULL;
+    }
+    return type;
+}
+
+static int mapped_pointer(const void *cell, const void *base, const Type *type, size_t minimum)
+{
     uintptr_t address = (uintptr_t)cell;
-    size_t offset;
-    size_t slot;
-    if (!type || address < base)
+    uintptr_t start = (uintptr_t)base;
+    size_t offset, slot;
+    if (!type || address < start)
     {
         return 0;
     }
-    offset = address - base;
-    if (offset < NREG * IBY2WD || offset % sizeof(void *) ||
+    offset = address - start;
+    if (offset < minimum || offset % sizeof(void *) ||
         offset > (size_t)type->size - sizeof(void *))
     {
         return 0;
@@ -106,6 +123,16 @@ int dvm_runtime_frame_pointer(const void *cell)
     slot = offset / sizeof(void *);
     return slot / 8 < (size_t)type->np &&
         (type->map[slot / 8] & (0x80U >> (slot % 8))) != 0;
+}
+
+int dvm_runtime_frame_pointer(const void *cell)
+{
+    return mapped_pointer(cell, DVM_R.FP, current_frame_type(), NREG * IBY2WD);
+}
+
+int dvm_runtime_module_pointer(const void *cell)
+{
+    return mapped_pointer(cell, DVM_R.MP, module_data_type(), 0);
 }
 
 
@@ -128,10 +155,9 @@ static int parallel_frame_spans(int opcode, const void *first, size_t first_size
 
 
 /* Verify that the entire record agrees with the live frame's pointer map. */
-int dvm_runtime_frame_record_for(const REG *registers, const void *cell, const Type *record)
+static int mapped_record(const void *cell, const Type *record, const Type *frame,
+    uintptr_t base, size_t minimum)
 {
-    const Type *frame = frame_type(registers);
-    uintptr_t base = (uintptr_t)registers->FP;
     uintptr_t address = (uintptr_t)cell;
     size_t offset, slot, frame_slot;
 
@@ -141,7 +167,7 @@ int dvm_runtime_frame_record_for(const REG *registers, const void *cell, const T
         return 0;
     }
     offset = address - base;
-    if (offset < NREG * IBY2WD || offset % sizeof(void *) ||
+    if (offset < minimum || offset % sizeof(void *) ||
         offset > (size_t)(frame->size - record->size))
     {
         return 0;
@@ -161,6 +187,17 @@ int dvm_runtime_frame_record_for(const REG *registers, const void *cell, const T
     return 1;
 }
 
+
+int dvm_runtime_frame_record_for(const REG *registers, const void *cell, const Type *record)
+{
+    return mapped_record(cell, record, frame_type(registers),
+        (uintptr_t)registers->FP, NREG * IBY2WD);
+}
+
+int dvm_runtime_module_record(const void *cell, const Type *record)
+{
+    return mapped_record(cell, record, module_data_type(), (uintptr_t)DVM_R.MP, 0);
+}
 
 int dvm_runtime_frame_record(const void *cell, const Type *record)
 {
