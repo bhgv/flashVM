@@ -69,6 +69,13 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
 }
 
 
+/* Reject sentinel and wrapping ranges before acquiring a guard. */
+static int valid_scaled_slot(const void *slot, size_t width)
+{
+    return slot && slot != H && (uintptr_t)slot <= (uintptr_t)-1-width;
+}
+
+
 /* Mixed-width arithmetic runs its original evaluator on private slots.
  * Integer power and fixed rescaling preserve their source-error precedence. */
 const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const void *second,
@@ -109,10 +116,10 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     default:
         return exHeap;
     }
-    invalid_second = !second || second == H || (uintptr_t)second > (uintptr_t)-1-second_width;
-    invalid_output = !output || output == H || (uintptr_t)output > (uintptr_t)-1-output_width;
+    invalid_second = !valid_scaled_slot(second, second_width);
+    invalid_output = !valid_scaled_slot(output, output_width);
     scale_only = opcode == ICVTXX;
-    if (!first || first == H || (uintptr_t)first > (uintptr_t)-1-first_width ||
+    if (!valid_scaled_slot(first, first_width) ||
         (invalid_second && !scale_only) ||
         (invalid_output && (opcode == IEXPF || opcode == ICVTFX || opcode == ICVTXF)))
     {
@@ -162,6 +169,75 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
         return exHeap;
     }
     memmove(output, &result, output_width);
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}
+
+
+/* The fixed frame coefficient is captured by the opcode before shared
+ * operand access. DIVX observes the divisor before any dividend access. */
+const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
+    const void *second, void *output, void (*evaluate)(WORD, const void *, const void *, void *))
+{
+    DVM_RangeAccess access = {0};
+    WORD left, right, result;
+
+    if (dvm_runtime_shared_mode() != 2 || (opcode != IMULX && opcode != IDIVX))
+    {
+        return exHeap;
+    }
+    if (opcode == IDIVX)
+    {
+        if (!valid_scaled_slot(second, sizeof(right)))
+        {
+            return exBounds;
+        }
+        if (dvm_managed_ranges_begin(second, sizeof(right), NULL, 0, &access) != DVM_CELL_ACQUIRED)
+        {
+            return exHeap;
+        }
+        memmove(&right, second, sizeof(right));
+        if (!dvm_range_access_end(&access))
+        {
+            abort();
+        }
+        if (right == 0)
+        {
+            return exZdiv;
+        }
+    }
+    if (scale < -63 || scale > 63)
+    {
+        return exInval;
+    }
+    if (!valid_scaled_slot(first, sizeof(left)) || !valid_scaled_slot(output, sizeof(result)) ||
+        (opcode == IMULX && !valid_scaled_slot(second, sizeof(right))))
+    {
+        return exBounds;
+    }
+    if (dvm_managed_three_begin(first, sizeof(left), opcode == IMULX ? second : NULL,
+        opcode == IMULX ? sizeof(right) : 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(&left, first, sizeof(left));
+    if (opcode == IMULX)
+    {
+        memmove(&right, second, sizeof(right));
+    }
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    evaluate(scale, &left, &right, &result);
+    if (dvm_managed_ranges_begin(NULL, 0, output, sizeof(result), &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(output, &result, sizeof(result));
     if (!dvm_range_access_end(&access))
     {
         abort();

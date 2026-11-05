@@ -372,6 +372,45 @@ static void fixed_conversions(void)
 }
 
 
+/* Invoke actual DIVX under the fixture's exception boundary. */
+static void zero_fixed_divisor(void *unused)
+{
+    (void)unused;
+    dvm_runtime_bytes_fast(&DVM_R, IDIVX);
+}
+
+
+/* Exercise the hosted fixed opcodes with aliased slots and a private frame. */
+static void fixed_products(void)
+{
+    REG saved = DVM_R;
+    uchar frame[(NREG+2)*IBY2WD + sizeof(WORD)] = {0};
+    WORD left = 6, right = 3, scale = 1;
+
+    DVM_R.FP = frame;
+    memmove(frame + (NREG+2)*IBY2WD, &scale, sizeof(scale));
+    DVM_R.m = DVM_R.d = &left;
+    DVM_R.s = &right;
+    check(dvm_runtime_bytes_fast(&DVM_R, IMULX) && left == 36,
+        "fixed multiply aliases its left input");
+    left = 6;
+    DVM_R.d = &right;
+    check(dvm_runtime_bytes_fast(&DVM_R, IDIVX) && right == 4,
+        "fixed divide aliases its divisor");
+
+    scale = 64;
+    memmove(frame + (NREG+2)*IBY2WD, &scale, sizeof(scale));
+    right = 0;
+    DVM_R.m = (void *)(uintptr_t)1;
+    DVM_R.d = NULL;
+    check(!kprotect(zero_fixed_divisor, NULL) &&
+        !strcmp(getup()->env->errstr, exZdiv) &&
+        !dvm_native_context_object_count(dvm_native_context_current()),
+        "zero divisor wins before invalid scale and inaccessible dividend");
+    DVM_R = saved;
+}
+
+
 /* Throw through the actual VM protection boundary with independently live cells.
  * Argument is unused; the caller checks rollback after kprotect unwinds. */
 static void unwind(void *unused)
@@ -476,6 +515,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
         check(!dvm_native_context_object_count(dvm_native_context_current()),"balanced final guards");
     }
     fixed_conversions();
+    fixed_products();
     check(!fesetenv(&environment),"fixture FP restore");
     fprint(1,"PASS actual REAL arithmetic: %ud overlap/boundary cases,unlocked FP,phase update\n",count);
 }

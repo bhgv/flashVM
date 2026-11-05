@@ -17,4 +17,6 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
  * It may raise after capture, with all shared guards already released. */
 const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const void *second,
     void *output, void (*evaluate)(const void *, const void *, void *));
+const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
+    const void *second, void *output, void (*evaluate)(WORD, const void *, const void *, void *));
 #endif

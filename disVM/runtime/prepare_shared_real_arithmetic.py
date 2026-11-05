@@ -19,10 +19,13 @@ def adapt(source):
             raise ValueError('guarded REAL arithmetic insertion drift: '+name)
         code = '\tif(dvm_runtime_guarded_copies) {\n\t\tconst char *problem = dvm_runtime_real_arithmetic(I'+name.upper()+', '+operands+', DVM_R.d);\n\t\tif(problem != nil) {\n\t\t\terror((char *)problem);\n\t\t}\n\t\treturn;\n\t}\n'
         source = source[:match.start()]+body.replace(anchor,code+anchor)+source[match.end():]
-    return '#include "shared_real_arithmetic.h"\n'+adapt_scaled(source)
+    source = adapt_scaled(source)
+    return source.replace('#include "interp.h"', '#include "interp.h"\n#include "shared_real_arithmetic.h"', 1)
 
 
 SCALED_BODIES = {
+    'divx': 'c0450aa55a901748c31addef7571e3f4528b9f7bcbc2cb4e72f76116bd97d596',
+    'mulx': '661033150c6df95bad861e760b9a4bcfcd117d4b219cd18b3bd2998843143503',
     'cvtfx': '556d86b5077cc0edeb7158299dc39de0508279992c007e3fa70f963c30cea729',
     'cvtxf': '6cc88fe0e48db1df1c75406bc2bdb4d4fdd04afe6e00bac0c67b284a84d4c0bd',
     'cvtxx': '8248f8681622d3c68b081d0f140fcbdd6bd7ecba244c9ed8b33948511fe6c383',
@@ -43,19 +46,28 @@ def adapt_scaled(source):
             raise ValueError('guarded scaled arithmetic source drift: '+name)
         match = matches[0]
         slots = name+'_slots'
+        fixed_product = name in ('mulx', 'divx')
+        prefix = 'WORD scale, ' if fixed_product else ''
         body = match.group().replace('OP('+name+')',
-            'static void\n'+slots+'(const void *first_slot, const void *second_slot, void *result_slot)')
+            'static void\n'+slots+'('+prefix+'const void *first_slot, const void *second_slot, void *result_slot)')
         body = body.replace('DVM_R.m', 'first_slot').replace('DVM_R.s', 'second_slot').replace('DVM_R.d', 'result_slot')
+        if fixed_product:
+            body = body.replace('p = fixedword((NREG+2)*IBY2WD);', 'p = scale;')
+        init = '    WORD scale = fixedword((NREG+2)*IBY2WD);\n' if fixed_product else ''
+        args = ('scale, ' if fixed_product else '')+'DVM_R.m, DVM_R.s, DVM_R.d'
+        helper = 'dvm_runtime_fixed_product' if fixed_product else 'dvm_runtime_scaled_arithmetic'
+        opcode = ('' if name.startswith('iexp') else 'I')+name.upper()
         wrapper = f'''
 OP({name})
 {{
-    if(dvm_runtime_guarded_copies) {{
-        const char *problem = dvm_runtime_scaled_arithmetic({('I' if name.startswith('cvt') else '') + name.upper()}, DVM_R.m, DVM_R.s, DVM_R.d, {slots});
-        if(problem != nil)
+{init}    if(dvm_runtime_guarded_copies) {{
+        const char *problem = {helper}({opcode}, {args}, {slots});
+        if(problem != nil) {{
             error((char*)problem);
+        }}
         return;
     }}
-    {slots}(DVM_R.m, DVM_R.s, DVM_R.d);
+    {slots}({args});
 }}
 '''
         source = source[:match.start()]+body+'\n'+wrapper+source[match.end():]
