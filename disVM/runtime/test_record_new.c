@@ -566,6 +566,23 @@ static void channel_finalize_case(void)
 
 
 static DVM_RuntimeProcess *claimed_waiter; /* Live fixture waiter during mover callback. */
+static int waiter_notifications; /* Notifications while the direct transfer fixture runs. */
+void __real_dvm_managed_workers_wake(void);
+
+
+/* At worker notification, the completed waiter must already be dispatchable. */
+void __wrap_dvm_managed_workers_wake(void)
+{
+    if (claimed_waiter)
+    {
+        check(!claimed_waiter->channel_claimed && !claimed_waiter->lifetime_holds &&
+            claimed_waiter->process.state == Pready && !claimed_waiter->process.ptr &&
+            !claimed_waiter->process.chan && dvm_runqueue_head() == &claimed_waiter->process,
+            "notify only after channel claim and completion pin are released");
+        waiter_notifications++;
+    }
+    __real_dvm_managed_workers_wake();
+}
 
 
 static int unexpected_nested_match(void *argument)
@@ -638,12 +655,13 @@ static void direct_channel_failure(void)
         cqadd(queue, &waiter.process);
         registers->s = receive ? (void *)&channel : (void *)&payload;
         registers->d = receive ? (void *)&payload : (void *)&channel;
+        waiter_notifications = 0;
         claimed_waiter = &waiter;
         check(!kprotect(direct_channel_transfer, &receive) &&
             strstr(getup()->env->errstr, "fixture channel mover failure"),
             "initiator receives original mover error");
         claimed_waiter = NULL;
-        check(!waiter.channel_claimed && !waiter.lifetime_holds && !(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
+        check(waiter_notifications == 1 && !waiter.channel_claimed && !waiter.lifetime_holds && !(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
             waiter.process.kill && !strcmp(waiter.process.kill, "channel transfer failed") &&
             dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
             "failed direct mover wakes the detached peer once");

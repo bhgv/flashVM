@@ -1342,14 +1342,20 @@ static int acquire_channel_claim(void *argument)
 static void release_channel_claim(Prog *peer, const void *owner)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+    int runnable;
     fvm_port_sync_lock(channel_queue_mutex);
     if (process->channel_claimed != owner)
     {
         abort();
     }
     process->channel_claimed = nil;
+    runnable = process->queued;
     fvm_port_sync_unlock(channel_queue_mutex);
     dvm_runqueue_unpin(peer);
+    if (runnable)
+    {
+        dvm_managed_workers_wake();
+    }
 }
 
 
