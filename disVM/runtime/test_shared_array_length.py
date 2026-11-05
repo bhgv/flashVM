@@ -132,6 +132,14 @@ init() {
     records <-= (23, samples[0]);
     (tag, text) := <-records;
     (nexttag, nexttext) := <-records;
+    messages <-= 19;
+    messages <-= 24;
+    pairs <-= (20, 21);
+    pairs <-= (25, 26);
+    message := <-messages;
+    nextmessage := <-messages;
+    (left, right) := <-pairs;
+    (nextleft, nextright) := <-pairs;
     byteschan <-= byte 7;
     bigchan <-= wide;
     realchan <-= realvalue;
@@ -140,12 +148,9 @@ init() {
         <-realchan != realvalue || <-stringchan != "Ж") {
         raise "typed channel constructor replay";
     }
-    messages <-= 19;
-    pairs <-= (20, 21);
-    message := <-messages;
-    (left, right) := <-pairs;
     if (message != 19 || left != 20 || right != 21 || tag != 22 || text != "Ж" ||
-        nexttag != 23 || nexttext != "-42") {
+        nexttag != 23 || nexttext != "-42" || nextmessage != 24 ||
+        nextleft != 25 || nextright != 26) {
         raise "guarded channel capture changed buffered transfer";
     }
     encoded := array of byte samples[3];
@@ -246,8 +251,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[44]; /* Post-decode PC for each refused capture. */
-    static int replayed[44]; /* One successful replay for each stage. */
+    static Inst *pcs[48]; /* Post-decode PC for each refused capture. */
+    static int replayed[48]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -266,6 +271,36 @@ static int contend_capture(int stage)
     replayed[stage] = 1;
     fprint(1, "PASS guarded capture replay %d\n", stage);
     return 0;
+}
+
+
+static __thread int ring_kind; /* 1 mapped, 2 native scalar, 3 raw record. */
+int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int *, int);
+DVM_CellResult __real_dvm_managed_spans_begin(const void *, size_t, void *, size_t, DVM_CellAccess *);
+
+/* Identify the exact transfer layout before injecting at its range claim. */
+int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destination,
+    Type *type, int *consumed, int opcode)
+{
+    int result;
+    ring_kind = type->np ? 1 : (type->size <= sizeof(void *) ? 2 : 3);
+    result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consumed, opcode);
+    ring_kind = 0;
+    return result;
+}
+
+
+/* Inject BUSY into the first guarded WORD send and receive. */
+DVM_CellResult __wrap_dvm_managed_spans_begin(const void *source, size_t source_size,
+    void *destination, size_t destination_size, DVM_CellAccess *access)
+{
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+    if (CONTROL == 0 && ring_kind == 2 && source_size == sizeof(WORD) &&
+        ((opcode == ISEND && contend_capture(44)) || (opcode == IRECV && contend_capture(45))))
+    {
+        return DVM_CELL_BUSY;
+    }
+    return __real_dvm_managed_spans_begin(source, source_size, destination, destination_size, access);
 }
 
 
@@ -420,7 +455,10 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
     if (CONTROL == 0 && !active && source && destination)
     {
         int opcode = dvm_native_execution()->arithmetic_retry_opcode;
-        if ((opcode == ISEND && contend_capture(42)) || (opcode == IRECV && contend_capture(43)))
+        if ((ring_kind == 1 && ((opcode == ISEND && contend_capture(42)) ||
+                                (opcode == IRECV && contend_capture(43)))) ||
+            (ring_kind == 3 && ((opcode == ISEND && contend_capture(46)) ||
+                                (opcode == IRECV && contend_capture(47)))))
         {
             return DVM_CELL_BUSY;
         }
@@ -925,7 +963,8 @@ def main():
                  'dvm_small_range_access_extend', 'dvm_runtime_array_length_source',
                  'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
                  'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin',
-                 'dvm_runtime_string_view', 'dvm_managed_three_begin', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_string_view', 'dvm_managed_three_begin', 'dvm_managed_spans_begin',
+                 'dvm_runtime_mapped_buffer_transfer', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
@@ -951,7 +990,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(44)):
+                                            for stage in range(48)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

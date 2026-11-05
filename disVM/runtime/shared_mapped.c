@@ -358,7 +358,7 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *t
 }
 
 
-/* [GC:] Copy or consume a live mapped ring slot. Only a top-level buffered
+/* [GC:] Copy or consume a live ring slot. Only a top-level buffered
  * opcode supplies replay_opcode. Return zero if BUSY scheduled a retry.
  * consumed reports ownership transfer even when retirement raises. */
 int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, Type *type,

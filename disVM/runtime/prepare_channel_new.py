@@ -806,7 +806,7 @@ typedef struct ChannelReservation
     int publish_after_move;
     int next_size;
     int next_front;
-    Type *mapped;
+    Type *transaction_type; /* Validated layout for a guarded built-in transfer. */
     int consumed;
     int completed;
     struct ChannelReservation *next;
@@ -895,7 +895,16 @@ static int reserve_channel_buffer(void *argument)
         if (channel->mid.t != buffer.type ||
             (!reservation->receive && !channel_slot_is_empty(&buffer)))
             error(exHeap);
-        reservation->mapped = buffer.type;
+        reservation->transaction_type = buffer.type;
+    }
+    else if (reservation->replay_opcode && dvm_runtime_guarded_copies && !buffer.type->np &&
+        ((channel->mover == movb && buffer.width == sizeof(BYTE)) ||
+         (channel->mover == movw && buffer.width == sizeof(WORD)) ||
+         (channel->mover == movl && buffer.width == sizeof(LONG)) ||
+         (channel->mover == movf && buffer.width == sizeof(REAL)) ||
+         (channel->mover == movm && channel->mid.w == buffer.width)))
+    {
+        reservation->transaction_type = buffer.type;
     }
     if (reservation->receive)
     {
@@ -909,7 +918,7 @@ static int reserve_channel_buffer(void *argument)
     read->slot = buffer.slot;
     reservation->next_size = buffer.size;
     reservation->next_front = buffer.front;
-    reservation->publish_after_move = !buffer.type->np || reservation->mapped != nil;
+    reservation->publish_after_move = !buffer.type->np || reservation->transaction_type != nil;
     if (!reservation->publish_after_move)
     {
         if (reservation->receive)
@@ -946,12 +955,13 @@ static int finish_channel_buffer(void *argument)
 }
 
 
-/* Move mapped ownership out of the ring without retiring the source twice. */
+/* Move a built-in value out of the ring and clear any mapped source owners. */
 static int consume_channel_buffer(void *argument)
 {
     ChannelReservation *reservation = argument;
     reservation->deferred = !dvm_runtime_mapped_buffer_transfer(reservation->read.slot,
-        reservation->read.destination, reservation->mapped, &reservation->consumed,
+        reservation->read.destination, reservation->transaction_type,
+        reservation->transaction_type->np ? &reservation->consumed : NULL,
         reservation->replay_opcode);
     return 1;
 }
@@ -964,7 +974,7 @@ static int read_buffer_owned(Channel *channel, void *destination, int replay_opc
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
-    reservation.completed = reservation.mapped ? kprotect(consume_channel_buffer, &reservation) :
+    reservation.completed = reservation.transaction_type ? kprotect(consume_channel_buffer, &reservation) :
         kprotect(channelread, &reservation.read);
     dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
     destroy(reservation.read.array);
@@ -983,10 +993,10 @@ static int write_channel_buffer(void *argument)
     DVM_R.s = read->destination;
     DVM_R.m = &channel->mid;
     DVM_R.d = read->slot;
-    if (reservation->mapped)
+    if (reservation->transaction_type)
     {
         reservation->deferred = !dvm_runtime_mapped_buffer_transfer(read->destination,
-            read->slot, reservation->mapped, NULL, reservation->replay_opcode);
+            read->slot, reservation->transaction_type, NULL, reservation->replay_opcode);
     }
     else
     {
