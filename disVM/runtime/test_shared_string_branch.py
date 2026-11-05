@@ -43,6 +43,14 @@ init() {
     slice := changed[-2:-1];
     if (snapshot != "Жz" || changed != "Жza" || slice != "za")
         raise "guarded string concatenation and slice";
+    numeric := len changed + 120;
+    unique := string numeric;
+    unique[0] = '4';
+    unique = unique[1:3];
+    unique = unique + ascii;
+    if (unique != "23a") {
+        raise "in-place character and slice publication";
+    }
     score := 0;
     for (i := 0; i < 4; i++) {
         for (j := 0; j < 4; j++) {
@@ -175,6 +183,27 @@ static void coverage(const void *span, size_t size, int add)
 
 
 /* Observe actual initial admission; control1 forges success before any read. */
+/* Refuse a publication stage once and require the same decoded PC on replay. */
+static int contend_edit(int stage)
+{
+    static Inst *pcs[6]; /* One saved PC per fresh or reuse route. */
+    static int observed[6]; /* Marks a route that completed its replay. */
+    if (observed[stage])
+    {
+        return 0;
+    }
+    if (!pcs[stage])
+    {
+        pcs[stage] = DVM_R.PC;
+        return 1;
+    }
+    check(pcs[stage] == DVM_R.PC, "string publication retries the same PC");
+    observed[stage] = 1;
+    fprint(1, "PASS string publication replay %d\n", stage);
+    return 0;
+}
+
+
 DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t an,const void *b,size_t bn,
     void *c,size_t cn,DVM_RangeAccess *access)
 {
@@ -198,6 +227,12 @@ DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t an,const void
     static int replayed; /* The selected branch reached admission again. */
     int opcode = dvm_native_execution()->arithmetic_retry_opcode;
 
+    if (CONTROL == 0 && !active &&
+        ((opcode == IINSC && contend_edit(3)) || (opcode == ISLICEC && contend_edit(4)) ||
+         (opcode == IADDC && contend_edit(5))))
+    {
+        return DVM_CELL_BUSY;
+    }
     if (CONTROL == 0 && !active && !replayed &&
         (opcode == IBEQC || opcode == IBNEC || opcode == IBLTC || opcode == IBLEC || opcode == IBGTC || opcode == IBGEC))
     {
@@ -367,6 +402,12 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t bytes,
     int opcode = dvm_native_execution()->arithmetic_retry_opcode;
     uintptr_t next = (uintptr_t)DVM_R.PC;
 
+    if (CONTROL == 0 && !active && !source && !bytes && destination &&
+        ((opcode == IINSC && contend_edit(0)) || (opcode == IADDC && contend_edit(1)) ||
+         (opcode == ISLICEC && contend_edit(2))))
+    {
+        return DVM_CELL_BUSY;
+    }
     if (CONTROL == 0 && !active && !replayed && bytes == sizeof(Inst *) &&
         !destination && !output && next >= sizeof(Inst) &&
         (uintptr_t)source == next - sizeof(Inst) + offsetof(Inst, d) &&
@@ -784,7 +825,9 @@ def main():
                                 'PASS string index header retry' not in output or
                                 'PASS string index character retry' not in output or
                                 any(f'PASS scheduled string mutation replay {stage}' not in output
-                                    for stage in range(3))):
+                                    for stage in range(3)) or
+                                any(f'PASS string publication replay {stage}' not in output
+                                    for stage in range(6))):
                             raise RuntimeError('leased string coverage or bounded fallback missed: '+output)
                     if variant == 0 and 'PASS scheduled input retry' not in output:
                         raise RuntimeError('input retry missed: '+output)

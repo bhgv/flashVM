@@ -324,6 +324,143 @@ def adapt_byte_string_publication(code):
     return code
 
 
+def adapt_string_edit_publication(code):
+    """Guard fresh string publication and in-place character and slice edits."""
+    for opcode in ('INSC', 'SLICEC', 'ADDC'):
+        start = code.index('OP('+opcode.lower()+')')
+        end = code.index('\n}', start)
+        body = code[start:end]
+        publish = '\tmemmove(slot, &result, sizeof(result));'
+        guarded = f"""    if(dvm_runtime_guarded_copies) {{
+        DVM_RangeAccess access = {{0}};
+        DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, slot, sizeof(result), &access);
+        String *observed;
+        if(claim == DVM_CELL_ACQUIRED) {{
+            memmove(&observed, slot, sizeof(observed));
+            if(observed == old) {{
+                memmove(slot, &result, sizeof(result));
+            }} else {{
+                claim = DVM_CELL_BUSY;
+            }}
+            if(!dvm_range_access_end(&access)) {{
+                abort();
+            }}
+        }}
+        if(claim != DVM_CELL_ACQUIRED) {{
+            if(result != old) {{
+                destroy(result);
+            }}
+            if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+                return;
+            }}
+            error(exHeap);
+        }}
+    }} else {{
+{publish}
+    }}"""
+        body = relative_replace(body, publish, guarded, 1)
+        if opcode != 'ADDC':
+            if opcode == 'INSC':
+                entry = '\t\tif(wide)\n\t\t\told->Srune[index] = rune;'
+                payload = '(void *)(address+bytes-width)'
+                size = 'width'
+                prefix = '    size_t width = wide ? sizeof(Rune) : 1;\n'
+            else:
+                entry = '\t\t\tif(old->len < 0){\n\t\t\t\tif(start != 0)'
+                payload = 'start != 0 ? (void *)address : NULL'
+                size = 'start != 0 ? (size_t)bytes : 0'
+                prefix = ''
+            reuse = prefix+f"""    DVM_RangeAccess edit = {{0}};
+    if(dvm_runtime_guarded_copies) {{
+        DVM_CellResult claim = dvm_managed_three_begin({payload}, {size},
+            &old->len, sizeof(old->len), slot, sizeof(old), &edit);
+        String *observed;
+        if(claim == DVM_CELL_ACQUIRED) {{
+            memmove(&observed, slot, sizeof(observed));
+            if(observed != old) {{
+                if(!dvm_range_access_end(&edit)) {{
+                    abort();
+                }}
+                claim = DVM_CELL_BUSY;
+            }}
+        }}
+        if(claim != DVM_CELL_ACQUIRED) {{
+            if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+                return;
+            }}
+            error(exHeap);
+        }}
+    }}
+"""
+            release = """    if(dvm_runtime_guarded_copies && !dvm_range_access_end(&edit)) {
+        abort();
+    }
+"""
+            pos = body.index(entry)
+            done = body.index('return;', pos)
+            line = body.rindex('\n', pos, done)+1
+            body = body[:pos]+reuse+body[pos:line]+release+body[line:]
+        code = code[:start]+body+code[end:]
+    return code
+
+
+def adapt_string_append_reuse(code):
+    """Keep the public addstring helper and guard opcode-only in-place append."""
+    start = code.index('String*\naddstring(')
+    end = code.index('\n}', start)+2
+    body = code[start:end]
+    body = relative_replace(body, 'String*\naddstring(String *s1, String *s2, int append)',
+        'static String*\ndvm_string_append(String *s1, String *s2, int append, void *slot)', 1)
+    body = relative_replace(body, '\tRune *r;', '\tRune *r;\n    DVM_RangeAccess access = {0};\n    int claimed = 0;', 1)
+    anchor = '\n\tif(s1->len < 0) {'
+    claim = """
+    if(slot && append && l <= s1->max && !(s1->len >= 0 && s2->len < 0)) {
+        size_t width = s1->len < 0 ? sizeof(Rune) : 1;
+        DVM_CellResult result = dvm_managed_three_begin((void *)address, (size_t)l*width,
+            &s1->len, sizeof(s1->len), slot, sizeof(s1), &access);
+        String *observed;
+        if(result == DVM_CELL_ACQUIRED) {
+            memmove(&observed, slot, sizeof(observed));
+            if(observed != s1) {
+                if(!dvm_range_access_end(&access)) {
+                    abort();
+                }
+                result = DVM_CELL_BUSY;
+            }
+        }
+        if(result != DVM_CELL_ACQUIRED) {
+            if(result == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IADDC)) {
+                return nil;
+            }
+            error(exHeap);
+        }
+        claimed = 1;
+    }
+"""
+    body = relative_replace(body, anchor, claim+anchor, 1)
+    for length, tabs in (('-l', '\t\t'), ('l', '\t')):
+        line = 'ns->len = '+length+';'
+        tail = '\n\n'+tabs+'return ns;'
+        body = relative_replace(body, line+tail, line+"""
+        if(claimed && !dvm_range_access_end(&access)) {
+            abort();
+        }"""+tail, 1)
+    wrapper = """
+
+String*
+addstring(String *s1, String *s2, int append)
+{
+    return dvm_string_append(s1, s2, append, NULL);
+}"""
+    code = code[:start]+body+wrapper+code[end:]
+    call = 'result = addstring(left, right, DVM_R.m == DVM_R.d);'
+    return relative_replace(code, call, """result = dvm_string_append(left, right, DVM_R.m == DVM_R.d,
+        dvm_runtime_guarded_copies ? slot : NULL);
+    if(result == nil) {
+        return;
+    }""", 1)
+
+
 def adapt_string_view(code):
     """Share the pinned UTF-8 view body between throwing and guarded callers."""
     start = code.index('char*\nstring2c(String *s)')
@@ -621,6 +758,8 @@ def main():
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
             code = adapt_string_operand_captures(code)
+            code = adapt_string_edit_publication(code)
+            code = adapt_string_append_reuse(code)
             code = adapt_numeric_string_publication(code)
             code = adapt_byte_string_publication(code)
             code = '#include <fenv.h>\n' + code
