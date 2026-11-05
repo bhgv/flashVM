@@ -71,7 +71,6 @@ void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
 DVM_CellResult __real_dvm_managed_three_begin(const void *,size_t,const void *,size_t,void *,size_t,DVM_RangeAccess *);
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *,size_t,void *,size_t,DVM_RangeAccess *);
 int __real_dvm_range_access_end(DVM_RangeAccess *);
-void __real_dvm_runtime_real_branch_capture(const void *,const void *,void *);
 void __real_dvm_runtime_real_arithmetic_value(int,const void *,void *);
 void __real_dvm_runtime_byte_transfer(void *,const void *,size_t);
 const char *__real_dvm_runtime_real_arithmetic(int,const void *,const void *,void *);
@@ -182,17 +181,6 @@ int __wrap_dvm_range_access_end(DVM_RangeAccess *access)
     return result;
 }
 
-
-/* Real snapshot requires the complete coherent input union. */
-void __wrap_dvm_runtime_real_branch_capture(const void *a,const void *b,void *pair)
-{
-    if (active)
-    {
-        check(phase == 1,"capture phase");
-        coverage();
-    }
-    __real_dvm_runtime_real_branch_capture(a,b,pair);
-}
 
 
 /* FP evaluation must happen after unlock, even for aliased input and destination. */
@@ -546,7 +534,7 @@ def main():
     """Relink matching actual objects; exercise C/JIT guests and both collector polls."""
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
     symbols = ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin',
-               'dvm_range_access_end','dvm_runtime_real_branch_capture','dvm_runtime_real_arithmetic_value',
+               'dvm_range_access_end','dvm_runtime_real_arithmetic_value',
                'dvm_runtime_byte_transfer','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual REAL arithmetic ') as directory:
         work = Path(directory)
@@ -571,8 +559,8 @@ def main():
         if '--positive-only' not in sys.argv:
             original = (Path(__file__).resolve().parent/'shared_real_arithmetic.c').read_text()
             controls = [
-                ('dvm_managed_three_begin(first, sizeof(REAL), second_width ? second : NULL, second_width, NULL, 0,\n        &access)', 'DVM_CELL_ACQUIRED', 'capture phase'),
-                ('dvm_range_access_end(&access)', '1', 'unlocked FP'),
+                ('dvm_runtime_bytes_snapshot_pair(first, sizeof(REAL), pair,\n        second, second_width, pair + sizeof(REAL))',
+                 'NULL', 'unlocked FP'),
                 ('return dvm_runtime_bytes_publish(result, output, sizeof(REAL));',
                  'dvm_runtime_byte_transfer(output, result, sizeof(REAL)); return NULL;', 'store phase'),
                 ('return dvm_runtime_bytes_publish(result, output, sizeof(REAL));',
@@ -588,7 +576,7 @@ def main():
                     env=dict(os.environ,TMPDIR=str(work)))
                 if run.returncode != 10 or 'FAIL real arithmetic: '+marker not in run.stdout+run.stderr:
                     raise RuntimeError('REAL control missed: '+run.stdout+run.stderr)
-    print('PASS actual REAL arithmetic: C/JIT guest,both polls,8820 overlap/boundary cases; four semantic controls' if '--positive-only' not in sys.argv else 'PASS actual REAL arithmetic positives')
+    print('PASS actual REAL arithmetic: C/JIT guest,both polls,8820 overlap/boundary cases; three semantic controls' if '--positive-only' not in sys.argv else 'PASS actual REAL arithmetic positives')
 
 
 if __name__ == '__main__':

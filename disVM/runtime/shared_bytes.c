@@ -104,6 +104,36 @@ const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_
 }
 
 
+/* Capture two borrowed source spans under one guard union. The output spans
+ * are private to the caller. A zero-width second operand is ignored. */
+const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size,
+    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot)
+{
+    DVM_RangeAccess access = {0};
+
+    if (!first || first == H || !first_size || (uintptr_t)first > UINTPTR_MAX - first_size ||
+        (second_size && (!second || second == H || (uintptr_t)second > UINTPTR_MAX - second_size)))
+    {
+        return exBounds;
+    }
+    if (dvm_managed_three_begin(first, first_size, second_size ? second : NULL,
+        second_size, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(first_snapshot, first, first_size);
+    if (second_size)
+    {
+        memmove(second_snapshot, second, second_size);
+    }
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}
+
+
 /* Publish caller-private bytes under the destination guard only. */
 const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size)
 {

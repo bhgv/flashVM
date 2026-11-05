@@ -7,6 +7,7 @@
 #include "shared_array_length.h"
 #include "array_length_value.h"
 #include "shared_access.h"
+#include "shared_bytes.h"
 #include "managed_owner.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -74,19 +75,10 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
 const char *dvm_runtime_array_index_operands(const void *source, const void *index,
     void *array_snapshot, void *index_snapshot)
 {
-    DVM_RangeAccess access = {0};
-
-    if (dvm_runtime_shared_mode() != 2 ||
-        dvm_managed_three_begin(source, sizeof(Array *), index, sizeof(WORD),
-            NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    if (dvm_runtime_shared_mode() != 2)
     {
         return exHeap;
     }
-    memmove(array_snapshot, source, sizeof(Array *));
-    memmove(index_snapshot, index, sizeof(WORD));
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
-    return NULL;
+    return dvm_runtime_bytes_snapshot_pair(source, sizeof(Array *), array_snapshot,
+        index, sizeof(WORD), index_snapshot);
 }

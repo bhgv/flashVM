@@ -7,7 +7,6 @@
 #include "raise.h"
 #include "shared_real_arithmetic.h"
 #include "real_arithmetic_value.h"
-#include "real_branch_value.h"
 #include "shared_access.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
@@ -24,7 +23,7 @@
 const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     const void *second, void *output)
 {
-    DVM_RangeAccess access = {0};
+    const char *problem;
     unsigned char pair[2*sizeof(REAL)];
     unsigned char result[sizeof(REAL)];
     size_t second_width = opcode == INEGF ? 0 : sizeof(REAL);
@@ -39,22 +38,11 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(first, sizeof(REAL), second_width ? second : NULL, second_width, NULL, 0,
-        &access) != DVM_CELL_ACQUIRED)
+    problem = dvm_runtime_bytes_snapshot_pair(first, sizeof(REAL), pair,
+        second, second_width, pair + sizeof(REAL));
+    if (problem)
     {
-        return exHeap;
-    }
-    if (second_width)
-    {
-        dvm_runtime_real_branch_capture(first, second, pair);
-    }
-    else
-    {
-        memmove(pair, first, sizeof(REAL));
-    }
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
+        return problem;
     }
     dvm_runtime_real_arithmetic_value(opcode, pair, result);
     return dvm_runtime_bytes_publish(result, output, sizeof(REAL));
@@ -73,7 +61,7 @@ static int valid_scaled_slot(const void *slot, size_t width)
 const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const void *second,
     void *output, void (*evaluate)(const void *, const void *, void *))
 {
-    DVM_RangeAccess access = {0};
+    const char *problem;
     union
     {
         WORD word;
@@ -127,19 +115,11 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(first, first_width, scale_only ? NULL : second,
-        scale_only ? 0 : second_width, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    problem = dvm_runtime_bytes_snapshot_pair(first, first_width, &saved_first,
+        second, scale_only ? 0 : second_width, &saved_second);
+    if (problem)
     {
-        return exHeap;
-    }
-    memmove(&saved_first, first, first_width);
-    if (!scale_only)
-    {
-        memmove(&saved_second, second, second_width);
-    }
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
+        return problem;
     }
     if (scale_only)
     {
@@ -151,7 +131,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
         {
             return exBounds;
         }
-        const char *problem = dvm_runtime_bytes_snapshot(second, &saved_second, second_width);
+        problem = dvm_runtime_bytes_snapshot(second, &saved_second, second_width);
         if (problem)
         {
             return problem;
@@ -171,7 +151,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
 const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     const void *second, void *output, void (*evaluate)(WORD, const void *, const void *, void *))
 {
-    DVM_RangeAccess access = {0};
+    const char *problem;
     WORD left, right, result;
 
     if (dvm_runtime_shared_mode() != 2 || (opcode != IMULX && opcode != IDIVX))
@@ -184,7 +164,7 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
         {
             return exBounds;
         }
-        const char *problem = dvm_runtime_bytes_snapshot(second, &right, sizeof(right));
+        problem = dvm_runtime_bytes_snapshot(second, &right, sizeof(right));
         if (problem)
         {
             return problem;
@@ -203,19 +183,11 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(first, sizeof(left), opcode == IMULX ? second : NULL,
-        opcode == IMULX ? sizeof(right) : 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    problem = dvm_runtime_bytes_snapshot_pair(first, sizeof(left), &left,
+        second, opcode == IMULX ? sizeof(right) : 0, &right);
+    if (problem)
     {
-        return exHeap;
-    }
-    memmove(&left, first, sizeof(left));
-    if (opcode == IMULX)
-    {
-        memmove(&right, second, sizeof(right));
-    }
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
+        return problem;
     }
     evaluate(scale, &left, &right, &result);
     return dvm_runtime_bytes_publish(&result, output, sizeof(result));
