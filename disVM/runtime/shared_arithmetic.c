@@ -58,9 +58,9 @@ static Type *current_frame_type(void)
 
 /* Check a borrowed scalar span against the frame extent and pointer map.
  * The published process stack retains the frame throughout its lease. */
-static int frame_scalar(const void *cell, const Type *type, size_t width)
+static int scalar_span(const void *cell, const Type *type, size_t width,
+    uintptr_t base, size_t minimum)
 {
-    uintptr_t base = (uintptr_t)DVM_R.FP;
     uintptr_t address = (uintptr_t)cell;
     size_t offset, slot, last;
 
@@ -69,7 +69,7 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
         return 0;
     }
     offset = address - base;
-    if (offset < NREG * IBY2WD || offset > (size_t)type->size - width)
+    if (offset < minimum || offset > (size_t)type->size - width)
     {
         return 0;
     }
@@ -82,6 +82,12 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
         }
     }
     return 1;
+}
+
+
+static int frame_scalar(const void *cell, const Type *type, size_t width)
+{
+    return scalar_span(cell, type, width, (uintptr_t)DVM_R.FP, NREG * IBY2WD);
 }
 
 
@@ -104,6 +110,31 @@ static const Type *module_data_type(const REG *registers)
     }
     return type;
 }
+
+/* Verify nonempty byte spans in the active frame or the rooted module data. */
+int dvm_runtime_rooted_scalar(const void *cell, size_t size)
+{
+    const Type *type = current_frame_type();
+    if (!size)
+    {
+        return 0;
+    }
+    if (type && frame_scalar(cell, type, size))
+    {
+        return 1;
+    }
+    type = module_data_type(&DVM_R);
+    return type && scalar_span(cell, type, size, (uintptr_t)DVM_R.MP, 0);
+}
+
+
+/* A raw move count must be independent of module changes across suspension. */
+int dvm_runtime_private_copy_count(const void *cell)
+{
+    const Type *type = current_frame_type();
+    return cell == &DVM_R.t || (type && frame_scalar(cell, type, sizeof(WORD)));
+}
+
 
 static int mapped_pointer(const void *cell, const void *base, const Type *type, size_t minimum)
 {

@@ -5,7 +5,9 @@
 #include "disvm/cell_access.h"
 
 
-extern int dvm_runtime_guarded_copies; /* Startup-only immutable selection before loading/JIT publication. */
+extern int dvm_runtime_guarded_copies;
+extern int dvm_runtime_parallel_byte_copies;
+extern unsigned long dvm_runtime_parallel_byte_commits; /* Startup-only immutable selection before loading/JIT publication. */
 
 
 /* [GC:] Copy caller-owned mapped source/destination bytes, preserving memmove

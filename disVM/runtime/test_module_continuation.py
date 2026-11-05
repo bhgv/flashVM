@@ -10,7 +10,7 @@ import time
 
 
 def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False):
-    shared = ["--parallel-channel-buffer"] if shared_channels else []
+    shared = ["--parallel-channel-buffer", "--parallel-byte-copies"] if shared_channels else []
     command = [str(runtime), mode, "--stats", "--gc-worker", "--managed-workers", "2",
                "--guarded-copies", *shared, "--quantum", "65536", *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
@@ -46,6 +46,7 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     alts = re.search(r"parallel_channel_alts=(\d+)", text)
     rendezvous = re.search(r"parallel_rendezvous=(\d+)", text)
     raw = re.search(r"parallel_channel_raw=(\d+)", text)
+    byte_moves = re.search(r"parallel_byte_commits=(\d+)", text)
     native = re.search(r"instructions=\d+ native=(\d+)", text)
     if (child.returncode or outcome not in text or "PASS Dis application completed" not in text
             or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
@@ -53,7 +54,8 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
             or (shared_channels and (not channel or min(map(int, channel.groups())) == 0
                                          or not alts or int(alts[1]) != 2
                                          or not rendezvous or int(rendezvous[1]) != 2
-                                         or not raw or int(raw[1]) != 2))
+                                         or not raw or int(raw[1]) != 2
+                                         or not byte_moves or int(byte_moves[1]) < 2))
             or not native or (int(native[1]) > 0) != (mode == "--jit")):
         raise RuntimeError(text)
 

@@ -1,6 +1,7 @@
 /* Hosted three-span integer arithmetic, no managed ownership transfer. */
 #ifndef DVM_SHARED_ARITHMETIC_H
 #define DVM_SHARED_ARITHMETIC_H
+#include <stddef.h>
 
 extern int dvm_runtime_parallel_add; /* Startup-only frame-local integer experiment. */
 
@@ -32,6 +33,8 @@ int dvm_runtime_rooted_record(const struct REG *registers, const void *cell,
 int dvm_runtime_frame_record_for(const struct REG *registers, const void *cell,
     const struct Type *record);
 int dvm_runtime_frame_record(const void *cell, const struct Type *record);
+int dvm_runtime_rooted_scalar(const void *cell, size_t size);
+int dvm_runtime_private_copy_count(const void *cell);
 int dvm_runtime_module_pointer(const void *cell);
 int dvm_runtime_module_record(const void *cell, const struct Type *record);
 int dvm_runtime_frame_pointer(const void *cell);

@@ -8,9 +8,16 @@
 #include "shared_bytes.h"
 #include "byte_transfer.h"
 #include "managed_owner.h"
+#include "shared_arithmetic.h"
+#include "runtime_gc.h"
+#include "disvm/native_owner.h"
+#include "disvm/native_process.h"
+#include "isa.h"
 #include <stdint.h>
 #include <stdlib.h>
 
+int dvm_runtime_parallel_byte_copies; /* Startup-only shared scalar/raw move flag. */
+unsigned long dvm_runtime_parallel_byte_commits; /* Counted after exclusive reentry. */
 int dvm_runtime_guarded_copies; /* CLI startup publication; never changed while workers/code exist. */
 
 
@@ -89,13 +96,63 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
 }
 
 
-/* Retry a decoded copy only if the union was busy before any byte changed.
- * The caller returns to dispatch when this function returns NULL. */
+/* Copy the validated source and destination while restricted shared admission
+ * excludes the collector and the range guards exclude conflicting accesses. */
+static DVM_CellResult shared_copy(DVM_CellDomain *domain, const void *source,
+    void *destination, size_t size)
+{
+    DVM_RangeAccess access = {0};
+    DVM_CellResult claim = dvm_range_access_begin(domain, source, size, destination, size, &access);
+    if (claim == DVM_CELL_ACQUIRED)
+    {
+        dvm_runtime_byte_transfer(destination, source, size);
+        if (!dvm_range_access_end(&access))
+        {
+            abort();
+        }
+    }
+    return claim;
+}
+
+
+/* Retry only a prepublication BUSY. Exhausted shared retries fall back to the
+ * ordinary exclusive path. Both spans are borrowed for the active instruction. */
 const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *destination, size_t size)
 {
     DVM_CellResult claim;
-    const char *problem = copy_attempt(source, destination, size, &claim);
-
+    const char *problem;
+    if (dvm_runtime_parallel_byte_copies && dvm_runtime_shared_mode() == 2 && up->prog &&
+        dvm_native_execution()->arithmetic_retry_opcode == opcode &&
+        (opcode == IMOVB || opcode == IMOVW || opcode == IMOVL || opcode == IMOVF ||
+         (opcode == IMOVM && dvm_runtime_private_copy_count(DVM_R.m))) &&
+        dvm_runtime_rooted_scalar(source, size) && dvm_runtime_rooted_scalar(destination, size))
+    {
+        DVM_CellDomain *domain = dvm_managed_cell_domain();
+        if (domain && dvm_runtime_gc_native_try_leave() > 0)
+        {
+            DVM_HeapOwner *owner = dvm_native_owner_current();
+            if (!dvm_native_owner_enter_shared(owner))
+            {
+                abort();
+            }
+            claim = shared_copy(domain, source, destination, size);
+            if (!dvm_native_owner_leave_shared(owner))
+            {
+                abort();
+            }
+            dvm_runtime_gc_native_enter(1);
+            if (claim == DVM_CELL_ACQUIRED)
+            {
+                dvm_runtime_parallel_byte_commits++;
+                return NULL;
+            }
+            if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode))
+            {
+                return NULL;
+            }
+        }
+    }
+    problem = copy_attempt(source, destination, size, &claim);
     return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
 }
 

@@ -7,6 +7,7 @@ sys: Sys;
 mailbox: (Provider, array of int);
 returnbox: (Provider, array of int);
 outbox: (Provider, array of int);
+module_code: byte;
 
 peer(inbox: chan of (Provider, array of int), reply: chan of array of int)
 {
@@ -91,9 +92,11 @@ init()
         raise "rendezvous lost the transferred owners";
     raw := chan[1] of byte;
     code := byte changed[0];
+    module_code = code;
     raw <-= code;
     code = <-raw;
-    if (code != byte 314159)
+    module_code = code;
+    if (module_code != byte 314159)
         raise "raw buffered channel lost its byte";
     provider = nil;
 }

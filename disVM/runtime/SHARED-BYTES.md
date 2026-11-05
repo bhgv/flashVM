@@ -133,3 +133,11 @@ includes exact checkout/SDK commands. See [MOVP](SHARED-POINTER.md),
 [canonical object guards](GUARD-REGISTRY.md) and [threading](THREADING.md).
 
 Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-COSTS.md).
+
+The hosted `--parallel-byte-copies` mode requires guarded copies and multiple
+managed workers. It admits `MOVB`, `MOVW`, `MOVL`, `MOVF` and `MOVM` when both
+spans are scalar regions of the rooted frame or current module data. The
+`MOVM` count must be an immediate or a private frame cell. The collector
+waits for the shared interval, and the range union protects overlapping
+spans. BUSY can replay before publication. After the replay budget is
+exhausted, the instruction completes under the ordinary exclusive guard.
