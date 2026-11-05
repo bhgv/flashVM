@@ -18,6 +18,12 @@ extern void cvtfl(void); /* Guarded FP conversion. */
 extern void addf(void); /* Guarded REAL addition. */
 extern void subf(void); /* Guarded REAL subtraction. */
 extern void mulf(void); /* Guarded REAL multiplication. */
+extern void mulx0(void);
+extern void divx0(void);
+extern void cvtxx0(void);
+extern void mulx1(void);
+extern void divx1(void);
+extern void cvtxx1(void);
 extern void mulx(void);
 extern void divx(void);
 extern void cvtfx(void);
@@ -153,6 +159,24 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IDIVF:
         divf();
+        break;
+    case IMULX0:
+        mulx0();
+        break;
+    case IDIVX0:
+        divx0();
+        break;
+    case ICVTXX0:
+        cvtxx0();
+        break;
+    case IMULX1:
+        mulx1();
+        break;
+    case IDIVX1:
+        divx1();
+        break;
+    case ICVTXX1:
+        cvtxx1();
         break;
     case IMULX:
         mulx();

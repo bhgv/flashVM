@@ -407,6 +407,25 @@ static void fixed_products(void)
         !strcmp(getup()->env->errstr, exZdiv) &&
         !dvm_native_context_object_count(dvm_native_context_current()),
         "zero divisor wins before invalid scale and inaccessible dividend");
+    {
+        const int variants[] = {IMULX0, IDIVX0, ICVTXX0, IMULX1, IDIVX1, ICVTXX1};
+        const WORD expected[] = {9, 4, 1, 9, 4, 1};
+        WORD coefficient = 2;
+        unsigned int index;
+
+        scale = 0;
+        memmove(frame + (NREG+2)*IBY2WD, &scale, sizeof(scale));
+        memmove(frame + NREG*IBY2WD, &coefficient, sizeof(coefficient));
+        for (index = 0; index < sizeof(variants)/sizeof(variants[0]); index++)
+        {
+            left = index % 3 == 2 ? 0 : 6;
+            right = 3;
+            DVM_R.m = DVM_R.d = &left;
+            DVM_R.s = &right;
+            check(dvm_runtime_bytes_fast(&DVM_R, variants[index]) && left == expected[index],
+                "fixed variant preserves the original result with aliased output");
+        }
+    }
     DVM_R = saved;
 }
 

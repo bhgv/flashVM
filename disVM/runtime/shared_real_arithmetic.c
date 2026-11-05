@@ -90,6 +90,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     } saved_first, saved_second, result;
     size_t first_width, second_width, output_width;
     int invalid_second, invalid_output, scale_only;
+    int fixed_variant = 0;
 
     if (dvm_runtime_shared_mode() != 2)
     {
@@ -98,6 +99,15 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     second_width = sizeof(WORD);
     switch (opcode)
     {
+    case IMULX0:
+    case IDIVX0:
+    case ICVTXX0:
+    case IMULX1:
+    case IDIVX1:
+    case ICVTXX1:
+        fixed_variant = 1;
+        first_width = output_width = sizeof(WORD);
+        break;
     case IEXPW:
     case ICVTXX:
         first_width = output_width = sizeof(WORD);
@@ -159,7 +169,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
             abort();
         }
     }
-    evaluate(&saved_first, &saved_second, &result);
+    evaluate(&saved_first, &saved_second, fixed_variant && invalid_output ? NULL : &result);
     if (invalid_output || invalid_second)
     {
         return exBounds;
