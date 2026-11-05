@@ -79,9 +79,11 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
 /* Snapshot a borrowed shared span into caller-private storage. The caller
  * validates the lifetime of both spans. Return a static diagnostic only
  * after releasing the source guard. */
-const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_t size)
+const char *dvm_runtime_bytes_snapshot_attempt(const void *source, void *snapshot, size_t size, DVM_CellResult *claim)
 {
     DVM_RangeAccess access = {0};
+
+    *claim = DVM_CELL_REFUSED;
 
     if (!size)
     {
@@ -91,7 +93,8 @@ const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(source, size, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_ranges_begin(source, size, NULL, 0, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -103,13 +106,25 @@ const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_
     return NULL;
 }
 
+/* Capture borrowed input into private storage with the legacy diagnostic.
+ * Returns after guard release or admission failure. */
+const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_t size)
+{
+    DVM_CellResult claim;
+
+    return dvm_runtime_bytes_snapshot_attempt(source, snapshot, size, &claim);
+}
+
+
 
 /* Capture two borrowed pointer-width-or-smaller source spans under one guard union. The output spans
  * are private to the caller. A zero-width second operand is ignored. */
-const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size,
-    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot)
+const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t first_size,
+    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot, DVM_CellResult *claim)
 {
     DVM_TripleAccess access = {0};
+
+    *claim = DVM_CELL_REFUSED;
 
     if (!first || first == H || !first_size || first_size > sizeof(void *) || (uintptr_t)first > UINTPTR_MAX - first_size ||
         (second_size && (!second || second == H || second_size > sizeof(void *) || (uintptr_t)second > UINTPTR_MAX - second_size)))
@@ -117,8 +132,9 @@ const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size
         return exBounds;
     }
     /* Compact claims require nonempty spans. Repeated spans share one claim. */
-    if (dvm_managed_small_three_begin(first, first_size, second_size ? second : first,
-        second_size ? second_size : first_size, (void *)first, first_size, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_small_three_begin(first, first_size, second_size ? second : first,
+        second_size ? second_size : first_size, (void *)first, first_size, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -133,6 +149,17 @@ const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size
     }
     return NULL;
 }
+
+/* Capture borrowed input into private storage with the legacy diagnostic.
+ * Returns after guard release or admission failure. */
+const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size,
+    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot)
+{
+    DVM_CellResult claim;
+
+    return dvm_runtime_bytes_snapshot_pair_attempt(first, first_size, first_snapshot, second, second_size, second_snapshot, &claim);
+}
+
 
 
 /* Publish caller-private bytes under the destination guard only. */

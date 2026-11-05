@@ -2,6 +2,7 @@
 #ifndef DVM_SHARED_BYTES_H
 #define DVM_SHARED_BYTES_H
 #include <stddef.h>
+#include "disvm/cell_access.h"
 
 
 extern int dvm_runtime_guarded_copies; /* Startup-only immutable selection before loading/JIT publication. */
@@ -26,4 +27,13 @@ const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size
 /* Publish size bytes from caller-private storage into a live mapped destination.
  * Zero size ignores both addresses. Return a static error or NULL after unlock. */
 const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size);
+
+
+/* Capture variants report native admission through required private claim
+ * storage. BUSY guarantees no source read or output change. */
+const char *dvm_runtime_bytes_snapshot_attempt(const void *source, void *snapshot,
+    size_t size, DVM_CellResult *claim);
+const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t first_size,
+    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot,
+    DVM_CellResult *claim);
 #endif

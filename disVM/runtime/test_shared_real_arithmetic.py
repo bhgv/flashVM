@@ -42,6 +42,7 @@ WRAPPER = r'''
 #include "kernel.h"
 #include "isa.h"
 #include "interp.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "bytes_fast.h"
 #include "shared_bytes.h"
@@ -125,6 +126,22 @@ static void coverage(void)
 DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a,size_t n,const void *b,size_t m,void *c,size_t z,DVM_TripleAccess *access)
 {
     DVM_CellResult result;
+    static Inst *retry_pc; /* Decoded PC of the selected guest FP instruction. */
+    static int replayed; /* One actual guest instruction reached admission again. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !active && !replayed && (opcode == IADDF || opcode == ISUBF || opcode == IMULF || opcode == IDIVF || opcode == INEGF))
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(DVM_R.PC == retry_pc, "same FP instruction replays before evaluation");
+        replayed = 1;
+        print("PASS scheduled FP input retry\n");
+    }
+
     if (active && refusal == 1)
     {
         return DVM_CELL_BUSY;
@@ -570,12 +587,14 @@ def main():
                 output = run.stdout+run.stderr
                 if run.returncode or 'PASS actual REAL arithmetic: 8820 ' not in output or 'PASS REAL arithmetic5' not in output:
                     raise RuntimeError('REAL arithmetic failed: '+output)
+                if 'PASS scheduled FP input retry' not in output:
+                    raise RuntimeError('FP input retry missed: '+output)
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                     raise RuntimeError(output)
         if '--positive-only' not in sys.argv:
             original = (Path(__file__).resolve().parent/'shared_real_arithmetic.c').read_text()
             controls = [
-                ('dvm_runtime_bytes_snapshot_pair(first, sizeof(REAL), pair,\n        second, second_width, pair + sizeof(REAL))',
+                ('dvm_runtime_bytes_snapshot_pair_attempt(first, sizeof(REAL), pair,\n        second, second_width, pair + sizeof(REAL), &claim)',
                  'NULL', 'unlocked FP'),
                 ('return dvm_runtime_bytes_publish(result, output, sizeof(REAL));',
                  'dvm_runtime_byte_transfer(output, result, sizeof(REAL)); return NULL;', 'store phase'),

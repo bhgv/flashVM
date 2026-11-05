@@ -24,6 +24,7 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     const void *second, void *output)
 {
     const char *problem;
+    DVM_CellResult claim;
     unsigned char pair[2*sizeof(REAL)];
     unsigned char result[sizeof(REAL)];
     size_t second_width = opcode == INEGF ? 0 : sizeof(REAL);
@@ -38,11 +39,11 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     {
         return exBounds;
     }
-    problem = dvm_runtime_bytes_snapshot_pair(first, sizeof(REAL), pair,
-        second, second_width, pair + sizeof(REAL));
+    problem = dvm_runtime_bytes_snapshot_pair_attempt(first, sizeof(REAL), pair,
+        second, second_width, pair + sizeof(REAL), &claim);
     if (problem)
     {
-        return problem;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
     dvm_runtime_real_arithmetic_value(opcode, pair, result);
     return dvm_runtime_bytes_publish(result, output, sizeof(REAL));
@@ -62,6 +63,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     void *output, void (*evaluate)(const void *, const void *, void *))
 {
     const char *problem;
+    DVM_CellResult claim;
     union
     {
         WORD word;
@@ -115,11 +117,11 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
     {
         return exBounds;
     }
-    problem = dvm_runtime_bytes_snapshot_pair(first, first_width, &saved_first,
-        second, scale_only ? 0 : second_width, &saved_second);
+    problem = dvm_runtime_bytes_snapshot_pair_attempt(first, first_width, &saved_first,
+        second, scale_only ? 0 : second_width, &saved_second, &claim);
     if (problem)
     {
-        return problem;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
     if (scale_only)
     {
@@ -152,6 +154,7 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     const void *second, void *output, void (*evaluate)(WORD, const void *, const void *, void *))
 {
     const char *problem;
+    DVM_CellResult claim;
     WORD left, right, result;
 
     if (dvm_runtime_shared_mode() != 2 || (opcode != IMULX && opcode != IDIVX))
@@ -164,10 +167,10 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
         {
             return exBounds;
         }
-        problem = dvm_runtime_bytes_snapshot(second, &right, sizeof(right));
+        problem = dvm_runtime_bytes_snapshot_attempt(second, &right, sizeof(right), &claim);
         if (problem)
         {
-            return problem;
+            return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
         }
         if (right == 0)
         {
@@ -183,11 +186,11 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     {
         return exBounds;
     }
-    problem = dvm_runtime_bytes_snapshot_pair(first, sizeof(left), &left,
-        second, opcode == IMULX ? sizeof(right) : 0, &right);
+    problem = dvm_runtime_bytes_snapshot_pair_attempt(first, sizeof(left), &left,
+        second, opcode == IMULX ? sizeof(right) : 0, &right, &claim);
     if (problem)
     {
-        return problem;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
     evaluate(scale, &left, &right, &result);
     return dvm_runtime_bytes_publish(&result, output, sizeof(result));

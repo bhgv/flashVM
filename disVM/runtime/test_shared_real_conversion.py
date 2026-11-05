@@ -40,6 +40,7 @@ WRAPPER = r'''
 #include "kernel.h"
 #include "isa.h"
 #include "interp.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
@@ -123,6 +124,22 @@ static void coverage(const void *address,size_t bytes)
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source,size_t n,void *output,size_t m,DVM_RangeAccess *access)
 {
     DVM_CellResult result;
+    static Inst *retry_pc; /* Decoded PC of the selected guest FP instruction. */
+    static int replayed; /* One actual guest instruction reached admission again. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !active && !replayed && (source && (opcode == ICVTRF || opcode == ICVTFR || opcode == ICVTWF || opcode == ICVTLF || opcode == ICVTFW || opcode == ICVTFL)))
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(DVM_R.PC == retry_pc, "same FP instruction replays before evaluation");
+        replayed = 1;
+        print("PASS scheduled FP input retry\n");
+    }
+
     if (active)
     {
         if (!phase)
@@ -481,15 +498,17 @@ def main():
                 output = run.stdout+run.stderr
                 if run.returncode or 'PASS actual FP conversion: 3496 ' not in output or 'PASS FP conversions4' not in output:
                     raise RuntimeError(output)
+                if 'PASS scheduled FP input retry' not in output:
+                    raise RuntimeError('FP input retry missed: '+output)
                 if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                     raise RuntimeError(output)
         if '--positive-only' not in sys.argv:
             original = (root/'shared_real_conversion.c').read_text()
             controls = [
-                ('dvm_runtime_bytes_snapshot(source, captured, input)',
+                ('dvm_runtime_bytes_snapshot_attempt(source, captured, input, &claim)',
                  '(memmove(captured, source, input), NULL)', 'unlocked conversion'),
-                ('dvm_runtime_bytes_snapshot(source, captured, input)',
-                 'dvm_runtime_bytes_snapshot(source, captured, 0)', 'unlocked conversion'),
+                ('dvm_runtime_bytes_snapshot_attempt(source, captured, input, &claim)',
+                 'dvm_runtime_bytes_snapshot_attempt(source, captured, 0, &claim)', 'unlocked conversion'),
                 ('return dvm_runtime_bytes_publish(result, destination, output);',
                  'dvm_runtime_byte_transfer(destination, result, output); return NULL;', 'copy phase'),
                 ('return dvm_runtime_bytes_publish(result, destination, output);',

@@ -26,6 +26,7 @@ const char *dvm_runtime_real_conversion(int opcode, const void *source, void *de
     size_t input;
     size_t output;
     const char *problem;
+    DVM_CellResult claim;
     if (dvm_runtime_shared_mode() != 2 || !dvm_runtime_real_conversion_sizes(opcode, &input, &output))
     {
         return exHeap;
@@ -35,10 +36,10 @@ const char *dvm_runtime_real_conversion(int opcode, const void *source, void *de
     {
         return exBounds;
     }
-    problem = dvm_runtime_bytes_snapshot(source, captured, input);
+    problem = dvm_runtime_bytes_snapshot_attempt(source, captured, input, &claim);
     if (problem)
     {
-        return problem;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
     problem = dvm_runtime_real_conversion_value(opcode, captured, result);
     if (problem)
