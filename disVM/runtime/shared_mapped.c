@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_mapped.h"
 #include "shared_access.h"
@@ -177,10 +178,11 @@ static int retire(void *value)
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
 static void mapped_transfer(const void *source, void *destination, Type *type, int size,
-    int *consumed)
+    int *consumed, int replay_opcode)
 {
     MappedCopy copy = {0};
     DVM_RangeAccess access = {0};
+    DVM_CellResult claim;
     const char *problem = NULL;
     size_t index;
     int byte;
@@ -218,7 +220,9 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
     }
     if (!copy.count)
     {
-        problem = dvm_runtime_bytes_copy(source, destination, (size_t)size);
+        problem = replay_opcode ?
+            dvm_runtime_bytes_copy_opcode(replay_opcode, source, destination, (size_t)size) :
+            dvm_runtime_bytes_copy(source, destination, (size_t)size);
         if (problem)
         {
             error((char *)problem);
@@ -253,9 +257,14 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
             }
         }
     }
-    if (dvm_managed_ranges_begin(source, (size_t)size, destination, (size_t)size, &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_ranges_begin(source, (size_t)size, destination, (size_t)size, &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
         dispose(&copy);
+        if (claim == DVM_CELL_BUSY && replay_opcode && dvm_runtime_scalar_retry(replay_opcode))
+        {
+            return;
+        }
         error(exHeap);
     }
     problem = publish(&copy, source, destination, (size_t)size, consumed != NULL);
@@ -304,7 +313,14 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
 /* Keep the source ownership and retain each incoming destination owner. */
 void dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
 {
-    mapped_transfer(source, destination, type, size, NULL);
+    mapped_transfer(source, destination, type, size, NULL, 0);
+}
+
+
+/* Execute decoded MOVMP with replay allowed only before ownership changes. */
+void dvm_runtime_mapped_move_opcode(const void *source, void *destination, Type *type, int size)
+{
+    mapped_transfer(source, destination, type, size, NULL, IMOVMP);
 }
 
 
@@ -313,5 +329,5 @@ void dvm_runtime_mapped_consume(void *source, void *destination, Type *type, int
     int *consumed)
 {
     *consumed = 0;
-    mapped_transfer(source, destination, type, size, consumed);
+    mapped_transfer(source, destination, type, size, consumed, 0);
 }

@@ -31,6 +31,8 @@ def adapt(source):
         capture = f'memmove(&{variable}, DVM_R.m, sizeof({variable}));'
         if body.count(capture) != 1:
             raise ValueError('hosted mapped-copy metadata capture drift')
-        body = body.replace(capture, guarded_snapshot(variable, capture), 1)
-        source = source[:match.start()] + body.replace(anchor, anchor + guarded, 1) + source[match.end():]
+        retry = 'IMOVMP' if variable == 'index' else None
+        body = body.replace(capture, guarded_snapshot(variable, capture, retry_opcode=retry), 1)
+        selected = guarded.replace('dvm_runtime_mapped_copy', 'dvm_runtime_mapped_move_opcode') if retry else guarded
+        source = source[:match.start()] + body.replace(anchor, anchor + selected, 1) + source[match.end():]
     return '#include "shared_mapped.h"\n#include "shared_bytes.h"\n' + source

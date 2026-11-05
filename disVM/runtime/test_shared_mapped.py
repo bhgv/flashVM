@@ -13,6 +13,8 @@ WRAPPER = r'''
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
+#include "disvm/native_process.h"
 #include "shared_mapped.h"
 #include "managed_owner.h"
 #include "root_batch.h"
@@ -38,7 +40,7 @@ static Type *record_type; /* Genuine dtype result, owned until diagnostic finish
 static const void *input; /* Borrowed actual source bytes, valid through invoke. */
 static DVM_GCWorkers *collectors; /* Borrowed real collectors through probe. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers);
-void __real_dvm_runtime_mapped_copy(const void *, void *, Type *, int);
+void dvm_runtime_mapped_copy(const void *, void *, Type *, int);
 void *__real_malloc(size_t bytes);
 void *__real_calloc(size_t count, size_t bytes);
 void __real_destroy(void *value);
@@ -123,6 +125,24 @@ DVM_RefcountResult __wrap_dvm_refcount_release_u(unsigned long *value)
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
+    static Inst *retry_pc[2]; /* Decoded PC for metadata and payload contention. */
+    static int replayed[2]; /* One replay per acquisition stage. */
+    int stage = destination != NULL;
+
+    if (CONTROL == 0 && !active && !replayed[stage] &&
+        dvm_native_execution()->arithmetic_retry_opcode == IMOVMP)
+    {
+        if (!retry_pc[stage])
+        {
+            retry_pc[stage] = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc[stage] == DVM_R.PC && !dvm_native_context_object_count(dvm_native_context_current()),
+            "MOVMP retries with no partial claim");
+        replayed[stage] = 1;
+        puts(stage ? "PASS scheduled MOVMP payload retry" : "PASS scheduled MOVMP descriptor retry");
+    }
+
     if (active && CONTROL == 1)
     {
         return DVM_CELL_ACQUIRED;
@@ -230,16 +250,18 @@ void __wrap_destroy(void *value)
 static int invoke(void *unused)
 {
     (void)unused;
-    __real_dvm_runtime_mapped_copy(input, target, record_type, sizeof(expected));
+    dvm_runtime_mapped_copy(input, target, record_type, sizeof(expected));
     return 1;
 }
 
 
 /* Guest uses actual adapted MOVMP, not this fixture's direct helper path. */
-void __wrap_dvm_runtime_mapped_copy(const void *source, void *destination, Type *type, int size)
+void __wrap_dvm_runtime_mapped_move_opcode(const void *source, void *destination, Type *type, int size)
 {
     static int observed;
-    __real_dvm_runtime_mapped_copy(source, destination, type, size);
+    extern void __real_dvm_runtime_mapped_move_opcode(const void *, void *, Type *, int);
+
+    __real_dvm_runtime_mapped_move_opcode(source, destination, type, size);
     if (!observed++)
     {
         puts("PASS actual guarded MOVMP guest route");
@@ -357,7 +379,7 @@ def main():
         wrapper.write_text(WRAPPER)
         for variant in ([0] if '--positive-only' in sys.argv else [0, *markers]):
             binary = relink(runtime, work, wrapper, variant,
-                            ['dvm_runtime_root_registry_probe', 'dvm_runtime_mapped_copy', 'malloc', 'calloc',
+                            ['dvm_runtime_root_registry_probe', 'dvm_runtime_mapped_move_opcode', 'malloc', 'calloc',
                              'destroy', 'error', 'dvm_runtime_byte_transfer', 'dvm_managed_ranges_begin',
                              'dvm_range_access_end', 'dvm_runtime_root_batch_publish',
                              'dvm_runtime_root_batch_remove', 'dvm_refcount_retain_u', 'dvm_refcount_release_u'])
@@ -375,7 +397,9 @@ def main():
                         if run.returncode != 10 or 'FAIL shared mapped: '+markers[variant] not in output:
                             raise RuntimeError('mapped boundary control missed '+str(variant)+': '+output)
                     elif run.returncode or 'PASS actual mapped replacement:' not in output or \
-                            'PASS actual guarded MOVMP guest route' not in output:
+                            'PASS actual guarded MOVMP guest route' not in output or \
+                            'PASS scheduled MOVMP payload retry' not in output or \
+                            'PASS scheduled MOVMP descriptor retry' not in output:
                         raise RuntimeError('mapped positive failed '+str(run.returncode)+': '+output)
     print('PASS actual shared mapped C/JIT,both polls'+
           (' positives only' if '--positive-only' in sys.argv else '; six semantic boundary controls'))

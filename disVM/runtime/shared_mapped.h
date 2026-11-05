@@ -17,4 +17,8 @@ void dvm_runtime_mapped_copy(const void *source, void *destination, struct Type 
  * in the guarded publication. consumed stays set if retirement later raises. */
 void dvm_runtime_mapped_consume(void *source, void *destination, struct Type *type,
     int size, int *consumed);
+
+
+/* As for mapped_copy, with pre-effect BUSY replay for the decoded MOVMP. */
+void dvm_runtime_mapped_move_opcode(const void *source, void *destination, struct Type *type, int size);
 #endif
