@@ -1,6 +1,7 @@
 """Run the actual retained collector/heap with native stopped-world ownership."""
 from pathlib import Path
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -8,9 +9,11 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False):
+def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False):
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
+    if pool:
+        command += ["--managed-workers", "2", "--guarded-copies"]
     if locked:
         command.append("--gc-locked-poll")
     if budget is not None:
@@ -45,10 +48,15 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False):
         raise RuntimeError("actual collector accounting mismatch:\n" + output[-5000:])
     if budget is None:
         if ("PASS gc-worker: 12000" not in output or
+                "PASS gc-worker shared graph: 64 publications after unwind" not in output or
                 "PASS Dis application completed" not in output or
                 (quantum != 65536 and min(int(gc[2]), int(gc[3]), int(counters[4])) == 0) or
                 (int(counters[2]) > 0) != (mode == "--jit")):
             raise RuntimeError("missing real roots/reclamation evidence:\n" + output[-5000:])
+    if pool:
+        workers = re.search(r"NATIVEPOOL executors=2 joined=1 failed=0 controller_turns=(\d+) worker_turns=(\d+)", output)
+        if not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output:
+            raise RuntimeError("shared graph did not run with the expected worker pool:\n" + output[-5000:])
     if budget is None and quantum == 65536 and int(rc[3]) == 0:
         raise RuntimeError("queue saturation fallback was not exercised:\n" + output[-5000:])
     if budget is not None and ("instruction limit exceeded" not in output or "PASS Dis application completed" in output):
@@ -68,8 +76,11 @@ def main():
         execute(runtime, module, mode, 31, 10000)
         execute(runtime, module, mode, 257, locked=True)
         execute(runtime, module, mode, 31, 10000, locked=True)
+        if runtime.name == "disvm" and platform.machine() in ("x86_64", "AMD64"):
+            for locked in (False, True):
+                execute(runtime, module, mode, 257, locked=locked, pool=True)
     print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 bounded-queue saturation runs, "
-          "4 managed-error joins, 2 locked-reference successes, interpreter/JIT, 4 scheduler quanta including saturation")
+          "4 managed-error joins, interpreter/JIT, shared graph with two-worker hosted runs")
 
 
 if __name__ == "__main__":

@@ -36,6 +36,70 @@ cycle(seed: int)
 }
 
 
+# Publish a cyclic node through a shared array slice. The command and reply
+# channels sequence writes to the same cell and leave it as the only live root.
+graphwriter(shared: array of ref Node, commands, replies: chan of int)
+{
+    for (;;)
+    {
+        seed := <-commands;
+        if (seed < 0)
+        {
+            return;
+        }
+        {
+            value := ref Node(nil, array[2] of int);
+            value.next = value;
+            value.payload[0] = seed;
+            shared[0:] = array[] of {value};
+            raise "published graph";
+        } exception failure {
+            "published graph" => replies <-= seed;
+            * => raise;
+        }
+    }
+}
+
+
+# Two guests replace the same mapped slot and unwind their local roots.
+# A live slot must preserve its cycle while allocations trigger collection.
+sharedgraph()
+{
+    shared := array[1] of ref Node;
+    first := chan of int;
+    second := chan of int;
+    replies := chan of int;
+    spawn graphwriter(shared, first, replies);
+    spawn graphwriter(shared, second, replies);
+    for (round := 0; round < 32; round++)
+    {
+        first <-= 2*round;
+        if (<-replies != 2*round)
+        {
+            raise "first graph writer did not publish";
+        }
+        second <-= 2*round+1;
+        if (<-replies != 2*round+1)
+        {
+            raise "second graph writer did not replace";
+        }
+        for (probe := 0; probe < 64; probe++)
+        {
+            cycle(probe);
+        }
+        if (shared[0] == nil || shared[0].next != shared[0] ||
+            shared[0].payload[0] != 2*round+1)
+        {
+            raise "collector lost shared graph after writer unwind";
+        }
+        shared[0] = nil;
+    }
+    first <-= -1;
+    second <-= -1;
+    sys->print("PASS gc-worker shared graph: 64 publications after unwind\n");
+}
+
+
 # A direct block above the deferred-byte budget must use ordinary destruction.
 # Its first/last bytes are checked before scope exit; it must not occupy a queue
 # slot until an arbitrary later collection. There is no shared mutable owner.
@@ -69,5 +133,6 @@ init()
             raise "fail: collector lost live cyclic root";
         }
     }
+    sharedgraph();
     sys->print("PASS gc-worker: 12000 unreachable cycles, live root retained\n");
 }
