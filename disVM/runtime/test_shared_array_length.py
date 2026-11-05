@@ -85,6 +85,16 @@ init() {
             raise "integer string publication mismatch";
         }
     }
+    realtext, asciitext: string;
+    asciibytes: array of byte;
+    for (pass := 0; pass < 3; pass++) {
+        realtext = string (realvalue + real pass);
+        asciibytes = array of byte samples[0];
+        asciitext = string asciibytes;
+        if (real realtext != realvalue + real pass || asciitext != samples[0]) {
+            raise "real and byte string publication mismatch";
+        }
+    }
     n: array of byte;
     if (len n != 0) {
         raise "nil length mismatch";
@@ -144,8 +154,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[15]; /* Post-decode PC for each refused capture. */
-    static int replayed[15]; /* One successful replay for each stage. */
+    static Inst *pcs[21]; /* Post-decode PC for each refused capture. */
+    static int replayed[21]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -164,6 +174,23 @@ static int contend_capture(int stage)
     replayed[stage] = 1;
     fprint(1, "PASS guarded capture replay %d\n", stage);
     return 0;
+}
+
+
+DVM_CellResult __real_dvm_managed_three_begin(const void *, size_t, const void *, size_t,
+    void *, size_t, DVM_RangeAccess *);
+
+/* Refuse once at the existing-owner payload/header/slot claim of each codec. */
+DVM_CellResult __wrap_dvm_managed_three_begin(const void *payload, size_t payload_size,
+    const void *header, size_t header_size, void *slot, size_t slot_size, DVM_RangeAccess *access)
+{
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+    if (CONTROL == 0 && !active &&
+        ((opcode == ICVTCA && contend_capture(19)) || (opcode == ICVTAC && contend_capture(20))))
+    {
+        return DVM_CELL_BUSY;
+    }
+    return __real_dvm_managed_three_begin(payload, payload_size, header, header_size, slot, slot_size, access);
 }
 
 
@@ -215,6 +242,25 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
             {
                 return DVM_CELL_BUSY;
             }
+        }
+    }
+
+    if (CONTROL == 0 && !active && destination)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if (opcode == ICVTFC && source)
+        {
+            String *previous;
+            memmove(&previous, destination, sizeof(previous));
+            if (contend_capture(source == previous ? 16 : 15))
+            {
+                return DVM_CELL_BUSY;
+            }
+        }
+        if (!source && ((opcode == ICVTCA && contend_capture(17)) ||
+                        (opcode == ICVTAC && contend_capture(18))))
+        {
+            return DVM_CELL_BUSY;
         }
     }
 
@@ -717,7 +763,7 @@ def main():
                  'dvm_small_range_access_extend', 'dvm_runtime_array_length_source',
                  'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
                  'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin',
-                 'dvm_runtime_string_view', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_string_view', 'dvm_managed_three_begin', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
@@ -743,7 +789,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(15)):
+                                            for stage in range(21)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

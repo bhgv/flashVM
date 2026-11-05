@@ -175,13 +175,13 @@ def adapt_string_conversion_captures(code, conversions):
     return code
 
 
-def adapt_integer_string_publication(code):
+def adapt_numeric_string_publication(code):
     """Guard the formatted bytes and owner slot before either can change.
 
     NativeWorld keeps the borrowed old string and private allocation alive.
     A failed claim discards only a fresh unpublished object before retry.
     """
-    for opcode in ('CVTWC', 'CVTLC'):
+    for opcode in ('CVTWC', 'CVTLC', 'CVTFC'):
         start = code.index('OP('+opcode.lower()+')')
         end = code.index('\n}', start)
         body = code[start:end]
@@ -222,7 +222,104 @@ def adapt_integer_string_publication(code):
         mutation = relative_replace(mutation, '\tif(ds != old)\n\t\tdestroy(old);',
                                     release+'\tif(ds != old)\n\t\tdestroy(old);', 1)
         body = body[:body.index('\tif(ds == old && old->len < 0)')] + guarded + mutation
-        body = relative_replace(body, '\tvoid *slot;', '\tvoid *slot;\n    DVM_RangeAccess access = {0};', 1)
+        locals = '\tvoid *slot;\n    DVM_RangeAccess access = {0};'
+        if opcode == 'CVTFC':
+            locals += '\n    fenv_t format_environment;'
+            capture = """    if(dvm_runtime_guarded_copies && fegetenv(&format_environment)) {
+        abort();
+    }
+"""
+            body = relative_replace(body, '\texponent = (bits>>52)&2047;', capture+'\texponent = (bits>>52)&2047;', 1)
+            for condition in ('if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICVTFC))',
+                              'if(dvm_runtime_scalar_retry(ICVTFC))'):
+                # Restore rounding and flags even when the retry limit is exhausted.
+                body = relative_replace(body, '        '+condition, """        if(fesetenv(&format_environment)) {
+            abort();
+        }
+        """+condition, 1)
+        body = relative_replace(body, '\tvoid *slot;', locals, 1)
+        code = code[:start]+body+code[end:]
+    return code
+
+
+def adapt_byte_string_publication(code):
+    """Protect byte/string destination effects and discard only unpublished owners."""
+    for opcode, result, width, reused in (
+        ('CVTCA', 'a', 'l', 'l ? target.data : NULL'),
+        ('CVTAC', 'ds', 'n', 'n ? (void *)(address+offsetof(String, data)) : NULL'),
+    ):
+        start = code.index('OP('+opcode.lower()+')')
+        end = code.index('\n}', start)
+        body = code[start:end]
+        slot = '\tmemmove(slot, &'+result+', sizeof('+result+'));'
+        publish = f"""    if(dvm_runtime_guarded_copies) {{
+        DVM_RangeAccess access = {{0}};
+        DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, slot, sizeof({result}), &access);
+        void *observed;
+        if(claim == DVM_CELL_ACQUIRED) {{
+            memmove(&observed, slot, sizeof(observed));
+            if(observed == old) {{
+                memmove(slot, &{result}, sizeof({result}));
+            }} else {{
+                claim = DVM_CELL_BUSY;
+            }}
+            if(!dvm_range_access_end(&access)) {{
+                abort();
+            }}
+        }}
+        if(claim != DVM_CELL_ACQUIRED) {{
+            destroy({result});
+            if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+                return;
+            }}
+            error(exHeap);
+        }}
+    }} else {{
+{slot}
+    }}"""
+        body = relative_replace(body, slot, publish, 1)
+        if opcode == 'CVTCA':
+            before = '\t\t\t\t\tmemmove(target.data, bytes, l);\n\t\t\t\t}'
+            body = relative_replace(body, before, '\t\t\t\t}', 1)
+            entry = '\t\t\t\ttarget.len = l;'
+            header = '(uchar*)old+offsetof(Array, len)'
+            header_width = 'sizeof(target.len)'
+            copy = 'memmove(target.data, bytes, l);'
+        else:
+            entry = '\t\t\t\t\t\tif(n != 0)'
+            header = '(uchar*)old+offsetof(String, len)'
+            header_width = 'sizeof(n)'
+            copy = None
+        claim = f"""    DVM_RangeAccess reuse_access = {{0}};
+    if(dvm_runtime_guarded_copies) {{
+        DVM_CellResult result = dvm_managed_three_begin({reused}, {width},
+            {header}, {header_width}, slot, sizeof(old), &reuse_access);
+        void *observed;
+        if(result == DVM_CELL_ACQUIRED) {{
+            memmove(&observed, slot, sizeof(observed));
+            if(observed != old) {{
+                if(!dvm_range_access_end(&reuse_access)) {{
+                    abort();
+                }}
+                result = DVM_CELL_BUSY;
+            }}
+        }}
+        if(result != DVM_CELL_ACQUIRED) {{
+            if(result == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+                return;
+            }}
+            error(exHeap);
+        }}
+    }}
+"""
+        if copy:
+            claim += f'    if({width} != 0) {{\n        {copy}\n    }}\n'
+        body = relative_replace(body, entry, claim+entry, 1)
+        reuse_slot = '\tmemmove(slot, &old, sizeof(old));'
+        body = relative_replace(body, reuse_slot, reuse_slot+"""
+    if(dvm_runtime_guarded_copies && !dvm_range_access_end(&reuse_access)) {
+        abort();
+    }""", 1)
         code = code[:start]+body+code[end:]
     return code
 
@@ -524,7 +621,9 @@ def main():
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
             code = adapt_string_operand_captures(code)
-            code = adapt_integer_string_publication(code)
+            code = adapt_numeric_string_publication(code)
+            code = adapt_byte_string_publication(code)
+            code = '#include <fenv.h>\n' + code
             code = adapt_string_view(code)
             code = adapt_string_conversion_captures(code, (
                 ('CVTCA', 'ss', True), ('CVTAC', 'a', True),
