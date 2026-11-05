@@ -235,6 +235,12 @@ int dvm_runtime_gc_native_try_leave(void)
         fprintf(stderr,"disvm: invalid/foreign/nested audited native release\n");
         exit(1);
     }
+    /* Reject before executor growth, queue withdrawal or root publication.
+     * Audited native operations may not block while holding a cell guard. */
+    if (dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return -1;
+    }
     if (gchalt)
     {
         return 0;

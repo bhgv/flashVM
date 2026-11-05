@@ -6,6 +6,8 @@
 #include "interp.h"
 #include "disvm/native_context.h"
 #include "runtime_gc.h"
+#include "managed_owner.h"
+#include "runqueue.h"
 #include "raise.h"
 #include "kernel.h"
 #include "thread_port.h"
@@ -134,6 +136,20 @@ static void rendezvous_mover(void)
         check(first_process != NULL, "first transfer is a real guest");
         pthread_cond_broadcast(&waiting);
         pthread_mutex_unlock(&gate);
+        if (dvm_runtime_shared_mode() == 2)
+        {
+            WORD private_word = 0;
+            DVM_RangeAccess access = {0};
+
+            check(dvm_managed_ranges_begin(&private_word, sizeof(private_word), NULL, 0,
+                &access) == DVM_CELL_ACQUIRED, "fixture acquires an operand guard");
+            check(dvm_runtime_gc_native_try_leave() == -1 &&
+                dvm_runqueue_head() == first_process &&
+                dvm_native_context_process(owner) == first_process &&
+                !dvm_runqueue_owner(first_process),
+                "guarded suspension refuses without withdrawing the guest");
+            check(dvm_range_access_end(&access), "fixture releases the operand guard");
+        }
         released = dvm_runtime_gc_native_try_leave();
         check(released == 1, "first transfer releases NativeWorld");
         pthread_mutex_lock(&gate);

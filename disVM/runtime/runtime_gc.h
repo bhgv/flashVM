@@ -28,7 +28,7 @@ int dvm_runtime_gc_detach(void);
  * C locals contain no unregistered managed owners. Publishes the complete native
  * call REG/stack roots first. Returns one when released, zero in inline mode or
  * protected GC regions or retained synchronous Native64Caller holds. Returns
- * -1 on pool resource refusal with ownership unchanged. Protocol violations
+ * -1 if guards are held or the pool refuses, with ownership unchanged. Protocol violations
  * terminate before unsafe heap access. */
 int dvm_runtime_gc_native_try_leave(void);
 
