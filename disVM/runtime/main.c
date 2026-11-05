@@ -593,13 +593,15 @@ static int guest_cancel_pending_or_close(void)
 
 /* Limit cancellation work before the next guest turn. Keep each PID
  * visible until its delivery finishes so concurrent submissions coalesce. */
-static void dispatch_guest_cancellations(void)
+static int dispatch_guest_cancellations(void)
 {
     size_t remaining;
+    int worked;
 
     fvm_port_sync_lock(channel_queue_mutex);
     remaining = cancel_request_count < CANCEL_REQUESTS_PER_TURN ?
         cancel_request_count : CANCEL_REQUESTS_PER_TURN;
+    worked = remaining != 0;
     while (remaining-- && cancel_request_count)
     {
         int pid = cancel_requests[0];
@@ -614,6 +616,7 @@ static void dispatch_guest_cancellations(void)
         }
     }
     fvm_port_sync_unlock(channel_queue_mutex);
+    return worked;
 }
 
 
@@ -2171,21 +2174,19 @@ static char *entry_resource(char *path)
 }
 
 /* Execute one complete managed turn under exclusive heap ownership. Both OS
- * executors call the SAME interpreter/JIT/error/retirement logic. Return1 for a
- * completed turn,0 for idle,-1 for a managed failure with its claim retired.
+ * executors call the same interpreter/JIT/error/retirement logic. Return a
+ * managed turn status, or -1 after retiring the claim on failure.
  * Registers and roots are published before returning; no UI pump runs here. */
 static int runtime_dispatch_turn(void)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     Prog *process;
     Prog **slot;
-    if (gc_worker)
-    {
-        dispatch_guest_cancellations();
-    }
+    int cancelled = gc_worker && dispatch_guest_cancellations();
+
     if (!dvm_runqueue_head())
     {
-        return 0;
+        return cancelled ? DVM_MANAGED_TURN_MAINTENANCE : DVM_MANAGED_TURN_IDLE;
     }
     if (dvm_native_execution()->progress_epoch != progress_epoch)
     {
@@ -2452,12 +2453,12 @@ static int runtime_execute_inner(void *argument)
                 poperror(); /* The dispatch retired its own guard; do not retain this returning outer jump frame. */
                 return 1;
             }
-            if (progress)
+            if (progress == DVM_MANAGED_TURN_GUEST)
             {
                 dvm_managed_workers_record();
             }
         }
-        if (!dvm_managed_workers_yield(!dvm_runqueue_head()))
+        if (!dvm_managed_workers_yield(!dvm_runqueue_head() && !guest_cancel_pending()))
         {
             error("managed scheduler worker failed");
         }

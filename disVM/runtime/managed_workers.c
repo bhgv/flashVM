@@ -274,7 +274,7 @@ static void execute(void *argument)
                     fail("managed turn failed");
                     break;
                 }
-                if (progress)
+                if (progress == DVM_MANAGED_TURN_GUEST)
                 {
                     worker->turns++;
                 }

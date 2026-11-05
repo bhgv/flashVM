@@ -32,6 +32,7 @@ static int sleep_mode; /* Targeted sleep cancellation or fatal-worker shutdown. 
 static int verify_sleep_cancel_handoff; /* Inspect queue capacity before releasing NativeWorld. */
 static int sleeping_pid; /* Captured before the long sleep releases its guest. */
 static int host_cancel_mode; /* Submit before or after the park wake snapshot. */
+static int host_cancel_no_idle_yield; /* Observe the one-executor boundary. */
 static int host_cancel_on_publish; /* Submit as the last runnable guest parks. */
 static int host_cancel_delivery_seen;
 static int host_cancel_sent; /* Exactly one fixture submission per process. */
@@ -170,9 +171,10 @@ Channel *__wrap_dvm_runtime_channel_new(void *destination, Type *type, WORD capa
         host_cancel_mode = (int)capacity;
         parked_cancel_mode = 1;
     }
-    if (type == &Tword && capacity == 44)
+    if (type == &Tword && (capacity == 44 || capacity == 46))
     {
         host_cancel_on_publish = 1;
+        host_cancel_no_idle_yield = capacity == 46;
         parked_cancel_mode = 1;
     }
     if (type == &Tword && (capacity == 40 || capacity == 43))
@@ -669,6 +671,22 @@ int __wrap_dvm_runqueue_claim(Prog *process)
         puts("PASS guest scheduled between cancellation slices");
     }
     return __real_dvm_runqueue_claim(process);
+}
+
+
+int __real_dvm_managed_workers_yield(int idle);
+
+
+int __wrap_dvm_managed_workers_yield(int idle)
+{
+    if (host_cancel_no_idle_yield && parked_pid)
+    {
+        check(!idle && !host_cancel_delivery_seen,
+            "controller must not idle before servicing queued cancellation");
+        host_cancel_no_idle_yield = 0;
+        puts("PASS cancellation pending at scheduler yield");
+    }
+    return __real_dvm_managed_workers_yield(idle);
 }
 
 

@@ -4,6 +4,14 @@
 
 
 
+enum
+{
+    DVM_MANAGED_TURN_IDLE,
+    DVM_MANAGED_TURN_GUEST,
+    DVM_MANAGED_TURN_MAINTENANCE
+};
+
+
 /* Start count-1 extra OS executors after GC/world startup.
  * count selects at least2 initial executors. automatic grows on native waits
  * and retires idle helpers; limit zero is uncapped, diagnostics emits --stats.

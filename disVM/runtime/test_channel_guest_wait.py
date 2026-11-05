@@ -1626,7 +1626,7 @@ def main():
                          "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
                          "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
-                         "dvm_runqueue_append", "dvm_runqueue_claim"])
+                         "dvm_runqueue_append", "dvm_runqueue_claim", "dvm_managed_workers_yield"])
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
@@ -1655,7 +1655,7 @@ def main():
                             ("parked-isolation", PARKED_ISOLATION_GUEST), ("host-before-park", HOST_CANCEL_GUEST),
                             ("host-after-snapshot", HOST_CANCEL_GUEST.replace("chan[35]", "chan[36]")),
                             ("host-fixed", HOST_CANCEL_GUEST.replace("chan[35]", "chan[44]")),
-                            ("host-serial", HOST_CANCEL_GUEST.replace("chan[35]", "chan[44]")),
+                            ("host-serial", HOST_CANCEL_GUEST.replace("chan[35]", "chan[46]")),
                             ("processctl", PROCESSCTL_GUEST), ("processctl-inline", PROCESSCTL_INLINE_GUEST), ("process-kill", PROCESS_KILL_GUEST),
                             ("process-kill-native", PROCESS_KILL_NATIVE_GUEST), ("process-kill-ready", PROCESS_KILL_READY_GUEST), ("process-kill-table", PROCESS_KILL_TABLE_GUEST), ("table-fifo", TABLE_FIFO_GUEST), ("table-fifo-move", TABLE_FIFO_MOVE_GUEST), ("process-kill-granted-table", TABLE_FIFO_KILL_HEAD_GUEST),
                             ("table-cancel", TABLE_CANCEL_GUEST), ("table-cancel-granted", TABLE_CANCEL_GRANTED_GUEST),
@@ -1753,6 +1753,8 @@ def main():
                     marker = "PASS submitted host cancellation batch"
                     if output.count("PASS coalesced cancellation during delivery") != 1:
                         raise RuntimeError(f"{name} {mode} missed concurrent cancellation delivery\n{output}")
+                    if name == "host-serial" and output.count("PASS cancellation pending at scheduler yield") != 1:
+                        raise RuntimeError(f"{name} {mode} missed the pending cancellation at yield\n{output}")
                     if output.count("PASS guest scheduled between cancellation slices") != 1:
                         raise RuntimeError(f"{name} {mode} skipped the ready guest between slices\n{output}")
                     if name in ("host-before-park", "host-after-snapshot") and "NATIVEPOOL_QUIESCENT processes=1" not in output:
