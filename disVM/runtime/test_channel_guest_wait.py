@@ -1723,6 +1723,21 @@ def main():
                                 "disvm: native continuation restoration failed" not in refused.stderr):
                             raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
                                                + refused.stdout + refused.stderr)
+                    phase_controls = {
+                        "nested-leave": "invalid/foreign/nested audited native release",
+                        "missing": "missing native heap reentry token",
+                        "negative": "invalid native heap reentry token",
+                        "noncanonical": "invalid native heap reentry token",
+                        "duplicate": "invalid native heap reentry phase",
+                    }
+                    for phase, diagnostic in phase_controls.items():
+                        refused = subprocess.run(
+                            command, cwd=work, capture_output=True, text=True, timeout=30,
+                            env=dict(os.environ, DVM_TEST_NATIVE_RETURN_PHASE=phase),
+                        )
+                        if refused.returncode != 1 or diagnostic not in refused.stderr:
+                            raise RuntimeError(f"{mode} missed native phase control {phase}\n"
+                                               + refused.stdout + refused.stderr)
                 output = result.stdout + result.stderr
                 bypass = name in ("alt-ready", "alt-default")
                 marker = ("PASS ALT bypassed the reservation" if bypass

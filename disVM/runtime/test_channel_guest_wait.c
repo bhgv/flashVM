@@ -206,8 +206,32 @@ static void rendezvous_mover(void)
             pthread_cond_wait(&waiting, &gate);
         }
         pthread_mutex_unlock(&gate);
-        inject_native_return = getenv("DVM_TEST_NATIVE_RETURN_FIELD") != NULL;
-        dvm_runtime_gc_native_enter(released);
+        {
+            const char *phase = getenv("DVM_TEST_NATIVE_RETURN_PHASE");
+
+            if (phase && strcmp(phase, "nested-leave") == 0)
+            {
+                dvm_runtime_gc_native_try_leave();
+            }
+            if (phase && strcmp(phase, "missing") == 0)
+            {
+                dvm_runtime_gc_native_enter(0);
+            }
+            if (phase && strcmp(phase, "negative") == 0)
+            {
+                dvm_runtime_gc_native_enter(-1);
+            }
+            if (phase && strcmp(phase, "noncanonical") == 0)
+            {
+                dvm_runtime_gc_native_enter(2);
+            }
+            inject_native_return = getenv("DVM_TEST_NATIVE_RETURN_FIELD") != NULL;
+            dvm_runtime_gc_native_enter(released);
+            if (phase && strcmp(phase, "duplicate") == 0)
+            {
+                dvm_runtime_gc_native_enter(released);
+            }
+        }
         check(dvm_native_context_current() == owner &&
             dvm_native_context_process(owner) == first_process &&
             dvm_runqueue_head() == first_process &&
