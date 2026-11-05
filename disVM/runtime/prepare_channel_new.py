@@ -226,7 +226,11 @@ static int wait_and_read_channel_peer(void *argument)
         dvm_runtime_channel_require_wait(dvm_runtime_channel_wait_guest(read->channel));
         {
             Channel *current;
-            memmove(&current, read->owner_cell, sizeof(current));
+            const char *problem = dvm_runtime_bytes_snapshot(read->owner_cell, &current, sizeof(current));
+            if (problem)
+            {
+                error((char *)problem);
+            }
             if (current != read->channel)
                 error("channel operand changed while waiting");
         }

@@ -1336,13 +1336,29 @@ static int acquire_channel_claim(void *argument)
 }
 
 
+/* Release the exact completion claim under the same mutex as acquisition.
+ * peer remains pinned until after the claim is cleared. A mismatched identity
+ * indicates a broken ownership invariant and cannot be recovered in the VM. */
+static void release_channel_claim(Prog *peer, const void *owner)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+    fvm_port_sync_lock(channel_queue_mutex);
+    if (process->channel_claimed != owner)
+    {
+        abort();
+    }
+    process->channel_claimed = nil;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    dvm_runqueue_unpin(peer);
+}
+
+
 /* Finish outside the mutex. Cancellation and wake can enter the queue guard. */
 static void finish_channel_claim(ChannelClaim *claim, int (*match)(void *))
 {
     Prog *peer = claim->peer;
     int completed = kprotect(match, claim->request);
-    ((DVM_RuntimeProcess *)peer)->channel_claimed = nil;
-    dvm_runqueue_unpin(peer);
+    release_channel_claim(peer, claim);
     if (!completed)
     {
         krethrow();
@@ -1354,7 +1370,7 @@ static void finish_channel_claim(ChannelClaim *claim, int (*match)(void *))
 void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request)
 {
     ChannelClaim claim = {peer, nil, request};
-    acquire_channel_claim(&claim);
+    dvm_runtime_channel_queue_guard(acquire_channel_claim, &claim);
     finish_channel_claim(&claim, match);
 }
 
@@ -1781,8 +1797,7 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
             int completed = kprotect(wake_closed_channel, peer);
             if (claimed)
             {
-                process->channel_claimed = nil;
-                dvm_runqueue_unpin(peer);
+                release_channel_claim(peer, owner);
             }
             if (!completed && !*failed)
             {
