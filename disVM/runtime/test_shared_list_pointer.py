@@ -13,6 +13,7 @@ WRAPPER = r'''
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_list_pointer.h"
 #include "pointer_builder.h"
@@ -23,6 +24,7 @@ WRAPPER = r'''
 #include "gc_fields.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include "disvm/native_process.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -42,7 +44,8 @@ static int selected; /* 0 HEADP, 1 TAIL. */
 static DVM_GCWorkers *collectors; /* Actual stopped-world collector service. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers);
 void __real_dvm_runtime_list_pointer_copy(const void *, void *, int);
-const char *__real_dvm_runtime_movp_copy(const void *, void *, void **);
+const char *__real_dvm_runtime_movp_opcode(int, const void *, void *, int *);
+static __thread int projection_opcode; /* Actual interior copy, after list hold. */
 const char *__real_dvm_runtime_list_hold(int, const void *, DVM_ListHold *);
 void __real_destroy(void *object);
 void __real_error(char *message);
@@ -119,21 +122,22 @@ const char *__wrap_dvm_runtime_list_hold(int opcode, const void *source, DVM_Lis
 
 
 /* The real source container must remain rooted before touching its interior. */
-const char *__wrap_dvm_runtime_movp_copy(const void *source, void *destination, void **previous)
+const char *__wrap_dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, int *replay)
 {
+    const char *problem;
+    if (opcode != IHEADP && opcode != ITAIL)
+    {
+        return __real_dvm_runtime_movp_opcode(opcode, source, destination, replay);
+    }
     if (active)
     {
         check(heapref(parent) == 2 && dvm_runtime_root_count(D2H(parent)) == 2,
             "source container retained and rooted");
     }
-    {
-        const char *problem = __real_dvm_runtime_movp_copy(source, destination, previous);
-        if (active && !problem)
-        {
-            published = 1;
-        }
-        return problem;
-    }
+    projection_opcode = opcode;
+    problem = __real_dvm_runtime_movp_opcode(opcode, source, destination, replay);
+    projection_opcode = 0;
+    return problem;
 }
 
 
@@ -141,6 +145,24 @@ const char *__wrap_dvm_runtime_movp_copy(const void *source, void *destination, 
  * genuine. Retain monitoring stops before any unprotected ownership effect. */
 DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
 {
+    static Inst *retry_pc[2]; /* Decoded PC at the first interior BUSY. */
+    static int replayed[2]; /* Each projection reaches its interior claim again. */
+    if (CONTROL == 0 && !active && projection_opcode &&
+        dvm_native_execution()->arithmetic_retry_opcode == projection_opcode)
+    {
+        int route = projection_opcode == ITAIL;
+        if (!retry_pc[route])
+        {
+            retry_pc[route] = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        if (!replayed[route])
+        {
+            check(retry_pc[route] == DVM_R.PC, "list projection retries same PC after hold cleanup");
+            replayed[route] = 1;
+            fprint(1, "PASS list interior replay %d\n", route);
+        }
+    }
     if (active && CONTROL == 2 && (source == (void *)parent->data || source == &parent->tail))
     {
         return DVM_CELL_ACQUIRED;
@@ -191,6 +213,7 @@ void __wrap_error(char *message)
     {
         check(!dvm_native_context_object_count(dvm_native_context_current()), "error unlocked");
     }
+    projection_opcode = 0;
     __real_error(message);
 }
 
@@ -200,6 +223,10 @@ void __wrap_error(char *message)
 void __wrap_destroy(void *object)
 {
     int releasing = active && object == parent && release_error;
+    if (active && projection_opcode && object == old)
+    {
+        published = 1;
+    }
     if (active)
     {
         check(!dvm_native_context_object_count(dvm_native_context_current()), "retirement unlocked");
@@ -480,7 +507,7 @@ def main():
                 private.write_text(code)
             binary = relink(runtime, work, wrapper, variant,
                             ['dvm_runtime_root_registry_probe', 'dvm_runtime_list_pointer_copy',
-                             'dvm_runtime_movp_copy', 'dvm_runtime_list_hold', 'destroy', 'error',
+                             'dvm_runtime_movp_opcode', 'dvm_runtime_list_hold', 'destroy', 'error',
                              'malloc', 'calloc', 'dvm_managed_cells_begin', 'dvm_refcount_retain_u',
                              'dvm_refcount_release_u', 'dvm_runtime_root_batch_publish'],
                             shared_pointer_source=private)
@@ -499,7 +526,8 @@ def main():
                             raise RuntimeError('list pointer control missed '+str(variant)+': '+output)
                     elif run.returncode or 'PASS actual list pointers:' not in output or \
                             'PASS actual guarded list-pointer guest 0' not in output or \
-                            'PASS actual guarded list-pointer guest 1' not in output:
+                            'PASS actual guarded list-pointer guest 1' not in output or \
+                            'PASS list interior replay 0' not in output or 'PASS list interior replay 1' not in output:
                         raise RuntimeError('list pointer positive failed '+str(run.returncode)+': '+output)
     print('PASS actual pointer-list C/JIT,both polls'+
           (' positives only' if '--positive-only' in sys.argv else '; seven semantic controls'))

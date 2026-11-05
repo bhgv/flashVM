@@ -35,7 +35,7 @@ static int project(void *argument)
     size_t offset = request->tail ? offsetof(List, tail) : offsetof(List, data);
     size_t needed = sizeof(Heap) + offset + sizeof(void *);
     Type *stored;
-    void *previous;
+    int replay;
     const char *problem;
     if ((uintptr)list > (uintptr)-1 - offset - sizeof(void *) ||
         poolmsize(heapmem, D2H(list)) < needed)
@@ -54,12 +54,12 @@ static int project(void *argument)
     /* The real source container remains rooted independently of the original
      * slot. MOVP guards the interior field through retain/mark/publication. */
     DVM_R.s = (uchar *)list + offset;
-    problem = dvm_runtime_movp_copy(DVM_R.s, request->destination, &previous);
+    problem = dvm_runtime_movp_opcode(request->tail ? ITAIL : IHEADP, DVM_R.s,
+        request->destination, &replay);
     if (problem)
     {
         error((char *)problem);
     }
-    destroy(previous);
     return 1;
 }
 

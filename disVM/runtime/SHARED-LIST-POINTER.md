@@ -30,11 +30,11 @@ selector (0 for HEADP, 1 for TAIL), not arbitrary guest callback code.
    existing MOVP core. MOVP claims the interior field/destination together before
    incoming capture, retain, mark and publication. The List hold supplies the
    containing allocation's lifetime independently of the original reference slot.
-4. After MOVP unlocks, consume the displaced output once. This single immediate
-   destructor needs no vector of remaining old outputs; its existing consuming
-   callback/root contract still applies. On success/error, always finish the
-   temporary List owner/root. A prior projection/destructor error survives a later
-   consuming-release error. Never retry a consumed owner or committed publication.
+4. The MOVP opcode helper roots the displaced output through guard release and
+   withdraws that root before consuming the owner. A BUSY interior claim can
+   replay the decoded projection after the temporary List hold is released.
+   Success and error also finish that hold. A prior projection/destructor error
+   survives a later consuming-release error. Committed publication is final.
 
 Source and result may be the SAME cell: ordinary `values = tl values` is one
 important case. Publishing a new tail/head owner precedes destruction of the old
