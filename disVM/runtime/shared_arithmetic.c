@@ -80,8 +80,8 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
 
 /* Admit mixed-width cells only in the full experimental mode.
  * The active dispatch and typed frame supply the borrowed span lifetime. */
-int dvm_runtime_parallel_scalar_pair(int opcode, const void *first, size_t first_size,
-    const void *second, size_t second_size)
+int dvm_runtime_parallel_scalar_spans(int opcode, const void *first, size_t first_size,
+    const void *second, size_t second_size, const void *third, size_t third_size)
 {
     Type *type;
 
@@ -91,7 +91,8 @@ int dvm_runtime_parallel_scalar_pair(int opcode, const void *first, size_t first
         return 0;
     }
     type = current_frame_type();
-    return type && frame_scalar(first, type, first_size) && frame_scalar(second, type, second_size);
+    return type && frame_scalar(first, type, first_size) && frame_scalar(second, type, second_size) &&
+        (!third_size || frame_scalar(third, type, third_size));
 }
 
 

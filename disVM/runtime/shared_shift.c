@@ -9,8 +9,57 @@
 #include "shift_value.h"
 #include "shared_access.h"
 #include "managed_owner.h"
+#include "runtime_gc.h"
 #include <stdint.h>
 #include <stdlib.h>
+
+
+/* Evaluate a validated shift using native copies while the frame is leased.
+ * first/second/output borrow the frame and are covered by access on entry.
+ * Reacquire all spans before reading or publishing. Return with no guard. */
+static const char *leased_shift(int opcode, const void *first, const void *second,
+    void *output, size_t width, WORD count, DVM_TripleAccess *access)
+{
+    unsigned char saved[sizeof(ULONG)], result[sizeof(ULONG)];
+    WORD current_count;
+    int released;
+    DVM_CellResult claim;
+    const char *problem = NULL;
+
+    memmove(saved, first, width);
+    if (!dvm_small_range_access_end(access))
+    {
+        abort();
+    }
+    released = dvm_runtime_gc_native_try_leave();
+    dvm_runtime_shift_value(opcode, saved, count, result);
+    if (released > 0)
+    {
+        dvm_runtime_gc_native_enter(released);
+    }
+    claim = dvm_managed_small_three_begin(first, width, second, sizeof(WORD), output, width, access);
+    if (claim != DVM_CELL_ACQUIRED)
+    {
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
+    }
+    if (!dvm_runtime_shift_count(opcode, second, &current_count))
+    {
+        problem = exInval;
+    }
+    else if (current_count != count || memcmp(first, saved, width))
+    {
+        dvm_runtime_shift_value(opcode, first, current_count, output);
+    }
+    else
+    {
+        memmove(output, result, width);
+    }
+    if (!dvm_small_range_access_end(access))
+    {
+        abort();
+    }
+    return problem;
+}
 
 
 /* [PERF SHIFT-099] Full-profile cost is recorded in PERFORMANCE-COSTS.md;
@@ -73,6 +122,10 @@ const char *dvm_runtime_shift(int opcode, const void *first, const void *second,
     }
     else
     {
+        if (dvm_runtime_parallel_scalar_spans(opcode, first, width, second, sizeof(WORD), output, width))
+        {
+            return leased_shift(opcode, first, second, output, width, count, &access);
+        }
         dvm_runtime_shift_value(opcode, first, count, output);
     }
     if (!dvm_small_range_access_end(&access))

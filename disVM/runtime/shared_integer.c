@@ -114,7 +114,7 @@ const char *dvm_runtime_integer_convert(int opcode, const void *source, void *de
     {
         return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
-    if (dvm_runtime_parallel_scalar_pair(opcode, source, input, destination, output))
+    if (dvm_runtime_parallel_scalar_spans(opcode, source, input, destination, output, NULL, 0))
     {
         return leased_conversion(opcode, source, input, destination, output, &access);
     }

@@ -294,7 +294,7 @@ finish:
 
 def scheduled_retry_wrapper():
     """Inject one pre-effect BUSY in the real shift guest dispatch."""
-    source = '#include "disvm/native_process.h"\n'+WRAPPER
+    source = '#include "disvm/native_process.h"\n#include "disvm/native_owner.h"\n'+WRAPPER
     source = source.replace('static int active;', """static Inst *scheduled_pc; /* PC after decoding the contended instruction. */
 static int scheduled_replayed; /* The next matching attempt reached admission. */
 static int active;""")
@@ -313,6 +313,22 @@ static int active;""")
         print("PASS scheduled shift retry\\n");
     }
     return __real_dvm_managed_small_three_begin(a, an, b, bn, d, dn, access);""")
+    evaluator = 'void __wrap_dvm_runtime_shift_value(int op, const void *a, WORD count, void *d)\n{'
+    source = source.replace(evaluator, evaluator+r'''
+    DVM_HeapOwnerStats owner;
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        switch (op)
+        {
+LEASED_SHIFT_CASES
+        }
+    }
+''')
+    cases = '\n'.join(f'        case I{op}: print("LEASED {op}\\n"); break;'
+                      for op in ('SHLB', 'SHRB', 'SHLW', 'SHRW', 'SHLL', 'SHRL'))
+    source = source.replace('LEASED_SHIFT_CASES', cases)
     return source
 
 
@@ -333,6 +349,8 @@ def main():
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
+                    if variant == 0:
+                        args += ['--managed-workers', '2', '--parallel-integer']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=60,
@@ -346,6 +364,11 @@ def main():
                             raise RuntimeError('shift control missed: '+output)
                     elif run.returncode or 'PASS shift probe:' not in output or 'PASS shifts6' not in output:
                         raise RuntimeError('shift positive failed: '+output)
+                    if variant == 0:
+                        leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
+                        expected = {'LEASED '+op for op in ('SHLB', 'SHRB', 'SHLW', 'SHRW', 'SHLL', 'SHRL')}
+                        if leased != expected:
+                            raise RuntimeError('leased shift coverage missed: '+output)
                     if variant == 3 and 'PASS scheduled shift retry' not in output:
                         raise RuntimeError('scheduler retry missed: '+output)
     print('PASS eight actual shifts:99000 mixed-width/alias cases, six-op C/JIT guest, both polls')
