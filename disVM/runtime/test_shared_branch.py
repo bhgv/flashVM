@@ -98,6 +98,7 @@ WRAPPER = r'''
 #include "bytes_fast.h"
 #include "managed_owner.h"
 #include "disvm/native_context.h"
+#include "disvm/native_process.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -152,6 +153,29 @@ static void check(int valid, const char *message)
 DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
     const void *b, size_t bn, void *d, size_t dn, DVM_TripleAccess *access)
 {
+    static Inst *retry_pc; /* Decoded PC of the guest branch selected for replay. */
+    static unsigned long retry_count; /* Instruction quota position before BUSY. */
+    static int replayed; /* The selected branch has reached admission again. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 3 && !active && !replayed &&
+        (opcode == IBEQB || opcode == IBNEB || opcode == IBLTB || opcode == IBLEB ||
+         opcode == IBGTB || opcode == IBGEB || opcode == IBEQW || opcode == IBNEW ||
+         opcode == IBLTW || opcode == IBLEW || opcode == IBGTW || opcode == IBGEW ||
+         opcode == IBEQL || opcode == IBNEL || opcode == IBLTL || opcode == IBLEL ||
+         opcode == IBGTL || opcode == IBGEL))
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            retry_count = dvm_runtime_instructions;
+            return DVM_CELL_BUSY;
+        }
+        check(DVM_R.PC == retry_pc && dvm_runtime_instructions == retry_count,
+            "same branch replays without charging twice");
+        replayed = 1;
+        print("PASS scheduled branch retry\n");
+    }
     if (active)
     {
         check(a == first_cell && b == other_cell && d == target_cell &&
@@ -414,6 +438,8 @@ def main():
                             raise RuntimeError('branch control missed: '+output)
                     elif run.returncode or 'PASS branch probe:' not in output or 'PASS branches18' not in output:
                         raise RuntimeError('branch positive failed: '+output)
+                    if variant == 3 and 'PASS scheduled branch retry' not in output:
+                        raise RuntimeError('branch retry missed: '+output)
     print('PASS eighteen actual branches:101250 alias cases, lazy targets, C/JIT guest, both polls')
 
 

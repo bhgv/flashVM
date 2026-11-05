@@ -3,6 +3,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_real_branch.h"
 #include "real_branch_value.h"
@@ -24,7 +25,9 @@
 const char *dvm_runtime_real_branch(int condition, const void *source,
     const void *other, const void *target, void *pc)
 {
+    static const int opcodes[] = {IBEQF, IBNEF, IBLTF, IBLEF, IBGTF, IBGEF}; /* Condition to Dis opcode. */
     DVM_RangeAccess access = {0};
+    DVM_CellResult claim;
     unsigned char pair[2*sizeof(REAL)];
     const char *problem = NULL;
     if (dvm_runtime_shared_mode() != 2 || pc != &DVM_R.PC || condition < 0 || condition > 5)
@@ -36,10 +39,11 @@ const char *dvm_runtime_real_branch(int condition, const void *source,
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(source, sizeof(REAL), other, sizeof(REAL), NULL, 0,
-        &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_three_begin(source, sizeof(REAL), other, sizeof(REAL), NULL, 0,
+        &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]) ? NULL : exHeap;
     }
     dvm_runtime_real_branch_capture(source, other, pair);
     if (!dvm_range_access_end(&access))

@@ -24,6 +24,7 @@ const char *dvm_runtime_integer_branch(int opcode, const void *source,
     const void *other, const void *target, void *pc)
 {
     DVM_TripleAccess access = {0};
+    DVM_CellResult claim;
     size_t width;
     int invalid_target;
     const char *problem = NULL;
@@ -67,11 +68,12 @@ const char *dvm_runtime_integer_branch(int opcode, const void *source,
     }
     invalid_target = !target || target == H ||
         (uintptr_t)target > (uintptr_t)-1-sizeof(Inst *);
-    if (dvm_managed_small_three_begin(source, width, other, width,
+    claim = dvm_managed_small_three_begin(source, width, other, width,
         invalid_target ? (void *)source : (void *)target,
-        invalid_target ? width : sizeof(Inst *), &access) != DVM_CELL_ACQUIRED)
+        invalid_target ? width : sizeof(Inst *), &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
     if (dvm_runtime_branch_predicate(opcode, source, other))
     {

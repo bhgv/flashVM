@@ -57,6 +57,7 @@ WRAPPER = r'''
 #include "kernel.h"
 #include "isa.h"
 #include "interp.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "managed_owner.h"
 #include "shared_real_branch.h"
@@ -139,6 +140,23 @@ DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t an,const void
     void *out,size_t size,DVM_RangeAccess *access)
 {
     DVM_CellResult result;
+    static Inst *retry_pc; /* Post-decode PC of the selected guest branch. */
+    static int replayed; /* The selected branch reached admission again. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !active && !replayed &&
+        (opcode == IBEQF || opcode == IBNEF || opcode == IBLTF || opcode == IBLEF || opcode == IBGTF || opcode == IBGEF))
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(DVM_R.PC == retry_pc, "same branch replays after input contention");
+        replayed = 1;
+        print("PASS scheduled input retry\n");
+    }
+
     if (active)
     {
         check(a == input_a && b == input_b && an == sizeof(REAL) && bn == sizeof(REAL) && !out && !size,
@@ -599,6 +617,8 @@ def main():
                             raise RuntimeError('control missed: '+output)
                     elif run.returncode or 'PASS real branch probe:' not in output or 'PASS real branches6' not in output:
                         raise RuntimeError('positive failed: '+output)
+                    if variant == 0 and 'PASS scheduled input retry' not in output:
+                        raise RuntimeError('input retry missed: '+output)
     print('PASS six actual REAL branches:135600 IEEE/alias cases, native FP flags, unlocked predicate, both polls')
 
 

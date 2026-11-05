@@ -3,6 +3,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_string_branch.h"
 #include "string_branch_value.h"
@@ -97,7 +98,9 @@ static const char *prefix(StringView *view, size_t count, DVM_RangeAccess *acces
 const char *dvm_runtime_string_branch(int condition, const void *source,
     const void *other, const void *target, void *pc)
 {
+    static const int opcodes[] = {IBEQC, IBNEC, IBLTC, IBLEC, IBGTC, IBGEC}; /* Condition to Dis opcode. */
     DVM_RangeAccess access = {0};
+    DVM_CellResult claim;
     StringView left = {0};
     StringView right = {0};
     const char *problem;
@@ -116,10 +119,11 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
         return exHeap;
     }
     invalid_target = !target || target == H || (uintptr_t)target > (uintptr_t)-1-sizeof(Inst *);
-    if (dvm_managed_three_begin(source, sizeof(void *), other, sizeof(void *),
-        invalid_target ? (void *)source : (void *)target, sizeof(void *), &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_three_begin(source, sizeof(void *), other, sizeof(void *),
+        invalid_target ? (void *)source : (void *)target, sizeof(void *), &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]) ? NULL : exHeap;
     }
     left.object = dvm_runtime_string_branch_source(source);
     right.object = dvm_runtime_string_branch_source(other);
