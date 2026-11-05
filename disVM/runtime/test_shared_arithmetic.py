@@ -247,22 +247,48 @@ int __wrap_dvm_runtime_divisor_zero(int opcode, const void *second)
     code = code.replace('static int force_busy;', '''static Inst *retry_pc; /* Post-decode PC at the first scheduled BUSY. */
 static unsigned long retry_instruction_count; /* Quota position at the first attempt. */
 static int retry_observed; /* One real guest instruction has resumed. */
+static unsigned int busy_attempts; /* Claims attempted for the persistently busy PC. */
+static const void *busy_output; /* Borrowed only while the fixture instruction is live. */
+static size_t busy_width; /* Extent of the checked output. */
+static unsigned char busy_before[sizeof(ULONG)]; /* Destination before the first claim. */
 static int force_busy;''')
-    code = code.replace('    return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);', '''    if (CONTROL == 3 && !active && !retry_observed &&
+    code = code.replace('    return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);', '''    if ((CONTROL == 3 || CONTROL == 5) && !active && !retry_observed &&
         dvm_native_execution()->arithmetic_retry_opcode > 0 && SCHEDULED_ARITHMETIC_OPCODE)
     {
         if (!retry_pc)
         {
             retry_pc = DVM_R.PC;
             retry_instruction_count = dvm_runtime_instructions;
+            busy_output = d;
+            busy_width = m;
+            check(m <= sizeof(busy_before), "fixture output extent");
+            memcpy(busy_before, d, m);
+            busy_attempts++;
             return DVM_CELL_BUSY;
         }
         check(retry_pc == DVM_R.PC && retry_instruction_count == dvm_runtime_instructions,
             "scheduler redecodes the same PC without double charging quota");
+        check(busy_output == d && busy_width == m && !memcmp(busy_before, d, m),
+            "scheduler retry preserves the destination before acquisition");
+        if (CONTROL == 5)
+        {
+            busy_attempts++;
+            return DVM_CELL_BUSY;
+        }
         retry_observed = 1;
         print("PASS scheduled arithmetic retry\\n");
     }
     return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);''')
+    code = code.replace('    __real_error(message);', '''    if (CONTROL == 5 && busy_attempts)
+    {
+        check(!strcmp(message, exHeap) && busy_attempts == 9 &&
+            retry_pc == DVM_R.PC && retry_instruction_count == dvm_runtime_instructions &&
+            !memcmp(busy_before, busy_output, busy_width) &&
+            !dvm_native_context_object_count(dvm_native_context_current()),
+            "persistent busy raises after eight retries with output and quota intact");
+        print("PASS arithmetic retry limit\\n");
+    }
+    __real_error(message);''')
     opcode_check = ' || '.join('dvm_native_execution()->arithmetic_retry_opcode == I'+op.upper() for op in OPS)
     code = code.replace('SCHEDULED_ARITHMETIC_OPCODE', '('+opcode_check+')')
     code = code.replace('FAIL integer:', 'FAIL arithmetic:').replace('PASS integer', 'PASS arithmetic')
@@ -280,7 +306,7 @@ def main():
         subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
         cfile = work/'wrapper.c'
         cfile.write_text(wrapper())
-        for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
+        for variant in ((0, 3) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4, 5)):
             binary = relink(runtime, work, cfile, variant,
                             ['dvm_runtime_root_registry_probe', 'dvm_runtime_arithmetic_value', 'dvm_managed_small_three_begin', 'dvm_runtime_divisor_zero', 'error'])
             for mode in ('--no-jit', '--jit'):
@@ -297,6 +323,9 @@ def main():
                         marker = 'conversion holds joint guards' if variant == 1 else 'exact conversion and canaries' if variant == 2 else 'zero divisor preserves all output'
                         if run.returncode != 10 or 'FAIL arithmetic: '+marker not in output:
                             raise RuntimeError('semantic control missed: '+output)
+                    elif variant == 5:
+                        if run.returncode != 1 or 'PASS arithmetic retry limit' not in output:
+                            raise RuntimeError('scheduler retry limit missed: '+output)
                     elif run.returncode or ('PASS arithmetic admission refusal' if variant == 3 else 'PASS arithmetic probe:') not in output or 'PASS arithmetic24' not in output:
                         raise RuntimeError('arithmetic positive failed: '+output)
                     if variant == 3 and 'PASS scheduled arithmetic retry' not in output:
