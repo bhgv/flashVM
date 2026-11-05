@@ -149,6 +149,15 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     }
     if (!leave_empty())
     {
+        /* The caller still owns the heap. Keep every unjoined slot visible
+         * to shutdown even when rootless admission is refused. */
+        while (finished)
+        {
+            worker = finished;
+            finished = worker->next;
+            worker->next = service.helpers;
+            service.helpers = worker;
+        }
         return 0;
     }
     for (worker = finished; worker; worker = worker->next)
@@ -158,7 +167,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     if (rendezvous && service.awaiting_start)
     {
         fvm_port_sync_lock(service.sync);
-        while (service.ready < service.count - 1 && !service.failed)
+        while (service.ready < service.count - 1 && !service.stopping && !service.failed)
         {
             fvm_port_sync_wait(service.sync);
         }
@@ -184,7 +193,9 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     }
     if (!dvm_native_owner_enter(dvm_native_owner_current()))
     {
-        return 0;
+        /* Returning to a managed error handler requires ACTIVE ownership. */
+        fprintf(stderr, "disvm: cannot reenter after empty scheduler yield\n");
+        exit(1);
     }
     while (finished)
     {
