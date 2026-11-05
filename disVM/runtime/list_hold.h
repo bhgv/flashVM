@@ -20,7 +20,8 @@ typedef struct DVM_ListHold
  * exception with hold unchanged, guards released and extra retain undone.
  * Geometry/count/Tlist checks do not prove arbitrary-pointer/allocator lifetime.
  * No VM/error/destructor callback spans guards; native allocation may fail. */
-const char *dvm_runtime_list_hold(const void *cell, DVM_ListHold *hold);
+/* A scheduled replay returns NULL with an empty hold. */
+const char *dvm_runtime_list_hold(int opcode, const void *cell, DVM_ListHold *hold);
 
 
 /* Finish one live hold outside guards. body_ok is the result of a completed real

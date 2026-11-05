@@ -6,6 +6,7 @@
 #include "raise.h"
 #include "list_hold.h"
 #include "heap_hold.h"
+#include "shared_access.h"
 #include <stdlib.h>
 
 
@@ -13,18 +14,19 @@
  * Common capture supplies identical roots/retain/exclusion; transfer its native
  * lease fields explicitly after success. No throwing work follows transfer.
  * Return static error/NULL with caller storage unchanged on refusal. */
-const char *dvm_runtime_list_hold(const void *cell, DVM_ListHold *hold)
+const char *dvm_runtime_list_hold(int opcode, const void *cell, DVM_ListHold *hold)
 {
     DVM_HeapHold captured = {0};
     const char *problem;
+    DVM_CellResult claim;
     if (!hold || hold->value || hold->roots)
     {
         return exHeap;
     }
-    problem = dvm_runtime_heap_hold(cell, &Tlist, 0, &captured);
+    problem = dvm_runtime_heap_hold_attempt(cell, &Tlist, 0, &captured, &claim);
     if (problem)
     {
-        return problem;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
     hold->value = captured.value;
     hold->roots = captured.roots;

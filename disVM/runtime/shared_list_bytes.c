@@ -117,10 +117,14 @@ void dvm_runtime_list_bytes_copy(int opcode)
     {
         error(exBounds);
     }
-    problem = dvm_runtime_list_hold(DVM_R.s, &request.list);
+    problem = dvm_runtime_list_hold(opcode, DVM_R.s, &request.list);
     if (problem)
     {
         error((char *)problem);
+    }
+    if (!request.list.value)
+    {
+        return;
     }
     completed = kprotect(project, &request);
     dvm_runtime_list_finish(&request.list, completed);

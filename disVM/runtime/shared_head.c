@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
 #include "pool.h"
 #include "raise.h"
 #include "shared_head.h"
@@ -129,10 +130,14 @@ void dvm_runtime_guarded_headmp(DVM_HeadTypeResolver resolver)
     copy.module = DVM_R.M;
     copy.index = DVM_R.m;
     copy.resolve = resolver;
-    problem = dvm_runtime_list_hold(DVM_R.s, &copy.list);
+    problem = dvm_runtime_list_hold(IHEADMP, DVM_R.s, &copy.list);
     if (problem)
     {
         error((char *)problem);
+    }
+    if (!copy.list.value)
+    {
+        return;
     }
     completed = kprotect(project, &copy);
     dvm_runtime_list_finish(&copy.list, completed);

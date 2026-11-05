@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
 #include "pool.h"
 #include "raise.h"
 #include "shared_list_pointer.h"
@@ -83,10 +84,14 @@ void dvm_runtime_list_pointer_copy(const void *source, void *destination, int ta
     }
     request.destination = destination;
     request.tail = tail;
-    problem = dvm_runtime_list_hold(source, &request.list);
+    problem = dvm_runtime_list_hold(tail ? ITAIL : IHEADP, source, &request.list);
     if (problem)
     {
         error((char *)problem);
+    }
+    if (!request.list.value)
+    {
+        return;
     }
     completed = kprotect(project, &request);
     dvm_runtime_list_finish(&request.list, completed);

@@ -13,6 +13,8 @@ WRAPPER = r'''
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "shared_head.h"
 #include "shared_mapped.h"
@@ -212,6 +214,23 @@ DVM_RefcountResult __wrap_dvm_refcount_release_u(unsigned long *count)
 /* Missing source claim must stop before its actual retain. */
 DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
 {
+    static Inst *retry_pc; /* Decoded HEADMP PC at the first failed source claim. */
+    static int replayed; /* The actual guest has reached admission again. */
+
+    if (CONTROL == 0 && !active && !replayed &&
+        dvm_native_execution()->arithmetic_retry_opcode == IHEADMP && source == destination)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC && !dvm_native_context_object_count(dvm_native_context_current()),
+            "HEADMP retries before retaining its source");
+        replayed = 1;
+        print("PASS scheduled HEADMP source retry\n");
+    }
+
     if (active && CONTROL == 1)
     {
         return DVM_CELL_ACQUIRED;
@@ -572,7 +591,8 @@ def main():
                         if run.returncode != 10 or 'FAIL shared head: '+markers[variant] not in output:
                             raise RuntimeError('head boundary control missed '+str(variant)+': '+output)
                     elif run.returncode or 'PASS actual head projection:' not in output or \
-                            'PASS actual guarded HEADMP guest route' not in output:
+                            'PASS actual guarded HEADMP guest route' not in output or \
+                            'PASS scheduled HEADMP source retry' not in output:
                         raise RuntimeError('head positive failed '+str(run.returncode)+': '+output)
     print('PASS actual shared head C/JIT,both polls'+
           (' positives only' if '--positive-only' in sys.argv else '; seven semantic boundary controls'))

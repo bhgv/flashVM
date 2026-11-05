@@ -43,7 +43,7 @@ static DVM_GCWorkers *collectors; /* Actual stopped-world collector service. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers);
 void __real_dvm_runtime_list_pointer_copy(const void *, void *, int);
 const char *__real_dvm_runtime_movp_copy(const void *, void *, void **);
-const char *__real_dvm_runtime_list_hold(const void *, DVM_ListHold *);
+const char *__real_dvm_runtime_list_hold(int, const void *, DVM_ListHold *);
 void __real_destroy(void *object);
 void __real_error(char *message);
 void *__real_malloc(size_t bytes);
@@ -107,14 +107,14 @@ void *__wrap_calloc(size_t count, size_t bytes)
 
 
 /* Missing container ownership control stops at the interior-work preflight. */
-const char *__wrap_dvm_runtime_list_hold(const void *source, DVM_ListHold *hold)
+const char *__wrap_dvm_runtime_list_hold(int opcode, const void *source, DVM_ListHold *hold)
 {
     if (active && CONTROL == 1)
     {
         hold->value = parent;
         return NULL;
     }
-    return __real_dvm_runtime_list_hold(source, hold);
+    return __real_dvm_runtime_list_hold(opcode, source, hold);
 }
 
 

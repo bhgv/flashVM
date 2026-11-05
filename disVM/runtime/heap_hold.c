@@ -21,7 +21,8 @@
 /* [GC:] cell has independent source ownership; hold is zero owner-local output.
  * Metadata is prepared first. Source count is acquired only while its slot is
  * excluded; failure never throws under guards or consumes the original owner. */
-const char *dvm_runtime_heap_hold(const void *cell, Type *expected, int allow_nil, DVM_HeapHold *hold)
+const char *dvm_runtime_heap_hold_attempt(const void *cell, Type *expected, int allow_nil,
+    DVM_HeapHold *hold, DVM_CellResult *claim)
 {
     DVM_CellAccess access = {0};
     DVM_RootBatch *roots;
@@ -31,6 +32,7 @@ const char *dvm_runtime_heap_hold(const void *cell, Type *expected, int allow_ni
     unsigned long count;
     void *key;
     int retained = 0;
+    *claim = DVM_CELL_REFUSED;
     if (dvm_runtime_shared_mode() != 2 || !hold || hold->value || hold->roots ||
         (uintptr_t)cell < sizeof(void *) || (uintptr_t)cell > (uintptr_t)-1 - sizeof(void *))
     {
@@ -41,7 +43,8 @@ const char *dvm_runtime_heap_hold(const void *cell, Type *expected, int allow_ni
     {
         return exNomem;
     }
-    if (dvm_managed_cells_begin(cell, (void *)cell, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_cells_begin(cell, (void *)cell, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         if (!dvm_runtime_root_batch_destroy(&roots))
         {
@@ -114,6 +117,15 @@ const char *dvm_runtime_heap_hold(const void *cell, Type *expected, int allow_ni
     hold->value = value;
     hold->roots = roots;
     return NULL;
+}
+
+
+/* Capture a rooted owner without exposing the native admission result. */
+const char *dvm_runtime_heap_hold(const void *cell, Type *expected, int allow_nil, DVM_HeapHold *hold)
+{
+    DVM_CellResult claim;
+
+    return dvm_runtime_heap_hold_attempt(cell, expected, allow_nil, hold, &claim);
 }
 
 

@@ -46,7 +46,7 @@ static DVM_GCWorkers *collectors; /* Real collector service, alive through probe
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers);
 void __real_dvm_runtime_list_bytes_copy(int opcode);
 const char *__real_dvm_runtime_bytes_copy(const void *, void *, size_t);
-const char *__real_dvm_runtime_list_hold(const void *, DVM_ListHold *);
+const char *__real_dvm_runtime_list_hold(int, const void *, DVM_ListHold *);
 void __real_dvm_runtime_byte_transfer(void *, const void *, size_t);
 DVM_CellResult __real_dvm_managed_spans_begin(const void *, size_t, void *, size_t, DVM_CellAccess *);
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
@@ -105,14 +105,14 @@ void *__wrap_calloc(size_t count, size_t bytes)
 
 
 /* Missing container ownership must stop before the actual payload helper. */
-const char *__wrap_dvm_runtime_list_hold(const void *cell, DVM_ListHold *hold)
+const char *__wrap_dvm_runtime_list_hold(int opcode, const void *cell, DVM_ListHold *hold)
 {
     if (active && CONTROL == 1)
     {
         hold->value = node;
         return NULL;
     }
-    return __real_dvm_runtime_list_hold(cell, hold);
+    return __real_dvm_runtime_list_hold(opcode, cell, hold);
 }
 
 

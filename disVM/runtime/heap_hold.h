@@ -2,6 +2,7 @@
 #ifndef DVM_HEAP_HOLD_H
 #define DVM_HEAP_HOLD_H
 #include "root_batch.h"
+#include "disvm/cell_access.h"
 
 struct Type; /* Actual native managed descriptor, defined by interp.h. */
 
@@ -34,4 +35,10 @@ const char *dvm_runtime_heap_hold(const void *cell, struct Type *expected,
  * Clear native storage before destructor, never retry a consumed owner. May
  * invoke real destructor/VM unwind. No asynchronous borrower may retain hold. */
 void dvm_runtime_heap_finish(DVM_HeapHold *hold, int body_ok);
+
+
+/* As for heap_hold, also report source admission in caller-private storage.
+ * BUSY leaves the hold empty and destroys the unused root reservation. */
+const char *dvm_runtime_heap_hold_attempt(const void *cell, struct Type *expected, int allow_nil,
+    DVM_HeapHold *hold, DVM_CellResult *claim);
 #endif
