@@ -5,7 +5,12 @@ no explicit execution profile is selected. The default enables guarded copies
 and restricted shared admission for typed pointer, record, byte, slice and
 channel transfers. Other instructions continue to use exclusive admission.
 Use `--gc-inline` or `--managed-workers 1` for a single-executor run. Explicit
-GC, executor-count and experimental switches select a custom profile. The
+GC and experimental switches select a custom profile. On this console backend,
+`--managed-workers 24` keeps the parallel profile and starts 24 executors.
+`--managed-workers auto` starts with two executors and can grow to compensate
+for native waits when guest work is runnable. An optional
+`--managed-workers-limit N` caps that growth. Guest channels and runnable
+processes are multiplexed over the executor pool. The
 graphical host and other backends keep their existing launch defaults.
 
 [Runtime0.89: opt-in guarded scalar/raw copies and checked SELF](SHARED-BYTES.md).

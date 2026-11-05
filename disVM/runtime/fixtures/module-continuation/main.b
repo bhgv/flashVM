@@ -36,6 +36,35 @@ rendezvous(outbound, inbound: chan of (Provider, array of int), ready: chan of i
     returnbox = (nil, nil);
 }
 
+# Each guest waits on its own channel. The completion channel reports identity.
+channel_guest(input, completed: chan of int, expected: int)
+{
+    if (<-input != expected)
+        raise "channel delivered to the wrong guest";
+    completed <-= expected;
+}
+
+check_channels()
+{
+    inputs := array[40] of chan of int;
+    completed := chan of int;
+    for (i := 0; i < len inputs; i++)
+    {
+        inputs[i] = chan of int;
+        spawn channel_guest(inputs[i], completed, i);
+    }
+    for (i = 0; i < len inputs; i++)
+        inputs[i] <-= i;
+    seen := array[40] of {* => 0};
+    for (i = 0; i < len inputs; i++)
+    {
+        value := <-completed;
+        if (value < 0 || value >= len seen || seen[value] != 0)
+            raise "channel completion was lost or duplicated";
+        seen[value] = 1;
+    }
+}
+
 init()
 {
     sys = load Sys Sys->PATH;
@@ -99,4 +128,6 @@ init()
     if (module_code != byte 314159)
         raise "raw buffered channel lost its byte";
     provider = nil;
+    check_channels();
+    sys->print("PASS forty independent channels\n");
 }

@@ -2852,7 +2852,7 @@ int main(int argc, char **argv)
 #if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
             puts("Default: two managed workers, native GC and shared typed copies and channel transfers.");
 #endif
-            puts("Explicit GC, worker and guarded/parallel switches select a custom profile.");
+            puts("Explicit GC and guarded/parallel switches select a custom profile.");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; unaudited heap operations use exclusive turns.");
@@ -2877,8 +2877,9 @@ int main(int argc, char **argv)
     }
 #if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
     /* Default only for the reviewed console backend. Explicit execution and
-     * diagnostic profiles retain their independently selected settings. */
-    if (!gc_selected && !managed_workers_selected && !managed_limit_selected &&
+     * diagnostic profiles retain their independently selected settings. A requested
+     * pool size alone changes only the executor count. */
+    if (!gc_selected && (!managed_workers_selected || managed_workers != 1) &&
         !dvm_runtime_guarded_copies && !dvm_runtime_parallel_add &&
         !dvm_runtime_parallel_real && !dvm_runtime_parallel_string &&
         !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp &&
@@ -2886,7 +2887,10 @@ int main(int argc, char **argv)
         !dvm_runtime_parallel_byte_copies && !dvm_managed_owner_probe_requested &&
         !dvm_queue_probe_requested)
     {
-        managed_workers = 2;
+        if (!managed_workers_selected)
+        {
+            managed_workers = 2;
+        }
         gc_worker = 1;
         dvm_runtime_guarded_copies = 1;
         dvm_runtime_parallel_movp = 1;

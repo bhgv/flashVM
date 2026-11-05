@@ -9,9 +9,11 @@ import tempfile
 import time
 
 
-def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False):
+def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False, workers=2):
     shared = ["--parallel-channel-buffer", "--parallel-byte-copies"] if shared_channels else []
     explicit = [] if default_profile else ["--gc-worker", "--managed-workers", "2", "--guarded-copies", *shared]
+    if default_profile and workers != 2:
+        explicit = ["--managed-workers", str(workers)]
     command = [str(runtime), mode, "--stats", *explicit, "--quantum", "65536", *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -39,7 +41,7 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
                 child.kill()
                 child.communicate()
     text = output.decode(errors="replace")
-    pool = "NATIVEPOOL executors=2 joined=1 failed=0" in text
+    pool = f"NATIVEPOOL executors={workers} joined=1 failed=0" in text
     queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", text)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0", text)
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", text)
@@ -49,7 +51,8 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     raw = re.search(r"parallel_channel_raw=(\d+)", text)
     byte_moves = re.search(r"parallel_byte_commits=(\d+)", text)
     native = re.search(r"instructions=\d+ native=(\d+)", text)
-    if (child.returncode or not pool or outcome not in text or "PASS Dis application completed" not in text
+    if (child.returncode or not pool or outcome not in text
+            or (image == "main.dis" and "PASS forty independent channels" not in text) or "PASS Dis application completed" not in text
             or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
             or not dispatch or dispatch[1] != dispatch[2] or not gc or int(gc[1]) == 0
             or ((shared_channels or default_profile) and (not channel or min(map(int, channel.groups())) == 0
@@ -71,6 +74,8 @@ def main():
                             "-I", str(fixtures.parents[2] / "module"),
                             "-o", str(directory / (name + ".dis")),
                             str(fixtures / (name + ".b"))], check=True)
+        run(runtime, directory, "--jit", [], b"R", "PASS provider return",
+            default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
