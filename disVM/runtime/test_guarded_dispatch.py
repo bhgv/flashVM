@@ -35,7 +35,8 @@ def inspect(emitter, dispatcher, executor):
     if {op for op,fn in cases} != set(selected):
         raise DispatchMismatch('selector dispatch agreement')
     for op,fn in cases:
-        if fn != op[1:].lower():
+        entry = op.lower() if op in ("IEXPW", "IEXPL", "IEXPF") else op[1:].lower()
+        if fn != entry:
             raise DispatchMismatch('opcode entry identity')
         if len(re.findall(r'\bOP\('+fn+r'\)',executor)) != 1:
             raise DispatchMismatch('executor identity')

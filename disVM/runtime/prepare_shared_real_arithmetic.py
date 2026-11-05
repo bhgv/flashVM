@@ -19,4 +19,38 @@ def adapt(source):
             raise ValueError('guarded REAL arithmetic insertion drift: '+name)
         code = '\tif(dvm_runtime_guarded_copies) {\n\t\tconst char *problem = dvm_runtime_real_arithmetic(I'+name.upper()+', '+operands+', DVM_R.d);\n\t\tif(problem != nil) {\n\t\t\terror((char *)problem);\n\t\t}\n\t\treturn;\n\t}\n'
         source = source[:match.start()]+body.replace(anchor,code+anchor)+source[match.end():]
-    return '#include "shared_real_arithmetic.h"\n'+source
+    return '#include "shared_real_arithmetic.h"\n'+adapt_power(source)
+
+
+POWER_BODIES = {
+    'iexpw': '773e9d241de8978b312eeec4a2ea82125a46dd2e058ad4593b9df279eb5199e3',
+    'iexpl': '823bd5302da4881f57ed2456e06f16798025cc1dd53e0397db6cdc352ee35fa9',
+    'iexpf': 'fc9dc2fb36b83befec00ce8190c531af880acd4ccb53326cac4e23a00a33b84f',
+}
+
+
+def adapt_power(source):
+    """Use the original native evaluator for both direct and guarded slots."""
+    for name, expected in POWER_BODIES.items():
+        matches = list(re.finditer(r'OP\('+name+r'\)\n\{.*?\n\}', source, re.S))
+        if len(matches) != 1 or hashlib.sha256(matches[0].group().encode()).hexdigest() != expected:
+            raise ValueError('guarded power source drift: '+name)
+        match = matches[0]
+        slots = name+'_slots'
+        body = match.group().replace('OP('+name+')',
+            'static void\n'+slots+'(const void *base_slot, const void *exponent_slot, void *result_slot)')
+        body = body.replace('DVM_R.m', 'base_slot').replace('DVM_R.s', 'exponent_slot').replace('DVM_R.d', 'result_slot')
+        wrapper = f'''
+OP({name})
+{{
+    if(dvm_runtime_guarded_copies) {{
+        const char *problem = dvm_runtime_power({name.upper()}, DVM_R.m, DVM_R.s, DVM_R.d, {slots});
+        if(problem != nil)
+            error((char*)problem);
+        return;
+    }}
+    {slots}(DVM_R.m, DVM_R.s, DVM_R.d);
+}}
+'''
+        source = source[:match.start()]+body+'\n'+wrapper+source[match.end():]
+    return source

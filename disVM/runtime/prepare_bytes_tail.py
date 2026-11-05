@@ -54,7 +54,7 @@ x64guardedcopy(u32int *out, int cap, LeafLayout *abi, int op)
     if body.count(anchor) != 1:
         raise ValueError('x64 guarded copy entry anchor drift')
     body = body.replace(anchor, '''    if(dvm_runtime_guarded_copies &&
-       (op == ICVTRF || op == ICVTFR || op == ICVTWF || op == ICVTLF || op == ICVTFW || op == ICVTFL || op == IADDF || op == ISUBF || op == IMULF || op == IDIVF || op == INEGF || op == ILENL || op == IBEQF || op == IBNEF || op == IBLTF || op == IBLEF || op == IBGTF || op == IBGEF || op == IBEQC || op == IBNEC || op == IBLTC || op == IBLEC || op == IBGTC || op == IBGEC || op == ILENC || op == ILENA || op == IMOVB || op == IMOVW || op == IMOVL || op == IMOVF || op == IMOVM ||
+       (op == ICVTRF || op == ICVTFR || op == ICVTWF || op == ICVTLF || op == ICVTFW || op == ICVTFL || op == IADDF || op == ISUBF || op == IMULF || op == IDIVF || op == INEGF || op == IEXPW || op == IEXPL || op == IEXPF || op == ILENL || op == IBEQF || op == IBNEF || op == IBLTF || op == IBLEF || op == IBGTF || op == IBGEF || op == IBEQC || op == IBNEC || op == IBLTC || op == IBLEC || op == IBGTC || op == IBGEC || op == ILENC || op == ILENA || op == IMOVB || op == IMOVW || op == IMOVL || op == IMOVF || op == IMOVM ||
         op == IHEADB || op == IHEADW || op == IHEADL || op == IHEADF || op == IHEADM ||
         op == ICVTBW || op == ICVTWB || op == ICVTWS || op == ICVTSW ||
         op == ICVTWL || op == ICVTLW ||

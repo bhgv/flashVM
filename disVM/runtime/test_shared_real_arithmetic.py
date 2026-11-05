@@ -19,6 +19,18 @@ init() {
     {
         raise "REAL arithmetic";
     }
+    ints := array[] of {2, -3, 0, -1, 3};
+    exponent := ints[1];
+    if (ints[0] ** exponent != 0 || ints[3] ** exponent != -1 ||
+        ints[0] ** ints[4] != 8 || big ints[0] ** ints[4] != big 8 ||
+        a ** exponent != 0.125)
+        raise "guarded powers";
+    {
+        ints[0] = ints[2] ** exponent;
+        raise "negative zero-base exponent accepted";
+    } exception {
+        "zero divide" => {}
+    }
     sys->print("PASS REAL arithmetic5\\n");
 }
 '''
@@ -50,6 +62,7 @@ static __thread int injected; /* VM unwind at unlocked FP boundary. */
 static __thread int modify; /* Deliberate source update after the snapshot. */
 static __thread void *input; /* Borrowed live first cell for phase update. */
 static __thread int prints; /* Guest output markers, exact current OS owner. */
+static __thread unsigned int powers;
 static __thread int seen[5]; /* Actual guest C entries, shared by its current OS owner. */
 static const int operations[5] = {IADDF,ISUBF,IMULF,IDIVF,INEGF}; /* Existing file opcodes. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
@@ -254,12 +267,30 @@ const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const vo
 }
 
 
+const char *__real_dvm_runtime_power(int,const void *,const void *,void *,
+    void (*)(const void *,const void *,void *));
+
+
+const char *__wrap_dvm_runtime_power(int opcode,const void *base,const void *exponent,void *out,
+    void (*evaluate)(const void *,const void *,void *))
+{
+    if (opcode == IEXPW)
+        powers |= 1;
+    if (opcode == IEXPL)
+        powers |= 2;
+    if (opcode == IEXPF)
+        powers |= 4;
+    return __real_dvm_runtime_power(opcode,base,exponent,out,evaluate);
+}
+
+
 /* Before the guest prints, require all five genuine opcode routes. */
 int __wrap_dvm_bigtable_call_ready(void (*function)(void *),void *frame)
 {
     if (function == Sys_print && ++prints == 2)
     {
         check(seen[0] && seen[1] && seen[2] && seen[3] && seen[4],"five guest routes");
+        check(powers == 7,"all guarded power routes");
     }
     return __real_dvm_bigtable_call_ready(function,frame);
 }
@@ -412,7 +443,7 @@ def main():
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
     symbols = ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin',
                'dvm_range_access_end','dvm_runtime_real_branch_capture','dvm_runtime_real_arithmetic_value',
-               'dvm_runtime_real_arithmetic_store','dvm_runtime_real_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
+               'dvm_runtime_real_arithmetic_store','dvm_runtime_real_arithmetic','dvm_runtime_power','dvm_bigtable_call_ready','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual REAL arithmetic ') as directory:
         work = Path(directory)
         source, image = work/'main.b', work/'main.dis'

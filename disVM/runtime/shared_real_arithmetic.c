@@ -67,3 +67,58 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     }
     return NULL;
 }
+
+
+/* Powers have a WORD exponent even for LONG or REAL bases. Preserve the
+ * integer zero-base error priority and preflight REAL output before FP. */
+const char *dvm_runtime_power(int opcode, const void *base, const void *exponent,
+    void *output, void (*evaluate)(const void *, const void *, void *))
+{
+    DVM_RangeAccess access = {0};
+    union
+    {
+        WORD word;
+        LONG big;
+        REAL real;
+    } saved, result;
+    WORD power;
+    size_t width = opcode == IEXPW ? sizeof(WORD) : opcode == IEXPL ? sizeof(LONG) : sizeof(REAL);
+    int invalid_output = !output || output == H || (uintptr_t)output > (uintptr_t)-1-width;
+
+    if (dvm_runtime_shared_mode() != 2)
+    {
+        return exHeap;
+    }
+    if (!base || base == H || (uintptr_t)base > (uintptr_t)-1-width ||
+        !exponent || exponent == H || (uintptr_t)exponent > (uintptr_t)-1-sizeof(power) ||
+        (opcode == IEXPF && invalid_output))
+    {
+        return exBounds;
+    }
+    if (dvm_managed_three_begin(base, width, exponent, sizeof(power), NULL, 0,
+        &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(&saved, base, width);
+    memmove(&power, exponent, sizeof(power));
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    evaluate(&saved, &power, &result);
+    if (invalid_output)
+    {
+        return exBounds;
+    }
+    if (dvm_managed_ranges_begin(NULL, 0, output, width, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(output, &result, width);
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}

@@ -13,4 +13,8 @@
  * Caller retains ACTIVE/world, frame/referent lifetime and FP environment. */
 const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     const void *second, void *output);
+/* The original opcode evaluator receives only private, saved operands.
+ * It may raise after capture, with all shared guards already released. */
+const char *dvm_runtime_power(int opcode, const void *base, const void *exponent,
+    void *output, void (*evaluate)(const void *, const void *, void *));
 #endif
