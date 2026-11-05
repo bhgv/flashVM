@@ -687,12 +687,73 @@ static int wait_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descriptor, s
     }
     fvm_port_sync_lock(channel_queue_mutex);
     available = !wait->cancelled;
-    if (available && events == POLLIN)
-    {
-        wait->wake_fd = -1; /* The admitted read owns this readiness. */
-    }
     fvm_port_sync_unlock(channel_queue_mutex);
     return available;
+}
+
+
+/* Read a borrowed FIFO through a private pipe without changing its flags.
+ * The ledger serializes cancellation against the nonblocking consumption
+ * attempt. Advisory readiness alone does not commit the read. */
+static FVM_Result read_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descriptor,
+    void *bytes, size_t capacity, size_t *received, int timeout)
+{
+    int staging[2];
+    ssize_t count = -1;
+    FVM_Result status = FVM_ERROR;
+
+    if (pipe2(staging, O_CLOEXEC | O_NONBLOCK))
+    {
+        return FVM_OUT_OF_MEMORY;
+    }
+    while (wait_stdio_pipe(wait, wake_fd, descriptor, POLLIN, timeout))
+    {
+        int retry;
+
+        fvm_port_sync_lock(channel_queue_mutex);
+        if (wait->cancelled)
+        {
+            fvm_port_sync_unlock(channel_queue_mutex);
+            break;
+        }
+        count = splice(descriptor, NULL, staging[1], NULL, capacity, SPLICE_F_NONBLOCK);
+        retry = count < 0 && (errno == EAGAIN || errno == EINTR);
+        if (count >= 0)
+        {
+            wait->wake_fd = -1;
+        }
+        fvm_port_sync_unlock(channel_queue_mutex);
+        if (!retry || !timeout)
+        {
+            break;
+        }
+    }
+    if (count >= 0)
+    {
+        size_t copied = 0;
+
+        while (copied < (size_t)count)
+        {
+            ssize_t fragment = read(staging[0], (uchar *)bytes + copied, (size_t)count - copied);
+            if (fragment < 0 && errno == EINTR)
+            {
+                continue;
+            }
+            if (fragment <= 0)
+            {
+                break;
+            }
+            copied += (size_t)fragment;
+        }
+        *received = copied;
+        if (copied == (size_t)count)
+        {
+            status = FVM_OK;
+        }
+    }
+    close(staging[0]);
+    close(staging[1]);
+    return status;
 }
 
 
@@ -839,10 +900,7 @@ static FVM_Result runtime_stdio_transfer(int descriptor, void *input, const void
         {
             if (input)
             {
-                if (wait_stdio_pipe(&wait, wake_fd, descriptor, POLLIN, timeout))
-                {
-                    status = fvm_port_stdio_read(descriptor, input, capacity, transferred);
-                }
+                status = read_stdio_pipe(&wait, wake_fd, descriptor, input, capacity, transferred, timeout);
             }
             else
             {

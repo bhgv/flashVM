@@ -62,6 +62,7 @@ static int stdout_wait_pid; /* Captured before the staged output wait. */
 static int stdout_cancelled; /* Later output uses the normal pipe path. */
 static int stdin_cancel_mode; /* Exercise a guest blocked in a real pipe poll. */
 static int stdin_wait_pid; /* PID captured before the first pipe read. */
+static int stdin_readiness_raced; /* Force one stale readiness before the first pipe fragment. */
 static int stdin_partial_received; /* One fragment committed before cancellation. */
 static int stdin_cancelled; /* Only the first read is cancelled. */
 static int file_cancel_mode; /* Enable the shared-descriptor cancellation fixture. */
@@ -596,6 +597,13 @@ ssize_t __wrap_splice(int source, off64_t *source_offset, int destination,
     ssize_t transferred;
     int closes_reader = 0;
 
+    if (stdin_cancel_mode == 22 && source == 0 && !stdin_readiness_raced)
+    {
+        check((flags & SPLICE_F_NONBLOCK) != 0, "stdin consumes advisory readiness without blocking");
+        stdin_readiness_raced = 1;
+        errno = EAGAIN;
+        return -1;
+    }
     if (broken_pipe_mode && destination == 1)
     {
         broken_pipe_splices++;
@@ -908,7 +916,8 @@ FVM_Result __wrap_dvm_runtime_read_stdin(void *bytes, size_t capacity, size_t *r
     result = __real_dvm_runtime_read_stdin(bytes, capacity, received);
     if (stdin_cancel_mode == 22 && !stdin_partial_received)
     {
-        check(result == FVM_OK && *received == 1, "initial pipe fragment arrives before cancellation");
+        check(stdin_readiness_raced && result == FVM_OK && *received == 1,
+            "initial pipe fragment arrives after stale readiness and before cancellation");
         stdin_partial_received = 1;
         return result;
     }
