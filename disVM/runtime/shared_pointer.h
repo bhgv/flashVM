@@ -2,6 +2,7 @@
 #ifndef DVM_SHARED_POINTER_H
 #define DVM_SHARED_POINTER_H
 
+extern unsigned long dvm_runtime_parallel_movp_commits;
 extern int dvm_runtime_parallel_movp; /* Startup-only restricted pointer-copy experiment. */
 
 

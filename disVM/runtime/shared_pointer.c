@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 
+unsigned long dvm_runtime_parallel_movp_commits; /* Written after exclusive reentry. */
 int dvm_runtime_parallel_movp; /* Startup-only restricted frame-pointer experiment. */
 
 
@@ -227,6 +228,10 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
             abort();
         }
         dvm_runtime_gc_native_enter(released);
+        if (!problem)
+        {
+            dvm_runtime_parallel_movp_commits++;
+        }
     }
     *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
     if (*replay || problem)

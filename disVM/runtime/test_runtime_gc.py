@@ -56,7 +56,8 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     if pool:
         workers = re.search(r"NATIVEPOOL executors=2 joined=1 failed=0 controller_turns=(\d+) worker_turns=(\d+)", output)
         shared = re.search(r"native_releases=(\d+) native_reentries=(\d+)", output)
-        if (not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output
+        commits = re.search(r"parallel_movp_commits=(\d+)", output)
+        if (not commits or int(commits[1]) < 64 or not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output
                 or not shared or int(shared[1]) < 64 or shared[1] != shared[2]):
             raise RuntimeError("shared graph did not run with the expected worker pool:\n" + output[-5000:])
     if budget is None and quantum == 65536 and int(rc[3]) == 0:
