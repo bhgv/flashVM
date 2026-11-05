@@ -131,9 +131,10 @@ Measured costs and pending investigations: [PERFORMANCE-COSTS.md](PERFORMANCE-CO
 ## Shared admission for array assignment
 
 `--parallel-slicela` enables an experimental path with `--guarded-copies`
-and multiple managed workers. It accepts mapped `SLICELA` between arrays or views captured from typed frame
+and multiple managed workers. It accepts mapped and raw `SLICELA` between arrays or views captured from typed frame
 slots, with an immediate or private frame index. A pinned view retains the
-backing array through its root link. Raw arrays use the exclusive path.
+backing array through its root link. Raw payloads use the same range guard
+and overlap-safe byte copy, with no displaced-reference bookkeeping.
 
 The runtime retains and roots both arrays and reserves copy metadata under
 exclusive admission. Once admitted in `SHARED`, it rechecks both array

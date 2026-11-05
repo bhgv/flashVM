@@ -136,6 +136,15 @@ sharedgraph()
     {
         raise "overlapping view copy changed snapshot order";
     }
+    # Exercise raw overlapping views with the same backing lifetime contract.
+    raw := array[] of {10, 20, 30, 40};
+    rawleft := raw[0:3];
+    rawright := raw[1:4];
+    raw = nil;
+    rawright[0:] = rawleft;
+    if (rawleft[0] != 10 || rawleft[1] != 10 ||
+        rawright[1] != 20 || rawright[2] != 30)
+        raise "overlapping raw view copy changed snapshot order";
     sys->print("PASS gc-worker shared graph: 64 unordered publications after unwind\n");
 }
 

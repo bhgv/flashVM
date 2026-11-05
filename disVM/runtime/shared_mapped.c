@@ -199,7 +199,15 @@ static int slice_shape_stable(const SliceCopy *slice)
 static const char *publish_and_unlock(MappedCopy *copy, const void *source,
     void *destination, size_t bytes, int consume, DVM_RangeAccess *access)
 {
-    const char *problem = publish(copy, source, destination, bytes, consume);
+    const char *problem = NULL;
+    if (copy->count)
+    {
+        problem = publish(copy, source, destination, bytes, consume);
+    }
+    else
+    {
+        dvm_runtime_byte_transfer(destination, source, bytes);
+    }
     if (!dvm_range_access_end(access))
     {
         abort();
@@ -273,7 +281,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    if (!copy.count)
+    if (!copy.count && !slice)
     {
         problem = replay_opcode ?
             dvm_runtime_bytes_copy_opcode(replay_opcode, source, destination, bytes) :
@@ -292,33 +300,36 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         }
         return 1;
     }
-    if (elements > SIZE_MAX / sizeof(*copy.slots) / copy.count)
+    if (copy.count)
     {
-        error(exNomem);
-    }
-    copy.count *= elements;
-    copy.slots = calloc(copy.count, sizeof(*copy.slots));
-    copy.keys = calloc(copy.count, sizeof(*copy.keys));
-    copy.snapshot = malloc(bytes);
-    copy.roots = dvm_runtime_root_batch_create(copy.count);
-    if (!copy.slots || !copy.keys || !copy.snapshot || !copy.roots)
-    {
-        dispose(&copy);
-        error(exNomem);
-    }
-    index = 0;
-    for (element = 0; element < elements; element++)
-    {
-        /* Keep the legacy SLICELA retirement direction for overlapping views. */
-        size_t offset = ((uintptr_t)destination > (uintptr_t)source ?
-            elements - element - 1 : element) * (size_t)size;
-        for (byte = 0; byte < type->np; byte++)
+        if (elements > SIZE_MAX / sizeof(*copy.slots) / copy.count)
         {
-            for (bit = 0; bit < 8; bit++)
+            error(exNomem);
+        }
+        copy.count *= elements;
+        copy.slots = calloc(copy.count, sizeof(*copy.slots));
+        copy.keys = calloc(copy.count, sizeof(*copy.keys));
+        copy.snapshot = malloc(bytes);
+        copy.roots = dvm_runtime_root_batch_create(copy.count);
+        if (!copy.slots || !copy.keys || !copy.snapshot || !copy.roots)
+        {
+            dispose(&copy);
+            error(exNomem);
+        }
+        index = 0;
+        for (element = 0; element < elements; element++)
+        {
+            /* Keep the legacy SLICELA retirement direction for overlapping views. */
+            size_t offset = ((uintptr_t)destination > (uintptr_t)source ?
+                elements - element - 1 : element) * (size_t)size;
+            for (byte = 0; byte < type->np; byte++)
             {
-                if (type->map[byte] & (1U << bit))
+                for (bit = 0; bit < 8; bit++)
                 {
-                    copy.slots[index++].offset = offset + ((size_t)byte * 8 + 7 - bit) * sizeof(void *);
+                    if (type->map[byte] & (1U << bit))
+                    {
+                        copy.slots[index++].offset = offset + ((size_t)byte * 8 + 7 - bit) * sizeof(void *);
+                    }
                 }
             }
         }
@@ -417,7 +428,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    if (!dvm_runtime_root_batch_clear(copy.roots))
+    if (copy.roots && !dvm_runtime_root_batch_clear(copy.roots))
     {
         abort();
     }
@@ -480,7 +491,7 @@ void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *t
 
     /* A retained view keeps its backing array live through its root link.
      * Stable decoded frame slots supply the array identities and index. */
-    if (!dvm_runtime_parallel_slicela || !type->np ||
+    if (!dvm_runtime_parallel_slicela ||
         !dvm_runtime_frame_pointer(DVM_R.s) || !dvm_runtime_frame_pointer(DVM_R.d) ||
         !dvm_runtime_slice_index_stable(DVM_R.m))
     {

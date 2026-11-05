@@ -59,8 +59,8 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         shared = re.search(r"native_releases=(\d+) native_reentries=(\d+)", output)
         commits = re.search(r"parallel_movp_commits=(\d+)", output)
         slices = re.search(r"parallel_slicela_commits=(\d+)", output)
-        if not slices or int(slices[1]) != 65:
-            raise RuntimeError("expected 64 backing and one overlapping view publication:\n" + output[-5000:])
+        if not slices or int(slices[1]) != 66:
+            raise RuntimeError("expected 64 backing and two overlapping view publications:\n" + output[-5000:])
         records = re.search(r"parallel_movmp_commits=(\d+)", output)
         if not records or int(records[1]) < 32:
             raise RuntimeError("expected shared mapped frame records:\n" + output[-5000:])
