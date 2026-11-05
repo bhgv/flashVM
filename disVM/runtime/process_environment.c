@@ -10,6 +10,7 @@
 #include "sys_capture.h"
 #include "disvm/native_process.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 
@@ -31,8 +32,10 @@ void dvm_process_environment_init(Prog *process, Prog *parent)
         snprintf(environment->syserrstr,ERRMAX,"%s",source->syserrstr);
     }
     process->osenv = environment;
-    ((DVM_RuntimeProcess *)process)->floating_control = getfcr();
-    ((DVM_RuntimeProcess *)process)->floating_status = getfsr();
+    if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment))
+    {
+        abort();
+    }
 }
 
 
@@ -44,11 +47,12 @@ int dvm_process_environment_bind(Prog *process)
     {
         return 0;
     }
+    if (fegetenv(&dvm_native_execution()->host_fp_environment) ||
+        fesetenv(&((DVM_RuntimeProcess *)process)->floating_environment))
+    {
+        abort();
+    }
     up->env = process->osenv;
-    dvm_native_execution()->host_fcr = getfcr();
-    dvm_native_execution()->host_fsr = getfsr();
-    setfcr(((DVM_RuntimeProcess *)process)->floating_control);
-    setfsr(((DVM_RuntimeProcess *)process)->floating_status);
     return 1;
 }
 
@@ -57,10 +61,11 @@ int dvm_process_environment_bind(Prog *process)
  * Prog. Restore it before a destructor can report a new native host error. */
 void dvm_process_environment_release(Prog *process)
 {
-    ((DVM_RuntimeProcess *)process)->floating_control = getfcr();
-    ((DVM_RuntimeProcess *)process)->floating_status = getfsr();
-    setfcr(dvm_native_execution()->host_fcr);
-    setfsr(dvm_native_execution()->host_fsr);
+    if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment) ||
+        fesetenv(&dvm_native_execution()->host_fp_environment))
+    {
+        abort();
+    }
     up->env = &up->defenv;
 }
 

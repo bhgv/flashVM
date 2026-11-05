@@ -2,6 +2,7 @@
 #ifndef DISVM_NATIVE_PROCESS_H
 #define DISVM_NATIVE_PROCESS_H
 #include "native_context.h"
+#include <fenv.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -23,8 +24,7 @@ typedef struct DVM_NativeExecution
     int arithmetic_retry_opcode;    /* Armed decoded opcode, or zero outside dispatch; -1 requests retry. */
     int instruction_boundary_error; /* Quota rejected before PC fetch/advance on this owner. */
     unsigned long progress_epoch;   /* Last shared stdin/UI progress generation observed by this owner. */
-    unsigned long host_fcr;         /* Native caller rounding state saved for a managed turn. */
-    unsigned long host_fsr;         /* Native caller exception-status bits saved for a managed turn. */
+    fenv_t host_fp_environment;      /* Native caller FP environment saved for a managed turn. */
 } DVM_NativeExecution;
 
 

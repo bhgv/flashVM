@@ -139,8 +139,9 @@ static void execute(void *argument)
         int boundary = worker->identity == 1000;
         dvm_native_execution()->idle_slices = slices;
         dvm_native_execution()->progress_epoch = slices;
-        dvm_native_execution()->host_fcr = slices;
-        dvm_native_execution()->host_fsr = slices+1;
+        memset(&dvm_native_execution()->host_fp_environment, boundary,
+            sizeof(dvm_native_execution()->host_fp_environment));
+        dvm_native_execution()->arithmetic_retry_opcode = (int)index;
         dvm_native_execution()->instruction_boundary_error = boundary;
         snprintf(expected, sizeof(expected), "owner %lu turn %u", (unsigned long)worker->identity, index);
         strcpy(up->env->errstr, expected);
@@ -159,7 +160,8 @@ static void execute(void *argument)
         DVM_R = saved;
         if (dvm_native_execution()->idle_slices != slices ||
             dvm_native_execution()->progress_epoch != slices ||
-            dvm_native_execution()->host_fcr != slices || dvm_native_execution()->host_fsr != slices+1 ||
+            ((const unsigned char *)&dvm_native_execution()->host_fp_environment)[0] != boundary ||
+            dvm_native_execution()->arithmetic_retry_opcode != (int)index ||
             dvm_native_execution()->instruction_boundary_error != boundary ||
             strcmp(up->env->errstr, expected) || strcmp(up->env->syserrstr, expected))
         {

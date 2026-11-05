@@ -616,7 +616,7 @@ def main():
         for mode in ('--jit','--no-jit'):
             for locked in (False,True):
                 args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe',
-                        '--managed-workers','2','--parallel-real']
+                        '--managed-workers','2','--parallel-real','--quantum','1']
                 if locked:
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,

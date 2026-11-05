@@ -2,6 +2,7 @@
 #ifndef DVM_RUNTIME_RUNQUEUE_H
 #define DVM_RUNTIME_RUNQUEUE_H
 #include "disvm/native_context.h"
+#include <fenv.h>
 #ifndef DVM_RUNTIME_PROCESS_MAX
 #define DVM_RUNTIME_PROCESS_MAX 2147483647U /* Native signed process/count representation, not a128-task policy. */
 #endif
@@ -24,8 +25,7 @@ typedef struct DVM_RuntimeProcess
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
     uintptr last_dispatcher;           /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
     Osenv environment;                /* Native guest error storage follows this logical Prog across owner migration. */
-    ulong floating_control;           /* Supported native rounding controls follow this Prog, not its OS owner. */
-    ulong floating_status;            /* Supported floating exception flags captured at complete-turn boundaries. */
+    fenv_t floating_environment;       /* Guest FP environment retained across complete turns and OS owners. */
 } DVM_RuntimeProcess;
 
 
