@@ -63,6 +63,20 @@ init() {
         real string realvalue != 2.5 || decoded != "Ж" || len encoded != 2) {
         raise "guarded string conversion mismatch";
     }
+    checkwide := big 0;
+    {
+        checkwide = big samples[3];
+    } exception failure {
+        "test UTF-8 view refusal" => checkwide = big 19;
+        * => raise;
+    }
+    if (checkwide != big 19 && checkwide != big 0) {
+        raise "string conversion refusal handling";
+    }
+    checkwide = big samples[1];
+    if (checkwide != wide) {
+        raise "string conversion failed after refusal";
+    }
     n: array of byte;
     if (len n != 0) {
         raise "nil length mismatch";
@@ -102,11 +116,28 @@ const char *__real_dvm_runtime_bytes_publish_opcode(int, const void *, void *, s
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
 
 
+char *__real_dvm_runtime_string_view(String *, const char **);
+
+/* Make the second CVTCL view fail after it has reserved its destination.
+ * The guest catches the exact error and converts again on the same frame. */
+char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
+{
+    static unsigned int calls; /* CVTCL calls that reached view preparation. */
+    if (CONTROL == 0 && dvm_native_execution()->arithmetic_retry_opcode == ICVTCL && ++calls == 2)
+    {
+        *problem = "test UTF-8 view refusal";
+        fprint(1, "PASS injected string view refusal\n");
+        return NULL;
+    }
+    return __real_dvm_runtime_string_view(string, problem);
+}
+
+
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[11]; /* Post-decode PC for each refused capture. */
-    static int replayed[11]; /* One successful replay for each stage. */
+    static Inst *pcs[14]; /* Post-decode PC for each refused capture. */
+    static int replayed[14]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -147,6 +178,17 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
         if ((opcode == ICVTCW && contend_capture(3)) ||
             (opcode == ICVTCL && contend_capture(4)) ||
             (opcode == ICVTCF && contend_capture(5)))
+        {
+            return DVM_CELL_BUSY;
+        }
+    }
+
+    if (CONTROL == 0 && !active && !source && !source_size && destination)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if ((opcode == ICVTCW && contend_capture(11)) ||
+            (opcode == ICVTCL && contend_capture(12)) ||
+            (opcode == ICVTCF && contend_capture(13)))
         {
             return DVM_CELL_BUSY;
         }
@@ -650,7 +692,8 @@ def main():
                 ['dvm_runtime_root_registry_probe', 'dvm_managed_small_three_begin',
                  'dvm_small_range_access_extend', 'dvm_runtime_array_length_source',
                  'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
-                 'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin',
+                 'dvm_runtime_string_view', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
@@ -673,8 +716,10 @@ def main():
                                          'PASS scheduled address publication retry' not in output or
                                          'PASS four interior addresses survive Cycles before use' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
+                    if variant == 0 and 'PASS injected string view refusal' not in output:
+                        raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(11)):
+                                            for stage in range(14)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

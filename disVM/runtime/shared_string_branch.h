@@ -18,4 +18,10 @@ extern int dvm_runtime_parallel_string; /* Startup-only bounded comparison exper
 /* Read a selected character with its source owner and destination guarded.
  * The decoded caller checks complete operand geometry before entry. */
 const char *dvm_runtime_string_index(const void *source, const void *index_cell, void *destination);
+/* Borrow a live string under NativeWorld and return its UTF-8 view. The
+ * caller initializes problem to NULL. On invalid storage or allocation failure,
+ * set a static diagnostic and return NULL without throwing through a guard. */
+struct String;
+char *dvm_runtime_string_view(struct String *string, const char **problem);
+
 #endif

@@ -142,8 +142,65 @@ def adapt_string_conversion_captures(code, conversions):
         if opcode == 'CVTFC':
             replacement += '\n'+bit_copy
         body = relative_replace(body, capture, replacement, 1)
+        if not paired:
+            # Reserve publication before the UTF-8 view can mutate its owner.
+            parser = {'CVTCW': 'strtol(view, nil, 10)', 'CVTCL': 'strtoll(view, nil, 10)',
+                      'CVTCF': 'strtod(view, nil)'}[opcode]
+            original = '\tvalue = '+parser.replace('view', 'string2c(s)')+';\n'
+            original += '\tmemmove(DVM_R.d, &value, sizeof(value));'
+            guarded = f"""    if(dvm_runtime_guarded_copies) {{
+        DVM_RangeAccess access = {{0}};
+        DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, DVM_R.d, sizeof(value), &access);
+        const char *problem = NULL;
+        char *view;
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
+            return;
+        }}
+        if(claim != DVM_CELL_ACQUIRED) {{
+            error(exHeap);
+        }}
+        view = dvm_runtime_string_view(s, &problem);
+        if(!problem) {{
+            value = {parser};
+            memmove(DVM_R.d, &value, sizeof(value));
+        }}
+        if(!dvm_range_access_end(&access)) {{
+            abort();
+        }}
+        if(problem) {{
+            error((char *)problem);
+        }}
+        return;
+    }}
+"""
+            body = relative_replace(body, original, guarded+original, 1)
         code = code[:start] + body + code[end:]
     return code
+
+
+def adapt_string_view(code):
+    """Share the pinned UTF-8 view body between throwing and guarded callers."""
+    start = code.index('char*\nstring2c(String *s)')
+    end = code.index('\n}', start)+2
+    body = code[start:end]
+    body = relative_replace(body, 'string2c(String *s)', 'dvm_runtime_string_view(String *s, const char **problem)', 1)
+    body, count = re.subn(r'^(\t+)if([^\n]*?)\n\1\terror\((ex\w+)\);',
+                         r'\1if\2 {\n\1\t*problem = \3;\n\1\treturn nil;\n\1}', body, flags=re.M)
+    if count != 8 or 'error(' in body:
+        raise ValueError('UTF-8 view error boundaries changed')
+    wrapper = """
+
+char*
+string2c(String *s)
+{
+    const char *problem = NULL;
+    char *view = dvm_runtime_string_view(s, &problem);
+    if(problem) {
+        error((char *)problem);
+    }
+    return view;
+}"""
+    return code[:start] + body + wrapper + code[end:]
 
 
 def adapt_string_operand_captures(code):
@@ -362,6 +419,7 @@ def main():
         path = args.output / filename
         code = path.read_text()
         code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include <stdint.h>', 1)
+        code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include "managed_owner.h"\n#include "shared_access.h"\n#include "shared_string_branch.h"', 1)
         # Insert helpers after all includes/macros but before the first operation.
         point = code.index("OP(indc)" if filename == "string.c" else "OP(runt)")
         code = code[:point] + '/* RELATIVE_SEQUENCE_HELPERS */\n' + code[point:]
@@ -417,6 +475,7 @@ def main():
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
             code = adapt_string_operand_captures(code)
+            code = adapt_string_view(code)
             code = adapt_string_conversion_captures(code, (
                 ('CVTCA', 'ss', True), ('CVTAC', 'a', True),
                 ('CVTWC', 'value', True), ('CVTLC', 'value', True), ('CVTFC', 'value', True),
