@@ -34,6 +34,7 @@ def inspect(emitter, dispatcher, executor):
         raise DispatchMismatch('dispatcher exactly-once shape')
     if {op for op,fn in cases} != set(selected):
         raise DispatchMismatch('selector dispatch agreement')
+    executor = re.sub(r'/\*.*?\*/|//[^\n]*', '', executor, flags=re.S)
     for op,fn in cases:
         entry = op.lower() if op in ("IEXPW", "IEXPL", "IEXPF") else op[1:].lower()
         if fn != entry:

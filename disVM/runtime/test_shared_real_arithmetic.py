@@ -43,6 +43,7 @@ WRAPPER = r'''
 #include "isa.h"
 #include "interp.h"
 #include "raise.h"
+#include "bytes_fast.h"
 #include "managed_owner.h"
 #include "shared_real_arithmetic.h"
 #include "real_arithmetic_value.h"
@@ -267,11 +268,11 @@ const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const vo
 }
 
 
-const char *__real_dvm_runtime_power(int,const void *,const void *,void *,
+const char *__real_dvm_runtime_scaled_arithmetic(int,const void *,const void *,void *,
     void (*)(const void *,const void *,void *));
 
 
-const char *__wrap_dvm_runtime_power(int opcode,const void *base,const void *exponent,void *out,
+const char *__wrap_dvm_runtime_scaled_arithmetic(int opcode,const void *base,const void *exponent,void *out,
     void (*evaluate)(const void *,const void *,void *))
 {
     if (opcode == IEXPW)
@@ -280,7 +281,7 @@ const char *__wrap_dvm_runtime_power(int opcode,const void *base,const void *exp
         powers |= 2;
     if (opcode == IEXPF)
         powers |= 4;
-    return __real_dvm_runtime_power(opcode,base,exponent,out,evaluate);
+    return __real_dvm_runtime_scaled_arithmetic(opcode,base,exponent,out,evaluate);
 }
 
 
@@ -326,6 +327,48 @@ static void invoke(int opcode,const void *a,const void *b,void *out)
     problem = __real_dvm_runtime_real_arithmetic(opcode,a,b,out);
     active = 0;
     check(!problem && phase == 4 && !depth,"complete two phases");
+}
+
+
+static void invalid_fixed_scale(void *unused)
+{
+    (void)unused;
+    dvm_runtime_bytes_fast(&DVM_R, ICVTXX);
+}
+
+
+static void fixed_conversions(void)
+{
+    REG saved = DVM_R;
+    REAL scale = 2.0, real = -1.75;
+    WORD fixed, shift = 1;
+    unsigned char slot[sizeof(REAL) + 1];
+
+    memmove(slot + 1, &real, sizeof(real));
+    DVM_R.m = &scale;
+    DVM_R.s = DVM_R.d = slot + 1;
+    check(dvm_runtime_bytes_fast(&DVM_R, ICVTFX), "real-to-fixed dispatch");
+    memmove(&fixed, slot + 1, sizeof(fixed));
+    check(fixed == -4, "real-to-fixed rounding and aliased output");
+
+    check(dvm_runtime_bytes_fast(&DVM_R, ICVTXF), "fixed-to-real dispatch");
+    memmove(&real, slot + 1, sizeof(real));
+    check(real == -8.0, "fixed-to-real aliased output");
+
+    memmove(slot + 1, &fixed, sizeof(fixed));
+    DVM_R.m = &shift;
+    check(dvm_runtime_bytes_fast(&DVM_R, ICVTXX), "fixed rescale dispatch");
+    memmove(&fixed, slot + 1, sizeof(fixed));
+    check(fixed == -8, "fixed rescale aliased output");
+
+    shift = 64;
+    DVM_R.s = (void *)(uintptr_t)1;
+    DVM_R.d = NULL;
+    check(!kprotect(invalid_fixed_scale, NULL) &&
+        !strcmp(getup()->env->errstr, exInval) &&
+        !dvm_native_context_object_count(dvm_native_context_current()),
+        "invalid fixed scale takes precedence and unwinds without guards");
+    DVM_R = saved;
 }
 
 
@@ -432,6 +475,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
         injected = active = 0;
         check(!dvm_native_context_object_count(dvm_native_context_current()),"balanced final guards");
     }
+    fixed_conversions();
     check(!fesetenv(&environment),"fixture FP restore");
     fprint(1,"PASS actual REAL arithmetic: %ud overlap/boundary cases,unlocked FP,phase update\n",count);
 }
@@ -443,7 +487,7 @@ def main():
     runtime, compiler, include = (Path(x).resolve() for x in sys.argv[1:4])
     symbols = ['dvm_runtime_root_registry_probe','dvm_managed_three_begin','dvm_managed_ranges_begin',
                'dvm_range_access_end','dvm_runtime_real_branch_capture','dvm_runtime_real_arithmetic_value',
-               'dvm_runtime_real_arithmetic_store','dvm_runtime_real_arithmetic','dvm_runtime_power','dvm_bigtable_call_ready','malloc','calloc','free']
+               'dvm_runtime_real_arithmetic_store','dvm_runtime_real_arithmetic','dvm_runtime_scaled_arithmetic','dvm_bigtable_call_ready','malloc','calloc','free']
     with tempfile.TemporaryDirectory(prefix='actual REAL arithmetic ') as directory:
         work = Path(directory)
         source, image = work/'main.b', work/'main.dis'

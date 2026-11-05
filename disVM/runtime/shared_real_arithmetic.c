@@ -69,9 +69,9 @@ const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
 }
 
 
-/* Powers have a WORD exponent even for LONG or REAL bases. Preserve the
- * integer zero-base error priority and preflight REAL output before FP. */
-const char *dvm_runtime_power(int opcode, const void *base, const void *exponent,
+/* Mixed-width arithmetic runs its original evaluator on private slots.
+ * Integer power and fixed rescaling preserve their source-error precedence. */
+const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const void *second,
     void *output, void (*evaluate)(const void *, const void *, void *))
 {
     DVM_RangeAccess access = {0};
@@ -80,42 +80,88 @@ const char *dvm_runtime_power(int opcode, const void *base, const void *exponent
         WORD word;
         LONG big;
         REAL real;
-    } saved, result;
-    WORD power;
-    size_t width = opcode == IEXPW ? sizeof(WORD) : opcode == IEXPL ? sizeof(LONG) : sizeof(REAL);
-    int invalid_output = !output || output == H || (uintptr_t)output > (uintptr_t)-1-width;
+    } saved_first, saved_second, result;
+    size_t first_width, second_width, output_width;
+    int invalid_second, invalid_output, scale_only;
 
     if (dvm_runtime_shared_mode() != 2)
     {
         return exHeap;
     }
-    if (!base || base == H || (uintptr_t)base > (uintptr_t)-1-width ||
-        !exponent || exponent == H || (uintptr_t)exponent > (uintptr_t)-1-sizeof(power) ||
-        (opcode == IEXPF && invalid_output))
+    second_width = sizeof(WORD);
+    switch (opcode)
+    {
+    case IEXPW:
+    case ICVTXX:
+        first_width = output_width = sizeof(WORD);
+        break;
+    case IEXPL:
+        first_width = output_width = sizeof(LONG);
+        break;
+    case IEXPF:
+    case ICVTXF:
+        first_width = output_width = sizeof(REAL);
+        break;
+    case ICVTFX:
+        first_width = second_width = sizeof(REAL);
+        output_width = sizeof(WORD);
+        break;
+    default:
+        return exHeap;
+    }
+    invalid_second = !second || second == H || (uintptr_t)second > (uintptr_t)-1-second_width;
+    invalid_output = !output || output == H || (uintptr_t)output > (uintptr_t)-1-output_width;
+    scale_only = opcode == ICVTXX;
+    if (!first || first == H || (uintptr_t)first > (uintptr_t)-1-first_width ||
+        (invalid_second && !scale_only) ||
+        (invalid_output && (opcode == IEXPF || opcode == ICVTFX || opcode == ICVTXF)))
     {
         return exBounds;
     }
-    if (dvm_managed_three_begin(base, width, exponent, sizeof(power), NULL, 0,
-        &access) != DVM_CELL_ACQUIRED)
+    if (dvm_managed_three_begin(first, first_width, scale_only ? NULL : second,
+        scale_only ? 0 : second_width, NULL, 0, &access) != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
-    memmove(&saved, base, width);
-    memmove(&power, exponent, sizeof(power));
+    memmove(&saved_first, first, first_width);
+    if (!scale_only)
+    {
+        memmove(&saved_second, second, second_width);
+    }
     if (!dvm_range_access_end(&access))
     {
         abort();
     }
-    evaluate(&saved, &power, &result);
-    if (invalid_output)
+    if (scale_only)
+    {
+        if (saved_first.word < -63 || saved_first.word > 63)
+        {
+            return exInval;
+        }
+        if (invalid_second || invalid_output)
+        {
+            return exBounds;
+        }
+        if (dvm_managed_ranges_begin(second, second_width, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+        {
+            return exHeap;
+        }
+        memmove(&saved_second, second, second_width);
+        if (!dvm_range_access_end(&access))
+        {
+            abort();
+        }
+    }
+    evaluate(&saved_first, &saved_second, &result);
+    if (invalid_output || invalid_second)
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(NULL, 0, output, width, &access) != DVM_CELL_ACQUIRED)
+    if (dvm_managed_ranges_begin(NULL, 0, output, output_width, &access) != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
-    memmove(output, &result, width);
+    memmove(output, &result, output_width);
     if (!dvm_range_access_end(&access))
     {
         abort();
