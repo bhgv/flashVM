@@ -223,6 +223,48 @@ init() {
 }
 '''
 
+RECEIVE_ERRORS = r'''implement ReceiveErrors;
+include "sys.m";
+ReceiveErrors: module {init: fn();};
+
+init() {
+    sys := load Sys Sys->PATH;
+    records := chan[2] of (int, string);
+    records <-= (11, "first");
+    records <-= (22, "second");
+    value: (int, string);
+    {
+        value = <-records;
+        raise "expected precommit failure";
+    } exception failure {
+        "receive failed before publication" => ;
+        * => raise;
+    }
+    {
+        value = <-records;
+        raise "expected postcommit failure";
+    } exception failure {
+        "receive failed after publication" => ;
+        * => raise;
+    }
+    (tag, text) := <-records;
+    if (tag != 22 || text != "second")
+        raise "receive failure corrupted the ring";
+    for (cycle := 0; cycle < 10; cycle++) {
+        records <-= (cycle, "refill");
+        records <-= (cycle+100, "wraparound");
+        (tag, text) = <-records;
+        if (tag != cycle || text != "refill")
+            raise "receive failure prevented slot reuse";
+        (tag, text) = <-records;
+        if (tag != cycle+100 || text != "wraparound")
+            raise "receive failure corrupted wraparound order";
+    }
+    sys->print("PASS buffered receive commit boundary\n");
+}
+'''
+
+
 WRAPPER = r'''
 #include "lib9.h"
 #include "dat.h"
@@ -297,6 +339,22 @@ static int contend_capture(int stage)
 }
 
 
+static __thread int receive_fault; /* Prepublication then postpublication. */
+static __thread int release_fault; /* Fail once after dropping the captured array owner. */
+void __real_destroy(void *);
+
+void __wrap_destroy(void *value)
+{
+    if (release_fault && value != H && D2H(value)->t == &Tarray)
+    {
+        release_fault = 0;
+        __real_destroy(value);
+        fprint(1, "PASS injected receive array release failure\n");
+        error("receive array release failed");
+    }
+    __real_destroy(value);
+}
+
 static __thread int ring_kind; /* 1 mapped, 2 native scalar, 3 raw record. */
 int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int *, int);
 DVM_CellResult __real_dvm_managed_spans_begin(const void *, size_t, void *, size_t, DVM_CellAccess *);
@@ -306,9 +364,22 @@ int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destinat
     Type *type, int *consumed, int opcode)
 {
     int result;
+    int fault = consumed && opcode == IRECV && getenv("DVM_TEST_RECEIVE_ERRORS");
+    if (fault && receive_fault == 0)
+    {
+        receive_fault = 1;
+        release_fault = 1;
+        error("receive failed before publication");
+    }
     ring_kind = type->np ? 1 : (type->size <= sizeof(void *) ? 2 : 3);
     result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consumed, opcode);
     ring_kind = 0;
+    if (fault && receive_fault == 1 && *consumed)
+    {
+        receive_fault = 2;
+        release_fault = 1;
+        error("receive failed after publication");
+    }
     return result;
 }
 
@@ -988,6 +1059,10 @@ def main():
         source, image = work/'main.b', work/'main.dis'
         source.write_text(GUEST)
         subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(image), str(source)], check=True)
+        error_source, error_image = work/'receive.b', work/'receive.dis'
+        error_source.write_text(RECEIVE_ERRORS)
+        subprocess.run([str(compiler), '-F', '-I', str(include), '-o', str(error_image),
+                        str(error_source)], check=True)
         wrapper = work/'wrapper.c'
         wrapper.write_text(WRAPPER)
         for variant in ((0, 4) if '--positive-only' in sys.argv else (0, 1, 2, 3, 4)):
@@ -997,8 +1072,15 @@ def main():
                  'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
                  'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin',
                  'dvm_runtime_string_view', 'dvm_managed_three_begin', 'dvm_managed_spans_begin',
-                 'dvm_runtime_mapped_buffer_transfer', 'error', 'malloc', 'calloc', 'free'])
+                 'dvm_runtime_mapped_buffer_transfer', 'destroy', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
+                if variant == 0:
+                    run = subprocess.run([str(binary), mode, '--gc-worker', '--guarded-copies',
+                                          str(error_image)], capture_output=True, text=True, timeout=30,
+                                         env=dict(os.environ, DVM_TEST_RECEIVE_ERRORS='1'))
+                    if (run.returncode or 'PASS buffered receive commit boundary' not in run.stdout
+                            or run.stdout.count('PASS injected receive array release failure') != 2):
+                        raise RuntimeError(run.stdout + run.stderr)
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
                     if locked:
