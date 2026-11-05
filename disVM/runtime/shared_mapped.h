@@ -27,4 +27,8 @@ void dvm_runtime_mapped_move_opcode(const void *source, void *destination, struc
 /* [GC:] Copy a validated count of elements as one transaction. Borrow mapped
  * spans and immutable type under NativeWorld. BUSY can replay before changes. */
 void dvm_runtime_array_slice_copy(const void *source, void *destination, struct Type *type, size_t count);
+/* [GC:] Transfer live mapped ring spans. NULL consumed selects copy, otherwise
+ * commit clears source pointers and sets consumed. Return zero on replay. */
+int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, struct Type *type,
+    int *consumed, int replay_opcode);
 #endif

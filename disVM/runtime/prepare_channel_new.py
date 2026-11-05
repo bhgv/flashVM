@@ -135,6 +135,12 @@ def adapt_channel_operand_replay(source):
     {{
 {capture}
     }}""", 1)
+        receive = operation == 'irecv'
+        mover = 'cgetb(c, DVM_R.d)' if receive else 'cputb(c, DVM_R.s)'
+        value = 'DVM_R.d' if receive else 'DVM_R.s'
+        if body.count(mover) != 1:
+            raise ValueError('direct channel buffer route drift: '+operation)
+        body = body.replace(mover, f'transfer_channel_buffer(c, {value}, {int(receive)}, {opcode})', 1)
         source = source[:start]+body+source[end:]
     return source
 
@@ -805,6 +811,8 @@ typedef struct ChannelReservation
     int completed;
     struct ChannelReservation *next;
     DVM_NativeContext *owner;
+    int replay_opcode; /* Only direct buffered SEND or RECV may replay. */
+    int deferred; /* BUSY before value or ring metadata changed. */
 } ChannelReservation;
 
 
@@ -926,7 +934,7 @@ static int finish_channel_buffer(void *argument)
         link = &(*link)->next;
     if (!*link)
         abort();
-    if (reservation->consumed || (reservation->completed && reservation->publish_after_move))
+    if (reservation->consumed || (reservation->completed && !reservation->deferred && reservation->publish_after_move))
     {
         if (reservation->receive)
             channel->front = reservation->next_front;
@@ -942,16 +950,17 @@ static int finish_channel_buffer(void *argument)
 static int consume_channel_buffer(void *argument)
 {
     ChannelReservation *reservation = argument;
-    dvm_runtime_mapped_consume(reservation->read.slot, reservation->read.destination,
-        reservation->mapped, reservation->mapped->size, &reservation->consumed);
+    reservation->deferred = !dvm_runtime_mapped_buffer_transfer(reservation->read.slot,
+        reservation->read.destination, reservation->mapped, &reservation->consumed,
+        reservation->replay_opcode);
     return 1;
 }
 
 
 /* Keep the receive array live through the mover and its mapped cleanup. */
-static int read_buffer_owned(Channel *channel, void *destination)
+static int read_buffer_owned(Channel *channel, void *destination, int replay_opcode)
 {
-    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil, nil};
+    ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil, nil, replay_opcode, 0};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
@@ -975,18 +984,22 @@ static int write_channel_buffer(void *argument)
     DVM_R.m = &channel->mid;
     DVM_R.d = read->slot;
     if (reservation->mapped)
-        dvm_runtime_mapped_copy(read->destination, read->slot,
-            reservation->mapped, reservation->mapped->size);
+    {
+        reservation->deferred = !dvm_runtime_mapped_buffer_transfer(read->destination,
+            read->slot, reservation->mapped, NULL, reservation->replay_opcode);
+    }
     else
+    {
         channel->mover();
+    }
     return 1;
 }
 
 
 /* Capture send geometry under the mutex and transfer outside it. */
-static int write_buffer_owned(Channel *channel, void *source)
+static int write_buffer_owned(Channel *channel, void *source, int replay_opcode)
 {
-    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil, nil};
+    ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil, nil, replay_opcode, 0};
     dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
     if (!reservation.available)
         return 0;
@@ -1005,6 +1018,7 @@ typedef struct RootedBufferTransfer
     void *operand;
     int receive;
     int transferred;
+    int replay_opcode; /* Zero for refill after claiming a peer. */
 } RootedBufferTransfer;
 
 
@@ -1013,17 +1027,17 @@ static int run_rooted_buffer_transfer(void *argument)
 {
     RootedBufferTransfer *transfer = argument;
     transfer->transferred = transfer->receive ?
-        read_buffer_owned(transfer->channel, transfer->operand) :
-        write_buffer_owned(transfer->channel, transfer->operand);
+        read_buffer_owned(transfer->channel, transfer->operand, transfer->replay_opcode) :
+        write_buffer_owned(transfer->channel, transfer->operand, transfer->replay_opcode);
     return 1;
 }
 
 
 /* Root the channel outside the queue mutex. Its owning buffer and mover
  * descriptor then survive callbacks through reservation completion. */
-static int transfer_channel_buffer(Channel *channel, void *operand, int receive)
+static int transfer_channel_buffer(Channel *channel, void *operand, int receive, int replay_opcode)
 {
-    RootedBufferTransfer transfer = {channel, operand, receive, 0};
+    RootedBufferTransfer transfer = {channel, operand, receive, 0, replay_opcode};
     DVM_HeapHold owner = {0};
     const char *problem;
     int completed;
@@ -1043,12 +1057,12 @@ static int transfer_channel_buffer(Channel *channel, void *operand, int receive)
 
 static int cgetb(Channel *channel, void *destination)
 {
-    return transfer_channel_buffer(channel, destination, 1);
+    return transfer_channel_buffer(channel, destination, 1, 0);
 }
 
 static int cputb(Channel *channel, void *source)
 {
-    return transfer_channel_buffer(channel, source, 0);
+    return transfer_channel_buffer(channel, source, 0, 0);
 }
 
 """

@@ -128,6 +128,10 @@ init() {
     bigchan := chan[capacity] of big;
     realchan := chan[capacity] of real;
     stringchan := chan[capacity] of string;
+    records <-= (22, samples[3]);
+    records <-= (23, samples[0]);
+    (tag, text) := <-records;
+    (nexttag, nexttext) := <-records;
     byteschan <-= byte 7;
     bigchan <-= wide;
     realchan <-= realvalue;
@@ -138,11 +142,10 @@ init() {
     }
     messages <-= 19;
     pairs <-= (20, 21);
-    records <-= (22, samples[3]);
     message := <-messages;
     (left, right) := <-pairs;
-    (tag, text) := <-records;
-    if (message != 19 || left != 20 || right != 21 || tag != 22 || text != "Ж") {
+    if (message != 19 || left != 20 || right != 21 || tag != 22 || text != "Ж" ||
+        nexttag != 23 || nexttext != "-42") {
         raise "guarded channel capture changed buffered transfer";
     }
     encoded := array of byte samples[3];
@@ -243,8 +246,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[42]; /* Post-decode PC for each refused capture. */
-    static int replayed[42]; /* One successful replay for each stage. */
+    static Inst *pcs[44]; /* Post-decode PC for each refused capture. */
+    static int replayed[44]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -409,6 +412,15 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
             (opcode == INEWCL && contend_capture(37)) ||
             (opcode == INEWCF && contend_capture(38)) ||
             (opcode == INEWCP && contend_capture(39)))
+        {
+            return DVM_CELL_BUSY;
+        }
+    }
+
+    if (CONTROL == 0 && !active && source && destination)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if ((opcode == ISEND && contend_capture(42)) || (opcode == IRECV && contend_capture(43)))
         {
             return DVM_CELL_BUSY;
         }
@@ -939,7 +951,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(42)):
+                                            for stage in range(44)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

@@ -14,6 +14,7 @@
 #include "root_batch.h"
 #include "gc_fields.h"
 #include "disvm/refcount.h"
+#include "disvm/native_process.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -177,7 +178,7 @@ static int retire(void *value)
 /* [GC:] Descriptor/lifetime checks are independently provided by the opcode.
  * No payload/Type read happens without existing ACTIVE world admission. Native
  * buffers root nothing until publish; no VM/error callback spans range guards. */
-static void mapped_transfer(const void *source, void *destination, Type *type, int size,
+static int mapped_transfer(const void *source, void *destination, Type *type, int size,
     size_t elements, int *consumed, int replay_opcode)
 {
     MappedCopy copy = {0};
@@ -231,11 +232,15 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
         {
             error((char *)problem);
         }
+        if (replay_opcode && dvm_native_execution()->arithmetic_retry_opcode == -1)
+        {
+            return 0;
+        }
         if (consumed)
         {
             *consumed = 1;
         }
-        return;
+        return 1;
     }
     if (elements > SIZE_MAX / sizeof(*copy.slots) / copy.count)
     {
@@ -274,7 +279,7 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
         dispose(&copy);
         if (claim == DVM_CELL_BUSY && replay_opcode && dvm_runtime_scalar_retry(replay_opcode))
         {
-            return;
+            return 0;
         }
         error(exHeap);
     }
@@ -318,6 +323,7 @@ static void mapped_transfer(const void *source, void *destination, Type *type, i
         memmove(getup()->env->errstr, first_error, sizeof(first_error));
         krethrow();
     }
+    return 1;
 }
 
 
@@ -349,4 +355,18 @@ void dvm_runtime_mapped_consume(void *source, void *destination, Type *type, int
 void dvm_runtime_array_slice_copy(const void *source, void *destination, Type *type, size_t count)
 {
     mapped_transfer(source, destination, type, type->size, count, NULL, ISLICELA);
+}
+
+
+/* [GC:] Copy or consume a live mapped ring slot. Only a top-level buffered
+ * opcode supplies replay_opcode. Return zero if BUSY scheduled a retry.
+ * consumed reports ownership transfer even when retirement raises. */
+int dvm_runtime_mapped_buffer_transfer(const void *source, void *destination, Type *type,
+    int *consumed, int replay_opcode)
+{
+    if (consumed)
+    {
+        *consumed = 0;
+    }
+    return mapped_transfer(source, destination, type, type->size, 1, consumed, replay_opcode);
 }
