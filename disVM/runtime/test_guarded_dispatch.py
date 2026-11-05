@@ -1,4 +1,5 @@
 """Audit the bounded generated x64 selector/actual C dispatch correspondence."""
+from collections import Counter
 from pathlib import Path
 import argparse
 import hashlib
@@ -140,13 +141,15 @@ def main():
     require_refusal(emitter.replace('op == '+cases[0][0],'op == '+cases[0][0]+' || op == '+cases[0][0],1),
                     dispatcher,executor,'selector uniqueness')
     controls += 1
+    path_counts = dict(sorted(Counter(row['audit_path'] for row in inventory).items()))
     report = {'scope':'bounded generated-selector/source-dispatch/entry closure only; no execution authority',
-              'opcode_inventory':inventory, 'operations':dict(cases),'operation_count':len(cases),'exact_source_controls':controls,
+              'opcode_inventory':inventory, 'audit_path_counts':path_counts, 'operations':dict(cases),'operation_count':len(cases),'exact_source_controls':controls,
               'sha256':dict(zip(('amd64-emit.h','bytes_fast.c','xec.c','isa.h','optab.h'),
                                (hashlib.sha256(s.encode()).hexdigest() for s in [*texts, isa, optab])))}
     if args.report:
         args.report.write_text(json.dumps(report,indent=2)+'\n')
     print(f'PASS guarded dispatch closure: {len(cases)} of {len(inventory)} opcodes; {controls} exact source controls')
+    print('Source paths: '+', '.join(f'{path}={count}' for path, count in path_counts.items()))
 
 
 if __name__ == '__main__':
