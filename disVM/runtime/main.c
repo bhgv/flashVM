@@ -112,12 +112,12 @@ static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
-static int managed_workers = 1; /* Opt-in OS executors; shared heap remains exclusive. */
+static int managed_workers = 1; /* Executor count before launch-profile selection. */
 static unsigned long managed_workers_limit; /* Optional automatic pool resource cap; zero is uncapped. */
 static int managed_limit_selected; /* Reject duplicate physical resource limits. */
 static int managed_workers_selected; /* Reject duplicate executor options. */
 static unsigned long progress_epoch; /* Shared acknowledged input generation, protected by the heap gate. */
-static int gc_worker;                     /* Explicit production collector-worker admission. */
+static int gc_worker;                     /* Collector-worker admission selected at launch. */
 static char *module_directory;            /* Read-only module resource base; ordinary Sys paths retain caller cwd. */
 extern int dontcompile;                   /* Production loader switch that prohibits forced JIT compilation. */
 int cflag;                                /* Native leaf compilation switch consumed by the loader. */
@@ -2633,6 +2633,7 @@ static int runtime_execute(void *argument)
 int main(int argc, char **argv)
 {
     struct sigaction pipe_action = {0};
+    int gc_selected = 0;
 #ifdef DVM_RUNTIME_EDITOR
     int threaded = 1;
     int threading_selected = 0;
@@ -2819,10 +2820,12 @@ int main(int argc, char **argv)
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
+            gc_selected = 1;
         }
         else if (strcmp(argv[1], "--gc-inline") == 0)
         {
             gc_worker = 0;
+            gc_selected = 1;
         }
         else if (strcmp(argv[1], "--no-jit") == 0)
         {
@@ -2845,12 +2848,15 @@ int main(int argc, char **argv)
             puts(
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
-            puts("GC execution: --gc-worker (native collectors), --gc-inline (default reference), --gc-locked-poll (mutex reference polling)");
-            puts("Memory experiment: --guarded-copies with --gc-worker guards copies, integer conversions/arithmetic and list projections; parallel heap stays disabled");
+            puts("GC execution: --gc-worker (native collectors), --gc-inline (single-worker reference), --gc-locked-poll (mutex reference polling)");
+#if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
+            puts("Default: two managed workers, native GC and shared typed copies and channel transfers.");
+#endif
+            puts("Explicit GC, worker and guarded/parallel switches select a custom profile.");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
-            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; native heap turns are exclusive.");
-            puts("Managed execution: --managed-workers 1 (default) or a positive count / auto (requires --gc-worker); auto grows for native waits and retires idle helpers; --managed-workers-limit optionally caps resources. Heap stays serial.");
+            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; unaudited heap operations use exclusive turns.");
+            puts("Managed execution: --managed-workers 1 or a positive count / auto (multiple workers require --gc-worker); --managed-workers-limit caps auto.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
 #endif
@@ -2869,6 +2875,29 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
         return 2;
     }
+#if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
+    /* Default only for the reviewed console backend. Explicit execution and
+     * diagnostic profiles retain their independently selected settings. */
+    if (!gc_selected && !managed_workers_selected && !managed_limit_selected &&
+        !dvm_runtime_guarded_copies && !dvm_runtime_parallel_add &&
+        !dvm_runtime_parallel_real && !dvm_runtime_parallel_string &&
+        !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp &&
+        !dvm_runtime_parallel_slicela && !dvm_runtime_parallel_channel_buffer &&
+        !dvm_runtime_parallel_byte_copies && !dvm_managed_owner_probe_requested &&
+        !dvm_queue_probe_requested)
+    {
+        managed_workers = 2;
+        gc_worker = 1;
+        dvm_runtime_guarded_copies = 1;
+        dvm_runtime_parallel_movp = 1;
+        dvm_runtime_parallel_movmp = 1;
+        dvm_runtime_parallel_slicela = 1;
+        dvm_runtime_parallel_channel_buffer = 1;
+        dvm_runtime_parallel_byte_copies = 1;
+    }
+#else
+    USED(gc_selected);
+#endif
     if (managed_limit_selected && managed_workers != 0)
     {
         fprintf(stderr, "--managed-workers-limit requires --managed-workers auto\n");

@@ -1,3 +1,13 @@
+## Default console profile
+
+On Linux AMD64, console DisVM starts two managed executors and native GC when
+no explicit execution profile is selected. The default enables guarded copies
+and restricted shared admission for typed pointer, record, byte, slice and
+channel transfers. Other instructions continue to use exclusive admission.
+Use `--gc-inline` or `--managed-workers 1` for a single-executor run. Explicit
+GC, executor-count and experimental switches select a custom profile. The
+graphical host and other backends keep their existing launch defaults.
+
 [Runtime0.89: opt-in guarded scalar/raw copies and checked SELF](SHARED-BYTES.md).
 NativeWorld remains required; the flag is not parallel heap activation.
 
@@ -101,7 +111,7 @@ does not constitute physical ARM64/RV64, Android or desktop-display acceptance.
 ## Runtime0.41.0: actual native cycle collector
 
 Workspace v0.1733 adds `--gc-worker` to both console and graphical runtimes.
-`--gc-inline` remains the default reference. A single collector OS thread binds
+`--gc-inline` selects the single-executor reference. A single collector OS thread binds
 its own extended-up/REG and error environment. Coalesced scheduler requests invoke
 the retained `rungc` algorithm, using its existing adaptive work bound. Eager RC
 still executes on the Dis mutator; no unused deferred-RC lane is advertised.
