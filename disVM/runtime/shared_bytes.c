@@ -150,18 +150,6 @@ const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t fi
     return NULL;
 }
 
-/* Capture borrowed input into private storage with the legacy diagnostic.
- * Returns after guard release or admission failure. */
-const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size,
-    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot)
-{
-    DVM_CellResult claim;
-
-    return dvm_runtime_bytes_snapshot_pair_attempt(first, first_size, first_snapshot, second, second_size, second_snapshot, &claim);
-}
-
-
-
 /* Publish caller-private bytes under the destination guard only. */
 const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size)
 {

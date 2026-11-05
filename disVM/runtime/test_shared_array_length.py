@@ -108,17 +108,21 @@ const char *__wrap_dvm_runtime_bytes_publish(const void *source, void *destinati
 
 
 static int index_reported; /* Emit one actual route marker per fixture process. */
-const char *__real_dvm_runtime_array_index_operands(const void *, const void *, void *, void *);
+const char *__real_dvm_runtime_array_index_operands(const void *, const void *, void *, void *, int *);
 
 
 /* Verify that real C and compiled guests both enter the guarded index helper. */
 const char *__wrap_dvm_runtime_array_index_operands(const void *source, const void *index,
-    void *array_snapshot, void *index_snapshot)
+    void *array_snapshot, void *index_snapshot, int *replay)
 {
     const char *problem = __real_dvm_runtime_array_index_operands(source, index,
-        array_snapshot, index_snapshot);
+        array_snapshot, index_snapshot, replay);
 
-    if (!problem && !index_reported)
+    if (*replay)
+    {
+        print("PASS scheduled index retry\n");
+    }
+    if (!problem && !*replay && !index_reported)
     {
         index_reported = 1;
         print("PASS guarded array index route\n");
@@ -222,6 +226,22 @@ static unsigned int union_size(const void *a, const void *b, const void *c)
 DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *a, size_t an,
     const void *b, size_t bn, void *d, size_t dn, DVM_TripleAccess *access)
 {
+    static Inst *index_retry_pc; /* Guest index PC at the pre-effect refusal. */
+    static int index_replayed; /* One matching decoded index resumed. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !active && !index_replayed &&
+        (opcode == IINDX || opcode == IINDW || opcode == IINDF || opcode == IINDL || opcode == IINDB))
+    {
+        if (!index_retry_pc)
+        {
+            index_retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(index_retry_pc == DVM_R.PC, "index retries the same decoded instruction");
+        index_replayed = 1;
+    }
+
     if (active)
     {
         check(a == source_cell && b == source_cell && d == output_cell &&
@@ -505,7 +525,8 @@ def main():
                     elif (run.returncode or 'PASS array length probe:' not in output or 'PASS array length32' not in output
                           or 'PASS guarded array index route' not in output):
                         raise RuntimeError('array-length positive failed: '+output)
-                    if variant == 0 and 'PASS scheduled length extension retry' not in output:
+                    if variant == 0 and ('PASS scheduled length extension retry' not in output or
+                                         'PASS scheduled index retry' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

@@ -10,6 +10,7 @@
 #include "shared_access.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
+#include "disvm/native_process.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -77,12 +78,27 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
 /* Capture the two borrowed operands under one guard union. The VM retains
  * NativeWorld throughout the subsequent use of the raw array address. */
 const char *dvm_runtime_array_index_operands(const void *source, const void *index,
-    void *array_snapshot, void *index_snapshot)
+    void *array_snapshot, void *index_snapshot, int *replay)
 {
+    DVM_CellResult claim;
+    const char *problem;
+    int opcode;
+
+    *replay = 0;
     if (dvm_runtime_shared_mode() != 2)
     {
         return exHeap;
     }
-    return dvm_runtime_bytes_snapshot_pair(source, sizeof(Array *), array_snapshot,
-        index, sizeof(WORD), index_snapshot);
+    problem = dvm_runtime_bytes_snapshot_pair_attempt(source, sizeof(Array *), array_snapshot,
+        index, sizeof(WORD), index_snapshot, &claim);
+    if (claim == DVM_CELL_BUSY)
+    {
+        opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if (opcode == IINDX || opcode == IINDW || opcode == IINDF ||
+            opcode == IINDL || opcode == IINDB)
+        {
+            *replay = dvm_runtime_scalar_retry(opcode);
+        }
+    }
+    return *replay ? NULL : problem;
 }

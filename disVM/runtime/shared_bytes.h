@@ -19,11 +19,6 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
  * Zero size ignores both addresses. Return NULL or a static diagnostic
  * after releasing source exclusion. */
 const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_t size);
-/* Capture two live spans of at most sizeof(void *) under one guard union.
- * Outputs are caller-private. Ignore a zero-width second span. Return a static
- * diagnostic or NULL after releasing the union. */
-const char *dvm_runtime_bytes_snapshot_pair(const void *first, size_t first_size,
-    void *first_snapshot, const void *second, size_t second_size, void *second_snapshot);
 /* Publish size bytes from caller-private storage into a live mapped destination.
  * Zero size ignores both addresses. Return a static error or NULL after unlock. */
 const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, size_t size);
@@ -33,6 +28,8 @@ const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, s
  * storage. BUSY guarantees no source read or output change. */
 const char *dvm_runtime_bytes_snapshot_attempt(const void *source, void *snapshot,
     size_t size, DVM_CellResult *claim);
+/* Capture two pointer-width-or-smaller spans under one guard union. A zero
+ * second width ignores its address. The claim result is caller-private. */
 const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t first_size,
     void *first_snapshot, const void *second, size_t second_size, void *second_snapshot,
     DVM_CellResult *claim);

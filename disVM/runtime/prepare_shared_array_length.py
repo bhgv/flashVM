@@ -38,7 +38,11 @@ def adapt_index(source):
     body = match.group()
     capture = '\tmemmove(&array, DVM_R.s, sizeof(array));\n\tmemmove(&index, DVM_R.d, sizeof(index));'
     body = body.replace(capture, '''    if(dvm_runtime_guarded_copies) {
-        const char *problem = dvm_runtime_array_index_operands(DVM_R.s, DVM_R.d, &array, &index);
+        int replay;
+        const char *problem = dvm_runtime_array_index_operands(DVM_R.s, DVM_R.d, &array, &index, &replay);
+        if(replay) {
+            return;
+        }
         if(problem != nil) {
             error((char *)problem);
         }
