@@ -435,6 +435,25 @@ static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gat
 }
 
 
+/* Skip native admission when cancellation has already won publication.
+ * wait borrows a registered stack record. The ledger is released before
+ * requesting a heap transition. Return -2 for early cancellation, otherwise
+ * the audited release result; a later cancellation still wakes the waiter. */
+static int native_guest_wait_try_leave(NativeGuestWait *wait)
+{
+    int cancelled;
+
+    fvm_port_sync_lock(channel_queue_mutex);
+    cancelled = native_waits_stopping || wait->cancelled;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    if (cancelled)
+    {
+        return -2;
+    }
+    return dvm_runtime_gc_native_try_leave();
+}
+
+
 /* Remove the record after restoring NativeWorld. Cancellation can still
  * win while the guest is reacquiring its continuation. */
 static int native_guest_wait_end(NativeGuestWait *wait, int released)
@@ -633,12 +652,11 @@ int dvm_file_gate_try_release(DVM_FileGate *gate, DVM_FileTicket *ticket)
         return dvm_runtime_gc_native_try_leave();
     }
     native_guest_wait_begin(&wait, gate, ticket, -1);
-    released = dvm_runtime_gc_native_try_leave();
+    released = native_guest_wait_try_leave(&wait);
     if (released < 0)
     {
         dvm_file_gate_cancel(gate, ticket);
-        native_guest_wait_end(&wait, released);
-        return -1;
+        return native_guest_wait_end(&wait, 0) < 0 ? -2 : -1;
     }
     admitted = released ? dvm_file_gate_enter(gate, ticket) : dvm_file_gate_enter_now(gate, ticket);
     native_guest_wait_end(&wait, released);
@@ -805,11 +823,11 @@ static FVM_Result runtime_stdio_transfer(int descriptor, void *input, const void
     }
     dvm_file_gate_reserve(gate, &ticket);
     native_guest_wait_begin(&wait, gate, &ticket, wake_fd);
-    released = dvm_runtime_gc_native_try_leave();
+    released = native_guest_wait_try_leave(&wait);
     if (released < 0)
     {
         dvm_file_gate_cancel(gate, &ticket);
-        status = FVM_OUT_OF_MEMORY;
+        status = released == -2 ? FVM_ERROR : FVM_OUT_OF_MEMORY;
     }
     else
     {
@@ -918,7 +936,7 @@ int dvm_runtime_channel_wait_guest(Channel *channel)
     int released;
 
     native_guest_wait_begin(&wait, NULL, NULL, -1);
-    released = dvm_runtime_gc_native_try_leave();
+    released = native_guest_wait_try_leave(&wait);
     if (released > 0)
     {
         wait_channel_buffer_idle(channel, &wait);
@@ -935,7 +953,7 @@ int dvm_runtime_channel_wait_change(void)
 {
     NativeGuestWait wait;
     uint64_t generation = native_guest_wait_begin(&wait, NULL, NULL, -1);
-    int released = dvm_runtime_gc_native_try_leave();
+    int released = native_guest_wait_try_leave(&wait);
 
     if (released > 0)
     {
@@ -962,7 +980,7 @@ int dvm_runtime_guest_sleep(unsigned long milliseconds)
     int released, completed = milliseconds == 0;
 
     native_guest_wait_begin(&wait, NULL, NULL, -1);
-    released = dvm_runtime_gc_native_try_leave();
+    released = native_guest_wait_try_leave(&wait);
     if (released > 0)
     {
         fvm_port_sync_lock(channel_queue_mutex);

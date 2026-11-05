@@ -1056,6 +1056,14 @@ int __wrap_dvm_runtime_guest_sleep(unsigned long milliseconds)
     result = __real_dvm_runtime_guest_sleep(milliseconds);
     check(result == -1 && !dvm_runtime_cancel_guest_wait(sleeping_pid),
         "sleep wakes cancelled and removes its wait record");
+    if (verify_sleep_cancel_handoff)
+    {
+        verify_sleep_cancel_handoff = 0;
+        check(dvm_runtime_request_guest_cancel(2000) &&
+            !dvm_runtime_request_guest_cancel(2001),
+            "published sleep consumes its request and releases the full queue slot");
+        puts("PASS native cancellation handoff");
+    }
     puts("PASS cancelled native sleep");
     return result;
 }
@@ -1079,14 +1087,8 @@ int __wrap_fvm_port_sync_wait_ms(FVM_PortSync *sync, unsigned long milliseconds)
  * managed withdrawal. Later operations use the actual scheduler. */
 const char *__wrap_dvm_managed_workers_native_wait(void)
 {
-    if (verify_sleep_cancel_handoff)
-    {
-        verify_sleep_cancel_handoff = 0;
-        check(dvm_runtime_request_guest_cancel(sleeping_pid) &&
-            dvm_runtime_request_guest_cancel(2000),
-            "published sleep consumes its request and releases the full queue slot");
-        puts("PASS native cancellation handoff");
-    }
+    check(!verify_sleep_cancel_handoff,
+        "cancelled sleep must skip native executor admission");
     if (io_refusals)
     {
         io_refusals--;
