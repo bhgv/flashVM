@@ -9,9 +9,9 @@ import tempfile
 import time
 
 
-def run(runtime, directory, mode, poll, payload, outcome):
+def run(runtime, directory, mode, poll, payload, outcome, image="main.dis"):
     command = [str(runtime), mode, "--stats", "--gc-worker", "--managed-workers", "2",
-               "--quantum", "65536", *poll, "main.dis"]
+               "--guarded-copies", "--quantum", "65536", *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           bufsize=0) as child:
@@ -54,14 +54,16 @@ def main():
     fixtures = Path(__file__).resolve().parent / "fixtures/module-continuation"
     with tempfile.TemporaryDirectory(prefix="module-continuation-") as temporary:
         directory = Path(temporary)
-        for name in ("provider", "main"):
+        for name in ("provider", "main", "kill"):
             subprocess.run([str(compiler), "-F", "-I", str(include), "-I", str(fixtures),
+                            "-I", str(fixtures.parents[2] / "module"),
                             "-o", str(directory / (name + ".dis")),
                             str(fixtures / (name + ".b"))], check=True)
         for mode in ("--jit", "--no-jit"):
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind")
+                run(runtime, directory, mode, poll, b"R", "PASS provider termination and reload", "kill.dis")
 
 
 if __name__ == "__main__":

@@ -5,11 +5,17 @@ include "provider.m";
 Main: module { init: fn(); };
 sys: Sys;
 
-peer(provider: Provider)
+peer(inbox: chan of (Provider, array of int), reply: chan of array of int)
 {
+    (provider, payload) := <-inbox;
+    if (payload[0] != 161803)
+        raise "buffered handoff lost its payload";
     if (provider->touch() != 314159)
         raise "peer call failed";
     provider = nil;
+    payload[0] = 271828;
+    reply <-= payload;
+    payload = nil;
     sys->print("PEER released provider\n");
 }
 
@@ -19,7 +25,12 @@ init()
     provider := load Provider "provider.dis";
     if (provider == nil)
         raise "cannot load provider";
-    spawn peer(provider);
+    inbox := chan[1] of (Provider, array of int);
+    payload := array[] of {161803};
+    inbox <-= (provider, payload);
+    payload = nil;
+    reply := chan[1] of array of int;
+    spawn peer(inbox, reply);
     caller := array[] of {161803};
     {
         if (provider->wait() != 585987 || caller[0] != 161803)
@@ -32,5 +43,8 @@ init()
             sys->print("PASS provider unwind\n");
         * => raise;
     }
+    payload = <-reply;
+    if (payload[0] != 271828)
+        raise "buffered reply lost its payload";
     provider = nil;
 }
