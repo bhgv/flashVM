@@ -229,8 +229,13 @@ ReceiveErrors: module {init: fn();};
 
 sender(records: chan of (int, string), ready, done: chan of int) {
     ready <-= 1;
-    records <-= (55, "queued sender");
-    done <-= 1;
+    {
+        records <-= (55, "queued sender");
+        done <-= 1;
+    } exception failure {
+        "channel transfer failed" => done <-= -1;
+        * => raise;
+    }
 }
 
 init() {
@@ -297,6 +302,27 @@ init() {
     (tag, text) = <-records;
     if (tag != 55 || text != "queued sender")
         raise "refill lost the published sender";
+    records <-= (66, "first before failure");
+    records <-= (67, "second before failure");
+    spawn sender(records, ready, done);
+    if (<-ready != 1)
+        raise "second sender did not start";
+    {
+        value = <-records;
+        raise "expected uncommitted refill failure";
+    } exception failure {
+        "refill failed before publication" => ;
+        * => raise;
+    }
+    if (<-done != -1)
+        raise "uncommitted sender reported success";
+    (tag, text) = <-records;
+    if (tag != 67 || text != "second before failure")
+        raise "uncommitted refill corrupted the ring";
+    records <-= (68, "after failed refill");
+    (tag, text) = <-records;
+    if (tag != 68 || text != "after failed refill")
+        raise "failed refill left a phantom message";
     sys->print("PASS buffered receive commit boundary\n");
 }
 '''
@@ -408,6 +434,11 @@ int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destinat
         receive_fault = 1;
         release_fault = 1;
         error("receive failed before publication");
+    }
+    if (inject && opcode == 0 && !consume && receive_fault == 4)
+    {
+        receive_fault = 5;
+        error("refill failed before publication");
     }
     ring_kind = type->np ? 1 : (type->size <= sizeof(void *) ? 2 : 3);
     result = __real_dvm_runtime_mapped_buffer_transfer(source, destination, type, consume, committed, opcode);
