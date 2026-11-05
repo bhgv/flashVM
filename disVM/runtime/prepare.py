@@ -117,18 +117,15 @@ def adapt_string_conversion_captures(code, conversions):
         read = f'\tmemmove(&{operand}, DVM_R.s, sizeof({operand}));'
         old_read = '\tmemmove(&old, slot, sizeof(old));'
         bit_copy = '\tmemmove(&bits, &value, sizeof(bits));'
-        capture = read
         if paired:
+            capture = read+'\n'
             if opcode == 'CVTFC':
-                capture += '\n'+bit_copy
-            capture += '\n'+old_read
-            attempt = (f'dvm_runtime_bytes_snapshot_pair_attempt(DVM_R.s, sizeof({operand}), &{operand},\n'
-                       '            slot, sizeof(old), &old, &claim)')
-        else:
-            attempt = f'dvm_runtime_bytes_snapshot_attempt(DVM_R.s, &{operand}, sizeof({operand}), &claim)'
-        replacement = f"""    if(dvm_runtime_guarded_copies) {{
+                capture += bit_copy+'\n'
+            capture += old_read
+            replacement = f"""    if(dvm_runtime_guarded_copies) {{
         DVM_CellResult claim;
-        const char *problem = {attempt};
+        const char *problem = dvm_runtime_bytes_snapshot_pair_attempt(DVM_R.s, sizeof({operand}), &{operand},
+            slot, sizeof(old), &old, &claim);
         if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
             return;
         }}
@@ -136,21 +133,20 @@ def adapt_string_conversion_captures(code, conversions):
             error((char *)problem);
         }}
     }} else {{
-{read}
-{old_read if paired else ''}
+{capture}
     }}"""
-        if opcode == 'CVTFC':
-            replacement += '\n'+bit_copy
-        body = relative_replace(body, capture, replacement, 1)
-        if not paired:
-            # Reserve publication before the UTF-8 view can mutate its owner.
+            if opcode == 'CVTFC':
+                replacement = replacement.replace('    } else {', bit_copy+'\n    } else {', 1)
+        else:
+            # One union covers aliasing source and destination slots from
+            # capture through publication. NativeWorld still owns the string.
             parser = {'CVTCW': 'strtol(view, nil, 10)', 'CVTCL': 'strtoll(view, nil, 10)',
                       'CVTCF': 'strtod(view, nil)'}[opcode]
-            original = '\tvalue = '+parser.replace('view', 'string2c(s)')+';\n'
-            original += '\tmemmove(DVM_R.d, &value, sizeof(value));'
-            guarded = f"""    if(dvm_runtime_guarded_copies) {{
+            capture = read+'\n\tvalue = '+parser.replace('view', 'string2c(s)')+';\n'
+            capture += '\tmemmove(DVM_R.d, &value, sizeof(value));'
+            replacement = f"""    if(dvm_runtime_guarded_copies) {{
         DVM_RangeAccess access = {{0}};
-        DVM_CellResult claim = dvm_managed_ranges_begin(NULL, 0, DVM_R.d, sizeof(value), &access);
+        DVM_CellResult claim = dvm_managed_ranges_begin(DVM_R.s, sizeof(s), DVM_R.d, sizeof(value), &access);
         const char *problem = NULL;
         char *view;
         if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(I{opcode})) {{
@@ -159,6 +155,7 @@ def adapt_string_conversion_captures(code, conversions):
         if(claim != DVM_CELL_ACQUIRED) {{
             error(exHeap);
         }}
+{read}
         view = dvm_runtime_string_view(s, &problem);
         if(!problem) {{
             value = {parser};
@@ -172,8 +169,8 @@ def adapt_string_conversion_captures(code, conversions):
         }}
         return;
     }}
-"""
-            body = relative_replace(body, original, guarded+original, 1)
+{capture}"""
+        body = relative_replace(body, capture, replacement, 1)
         code = code[:start] + body + code[end:]
     return code
 

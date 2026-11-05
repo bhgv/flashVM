@@ -136,8 +136,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[14]; /* Post-decode PC for each refused capture. */
-    static int replayed[14]; /* One successful replay for each stage. */
+    static Inst *pcs[11]; /* Post-decode PC for each refused capture. */
+    static int replayed[11]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -172,25 +172,25 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
         return DVM_CELL_BUSY;
     }
 
-    if (CONTROL == 0 && !active && !destination && !destination_size)
+    if (CONTROL == 0 && !active)
     {
         int opcode = dvm_native_execution()->arithmetic_retry_opcode;
-        if ((opcode == ICVTCW && contend_capture(3)) ||
-            (opcode == ICVTCL && contend_capture(4)) ||
-            (opcode == ICVTCF && contend_capture(5)))
+        if (opcode == ICVTCW || opcode == ICVTCL || opcode == ICVTCF)
         {
-            return DVM_CELL_BUSY;
-        }
-    }
-
-    if (CONTROL == 0 && !active && !source && !source_size && destination)
-    {
-        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
-        if ((opcode == ICVTCW && contend_capture(11)) ||
-            (opcode == ICVTCL && contend_capture(12)) ||
-            (opcode == ICVTCF && contend_capture(13)))
-        {
-            return DVM_CELL_BUSY;
+            size_t width = opcode == ICVTCW ? sizeof(WORD) :
+                (opcode == ICVTCL ? sizeof(LONG) : sizeof(REAL));
+            if (source != DVM_R.s || source_size != sizeof(String *) ||
+                destination != DVM_R.d || destination_size != width)
+            {
+                fprint(2, "FAIL conversion must claim both decoded spans together\n");
+                exit(10);
+            }
+            if ((opcode == ICVTCW && contend_capture(3)) ||
+                (opcode == ICVTCL && contend_capture(4)) ||
+                (opcode == ICVTCF && contend_capture(5)))
+            {
+                return DVM_CELL_BUSY;
+            }
         }
     }
 
@@ -719,7 +719,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(14)):
+                                            for stage in range(11)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
