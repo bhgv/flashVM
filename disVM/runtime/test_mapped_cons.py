@@ -33,7 +33,7 @@ def main():
         guest.write_text(GUEST)
         subprocess.run([str(compiler),'-I',str(include),'-o',str(image),str(guest)],check=True)
         binary = relink(runtime,work,root/'test_mapped_cons.c',0,
-            ['dvm_runtime_root_registry_probe','dvm_runtime_mapped_cons','calloc','poolalloc',
+            ['dvm_managed_ranges_begin','dvm_runtime_root_registry_probe','dvm_runtime_mapped_cons','calloc','poolalloc',
              'dvm_refcount_retain_i','destroy'])
         for mode in ('--no-jit','--jit'):
             for locked in (False,True):
@@ -42,7 +42,8 @@ def main():
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=90)
                 output = run.stdout+run.stderr
-                if run.returncode or 'PASS mapped cons:' not in output or 'PASS mapped guest' not in output:
+                if run.returncode or 'PASS mapped cons:' not in output or 'PASS mapped guest' not in output or \
+                        'PASS scheduled constructor replay' not in output:
                     raise RuntimeError(output)
                 if 'runtime error:' in output or 'WARNING: ThreadSanitizer:' in output:
                     raise RuntimeError(output)
@@ -58,7 +59,7 @@ def main():
                 ('!kprotect(finish_one, holds[index]) && !failed',
                  '!kprotect(finish_one, holds[index]) && (!failed || dvm_pointer_transaction_error_control())',
                  'all cleanup preserves primary')]
-            symbols = ['dvm_runtime_root_registry_probe','dvm_runtime_mapped_cons','calloc','poolalloc',
+            symbols = ['dvm_managed_ranges_begin','dvm_runtime_root_registry_probe','dvm_runtime_mapped_cons','calloc','poolalloc',
                        'dvm_refcount_retain_i','destroy']
             for index,(before,after,marker) in enumerate(controls):
                 if original.count(before) != 1:

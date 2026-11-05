@@ -4,6 +4,9 @@
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "managed_owner.h"
+#include "disvm/native_process.h"
+#include "isa.h"
 #include "raise.h"
 #include "pool.h"
 #include "pointer_builder.h"
@@ -60,6 +63,33 @@ static void check(int valid,const char *message)
         exit(10);
     }
 }
+
+
+DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
+
+
+/* Refuse one initial operand snapshot in the real decoded guest. */
+DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t input,
+    void *destination, size_t output, DVM_RangeAccess *access)
+{
+    static Inst *retry_pc; /* Post-decode constructor PC at refusal. */
+    static int replayed; /* One guest replay observed. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+
+    if (CONTROL == 0 && !destination && !output && !replayed && opcode == ICONSMP)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC, "constructor replay restores its PC");
+        replayed = 1;
+        puts("PASS scheduled constructor replay");
+    }
+    return __real_dvm_managed_ranges_begin(source, input, destination, output, access);
+}
+
 
 
 /* Count real dispatches, including C/JIT guest constructor operations. */

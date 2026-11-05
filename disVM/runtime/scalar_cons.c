@@ -10,6 +10,8 @@
 #include "heap_commit.h"
 #include "shared_bytes.h"
 #include "shared_access.h"
+#include "isa.h"
+#include "disvm/native_process.h"
 #include <string.h>
 
 #define DVM_SCALAR_ATTEMPTS 8 /* Bound pathological callback-induced retry work. */
@@ -77,11 +79,21 @@ static int construct(void *argument)
 {
     ScalarTransaction *state = argument;
     const char *problem;
+    DVM_CellResult claim;
     unsigned int attempt;
     int result;
-    problem = dvm_runtime_bytes_snapshot(state->source_cell, state->snapshot, state->width);
+    problem = dvm_runtime_bytes_snapshot_attempt(state->source_cell, state->snapshot, state->width, &claim);
     if (problem)
     {
+        if (claim == DVM_CELL_BUSY)
+        {
+            int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+            if ((opcode == ICONSB || opcode == ICONSW || opcode == ICONSL || opcode == ICONSF) &&
+                dvm_runtime_scalar_retry(opcode))
+            {
+                return 1;
+            }
+        }
         error((char *)problem);
     }
     for (attempt = 0; attempt < DVM_SCALAR_ATTEMPTS; attempt++)
