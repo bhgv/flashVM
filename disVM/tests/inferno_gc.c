@@ -4,6 +4,8 @@
 #include "lib9.h"
 
 #ifdef DVM_GC_WORKERS
+#include <pthread.h>
+#include <sched.h>
 #include "dat.h"
 #include "disvm/gc_workers.h"
 #include "disvm/native_process.h"
@@ -188,24 +190,26 @@ typedef struct Backend
     size_t cycle_steps;
     DVM_NativeContext *Fast_context;
     DVM_NativeContext *Cycles_context;
+    unsigned int graph_snapshots; /* Count stopped register publications. */
 } Backend;
 
 static Backend backend;
 
 
-/* No mutator is registered in this allocator fixture; Prog roots are explicit. */
+/* Capture the typed process snapshot of an active graph mutator. The world
+ * owns all callback arguments through this stopped visit. */
 static void publish_roots(DVM_NativeContext *context, void *registers, size_t size, void *process, void *user)
 {
+    Backend *state = user;
+    Prog *guest = process;
     (void)context;
-    (void)registers;
-    (void)size;
-    (void)process;
-    (void)user;
-    if (!(0 && "unexpected mutator in the isolated GC allocator fixture"))
+    if (!guest || !registers || size != sizeof(REG))
     {
-        fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        fprintf(stderr, "invalid stopped graph mutator snapshot\n");
         exit(EXIT_FAILURE);
     }
+    memmove(&guest->R, registers, sizeof(guest->R));
+    state->graph_snapshots++;
 }
 
 
@@ -309,6 +313,170 @@ typedef struct Record
 } Record;
 
 
+#ifdef DVM_GC_WORKERS
+typedef struct GraphRun
+{
+    pthread_mutex_t mutex; /* Protects phase and completion counters only. */
+    int phase; /* 0 holds entry, 1 publishes edges, 2 removes edges, 3 exits. */
+    int entered; /* Both mutators must be active before phase 1. */
+    int changed[2]; /* Number of completed writes in each phase. */
+} GraphRun;
+
+typedef struct GraphMutator
+{
+    GraphRun *run; /* Borrowed until join. */
+    void **slot; /* One disjoint mapped slot in the common rooted record. */
+    Record *cycle; /* Borrowed disjoint cycle until the first stopped pass. */
+    Prog guest; /* Owner-local snapshot storage until detach. */
+} GraphMutator;
+
+
+/* Stop the fixture with a named failed requirement. */
+static void graph_check(int valid, const char *message)
+{
+    if (!valid)
+    {
+        fprintf(stderr, "parallel GC graph: %s\n", message);
+        exit(EXIT_FAILURE);
+    }
+}
+
+
+/* Run two graph changes on a native world participant. Allocation and final
+ * destruction stay with the stopped collector or coordinator. */
+static void *mutate_graph(void *argument)
+{
+    GraphMutator *worker = argument;
+    GraphRun *run = worker->run;
+    DVM_NativeContext *context = dvm_native_process_create(NULL);
+    DVM_WorldParticipant *participant;
+    int completed = 0;
+    graph_check(context && dvm_native_context_bind(context), "bind worker");
+    participant = dvm_world_join(backend.world, context);
+    ((REG *)dvm_native_context_registers(context))->M = worker->guest.R.M;
+    graph_check(participant && dvm_native_context_set_process(context, &worker->guest) &&
+        dvm_world_enter(participant), "enter parallel world");
+    pthread_mutex_lock(&run->mutex);
+    run->entered++;
+    pthread_mutex_unlock(&run->mutex);
+    for (;;)
+    {
+        int phase;
+        pthread_mutex_lock(&run->mutex);
+        phase = run->phase;
+        pthread_mutex_unlock(&run->mutex);
+        if (phase == 3)
+        {
+            break;
+        }
+        if (phase > completed)
+        {
+            set_edge(worker->slot, phase == 1 ? worker->cycle : H);
+            completed = phase;
+            pthread_mutex_lock(&run->mutex);
+            run->changed[phase-1]++;
+            pthread_mutex_unlock(&run->mutex);
+        }
+        graph_check(dvm_native_context_poll(), "cooperative collector poll");
+        sched_yield();
+    }
+    graph_check(dvm_world_leave(participant) && dvm_world_detach(participant) &&
+        dvm_native_context_unbind(context) && dvm_native_context_destroy(context),
+        "detach completed worker");
+    return NULL;
+}
+
+
+/* Wait for both owner-local changes without changing collector admission. */
+static void wait_graph_counter(GraphRun *run, const int *counter)
+{
+    int done;
+    do
+    {
+        pthread_mutex_lock(&run->mutex);
+        done = *counter == 2;
+        pthread_mutex_unlock(&run->mutex);
+        if (!done)
+        {
+            sched_yield();
+        }
+    } while (!done);
+}
+
+
+/* Verify one common root with two independently mutated cyclic branches,
+ * stopped snapshots while both mutators are active, then exact reclamation. */
+static void parallel_graph(Type *record_type, Prog *roots)
+{
+    uchar map[] = {0xc0};
+    Type *pair_type = dtype(freeheap, 2*sizeof(void *), map, sizeof(map));
+    GraphRun run = {PTHREAD_MUTEX_INITIALIZER, 0, 0, {0, 0}};
+    GraphMutator workers[2] = {{0}};
+    pthread_t threads[2];
+    Record *cycles_by_worker[2][2];
+    void **pair = allocate_object(pair_type);
+    DVM_WorldState world;
+    unsigned int snapshots = backend.graph_snapshots;
+    unsigned int freed = freed_blocks;
+    int phase;
+    int index;
+    ptradd(D2H(pair));
+    for (index = 0; index < 2; index++)
+    {
+        Record *left = allocate_object(record_type);
+        Record *right = allocate_object(record_type);
+        set_edge(&left->edge, right);
+        set_edge(&right->edge, left);
+        destroy(left);
+        destroy(right);
+        cycles_by_worker[index][0] = left;
+        cycles_by_worker[index][1] = right;
+        workers[index].run = &run;
+        workers[index].slot = &pair[index];
+        workers[index].cycle = left;
+        workers[index].guest.exval = H;
+        workers[index].guest.R.M = roots->R.M;
+        graph_check(!pthread_create(&threads[index], NULL, mutate_graph, &workers[index]),
+            "create graph mutator");
+    }
+    workers[0].guest.next = &workers[1].guest;
+    workers[1].guest.next = roots;
+    wait_graph_counter(&run, &run.entered);
+    graph_check(dvm_world_state(backend.world, &world) && world.active == 2,
+        "two active OS mutators");
+    for (phase = 1; phase <= 2; phase++)
+    {
+        pthread_mutex_lock(&run.mutex);
+        run.phase = phase;
+        pthread_mutex_unlock(&run.mutex);
+        wait_graph_counter(&run, &run.changed[phase-1]);
+        cycles(&workers[0].guest);
+        graph_check(backend.graph_snapshots == snapshots + 128 && is_live(pair), "visit both active roots");
+        snapshots = backend.graph_snapshots;
+        for (index = 0; index < 2; index++)
+        {
+            graph_check(is_live(cycles_by_worker[index][0]) == (phase == 1) &&
+                is_live(cycles_by_worker[index][1]) == (phase == 1), "trace and reclaim cyclic branch");
+        }
+        graph_check(freed_blocks == freed + (phase == 2 ? 4 : 0), "exact cycle retirement");
+    }
+    pthread_mutex_lock(&run.mutex);
+    run.phase = 3;
+    pthread_mutex_unlock(&run.mutex);
+    for (index = 0; index < 2; index++)
+    {
+        graph_check(!pthread_join(threads[index], NULL), "join graph mutator");
+    }
+    pthread_mutex_destroy(&run.mutex);
+    ptrdel(D2H(pair));
+    deferred_release(pair);
+    graph_check(freed_blocks == freed + 5 && !is_live(pair), "Fast retires remaining owner once");
+    freetype(pair_type);
+    puts("PASS two active graph mutators: stopped roots, Cycles and Fast retirement");
+}
+#endif
+
+
 /* Verify acyclic RC, unreachable cycles, global roots and integer lookalikes. */
 int main(void)
 {
@@ -355,6 +523,7 @@ int main(void)
     module_link->MP = H;
     memset(&root, 0, sizeof(root));
     root.R.M = module_link;
+    root.exval = H;
     memset(&global_module, 0, sizeof(global_module));
     global_module.origmp = H;
     modules = &global_module;
@@ -466,6 +635,9 @@ int main(void)
         free(stack);
         freetype(frame_type);
     }
+#ifdef DVM_GC_WORKERS
+    parallel_graph(record_type, &root);
+#endif
     destroy(module_link);
     freetype(record_type);
     freetype(module_type);
@@ -485,7 +657,7 @@ int main(void)
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
     }
-    if (!(state.Fast.passes == 1 && state.Cycles.passes == 320 && !state.failed))
+    if (!(state.Fast.passes == 2 && state.Cycles.passes == 448 && !state.failed))
     {
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
         exit(EXIT_FAILURE);
