@@ -40,16 +40,17 @@ static int overlaps(const void *one, const void *two)
 /* [GC:] Caller protects cell lifetime. Capture unaligned values only after all
  * required guards are held. No VM callback, throwing allocation or destruction.
  * Refusal leaves destination/output unchanged and undoes a failed mark retain. */
-const char *dvm_runtime_movp_copy(const void *source, void *destination,
-    void **previous)
+static const char *movp_attempt(const void *source, void *destination,
+    void **previous, DVM_CellResult *claim)
 {
     DVM_CellAccess access = {0};
-    DVM_CellResult acquired;
     const char *problem = NULL;
     void *incoming;
     void *outgoing;
     Heap *heap = NULL;
     int selected = dvm_runtime_shared_mode();
+
+    *claim = DVM_CELL_REFUSED;
     if (!selected || !span(source) || !span(destination) || !span(previous) ||
         overlaps(previous, source) || overlaps(previous, destination))
     {
@@ -57,8 +58,8 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination,
     }
     if (selected == 2)
     {
-        acquired = dvm_managed_cells_begin(source, destination, &access);
-        if (acquired != DVM_CELL_ACQUIRED)
+        *claim = dvm_managed_cells_begin(source, destination, &access);
+        if (*claim != DVM_CELL_ACQUIRED)
         {
             return exHeap;
         }
@@ -122,4 +123,27 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination,
         *previous = outgoing;
     }
     return problem;
+}
+
+
+
+/* Copy a borrowed reference and return its displaced owner on success. */
+const char *dvm_runtime_movp_copy(const void *source, void *destination, void **previous)
+{
+    DVM_CellResult claim;
+
+    return movp_attempt(source, destination, previous, &claim);
+}
+
+
+/* Schedule a retry only on source/destination contention before retain.
+ * replay is caller-private. On replay the previous-owner output is untouched. */
+const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination,
+    void **previous, int *replay)
+{
+    DVM_CellResult claim;
+    const char *problem = movp_attempt(source, destination, previous, &claim);
+
+    *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
+    return *replay ? NULL : problem;
 }

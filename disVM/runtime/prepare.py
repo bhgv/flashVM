@@ -324,12 +324,12 @@ def main():
     if code.count(decode) != 1:
         raise ValueError("decoded retry boundary drift")
     code = code.replace(decode, decode +
-        "\n\t\tif(dvm_runtime_guarded_copies) {\n"
+        "\n\t\tif(dvm_runtime_guarded_copies || op == IMOVP || op == ISELF) {\n"
         "\t\t\tdvm_native_execution()->arithmetic_retry_opcode = op;\n"
         "\t\t}")
     code = code.replace(termination,
         "executed:\n"
-        "\t\tif(dvm_runtime_guarded_copies && dvm_runtime_arithmetic_finish(p)) {\n"
+        "\t\tif((dvm_runtime_guarded_copies || op == IMOVP || op == ISELF) && dvm_runtime_arithmetic_finish(p)) {\n"
         "\t\t\tDVM_R.PC = fetched.pc;\n"
         "\t\t\tDVM_R.s = DVM_R.m = DVM_R.d = nil;\n"
         "\t\t\tdvm_runtime_instructions--;\n"

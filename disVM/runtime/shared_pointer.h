@@ -12,4 +12,10 @@
  * *previous after success, with no decline/retry after ownership effects. */
 const char *dvm_runtime_movp_copy(const void *source, void *destination,
     void **previous);
+
+
+/* Borrow the same cells as movp_copy. A scheduled replay sets replay and
+ * leaves previous untouched. Callers retire a previous owner only on commit. */
+const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination,
+    void **previous, int *replay);
 #endif

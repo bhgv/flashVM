@@ -17,7 +17,11 @@ def adapt(source):
     replacement = '''OP(movp)
 {
     void *previous;
-    const char *problem = dvm_runtime_movp_copy(DVM_R.s, DVM_R.d, &previous);
+    int replay;
+    const char *problem = dvm_runtime_movp_opcode(IMOVP, DVM_R.s, DVM_R.d, &previous, &replay);
+    if(replay) {
+        return;
+    }
     if(problem != nil) {
         error((char *)problem);
     }

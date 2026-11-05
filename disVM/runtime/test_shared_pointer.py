@@ -15,6 +15,8 @@ WRAPPER = r'''
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "shared_pointer.h"
 #include "managed_owner.h"
@@ -29,7 +31,7 @@ static String *incoming; /* Independently owned and rooted while active. */
 static unsigned int copies; /* Actual helper completions during diagnostic. */
 DVM_RefcountResult __real_dvm_refcount_retain_u(unsigned long *reference);
 DVM_CellResult __real_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access);
-const char *__real_dvm_runtime_movp_copy(const void *source, void *destination, void **previous);
+const char *__real_dvm_runtime_movp_opcode(int, const void *, void *, void **, int *);
 void __real_destroy(void *value);
 void __real_dvm_runtime_opcode_probe(DVM_GCWorkers *workers);
 void __real_error(char *message);
@@ -70,6 +72,22 @@ DVM_RefcountResult __wrap_dvm_refcount_retain_u(unsigned long *reference)
  * before unprotected count effects; never accept the later invariant abort. */
 DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
 {
+    static Inst *retry_pc; /* Post-decode MOVP PC at the first refusal. */
+    static int replayed; /* One matching guest replay has reached admission. */
+
+    if (CONTROL == 0 && !active && !replayed &&
+        dvm_native_execution()->arithmetic_retry_opcode == IMOVP)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC, "MOVP replays the same instruction");
+        replayed = 1;
+        fprint(1, "PASS scheduled MOVP retry\n");
+    }
+
     if (active && CONTROL == 1)
     {
         return DVM_CELL_ACQUIRED;
@@ -79,6 +97,22 @@ DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destinat
 
 
 /* Observe actual helper result; no JIT/source-body stand-in is executed. */
+const char *__wrap_dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, void **previous, int *replay)
+{
+    const char *problem = __real_dvm_runtime_movp_opcode(opcode, source, destination, previous, replay);
+    if (active)
+    {
+        copies++;
+        check(!dvm_native_context_object_count(dvm_native_context_current()), "helper returns unlocked");
+    }
+    return problem;
+}
+
+
+const char *__real_dvm_runtime_movp_copy(const void *source, void *destination, void **previous);
+
+
+/* Observe the synchronous adapter used by the direct ownership probe. */
 const char *__wrap_dvm_runtime_movp_copy(const void *source, void *destination, void **previous)
 {
     const char *problem = __real_dvm_runtime_movp_copy(source, destination, previous);
@@ -252,8 +286,19 @@ def main():
         work = Path(directory)
         guest = work / 'main.b'
         image = work / 'main.dis'
-        guest.write_text('implement Probe; include "sys.m"; Probe: module {init: fn();};\n'
-                         'init() {sys := load Sys Sys->PATH; sys->print("PASS normal Dis\\n");}\n')
+        guest.write_text(r'''implement Probe;
+include "sys.m";
+Probe: module {init: fn();};
+init() {
+    sys := load Sys Sys->PATH;
+    values := array[] of {"first", "second"};
+    copied := values[0];
+    values[0] = "replacement";
+    if (copied != "first")
+        raise "MOVP replay changed the source";
+    sys->print("PASS normal Dis\n");
+}
+''')
         built = subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)],
                                capture_output=True, text=True)
         if built.returncode:
@@ -274,7 +319,7 @@ def main():
                 private_executor = work / 'xec.c'
                 private_executor.write_text(executor)
             binary = relink(runtime, work, wrapper, variant,
-                            ['dvm_refcount_retain_u', 'dvm_managed_cells_begin', 'dvm_runtime_movp_copy',
+                            ['dvm_refcount_retain_u', 'dvm_managed_cells_begin', 'dvm_runtime_movp_opcode', 'dvm_runtime_movp_copy',
                              'destroy', 'error', 'dvm_runtime_opcode_probe'],
                             executor=private_executor if executor is not None else None,
                             shared_pointer_source=private)
@@ -291,7 +336,8 @@ def main():
                     if variant:
                         if run.returncode != 10 or 'FAIL shared MOVP: '+marker not in output:
                             raise RuntimeError('shared MOVP control missed '+str(variant)+': '+output)
-                    elif run.returncode or 'PASS actual shared MOVP:' not in output or 'PASS normal Dis' not in output:
+                    elif run.returncode or 'PASS actual shared MOVP:' not in output or 'PASS normal Dis' not in output or \
+                            'PASS scheduled MOVP retry' not in output:
                         raise RuntimeError('shared MOVP positive failed: '+output)
     print('PASS actual shared MOVP: C/JIT, both polls, rooted real owners'+
           ('; positives only' if '--positive-only' in sys.argv else '; five semantic controls'))

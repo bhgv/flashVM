@@ -23,6 +23,7 @@ def adapt(source):
 {
     Modlink *module;
     void *previous;
+    int replay;
     const char *problem;
     if(DVM_R.d == nil || DVM_R.d == H || (uintptr)DVM_R.d > (uintptr)-1-sizeof(module)) {
         error(exHeap);
@@ -32,7 +33,10 @@ def adapt(source):
         error(exModule);
     }
     /* Current REG.M is context-owned and rooted throughout this opcode. */
-    problem = dvm_runtime_movp_copy(&DVM_R.M, DVM_R.d, &previous);
+    problem = dvm_runtime_movp_opcode(ISELF, &DVM_R.M, DVM_R.d, &previous, &replay);
+    if(replay) {
+        return;
+    }
     if(problem != nil) {
         error((char *)problem);
     }
