@@ -1550,6 +1550,19 @@ init()
 }
 '''
 
+KILLWAIT_HOST_GUEST = KILLWAIT_CANCEL_GUEST.replace(
+    "    control := load Processctl Processctl->PATH;\n    mode := chan[40] of int;",
+    "    mode := chan[43] of int;",
+).replace(
+    "killwait-cancel.bin", "killwait-host.bin",
+).replace(
+    "    target := <-ids;\n"
+    "    first := chan[41] of int;\n"
+    "    if (first == nil || control->cancelwait(target) != Processctl->Cancelled ||\n"
+    "        control->cancelwait(target) == Processctl->Cancelled || <-reports != 1)",
+    "    if (<-ids <= 0 || <-reports != 1)",
+)
+
 
 ALT_DEFAULT_GUEST = ALT_READY_GUEST.replace(
     '        available <-= 31 => {}\n        messages <-= 31 => raise "busy guard selected";',
@@ -1642,7 +1655,8 @@ def main():
                             ("killwait-table", PROCESS_KILLWAIT_TABLE_GUEST),
                             ("killwait-inline", killwait_guest(PROCESS_KILL_READY_GUEST)),
                             ("killwait-cancel", KILLWAIT_CANCEL_GUEST),
-                            ("killwait-nested", KILLWAIT_NESTED_GUEST)):
+                            ("killwait-nested", KILLWAIT_NESTED_GUEST),
+                            ("killwait-host", KILLWAIT_HOST_GUEST)):
             source, image = work / f"{name}.b", work / f"{name}.dis"
             source.write_text(guest)
             subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
@@ -1650,7 +1664,7 @@ def main():
             for mode in ("--no-jit", "--jit"):
                 workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel", "killwait-nested") else "2"
                 options = ["--managed-workers", workers]
-                if name.startswith("host-"):
+                if name.startswith("host-") or name == "killwait-host":
                     options = ["--managed-workers", "auto", "--stats"]
                 if name.endswith("pool-refusal"):
                     options = ["--managed-workers", "auto", "--managed-workers-limit", "2"]
@@ -1740,9 +1754,10 @@ def main():
                 if name.startswith("sleep-"):
                     marker = "PASS cancelled native sleep"
                 if name.startswith("killwait-"):
-                    if name in ("killwait-cancel", "killwait-nested") and (work / f"{name}.bin").read_bytes() != b"a":
+                    if name in ("killwait-cancel", "killwait-nested", "killwait-host") and (work / f"{name}.bin").read_bytes() != b"a":
                         raise RuntimeError(f"{name} {mode} lost admitted child output")
                     if (result.returncode or output.count("PASS guest child retirement") != 1
+                            or (name == "killwait-host" and output.count("PASS submitted host cancellation batch") != 1)
                             or (name.endswith("native") and output.count("PASS cancelled native sleep") != 1)
                             or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0", output)

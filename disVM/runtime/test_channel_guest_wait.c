@@ -33,6 +33,7 @@ static int sleeping_pid; /* Captured before the long sleep releases its guest. *
 static int host_cancel_mode; /* Submit before or after the park wake snapshot. */
 static int host_cancel_sent; /* Exactly one fixture submission per process. */
 static int child_exit_cancel_mode; /* Hold child I/O while its parent waits twice. */
+static int child_exit_host_cancel; /* Queue cancellation from outside NativeWorld. */
 static int child_exit_wait_count; /* Published killwait parks, under gate. */
 static int parked_cancel_mode; /* Cancel an ordinary scheduler-blocked guest. */
 static int parked_count; /* Number of fixture registrations published under gate. */
@@ -166,9 +167,10 @@ Channel *__wrap_dvm_runtime_channel_new(void *destination, Type *type, WORD capa
         host_cancel_mode = (int)capacity;
         parked_cancel_mode = 1;
     }
-    if (type == &Tword && capacity == 40)
+    if (type == &Tword && (capacity == 40 || capacity == 43))
     {
         child_exit_cancel_mode = 1;
+        child_exit_host_cancel = capacity == 43;
         parked_cancel_mode = 1;
     }
     if (type == &Tword && (capacity == 41 || capacity == 42))
@@ -542,6 +544,9 @@ String *__wrap_c2string(char *value, int length)
 }
 
 
+static void submit_host_cancel_batch(int pid);
+
+
 /* Observe the actual prepared MCALL becoming a scheduler wait. */
 int __wrap_dvm_runtime_prepare_killwait(Prog *caller, int pid)
 {
@@ -553,6 +558,10 @@ int __wrap_dvm_runtime_prepare_killwait(Prog *caller, int pid)
         child_exit_wait_count++;
         pthread_cond_broadcast(&waiting);
         pthread_mutex_unlock(&gate);
+        if (child_exit_host_cancel && child_exit_wait_count == 1)
+        {
+            submit_host_cancel_batch(caller->pid);
+        }
     }
     return ready;
 }
@@ -578,15 +587,21 @@ static void *submit_host_cancel(void *argument)
 
 
 /* Submit on another thread while the controller still owns NativeWorld. */
-static void submit_host_cancel_once(void)
+static void submit_host_cancel_batch(int pid)
 {
     pthread_t thread;
 
-    check(parked_pid > 0 && !pthread_create(&thread, NULL, submit_host_cancel, &parked_pid),
+    check(pid > 0 && !pthread_create(&thread, NULL, submit_host_cancel, &pid),
         "host cancellation thread starts");
     check(!pthread_join(thread, NULL), "host cancellation thread joins");
-    host_cancel_sent = 1;
     puts("PASS submitted host cancellation batch");
+}
+
+
+static void submit_host_cancel_once(void)
+{
+    submit_host_cancel_batch(parked_pid);
+    host_cancel_sent = 1;
 }
 
 
