@@ -140,6 +140,41 @@ sharedgraph()
 }
 
 
+# Keep independent frame roots live while a deep callee publishes a mapped
+# record. Exercise both normal return and exception unwinding across extents.
+checkframes(depth, fail: int): int
+{
+    node := ref Node(nil, array[] of {depth});
+    node.next = node;
+    record := Publication(node, depth);
+    result := 0;
+    if (depth == 0)
+    {
+        copy := Publication(nil, -1);
+        copy = record;
+        cycle(depth);
+        result = copy.node.payload[0] + copy.seed;
+        if (fail != 0)
+            raise "deep frame unwind";
+    }
+    else
+    {
+        {
+            result = checkframes(depth-1, fail);
+        } exception failure {
+            "deep frame unwind" =>
+                if (depth != 192)
+                    raise;
+            * => raise;
+        }
+    }
+    if (record.node.next != node || record.node.payload[0] != depth ||
+        record.seed != depth)
+        raise "live caller frame lost its mapped root";
+    return result+depth;
+}
+
+
 # A direct block above the deferred-byte budget must use ordinary destruction.
 # Its first/last bytes are checked before scope exit; it must not occupy a queue
 # slot until an arbitrary later collection. There is no shared mutable owner.
@@ -174,5 +209,8 @@ init()
         }
     }
     sharedgraph();
+    if (checkframes(192, 0) != 18528 || checkframes(192, 1) != 192)
+        raise "deep frame return or exception mismatch";
+    sys->print("PASS gc-worker deep frame return and unwind\n");
     sys->print("PASS gc-worker: 12000 unreachable cycles, live root retained\n");
 }

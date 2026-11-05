@@ -49,6 +49,7 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     if budget is None:
         if ("PASS gc-worker: 12000" not in output or
                 "PASS gc-worker shared graph: 64 unordered publications after unwind" not in output or
+                "PASS gc-worker deep frame return and unwind" not in output or
                 "PASS Dis application completed" not in output or
                 (quantum != 65536 and min(int(gc[2]), int(gc[3]), int(counters[4])) == 0) or
                 (int(counters[2]) > 0) != (mode == "--jit")):

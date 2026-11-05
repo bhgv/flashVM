@@ -1716,7 +1716,7 @@ def main():
                 else:
                     result = subprocess.run(command, cwd=work, capture_output=True, text=True, timeout=30)
                 if name == "send":
-                    for field in range(14):
+                    for field in range(15):
                         refused = subprocess.run(command, cwd=work, capture_output=True, text=True,
                                                  timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field)))
                         if (refused.returncode != 1 or
