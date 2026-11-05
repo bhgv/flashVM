@@ -33,6 +33,7 @@ static int verify_sleep_cancel_handoff; /* Inspect queue capacity before releasi
 static int sleeping_pid; /* Captured before the long sleep releases its guest. */
 static int host_cancel_mode; /* Submit before or after the park wake snapshot. */
 static int host_cancel_on_publish; /* Submit as the last runnable guest parks. */
+static int host_cancel_delivery_seen;
 static int host_cancel_sent; /* Exactly one fixture submission per process. */
 static int child_exit_cancel_mode; /* Hold child I/O while its parent waits twice. */
 static int child_exit_host_cancel; /* Queue cancellation from outside NativeWorld. */
@@ -609,6 +610,40 @@ static void submit_host_cancel_once(void)
 {
     submit_host_cancel_batch(parked_pid);
     host_cancel_sent = 1;
+}
+
+
+int __real_dvm_runqueue_append(Prog *process);
+
+
+/* Submit duplicates while delivery still owns the waiter's completion claim. */
+static void *submit_during_host_cancel(void *argument)
+{
+    int pid = *(int *)argument;
+
+    check(dvm_runtime_request_guest_cancel(pid) &&
+        dvm_runtime_request_guest_cancel(1062) &&
+        !dvm_runtime_request_guest_cancel(2000),
+        "current and later requests stay visible while the full batch drains");
+    return NULL;
+}
+
+
+int __wrap_dvm_runqueue_append(Prog *process)
+{
+    if ((host_cancel_mode || host_cancel_on_publish) && !host_cancel_delivery_seen &&
+        process->state == Precv && process->pid == parked_pid)
+    {
+        pthread_t thread;
+        int pid = process->pid;
+
+        check(!pthread_create(&thread, NULL, submit_during_host_cancel, &pid),
+            "concurrent duplicate request thread starts");
+        check(!pthread_join(thread, NULL), "concurrent duplicate request thread joins");
+        host_cancel_delivery_seen = 1;
+        puts("PASS coalesced cancellation during delivery");
+    }
+    return __real_dvm_runqueue_append(process);
 }
 
 

@@ -392,6 +392,15 @@ static size_t guest_cancel_request_index(int pid)
 
 
 
+/* Remove a request without changing FIFO order. The ledger is locked. */
+static void remove_guest_cancel_request(size_t index)
+{
+    cancel_request_count--;
+    memmove(cancel_requests + index, cancel_requests + index + 1,
+        (cancel_request_count - index) * sizeof(*cancel_requests));
+}
+
+
 /* Publish the current guest identity before suspension, and return the
  * readiness epoch from the same critical section. */
 static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
@@ -412,9 +421,7 @@ static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gat
     if (request < cancel_request_count)
     {
         /* Transfer the queued request to this exact continuation. */
-        cancel_request_count--;
-        memmove(cancel_requests + request, cancel_requests + request + 1,
-            (cancel_request_count - request) * sizeof(*cancel_requests));
+        remove_guest_cancel_request(request);
         cancel_guest_wait(wait);
     }
     if (native_waits_stopping && gate && !wait->cancelled)
@@ -583,22 +590,28 @@ static int guest_cancel_pending_or_close(void)
 }
 
 
-/* Handle one bounded batch under NativeWorld. New producers may fill the next
- * batch while this owner changes scheduler queues. Unknown PIDs are harmless. */
+/* Process at most the original batch under NativeWorld. Keep each PID
+ * visible until its delivery finishes so concurrent submissions coalesce. */
 static void dispatch_guest_cancellations(void)
 {
-    int requests[CANCEL_REQUEST_CAPACITY];
-    size_t count, index;
+    size_t remaining;
 
     fvm_port_sync_lock(channel_queue_mutex);
-    count = cancel_request_count;
-    memcpy(requests, cancel_requests, count * sizeof(*requests));
-    cancel_request_count = 0;
-    fvm_port_sync_unlock(channel_queue_mutex);
-    for (index = 0; index < count; index++)
+    remaining = cancel_request_count;
+    while (remaining-- && cancel_request_count)
     {
-        dvm_runtime_cancel_guest_wait(requests[index]);
+        int pid = cancel_requests[0];
+
+        fvm_port_sync_unlock(channel_queue_mutex);
+        dvm_runtime_cancel_guest_wait(pid);
+        fvm_port_sync_lock(channel_queue_mutex);
+        if (cancel_request_count)
+        {
+            /* Only shutdown can clear the queue while this owner delivers. */
+            remove_guest_cancel_request(0);
+        }
     }
+    fvm_port_sync_unlock(channel_queue_mutex);
 }
 
 

@@ -1620,7 +1620,8 @@ def main():
                          "dvm_file_gate_try_release", "dvm_file_gate_enter",
                          "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
                          "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
-                         "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait"])
+                         "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
+                         "dvm_runqueue_append"])
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
@@ -1742,6 +1743,8 @@ def main():
                         raise RuntimeError(f"{name} {mode} retained native output resources\n{output}")
                 if name.startswith("host-"):
                     marker = "PASS submitted host cancellation batch"
+                    if output.count("PASS coalesced cancellation during delivery") != 1:
+                        raise RuntimeError(f"{name} {mode} missed concurrent cancellation delivery\n{output}")
                     if name != "host-fixed" and "NATIVEPOOL_QUIESCENT processes=1" not in output:
                         raise RuntimeError(f"{name} {mode} did not reach scheduler quiescence\n{output}")
                 if name.startswith("parked-"):
