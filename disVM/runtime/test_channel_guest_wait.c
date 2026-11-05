@@ -139,7 +139,7 @@ static void corrupt_native_return(void)
     static const size_t offsets[] = {
         offsetof(REG, FP), offsetof(REG, SP), offsetof(REG, EX), offsetof(REG, TS),
         offsetof(REG, PC), offsetof(REG, M), offsetof(REG, MP),
-        offsetof(REG, s), offsetof(REG, m), offsetof(REG, d),
+        offsetof(REG, s), offsetof(REG, m), offsetof(REG, d), offsetof(REG, xpc),
     };
     const char *selection = getenv("DVM_TEST_NATIVE_RETURN_FIELD");
     unsigned long field;

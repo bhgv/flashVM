@@ -189,6 +189,25 @@ static const char *publish(MappedCopy *copy, const void *source, void *destinati
 }
 
 
+/* Check both retained array descriptors before using their captured spans. */
+static int slice_shape_stable(const SliceCopy *slice)
+{
+    return !slice || (same_shape(slice->source, &slice->source_shape) &&
+        same_shape(slice->destination, &slice->destination_shape));
+}
+
+static const char *publish_and_unlock(MappedCopy *copy, const void *source,
+    void *destination, size_t bytes, int consume, DVM_RangeAccess *access)
+{
+    const char *problem = publish(copy, source, destination, bytes, consume);
+    if (!dvm_range_access_end(access))
+    {
+        abort();
+    }
+    return problem;
+}
+
+
 /* Consume value's displaced owner through the retained destructor, without
  * guards. Return 1 normally. A genuine VM
  * error is caught by the outer kprotect; this function never retries an owner. */
@@ -321,8 +340,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         {
             abort();
         }
-        claim = !slice || (same_shape(slice->source, &slice->source_shape) &&
-            same_shape(slice->destination, &slice->destination_shape)) ?
+        claim = slice_shape_stable(slice) ?
             dvm_range_access_begin(domain, source, bytes, destination, bytes, &access) :
             DVM_CELL_BUSY;
     }
@@ -332,11 +350,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     }
     if (claim == DVM_CELL_ACQUIRED)
     {
-        problem = publish(&copy, source, destination, bytes, consumed != NULL);
-        if (!dvm_range_access_end(&access))
-        {
-            abort();
-        }
+        problem = publish_and_unlock(&copy, source, destination, bytes, consumed != NULL, &access);
     }
     if (released > 0)
     {
@@ -357,13 +371,25 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
+    if (claim == DVM_CELL_BUSY && replay_opcode && dvm_runtime_scalar_retry(replay_opcode))
+    {
+        dispose(&copy);
+        return 0;
+    }
+    /* Exhausting the shared retry budget must not turn contention into a
+     * guest error. Exclusive admission permits one attempt with the same
+     * rooted operands, provided their captured geometry still matches. */
+    if (released > 0 && claim == DVM_CELL_BUSY && slice_shape_stable(slice))
+    {
+        claim = dvm_managed_ranges_begin(source, bytes, destination, bytes, &access);
+        if (claim == DVM_CELL_ACQUIRED)
+        {
+            problem = publish_and_unlock(&copy, source, destination, bytes, consumed != NULL, &access);
+        }
+    }
     if (claim != DVM_CELL_ACQUIRED)
     {
         dispose(&copy);
-        if (claim == DVM_CELL_BUSY && replay_opcode && dvm_runtime_scalar_retry(replay_opcode))
-        {
-            return 0;
-        }
         error(exHeap);
     }
     if (problem)

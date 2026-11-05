@@ -234,6 +234,11 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
         }
     }
     *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
+    if (released > 0 && claim == DVM_CELL_BUSY && !*replay)
+    {
+        problem = movp_attempt(source, destination, &previous, &claim, &root,
+            mutex, mode, NULL);
+    }
     if (*replay || problem)
     {
         return *replay ? NULL : problem;
