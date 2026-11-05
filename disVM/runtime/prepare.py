@@ -260,6 +260,19 @@ def main():
             if code.count(needle) != 1:
                 raise ValueError("string index boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
+            point = code.index("OP(indc)")
+            capture = "\tmemmove(&index, DVM_R.m, sizeof(index));"
+            offset = code.index(capture, point)
+            code = code[:offset] + (
+                "    if(dvm_runtime_guarded_copies) {\n"
+                "        const char *problem = dvm_runtime_string_index(DVM_R.s, DVM_R.m, DVM_R.d);\n"
+                "        if(problem) {\n"
+                "            error((char *)problem);\n"
+                "        }\n"
+                "        return;\n"
+                "    }\n"
+            ) + code[offset:]
+            code = '#include "shared_bytes.h"\n#include "shared_string_branch.h"\n' + code
             needle = 'if(index < 0 || index > length)'
             if code.count(needle) != 1:
                 raise ValueError("string store boundary changed")

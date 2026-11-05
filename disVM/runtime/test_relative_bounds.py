@@ -34,10 +34,11 @@ def main():
                                    capture_output=True, text=True, timeout=30)
             if built.returncode:
                 raise RuntimeError('bounds fixture compile: ' + body + '\n' + built.stderr)
-            result = subprocess.run([str(runtime), mode, '--quantum', '1', '--stats', str(image)],
-                                    capture_output=True, text=True, timeout=30)
-            if result.returncode == 0 or 'UNREACHABLE' in result.stdout or 'array bounds error' not in result.stderr:
-                raise RuntimeError('relative native bounds: ' + body + '\n' + result.stdout + result.stderr)
+            for profile in ([], ['--gc-worker', '--guarded-copies']):
+                result = subprocess.run([str(runtime), mode, *profile, '--quantum', '1', '--stats', str(image)],
+                                        capture_output=True, text=True, timeout=30)
+                if result.returncode == 0 or 'UNREACHABLE' in result.stdout or 'array bounds error' not in result.stderr:
+                    raise RuntimeError('relative native bounds: ' + body + '\n' + result.stdout + result.stderr)
     print('PASS native relative array/string bounds and minimum signed index ' + mode)
 
 

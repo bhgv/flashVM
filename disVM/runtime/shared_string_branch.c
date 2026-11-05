@@ -35,11 +35,12 @@ typedef struct StringView
  * Extend without releasing claims, then snapshot/validate len/max. Return static
  * error or NULL; access remains live on every return. No allocation/callback,
  * retain, root creation or payload read; caller always ends the access. */
-static const char *header(StringView *view, DVM_RangeAccess *access)
+static const char *header(StringView *view, DVM_RangeAccess *access, DVM_CellResult *claim)
 {
     const void *field;
     size_t extent = offsetof(String, max)+sizeof(int);
     int capacity;
+    DVM_CellResult result;
     if (!view->object)
     {
         return exNilref;
@@ -55,7 +56,12 @@ static const char *header(StringView *view, DVM_RangeAccess *access)
         return exHeap;
     }
     field = (const unsigned char *)view->object+offsetof(String, len);
-    if (dvm_range_access_extend(access, field, extent-offsetof(String, len)) != DVM_CELL_ACQUIRED)
+    result = dvm_range_access_extend(access, field, extent - offsetof(String, len));
+    if (claim)
+    {
+        *claim = result;
+    }
+    if (result != DVM_CELL_ACQUIRED)
     {
         return exHeap;
     }
@@ -209,11 +215,11 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
     problem = (!left.object || !right.object) ? exNilref : NULL;
     if (!problem)
     {
-        problem = header(&left, &access);
+        problem = header(&left, &access, NULL);
     }
     if (!problem)
     {
-        problem = header(&right, &access);
+        problem = header(&right, &access, NULL);
     }
     if (!problem && left.object != right.object)
     {
@@ -251,4 +257,86 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
         abort();
     }
     return problem;
+}
+
+
+
+/* Guard the reference, index and result together, then extend the same
+ * union over the borrowed header and selected character. No lease escapes. */
+const char *dvm_runtime_string_index(const void *source, const void *index_cell, void *destination)
+{
+    DVM_RangeAccess access = {0};
+    DVM_CellResult claim;
+    StringView view = {0};
+    const char *problem = NULL;
+    WORD index, result;
+    size_t unit;
+    uintptr_t address;
+    uint32_t rune;
+
+    if (dvm_runtime_shared_mode() != 2)
+    {
+        return exHeap;
+    }
+    claim = dvm_managed_three_begin(source, sizeof(void *), index_cell, sizeof(index),
+        destination, sizeof(result), &access);
+    if (claim != DVM_CELL_ACQUIRED)
+    {
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IINDC) ? NULL : exHeap;
+    }
+    memmove(&index, index_cell, sizeof(index));
+    view.object = dvm_runtime_string_branch_source(source);
+    if (!view.object || view.object == H)
+    {
+        problem = exNilref;
+    }
+    else if ((uintptr_t)view.object > UINTPTR_MAX - offsetof(String, data))
+    {
+        problem = exHeap;
+    }
+    else
+    {
+        problem = header(&view, &access, &claim);
+    }
+    if (!problem)
+    {
+        if (index < 0)
+        {
+            index += view.count;
+        }
+        if (index < 0 || index >= view.count)
+        {
+            problem = exBounds;
+        }
+    }
+    if (!problem)
+    {
+        unit = view.encoded < 0 ? sizeof(Rune) : 1;
+        address = (uintptr_t)view.object + offsetof(String, data);
+        if ((size_t)index >= (UINTPTR_MAX - address) / unit)
+        {
+            problem = exHeap;
+        }
+        else
+        {
+            const void *character = (const void *)(address + (size_t)index * unit);
+            claim = dvm_range_access_extend(&access, character, unit);
+            if (claim != DVM_CELL_ACQUIRED)
+            {
+                problem = exHeap;
+            }
+            else
+            {
+                rune = dvm_runtime_string_branch_key(character, 0, view.encoded < 0);
+                result = rune & UINT32_C(0x80000000) ?
+                    -(WORD)(~rune & UINT32_C(0x7fffffff)) - 1 : (WORD)rune;
+                memmove(destination, &result, sizeof(result));
+            }
+        }
+    }
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IINDC) ? NULL : problem;
 }

@@ -27,6 +27,11 @@ init() {
     second := <-done;
     if (first != 1 || second != 1)
         raise "concurrent string comparison";
+    ascii := values[1];
+    rune := values[2];
+    index := -len ascii;
+    if (ascii[index] != 'a' || rune[index] != 'Ж')
+        raise "guarded string index";
     score := 0;
     for (i := 0; i < 4; i++) {
         for (j := 0; j < 4; j++) {
@@ -162,6 +167,21 @@ static void coverage(const void *span, size_t size, int add)
 DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t an,const void *b,size_t bn,
     void *c,size_t cn,DVM_RangeAccess *access)
 {
+    static Inst *index_pc; /* Post-decode PC at initial INDC contention. */
+    static int index_replayed; /* One actual INDC replay observed. */
+
+    if (CONTROL == 0 && !active && !index_replayed &&
+        dvm_native_execution()->arithmetic_retry_opcode == IINDC)
+    {
+        if (!index_pc)
+        {
+            index_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(index_pc == DVM_R.PC, "string index retries before writing the Rune");
+        index_replayed = 1;
+        print("PASS scheduled string index replay\n");
+    }
     DVM_CellResult result;
     static Inst *retry_pc; /* Post-decode PC of the selected guest branch. */
     static int replayed; /* The selected branch reached admission again. */
@@ -199,6 +219,22 @@ DVM_CellResult __wrap_dvm_managed_three_begin(const void *a,size_t an,const void
  * control4 returns BUSY, both before any unexcluded header/payload load. */
 DVM_CellResult __wrap_dvm_range_access_extend(DVM_RangeAccess *access,const void *span,size_t size)
 {
+    static Inst *pcs[2]; /* Decoded PC at header and character contention. */
+    static int replayed[2]; /* One matched replay for each extension stage. */
+    int stage = size == sizeof(int) * 2 ? 0 : 1;
+
+    if (CONTROL == 0 && !active && !replayed[stage] &&
+        dvm_native_execution()->arithmetic_retry_opcode == IINDC)
+    {
+        if (!pcs[stage])
+        {
+            pcs[stage] = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(pcs[stage] == DVM_R.PC, "string index extension replays the same PC");
+        replayed[stage] = 1;
+        print(stage ? "PASS string index character retry\n" : "PASS string index header retry\n");
+    }
     DVM_CellResult result;
     if (active)
     {
@@ -704,7 +740,10 @@ def main():
                         if (len(leased) != 6 or 'PASS long ASCII guarded fallback' not in output or
                                 'PASS long Rune guarded fallback' not in output or
                                 'PASS overlapping string leases' not in output or
-                                'PASS string target contention replay' not in output):
+                                'PASS string target contention replay' not in output or
+                                'PASS scheduled string index replay' not in output or
+                                'PASS string index header retry' not in output or
+                                'PASS string index character retry' not in output):
                             raise RuntimeError('leased string coverage or bounded fallback missed: '+output)
                     if variant == 0 and 'PASS scheduled input retry' not in output:
                         raise RuntimeError('input retry missed: '+output)

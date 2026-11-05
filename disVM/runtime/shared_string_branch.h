@@ -12,4 +12,9 @@
 const char *dvm_runtime_string_branch(int condition, const void *source,
     const void *other, const void *target, void *pc);
 extern int dvm_runtime_parallel_string; /* Startup-only bounded comparison experiment. */
+
+
+/* Read a selected character with its source owner and destination guarded.
+ * The decoded caller checks complete operand geometry before entry. */
+const char *dvm_runtime_string_index(const void *source, const void *index_cell, void *destination);
 #endif
