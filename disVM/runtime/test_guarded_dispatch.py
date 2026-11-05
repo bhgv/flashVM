@@ -11,7 +11,7 @@ import re
 # Membership records where to audit, not an admission or safety result.
 SEPARATE_PATHS = {
     'scheduler_and_calls': 'IALT INBALT ICALL IFRAME ISPAWN ILOAD IMCALL IMSPAWN IMFRAME IRET IEXIT ISEND IRECV IRAISE',
-    'control_and_tables': 'INOP IGOTO IRUNT IJMP ICASE ICASEC ICASEL ITCMP IECLR',
+    'control_and_tables': 'INOP IRUNT IJMP IECLR',
     'allocation': 'INEW INEWA INEWCB INEWCW INEWCF INEWCP INEWCM INEWCMP INEWCL IMNEWZ INEWZ INEWAZ',
     'managed_owners': 'ICONSB ICONSW ICONSP ICONSF ICONSM ICONSMP ICONSL IHEADP IHEADMP ITAIL IMOVP IMOVMP ISELF',
 }
@@ -47,7 +47,7 @@ def inspect(emitter, dispatcher, executor):
         raise DispatchMismatch('selector dispatch agreement')
     executor = re.sub(r'/\*.*?\*/|//[^\n]*|extern\s+OP\(\w+\);', '', executor, flags=re.S)
     for op,fn in cases:
-        entry = op.lower() if op in ("IEXPW", "IEXPL", "IEXPF") else op[1:].lower()
+        entry = op.lower() if op in ("IEXPW", "IEXPL", "IEXPF", "ICASE", "IGOTO") else op[1:].lower()
         if fn != entry:
             raise DispatchMismatch('opcode entry identity')
         if len(re.findall(r'\bOP\('+fn+r'\)',executor)) != 1:

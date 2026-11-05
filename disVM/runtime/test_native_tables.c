@@ -65,8 +65,22 @@ static unsigned int snapshots; /* Count successful selector snapshots. */
 
 
 /* Model the snapshot boundary without linking the production managed heap. */
-static const char *dvm_runtime_bytes_snapshot(const void *source, void *value, size_t width)
+enum { ICASE = 1, ICASEL, IGOTO }; /* Fixture opcode identities. */
+typedef enum { DVM_CELL_REFUSED, DVM_CELL_ACQUIRED, DVM_CELL_BUSY } DVM_CellResult;
+static int replay_opcode; /* Opcode whose contention was scheduled for retry. */
+
+/* Record the requested replay without advancing the fixture PC. */
+static int dvm_runtime_scalar_retry(int opcode)
 {
+    replay_opcode = opcode;
+    return 1;
+}
+
+/* Snapshot only on successful admission, matching the production contract. */
+static const char *dvm_runtime_bytes_snapshot_attempt(const void *source, void *value,
+    size_t width, DVM_CellResult *claim)
+{
+    *claim = refuse_snapshot == 2 ? DVM_CELL_BUSY : DVM_CELL_REFUSED;
     if (refuse_snapshot)
     {
         return exBounds;
@@ -76,6 +90,7 @@ static const char *dvm_runtime_bytes_snapshot(const void *source, void *value, s
         return exBounds;
     }
     memmove(value, source, width);
+    *claim = DVM_CELL_ACQUIRED;
     snapshots++;
     return NULL;
 }
@@ -184,6 +199,11 @@ int main(void)
         goto bad;
     }
     cell(table, 16, 6);
+    refuse_snapshot = 2;
+    if (rejected(igoto) || replay_opcode != IGOTO || DVM_R.PC != code + 6)
+    {
+        goto bad;
+    }
     refuse_snapshot = 1;
     if (!snapshots || !rejected(igoto) || DVM_R.PC != code + 6)
     {

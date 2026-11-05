@@ -9,6 +9,11 @@
 #include "shared_bytes.h"
 #include "disvm/native_context.h"
 
+extern void icase(void); /* Guarded selector or type operand capture. */
+extern void casel(void); /* Guarded selector or type operand capture. */
+extern void casec(void); /* Guarded selector or type operand capture. */
+extern void igoto(void); /* Guarded selector or type operand capture. */
+extern void tcmp(void); /* Guarded selector or type operand capture. */
 extern void lea(void);
 extern void movpc(void);
 extern void indc(void); /* Guarded string character read. */
@@ -151,6 +156,21 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
     }
     switch (opcode)
     {
+    case ICASE:
+        icase();
+        break;
+    case ICASEL:
+        casel();
+        break;
+    case ICASEC:
+        casec();
+        break;
+    case IGOTO:
+        igoto();
+        break;
+    case ITCMP:
+        tcmp();
+        break;
     case ILEA:
         lea();
         break;

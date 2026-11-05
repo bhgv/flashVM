@@ -13,6 +13,40 @@ Pair: adt { first, second: int; };
 fresh(): array of Pair {
     return array[] of {Pair(19, 23)};
 }
+sparse(value: int): int {
+    case value {
+    -42 => return 11;
+    100 to 105 => return 22;
+    * => return 33;
+    }
+}
+large(value: big): int {
+    case value {
+    big 9007199254740993 => return 19;
+    big -9007199254740993 => return 23;
+    * => return 0;
+    }
+}
+strings(value: string): int {
+    case value {
+    "2.5" => return 29;
+    "Ж" => return 31;
+    * => return 0;
+    }
+}
+dense(value: int): int {
+    case value {
+    0 => return 2;
+    1 => return 5;
+    2 => return 11;
+    3 => return 17;
+    4 => return 23;
+    5 => return 31;
+    6 => return 41;
+    7 => return 47;
+    * => return 97;
+    }
+}
 init() {
     sys := load Sys Sys->PATH;
     sys->print("BEGIN array length\\n");
@@ -81,6 +115,11 @@ init() {
     word := int samples[0];
     wide := big samples[1];
     realvalue := real samples[2];
+    if (sparse(word) != 11 || sparse(0) != 33 || large(wide) != 19 ||
+        large(-wide) != 23 || strings(samples[2]) != 29 || strings(samples[3]) != 31 ||
+        dense(len samples) != 23 || dense(word) != 97) {
+        raise "guarded case and goto selectors";
+    }
     encoded := array of byte samples[3];
     decoded := string encoded;
     if (word != -42 || wide != big 9007199254740993 || realvalue != 2.5 ||
@@ -179,8 +218,8 @@ char *__wrap_dvm_runtime_string_view(String *string, const char **problem)
 /* Stage selects an independent guest capture. Refuse it once, then verify the replay PC. */
 static int contend_capture(int stage)
 {
-    static Inst *pcs[27]; /* Post-decode PC for each refused capture. */
-    static int replayed[27]; /* One successful replay for each stage. */
+    static Inst *pcs[31]; /* Post-decode PC for each refused capture. */
+    static int replayed[31]; /* One successful replay for each stage. */
 
     if (replayed[stage])
     {
@@ -316,6 +355,18 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
         if (source && opcode == ISLICELA &&
             ((source_size == 3 * sizeof(WORD) && contend_capture(22)) ||
              (source_size != 3 * sizeof(WORD) && contend_capture(23))))
+        {
+            return DVM_CELL_BUSY;
+        }
+    }
+
+    if (CONTROL == 0 && !active && source && !destination)
+    {
+        int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+        if ((opcode == ICASE && contend_capture(27)) ||
+            (opcode == ICASEL && contend_capture(28)) ||
+            (opcode == ICASEC && contend_capture(29)) ||
+            (opcode == IGOTO && contend_capture(30)))
         {
             return DVM_CELL_BUSY;
         }
@@ -846,7 +897,7 @@ def main():
                     if variant == 0 and 'PASS injected string view refusal' not in output:
                         raise RuntimeError('string view refusal coverage missed: '+output)
                     if variant == 0 and any(f'PASS guarded capture replay {stage}' not in output
-                                            for stage in range(27)):
+                                            for stage in range(31)):
                         raise RuntimeError('slice/conversion replay coverage missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 

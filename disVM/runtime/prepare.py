@@ -1043,6 +1043,29 @@ def main():
             count=1,
         )
     code = code.replace("/* NC64_TABLE_ADAPTERS */", adapters)
+    start = code.index('OP(casec)')
+    end = code.index('\n}', start)
+    body = relative_replace(code[start:end], '\tmemmove(&sv, DVM_R.s, sizeof(sv));', """    if(!nc64_table_selector(ICASEC, &sv, sizeof(sv))) {
+        return;
+    }""", 1)
+    code = code[:start]+body+code[end:]
+    capture = '\tmemmove(&s, DVM_R.s, sizeof(s));\n\tmemmove(&d, DVM_R.d, sizeof(d));'
+    start = code.index('OP(tcmp)')
+    end = code.index('\n}', start)
+    body = relative_replace(code[start:end], capture, """    if(dvm_runtime_guarded_copies) {
+        DVM_CellResult claim;
+        const char *problem = dvm_runtime_bytes_snapshot_pair_attempt(DVM_R.s, sizeof(s), &s,
+            DVM_R.d, sizeof(d), &d, &claim);
+        if(claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ITCMP)) {
+            return;
+        }
+        if(problem) {
+            error(exTcheck);
+        }
+    } else {
+"""+capture+"""
+    }""", 1)
+    code = code[:start]+body+code[end:]
     code = adapt_xec_observations(adapt_xec_snapshots(adapt_xec(adapt_opcode_counts(code))))
     path.write_text(adapt_buffer_reservation(adapt_queue_holds(adapt_wait_completion(adapt_channel_new(adapt_record_new(adapt_mapped_cons(adapt_raw_cons(adapt_scalar_xec(adapt_pointer_builder(code))))))))))
     path = args.output / "alt.c"
