@@ -11,4 +11,5 @@
  * Native metadata mutex fallback retains its existing contract. */
 const char *dvm_runtime_string_branch(int condition, const void *source,
     const void *other, const void *target, void *pc);
+extern int dvm_runtime_parallel_string; /* Startup-only bounded comparison experiment. */
 #endif

@@ -10,9 +10,15 @@
 #include "branch_value.h"
 #include "shared_access.h"
 #include "managed_owner.h"
+#include "runtime_gc.h"
+#include "disvm/native_process.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+
+
+int dvm_runtime_parallel_string; /* Startup-only bounded string comparison experiment. */
+enum { DVM_STRING_LEASE_BYTES = 128 }; /* Maximum copied prefix bytes per input. */
 
 
 /* A local borrowed view; source guards retain its existing reachable owner. */
@@ -89,6 +95,77 @@ static const char *prefix(StringView *view, size_t count, DVM_RangeAccess *acces
 }
 
 
+/* Compare guarded or caller-private views over the common prefix. */
+static int compare_prefix(const StringView *left, const StringView *right, size_t count)
+{
+    size_t index;
+
+    for (index = 0; index < count; index++)
+    {
+        uint32_t a = dvm_runtime_string_branch_key(left->data, index, left->encoded < 0);
+        uint32_t b = dvm_runtime_string_branch_key(right->data, index, right->encoded < 0);
+        if (a != b)
+        {
+            return (a ^ UINT32_C(0x80000000)) < (b ^ UINT32_C(0x80000000)) ? -1 : 1;
+        }
+    }
+    return (left->count > right->count) - (left->count < right->count);
+}
+
+
+/* Interpret the retained six comparison conditions. */
+static int branch_taken(int condition, int order)
+{
+    return condition == 0 ? order == 0 : condition == 1 ? order != 0 :
+        condition == 2 ? order < 0 : condition == 3 ? order <= 0 :
+        condition == 4 ? order > 0 : order >= 0;
+}
+
+
+/* Consume the acquired source union and compare bounded private prefixes.
+ * The active Prog retains the immediate target cell throughout the lease.
+ * Only a taken branch reacquires and reads that cell. */
+static const char *leased_string_branch(int condition, StringView left, StringView right,
+    size_t count, size_t left_bytes, size_t right_bytes, const void *target, void *pc,
+    DVM_RangeAccess *access)
+{
+    unsigned char left_copy[DVM_STRING_LEASE_BYTES], right_copy[DVM_STRING_LEASE_BYTES];
+    int released, order;
+    const char *problem;
+
+    memcpy(left_copy, left.data, left_bytes);
+    memcpy(right_copy, right.data, right_bytes);
+    left.data = left_copy;
+    right.data = right_copy;
+    left.object = NULL;
+    right.object = NULL;
+    if (!dvm_range_access_end(access))
+    {
+        abort();
+    }
+    released = dvm_runtime_gc_native_try_leave();
+    order = compare_prefix(&left, &right, count);
+    if (released > 0)
+    {
+        dvm_runtime_gc_native_enter(released);
+    }
+    if (!branch_taken(condition, order))
+    {
+        return NULL;
+    }
+    if (dvm_managed_ranges_begin(target, sizeof(Inst *), NULL, 0, access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    problem = dvm_runtime_branch_target(target, pc) ? NULL : exHeap;
+    if (!dvm_range_access_end(access))
+    {
+        abort();
+    }
+    return problem;
+}
+
+
 /* [PERF STRINGCMP-105] Whole-profile timing and candidates are retained in
  * PERFORMANCE-COSTS.md; no isolated component attribution.
  * [GC:] condition/slots/pc follow shared_string_branch.h. Keep source owners and
@@ -108,7 +185,6 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
     int order = 0;
     int take;
     size_t count;
-    size_t index;
     if (dvm_runtime_shared_mode() != 2 || pc != &DVM_R.PC || condition < 0 || condition > 5)
     {
         return exHeap;
@@ -147,27 +223,22 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
         }
         if (!problem)
         {
-            for (index = 0; index < count; index++)
+            size_t left_bytes = count * (left.encoded < 0 ? sizeof(Rune) : 1);
+            size_t right_bytes = count * (right.encoded < 0 ? sizeof(Rune) : 1);
+            if (dvm_runtime_parallel_string && count &&
+                left_bytes <= DVM_STRING_LEASE_BYTES && right_bytes <= DVM_STRING_LEASE_BYTES &&
+                dvm_native_execution()->arithmetic_retry_opcode == opcodes[condition] &&
+                dvm_runtime_instruction_target(target))
             {
-                uint32_t a = dvm_runtime_string_branch_key(left.data, index, left.encoded < 0);
-                uint32_t b = dvm_runtime_string_branch_key(right.data, index, right.encoded < 0);
-                if (a != b)
-                {
-                    order = (a^UINT32_C(0x80000000)) < (b^UINT32_C(0x80000000)) ? -1 : 1;
-                    break;
-                }
+                return leased_string_branch(condition, left, right, count,
+                    left_bytes, right_bytes, target, pc, &access);
             }
-            if (!order)
-            {
-                order = (left.count > right.count)-(left.count < right.count);
-            }
+            order = compare_prefix(&left, &right, count);
         }
     }
     if (!problem)
     {
-        take = condition == 0 ? order == 0 : condition == 1 ? order != 0 :
-            condition == 2 ? order < 0 : condition == 3 ? order <= 0 :
-            condition == 4 ? order > 0 : order >= 0;
+        take = branch_taken(condition, order);
         if (take && (invalid_target || !dvm_runtime_branch_target(target, pc)))
         {
             problem = exHeap;

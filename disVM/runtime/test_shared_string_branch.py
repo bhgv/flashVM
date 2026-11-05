@@ -46,6 +46,11 @@ init() {
     {
         raise "string branch score";
     }
+    prefix := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    longleft := prefix + values[1];
+    longright := prefix + values[3];
+    if (longleft >= longright)
+        raise "long string branch fallback";
     sys->print("PASS string branches6\\n");
 }
 '''
@@ -223,6 +228,21 @@ void __wrap_dvm_runtime_string_branch_header(const void *object,int *length,int 
 /* Every key read has common-prefix coverage before touching real string data. */
 uint32_t __wrap_dvm_runtime_string_branch_key(const void *data,size_t index,int wide)
 {
+    DVM_HeapOwnerStats owner;
+
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner))
+    {
+        if (!index && owner.phase == DVM_HEAP_NATIVE)
+        {
+            check(!dvm_native_context_object_count(dvm_native_context_current()), "private string comparison has no guard");
+            fprint(2, "LEASED string branch %d\n", dvm_native_execution()->arithmetic_retry_opcode);
+        }
+        if (index == 128 && owner.phase == DVM_HEAP_ACTIVE)
+        {
+            print("PASS long string guarded fallback\n");
+        }
+    }
     if (active)
     {
         size_t unit = wide ? sizeof(Rune) : 1;
@@ -571,6 +591,8 @@ def main():
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe']
+                    if variant == 0:
+                        args += ['--managed-workers', '2', '--parallel-string']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=90,
@@ -584,6 +606,10 @@ def main():
                             raise RuntimeError('control missed: '+output)
                     elif run.returncode or 'PASS string branch probe:' not in output or 'PASS string branches6' not in output:
                         raise RuntimeError('positive failed: '+output)
+                    if variant == 0:
+                        leased = {line for line in output.splitlines() if line.startswith('LEASED string branch ')}
+                        if len(leased) != 6 or 'PASS long string guarded fallback' not in output:
+                            raise RuntimeError('leased string coverage or bounded fallback missed: '+output)
                     if variant == 0 and 'PASS scheduled input retry' not in output:
                         raise RuntimeError('input retry missed: '+output)
     print('PASS six actual string branches:3888 real-owner cases, lazy targets, Cycles/Fast, both polls')
