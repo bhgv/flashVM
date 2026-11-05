@@ -37,7 +37,7 @@ cycle(seed: int)
 
 
 # Publish a cyclic node through a shared array slice. The command and reply
-# channels sequence writes to the same cell and leave it as the only live root.
+# channels release both writers and leave the shared cell as the only live root.
 graphwriter(shared: array of ref Node, commands, replies: chan of int)
 {
     for (;;)
@@ -51,6 +51,7 @@ graphwriter(shared: array of ref Node, commands, replies: chan of int)
             value := ref Node(nil, array[2] of int);
             value.next = value;
             value.payload[0] = seed;
+            value.payload[1] = 314159-seed;
             shared[0:] = array[] of {value};
             raise "published graph";
         } exception failure {
@@ -66,37 +67,41 @@ graphwriter(shared: array of ref Node, commands, replies: chan of int)
 sharedgraph()
 {
     shared := array[1] of ref Node;
-    first := chan of int;
-    second := chan of int;
-    replies := chan of int;
+    first := chan[1] of int;
+    second := chan[1] of int;
+    replies := chan[2] of int;
     spawn graphwriter(shared, first, replies);
     spawn graphwriter(shared, second, replies);
     for (round := 0; round < 32; round++)
     {
-        first <-= 2*round;
-        if (<-replies != 2*round)
+        low := 2*round;
+        high := low+1;
+        first <-= low;
+        second <-= high;
+        one := <-replies;
+        two := <-replies;
+        if (!((one == low && two == high) || (one == high && two == low)))
         {
-            raise "first graph writer did not publish";
-        }
-        second <-= 2*round+1;
-        if (<-replies != 2*round+1)
-        {
-            raise "second graph writer did not replace";
+            raise "shared graph writers did not both publish";
         }
         for (probe := 0; probe < 64; probe++)
         {
             cycle(probe);
         }
-        if (shared[0] == nil || shared[0].next != shared[0] ||
-            shared[0].payload[0] != 2*round+1)
+        if (shared[0] == nil || shared[0].next != shared[0])
         {
             raise "collector lost shared graph after writer unwind";
+        }
+        seed := shared[0].payload[0];
+        if ((seed != low && seed != high) || shared[0].payload[1] != 314159-seed)
+        {
+            raise "shared graph contains a partial publication";
         }
         shared[0] = nil;
     }
     first <-= -1;
     second <-= -1;
-    sys->print("PASS gc-worker shared graph: 64 publications after unwind\n");
+    sys->print("PASS gc-worker shared graph: 64 unordered publications after unwind\n");
 }
 
 
