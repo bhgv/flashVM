@@ -45,13 +45,15 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     channel = re.search(r"parallel_channel_sends=(\d+) parallel_channel_receives=(\d+)", text)
     alts = re.search(r"parallel_channel_alts=(\d+)", text)
     rendezvous = re.search(r"parallel_rendezvous=(\d+)", text)
+    raw = re.search(r"parallel_channel_raw=(\d+)", text)
     native = re.search(r"instructions=\d+ native=(\d+)", text)
     if (child.returncode or outcome not in text or "PASS Dis application completed" not in text
             or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
             or not dispatch or dispatch[1] != dispatch[2] or not gc or int(gc[1]) == 0
             or (shared_channels and (not channel or min(map(int, channel.groups())) == 0
                                          or not alts or int(alts[1]) != 2
-                                         or not rendezvous or int(rendezvous[1]) != 2))
+                                         or not rendezvous or int(rendezvous[1]) != 2
+                                         or not raw or int(raw[1]) != 2))
             or not native or (int(native[1]) > 0) != (mode == "--jit")):
         raise RuntimeError(text)
 

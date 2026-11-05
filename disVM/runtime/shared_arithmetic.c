@@ -209,6 +209,14 @@ int dvm_runtime_frame_record(const void *cell, const Type *record)
  * The caller keeps the corresponding guest alive through the transfer. */
 int dvm_runtime_rooted_record(const REG *registers, const void *cell, const Type *record)
 {
+    if (!record->np && record->size > 0 && registers == &DVM_R)
+    {
+        const Type *frame = frame_type(registers);
+        if (frame && frame_scalar(cell, frame, (size_t)record->size))
+        {
+            return 1;
+        }
+    }
     return dvm_runtime_frame_record_for(registers, cell, record) ||
         mapped_record(cell, record, module_data_type(registers), (uintptr_t)registers->MP, 0);
 }

@@ -177,3 +177,8 @@ Both guest operand maps must match the channel's record type. The channel
 hold retains the descriptor and the completion claim keeps the detached
 waiter pinned. Peer wakeup follows exclusive reentry. If retirement raises
 after publication, the peer still completes the transfer.
+
+Direct buffered scalar and raw-record transfers also use shared admission
+when the guest span is verified to contain no managed references. Byte
+slots can be unaligned. The same range guard protects publication, and
+the reservation remains in force until exclusive ring metadata update.

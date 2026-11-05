@@ -89,5 +89,11 @@ init()
     (back, changed) := <-inbound;
     if (back != provider || changed[0] != 314159)
         raise "rendezvous lost the transferred owners";
+    raw := chan[1] of byte;
+    code := byte changed[0];
+    raw <-= code;
+    code = <-raw;
+    if (code != byte 314159)
+        raise "raw buffered channel lost its byte";
     provider = nil;
 }

@@ -34,6 +34,7 @@ extern int dvm_runtime_parallel_slicela;
 extern int dvm_runtime_parallel_movmp;
 extern int dvm_runtime_parallel_channel_buffer;
 extern unsigned long dvm_runtime_parallel_channel_sends;
+extern unsigned long dvm_runtime_parallel_channel_raw;
 extern unsigned long dvm_runtime_parallel_channel_refills;
 extern unsigned long dvm_runtime_parallel_channel_alts;
 extern unsigned long dvm_runtime_parallel_rendezvous;

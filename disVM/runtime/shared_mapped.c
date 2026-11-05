@@ -27,6 +27,7 @@ int dvm_runtime_parallel_slicela;
 int dvm_runtime_parallel_movmp;
 int dvm_runtime_parallel_channel_buffer;
 unsigned long dvm_runtime_parallel_channel_sends;
+unsigned long dvm_runtime_parallel_channel_raw;
 unsigned long dvm_runtime_parallel_channel_refills;
 unsigned long dvm_runtime_parallel_channel_alts;
 unsigned long dvm_runtime_parallel_rendezvous;
@@ -293,7 +294,16 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    if (!copy.count && !slice)
+    /* The buffered caller retains the channel and reserves its slot until
+     * exclusive reentry. Direct operations and selected ALT guards use their own suspended
+     * frame. A refill instead supplies a pinned sender. */
+    shared_channel = dvm_runtime_parallel_channel_buffer && committed && up->prog &&
+        ((refill_sender && !consume &&
+          dvm_runtime_rooted_record(&refill_sender->R, source, type)) ||
+         ((dispatch_opcode == replay_opcode || selected_alt) &&
+          ((replay_opcode == ISEND && !consume && dvm_runtime_rooted_record(&DVM_R, source, type)) ||
+           (replay_opcode == IRECV && (consume || !copy.count) && dvm_runtime_rooted_record(&DVM_R, destination, type)))));
+    if (!copy.count && !slice && !shared_channel)
     {
         problem = replay_opcode ?
             dvm_runtime_bytes_copy_opcode(replay_opcode, source, destination, bytes) :
@@ -346,15 +356,6 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
         }
     }
-    /* The buffered caller retains the channel and reserves its slot until
-     * exclusive reentry. Direct operations and selected ALT guards use their own suspended
-     * frame. A refill instead supplies a pinned sender. */
-    shared_channel = dvm_runtime_parallel_channel_buffer && committed && up->prog &&
-        ((refill_sender && !consume &&
-          dvm_runtime_rooted_record(&refill_sender->R, source, type)) ||
-         ((dispatch_opcode == replay_opcode || selected_alt) &&
-          ((replay_opcode == ISEND && !consume && dvm_runtime_rooted_record(&DVM_R, source, type)) ||
-           (replay_opcode == IRECV && consume && dvm_runtime_rooted_record(&DVM_R, destination, type)))));
     if (dvm_runtime_parallel_movmp && !consume && replay_opcode == IMOVMP &&
         up->prog && dispatch_opcode == IMOVMP)
     {
@@ -410,11 +411,15 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
             }
             else if (shared_channel)
             {
+                if (!copy.count)
+                {
+                    dvm_runtime_parallel_channel_raw++;
+                }
                 if (refill_sender)
                     dvm_runtime_parallel_channel_refills++;
                 else if (selected_alt)
                     dvm_runtime_parallel_channel_alts++;
-                else if (consume)
+                else if (replay_opcode == IRECV)
                     dvm_runtime_parallel_channel_receives++;
                 else
                     dvm_runtime_parallel_channel_sends++;
