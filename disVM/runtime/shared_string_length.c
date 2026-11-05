@@ -3,6 +3,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_string_length.h"
 #include "string_length_value.h"
@@ -24,6 +25,7 @@
 const char *dvm_runtime_string_length(const void *source, void *destination)
 {
     DVM_TripleAccess access = {0};
+    DVM_CellResult claim;
     String *string;
     const void *field = NULL;
     const char *problem = NULL;
@@ -36,10 +38,11 @@ const char *dvm_runtime_string_length(const void *source, void *destination)
     {
         return exHeap;
     }
-    if (dvm_managed_small_three_begin(source, sizeof(string), source, sizeof(string),
-        destination, sizeof(WORD), &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_small_three_begin(source, sizeof(string), source, sizeof(string),
+        destination, sizeof(WORD), &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENC) ? NULL : exHeap;
     }
     string = dvm_runtime_string_length_source(source);
     if (!string)
@@ -55,7 +58,8 @@ const char *dvm_runtime_string_length(const void *source, void *destination)
         else
         {
             field = (const unsigned char *)string+offsetof(String, len);
-            if (dvm_small_range_access_extend(&access, field, sizeof(int)) != DVM_CELL_ACQUIRED)
+            claim = dvm_small_range_access_extend(&access, field, sizeof(int));
+            if (claim != DVM_CELL_ACQUIRED)
             {
                 problem = exHeap;
             }
@@ -72,5 +76,5 @@ const char *dvm_runtime_string_length(const void *source, void *destination)
     {
         abort();
     }
-    return problem;
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENC) ? NULL : problem;
 }

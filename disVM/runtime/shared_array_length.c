@@ -3,6 +3,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_array_length.h"
 #include "array_length_value.h"
@@ -25,6 +26,7 @@
 const char *dvm_runtime_array_length(const void *source, void *destination)
 {
     DVM_TripleAccess access = {0};
+    DVM_CellResult claim;
     Array *array;
     const void *field = NULL;
     const char *problem = NULL;
@@ -37,10 +39,11 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
     {
         return exBounds;
     }
-    if (dvm_managed_small_three_begin(source, sizeof(array), source, sizeof(array),
-        destination, sizeof(WORD), &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_small_three_begin(source, sizeof(array), source, sizeof(array),
+        destination, sizeof(WORD), &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA) ? NULL : exHeap;
     }
     array = dvm_runtime_array_length_source(source);
     if (array && array != H)
@@ -52,7 +55,8 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
         else
         {
             field = (const unsigned char *)array+offsetof(Array, len);
-            if (dvm_small_range_access_extend(&access, field, sizeof(WORD)) != DVM_CELL_ACQUIRED)
+            claim = dvm_small_range_access_extend(&access, field, sizeof(WORD));
+            if (claim != DVM_CELL_ACQUIRED)
             {
                 problem = exHeap;
             }
@@ -66,7 +70,7 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
     {
         abort();
     }
-    return problem;
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA) ? NULL : problem;
 }
 
 

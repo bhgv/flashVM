@@ -36,6 +36,7 @@ WRAPPER = r'''
 #include "kernel.h"
 #include "isa.h"
 #include "interp.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "shared_string_length.h"
 #include "string_length_value.h"
@@ -178,6 +179,21 @@ void *__wrap_dvm_runtime_string_length_source(const void *source)
  * only inspects owned native metadata, never forges guard or Heap headers. */
 DVM_CellResult __wrap_dvm_small_range_access_extend(DVM_TripleAccess *access, const void *field, size_t size)
 {
+    static Inst *retry_pc; /* Post-decode PC while extension is contended. */
+    static int replayed; /* The guest retried the original length instruction. */
+
+    if (CONTROL == 0 && !active && !replayed &&
+        dvm_native_execution()->arithmetic_retry_opcode == ILENC)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC, "length extension BUSY replays the same PC");
+        replayed = 1;
+        print("PASS scheduled length extension retry\n");
+    }
     if (active)
     {
         check(field == field_cell && size == sizeof(int) && access->count == expected_depth &&
@@ -455,6 +471,8 @@ def main():
                             raise RuntimeError('string-length control missed: '+output)
                     elif run.returncode or 'PASS string length probe:' not in output or 'PASS string length32' not in output:
                         raise RuntimeError('string-length positive failed: '+output)
+                    if variant == 0 and 'PASS scheduled length extension retry' not in output:
+                        raise RuntimeError('length extension retry missed: '+output)
     print('PASS actual LENC:7680 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
 

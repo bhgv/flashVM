@@ -36,6 +36,7 @@ WRAPPER = r'''
 #include "kernel.h"
 #include "isa.h"
 #include "interp.h"
+#include "disvm/native_process.h"
 #include "raise.h"
 #include "shared_list_length.h"
 #include "list_length_value.h"
@@ -158,6 +159,21 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
 /* Every discovered link is added without dropping the old guarded subset. */
 DVM_CellResult __wrap_dvm_range_access_extend(DVM_RangeAccess *access, const void *field, size_t size)
 {
+    static Inst *retry_pc; /* Post-decode PC while extension is contended. */
+    static int replayed; /* The guest retried the original length instruction. */
+
+    if (CONTROL == 0 && !active && !replayed &&
+        dvm_native_execution()->arithmetic_retry_opcode == ILENL)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC, "length extension BUSY replays the same PC");
+        replayed = 1;
+        print("PASS scheduled length extension retry\n");
+    }
     if (active)
     {
         check(field == next_cell && size == sizeof(List *) && access->held == depth &&
@@ -452,6 +468,8 @@ def main():
                             raise RuntimeError('list-length control missed: '+output)
                     elif run.returncode or 'PASS list length probe:' not in output or 'PASS list length32' not in output:
                         raise RuntimeError('list-length positive failed: '+output)
+                    if variant == 0 and 'PASS scheduled length extension retry' not in output:
+                        raise RuntimeError('length extension retry missed: '+output)
     print('PASS actual LENL:3840 aliases,real chains/cycles,caller-rooted Cycles/Fast,no allocation,both polls')
 
 

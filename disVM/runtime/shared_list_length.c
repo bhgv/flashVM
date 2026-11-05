@@ -3,6 +3,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "shared_list_length.h"
 #include "list_length_value.h"
@@ -24,6 +25,7 @@
 const char *dvm_runtime_list_length(const void *source, void *destination)
 {
     DVM_RangeAccess access = {0};
+    DVM_CellResult claim;
     List *node;
     List *checkpoint;
     UWORD count = 0;
@@ -37,10 +39,11 @@ const char *dvm_runtime_list_length(const void *source, void *destination)
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(source, sizeof(List *), destination, sizeof(WORD),
-        &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_ranges_begin(source, sizeof(List *), destination, sizeof(WORD),
+        &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
-        return exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENL) ? NULL : exHeap;
     }
     node = dvm_runtime_list_length_pointer(source);
     checkpoint = node;
@@ -59,7 +62,8 @@ const char *dvm_runtime_list_length(const void *source, void *destination)
             break;
         }
         tail = (const unsigned char *)node+offsetof(List, tail);
-        if (dvm_range_access_extend(&access, tail, sizeof(List *)) != DVM_CELL_ACQUIRED)
+        claim = dvm_range_access_extend(&access, tail, sizeof(List *));
+        if (claim != DVM_CELL_ACQUIRED)
         {
             problem = exHeap;
             break;
@@ -84,5 +88,5 @@ const char *dvm_runtime_list_length(const void *source, void *destination)
     {
         abort();
     }
-    return problem;
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENL) ? NULL : problem;
 }
