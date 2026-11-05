@@ -19,7 +19,7 @@ from prepare_raw_cons import adapt as adapt_raw_cons
 from prepare_scalar_cons import adapt_xec as adapt_scalar_xec, adapt_emitter as adapt_scalar_emitter
 from prepare_pointer_builder import adapt as adapt_pointer_builder
 from prepare_pointer_tail import adapt as adapt_pointer_tail
-from prepare_owner_tail import adapt as adapt_owner_tail
+from prepare_owner_tail import adapt as adapt_owner_tail, adapt_arm64 as adapt_arm64_owner_tail
 from prepare_aggregate_tail import adapt as adapt_aggregate_tail
 from prepare_roots import adapt as adapt_roots
 from prepare_boundary_counts import adapt as adapt_boundary_counts
@@ -747,6 +747,8 @@ def main():
     layout_path.write_text(adapt_record_leaf(adapt_jit_counts(layout_path.read_text())))
     emitter_path = args.output / "amd64-emit.h"
     emitter_path.write_text(adapt_scalar_emitter(adapt_bytes_tail(adapt_aggregate_tail(adapt_owner_tail(adapt_pointer_tail(emitter_path.read_text()))))))
+    arm64_emitter = args.output / "arm64-emit.h"
+    arm64_emitter.write_text(adapt_arm64_owner_tail(arm64_emitter.read_text()))
     for unit in ('loader', 'exception'):
         path = args.output / (unit+'.c')
         path.write_text(adapt_boundary_counts(path.read_text(), unit))

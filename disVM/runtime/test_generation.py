@@ -58,6 +58,16 @@ def main():
             raise RuntimeError(
                 "compiled native view is stale relative to pinned source: " + ", ".join(stale)
             )
+        arm64 = second["arm64-emit.h"]
+        owner_routes = (
+            b"dvm_runtime_owner_movp_fast", b"dvm_runtime_owner_self_fast",
+            b"dvm_runtime_owner_headp_fast", b"dvm_runtime_owner_tail_fast",
+            b"dvm_runtime_pointer_fast", b"dvm_runtime_aggregate_consmp_fast",
+        )
+        if (any(arm64.count(entry) != 1 for entry in owner_routes)
+                or b"->nprop" in arm64 or b"->mutator" in arm64
+                or b"a64put(b, 0xd61f0200U); /* br x16 */" not in arm64):
+            raise RuntimeError("hosted arm64 ownership must tail-enter checked C")
         dispatch = second["xec.c"]
         if (
             dispatch.count(b"dvm_runtime_step();") != 1
