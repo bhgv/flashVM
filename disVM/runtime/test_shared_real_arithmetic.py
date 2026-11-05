@@ -22,12 +22,18 @@ init() {
     }
     ints := array[] of {2, -3, 0, -1, 3};
     exponent := ints[1];
-    if (ints[0] ** exponent != 0 || ints[3] ** exponent != -1 ||
-        ints[0] ** ints[4] != 8 || big ints[0] ** ints[4] != big 8 ||
+    base := ints[0];
+    negbase := ints[3];
+    positive := ints[4];
+    bigbase := big base;
+    zero_base := ints[2];
+    if (base ** exponent != 0 || negbase ** exponent != -1 ||
+        base ** positive != 8 || bigbase ** positive != big 8 ||
         a ** exponent != 0.125)
         raise "guarded powers";
     {
-        ints[0] = ints[2] ** exponent;
+        bad := zero_base ** exponent;
+        sys->print("unexpected exponent result %d", bad);
         raise "negative zero-base exponent accepted";
     } exception {
         "zero divide" => {}
@@ -75,8 +81,8 @@ static __thread int injected; /* VM unwind at unlocked FP boundary. */
 static __thread int modify; /* Deliberate source update after the snapshot. */
 static __thread void *input; /* Borrowed live first cell for phase update. */
 static __thread int prints; /* Guest output markers, exact current OS owner. */
-static __thread unsigned int powers;
-static __thread int seen[5]; /* Actual guest C entries, shared by its current OS owner. */
+static unsigned int powers; /* Guest route mask, accessed under NativeWorld. */
+static int seen[5]; /* Guest entries, counted under NativeWorld across OS owners. */
 static const int operations[5] = {IADDF,ISUBF,IMULF,IDIVF,INEGF}; /* Existing file opcodes. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
 DVM_CellResult __real_dvm_managed_small_three_begin(const void *,size_t,const void *,size_t,void *,size_t,DVM_TripleAccess *);
@@ -327,11 +333,45 @@ const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const vo
 
 
 const char *__real_dvm_runtime_scaled_arithmetic(int,const void *,const void *,void *,
-    void (*)(const void *,const void *,void *));
+    const char *(*)(const void *,const void *,void *));
+
+
+static __thread int scaled_opcode; /* Opcode for the current wrapped evaluator. */
+static __thread const char *(*scaled_evaluator)(const void *, const void *, void *); /* Borrowed through the synchronous call. */
+
+
+/* Observe the actual retained evaluator under the native lease. */
+static const char *observe_scaled(const void *first, const void *second, void *out)
+{
+    DVM_HeapOwnerStats owner;
+    const char *problem = scaled_evaluator(first, second, out);
+
+    if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        switch (scaled_opcode)
+        {
+        case IEXPW:
+            print("LEASED EXPW\n");
+            if (problem == exZdiv)
+            {
+                print("LEASED EXPW diagnostic\n");
+            }
+            break;
+        case IEXPL:
+            print("LEASED EXPL\n");
+            break;
+        case IEXPF:
+            print("LEASED EXPF\n");
+            break;
+        }
+    }
+    return problem;
+}
 
 
 const char *__wrap_dvm_runtime_scaled_arithmetic(int opcode,const void *base,const void *exponent,void *out,
-    void (*evaluate)(const void *,const void *,void *))
+    const char *(*evaluate)(const void *,const void *,void *))
 {
     if (opcode == IEXPW)
         powers |= 1;
@@ -339,6 +379,12 @@ const char *__wrap_dvm_runtime_scaled_arithmetic(int opcode,const void *base,con
         powers |= 2;
     if (opcode == IEXPF)
         powers |= 4;
+    if (CONTROL == 0 && !active)
+    {
+        scaled_opcode = opcode;
+        scaled_evaluator = evaluate;
+        return __real_dvm_runtime_scaled_arithmetic(opcode,base,exponent,out,observe_scaled);
+    }
     return __real_dvm_runtime_scaled_arithmetic(opcode,base,exponent,out,evaluate);
 }
 
@@ -616,7 +662,7 @@ def main():
         for mode in ('--jit','--no-jit'):
             for locked in (False,True):
                 args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe',
-                        '--managed-workers','2','--parallel-real','--quantum','1']
+                        '--managed-workers','2','--parallel-real','--parallel-integer','--quantum','1']
                 if locked:
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,
@@ -625,7 +671,8 @@ def main():
                 if run.returncode or 'PASS actual REAL arithmetic: 8820 ' not in output or 'PASS REAL arithmetic5' not in output:
                     raise RuntimeError('REAL arithmetic failed: '+output)
                 leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
-                if leased != {'LEASED ADDF', 'LEASED DIVF', 'LEASED MULF', 'LEASED SUBF', 'LEASED NEGF'}:
+                if leased != {'LEASED ADDF', 'LEASED SUBF', 'LEASED MULF', 'LEASED DIVF', 'LEASED NEGF',
+                              'LEASED EXPW', 'LEASED EXPL', 'LEASED EXPF', 'LEASED EXPW diagnostic'}:
                     raise RuntimeError('leased FP coverage missed: '+output)
                 if 'PASS scheduled FP input retry' not in output:
                     raise RuntimeError('FP input retry missed: '+output)

@@ -55,10 +55,14 @@ def adapt_scaled(source):
         fixed_product = name in ('mulx', 'divx')
         prefix = 'WORD scale, ' if fixed_product else ''
         body = match.group().replace('OP('+name+')',
-            'static void\n'+slots+'('+prefix+'const void *first_slot, const void *second_slot, void *result_slot)')
+            'static const char *\n'+slots+'('+prefix+'const void *first_slot, const void *second_slot, void *result_slot)')
         body = body.replace('DVM_R.m', 'first_slot').replace('DVM_R.s', 'second_slot').replace('DVM_R.d', 'result_slot')
         if fixed_product:
             body = body.replace('p = fixedword((NREG+2)*IBY2WD);', 'p = scale;')
+        # Slot-level diagnostics must return to the caller before VM unwinding.
+        body = re.sub(r'error\((ex[A-Za-z]+)\);', r'return \1;', body)
+        body = body.replace('return;', 'return NULL;')
+        body = body[:-1]+'    return NULL;\n}'
         init = '    WORD scale = fixedword((NREG+2)*IBY2WD);\n' if fixed_product else ''
         args = ('scale, ' if fixed_product else '')+'DVM_R.m, DVM_R.s, DVM_R.d'
         helper = 'dvm_runtime_fixed_product' if fixed_product else 'dvm_runtime_scaled_arithmetic'
@@ -66,14 +70,15 @@ def adapt_scaled(source):
         wrapper = f'''
 OP({name})
 {{
+    const char *problem;
 {init}    if(dvm_runtime_guarded_copies) {{
-        const char *problem = {helper}({opcode}, {args}, {slots});
-        if(problem != nil) {{
-            error((char*)problem);
-        }}
-        return;
+        problem = {helper}({opcode}, {args}, {slots});
+    }} else {{
+        problem = {slots}({args});
     }}
-    {slots}({args});
+    if(problem != nil) {{
+        error((char*)problem);
+    }}
 }}
 '''
         source = source[:match.start()]+body+'\n'+wrapper+source[match.end():]

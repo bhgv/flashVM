@@ -10,6 +10,7 @@
 #include "shared_access.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
+#include "runtime_gc.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -64,7 +65,7 @@ static int valid_scaled_slot(const void *slot, size_t width)
 /* Mixed-width arithmetic runs its original evaluator on private slots.
  * Integer power and fixed rescaling preserve their source-error precedence. */
 const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const void *second,
-    void *output, void (*evaluate)(const void *, const void *, void *))
+    void *output, const char *(*evaluate)(const void *, const void *, void *))
 {
     const char *problem;
     DVM_CellResult claim;
@@ -143,7 +144,39 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
             return problem;
         }
     }
-    evaluate(&saved_first, &saved_second, fixed_variant && invalid_output ? NULL : &result);
+    if (!fixed_variant && !invalid_output)
+    {
+        int fp = opcode == IEXPF || opcode == ICVTFX || opcode == ICVTXF;
+        int released = 0;
+
+        if (fp)
+        {
+            released = dvm_runtime_parallel_real_leave(opcode, first, first_width,
+                second, second_width, output, output_width);
+        }
+        else if (dvm_runtime_parallel_scalar_spans(opcode, first, first_width,
+            second, second_width, output, output_width))
+        {
+            released = dvm_runtime_gc_native_try_leave();
+        }
+        problem = evaluate(&saved_first, &saved_second, &result);
+        if (fp)
+        {
+            dvm_runtime_parallel_real_enter(released);
+        }
+        else if (released > 0)
+        {
+            dvm_runtime_gc_native_enter(released);
+        }
+    }
+    else
+    {
+        problem = evaluate(&saved_first, &saved_second, fixed_variant && invalid_output ? NULL : &result);
+    }
+    if (problem)
+    {
+        return problem;
+    }
     if (invalid_output || invalid_second)
     {
         return exBounds;
@@ -155,7 +188,7 @@ const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const v
 /* The fixed frame coefficient is captured by the opcode before shared
  * operand access. DIVX observes the divisor before any dividend access. */
 const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
-    const void *second, void *output, void (*evaluate)(WORD, const void *, const void *, void *))
+    const void *second, void *output, const char *(*evaluate)(WORD, const void *, const void *, void *))
 {
     const char *problem;
     DVM_CellResult claim;
@@ -196,6 +229,23 @@ const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     {
         return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
     }
-    evaluate(scale, &left, &right, &result);
+    {
+        int released = 0;
+
+        if (dvm_runtime_parallel_scalar_spans(opcode, first, sizeof(left),
+            second, sizeof(right), output, sizeof(result)))
+        {
+            released = dvm_runtime_gc_native_try_leave();
+        }
+        problem = evaluate(scale, &left, &right, &result);
+        if (released > 0)
+        {
+            dvm_runtime_gc_native_enter(released);
+        }
+    }
+    if (problem)
+    {
+        return problem;
+    }
     return dvm_runtime_bytes_publish(&result, output, sizeof(result));
 }
