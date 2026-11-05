@@ -9,4 +9,11 @@
  * guards capture/evaluation/publication. DIV/MOD preserve zero-divisor priority
  * over invalid dividend/output geometry, with errors returned only after unlock. No mapping/root proof or VM callback. */
 const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *second, void *output);
+
+
+/* Same borrowed operands and diagnostic as the opcode adapter. retryable is
+ * required caller-private storage. It receives one only if a BUSY claim
+ * rolled back without reading operands or publishing the result. */
+const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const void *second,
+    void *output, int *retryable);
 #endif

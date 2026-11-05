@@ -24,14 +24,18 @@
 
 /* [GC:] opcode selects width/operation; first/second/output borrow live storage.
  * Reject context/opcode/geometry before reads. Return static error or NULL.
- * Existing NativeWorld/root lifetime rules remain; this is only byte exclusion. */
-const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *second, void *output)
+ * retryable points to caller-private storage and receives one only for a
+ * fully rolled-back BUSY claim. Existing NativeWorld/root rules remain. */
+const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const void *second,
+    void *output, int *retryable)
 {
     DVM_TripleAccess access = {0};
+    DVM_CellResult claim;
     size_t width;
     int division = 0;
     int invalid_outer;
     const char *problem = NULL;
+    *retryable = 0;
     if (dvm_runtime_shared_mode() != 2)
     {
         return exHeap;
@@ -86,9 +90,11 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
     /* Invalid dividend/output geometry is not payload access. For DIV/MOD,
      * claim only the valid divisor (three aliases) before choosing Zdiv/Bounds.
      * Valid operations keep all three spans locked through their single snapshot. */
-    if (dvm_managed_small_three_begin(invalid_outer ? second : first, width,
-        second, width, invalid_outer ? (void *)second : output, width, &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_small_three_begin(invalid_outer ? second : first, width,
+        second, width, invalid_outer ? (void *)second : output, width, &access);
+    if (claim != DVM_CELL_ACQUIRED)
     {
+        *retryable = claim == DVM_CELL_BUSY;
         return exHeap;
     }
     if (division && dvm_runtime_divisor_zero(opcode, second))
@@ -108,4 +114,14 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
         abort();
     }
     return problem;
+}
+
+
+/* Preserve the C/JIT opcode diagnostic ABI while these callers have no
+ * scheduler retry protocol. Inputs and output borrow the attempt's spans. */
+const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *second, void *output)
+{
+    int retryable;
+
+    return dvm_runtime_arithmetic_attempt(opcode, first, second, output, &retryable);
 }

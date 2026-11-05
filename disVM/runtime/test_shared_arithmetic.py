@@ -220,6 +220,29 @@ int __wrap_dvm_runtime_divisor_zero(int opcode, const void *second)
 
 
 /* Intercept the actual admission boundary''')
+    code = code.replace('static const void *second_cell;',
+                        'static int force_busy; /* Inject BUSY instead of permanent refusal. */\nstatic const void *second_cell;')
+    code = code.replace('return DVM_CELL_REFUSED;', 'return force_busy ? DVM_CELL_BUSY : DVM_CELL_REFUSED;')
+    code = code.replace('                    active = 0;\n                    memcpy(&DVM_R, &saved', '''                    {
+                        int retryable = -1;
+                        check(dvm_runtime_arithmetic_attempt(current_opcode, input_cell, second_cell,
+                            output_cell, &retryable) == exHeap && retryable == 0,
+                            "permanent refusal cannot retry");
+                        force_busy = 1;
+                        check(dvm_runtime_arithmetic_attempt(current_opcode, input_cell, second_cell,
+                            output_cell, &retryable) == exHeap && retryable == 1 &&
+                            !memcmp(before, bytes, sizeof(bytes)) &&
+                            !dvm_native_context_object_count(dvm_native_context_current()),
+                            "busy permits retry before effects");
+                        force_busy = 0;
+                        active = 0;
+                        check(!dvm_runtime_arithmetic_attempt(current_opcode, input_cell, second_cell,
+                            output_cell, &retryable) && retryable == 0 &&
+                            !memcmp(wanted, bytes, sizeof(bytes)),
+                            "retry after busy publishes the exact result");
+                    }
+                    active = 0;
+                    memcpy(&DVM_R, &saved''')
     code = code.replace('FAIL integer:', 'FAIL arithmetic:').replace('PASS integer', 'PASS arithmetic')
     return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
