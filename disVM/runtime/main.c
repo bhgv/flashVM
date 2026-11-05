@@ -1686,9 +1686,9 @@ static int release_refill_channel(void *argument)
 
 /* Finish a buffered rendezvous under NativeWorld after ALT cancellation.
  * A refill error is primary. A later release error still reaches the receiver
- * but does not fail the sender if its payload was already transferred. */
+ * but the sender succeeds once its payload is published. */
 void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
-    int (*refill)(void *), void *request)
+    int (*refill)(void *), void *request, const int *committed)
 {
     char first_error[ERRMAX];
     int transferred = kprotect(refill, request);
@@ -1698,13 +1698,9 @@ void dvm_runtime_channel_finish_refill(Channel *channel, Prog *peer,
         memmove(first_error, owner_error(), sizeof(first_error));
     }
     released = kprotect(release_refill_channel, channel);
-    if (transferred)
+    dvm_runtime_channel_wake(peer, transferred || *committed ? nil : "channel transfer failed");
+    if (!transferred)
     {
-        dvm_runtime_channel_wake(peer, nil);
-    }
-    else
-    {
-        dvm_runtime_channel_wake(peer, "channel transfer failed");
         error(first_error);
     }
     if (!released)

@@ -227,6 +227,12 @@ RECEIVE_ERRORS = r'''implement ReceiveErrors;
 include "sys.m";
 ReceiveErrors: module {init: fn();};
 
+sender(records: chan of (int, string), ready, done: chan of int) {
+    ready <-= 1;
+    records <-= (55, "queued sender");
+    done <-= 1;
+}
+
 init() {
     sys := load Sys Sys->PATH;
     records := chan[2] of (int, string);
@@ -269,6 +275,28 @@ init() {
         if (tag != cycle+100 || text != "wraparound")
             raise "receive failure corrupted wraparound order";
     }
+    records <-= (44, "first queued");
+    records <-= (45, "second queued");
+    ready := chan[1] of int;
+    done := chan[1] of int;
+    spawn sender(records, ready, done);
+    if (<-ready != 1)
+        raise "sender did not start";
+    {
+        value = <-records;
+        raise "expected refill failure";
+    } exception failure {
+        "refill failed after publication" => ;
+        * => raise;
+    }
+    if (<-done != 1)
+        raise "committed sender did not complete";
+    (tag, text) = <-records;
+    if (tag != 45 || text != "second queued")
+        raise "refill changed existing message order";
+    (tag, text) = <-records;
+    if (tag != 55 || text != "queued sender")
+        raise "refill lost the published sender";
     sys->print("PASS buffered receive commit boundary\n");
 }
 '''
@@ -394,6 +422,11 @@ int __wrap_dvm_runtime_mapped_buffer_transfer(const void *source, void *destinat
     {
         receive_fault = 3;
         error("send failed after publication");
+    }
+    if (inject && opcode == 0 && !consume && receive_fault == 3 && *committed)
+    {
+        receive_fault = 4;
+        error("refill failed after publication");
     }
     return result;
 }
@@ -1091,7 +1124,7 @@ def main():
             for mode in ('--no-jit', '--jit'):
                 if variant == 0:
                     run = subprocess.run([str(binary), mode, '--gc-worker', '--guarded-copies',
-                                          str(error_image)], capture_output=True, text=True, timeout=30,
+                                          '--quantum', '65536', str(error_image)], capture_output=True, text=True, timeout=30,
                                          env=dict(os.environ, DVM_TEST_RECEIVE_ERRORS='1'))
                     if (run.returncode or 'PASS buffered receive commit boundary' not in run.stdout
                             or run.stdout.count('PASS injected receive array release failure') != 2):
