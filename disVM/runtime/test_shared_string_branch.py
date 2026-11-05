@@ -38,6 +38,11 @@ init() {
     changed[-1] = 'z';
     if (ascii != "a" || changed != "Жz")
         raise "guarded string mutation";
+    snapshot := changed;
+    changed = changed + ascii;
+    slice := changed[-2:-1];
+    if (snapshot != "Жz" || changed != "Жza" || slice != "za")
+        raise "guarded string concatenation and slice";
     score := 0;
     for (i := 0; i < 4; i++) {
         for (j := 0; j < 4; j++) {
@@ -327,20 +332,21 @@ DVM_CellResult __real_dvm_managed_small_three_begin(const void *, size_t, const 
 DVM_CellResult __wrap_dvm_managed_small_three_begin(const void *source, size_t input,
     const void *index, size_t index_size, void *slot, size_t slot_size, DVM_TripleAccess *access)
 {
-    static Inst *retry_pc; /* Post-decode store PC at the first contention. */
-    static int replayed; /* The same guest store has resumed. */
+    static Inst *retry_pc[3]; /* Decoded PC of the first refusal per opcode. */
+    static int replayed[3]; /* One successful replay per guest operation. */
+    int opcode = dvm_native_execution()->arithmetic_retry_opcode;
+    int stage = opcode == IINSC ? 0 : opcode == IADDC ? 1 : opcode == ISLICEC ? 2 : -1;
 
-    if (CONTROL == 0 && !active && !replayed &&
-        dvm_native_execution()->arithmetic_retry_opcode == IINSC)
+    if (CONTROL == 0 && !active && stage >= 0 && !replayed[stage])
     {
-        if (!retry_pc)
+        if (!retry_pc[stage])
         {
-            retry_pc = DVM_R.PC;
+            retry_pc[stage] = DVM_R.PC;
             return DVM_CELL_BUSY;
         }
-        check(retry_pc == DVM_R.PC, "string store retries original instruction");
-        replayed = 1;
-        puts("PASS scheduled string store replay");
+        check(retry_pc[stage] == DVM_R.PC, "string mutation retries original instruction");
+        replayed[stage] = 1;
+        fprint(1, "PASS scheduled string mutation replay %d\n", stage);
     }
     return __real_dvm_managed_small_three_begin(source, input, index, index_size, slot, slot_size, access);
 }
@@ -777,7 +783,8 @@ def main():
                                 'PASS scheduled string index replay' not in output or
                                 'PASS string index header retry' not in output or
                                 'PASS string index character retry' not in output or
-                                'PASS scheduled string store replay' not in output):
+                                any(f'PASS scheduled string mutation replay {stage}' not in output
+                                    for stage in range(3))):
                             raise RuntimeError('leased string coverage or bounded fallback missed: '+output)
                     if variant == 0 and 'PASS scheduled input retry' not in output:
                         raise RuntimeError('input retry missed: '+output)

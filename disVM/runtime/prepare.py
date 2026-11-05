@@ -48,6 +48,45 @@ from prepare_gc_fields import adapt as adapt_gc_fields, validate_header as valid
 # Apply exactly one reviewed relative-sequence source adaptation; reject drift.
 # source/before/after are owned strings, count is the required single occurrence.
 # Return replaced text or raise before publishing an incomplete generated view.
+def adapt_string_operand_captures(code):
+    """Preserve decoded preflight and retry only before string mutation."""
+    for opcode, first, second, first_cell, second_cell in (
+        ('INSC', 'value', 'index', 'DVM_R.s', 'DVM_R.m'),
+        ('SLICEC', 'start', 'end', 'DVM_R.s', 'DVM_R.m'),
+        ('ADDC', 'left', 'right', 'DVM_R.m', 'DVM_R.s'),
+    ):
+        start = code.index('OP('+opcode.lower()+')')
+        end = code.index('\n}', start)
+        body = code[start:end]
+        reads = (
+            f'\tmemmove(&{first}, {first_cell}, sizeof({first}));\n'
+            f'\tmemmove(&{second}, {second_cell}, sizeof({second}));\n'
+            '\tmemmove(&old, slot, sizeof(old));'
+        )
+        if opcode == 'INSC':
+            old = reads.replace('\n\tmemmove(&index', '\n\trune = value;\n\tmemmove(&index')
+            old = old.replace('\n\tmemmove(&old', '\n\tslot = DVM_R.d;\n\tmemmove(&old')
+            before = '    slot = DVM_R.d;\n'
+            after = '\n    rune = value;'
+        else:
+            old, before, after = reads, '', ''
+        replacement = before + f"""    if(dvm_runtime_guarded_copies) {{
+        int replay;
+        const char *problem = dvm_runtime_string_operands(I{opcode}, {first_cell}, {second_cell},
+            sizeof({first}), slot, &{first}, &{second}, &old, &replay);
+        if(replay) {{
+            return;
+        }}
+        if(problem) {{
+            error((char *)problem);
+        }}
+    }} else {{
+{reads}
+    }}""" + after
+        code = code[:start] + relative_replace(body, old, replacement, 1) + code[end:]
+    return code
+
+
 def relative_replace(source, before, after, count=1):
     if count != 1 or source.count(before) != 1:
         raise ValueError("relative sequence boundary changed: " + before[:80])
@@ -277,34 +316,7 @@ def main():
             if code.count(needle) != 1:
                 raise ValueError("string store boundary changed")
             code = relative_replace(code, needle, 'index = dvm_relative_index(length, index);\n\t' + needle, 1)
-            start = code.index('OP(insc)')
-            finish = code.index('\nString*\nslicer', start)
-            part = code[start:finish]
-            capture = (
-                '\tmemmove(&value, DVM_R.s, sizeof(value));\n'
-                '\trune = value;\n'
-                '\tmemmove(&index, DVM_R.m, sizeof(index));\n'
-                '\tslot = DVM_R.d;\n'
-                '\tmemmove(&old, slot, sizeof(old));'
-            )
-            part = relative_replace(part, capture, """    slot = DVM_R.d;
-    if(dvm_runtime_guarded_copies) {
-        int replay;
-        const char *problem = dvm_runtime_string_store_operands(DVM_R.s, DVM_R.m,
-            slot, &value, &index, &old, &replay);
-        if(replay) {
-            return;
-        }
-        if(problem) {
-            error((char *)problem);
-        }
-    } else {
-        memmove(&value, DVM_R.s, sizeof(value));
-        memmove(&index, DVM_R.m, sizeof(index));
-        memmove(&old, slot, sizeof(old));
-    }
-    rune = value;""", 1)
-            code = code[:start] + part + code[finish:]
+            code = adapt_string_operand_captures(code)
             start = code.index('OP(slicec)')
             finish = code.index('void\ncvtup', start)
             part = code[start:finish]

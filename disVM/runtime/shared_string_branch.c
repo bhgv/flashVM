@@ -343,25 +343,26 @@ const char *dvm_runtime_string_index(const void *source, const void *index_cell,
 
 
 
-/* Capture the scalar operands and old reference under a single union.
- * The caller keeps NativeWorld through validation, mutation and retirement.
- * Output arguments are private; no ownership is changed by this snapshot. */
-const char *dvm_runtime_string_store_operands(const void *source, const void *index_cell,
-    const void *slot, void *value, void *index, void *old, int *replay)
+/* Capture two decoded inputs and the old string reference under one union.
+ * input_size describes both inputs. The caller retains NativeWorld through
+ * mutation and retirement. All snapshot outputs are private. */
+const char *dvm_runtime_string_operands(int opcode, const void *first, const void *second,
+    size_t input_size, const void *slot, void *saved_first, void *saved_second,
+    void *old, int *replay)
 {
     DVM_TripleAccess access = {0};
     DVM_CellResult claim;
 
     *replay = 0;
-    claim = dvm_managed_small_three_begin(source, sizeof(WORD), index_cell, sizeof(WORD),
+    claim = dvm_managed_small_three_begin(first, input_size, second, input_size,
         (void *)slot, sizeof(String *), &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(IINSC);
+        *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
         return *replay ? NULL : exHeap;
     }
-    memmove(value, source, sizeof(WORD));
-    memmove(index, index_cell, sizeof(WORD));
+    memmove(saved_first, first, input_size);
+    memmove(saved_second, second, input_size);
     memmove(old, slot, sizeof(String *));
     if (!dvm_small_range_access_end(&access))
     {

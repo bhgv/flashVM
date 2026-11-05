@@ -12,6 +12,8 @@
 extern void lea(void);
 extern void movpc(void);
 extern void indc(void); /* Guarded string character read. */
+extern void addc(void); /* Guarded concatenation capture. */
+extern void slicec(void); /* Guarded substring capture. */
 extern void insc(void); /* Guarded string store operand capture. */
 extern void indx(void);
 extern void indb(void);
@@ -150,6 +152,12 @@ int dvm_runtime_bytes_fast(REG *registers, int opcode)
         break;
     case IINSC:
         insc();
+        break;
+    case IADDC:
+        addc();
+        break;
+    case ISLICEC:
+        slicec();
         break;
     case IINDX:
         indx();

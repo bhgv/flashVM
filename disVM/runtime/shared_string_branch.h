@@ -1,6 +1,7 @@
 /* Continuous native string owner/header/payload exclusion. */
 #ifndef DVM_SHARED_STRING_BRANCH_H
 #define DVM_SHARED_STRING_BRANCH_H
+#include <stddef.h>
 
 
 /* [GC:] condition selects EQ/NE/LT/LE/GT/GE (0..5); source/other borrow live
@@ -21,6 +22,7 @@ const char *dvm_runtime_string_index(const void *source, const void *index_cell,
 
 /* Snapshot already validated cells into private output. A scheduled retry
  * sets replay and leaves all three snapshots untouched. No retain or store. */
-const char *dvm_runtime_string_store_operands(const void *source, const void *index_cell,
-    const void *slot, void *value, void *index, void *old, int *replay);
+const char *dvm_runtime_string_operands(int opcode, const void *first, const void *second,
+    size_t input_size, const void *slot, void *saved_first, void *saved_second,
+    void *old, int *replay);
 #endif
