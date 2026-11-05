@@ -39,7 +39,7 @@ static int project(void *argument)
     const char *problem;
     if (!size)
     {
-        problem = dvm_runtime_list_word(request->length, &count);
+        problem = dvm_runtime_bytes_snapshot(request->length, &count, sizeof(count));
         if (problem)
         {
             error((char *)problem);

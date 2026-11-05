@@ -7,7 +7,7 @@
 #include "pool.h"
 #include "raise.h"
 #include "shared_head.h"
-#include "shared_access.h"
+#include "shared_bytes.h"
 #include "shared_mapped.h"
 #include "list_hold.h"
 #include <stddef.h>
@@ -72,7 +72,7 @@ static int project(void *argument)
     uintptr source = (uintptr)list;
     size_t needed;
     int size;
-    problem = dvm_runtime_list_word(copy->index, &index);
+    problem = dvm_runtime_bytes_snapshot(copy->index, &index, sizeof(index));
     if (problem)
     {
         error((char *)problem);

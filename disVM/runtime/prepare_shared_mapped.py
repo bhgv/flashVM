@@ -1,6 +1,7 @@
 """Route reviewed mapped moves through the opt-in ownership transaction."""
 import hashlib
 import re
+from prepare_shared_bytes import guarded_snapshot
 
 BODIES = (
     (r'OP\(movmp\)\n\{.*?\n\}',
@@ -26,5 +27,10 @@ def adapt(source):
         body = match.group()
         if body.count(anchor) != 1:
             raise ValueError('hosted mapped-copy publication boundary drift')
+        variable = 'index' if pattern.startswith(r'OP') else 't'
+        capture = f'memmove(&{variable}, DVM_R.m, sizeof({variable}));'
+        if body.count(capture) != 1:
+            raise ValueError('hosted mapped-copy metadata capture drift')
+        body = body.replace(capture, guarded_snapshot(variable, capture), 1)
         source = source[:match.start()] + body.replace(anchor, anchor + guarded, 1) + source[match.end():]
-    return '#include "shared_mapped.h"\n' + source
+    return '#include "shared_mapped.h"\n#include "shared_bytes.h"\n' + source

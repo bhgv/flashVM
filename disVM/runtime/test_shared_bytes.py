@@ -111,6 +111,16 @@ DVM_CellResult __wrap_dvm_managed_spans_begin(const void *source, size_t source_
 DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source_size,
     void *destination, size_t destination_size, DVM_RangeAccess *access)
 {
+    if (active && !destination && !destination_size)
+    {
+        DVM_CellResult result = __real_dvm_managed_ranges_begin(source, source_size,
+            destination, destination_size, access);
+        check(source == DVM_R.m && source_size == sizeof(WORD) &&
+            result == DVM_CELL_ACQUIRED &&
+            dvm_native_context_object_count(dvm_native_context_current()) > 0,
+            "MOVM count snapshot holds source guard");
+        return result;
+    }
     if (active && CONTROL == 2)
     {
         return DVM_CELL_ACQUIRED;

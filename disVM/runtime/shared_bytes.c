@@ -75,3 +75,26 @@ const char *dvm_runtime_bytes_copy(const void *source, void *destination, size_t
     }
     return NULL;
 }
+
+/* Snapshot a borrowed shared span into caller-private storage. The caller
+ * validates the lifetime of both spans. Return a static diagnostic only
+ * after releasing the source guard. */
+const char *dvm_runtime_bytes_snapshot(const void *source, void *snapshot, size_t size)
+{
+    DVM_RangeAccess access = {0};
+
+    if (!source || source == H || (uintptr_t)source > UINTPTR_MAX - size)
+    {
+        return exBounds;
+    }
+    if (dvm_managed_ranges_begin(source, size, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    {
+        return exHeap;
+    }
+    memmove(snapshot, source, size);
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return NULL;
+}

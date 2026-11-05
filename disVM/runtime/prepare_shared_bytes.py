@@ -39,6 +39,11 @@ def adapt(source):
     destroy(previous);
 }'''
         else:
+            if name == 'movm':
+                capture = 'memmove(&n, DVM_R.m, sizeof(n));'
+                if body.count(capture) != 1:
+                    raise ValueError('hosted MOVM count capture drift')
+                body = body.replace(capture, guarded_snapshot('n', capture))
             size = {'movb':'sizeof(BYTE)', 'movw':'sizeof(WORD)', 'movl':'sizeof(LONG)',
                     'movf':'sizeof(REAL)', 'movm':'n'}[name]
             statement = 'memmove(DVM_R.d, DVM_R.s, '+size+');'
@@ -54,3 +59,15 @@ def adapt(source):
         }''')
         source = source[:matches[0].start()]+body+source[matches[0].end():]
     return '#include "shared_bytes.h"\n#include "shared_pointer.h"\n'+source
+
+
+def guarded_snapshot(variable, fallback):
+    """Capture one scalar on the guarded path, with the original serial read."""
+    return f'''if(dvm_runtime_guarded_copies) {{
+        const char *problem = dvm_runtime_bytes_snapshot(DVM_R.m, &{variable}, sizeof({variable}));
+        if(problem != nil) {{
+            error((char *)problem);
+        }}
+    }} else {{
+        {fallback}
+    }}'''
