@@ -37,15 +37,17 @@ static RuntimeGC state;  /* One managed runtime heap, not multi-instance admissi
 
 /* [GC:] Save complete-instruction roots under the world stop. Parameters borrow
  * stable owner storage; no allocation or world API reentry is permitted. Between
- * xec calls process is null and saved Prog.R already describes the full roots. */
+ * xec calls process is null. A suspended native guest already saved Prog.R
+ * before withdrawing, so its stopped-owner registers are not republished. */
 static void publish(DVM_NativeContext *context, void *registers,
     size_t size, void *process, void *user)
 {
     RuntimeGC *gc = user;
     USED(context);
-    if (process && size == sizeof(REG))
+    Prog *guest = process;
+    if (guest && guest->state != Prelease && size == sizeof(REG))
     {
-        ((Prog *)process)->R = *(REG *)registers;
+        guest->R = *(REG *)registers;
         gc->snapshots++;
     }
 }

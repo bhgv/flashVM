@@ -6,6 +6,7 @@
 #include "interp.h"
 #include "disvm/native_context.h"
 #include "disvm/native_owner.h"
+#include "disvm/gc_workers.h"
 #include "runtime_gc.h"
 #include "managed_owner.h"
 #include "runqueue.h"
@@ -166,6 +167,54 @@ int __wrap_dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch)
         corrupt_native_return();
     }
     return ok;
+}
+
+
+static DVM_WorldRoots real_root_visitor; /* Production callback retained through the fixture. */
+static int root_probe_reported; /* Written only under the world collector lock. */
+DVM_GCWorkers *__real_dvm_gc_workers_create(const DVM_GCWorkersConfig *config);
+
+
+/* Check that a stopped collector uses the saved native continuation roots.
+ * Only the non-root decoded destination field is perturbed, and restored
+ * before the collector leaves this callback. */
+static void verify_suspended_roots(DVM_NativeContext *context, void *registers,
+    size_t size, void *process, void *user)
+{
+    Prog *guest = process;
+    REG *current = registers;
+
+    if (guest && guest->state == Prelease && size == sizeof(*current))
+    {
+        void *saved = guest->R.d;
+        void *original = current->d;
+
+        current->d = saved ? NULL : H;
+        real_root_visitor(context, registers, size, process, user);
+        current->d = original;
+        check(guest->R.d == saved, "collector overwrote the saved suspended registers");
+        if (!root_probe_reported)
+        {
+            root_probe_reported = 1;
+            puts("PASS collector preserves suspended continuation roots");
+        }
+        return;
+    }
+    real_root_visitor(context, registers, size, process, user);
+}
+
+
+/* Install the probe only for the explicit collector control run. */
+DVM_GCWorkers *__wrap_dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
+{
+    DVM_GCWorkersConfig probe = *config;
+
+    if (getenv("DVM_TEST_SUSPENDED_ROOTS") && probe.roots)
+    {
+        real_root_visitor = probe.roots;
+        probe.roots = verify_suspended_roots;
+    }
+    return __real_dvm_gc_workers_create(&probe);
 }
 
 

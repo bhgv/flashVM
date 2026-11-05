@@ -1627,7 +1627,7 @@ def main():
                          "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                          "dvm_runqueue_append", "dvm_runqueue_claim", "dvm_managed_workers_yield",
-                         "dvm_native_owner_progress"])
+                         "dvm_native_owner_progress", "dvm_gc_workers_create"])
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
@@ -1723,6 +1723,13 @@ def main():
                                 "disvm: native continuation restoration failed" not in refused.stderr):
                             raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
                                                + refused.stdout + refused.stderr)
+                    rooted = subprocess.run(
+                        command, cwd=work, capture_output=True, text=True, timeout=30,
+                        env=dict(os.environ, DVM_TEST_SUSPENDED_ROOTS="1"),
+                    )
+                    if rooted.returncode or "PASS collector preserves suspended continuation roots" not in rooted.stdout:
+                        raise RuntimeError(f"{mode} missed the suspended-root collector check\n"
+                                           + rooted.stdout + rooted.stderr)
                     phase_controls = {
                         "nested-leave": "invalid/foreign/nested audited native release",
                         "missing": "missing native heap reentry token",
