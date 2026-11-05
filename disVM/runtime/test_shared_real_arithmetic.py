@@ -12,6 +12,8 @@ include "math.m";
 Reals: module {init: fn();};
 FixedA: type fixed(0.1);
 FixedB: type fixed(0.3);
+FixedC: type fixed(0.7);
+FixedTiny: type fixed(1e-10);
 init() {
     sys := load Sys Sys->PATH;
     sys->print("BEGIN REAL arithmetic5\\n");
@@ -48,6 +50,25 @@ init() {
     if (real fixed_product != 2.0 || real fixed_ratio != 2.0 ||
         real fixed_cast < 1.7 || real fixed_cast > 2.1)
         raise "leased fixed arithmetic result";
+    rounded := FixedC fixed_product;
+    wide_left := FixedC a;
+    wide_right := FixedC b;
+    wide_product := wide_left * wide_right;
+    tiny_left := FixedTiny (a/20000.0);
+    tiny_right := FixedTiny (a/2000.0);
+    tiny_ratio := tiny_left / tiny_right;
+    if (real rounded < 1.3 || real rounded > 2.2 ||
+        real wide_product < 6.0 || real wide_product > 10.0 ||
+        real tiny_ratio < 0.099 || real tiny_ratio > 0.101)
+        raise "leased fixed coverage result";
+    tiny_zero := tiny_left-tiny_left;
+    {
+        bad_ratio := tiny_left / tiny_zero;
+        sys->print("unexpected fixed quotient %g", real bad_ratio);
+        raise "zero fixed divisor accepted";
+    } exception {
+        "zero divide" => {}
+    }
     math := load Math Math->PATH;
     math->FPstatus(0, Math->ZDIV);
     math->FPcontrol(Math->RND_NINF, Math->RND_MASK);
@@ -361,6 +382,22 @@ static const char *observe_scaled(const WORD *coefficients, const void *first, c
     {
         switch (scaled_opcode)
         {
+        case IMULX0:
+            check(coefficients != NULL, "MULX0 has captured coefficients");
+            print("LEASED MULX0\n");
+            break;
+        case IDIVX0:
+            check(coefficients != NULL, "DIVX0 has captured coefficients");
+            print("LEASED DIVX0\n");
+            if (problem == exZdiv)
+            {
+                print("LEASED DIVX0 diagnostic\n");
+            }
+            break;
+        case ICVTXX1:
+            check(coefficients != NULL, "CVTXX1 has captured coefficients");
+            print("LEASED CVTXX1\n");
+            break;
         case IMULX1:
             check(coefficients != NULL, "MULX1 has captured coefficients");
             print("LEASED MULX1\n");
@@ -695,7 +732,8 @@ def main():
                 leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
                 if leased != {'LEASED ADDF', 'LEASED SUBF', 'LEASED MULF', 'LEASED DIVF', 'LEASED NEGF',
                               'LEASED EXPW', 'LEASED EXPL', 'LEASED EXPF', 'LEASED EXPW diagnostic',
-                              'LEASED MULX1', 'LEASED DIVX1', 'LEASED CVTXX0'}:
+                              'LEASED MULX0', 'LEASED DIVX0', 'LEASED DIVX0 diagnostic', 'LEASED CVTXX0',
+                              'LEASED MULX1', 'LEASED DIVX1', 'LEASED CVTXX1'}:
                     raise RuntimeError('leased FP coverage missed: '+output)
                 if 'PASS scheduled FP input retry' not in output:
                     raise RuntimeError('FP input retry missed: '+output)
