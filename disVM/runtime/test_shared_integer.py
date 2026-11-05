@@ -283,7 +283,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
 
 def scheduled_retry_wrapper():
     """Inject one pre-effect BUSY in the real integer guest dispatch."""
-    source = '#include "disvm/native_process.h"\n'+WRAPPER
+    source = '#include "disvm/native_process.h"\n#include "disvm/native_owner.h"\n'+WRAPPER
     source = source.replace('static int active;', """static Inst *scheduled_pc; /* PC after decoding the contended instruction. */
 static int scheduled_replayed; /* The next matching attempt reached admission. */
 static int active;""")
@@ -302,6 +302,30 @@ static int active;""")
         print("PASS scheduled integer retry\\n");
     }
     return __real_dvm_managed_spans_begin(s, n, d, m, access);""")
+    value = 'void __wrap_dvm_runtime_integer_value(int op, const void *s, void *d)\n{'
+    source = source.replace(value, value+r'''
+    DVM_HeapOwnerStats owner;
+    if (CONTROL == 0 && !active &&
+        dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+        owner.phase == DVM_HEAP_NATIVE)
+    {
+        switch (op)
+        {
+        case ICVTWB:
+            print("LEASED CVTWB\n");
+            break;
+        case ICVTBW:
+            print("LEASED CVTBW\n");
+            break;
+        case ICVTWL:
+            print("LEASED CVTWL\n");
+            break;
+        case ICVTLW:
+            print("LEASED CVTLW\n");
+            break;
+        }
+    }
+''')
     return source
 
 
@@ -323,6 +347,8 @@ def main():
             for mode in ('--no-jit', '--jit'):
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
+                    if variant == 0:
+                        args += ['--managed-workers', '2', '--parallel-integer']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=45,
@@ -336,6 +362,10 @@ def main():
                             raise RuntimeError('semantic control missed: '+output)
                     elif run.returncode or ('PASS integer admission refusal' if variant == 3 else 'PASS integer probe:') not in output or 'PASS integer conversions64' not in output:
                         raise RuntimeError('integer positive failed: '+output)
+                    if variant == 0:
+                        leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
+                        if leased != {'LEASED CVTWB', 'LEASED CVTBW', 'LEASED CVTWL', 'LEASED CVTLW'}:
+                            raise RuntimeError('leased conversion coverage missed: '+output)
                     if variant == 3 and 'PASS scheduled integer retry' not in output:
                         raise RuntimeError('scheduler retry missed: '+output)
     print('PASS six actual integer C opcodes: 23400 overlaps, both polls; C/JIT guest; two omission controls unless positive-only')

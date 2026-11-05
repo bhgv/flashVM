@@ -1,6 +1,7 @@
 /* Common hosted role preflight; not cell lifetime or mapping permission. */
 #ifndef DVM_SHARED_ACCESS_H
 #define DVM_SHARED_ACCESS_H
+#include <stddef.h>
 
 
 /* [GC:] Return0 before operands for refused context/role,1 for detached serial
@@ -13,4 +14,10 @@ int dvm_runtime_shared_mode(void);
  * Called before any effects. Return one only inside the matching dispatch
  * with a live runtime process and remaining retry budget. */
 int dvm_runtime_scalar_retry(int opcode);
+
+
+/* Check whether opcode owns the armed experimental dispatch and both borrowed
+ * byte spans are scalar cells in its rooted current frame. No heap release. */
+int dvm_runtime_parallel_scalar_pair(int opcode, const void *first, size_t first_size,
+    const void *second, size_t second_size);
 #endif

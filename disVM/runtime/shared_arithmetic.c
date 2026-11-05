@@ -78,6 +78,23 @@ static int frame_scalar(const void *cell, const Type *type, size_t width)
 }
 
 
+/* Admit mixed-width cells only in the full experimental mode.
+ * The active dispatch and typed frame supply the borrowed span lifetime. */
+int dvm_runtime_parallel_scalar_pair(int opcode, const void *first, size_t first_size,
+    const void *second, size_t second_size)
+{
+    Type *type;
+
+    if (dvm_runtime_parallel_add != 2 ||
+        dvm_native_execution()->arithmetic_retry_opcode != opcode || !up->prog)
+    {
+        return 0;
+    }
+    type = current_frame_type();
+    return type && frame_scalar(first, type, first_size) && frame_scalar(second, type, second_size);
+}
+
+
 /* Compute an audited scalar operation from private bytes outside the heap.
  * The caller has guarded all three frame cells and ruled out a zero divisor.
  * Return with the union released. Revalidate and commit under a fresh claim. */
