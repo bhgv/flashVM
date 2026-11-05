@@ -9,6 +9,10 @@ from relink_private import relink
 GUEST = '''implement ArrayLength;
 include "sys.m";
 ArrayLength: module {init: fn();};
+Pair: adt { first, second: int; };
+fresh(): array of Pair {
+    return array[] of {Pair(19, 23)};
+}
 init() {
     sys := load Sys Sys->PATH;
     sys->print("BEGIN array length\\n");
@@ -27,6 +31,10 @@ init() {
             wide := array[1] of big;
             floats := array[1] of real;
             zero := at - at;
+            pair := fresh()[zero];
+            if (pair.first != 19 || pair.second != 23) {
+                raise "temporary array index lost its owner";
+            }
             wide[zero] = big i;
             floats[zero] = real i;
             if (wide[zero] != big i || floats[zero] != real i) {
@@ -58,6 +66,7 @@ WRAPPER = r'''
 #include "array_length_value.h"
 #include "managed_owner.h"
 #include "root_registry.h"
+#include "runtime_gc.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include <stddef.h>
@@ -69,6 +78,7 @@ extern void lena(void); /* Actual native opcode, not a modeled operation. */
 static __thread int active; /* Only the serialized fixture controller observes helpers. */
 static __thread unsigned long allocations; /* Native allocation/free calls inside LENA. */
 static __thread unsigned int expected_depth; /* Independent six-key union size. */
+static DVM_GCWorkers *array_collectors; /* Borrowed collector service until the fixture exits. */
 static int address_publication; /* Observe only the private-to-shared publication call. */
 const char *__real_dvm_runtime_bytes_publish_opcode(int, const void *, void *, size_t);
 DVM_CellResult __real_dvm_managed_ranges_begin(const void *, size_t, void *, size_t, DVM_RangeAccess *);
@@ -111,6 +121,44 @@ DVM_CellResult __wrap_dvm_managed_ranges_begin(const void *source, size_t source
 }
 
 
+/* Force Cycles after successful publication and before the guest consumes
+ * the interior address. Only a real decoded index may suspend here. */
+static void collect_before_address_use(int opcode)
+{
+    static unsigned int checked; /* One full collection per actual index opcode. */
+    unsigned int bit;
+    int released;
+
+    switch (opcode)
+    {
+    case IINDX: bit = 1; break;
+    case IINDW: bit = 2; break;
+    case IINDF: bit = 4; break;
+    case IINDL: bit = 8; break;
+    case IINDB: bit = 16; break;
+    default: return;
+    }
+    if (checked & bit)
+    {
+        return;
+    }
+    released = dvm_runtime_gc_native_try_leave();
+    if (released != 1 || !array_collectors ||
+        !dvm_gc_workers_request(array_collectors, DVM_GC_CYCLES) ||
+        !dvm_gc_workers_wait_idle(array_collectors))
+    {
+        fprint(2, "FAIL cannot collect between array address and use\n");
+        exit(10);
+    }
+    dvm_runtime_gc_native_enter(released);
+    checked |= bit;
+    if ((checked & 29) == 29)
+    {
+        print("PASS four interior addresses survive Cycles before use\n");
+    }
+}
+
+
 /* Check each real address publication, independently of operand capture. */
 const char *__wrap_dvm_runtime_bytes_publish_opcode(int opcode, const void *source, void *destination, size_t size)
 {
@@ -123,6 +171,10 @@ const char *__wrap_dvm_runtime_bytes_publish_opcode(int opcode, const void *sour
         exit(10);
     }
     address_publication = 0;
+    if (CONTROL == 0 && !problem && dvm_native_execution()->arithmetic_retry_opcode == opcode)
+    {
+        collect_before_address_use(opcode);
+    }
     return problem;
 }
 
@@ -399,6 +451,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     unsigned long cases = 0;
     int delta;
     __real_dvm_runtime_root_registry_probe(workers);
+    array_collectors = workers;
     check(sizeof(WORD) == sizeof(void *), "native fixture width");
     memcpy(&saved, &DVM_R, sizeof(saved));
     memcpy(message, getup()->env->errstr, sizeof(message));
@@ -547,7 +600,8 @@ def main():
                         raise RuntimeError('array-length positive failed: '+output)
                     if variant == 0 and ('PASS scheduled length extension retry' not in output or
                                          'PASS scheduled index retry' not in output or
-                                         'PASS scheduled address publication retry' not in output):
+                                         'PASS scheduled address publication retry' not in output or
+                                         'PASS four interior addresses survive Cycles before use' not in output):
                         raise RuntimeError('length extension retry missed: '+output)
     print('PASS actual LENA:15360 aliases,nil/geometry,caller-rooted Cycles/Fast,no allocations,both polls')
 
