@@ -186,13 +186,15 @@ static void verify_suspended_roots(DVM_NativeContext *context, void *registers,
 
     if (guest && guest->state == Prelease && size == sizeof(*current))
     {
-        void *saved = guest->R.d;
+        REG saved;
         void *original = current->d;
 
-        current->d = saved ? NULL : H;
+        memmove(&saved, &guest->R, sizeof(saved));
+        current->d = saved.d ? NULL : H;
         real_root_visitor(context, registers, size, process, user);
         current->d = original;
-        check(guest->R.d == saved, "collector overwrote the saved suspended registers");
+        check(!memcmp(&guest->R, &saved, sizeof(saved)),
+            "collector overwrote the saved suspended registers");
         if (!root_probe_reported)
         {
             root_probe_reported = 1;

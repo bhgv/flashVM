@@ -1723,13 +1723,21 @@ def main():
                                 "disvm: native continuation restoration failed" not in refused.stderr):
                             raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
                                                + refused.stdout + refused.stderr)
-                    rooted = subprocess.run(
-                        command, cwd=work, capture_output=True, text=True, timeout=30,
-                        env=dict(os.environ, DVM_TEST_SUSPENDED_ROOTS="1"),
-                    )
-                    if rooted.returncode or "PASS collector preserves suspended continuation roots" not in rooted.stdout:
-                        raise RuntimeError(f"{mode} missed the suspended-root collector check\n"
-                                           + rooted.stdout + rooted.stderr)
+                    for pool in ("2", "auto"):
+                        for locked in (False, True):
+                            root_options = ["--gc-locked-poll"] if locked else []
+                            rooted = subprocess.run(
+                                [binary, mode, "--gc-worker", "--guarded-copies",
+                                 "--managed-workers", pool, *root_options, image],
+                                cwd=work, capture_output=True, text=True, timeout=30,
+                                env=dict(os.environ, DVM_TEST_SUSPENDED_ROOTS="1"),
+                            )
+                            if (rooted.returncode or
+                                    "PASS collector preserves suspended continuation roots" not in rooted.stdout):
+                                raise RuntimeError(
+                                    f"{mode} pool={pool} locked={locked} missed suspended-root check\n"
+                                    + rooted.stdout + rooted.stderr
+                                )
                     phase_controls = {
                         "nested-leave": "invalid/foreign/nested audited native release",
                         "missing": "missing native heap reentry token",
