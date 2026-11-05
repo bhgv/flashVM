@@ -10,6 +10,7 @@
 #include "thread_port.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 Pool *heapmem; /* Never used: rejected roles must not ask the allocator anything. */
 int mutator;  /* Link retained marking declarations; marking is forbidden here. */
@@ -72,6 +73,7 @@ static void collector(void *argument)
     check(context && dvm_native_context_bind(context), "collector context");
     check(dvm_world_stop_begin(world, context), "collector stop");
     check(!dvm_runtime_rc_defer(probe) && !dvm_runtime_rc_pending(), "collector admitted");
+    check(!dvm_runtime_rc_drain(1), "stopped collector can drain an empty queue");
     check(dvm_world_stop_end(world), "collector resume");
     check(dvm_native_context_unbind(context) && dvm_native_context_destroy(context), "collector retire");
 }
@@ -80,7 +82,7 @@ static void collector(void *argument)
 /* Use real serialized-world transitions for IDLE/NATIVE/pending/foreign and
  * collector callers. No admitted queue transfer is attempted; whole runtime
  * helper_rc tests cover allocation, references, GC and exact queue draining. */
-int main(void)
+int main(int argc, char **argv)
 {
     Heap *backing = calloc(1, sizeof(Heap) + 32);
     DVM_NativeContext *context = dvm_native_context_create(sizeof(REG), NULL);
@@ -96,6 +98,11 @@ int main(void)
     check(!dvm_runtime_rc_defer(probe), "detached admitted");
     check(dvm_native_owner_attach(owner, world) && dvm_native_owner_enter(owner), "initial admission");
     dvm_runtime_rc_start();
+    if (argc == 2 && !strcmp(argv[1], "--invalid-drain"))
+    {
+        (void)dvm_runtime_rc_drain(1);
+        check(0, "active mutator drained the retirement queue");
+    }
     check(dvm_native_owner_leave(owner), "idle transition");
     check(!dvm_runtime_rc_defer(probe) && !dvm_runtime_rc_pending(), "idle admitted");
     check(dvm_native_owner_enter(owner) && dvm_native_owner_suspend(owner, 7), "native transition");

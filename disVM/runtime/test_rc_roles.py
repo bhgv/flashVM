@@ -2,6 +2,7 @@
 from pathlib import Path
 import os
 import shlex
+import signal
 import subprocess
 import tempfile
 
@@ -49,6 +50,12 @@ def main():
                 if result.returncode:
                     raise RuntimeError(result.stdout + result.stderr)
                 print(result.stdout, end='')
+                invalid = subprocess.run([str(binary), '--invalid-drain'], capture_output=True,
+                                         text=True, timeout=30)
+                if (invalid.returncode != -signal.SIGABRT or
+                        'disvm RC retirement outside stopped collector' not in invalid.stderr):
+                    raise RuntimeError('wrong-role drain control missed: ' + invalid.stderr)
+                print('PASS ACTIVE mutator cannot drain the collector retirement queue')
             elif result.returncode != 10 or 'RC role reached forbidden payload operation' not in result.stderr:
                 raise RuntimeError('RC guard control missed: ' + mode + result.stdout + result.stderr)
         print('PASS three active RC role controls: phase, pending progress, world identity')

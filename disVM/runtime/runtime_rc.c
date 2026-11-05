@@ -139,6 +139,11 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     DVM_RetirementStats stats = {0};
     void *value;
     unsigned long bytes;
+    if (!dvm_world_collector_owns(world))
+    {
+        fputs("disvm RC retirement outside stopped collector\n", stderr);
+        abort();
+    }
     while (budget && dvm_retirement_take(retirement, &value, &bytes))
     {
         (void)bytes;
@@ -189,8 +194,11 @@ int dvm_runtime_rc_finish(int diagnostics)
             enqueued,released,stats.ready+stats.reserved,saturated,stats.bytes,byte_limited,
             helper_enqueued,helper_saturated,helper_byte_limited);
     }
-    owner = NULL;
-    world = NULL;
     result = retirement == NULL || dvm_retirement_destroy(&retirement);
+    if (result)
+    {
+        owner = NULL;
+        world = NULL;
+    }
     return result;
 }
