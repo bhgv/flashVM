@@ -67,7 +67,7 @@ static int owner_swap(DVM_ObjectGuard *guard, void *expected, void *desired)
 }
 
 
-/* Restrict acquisition to bare native contexts or real ACTIVE VM owners.
+/* Restrict acquisition to bare native contexts or admitted VM owners.
  * Collector hooks and unacknowledged reentry are not mutator permission. */
 static int can_enter(DVM_NativeContext *context)
 {
@@ -76,7 +76,8 @@ static int can_enter(DVM_NativeContext *context)
     {
         return 0;
     }
-    return (state.phase == DVM_HEAP_ACTIVE && !state.pending_progress) ||
+    return ((state.phase == DVM_HEAP_ACTIVE || state.phase == DVM_HEAP_SHARED) &&
+            !state.pending_progress) ||
         (state.phase == DVM_HEAP_DETACHED && !dvm_native_context_has_poll(context));
 }
 

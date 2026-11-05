@@ -64,6 +64,9 @@ def main():
                 for name in [
                     "native_context.c",
                     "native_registers.c",
+                    "native_owner.c",
+                    "object_guard.c",
+                    "refcount.c",
                     "native_world.c",
                     "gc_workers.c",
                 ]

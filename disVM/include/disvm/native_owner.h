@@ -16,7 +16,8 @@ typedef enum DVM_HeapPhase
     DVM_HEAP_DETACHED = 0, /* No registered root set. */
     DVM_HEAP_IDLE,         /* Registered immutable roots; no heap access. */
     DVM_HEAP_ACTIVE,       /* Holds the exclusive heap turn. */
-    DVM_HEAP_NATIVE        /* Audited native wait; roots remain immutable. */
+    DVM_HEAP_NATIVE,       /* Audited native wait; roots remain immutable. */
+    DVM_HEAP_SHARED        /* Restricted work; ordinary heap operations refuse. */
 } DVM_HeapPhase;
 
 
@@ -60,6 +61,14 @@ int dvm_native_owner_leave(DVM_HeapOwner *owner);
  * Native64Caller hold into a releasing lease. Native work must
  * not access managed data. Returns zero on misuse, leaving state unchanged. */
 int dvm_native_owner_suspend(DVM_HeapOwner *owner, unsigned long epoch);
+
+
+/* Enter restricted shared admission from NATIVE on the same owner. All
+ * operand owners and stable roots must already be published. The shared
+ * body must use its own protection, avoid VM callbacks and release guards
+ * before leaving. These transitions do not consume the native resume token. */
+int dvm_native_owner_enter_shared(DVM_HeapOwner *owner);
+int dvm_native_owner_leave_shared(DVM_HeapOwner *owner);
 
 
 /* Reacquire the FIFO turn for this NATIVE owner. May block; successful return

@@ -52,7 +52,7 @@ int dvm_object_guard_fini(DVM_ObjectGuard *guard);
 
 
 /* Bounded native spin/CAS on an already-live guard. Requires bound TLS context;
- * allow bare native contexts or acknowledged ACTIVE VM owners only. Recursive,
+ * allow bare native contexts or acknowledged ACTIVE/SHARED VM owners. Recursive,
  * idle/native/collector use refuses. Does not wait for object availability or
  * allocate. The portable metadata fallback can take the port registry mutex;
  * do not call it while already holding that mutex. */

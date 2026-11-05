@@ -66,7 +66,8 @@ def main():
         # The older peer must fail immediately while owner zero still holds its
         # first turn; a timeout or a different failure is not accepted evidence.
         original = (root / "host/native_world.c").read_text()
-        predicate = "world->active || world->resuming || ticket != world->serving_ticket"
+        predicate = ("(world->active && (!shared || world->active != world->shared)) ||\n"
+                     "            world->resuming || ticket != world->serving_ticket")
         if original.count(predicate) != 1:
             raise RuntimeError("exclusive admission predicate is not unique")
         control_source = output / "world-control.c"

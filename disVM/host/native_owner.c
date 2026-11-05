@@ -79,6 +79,34 @@ int dvm_native_owner_suspend(DVM_HeapOwner *owner, unsigned long epoch)
 }
 
 
+/* Enter an audited shared interval with immutable published roots. Refusal
+ * leaves the native continuation and its pending resume untouched. */
+int dvm_native_owner_enter_shared(DVM_HeapOwner *owner)
+{
+    if (!current(owner) || owner->phase != DVM_HEAP_NATIVE || owner->pending_progress ||
+        !dvm_world_enter_shared(owner->roots))
+    {
+        return 0;
+    }
+    owner->phase = DVM_HEAP_SHARED;
+    return 1;
+}
+
+
+/* Finish shared work and republish roots. The original exclusive turn must
+ * still be reacquired with resume before continuing ordinary VM code. */
+int dvm_native_owner_leave_shared(DVM_HeapOwner *owner)
+{
+    if (!current(owner) || owner->phase != DVM_HEAP_SHARED ||
+        !dvm_world_leave(owner->roots))
+    {
+        return 0;
+    }
+    owner->phase = DVM_HEAP_NATIVE;
+    return 1;
+}
+
+
 /* Reenter the same NATIVE owner's turn. owner remains borrowed and may block;
  * no epoch is read until the caller is active again. Wrong phase/owner refuses. */
 int dvm_native_owner_resume(DVM_HeapOwner *owner)

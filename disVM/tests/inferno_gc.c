@@ -5,11 +5,12 @@
 
 #ifdef DVM_GC_WORKERS
 #include <pthread.h>
-#include <errno.h>
 #include <sched.h>
 #include "dat.h"
 #include "disvm/gc_workers.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
+#include "disvm/object_guard.h"
 
 #endif
 #include "isa.h"
@@ -324,8 +325,9 @@ typedef struct GraphRun
     pthread_mutex_t mutex; /* Protects phase and completion counters only. */
     int phase; /* 0 holds entry, 1 publishes edges, 2 removes edges, 3 exits. */
     int entered; /* Both mutators must be active before phase 1. */
+    int prepared; /* Both ordinary turns published roots before shared entry. */
     int changed[2]; /* Number of completed writes in each phase. */
-    pthread_mutex_t slot_lock; /* Serializes writes to the deliberately shared cell. */
+    DVM_ObjectGuard slot_guard; /* Production native guard for the shared cell. */
     int contended; /* 0 uses separate slots, 1 retries BUSY, 2 cancels before retry. */
     int held; /* First writer holds slot_lock, published under mutex. */
     int refused; /* Second writer observed BUSY without touching the slot. */
@@ -373,14 +375,15 @@ static void wait_graph_flag(GraphRun *run, const int *flag)
 
 
 /* Force an actual refusal before the second owner retries the same mapped
- * cell. The fixture mutex protects this cell and its two candidate owners. */
+ * cell. The native guard protects this cell and its two candidate owners. */
 static void write_contended_edge(GraphMutator *worker, int phase)
 {
     GraphRun *run = worker->run;
+    DVM_ObjectResult claim;
     if (phase == 1 && worker->index == 1)
     {
         wait_graph_flag(run, &run->held);
-        graph_check(pthread_mutex_trylock(&run->slot_lock) == EBUSY, "second writer observes BUSY");
+        graph_check(dvm_object_guard_try_enter(&run->slot_guard) == DVM_OBJECT_BUSY, "second writer observes BUSY");
         pthread_mutex_lock(&run->mutex);
         run->refused = 1;
         pthread_mutex_unlock(&run->mutex);
@@ -389,7 +392,14 @@ static void write_contended_edge(GraphMutator *worker, int phase)
             return;
         }
     }
-    graph_check(!pthread_mutex_lock(&run->slot_lock), "acquire shared edge");
+    while ((claim = dvm_object_guard_try_enter(&run->slot_guard)) == DVM_OBJECT_BUSY)
+    {
+        graph_check(dvm_native_context_poll(), "poll between shared edge attempts");
+        sched_yield();
+    }
+    graph_check(claim == DVM_OBJECT_ACQUIRED && !dvm_native_context_poll() &&
+        !dvm_native_owner_leave_shared(dvm_native_owner_current()),
+        "held guard excludes shared leave");
     if (phase == 1 && worker->index == 0)
     {
         pthread_mutex_lock(&run->mutex);
@@ -398,8 +408,11 @@ static void write_contended_edge(GraphMutator *worker, int phase)
         wait_graph_flag(run, &run->refused);
     }
     set_edge(worker->slot, phase == 1 ? worker->cycle : H);
-    pthread_mutex_unlock(&run->slot_lock);
+    graph_check(dvm_object_guard_leave(&run->slot_guard), "release shared edge");
 }
+
+
+static void wait_graph_counter(GraphRun *run, const int *counter);
 
 
 /* Run two graph changes on a native world participant. Allocation and final
@@ -409,13 +422,26 @@ static void *mutate_graph(void *argument)
     GraphMutator *worker = argument;
     GraphRun *run = worker->run;
     DVM_NativeContext *context = dvm_native_process_create(NULL);
-    DVM_WorldParticipant *participant;
+    DVM_HeapOwner *owner;
+    DVM_HeapOwnerStats stats;
     int completed = 0;
     graph_check(context && dvm_native_context_bind(context), "bind worker");
-    participant = dvm_world_join(backend.world, context);
+    owner = dvm_native_owner_current();
     ((REG *)dvm_native_context_registers(context))->M = worker->guest.R.M;
-    graph_check(participant && dvm_native_context_set_process(context, &worker->guest) &&
-        dvm_world_enter_shared(participant), "enter restricted shared interval");
+    graph_check(dvm_native_context_set_process(context, &worker->guest) &&
+        dvm_native_owner_attach(owner, backend.world) && dvm_native_owner_enter(owner) &&
+        !dvm_native_owner_enter_shared(owner) && dvm_native_owner_suspend(owner, 0),
+        "publish roots from ordinary turn before shared entry");
+    pthread_mutex_lock(&run->mutex);
+    run->prepared++;
+    pthread_mutex_unlock(&run->mutex);
+    wait_graph_counter(run, &run->prepared);
+    graph_check(dvm_native_owner_enter_shared(owner) && dvm_native_owner_statistics(owner, &stats) &&
+        stats.phase == DVM_HEAP_SHARED &&
+        dvm_object_guard_wait_available(&run->slot_guard) == DVM_OBJECT_REFUSED &&
+        !dvm_native_owner_enter(owner) &&
+        !dvm_native_owner_resume(owner) && !dvm_native_owner_suspend(owner, 0) &&
+        !dvm_native_owner_detach(owner), "shared state refuses ordinary owner transitions");
     pthread_mutex_lock(&run->mutex);
     run->entered++;
     pthread_mutex_unlock(&run->mutex);
@@ -447,9 +473,13 @@ static void *mutate_graph(void *argument)
         graph_check(dvm_native_context_poll(), "cooperative collector poll");
         sched_yield();
     }
-    graph_check(dvm_world_leave(participant) && dvm_world_detach(participant) &&
+    graph_check(dvm_native_owner_leave_shared(owner) && !dvm_native_owner_leave_shared(owner) &&
+        dvm_native_owner_resume(owner) && dvm_native_owner_progress(owner, 1) &&
+        dvm_native_owner_statistics(owner, &stats) && stats.releases == 1 &&
+        stats.reentries == 1 && stats.gc_progress == 1 &&
+        dvm_native_owner_leave(owner) && dvm_native_owner_detach(owner) &&
         dvm_native_context_unbind(context) && dvm_native_context_destroy(context),
-        "detach completed worker");
+        "finish shared work and resume the original exclusive continuation");
     return NULL;
 }
 
@@ -509,10 +539,11 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     uchar map[] = {0xc0};
     Type *pair_type = dtype(freeheap, 2*sizeof(void *), map, sizeof(map));
     GraphRun run = {
-        PTHREAD_MUTEX_INITIALIZER, 0, 0, {0, 0},
-        PTHREAD_MUTEX_INITIALIZER, contended, 0, 0, 0
+        PTHREAD_MUTEX_INITIALIZER, 0, 0, 0, {0, 0},
+        {0}, contended, 0, 0, 0
     };
     GraphMutator workers[2] = {{0}};
+    DVM_ObjectDomain *domain = dvm_object_domain_create();
     pthread_t threads[2];
     pthread_t observers[2];
     GraphObserver requests[2] = {{&run, 0}, {&run, 1}};
@@ -524,6 +555,7 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     unsigned int freed = freed_blocks;
     int phase;
     int index;
+    graph_check(domain && dvm_object_guard_init(&run.slot_guard, domain), "initialize shared cell guard");
     ptradd(D2H(pair));
     for (index = 0; index < 2; index++)
     {
@@ -589,7 +621,8 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     }
     graph_check(run.observed == 2, "both queued observers entered");
     graph_check(!contended || run.refused, "contended run observed BUSY");
-    pthread_mutex_destroy(&run.slot_lock);
+    graph_check(dvm_object_guard_fini(&run.slot_guard) && dvm_object_domain_destroy(domain),
+        "retire quiescent shared cell guard");
     pthread_mutex_destroy(&run.mutex);
     ptrdel(D2H(pair));
     deferred_release(pair);

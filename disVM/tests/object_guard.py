@@ -36,7 +36,7 @@ def main():
         'unbind': ('native_context.c', 'int dvm_native_context_unbind(', early_context, ''),
         'turn': ('native_context.c', 'int dvm_native_context_release_turn(', early_context, ''),
         'world_leave': ('native_world.c', 'int dvm_world_leave(', early_world, ''),
-        'world_enter': ('native_world.c', 'int dvm_world_enter(', early_world, ''),
+        'world_enter': ('native_world.c', 'static int enter_world(', early_world, ''),
         'depth': ('native_context.c', 'int dvm_native_context_object_acquire(', '== ULONG_MAX', '== 1'),
     }
     with tempfile.TemporaryDirectory(prefix='native object guards ') as directory:
