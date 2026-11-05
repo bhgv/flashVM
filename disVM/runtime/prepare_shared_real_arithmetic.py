@@ -53,12 +53,25 @@ def adapt_scaled(source):
         match = matches[0]
         slots = name+'_slots'
         fixed_product = name in ('mulx', 'divx')
-        prefix = 'WORD scale, ' if fixed_product else ''
+        fixed_variant = name.endswith(('0', '1'))
+        prefix = 'WORD scale, ' if fixed_product else 'const WORD *coefficients, '
         body = match.group().replace('OP('+name+')',
             'static const char *\n'+slots+'('+prefix+'const void *first_slot, const void *second_slot, void *result_slot)')
         body = body.replace('DVM_R.m', 'first_slot').replace('DVM_R.s', 'second_slot').replace('DVM_R.d', 'result_slot')
         if fixed_product:
             body = body.replace('p = fixedword((NREG+2)*IBY2WD);', 'p = scale;')
+        if fixed_variant:
+            body = body.replace('fixedword(NREG*IBY2WD)',
+                '(coefficients ? coefficients[0] : fixedword(NREG*IBY2WD))')
+            body = body.replace('fixedword((NREG+2)*IBY2WD)',
+                '(coefficients ? coefficients[1] : fixedword((NREG+2)*IBY2WD))')
+            body = re.sub(r'(\t)([rs] = fixedshift\([rs], p\);)',
+                r'\1if(p < -63 || p > 63)\n\1\treturn exInval;\n\1\2', body)
+            body = body.replace('w = fixedroundmask(p);',
+                '{\n\t\t\tif(p >= 0 || p < -63)\n\t\t\t\treturn exInval;\n'
+                '\t\t\tw = fixedroundmask(p);\n\t\t}')
+        elif not fixed_product:
+            body = body.replace('\n{\n', '\n{\n    (void)coefficients;\n', 1)
         # Slot-level diagnostics must return to the caller before VM unwinding.
         body = re.sub(r'error\((ex[A-Za-z]+)\);', r'return \1;', body)
         body = body.replace('return;', 'return NULL;')
@@ -67,6 +80,7 @@ def adapt_scaled(source):
         args = ('scale, ' if fixed_product else '')+'DVM_R.m, DVM_R.s, DVM_R.d'
         helper = 'dvm_runtime_fixed_product' if fixed_product else 'dvm_runtime_scaled_arithmetic'
         opcode = ('' if name.startswith('iexp') else 'I')+name.upper()
+        direct_args = args if fixed_product else 'NULL, '+args
         wrapper = f'''
 OP({name})
 {{
@@ -74,7 +88,7 @@ OP({name})
 {init}    if(dvm_runtime_guarded_copies) {{
         problem = {helper}({opcode}, {args}, {slots});
     }} else {{
-        problem = {slots}({args});
+        problem = {slots}({direct_args});
     }}
     if(problem != nil) {{
         error((char*)problem);

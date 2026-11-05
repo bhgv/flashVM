@@ -10,6 +10,8 @@ GUEST = '''implement Reals;
 include "sys.m";
 include "math.m";
 Reals: module {init: fn();};
+FixedA: type fixed(0.1);
+FixedB: type fixed(0.3);
 init() {
     sys := load Sys Sys->PATH;
     sys->print("BEGIN REAL arithmetic5\\n");
@@ -38,6 +40,14 @@ init() {
     } exception {
         "zero divide" => {}
     }
+    fixed_left := FixedA a;
+    fixed_right := FixedA (b/b);
+    fixed_product := fixed_left * fixed_right;
+    fixed_ratio := fixed_left / fixed_right;
+    fixed_cast := FixedB fixed_product;
+    if (real fixed_product != 2.0 || real fixed_ratio != 2.0 ||
+        real fixed_cast < 1.7 || real fixed_cast > 2.1)
+        raise "leased fixed arithmetic result";
     math := load Math Math->PATH;
     math->FPstatus(0, Math->ZDIV);
     math->FPcontrol(Math->RND_NINF, Math->RND_MASK);
@@ -333,24 +343,36 @@ const char *__wrap_dvm_runtime_real_arithmetic(int opcode,const void *a,const vo
 
 
 const char *__real_dvm_runtime_scaled_arithmetic(int,const void *,const void *,void *,
-    const char *(*)(const void *,const void *,void *));
+    const char *(*)(const WORD *,const void *,const void *,void *));
 
 
 static __thread int scaled_opcode; /* Opcode for the current wrapped evaluator. */
-static __thread const char *(*scaled_evaluator)(const void *, const void *, void *); /* Borrowed through the synchronous call. */
+static __thread const char *(*scaled_evaluator)(const WORD *, const void *, const void *, void *); /* Borrowed through the synchronous call. */
 
 
 /* Observe the actual retained evaluator under the native lease. */
-static const char *observe_scaled(const void *first, const void *second, void *out)
+static const char *observe_scaled(const WORD *coefficients, const void *first, const void *second, void *out)
 {
     DVM_HeapOwnerStats owner;
-    const char *problem = scaled_evaluator(first, second, out);
+    const char *problem = scaled_evaluator(coefficients, first, second, out);
 
     if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
         owner.phase == DVM_HEAP_NATIVE)
     {
         switch (scaled_opcode)
         {
+        case IMULX1:
+            check(coefficients != NULL, "MULX1 has captured coefficients");
+            print("LEASED MULX1\n");
+            break;
+        case IDIVX1:
+            check(coefficients != NULL, "DIVX1 has captured coefficients");
+            print("LEASED DIVX1\n");
+            break;
+        case ICVTXX0:
+            check(coefficients != NULL, "CVTXX0 has captured coefficients");
+            print("LEASED CVTXX0\n");
+            break;
         case IEXPW:
             print("LEASED EXPW\n");
             if (problem == exZdiv)
@@ -371,7 +393,7 @@ static const char *observe_scaled(const void *first, const void *second, void *o
 
 
 const char *__wrap_dvm_runtime_scaled_arithmetic(int opcode,const void *base,const void *exponent,void *out,
-    const char *(*evaluate)(const void *,const void *,void *))
+    const char *(*evaluate)(const WORD *,const void *,const void *,void *))
 {
     if (opcode == IEXPW)
         powers |= 1;
@@ -672,7 +694,8 @@ def main():
                     raise RuntimeError('REAL arithmetic failed: '+output)
                 leased = {line for line in output.splitlines() if line.startswith('LEASED ')}
                 if leased != {'LEASED ADDF', 'LEASED SUBF', 'LEASED MULF', 'LEASED DIVF', 'LEASED NEGF',
-                              'LEASED EXPW', 'LEASED EXPL', 'LEASED EXPF', 'LEASED EXPW diagnostic'}:
+                              'LEASED EXPW', 'LEASED EXPL', 'LEASED EXPF', 'LEASED EXPW diagnostic',
+                              'LEASED MULX1', 'LEASED DIVX1', 'LEASED CVTXX0'}:
                     raise RuntimeError('leased FP coverage missed: '+output)
                 if 'PASS scheduled FP input retry' not in output:
                     raise RuntimeError('FP input retry missed: '+output)

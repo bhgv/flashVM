@@ -14,9 +14,9 @@
 const char *dvm_runtime_real_arithmetic(int opcode, const void *first,
     const void *second, void *output);
 /* The original opcode evaluator receives only private, saved operands.
- * It returns its diagnostic after capture. Frame-reading variants run ACTIVE. */
+ * It returns its diagnostic after capture. A non-NULL coefficient pair contains frame words captured under ACTIVE. */
 const char *dvm_runtime_scaled_arithmetic(int opcode, const void *first, const void *second,
-    void *output, const char *(*evaluate)(const void *, const void *, void *));
+    void *output, const char *(*evaluate)(const WORD *, const void *, const void *, void *));
 const char *dvm_runtime_fixed_product(int opcode, WORD scale, const void *first,
     const void *second, void *output, const char *(*evaluate)(WORD, const void *, const void *, void *));
 #endif
