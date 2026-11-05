@@ -1626,7 +1626,7 @@ def main():
                          "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
                          "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
-                         "dvm_runqueue_append", "dvm_runqueue_claim", "dvm_managed_workers_yield",
+                         "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                          "dvm_native_owner_progress", "dvm_gc_workers_create"])
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()

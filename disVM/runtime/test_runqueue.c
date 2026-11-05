@@ -10,10 +10,20 @@
 #include <string.h>
 
 
-/* Isolated queue fixture has no pool; actual wake/idle behavior is exercised by
- * the production elastic-runtime test, not simulated by this FIFO oracle. */
+static Prog *expected_waiter; /* Borrowed fixture waiter during notification. */
+static char *expected_cause; /* Exact cause expected in the published waiter. */
+static int observed_waiter; /* Notification observed the completed wait. */
+
+
+/* Observe the published waiter at the worker notification boundary. */
 void dvm_managed_workers_wake(void)
 {
+    if (expected_waiter)
+    {
+        observed_waiter = expected_waiter->state == Pready && !expected_waiter->ptr &&
+            !expected_waiter->chan && expected_waiter->kill == expected_cause &&
+            dvm_runqueue_head() == expected_waiter;
+    }
 }
 
 
@@ -116,12 +126,43 @@ int main(void)
         nodes[index].process.pid = (int)index+1;
         nodes[index].process.next = index+1 < DVM_RUNTIME_PROCESS_MAX ? &nodes[index+1].process : NULL;
     }
+    for (index = 0; index < 3; index++)
+    {
+        int states[] = {Psend, Precv, Palt};
+        Prog *waiter = &extra.process;
+        char *pending = "pending cancellation";
+        char *cause = index == 1 ? "channel hangup" : NULL;
+        waiter->state = states[index];
+        waiter->ptr = &extra;
+        waiter->chan = (Channel *)&extra;
+        waiter->kill = pending;
+        expected_waiter = waiter;
+        expected_cause = cause ? cause : pending;
+        observed_waiter = 0;
+        check(dvm_runqueue_complete_channel_wait(waiter, cause) && observed_waiter,
+            "worker notification sees fully completed channel wait");
+        expected_waiter = NULL;
+        check(!dvm_runqueue_complete_channel_wait(waiter, "duplicate") &&
+            waiter->kill == expected_cause && dvm_runqueue_pop(Psend) == waiter,
+            "duplicate channel completion leaves the published cause intact");
+    }
     check(dvm_runqueue_append(&nodes[0].process),"first append");
     check(!dvm_runqueue_append(&nodes[0].process),"duplicate runnable admission accepted");
     for (index = 1; index < DVM_RUNTIME_PROCESS_MAX; index++)
     {
         check(dvm_runqueue_append(&nodes[index].process),"fill bounded queue");
     }
+    extra.process.state = Precv;
+    extra.process.ptr = &extra;
+    extra.process.chan = (Channel *)&extra;
+    extra.process.kill = expected_cause;
+    check(!dvm_runqueue_complete_channel_wait(&extra.process, "refused") &&
+        extra.process.state == Precv && extra.process.ptr == &extra &&
+        extra.process.chan == (Channel *)&extra && extra.process.kill == expected_cause,
+        "full queue preserves blocked wait and pending cause");
+    extra.process.ptr = nil;
+    extra.process.chan = nil;
+    extra.process.kill = nil;
     check(!dvm_runqueue_append(&extra.process),"process quota exceeded");
     process = dvm_runqueue_head();
     saved = process->link;

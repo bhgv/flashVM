@@ -776,7 +776,7 @@ static void submit_host_cancel_once(void)
 }
 
 
-int __real_dvm_runqueue_append(Prog *process);
+int __real_dvm_runqueue_complete_channel_wait(Prog *process, char *cause);
 
 
 /* Submit duplicates while delivery still owns the waiter's completion claim. */
@@ -792,7 +792,7 @@ static void *submit_during_host_cancel(void *argument)
 }
 
 
-int __wrap_dvm_runqueue_append(Prog *process)
+int __wrap_dvm_runqueue_complete_channel_wait(Prog *process, char *cause)
 {
     if ((host_cancel_mode || host_cancel_on_publish) && !host_cancel_delivery_seen &&
         process->state == Precv && process->pid == parked_pid)
@@ -806,7 +806,7 @@ int __wrap_dvm_runqueue_append(Prog *process)
         host_cancel_delivery_seen = 1;
         puts("PASS coalesced cancellation during delivery");
     }
-    return __real_dvm_runqueue_append(process);
+    return __real_dvm_runqueue_complete_channel_wait(process, cause);
 }
 
 

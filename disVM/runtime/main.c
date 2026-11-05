@@ -1393,12 +1393,9 @@ void dvm_runtime_channel_wake(Prog *peer, char *cause)
     {
         error("invalid channel waiter state");
     }
-    addrun(peer);
-    peer->ptr = nil;
-    peer->chan = nil;
-    if (cause)
+    if (!dvm_runqueue_complete_channel_wait(peer, cause))
     {
-        peer->kill = cause;
+        error("invalid runnable process admission");
     }
 }
 

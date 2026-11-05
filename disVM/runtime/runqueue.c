@@ -234,7 +234,7 @@ Prog *dvm_runqueue_head(void)
 /* Append one borrowed runtime Prog, refusing native leases and duplicates before
  * mutation. Each withdrawn native continuation reserves one slot for return.
  * No allocation/throw; success gives the FIFO one runnable member. */
-int dvm_runqueue_append(Prog *process)
+static int append_ready(Prog *process, int complete_wait, char *cause)
 {
     if (!process || runtime_process(process)->native_owner || process->link ||
         (runtime_process(process)->dispatch_owner &&
@@ -243,6 +243,19 @@ int dvm_runqueue_append(Prog *process)
         !endpoints_valid())
     {
         return 0;
+    }
+    if (complete_wait)
+    {
+        if (process->state != Psend && process->state != Precv && process->state != Palt)
+        {
+            return 0;
+        }
+        process->ptr = nil;
+        process->chan = nil;
+        if (cause)
+        {
+            process->kill = cause;
+        }
     }
     process->state = Pready;
     runtime_process(process)->queued = 1;
@@ -258,6 +271,21 @@ int dvm_runqueue_append(Prog *process)
     count++;
     dvm_managed_workers_wake();
     return 1;
+}
+
+
+/* Append a borrowed runtime process after validation. Keep its wait fields. */
+int dvm_runqueue_append(Prog *process)
+{
+    return append_ready(process, 0, nil);
+}
+
+
+/* Complete a detached channel wait. Preserve an existing kill if cause is nil.
+ * Return zero without mutation on admission refusal. NativeWorld is required. */
+int dvm_runqueue_complete_channel_wait(Prog *process, char *cause)
+{
+    return append_ready(process, 1, cause);
 }
 
 

@@ -69,6 +69,11 @@ Prog *dvm_runqueue_head(void);
 int dvm_runqueue_append(Prog *process);
 
 
+/* Publish a detached waiter with cleared wait fields and optional borrowed
+ * cause. Return zero unchanged on refusal. Caller owns NativeWorld. */
+int dvm_runqueue_complete_channel_wait(Prog *process, char *cause);
+
+
 /* Remove the FIFO head and set its retained state. Return NULL on empty/invalid
  * queues. Caller retains the Prog in the separate GC/process list. */
 Prog *dvm_runqueue_pop(int state);
