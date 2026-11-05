@@ -45,11 +45,17 @@ static void publish(DVM_NativeContext *context, void *registers,
     RuntimeGC *gc = user;
     USED(context);
     Prog *guest = process;
-    if (guest && guest->state != Prelease && size == sizeof(REG))
+    if (!guest || guest->state == Prelease)
     {
-        guest->R = *(REG *)registers;
-        gc->snapshots++;
+        return;
     }
+    if (!registers || size != sizeof(REG))
+    {
+        fprintf(stderr, "disvm GC cannot publish live process registers\n");
+        abort();
+    }
+    memmove(&guest->R, registers, sizeof(guest->R));
+    gc->snapshots++;
 }
 
 
