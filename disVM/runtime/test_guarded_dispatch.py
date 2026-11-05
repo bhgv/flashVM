@@ -6,6 +6,17 @@ import json
 import re
 
 
+# These families use separate paths from the guarded byte dispatcher.
+# Membership records where to audit, not an admission or safety result.
+SEPARATE_PATHS = {
+    'scheduler_and_calls': 'IALT INBALT ICALL IFRAME ISPAWN ILOAD IMCALL IMSPAWN IMFRAME IRET IEXIT ISEND IRECV IRAISE',
+    'control_and_tables': 'INOP IGOTO IRUNT IJMP ICASE ICASEC ICASEL ITCMP IECLR',
+    'allocation': 'INEW INEWA INEWCB INEWCW INEWCF INEWCP INEWCM INEWCMP INEWCL IMNEWZ INEWZ INEWAZ',
+    'managed_owners': 'ICONSB ICONSW ICONSP ICONSF ICONSM ICONSMP ICONSL IHEADP IHEADMP ITAIL IMOVP IMOVMP ISELF',
+    'strings_and_slices': 'ICVTCA ICVTAC ICVTWC ICVTCW ICVTFC ICVTCF IINSC IINDC IADDC ISLICEA ISLICELA ISLICEC ICVTLC ICVTCL',
+}
+
+
 class DispatchMismatch(ValueError):
     """A precise source-closure mismatch, never an execution-admission verdict."""
 
@@ -57,6 +68,40 @@ def require_refusal(emitter, dispatcher, executor, expected):
         raise RuntimeError('dispatch control missed: '+expected)
 
 
+def opcode_inventory(isa, optab, guarded):
+    """Map every numeric opcode to its interpreter entry and audited x64 route."""
+    def tokens(text, pattern):
+        clean = re.sub(r'/\*.*?\*/|//[^\n]*', '', text, flags=re.S)
+        match = re.search(pattern, clean, flags=re.S)
+        if not match:
+            raise DispatchMismatch('opcode inventory shape')
+        return [token.strip() for token in match.group(1).split(',') if token.strip()]
+
+    names = tokens(isa, r'enum\s*\{([^}]*)\}')
+    entries = tokens(optab, r'optab\[256\]\)\(void\)\s*=\s*\{([^}]*)\}')
+    if (len(names) != len(entries) or not names or names[-1] != 'ISELF'
+            or len(names) != len(set(names))
+            or any(not re.fullmatch(r'I[A-Z0-9]+', name) for name in names)
+            or any(not re.fullmatch(r'[a-z][a-z0-9]*', entry) for entry in entries)
+            or not guarded.keys() <= set(names)):
+        raise DispatchMismatch('opcode inventory coverage')
+
+    remaining = [(name, family) for family, group in SEPARATE_PATHS.items() for name in group.split()]
+    separate = dict(remaining)
+    if len(separate) != len(remaining) or set(separate) != set(names) - guarded.keys():
+        raise DispatchMismatch('separate opcode path coverage')
+
+    rows = []
+    for opcode, (name, entry) in enumerate(zip(names, entries)):
+        guarded_entry = guarded.get(name)
+        if guarded_entry is not None and guarded_entry != entry:
+            raise DispatchMismatch('guarded x64/interpreter entry disagreement: '+name)
+        rows.append({'opcode': opcode, 'name': name, 'interpreter_entry': entry,
+                     'guarded_bytes_x64': guarded_entry is not None,
+                     'audit_path': separate.get(name, 'guarded_bytes_x64')})
+    return rows
+
+
 def main():
     """CLI supplies matching build/native and source runtime directories.
 
@@ -72,7 +117,19 @@ def main():
              (args.native/'xec.c').read_text()]
     emitter,dispatcher,executor = texts
     cases = inspect(*texts)
-    controls = 0
+    isa = (args.native/'isa.h').read_text()
+    optab = (args.native/'optab.h').read_text()
+    inventory = opcode_inventory(isa, optab, dict(cases))
+    first_guarded = next(row for row in inventory if row['guarded_bytes_x64'])
+    anchor = '\t'+first_guarded['interpreter_entry']+','
+    try:
+        opcode_inventory(isa, optab.replace(anchor, '\twrong,', 1), dict(cases))
+    except DispatchMismatch as failure:
+        if str(failure) != 'guarded x64/interpreter entry disagreement: '+first_guarded['name']:
+            raise
+    else:
+        raise RuntimeError('interpreter mismatch control missed')
+    controls = 1
     for op,fn in cases:
         before = '    case '+op+':\n        '+fn+'();\n        break;'
         if dispatcher.count(before) != 1:
@@ -85,12 +142,12 @@ def main():
                     dispatcher,executor,'selector uniqueness')
     controls += 1
     report = {'scope':'bounded generated-selector/source-dispatch/entry closure only; no execution authority',
-              'operations':dict(cases),'operation_count':len(cases),'exact_source_controls':controls,
-              'sha256':dict(zip(('amd64-emit.h','bytes_fast.c','xec.c'),
-                               (hashlib.sha256(s.encode()).hexdigest() for s in texts)))}
+              'opcode_inventory':inventory, 'operations':dict(cases),'operation_count':len(cases),'exact_source_controls':controls,
+              'sha256':dict(zip(('amd64-emit.h','bytes_fast.c','xec.c','isa.h','optab.h'),
+                               (hashlib.sha256(s.encode()).hexdigest() for s in [*texts, isa, optab])))}
     if args.report:
         args.report.write_text(json.dumps(report,indent=2)+'\n')
-    print('PASS guarded dispatch closure: '+str(len(cases))+' operations; '+str(controls)+' exact source controls')
+    print(f'PASS guarded dispatch closure: {len(cases)} of {len(inventory)} opcodes; {controls} exact source controls')
 
 
 if __name__ == '__main__':
