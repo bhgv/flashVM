@@ -334,7 +334,7 @@ void dvm_runtime_gc_native_enter(int released)
     }
     {
         Prog *process = dvm_native_context_process(dvm_native_context_current());
-        if (process && !dvm_runqueue_resume(process))
+        if (up->prog != process || (process && !dvm_runqueue_resume(process)))
         {
             fprintf(stderr,"disvm: native continuation restoration failed\n");
             exit(1);

@@ -130,6 +130,8 @@ static void rendezvous_mover(void)
     if (++moves == pause_at)
     {
         int released;
+        uchar *saved_frame = DVM_R.FP;
+        void *saved_destination = DVM_R.d;
         pthread_mutex_lock(&gate);
         first_owner = owner;
         first_process = dvm_native_context_process(owner);
@@ -159,6 +161,11 @@ static void rendezvous_mover(void)
         }
         pthread_mutex_unlock(&gate);
         dvm_runtime_gc_native_enter(released);
+        check(dvm_native_context_current() == owner &&
+            dvm_native_context_process(owner) == first_process &&
+            dvm_runqueue_head() == first_process &&
+            DVM_R.FP == saved_frame && DVM_R.d == saved_destination,
+            "native return preserves the original frame and result address");
         if (target_cancel)
         {
             check(!dvm_runtime_cancel_guest_wait(first_process->pid) &&
