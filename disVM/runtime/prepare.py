@@ -320,11 +320,26 @@ def main():
     termination = "executed:\n\t\tif(!vmyield())"
     if code.count(termination) != 1:
         raise ValueError("managed termination boundary drift")
+    decode = "\t\tvmdecode(&fetched);"
+    if code.count(decode) != 1:
+        raise ValueError("decoded retry boundary drift")
+    code = code.replace(decode, decode +
+        "\n\t\tif(dvm_runtime_guarded_copies) {\n"
+        "\t\t\tdvm_native_execution()->arithmetic_retry_opcode = op;\n"
+        "\t\t}")
     code = code.replace(termination,
-        "executed:\n\t\tif(p->flags & Pkilled)\n"
+        "executed:\n"
+        "\t\tif(dvm_runtime_guarded_copies && dvm_runtime_arithmetic_finish(p)) {\n"
+        "\t\t\tDVM_R.PC = fetched.pc;\n"
+        "\t\t\tDVM_R.s = DVM_R.m = DVM_R.d = nil;\n"
+        "\t\t\tdvm_runtime_instructions--;\n"
+        "\t\t\tbreak;\n"
+        "\t\t}\n"
+        "\t\tif(p->flags & Pkilled)\n"
         "\t\t\tdvm_runtime_termination_checkpoint(p);\n\t\tif(!vmyield())", 1)
     code = code.replace(
         '#include "interp.h"', '#include "interp.h"\n'
+        '#include "disvm/native_process.h"\n'
         'extern void dvm_runtime_termination_checkpoint(Prog *process);', 1)
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()

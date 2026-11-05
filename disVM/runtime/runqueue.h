@@ -18,6 +18,7 @@ typedef struct DVM_RuntimeProcess
     int parent_pid;                   /* Immutable numeric identity of the spawning guest. */
     int lifetime_holds;      /* Native borrows acquired under the heap turn. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
+    unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
     int queued;                       /* O(1) membership, changed only by this queue module. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */

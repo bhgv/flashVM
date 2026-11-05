@@ -2294,6 +2294,8 @@ static int runtime_dispatch_turn(void)
     dvm_native_execution()->instruction_boundary_error = 0;
     if (waserror())
     {
+        dvm_native_execution()->arithmetic_retry_opcode = 0;
+        ((DVM_RuntimeProcess *)process)->arithmetic_retries = 0;
         process->R = DVM_R;
         dvm_native_context_set_process(context, nil);
         dvm_bigtable_abort(process);

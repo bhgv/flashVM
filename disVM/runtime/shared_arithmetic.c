@@ -9,6 +9,8 @@
 #include "shared_arithmetic.h"
 #include "arithmetic_value.h"
 #include "managed_owner.h"
+#include "disvm/native_process.h"
+#include "runqueue.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -117,11 +119,41 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
 }
 
 
-/* Preserve the C/JIT opcode diagnostic ABI while these callers have no
- * scheduler retry protocol. Inputs and output borrow the attempt's spans. */
+/* Adapt the result for C/JIT. Only the armed bytecode dispatch can yield on
+ * BUSY. The runtime Prog retains a bounded retry count across OS turns.
+ * Other callers and exhausted retries receive the original diagnostic. */
 const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *second, void *output)
 {
     int retryable;
 
-    return dvm_runtime_arithmetic_attempt(opcode, first, second, output, &retryable);
+    const char *problem = dvm_runtime_arithmetic_attempt(opcode, first, second, output, &retryable);
+
+    if (retryable && dvm_native_execution()->arithmetic_retry_opcode == opcode)
+    {
+        DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)up->prog;
+        if (process && process->arithmetic_retries < 8)
+        {
+            process->arithmetic_retries++;
+            dvm_native_execution()->arithmetic_retry_opcode = -1;
+            return NULL;
+        }
+    }
+    return problem;
+}
+
+
+
+/* Disarm the current dispatch, preserving the retry count only on yield.
+ * process borrows a live runtime Prog under NativeWorld. No allocation. */
+int dvm_runtime_arithmetic_finish(Prog *process)
+{
+    DVM_NativeExecution *execution = dvm_native_execution();
+    int retry = execution->arithmetic_retry_opcode == -1;
+
+    execution->arithmetic_retry_opcode = 0;
+    if (!retry)
+    {
+        ((DVM_RuntimeProcess *)process)->arithmetic_retries = 0;
+    }
+    return retry;
 }

@@ -16,10 +16,11 @@ DVM_NativeContext *dvm_native_process_create(void *runtime);
 
 
 /* Host execution guards travel with extended up, never with a saved Prog.REG.
- * Scalars only: neither field is a GC root or a file-format ABI member. */
+ * Scalars only: no field is a GC root or a file-format ABI member. */
 typedef struct DVM_NativeExecution
 {
     unsigned long idle_slices;      /* Owner-local turns since acknowledged input progress. */
+    int arithmetic_retry_opcode;    /* Armed decoded opcode, or zero outside dispatch; -1 requests retry. */
     int instruction_boundary_error; /* Quota rejected before PC fetch/advance on this owner. */
     unsigned long progress_epoch;   /* Last shared stdin/UI progress generation observed by this owner. */
     unsigned long host_fcr;         /* Native caller rounding state saved for a managed turn. */

@@ -243,6 +243,28 @@ int __wrap_dvm_runtime_divisor_zero(int opcode, const void *second)
                     }
                     active = 0;
                     memcpy(&DVM_R, &saved''')
+    code = '#include "disvm/native_process.h"\n'+code
+    code = code.replace('static int force_busy;', '''static Inst *retry_pc; /* Post-decode PC at the first scheduled BUSY. */
+static unsigned long retry_instruction_count; /* Quota position at the first attempt. */
+static int retry_observed; /* One real guest instruction has resumed. */
+static int force_busy;''')
+    code = code.replace('    return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);', '''    if (CONTROL == 3 && !active && !retry_observed &&
+        dvm_native_execution()->arithmetic_retry_opcode > 0 && SCHEDULED_ARITHMETIC_OPCODE)
+    {
+        if (!retry_pc)
+        {
+            retry_pc = DVM_R.PC;
+            retry_instruction_count = dvm_runtime_instructions;
+            return DVM_CELL_BUSY;
+        }
+        check(retry_pc == DVM_R.PC && retry_instruction_count == dvm_runtime_instructions,
+            "scheduler redecodes the same PC without double charging quota");
+        retry_observed = 1;
+        print("PASS scheduled arithmetic retry\\n");
+    }
+    return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);''')
+    opcode_check = ' || '.join('dvm_native_execution()->arithmetic_retry_opcode == I'+op.upper() for op in OPS)
+    code = code.replace('SCHEDULED_ARITHMETIC_OPCODE', '('+opcode_check+')')
     code = code.replace('FAIL integer:', 'FAIL arithmetic:').replace('PASS integer', 'PASS arithmetic')
     return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
@@ -277,6 +299,8 @@ def main():
                             raise RuntimeError('semantic control missed: '+output)
                     elif run.returncode or ('PASS arithmetic admission refusal' if variant == 3 else 'PASS arithmetic probe:') not in output or 'PASS arithmetic24' not in output:
                         raise RuntimeError('arithmetic positive failed: '+output)
+                    if variant == 3 and 'PASS scheduled arithmetic retry' not in output:
+                        raise RuntimeError('scheduler retry missed: '+output)
     print('PASS 24 actual arithmetic opcodes, 1404000 alias/value cases, C/JIT guest, both polls')
 
 

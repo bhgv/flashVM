@@ -16,4 +16,10 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
  * rolled back without reading operands or publishing the result. */
 const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const void *second,
     void *output, int *retryable);
+
+
+/* Disarm the current dispatch. process borrows the active runtime Prog.
+ * Return one on pre-effect retry; otherwise clear its consecutive count. */
+struct Prog;
+int dvm_runtime_arithmetic_finish(struct Prog *process);
 #endif
