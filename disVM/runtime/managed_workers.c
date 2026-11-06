@@ -23,6 +23,8 @@ typedef struct ManagedWorker
 {
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
     unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
+    int guest_pid;              /* Dedicated guest identity, or zero for pool execution. */
+    int guest_retired;          /* Set by this guest thread after managed retirement. */
     int done;                   /* Published under service.sync after TLS destruction. */
     FVM_PortThread *thread;    /* Joined before this slot or service is reset. */
     uintptr identity;          /* Live helper context identity; zero before/after attachment. */
@@ -64,6 +66,7 @@ typedef struct ManagedWorkers
     ManagedWorker *helpers;       /* Individually allocated stable slots; never realloc live storage. */
 } ManagedWorkers;
 
+static __thread ManagedWorker *current_guest; /* Dedicated slot bound through native TLS teardown. */
 static ManagedWorkers service; /* One process-wide runtime; lifetime ends after join. */
 
 
@@ -252,6 +255,15 @@ static void execute(void *argument)
     if (attached)
     {
         worker->identity = (uintptr)context;
+        if (worker->guest_pid)
+        {
+            current_guest = worker;
+            if (service.diagnostics)
+            {
+                fprintf(stderr, "NATIVEGUEST start pid=%d thread=%lu\n",
+                    worker->guest_pid, (unsigned long)pthread_self());
+            }
+        }
         fvm_port_sync_lock(service.sync);
         if (service.ready < service.count - 1)
         {
@@ -277,7 +289,7 @@ static void execute(void *argument)
         }
         else
         {
-            while (!stopping())
+            while (!stopping() && !worker->guest_retired)
             {
                 int progress = service.turn();
                 if (progress < 0)
@@ -291,7 +303,7 @@ static void execute(void *argument)
                 }
                 /* Stop owns the registry through join. A resumed native call
                  * may finish its current turn, but must not reap/mutate links. */
-                if (stopping())
+                if (stopping() || worker->guest_retired)
                 {
                     break;
                 }
@@ -312,6 +324,12 @@ static void execute(void *argument)
             }
             poperror();
         }
+        if (worker->guest_retired && service.diagnostics)
+        {
+            fprintf(stderr, "NATIVEGUEST retired pid=%d thread=%lu\n",
+                worker->guest_pid, (unsigned long)pthread_self());
+        }
+        current_guest = NULL;
         worker->identity = 0;
         service.live--;
         if (!dvm_native_owner_statistics(dvm_native_owner_current(),&worker->owner))
@@ -337,7 +355,7 @@ static void execute(void *argument)
 
 /* Allocate one stable slot before creating its OS thread. Caller owns the heap;
  * no wait for attachment is allowed here. Failure leaves registry unchanged. */
-static int start_helper(void)
+static int start_helper(int guest_pid)
 {
     ManagedWorker *worker;
     if (service.created == ULONG_MAX)
@@ -350,6 +368,7 @@ static int start_helper(void)
         return 0;
     }
     worker->id = service.created + 1;
+    worker->guest_pid = guest_pid;
     worker->thread = fvm_port_thread_start(execute, worker);
     if (!worker->thread)
     {
@@ -379,7 +398,7 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
     int index;
-    if (count < 2 || !turn || !cancel_waits || service.sync || !context || !up || up->prog ||
+    if (count < 1 || !turn || !cancel_waits || service.sync || !context || !up || up->prog ||
         (limit && (unsigned long)count > limit) ||
         dvm_native_context_process(context) || dvm_native_context_turn(context) ||
         !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
@@ -405,7 +424,7 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     }
     for (index = 0; index < count - 1; index++)
     {
-        if (!start_helper())
+        if (!start_helper(0))
         {
             fail("cannot start executor");
             dvm_managed_workers_stop(0);
@@ -413,6 +432,35 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
         }
     }
     return 1;
+}
+
+
+/* Start one OS thread for pid while the creator still owns NativeWorld.
+ * No guest pointer is passed to a thread before scheduler publication. */
+int dvm_managed_workers_start_guest(int pid)
+{
+    return service.sync && pid > 0 && !stopping() && start_helper(pid);
+}
+
+
+/* Match a borrowed process identity against the calling OS thread's slot. */
+int dvm_managed_workers_owns_guest(int pid, int parent_pid)
+{
+    return current_guest ? current_guest->guest_pid == pid : parent_pid == 0;
+}
+
+
+/* Latch retirement on the dedicated thread after its Prog has been freed. */
+void dvm_managed_workers_guest_retired(int pid)
+{
+    if (current_guest)
+    {
+        if (current_guest->guest_pid != pid)
+        {
+            abort();
+        }
+        current_guest->guest_retired = 1;
+    }
 }
 
 
@@ -488,7 +536,7 @@ const char *dvm_managed_workers_native_wait(void)
         fprintf(stderr, "disvm: automatic executor resource limit=%lu reached\n", service.limit);
         return "automatic executor resource limit reached";
     }
-    if (!start_helper())
+    if (!start_helper(0))
     {
         fprintf(stderr, "disvm: automatic executor OS thread or native allocation failure\n");
         return "automatic executor OS thread or native allocation failure";

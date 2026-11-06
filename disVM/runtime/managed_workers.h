@@ -13,7 +13,7 @@ enum
 
 
 /* Start count-1 extra OS executors after GC/world startup.
- * count selects at least2 initial executors. automatic grows on native waits
+ * count selects at least one initial executor. automatic grows on native waits
  * and retires idle helpers; limit zero is uncapped, diagnostics emits --stats.
  * turn runs one
  * shared-heap scheduler turn on its caller: positive progress, zero idle,
@@ -25,6 +25,11 @@ enum
 int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
     int (*turn)(void), void (*cancel_waits)(void));
 
+
+/* Dedicated guest lifecycle. Call under exclusive heap admission. */
+int dvm_managed_workers_start_guest(int pid);
+int dvm_managed_workers_owns_guest(int pid, int parent_pid);
+void dvm_managed_workers_guest_retired(int pid);
 
 /* Compensate an impending audited native suspension while still ACTIVE.
  * Return a stable diagnostic if compensation is refused, or NULL on success. */

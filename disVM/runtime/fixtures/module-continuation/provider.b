@@ -24,3 +24,9 @@ wait(): int
         raise "unexpected input";
     return marker+local[0];
 }
+
+# Exercise the cross-module spawn path with the provider's existing data.
+spawned(done: chan of int)
+{
+    done <-= marker;
+}

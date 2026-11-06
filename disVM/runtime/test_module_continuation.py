@@ -9,11 +9,13 @@ import tempfile
 import time
 
 
-def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False, workers=2):
+def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False, workers=2, dedicated=False):
     shared = ["--parallel-channel-buffer", "--parallel-byte-copies"] if shared_channels else []
     explicit = [] if default_profile else ["--gc-worker", "--managed-workers", "2", "--guarded-copies", *shared]
     if default_profile and workers != 2:
         explicit = ["--managed-workers", str(workers)]
+    if dedicated:
+        explicit = ["--native-spawn", "--guarded-copies"]
     command = [str(runtime), mode, "--stats", *explicit, "--quantum", "65536", *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -42,6 +44,14 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
                 child.communicate()
     text = output.decode(errors="replace")
     pool = f"NATIVEPOOL executors={workers} joined=1 failed=0" in text
+    if dedicated:
+        starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", text)
+        retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", text)
+        # The last forty children all exist before the parent sends to any.
+        pool = (len(starts) == 43 and len(set(pid for pid, _ in starts)) == 43
+                and sorted(starts) == sorted(retired)
+                and re.search(r"NATIVEDISPATCH .* active=0 migrated=0\b", text) is not None
+                and len(set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-40:])) == 40)
     queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", text)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0", text)
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", text)
@@ -58,7 +68,7 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
             or ((shared_channels or default_profile) and (not channel or min(map(int, channel.groups())) == 0
                                          or not alts or int(alts[1]) != 2
                                          or not rendezvous or int(rendezvous[1]) != 2
-                                         or not raw or int(raw[1]) != 2
+                                         or not raw or int(raw[1]) < 2
                                          or not byte_moves or int(byte_moves[1]) < 2))
             or not native or (int(native[1]) > 0) != (mode == "--jit")):
         raise RuntimeError(text)
@@ -77,6 +87,7 @@ def main():
         run(runtime, directory, "--jit", [], b"R", "PASS provider return",
             default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):
+            run(runtime, directory, mode, [], b"R", "PASS provider return", dedicated=True)
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind")

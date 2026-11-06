@@ -127,6 +127,10 @@ init()
     module_code = code;
     if (module_code != byte 314159)
         raise "raw buffered channel lost its byte";
+    module_done := chan of int;
+    spawn provider->spawned(module_done);
+    if (<-module_done != 314159)
+        raise "module spawn lost its instance";
     provider = nil;
     check_channels();
     sys->print("PASS forty independent channels\n");
