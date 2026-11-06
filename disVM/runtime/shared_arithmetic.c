@@ -9,6 +9,7 @@
 #include "shared_arithmetic.h"
 #include "arithmetic_value.h"
 #include "branch_value.h"
+#include "shift_value.h"
 #include "managed_owner.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
@@ -435,7 +436,9 @@ static int integer_division(int opcode)
 typedef struct IntegerStep
 {
     int opcode;                  /* Audited, nonthrowing integer opcode. */
-    size_t width;                /* Native operand width. */
+    size_t width;                /* Native value width. */
+    size_t source_width;         /* Shift counts always occupy one WORD. */
+    int shift;
     int family;                  /* BYTE, WORD or LONG for diagnostics. */
     const void *source;          /* Borrowed frame scalar or rooted instruction literal. */
     const void *middle;          /* Borrowed frame scalar or copied immediate. */
@@ -480,6 +483,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         /* fall through */
     case IADDB: case ISUBB: case IMULB: case IANDB: case IORB: case IXORB:
     case IDIVB: case IMODB:
+    case ISHLB: case ISHRB:
         step->width = sizeof(BYTE);
         step->family = 1;
         break;
@@ -488,6 +492,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         /* fall through */
     case IADDW: case ISUBW: case IMULW: case IANDW: case IORW: case IXORW:
     case IDIVW: case IMODW:
+    case ISHLW: case ISHRW: case ILSRW:
         step->width = sizeof(WORD);
         step->family = 0;
         break;
@@ -496,6 +501,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         /* fall through */
     case IADDL: case ISUBL: case IMULL: case IANDL: case IORL: case IXORL:
     case IDIVL: case IMODL:
+    case ISHLL: case ISHRL: case ILSRL:
         step->width = sizeof(LONG);
         step->family = 2;
         break;
@@ -514,6 +520,10 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     default:
         return 0;
     }
+    step->shift = step->opcode == ISHLB || step->opcode == ISHRB ||
+        step->opcode == ISHLW || step->opcode == ISHRW || step->opcode == ILSRW ||
+        step->opcode == ISHLL || step->opcode == ISHRL || step->opcode == ILSRL;
+    step->source_width = step->shift ? sizeof(WORD) : step->width;
     if (branch)
     {
         if (destination_mode != AIMM || middle_mode == AXNON || !batch_pc(module, instruction.d.ins))
@@ -538,7 +548,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     if (source_mode == AFP && instruction.s.ind >= 0 && instruction.s.ind < frame->size)
     {
         step->source = DVM_R.FP + instruction.s.ind;
-        if (!frame_scalar(step->source, frame, step->width))
+        if (!frame_scalar(step->source, frame, step->source_width))
         {
             return 0;
         }
@@ -547,12 +557,12 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         instruction.s.ind < module_type->size)
     {
         step->source = DVM_R.MP + instruction.s.ind;
-        if (!scalar_span(step->source, module_type, step->width, (uintptr_t)DVM_R.MP, 0))
+        if (!scalar_span(step->source, module_type, step->source_width, (uintptr_t)DVM_R.MP, 0))
         {
             return 0;
         }
     }
-    else if (source_mode == AIMM && step->width <= sizeof(WORD))
+    else if (source_mode == AIMM && step->source_width <= sizeof(WORD))
     {
         step->source = &pc->s;
     }
@@ -643,14 +653,16 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
             continue;
         }
         DVM_TripleAccess access = {0};
+        WORD count = 0;
         size_t destination_size = step.target ? sizeof(Inst *) : step.width;
-        if (dvm_small_range_access_begin(domain, step.source, step.width,
+        if (dvm_small_range_access_begin(domain, step.source, step.source_width,
             step.middle, step.width, step.destination, destination_size, &access) != DVM_CELL_ACQUIRED)
         {
             break;
         }
         /* Leave the failing instruction to normal dispatch after exclusive reentry. */
-        if (integer_division(step.opcode) && dvm_runtime_divisor_zero(step.opcode, step.source))
+        if ((integer_division(step.opcode) && dvm_runtime_divisor_zero(step.opcode, step.source)) ||
+            (step.shift && !dvm_runtime_shift_count(step.opcode, step.source, &count)))
         {
             if (!dvm_small_range_access_end(&access))
             {
@@ -663,6 +675,11 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
             branches++;
             cursor = dvm_runtime_branch_predicate(step.opcode, step.source, step.middle) ?
                 step.target : cursor + 1;
+        }
+        else if (step.shift)
+        {
+            dvm_runtime_shift_value(step.opcode, step.middle, count, step.destination);
+            cursor++;
         }
         else
         {

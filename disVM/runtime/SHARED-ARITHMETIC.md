@@ -120,3 +120,8 @@ It checks the divisor while holding the same range union used for evaluation.
 A zero divisor ends the prefix before writing the destination. Ordinary
 dispatch delivers the exception after exclusive reentry, with earlier
 instructions already committed.
+
+Shared traces also support left and arithmetic right shifts at all three
+widths, plus logical right shifts for WORD and LONG. The guard covers a
+WORD-sized shift count even for a BYTE value. Invalid counts stop the trace
+before publication so the ordinary dispatcher delivers the error.

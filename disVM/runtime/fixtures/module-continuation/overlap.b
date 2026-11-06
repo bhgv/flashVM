@@ -44,6 +44,15 @@ copy(id, factor: int, done: chan of int)
     narrow %= byte divisor;
     if (narrow != byte 2)
         raise "parallel BYTE division changed";
+    narrow <<= divisor;
+    narrow >>= divisor - 1;
+    checksum <<= divisor;
+    checksum >>= divisor;
+    wide <<= divisor;
+    wide >>= divisor;
+    if (narrow != byte 4 || checksum != quotient*divisor || wide !=
+        ((((big (id+1)) << 36)*big 3 + big 34) / big 3) % big 17)
+        raise "parallel shift changed its result";
     zero := divisor - 3;
     preserved := id;
     {
