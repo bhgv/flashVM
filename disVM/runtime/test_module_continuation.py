@@ -136,7 +136,8 @@ def main():
                             "-o", str(directory / (name + ".dis")),
                             str(fixtures / (name + ".b"))], check=True)
         overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
-                         ["dvm_native_owner_enter_shared", "dvm_gc_workers_request"])
+                         ["dvm_native_owner_enter_shared", "dvm_native_owner_try_share",
+                          "dvm_gc_workers_request"])
         for mode in ("--jit", "--no-jit"):
             for options, counter in ((["--guarded-copies", "--parallel-movp", "--parallel-slicela"], "parallel_slicela_commits"),
                                      ([], "shared_integer_commits")):

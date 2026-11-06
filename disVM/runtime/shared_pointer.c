@@ -228,13 +228,9 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
             domain = dvm_managed_cell_domain();
             if (domain)
             {
-                released = dvm_runtime_gc_native_try_leave();
+                released = dvm_runtime_gc_shared_try_enter();
             }
         }
-    }
-    if (released > 0)
-    {
-        dvm_runtime_gc_shared_enter();
     }
     problem = movp_attempt(source, destination, &previous, &claim, mutex ? &root : NULL,
         mutex, mode, released > 0 ? domain : NULL);

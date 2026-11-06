@@ -369,10 +369,9 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
         abort();
     }
     domain = dvm_runtime_shared_integer ? dvm_managed_cell_domain() : NULL;
-    released = dvm_runtime_gc_native_try_leave();
+    released = domain ? dvm_runtime_gc_shared_try_enter() : dvm_runtime_gc_native_try_leave();
     if (released > 0 && domain)
     {
-        dvm_runtime_gc_shared_enter();
         dvm_runtime_arithmetic_value(opcode, left, right, result);
         claim = dvm_small_range_access_begin(domain, first, width, second, width,
             output, width, access);
@@ -688,12 +687,11 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         return 0;
     }
     limit = DVM_R.IC < 16 ? DVM_R.IC : 16;
-    released = dvm_runtime_gc_native_try_leave();
+    released = dvm_runtime_gc_shared_try_enter();
     if (released <= 0)
     {
         return 0;
     }
-    dvm_runtime_gc_shared_enter();
     while (completed < limit && decode_integer_step(module, cursor, frame, module_type, &step))
     {
         if (step.opcode == IJMP)

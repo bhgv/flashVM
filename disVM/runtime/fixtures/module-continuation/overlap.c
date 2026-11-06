@@ -18,6 +18,15 @@ int __real_dvm_native_owner_enter_shared(DVM_HeapOwner *owner);
 int __real_dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
 
 
+/* Force the queued path so every test guest reaches the same barrier. */
+int __wrap_dvm_native_owner_try_share(DVM_HeapOwner *owner, unsigned long epoch)
+{
+    (void)owner;
+    (void)epoch;
+    return 0;
+}
+
+
 /* Wait on one test-only counter. All guests own separate TLS contexts. */
 static void meet(unsigned *count, const struct timespec *deadline)
 {

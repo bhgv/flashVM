@@ -369,12 +369,11 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         domain = dvm_managed_cell_domain();
         if (domain)
         {
-            released = dvm_runtime_gc_native_try_leave();
+            released = dvm_runtime_gc_shared_try_enter();
         }
     }
     if (released > 0)
     {
-        dvm_runtime_gc_shared_enter();
         claim = slice_shape_stable(slice) ?
             dvm_range_access_begin(domain, source, bytes, destination, bytes, &access) :
             DVM_CELL_BUSY;

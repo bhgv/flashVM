@@ -41,9 +41,9 @@ int dvm_runtime_gc_native_try_leave(void);
  * TLS context; shared collector epochs are sampled only after reentry. */
 void dvm_runtime_gc_native_enter(int released);
 
-/* Enter shared admission after a successful native leave. Finish only after
- * releasing every guard, then restore the same exclusive continuation. */
-void dvm_runtime_gc_shared_enter(void);
+/* Publish the continuation and enter shared admission. A positive result
+ * requires shared_finish after releasing every guard. */
+int dvm_runtime_gc_shared_try_enter(void);
 void dvm_runtime_gc_shared_finish(void);
 
 /* [GC:] Leave heap execution, drain/join both collectors, remove the poll hook and

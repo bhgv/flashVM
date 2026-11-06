@@ -259,7 +259,7 @@ int dvm_runtime_gc_request(void)
  * no unmanaged C-stack ownership invisible to the collector. Protected regions
  * stay active. Returns zero when no release is needed, one after successful
  * leave, and -1 if no executor is available. Violated pairing/root ownership is process-fatal, never silent success. */
-int dvm_runtime_gc_native_try_leave(void)
+static int native_try_leave(int shared)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
@@ -311,7 +311,16 @@ int dvm_runtime_gc_native_try_leave(void)
         }
     }
     dvm_managed_workers_native_suspended();
-    if (!dvm_runtime_gc_request() || !dvm_native_owner_suspend(owner,state.passes))
+    if (!dvm_runtime_gc_request())
+    {
+        fprintf(stderr,"disvm: native GC request failed\n");
+        exit(1);
+    }
+    if (shared && !dvm_queue_probe_requested && dvm_native_owner_try_share(owner, state.passes))
+    {
+        return 1;
+    }
+    if (!dvm_native_owner_suspend(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap release failed\n");
         exit(1);
@@ -319,6 +328,10 @@ int dvm_runtime_gc_native_try_leave(void)
     if (process && dvm_queue_probe_requested)
     {
         dvm_queue_probe_run(process,dvm_native_context_current(),state.roots);
+    }
+    if (shared && !dvm_native_owner_enter_shared(owner))
+    {
+        abort();
     }
     return 1;
 }
@@ -405,13 +418,15 @@ void dvm_runtime_gc_native_enter(int released)
 }
 
 
-void dvm_runtime_gc_shared_enter(void)
+int dvm_runtime_gc_native_try_leave(void)
 {
-    DVM_HeapOwner *owner = dvm_native_owner_current();
-    if (!dvm_native_owner_enter_shared(owner))
-    {
-        abort();
-    }
+    return native_try_leave(0);
+}
+
+
+int dvm_runtime_gc_shared_try_enter(void)
+{
+    return native_try_leave(1);
 }
 
 

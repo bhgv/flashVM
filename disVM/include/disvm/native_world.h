@@ -103,6 +103,9 @@ int dvm_world_enter_shared(DVM_WorldParticipant *participant);
 
 /* Promote an active shared owner. If it must wait, publish its roots and
  * join the exclusive FIFO without an intervening unlocked interval. */
+/* Convert an active exclusive turn if neither GC nor an earlier ticket waits. */
+int dvm_world_try_share(DVM_WorldParticipant *participant);
+
 int dvm_world_promote_shared(DVM_WorldParticipant *participant);
 
 

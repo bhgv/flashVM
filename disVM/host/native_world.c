@@ -347,6 +347,33 @@ int dvm_world_enter_shared(DVM_WorldParticipant *participant)
 }
 
 
+/* Keep the current turn only when it cannot jump a queued owner or GC. */
+int dvm_world_try_share(DVM_WorldParticipant *participant)
+{
+    if (dvm_native_context_object_count(dvm_native_context_current()) || !owns(participant))
+    {
+        return 0;
+    }
+    DVM_NativeWorld *world = participant->world;
+    fvm_port_sync_lock(world->sync);
+    if (!world->serial || world->sealed || world->waiting || world->collector ||
+        world->resuming || !participant->active || participant->shared || participant->parked)
+    {
+        fvm_port_sync_unlock(world->sync);
+        return 0;
+    }
+    publish(participant);
+    participant->shared = 1;
+    world->shared++;
+    if (world->shared > world->shared_peak)
+    {
+        world->shared_peak = world->shared;
+    }
+    fvm_port_sync_unlock(world->sync);
+    return 1;
+}
+
+
 int dvm_world_promote_shared(DVM_WorldParticipant *participant)
 {
     return enter_world(participant, 0, 1);

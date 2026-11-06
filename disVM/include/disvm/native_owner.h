@@ -67,6 +67,7 @@ int dvm_native_owner_suspend(DVM_HeapOwner *owner, unsigned long epoch);
  * operand owners and stable roots must already be published. The shared
  * body must use its own protection, avoid VM callbacks and release guards
  * before leaving. These transitions do not consume the native resume token. */
+int dvm_native_owner_try_share(DVM_HeapOwner *owner, unsigned long epoch);
 int dvm_native_owner_enter_shared(DVM_HeapOwner *owner);
 int dvm_native_owner_leave_shared(DVM_HeapOwner *owner);
 

@@ -128,9 +128,8 @@ const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *
         dvm_runtime_rooted_scalar(source, size) && dvm_runtime_rooted_scalar(destination, size))
     {
         DVM_CellDomain *domain = dvm_managed_cell_domain();
-        if (domain && dvm_runtime_gc_native_try_leave() > 0)
+        if (domain && dvm_runtime_gc_shared_try_enter() > 0)
         {
-            dvm_runtime_gc_shared_enter();
             claim = shared_copy(domain, source, destination, size);
             dvm_runtime_gc_shared_finish();
             if (claim == DVM_CELL_ACQUIRED)

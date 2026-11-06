@@ -62,6 +62,14 @@ int dvm_native_owner_leave(DVM_HeapOwner *owner)
 }
 
 
+static void record_suspend(DVM_HeapOwner *owner, unsigned long epoch, int phase)
+{
+    owner->before = epoch;
+    owner->phase = phase;
+    owner->releases++;
+}
+
+
 /* [GC:] Suspend an audited active call. epoch was read while active; owner is
  * private TLS metadata, not published registers. No shared counters change after
  * release. Failed validation/leave preserves the previous before/counter values. */
@@ -72,9 +80,19 @@ int dvm_native_owner_suspend(DVM_HeapOwner *owner, unsigned long epoch)
     {
         return 0;
     }
-    owner->before = epoch;
-    owner->phase = DVM_HEAP_NATIVE;
-    owner->releases++;
+    record_suspend(owner, epoch, DVM_HEAP_NATIVE);
+    return 1;
+}
+
+
+int dvm_native_owner_try_share(DVM_HeapOwner *owner, unsigned long epoch)
+{
+    if (!current(owner) || owner->phase != DVM_HEAP_ACTIVE || owner->pending_progress ||
+        !dvm_world_try_share(owner->roots))
+    {
+        return 0;
+    }
+    record_suspend(owner, epoch, DVM_HEAP_SHARED);
     return 1;
 }
 
