@@ -75,6 +75,11 @@ copy(id, factor: int, done, resume: chan of int)
     destination[0:] = source;
     if (destination[0] != id || destination[1] != id+1 || destination[2] != id+2)
         raise "parallel array copy lost its payload";
+    same := source;
+    same = source;
+    if (same != source)
+        raise "parallel reference copy changed an equal destination";
+    same = nil;
     sharedarray = source;
     retained := sharedarray;
     source = nil;

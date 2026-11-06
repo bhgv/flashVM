@@ -153,7 +153,17 @@ static const char *movp_attempt(const void *source, void *destination,
             problem = exHeap;
         }
     }
-    if (!problem)
+    if (!problem && shared_domain && incoming == outgoing)
+    {
+        /* The destination still owns the same reference. Drop the temporary
+         * retain under the guard without registering a displaced owner. */
+        if (heap && dvm_refcount_release_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+        {
+            abort();
+        }
+        outgoing = H;
+    }
+    else if (!problem)
     {
         if (root && outgoing != H)
         {
