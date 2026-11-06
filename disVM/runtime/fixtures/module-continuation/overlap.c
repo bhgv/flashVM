@@ -81,10 +81,15 @@ int __wrap_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slo
 int __real_dvm_runtime_exception_search_enter(Prog *process);
 int __wrap_dvm_runtime_exception_search_enter(Prog *process)
 {
+    int typed = process->exval != H && D2H(process->exval)->t != &Tstring;
     int entered = __real_dvm_runtime_exception_search_enter(process);
     if (entered)
     {
         fprint(2, "FRAME handler search entered shared mode\n");
+        if (typed)
+        {
+            fprint(2, "FRAME typed handler search entered shared mode\n");
+        }
     }
     return entered;
 }

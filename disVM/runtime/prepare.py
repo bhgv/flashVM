@@ -756,9 +756,18 @@ def main():
             search_boundaries = (
                 ("int str, ne, transfer;", "int str, ne, transfer, searching = 0;"),
                 ("\twhile(fp != nil){\t\t/* look for a handler */",
-                 "\tsearching = str && dvm_runtime_exception_search_enter(p);\n"
+                 "\tsearching = dvm_runtime_exception_search_enter(p);\n"
                  "\twhile(fp != nil){\t\t/* look for a handler */\n"
                  "\t\tif(searching){\n\t\t\tdvm_runtime_gc_shared_poll();\n\t\t}"),
+                ("\t\tif(!str && fp != DVM_R.FP){",
+                 "\t\tif(!str && fp != DVM_R.FP){\n"
+                 "\t\t\tif(searching){\n"
+                 "\t\t\t\tdvm_runtime_gc_shared_finish();\n"
+                 "\t\t\t\tsearching = 0;\n\t\t\t}"),
+                ("\t\t\tstr = 1;\n\t\t\tcontinue;",
+                 "\t\t\tstr = 1;\n"
+                 "\t\t\tsearching = dvm_runtime_exception_search_enter(p);\n"
+                 "\t\t\tcontinue;"),
                 ("\nunhandled:\n", "\nunhandled:\n"
                  "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"),
                 ("\nfound:\n", "\nfound:\n"

@@ -4,6 +4,8 @@ include "provider.m";
 
 Overlap: module { init: fn(); };
 
+Rejected: exception(int);
+
 published: int;
 sample: real;
 sharedarray: array of int;
@@ -32,6 +34,17 @@ copy(id, factor: int, done, resume: chan of int, provider: Provider)
             ;
         * =>
             raise failure;
+    }
+    {
+        raise Rejected(id);
+    } exception failure {
+        Rejected =>
+            received: int;
+            (received) = failure;
+            if (received != id)
+                raise "parallel typed exception lost its payload";
+        * =>
+            raise;
     }
     product := id*factor;
     adjusted := product + factor;

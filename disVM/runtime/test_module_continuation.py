@@ -172,6 +172,7 @@ def main():
                             or "FRAME exception crossed a stack extent" not in output
                             or output.count("FRAME handler installed in shared mode") < 40
                             or output.count("FRAME handler search entered shared mode") < 40
+                            or output.count("FRAME typed handler search entered shared mode") < 40
                             or "FRAME retirement retry injected" not in output
                             or not frame_retirement or int(frame_retirement[1]) < 40
                             or not frames or min(map(int, frames.groups())) < 40
