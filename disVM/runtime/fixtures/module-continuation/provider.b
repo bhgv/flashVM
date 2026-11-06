@@ -10,6 +10,12 @@ touch(): int
     return marker;
 }
 
+failheld(value: array of int)
+{
+    if (len value == 1)
+        raise "shared frame unwind";
+}
+
 heldvalue(value: array of int): int
 {
     return value[0];

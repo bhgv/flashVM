@@ -2344,7 +2344,20 @@ static int runtime_dispatch_turn(void)
         {
             owner_error()[0] = 0;
         }
-        if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error && handler(owner_error()))
+        int handled = 0;
+        if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error)
+        {
+            if (!dvm_native_context_set_process(context, process))
+            {
+                abort();
+            }
+            handled = handler(owner_error());
+            if (!dvm_native_context_set_process(context, nil))
+            {
+                abort();
+            }
+        }
+        if (handled)
         {
             owner_error()[0] = 0;
             if (!dvm_runqueue_finish(process))

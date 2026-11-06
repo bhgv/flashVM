@@ -458,6 +458,65 @@ static int batch_pc(const Module *module, const Inst *pc)
 }
 
 
+/* Transfer a private frame's owners to Fast GC. Temporary saturation parks
+ * the guest with its intact roots. Return zero on a permanent refusal. */
+static int retire_shared_frame(Frame *frame, const Type *type, Modlink *departed)
+{
+    int transferred = dvm_runtime_rc_transfer_frame(frame, type, departed);
+    while (transferred < 0)
+    {
+        dvm_runtime_gc_shared_publish();
+        dvm_runtime_gc_shared_drain();
+        transferred = dvm_runtime_rc_transfer_frame(frame, type, departed);
+    }
+    return transferred;
+}
+
+
+/* Pop the current ordinary frame during hosted exception unwinding.
+ * The retained walker has already selected a handler and trimmed arguments.
+ * Extension frames and failures stay with its exclusive cleanup path. */
+int dvm_runtime_exception_pop(Prog *process)
+{
+    if (!dvm_runtime_shared_integer || process->state != Pready ||
+        dvm_runqueue_head() != process || !dvm_runqueue_release_allowed(process))
+    {
+        return 0;
+    }
+    Type *type = current_frame_type();
+    Frame *frame = (Frame *)DVM_R.FP;
+    if (!type || frame->t != type || (uintptr_t)frame + type->size != (uintptr_t)DVM_R.SP ||
+        (uintptr_t)frame->fp < (uintptr_t)DVM_R.EX ||
+        (uintptr_t)frame->fp >= (uintptr_t)frame || frame->mr == H)
+    {
+        return 0;
+    }
+    Frame links = *frame;
+    Modlink *departed = links.mr ? DVM_R.M : NULL;
+    if (dvm_runtime_gc_shared_try_enter() <= 0)
+    {
+        return 0;
+    }
+    if ((type->np || departed) && !retire_shared_frame(frame, type, departed))
+    {
+        dvm_runtime_gc_shared_finish();
+        return 0;
+    }
+    DVM_R.FP = links.fp;
+    DVM_R.SP = (uchar *)frame;
+    DVM_R.PC = links.lr;
+    if (departed)
+    {
+        DVM_R.M = links.mr;
+        DVM_R.MP = links.mr->MP;
+    }
+    DVM_R.s = DVM_R.m = DVM_R.d = NULL;
+    dvm_runtime_gc_shared_publish();
+    dvm_runtime_gc_shared_finish();
+    return 1;
+}
+
+
 /* Same-module frame links are owner-local. Use the normal handlers for
  * extension frames, reference destruction, and invalid operands. */
 static int shared_frame_step(const Module *module, const Inst *pc, const Type *current, int shared, int probe)
@@ -593,14 +652,7 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
     }
     if (!source && (current->np || departed))
     {
-        int transferred = dvm_runtime_rc_transfer_frame(frame, current, departed);
-        while (transferred < 0)
-        {
-            dvm_runtime_gc_shared_publish();
-            dvm_runtime_gc_shared_drain();
-            transferred = dvm_runtime_rc_transfer_frame(frame, current, departed);
-        }
-        if (!transferred)
+        if (!retire_shared_frame(frame, current, departed))
         {
             if (!shared)
             {

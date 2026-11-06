@@ -8,4 +8,8 @@
  * registers must be its active REG; name is borrowed writable capacity bytes.
  * No heap allocation, ownership transfer or payload lock acquisition occurs. */
 WORD dvm_exception_status(REG *registers, char *name, int capacity);
+struct Prog;
+/* Pop an ordinary frame through the shared retirement protocol. */
+int dvm_runtime_exception_pop(struct Prog *process);
+
 #endif

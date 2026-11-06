@@ -21,6 +21,15 @@ copy(id, factor: int, done, resume: chan of int, provider: Provider)
         raise "parallel scalar frame lost its return value";
     if (provider->heldvalue(array[] of {id}) != id)
         raise "parallel module call lost its return value";
+    {
+        provider->failheld(array[] of {id});
+        raise "provider did not raise";
+    } exception failure {
+        "shared frame unwind" =>
+            ;
+        * =>
+            raise failure;
+    }
     product := id*factor;
     adjusted := product + factor;
     checksum := adjusted ^ factor;

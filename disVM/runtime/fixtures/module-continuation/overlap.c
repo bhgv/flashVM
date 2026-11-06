@@ -46,6 +46,19 @@ int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Mo
 }
 
 
+/* Observe only successful shared pops of actual exception frames. */
+int __real_dvm_runtime_exception_pop(Prog *process);
+int __wrap_dvm_runtime_exception_pop(Prog *process)
+{
+    int popped = __real_dvm_runtime_exception_pop(process);
+    if (popped)
+    {
+        fprint(2, "FRAME exception popped in shared mode\n");
+    }
+    return popped;
+}
+
+
 /* Wait on one test-only counter. All guests own separate TLS contexts. */
 static void meet(unsigned *count, const struct timespec *deadline)
 {
