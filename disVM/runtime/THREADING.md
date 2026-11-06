@@ -11,8 +11,8 @@ enable the guarded `--parallel-*` options, including typed shared transfers
 and private integer evaluation. `shared_peak` reports simultaneous restricted
 admissions. There is no two-guest cap on this admission class. The hosted
 regression runs forty dedicated guests through actual slice copies and
-uses a private admission barrier to verify peak occupancy independently
-of host timing. The profile retains the existing
+uses a bounded private admission barrier to verify overlap without
+blocking queued exclusive tickets indefinitely. The profile retains the existing
 runnable list for retained interpreter and GC integration. Each thread
 selects its own ready guest from TLS in constant time, independently of list order. A blocked
 thread releases heap admission and waits on its own native readiness condition.

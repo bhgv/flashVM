@@ -6,7 +6,9 @@ Overlap: module { init: fn(); };
 copy(id, factor: int, done: chan of int)
 {
     product := id*factor;
-    if (product != id*17)
+    adjusted := product + factor;
+    checksum := adjusted ^ factor;
+    if (checksum != ((id*17 + 17) ^ 17))
         raise "parallel arithmetic lost its result";
     source := array[] of {id, id+1, id+2};
     destination := array[3] of int;

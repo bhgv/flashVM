@@ -1007,6 +1007,21 @@ def main():
         "\t\t\tdvm_runtime_instructions++;\n"
         "\t\t}\n"
     )
+    dispatch = (
+        "\t\tif(!dvm_runtime_instruction_limit && dvm_runtime_shared_integer) {\n"
+        "\t\t\tint completed = dvm_runtime_integer_batch(fetched.module, fetched.pc, fetched.index);\n"
+        "\t\t\tif(completed) {\n"
+        "\t\t\t\tdvm_runtime_instructions += completed;\n"
+        "\t\t\t\t(void)dvm_runtime_arithmetic_finish(p);\n"
+        "#ifdef DIS_NATIVE64_CALLER_GUARD\n"
+        "\t\t\t\twhile(--completed > 0) native64calleradvance(p);\n"
+        "#endif\n"
+        "\t\t\t\tif(p->flags & Pkilled) dvm_runtime_termination_checkpoint(p);\n"
+        "\t\t\t\tif(DVM_R.IC == 0) break;\n"
+        "\t\t\t\tcontinue;\n"
+        "\t\t\t}\n"
+        "\t\t}\n"
+    ) + dispatch
     code = code.replace(boundary, dispatch + boundary, 1)
     termination = "executed:\n\t\tif(!vmyield())"
     if code.count(termination) != 1:

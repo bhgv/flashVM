@@ -100,8 +100,11 @@ def main():
                 )
                 output = result.stdout + result.stderr
                 commits = re.search(rf"{counter}=(\d+)", output)
+                peak = re.search(r"shared_peak=(\d+)", output)
+                batches = re.search(r"shared_integer_batches=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
-                        or "shared_peak=40" not in output or not commits or int(commits[1]) < 40
+                        or (option == "--parallel-integer" and (not batches or int(batches[1]) < 40))
+                        or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < 40
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
                     raise RuntimeError(f"{mode} {option}\n{output}")
         run(runtime, directory, "--jit", [], b"R", "PASS provider return",

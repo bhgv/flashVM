@@ -2,6 +2,7 @@
 #include "disvm/native_owner.h"
 #include "disvm/gc_workers.h"
 #include <pthread.h>
+#include <time.h>
 
 #define GUEST_COUNT 40 /* Independent guest threads reaching one copy each. */
 
@@ -15,14 +16,24 @@ int __real_dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
 
 
 /* Wait on one test-only counter. All guests own separate TLS contexts. */
-static void meet(unsigned *count)
+static void meet(unsigned *count, const struct timespec *deadline)
 {
     pthread_mutex_lock(&mutex);
     ++*count;
     pthread_cond_broadcast(&changed);
     while (*count < GUEST_COUNT)
     {
-        pthread_cond_wait(&changed, &mutex);
+        if (deadline)
+        {
+            if (pthread_cond_timedwait(&changed, &mutex, deadline))
+            {
+                break;
+            }
+        }
+        else
+        {
+            pthread_cond_wait(&changed, &mutex);
+        }
     }
     pthread_mutex_unlock(&mutex);
 }
@@ -33,11 +44,18 @@ static void meet(unsigned *count)
 int __wrap_dvm_native_owner_enter_shared(DVM_HeapOwner *owner)
 {
     int result;
-    meet(&arriving);
+    meet(&arriving, NULL);
     result = __real_dvm_native_owner_enter_shared(owner);
     if (result)
     {
-        meet(&admitted);
+        struct timespec deadline;
+        /* A queued exclusive ticket can separate SHARED groups. Never
+         * make that ticket wait indefinitely on a test-only barrier. */
+        if (clock_gettime(CLOCK_REALTIME, &deadline) == 0)
+        {
+            deadline.tv_sec++;
+            meet(&admitted, &deadline);
+        }
     }
     return result;
 }

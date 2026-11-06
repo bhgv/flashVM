@@ -5,6 +5,10 @@
 
 extern int dvm_runtime_shared_integer;
 extern unsigned long dvm_runtime_shared_integer_commits;
+extern unsigned long dvm_runtime_shared_integer_batches;
+struct Module;
+struct Inst;
+int dvm_runtime_integer_batch(const struct Module *module, const struct Inst *pc, int index);
 extern int dvm_runtime_parallel_add; /* Startup-only frame-local integer experiment. */
 
 

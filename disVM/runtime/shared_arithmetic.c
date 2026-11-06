@@ -20,6 +20,7 @@
 
 
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
+unsigned long dvm_runtime_shared_integer_batches; /* Completed multi-instruction shared intervals. */
 unsigned long dvm_runtime_shared_integer_commits; /* Counted after exclusive return. */
 int dvm_runtime_parallel_add; /* Startup-only leased arithmetic selection, 1 for ADDW or 2 for all. */
 
@@ -417,6 +418,108 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
         abort();
     }
     return problem;
+}
+
+
+typedef struct IntegerStep
+{
+    int opcode;                  /* Audited, nonthrowing WORD opcode. */
+    void *source;                /* Borrowed scalar in the suspended frame. */
+    void *middle;                /* Borrowed scalar in the suspended frame. */
+    void *destination;           /* Borrowed scalar in the suspended frame. */
+} IntegerStep;
+
+
+/* Capture up to sixteen consecutive private WORD operations. Unknown
+ * addressing, opcodes and module boundaries end the candidate prefix. */
+int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
+{
+    IntegerStep steps[16];
+    Type *frame;
+    DVM_CellDomain *domain;
+    DVM_HeapOwner *owner;
+    int count = 0, completed = 0, released;
+    if (!dvm_runtime_shared_integer || dvm_runtime_parallel_add != 2 ||
+        module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()))
+    {
+        return 0;
+    }
+    while (count < 16 && count < DVM_R.IC && count < module->nprog - index)
+    {
+        Inst instruction;
+        IntegerStep *step = &steps[count];
+        memcpy(&instruction, pc + count, sizeof(instruction));
+        if (instruction.add != (SRC(AFP) | AXINF | DST(AFP)) ||
+            (instruction.op != IADDW && instruction.op != ISUBW && instruction.op != IMULW &&
+             instruction.op != IANDW && instruction.op != IORW && instruction.op != IXORW) ||
+            instruction.s.ind < 0 || instruction.s.ind >= frame->size ||
+            instruction.d.ind < 0 || instruction.d.ind >= frame->size ||
+            instruction.reg >= frame->size)
+        {
+            break;
+        }
+        step->opcode = instruction.op;
+        step->source = DVM_R.FP + instruction.s.ind;
+        step->middle = DVM_R.FP + instruction.reg;
+        step->destination = DVM_R.FP + instruction.d.ind;
+        if (!frame_scalar(step->source, frame, sizeof(WORD)) ||
+            !frame_scalar(step->middle, frame, sizeof(WORD)) ||
+            !frame_scalar(step->destination, frame, sizeof(WORD)))
+        {
+            break;
+        }
+        count++;
+    }
+    if (count < 2 || !(domain = dvm_managed_cell_domain()))
+    {
+        return 0;
+    }
+    owner = dvm_native_owner_current();
+    released = dvm_runtime_gc_native_try_leave();
+    if (released <= 0)
+    {
+        return 0;
+    }
+    if (!dvm_native_owner_enter_shared(owner))
+    {
+        abort();
+    }
+    while (completed < count)
+    {
+        DVM_TripleAccess access = {0};
+        IntegerStep *step = &steps[completed];
+        if (dvm_small_range_access_begin(domain, step->source, sizeof(WORD),
+            step->middle, sizeof(WORD), step->destination, sizeof(WORD), &access) != DVM_CELL_ACQUIRED)
+        {
+            break;
+        }
+        dvm_runtime_arithmetic_value(step->opcode, step->source, step->middle, step->destination);
+        if (!dvm_small_range_access_end(&access))
+        {
+            abort();
+        }
+        completed++;
+    }
+    if (!dvm_native_owner_leave_shared(owner))
+    {
+        abort();
+    }
+    dvm_runtime_gc_native_enter(released);
+    if (completed)
+    {
+        IntegerStep *last = &steps[completed - 1];
+        DVM_R.s = last->source;
+        DVM_R.m = last->middle;
+        DVM_R.d = last->destination;
+        DVM_R.PC += completed;
+        DVM_R.IC -= completed;
+        dvm_runtime_shared_integer_commits += completed;
+        if (completed > 1)
+        {
+            dvm_runtime_shared_integer_batches++;
+        }
+    }
+    return completed;
 }
 
 

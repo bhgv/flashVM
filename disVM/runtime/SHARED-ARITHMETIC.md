@@ -96,5 +96,13 @@ guest can evaluate a verified private integer operation and publish it
 in one restricted shared interval. It captures the inputs before suspension
 and revalidates them under a new range union before publication. A refused
 shared claim falls back under exclusive admission. Errors are delivered only
-after exclusive reentry. The hosted overlap fixture verifies forty simultaneous
-admissions for this path with a test-only barrier.
+after exclusive reentry. The hosted overlap fixture runs forty dedicated guests and verifies overlapping admissions with a
+bounded test-only barrier.
+
+The dedicated integer mode also groups up to sixteen consecutive WORD
+arithmetic and bitwise instructions whose three operands are direct scalar
+frame cells. One shared admission covers the verified prefix. A busy range
+ends the batch before the conflicting instruction, preserving every prior
+publication. The hosted dispatcher accounts for the completed prefix and
+honors the remaining quantum. Explicit instruction quotas and static
+translated modules keep ordinary instruction dispatch.
