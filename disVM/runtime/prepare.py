@@ -758,25 +758,27 @@ def main():
                 raise ValueError("hosted pending argument boundary drift")
             view_source = view_source.replace(boundary,
                 "\tlast = dvm_runtime_exception_pending(currun(), last);\n" + boundary, 1)
+            conversion = (
+                "\t\t\tv = p->exval;\n"
+                "\t\t\tmemmove(&p->exval, v, sizeof(p->exval));\n"
+                "\t\t\tdvm_runtime_heap_retain(&D2H(p->exval)->ref);\n"
+                "\t\t\tmemmove(&resumed, &DVM_R, sizeof(resumed));\n"
+                "\t\t\tdestroy(v);\n"
+                "\t\t\tmemmove(&DVM_R, &resumed, sizeof(DVM_R));\n"
+            )
+            finish_search = (
+                "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"
+                "\tif(convert){\n" + conversion + "\t}\n"
+            )
             search_boundaries = (
-                ("int str, ne, transfer;", "int str, ne, transfer, searching = 0;"),
+                ("int str, ne, transfer;", "int str, ne, transfer, searching = 0, convert = 0;"),
                 ("\twhile(fp != nil){\t\t/* look for a handler */",
                  "\tsearching = dvm_runtime_exception_search_enter(p);\n"
                  "\twhile(fp != nil){\t\t/* look for a handler */\n"
                  "\t\tif(searching){\n\t\t\tdvm_runtime_gc_shared_poll();\n\t\t}"),
-                ("\t\tif(!str && fp != DVM_R.FP){",
-                 "\t\tif(!str && fp != DVM_R.FP){\n"
-                 "\t\t\tif(searching){\n"
-                 "\t\t\t\tdvm_runtime_gc_shared_finish();\n"
-                 "\t\t\t\tsearching = 0;\n\t\t\t}"),
-                ("\t\t\tstr = 1;\n\t\t\tcontinue;",
-                 "\t\t\tstr = 1;\n"
-                 "\t\t\tsearching = dvm_runtime_exception_search_enter(p);\n"
-                 "\t\t\tcontinue;"),
-                ("\nunhandled:\n", "\nunhandled:\n"
-                 "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"),
-                ("\nfound:\n", "\nfound:\n"
-                 "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"),
+                (conversion, "\t\t\tconvert = 1;\n"),
+                ("\nunhandled:\n", "\nunhandled:\n" + finish_search),
+                ("\nfound:\n", "\nfound:\n" + finish_search),
             )
             for before, after in search_boundaries:
                 if view_source.count(before) != 1:
