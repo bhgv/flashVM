@@ -208,7 +208,7 @@ int dvm_runqueue_contains(Prog *process)
     for (cursor = head; cursor; cursor = cursor->link)
     {
         if (++seen > count || cursor->state != Pready || !runtime_process(cursor)->queued ||
-            runtime_process(cursor)->native_owner)
+            runtime_process(cursor)->native_owner || runtime_process(cursor)->ready_previous != last)
         {
             return -1;
         }
@@ -234,28 +234,34 @@ Prog *dvm_runqueue_head(void)
 /* Select this dedicated thread's ready guest under exclusive admission.
  * The retained executor still expects its active guest at the head. Other
  * guests keep their relative queue order. A claimed waiter remains parked. */
-Prog *dvm_runqueue_select_guest(int pid)
+Prog *dvm_runqueue_select_guest(Prog *process)
 {
-    Prog *previous = NULL;
-    Prog *process = head;
-    while (process && process->pid != pid)
+    Prog *previous;
+    if (!process || !runtime_process(process)->queued || process->state != Pready ||
+        runtime_process(process)->channel_claimed || runtime_process(process)->dispatch_owner ||
+        runtime_process(process)->native_owner || !endpoints_valid())
     {
-        previous = process;
-        process = process->link;
+        return NULL;
     }
-    if (!process || process->state != Pready || runtime_process(process)->channel_claimed ||
-        runtime_process(process)->dispatch_owner || runtime_process(process)->native_owner)
+    previous = runtime_process(process)->ready_previous;
+    if (previous ? previous->link != process : head != process)
     {
         return NULL;
     }
     if (previous)
     {
         previous->link = process->link;
-        if (tail == process)
+        if (process->link)
+        {
+            runtime_process(process->link)->ready_previous = previous;
+        }
+        else
         {
             tail = previous;
         }
+        runtime_process(head)->ready_previous = process;
         process->link = head;
+        runtime_process(process)->ready_previous = NULL;
         head = process;
     }
     return process;
@@ -290,6 +296,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
     }
     process->state = Pready;
     runtime_process(process)->queued = 1;
+    runtime_process(process)->ready_previous = tail;
     if (tail)
     {
         tail->link = process;
@@ -337,12 +344,17 @@ Prog *dvm_runqueue_pop(int state)
         return NULL;
     }
     head = process->link;
-    if (!head)
+    if (head)
+    {
+        runtime_process(head)->ready_previous = NULL;
+    }
+    else
     {
         tail = NULL;
     }
     count--;
     runtime_process(process)->queued = 0;
+    runtime_process(process)->ready_previous = NULL;
     process->link = NULL;
     process->state = state;
     dvm_managed_workers_wake();
@@ -421,6 +433,10 @@ int dvm_runqueue_resume(Prog *process)
     runtime_process(process)->queued = 1;
     process->state = Pready;
     process->link = head;
+    if (head)
+    {
+        runtime_process(head)->ready_previous = process;
+    }
     head = process;
     if (!tail)
     {

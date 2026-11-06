@@ -23,6 +23,7 @@ typedef struct ManagedWorker
 {
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
     unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
+    Prog *guest;                /* Borrowed until retirement on its own thread. */
     int guest_pid;              /* Dedicated guest identity, or zero for pool execution. */
     int guest_retired;          /* Set by this guest thread after managed retirement. */
     int done;                   /* Published under service.sync after TLS destruction. */
@@ -356,7 +357,7 @@ static void execute(void *argument)
 
 /* Allocate one stable slot before creating its OS thread. Caller owns the heap;
  * no wait for attachment is allowed here. Failure leaves registry unchanged. */
-static int start_helper(int guest_pid)
+static int start_helper(Prog *guest)
 {
     ManagedWorker *worker;
     if (service.created == ULONG_MAX)
@@ -369,7 +370,8 @@ static int start_helper(int guest_pid)
         return 0;
     }
     worker->id = service.created + 1;
-    worker->guest_pid = guest_pid;
+    worker->guest = guest;
+    worker->guest_pid = guest ? guest->pid : 0;
     worker->thread = fvm_port_thread_start(execute, worker);
     if (!worker->thread)
     {
@@ -425,7 +427,7 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     }
     for (index = 0; index < count - 1; index++)
     {
-        if (!start_helper(0))
+        if (!start_helper(NULL))
         {
             fail("cannot start executor");
             dvm_managed_workers_stop(0);
@@ -438,17 +440,17 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
 
 /* Start one OS thread for pid while the creator still owns NativeWorld.
  * No guest pointer is passed to a thread before scheduler publication. */
-int dvm_managed_workers_start_guest(int pid)
+int dvm_managed_workers_start_guest(Prog *guest)
 {
-    return service.sync && pid > 0 && !stopping() && start_helper(pid);
+    return service.sync && guest && !stopping() && start_helper(guest);
 }
 
 
 /* Return the PID permanently associated with this dedicated TLS slot.
  * The initial guest uses the controller and supplies its PID at dispatch. */
-int dvm_managed_workers_guest_pid(void)
+Prog *dvm_managed_workers_guest(void)
 {
-    return current_guest ? current_guest->guest_pid : 0;
+    return current_guest ? current_guest->guest : NULL;
 }
 
 
@@ -461,6 +463,7 @@ void dvm_managed_workers_guest_retired(int pid)
         {
             abort();
         }
+        current_guest->guest = NULL;
         current_guest->guest_retired = 1;
     }
 }
@@ -538,7 +541,7 @@ const char *dvm_managed_workers_native_wait(void)
         fprintf(stderr, "disvm: automatic executor resource limit=%lu reached\n", service.limit);
         return "automatic executor resource limit reached";
     }
-    if (!start_helper(0))
+    if (!start_helper(NULL))
     {
         fprintf(stderr, "disvm: automatic executor OS thread or native allocation failure\n");
         return "automatic executor OS thread or native allocation failure";

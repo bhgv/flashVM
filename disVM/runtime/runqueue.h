@@ -20,6 +20,7 @@ typedef struct DVM_RuntimeProcess
     int lifetime_holds;      /* Native borrows acquired under the heap turn. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
+    Prog *ready_previous;             /* Borrowed predecessor while ready. */
     int queued;                       /* O(1) membership, changed only by this queue module. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
@@ -64,7 +65,7 @@ DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process);
 Prog *dvm_runqueue_head(void);
 
 /* Bring a dedicated thread's ready guest to the retained dispatch head. */
-Prog *dvm_runqueue_select_guest(int pid);
+Prog *dvm_runqueue_select_guest(Prog *process);
 
 
 /* Append one unqueued, non-leased runtime Prog. No allocation; return zero for

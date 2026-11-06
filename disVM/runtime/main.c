@@ -112,7 +112,7 @@ static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
-static int initial_guest_pid; /* Controller-owned root guest in dedicated mode. */
+static Prog *initial_guest; /* Controller-owned root guest in dedicated mode. */
 static int native_spawn; /* One dedicated OS thread per spawned Prog. */
 static int managed_workers = 1; /* Executor count before launch-profile selection. */
 static unsigned long managed_workers_limit; /* Optional automatic pool resource cap; zero is uncapped. */
@@ -1301,7 +1301,7 @@ Prog *newprog(Prog *parent, Modlink *module)
         free(process);
         error(exHeap);
     }
-    if (native_spawn && parent && !dvm_managed_workers_start_guest(process->pid))
+    if (native_spawn && parent && !dvm_managed_workers_start_guest(process))
     {
         free(process);
         destroy(module);
@@ -2300,8 +2300,8 @@ static int runtime_dispatch_turn(void)
 
     if (native_spawn)
     {
-        int guest = dvm_managed_workers_guest_pid();
-        process = dvm_runqueue_select_guest(guest ? guest : initial_guest_pid);
+        Prog *guest = dvm_managed_workers_guest();
+        process = dvm_runqueue_select_guest(guest ? guest : initial_guest);
     }
     else
     {
@@ -2398,12 +2398,16 @@ static int runtime_dispatch_turn(void)
             DVM_RuntimeProcess *retired = (DVM_RuntimeProcess *)process;
             int parent_pid = retired->exit_notify_parent ? retired->parent_pid : 0;
             int child_pid = process->pid;
-            free(process);
-            live--;
+            if (process == initial_guest)
+            {
+                initial_guest = NULL;
+            }
             if (native_spawn)
             {
                 dvm_managed_workers_guest_retired(child_pid);
             }
+            free(process);
+            live--;
             publish_child_exit(parent_pid, child_pid);
         }
     }
@@ -2510,7 +2514,7 @@ static int runtime_execute_inner(void *argument)
         error(owner_error());
     }
     process = start_module(module);
-    initial_guest_pid = process->pid;
+    initial_guest = process;
     if (inspect_requested)
     {
         inspect_retain(process);

@@ -8,7 +8,7 @@ retirement ends the thread and the runtime joins it before collector teardown.
 
 This profile still uses exclusive NativeWorld admission and the existing
 runnable list for retained interpreter and GC integration. Each thread
-selects only its own ready guest independently of list order. A blocked
+selects its own ready guest from TLS in constant time, independently of list order. A blocked
 thread releases heap admission and waits for the native wake generation.
 The mode requires native GC and selects
 its own thread lifecycle independently of the fixed or elastic pool.

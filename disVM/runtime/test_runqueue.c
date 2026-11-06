@@ -215,6 +215,15 @@ int main(void)
         dvm_runqueue_head() == &nodes[0].process &&
         dvm_runqueue_pop_expected(&nodes[0].process, Psend) == &nodes[0].process,
         "foreign guest changed the runnable head");
+    check(dvm_runqueue_append(&nodes[0].process) && dvm_runqueue_append(&nodes[1].process) &&
+        dvm_runqueue_append(&nodes[2].process), "append direct selection fixture");
+    check(dvm_runqueue_select_guest(&nodes[1].process) == &nodes[1].process &&
+        dvm_runqueue_contains(&nodes[1].process) == 1 &&
+        dvm_runqueue_select_guest(&nodes[2].process) == &nodes[2].process &&
+        dvm_runqueue_pop(Psend) == &nodes[2].process &&
+        dvm_runqueue_pop(Psend) == &nodes[1].process &&
+        dvm_runqueue_pop(Psend) == &nodes[0].process,
+        "direct selection damaged middle or tail queue links");
     check(!dvm_runqueue_pop(Pready),"empty pop accepted");
     for (step = 0; step < 20000; step++)
     {
