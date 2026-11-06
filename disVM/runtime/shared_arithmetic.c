@@ -653,8 +653,8 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 }
 
 
-/* Prepare an ASCII runtime message in the hosted pool. A refused allocation
- * leaves exval empty so the retained Unicode/emergency path can run. */
+/* Decode a runtime message in the hosted pool. A refused allocation leaves
+ * exval empty so the retained emergency path can run. */
 int dvm_runtime_exception_message(Prog *process, const char *message)
 {
     extern Pool *heapmem;
@@ -667,12 +667,30 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
     {
         return 0;
     }
-    for (size_t index = 0; index < length; index++)
+    const char *end = message + length;
+    const char *cursor = message;
+    while (cursor < end && (unsigned char)*cursor < Runeself)
     {
-        if ((unsigned char)message[index] >= 128)
+        cursor++;
+    }
+    int wide = cursor != end;
+    size_t count = (size_t)(cursor - message);
+    while (cursor < end)
+    {
+        Rune rune;
+        if ((unsigned char)*cursor >= Runeself && end - cursor < UTFmax &&
+            !fullrune((char *)cursor, end - cursor))
         {
-            return 0;
+            break;
         }
+        cursor += chartorune(&rune, (char *)cursor);
+        count++;
+    }
+    wide = wide && count != 0;
+    size_t width = wide ? sizeof(Rune) : 1;
+    if (count > (INT_MAX - sizeof(Heap) - sizeof(String)) / width)
+    {
+        return 0;
     }
     if (!dvm_runtime_exception_search_enter(process))
     {
@@ -681,7 +699,7 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
     Heap *heap = NULL;
     if (dvm_refcount_retain_i(&Tstring.ref) == DVM_REFCOUNT_LIVE)
     {
-        heap = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + sizeof(String) + length);
+        heap = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + sizeof(String) + count * width);
         if (!heap && dvm_refcount_release_i(&Tstring.ref) != DVM_REFCOUNT_LIVE)
         {
             abort();
@@ -695,9 +713,19 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
         heap->hprof = 0;
         String *string = H2D(String *, heap);
         string->tmp = NULL;
-        string->len = (int)length;
-        string->max = (int)length;
-        memmove(string->Sascii, message, length);
+        string->len = wide ? -(int)count : (int)count;
+        string->max = (int)count;
+        if (wide)
+        {
+            for (size_t index = 0; index < count; index++)
+            {
+                message += chartorune(&string->Srune[index], (char *)message);
+            }
+        }
+        else
+        {
+            memmove(string->Sascii, message, count);
+        }
         process->exval = string;
     }
     dvm_runtime_gc_shared_finish();

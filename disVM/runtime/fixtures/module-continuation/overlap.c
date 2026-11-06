@@ -163,17 +163,35 @@ int __wrap_dvm_runtime_exception_convert(Prog *process)
 }
 
 
+static __thread int unicode_message; /* Keep Unicode verification separate from the fault. */
+static __thread int refuse_legacy_message; /* One fault on the same guest thread. */
+
+/* Refuse the next ordinary pool allocation after the shared message fault. */
+void *__real_poolalloc(Pool *pool, ulong size);
+void *__wrap_poolalloc(Pool *pool, ulong size)
+{
+    if (refuse_legacy_message)
+    {
+        refuse_legacy_message = 0;
+        fprint(2, "FRAME fallback message allocation refused\n");
+        return NULL;
+    }
+    return __real_poolalloc(pool, size);
+}
+
+
 /* Refuse one shared message allocation to exercise the retained fallback. */
 void *__real_dvm_heap_pool_try_alloc(Pool *pool, ulong size);
 void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 {
     static int refused; /* Protected by the test mutex. */
     pthread_mutex_lock(&mutex);
-    int inject = !refused;
-    refused = 1;
+    int inject = !refused && !unicode_message;
+    refused |= inject;
     pthread_mutex_unlock(&mutex);
     if (inject)
     {
+        refuse_legacy_message = 1;
         fprint(2, "FRAME shared message allocation refused\n");
         return NULL;
     }
@@ -185,7 +203,22 @@ void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 int __real_dvm_runtime_exception_message(Prog *process, const char *message);
 int __wrap_dvm_runtime_exception_message(Prog *process, const char *message)
 {
-    int allocated = __real_dvm_runtime_exception_message(process, message);
+    static unsigned calls; /* Protected by the test mutex. */
+    pthread_mutex_lock(&mutex);
+    int unicode = ++calls == 2;
+    pthread_mutex_unlock(&mutex);
+    unicode_message = unicode;
+    int allocated = __real_dvm_runtime_exception_message(process, unicode ? "A\303\251" : message);
+    unicode_message = 0;
+    if (unicode && allocated)
+    {
+        String *value = process->exval;
+        if (value->len != -2 || value->Srune[0] != 'A' || value->Srune[1] != 0xe9)
+        {
+            abort();
+        }
+        fprint(2, "FRAME Unicode exception message verified\n");
+    }
     if (allocated)
     {
         fprint(2, "FRAME exception message allocated in shared mode\n");
