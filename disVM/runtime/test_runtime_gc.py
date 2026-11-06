@@ -9,11 +9,15 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False):
+def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False):
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
     if pool:
         command += ["--managed-workers", "2", "--guarded-copies", "--parallel-movp", "--parallel-slicela", "--parallel-movmp"]
+    if dedicated_parallel:
+        command += ["--native-spawn", "--guarded-copies", "--parallel-movp",
+                    "--parallel-movmp", "--parallel-slicela", "--parallel-channel-buffer",
+                    "--parallel-byte-copies", "--parallel-integer"]
     if event_cycles:
         command += ["--native-spawn", "--gc-event-cycles"]
     if locked:
@@ -60,6 +64,11 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         events = re.search(r"cycle_losses=(\d+) cycle_skips=(\d+)", output)
         if not events or min(map(int, events.groups())) == 0 or int(gc[3]) == 0:
             raise RuntimeError("event cycles did not skip clean work and reclaim cycles:\n" + output[-5000:])
+    if dedicated_parallel:
+        peak = re.search(r"shared_peak=(\d+)", output)
+        if (not peak or int(peak[1]) == 0 or "parallel_slicela_commits=66" not in output
+                or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
+            raise RuntimeError("dedicated guests did not publish shared graph copies:\n" + output[-5000:])
     if pool:
         workers = re.search(r"NATIVEPOOL executors=2 joined=1 failed=0 controller_turns=(\d+) worker_turns=(\d+)", output)
         shared = re.search(r"native_releases=(\d+) native_reentries=(\d+)", output)
@@ -97,6 +106,7 @@ def main():
         execute(runtime, module, mode, 31, 10000, locked=True)
         if runtime.name == "disvm" and platform.machine() in ("x86_64", "AMD64"):
             execute(runtime, module, mode, 257, event_cycles=True)
+            execute(runtime, module, mode, 257, dedicated_parallel=True)
             for locked in (False, True):
                 execute(runtime, module, mode, 257, locked=locked, pool=True)
     print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 bounded-queue saturation runs, "

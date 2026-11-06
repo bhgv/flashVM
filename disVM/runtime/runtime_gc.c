@@ -512,7 +512,7 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu cycle_losses=%lu cycle_skips=%lu\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu cycle_losses=%lu cycle_skips=%lu shared_peak=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,
             (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips,
@@ -523,7 +523,8 @@ int dvm_runtime_gc_stop(int diagnostics)
             dvm_runtime_parallel_channel_receives, dvm_runtime_parallel_channel_refills,
             dvm_runtime_parallel_channel_alts, dvm_runtime_parallel_rendezvous,
             dvm_runtime_parallel_movp_module_commits, dvm_runtime_parallel_movmp_module_commits, dvm_runtime_parallel_channel_raw,
-            dvm_runtime_parallel_byte_commits, state.cycle_losses, state.cycle_skips);
+            dvm_runtime_parallel_byte_commits, state.cycle_losses, state.cycle_skips,
+            (unsigned long)dvm_world_shared_peak(state.world));
     }
     if (!dvm_native_owner_detach(owner) || !dvm_world_destroy(state.world))
     {

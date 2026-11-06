@@ -15,7 +15,7 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     if default_profile and workers != 2:
         explicit = ["--managed-workers", str(workers)]
     if dedicated:
-        explicit = ["--native-spawn", "--guarded-copies"]
+        explicit = ["--native-spawn", "--guarded-copies", *shared]
     command = [str(runtime), mode, "--stats", *explicit, "--quantum", "65536", *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -90,6 +90,8 @@ def main():
             default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):
             run(runtime, directory, mode, [], b"R", "PASS provider return", dedicated=True)
+            run(runtime, directory, mode, [], b"E", "PASS provider unwind",
+                shared_channels=True, dedicated=True)
             run(runtime, directory, mode, [], b"R", "PASS provider termination and reload",
                 "kill.dis", dedicated=True)
             for poll in ([], ["--gc-locked-poll"]):

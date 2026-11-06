@@ -2976,18 +2976,18 @@ int main(int argc, char **argv)
     }
 #endif
     if ((dvm_runtime_parallel_add || dvm_runtime_parallel_real || dvm_runtime_parallel_string) &&
-        (!dvm_runtime_guarded_copies || managed_workers == 1))
+        (!dvm_runtime_guarded_copies || (managed_workers == 1 && !native_spawn)))
     {
         fprintf(stderr, "parallel scalar modes require --guarded-copies and multiple managed workers\n");
         return 2;
     }
-    if (dvm_runtime_parallel_movp && (!dvm_runtime_guarded_copies || managed_workers == 1))
+    if (dvm_runtime_parallel_movp && (!dvm_runtime_guarded_copies || (managed_workers == 1 && !native_spawn)))
     {
         fprintf(stderr, "--parallel-movp requires --guarded-copies and multiple managed workers\n");
         return 2;
     }
     if ((dvm_runtime_parallel_slicela || dvm_runtime_parallel_movmp || dvm_runtime_parallel_channel_buffer ||
-         dvm_runtime_parallel_byte_copies) && (!dvm_runtime_guarded_copies || managed_workers == 1))
+         dvm_runtime_parallel_byte_copies) && (!dvm_runtime_guarded_copies || (managed_workers == 1 && !native_spawn)))
     {
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
         return 2;

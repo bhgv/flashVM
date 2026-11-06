@@ -6,7 +6,10 @@ child binds a native TLS context and can dispatch only its own PID.
 A guest retains that thread through channel and native waits. Its managed
 retirement ends the thread and the runtime joins it before collector teardown.
 
-This profile still uses exclusive NativeWorld admission and the existing
+This profile defaults to exclusive NativeWorld admission. On AMD64 it can
+enable the guarded `--parallel-*` options, including typed shared transfers
+and private integer evaluation. `shared_peak` reports simultaneous restricted
+admissions. The profile retains the existing
 runnable list for retained interpreter and GC integration. Each thread
 selects its own ready guest from TLS in constant time, independently of list order. A blocked
 thread releases heap admission and waits on its own native readiness condition.

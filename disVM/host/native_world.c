@@ -33,6 +33,7 @@ struct DVM_NativeWorld
     size_t count;                       /* Number of root sets. */
     size_t active;                      /* Mutators between enter and leave. */
     size_t parked;                      /* Active mutators stopped at poll. */
+    size_t shared_peak;                 /* Highest simultaneous restricted mutator count. */
     size_t shared;                      /* Active restricted shared intervals. */
     long request;                       /* Atomic stop request, not root publication. */
     int sealed;                        /* Registration closed by the last active owner before shutdown. */
@@ -296,6 +297,10 @@ static int enter_world(DVM_WorldParticipant *participant, int shared)
     if (shared)
     {
         world->shared++;
+        if (world->shared > world->shared_peak)
+        {
+            world->shared_peak = world->shared;
+        }
         /* A following shared ticket can enter this same group. */
         fvm_port_sync_signal_all(world->sync);
     }
@@ -505,6 +510,21 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
     out->contentions = world->contentions;
     fvm_port_sync_unlock(world->sync);
     return 1;
+}
+
+
+/* Observe the highest simultaneous SHARED occupancy under the world mutex. */
+size_t dvm_world_shared_peak(DVM_NativeWorld *world)
+{
+    size_t peak;
+    if (!world)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(world->sync);
+    peak = world->shared_peak;
+    fvm_port_sync_unlock(world->sync);
+    return peak;
 }
 
 
