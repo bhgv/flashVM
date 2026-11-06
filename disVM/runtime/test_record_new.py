@@ -47,7 +47,7 @@ def main():
         subprocess.run([str(compiler), "-I", str(include), "-o", str(image), str(guest)], check=True)
         binary = relink(runtime, work, fixture, 0, [
             "dvm_runtime_root_registry_probe", "dvm_runtime_record_new", "dvm_runtime_heap_commit",
-            "dvm_runtime_array_new", "dvm_runtime_root_batch_publish", "destroy", "fvm_port_sync_wait", "dvm_managed_workers_wake", "dvm_managed_ranges_begin"
+            "dvm_runtime_array_new", "dvm_runtime_root_batch_publish", "destroy", "fvm_port_sync_wait", "dvm_managed_workers_wake_guest", "dvm_managed_ranges_begin"
         ])
         for mode in ("--no-jit", "--jit"):
             result = subprocess.run([

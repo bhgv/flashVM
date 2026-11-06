@@ -652,7 +652,8 @@ def adapt_alt_reservations(source):
          "        altvalidate(a, nsend, nrecv, 0);\n"
          "    }"),
         ("p = currun();\n\n\ta = DVM_R.s;", "p = currun();\nretry_alt:\n\ta = DVM_R.s;"),
-        ("delrun(Palt);", "delrun(Palt);\n            dvm_runtime_channel_waiter_published();"),
+        ("DVM_R.t = 1;\n\t\t\treturn;",
+         "DVM_R.t = 1;\n            dvm_runtime_channel_waiter_published();\n\t\t\treturn;"),
         ("nrdy = ready.ready;",
          "if (block && dvm_runtime_guarded_copies && !ready.available && altpending(a, nsend + nrecv))\n"
          "    {\n"
@@ -934,10 +935,9 @@ def adapt_queue_holds(source):
         body = body.replace(signature, f"static void\n{name}_locked({parameters})", 1)
     tail = source[end:]
     for state in ("Psend", "Precv"):
-        anchor = f"p = delrun({state});"
-        if tail.count(anchor) != 1:
-            raise ValueError("channel waiter publication drift: " + state)
-        tail = tail.replace(anchor, anchor + "\n        dvm_runtime_channel_waiter_published();", 1)
+        start_wait = tail.index(f"p = delrun({state});")
+        end_wait = tail.index("DVM_R.t = 1;", start_wait) + len("DVM_R.t = 1;")
+        tail = tail[:end_wait] + "\n        dvm_runtime_channel_waiter_published();" + tail[end_wait:]
     return source[:start] + declarations + body + QUEUE_WRAPPERS + tail
 
 

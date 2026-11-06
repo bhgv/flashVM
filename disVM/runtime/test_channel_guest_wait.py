@@ -909,6 +909,40 @@ init()
 '''
 
 
+CLOSE_PARKED_GUEST = r'''implement ChannelWait;
+include "sys.m";
+ChannelWait: module { init: fn(); };
+
+waiter(input, report: chan of int)
+{
+    {
+        WAIT_OPERATION;
+        raise "closed waiter returned normally";
+    } exception {
+        "channel hangup" => report <-= 1;
+    }
+}
+
+init()
+{
+    sys := load Sys Sys->PATH;
+    input := chan of int;
+    report := chan[1] of int;
+    spawn waiter(input, report);
+    for (attempt := 0; attempt < 1000; attempt++)
+    {
+        alt {
+            <-report =>
+                sys->print("PASS dedicated channel close\n");
+                return;
+            * => sys->sleep(1);
+        }
+    }
+    raise "closed waiter did not resume";
+}
+'''
+
+
 PARKED_SEND_GUEST = r'''implement ChannelWait;
 include "sys.m";
 ChannelWait: module { init: fn(); };
@@ -1628,6 +1662,20 @@ def main():
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                          "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                          "dvm_native_owner_progress", "dvm_gc_workers_create"])
+        for operation in ("input <-= 7", "<-input"):
+            close_source, close_image = work / "close.b", work / "close.dis"
+            close_source.write_text(CLOSE_PARKED_GUEST.replace("WAIT_OPERATION", operation))
+            subprocess.run([compiler, "-I", include, "-o", close_image, close_source], check=True)
+            for mode in ("--no-jit", "--jit"):
+                closed = subprocess.run(
+                    [binary, mode, "--native-spawn", "--guarded-copies", "--stats", close_image],
+                    cwd=work, capture_output=True, text=True, timeout=30,
+                    env=dict(os.environ, DVM_TEST_CLOSE_PARKED="1"),
+                )
+                close_output = closed.stdout + closed.stderr
+                if (closed.returncode or "PASS dedicated channel close" not in close_output
+                        or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
+                    raise RuntimeError(f"{mode} dedicated close failed\n{close_output}")
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
@@ -1715,6 +1763,28 @@ def main():
                         result.stdout = stream.read()
                 else:
                     result = subprocess.run(command, cwd=work, capture_output=True, text=True, timeout=30)
+                dedicated_markers = {
+                    "parked-send": "PASS cancelled scheduler channel wait",
+                    "parked-receive": "PASS cancelled scheduler channel wait",
+                    "parked-alt": "PASS cancelled scheduler channel wait",
+                    "parked-array-alt": "PASS cancelled scheduler channel wait",
+                    "processctl": "PASS guest process control",
+                    "killwait-channel": "PASS guest child retirement",
+                    "killwait-native": "PASS guest child retirement",
+                }
+                if name in dedicated_markers:
+                    dedicated = subprocess.run(
+                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
+                        cwd=work, capture_output=True, text=True, timeout=30,
+                    )
+                    native_output = dedicated.stdout + dedicated.stderr
+                    starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", native_output)
+                    exits = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", native_output)
+                    if (dedicated.returncode or dedicated_markers[name] not in native_output
+                            or not starts or sorted(starts) != sorted(exits)
+                            or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", native_output)
+                            or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", native_output)):
+                        raise RuntimeError(f"{name} {mode} dedicated wake or retirement failed\n{native_output}")
                 if name == "send":
                     for field in range(15):
                         refused = subprocess.run(command, cwd=work, capture_output=True, text=True,

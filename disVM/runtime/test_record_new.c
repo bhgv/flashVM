@@ -578,11 +578,11 @@ static void channel_finalize_case(DVM_GCWorkers *workers)
 
 static DVM_RuntimeProcess *claimed_waiter; /* Live fixture waiter during mover callback. */
 static int waiter_notifications; /* Notifications while the direct transfer fixture runs. */
-void __real_dvm_managed_workers_wake(void);
+void __real_dvm_managed_workers_wake_guest(Prog *guest);
 
 
 /* At worker notification, the completed waiter must already be dispatchable. */
-void __wrap_dvm_managed_workers_wake(void)
+void __wrap_dvm_managed_workers_wake_guest(Prog *guest)
 {
     if (claimed_waiter)
     {
@@ -592,7 +592,7 @@ void __wrap_dvm_managed_workers_wake(void)
             "notify only after channel claim and completion pin are released");
         waiter_notifications++;
     }
-    __real_dvm_managed_workers_wake();
+    __real_dvm_managed_workers_wake_guest(guest);
 }
 
 

@@ -11,7 +11,11 @@ runnable list for retained interpreter and GC integration. Each thread
 selects its own ready guest from TLS in constant time, independently of list order. A blocked
 thread releases heap admission and waits on its own native readiness condition.
 Queue changes notify the controller separately, while fatal shutdown wakes
-all parked guests.
+all parked guests. The channel publication hook runs after the parked
+operand and channel fields are installed. Dedicated-thread tests cover
+send/receive hangup at that boundary, cancellation of scalar and array ALT,
+native sleep cancellation, and child retirement. The retained quantum
+still supplies exclusive heap handoff and GC safepoints.
 The mode requires native GC and selects
 its own thread lifecycle independently of the fixed or elastic pool.
 

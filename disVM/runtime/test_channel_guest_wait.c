@@ -508,7 +508,7 @@ void __wrap_xecalt(int block)
 {
     int released;
 
-    if (parked_cancel_mode || sleep_mode == 38)
+    if (parked_cancel_mode || sleep_mode == 38 || getenv("DVM_TEST_CLOSE_PARKED"))
     {
         __real_xecalt(block);
         return;
@@ -932,6 +932,15 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
             pthread_cond_broadcast(&waiting);
         }
         pthread_mutex_unlock(&gate);
+    }
+    if (getenv("DVM_TEST_CLOSE_PARKED"))
+    {
+        process = dvm_native_context_process(dvm_native_context_current());
+        if (process && (process->state == Psend || process->state == Precv) &&
+            process->chan && process->chan != H)
+        {
+            killcomm(process->state == Psend ? &process->chan->send : &process->chan->recv);
+        }
     }
     __real_dvm_runtime_channel_waiter_published();
     if (cancel_pid)
