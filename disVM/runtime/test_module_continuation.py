@@ -97,6 +97,8 @@ def portable_overlap(runtime, compiler, include, runner):
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
         dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output)
         gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", output)
+        queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", output)
+        retirement = re.search(r"NATIVERC enqueued=(\d+) released=(\d+) pending=0", output)
         if (result.returncode or "PASS forty dedicated shared copies" not in output
                 or "PASS Dis application completed" not in output
                 or len(starts) != 40 or len({pid for pid, _ in starts}) != 40
@@ -105,7 +107,9 @@ def portable_overlap(runtime, compiler, include, runner):
                 or not batches or int(batches[1]) < 40
                 or not widths or min(map(int, widths.groups())) < 40
                 or not dispatch or dispatch[1] != dispatch[2]
-                or not gc or int(gc[1]) == 0):
+                or not gc or int(gc[1]) == 0
+                or not queue or queue[1] == "0" or queue[1] != queue[2]
+                or not retirement or retirement[1] == "0" or retirement[1] != retirement[2]):
             raise RuntimeError(output)
         print(output, end="")
 
