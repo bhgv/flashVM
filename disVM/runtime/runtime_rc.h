@@ -7,6 +7,10 @@
  * allocation failure selects inline RC; previous session must be finished. */
 void dvm_runtime_rc_start(void);
 
+struct Type;
+/* Transfer mapped owners while shared, before the caller removes the frame. */
+int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type);
+
 /* [GC:] Transfer the caller's last reference into the native queue, retaining
  * one queue-owned reference and an external GC root. Called by generated destroy
  * after its normal header check. Returns one when transferred, zero to retain

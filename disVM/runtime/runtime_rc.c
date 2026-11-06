@@ -9,12 +9,24 @@
 #include "disvm/native_owner.h"
 #include "runtime_rc.h"
 #include "retirement_queue.h"
+#include "root_batch.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #define RC_BYTES (4UL*1024UL*1024UL) /* Bound queued direct block bytes, excluding descendants. */
 #define RC_CAPACITY 512 /* Fixed native slots; saturation falls back to inline RC. */
+
+/* A packet owns each captured reference through the collector's drain. */
+typedef struct FrameRetirement
+{
+    DVM_RootBatch *roots; /* Published root occurrences for keys. */
+    size_t count;         /* Number of transferred owners. */
+    void *keys[];        /* Heap headers in frame-map order. */
+} FrameRetirement;
+
+static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
+static unsigned long frames_drained; /* Stopped collector's packet count. */
 
 extern Pool *heapmem;                 /* Retained pool, accessible only under world ownership. */
 static DVM_RetirementQueue *retirement; /* Native metadata; managed ownership stays under world admission. */
@@ -54,12 +66,14 @@ void dvm_runtime_rc_start(void)
     helper_enqueued = 0;
     helper_saturated = 0;
     helper_byte_limited = 0;
-    if (retirement)
+    if (retirement || frames)
     {
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
     }
     retirement = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    frames = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    frames_drained = 0;
     enqueued = 0;
     released = 0;
     saturated = 0;
@@ -130,6 +144,107 @@ int dvm_runtime_rc_defer(void *value)
 }
 
 
+/* Transfer a private frame's mapped references without running destructors.
+ * frame/type are borrowed from the current shared guest. On refusal the
+ * frame remains intact. On success the caller must unpublish it before polling. */
+int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type)
+{
+    DVM_HeapOwner *current = dvm_native_owner_current();
+    DVM_HeapOwnerStats state;
+    DVM_RetirementReservation token = {0};
+    size_t capacity = 0;
+    if (!frames || !dvm_native_owner_statistics(current, &state) ||
+        state.phase != DVM_HEAP_SHARED || state.pending_progress ||
+        dvm_native_owner_world(current) != world ||
+        dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return 0;
+    }
+    for (int byte = 0; byte < type->np; byte++)
+    {
+        for (unsigned bit = 0; bit < 8; bit++)
+        {
+            if (type->map[byte] & (0x80U >> bit))
+            {
+                size_t slot = (size_t)byte * 8 + bit;
+                if (slot < sizeof(Frame) / sizeof(void *) ||
+                    slot >= (size_t)type->size / sizeof(void *))
+                {
+                    return 0;
+                }
+                capacity++;
+            }
+        }
+    }
+    if (!capacity)
+    {
+        return 1;
+    }
+    if (capacity > (RC_BYTES - sizeof(FrameRetirement)) / sizeof(void *))
+    {
+        return 0;
+    }
+    size_t bytes = sizeof(FrameRetirement) + capacity * sizeof(void *);
+    if (dvm_retirement_reserve(frames, (unsigned long)bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    FrameRetirement *packet = malloc(bytes);
+    if (!packet)
+    {
+        dvm_retirement_cancel(frames, &token);
+        return 0;
+    }
+    packet->roots = dvm_runtime_root_batch_create(capacity);
+    packet->count = 0;
+    int valid = 1;
+    for (int byte = 0; packet->roots && valid && byte < type->np; byte++)
+    {
+        for (unsigned bit = 0; bit < 8; bit++)
+        {
+            if (type->map[byte] & (1U << bit))
+            {
+                void *value;
+                size_t offset = ((size_t)byte * 8 + 7 - bit) * sizeof(value);
+                memcpy(&value, (const unsigned char *)frame + offset, sizeof(value));
+                if (!value)
+                {
+                    valid = 0;
+                    break;
+                }
+                if (value != H)
+                {
+                    packet->keys[packet->count++] = D2H(value);
+                }
+            }
+        }
+    }
+    if (packet->roots && valid && !packet->count)
+    {
+        dvm_runtime_root_batch_destroy(&packet->roots);
+        free(packet);
+        dvm_retirement_cancel(frames, &token);
+        return 1;
+    }
+    if (!packet->roots || !valid ||
+        !dvm_runtime_root_batch_publish(packet->roots, packet->keys, packet->count))
+    {
+        if (packet->roots)
+        {
+            dvm_runtime_root_batch_destroy(&packet->roots);
+        }
+        free(packet);
+        dvm_retirement_cancel(frames, &token);
+        return 0;
+    }
+    if (!dvm_retirement_commit(frames, &token, packet))
+    {
+        abort();
+    }
+    return 1;
+}
+
+
 /* [GC:] Release rooted queue owners only on a stopped-world collector. Each
  * destructor and its nested releases use the retained algorithm; they bypass
  * admission because the collector has no ACTIVE mutator ownership. Budget
@@ -152,8 +267,30 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         destroy(value);
         released++;
     }
+    while (budget && dvm_retirement_take(frames, &value, &bytes))
+    {
+        FrameRetirement *packet = value;
+        budget--;
+        for (size_t index = 0; index < packet->count; index++)
+        {
+            if (!dvm_runtime_root_batch_remove(packet->roots, index))
+            {
+                abort();
+            }
+            destroy(H2D(void *, packet->keys[index]));
+        }
+        if (!dvm_runtime_root_batch_clear(packet->roots) ||
+            !dvm_runtime_root_batch_destroy(&packet->roots))
+        {
+            abort();
+        }
+        free(packet);
+        frames_drained++;
+    }
+    DVM_RetirementStats frame_stats = {0};
+    (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
-    return stats.ready+stats.reserved;
+    return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved;
 }
 
 
@@ -165,7 +302,10 @@ unsigned int dvm_runtime_rc_pending(void)
     DVM_RetirementStats stats = {0};
     if (admitted())
     {
+        DVM_RetirementStats frame_stats = {0};
+        (void)dvm_retirement_statistics(frames, &frame_stats);
         (void)dvm_retirement_statistics(retirement, &stats);
+        return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved;
     }
     return stats.ready+stats.reserved;
 }
@@ -177,6 +317,7 @@ void dvm_runtime_rc_close(void)
 {
     accepting = 0;
     dvm_retirement_close(retirement);
+    dvm_retirement_close(frames);
 }
 
 
@@ -194,7 +335,15 @@ int dvm_runtime_rc_finish(int diagnostics)
             enqueued,released,stats.ready+stats.reserved,saturated,stats.bytes,byte_limited,
             helper_enqueued,helper_saturated,helper_byte_limited);
     }
-    result = retirement == NULL || dvm_retirement_destroy(&retirement);
+    DVM_RetirementStats frame_stats = {0};
+    (void)dvm_retirement_statistics(frames, &frame_stats);
+    if (diagnostics)
+    {
+        printf("NATIVEFRAMERC drained=%lu pending=%u\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved);
+    }
+    result = (retirement == NULL || dvm_retirement_destroy(&retirement)) &&
+        (frames == NULL || dvm_retirement_destroy(&frames));
     if (result)
     {
         owner = NULL;

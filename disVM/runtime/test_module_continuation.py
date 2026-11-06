@@ -102,6 +102,7 @@ def portable_overlap(runtime, compiler, include, runner):
         dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output)
         gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", output)
         queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", output)
+        frame_retirement = re.search(r"NATIVEFRAMERC drained=(\d+) pending=0", output)
         retirement = re.search(r"NATIVERC enqueued=(\d+) released=(\d+) pending=0", output)
         if (result.returncode or "PASS forty dedicated shared copies" not in output
                 or "PASS Dis application completed" not in output
@@ -115,7 +116,8 @@ def portable_overlap(runtime, compiler, include, runner):
                 or not dispatch or dispatch[1] != dispatch[2]
                 or not gc or int(gc[1]) == 0
                 or not queue or queue[1] == "0" or queue[1] != queue[2]
-                or not retirement or retirement[1] == "0" or retirement[1] != retirement[2]):
+                or not retirement or retirement[1] == "0" or retirement[1] != retirement[2]
+                or not frame_retirement or int(frame_retirement[1]) < 40):
             raise RuntimeError(output)
         print(output, end="")
 
@@ -160,10 +162,12 @@ def main():
                 batches = re.search(r"shared_integer_batches=(\d+)", output)
                 pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
                 frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
+                frame_retirement = re.search(r"NATIVEFRAMERC drained=(\d+) pending=0", output)
                 module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
-                        or (not options and (not frames or min(map(int, frames.groups())) < 40
+                        or (not options and (not frame_retirement or int(frame_retirement[1]) < 40
+                            or not frames or min(map(int, frames.groups())) < 40
                             or not module_frames or min(map(int, module_frames.groups())) < 40
                             or not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120

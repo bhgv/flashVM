@@ -37,7 +37,8 @@ def main():
                 'disVM/runtime', 'disVM/host/include', 'disVM/upstream/include',
                 'disVM/upstream/libinterp', 'disVM/upstream/emu/port',
                 'disVM/include', 'flashVM/include', 'flashVM/ports')]
-            command += [str(runtime / 'test_rc_roles.c'), str(runtime / 'retirement_queue.c'), str(path)]
+            command += [str(runtime / 'test_rc_roles.c'), str(runtime / 'retirement_queue.c'),
+                        str(runtime / 'root_batch.c'), str(runtime / 'root_registry.c'), str(path)]
             command += [str(root / name) for name in (
                 'disVM/host/refcount.c', 'disVM/host/native_registers.c', 'disVM/host/native_context.c',
                 'disVM/host/native_owner.c', 'disVM/host/native_world.c',

@@ -8,16 +8,16 @@ published: int;
 sample: real;
 sharedarray: array of int;
 
-scalarcall(value: int): int
+scalarcall(value: int, held: array of int): int
 {
     if (value == 0)
-        return 1;
-    return 1 + scalarcall(value - 1);
+        return held[0];
+    return 1 + scalarcall(value - 1, held);
 }
 
 copy(id, factor: int, done, resume: chan of int, provider: Provider)
 {
-    if (scalarcall(id % 4) != id % 4 + 1)
+    if (scalarcall(id % 4, array[] of {1}) != id % 4 + 1)
         raise "parallel scalar frame lost its return value";
     if (provider->touch() != 314159)
         raise "parallel module call lost its return value";

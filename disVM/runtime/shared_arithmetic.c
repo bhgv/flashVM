@@ -17,6 +17,7 @@
 #include "runqueue.h"
 #include "runtime_gc.h"
 #include "root_registry.h"
+#include "runtime_rc.h"
 #include "disvm/refcount.h"
 #include <fenv.h>
 #include <stddef.h>
@@ -552,7 +553,7 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
     {
         frame = (Frame *)DVM_R.FP;
         memmove(&links, frame, sizeof(links));
-        if (links.t != current || current->np || current_end != top ||
+        if (links.t != current || current_end != top ||
             (uintptr_t)links.fp < (uintptr_t)DVM_R.EX ||
             (uintptr_t)links.fp >= (uintptr_t)frame)
         {
@@ -561,6 +562,10 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
         const Module *caller = module;
         if (links.mr)
         {
+            if (current->np)
+            {
+                return 0;
+            }
             if (links.mr == H || !links.mr->m || links.mr->m == H ||
                 links.mr->compiled || DVM_R.M->compiled || links.mr->m->cstep)
             {
@@ -597,6 +602,14 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
         if (departed && !dvm_runtime_root_remove(D2H(departed)))
         {
             abort();
+        }
+        return 0;
+    }
+    if (!source && current->np && !dvm_runtime_rc_transfer_frame(frame, current))
+    {
+        if (!shared)
+        {
+            dvm_runtime_gc_shared_finish();
         }
         return 0;
     }
