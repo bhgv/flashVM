@@ -190,6 +190,8 @@ static void execute(void *argument)
         fvm_port_sync_unlock(shared->control);
         wait_flag(shared,&shared->release_first);
         check(!dvm_native_owner_seal(worker->owner),"refuse seal with a queued peer");
+        check(!dvm_native_owner_try_share(worker->owner, shared->epoch),
+            "shared transition must respect the older exclusive ticket");
         initial(worker);
         check(dvm_native_owner_leave(worker->owner),"release initial turn");
         check(dvm_native_owner_enter(worker->owner),"FIFO reentry");
@@ -452,6 +454,24 @@ int main(int argc, char **argv)
     check(dvm_native_owner_statistics(dvm_native_owner_current(),&private_copy) &&
         private_copy.gc_progress == 9 && private_copy.releases == 1 && private_copy.reentries == 1,
         "unsigned epoch wrap arithmetic");
+    check(dvm_native_context_object_acquire(collector),"hold guard accounting");
+    check(!dvm_native_owner_try_share(dvm_native_owner_current(), 3),
+        "reject shared transition while a guard is held");
+    check(dvm_native_context_object_release(collector),"release guard accounting");
+    check(dvm_native_owner_try_share(dvm_native_owner_current(), 3),
+        "convert uncontended exclusive turn to shared");
+    check(dvm_world_shared_peak(shared.world) == 1,"record shared occupancy");
+    check(dvm_native_context_object_acquire(collector),"hold shared guard accounting");
+    check(!dvm_native_owner_resume_shared(dvm_native_owner_current()),
+        "reject exclusive promotion while a guard is held");
+    check(dvm_native_context_object_release(collector),"release shared guard accounting");
+    check(dvm_native_owner_resume_shared(dvm_native_owner_current()) &&
+        dvm_native_owner_progress(dvm_native_owner_current(), 3),
+        "promote uncontended shared turn and acknowledge epoch");
+    check(dvm_native_owner_statistics(dvm_native_owner_current(),&private_copy) &&
+        private_copy.phase == DVM_HEAP_ACTIVE && private_copy.releases == 2 &&
+        private_copy.reentries == 2 && !private_copy.pending_progress,
+        "shared handoff preserves the native lease accounting");
     check(dvm_native_owner_seal(dvm_native_owner_current()),"seal last owner");
     {
         FVM_PortThread *late = fvm_port_thread_start(late_join,shared.world);
