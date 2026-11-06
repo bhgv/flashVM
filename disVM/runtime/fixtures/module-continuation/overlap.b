@@ -8,7 +8,9 @@ copy(id, factor: int, done: chan of int)
     product := id*factor;
     adjusted := product + factor;
     checksum := adjusted ^ factor;
-    if (checksum != ((id*17 + 17) ^ 17))
+    checksum += 19;
+    checksum *= -3;
+    if (checksum != -3*(((id*17 + 17) ^ 17) + 19))
         raise "parallel arithmetic lost its result";
     source := array[] of {id, id+1, id+2};
     destination := array[3] of int;

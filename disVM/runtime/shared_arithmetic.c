@@ -424,8 +424,10 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
 typedef struct IntegerStep
 {
     int opcode;                  /* Audited, nonthrowing WORD opcode. */
-    void *source;                /* Borrowed scalar in the suspended frame. */
-    void *middle;                /* Borrowed scalar in the suspended frame. */
+    const void *source;          /* Borrowed frame scalar or rooted instruction literal. */
+    const void *middle;          /* Borrowed frame scalar or copied immediate. */
+    WORD immediate;              /* Decoded signed 16-bit middle value. */
+    int immediate_middle;        /* Restore the retained REG.t convention. */
     void *destination;           /* Borrowed scalar in the suspended frame. */
 } IntegerStep;
 
@@ -449,21 +451,34 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         Inst instruction;
         IntegerStep *step = &steps[count];
         memcpy(&instruction, pc + count, sizeof(instruction));
-        if (instruction.add != (SRC(AFP) | AXINF | DST(AFP)) ||
+        int source_mode = USRC(instruction.add);
+        int middle_mode = instruction.add & ARM;
+        if (UDST(instruction.add) != AFP || (source_mode != AFP && source_mode != AIMM) ||
+            middle_mode == AXINM ||
             (instruction.op != IADDW && instruction.op != ISUBW && instruction.op != IMULW &&
              instruction.op != IANDW && instruction.op != IORW && instruction.op != IXORW) ||
-            instruction.s.ind < 0 || instruction.s.ind >= frame->size ||
+            (source_mode == AFP && (instruction.s.ind < 0 || instruction.s.ind >= frame->size)) ||
             instruction.d.ind < 0 || instruction.d.ind >= frame->size ||
-            instruction.reg >= frame->size)
+            (middle_mode == AXINF && instruction.reg >= frame->size))
         {
             break;
         }
         step->opcode = instruction.op;
-        step->source = DVM_R.FP + instruction.s.ind;
-        step->middle = DVM_R.FP + instruction.reg;
+        step->source = source_mode == AFP ? (const void *)(DVM_R.FP + instruction.s.ind) :
+            (const void *)&pc[count].s;
         step->destination = DVM_R.FP + instruction.d.ind;
-        if (!frame_scalar(step->source, frame, sizeof(WORD)) ||
-            !frame_scalar(step->middle, frame, sizeof(WORD)) ||
+        step->immediate_middle = middle_mode == AXIMM;
+        if (step->immediate_middle)
+        {
+            step->immediate = instruction.reg < 32768 ? instruction.reg : (int)instruction.reg - 65536;
+            step->middle = &step->immediate;
+        }
+        else
+        {
+            step->middle = middle_mode == AXINF ? DVM_R.FP + instruction.reg : step->destination;
+        }
+        if ((source_mode == AFP && !frame_scalar(step->source, frame, sizeof(WORD))) ||
+            (!step->immediate_middle && !frame_scalar(step->middle, frame, sizeof(WORD))) ||
             !frame_scalar(step->destination, frame, sizeof(WORD)))
         {
             break;
@@ -508,8 +523,17 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     if (completed)
     {
         IntegerStep *last = &steps[completed - 1];
-        DVM_R.s = last->source;
-        DVM_R.m = last->middle;
+        int step_index;
+        for (step_index = completed - 1; step_index >= 0; step_index--)
+        {
+            if (steps[step_index].immediate_middle)
+            {
+                DVM_R.t = steps[step_index].immediate;
+                break;
+            }
+        }
+        DVM_R.s = (void *)last->source;
+        DVM_R.m = last->immediate_middle ? (void *)&DVM_R.t : (void *)last->middle;
         DVM_R.d = last->destination;
         DVM_R.PC += completed;
         DVM_R.IC -= completed;
