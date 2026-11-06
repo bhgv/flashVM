@@ -99,16 +99,16 @@ shared claim falls back under exclusive admission. Errors are delivered only
 after exclusive reentry. The hosted overlap fixture runs forty dedicated guests and verifies overlapping admissions with a
 bounded test-only barrier.
 
-The dedicated integer mode also groups up to sixteen consecutive WORD
+The dedicated integer mode also groups up to sixteen consecutive BYTE, WORD or LONG
 arithmetic and bitwise instructions with a direct scalar frame destination
-and frame or immediate inputs. The implicit middle operand can alias the
+and frame, typed module-data or immediate inputs. The implicit middle operand can alias the
 destination. One shared admission covers the verified prefix. A busy range
 ends the batch before the conflicting instruction, preserving every prior
 publication. The hosted dispatcher accounts for the completed prefix and
 honors the remaining quantum. Explicit instruction quotas and static
 translated modules keep ordinary instruction dispatch.
 
-The same bounded trace follows direct same-module `JMP` and WORD comparisons
+The same bounded trace follows direct same-module `JMP` and integer comparisons
 with immediate targets. Each taken target is checked against the retained
 instruction span before use. A loop can execute multiple iterations within
 one admission, up to the instruction/quantum bound. The common executor

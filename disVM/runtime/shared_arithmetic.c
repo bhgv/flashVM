@@ -21,6 +21,8 @@
 
 
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
+unsigned long dvm_runtime_shared_byte_steps; /* Shared BYTE arithmetic/comparisons. */
+unsigned long dvm_runtime_shared_long_steps; /* Shared LONG arithmetic/comparisons. */
 unsigned long dvm_runtime_shared_integer_branches; /* WORD branches completed inside shared traces. */
 unsigned long dvm_runtime_shared_integer_batches; /* Completed multi-instruction shared intervals. */
 unsigned long dvm_runtime_shared_integer_commits; /* Counted after exclusive return. */
@@ -425,13 +427,15 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
 
 typedef struct IntegerStep
 {
-    int opcode;                  /* Audited, nonthrowing WORD opcode. */
+    int opcode;                  /* Audited, nonthrowing integer opcode. */
+    size_t width;                /* Native operand width. */
+    int family;                  /* BYTE, WORD or LONG for diagnostics. */
     const void *source;          /* Borrowed frame scalar or rooted instruction literal. */
     const void *middle;          /* Borrowed frame scalar or copied immediate. */
     WORD immediate;              /* Decoded signed 16-bit middle value. */
     int immediate_middle;        /* Restore the retained REG.t convention. */
     void *destination;           /* Frame result or rooted branch literal cell. */
-    Inst *target;                /* Verified same-module target for a WORD branch. */
+    Inst *target;                /* Verified same-module target for an integer branch. */
 } IntegerStep;
 
 
@@ -445,13 +449,13 @@ static int batch_pc(const Module *module, const Inst *pc)
 }
 
 
-/* Decode only direct scalar operands and same-module WORD branch targets.
+/* Decode only direct scalar operands and same-module integer branch targets.
  * A failed check ends the prefix and leaves the normal decoder authoritative. */
 static int decode_integer_step(const Module *module, const Inst *pc, const Type *frame,
-    IntegerStep *step)
+    const Type *module_type, IntegerStep *step)
 {
     Inst instruction;
-    int source_mode, middle_mode, destination_mode;
+    int source_mode, middle_mode, destination_mode, branch = 0;
     if (!batch_pc(module, pc))
     {
         return 0;
@@ -464,16 +468,26 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     step->target = NULL;
     switch (instruction.op)
     {
+    case IBEQB: case IBNEB: case IBLTB: case IBLEB: case IBGTB: case IBGEB:
+        branch = 1;
+        /* fall through */
+    case IADDB: case ISUBB: case IMULB: case IANDB: case IORB: case IXORB:
+        step->width = sizeof(BYTE);
+        step->family = 1;
+        break;
+    case IBEQW: case IBNEW: case IBLTW: case IBLEW: case IBGTW: case IBGEW:
+        branch = 1;
+        /* fall through */
     case IADDW: case ISUBW: case IMULW: case IANDW: case IORW: case IXORW:
-        if (destination_mode != AFP || instruction.d.ind < 0 || instruction.d.ind >= frame->size)
-        {
-            return 0;
-        }
-        step->destination = DVM_R.FP + instruction.d.ind;
-        if (!frame_scalar(step->destination, frame, sizeof(WORD)))
-        {
-            return 0;
-        }
+        step->width = sizeof(WORD);
+        step->family = 0;
+        break;
+    case IBEQL: case IBNEL: case IBLTL: case IBLEL: case IBGTL: case IBGEL:
+        branch = 1;
+        /* fall through */
+    case IADDL: case ISUBL: case IMULL: case IANDL: case IORL: case IXORL:
+        step->width = sizeof(LONG);
+        step->family = 2;
         break;
     case IJMP:
         if (source_mode != AXXX || destination_mode != AIMM || middle_mode != AXNON ||
@@ -487,26 +501,48 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         step->target = instruction.d.ins;
         step->immediate_middle = 0;
         return 1;
-    case IBEQW: case IBNEW: case IBLTW: case IBLEW: case IBGTW: case IBGEW:
+    default:
+        return 0;
+    }
+    if (branch)
+    {
         if (destination_mode != AIMM || middle_mode == AXNON || !batch_pc(module, instruction.d.ins))
         {
             return 0;
         }
         step->destination = (void *)&pc->d;
         step->target = instruction.d.ins;
-        break;
-    default:
-        return 0;
     }
-    if (source_mode == AFP && instruction.s.ind >= 0 && instruction.s.ind < frame->size)
+    else
     {
-        step->source = DVM_R.FP + instruction.s.ind;
-        if (!frame_scalar(step->source, frame, sizeof(WORD)))
+        if (destination_mode != AFP || instruction.d.ind < 0 || instruction.d.ind >= frame->size)
+        {
+            return 0;
+        }
+        step->destination = DVM_R.FP + instruction.d.ind;
+        if (!frame_scalar(step->destination, frame, step->width))
         {
             return 0;
         }
     }
-    else if (source_mode == AIMM)
+    if (source_mode == AFP && instruction.s.ind >= 0 && instruction.s.ind < frame->size)
+    {
+        step->source = DVM_R.FP + instruction.s.ind;
+        if (!frame_scalar(step->source, frame, step->width))
+        {
+            return 0;
+        }
+    }
+    else if (source_mode == AMP && module_type && instruction.s.ind >= 0 &&
+        instruction.s.ind < module_type->size)
+    {
+        step->source = DVM_R.MP + instruction.s.ind;
+        if (!scalar_span(step->source, module_type, step->width, (uintptr_t)DVM_R.MP, 0))
+        {
+            return 0;
+        }
+    }
+    else if (source_mode == AIMM && step->width <= sizeof(WORD))
     {
         step->source = &pc->s;
     }
@@ -517,6 +553,10 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     step->immediate_middle = middle_mode == AXIMM;
     if (step->immediate_middle)
     {
+        if (step->width > sizeof(WORD))
+        {
+            return 0;
+        }
         step->immediate = instruction.reg < 32768 ? instruction.reg : (int)instruction.reg - 65536;
         step->middle = &step->immediate;
         return 1;
@@ -526,35 +566,43 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         step->middle = step->destination;
         return 1;
     }
+    if (middle_mode == AXINM && module_type && instruction.reg < module_type->size)
+    {
+        step->middle = DVM_R.MP + instruction.reg;
+        return scalar_span(step->middle, module_type, step->width, (uintptr_t)DVM_R.MP, 0);
+    }
     if (middle_mode != AXINF || instruction.reg >= frame->size)
     {
         return 0;
     }
     step->middle = DVM_R.FP + instruction.reg;
-    return frame_scalar(step->middle, frame, sizeof(WORD));
+    return frame_scalar(step->middle, frame, step->width);
 }
 
 
-/* Execute a bounded private WORD trace in one shared interval. The suspended
+/* Execute a bounded private integer trace in one shared interval. The suspended
  * guest retains its frame and module. No throwing callbacks run in the trace. */
 int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
 {
     IntegerStep step, last;
     Type *frame;
+    const Type *module_type;
     DVM_CellDomain *domain;
     DVM_HeapOwner *owner;
     const Inst *cursor = pc;
     int completed = 0, branches = 0, released, limit;
+    unsigned byte_steps = 0, long_steps = 0;
     WORD middle_temp = DVM_R.t;
     const void *saved_source = DVM_R.s;
     if (!dvm_runtime_shared_integer || dvm_runtime_parallel_add != 2 ||
-        module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()) ||
-        !decode_integer_step(module, pc, frame, &step))
+        module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()))
     {
         return 0;
     }
-    if (!step.target && (index >= module->nprog - 1 ||
-        !decode_integer_step(module, pc + 1, frame, &step)))
+    module_type = module_data_type(&DVM_R);
+    if (!decode_integer_step(module, pc, frame, module_type, &step) ||
+        (!step.target && (index >= module->nprog - 1 ||
+         !decode_integer_step(module, pc + 1, frame, module_type, &step))))
     {
         return 0;
     }
@@ -574,7 +622,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         abort();
     }
-    while (completed < limit && decode_integer_step(module, cursor, frame, &step))
+    while (completed < limit && decode_integer_step(module, cursor, frame, module_type, &step))
     {
         if (step.opcode == IJMP)
         {
@@ -585,9 +633,9 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
             continue;
         }
         DVM_TripleAccess access = {0};
-        size_t destination_size = step.target ? sizeof(Inst *) : sizeof(WORD);
-        if (dvm_small_range_access_begin(domain, step.source, sizeof(WORD),
-            step.middle, sizeof(WORD), step.destination, destination_size, &access) != DVM_CELL_ACQUIRED)
+        size_t destination_size = step.target ? sizeof(Inst *) : step.width;
+        if (dvm_small_range_access_begin(domain, step.source, step.width,
+            step.middle, step.width, step.destination, destination_size, &access) != DVM_CELL_ACQUIRED)
         {
             break;
         }
@@ -610,6 +658,8 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         {
             middle_temp = step.immediate;
         }
+        byte_steps += step.family == 1;
+        long_steps += step.family == 2;
         saved_source = step.source;
         last = step;
         completed++;
@@ -629,6 +679,8 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         DVM_R.IC -= completed;
         dvm_runtime_shared_integer_commits += completed;
         dvm_runtime_shared_integer_branches += branches;
+        dvm_runtime_shared_byte_steps += byte_steps;
+        dvm_runtime_shared_long_steps += long_steps;
         if (completed > 1)
         {
             dvm_runtime_shared_integer_batches++;

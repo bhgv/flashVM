@@ -17,6 +17,20 @@ copy(id, factor: int, done: chan of int)
         sum += factor;
     if (sum != 2176)
         raise "parallel loop lost its result";
+    narrow := byte 250;
+    increment := byte factor;
+    narrow += increment;
+    narrow ^= byte 3;
+    if (narrow != byte 8)
+        raise "parallel BYTE wraparound changed";
+    wide := big (id+1);
+    wide <<= 36;
+    delta := big factor;
+    wide += delta;
+    wide *= big 3;
+    wide -= delta;
+    if (wide != (((big (id+1)) << 36)*big 3 + big 34))
+        raise "parallel LONG arithmetic lost high bits";
     source := array[] of {id, id+1, id+2};
     destination := array[3] of int;
     destination[0:] = source;
