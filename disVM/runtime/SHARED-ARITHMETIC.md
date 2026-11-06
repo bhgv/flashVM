@@ -114,3 +114,9 @@ instruction span before use. A loop can execute multiple iterations within
 one admission, up to the instruction/quantum bound. The common executor
 accounts for each completed branch and resumes normal dispatch at the first
 unsupported instruction.
+
+The bounded trace also accepts integer DIV and MOD at all three widths.
+It checks the divisor while holding the same range union used for evaluation.
+A zero divisor ends the prefix before writing the destination. Ordinary
+dispatch delivers the exception after exclusive reentry, with earlier
+instructions already committed.

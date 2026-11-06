@@ -1,10 +1,10 @@
 """Hold a real native pipe read across a second guest's call into the same module."""
+import argparse
 import os
 from pathlib import Path
 import re
 import selectors
 import subprocess
-import sys
 import tempfile
 import time
 
@@ -78,8 +78,46 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
         raise RuntimeError(text)
 
 
+def portable_overlap(runtime, compiler, include, runner):
+    """Run the same NC64 guest on a target console without relinking host objects."""
+    fixtures = Path(__file__).resolve().parent / "fixtures/module-continuation"
+    with tempfile.TemporaryDirectory(prefix="module-continuation-target-") as temporary:
+        image = Path(temporary) / "overlap.dis"
+        subprocess.run([str(compiler), "-F", "-I", str(include),
+                        "-o", str(image), str(fixtures / "overlap.b")], check=True)
+        result = subprocess.run(
+            [*runner, str(runtime), "--no-jit", "--native-spawn", "--guarded-copies",
+             "--parallel-integer", "--stats", str(image)],
+            cwd=temporary, capture_output=True, text=True, timeout=120,
+        )
+        output = result.stdout + result.stderr
+        batches = re.search(r"shared_integer_batches=(\d+)", output)
+        widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
+        starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
+        retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
+        if (result.returncode or "PASS forty dedicated shared copies" not in output
+                or "PASS Dis application completed" not in output
+                or len(set(pid for pid, _ in starts)) != 40 or sorted(starts) != sorted(retired)
+                or not batches or int(batches[1]) < 40
+                or not widths or min(map(int, widths.groups())) < 40
+                or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
+            raise RuntimeError(output)
+        print(output, end="")
+
+
 def main():
-    runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
+    parser = argparse.ArgumentParser(description=__doc__)
+    for name in ("runtime", "compiler", "include"):
+        parser.add_argument(name, type=lambda value: Path(value).resolve())
+    parser.add_argument("--portable-overlap", action="store_true")
+    parser.add_argument("--runner", nargs=argparse.REMAINDER, default=[])
+    args = parser.parse_args()
+    runtime, compiler, include = args.runtime, args.compiler, args.include
+    if args.portable_overlap:
+        portable_overlap(runtime, compiler, include, args.runner)
+        return
+    if args.runner:
+        parser.error("--runner requires --portable-overlap")
     fixtures = Path(__file__).resolve().parent / "fixtures/module-continuation"
     with tempfile.TemporaryDirectory(prefix="module-continuation-") as temporary:
         directory = Path(temporary)

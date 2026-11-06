@@ -425,6 +425,13 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
 }
 
 
+static int integer_division(int opcode)
+{
+    return opcode == IDIVB || opcode == IDIVW || opcode == IDIVL ||
+        opcode == IMODB || opcode == IMODW || opcode == IMODL;
+}
+
+
 typedef struct IntegerStep
 {
     int opcode;                  /* Audited, nonthrowing integer opcode. */
@@ -472,6 +479,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         branch = 1;
         /* fall through */
     case IADDB: case ISUBB: case IMULB: case IANDB: case IORB: case IXORB:
+    case IDIVB: case IMODB:
         step->width = sizeof(BYTE);
         step->family = 1;
         break;
@@ -479,6 +487,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         branch = 1;
         /* fall through */
     case IADDW: case ISUBW: case IMULW: case IANDW: case IORW: case IXORW:
+    case IDIVW: case IMODW:
         step->width = sizeof(WORD);
         step->family = 0;
         break;
@@ -486,6 +495,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         branch = 1;
         /* fall through */
     case IADDL: case ISUBL: case IMULL: case IANDL: case IORL: case IXORL:
+    case IDIVL: case IMODL:
         step->width = sizeof(LONG);
         step->family = 2;
         break;
@@ -639,6 +649,15 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         {
             break;
         }
+        /* Leave the failing instruction to normal dispatch after exclusive reentry. */
+        if (integer_division(step.opcode) && dvm_runtime_divisor_zero(step.opcode, step.source))
+        {
+            if (!dvm_small_range_access_end(&access))
+            {
+                abort();
+            }
+            break;
+        }
         if (step.target)
         {
             branches++;
@@ -752,8 +771,7 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
     default:
         return exHeap;
     }
-    division = opcode == IDIVB || opcode == IDIVW || opcode == IDIVL ||
-        opcode == IMODB || opcode == IMODW || opcode == IMODL;
+    division = integer_division(opcode);
     if (!second || second == H || (uintptr_t)second > (uintptr_t)-1 - width)
     {
         return exBounds;

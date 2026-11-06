@@ -57,3 +57,20 @@ boundaries, connect native-PC dispatch and executable-page/cache handling, and
 run the same ownership/GC/editor tests on each target. Until then these builds
 fail explicitly. No new common Dis64 wire or calling ABI is assigned by the Linux
 backend selector; NC64 remains a private experimental target.
+
+## Dedicated-spawn console regression
+
+After building the target console, run the forty-guest arithmetic and channel
+fixture using an NC64 bootstrap compiler executable for the test host:
+
+```sh
+python3 disVM/runtime/test_module_continuation.py TARGET_DISVM HOST_LIMBO disVM/upstream/module \
+    --portable-overlap --runner qemu-aarch64 -L /usr/aarch64-linux-gnu
+```
+
+For RV64 use `qemu-riscv64` and the corresponding RV64 sysroot. On a physical
+target omit `--runner`. The portable check uses interpretation because the
+guarded JIT profile is currently restricted to AMD64. It checks guest start
+and retirement, channel completions, scalar trace counters, and arithmetic
+results. The x64 private test additionally uses controlled overlapping
+admissions and runs both the interpreter and JIT.

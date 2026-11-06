@@ -31,6 +31,32 @@ copy(id, factor: int, done: chan of int)
     wide -= delta;
     if (wide != (((big (id+1)) << 36)*big 3 + big 34))
         raise "parallel LONG arithmetic lost high bits";
+    divisor := factor - 14;
+    quotient := checksum / divisor;
+    remainder := checksum % divisor;
+    if (quotient*divisor + remainder != checksum || remainder != 0)
+        raise "parallel WORD division changed";
+    wide /= big divisor;
+    wide %= big factor;
+    if (wide != ((((big (id+1)) << 36)*big 3 + big 34) / big 3) % big 17)
+        raise "parallel LONG division changed";
+    narrow /= byte divisor;
+    narrow %= byte divisor;
+    if (narrow != byte 2)
+        raise "parallel BYTE division changed";
+    zero := divisor - 3;
+    preserved := id;
+    {
+        preserved += factor;
+        preserved /= zero;
+        raise "parallel division accepted a zero divisor";
+    } exception failure {
+        "zero divide" =>
+            if (preserved != id + factor)
+                raise "parallel division lost the preceding result";
+        * =>
+            raise failure;
+    }
     source := array[] of {id, id+1, id+2};
     destination := array[3] of int;
     destination[0:] = source;
