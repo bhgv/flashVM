@@ -1896,7 +1896,7 @@ if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
   endforeach()
 endif()
 
-if(DVM_RUNTIME_TESTS)
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
   foreach(mode jit interpreter)
     add_test(NAME disvm_vector_editing_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_vector_editing.py" "$<TARGET_FILE:disvm-editor>"
@@ -1905,7 +1905,7 @@ if(DVM_RUNTIME_TESTS)
   endforeach()
 endif()
 
-if(DVM_RUNTIME_TESTS)
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
   foreach(mode jit interpreter)
     add_test(NAME disvm_vector_viewport_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_vector_viewport.py" "$<TARGET_FILE:disvm-editor>"
@@ -1930,7 +1930,7 @@ if(DVM_RUNTIME_TESTS)
   endforeach()
 endif()
 
-if(DVM_RUNTIME_TESTS)
+if(DVM_RUNTIME_EDITOR AND DVM_RUNTIME_TESTS)
   foreach(mode jit interpreter)
     add_test(NAME disvm_vector_dense_selection_${mode} COMMAND "${PYTHON_EXECUTABLE}"
       "${CMAKE_CURRENT_SOURCE_DIR}/test_vector_dense_selection.py" "$<TARGET_FILE:disvm-editor>"
@@ -2770,6 +2770,13 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_heap_hold.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_generic_heap_holds PROPERTIES TIMEOUT 360)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME disvm_dedicated_spawn_portable COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_module_continuation.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --portable-overlap)
+    set_tests_properties(disvm_dedicated_spawn_portable PROPERTIES TIMEOUT 150)
 endif()
 
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")

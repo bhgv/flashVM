@@ -95,13 +95,17 @@ def portable_overlap(runtime, compiler, include, runner):
         pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
+        dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output)
+        gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", output)
         if (result.returncode or "PASS forty dedicated shared copies" not in output
                 or "PASS Dis application completed" not in output
-                or len(set(pid for pid, _ in starts)) != 40 or sorted(starts) != sorted(retired)
+                or len(starts) != 40 or len({pid for pid, _ in starts}) != 40
+                or len({thread for _, thread in starts}) != 40 or sorted(starts) != sorted(retired)
                 or not pointer_copies or int(pointer_copies[1]) == 0
                 or not batches or int(batches[1]) < 40
                 or not widths or min(map(int, widths.groups())) < 40
-                or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
+                or not dispatch or dispatch[1] != dispatch[2]
+                or not gc or int(gc[1]) == 0):
             raise RuntimeError(output)
         print(output, end="")
 

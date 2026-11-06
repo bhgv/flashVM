@@ -85,3 +85,9 @@ On AMD64 and in interpreter mode on ARM64/RV64, this enables the existing
 guarded scalar, pointer, mapped-copy and channel paths together. Supplying
 guarded/parallel switches explicitly selects the individual paths. Non-AMD64
 JIT retains its existing profile without guarded copies.
+
+Native Linux builds with runtime tests enabled register this check as
+`disvm_dedicated_spawn_portable` on all three console backends. Run it
+with `ctest --test-dir BUILD_DIR -R '^disvm_dedicated_spawn_portable$' --output-on-failure`.
+It checks forty distinct live OS thread identities, balanced dispatch,
+and collector progress and shutdown.
