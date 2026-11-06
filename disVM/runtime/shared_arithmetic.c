@@ -483,6 +483,37 @@ int dvm_runtime_exception_search_enter(Prog *process)
 }
 
 
+/* Drain the validated pending-argument chain from its top. Return the
+ * remaining suffix for exclusive cleanup if a frame cannot be transferred. */
+uchar *dvm_runtime_exception_pending(Prog *process, uchar *last)
+{
+    if (!last || (uintptr_t)DVM_R.FP < (uintptr_t)DVM_R.EX ||
+        (uintptr_t)DVM_R.FP >= (uintptr_t)last || !((Frame *)last)->t ||
+        !dvm_runtime_exception_search_enter(process))
+    {
+        return last;
+    }
+    while (last)
+    {
+        Frame *frame = (Frame *)last;
+        Type *type = frame->t;
+        if (!type || type->np < 0 ||
+            (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8 ||
+            (type->np && !retire_shared_frame(frame, type, NULL)))
+        {
+            break;
+        }
+        DVM_R.SP = last;
+        last = frame->fp;
+        DVM_R.s = DVM_R.m = DVM_R.d = NULL;
+        dvm_runtime_gc_shared_publish();
+        dvm_runtime_gc_shared_poll();
+    }
+    dvm_runtime_gc_shared_finish();
+    return last;
+}
+
+
 /* Pop consecutive ordinary frames up to the borrowed handler frame.
  * Return the number removed. The caller owns the exclusive turn on entry
  * and return and handles argument gaps on the retained path. */

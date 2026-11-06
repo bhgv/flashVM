@@ -18,6 +18,16 @@ failheld(value: array of int)
         raise "shared frame unwind";
 }
 
+pendingfail(): int
+{
+    raise "argument evaluation failed";
+}
+
+pendinguse(value: array of int, n: int): int
+{
+    return value[0] + n;
+}
+
 heldvalue(value: array of int): int
 {
     return value[0];

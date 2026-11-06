@@ -46,6 +46,15 @@ copy(id, factor: int, done, resume: chan of int, provider: Provider)
         * =>
             raise;
     }
+    {
+        if (provider->pendinguse(array[] of {id}, provider->pendingfail()) == id)
+            raise "pending call ran";
+    } exception failure {
+        "argument evaluation failed" =>
+            ;
+        * =>
+            raise;
+    }
     product := id*factor;
     adjusted := product + factor;
     checksum := adjusted ^ factor;

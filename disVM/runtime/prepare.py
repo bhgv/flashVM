@@ -753,6 +753,11 @@ def main():
         path = args.output / (unit+'.c')
         view_source = adapt_boundary_counts(path.read_text(), unit)
         if unit == "exception":
+            boundary = "\twhile(last != nil){"
+            if view_source.count(boundary) != 1:
+                raise ValueError("hosted pending argument boundary drift")
+            view_source = view_source.replace(boundary,
+                "\tlast = dvm_runtime_exception_pending(currun(), last);\n" + boundary, 1)
             search_boundaries = (
                 ("int str, ne, transfer;", "int str, ne, transfer, searching = 0;"),
                 ("\twhile(fp != nil){\t\t/* look for a handler */",

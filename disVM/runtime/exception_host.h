@@ -17,4 +17,7 @@ int dvm_runtime_exception_pop(struct Prog *process, const unsigned char *handler
 /* Publish an already-owned exception and defer displaced handler slots. */
 int dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target);
 
+/* Transfer validated pending argument frames and return the remaining suffix. */
+unsigned char *dvm_runtime_exception_pending(struct Prog *process, unsigned char *last);
+
 #endif

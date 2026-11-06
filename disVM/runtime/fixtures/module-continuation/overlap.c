@@ -1,10 +1,12 @@
 /* Private test gates make simultaneous admission independent of host timing. */
 #include "lib9.h"
 #include "interp.h"
+#include "isa.h"
 #include "disvm/native_owner.h"
 #include "disvm/native_context.h"
 #include "disvm/gc_workers.h"
 #include <pthread.h>
+#include <stdlib.h>
 #include <time.h>
 
 #define GUEST_COUNT 40 /* Independent guest threads reaching one copy each. */
@@ -92,6 +94,58 @@ int __wrap_dvm_runtime_exception_search_enter(Prog *process)
         }
     }
     return entered;
+}
+
+
+/* Move the outer frame and its array argument ahead of the inner call.
+ * The exception table range and all instruction addresses stay unchanged. */
+void __real_xec(Prog *process);
+void __wrap_xec(Prog *process)
+{
+    static int patched;
+    if (!patched)
+    {
+        static const int pattern[] = {IMFRAME, ILEA, IMCALL, IMFRAME, INEWA,
+            IINDL, IMOVW, IMOVP, IMOVP};
+        Module *module = process->R.M->m;
+        int matches = 0;
+        for (int index = 0; index <= module->nprog - 9; index++)
+        {
+            Inst *code = module->prog + index;
+            int step = 0;
+            while (step < 9 && code[step].op == pattern[step])
+            {
+                step++;
+            }
+            if (step == 9)
+            {
+                Inst nested[3];
+                memmove(nested, code, sizeof(nested));
+                memmove(code, code + 3, 6 * sizeof(*code));
+                memmove(code + 6, nested, sizeof(nested));
+                matches++;
+            }
+        }
+        if (matches != 1)
+        {
+            abort();
+        }
+        patched = 1;
+    }
+    __real_xec(process);
+}
+
+
+/* Confirm that the altered program reaches the shared pending-frame path. */
+uchar *__real_dvm_runtime_exception_pending(Prog *process, uchar *last);
+uchar *__wrap_dvm_runtime_exception_pending(Prog *process, uchar *last)
+{
+    uchar *remaining = __real_dvm_runtime_exception_pending(process, last);
+    if (last != remaining)
+    {
+        fprint(2, "FRAME pending argument retired in shared mode\n");
+    }
+    return remaining;
 }
 
 
