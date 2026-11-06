@@ -147,12 +147,12 @@ int dvm_runtime_rc_defer(void *value)
 /* Transfer a private frame's mapped references without running destructors.
  * frame/type are borrowed from the current shared guest. On refusal the
  * frame remains intact. On success the caller must unpublish it before polling. */
-int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *departed)
+int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *extra)
 {
     DVM_HeapOwner *current = dvm_native_owner_current();
     DVM_HeapOwnerStats state;
     DVM_RetirementReservation token = {0};
-    size_t capacity = departed != NULL;
+    size_t capacity = extra != NULL;
     if (!frames || !dvm_native_owner_statistics(current, &state) ||
         state.phase != DVM_HEAP_SHARED || state.pending_progress ||
         dvm_native_owner_world(current) != world ||
@@ -160,7 +160,7 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *
     {
         return 0;
     }
-    for (int byte = 0; byte < type->np; byte++)
+    for (int byte = 0; type && byte < type->np; byte++)
     {
         for (unsigned bit = 0; bit < 8; bit++)
         {
@@ -199,7 +199,7 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *
     packet->roots = dvm_runtime_root_batch_create(capacity);
     packet->count = 0;
     int valid = 1;
-    for (int byte = 0; packet->roots && valid && byte < type->np; byte++)
+    for (int byte = 0; packet->roots && valid && type && byte < type->np; byte++)
     {
         for (unsigned bit = 0; bit < 8; bit++)
         {
@@ -220,9 +220,9 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *
             }
         }
     }
-    if (departed)
+    if (extra)
     {
-        packet->keys[packet->count++] = D2H(departed);
+        packet->keys[packet->count++] = D2H(extra);
     }
     if (packet->roots && valid && !packet->count)
     {

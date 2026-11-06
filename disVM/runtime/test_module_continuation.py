@@ -146,7 +146,7 @@ def main():
         overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
                          ["dvm_native_owner_enter_shared", "dvm_native_owner_try_share",
                           "dvm_gc_workers_request", "dvm_runtime_rc_transfer_frame",
-                          "dvm_runtime_exception_pop"])
+                          "dvm_runtime_exception_pop", "dvm_runtime_exception_install"])
         for mode in ("--jit", "--no-jit"):
             for options, counter in ((["--guarded-copies", "--parallel-movp", "--parallel-slicela"], "parallel_slicela_commits"),
                                      ([], "shared_integer_commits")):
@@ -169,6 +169,7 @@ def main():
                         or not pointer_copies or int(pointer_copies[1]) == 0
                         or (not options and (output.count("FRAME exception popped in shared mode") < 40
                             or "FRAME exception crossed a stack extent" not in output
+                            or output.count("FRAME handler installed in shared mode") < 40
                             or "FRAME retirement retry injected" not in output
                             or not frame_retirement or int(frame_retirement[1]) < 40
                             or not frames or min(map(int, frames.groups())) < 40

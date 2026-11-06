@@ -759,6 +759,14 @@ def main():
             view_source = view_source.replace(boundary, boundary +
                 "\n\t\tif(dvm_runtime_exception_pop(p, fp)){\n"
                 "\t\t\tm = DVM_R.M;\n\t\t\tcontinue;\n\t\t}", 1)
+            boundary = "\tmemmove(&p->R, &DVM_R, sizeof(DVM_R));\n\tif(zt != nil){"
+            if view_source.count(boundary) != 1:
+                raise ValueError("hosted exception install boundary drift")
+            view_source = view_source.replace(boundary,
+                "\tmemmove(&p->R, &DVM_R, sizeof(DVM_R));\n"
+                "\tif(dvm_runtime_exception_install(p, zt, fp+eoff,\n"
+                "\t    m->compiled ? (Inst*)((ulong)m->prog+newpc) : m->prog+newpc))\n"
+                "\t\treturn 1;\n\tif(zt != nil){", 1)
         path.write_text(view_source)
     stack_path = args.output / "validstk.c"
     stack_path.write_text(adapt_stack_check(stack_path.read_text()))

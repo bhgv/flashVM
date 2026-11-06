@@ -28,8 +28,8 @@ int __wrap_dvm_native_owner_try_share(DVM_HeapOwner *owner, unsigned long epoch)
 
 
 /* Inject one reservation refusal before touching frame ownership. */
-int __real_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *departed);
-int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *departed)
+int __real_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *extra);
+int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *extra)
 {
     static int refused; /* Protected by the test mutex. */
     int inject;
@@ -42,7 +42,7 @@ int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Mo
         fprint(2, "FRAME retirement retry injected\n");
         return -1;
     }
-    return __real_dvm_runtime_rc_transfer_frame(frame, type, departed);
+    return __real_dvm_runtime_rc_transfer_frame(frame, type, extra);
 }
 
 
@@ -61,6 +61,19 @@ int __wrap_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
         fprint(2, "FRAME exception crossed a stack extent\n");
     }
     return popped;
+}
+
+
+/* Count only successful installations on the shared path. */
+int __real_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target);
+int __wrap_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target)
+{
+    int installed = __real_dvm_runtime_exception_install(process, cleanup, slot, target);
+    if (installed)
+    {
+        fprint(2, "FRAME handler installed in shared mode\n");
+    }
+    return installed;
 }
 
 

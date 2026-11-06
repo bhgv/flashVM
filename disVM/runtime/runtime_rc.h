@@ -8,12 +8,11 @@
 void dvm_runtime_rc_start(void);
 
 struct Type;
-struct Modlink;
-/* Transfer mapped owners and optional departed module under shared admission.
+/* Transfer mapped owners and optional displaced reference under shared admission.
  * Return 1 on success, -1 when draining can make room, or 0 on other refusal.
  * Refusal leaves the frame and module owners untouched. */
 int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type,
-    struct Modlink *departed);
+    void *extra);
 
 /* [GC:] Transfer the caller's last reference into the native queue, retaining
  * one queue-owned reference and an external GC root. Called by generated destroy

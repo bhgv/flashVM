@@ -460,7 +460,7 @@ static int batch_pc(const Module *module, const Inst *pc)
 
 /* Transfer a private frame's owners to Fast GC. Temporary saturation parks
  * the guest with its intact roots. Return zero on a permanent refusal. */
-static int retire_shared_frame(Frame *frame, const Type *type, Modlink *departed)
+static int retire_shared_frame(Frame *frame, const Type *type, void *departed)
 {
     int transferred = dvm_runtime_rc_transfer_frame(frame, type, departed);
     while (transferred < 0)
@@ -554,6 +554,50 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
         dvm_runtime_gc_shared_finish();
     }
     return popped;
+}
+
+
+/* Install an already-owned exception in a validated handler frame. Cleanup
+ * and the result slot transfer old owners before any register or slot changes. */
+int dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target)
+{
+    if (!dvm_runtime_shared_integer || process->exval == H ||
+        process->state != Pready || dvm_runqueue_head() != process ||
+        !dvm_runqueue_release_allowed(process))
+    {
+        return 0;
+    }
+    size_t index = ((uintptr_t)slot - (uintptr_t)DVM_R.FP) / sizeof(void *);
+    void *old = H;
+    if (!cleanup || index / 8 >= (size_t)cleanup->np ||
+        !(cleanup->map[index / 8] & (0x80U >> (index % 8))))
+    {
+        memmove(&old, slot, sizeof(old));
+        if (!old)
+        {
+            return 0;
+        }
+    }
+    if (dvm_runtime_gc_shared_try_enter() <= 0)
+    {
+        return 0;
+    }
+    if (!retire_shared_frame((Frame *)DVM_R.FP, cleanup, old == H ? NULL : old))
+    {
+        dvm_runtime_gc_shared_finish();
+        return 0;
+    }
+    if (cleanup)
+    {
+        initmem(cleanup, DVM_R.FP);
+    }
+    memmove(slot, &process->exval, sizeof(process->exval));
+    process->exval = H;
+    process->kill = NULL;
+    DVM_R.PC = target;
+    dvm_runtime_gc_shared_publish();
+    dvm_runtime_gc_shared_finish();
+    return 1;
 }
 
 

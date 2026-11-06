@@ -12,4 +12,7 @@ struct Prog;
 /* Pop an ordinary frame through the shared retirement protocol. */
 int dvm_runtime_exception_pop(struct Prog *process, const unsigned char *handler_frame);
 
+/* Publish an already-owned exception and defer displaced handler slots. */
+int dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target);
+
 #endif
