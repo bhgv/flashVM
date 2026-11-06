@@ -199,17 +199,44 @@ void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 }
 
 
+static __thread Prog *monitored_guest; /* Borrowed only during this guest's message call. */
+
+/* Confirm that profiling sees the initialized, rooted message after reentry. */
+static void monitor_message(int event, void *heap, ulong bytes)
+{
+    DVM_HeapOwnerStats state;
+    (void)bytes;
+    if (event || !monitored_guest || monitored_guest->exval == H ||
+        D2H(monitored_guest->exval) != heap)
+    {
+        return;
+    }
+    if (!dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
+        state.phase != DVM_HEAP_ACTIVE || ((Heap *)heap)->t != &Tstring)
+    {
+        abort();
+    }
+    fprint(2, "FRAME rooted message observed by heap monitor\n");
+}
+
+
 /* Count successful shared allocations through the exception entry point. */
 int __real_dvm_runtime_exception_message(Prog *process, const char *message);
 int __wrap_dvm_runtime_exception_message(Prog *process, const char *message)
 {
     static unsigned calls; /* Protected by the test mutex. */
     pthread_mutex_lock(&mutex);
+    if (!calls)
+    {
+        heapmonitor = monitor_message;
+    }
     int unicode = ++calls == 2;
     pthread_mutex_unlock(&mutex);
+    monitored_guest = process;
     unicode_message = unicode;
     int allocated = __real_dvm_runtime_exception_message(process, unicode ? "A\303\251" : message);
     unicode_message = 0;
+    monitored_guest = NULL;
     if (unicode && allocated)
     {
         String *value = process->exval;

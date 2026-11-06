@@ -658,7 +658,7 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 int dvm_runtime_exception_message(Prog *process, const char *message)
 {
     extern Pool *heapmem;
-    if (process->exval != H || heapmonitor)
+    if (process->exval != H)
     {
         return 0;
     }
@@ -696,10 +696,11 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
     {
         return 0;
     }
+    ulong payload = sizeof(String) + count * width;
     Heap *heap = NULL;
     if (dvm_refcount_retain_i(&Tstring.ref) == DVM_REFCOUNT_LIVE)
     {
-        heap = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + sizeof(String) + count * width);
+        heap = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + payload);
         if (!heap && dvm_refcount_release_i(&Tstring.ref) != DVM_REFCOUNT_LIVE)
         {
             abort();
@@ -729,6 +730,12 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
         process->exval = string;
     }
     dvm_runtime_gc_shared_finish();
+    /* A monitor is arbitrary native code. The initialized object stays
+     * rooted in exval across both reentry and the callback. */
+    if (heap && heapmonitor)
+    {
+        heapmonitor(0, heap, payload);
+    }
     return heap != NULL;
 }
 
