@@ -2388,9 +2388,10 @@ static int runtime_dispatch_turn(void)
         {
             *slot = process->next;
         }
+        /* Withdraw this root set before running any frame or module destructor. */
+        dvm_native_context_set_process(context, nil);
         destroystack(&process->R);
         destroy(process->R.M);
-        dvm_native_context_set_process(context, nil);
         up->prog = nil;
         destroy(process->exval);
         free(process->exstr);

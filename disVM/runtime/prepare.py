@@ -1041,6 +1041,11 @@ def main():
         "\t\t\tdvm_runtime_instructions--;\n"
         "\t\t\tbreak;\n"
         "\t\t}\n"
+        "\t\t/* Commit changes to the root geometry before the next safepoint. */\n"
+        "\t\tif(p->R.FP != DVM_R.FP || p->R.SP != DVM_R.SP ||\n"
+        "\t\t   p->R.EX != DVM_R.EX || p->R.TS != DVM_R.TS ||\n"
+        "\t\t   p->R.M != DVM_R.M || p->R.MP != DVM_R.MP)\n"
+        "\t\t\tp->R = DVM_R;\n"
         "\t\tif(p->flags & Pkilled)\n"
         "\t\t\tdvm_runtime_termination_checkpoint(p);\n\t\tif(!vmyield())", 1)
     code = code.replace(
