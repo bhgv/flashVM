@@ -770,7 +770,6 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         last = step;
         completed++;
     }
-    dvm_runtime_gc_shared_finish();
     if (completed)
     {
         DVM_R.t = middle_temp;
@@ -779,6 +778,11 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         DVM_R.d = last.destination;
         DVM_R.PC = (Inst *)cursor;
         DVM_R.IC -= completed;
+        dvm_runtime_gc_shared_publish();
+    }
+    dvm_runtime_gc_shared_finish();
+    if (completed)
+    {
         dvm_runtime_shared_integer_commits += completed;
         dvm_runtime_shared_integer_branches += branches;
         dvm_runtime_shared_byte_steps += byte_steps;

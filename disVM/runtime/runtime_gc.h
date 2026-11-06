@@ -44,6 +44,8 @@ void dvm_runtime_gc_native_enter(int released);
 /* Publish the continuation and enter shared admission. A positive result
  * requires shared_finish after releasing every guard. */
 int dvm_runtime_gc_shared_try_enter(void);
+/* Publish changed registers after the instruction is complete and unguarded. */
+void dvm_runtime_gc_shared_publish(void);
 void dvm_runtime_gc_shared_poll(void);
 void dvm_runtime_gc_shared_finish(void);
 

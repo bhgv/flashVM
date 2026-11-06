@@ -430,6 +430,24 @@ int dvm_runtime_gc_shared_try_enter(void)
 }
 
 
+/* Publish a complete register boundary before a shared guest parks or
+ * leaves admission. The collector cannot inspect Prog.R until that point. */
+void dvm_runtime_gc_shared_publish(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    DVM_HeapOwnerStats owner;
+    Prog *guest = dvm_native_context_process(context);
+    if (!guest || guest != up->prog || guest->state != Prelease ||
+        dvm_runqueue_owner(guest) != context || dvm_native_context_object_count(context) ||
+        !dvm_native_owner_statistics(dvm_native_owner_current(), &owner) ||
+        owner.phase != DVM_HEAP_SHARED || owner.pending_progress)
+    {
+        abort();
+    }
+    guest->R = DVM_R;
+}
+
+
 /* Shared callers may poll only between guarded operations, with the
  * suspended continuation's root set still valid. */
 void dvm_runtime_gc_shared_poll(void)
