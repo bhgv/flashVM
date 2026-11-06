@@ -22,6 +22,8 @@
 #include <stdlib.h>
 
 
+unsigned long dvm_runtime_shared_calls;
+unsigned long dvm_runtime_shared_returns;
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
 unsigned long dvm_runtime_shared_byte_steps; /* Shared BYTE arithmetic/comparisons. */
 unsigned long dvm_runtime_shared_long_steps; /* Shared LONG arithmetic/comparisons. */
@@ -452,6 +454,98 @@ static int batch_pc(const Module *module, const Inst *pc)
 }
 
 
+/* Same-module frame links are owner-local. Use the normal handlers for
+ * extension frames, reference destruction, and invalid operands. */
+static int shared_frame_step(const Module *module, const Inst *pc, const Type *current)
+{
+    Frame *frame;
+    Frame links;
+    const Inst *target;
+    uintptr_t current_end = (uintptr_t)DVM_R.FP + current->size;
+    uintptr_t top = (uintptr_t)DVM_R.SP;
+    const void *source = NULL;
+    if (pc->op == ICALL)
+    {
+        if (USRC(pc->add) != AFP || UDST(pc->add) != AIMM ||
+            (pc->add & ARM) != AXNON || pc->s.ind < 0 || pc->s.ind >= current->size ||
+            !batch_pc(module, pc->d.ins) || !batch_pc(module, pc + 1))
+        {
+            return 0;
+        }
+        source = DVM_R.FP + pc->s.ind;
+        if (!frame_scalar(source, current, sizeof(frame)))
+        {
+            return 0;
+        }
+        memmove(&frame, source, sizeof(frame));
+        if ((uintptr_t)frame != current_end || top - current_end < sizeof(links))
+        {
+            return 0;
+        }
+        memmove(&links, frame, sizeof(links));
+        int type_index = 0;
+        while (type_index < module->ntype && module->type[type_index] != links.t)
+        {
+            type_index++;
+        }
+        if (links.mr || !links.t || links.t == H || type_index == module->ntype ||
+            links.t->size < (int)sizeof(links) || (size_t)links.t->size != top - current_end)
+        {
+            return 0;
+        }
+        target = pc->d.ins;
+    }
+    else if (pc->op == IRET && USRC(pc->add) == AXXX && UDST(pc->add) == AXXX &&
+             (pc->add & ARM) == AXNON)
+    {
+        frame = (Frame *)DVM_R.FP;
+        memmove(&links, frame, sizeof(links));
+        if (links.t != current || current->np || links.mr || current_end != top ||
+            (uintptr_t)links.fp < (uintptr_t)DVM_R.EX ||
+            (uintptr_t)links.fp >= (uintptr_t)frame || !batch_pc(module, links.lr))
+        {
+            return 0;
+        }
+        target = links.lr;
+    }
+    else
+    {
+        return 0;
+    }
+    if (dvm_runtime_gc_shared_try_enter() <= 0)
+    {
+        return 0;
+    }
+    if (source)
+    {
+        links.lr = (Inst *)pc + 1;
+        links.fp = DVM_R.FP;
+        memmove(frame, &links, sizeof(links));
+        DVM_R.FP = (uchar *)frame;
+        DVM_R.s = (void *)source;
+        DVM_R.m = DVM_R.d = (void *)&pc->d;
+    }
+    else
+    {
+        DVM_R.FP = links.fp;
+        DVM_R.SP = (uchar *)frame;
+    }
+    DVM_R.PC = (Inst *)target;
+    DVM_R.IC--;
+    dvm_runtime_gc_shared_publish();
+    dvm_runtime_gc_shared_finish();
+    if (source)
+    {
+        dvm_runtime_shared_calls++;
+    }
+    else
+    {
+        dvm_runtime_shared_returns++;
+    }
+    return 1;
+}
+
+
 /* Decode only direct scalar operands and same-module integer branch targets.
  * A failed check ends the prefix and leaves the normal decoder authoritative. */
 static int decode_integer_step(const Module *module, const Inst *pc, const Type *frame,
@@ -673,6 +767,10 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()))
     {
         return 0;
+    }
+    if (shared_frame_step(module, pc, frame))
+    {
+        return 1;
     }
     module_type = module_data_type(&DVM_R);
     if (!decode_integer_step(module, pc, frame, module_type, &step) ||

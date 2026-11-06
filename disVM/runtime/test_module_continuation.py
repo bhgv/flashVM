@@ -93,6 +93,7 @@ def portable_overlap(runtime, compiler, include, runner):
         batches = re.search(r"shared_integer_batches=(\d+)", output)
         widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
         pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
+        frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
         dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output)
@@ -104,6 +105,7 @@ def portable_overlap(runtime, compiler, include, runner):
                 or len(starts) != 40 or len({pid for pid, _ in starts}) != 40
                 or len({thread for _, thread in starts}) != 40 or sorted(starts) != sorted(retired)
                 or not pointer_copies or int(pointer_copies[1]) == 0
+                or not frames or min(map(int, frames.groups())) < 40
                 or not batches or int(batches[1]) < 40
                 or not widths or min(map(int, widths.groups())) < 40
                 or not dispatch or dispatch[1] != dispatch[2]
@@ -153,9 +155,11 @@ def main():
                 widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
                 batches = re.search(r"shared_integer_batches=(\d+)", output)
                 pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
+                frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
-                        or (not options and (not batches or int(batches[1]) < 40
+                        or (not options and (not frames or min(map(int, frames.groups())) < 40
+                            or not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120
                             or not widths or min(map(int, widths.groups())) < 40))
                         or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < 40

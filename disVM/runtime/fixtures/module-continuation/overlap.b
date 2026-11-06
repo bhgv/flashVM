@@ -7,8 +7,17 @@ published: int;
 sample: real;
 sharedarray: array of int;
 
+scalarcall(value: int): int
+{
+    if (value == 0)
+        return 1;
+    return 1 + scalarcall(value - 1);
+}
+
 copy(id, factor: int, done, resume: chan of int)
 {
+    if (scalarcall(id) != id + 1)
+        raise "parallel scalar frame lost its return value";
     product := id*factor;
     adjusted := product + factor;
     checksum := adjusted ^ factor;
