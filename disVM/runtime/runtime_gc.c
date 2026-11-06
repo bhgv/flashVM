@@ -459,6 +459,15 @@ void dvm_runtime_gc_shared_poll(void)
 }
 
 
+/* Observe queued admission at a shared trace boundary. The snapshot
+ * grants no ownership and may become stale before the next check. */
+int dvm_runtime_gc_shared_has_waiters(void)
+{
+    DVM_WorldAdmission admission;
+    return !dvm_world_admission(state.world, &admission) || admission.waiting != 0;
+}
+
+
 void dvm_runtime_gc_shared_finish(void)
 {
     native_enter(1, 1);

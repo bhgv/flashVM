@@ -918,7 +918,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         return 0;
     }
-    limit = DVM_R.IC < 16 ? DVM_R.IC : 16;
+    limit = DVM_R.IC;
     released = dvm_runtime_gc_shared_try_enter();
     if (released <= 0)
     {
@@ -928,6 +928,10 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         /* Frame steps publish updated roots before the next unguarded poll. */
         dvm_runtime_gc_shared_poll();
+        if (completed && completed % 16 == 0 && dvm_runtime_gc_shared_has_waiters())
+        {
+            break;
+        }
         if (!batch_pc(module, cursor))
         {
             break;

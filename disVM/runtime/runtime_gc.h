@@ -47,6 +47,7 @@ int dvm_runtime_gc_shared_try_enter(void);
 /* Publish changed registers after the instruction is complete and unguarded. */
 void dvm_runtime_gc_shared_publish(void);
 void dvm_runtime_gc_shared_poll(void);
+int dvm_runtime_gc_shared_has_waiters(void);
 void dvm_runtime_gc_shared_finish(void);
 
 /* [GC:] Leave heap execution, drain/join both collectors, remove the poll hook and
