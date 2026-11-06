@@ -130,3 +130,11 @@ A trace can also keep BYTE, WORD and LONG copies and the six integer
 conversions between BYTE, SHORT, WORD and LONG. Conversions claim the
 input and output at their own widths and capture the input before writing.
 Only direct scalar frame destinations are admitted.
+
+The same guard union now covers scalar destinations in rooted module data.
+The frame and module type maps exclude reference slots and invalid spans.
+A single read-modify-write instruction on a shared scalar holds the union
+through publication. A trace releases the union between instructions, so
+a sequence of instructions does not make a Limbo expression atomic.
+The copy path also accepts MOVF as a byte transfer. REAL arithmetic and
+predicates keep their existing floating-point evaluation paths.

@@ -3,6 +3,9 @@ include "sys.m";
 
 Overlap: module { init: fn(); };
 
+published: int;
+sample: real;
+
 copy(id, factor: int, done: chan of int)
 {
     product := id*factor;
@@ -71,6 +74,11 @@ copy(id, factor: int, done: chan of int)
     destination[0:] = source;
     if (destination[0] != id || destination[1] != id+1 || destination[2] != id+2)
         raise "parallel array copy lost its payload";
+    published += factor;
+    sample = 1.25;
+    value := sample;
+    if (value != 1.25)
+        raise "parallel REAL copy changed its value";
     done <-= id;
 }
 
@@ -88,5 +96,7 @@ init()
             raise "duplicate parallel copy completion";
         seen[result] = 1;
     }
+    if (published != 680)
+        raise "parallel module increments lost updates";
     sys->print("PASS forty dedicated shared copies\n");
 }

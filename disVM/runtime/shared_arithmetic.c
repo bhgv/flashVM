@@ -491,6 +491,10 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         step->source_width = sizeof(WORD);
         step->width = sizeof(WORD);
         break;
+    case IMOVF:
+        step->source_width = sizeof(REAL);
+        step->width = sizeof(REAL);
+        break;
     case IMOVL:
         step->source_width = sizeof(LONG);
         step->width = sizeof(LONG);
@@ -579,17 +583,26 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
         step->destination = (void *)&pc->d;
         step->target = instruction.d.ins;
     }
-    else
+    else if (destination_mode == AFP && instruction.d.ind >= 0 && instruction.d.ind < frame->size)
     {
-        if (destination_mode != AFP || instruction.d.ind < 0 || instruction.d.ind >= frame->size)
-        {
-            return 0;
-        }
         step->destination = DVM_R.FP + instruction.d.ind;
         if (!frame_scalar(step->destination, frame, step->width))
         {
             return 0;
         }
+    }
+    else if (destination_mode == AMP && module_type && instruction.d.ind >= 0 &&
+        instruction.d.ind < module_type->size)
+    {
+        step->destination = DVM_R.MP + instruction.d.ind;
+        if (!scalar_span(step->destination, module_type, step->width, (uintptr_t)DVM_R.MP, 0))
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 0;
     }
     if (source_mode == AFP && instruction.s.ind >= 0 && instruction.s.ind < frame->size)
     {
@@ -652,7 +665,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
 }
 
 
-/* Execute a bounded private integer trace in one shared interval. The suspended
+/* Execute a bounded scalar trace in one shared interval. The suspended
  * guest retains its frame and module. No throwing callbacks run in the trace. */
 int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
 {
@@ -730,7 +743,8 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         }
         else if (step.unary)
         {
-            if (step.opcode == IMOVB || step.opcode == IMOVW || step.opcode == IMOVL)
+            if (step.opcode == IMOVB || step.opcode == IMOVW ||
+                step.opcode == IMOVL || step.opcode == IMOVF)
             {
                 memmove(step.destination, step.source, step.width);
             }
