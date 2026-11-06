@@ -1,5 +1,6 @@
 implement Overlap;
 include "sys.m";
+include "provider.m";
 
 Overlap: module { init: fn(); };
 
@@ -14,10 +15,12 @@ scalarcall(value: int): int
     return 1 + scalarcall(value - 1);
 }
 
-copy(id, factor: int, done, resume: chan of int)
+copy(id, factor: int, done, resume: chan of int, provider: Provider)
 {
-    if (scalarcall(id) != id + 1)
+    if (scalarcall(id % 4) != id % 4 + 1)
         raise "parallel scalar frame lost its return value";
+    if (provider->touch() != 314159)
+        raise "parallel module call lost its return value";
     product := id*factor;
     adjusted := product + factor;
     checksum := adjusted ^ factor;
@@ -110,10 +113,11 @@ copy(id, factor: int, done, resume: chan of int)
 init()
 {
     sys := load Sys Sys->PATH;
+    provider := load Provider "./provider.dis";
     done := chan of int;
     resume := chan of int;
     for (id := 0; id < 40; id++)
-        spawn copy(id, 17, done, resume);
+        spawn copy(id, 17, done, resume, provider);
     seen := array[40] of {* => 0};
     for (id = 0; id < 40; id++)
     {

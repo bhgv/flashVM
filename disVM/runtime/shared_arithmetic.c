@@ -16,6 +16,8 @@
 #include "disvm/native_owner.h"
 #include "runqueue.h"
 #include "runtime_gc.h"
+#include "root_registry.h"
+#include "disvm/refcount.h"
 #include <fenv.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -24,6 +26,8 @@
 
 unsigned long dvm_runtime_shared_calls;
 unsigned long dvm_runtime_shared_returns;
+unsigned long dvm_runtime_shared_module_calls;
+unsigned long dvm_runtime_shared_module_returns;
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
 unsigned long dvm_runtime_shared_byte_steps; /* Shared BYTE arithmetic/comparisons. */
 unsigned long dvm_runtime_shared_long_steps; /* Shared LONG arithmetic/comparisons. */
@@ -456,21 +460,59 @@ static int batch_pc(const Module *module, const Inst *pc)
 
 /* Same-module frame links are owner-local. Use the normal handlers for
  * extension frames, reference destruction, and invalid operands. */
-static int shared_frame_step(const Module *module, const Inst *pc, const Type *current)
+static int shared_frame_step(const Module *module, const Inst *pc, const Type *current, int shared, int probe)
 {
     Frame *frame;
     Frame links;
     const Inst *target;
+    const void *module_slot = NULL;
+    Modlink *callee = NULL;
+    Modlink *departed = NULL;
+    WORD entry_index = 0;
     uintptr_t current_end = (uintptr_t)DVM_R.FP + current->size;
     uintptr_t top = (uintptr_t)DVM_R.SP;
     const void *source = NULL;
-    if (pc->op == ICALL)
+    if (pc->op == ICALL || pc->op == IMCALL)
     {
-        if (USRC(pc->add) != AFP || UDST(pc->add) != AIMM ||
-            (pc->add & ARM) != AXNON || pc->s.ind < 0 || pc->s.ind >= current->size ||
-            !batch_pc(module, pc->d.ins) || !batch_pc(module, pc + 1))
+        if (USRC(pc->add) != AFP || pc->s.ind < 0 || pc->s.ind >= current->size ||
+            !batch_pc(module, pc + 1))
         {
             return 0;
+        }
+        if (pc->op == IMCALL)
+        {
+            if (UDST(pc->add) != AFP || (pc->add & ARM) != AXIMM ||
+                pc->d.ind < 0 || pc->d.ind >= current->size || pc->reg >= 32768)
+            {
+                return 0;
+            }
+            module_slot = DVM_R.FP + pc->d.ind;
+            if (!mapped_pointer(module_slot, DVM_R.FP, current, NREG * IBY2WD))
+            {
+                return 0;
+            }
+            memmove(&callee, module_slot, sizeof(callee));
+            entry_index = pc->reg;
+            if (!callee || callee == H || !callee->m || callee->m == H ||
+                !callee->prog || callee->compiled || DVM_R.M->compiled ||
+                callee->m->cstep || entry_index >= callee->nlinks)
+            {
+                return 0;
+            }
+            target = callee->links[entry_index].u.pc;
+            if (!batch_pc(callee->m, target))
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            if (UDST(pc->add) != AIMM || (pc->add & ARM) != AXNON ||
+                !batch_pc(module, pc->d.ins))
+            {
+                return 0;
+            }
+            target = pc->d.ins;
         }
         source = DVM_R.FP + pc->s.ind;
         if (!frame_scalar(source, current, sizeof(frame)))
@@ -483,26 +525,51 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
             return 0;
         }
         memmove(&links, frame, sizeof(links));
-        int type_index = 0;
-        while (type_index < module->ntype && module->type[type_index] != links.t)
+        int known_type = 0;
+        if (callee)
         {
-            type_index++;
+            known_type = links.t == callee->links[entry_index].frame;
         }
-        if (links.mr || !links.t || links.t == H || type_index == module->ntype ||
+        else
+        {
+            for (int index = 0; index < module->ntype; index++)
+            {
+                if (module->type[index] == links.t)
+                {
+                    known_type = 1;
+                    break;
+                }
+            }
+        }
+        if (links.mr || !links.t || links.t == H || !known_type ||
             links.t->size < (int)sizeof(links) || (size_t)links.t->size != top - current_end)
         {
             return 0;
         }
-        target = pc->d.ins;
     }
     else if (pc->op == IRET && USRC(pc->add) == AXXX && UDST(pc->add) == AXXX &&
              (pc->add & ARM) == AXNON)
     {
         frame = (Frame *)DVM_R.FP;
         memmove(&links, frame, sizeof(links));
-        if (links.t != current || current->np || links.mr || current_end != top ||
+        if (links.t != current || current->np || current_end != top ||
             (uintptr_t)links.fp < (uintptr_t)DVM_R.EX ||
-            (uintptr_t)links.fp >= (uintptr_t)frame || !batch_pc(module, links.lr))
+            (uintptr_t)links.fp >= (uintptr_t)frame)
+        {
+            return 0;
+        }
+        const Module *caller = module;
+        if (links.mr)
+        {
+            if (links.mr == H || !links.mr->m || links.mr->m == H ||
+                links.mr->compiled || DVM_R.M->compiled || links.mr->m->cstep)
+            {
+                return 0;
+            }
+            caller = links.mr->m;
+            departed = DVM_R.M;
+        }
+        if (!batch_pc(caller, links.lr))
         {
             return 0;
         }
@@ -512,30 +579,83 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
     {
         return 0;
     }
-    if (dvm_runtime_gc_shared_try_enter() <= 0)
+    if (shared && (callee || departed))
     {
+        return 0;
+    }
+    if (probe)
+    {
+        return 1;
+    }
+    /* The displaced REG.M owner stays rooted until destroy can retire it. */
+    if (departed && !dvm_runtime_root_add(D2H(departed)))
+    {
+        return 0;
+    }
+    if (!shared && dvm_runtime_gc_shared_try_enter() <= 0)
+    {
+        if (departed && !dvm_runtime_root_remove(D2H(departed)))
+        {
+            abort();
+        }
+        return 0;
+    }
+    if (callee && dvm_refcount_retain_u(&D2H(callee)->ref) != DVM_REFCOUNT_LIVE)
+    {
+        dvm_runtime_gc_shared_finish();
         return 0;
     }
     if (source)
     {
         links.lr = (Inst *)pc + 1;
         links.fp = DVM_R.FP;
+        if (callee)
+        {
+            links.mr = DVM_R.M;
+        }
         memmove(frame, &links, sizeof(links));
         DVM_R.FP = (uchar *)frame;
         DVM_R.s = (void *)source;
         DVM_R.m = DVM_R.d = (void *)&pc->d;
+        if (callee)
+        {
+            DVM_R.M = callee;
+            DVM_R.MP = callee->MP;
+            DVM_R.d = (void *)module_slot;
+            DVM_R.m = &DVM_R.t;
+            DVM_R.t = 1;
+        }
     }
     else
     {
         DVM_R.FP = links.fp;
         DVM_R.SP = (uchar *)frame;
+        if (departed)
+        {
+            DVM_R.M = links.mr;
+            DVM_R.MP = links.mr->MP;
+        }
     }
     DVM_R.PC = (Inst *)target;
     DVM_R.IC--;
     dvm_runtime_gc_shared_publish();
+    if (shared)
+    {
+        return source ? 1 : 2;
+    }
     dvm_runtime_gc_shared_finish();
+    if (departed)
+    {
+        if (!dvm_runtime_root_remove(D2H(departed)))
+        {
+            abort();
+        }
+        dvm_runtime_shared_module_returns++;
+        destroy(departed);
+    }
     if (source)
     {
+        dvm_runtime_shared_module_calls += callee != NULL;
         dvm_runtime_shared_calls++;
     }
     else
@@ -754,28 +874,29 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
  * guest retains its frame and module. No throwing callbacks run in the trace. */
 int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
 {
-    IntegerStep step, last;
+    IntegerStep step;
     Type *frame;
     const Type *module_type;
     DVM_CellDomain *domain;
     const Inst *cursor = pc;
     int completed = 0, branches = 0, released, limit;
-    unsigned byte_steps = 0, long_steps = 0;
-    WORD middle_temp = DVM_R.t;
-    const void *saved_source = DVM_R.s;
+    unsigned byte_steps = 0, long_steps = 0, calls = 0, returns = 0;
     if (!dvm_runtime_shared_integer || dvm_runtime_parallel_add != 2 ||
         module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()))
     {
         return 0;
     }
-    if (shared_frame_step(module, pc, frame))
+    int local_frame = shared_frame_step(module, pc, frame, 1, 1);
+    if (!local_frame && shared_frame_step(module, pc, frame, 0, 0))
     {
         return 1;
     }
     module_type = module_data_type(&DVM_R);
-    if (!decode_integer_step(module, pc, frame, module_type, &step) ||
-        (!step.target && (index >= module->nprog - 1 ||
-         !decode_integer_step(module, pc + 1, frame, module_type, &step))))
+    if (!local_frame &&
+        (!decode_integer_step(module, pc, frame, module_type, &step) ||
+         (!step.target && (index >= module->nprog - 1 ||
+          (!decode_integer_step(module, pc + 1, frame, module_type, &step) &&
+           !shared_frame_step(module, pc + 1, frame, 1, 1))))))
     {
         return 0;
     }
@@ -792,9 +913,26 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     }
     while (completed < limit)
     {
-        /* No cell guard survives a step. These traces change only scalar
-         * bytes, so the suspended continuation still describes every root. */
+        /* Frame steps publish updated roots before the next unguarded poll. */
         dvm_runtime_gc_shared_poll();
+        if (!batch_pc(module, cursor))
+        {
+            break;
+        }
+        int frame_step = shared_frame_step(module, cursor, frame, 1, 0);
+        if (frame_step)
+        {
+            calls += frame_step == 1;
+            returns += frame_step == 2;
+            completed++;
+            cursor = DVM_R.PC;
+            frame = current_frame_type();
+            if (!frame)
+            {
+                break;
+            }
+            continue;
+        }
         if (!decode_integer_step(module, cursor, frame, module_type, &step))
         {
             break;
@@ -802,7 +940,9 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         if (step.opcode == IJMP)
         {
             cursor = step.target;
-            last = step;
+            DVM_R.m = DVM_R.d = step.destination;
+            DVM_R.PC = (Inst *)cursor;
+            DVM_R.IC--;
             completed++;
             branches++;
             continue;
@@ -860,28 +1000,27 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         }
         if (step.immediate_middle)
         {
-            middle_temp = step.immediate;
+            DVM_R.t = step.immediate;
         }
         byte_steps += step.family == 1;
         long_steps += step.family == 2;
-        saved_source = step.source;
-        last = step;
+        DVM_R.s = (void *)step.source;
+        DVM_R.m = step.immediate_middle ? (void *)&DVM_R.t : (void *)step.middle;
+        DVM_R.d = step.destination;
+        DVM_R.PC = (Inst *)cursor;
+        DVM_R.IC--;
         completed++;
     }
     if (completed)
     {
-        DVM_R.t = middle_temp;
-        DVM_R.s = (void *)saved_source;
-        DVM_R.m = last.immediate_middle ? (void *)&DVM_R.t : (void *)last.middle;
-        DVM_R.d = last.destination;
-        DVM_R.PC = (Inst *)cursor;
-        DVM_R.IC -= completed;
         dvm_runtime_gc_shared_publish();
     }
     dvm_runtime_gc_shared_finish();
     if (completed)
     {
-        dvm_runtime_shared_integer_commits += completed;
+        dvm_runtime_shared_calls += calls;
+        dvm_runtime_shared_returns += returns;
+        dvm_runtime_shared_integer_commits += completed - calls - returns;
         dvm_runtime_shared_integer_branches += branches;
         dvm_runtime_shared_byte_steps += byte_steps;
         dvm_runtime_shared_long_steps += long_steps;

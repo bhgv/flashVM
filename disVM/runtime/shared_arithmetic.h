@@ -8,6 +8,8 @@ extern unsigned long dvm_runtime_shared_integer_commits;
 extern unsigned long dvm_runtime_shared_integer_batches;
 extern unsigned long dvm_runtime_shared_calls;
 extern unsigned long dvm_runtime_shared_returns;
+extern unsigned long dvm_runtime_shared_module_calls;
+extern unsigned long dvm_runtime_shared_module_returns;
 extern unsigned long dvm_runtime_shared_integer_branches;
 extern unsigned long dvm_runtime_shared_byte_steps;
 extern unsigned long dvm_runtime_shared_long_steps;

@@ -83,8 +83,10 @@ def portable_overlap(runtime, compiler, include, runner):
     fixtures = Path(__file__).resolve().parent / "fixtures/module-continuation"
     with tempfile.TemporaryDirectory(prefix="module-continuation-target-") as temporary:
         image = Path(temporary) / "overlap.dis"
-        subprocess.run([str(compiler), "-F", "-I", str(include),
-                        "-o", str(image), str(fixtures / "overlap.b")], check=True)
+        for name in ("provider", "overlap"):
+            subprocess.run([str(compiler), "-F", "-I", str(include), "-I", str(fixtures),
+                            "-o", str(Path(temporary) / (name + ".dis")),
+                            str(fixtures / (name + ".b"))], check=True)
         result = subprocess.run(
             [*runner, str(runtime), "--no-jit", "--native-spawn", "--stats", str(image)],
             cwd=temporary, capture_output=True, text=True, timeout=120,
@@ -94,6 +96,7 @@ def portable_overlap(runtime, compiler, include, runner):
         widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
         pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
         frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
+        module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
         dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output)
@@ -106,6 +109,7 @@ def portable_overlap(runtime, compiler, include, runner):
                 or len({thread for _, thread in starts}) != 40 or sorted(starts) != sorted(retired)
                 or not pointer_copies or int(pointer_copies[1]) == 0
                 or not frames or min(map(int, frames.groups())) < 40
+                or not module_frames or min(map(int, module_frames.groups())) < 40
                 or not batches or int(batches[1]) < 40
                 or not widths or min(map(int, widths.groups())) < 40
                 or not dispatch or dispatch[1] != dispatch[2]
@@ -156,9 +160,11 @@ def main():
                 batches = re.search(r"shared_integer_batches=(\d+)", output)
                 pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
                 frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
+                module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
                         or (not options and (not frames or min(map(int, frames.groups())) < 40
+                            or not module_frames or min(map(int, module_frames.groups())) < 40
                             or not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120
                             or not widths or min(map(int, widths.groups())) < 40))
