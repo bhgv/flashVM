@@ -26,6 +26,14 @@ void dvm_managed_workers_wake(void)
     }
 }
 
+/* Queue tests use no native thread service. */
+void dvm_managed_workers_wake_guest(Prog *guest)
+{
+    USED(guest);
+    dvm_managed_workers_wake();
+}
+
+
 
 /* Fail closed on a semantic invariant; valid/message are borrowed and no VM
  * error ABI is simulated. Positive fixture resources retire before success. */

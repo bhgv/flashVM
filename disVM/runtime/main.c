@@ -1364,7 +1364,7 @@ static void release_channel_claim(Prog *peer, const void *owner)
     dvm_runqueue_unpin(peer);
     if (runnable)
     {
-        dvm_managed_workers_wake();
+        dvm_managed_workers_wake_guest(peer);
     }
 }
 

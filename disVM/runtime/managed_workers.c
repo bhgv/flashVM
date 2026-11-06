@@ -21,6 +21,10 @@
  * Native identity is published/read only under the shared heap gate. */
 typedef struct ManagedWorker
 {
+    struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
+    FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
+    unsigned long wake_epoch;   /* Changes under wake, before signal. */
+    int wake_stopped;           /* Stop/failure latch under wake. */
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
     unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
     Prog *guest;                /* Borrowed until retirement on its own thread. */
@@ -64,6 +68,7 @@ typedef struct ManagedWorkers
     unsigned long controller;     /* Successful controller turns. */
     unsigned long files;          /* Descriptor operations admitted through native per-slot FIFO. */
     unsigned long ui_requests;    /* Helper UI role admissions, under heap exclusion. */
+    ManagedWorker *wake_slots;      /* Dedicated conditions protected by service.sync. */
     ManagedWorker *helpers;       /* Individually allocated stable slots; never realloc live storage. */
 } ManagedWorkers;
 
@@ -82,6 +87,36 @@ static int stopping(void)
 }
 
 
+/* Wake every dedicated guest only for stop or fatal failure.
+ * Caller owns service.sync, which pins the registered conditions. */
+static void stop_dedicated_waits(void)
+{
+    ManagedWorker *worker;
+    for (worker = service.wake_slots; worker; worker = worker->wake_next)
+    {
+        fvm_port_sync_lock(worker->wake);
+        worker->wake_stopped = 1;
+        fvm_port_sync_signal_all(worker->wake);
+        fvm_port_sync_unlock(worker->wake);
+    }
+}
+
+
+/* Remove a dedicated condition from the stop registry before publishing done. */
+static void unregister_dedicated_wait(ManagedWorker *worker)
+{
+    ManagedWorker **slot = &service.wake_slots;
+    while (*slot && *slot != worker)
+    {
+        slot = &(*slot)->wake_next;
+    }
+    if (*slot)
+    {
+        *slot = worker->wake_next;
+    }
+}
+
+
 /* Latch a native failure. message is a stable diagnostic, never a managed value.
  * Callers retain their heap phase and must still retire the context safely. */
 static void fail(const char *message)
@@ -89,6 +124,7 @@ static void fail(const char *message)
     fprintf(stderr,"disvm managed worker: %s\n",message);
     fvm_port_sync_lock(service.sync);
     service.failed = 1;
+    stop_dedicated_waits();
     fvm_port_sync_signal_all(service.sync);
     fvm_port_sync_unlock(service.sync);
     service.cancel_waits();
@@ -115,6 +151,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     ManagedWorker *finished = NULL;
     ManagedWorker *worker;
     unsigned long generation;
+    unsigned long guest_epoch = 0;
     unsigned long idle_created = 0;
     unsigned long idle_reaped = 0;
     int wait_for_work;
@@ -125,6 +162,12 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     {
         return !stopping();
     }
+    if (current_guest && idle)
+    {
+        fvm_port_sync_lock(current_guest->wake);
+        guest_epoch = current_guest->wake_epoch;
+        fvm_port_sync_unlock(current_guest->wake);
+    }
     wait_for_work = idle && !rendezvous &&
         (service.count == 1 || (service.automatic && service.live == 1));
     while (*slot)
@@ -134,7 +177,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         fvm_port_sync_lock(service.sync);
         done = worker->done;
         fvm_port_sync_unlock(service.sync);
-        if (done)
+        if (done && !worker->guest)
         {
             *slot = worker->next;
             worker->next = finished;
@@ -183,7 +226,16 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     {
         fprintf(stderr, "NATIVEPOOL_IDLE executors=2 created=%lu reaped=%lu\n", idle_created, idle_reaped);
     }
-    if (wait_for_work && !finished)
+    if (current_guest && idle && !finished)
+    {
+        fvm_port_sync_lock(current_guest->wake);
+        while (current_guest->wake_epoch == guest_epoch && !current_guest->wake_stopped)
+        {
+            fvm_port_sync_wait(current_guest->wake);
+        }
+        fvm_port_sync_unlock(current_guest->wake);
+    }
+    else if (wait_for_work && !finished)
     {
         fvm_port_sync_lock(service.sync);
         while (service.generation == generation && !service.stopping && !service.failed)
@@ -214,6 +266,10 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         {
             fprintf(stderr, "NATIVEPOOL_REAP id=%lu joined=1 turns=%lu\n", worker->id, worker->turns);
         }
+        if (worker->wake)
+        {
+            fvm_port_sync_destroy(worker->wake);
+        }
         free(worker);
     }
     return !stopping();
@@ -239,6 +295,7 @@ static void execute(void *argument)
             dvm_native_context_destroy(context);
         }
         fvm_port_sync_lock(service.sync);
+        unregister_dedicated_wait(worker);
         worker->done = 1;
         service.generation++;
         fvm_port_sync_signal_all(service.sync);
@@ -348,6 +405,7 @@ static void execute(void *argument)
         fail("executor retirement failed");
     }
     fvm_port_sync_lock(service.sync);
+    unregister_dedicated_wait(worker);
     worker->done = 1;
     service.generation++;
     fvm_port_sync_signal_all(service.sync);
@@ -372,11 +430,35 @@ static int start_helper(Prog *guest)
     worker->id = service.created + 1;
     worker->guest = guest;
     worker->guest_pid = guest ? guest->pid : 0;
+    if (guest)
+    {
+        worker->wake = fvm_port_sync_create();
+        if (!worker->wake)
+        {
+            free(worker);
+            return 0;
+        }
+        fvm_port_sync_lock(service.sync);
+        worker->wake_next = service.wake_slots;
+        service.wake_slots = worker;
+        fvm_port_sync_unlock(service.sync);
+    }
     worker->thread = fvm_port_thread_start(execute, worker);
     if (!worker->thread)
     {
+        if (worker->wake)
+        {
+            fvm_port_sync_lock(service.sync);
+            unregister_dedicated_wait(worker);
+            fvm_port_sync_unlock(service.sync);
+            fvm_port_sync_destroy(worker->wake);
+        }
         free(worker);
         return 0;
+    }
+    if (guest)
+    {
+        ((DVM_RuntimeProcess *)guest)->dedicated = worker;
     }
     worker->next = service.helpers;
     service.helpers = worker;
@@ -480,6 +562,22 @@ void dvm_managed_workers_wake(void)
         fvm_port_sync_signal_all(service.sync);
         fvm_port_sync_unlock(service.sync);
     }
+}
+
+
+/* Publish readiness to the guest's native condition. The caller holds the
+ * heap turn, so guest and its dedicated slot remain live through the signal. */
+void dvm_managed_workers_wake_guest(Prog *guest)
+{
+    ManagedWorker *worker = ((DVM_RuntimeProcess *)guest)->dedicated;
+    if (worker)
+    {
+        fvm_port_sync_lock(worker->wake);
+        worker->wake_epoch++;
+        fvm_port_sync_signal_all(worker->wake);
+        fvm_port_sync_unlock(worker->wake);
+    }
+    dvm_managed_workers_wake();
 }
 
 
@@ -647,6 +745,7 @@ int dvm_managed_workers_stop(int diagnostics)
     before = service.live + 1;
     fvm_port_sync_lock(service.sync);
     service.stopping = 1;
+    stop_dedicated_waits();
     fvm_port_sync_signal_all(service.sync);
     fvm_port_sync_unlock(service.sync);
     if (!leave_empty())
@@ -688,6 +787,10 @@ int dvm_managed_workers_stop(int diagnostics)
     for (worker = service.helpers; worker; worker = next)
     {
         next = worker->next;
+        if (worker->wake)
+        {
+            fvm_port_sync_destroy(worker->wake);
+        }
         free(worker);
     }
     fvm_port_sync_destroy(service.sync);

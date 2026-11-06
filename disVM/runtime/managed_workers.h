@@ -50,6 +50,7 @@ void dvm_managed_workers_native_suspended(void);
 /* Signal runnable work or a pending native request. The caller must own
  * NativeWorld or otherwise guarantee service lifetime through the signal. */
 void dvm_managed_workers_wake(void);
+void dvm_managed_workers_wake_guest(struct Prog *guest);
 
 
 /* Yield an empty controller turn through FIFO heap admission. May wait for

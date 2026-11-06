@@ -309,7 +309,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
     count++;
     if (!runtime_process(process)->channel_claimed)
     {
-        dvm_managed_workers_wake();
+        dvm_managed_workers_wake_guest(process);
     }
     return 1;
 }
