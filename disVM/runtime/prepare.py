@@ -757,7 +757,7 @@ def main():
             if view_source.count(boundary) != 1:
                 raise ValueError("hosted exception unwind boundary drift")
             view_source = view_source.replace(boundary, boundary +
-                "\n\t\tif(dvm_runtime_exception_pop(p)){\n"
+                "\n\t\tif(dvm_runtime_exception_pop(p, fp)){\n"
                 "\t\t\tm = DVM_R.M;\n\t\t\tcontinue;\n\t\t}", 1)
         path.write_text(view_source)
     stack_path = args.output / "validstk.c"

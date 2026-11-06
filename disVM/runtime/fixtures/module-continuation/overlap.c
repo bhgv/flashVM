@@ -47,11 +47,11 @@ int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Mo
 
 
 /* Observe only successful shared pops of actual exception frames. */
-int __real_dvm_runtime_exception_pop(Prog *process);
-int __wrap_dvm_runtime_exception_pop(Prog *process)
+int __real_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame);
+int __wrap_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 {
-    int popped = __real_dvm_runtime_exception_pop(process);
-    if (popped)
+    int popped = __real_dvm_runtime_exception_pop(process, handler_frame);
+    if (popped >= 2)
     {
         fprint(2, "FRAME exception popped in shared mode\n");
     }

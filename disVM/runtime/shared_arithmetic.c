@@ -473,47 +473,60 @@ static int retire_shared_frame(Frame *frame, const Type *type, Modlink *departed
 }
 
 
-/* Pop the current ordinary frame during hosted exception unwinding.
- * The retained walker has already selected a handler and trimmed arguments.
- * Extension frames and failures stay with its exclusive cleanup path. */
-int dvm_runtime_exception_pop(Prog *process)
+/* Pop consecutive ordinary frames up to the borrowed handler frame.
+ * Return the number removed. The caller owns the exclusive turn on entry
+ * and return and handles argument gaps or extensions on the retained path. */
+int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 {
     if (!dvm_runtime_shared_integer || process->state != Pready ||
         dvm_runqueue_head() != process || !dvm_runqueue_release_allowed(process))
     {
         return 0;
     }
-    Type *type = current_frame_type();
-    Frame *frame = (Frame *)DVM_R.FP;
-    if (!type || frame->t != type || (uintptr_t)frame + type->size != (uintptr_t)DVM_R.SP ||
-        (uintptr_t)frame->fp < (uintptr_t)DVM_R.EX ||
-        (uintptr_t)frame->fp >= (uintptr_t)frame || frame->mr == H)
+    int shared = 0;
+    int popped = 0;
+    while (DVM_R.FP != handler_frame)
     {
-        return 0;
+        Type *type = current_frame_type();
+        Frame *frame = (Frame *)DVM_R.FP;
+        if (!type || frame->t != type || (uintptr_t)frame + type->size != (uintptr_t)DVM_R.SP ||
+            (uintptr_t)frame->fp < (uintptr_t)DVM_R.EX ||
+            (uintptr_t)frame->fp >= (uintptr_t)frame || frame->mr == H)
+        {
+            break;
+        }
+        if (!shared)
+        {
+            shared = dvm_runtime_gc_shared_try_enter() > 0;
+            if (!shared)
+            {
+                break;
+            }
+        }
+        Frame links = *frame;
+        Modlink *departed = links.mr ? DVM_R.M : NULL;
+        if ((type->np || departed) && !retire_shared_frame(frame, type, departed))
+        {
+            break;
+        }
+        DVM_R.FP = links.fp;
+        DVM_R.SP = (uchar *)frame;
+        DVM_R.PC = links.lr;
+        if (departed)
+        {
+            DVM_R.M = links.mr;
+            DVM_R.MP = links.mr->MP;
+        }
+        DVM_R.s = DVM_R.m = DVM_R.d = NULL;
+        dvm_runtime_gc_shared_publish();
+        dvm_runtime_gc_shared_poll();
+        popped++;
     }
-    Frame links = *frame;
-    Modlink *departed = links.mr ? DVM_R.M : NULL;
-    if (dvm_runtime_gc_shared_try_enter() <= 0)
-    {
-        return 0;
-    }
-    if ((type->np || departed) && !retire_shared_frame(frame, type, departed))
+    if (shared)
     {
         dvm_runtime_gc_shared_finish();
-        return 0;
     }
-    DVM_R.FP = links.fp;
-    DVM_R.SP = (uchar *)frame;
-    DVM_R.PC = links.lr;
-    if (departed)
-    {
-        DVM_R.M = links.mr;
-        DVM_R.MP = links.mr->MP;
-    }
-    DVM_R.s = DVM_R.m = DVM_R.d = NULL;
-    dvm_runtime_gc_shared_publish();
-    dvm_runtime_gc_shared_finish();
-    return 1;
+    return popped;
 }
 
 

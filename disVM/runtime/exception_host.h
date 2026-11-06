@@ -10,6 +10,6 @@
 WORD dvm_exception_status(REG *registers, char *name, int capacity);
 struct Prog;
 /* Pop an ordinary frame through the shared retirement protocol. */
-int dvm_runtime_exception_pop(struct Prog *process);
+int dvm_runtime_exception_pop(struct Prog *process, const unsigned char *handler_frame);
 
 #endif
