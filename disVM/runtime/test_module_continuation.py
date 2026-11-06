@@ -8,6 +8,8 @@ import sys
 import tempfile
 import time
 
+from relink_private import relink
+
 
 def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False, workers=2, dedicated=False):
     shared = ["--parallel-channel-buffer", "--parallel-byte-copies"] if shared_channels else []
@@ -81,11 +83,24 @@ def main():
     fixtures = Path(__file__).resolve().parent / "fixtures/module-continuation"
     with tempfile.TemporaryDirectory(prefix="module-continuation-") as temporary:
         directory = Path(temporary)
-        for name in ("provider", "main", "kill"):
+        for name in ("provider", "main", "kill", "overlap"):
             subprocess.run([str(compiler), "-F", "-I", str(include), "-I", str(fixtures),
                             "-I", str(fixtures.parents[2] / "module"),
                             "-o", str(directory / (name + ".dis")),
                             str(fixtures / (name + ".b"))], check=True)
+        overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
+                         ["dvm_native_owner_enter_shared", "dvm_gc_workers_request"])
+        for mode in ("--jit", "--no-jit"):
+            result = subprocess.run(
+                [str(overlap), mode, "--native-spawn", "--guarded-copies", "--parallel-slicela",
+                 "--stats", str(directory / "overlap.dis")],
+                cwd=directory, capture_output=True, text=True, timeout=30,
+            )
+            output = result.stdout + result.stderr
+            if (result.returncode or "PASS forty dedicated shared copies" not in output
+                    or "shared_peak=40" not in output or "parallel_slicela_commits=40" not in output
+                    or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
+                raise RuntimeError(output)
         run(runtime, directory, "--jit", [], b"R", "PASS provider return",
             default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):

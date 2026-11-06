@@ -9,7 +9,10 @@ retirement ends the thread and the runtime joins it before collector teardown.
 This profile defaults to exclusive NativeWorld admission. On AMD64 it can
 enable the guarded `--parallel-*` options, including typed shared transfers
 and private integer evaluation. `shared_peak` reports simultaneous restricted
-admissions. The profile retains the existing
+admissions. There is no two-guest cap on this admission class. The hosted
+regression runs forty dedicated guests through actual slice copies and
+uses a private admission barrier to verify peak occupancy independently
+of host timing. The profile retains the existing
 runnable list for retained interpreter and GC integration. Each thread
 selects its own ready guest from TLS in constant time, independently of list order. A blocked
 thread releases heap admission and waits on its own native readiness condition.
