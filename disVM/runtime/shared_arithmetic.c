@@ -17,8 +17,11 @@
 #include "runqueue.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
+#include "pool.h"
+#include "heap_pool.h"
 #include "disvm/refcount.h"
 #include <fenv.h>
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -647,6 +650,58 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
         dvm_runtime_gc_shared_finish();
     }
     return popped;
+}
+
+
+/* Prepare an ASCII runtime message in the hosted pool. A refused allocation
+ * leaves exval empty so the retained Unicode/emergency path can run. */
+int dvm_runtime_exception_message(Prog *process, const char *message)
+{
+    extern Pool *heapmem;
+    if (process->exval != H || heapmonitor)
+    {
+        return 0;
+    }
+    size_t length = strlen(message);
+    if (length > INT_MAX - sizeof(Heap) - sizeof(String))
+    {
+        return 0;
+    }
+    for (size_t index = 0; index < length; index++)
+    {
+        if ((unsigned char)message[index] >= 128)
+        {
+            return 0;
+        }
+    }
+    if (!dvm_runtime_exception_search_enter(process))
+    {
+        return 0;
+    }
+    Heap *heap = NULL;
+    if (dvm_refcount_retain_i(&Tstring.ref) == DVM_REFCOUNT_LIVE)
+    {
+        heap = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + sizeof(String) + length);
+        if (!heap && dvm_refcount_release_i(&Tstring.ref) != DVM_REFCOUNT_LIVE)
+        {
+            abort();
+        }
+    }
+    if (heap)
+    {
+        heap->t = &Tstring;
+        heap->ref = 1;
+        heap->color = mutator;
+        heap->hprof = 0;
+        String *string = H2D(String *, heap);
+        string->tmp = NULL;
+        string->len = (int)length;
+        string->max = (int)length;
+        memmove(string->Sascii, message, length);
+        process->exval = string;
+    }
+    dvm_runtime_gc_shared_finish();
+    return heap != NULL;
 }
 
 

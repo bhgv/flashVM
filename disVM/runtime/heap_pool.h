@@ -22,4 +22,6 @@ int dvm_heap_pool_init(Pool *pool, ulong bytes);
  * on live/corrupt/uninitialized state. Caller joins/excludes every API user and
  * raw GC walker first; mutex cannot protect its own lifetime. */
 int dvm_heap_pool_destroy(Pool *pool);
+/* Allocate uninitialized bytes under the pool mutex without VM callbacks. */
+void *dvm_heap_pool_try_alloc(Pool *pool, ulong size);
 #endif

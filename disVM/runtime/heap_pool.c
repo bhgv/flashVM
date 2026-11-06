@@ -77,7 +77,7 @@ int dvm_heap_pool_init(Pool *pool, ulong bytes)
 /* First-fit split preserves all existing block boundaries/cursor addresses.
  * Return NULL on capacity refusal. Corruption reports outside mutex, then
  * returns NULL if callback returns. No managed/header initialization occurs here. */
-void *poolalloc(Pool *pool, ulong size)
+static void *allocate(Pool *pool, ulong size, int report_fault)
 {
     Bhdr *block;
     Bhdr *remainder;
@@ -115,11 +115,25 @@ void *poolalloc(Pool *pool, ulong size)
         break;
     }
     fvm_port_sync_unlock(pool->sync);
-    if (corrupt)
+    if (corrupt && report_fault)
     {
         fault(pool, "alloc:block");
     }
     return result;
+}
+
+
+/* Preserve retained diagnostics for ordinary heap allocation. */
+void *poolalloc(Pool *pool, ulong size)
+{
+    return allocate(pool, size, 1);
+}
+
+
+/* Return NULL without invoking VM callbacks during shared admission. */
+void *dvm_heap_pool_try_alloc(Pool *pool, ulong size)
+{
+    return allocate(pool, size, 0);
 }
 
 

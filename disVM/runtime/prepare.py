@@ -798,6 +798,7 @@ def main():
                 raise ValueError("hosted exception install boundary drift")
             view_source = view_source.replace(boundary,
                 "\tmemmove(&p->R, &DVM_R, sizeof(DVM_R));\n"
+                "\tif(p->exval == H){\n\t\tdvm_runtime_exception_message(p, estr);\n\t}\n"
                 "\tif(dvm_runtime_exception_install(p, zt, fp+eoff,\n"
                 "\t    m->compiled ? (Inst*)((ulong)m->prog+newpc) : m->prog+newpc))\n"
                 "\t\treturn 1;\n\tif(zt != nil){", 1)

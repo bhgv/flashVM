@@ -23,4 +23,7 @@ unsigned char *dvm_runtime_exception_pending(struct Prog *process, unsigned char
 /* Replace the typed process root with its message while shared. */
 int dvm_runtime_exception_convert(struct Prog *process);
 
+/* Prepare a missing runtime exception message using shared allocation. */
+int dvm_runtime_exception_message(struct Prog *process, const char *message);
+
 #endif

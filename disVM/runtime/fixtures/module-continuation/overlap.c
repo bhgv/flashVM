@@ -2,6 +2,7 @@
 #include "lib9.h"
 #include "interp.h"
 #include "isa.h"
+#include "pool.h"
 #include "disvm/native_owner.h"
 #include "disvm/native_context.h"
 #include "disvm/gc_workers.h"
@@ -159,6 +160,37 @@ int __wrap_dvm_runtime_exception_convert(Prog *process)
         fprint(2, "FRAME exception converted in shared mode\n");
     }
     return converted;
+}
+
+
+/* Refuse one shared message allocation to exercise the retained fallback. */
+void *__real_dvm_heap_pool_try_alloc(Pool *pool, ulong size);
+void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
+{
+    static int refused; /* Protected by the test mutex. */
+    pthread_mutex_lock(&mutex);
+    int inject = !refused;
+    refused = 1;
+    pthread_mutex_unlock(&mutex);
+    if (inject)
+    {
+        fprint(2, "FRAME shared message allocation refused\n");
+        return NULL;
+    }
+    return __real_dvm_heap_pool_try_alloc(pool, size);
+}
+
+
+/* Count successful shared allocations through the exception entry point. */
+int __real_dvm_runtime_exception_message(Prog *process, const char *message);
+int __wrap_dvm_runtime_exception_message(Prog *process, const char *message)
+{
+    int allocated = __real_dvm_runtime_exception_message(process, message);
+    if (allocated)
+    {
+        fprint(2, "FRAME exception message allocated in shared mode\n");
+    }
+    return allocated;
 }
 
 
