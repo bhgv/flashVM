@@ -12,6 +12,11 @@ copy(id, factor: int, done: chan of int)
     checksum *= -3;
     if (checksum != -3*(((id*17 + 17) ^ 17) + 19))
         raise "parallel arithmetic lost its result";
+    sum := 0;
+    for (iteration := 0; iteration < 128; iteration++)
+        sum += factor;
+    if (sum != 2176)
+        raise "parallel loop lost its result";
     source := array[] of {id, id+1, id+2};
     destination := array[3] of int;
     destination[0:] = source;

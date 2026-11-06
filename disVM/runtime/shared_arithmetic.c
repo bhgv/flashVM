@@ -8,6 +8,7 @@
 #include "shared_access.h"
 #include "shared_arithmetic.h"
 #include "arithmetic_value.h"
+#include "branch_value.h"
 #include "managed_owner.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
@@ -20,6 +21,7 @@
 
 
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
+unsigned long dvm_runtime_shared_integer_branches; /* WORD branches completed inside shared traces. */
 unsigned long dvm_runtime_shared_integer_batches; /* Completed multi-instruction shared intervals. */
 unsigned long dvm_runtime_shared_integer_commits; /* Counted after exclusive return. */
 int dvm_runtime_parallel_add; /* Startup-only leased arithmetic selection, 1 for ADDW or 2 for all. */
@@ -428,67 +430,140 @@ typedef struct IntegerStep
     const void *middle;          /* Borrowed frame scalar or copied immediate. */
     WORD immediate;              /* Decoded signed 16-bit middle value. */
     int immediate_middle;        /* Restore the retained REG.t convention. */
-    void *destination;           /* Borrowed scalar in the suspended frame. */
+    void *destination;           /* Frame result or rooted branch literal cell. */
+    Inst *target;                /* Verified same-module target for a WORD branch. */
 } IntegerStep;
 
 
-/* Capture up to sixteen consecutive private WORD operations. Unknown
- * addressing, opcodes and module boundaries end the candidate prefix. */
+/* Check a bytecode address against the retained module's complete Inst span. */
+static int batch_pc(const Module *module, const Inst *pc)
+{
+    uintptr_t address = (uintptr_t)pc;
+    uintptr_t base = (uintptr_t)module->prog;
+    return address >= base && (address - base) % sizeof(Inst) == 0 &&
+        (address - base) / sizeof(Inst) < (size_t)module->nprog;
+}
+
+
+/* Decode only direct scalar operands and same-module WORD branch targets.
+ * A failed check ends the prefix and leaves the normal decoder authoritative. */
+static int decode_integer_step(const Module *module, const Inst *pc, const Type *frame,
+    IntegerStep *step)
+{
+    Inst instruction;
+    int source_mode, middle_mode, destination_mode;
+    if (!batch_pc(module, pc))
+    {
+        return 0;
+    }
+    memcpy(&instruction, pc, sizeof(instruction));
+    source_mode = USRC(instruction.add);
+    middle_mode = instruction.add & ARM;
+    destination_mode = UDST(instruction.add);
+    step->opcode = instruction.op;
+    step->target = NULL;
+    switch (instruction.op)
+    {
+    case IADDW: case ISUBW: case IMULW: case IANDW: case IORW: case IXORW:
+        if (destination_mode != AFP || instruction.d.ind < 0 || instruction.d.ind >= frame->size)
+        {
+            return 0;
+        }
+        step->destination = DVM_R.FP + instruction.d.ind;
+        if (!frame_scalar(step->destination, frame, sizeof(WORD)))
+        {
+            return 0;
+        }
+        break;
+    case IJMP:
+        if (source_mode != AXXX || destination_mode != AIMM || middle_mode != AXNON ||
+            !batch_pc(module, instruction.d.ins))
+        {
+            return 0;
+        }
+        step->source = NULL;
+        step->destination = (void *)&pc->d;
+        step->middle = step->destination;
+        step->target = instruction.d.ins;
+        step->immediate_middle = 0;
+        return 1;
+    case IBEQW: case IBNEW: case IBLTW: case IBLEW: case IBGTW: case IBGEW:
+        if (destination_mode != AIMM || middle_mode == AXNON || !batch_pc(module, instruction.d.ins))
+        {
+            return 0;
+        }
+        step->destination = (void *)&pc->d;
+        step->target = instruction.d.ins;
+        break;
+    default:
+        return 0;
+    }
+    if (source_mode == AFP && instruction.s.ind >= 0 && instruction.s.ind < frame->size)
+    {
+        step->source = DVM_R.FP + instruction.s.ind;
+        if (!frame_scalar(step->source, frame, sizeof(WORD)))
+        {
+            return 0;
+        }
+    }
+    else if (source_mode == AIMM)
+    {
+        step->source = &pc->s;
+    }
+    else
+    {
+        return 0;
+    }
+    step->immediate_middle = middle_mode == AXIMM;
+    if (step->immediate_middle)
+    {
+        step->immediate = instruction.reg < 32768 ? instruction.reg : (int)instruction.reg - 65536;
+        step->middle = &step->immediate;
+        return 1;
+    }
+    if (middle_mode == AXNON)
+    {
+        step->middle = step->destination;
+        return 1;
+    }
+    if (middle_mode != AXINF || instruction.reg >= frame->size)
+    {
+        return 0;
+    }
+    step->middle = DVM_R.FP + instruction.reg;
+    return frame_scalar(step->middle, frame, sizeof(WORD));
+}
+
+
+/* Execute a bounded private WORD trace in one shared interval. The suspended
+ * guest retains its frame and module. No throwing callbacks run in the trace. */
 int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
 {
-    IntegerStep steps[16];
+    IntegerStep step, last;
     Type *frame;
     DVM_CellDomain *domain;
     DVM_HeapOwner *owner;
-    int count = 0, completed = 0, released;
+    const Inst *cursor = pc;
+    int completed = 0, branches = 0, released, limit;
+    WORD middle_temp = DVM_R.t;
+    const void *saved_source = DVM_R.s;
     if (!dvm_runtime_shared_integer || dvm_runtime_parallel_add != 2 ||
-        module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()))
+        module->cstep || DVM_R.IC < 2 || !(frame = current_frame_type()) ||
+        !decode_integer_step(module, pc, frame, &step))
     {
         return 0;
     }
-    while (count < 16 && count < DVM_R.IC && count < module->nprog - index)
-    {
-        Inst instruction;
-        IntegerStep *step = &steps[count];
-        memcpy(&instruction, pc + count, sizeof(instruction));
-        int source_mode = USRC(instruction.add);
-        int middle_mode = instruction.add & ARM;
-        if (UDST(instruction.add) != AFP || (source_mode != AFP && source_mode != AIMM) ||
-            middle_mode == AXINM ||
-            (instruction.op != IADDW && instruction.op != ISUBW && instruction.op != IMULW &&
-             instruction.op != IANDW && instruction.op != IORW && instruction.op != IXORW) ||
-            (source_mode == AFP && (instruction.s.ind < 0 || instruction.s.ind >= frame->size)) ||
-            instruction.d.ind < 0 || instruction.d.ind >= frame->size ||
-            (middle_mode == AXINF && instruction.reg >= frame->size))
-        {
-            break;
-        }
-        step->opcode = instruction.op;
-        step->source = source_mode == AFP ? (const void *)(DVM_R.FP + instruction.s.ind) :
-            (const void *)&pc[count].s;
-        step->destination = DVM_R.FP + instruction.d.ind;
-        step->immediate_middle = middle_mode == AXIMM;
-        if (step->immediate_middle)
-        {
-            step->immediate = instruction.reg < 32768 ? instruction.reg : (int)instruction.reg - 65536;
-            step->middle = &step->immediate;
-        }
-        else
-        {
-            step->middle = middle_mode == AXINF ? DVM_R.FP + instruction.reg : step->destination;
-        }
-        if ((source_mode == AFP && !frame_scalar(step->source, frame, sizeof(WORD))) ||
-            (!step->immediate_middle && !frame_scalar(step->middle, frame, sizeof(WORD))) ||
-            !frame_scalar(step->destination, frame, sizeof(WORD)))
-        {
-            break;
-        }
-        count++;
-    }
-    if (count < 2 || !(domain = dvm_managed_cell_domain()))
+    if (!step.target && (index >= module->nprog - 1 ||
+        !decode_integer_step(module, pc + 1, frame, &step)))
     {
         return 0;
     }
+    domain = dvm_managed_cell_domain();
+    if (!domain)
+    {
+        return 0;
+    }
+    limit = DVM_R.IC < 16 ? DVM_R.IC : 16;
     owner = dvm_native_owner_current();
     released = dvm_runtime_gc_native_try_leave();
     if (released <= 0)
@@ -499,20 +574,44 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         abort();
     }
-    while (completed < count)
+    while (completed < limit && decode_integer_step(module, cursor, frame, &step))
     {
+        if (step.opcode == IJMP)
+        {
+            cursor = step.target;
+            last = step;
+            completed++;
+            branches++;
+            continue;
+        }
         DVM_TripleAccess access = {0};
-        IntegerStep *step = &steps[completed];
-        if (dvm_small_range_access_begin(domain, step->source, sizeof(WORD),
-            step->middle, sizeof(WORD), step->destination, sizeof(WORD), &access) != DVM_CELL_ACQUIRED)
+        size_t destination_size = step.target ? sizeof(Inst *) : sizeof(WORD);
+        if (dvm_small_range_access_begin(domain, step.source, sizeof(WORD),
+            step.middle, sizeof(WORD), step.destination, destination_size, &access) != DVM_CELL_ACQUIRED)
         {
             break;
         }
-        dvm_runtime_arithmetic_value(step->opcode, step->source, step->middle, step->destination);
+        if (step.target)
+        {
+            branches++;
+            cursor = dvm_runtime_branch_predicate(step.opcode, step.source, step.middle) ?
+                step.target : cursor + 1;
+        }
+        else
+        {
+            dvm_runtime_arithmetic_value(step.opcode, step.middle, step.source, step.destination);
+            cursor++;
+        }
         if (!dvm_small_range_access_end(&access))
         {
             abort();
         }
+        if (step.immediate_middle)
+        {
+            middle_temp = step.immediate;
+        }
+        saved_source = step.source;
+        last = step;
         completed++;
     }
     if (!dvm_native_owner_leave_shared(owner))
@@ -522,22 +621,14 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     dvm_runtime_gc_native_enter(released);
     if (completed)
     {
-        IntegerStep *last = &steps[completed - 1];
-        int step_index;
-        for (step_index = completed - 1; step_index >= 0; step_index--)
-        {
-            if (steps[step_index].immediate_middle)
-            {
-                DVM_R.t = steps[step_index].immediate;
-                break;
-            }
-        }
-        DVM_R.s = (void *)last->source;
-        DVM_R.m = last->immediate_middle ? (void *)&DVM_R.t : (void *)last->middle;
-        DVM_R.d = last->destination;
-        DVM_R.PC += completed;
+        DVM_R.t = middle_temp;
+        DVM_R.s = (void *)saved_source;
+        DVM_R.m = last.immediate_middle ? (void *)&DVM_R.t : (void *)last.middle;
+        DVM_R.d = last.destination;
+        DVM_R.PC = (Inst *)cursor;
         DVM_R.IC -= completed;
         dvm_runtime_shared_integer_commits += completed;
+        dvm_runtime_shared_integer_branches += branches;
         if (completed > 1)
         {
             dvm_runtime_shared_integer_batches++;

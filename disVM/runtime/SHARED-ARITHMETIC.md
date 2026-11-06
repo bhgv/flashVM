@@ -107,3 +107,10 @@ ends the batch before the conflicting instruction, preserving every prior
 publication. The hosted dispatcher accounts for the completed prefix and
 honors the remaining quantum. Explicit instruction quotas and static
 translated modules keep ordinary instruction dispatch.
+
+The same bounded trace follows direct same-module `JMP` and WORD comparisons
+with immediate targets. Each taken target is checked against the retained
+instruction span before use. A loop can execute multiple iterations within
+one admission, up to the instruction/quantum bound. The common executor
+accounts for each completed branch and resumes normal dispatch at the first
+unsupported instruction.

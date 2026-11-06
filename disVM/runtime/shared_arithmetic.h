@@ -6,6 +6,7 @@
 extern int dvm_runtime_shared_integer;
 extern unsigned long dvm_runtime_shared_integer_commits;
 extern unsigned long dvm_runtime_shared_integer_batches;
+extern unsigned long dvm_runtime_shared_integer_branches;
 struct Module;
 struct Inst;
 int dvm_runtime_integer_batch(const struct Module *module, const struct Inst *pc, int index);

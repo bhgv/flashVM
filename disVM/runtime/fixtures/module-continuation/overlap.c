@@ -1,5 +1,8 @@
 /* Private test gates make simultaneous admission independent of host timing. */
+#include "lib9.h"
+#include "interp.h"
 #include "disvm/native_owner.h"
+#include "disvm/native_context.h"
 #include "disvm/gc_workers.h"
 #include <pthread.h>
 #include <time.h>
@@ -43,7 +46,12 @@ static void meet(unsigned *count, const struct timespec *deadline)
  * the production executor, range guards and exclusive return path. */
 int __wrap_dvm_native_owner_enter_shared(DVM_HeapOwner *owner)
 {
+    Prog *guest = dvm_native_context_process(dvm_native_context_current());
     int result;
+    if (!guest || guest->pid == 1)
+    {
+        return __real_dvm_native_owner_enter_shared(owner);
+    }
     meet(&arriving, NULL);
     result = __real_dvm_native_owner_enter_shared(owner);
     if (result)
