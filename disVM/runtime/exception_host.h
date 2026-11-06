@@ -26,4 +26,8 @@ int dvm_runtime_exception_convert(struct Prog *process);
 /* Prepare a missing runtime exception message using shared allocation. */
 int dvm_runtime_exception_message(struct Prog *process, const char *message);
 
+/* Initialize and retire the bound thread's optional emergency string owner. */
+void dvm_runtime_exception_reserve_start(void);
+void dvm_runtime_exception_reserve_stop(void);
+
 #endif

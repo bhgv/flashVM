@@ -19,6 +19,7 @@
 #include "runtime_rc.h"
 #include "pool.h"
 #include "heap_pool.h"
+#include "root_registry.h"
 #include "disvm/refcount.h"
 #include <fenv.h>
 #include <limits.h>
@@ -653,6 +654,74 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 }
 
 
+static __thread String *emergency_message; /* Rooted reserve owned by the bound OS thread. */
+
+
+/* Allocate the optional reserve before this executor can run out of heap.
+ * The native root tracks the thread's owning reference until detach. */
+static int prepare_emergency_message(void *unused)
+{
+    (void)unused;
+    String *string = newstring(ERRMAX);
+    if (!dvm_runtime_root_add(D2H(string)))
+    {
+        destroy(string);
+        return 0;
+    }
+    emergency_message = string;
+    return 1;
+}
+
+
+/* Prepare a reserve under the exclusive attach boundary. Allocation errors
+ * are handled by the existing fallback if this optional reserve is absent. */
+void dvm_runtime_exception_reserve_start(void)
+{
+    if (!emergency_message)
+    {
+        (void)kprotect(prepare_emergency_message, NULL);
+    }
+}
+
+
+/* Withdraw the TLS owner under exclusive admission before detach. */
+void dvm_runtime_exception_reserve_stop(void)
+{
+    String *string = emergency_message;
+    if (string)
+    {
+        emergency_message = NULL;
+        if (!dvm_runtime_root_remove(D2H(string)))
+        {
+            abort();
+        }
+        destroy(string);
+    }
+}
+
+
+/* Reuse only a reserve with no retained handler references. The TLS owner is
+ * the sole source of new references until publication to the current guest. */
+static int publish_emergency_message(Prog *process, const char *message, size_t length)
+{
+    String *string = emergency_message;
+    if (!string || dvm_refcount_load_u(&D2H(string)->ref) != 1 ||
+        dvm_refcount_retain_u(&D2H(string)->ref) != DVM_REFCOUNT_LIVE)
+    {
+        return 0;
+    }
+    if (length >= (size_t)string->max)
+    {
+        length = (size_t)string->max - 1;
+    }
+    memmove(string->Sascii, message, length);
+    string->Sascii[length] = 0;
+    string->len = (int)length;
+    process->exval = string;
+    return 1;
+}
+
+
 /* Decode a runtime message in the hosted pool. A refused allocation leaves
  * exval empty so the retained emergency path can run. */
 int dvm_runtime_exception_message(Prog *process, const char *message)
@@ -729,6 +798,7 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
         }
         process->exval = string;
     }
+    int emergency = !heap && publish_emergency_message(process, message, length);
     dvm_runtime_gc_shared_finish();
     /* A monitor is arbitrary native code. The initialized object stays
      * rooted in exval across both reentry and the callback. */
@@ -736,7 +806,7 @@ int dvm_runtime_exception_message(Prog *process, const char *message)
     {
         heapmonitor(0, heap, payload);
     }
-    return heap != NULL;
+    return heap != NULL || emergency;
 }
 
 

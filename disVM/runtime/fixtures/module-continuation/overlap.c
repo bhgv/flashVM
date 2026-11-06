@@ -164,34 +164,20 @@ int __wrap_dvm_runtime_exception_convert(Prog *process)
 
 
 static __thread int unicode_message; /* Keep Unicode verification separate from the fault. */
-static __thread int refuse_legacy_message; /* One fault on the same guest thread. */
+static __thread int use_emergency_message; /* A forced failure on this guest. */
 
-/* Refuse the next ordinary pool allocation after the shared message fault. */
-void *__real_poolalloc(Pool *pool, ulong size);
-void *__wrap_poolalloc(Pool *pool, ulong size)
-{
-    if (refuse_legacy_message)
-    {
-        refuse_legacy_message = 0;
-        fprint(2, "FRAME fallback message allocation refused\n");
-        return NULL;
-    }
-    return __real_poolalloc(pool, size);
-}
-
-
-/* Refuse one shared message allocation to exercise the retained fallback. */
+/* Refuse two shared message allocations to exercise the retained fallback. */
 void *__real_dvm_heap_pool_try_alloc(Pool *pool, ulong size);
 void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 {
     static int refused; /* Protected by the test mutex. */
     pthread_mutex_lock(&mutex);
-    int inject = !refused && !unicode_message;
-    refused |= inject;
+    int inject = refused < 2 && !unicode_message;
+    refused += inject;
     pthread_mutex_unlock(&mutex);
     if (inject)
     {
-        refuse_legacy_message = 1;
+        use_emergency_message = 1;
         fprint(2, "FRAME shared message allocation refused\n");
         return NULL;
     }
@@ -237,6 +223,25 @@ int __wrap_dvm_runtime_exception_message(Prog *process, const char *message)
     int allocated = __real_dvm_runtime_exception_message(process, unicode ? "A\303\251" : message);
     unicode_message = 0;
     monitored_guest = NULL;
+    if (use_emergency_message)
+    {
+        static String *first; /* Identity only. The test guests stay live at the barrier. */
+        String *value = process->exval;
+        if (!allocated || value == H || value->len != (int)strlen(message) ||
+            memcmp(value->Sascii, message, value->len))
+        {
+            abort();
+        }
+        pthread_mutex_lock(&mutex);
+        if (first == value)
+        {
+            abort();
+        }
+        first = value;
+        pthread_mutex_unlock(&mutex);
+        use_emergency_message = 0;
+        fprint(2, "FRAME TLS emergency message verified\n");
+    }
     if (unicode && allocated)
     {
         String *value = process->exval;

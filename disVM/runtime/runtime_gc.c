@@ -7,6 +7,7 @@
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
 #include "runtime_gc.h"
+#include "exception_host.h"
 #include "runtime_rc.h"
 #include "shared_pointer.h"
 #include "shared_mapped.h"
@@ -181,6 +182,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
         if (dvm_managed_owner_start(state.world, state.workers))
         {
             dvm_runtime_rc_start();
+            dvm_runtime_exception_reserve_start();
             if (dvm_managed_owner_probe_requested)
             {
                 dvm_managed_owner_probe_run(state.world, state.workers);
@@ -511,6 +513,7 @@ int dvm_runtime_gc_attach(void)
         dvm_native_owner_detach(owner);
         return 0;
     }
+    dvm_runtime_exception_reserve_start();
     return 1;
 }
 
@@ -534,9 +537,13 @@ int dvm_runtime_gc_detach(void)
         {
             return 0;
         }
-        if (call.phase == DVM_HEAP_ACTIVE && !dvm_native_owner_leave(owner))
+        if (call.phase == DVM_HEAP_ACTIVE)
         {
-            return 0;
+            dvm_runtime_exception_reserve_stop();
+            if (!dvm_native_owner_leave(owner))
+            {
+                return 0;
+            }
         }
         return dvm_native_owner_detach(owner);
     }
@@ -574,6 +581,7 @@ int dvm_runtime_gc_stop(int diagnostics)
     {
         return 0;
     }
+    dvm_runtime_exception_reserve_stop();
     dvm_runtime_rc_close();
     dvm_native_context_set_process(dvm_native_context_current(),NULL);
     ok = dvm_runtime_gc_request();
