@@ -74,3 +74,8 @@ guarded JIT profile is currently restricted to AMD64. It checks guest start
 and retirement, channel completions, scalar trace counters, and arithmetic
 results. The x64 private test additionally uses controlled overlapping
 admissions and runs both the interpreter and JIT.
+
+The fixture also exercises guarded MOVP with native GC. Forty guests
+publish and retain arrays through a shared module slot. The parent clears
+the slot before allowing the guests to check their retained arrays again.
+The test requires a successful shared MOVP involving module data.

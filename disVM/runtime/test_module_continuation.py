@@ -87,17 +87,19 @@ def portable_overlap(runtime, compiler, include, runner):
                         "-o", str(image), str(fixtures / "overlap.b")], check=True)
         result = subprocess.run(
             [*runner, str(runtime), "--no-jit", "--native-spawn", "--guarded-copies",
-             "--parallel-integer", "--stats", str(image)],
+             "--parallel-integer", "--parallel-movp", "--stats", str(image)],
             cwd=temporary, capture_output=True, text=True, timeout=120,
         )
         output = result.stdout + result.stderr
         batches = re.search(r"shared_integer_batches=(\d+)", output)
         widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
+        pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
         if (result.returncode or "PASS forty dedicated shared copies" not in output
                 or "PASS Dis application completed" not in output
                 or len(set(pid for pid, _ in starts)) != 40 or sorted(starts) != sorted(retired)
+                or not pointer_copies or int(pointer_copies[1]) == 0
                 or not batches or int(batches[1]) < 40
                 or not widths or min(map(int, widths.groups())) < 40
                 or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
@@ -132,7 +134,7 @@ def main():
             for option, counter in (("--parallel-slicela", "parallel_slicela_commits"),
                                     ("--parallel-integer", "shared_integer_commits")):
                 result = subprocess.run(
-                    [str(overlap), mode, "--native-spawn", "--guarded-copies", option,
+                    [str(overlap), mode, "--native-spawn", "--guarded-copies", "--parallel-movp", option,
                      "--stats", str(directory / "overlap.dis")],
                     cwd=directory, capture_output=True, text=True, timeout=30,
                 )
@@ -142,7 +144,9 @@ def main():
                 branches = re.search(r"shared_integer_branches=(\d+)", output)
                 widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
                 batches = re.search(r"shared_integer_batches=(\d+)", output)
+                pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
+                        or not pointer_copies or int(pointer_copies[1]) == 0
                         or (option == "--parallel-integer" and (not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120
                             or not widths or min(map(int, widths.groups())) < 40))

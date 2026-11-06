@@ -5,8 +5,9 @@ Overlap: module { init: fn(); };
 
 published: int;
 sample: real;
+sharedarray: array of int;
 
-copy(id, factor: int, done: chan of int)
+copy(id, factor: int, done, resume: chan of int)
 {
     product := id*factor;
     adjusted := product + factor;
@@ -74,11 +75,21 @@ copy(id, factor: int, done: chan of int)
     destination[0:] = source;
     if (destination[0] != id || destination[1] != id+1 || destination[2] != id+2)
         raise "parallel array copy lost its payload";
+    sharedarray = source;
+    retained := sharedarray;
+    source = nil;
+    destination = nil;
+    if (retained == nil || len retained != 3 || retained[1] != retained[0]+1)
+        raise "parallel module reference lost its referent";
     published += factor;
     sample = 1.25;
     value := sample;
     if (value != 1.25)
         raise "parallel REAL copy changed its value";
+    done <-= id;
+    <-resume;
+    if (len retained != 3 || retained[2] != retained[0]+2)
+        raise "retained module reference failed after the slot was cleared";
     done <-= id;
 }
 
@@ -86,8 +97,9 @@ init()
 {
     sys := load Sys Sys->PATH;
     done := chan of int;
+    resume := chan of int;
     for (id := 0; id < 40; id++)
-        spawn copy(id, 17, done);
+        spawn copy(id, 17, done, resume);
     seen := array[40] of {* => 0};
     for (id = 0; id < 40; id++)
     {
@@ -98,5 +110,14 @@ init()
     }
     if (published != 680)
         raise "parallel module increments lost updates";
+    sharedarray = nil;
+    for (id = 0; id < 40; id++)
+    {
+        resume <-= 1;
+        result := <-done;
+        if (result < 0 || result >= len seen || seen[result] != 1)
+            raise "duplicate retained reference completion";
+        seen[result] = 2;
+    }
     sys->print("PASS forty dedicated shared copies\n");
 }
