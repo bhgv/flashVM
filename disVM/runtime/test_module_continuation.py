@@ -145,7 +145,7 @@ def main():
                             str(fixtures / (name + ".b"))], check=True)
         overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
                          ["dvm_native_owner_enter_shared", "dvm_native_owner_try_share",
-                          "dvm_gc_workers_request"])
+                          "dvm_gc_workers_request", "dvm_runtime_rc_transfer_frame"])
         for mode in ("--jit", "--no-jit"):
             for options, counter in ((["--guarded-copies", "--parallel-movp", "--parallel-slicela"], "parallel_slicela_commits"),
                                      ([], "shared_integer_commits")):
@@ -166,7 +166,8 @@ def main():
                 module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
-                        or (not options and (not frame_retirement or int(frame_retirement[1]) < 40
+                        or (not options and ("FRAME retirement retry injected" not in output
+                            or not frame_retirement or int(frame_retirement[1]) < 40
                             or not frames or min(map(int, frames.groups())) < 40
                             or not module_frames or min(map(int, module_frames.groups())) < 40
                             or not batches or int(batches[1]) < 40

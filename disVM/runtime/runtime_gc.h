@@ -48,6 +48,8 @@ int dvm_runtime_gc_shared_try_enter(void);
 void dvm_runtime_gc_shared_publish(void);
 void dvm_runtime_gc_shared_poll(void);
 int dvm_runtime_gc_shared_has_waiters(void);
+/* Park a shared guest with its current published roots, then reenter shared. */
+void dvm_runtime_gc_shared_drain(void);
 void dvm_runtime_gc_shared_finish(void);
 
 /* [GC:] Leave heap execution, drain/join both collectors, remove the poll hook and

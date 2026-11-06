@@ -468,6 +468,21 @@ int dvm_runtime_gc_shared_has_waiters(void)
 }
 
 
+/* Park the same continuation outside admission until Fast has drained.
+ * Caller has published the intact frame and holds no guard or reservation. */
+void dvm_runtime_gc_shared_drain(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    if (!dvm_native_owner_leave_shared(owner) ||
+        !dvm_gc_workers_request(state.workers, DVM_GC_FAST) ||
+        !dvm_gc_workers_wait_idle(state.workers) ||
+        !dvm_native_owner_enter_shared(owner))
+    {
+        abort();
+    }
+}
+
+
 void dvm_runtime_gc_shared_finish(void)
 {
     native_enter(1, 1);

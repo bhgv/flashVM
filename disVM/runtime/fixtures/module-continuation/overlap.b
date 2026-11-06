@@ -19,7 +19,7 @@ copy(id, factor: int, done, resume: chan of int, provider: Provider)
 {
     if (scalarcall(id % 4, array[] of {1}) != id % 4 + 1)
         raise "parallel scalar frame lost its return value";
-    if (provider->touch() != 314159)
+    if (provider->heldvalue(array[] of {id}) != id)
         raise "parallel module call lost its return value";
     product := id*factor;
     adjusted := product + factor;

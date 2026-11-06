@@ -16,7 +16,6 @@
 #include "disvm/native_owner.h"
 #include "runqueue.h"
 #include "runtime_gc.h"
-#include "root_registry.h"
 #include "runtime_rc.h"
 #include "disvm/refcount.h"
 #include <fenv.h>
@@ -562,10 +561,6 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
         const Module *caller = module;
         if (links.mr)
         {
-            if (current->np)
-            {
-                return 0;
-            }
             if (links.mr == H || !links.mr->m || links.mr->m == H ||
                 links.mr->compiled || DVM_R.M->compiled || links.mr->m->cstep)
             {
@@ -592,26 +587,27 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
     {
         return 1;
     }
-    /* The displaced REG.M owner stays rooted until destroy can retire it. */
-    if (departed && !dvm_runtime_root_add(D2H(departed)))
-    {
-        return 0;
-    }
     if (!shared && dvm_runtime_gc_shared_try_enter() <= 0)
     {
-        if (departed && !dvm_runtime_root_remove(D2H(departed)))
-        {
-            abort();
-        }
         return 0;
     }
-    if (!source && current->np && !dvm_runtime_rc_transfer_frame(frame, current))
+    if (!source && (current->np || departed))
     {
-        if (!shared)
+        int transferred = dvm_runtime_rc_transfer_frame(frame, current, departed);
+        while (transferred < 0)
         {
-            dvm_runtime_gc_shared_finish();
+            dvm_runtime_gc_shared_publish();
+            dvm_runtime_gc_shared_drain();
+            transferred = dvm_runtime_rc_transfer_frame(frame, current, departed);
         }
-        return 0;
+        if (!transferred)
+        {
+            if (!shared)
+            {
+                dvm_runtime_gc_shared_finish();
+            }
+            return 0;
+        }
     }
     if (callee && dvm_refcount_retain_u(&D2H(callee)->ref) != DVM_REFCOUNT_LIVE)
     {
@@ -659,12 +655,7 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
     dvm_runtime_gc_shared_finish();
     if (departed)
     {
-        if (!dvm_runtime_root_remove(D2H(departed)))
-        {
-            abort();
-        }
         dvm_runtime_shared_module_returns++;
-        destroy(departed);
     }
     if (source)
     {

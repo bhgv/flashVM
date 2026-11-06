@@ -147,12 +147,12 @@ int dvm_runtime_rc_defer(void *value)
 /* Transfer a private frame's mapped references without running destructors.
  * frame/type are borrowed from the current shared guest. On refusal the
  * frame remains intact. On success the caller must unpublish it before polling. */
-int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type)
+int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *departed)
 {
     DVM_HeapOwner *current = dvm_native_owner_current();
     DVM_HeapOwnerStats state;
     DVM_RetirementReservation token = {0};
-    size_t capacity = 0;
+    size_t capacity = departed != NULL;
     if (!frames || !dvm_native_owner_statistics(current, &state) ||
         state.phase != DVM_HEAP_SHARED || state.pending_progress ||
         dvm_native_owner_world(current) != world ||
@@ -185,9 +185,10 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type)
         return 0;
     }
     size_t bytes = sizeof(FrameRetirement) + capacity * sizeof(void *);
-    if (dvm_retirement_reserve(frames, (unsigned long)bytes, &token) != DVM_RETIRE_OK)
+    DVM_RetirementResult reserved = dvm_retirement_reserve(frames, (unsigned long)bytes, &token);
+    if (reserved != DVM_RETIRE_OK)
     {
-        return 0;
+        return reserved == DVM_RETIRE_FULL || reserved == DVM_RETIRE_BYTES ? -1 : 0;
     }
     FrameRetirement *packet = malloc(bytes);
     if (!packet)
@@ -218,6 +219,10 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type)
                 }
             }
         }
+    }
+    if (departed)
+    {
+        packet->keys[packet->count++] = D2H(departed);
     }
     if (packet->roots && valid && !packet->count)
     {

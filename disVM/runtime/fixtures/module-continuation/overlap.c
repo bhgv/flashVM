@@ -27,6 +27,25 @@ int __wrap_dvm_native_owner_try_share(DVM_HeapOwner *owner, unsigned long epoch)
 }
 
 
+/* Inject one reservation refusal before touching frame ownership. */
+int __real_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *departed);
+int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Modlink *departed)
+{
+    static int refused; /* Protected by the test mutex. */
+    int inject;
+    pthread_mutex_lock(&mutex);
+    inject = !refused;
+    refused = 1;
+    pthread_mutex_unlock(&mutex);
+    if (inject)
+    {
+        fprint(2, "FRAME retirement retry injected\n");
+        return -1;
+    }
+    return __real_dvm_runtime_rc_transfer_frame(frame, type, departed);
+}
+
+
 /* Wait on one test-only counter. All guests own separate TLS contexts. */
 static void meet(unsigned *count, const struct timespec *deadline)
 {

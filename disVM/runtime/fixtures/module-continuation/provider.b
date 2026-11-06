@@ -10,6 +10,11 @@ touch(): int
     return marker;
 }
 
+heldvalue(value: array of int): int
+{
+    return value[0];
+}
+
 wait(): int
 {
     sys := load Sys Sys->PATH;
