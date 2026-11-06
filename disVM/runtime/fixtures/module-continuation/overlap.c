@@ -149,6 +149,19 @@ uchar *__wrap_dvm_runtime_exception_pending(Prog *process, uchar *last)
 }
 
 
+/* Record transfer of the typed owner while search remains shared. */
+int __real_dvm_runtime_exception_convert(Prog *process);
+int __wrap_dvm_runtime_exception_convert(Prog *process)
+{
+    int converted = __real_dvm_runtime_exception_convert(process);
+    if (converted)
+    {
+        fprint(2, "FRAME exception converted in shared mode\n");
+    }
+    return converted;
+}
+
+
 /* Wait on one test-only counter. All guests own separate TLS contexts. */
 static void meet(unsigned *count, const struct timespec *deadline)
 {

@@ -483,12 +483,40 @@ int dvm_runtime_exception_search_enter(Prog *process)
 }
 
 
+/* Transfer a typed exception's process owner to Fast GC while retaining
+ * its already-owned message. The caller is still in shared search admission. */
+int dvm_runtime_exception_convert(Prog *process)
+{
+    void *original = process->exval;
+    void *message;
+    memmove(&message, original, sizeof(message));
+    if (!message || message == H ||
+        dvm_refcount_retain_u(&D2H(message)->ref) != DVM_REFCOUNT_LIVE)
+    {
+        return 0;
+    }
+    /* Do not park with an unpublished additional owner. Saturation falls
+     * back to the retained conversion after undoing the temporary retain. */
+    if (dvm_runtime_rc_transfer_frame(NULL, NULL, original) != 1)
+    {
+        if (dvm_refcount_release_u(&D2H(message)->ref) != DVM_REFCOUNT_LIVE)
+        {
+            abort();
+        }
+        return 0;
+    }
+    process->exval = message;
+    return 1;
+}
+
+
 /* Drain the validated pending-argument chain from its top. Return the
  * remaining suffix for exclusive cleanup if a frame cannot be transferred. */
 uchar *dvm_runtime_exception_pending(Prog *process, uchar *last)
 {
-    if (!last || (uintptr_t)DVM_R.FP < (uintptr_t)DVM_R.EX ||
-        (uintptr_t)DVM_R.FP >= (uintptr_t)last || !((Frame *)last)->t ||
+    uintptr_t fp = (uintptr_t)DVM_R.FP;
+    if (!last || (fp >= (uintptr_t)DVM_R.EX && fp < (uintptr_t)DVM_R.TS &&
+                  fp >= (uintptr_t)last) ||
         !dvm_runtime_exception_search_enter(process))
     {
         return last;
@@ -497,7 +525,21 @@ uchar *dvm_runtime_exception_pending(Prog *process, uchar *last)
     {
         Frame *frame = (Frame *)last;
         Type *type = frame->t;
-        if (!type || type->np < 0 ||
+        Stkext *extent = NULL;
+        if (!type)
+        {
+            extent = (Stkext *)DVM_R.EX;
+            if (last != extent->reg.tos.fu || frame->fp ||
+                !extent->reg.EX || extent->reg.EX == H ||
+                (uintptr_t)DVM_R.FP < (uintptr_t)extent->reg.EX ||
+                (uintptr_t)DVM_R.FP >= (uintptr_t)extent->reg.SP ||
+                (uintptr_t)extent->reg.SP > (uintptr_t)extent->reg.TS)
+            {
+                break;
+            }
+            type = extent->reg.TR;
+        }
+        if (!type || type == H || type->np < 0 ||
             (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8 ||
             (type->np && !retire_shared_frame(frame, type, NULL)))
         {
@@ -505,8 +547,18 @@ uchar *dvm_runtime_exception_pending(Prog *process, uchar *last)
         }
         DVM_R.SP = last;
         last = frame->fp;
+        if (extent)
+        {
+            DVM_R.SP = extent->reg.SP;
+            DVM_R.EX = extent->reg.EX;
+            DVM_R.TS = extent->reg.TS;
+        }
         DVM_R.s = DVM_R.m = DVM_R.d = NULL;
         dvm_runtime_gc_shared_publish();
+        if (extent)
+        {
+            free(extent);
+        }
         dvm_runtime_gc_shared_poll();
     }
     dvm_runtime_gc_shared_finish();

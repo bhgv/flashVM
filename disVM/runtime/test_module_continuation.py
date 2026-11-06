@@ -147,7 +147,8 @@ def main():
                          ["dvm_native_owner_enter_shared", "dvm_native_owner_try_share",
                           "dvm_gc_workers_request", "dvm_runtime_rc_transfer_frame",
                           "dvm_runtime_exception_pop", "dvm_runtime_exception_install",
-                          "dvm_runtime_exception_search_enter", "xec", "dvm_runtime_exception_pending"])
+                          "dvm_runtime_exception_search_enter", "xec", "dvm_runtime_exception_pending",
+                          "dvm_runtime_exception_convert"])
         for mode in ("--jit", "--no-jit"):
             for options, counter in ((["--guarded-copies", "--parallel-movp", "--parallel-slicela"], "parallel_slicela_commits"),
                                      ([], "shared_integer_commits")):
@@ -174,6 +175,7 @@ def main():
                             or output.count("FRAME handler search entered shared mode") < 40
                             or output.count("FRAME typed handler search entered shared mode") < 40
                             or output.count("FRAME pending argument retired in shared mode") < 40
+                            or output.count("FRAME exception converted in shared mode") < 40
                             or "FRAME retirement retry injected" not in output
                             or not frame_retirement or int(frame_retirement[1]) < 40
                             or not frames or min(map(int, frames.groups())) < 40

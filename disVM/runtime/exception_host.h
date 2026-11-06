@@ -20,4 +20,7 @@ int dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst
 /* Transfer validated pending argument frames and return the remaining suffix. */
 unsigned char *dvm_runtime_exception_pending(struct Prog *process, unsigned char *last);
 
+/* Replace the typed process root with its message while shared. */
+int dvm_runtime_exception_convert(struct Prog *process);
+
 #endif

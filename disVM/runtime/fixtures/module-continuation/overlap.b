@@ -17,6 +17,14 @@ scalarcall(value: int, held: array of int): int
     return 1 + scalarcall(value - 1, held);
 }
 
+typedfail(n: int)
+{
+    if (n)
+        typedfail(n-1);
+    else
+        raise Rejected(17);
+}
+
 copy(id, factor: int, done, resume: chan of int, provider: Provider)
 {
     if (scalarcall(id % 4, array[] of {1}) != id % 4 + 1)
@@ -51,6 +59,15 @@ copy(id, factor: int, done, resume: chan of int, provider: Provider)
             raise "pending call ran";
     } exception failure {
         "argument evaluation failed" =>
+            ;
+        * =>
+            raise;
+    }
+    {
+        typedfail(1);
+        raise "typed exception did not escape its caller";
+    } exception failure {
+        "Overlap.0.Rejected" =>
             ;
         * =>
             raise;

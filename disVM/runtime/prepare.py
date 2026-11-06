@@ -767,6 +767,8 @@ def main():
                 "\t\t\tmemmove(&DVM_R, &resumed, sizeof(DVM_R));\n"
             )
             finish_search = (
+                "\tif(searching && convert && dvm_runtime_exception_convert(p)){\n"
+                "\t\tconvert = 0;\n\t}\n"
                 "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"
                 "\tif(convert){\n" + conversion + "\t}\n"
             )
