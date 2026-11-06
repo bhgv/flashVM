@@ -692,8 +692,15 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         return 0;
     }
-    while (completed < limit && decode_integer_step(module, cursor, frame, module_type, &step))
+    while (completed < limit)
     {
+        /* No cell guard survives a step. These traces change only scalar
+         * bytes, so the suspended continuation still describes every root. */
+        dvm_runtime_gc_shared_poll();
+        if (!decode_integer_step(module, cursor, frame, module_type, &step))
+        {
+            break;
+        }
         if (step.opcode == IJMP)
         {
             cursor = step.target;

@@ -430,6 +430,17 @@ int dvm_runtime_gc_shared_try_enter(void)
 }
 
 
+/* Shared callers may poll only between guarded operations, with the
+ * suspended continuation's root set still valid. */
+void dvm_runtime_gc_shared_poll(void)
+{
+    if (!dvm_native_context_poll())
+    {
+        abort();
+    }
+}
+
+
 void dvm_runtime_gc_shared_finish(void)
 {
     native_enter(1, 1);
