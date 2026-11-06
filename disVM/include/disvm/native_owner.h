@@ -76,6 +76,9 @@ int dvm_native_owner_leave_shared(DVM_HeapOwner *owner);
  * once before another lifecycle transition. No cross-thread token transfer. */
 int dvm_native_owner_resume(DVM_HeapOwner *owner);
 
+/* Resume the suspended continuation directly from its shared interval. */
+int dvm_native_owner_resume_shared(DVM_HeapOwner *owner);
+
 
 /* Record epoch AFTER successful resume, under active heap ownership. Returns
  * zero without change unless one matching progress sample is outstanding.

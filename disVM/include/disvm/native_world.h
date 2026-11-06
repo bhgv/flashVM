@@ -101,6 +101,10 @@ int dvm_world_enter(DVM_WorldParticipant *participant);
  * before collection. This grants no permission to run ordinary VM code. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant);
 
+/* Promote an active shared owner. If it must wait, publish its roots and
+ * join the exclusive FIFO without an intervening unlocked interval. */
+int dvm_world_promote_shared(DVM_WorldParticipant *participant);
+
 
 /* [GC:] Publish stable roots before blocking/I/O or detaching. No heap mutation
  * may occur outside an active interval; process/register storage stays alive. */

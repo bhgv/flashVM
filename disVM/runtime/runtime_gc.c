@@ -327,7 +327,7 @@ int dvm_runtime_gc_native_try_leave(void)
 /* [GC:] Reacquire this TLS owner's native lease before any managed load/store.
  * released is the matching result, never a cross-thread token. Sample the shared
  * cycle epoch only AFTER admission succeeds; foreign/broken pairing is fatal. */
-void dvm_runtime_gc_native_enter(int released)
+static void native_enter(int released, int shared)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
@@ -361,14 +361,15 @@ void dvm_runtime_gc_native_enter(int released)
         }
         return;
     }
-    if (call.phase != DVM_HEAP_NATIVE || call.pending_progress ||
+    if (call.phase != (shared ? DVM_HEAP_SHARED : DVM_HEAP_NATIVE) || call.pending_progress ||
         dvm_native_context_object_count(dvm_native_context_current()))
     {
         fprintf(stderr,"disvm: invalid native heap reentry phase\n");
         exit(1);
     }
     returning = dvm_managed_workers_returning(1);
-    if (!dvm_native_owner_resume(owner) || !dvm_native_owner_progress(owner,state.passes))
+    if (!(shared ? dvm_native_owner_resume_shared(owner) : dvm_native_owner_resume(owner)) ||
+        !dvm_native_owner_progress(owner,state.passes))
     {
         fprintf(stderr,"disvm: native heap reentry failed\n");
         exit(1);
@@ -398,6 +399,12 @@ void dvm_runtime_gc_native_enter(int released)
 }
 
 
+void dvm_runtime_gc_native_enter(int released)
+{
+    native_enter(released, 0);
+}
+
+
 void dvm_runtime_gc_shared_enter(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
@@ -410,14 +417,7 @@ void dvm_runtime_gc_shared_enter(void)
 
 void dvm_runtime_gc_shared_finish(void)
 {
-    DVM_HeapOwner *owner = dvm_native_owner_current();
-    /* A guard must never cross the point where the collector can enter. */
-    if (dvm_native_context_object_count(dvm_native_context_current()) ||
-        !dvm_native_owner_leave_shared(owner))
-    {
-        abort();
-    }
-    dvm_runtime_gc_native_enter(1);
+    native_enter(1, 1);
 }
 
 

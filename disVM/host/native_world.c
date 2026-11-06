@@ -250,7 +250,7 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
 
 
 /* A new active interval cannot overlap an already requested root scan. */
-static int enter_world(DVM_WorldParticipant *participant, int shared)
+static int enter_world(DVM_WorldParticipant *participant, int shared, int promote)
 {
     DVM_NativeWorld *world;
     size_t ticket = 0;
@@ -264,7 +264,31 @@ static int enter_world(DVM_WorldParticipant *participant, int shared)
     }
     world = participant->world;
     fvm_port_sync_lock(world->sync);
-    if (participant->active || (shared && (!world->serial || world->sealed)))
+    if (promote)
+    {
+        if (!participant->active || !participant->shared || participant->parked)
+        {
+            fvm_port_sync_unlock(world->sync);
+            return 0;
+        }
+        if (world->active == 1 && !world->waiting && !world->collector && !world->resuming)
+        {
+            participant->shared = 0;
+            world->shared--;
+            world->admissions++;
+            fvm_port_sync_unlock(world->sync);
+            return 1;
+        }
+        /* Publish before becoming inactive, and queue before unlocking.
+         * Earlier tickets and an outstanding collector keep precedence. */
+        publish(participant);
+        participant->active = 0;
+        participant->shared = 0;
+        world->active--;
+        world->shared--;
+        fvm_port_sync_signal_all(world->sync);
+    }
+    else if (participant->active || (shared && (!world->serial || world->sealed)))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
@@ -312,14 +336,20 @@ static int enter_world(DVM_WorldParticipant *participant, int shared)
 /* Enter the ordinary exclusive interval in a serialized world. */
 int dvm_world_enter(DVM_WorldParticipant *participant)
 {
-    return enter_world(participant, 0);
+    return enter_world(participant, 0, 0);
 }
 
 
 /* Enter an audited shared interval without bypassing earlier FIFO tickets. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant)
 {
-    return enter_world(participant, 1);
+    return enter_world(participant, 1, 0);
+}
+
+
+int dvm_world_promote_shared(DVM_WorldParticipant *participant)
+{
+    return enter_world(participant, 0, 1);
 }
 
 

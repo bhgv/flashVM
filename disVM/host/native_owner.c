@@ -123,6 +123,20 @@ int dvm_native_owner_resume(DVM_HeapOwner *owner)
 }
 
 
+int dvm_native_owner_resume_shared(DVM_HeapOwner *owner)
+{
+    if (!current(owner) || owner->phase != DVM_HEAP_SHARED ||
+        !dvm_world_promote_shared(owner->roots))
+    {
+        return 0;
+    }
+    owner->phase = DVM_HEAP_ACTIVE;
+    owner->reentries++;
+    owner->pending_progress = 1;
+    return 1;
+}
+
+
 /* Consume one post-resume epoch sample under active heap ownership. owner and
  * scalar epoch are borrowed; duplicate/foreign/out-of-phase samples fail. */
 int dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch)
