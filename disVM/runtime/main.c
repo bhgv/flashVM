@@ -1261,11 +1261,11 @@ void addrun(Prog *process)
 }
 
 
-/* Remove current FIFO head without touching its separate process/GC root links.
- * state is the retained scheduler reason; invalid/empty head raises normally. */
+/* Withdraw the TLS guest for a wait or exit without changing its GC root links.
+ * state is the retained scheduler reason. A foreign head raises before removal. */
 Prog *delrun(int state)
 {
-    Prog *process = dvm_runqueue_pop(state);
+    Prog *process = dvm_runqueue_pop_expected(currun(), state);
     if (!process)
     {
         error("invalid runnable process removal");
@@ -2410,7 +2410,11 @@ static int runtime_dispatch_turn(void)
         }
         if (dvm_runqueue_head() == process)
         {
-            addrun(delrun(Pready));
+            if (!dvm_runqueue_pop_expected(process, Pready))
+            {
+                error("invalid runnable process rotation");
+            }
+            addrun(process);
         }
     }
     if (processes && gc_worker && !dvm_runtime_gc_request())

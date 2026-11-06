@@ -210,6 +210,11 @@ int main(void)
     {
         check(dvm_runqueue_pop(Psend) == &nodes[index].process,"FIFO fill/drain order");
     }
+    check(dvm_runqueue_append(&nodes[0].process), "append expected withdrawal fixture");
+    check(!dvm_runqueue_pop_expected(&nodes[1].process, Precv) &&
+        dvm_runqueue_head() == &nodes[0].process &&
+        dvm_runqueue_pop_expected(&nodes[0].process, Psend) == &nodes[0].process,
+        "foreign guest changed the runnable head");
     check(!dvm_runqueue_pop(Pready),"empty pop accepted");
     for (step = 0; step < 20000; step++)
     {

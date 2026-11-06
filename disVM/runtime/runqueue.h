@@ -78,6 +78,9 @@ int dvm_runqueue_complete_channel_wait(Prog *process, char *cause);
  * queues. Caller retains the Prog in the separate GC/process list. */
 Prog *dvm_runqueue_pop(int state);
 
+/* Withdraw the expected live guest only while it is the FIFO head. */
+Prog *dvm_runqueue_pop_expected(Prog *expected, int state);
+
 
 /* Inspect the retained synchronous Native64Caller hold while heap ownership is
  * active. NULL has no program hold. This never promotes that lease to resumable. */

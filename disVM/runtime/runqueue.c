@@ -318,6 +318,18 @@ Prog *dvm_runqueue_pop(int state)
 }
 
 
+/* Withdraw only the expected process, borrowed under exclusive admission.
+ * Return NULL before changing the queue if another guest owns the head. */
+Prog *dvm_runqueue_pop_expected(Prog *expected, int state)
+{
+    if (!expected || head != expected)
+    {
+        return NULL;
+    }
+    return dvm_runqueue_pop(state);
+}
+
+
 /* Respect the existing synchronous Native64Caller lease. process is borrowed
  * under the heap turn; a nonzero native64holds forbids native suspension even
  * with separate TLS state. NULL denotes rootless native work, not a Prog lease. */
