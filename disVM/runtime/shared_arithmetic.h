@@ -3,6 +3,8 @@
 #define DVM_SHARED_ARITHMETIC_H
 #include <stddef.h>
 
+extern int dvm_runtime_shared_integer;
+extern unsigned long dvm_runtime_shared_integer_commits;
 extern int dvm_runtime_parallel_add; /* Startup-only frame-local integer experiment. */
 
 

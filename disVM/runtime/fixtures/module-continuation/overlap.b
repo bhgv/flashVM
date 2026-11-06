@@ -3,8 +3,11 @@ include "sys.m";
 
 Overlap: module { init: fn(); };
 
-copy(id: int, done: chan of int)
+copy(id, factor: int, done: chan of int)
 {
+    product := id*factor;
+    if (product != id*17)
+        raise "parallel arithmetic lost its result";
     source := array[] of {id, id+1, id+2};
     destination := array[3] of int;
     destination[0:] = source;
@@ -18,7 +21,7 @@ init()
     sys := load Sys Sys->PATH;
     done := chan of int;
     for (id := 0; id < 40; id++)
-        spawn copy(id, done);
+        spawn copy(id, 17, done);
     seen := array[40] of {* => 0};
     for (id = 0; id < 40; id++)
     {

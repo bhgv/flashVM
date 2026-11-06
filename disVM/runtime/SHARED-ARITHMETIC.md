@@ -90,3 +90,11 @@ evidence; no arithmetic semantics, default admission or NativeWorld change.
 Runtime0.98 adds nine [product/division/remainder operations](PRODUCT-DIVISION.md)
 to this compact domain. Earlier fifteen-op measurements remain historical; their
 benchmark guest is explicitly frozen. No global parallel admission is enabled.
+
+With `--native-spawn --guarded-copies --parallel-integer`, a dedicated
+guest can evaluate a verified private integer operation and publish it
+in one restricted shared interval. It captures the inputs before suspension
+and revalidates them under a new range union before publication. A refused
+shared claim falls back under exclusive admission. Errors are delivered only
+after exclusive reentry. The hosted overlap fixture verifies forty simultaneous
+admissions for this path with a test-only barrier.

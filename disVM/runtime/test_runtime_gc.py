@@ -66,7 +66,9 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
             raise RuntimeError("event cycles did not skip clean work and reclaim cycles:\n" + output[-5000:])
     if dedicated_parallel:
         peak = re.search(r"shared_peak=(\d+)", output)
-        if (not peak or int(peak[1]) == 0 or "parallel_slicela_commits=66" not in output
+        integers = re.search(r"shared_integer_commits=(\d+)", output)
+        if (not peak or int(peak[1]) == 0 or not integers or int(integers[1]) == 0
+                or "parallel_slicela_commits=66" not in output
                 or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
             raise RuntimeError("dedicated guests did not publish shared graph copies:\n" + output[-5000:])
     if pool:

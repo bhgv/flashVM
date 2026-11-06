@@ -91,16 +91,19 @@ def main():
         overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
                          ["dvm_native_owner_enter_shared", "dvm_gc_workers_request"])
         for mode in ("--jit", "--no-jit"):
-            result = subprocess.run(
-                [str(overlap), mode, "--native-spawn", "--guarded-copies", "--parallel-slicela",
-                 "--stats", str(directory / "overlap.dis")],
-                cwd=directory, capture_output=True, text=True, timeout=30,
-            )
-            output = result.stdout + result.stderr
-            if (result.returncode or "PASS forty dedicated shared copies" not in output
-                    or "shared_peak=40" not in output or "parallel_slicela_commits=40" not in output
-                    or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
-                raise RuntimeError(output)
+            for option, counter in (("--parallel-slicela", "parallel_slicela_commits"),
+                                    ("--parallel-integer", "shared_integer_commits")):
+                result = subprocess.run(
+                    [str(overlap), mode, "--native-spawn", "--guarded-copies", option,
+                     "--stats", str(directory / "overlap.dis")],
+                    cwd=directory, capture_output=True, text=True, timeout=30,
+                )
+                output = result.stdout + result.stderr
+                commits = re.search(rf"{counter}=(\d+)", output)
+                if (result.returncode or "PASS forty dedicated shared copies" not in output
+                        or "shared_peak=40" not in output or not commits or int(commits[1]) < 40
+                        or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
+                    raise RuntimeError(f"{mode} {option}\n{output}")
         run(runtime, directory, "--jit", [], b"R", "PASS provider return",
             default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):

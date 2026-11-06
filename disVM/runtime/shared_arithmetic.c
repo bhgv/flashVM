@@ -10,6 +10,7 @@
 #include "arithmetic_value.h"
 #include "managed_owner.h"
 #include "disvm/native_process.h"
+#include "disvm/native_owner.h"
 #include "runqueue.h"
 #include "runtime_gc.h"
 #include <fenv.h>
@@ -18,6 +19,8 @@
 #include <stdlib.h>
 
 
+int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
+unsigned long dvm_runtime_shared_integer_commits; /* Counted after exclusive return. */
 int dvm_runtime_parallel_add; /* Startup-only leased arithmetic selection, 1 for ADDW or 2 for all. */
 
 
@@ -319,16 +322,39 @@ void dvm_runtime_parallel_real_enter(int released)
 }
 
 
-/* Compute an audited scalar operation from private bytes outside the heap.
- * The caller has guarded all three frame cells and ruled out a zero divisor.
- * Return with the union released. Revalidate and commit under a fresh claim. */
+/* Revalidate the private snapshots under the new union. All data is
+ * borrowed through the active guest lease. No errors are thrown here. */
+static const char *commit_arithmetic(int opcode, const void *first, const void *second,
+    void *output, size_t width, int division, const unsigned char *left,
+    const unsigned char *right, const unsigned char *result)
+{
+    if (memcmp(first, left, width) || memcmp(second, right, width))
+    {
+        if (division && dvm_runtime_divisor_zero(opcode, second))
+        {
+            return exZdiv;
+        }
+        dvm_runtime_arithmetic_value(opcode, first, second, output);
+    }
+    else
+    {
+        memmove(output, result, width);
+    }
+    return NULL;
+}
+
+
+/* Compute from private bytes, then revalidate and publish. Dedicated guests
+ * can do both in a shared interval. Error delivery remains exclusive. */
 static const char *leased_arithmetic(int opcode, const void *first, const void *second,
     void *output, size_t width, int division, DVM_TripleAccess *access, int *retryable)
 {
     unsigned char left[sizeof(ULONG)], right[sizeof(ULONG)], result[sizeof(ULONG)];
+    DVM_CellDomain *domain;
+    DVM_HeapOwner *owner = dvm_native_owner_current();
     int released;
     DVM_CellResult claim;
-    const char *problem = NULL;
+    const char *problem;
 
     memmove(left, first, width);
     memmove(right, second, width);
@@ -336,11 +362,47 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
     {
         abort();
     }
+    domain = dvm_runtime_shared_integer ? dvm_managed_cell_domain() : NULL;
     released = dvm_runtime_gc_native_try_leave();
-    dvm_runtime_arithmetic_value(opcode, left, right, result);
-    if (released > 0)
+    if (released > 0 && domain)
     {
+        if (!dvm_native_owner_enter_shared(owner))
+        {
+            abort();
+        }
+        dvm_runtime_arithmetic_value(opcode, left, right, result);
+        claim = dvm_small_range_access_begin(domain, first, width, second, width,
+            output, width, access);
+        problem = NULL;
+        if (claim == DVM_CELL_ACQUIRED)
+        {
+            problem = commit_arithmetic(opcode, first, second, output, width, division, left, right, result);
+            if (!dvm_small_range_access_end(access))
+            {
+                abort();
+            }
+        }
+        if (!dvm_native_owner_leave_shared(owner))
+        {
+            abort();
+        }
         dvm_runtime_gc_native_enter(released);
+        if (claim == DVM_CELL_ACQUIRED)
+        {
+            if (!problem)
+            {
+                dvm_runtime_shared_integer_commits++;
+            }
+            return problem;
+        }
+    }
+    else
+    {
+        dvm_runtime_arithmetic_value(opcode, left, right, result);
+        if (released > 0)
+        {
+            dvm_runtime_gc_native_enter(released);
+        }
     }
 
     claim = dvm_managed_small_three_begin(first, width, second, width, output, width, access);
@@ -349,21 +411,7 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
         *retryable = claim == DVM_CELL_BUSY;
         return exHeap;
     }
-    if (memcmp(first, left, width) || memcmp(second, right, width))
-    {
-        if (division && dvm_runtime_divisor_zero(opcode, second))
-        {
-            problem = exZdiv;
-        }
-        else
-        {
-            dvm_runtime_arithmetic_value(opcode, first, second, output);
-        }
-    }
-    else
-    {
-        memmove(output, result, width);
-    }
+    problem = commit_arithmetic(opcode, first, second, output, width, division, left, right, result);
     if (!dvm_small_range_access_end(access))
     {
         abort();

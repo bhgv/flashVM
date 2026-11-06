@@ -2962,6 +2962,7 @@ int main(int argc, char **argv)
             return 2;
         }
         gc_worker = 1;
+        dvm_runtime_shared_integer = dvm_runtime_parallel_add != 0;
     }
     if (managed_limit_selected && managed_workers != 0)
     {
