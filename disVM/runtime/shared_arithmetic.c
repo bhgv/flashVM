@@ -473,6 +473,16 @@ static int retire_shared_frame(Frame *frame, const Type *type, void *departed)
 }
 
 
+/* Enter a read-only exception search with the guest's roots published.
+ * The caller must finish the shared interval before applying the result. */
+int dvm_runtime_exception_search_enter(Prog *process)
+{
+    return dvm_runtime_shared_integer && process->state == Pready &&
+        dvm_runqueue_head() == process && dvm_runqueue_release_allowed(process) &&
+        dvm_runtime_gc_shared_try_enter() > 0;
+}
+
+
 /* Pop consecutive ordinary frames up to the borrowed handler frame.
  * Return the number removed. The caller owns the exclusive turn on entry
  * and return and handles argument gaps on the retained path. */

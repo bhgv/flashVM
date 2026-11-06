@@ -9,6 +9,8 @@
  * No heap allocation, ownership transfer or payload lock acquisition occurs. */
 WORD dvm_exception_status(REG *registers, char *name, int capacity);
 struct Prog;
+/* Start an audited read-only handler lookup. */
+int dvm_runtime_exception_search_enter(struct Prog *process);
 /* Pop an ordinary frame through the shared retirement protocol. */
 int dvm_runtime_exception_pop(struct Prog *process, const unsigned char *handler_frame);
 

@@ -753,6 +753,22 @@ def main():
         path = args.output / (unit+'.c')
         view_source = adapt_boundary_counts(path.read_text(), unit)
         if unit == "exception":
+            search_boundaries = (
+                ("int str, ne, transfer;", "int str, ne, transfer, searching = 0;"),
+                ("\twhile(fp != nil){\t\t/* look for a handler */",
+                 "\tsearching = str && dvm_runtime_exception_search_enter(p);\n"
+                 "\twhile(fp != nil){\t\t/* look for a handler */\n"
+                 "\t\tif(searching){\n\t\t\tdvm_runtime_gc_shared_poll();\n\t\t}"),
+                ("\nunhandled:\n", "\nunhandled:\n"
+                 "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"),
+                ("\nfound:\n", "\nfound:\n"
+                 "\tif(searching){\n\t\tdvm_runtime_gc_shared_finish();\n\t}\n"),
+            )
+            for before, after in search_boundaries:
+                if view_source.count(before) != 1:
+                    raise ValueError("hosted exception search boundary drift")
+                view_source = view_source.replace(before, after, 1)
+            view_source = '#include "runtime_gc.h"\n' + view_source
             boundary = "\t\tif(DVM_R.FP == fp)\n\t\t\tbreak;"
             if view_source.count(boundary) != 1:
                 raise ValueError("hosted exception unwind boundary drift")

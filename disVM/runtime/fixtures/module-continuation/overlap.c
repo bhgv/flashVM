@@ -77,6 +77,19 @@ int __wrap_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slo
 }
 
 
+/* Record real shared handler lookup admission. */
+int __real_dvm_runtime_exception_search_enter(Prog *process);
+int __wrap_dvm_runtime_exception_search_enter(Prog *process)
+{
+    int entered = __real_dvm_runtime_exception_search_enter(process);
+    if (entered)
+    {
+        fprint(2, "FRAME handler search entered shared mode\n");
+    }
+    return entered;
+}
+
+
 /* Wait on one test-only counter. All guests own separate TLS contexts. */
 static void meet(unsigned *count, const struct timespec *deadline)
 {
