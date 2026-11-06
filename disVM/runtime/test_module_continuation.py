@@ -168,6 +168,7 @@ def main():
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
                         or (not options and (output.count("FRAME exception popped in shared mode") < 40
+                            or "FRAME exception crossed a stack extent" not in output
                             or "FRAME retirement retry injected" not in output
                             or not frame_retirement or int(frame_retirement[1]) < 40
                             or not frames or min(map(int, frames.groups())) < 40

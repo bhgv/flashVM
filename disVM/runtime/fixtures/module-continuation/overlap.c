@@ -50,10 +50,15 @@ int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, Mo
 int __real_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame);
 int __wrap_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 {
+    const uchar *extent = DVM_R.EX;
     int popped = __real_dvm_runtime_exception_pop(process, handler_frame);
     if (popped >= 2)
     {
         fprint(2, "FRAME exception popped in shared mode\n");
+    }
+    if (popped && extent != DVM_R.EX)
+    {
+        fprint(2, "FRAME exception crossed a stack extent\n");
     }
     return popped;
 }

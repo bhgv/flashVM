@@ -475,7 +475,7 @@ static int retire_shared_frame(Frame *frame, const Type *type, Modlink *departed
 
 /* Pop consecutive ordinary frames up to the borrowed handler frame.
  * Return the number removed. The caller owns the exclusive turn on entry
- * and return and handles argument gaps or extensions on the retained path. */
+ * and return and handles argument gaps on the retained path. */
 int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 {
     if (!dvm_runtime_shared_integer || process->state != Pready ||
@@ -489,9 +489,27 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
     {
         Type *type = current_frame_type();
         Frame *frame = (Frame *)DVM_R.FP;
-        if (!type || frame->t != type || (uintptr_t)frame + type->size != (uintptr_t)DVM_R.SP ||
-            (uintptr_t)frame->fp < (uintptr_t)DVM_R.EX ||
-            (uintptr_t)frame->fp >= (uintptr_t)frame || frame->mr == H)
+        if (!type || (uintptr_t)frame + type->size != (uintptr_t)DVM_R.SP ||
+            frame->mr == H || !frame->fp)
+        {
+            break;
+        }
+        Stkext *extent = NULL;
+        uchar *previous_sp = (uchar *)frame;
+        if (!frame->t)
+        {
+            extent = (Stkext *)DVM_R.EX;
+            previous_sp = extent->reg.SP;
+            if (!extent->reg.EX || extent->reg.EX == H || previous_sp == H ||
+                (uintptr_t)frame->fp < (uintptr_t)extent->reg.EX ||
+                (uintptr_t)frame->fp >= (uintptr_t)previous_sp ||
+                (uintptr_t)previous_sp > (uintptr_t)extent->reg.TS)
+            {
+                break;
+            }
+        }
+        else if (frame->t != type || (uintptr_t)frame->fp < (uintptr_t)DVM_R.EX ||
+                 (uintptr_t)frame->fp >= (uintptr_t)frame)
         {
             break;
         }
@@ -510,7 +528,12 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
             break;
         }
         DVM_R.FP = links.fp;
-        DVM_R.SP = (uchar *)frame;
+        DVM_R.SP = previous_sp;
+        if (extent)
+        {
+            DVM_R.EX = extent->reg.EX;
+            DVM_R.TS = extent->reg.TS;
+        }
         DVM_R.PC = links.lr;
         if (departed)
         {
@@ -519,6 +542,10 @@ int dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
         }
         DVM_R.s = DVM_R.m = DVM_R.d = NULL;
         dvm_runtime_gc_shared_publish();
+        if (extent)
+        {
+            free(extent);
+        }
         dvm_runtime_gc_shared_poll();
         popped++;
     }

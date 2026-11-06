@@ -12,8 +12,8 @@ touch(): int
 
 failheld(value: array of int)
 {
-    if (len value == 1)
-        failheld(array[] of {value[0], 0});
+    if (value[0] > 0)
+        failheld(array[] of {value[0]-1});
     else
         raise "shared frame unwind";
 }

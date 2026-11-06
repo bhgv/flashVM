@@ -22,7 +22,10 @@ copy(id, factor: int, done, resume: chan of int, provider: Provider)
     if (provider->heldvalue(array[] of {id}) != id)
         raise "parallel module call lost its return value";
     {
-        provider->failheld(array[] of {id});
+        depth := 1;
+        if (id == 0)
+            depth = 512;
+        provider->failheld(array[] of {depth});
         raise "provider did not raise";
     } exception failure {
         "shared frame unwind" =>
