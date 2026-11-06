@@ -10,6 +10,7 @@
 #include "arithmetic_value.h"
 #include "branch_value.h"
 #include "shift_value.h"
+#include "integer_value.h"
 #include "managed_owner.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
@@ -439,6 +440,7 @@ typedef struct IntegerStep
     size_t width;                /* Native value width. */
     size_t source_width;         /* Shift counts always occupy one WORD. */
     int shift;
+    int unary;                   /* Copy or conversion with no middle operand. */
     int family;                  /* BYTE, WORD or LONG for diagnostics. */
     const void *source;          /* Borrowed frame scalar or rooted instruction literal. */
     const void *middle;          /* Borrowed frame scalar or copied immediate. */
@@ -476,8 +478,47 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     destination_mode = UDST(instruction.add);
     step->opcode = instruction.op;
     step->target = NULL;
+    step->source_width = 0;
+    step->unary = 1;
+    step->family = 0;
     switch (instruction.op)
     {
+    case IMOVB:
+        step->source_width = sizeof(BYTE);
+        step->width = sizeof(BYTE);
+        break;
+    case IMOVW:
+        step->source_width = sizeof(WORD);
+        step->width = sizeof(WORD);
+        break;
+    case IMOVL:
+        step->source_width = sizeof(LONG);
+        step->width = sizeof(LONG);
+        break;
+    case ICVTBW:
+        step->source_width = sizeof(BYTE);
+        step->width = sizeof(WORD);
+        break;
+    case ICVTWB:
+        step->source_width = sizeof(WORD);
+        step->width = sizeof(BYTE);
+        break;
+    case ICVTWS:
+        step->source_width = sizeof(WORD);
+        step->width = sizeof(SHORT);
+        break;
+    case ICVTSW:
+        step->source_width = sizeof(SHORT);
+        step->width = sizeof(WORD);
+        break;
+    case ICVTWL:
+        step->source_width = sizeof(WORD);
+        step->width = sizeof(LONG);
+        break;
+    case ICVTLW:
+        step->source_width = sizeof(LONG);
+        step->width = sizeof(WORD);
+        break;
     case IBEQB: case IBNEB: case IBLTB: case IBLEB: case IBGTB: case IBGEB:
         branch = 1;
         /* fall through */
@@ -486,6 +527,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     case ISHLB: case ISHRB:
         step->width = sizeof(BYTE);
         step->family = 1;
+        step->unary = 0;
         break;
     case IBEQW: case IBNEW: case IBLTW: case IBLEW: case IBGTW: case IBGEW:
         branch = 1;
@@ -494,7 +536,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     case IDIVW: case IMODW:
     case ISHLW: case ISHRW: case ILSRW:
         step->width = sizeof(WORD);
-        step->family = 0;
+        step->unary = 0;
         break;
     case IBEQL: case IBNEL: case IBLTL: case IBLEL: case IBGTL: case IBGEL:
         branch = 1;
@@ -504,6 +546,7 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     case ISHLL: case ISHRL: case ILSRL:
         step->width = sizeof(LONG);
         step->family = 2;
+        step->unary = 0;
         break;
     case IJMP:
         if (source_mode != AXXX || destination_mode != AIMM || middle_mode != AXNON ||
@@ -523,7 +566,10 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     step->shift = step->opcode == ISHLB || step->opcode == ISHRB ||
         step->opcode == ISHLW || step->opcode == ISHRW || step->opcode == ILSRW ||
         step->opcode == ISHLL || step->opcode == ISHRL || step->opcode == ILSRL;
-    step->source_width = step->shift ? sizeof(WORD) : step->width;
+    if (!step->unary)
+    {
+        step->source_width = step->shift ? sizeof(WORD) : step->width;
+    }
     if (branch)
     {
         if (destination_mode != AIMM || middle_mode == AXNON || !batch_pc(module, instruction.d.ins))
@@ -569,6 +615,12 @@ static int decode_integer_step(const Module *module, const Inst *pc, const Type 
     else
     {
         return 0;
+    }
+    if (step->unary)
+    {
+        step->middle = step->destination;
+        step->immediate_middle = 0;
+        return middle_mode == AXNON;
     }
     step->immediate_middle = middle_mode == AXIMM;
     if (step->immediate_middle)
@@ -656,7 +708,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         WORD count = 0;
         size_t destination_size = step.target ? sizeof(Inst *) : step.width;
         if (dvm_small_range_access_begin(domain, step.source, step.source_width,
-            step.middle, step.width, step.destination, destination_size, &access) != DVM_CELL_ACQUIRED)
+            step.middle, step.unary ? 0 : step.width, step.destination, destination_size, &access) != DVM_CELL_ACQUIRED)
         {
             break;
         }
@@ -675,6 +727,18 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
             branches++;
             cursor = dvm_runtime_branch_predicate(step.opcode, step.source, step.middle) ?
                 step.target : cursor + 1;
+        }
+        else if (step.unary)
+        {
+            if (step.opcode == IMOVB || step.opcode == IMOVW || step.opcode == IMOVL)
+            {
+                memmove(step.destination, step.source, step.width);
+            }
+            else
+            {
+                dvm_runtime_integer_value(step.opcode, step.source, step.destination);
+            }
+            cursor++;
         }
         else if (step.shift)
         {

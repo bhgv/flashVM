@@ -125,3 +125,8 @@ Shared traces also support left and arithmetic right shifts at all three
 widths, plus logical right shifts for WORD and LONG. The guard covers a
 WORD-sized shift count even for a BYTE value. Invalid counts stop the trace
 before publication so the ordinary dispatcher delivers the error.
+
+A trace can also keep BYTE, WORD and LONG copies and the six integer
+conversions between BYTE, SHORT, WORD and LONG. Conversions claim the
+input and output at their own widths and capture the input before writing.
+Only direct scalar frame destinations are admitted.
