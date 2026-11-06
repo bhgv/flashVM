@@ -86,8 +86,7 @@ def portable_overlap(runtime, compiler, include, runner):
         subprocess.run([str(compiler), "-F", "-I", str(include),
                         "-o", str(image), str(fixtures / "overlap.b")], check=True)
         result = subprocess.run(
-            [*runner, str(runtime), "--no-jit", "--native-spawn", "--guarded-copies",
-             "--parallel-integer", "--parallel-movp", "--stats", str(image)],
+            [*runner, str(runtime), "--no-jit", "--native-spawn", "--stats", str(image)],
             cwd=temporary, capture_output=True, text=True, timeout=120,
         )
         output = result.stdout + result.stderr
@@ -131,10 +130,10 @@ def main():
         overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
                          ["dvm_native_owner_enter_shared", "dvm_gc_workers_request"])
         for mode in ("--jit", "--no-jit"):
-            for option, counter in (("--parallel-slicela", "parallel_slicela_commits"),
-                                    ("--parallel-integer", "shared_integer_commits")):
+            for options, counter in ((["--guarded-copies", "--parallel-movp", "--parallel-slicela"], "parallel_slicela_commits"),
+                                     ([], "shared_integer_commits")):
                 result = subprocess.run(
-                    [str(overlap), mode, "--native-spawn", "--guarded-copies", "--parallel-movp", option,
+                    [str(overlap), mode, "--native-spawn", *options,
                      "--stats", str(directory / "overlap.dis")],
                     cwd=directory, capture_output=True, text=True, timeout=30,
                 )
@@ -147,12 +146,12 @@ def main():
                 pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
-                        or (option == "--parallel-integer" and (not batches or int(batches[1]) < 40
+                        or (not options and (not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120
                             or not widths or min(map(int, widths.groups())) < 40))
                         or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < 40
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
-                    raise RuntimeError(f"{mode} {option}\n{output}")
+                    raise RuntimeError(f"{mode} {options}\n{output}")
         run(runtime, directory, "--jit", [], b"R", "PASS provider return",
             default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):

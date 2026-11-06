@@ -79,3 +79,9 @@ The fixture also exercises guarded MOVP with native GC. Forty guests
 publish and retain arrays through a shared module slot. The parent clears
 the slot before allowing the guests to check their retained arrays again.
 The test requires a successful shared MOVP involving module data.
+
+The portable regression selects the dedicated profile with `--native-spawn`.
+On AMD64 and in interpreter mode on ARM64/RV64, this enables the existing
+guarded scalar, pointer, mapped-copy and channel paths together. Supplying
+guarded/parallel switches explicitly selects the individual paths. Non-AMD64
+JIT retains its existing profile without guarded copies.

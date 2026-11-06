@@ -2903,7 +2903,7 @@ int main(int argc, char **argv)
             puts("Default: two managed workers, native GC and shared typed copies and channel transfers.");
 #endif
             puts("Explicit GC and guarded/parallel switches select a custom profile.");
-            puts("--native-spawn starts one dedicated OS thread per spawned guest.");
+            puts("--native-spawn starts one dedicated OS thread per spawned guest with a guarded parallel profile where supported.");
             puts("--gc-event-cycles coalesces cycle scans after managed owner loss.");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
@@ -2962,6 +2962,26 @@ int main(int argc, char **argv)
             return 2;
         }
         gc_worker = 1;
+        if (
+#if !defined(__x86_64__)
+            !cflag &&
+#endif
+            !dvm_runtime_guarded_copies && !dvm_runtime_parallel_add &&
+            !dvm_runtime_parallel_real && !dvm_runtime_parallel_string &&
+            !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp &&
+            !dvm_runtime_parallel_slicela && !dvm_runtime_parallel_channel_buffer &&
+            !dvm_runtime_parallel_byte_copies)
+        {
+            dvm_runtime_guarded_copies = 1;
+            dvm_runtime_parallel_add = 2;
+            dvm_runtime_parallel_real = 1;
+            dvm_runtime_parallel_string = 1;
+            dvm_runtime_parallel_movp = 1;
+            dvm_runtime_parallel_movmp = 1;
+            dvm_runtime_parallel_slicela = 1;
+            dvm_runtime_parallel_channel_buffer = 1;
+            dvm_runtime_parallel_byte_copies = 1;
+        }
         dvm_runtime_shared_integer = dvm_runtime_parallel_add != 0;
     }
     if (managed_limit_selected && managed_workers != 0)
