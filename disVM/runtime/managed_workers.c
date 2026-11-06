@@ -124,7 +124,8 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     {
         return !stopping();
     }
-    wait_for_work = service.automatic && idle && !rendezvous && service.live == 1;
+    wait_for_work = idle && !rendezvous &&
+        (service.count == 1 || (service.automatic && service.live == 1));
     while (*slot)
     {
         int done;
@@ -443,10 +444,11 @@ int dvm_managed_workers_start_guest(int pid)
 }
 
 
-/* Match a borrowed process identity against the calling OS thread's slot. */
-int dvm_managed_workers_owns_guest(int pid, int parent_pid)
+/* Return the PID permanently associated with this dedicated TLS slot.
+ * The initial guest uses the controller and supplies its PID at dispatch. */
+int dvm_managed_workers_guest_pid(void)
 {
-    return current_guest ? current_guest->guest_pid == pid : parent_pid == 0;
+    return current_guest ? current_guest->guest_pid : 0;
 }
 
 

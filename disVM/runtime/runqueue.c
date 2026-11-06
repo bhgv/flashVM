@@ -231,6 +231,37 @@ Prog *dvm_runqueue_head(void)
 }
 
 
+/* Select this dedicated thread's ready guest under exclusive admission.
+ * The retained executor still expects its active guest at the head. Other
+ * guests keep their relative queue order. A claimed waiter remains parked. */
+Prog *dvm_runqueue_select_guest(int pid)
+{
+    Prog *previous = NULL;
+    Prog *process = head;
+    while (process && process->pid != pid)
+    {
+        previous = process;
+        process = process->link;
+    }
+    if (!process || process->state != Pready || runtime_process(process)->channel_claimed ||
+        runtime_process(process)->dispatch_owner || runtime_process(process)->native_owner)
+    {
+        return NULL;
+    }
+    if (previous)
+    {
+        previous->link = process->link;
+        if (tail == process)
+        {
+            tail = previous;
+        }
+        process->link = head;
+        head = process;
+    }
+    return process;
+}
+
+
 /* Append one borrowed runtime Prog, refusing native leases and duplicates before
  * mutation. Each withdrawn native continuation reserves one slot for return.
  * No allocation/throw; success gives the FIFO one runnable member. */
@@ -314,6 +345,7 @@ Prog *dvm_runqueue_pop(int state)
     runtime_process(process)->queued = 0;
     process->link = NULL;
     process->state = state;
+    dvm_managed_workers_wake();
     return process;
 }
 

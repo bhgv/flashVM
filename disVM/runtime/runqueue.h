@@ -63,6 +63,9 @@ DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process);
 /* Borrow FIFO head under exclusive heap ownership; NULL means no runnable Prog. */
 Prog *dvm_runqueue_head(void);
 
+/* Bring a dedicated thread's ready guest to the retained dispatch head. */
+Prog *dvm_runqueue_select_guest(int pid);
+
 
 /* Append one unqueued, non-leased runtime Prog. No allocation; return zero for
  * duplicate/corrupt/full queues or an outstanding native continuation. */

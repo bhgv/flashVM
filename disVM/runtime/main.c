@@ -112,6 +112,7 @@ static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
+static int initial_guest_pid; /* Controller-owned root guest in dedicated mode. */
 static int native_spawn; /* One dedicated OS thread per spawned Prog. */
 static int managed_workers = 1; /* Executor count before launch-profile selection. */
 static unsigned long managed_workers_limit; /* Optional automatic pool resource cap; zero is uncapped. */
@@ -2297,13 +2298,16 @@ static int runtime_dispatch_turn(void)
     Prog **slot;
     int cancelled = gc_worker && dispatch_guest_cancellations();
 
-    if (!dvm_runqueue_head())
+    if (native_spawn)
     {
-        return cancelled ? DVM_MANAGED_TURN_MAINTENANCE : DVM_MANAGED_TURN_IDLE;
+        int guest = dvm_managed_workers_guest_pid();
+        process = dvm_runqueue_select_guest(guest ? guest : initial_guest_pid);
     }
-    process = dvm_runqueue_head();
-    if (native_spawn && !dvm_managed_workers_owns_guest(process->pid,
-        ((DVM_RuntimeProcess *)process)->parent_pid))
+    else
+    {
+        process = dvm_runqueue_head();
+    }
+    if (!process)
     {
         return cancelled ? DVM_MANAGED_TURN_MAINTENANCE : DVM_MANAGED_TURN_IDLE;
     }
@@ -2424,7 +2428,7 @@ static int runtime_dispatch_turn(void)
         {
             wake_for_termination(process);
         }
-        if (dvm_runqueue_head() == process)
+        if (!native_spawn && dvm_runqueue_head() == process)
         {
             if (!dvm_runqueue_pop_expected(process, Pready))
             {
@@ -2506,6 +2510,7 @@ static int runtime_execute_inner(void *argument)
         error(owner_error());
     }
     process = start_module(module);
+    initial_guest_pid = process->pid;
     if (inspect_requested)
     {
         inspect_retain(process);
@@ -2587,8 +2592,19 @@ static int runtime_execute_inner(void *argument)
             {
                 dvm_managed_workers_record();
             }
+#ifndef DVM_RUNTIME_EDITOR
+            if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
+                (dvm_runqueue_head() || dvm_runqueue_inflight()))
+            {
+                if (!dvm_managed_workers_park(guest_cancel_pending))
+                {
+                    error("dedicated guest wait failed");
+                }
+                continue;
+            }
+#endif
         }
-        if (!dvm_managed_workers_yield(!dvm_runqueue_head() && !guest_cancel_pending()))
+        if (!dvm_managed_workers_yield(!native_spawn && !dvm_runqueue_head() && !guest_cancel_pending()))
         {
             error("managed scheduler worker failed");
         }

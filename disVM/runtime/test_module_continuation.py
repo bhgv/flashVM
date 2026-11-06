@@ -47,11 +47,13 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     if dedicated:
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", text)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", text)
-        # The last forty children all exist before the parent sends to any.
-        pool = (len(starts) == 43 and len(set(pid for pid, _ in starts)) == 43
+        expected = 2 if image == "kill.dis" else 43
+        concurrent = 2 if image == "kill.dis" else 40
+        # The last forty channel guests all exist before the parent sends to any.
+        pool = (len(starts) == expected and len(set(pid for pid, _ in starts)) == expected
                 and sorted(starts) == sorted(retired)
                 and re.search(r"NATIVEDISPATCH .* active=0 migrated=0\b", text) is not None
-                and len(set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-40:])) == 40)
+                and len(set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-concurrent:])) == concurrent)
     queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", text)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0", text)
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", text)
@@ -88,6 +90,8 @@ def main():
             default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):
             run(runtime, directory, mode, [], b"R", "PASS provider return", dedicated=True)
+            run(runtime, directory, mode, [], b"R", "PASS provider termination and reload",
+                "kill.dis", dedicated=True)
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind")

@@ -39,7 +39,18 @@ rendezvous(outbound, inbound: chan of (Provider, array of int), ready: chan of i
 # Each guest waits on its own channel. The completion channel reports identity.
 channel_guest(input, completed: chan of int, expected: int)
 {
-    if (<-input != expected)
+    value := -1;
+    if (expected % 2 == 0)
+    {
+        value = <-input;
+    }
+    else
+    {
+        alt {
+            value = <-input => {}
+        }
+    }
+    if (value != expected)
         raise "channel delivered to the wrong guest";
     completed <-= expected;
 }
