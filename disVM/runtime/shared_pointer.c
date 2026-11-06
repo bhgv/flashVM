@@ -203,7 +203,6 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
     void *previous;
     const char *problem;
     int mode = dvm_runtime_shared_mode();
-    DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_CellDomain *domain = NULL;
     int released = 0;
     int module_operand = 0;
@@ -233,19 +232,15 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
             }
         }
     }
-    if (released > 0 && !dvm_native_owner_enter_shared(owner))
+    if (released > 0)
     {
-        abort();
+        dvm_runtime_gc_shared_enter();
     }
     problem = movp_attempt(source, destination, &previous, &claim, mutex ? &root : NULL,
         mutex, mode, released > 0 ? domain : NULL);
     if (released > 0)
     {
-        if (!dvm_native_owner_leave_shared(owner))
-        {
-            abort();
-        }
-        dvm_runtime_gc_native_enter(released);
+        dvm_runtime_gc_shared_finish();
         if (!problem)
         {
             dvm_runtime_parallel_movp_commits++;

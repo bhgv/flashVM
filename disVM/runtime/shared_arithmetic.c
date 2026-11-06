@@ -358,7 +358,6 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
 {
     unsigned char left[sizeof(ULONG)], right[sizeof(ULONG)], result[sizeof(ULONG)];
     DVM_CellDomain *domain;
-    DVM_HeapOwner *owner = dvm_native_owner_current();
     int released;
     DVM_CellResult claim;
     const char *problem;
@@ -373,10 +372,7 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
     released = dvm_runtime_gc_native_try_leave();
     if (released > 0 && domain)
     {
-        if (!dvm_native_owner_enter_shared(owner))
-        {
-            abort();
-        }
+        dvm_runtime_gc_shared_enter();
         dvm_runtime_arithmetic_value(opcode, left, right, result);
         claim = dvm_small_range_access_begin(domain, first, width, second, width,
             output, width, access);
@@ -389,11 +385,7 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
                 abort();
             }
         }
-        if (!dvm_native_owner_leave_shared(owner))
-        {
-            abort();
-        }
-        dvm_runtime_gc_native_enter(released);
+        dvm_runtime_gc_shared_finish();
         if (claim == DVM_CELL_ACQUIRED)
         {
             if (!problem)
@@ -673,7 +665,6 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     Type *frame;
     const Type *module_type;
     DVM_CellDomain *domain;
-    DVM_HeapOwner *owner;
     const Inst *cursor = pc;
     int completed = 0, branches = 0, released, limit;
     unsigned byte_steps = 0, long_steps = 0;
@@ -697,16 +688,12 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         return 0;
     }
     limit = DVM_R.IC < 16 ? DVM_R.IC : 16;
-    owner = dvm_native_owner_current();
     released = dvm_runtime_gc_native_try_leave();
     if (released <= 0)
     {
         return 0;
     }
-    if (!dvm_native_owner_enter_shared(owner))
-    {
-        abort();
-    }
+    dvm_runtime_gc_shared_enter();
     while (completed < limit && decode_integer_step(module, cursor, frame, module_type, &step))
     {
         if (step.opcode == IJMP)
@@ -778,11 +765,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         last = step;
         completed++;
     }
-    if (!dvm_native_owner_leave_shared(owner))
-    {
-        abort();
-    }
-    dvm_runtime_gc_native_enter(released);
+    dvm_runtime_gc_shared_finish();
     if (completed)
     {
         DVM_R.t = middle_temp;

@@ -311,7 +311,7 @@ def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
     source = (Path(__file__).resolve().parent / 'shared_bytes.c').read_text()
     transfer = '    dvm_runtime_byte_transfer(destination, source, size);'
-    if source.count(transfer) != 3:
+    if source.count(transfer) != 4:
         raise RuntimeError('shared byte transfer control drift')
     omitted = source.replace(transfer, '    if (!dvm_test_shared_bytes_active()) { dvm_runtime_byte_transfer(destination, source, size); }')
     xec = (runtime.parent / 'native/xec.c').read_text()

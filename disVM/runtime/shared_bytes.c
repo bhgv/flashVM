@@ -130,17 +130,9 @@ const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *
         DVM_CellDomain *domain = dvm_managed_cell_domain();
         if (domain && dvm_runtime_gc_native_try_leave() > 0)
         {
-            DVM_HeapOwner *owner = dvm_native_owner_current();
-            if (!dvm_native_owner_enter_shared(owner))
-            {
-                abort();
-            }
+            dvm_runtime_gc_shared_enter();
             claim = shared_copy(domain, source, destination, size);
-            if (!dvm_native_owner_leave_shared(owner))
-            {
-                abort();
-            }
-            dvm_runtime_gc_native_enter(1);
+            dvm_runtime_gc_shared_finish();
             if (claim == DVM_CELL_ACQUIRED)
             {
                 dvm_runtime_parallel_byte_commits++;

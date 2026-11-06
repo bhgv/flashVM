@@ -398,6 +398,29 @@ void dvm_runtime_gc_native_enter(int released)
 }
 
 
+void dvm_runtime_gc_shared_enter(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    if (!dvm_native_owner_enter_shared(owner))
+    {
+        abort();
+    }
+}
+
+
+void dvm_runtime_gc_shared_finish(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    /* A guard must never cross the point where the collector can enter. */
+    if (dvm_native_context_object_count(dvm_native_context_current()) ||
+        !dvm_native_owner_leave_shared(owner))
+    {
+        abort();
+    }
+    dvm_runtime_gc_native_enter(1);
+}
+
+
 /* [GC:] Attach a newly bound native owner after service publication. Its process
  * slots must be empty; host keeps the service alive through this call and joins
  * all attaching/detaching threads before stop. Returns active heap ownership or

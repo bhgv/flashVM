@@ -261,7 +261,6 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     int dispatch_opcode = dvm_native_execution()->arithmetic_retry_opcode;
     int selected_alt = dispatch_opcode == IALT || dispatch_opcode == INBALT;
     DVM_CellDomain *domain = NULL;
-    DVM_HeapOwner *owner = NULL;
     char first_error[ERRMAX];
     if (dvm_runtime_shared_mode() != 2 || !type || type == H || size < 0 ||
         type->size != size || !elements || (size && elements > SIZE_MAX / (size_t)size) ||
@@ -370,16 +369,12 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
         domain = dvm_managed_cell_domain();
         if (domain)
         {
-            owner = dvm_native_owner_current();
             released = dvm_runtime_gc_native_try_leave();
         }
     }
     if (released > 0)
     {
-        if (!dvm_native_owner_enter_shared(owner))
-        {
-            abort();
-        }
+        dvm_runtime_gc_shared_enter();
         claim = slice_shape_stable(slice) ?
             dvm_range_access_begin(domain, source, bytes, destination, bytes, &access) :
             DVM_CELL_BUSY;
@@ -394,11 +389,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     }
     if (released > 0)
     {
-        if (!dvm_native_owner_leave_shared(owner))
-        {
-            abort();
-        }
-        dvm_runtime_gc_native_enter(released);
+        dvm_runtime_gc_shared_finish();
         if (claim == DVM_CELL_ACQUIRED && !problem)
         {
             if (slice)
