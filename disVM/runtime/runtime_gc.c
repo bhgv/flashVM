@@ -31,9 +31,15 @@ typedef struct RuntimeGC
     Prog **roots;                    /* Borrowed complete process-list slot. */
     unsigned long fast_empty_skips;   /* Mutator skipped an empty Fast request. */
     unsigned long passes;            /* Real retained rungc callbacks. */
+    unsigned long cycle_losses;     /* Managed owner losses observed under world admission. */
+    unsigned long cycle_skips;      /* Clean requests that avoided a heap pass. */
+    unsigned long cycle_epoch;      /* Epoch at the last loss or fallback scan. */
+    unsigned int clean_requests;    /* Bounded fallback request counter. */
     unsigned long snapshots;         /* Stopped active register snapshots. */
 } RuntimeGC;
 
+extern ulong gcepochs; /* Completed retained tracing epochs. */
+int dvm_runtime_event_cycles; /* Startup-only cycle admission policy. */
 extern uvlong gcdestroys; /* Retained cycle collector reclaimed-object count. */
 static RuntimeGC state;  /* One managed runtime heap, not multi-instance admission. */
 
@@ -196,6 +202,19 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
 }
 
 
+/* Notify cycle scheduling before a managed owner is consumed. The caller
+ * already owns the heap or a stopped collector phase. No allocation or scan. */
+void dvm_runtime_gc_owner_lost(void)
+{
+    if (dvm_runtime_event_cycles && state.world)
+    {
+        state.cycle_losses++;
+        state.cycle_epoch = gcepochs;
+        state.clean_requests = 0;
+    }
+}
+
+
 /* [GC:] Coalesce nonempty Fast work and Cycles between scheduler turns. Each heap
  * pass waits for an instruction safepoint; the caller does not wait for a pass.
  * Returns zero on a latched worker/protocol failure. */
@@ -219,6 +238,16 @@ int dvm_runtime_gc_request(void)
     else
     {
         state.fast_empty_skips++;
+    }
+    if (dvm_runtime_event_cycles && gcepochs - state.cycle_epoch >= 3)
+    {
+        if (++state.clean_requests < 256)
+        {
+            state.cycle_skips++;
+            return 1;
+        }
+        state.clean_requests = 0;
+        state.cycle_epoch = gcepochs;
     }
     return dvm_gc_workers_request(state.workers,DVM_GC_CYCLES);
 }
@@ -483,7 +512,7 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu\n",
+        printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=2 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu cycle_losses=%lu cycle_skips=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,
             (unsigned long)fast_polls,(unsigned long)locked_polls,state.fast_empty_skips,
@@ -494,7 +523,7 @@ int dvm_runtime_gc_stop(int diagnostics)
             dvm_runtime_parallel_channel_receives, dvm_runtime_parallel_channel_refills,
             dvm_runtime_parallel_channel_alts, dvm_runtime_parallel_rendezvous,
             dvm_runtime_parallel_movp_module_commits, dvm_runtime_parallel_movmp_module_commits, dvm_runtime_parallel_channel_raw,
-            dvm_runtime_parallel_byte_commits);
+            dvm_runtime_parallel_byte_commits, state.cycle_losses, state.cycle_skips);
     }
     if (!dvm_native_owner_detach(owner) || !dvm_world_destroy(state.world))
     {

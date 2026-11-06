@@ -1103,7 +1103,14 @@ def main():
     for unit in ('gc', 'heap'):
         path = args.output / (unit+'.c')
         code = adapt_gc_fields(path.read_text(), unit)
-        path.write_text(adapt_channel_finalizer(code) if unit == "heap" else code)
+        if unit == "heap":
+            code = adapt_channel_finalizer(code)
+            anchor = "\tif(dvm_runtime_rc_defer(v))"
+            if code.count(anchor) != 1:
+                raise ValueError("hosted cycle loss boundary drift")
+            code = '#include "runtime_gc.h"\n' + code.replace(
+                anchor, "\tdvm_runtime_gc_owner_lost();\n" + anchor, 1)
+        path.write_text(code)
 
 
 if __name__ == "__main__":

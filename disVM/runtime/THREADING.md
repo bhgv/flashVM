@@ -15,6 +15,15 @@ all parked guests.
 The mode requires native GC and selects
 its own thread lifecycle independently of the fixed or elastic pool.
 
+## Cycle collection after owner loss
+
+`--gc-event-cycles` records ownership losses at the retained destroy entry.
+The Fast queue still requests service only when work is pending. Cycles keeps
+requesting bounded passes until three tracing epochs have completed since
+the last recorded loss. Clean scheduler requests then skip the cycle pass,
+with a fallback every 256 requests for paths outside the loss hook.
+The collector still takes stopped-world admission for tracing.
+
 ## Default console profile
 
 On Linux AMD64, console DisVM starts two managed executors and native GC when

@@ -232,6 +232,12 @@ init()
     sharedgraph();
     if (checkframes(192, 0) != 18528 || checkframes(192, 1) != 192)
         raise "deep frame return or exception mismatch";
+    # A scalar-only tail gives the cycle collector a clean interval.
+    total := 0;
+    for (step := 0; step < 20000; step++)
+        total += step;
+    if (total != 199990000)
+        raise "scalar interval changed";
     sys->print("PASS gc-worker deep frame return and unwind\n");
     sys->print("PASS gc-worker: 12000 unreachable cycles, live root retained\n");
 }

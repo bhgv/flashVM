@@ -6,7 +6,11 @@
  * selects mutex reference polling; roots addresses the runtime Prog list and
  * remains owned/alive until stop. Returns zero on failure.
  * The caller must keep all heap work inside the resulting active interval. */
-int dvm_runtime_gc_start(Prog **roots, int locked_poll);
+struct Prog;
+int dvm_runtime_gc_start(struct Prog **roots, int locked_poll);
+
+extern int dvm_runtime_event_cycles;
+void dvm_runtime_gc_owner_lost(void);
 
 /* [GC:] Coalesce one real rungc pass. Called by the mutator between turns;
  * returns zero after native failure. Does not wait for collection completion. */

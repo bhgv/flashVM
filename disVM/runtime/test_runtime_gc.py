@@ -9,11 +9,13 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False):
+def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False):
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
     if pool:
         command += ["--managed-workers", "2", "--guarded-copies", "--parallel-movp", "--parallel-slicela", "--parallel-movmp"]
+    if event_cycles:
+        command += ["--native-spawn", "--gc-event-cycles"]
     if locked:
         command.append("--gc-locked-poll")
     if budget is not None:
@@ -54,6 +56,10 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
                 (quantum != 65536 and min(int(gc[2]), int(gc[3]), int(counters[4])) == 0) or
                 (int(counters[2]) > 0) != (mode == "--jit")):
             raise RuntimeError("missing real roots/reclamation evidence:\n" + output[-5000:])
+    if event_cycles:
+        events = re.search(r"cycle_losses=(\d+) cycle_skips=(\d+)", output)
+        if not events or min(map(int, events.groups())) == 0 or int(gc[3]) == 0:
+            raise RuntimeError("event cycles did not skip clean work and reclaim cycles:\n" + output[-5000:])
     if pool:
         workers = re.search(r"NATIVEPOOL executors=2 joined=1 failed=0 controller_turns=(\d+) worker_turns=(\d+)", output)
         shared = re.search(r"native_releases=(\d+) native_reentries=(\d+)", output)
@@ -90,6 +96,7 @@ def main():
         execute(runtime, module, mode, 257, locked=True)
         execute(runtime, module, mode, 31, 10000, locked=True)
         if runtime.name == "disvm" and platform.machine() in ("x86_64", "AMD64"):
+            execute(runtime, module, mode, 257, event_cycles=True)
             for locked in (False, True):
                 execute(runtime, module, mode, 257, locked=locked, pool=True)
     print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 bounded-queue saturation runs, "

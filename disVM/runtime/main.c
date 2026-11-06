@@ -2863,6 +2863,10 @@ int main(int argc, char **argv)
         {
             dvm_runtime_parallel_string = 1;
         }
+        else if (strcmp(argv[1], "--gc-event-cycles") == 0)
+        {
+            dvm_runtime_event_cycles = 1;
+        }
         else if (strcmp(argv[1], "--gc-worker") == 0)
         {
             gc_worker = 1;
@@ -2900,6 +2904,7 @@ int main(int argc, char **argv)
 #endif
             puts("Explicit GC and guarded/parallel switches select a custom profile.");
             puts("--native-spawn starts one dedicated OS thread per spawned guest.");
+            puts("--gc-event-cycles coalesces cycle scans after managed owner loss.");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; unaudited heap operations use exclusive turns.");
@@ -2985,6 +2990,11 @@ int main(int argc, char **argv)
          dvm_runtime_parallel_byte_copies) && (!dvm_runtime_guarded_copies || managed_workers == 1))
     {
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
+        return 2;
+    }
+    if (dvm_runtime_event_cycles && !gc_worker)
+    {
+        fprintf(stderr, "--gc-event-cycles requires native GC\n");
         return 2;
     }
     if (dvm_runtime_guarded_copies && !gc_worker)
