@@ -419,19 +419,11 @@ int dvm_runtime_rc_defer(void *value)
     }
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
-    if (dvm_refcount_load_u(&heap->ref) != 1)
+    if (dvm_refcount_load_u(&heap->ref) != 1 &&
+        (!dvm_runtime_idle_cycles || !heap->t || heap->t->free != freeheap ||
+         !heap->t->np || gchalt || heapmonitor))
     {
-        RecordGroup group = {0};
-        if (!queued_record_group(value, 0, &group))
-        {
-            return 0;
-        }
-        if (defer_record_group(&group))
-        {
-            enqueued++;
-            helper_enqueued += helper != 0;
-            return 1;
-        }
+        return 0;
     }
     bytes = poolmsize(heapmem,heap);
     if (defer_leaf(heap, bytes, 1))
@@ -1017,12 +1009,16 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
 
 /* Revalidate under collector admission before mutating any edge. Keep one
  * owner per node through the whole unlink, then use ordinary destruction. */
-static void break_queued_record_group(void *value)
+static int process_queued_record_group(void *value, int promote)
 {
     RecordGroup group = {0};
     if (!queued_record_group(value, 1, &group))
     {
-        return;
+        return 0;
+    }
+    if (promote && defer_record_group(&group))
+    {
+        return 1;
     }
     unlink_record_group(&group);
     for (unsigned int index = 1; index < group.nodes_used; index++)
@@ -1030,6 +1026,7 @@ static void break_queued_record_group(void *value)
         destroy(group.nodes[index]);
     }
     record_groups++;
+    return 0;
 }
 
 
@@ -1047,15 +1044,6 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         fputs("disvm RC retirement outside stopped collector\n", stderr);
         abort();
     }
-    while (budget && dvm_retirement_take(retirement, &value, &bytes))
-    {
-        (void)bytes;
-        budget--;
-        break_queued_record_group(value);
-        ptrdel(D2H(value));
-        destroy(value);
-        released++;
-    }
     while (budget && dvm_retirement_take(leaves, &value, &bytes))
     {
         LeafRetirement *entry = value;
@@ -1072,13 +1060,25 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         free(entry);
         released++;
     }
+    while (budget && dvm_retirement_take(retirement, &value, &bytes))
+    {
+        (void)bytes;
+        budget--;
+        int promoted = process_queued_record_group(value, 1);
+        ptrdel(D2H(value));
+        if (!promoted)
+        {
+            destroy(value);
+            released++;
+        }
+    }
     while (budget && dvm_retirement_take(frames, &value, &bytes))
     {
         FrameRetirement *packet = value;
         budget--;
         for (size_t index = packet->next; index < packet->count; index++)
         {
-            break_queued_record_group(H2D(void *, packet->keys[index]));
+            process_queued_record_group(H2D(void *, packet->keys[index]), 0);
             if (!dvm_runtime_root_batch_remove(packet->roots, index))
             {
                 abort();

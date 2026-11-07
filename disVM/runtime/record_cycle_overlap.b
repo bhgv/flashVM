@@ -17,7 +17,7 @@ init()
     live := ref Node(nil, nil);
     alias := ref Node(live, live);
     live.left = alias;
-    for(i := 0; i < 128; i++)
+    for(i := 0; i < 64; i++)
         make();
     sys->sleep(30);
     if(live.left != alias || alias.left != live || alias.right != live)

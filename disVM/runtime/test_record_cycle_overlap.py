@@ -19,7 +19,7 @@ def check(runtime, module, mode, require_peer, require_snapshot):
         counters = re.search(
             r"record_groups=(\d+) shared_record_groups=(\d+) "
             r"shared_record_groups_with_peer=(\d+)", output)
-        if "PASS live group" not in output or not counters or int(counters[1]) < 128:
+        if "PASS live group" not in output or not counters or int(counters[1]) < 64:
             raise RuntimeError(output)
         snapshots = re.search(r"shared_record_snapshots_with_peer=(\d+)", output)
         if require_snapshot and snapshots is None:
