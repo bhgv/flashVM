@@ -289,6 +289,11 @@ int main(int argc, char **argv)
             fvm_port_thread_sleep_us(50);
         }
     } while (!admission.waiting);
+    DVM_WorldState busy_state;
+    check(!dvm_world_try_quiescent(shared.world, collector) &&
+        dvm_world_state(shared.world, &busy_state) && !busy_state.stopping &&
+        busy_state.active == 1 && !busy_state.parked,
+        "Fast idle claim must not stop an active guest");
     unsigned long retired_epoch = dvm_world_retire_epoch(shared.world);
     check(retired_epoch && !dvm_world_epoch_elapsed(shared.world, retired_epoch),
         "old reader defers reclamation");
@@ -335,10 +340,12 @@ int main(int argc, char **argv)
         fvm_port_thread_join(threads[index]);
         check(dvm_native_context_destroy(workers[index].context),"destroy joined owner");
     }
-    check(dvm_native_context_unbind(collector),"unbind collector");
-    check(dvm_native_context_destroy(collector),"destroy collector");
+    check(dvm_world_try_quiescent(shared.world, collector) &&
+        dvm_world_stop_end(shared.world), "Fast claims idle heap without a rendezvous");
     check(dvm_world_epoch_elapsed(shared.world, retired_epoch),
         "retirement becomes eligible after old borrows end");
+    check(dvm_native_context_unbind(collector),"unbind collector");
+    check(dvm_native_context_destroy(collector),"destroy collector");
     check(dvm_world_destroy(shared.world),"destroy empty domain");
     fvm_port_sync_destroy(shared.control);
     puts("PASS FIFO heap admission: two native REG owners, shared addw, native-wait progress, 201 root scans, complete joins");

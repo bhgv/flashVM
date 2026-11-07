@@ -45,6 +45,7 @@ struct DVM_NativeWorld
     int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
     size_t next_ticket;                /* Next FIFO admission ticket under sync; unsigned wrap is intentional. */
     size_t serving_ticket;             /* Oldest queued admission; advances only on a successful enter. */
+    size_t exclusive_waiting;          /* Queued exclusive owners. */
     size_t waiting;                    /* Inactive owners queued for admission, including a ready ticket. */
     size_t admissions;                 /* Successful serialized entries under sync. */
     size_t contentions;                /* Entries that observed another owner, collector or older waiter. */
@@ -303,6 +304,7 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
     {
         ticket = world->next_ticket++;
         world->waiting++;
+        world->exclusive_waiting += !shared;
         if ((world->active && (!shared || world->active != world->shared)) ||
             world->collector || world->resuming || ticket != world->serving_ticket)
         {
@@ -318,6 +320,7 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
     if (world->serial)
     {
         world->waiting--;
+        world->exclusive_waiting -= !shared;
         world->serving_ticket++;
         world->admissions++;
     }
@@ -503,7 +506,7 @@ int dvm_world_leave(DVM_WorldParticipant *participant)
 
 
 /* Serialize collectors while allowing all mutators to run outside this mutex. */
-int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector)
+static int stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector, int quiescent)
 {
     DVM_WorldParticipant *participant;
     if (dvm_native_context_object_count(dvm_native_context_current()))
@@ -515,14 +518,14 @@ int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector)
         return 0;
     }
     fvm_port_sync_lock(world->sync);
-    if (world->collector || world->parked || world->resuming)
+    if (world->collector || world->parked || world->resuming || (quiescent && world->active))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
     }
     for (participant = world->participants; participant; participant = participant->next)
     {
-        if (participant->context == collector)
+        if (participant->context == collector || (quiescent && participant->read_depth))
         {
             fvm_port_sync_unlock(world->sync);
             return 0;
@@ -543,6 +546,20 @@ int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector)
     world->stopped = 1;
     fvm_port_sync_unlock(world->sync);
     return 1;
+}
+
+
+/* Request the retained stop rendezvous. */
+int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector)
+{
+    return stop_begin(world, collector, 0);
+}
+
+
+/* Claim an already quiescent heap without asking active owners to park. */
+int dvm_world_try_quiescent(DVM_NativeWorld *world, DVM_NativeContext *collector)
+{
+    return stop_begin(world, collector, 1);
 }
 
 
@@ -656,6 +673,20 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
     out->contentions = world->contentions;
     fvm_port_sync_unlock(world->sync);
     return 1;
+}
+
+
+/* Observe exclusive waiters in the borrowed live world under its mutex. */
+size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world)
+{
+    if (!world)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(world->sync);
+    size_t count = world->exclusive_waiting;
+    fvm_port_sync_unlock(world->sync);
+    return count;
 }
 
 

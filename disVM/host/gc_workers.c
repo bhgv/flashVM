@@ -71,14 +71,24 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int *executed)
     {
         return DVM_GC_DONE;
     }
-    while (!dvm_world_stop_begin(workers->config.world, worker->context))
+    if (worker->kind == DVM_GC_FAST && workers->config.fast_quiescent_only)
     {
-        if (stopping(workers))
+        if (!dvm_world_try_quiescent(workers->config.world, worker->context))
         {
-            return DVM_GC_DONE;
+            return DVM_GC_MORE;
         }
-        /* Another host collector can own the world; no VM execution lock is held. */
-        fvm_port_thread_sleep_us(1000);
+    }
+    else
+    {
+        while (!dvm_world_stop_begin(workers->config.world, worker->context))
+        {
+            if (stopping(workers))
+            {
+                return DVM_GC_DONE;
+            }
+            /* Another host collector can own the world; no VM execution lock is held. */
+            fvm_port_thread_sleep_us(1000);
+        }
     }
     if (!dvm_world_visit(workers->config.world, workers->config.roots, workers->config.user))
     {

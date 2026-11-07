@@ -51,6 +51,9 @@ DVM_NativeWorld *dvm_world_create_serial(int locked_poll);
  * out is caller-owned. This snapshot does not reserve an admission or root scan. */
 int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
 
+/* Observe exclusive waiters under the world mutex. NULL returns zero. */
+size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world);
+
 /* Return peak SHARED occupancy of a borrowed live world, or zero for NULL. */
 size_t dvm_world_shared_peak(DVM_NativeWorld *world);
 
@@ -118,6 +121,9 @@ int dvm_world_leave(DVM_WorldParticipant *participant);
  * Begin waits until every active mutator polls/leaves. No forced suspension.
  * Competing/nested collectors fail. Host must pair a successful begin with end. */
 int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector);
+
+/* Claim only an already idle world. Pair success with stop_end. */
+int dvm_world_try_quiescent(DVM_NativeWorld *world, DVM_NativeContext *collector);
 
 
 /* [GC:] Visit stable roots under the world mutex. Callback must not reenter world

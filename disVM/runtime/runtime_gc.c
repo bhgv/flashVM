@@ -178,6 +178,8 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.roots = publish;
     config.Fast.run = fast_pass;
     config.fast_ready = fast_ready;
+    config.fast_quiescent_only = 1;
+    config.Fast.pause_us = 1000;
     config.Fast.budget = 256;
     config.Cycles.run = cycle_pass;
     config.Cycles.budget = 1;
