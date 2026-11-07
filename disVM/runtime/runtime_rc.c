@@ -36,12 +36,15 @@ typedef struct RecordGroup RecordGroup;
 typedef struct LeafRetirement
 {
     Heap *heap;           /* Rooted string header until the sole consumer takes it. */
+    unsigned long bytes;  /* Direct bytes charged to whichever queue owns it. */
     unsigned long epoch;  /* Last potentially interested reader generation. */
     FrameRetirement *records; /* Optional rooted closed record group. */
     RecordGroup *snapshot;    /* Edges frozen by withdrawal of the last outside owner. */
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
+static unsigned long difficult_moved;
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
 static unsigned long shared_strings_with_peer; /* Final releases with another active owner. */
 static unsigned long shared_array_graphs; /* Shared releases that transfer array children. */
@@ -97,7 +100,7 @@ void dvm_runtime_rc_start(void)
     helper_enqueued = 0;
     helper_saturated = 0;
     helper_byte_limited = 0;
-    if (retirement || frames || leaves)
+    if (retirement || frames || leaves || difficult)
     {
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
@@ -105,6 +108,8 @@ void dvm_runtime_rc_start(void)
     retirement = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     frames = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    difficult_moved = 0;
     shared_array_graphs = 0;
     shared_arrays = 0;
     shared_arrays_with_peer = 0;
@@ -183,6 +188,7 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
         return 0;
     }
     entry->heap = heap;
+    entry->bytes = bytes;
     entry->records = NULL;
     entry->snapshot = NULL;
     entry->claim_refused = 0;
@@ -385,7 +391,7 @@ static int defer_record_group(const RecordGroup *group)
         Heap *heap = records->keys[index];
         Setmark(heap);
     }
-    *entry = (LeafRetirement){.epoch = epoch, .records = records, .snapshot = snapshot};
+    *entry = (LeafRetirement){.bytes = bytes, .epoch = epoch, .records = records, .snapshot = snapshot};
     int became_ready;
     if (!dvm_retirement_commit_ready(leaves, &token, entry, &became_ready))
     {
@@ -887,6 +893,27 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
 }
 
 
+/* The sole consumer moves metadata only. Reserve before removing the head
+ * so a full fallback queue leaves ownership and root publication unchanged. */
+static int defer_difficult(LeafRetirement *entry)
+{
+    DVM_RetirementReservation token = {0};
+    if (dvm_retirement_reserve(difficult, entry->bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    void *value;
+    unsigned long bytes;
+    if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
+        bytes != entry->bytes || !dvm_retirement_commit(difficult, &token, entry))
+    {
+        abort();
+    }
+    difficult_moved++;
+    return 1;
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * and touches only the leaf queue. Cycles cannot run during this callback. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
@@ -912,15 +939,18 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (entry->records)
             {
-                if (entry->claim_refused)
-                {
-                    break;
-                }
-                DVM_CellResult claim = validate_and_claim_record_group(entry->snapshot);
+                DVM_CellResult claim = entry->claim_refused ? DVM_CELL_REFUSED :
+                    validate_and_claim_record_group(entry->snapshot);
                 if (claim != DVM_CELL_ACQUIRED)
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
-                    break;
+                    if (!defer_difficult(entry))
+                    {
+                        break;
+                    }
+                    budget--;
+                    completed++;
+                    continue;
                 }
                 void *value;
                 unsigned long bytes;
@@ -946,7 +976,13 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             int has_children = array && (array->root != H || array->t->np);
             if (has_children && !transfer_array_children(entry->heap))
             {
-                break;
+                if (!defer_difficult(entry))
+                {
+                    break;
+                }
+                budget--;
+                completed++;
+                continue;
             }
             void *value;
             unsigned long bytes;
@@ -1044,7 +1080,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         fputs("disvm RC retirement outside stopped collector\n", stderr);
         abort();
     }
-    while (budget && dvm_retirement_take(leaves, &value, &bytes))
+    while (budget && (dvm_retirement_take(difficult, &value, &bytes) ||
+                      dvm_retirement_take(leaves, &value, &bytes)))
     {
         LeafRetirement *entry = value;
         budget--;
@@ -1097,7 +1134,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
     return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL);
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL);
 }
 
 
@@ -1113,7 +1150,7 @@ unsigned int dvm_runtime_rc_pending(void)
         (void)dvm_retirement_statistics(frames, &frame_stats);
         (void)dvm_retirement_statistics(retirement, &stats);
         return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL);
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL);
     }
     return stats.ready+stats.reserved;
 }
@@ -1127,7 +1164,8 @@ int dvm_runtime_rc_ready(void)
     DVM_RetirementStats packets = {0};
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
-    return refs.ready != 0 || packets.ready != 0 || dvm_retirement_peek(leaves) != NULL;
+    return refs.ready != 0 || packets.ready != 0 ||
+        dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL;
 }
 
 
@@ -1139,6 +1177,7 @@ void dvm_runtime_rc_close(void)
     dvm_retirement_close(retirement);
     dvm_retirement_close(frames);
     dvm_retirement_close(leaves);
+    dvm_retirement_close(difficult);
 }
 
 
@@ -1169,7 +1208,14 @@ int dvm_runtime_rc_finish(int diagnostics)
         printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
             shared_arrays, shared_arrays_with_peer, shared_array_graphs);
     }
-    result = (leaves == NULL || dvm_retirement_destroy(&leaves)) &&
+    if (diagnostics)
+    {
+        DVM_RetirementStats fallback = {0};
+        (void)dvm_retirement_statistics(difficult, &fallback);
+        printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, fallback.ready + fallback.reserved);
+    }
+    result = (difficult == NULL || dvm_retirement_destroy(&difficult)) &&
+        (leaves == NULL || dvm_retirement_destroy(&leaves)) &&
         (retirement == NULL || dvm_retirement_destroy(&retirement)) &&
         (frames == NULL || dvm_retirement_destroy(&frames));
     if (result)
