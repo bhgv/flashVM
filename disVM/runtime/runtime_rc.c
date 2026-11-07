@@ -35,6 +35,7 @@ typedef struct LeafRetirement
 
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
 static unsigned long shared_strings_with_peer; /* Final releases with another active owner. */
+static unsigned long shared_array_graphs; /* Shared releases that transfer array children. */
 static unsigned long shared_arrays; /* Final scalar-array releases on Fast. */
 static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an active guest. */
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
@@ -89,6 +90,7 @@ void dvm_runtime_rc_start(void)
     retirement = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     frames = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    shared_array_graphs = 0;
     shared_arrays = 0;
     shared_arrays_with_peer = 0;
     shared_strings = 0;
@@ -110,7 +112,7 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 
 
 /* Read leaf payload only while its queue or caller owns a strong reference.
- * Scalar array views and arrays with mapped elements need ordinary cleanup. */
+ * Array children require a prepared retirement packet. */
 static int leaf_eligible(const Heap *heap)
 {
     if (heap->t == &Tstring)
@@ -120,7 +122,7 @@ static int leaf_eligible(const Heap *heap)
     if (heap->t == &Tarray)
     {
         const Array *array = H2D(const Array *, heap);
-        return array->root == H && array->t && array->t != H && array->t->np == 0;
+        return array->t && array->t != H;
     }
     return 0;
 }
@@ -391,6 +393,129 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
 }
 
 
+/* Prepare the complete child packet before claiming the parent. A refusal
+ * leaves the original array, queue entry and reference count unchanged. */
+static int transfer_array_children(Heap *heap)
+{
+    Array *array = H2D(Array *, heap);
+    Type *type = array->t;
+    if (!frames || dvm_refcount_load_u(&heap->ref) != 1)
+    {
+        return 0;
+    }
+    size_t capacity = 1;
+    if (array->root == H)
+    {
+        if (array->len < 0 || type->size <= 0 || type->np <= 0 ||
+            (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8 ||
+            (size_t)array->len > RC_BYTES / (size_t)type->np / 8 / sizeof(void *))
+        {
+            return 0;
+        }
+        capacity = (size_t)array->len * type->np * 8;
+    }
+    if (!capacity)
+    {
+        return dvm_refcount_claim_last_u(&heap->ref);
+    }
+    size_t storage = sizeof(FrameRetirement) + capacity * sizeof(void *);
+    if (storage > RC_BYTES)
+    {
+        return 0;
+    }
+    FrameRetirement *packet = malloc(storage);
+    if (!packet)
+    {
+        return 0;
+    }
+    packet->roots = dvm_runtime_root_batch_create(capacity);
+    packet->count = 0;
+    int valid = packet->roots != NULL;
+    if (array->root != H)
+    {
+        if (!array->root)
+        {
+            valid = 0;
+        }
+        else
+        {
+            packet->keys[packet->count++] = D2H(array->root);
+        }
+    }
+    else
+    {
+        for (WORD index = 0; valid && index < array->len; index++)
+        {
+            const uchar *element = array->data + (size_t)index * type->size;
+            for (int byte = 0; valid && byte < type->np; byte++)
+            {
+                for (unsigned bit = 0; bit < 8; bit++)
+                {
+                    if (type->map[byte] & (1U << bit))
+                    {
+                        size_t slot = (size_t)byte * 8 + 7 - bit;
+                        void *child;
+                        if (slot >= (size_t)type->size / sizeof(child))
+                        {
+                            valid = 0;
+                            break;
+                        }
+                        memcpy(&child, element + slot * sizeof(child), sizeof(child));
+                        if (!child)
+                        {
+                            valid = 0;
+                            break;
+                        }
+                        if (child != H)
+                        {
+                            packet->keys[packet->count++] = D2H(child);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    unsigned long charge = (unsigned long)storage;
+    for (size_t index = 0; valid && index < packet->count; index++)
+    {
+        unsigned long size = poolmsize(heapmem, packet->keys[index]);
+        if (size > RC_BYTES - charge)
+        {
+            valid = 0;
+        }
+        else
+        {
+            charge += size;
+        }
+    }
+    DVM_RetirementReservation token = {0};
+    int reserved = valid && dvm_retirement_reserve(frames, charge, &token) == DVM_RETIRE_OK;
+    int rooted = reserved && dvm_runtime_root_batch_publish(packet->roots, packet->keys, packet->count);
+    if (rooted && dvm_refcount_claim_last_u(&heap->ref))
+    {
+        if (!dvm_retirement_commit(frames, &token, packet))
+        {
+            abort();
+        }
+        return 1;
+    }
+    if (rooted && !dvm_runtime_root_batch_clear(packet->roots))
+    {
+        abort();
+    }
+    if (reserved)
+    {
+        dvm_retirement_cancel(frames, &token);
+    }
+    if (packet->roots)
+    {
+        dvm_runtime_root_batch_destroy(&packet->roots);
+    }
+    free(packet);
+    return 0;
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * and touches only the leaf queue. Cycles cannot run during this callback. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
@@ -415,6 +540,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 break;
             }
+            Array *array = entry->heap->t == &Tarray ? H2D(Array *, entry->heap) : NULL;
+            int has_children = array && (array->root != H || array->t->np);
+            if (has_children && !transfer_array_children(entry->heap))
+            {
+                break;
+            }
             void *value;
             unsigned long bytes;
             if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
@@ -422,7 +553,8 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 abort();
             }
-            DVM_RefcountResult result = dvm_refcount_release_u(&entry->heap->ref);
+            DVM_RefcountResult result = has_children ? DVM_REFCOUNT_LAST :
+                dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
             {
                 Type *type = entry->heap->t;
@@ -432,6 +564,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 {
                     release_array_descriptor(H2D(Array *, entry->heap)->t);
                     shared_arrays++;
+                    shared_array_graphs += has_children;
                     shared_arrays_with_peer += peer;
                 }
                 else
@@ -592,7 +725,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     if (diagnostics)
     {
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
-        printf("NATIVEARRAYRC shared=%lu with_peer=%lu\n", shared_arrays, shared_arrays_with_peer);
+        printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
+            shared_arrays, shared_arrays_with_peer, shared_array_graphs);
     }
     result = (leaves == NULL || dvm_retirement_destroy(&leaves)) &&
         (retirement == NULL || dvm_retirement_destroy(&retirement)) &&

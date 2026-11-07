@@ -104,6 +104,30 @@ DVM_RefcountResult dvm_refcount_release_u(unsigned long *counter)
 }
 
 
+/* Claim the final owner without changing a nonfinal counter. */
+int dvm_refcount_claim_last_u(unsigned long *counter)
+{
+    if (!counter)
+    {
+        return 0;
+    }
+#ifdef DVM_REFCOUNT_ATOMIC_U
+    unsigned long expected = 1;
+    return __atomic_compare_exchange_n(counter, &expected, 0, 0,
+        __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
+#else
+    fvm_port_registry_lock();
+    int last = *counter == 1;
+    if (last)
+    {
+        *counter = 0;
+    }
+    fvm_port_registry_unlock();
+    return last;
+#endif
+}
+
+
 /* Signed Type reference words are distinct from native unsigned Heap words. */
 int dvm_refcount_load_i(const int *counter)
 {

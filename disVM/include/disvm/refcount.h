@@ -39,6 +39,9 @@ DVM_RefcountResult dvm_refcount_retain_u(unsigned long *counter);
  * nonfinal call returns. LAST's caller retires only after receiving the result. */
 DVM_RefcountResult dvm_refcount_release_u(unsigned long *counter);
 
+/* Atomically claim the final owner, or leave the counter unchanged. */
+int dvm_refcount_claim_last_u(unsigned long *counter);
+
 
 /* Signed Type-count counterpart: acquire load of aligned borrowed live storage.
  * NULL yields zero; a negative diagnostic value is preserved, not normalized. */
