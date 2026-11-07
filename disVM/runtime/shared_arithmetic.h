@@ -4,6 +4,8 @@
 #include <stddef.h>
 
 extern int dvm_runtime_shared_integer;
+extern int dvm_runtime_shared_extend_quantum;
+extern unsigned long dvm_runtime_shared_extended_steps;
 extern unsigned long dvm_runtime_shared_integer_commits;
 extern unsigned long dvm_runtime_shared_integer_batches;
 extern unsigned long dvm_runtime_shared_calls;

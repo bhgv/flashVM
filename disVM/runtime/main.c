@@ -2997,6 +2997,7 @@ int main(int argc, char **argv)
             dvm_runtime_parallel_byte_copies = 1;
         }
         dvm_runtime_shared_integer = dvm_runtime_parallel_add != 0;
+        dvm_runtime_shared_extend_quantum = !quantum_selected;
     }
     if (managed_limit_selected && managed_workers != 0)
     {
