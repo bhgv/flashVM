@@ -39,6 +39,10 @@ DVM_RefcountResult dvm_refcount_retain_u(unsigned long *counter);
  * nonfinal call returns. LAST's caller retires only after receiving the result. */
 DVM_RefcountResult dvm_refcount_release_u(unsigned long *counter);
 
+/* Compare and replace. A zero reservation refuses ordinary retains/releases.
+ * Caller pins storage and owns the protocol for restoring a reserved count. */
+int dvm_refcount_replace_u(unsigned long *counter, unsigned long expected, unsigned long replacement);
+
 /* Atomically claim the final owner, or leave the counter unchanged. */
 int dvm_refcount_claim_last_u(unsigned long *counter);
 

@@ -135,27 +135,33 @@ int dvm_refcount_drop_nonfinal_u(unsigned long *counter)
 }
 
 
-/* Claim the final owner without changing a nonfinal counter. */
-int dvm_refcount_claim_last_u(unsigned long *counter)
+/* Replace an exact owner count, including a collector's zero reservation. */
+int dvm_refcount_replace_u(unsigned long *counter, unsigned long expected, unsigned long replacement)
 {
     if (!counter)
     {
         return 0;
     }
 #ifdef DVM_REFCOUNT_ATOMIC_U
-    unsigned long expected = 1;
-    return __atomic_compare_exchange_n(counter, &expected, 0, 0,
+    return __atomic_compare_exchange_n(counter, &expected, replacement, 0,
         __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
 #else
     fvm_port_registry_lock();
-    int last = *counter == 1;
-    if (last)
+    int matched = *counter == expected;
+    if (matched)
     {
-        *counter = 0;
+        *counter = replacement;
     }
     fvm_port_registry_unlock();
-    return last;
+    return matched;
 #endif
+}
+
+
+/* Claim the final owner without changing a nonfinal counter. */
+int dvm_refcount_claim_last_u(unsigned long *counter)
+{
+    return dvm_refcount_replace_u(counter, 1, 0);
 }
 
 

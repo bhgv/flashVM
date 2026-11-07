@@ -37,6 +37,7 @@ typedef struct LeafRetirement
     unsigned long epoch;  /* Last potentially interested reader generation. */
     FrameRetirement *records; /* Optional rooted closed record group. */
     RecordGroup *snapshot;    /* Edges frozen by withdrawal of the last outside owner. */
+    int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
@@ -180,6 +181,7 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
     entry->heap = heap;
     entry->records = NULL;
     entry->snapshot = NULL;
+    entry->claim_refused = 0;
     entry->epoch = dvm_world_retire_epoch(world);
     if (!entry->epoch || !dvm_runtime_root_add(heap))
     {
@@ -786,27 +788,52 @@ static unsigned int drain_shared_children(size_t budget)
 }
 
 
+/* Reserve every count before freeing any storage. Roll back in reverse order
+ * on refusal, while the rooted queue entry still owns the group. */
+static int claim_record_group(const RecordGroup *group)
+{
+    for (unsigned int index = 0; index < group->nodes_used; index++)
+    {
+        Heap *heap = D2H(group->nodes[index]);
+        if (!dvm_refcount_replace_u(&heap->ref, group->incoming[index] + (index == 0), 0))
+        {
+            while (index)
+            {
+                index--;
+                heap = D2H(group->nodes[index]);
+                if (!dvm_refcount_replace_u(&heap->ref, 0, group->incoming[index] + (index == 0)))
+                {
+                    abort();
+                }
+            }
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* The producer proved closure under exclusive admission and transferred the
  * sole outside owner. Wait out old borrows before touching the saved cells. */
 static void reclaim_detached_records(LeafRetirement *entry, int shared)
 {
     FrameRetirement *records = entry->records;
-    unlink_record_group(entry->snapshot);
+    if (!shared && !entry->claim_refused)
+    {
+        unlink_record_group(entry->snapshot);
+    }
     free(entry->snapshot);
     if (!dvm_runtime_root_batch_clear(records->roots) ||
         !dvm_runtime_root_batch_destroy(&records->roots))
     {
         abort();
     }
-    for (size_t index = 0; index < records->count; index++)
+    size_t owners = entry->claim_refused ? 1 : records->count;
+    for (size_t index = 0; index < owners; index++)
     {
         Heap *heap = records->keys[index];
         if (shared)
         {
-            if (dvm_refcount_release_u(&heap->ref) != DVM_REFCOUNT_LAST)
-            {
-                abort();
-            }
             release_owned_descriptor(heap->t);
             poolfree(heapmem, heap);
         }
@@ -816,7 +843,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         }
     }
     free(records);
-    record_groups++;
+    record_groups += !entry->claim_refused;
 }
 
 
@@ -845,6 +872,11 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (entry->records)
             {
+                if (entry->claim_refused || !claim_record_group(entry->snapshot))
+                {
+                    entry->claim_refused = 1;
+                    break;
+                }
                 void *value;
                 unsigned long bytes;
                 if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry)
