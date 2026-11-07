@@ -261,7 +261,7 @@ int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind)
  * Parameters: workers is borrowed; the caller must leave its mutator interval first.
  * Returns: one when both lanes are idle, zero for invalid/self-worker calls or
  * shutdown/failure. This call blocks and does not impose a collection timeout. */
-int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers)
+static int wait_idle(DVM_GCWorkers *workers, int fast_only)
 {
     int result;
     if (!workers || fvm_port_thread_is_current(workers->Fast.thread) ||
@@ -271,13 +271,28 @@ int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers)
     }
     fvm_port_sync_lock(workers->sync);
     while (!workers->failed && !workers->stopping &&
-           (workers->active || workers->Fast.pending || workers->Cycles.pending))
+           (workers->Fast.pending || workers->active == (int)DVM_GC_FAST + 1 ||
+            (!fast_only && (workers->active || workers->Cycles.pending))))
     {
         fvm_port_sync_wait(workers->sync);
     }
     result = !workers->failed && !workers->stopping;
     fvm_port_sync_unlock(workers->sync);
     return result;
+}
+
+
+/* Wait for both lanes before collector shutdown. */
+int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers)
+{
+    return wait_idle(workers, 0);
+}
+
+
+/* Wait only for Fast work while a guest has withdrawn from the heap. */
+int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers)
+{
+    return wait_idle(workers, 1);
 }
 
 

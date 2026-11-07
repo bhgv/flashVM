@@ -232,11 +232,12 @@ init()
     sharedgraph();
     if (checkframes(192, 0) != 18528 || checkframes(192, 1) != 192)
         raise "deep frame return or exception mismatch";
-    # A scalar-only tail gives the cycle collector a clean interval.
+    # Give the event scheduler a clean interval after deferred owners drain.
+    # The interval spans many turns even at the hosted test's larger quantum.
     total := 0;
-    for (step := 0; step < 20000; step++)
-        total += step;
-    if (total != 199990000)
+    for (step := 0; step < 120000; step++)
+        total += 1;
+    if (total != 120000)
         raise "scalar interval changed";
     sys->print("PASS gc-worker deep frame return and unwind\n");
     sys->print("PASS gc-worker: 12000 unreachable cycles, live root retained\n");

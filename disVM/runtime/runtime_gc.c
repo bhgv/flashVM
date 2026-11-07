@@ -487,7 +487,7 @@ void dvm_runtime_gc_shared_drain(void)
     DVM_HeapOwner *owner = dvm_native_owner_current();
     if (!dvm_native_owner_leave_shared(owner) ||
         !dvm_gc_workers_request(state.workers, DVM_GC_FAST) ||
-        !dvm_gc_workers_wait_idle(state.workers) ||
+        !dvm_gc_workers_wait_fast_idle(state.workers) ||
         !dvm_native_owner_enter_shared(owner))
     {
         abort();

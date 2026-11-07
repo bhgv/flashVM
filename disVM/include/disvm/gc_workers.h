@@ -92,6 +92,9 @@ int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
  * GC callback: the collector may be waiting for that same mutator to poll. */
 int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers);
 
+/* Wait for the Fast lane only. Caller must hold no heap admission. */
+int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers);
+
 
 /* Take a mutex-protected snapshot without waiting for collection completion. */
 int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out);
