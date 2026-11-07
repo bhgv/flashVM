@@ -72,6 +72,7 @@ static void writer(void *id)
 {
     unsigned int worker = *(unsigned int *)id;
     unsigned int round;
+    DVM_HeapGeneration previous = 0;
     for (round = 0; round < ROUNDS; round++)
     {
         ulong bytes = 32+(round*17+worker*31)%480;
@@ -79,6 +80,9 @@ static void writer(void *id)
         unsigned char *data = poolalloc(&memory, bytes);
         ulong index;
         check(data != nil, "FAIL pool allocation");
+        DVM_HeapGeneration generation = dvm_heap_pool_generation(&memory, data);
+        check(generation > previous, "FAIL pool generation order");
+        previous = generation;
         memset(data, pattern, bytes);
         check(poolmsize(&memory, data) >= bytes, "FAIL pool size");
         if ((round & 63) == 0)
@@ -148,6 +152,14 @@ int main(int argc, char **argv)
             fvm_port_thread_join(threads[index]);
         }
     }
+    DVM_HeapGeneration generation = dvm_heap_pool_generation(&memory, anchor);
+    check(generation != 0, "FAIL pool anchor generation");
+    void *address = anchor;
+    poolfree(&memory, anchor);
+    empty_chain();
+    anchor = poolalloc(&memory, 32);
+    check(anchor == address && dvm_heap_pool_generation(&memory, anchor) > generation,
+        "FAIL pool generation on address reuse");
     poolfree(&memory, anchor);
     empty_chain();
     check(dvm_heap_pool_destroy(&memory), "FAIL pool quiescent destroy");

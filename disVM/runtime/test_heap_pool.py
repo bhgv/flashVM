@@ -38,7 +38,7 @@ def main():
                 code = code.replace(before, after)
             private = work / 'heap_pool.c'
             private.write_text(code)
-            includes = [runtime, engine / 'host/include',
+            includes = [runtime, engine / 'include', engine / 'host/include',
                         engine / 'upstream/Linux/arm/include',
                         engine / 'upstream/include', ports]
             command = shlex.split(os.environ.get('CC', 'cc'))

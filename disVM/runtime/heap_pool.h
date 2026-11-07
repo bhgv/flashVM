@@ -2,6 +2,7 @@
 #ifndef DVM_HEAP_POOL_H
 #define DVM_HEAP_POOL_H
 #include "channel_sync.h"
+#include "disvm/heap_settings.h"
 
 
 /* Stable arena and mutex; publish only after successful initialization. */
@@ -24,4 +25,7 @@ int dvm_heap_pool_init(Pool *pool, ulong bytes);
 int dvm_heap_pool_destroy(Pool *pool);
 /* Allocate uninitialized bytes under the pool mutex without VM callbacks. */
 void *dvm_heap_pool_try_alloc(Pool *pool, ulong size);
+/* Query the generation of a caller-owned live allocation. Zero is invalid.
+ * The caller pins the allocation throughout lookup; this is not a retain. */
+DVM_HeapGeneration dvm_heap_pool_generation(Pool *pool, void *value);
 #endif

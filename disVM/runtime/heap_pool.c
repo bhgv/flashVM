@@ -6,12 +6,34 @@
 #include <stdint.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <string.h>
+
+static DVM_HeapGeneration last_generation; /* Process-wide, under the port registry lock. */
+
+_Static_assert((DVM_HeapGeneration)-1 > 0, "Heap generation must be unsigned");
+
+static DVM_HeapGeneration next_generation(void)
+{
+    fvm_port_registry_lock();
+    DVM_HeapGeneration result = 0;
+    if (last_generation != (DVM_HeapGeneration)-1)
+    {
+        result = ++last_generation;
+    }
+    fvm_port_registry_unlock();
+    return result;
+}
+
+static void *generation_slot(Bhdr *block)
+{
+    return (uchar *)B2T(block) - sizeof(DVM_HeapGeneration);
+}
 
 
 /* Native payload/header overhead, preserving retained collector layout. */
 static ulong overhead(void)
 {
-    return (ulong)offsetof(Bhdr, u.data)+sizeof(Btail);
+    return (ulong)offsetof(Bhdr, u.data)+sizeof(Btail)+sizeof(DVM_HeapGeneration);
 }
 
 
@@ -89,6 +111,11 @@ static void *allocate(Pool *pool, ulong size, int report_fault)
     {
         return nil;
     }
+    DVM_HeapGeneration generation = next_generation();
+    if (!generation)
+    {
+        return nil;
+    }
     need = (size+overhead()+15UL)&~15UL;
     fvm_port_sync_lock(pool->sync);
     end = (uchar *)pool->arena+pool->bytes;
@@ -110,6 +137,7 @@ static void *allocate(Pool *pool, ulong size, int report_fault)
             remainder->size = block->size-need;
             block->size = need;
         }
+        memcpy(generation_slot(block), &generation, sizeof(generation));
         block->magic = MAGIC_A;
         result = B2D(block);
         break;
@@ -175,6 +203,8 @@ void poolfree(Pool *pool, void *value)
     block = owned_block(pool, value);
     if (block)
     {
+        DVM_HeapGeneration invalid = 0;
+        memcpy(generation_slot(block), &invalid, sizeof(invalid));
         block->magic = MAGIC_F;
     }
     fvm_port_sync_unlock(pool->sync);
@@ -182,6 +212,23 @@ void poolfree(Pool *pool, void *value)
     {
         fault(value, "alloc:D2B");
     }
+}
+
+
+DVM_HeapGeneration dvm_heap_pool_generation(Pool *pool, void *value)
+{
+    DVM_HeapGeneration generation = 0;
+    if (pool && pool->sync)
+    {
+        fvm_port_sync_lock(pool->sync);
+        Bhdr *block = owned_block(pool, value);
+        if (block)
+        {
+            memcpy(&generation, generation_slot(block), sizeof(generation));
+        }
+        fvm_port_sync_unlock(pool->sync);
+    }
+    return generation;
 }
 
 
