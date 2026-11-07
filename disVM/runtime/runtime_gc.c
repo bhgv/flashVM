@@ -93,6 +93,17 @@ static void collector_environment(void)
 }
 
 
+/* Queue publication supplies the Fast wakeup. This callback only signals
+ * native worker metadata and is safe before a producer leaves admission. */
+static void wake_fast(void)
+{
+    if (!dvm_gc_workers_request(state.workers, DVM_GC_FAST))
+    {
+        abort();
+    }
+}
+
+
 /* A coalesced Fast request may outlive the entries that caused it. */
 static int fast_ready(void *user)
 {
@@ -193,6 +204,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
         if (dvm_managed_owner_start(state.world, state.workers))
         {
             dvm_runtime_rc_start();
+            dvm_runtime_rc_set_notifier(wake_fast);
             dvm_runtime_exception_reserve_start();
             if (dvm_managed_owner_probe_requested)
             {
@@ -242,7 +254,7 @@ int dvm_runtime_gc_request(void)
     {
         return 0;
     }
-    if (dvm_runtime_rc_pending() || dvm_managed_owner_pending())
+    if (dvm_managed_owner_pending())
     {
         if (!dvm_gc_workers_request(state.workers,DVM_GC_FAST))
         {
@@ -593,6 +605,10 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     dvm_runtime_exception_reserve_stop();
     dvm_runtime_rc_close();
+    if (dvm_runtime_rc_ready())
+    {
+        wake_fast();
+    }
     dvm_native_context_set_process(dvm_native_context_current(),NULL);
     ok = dvm_runtime_gc_request();
     if (!dvm_native_owner_leave(owner))

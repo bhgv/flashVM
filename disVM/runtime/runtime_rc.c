@@ -39,6 +39,7 @@ static unsigned long byte_limited;   /* Direct block-byte budget inline fallback
 static unsigned long helper_enqueued; /* Accepted releases from other admitted executors. */
 static unsigned long helper_saturated; /* Helper releases falling back at the owner-count bound. */
 static unsigned long helper_byte_limited; /* Helper releases falling back at the byte bound. */
+static void (*notify_ready)(void); /* Optional Fast wakeup, fixed until collector join. */
 static int accepting;                /* Closed before mutator leaves on shutdown. */
 
 
@@ -79,6 +80,13 @@ void dvm_runtime_rc_start(void)
     saturated = 0;
     byte_limited = 0;
     accepting = retirement != NULL;
+}
+
+
+/* Set the wake callback at startup before any guest produces a packet. */
+void dvm_runtime_rc_set_notifier(void (*notify)(void))
+{
+    notify_ready = notify;
 }
 
 
@@ -140,6 +148,10 @@ int dvm_runtime_rc_defer(void *value)
     }
     enqueued++;
     helper_enqueued += helper != 0;
+    if (notify_ready)
+    {
+        notify_ready();
+    }
     return 1;
 }
 
@@ -270,6 +282,10 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
     {
         abort();
     }
+    if (notify_ready)
+    {
+        notify_ready();
+    }
     return 1;
 }
 
@@ -389,6 +405,7 @@ int dvm_runtime_rc_finish(int diagnostics)
     {
         owner = NULL;
         world = NULL;
+        notify_ready = NULL;
     }
     return result;
 }

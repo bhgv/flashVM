@@ -7,6 +7,9 @@
  * allocation failure selects inline RC; previous session must be finished. */
 void dvm_runtime_rc_start(void);
 
+/* Set the optional nonblocking wake callback before publishing producers. */
+void dvm_runtime_rc_set_notifier(void (*notify)(void));
+
 struct Type;
 /* Transfer mapped owners and optional displaced reference under shared admission.
  * Return 1 on success, -1 when draining can make room, or 0 on other refusal.
