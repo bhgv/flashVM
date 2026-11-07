@@ -51,6 +51,9 @@ DVM_NativeWorld *dvm_world_create_serial(int locked_poll);
  * out is caller-owned. This snapshot does not reserve an admission or root scan. */
 int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
 
+/* Observe queued exclusive turns under the world mutex. NULL returns zero. */
+size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world);
+
 /* Return peak SHARED occupancy of a borrowed live world, or zero for NULL. */
 size_t dvm_world_shared_peak(DVM_NativeWorld *world);
 

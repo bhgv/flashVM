@@ -1308,7 +1308,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         /* Frame steps publish updated roots before the next unguarded poll. */
         dvm_runtime_gc_shared_poll();
-        if (completed && completed % 16 == 0 && dvm_runtime_gc_shared_has_waiters())
+        if (completed && completed % 16 == 0 && dvm_runtime_gc_shared_has_exclusive_waiters())
         {
             break;
         }

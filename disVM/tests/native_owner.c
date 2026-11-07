@@ -401,6 +401,7 @@ int main(int argc, char **argv)
             fvm_port_thread_sleep_us(50);
         }
     } while (!admission.waiting);
+    check(dvm_world_exclusive_waiting(shared.world) == 1,"one queued exclusive peer");
     fvm_port_sync_lock(shared.control);
     shared.release_first = 1;
     fvm_port_sync_signal_all(shared.control);
@@ -434,7 +435,7 @@ int main(int argc, char **argv)
         shared.order[2] == 0,"older waiter precedes releasing owner's reentry");
     check(shared.value == workers[0].iterations+workers[1].iterations,"no lost shared adds");
     check(dvm_world_admission(shared.world,&admission) && admission.serial &&
-        !admission.waiting && admission.contentions &&
+        !admission.waiting && !dvm_world_exclusive_waiting(shared.world) && admission.contentions &&
         admission.admissions >= 2*STRESS_TURNS+259,"FIFO counters fully drained");
     fvm_port_sync_lock(shared.control);
     shared.retire = 1;
