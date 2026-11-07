@@ -43,6 +43,7 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static DVM_RetirementQueue *record_retries; /* Transient guard conflicts. */
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
 static unsigned long difficult_moved;
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
@@ -100,7 +101,7 @@ void dvm_runtime_rc_start(void)
     helper_enqueued = 0;
     helper_saturated = 0;
     helper_byte_limited = 0;
-    if (retirement || frames || leaves || difficult)
+    if (retirement || frames || leaves || difficult || record_retries)
     {
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
@@ -109,6 +110,7 @@ void dvm_runtime_rc_start(void)
     frames = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult_moved = 0;
     shared_array_graphs = 0;
     shared_arrays = 0;
@@ -928,30 +930,32 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
 
 /* The sole consumer moves metadata only. Reserve before removing the head
  * so a full fallback queue leaves ownership and root publication unchanged. */
-static int defer_difficult(LeafRetirement *entry)
+static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destination,
+    LeafRetirement *entry)
 {
     DVM_RetirementReservation token = {0};
-    if (dvm_retirement_reserve(difficult, entry->bytes, &token) != DVM_RETIRE_OK)
+    if (dvm_retirement_reserve(destination, entry->bytes, &token) != DVM_RETIRE_OK)
     {
         return 0;
     }
     void *value;
     unsigned long bytes;
-    if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
-        bytes != entry->bytes || !dvm_retirement_commit(difficult, &token, entry))
+    if (!dvm_retirement_take(source, &value, &bytes) || value != entry ||
+        bytes != entry->bytes || !dvm_retirement_commit(destination, &token, entry))
     {
         abort();
     }
-    difficult_moved++;
+    difficult_moved += destination == difficult;
     return 1;
 }
 
 
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
- * and touches only the leaf queue. Cycles cannot run during this callback. */
+ * while serving leaves, retries and packet children. Cycles cannot run here. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
-    if (!dvm_retirement_peek(leaves) && !dvm_retirement_peek(frames))
+    if (!dvm_retirement_peek(leaves) && !dvm_retirement_peek(frames) &&
+        !dvm_retirement_peek(record_retries))
     {
         return 0;
     }
@@ -963,11 +967,19 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
     unsigned int completed = 0;
     if (dvm_native_owner_try_enter_idle_shared(reader))
     {
+        int retry = 1;
         while (budget && !heapmonitor)
         {
-            LeafRetirement *entry = dvm_retirement_peek(leaves);
+            DVM_RetirementQueue *source = retry && dvm_retirement_peek(record_retries) ?
+                record_retries : leaves;
+            retry = 0;
+            LeafRetirement *entry = dvm_retirement_peek(source);
             if (!entry || !dvm_world_epoch_elapsed(world, entry->epoch))
             {
+                if (source == record_retries)
+                {
+                    continue;
+                }
                 break;
             }
             if (entry->records)
@@ -977,8 +989,18 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 if (claim != DVM_CELL_ACQUIRED)
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
-                    if (!defer_difficult(entry))
+                    if (claim == DVM_CELL_BUSY && source == record_retries)
                     {
+                        continue;
+                    }
+                    DVM_RetirementQueue *destination = claim == DVM_CELL_BUSY ?
+                        record_retries : difficult;
+                    if (!move_leaf(source, destination, entry))
+                    {
+                        if (source == record_retries)
+                        {
+                            continue;
+                        }
                         break;
                     }
                     budget--;
@@ -987,7 +1009,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 void *value;
                 unsigned long bytes;
-                if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry)
+                if (!dvm_retirement_take(source, &value, &bytes) || value != entry)
                 {
                     abort();
                 }
@@ -1009,7 +1031,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             int has_children = array && (array->root != H || array->t->np);
             if (has_children && !transfer_array_children(entry->heap))
             {
-                if (!defer_difficult(entry))
+                if (!move_leaf(leaves, difficult, entry))
                 {
                     break;
                 }
@@ -1116,7 +1138,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         fputs("disvm RC retirement outside stopped collector\n", stderr);
         abort();
     }
-    while (budget && (dvm_retirement_take(difficult, &value, &bytes) ||
+    while (budget && ((!accepting && dvm_retirement_take(record_retries, &value, &bytes)) ||
+                      dvm_retirement_take(difficult, &value, &bytes) ||
                       dvm_retirement_take(leaves, &value, &bytes)))
     {
         LeafRetirement *entry = value;
@@ -1170,7 +1193,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
     return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL);
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL);
 }
 
 
@@ -1186,7 +1209,7 @@ unsigned int dvm_runtime_rc_pending(void)
         (void)dvm_retirement_statistics(frames, &frame_stats);
         (void)dvm_retirement_statistics(retirement, &stats);
         return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL);
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL);
     }
     return stats.ready+stats.reserved;
 }
@@ -1201,7 +1224,8 @@ int dvm_runtime_rc_ready(void)
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
     return refs.ready != 0 || packets.ready != 0 ||
-        dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL;
+        dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
+        dvm_retirement_peek(record_retries) != NULL;
 }
 
 
@@ -1214,6 +1238,7 @@ void dvm_runtime_rc_close(void)
     dvm_retirement_close(frames);
     dvm_retirement_close(leaves);
     dvm_retirement_close(difficult);
+    dvm_retirement_close(record_retries);
 }
 
 
@@ -1250,7 +1275,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(difficult, &fallback);
         printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, fallback.ready + fallback.reserved);
     }
-    result = (difficult == NULL || dvm_retirement_destroy(&difficult)) &&
+    result = (record_retries == NULL || dvm_retirement_destroy(&record_retries)) &&
+        (difficult == NULL || dvm_retirement_destroy(&difficult)) &&
         (leaves == NULL || dvm_retirement_destroy(&leaves)) &&
         (retirement == NULL || dvm_retirement_destroy(&retirement)) &&
         (frames == NULL || dvm_retirement_destroy(&frames));
