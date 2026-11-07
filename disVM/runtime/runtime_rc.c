@@ -160,6 +160,11 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
     {
         return 0;
     }
+    unsigned long direct = extra ? poolmsize(heapmem, D2H(extra)) : 0;
+    if (direct > RC_BYTES)
+    {
+        return 0;
+    }
     for (int byte = 0; type && byte < type->np; byte++)
     {
         for (unsigned bit = 0; bit < 8; bit++)
@@ -171,6 +176,21 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
                     slot >= (size_t)type->size / sizeof(void *))
                 {
                     return 0;
+                }
+                void *value;
+                memcpy(&value, (const unsigned char *)frame + slot * sizeof(value), sizeof(value));
+                if (!value)
+                {
+                    return 0;
+                }
+                if (value != H)
+                {
+                    unsigned long size = poolmsize(heapmem, D2H(value));
+                    if (size > RC_BYTES - direct)
+                    {
+                        return 0;
+                    }
+                    direct += size;
                 }
                 capacity++;
             }
@@ -185,7 +205,11 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
         return 0;
     }
     size_t bytes = sizeof(FrameRetirement) + capacity * sizeof(void *);
-    DVM_RetirementResult reserved = dvm_retirement_reserve(frames, (unsigned long)bytes, &token);
+    if (bytes > RC_BYTES - direct)
+    {
+        return 0;
+    }
+    DVM_RetirementResult reserved = dvm_retirement_reserve(frames, direct + (unsigned long)bytes, &token);
     if (reserved != DVM_RETIRE_OK)
     {
         return reserved == DVM_RETIRE_FULL || reserved == DVM_RETIRE_BYTES ? -1 : 0;
