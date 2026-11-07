@@ -43,7 +43,7 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
-static unsigned long self_cycles; /* Single-edge record cycles reclaimed from queued owners. */
+static unsigned long record_rings; /* Singly linked record rings reclaimed from queued owners. */
 static unsigned long shared_children; /* Packet references consumed under shared admission. */
 static unsigned long frames_drained; /* Stopped collector's packet count. */
 
@@ -101,7 +101,7 @@ void dvm_runtime_rc_start(void)
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;
-    self_cycles = 0;
+    record_rings = 0;
     enqueued = 0;
     released = 0;
     saturated = 0;
@@ -194,20 +194,40 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
-/* Inspect only under exclusive heap admission. The caller still owns value. */
-static int queued_self_cycle(void *value)
+/* Return the closing record of a bounded, singly linked ring. The caller
+ * owns start and holds exclusive admission. Every other record must have
+ * exactly one incoming owner and no registered roots. */
+static void *queued_record_ring(void *start, unsigned long start_roots)
 {
-    Heap *heap = D2H(value);
-    Type *type = heap->t;
-    void *edge;
-    if (!dvm_runtime_idle_cycles || gchalt || heapmonitor || !type ||
-        type->free != freeheap || type->np != 1 || type->map[0] != 0x80 ||
-        type->size < (int)sizeof(edge) || dvm_refcount_load_u(&heap->ref) != 2)
+    void *record = start;
+    if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
     {
-        return 0;
+        return NULL;
     }
-    memcpy(&edge, value, sizeof(edge));
-    return edge == value;
+    for (unsigned int index = 0; index < 32; index++)
+    {
+        Heap *heap = D2H(record);
+        Type *type = heap->t;
+        void *edge;
+        if (!type || type->free != freeheap || type->np != 1 ||
+            type->map[0] != 0x80 || type->size < (int)sizeof(edge) ||
+            dvm_refcount_load_u(&heap->ref) != (index == 0 ? 2UL : 1UL) ||
+            dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
+        {
+            return NULL;
+        }
+        memcpy(&edge, record, sizeof(edge));
+        if (edge == start)
+        {
+            return record;
+        }
+        if (!edge || edge == H)
+        {
+            return NULL;
+        }
+        record = edge;
+    }
+    return NULL;
 }
 
 
@@ -231,7 +251,7 @@ int dvm_runtime_rc_defer(void *value)
     }
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
-    if (dvm_refcount_load_u(&heap->ref) != 1 && !queued_self_cycle(value))
+    if (dvm_refcount_load_u(&heap->ref) != 1 && !queued_record_ring(value, 0))
     {
         return 0;
     }
@@ -688,21 +708,20 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
 }
 
 
-/* The queue still owns and roots value. With no active heap readers, a
- * single-edge record whose two owners are this queue and itself is closed.
- * Keep other root registrations and opaque destructor types on normal GC. */
-static void break_queued_self_cycle(void *value)
+/* Revalidate the ring while the queue still owns and roots its first record. */
+static void break_queued_record_ring(void *value)
 {
     Heap *heap = D2H(value);
-    if (queued_self_cycle(value) && dvm_runtime_root_count(heap) == 1)
+    void *closing = queued_record_ring(value, 1);
+    if (closing)
     {
         void *edge = H;
-        memcpy(value, &edge, sizeof(edge));
+        memcpy(closing, &edge, sizeof(edge));
         if (!dvm_refcount_drop_nonfinal_u(&heap->ref))
         {
             abort();
         }
-        self_cycles++;
+        record_rings++;
     }
 }
 
@@ -725,7 +744,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     {
         (void)bytes;
         budget--;
-        break_queued_self_cycle(value);
+        break_queued_record_ring(value);
         ptrdel(D2H(value));
         destroy(value);
         released++;
@@ -745,7 +764,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         budget--;
         for (size_t index = packet->next; index < packet->count; index++)
         {
-            break_queued_self_cycle(H2D(void *, packet->keys[index]));
+            break_queued_record_ring(H2D(void *, packet->keys[index]));
             if (!dvm_runtime_root_batch_remove(packet->roots, index))
             {
                 abort();
@@ -827,8 +846,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu self_cycles=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, self_cycles);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_rings=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_rings);
     }
     if (diagnostics)
     {
