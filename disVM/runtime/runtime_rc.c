@@ -23,6 +23,7 @@ typedef struct FrameRetirement
 {
     DVM_RootBatch *roots; /* Published root occurrences for keys. */
     size_t count;         /* Number of transferred owners. */
+    size_t next;          /* First owner not yet consumed by Fast. */
     void *keys[];        /* Heap headers in frame-map order. */
 } FrameRetirement;
 
@@ -41,6 +42,7 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
+static unsigned long shared_children; /* Packet references consumed under shared admission. */
 static unsigned long frames_drained; /* Stopped collector's packet count. */
 
 extern Pool *heapmem;                 /* Retained pool, accessible only under world ownership. */
@@ -96,6 +98,7 @@ void dvm_runtime_rc_start(void)
     shared_strings = 0;
     shared_strings_with_peer = 0;
     frames_drained = 0;
+    shared_children = 0;
     enqueued = 0;
     released = 0;
     saturated = 0;
@@ -146,7 +149,7 @@ static void release_array_descriptor(Type *type)
 
 /* Try the shared leaf queue while the destroying guest owns exclusion.
  * All failure paths keep the existing owner available to ordinary destroy. */
-static int defer_leaf(Heap *heap, unsigned long bytes)
+static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 {
     if (!leaves || heapmonitor || !leaf_eligible(heap) || bytes > RC_BYTES)
     {
@@ -171,13 +174,16 @@ static int defer_leaf(Heap *heap, unsigned long bytes)
         dvm_retirement_cancel(leaves, &token);
         return 0;
     }
-    Setmark(heap);
+    if (exclusive)
+    {
+        Setmark(heap);
+    }
     int became_ready;
     if (!dvm_retirement_commit_ready(leaves, &token, entry, &became_ready))
     {
         abort();
     }
-    if (became_ready && notify_ready)
+    if (exclusive && became_ready && notify_ready)
     {
         notify_ready();
     }
@@ -210,7 +216,7 @@ int dvm_runtime_rc_defer(void *value)
         return 0;
     }
     bytes = poolmsize(heapmem,heap);
-    if (defer_leaf(heap, bytes))
+    if (defer_leaf(heap, bytes, 1))
     {
         enqueued++;
         helper_enqueued += helper != 0;
@@ -336,6 +342,7 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
     }
     packet->roots = dvm_runtime_root_batch_create(capacity);
     packet->count = 0;
+    packet->next = 0;
     int valid = 1;
     for (int byte = 0; packet->roots && valid && type && byte < type->np; byte++)
     {
@@ -430,6 +437,7 @@ static int transfer_array_children(Heap *heap)
     }
     packet->roots = dvm_runtime_root_batch_create(capacity);
     packet->count = 0;
+    packet->next = 0;
     int valid = packet->roots != NULL;
     if (array->root != H)
     {
@@ -516,11 +524,62 @@ static int transfer_array_children(Heap *heap)
 }
 
 
+/* Consume a bounded prefix of the oldest packet. The suffix keeps its
+ * registry roots. Only the Fast lane mutates packet cursors. */
+static unsigned int drain_shared_children(size_t budget)
+{
+    unsigned int completed = 0;
+    while (budget)
+    {
+        FrameRetirement *packet = dvm_retirement_peek(frames);
+        if (!packet)
+        {
+            break;
+        }
+        while (budget && packet->next < packet->count)
+        {
+            Heap *heap = packet->keys[packet->next];
+            if (!dvm_refcount_drop_nonfinal_u(&heap->ref))
+            {
+                if (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0))
+                {
+                    return completed;
+                }
+                enqueued++;
+                helper_enqueued++;
+            }
+            if (!dvm_runtime_root_batch_remove(packet->roots, packet->next))
+            {
+                abort();
+            }
+            packet->next++;
+            shared_children++;
+            completed++;
+            budget--;
+        }
+        if (packet->next == packet->count)
+        {
+            void *value;
+            unsigned long bytes;
+            if (!dvm_retirement_take(frames, &value, &bytes) || value != packet ||
+                !dvm_runtime_root_batch_clear(packet->roots) ||
+                !dvm_runtime_root_batch_destroy(&packet->roots))
+            {
+                abort();
+            }
+            free(packet);
+            frames_drained++;
+        }
+    }
+    return completed;
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * and touches only the leaf queue. Cycles cannot run during this callback. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
-    if (!dvm_retirement_peek(leaves))
+    if (!dvm_retirement_peek(leaves) && !dvm_retirement_peek(frames))
     {
         return 0;
     }
@@ -587,6 +646,10 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             budget--;
             completed++;
         }
+        if (!heapmonitor)
+        {
+            completed += drain_shared_children(budget);
+        }
         if (!dvm_world_leave(reader))
         {
             abort();
@@ -636,7 +699,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     {
         FrameRetirement *packet = value;
         budget--;
-        for (size_t index = 0; index < packet->count; index++)
+        for (size_t index = packet->next; index < packet->count; index++)
         {
             if (!dvm_runtime_root_batch_remove(packet->roots, index))
             {
@@ -719,8 +782,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children);
     }
     if (diagnostics)
     {

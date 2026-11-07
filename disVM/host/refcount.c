@@ -104,6 +104,37 @@ DVM_RefcountResult dvm_refcount_release_u(unsigned long *counter)
 }
 
 
+/* Drop an owner only when another strong reference remains. */
+int dvm_refcount_drop_nonfinal_u(unsigned long *counter)
+{
+    if (!counter)
+    {
+        return 0;
+    }
+#ifdef DVM_REFCOUNT_ATOMIC_U
+    unsigned long value = __atomic_load_n(counter, __ATOMIC_ACQUIRE);
+    while (value > 1)
+    {
+        if (__atomic_compare_exchange_n(counter, &value, value - 1, 0,
+            __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+        {
+            return 1;
+        }
+    }
+    return 0;
+#else
+    fvm_port_registry_lock();
+    int live = *counter > 1;
+    if (live)
+    {
+        --*counter;
+    }
+    fvm_port_registry_unlock();
+    return live;
+#endif
+}
+
+
 /* Claim the final owner without changing a nonfinal counter. */
 int dvm_refcount_claim_last_u(unsigned long *counter)
 {
