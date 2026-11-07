@@ -225,13 +225,16 @@ struct RecordGroup
     unsigned int incoming[RECORD_GROUP_LIMIT];
     void *cells[RECORD_EDGE_LIMIT];
     unsigned int targets[RECORD_EDGE_LIMIT];
+    unsigned int sources[RECORD_EDGE_LIMIT];
+    unsigned char live[RECORD_GROUP_LIMIT];
+    unsigned int live_count;
     unsigned int nodes_used;
     unsigned int edges_used;
 };
 
 
-/* Snapshot a closed graph of ordinary records under exclusive admission.
- * The caller owns start. Only its own queue root may be present. */
+/* Snapshot ordinary records under exclusive admission. Opaque targets are
+ * live boundaries. The caller owns start through its queue root. */
 static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group)
 {
     if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
@@ -245,10 +248,14 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
         void *record = group->nodes[index];
         Heap *heap = D2H(record);
         Type *type = heap->t;
-        if (!type || type->free != freeheap || type->size < (int)sizeof(void *) ||
-            dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
+        if (!type || type->free != freeheap || type->size < (int)sizeof(void *))
         {
-            return 0;
+            group->live[index] = 1;
+            continue;
+        }
+        if (dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
+        {
+            group->live[index] = 1;
         }
         for (int byte = 0; byte < type->np; byte++)
         {
@@ -271,6 +278,7 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
                     return 0;
                 }
                 group->cells[group->edges_used] = cell;
+                group->sources[group->edges_used] = index;
                 if (edge == H)
                 {
                     group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
@@ -301,12 +309,32 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         Heap *heap = D2H(group->nodes[index]);
-        if (dvm_refcount_load_u(&heap->ref) != group->incoming[index] + (index == 0))
+        unsigned long expected = group->incoming[index] + (index == 0);
+        unsigned long actual = dvm_refcount_load_u(&heap->ref);
+        if (actual < expected)
         {
             return 0;
         }
+        group->live[index] |= actual > expected;
+        group->live_count += group->live[index];
     }
-    return 1;
+    /* Propagate from external owners along outgoing edges only. */
+    unsigned int previous;
+    do
+    {
+        previous = group->live_count;
+        for (unsigned int edge = 0; edge < group->edges_used; edge++)
+        {
+            unsigned int target = group->targets[edge];
+            if (target != RECORD_GROUP_LIMIT && group->live[group->sources[edge]] &&
+                !group->live[target])
+            {
+                group->live[target] = 1;
+                group->live_count++;
+            }
+        }
+    } while (previous != group->live_count);
+    return !group->live[0];
 }
 
 
@@ -315,21 +343,26 @@ static void unlink_record_group(const RecordGroup *group)
 {
     for (unsigned int index = 1; index < group->nodes_used; index++)
     {
-        if (dvm_refcount_retain_u(&D2H(group->nodes[index])->ref) != DVM_REFCOUNT_LIVE)
+        if (!group->live[index] && dvm_refcount_retain_u(&D2H(group->nodes[index])->ref) != DVM_REFCOUNT_LIVE)
         {
             abort();
         }
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        if (group->targets[index] == RECORD_GROUP_LIMIT)
+        if (group->targets[index] == RECORD_GROUP_LIMIT || group->live[group->sources[index]])
         {
             continue;
         }
         void *edge = H;
-        Heap *target = D2H(group->nodes[group->targets[index]]);
+        unsigned int target = group->targets[index];
+        void *value = group->nodes[target];
         memcpy(group->cells[index], &edge, sizeof(edge));
-        if (!dvm_refcount_drop_nonfinal_u(&target->ref))
+        if (group->live[target])
+        {
+            destroy(value);
+        }
+        else if (!dvm_refcount_drop_nonfinal_u(&D2H(value)->ref))
         {
             abort();
         }
@@ -1052,14 +1085,17 @@ static int process_queued_record_group(void *value, int promote)
     {
         return 0;
     }
-    if (promote && defer_record_group(&group))
+    if (promote && !group.live_count && defer_record_group(&group))
     {
         return 1;
     }
     unlink_record_group(&group);
     for (unsigned int index = 1; index < group.nodes_used; index++)
     {
-        destroy(group.nodes[index]);
+        if (!group.live[index])
+        {
+            destroy(group.nodes[index]);
+        }
     }
     record_groups++;
     return 0;
