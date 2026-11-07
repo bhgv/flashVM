@@ -194,7 +194,42 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
-/* Return the closing record of a bounded, singly linked ring. The caller
+/* Locate the sole mapped reference in an ordinary record. */
+static void *record_ring_edge(void *record, const Type *type)
+{
+    if (!type || type->free != freeheap || type->size < (int)sizeof(void *))
+    {
+        return NULL;
+    }
+    void *cell = NULL;
+    for (int byte = 0; byte < type->np; byte++)
+    {
+        unsigned int bits = type->map[byte];
+        if (!bits)
+        {
+            continue;
+        }
+        if (cell || (bits & (bits - 1)))
+        {
+            return NULL;
+        }
+        unsigned int bit = 0;
+        while (!(bits & (0x80U >> bit)))
+        {
+            bit++;
+        }
+        size_t slot = (size_t)byte * 8 + bit;
+        if (slot >= (size_t)type->size / sizeof(void *))
+        {
+            return NULL;
+        }
+        cell = (unsigned char *)record + slot * sizeof(void *);
+    }
+    return cell;
+}
+
+
+/* Return the closing reference cell of a bounded, singly linked ring. The caller
  * owns start and holds exclusive admission. Every other record must have
  * exactly one incoming owner and no registered roots. */
 static void *queued_record_ring(void *start, unsigned long start_roots)
@@ -207,19 +242,21 @@ static void *queued_record_ring(void *start, unsigned long start_roots)
     for (unsigned int index = 0; index < 32; index++)
     {
         Heap *heap = D2H(record);
-        Type *type = heap->t;
         void *edge;
-        if (!type || type->free != freeheap || type->np != 1 ||
-            type->map[0] != 0x80 || type->size < (int)sizeof(edge) ||
-            dvm_refcount_load_u(&heap->ref) != (index == 0 ? 2UL : 1UL) ||
+        if (dvm_refcount_load_u(&heap->ref) != (index == 0 ? 2UL : 1UL) ||
             dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
         {
             return NULL;
         }
-        memcpy(&edge, record, sizeof(edge));
+        void *cell = record_ring_edge(record, heap->t);
+        if (!cell)
+        {
+            return NULL;
+        }
+        memcpy(&edge, cell, sizeof(edge));
         if (edge == start)
         {
-            return record;
+            return cell;
         }
         if (!edge || edge == H)
         {
