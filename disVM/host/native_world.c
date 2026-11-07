@@ -18,6 +18,7 @@ struct DVM_WorldParticipant
     void *process;              /* Root value published at leave/poll. */
     size_t fast_polls;           /* Owner-only count, never read by the collector. */
     size_t locked_polls;         /* Owner-only slow-path count. */
+    unsigned long admission_epoch; /* Epoch of the current interpreter/JIT heap interval. */
     unsigned long read_epoch;   /* Oldest live explicit borrow, or zero. */
     unsigned long read_depth;   /* Nested borrows held by this owner. */
     int active;                 /* Owner may execute mutator instructions. */
@@ -320,6 +321,7 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
         world->serving_ticket++;
         world->admissions++;
     }
+    participant->admission_epoch = world->reclaim_epoch + 1;
     participant->active = 1;
     participant->shared = shared;
     world->active++;
@@ -412,7 +414,8 @@ int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch)
     int elapsed = epoch <= world->reclaim_epoch && !world->collector;
     for (DVM_WorldParticipant *reader = world->participants; elapsed && reader; reader = reader->next)
     {
-        elapsed = !reader->read_depth || reader->read_epoch > epoch;
+        elapsed = (!reader->active || reader->admission_epoch > epoch) &&
+            (!reader->read_depth || reader->read_epoch > epoch);
     }
     fvm_port_sync_unlock(world->sync);
     return elapsed;

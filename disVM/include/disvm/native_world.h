@@ -148,7 +148,8 @@ int dvm_world_read_begin(DVM_WorldParticipant *participant);
 int dvm_world_read_end(DVM_WorldParticipant *participant);
 
 /* After unlinking a retired object, issue its epoch. Zero disables early
- * reclamation. A positive observation covers only registered old borrows. */
+ * reclamation. A positive observation covers old admission intervals and explicit borrows.
+ * Pointers retained outside admission require an explicit borrow. */
 unsigned long dvm_world_retire_epoch(DVM_NativeWorld *world);
 int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch);
 

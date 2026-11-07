@@ -261,6 +261,12 @@ static void check_idle_modes(void)
             fprintf(stderr,"FAIL idle world initialization\n");
             exit(EXIT_FAILURE);
         }
+        unsigned long retired = dvm_world_retire_epoch(world);
+        if (!retired || dvm_world_epoch_elapsed(world, retired))
+        {
+            fprintf(stderr,"FAIL active VM admission did not delay retirement\n");
+            exit(EXIT_FAILURE);
+        }
         for (index = 0; index < 10000; index++)
         {
             if (!dvm_native_context_poll())
@@ -277,6 +283,7 @@ static void check_idle_modes(void)
         }
         if (dvm_world_owner_polls(participant,NULL,&locked) ||
             !dvm_world_leave(participant) || dvm_native_context_poll() ||
+            !dvm_world_epoch_elapsed(world, retired) ||
             !dvm_world_detach(participant) || !dvm_world_destroy(world))
         {
             fprintf(stderr,"FAIL inactive poll/owner retirement\n");
