@@ -11,6 +11,7 @@ int dvm_runtime_gc_start(struct Prog **roots, int locked_poll);
 
 extern int dvm_runtime_event_cycles;
 extern int dvm_runtime_disable_cycles;
+extern int dvm_runtime_idle_cycles;
 void dvm_runtime_gc_owner_lost(void);
 
 /* [GC:] Coalesce one real rungc pass. Called by the mutator between turns;

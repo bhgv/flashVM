@@ -34,6 +34,12 @@ the last recorded loss. Clean scheduler requests then skip the cycle pass,
 with a fallback every 256 requests for paths outside the loss hook.
 The collector still takes stopped-world admission for tracing.
 
+Use `--gc-idle-cycles` to run Cycles on its own OS thread without asking
+active Dis heap owners to park. Each bounded pass needs an already idle heap
+and can delay new heap admissions until the pass ends. A continuously active
+heap can defer collection indefinitely. The option can be combined with
+`--gc-event-cycles`.
+
 ## Default console profile
 
 On Linux AMD64, console DisVM starts two managed executors and native GC when

@@ -82,7 +82,8 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int *executed)
     {
         return DVM_GC_DONE;
     }
-    if (worker->kind == DVM_GC_FAST && workers->config.fast_quiescent_only)
+    if (worker->kind == DVM_GC_FAST ? workers->config.fast_quiescent_only :
+        workers->config.cycles_quiescent_only)
     {
         if (!dvm_world_try_quiescent(workers->config.world, worker->context))
         {

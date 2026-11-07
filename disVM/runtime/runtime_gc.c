@@ -42,6 +42,7 @@ typedef struct RuntimeGC
 } RuntimeGC;
 
 extern ulong gcepochs; /* Completed retained tracing epochs. */
+int dvm_runtime_idle_cycles; /* Startup-only quiescent cycle admission. */
 int dvm_runtime_disable_cycles; /* Startup-only Fast-only policy. */
 int dvm_runtime_event_cycles; /* Startup-only cycle admission policy. */
 extern uvlong gcdestroys; /* Retained cycle collector reclaimed-object count. */
@@ -203,6 +204,8 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.fast_quiescent_only = 1;
     config.Fast.pause_us = 1000;
     config.Fast.budget = 256;
+    config.cycles_quiescent_only = dvm_runtime_idle_cycles;
+    config.Cycles.pause_us = dvm_runtime_idle_cycles ? 1000 : 0;
     config.Cycles.run = cycle_pass;
     config.Cycles.budget = 1;
     config.user = &state;

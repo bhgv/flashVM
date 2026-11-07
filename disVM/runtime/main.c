@@ -2877,6 +2877,10 @@ int main(int argc, char **argv)
         {
             dvm_runtime_parallel_string = 1;
         }
+        else if (strcmp(argv[1], "--gc-idle-cycles") == 0)
+        {
+            dvm_runtime_idle_cycles = 1;
+        }
         else if (strcmp(argv[1], "--gc-no-cycles") == 0)
         {
             dvm_runtime_disable_cycles = 1;
@@ -2922,6 +2926,7 @@ int main(int argc, char **argv)
 #endif
             puts("Explicit GC and guarded/parallel switches select a custom profile.");
             puts("--native-spawn starts one dedicated OS thread per spawned guest with a guarded parallel profile where supported.");
+            puts("--gc-idle-cycles runs cycle collection only when no Dis heap owners are active.");
             puts("--gc-no-cycles keeps Fast GC active and disables cycle collection. Unreachable cycles can accumulate.");
             puts("--gc-event-cycles coalesces cycle scans after managed owner loss.");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
@@ -3032,6 +3037,11 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
         return 2;
+    }
+    if (dvm_runtime_idle_cycles && (!gc_worker || dvm_runtime_disable_cycles))
+    {
+        fprintf(stderr, "--gc-idle-cycles requires native GC and conflicts with --gc-no-cycles\n");
+        return 1;
     }
     if (dvm_runtime_disable_cycles && (!gc_worker || dvm_runtime_event_cycles))
     {
