@@ -34,6 +34,8 @@ typedef struct RuntimeGC
     Prog **roots;                    /* Borrowed complete process-list slot. */
     unsigned long fast_empty_skips;   /* Mutator skipped an empty Fast request. */
     unsigned long passes;            /* Real retained rungc callbacks. */
+    unsigned long idle_cycle_epoch;  /* First epoch of the current idle burst. */
+    unsigned int idle_cycle_passes;   /* Bound work per idle request. */
     unsigned long cycle_losses;     /* Managed owner losses observed under world admission. */
     unsigned long cycle_skips;      /* Clean requests that avoided a heap pass. */
     unsigned long cycle_epoch;      /* Epoch at the last loss or fallback scan. */
@@ -166,9 +168,21 @@ static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, vo
         fprintf(stderr,"disvm cycle collector: %s\n",up->env->errstr);
         exit(1);
     }
+    if (dvm_runtime_idle_cycles && !gc->idle_cycle_passes)
+    {
+        gc->idle_cycle_epoch = gcepochs;
+    }
     rungc(*gc->roots);
     poperror();
     gc->passes++;
+    /* A native wait can leave the heap idle for many passes without another
+     * dispatch request. Continue across the color rotation, with a hard cap. */
+    if (dvm_runtime_idle_cycles && !gchalt &&
+        ++gc->idle_cycle_passes < 256 && gcepochs - gc->idle_cycle_epoch < 3)
+    {
+        return DVM_GC_MORE;
+    }
+    gc->idle_cycle_passes = 0;
     return DVM_GC_DONE;
 }
 

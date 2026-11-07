@@ -9,7 +9,7 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False, idle_cycles=False):
+def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False, idle_cycles=0):
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
     if pool:
@@ -21,7 +21,7 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     if event_cycles:
         command += ["--native-spawn", "--gc-event-cycles"]
     if idle_cycles:
-        command += ["--gc-idle-cycles", "--managed-workers", "2"]
+        command += ["--gc-idle-cycles", "--managed-workers", str(idle_cycles)]
     if locked:
         command.append("--gc-locked-poll")
     if budget is not None:
@@ -106,7 +106,8 @@ def main():
     runtime, module = (Path(value).resolve() for value in sys.argv[1:3])
     if sys.argv[3:] == ["--idle-cycles"]:
         for mode in ("--jit", "--no-jit"):
-            execute(runtime, module, mode, 32, idle_cycles=True)
+            for executors in (1, 2):
+                execute(runtime, module, mode, 32, idle_cycles=executors)
         print("PASS idle Cycles and Fast GC in interpreter and JIT")
         return
     for mode in ("--jit", "--no-jit"):
