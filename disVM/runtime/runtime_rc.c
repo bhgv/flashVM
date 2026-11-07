@@ -28,11 +28,15 @@ typedef struct FrameRetirement
     void *keys[];        /* Heap headers in frame-map order. */
 } FrameRetirement;
 
+typedef struct RecordGroup RecordGroup;
+
 /* Keep the original strong owner and registry root until the old readers end. */
 typedef struct LeafRetirement
 {
     Heap *heap;           /* Rooted string header until the sole consumer takes it. */
     unsigned long epoch;  /* Last potentially interested reader generation. */
+    FrameRetirement *records; /* Optional rooted closed record group. */
+    RecordGroup *snapshot;    /* Edges frozen by withdrawal of the last outside owner. */
 } LeafRetirement;
 
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
@@ -43,6 +47,8 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
+static unsigned long shared_record_groups;
+static unsigned long shared_record_groups_with_peer;
 static unsigned long record_groups; /* Closed record groups reclaimed from queued owners. */
 static unsigned long shared_children; /* Packet references consumed under shared admission. */
 static unsigned long frames_drained; /* Stopped collector's packet count. */
@@ -102,6 +108,8 @@ void dvm_runtime_rc_start(void)
     frames_drained = 0;
     shared_children = 0;
     record_groups = 0;
+    shared_record_groups = 0;
+    shared_record_groups_with_peer = 0;
     enqueued = 0;
     released = 0;
     saturated = 0;
@@ -134,8 +142,8 @@ static int leaf_eligible(const Heap *heap)
 }
 
 
-/* Drop the array's independent descriptor owner. No VM callback is invoked. */
-static void release_array_descriptor(Type *type)
+/* Drop an independent descriptor owner. No VM callback is invoked. */
+static void release_owned_descriptor(Type *type)
 {
     DVM_RefcountResult result = dvm_refcount_release_i(&type->ref);
     if (result == DVM_REFCOUNT_LAST)
@@ -170,6 +178,8 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
         return 0;
     }
     entry->heap = heap;
+    entry->records = NULL;
+    entry->snapshot = NULL;
     entry->epoch = dvm_world_retire_epoch(world);
     if (!entry->epoch || !dvm_runtime_root_add(heap))
     {
@@ -197,7 +207,7 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 #define RECORD_GROUP_LIMIT 32
 #define RECORD_EDGE_LIMIT 128
 
-typedef struct RecordGroup
+struct RecordGroup
 {
     void *nodes[RECORD_GROUP_LIMIT];
     unsigned int incoming[RECORD_GROUP_LIMIT];
@@ -205,7 +215,7 @@ typedef struct RecordGroup
     unsigned int targets[RECORD_EDGE_LIMIT];
     unsigned int nodes_used;
     unsigned int edges_used;
-} RecordGroup;
+};
 
 
 /* Snapshot a closed graph of ordinary records under exclusive admission.
@@ -287,6 +297,97 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
 }
 
 
+/* No operation after publishing the roots can fail recoverably. */
+static void unlink_record_group(const RecordGroup *group)
+{
+    for (unsigned int index = 1; index < group->nodes_used; index++)
+    {
+        if (dvm_refcount_retain_u(&D2H(group->nodes[index])->ref) != DVM_REFCOUNT_LIVE)
+        {
+            abort();
+        }
+    }
+    for (unsigned int index = 0; index < group->edges_used; index++)
+    {
+        void *edge = H;
+        Heap *target = D2H(group->nodes[group->targets[index]]);
+        memcpy(group->cells[index], &edge, sizeof(edge));
+        if (!dvm_refcount_drop_nonfinal_u(&target->ref))
+        {
+            abort();
+        }
+    }
+}
+
+
+static int defer_record_group(const RecordGroup *group)
+{
+    if (dvm_world_has_borrowers(world))
+    {
+        return 0;
+    }
+    DVM_RetirementReservation token = {0};
+    unsigned long bytes = 0;
+    for (unsigned int index = 0; index < group->nodes_used; index++)
+    {
+        unsigned long size = poolmsize(heapmem, D2H(group->nodes[index]));
+        if (size > RC_BYTES - bytes)
+        {
+            return 0;
+        }
+        bytes += size;
+    }
+    if (dvm_retirement_reserve(leaves, bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    LeafRetirement *entry = malloc(sizeof(*entry));
+    FrameRetirement *records = malloc(sizeof(*records) + group->nodes_used * sizeof(void *));
+    RecordGroup *snapshot = malloc(sizeof(*snapshot));
+    DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
+    unsigned long epoch = dvm_world_retire_epoch(world);
+    if (!entry || !records || !snapshot || !roots || !epoch)
+    {
+        if (roots)
+        {
+            dvm_runtime_root_batch_destroy(&roots);
+        }
+        free(snapshot);
+        free(records);
+        free(entry);
+        dvm_retirement_cancel(leaves, &token);
+        return 0;
+    }
+    records->roots = roots;
+    records->count = group->nodes_used;
+    for (unsigned int index = 0; index < group->nodes_used; index++)
+    {
+        records->keys[index] = D2H(group->nodes[index]);
+    }
+    *snapshot = *group;
+    if (!dvm_runtime_root_batch_publish(roots, records->keys, records->count))
+    {
+        abort();
+    }
+    for (size_t index = 0; index < records->count; index++)
+    {
+        Heap *heap = records->keys[index];
+        Setmark(heap);
+    }
+    *entry = (LeafRetirement){.epoch = epoch, .records = records, .snapshot = snapshot};
+    int became_ready;
+    if (!dvm_retirement_commit_ready(leaves, &token, entry, &became_ready))
+    {
+        abort();
+    }
+    if (became_ready && notify_ready)
+    {
+        notify_ready();
+    }
+    return 1;
+}
+
+
 /* [GC:] value has passed destroy's retained block check. Keep its retiring reference
  * as queue ownership rather than publishing an unrooted zero-count object.
  * A failed ptradd leaves ownership untouched and restores the caller error text,
@@ -313,6 +414,12 @@ int dvm_runtime_rc_defer(void *value)
         if (!queued_record_group(value, 0, &group))
         {
             return 0;
+        }
+        if (defer_record_group(&group))
+        {
+            enqueued++;
+            helper_enqueued += helper != 0;
+            return 1;
         }
     }
     bytes = poolmsize(heapmem,heap);
@@ -679,6 +786,40 @@ static unsigned int drain_shared_children(size_t budget)
 }
 
 
+/* The producer proved closure under exclusive admission and transferred the
+ * sole outside owner. Wait out old borrows before touching the saved cells. */
+static void reclaim_detached_records(LeafRetirement *entry, int shared)
+{
+    FrameRetirement *records = entry->records;
+    unlink_record_group(entry->snapshot);
+    free(entry->snapshot);
+    if (!dvm_runtime_root_batch_clear(records->roots) ||
+        !dvm_runtime_root_batch_destroy(&records->roots))
+    {
+        abort();
+    }
+    for (size_t index = 0; index < records->count; index++)
+    {
+        Heap *heap = records->keys[index];
+        if (shared)
+        {
+            if (dvm_refcount_release_u(&heap->ref) != DVM_REFCOUNT_LAST)
+            {
+                abort();
+            }
+            release_owned_descriptor(heap->t);
+            poolfree(heapmem, heap);
+        }
+        else
+        {
+            destroy(H2D(void *, heap));
+        }
+    }
+    free(records);
+    record_groups++;
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * and touches only the leaf queue. Cycles cannot run during this callback. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
@@ -698,8 +839,29 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         while (budget && !heapmonitor)
         {
             LeafRetirement *entry = dvm_retirement_peek(leaves);
-            if (!entry || !dvm_world_epoch_elapsed(world, entry->epoch) ||
-                !leaf_eligible(entry->heap))
+            if (!entry || !dvm_world_epoch_elapsed(world, entry->epoch))
+            {
+                break;
+            }
+            if (entry->records)
+            {
+                void *value;
+                unsigned long bytes;
+                if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry)
+                {
+                    abort();
+                }
+                DVM_WorldState activity;
+                shared_record_groups_with_peer += dvm_world_state(world, &activity) && activity.active > 1;
+                reclaim_detached_records(entry, 1);
+                shared_record_groups++;
+                free(entry);
+                released++;
+                budget--;
+                completed++;
+                continue;
+            }
+            if (!leaf_eligible(entry->heap))
             {
                 break;
             }
@@ -725,7 +887,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 int peer = dvm_world_state(world, &activity) && activity.active > 1;
                 if (type == &Tarray)
                 {
-                    release_array_descriptor(H2D(Array *, entry->heap)->t);
+                    release_owned_descriptor(H2D(Array *, entry->heap)->t);
                     shared_arrays++;
                     shared_array_graphs += has_children;
                     shared_arrays_with_peer += peer;
@@ -777,23 +939,7 @@ static void break_queued_record_group(void *value)
     {
         return;
     }
-    for (unsigned int index = 1; index < group.nodes_used; index++)
-    {
-        if (dvm_refcount_retain_u(&D2H(group.nodes[index])->ref) != DVM_REFCOUNT_LIVE)
-        {
-            abort();
-        }
-    }
-    for (unsigned int index = 0; index < group.edges_used; index++)
-    {
-        void *edge = H;
-        Heap *target = D2H(group.nodes[group.targets[index]]);
-        memcpy(group.cells[index], &edge, sizeof(edge));
-        if (!dvm_refcount_drop_nonfinal_u(&target->ref))
-        {
-            abort();
-        }
-    }
+    unlink_record_group(&group);
     for (unsigned int index = 1; index < group.nodes_used; index++)
     {
         destroy(group.nodes[index]);
@@ -829,8 +975,15 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     {
         LeafRetirement *entry = value;
         budget--;
-        ptrdel(entry->heap);
-        destroy(H2D(void *, entry->heap));
+        if (entry->records)
+        {
+            reclaim_detached_records(entry, 0);
+        }
+        else
+        {
+            ptrdel(entry->heap);
+            destroy(H2D(void *, entry->heap));
+        }
         free(entry);
         released++;
     }
@@ -922,8 +1075,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer);
     }
     if (diagnostics)
     {

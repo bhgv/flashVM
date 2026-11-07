@@ -392,6 +392,21 @@ int dvm_world_read_end(DVM_WorldParticipant *participant)
 }
 
 
+/* Exclusive callers use this before transferring a closed graph. */
+int dvm_world_has_borrowers(DVM_NativeWorld *world)
+{
+    int borrowed = 0;
+    fvm_port_sync_lock(world->sync);
+    for (DVM_WorldParticipant *reader = world->participants;
+         reader && !borrowed; reader = reader->next)
+    {
+        borrowed = reader->read_depth != 0;
+    }
+    fvm_port_sync_unlock(world->sync);
+    return borrowed;
+}
+
+
 /* Capture a retirement generation after withdrawing the pointer from new
  * readers. A zero result at counter exhaustion disables concurrent reclaim. */
 unsigned long dvm_world_retire_epoch(DVM_NativeWorld *world)

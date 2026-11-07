@@ -159,6 +159,9 @@ int dvm_world_collector_owns(DVM_NativeWorld *world);
 int dvm_world_read_begin(DVM_WorldParticipant *participant);
 int dvm_world_read_end(DVM_WorldParticipant *participant);
 
+/* Observe announced pointer borrows under the world mutex. */
+int dvm_world_has_borrowers(DVM_NativeWorld *world);
+
 /* After unlinking a retired object, issue its epoch. Zero disables early
  * reclamation. A positive observation covers old admission intervals and explicit borrows.
  * Pointers retained outside admission require an explicit borrow. */
