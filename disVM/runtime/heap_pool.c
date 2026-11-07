@@ -232,6 +232,20 @@ DVM_HeapGeneration dvm_heap_pool_generation(Pool *pool, void *value)
 }
 
 
+DVM_HeapKey dvm_heap_pool_key(Pool *pool, void *value)
+{
+    DVM_HeapGeneration generation = dvm_heap_pool_generation(pool, value);
+    return (DVM_HeapKey){generation ? (uintptr_t)value : 0, generation};
+}
+
+
+int dvm_heap_pool_key_matches(Pool *pool, void *value, DVM_HeapKey key)
+{
+    return key.generation && key.address == (uintptr_t)value &&
+        key.generation == dvm_heap_pool_generation(pool, value);
+}
+
+
 /* Borrow stable arena header. Its raw block walk needs stopped-world exclusion
  * or complete caller quiescence; this return does not carry the metadata lock. */
 Bhdr *poolchain(Pool *pool)

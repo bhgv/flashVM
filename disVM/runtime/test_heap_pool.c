@@ -154,12 +154,16 @@ int main(int argc, char **argv)
     }
     DVM_HeapGeneration generation = dvm_heap_pool_generation(&memory, anchor);
     check(generation != 0, "FAIL pool anchor generation");
-    void *address = anchor;
+    DVM_HeapKey old_key = dvm_heap_pool_key(&memory, anchor);
+    check(dvm_heap_pool_key_matches(&memory, anchor, old_key), "FAIL pool live key");
     poolfree(&memory, anchor);
     empty_chain();
     anchor = poolalloc(&memory, 32);
-    check(anchor == address && dvm_heap_pool_generation(&memory, anchor) > generation,
+    DVM_HeapKey new_key = dvm_heap_pool_key(&memory, anchor);
+    check(new_key.address == old_key.address && new_key.generation > generation,
         "FAIL pool generation on address reuse");
+    check(!dvm_heap_pool_key_matches(&memory, anchor, old_key) &&
+        dvm_heap_pool_key_matches(&memory, anchor, new_key), "FAIL pool stale key");
     poolfree(&memory, anchor);
     empty_chain();
     check(dvm_heap_pool_destroy(&memory), "FAIL pool quiescent destroy");

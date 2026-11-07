@@ -28,4 +28,8 @@ void *dvm_heap_pool_try_alloc(Pool *pool, ulong size);
 /* Query the generation of a caller-owned live allocation. Zero is invalid.
  * The caller pins the allocation throughout lookup; this is not a retain. */
 DVM_HeapGeneration dvm_heap_pool_generation(Pool *pool, void *value);
+/* Capture or compare a key while the caller independently owns value.
+ * An old key is metadata only and is never dereferenced. */
+DVM_HeapKey dvm_heap_pool_key(Pool *pool, void *value);
+int dvm_heap_pool_key_matches(Pool *pool, void *value, DVM_HeapKey key);
 #endif
