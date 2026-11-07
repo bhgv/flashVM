@@ -316,6 +316,18 @@ unsigned int dvm_runtime_rc_pending(void)
 }
 
 
+/* Check only committed native entries. Queue storage stays live through
+ * worker join, including during shutdown. No managed object is inspected. */
+int dvm_runtime_rc_ready(void)
+{
+    DVM_RetirementStats refs = {0};
+    DVM_RetirementStats packets = {0};
+    (void)dvm_retirement_statistics(retirement, &refs);
+    (void)dvm_retirement_statistics(frames, &packets);
+    return refs.ready != 0 || packets.ready != 0;
+}
+
+
 /* [GC:] Caller is the active mutator; the collector cannot access admission
  * fields until this owner leaves. Existing queued references stay rooted. */
 void dvm_runtime_rc_close(void)

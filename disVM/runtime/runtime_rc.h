@@ -32,6 +32,9 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget);
  * Source access, statistics and caller phase still require world admission. */
 unsigned int dvm_runtime_rc_pending(void);
 
+/* Inspect committed native queue entries without admission or heap reads. */
+int dvm_runtime_rc_ready(void);
+
 /* [GC:] Stop admission on the mutator before leaving its heap interval. */
 void dvm_runtime_rc_close(void);
 

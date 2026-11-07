@@ -56,6 +56,7 @@ typedef struct DVM_GCWorkersConfig
     DVM_GCPass Fast;                    /* Deferred reference-count releases. */
     DVM_GCPass Cycles;                  /* Incremental reachability/cycle passes. */
     void *user;                         /* Borrowed backend and its synchronized queues. */
+    int (*fast_ready)(void *user);       /* Optional native-only queue check before a Fast stop. */
 } DVM_GCWorkersConfig;
 
 

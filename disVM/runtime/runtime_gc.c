@@ -93,6 +93,14 @@ static void collector_environment(void)
 }
 
 
+/* A coalesced Fast request may outlive the entries that caused it. */
+static int fast_ready(void *user)
+{
+    USED(user);
+    return dvm_runtime_rc_ready() || dvm_managed_owner_pending() != 0;
+}
+
+
 /* [GC:] Release bounded top-level RC owners on the Fast OS worker with the
  * world stopped. context is bound; budget counts owners, user is unused. Nested
  * retained destructors are not preempted. Exceptions are process-fatal while
@@ -169,6 +177,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.create_context = collector_create;
     config.roots = publish;
     config.Fast.run = fast_pass;
+    config.fast_ready = fast_ready;
     config.Fast.budget = 256;
     config.Cycles.run = cycle_pass;
     config.Cycles.budget = 1;

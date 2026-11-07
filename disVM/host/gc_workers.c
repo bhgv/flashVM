@@ -66,6 +66,11 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int *executed)
     DVM_GCPass *pass = worker->kind == DVM_GC_FAST ? &workers->config.Fast : &workers->config.Cycles;
     DVM_GCWorkResult result;
     *executed = 0;
+    if (worker->kind == DVM_GC_FAST && workers->config.fast_ready &&
+        !workers->config.fast_ready(workers->config.user))
+    {
+        return DVM_GC_DONE;
+    }
     while (!dvm_world_stop_begin(workers->config.world, worker->context))
     {
         if (stopping(workers))
