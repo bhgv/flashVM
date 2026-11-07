@@ -140,7 +140,8 @@ int dvm_runtime_rc_defer(void *value)
     ptradd(heap);
     poperror();
     Setmark(heap);
-    if (!dvm_retirement_commit(retirement, &token, value))
+    int became_ready;
+    if (!dvm_retirement_commit_ready(retirement, &token, value, &became_ready))
     {
         (void)dvm_retirement_cancel(retirement, &token);
         ptrdel(heap);
@@ -148,7 +149,7 @@ int dvm_runtime_rc_defer(void *value)
     }
     enqueued++;
     helper_enqueued += helper != 0;
-    if (notify_ready)
+    if (became_ready && notify_ready)
     {
         notify_ready();
     }
@@ -278,11 +279,12 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
         dvm_retirement_cancel(frames, &token);
         return 0;
     }
-    if (!dvm_retirement_commit(frames, &token, packet))
+    int became_ready;
+    if (!dvm_retirement_commit_ready(frames, &token, packet, &became_ready))
     {
         abort();
     }
-    if (notify_ready)
+    if (became_ready && notify_ready)
     {
         notify_ready();
     }

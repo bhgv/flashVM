@@ -58,6 +58,12 @@ int dvm_retirement_commit(DVM_RetirementQueue *queue,
     DVM_RetirementReservation *token, void *value);
 
 
+/* As commit, with an optional output set on success iff the ready queue
+ * changed from empty to nonempty. A refused commit leaves it untouched. */
+int dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
+    DVM_RetirementReservation *token, void *value, int *became_ready);
+
+
 /* Cancel valid unpublished token, returning its slot/byte budget. Return0
  * unchanged for invalid token. Does not release any caller object/root. */
 int dvm_retirement_cancel(DVM_RetirementQueue *queue, DVM_RetirementReservation *token);

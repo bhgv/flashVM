@@ -161,10 +161,13 @@ static void boundaries(void)
         "FAIL retire unpublished take");
     dvm_retirement_close(queue);
     check(dvm_retirement_reserve(queue, 0, &empty) == DVM_RETIRE_CLOSED, "FAIL retire closed admission");
-    check(dvm_retirement_commit(queue, &b, &second) && dvm_retirement_commit(queue, &a, &first),
+    int edge = 0;
+    check(dvm_retirement_commit_ready(queue, &b, &second, &edge) && edge &&
+        dvm_retirement_commit_ready(queue, &a, &first, &edge),
         "FAIL retire accepted close commit");
     check(dvm_retirement_statistics(queue, &stats) && stats.ready == 2 && !stats.reserved && stats.bytes == 10,
         "FAIL retire ready publication");
+    check(!edge, "FAIL retire duplicate wake on nonempty queue");
     check(!dvm_retirement_destroy(&queue), "FAIL retire ready destroy");
     check(dvm_retirement_take(queue, &value, &bytes) && value == &second && bytes == 4,
         "FAIL retire commit FIFO");

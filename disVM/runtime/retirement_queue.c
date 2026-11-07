@@ -137,8 +137,8 @@ DVM_RetirementResult dvm_retirement_reserve(DVM_RetirementQueue *queue,
 
 /* Caller consumes reservation only after publication succeeds; ready FIFO is
  * commit order, not reservation order. No referent ownership operation occurs. */
-int dvm_retirement_commit(DVM_RetirementQueue *queue,
-    DVM_RetirementReservation *token, void *value)
+int dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
+    DVM_RetirementReservation *token, void *value, int *became_ready)
 {
     RetirementSlot *slot;
     if (!queue || !value)
@@ -153,6 +153,10 @@ int dvm_retirement_commit(DVM_RetirementQueue *queue,
         slot->state = 2;
         queue->ring[(queue->head+queue->ready)%queue->capacity] = token->slot;
         queue->reserved--;
+        if (became_ready)
+        {
+            *became_ready = queue->ready == 0;
+        }
         queue->ready++;
         token->queue = NULL;
         token->generation = 0;
@@ -160,6 +164,14 @@ int dvm_retirement_commit(DVM_RetirementQueue *queue,
     }
     fvm_port_sync_unlock(queue->sync);
     return slot != NULL;
+}
+
+
+/* Preserve the ordinary commit API for producers without a wake callback. */
+int dvm_retirement_commit(DVM_RetirementQueue *queue,
+    DVM_RetirementReservation *token, void *value)
+{
+    return dvm_retirement_commit_ready(queue, token, value, NULL);
 }
 
 
