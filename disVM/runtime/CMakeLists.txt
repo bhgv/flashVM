@@ -1992,6 +1992,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
   "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis" --idle-cycles)
  set_tests_properties(disvm_idle_cycle_gc PROPERTIES TIMEOUT 130)
+ set(record_cycle_overlap_module "${CMAKE_CURRENT_BINARY_DIR}/record-cycle-overlap.dis")
+ add_custom_command(OUTPUT "${record_cycle_overlap_module}"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module"
+   -o "${record_cycle_overlap_module}" "${CMAKE_CURRENT_SOURCE_DIR}/record_cycle_overlap.b"
+  DEPENDS limbo-bootstrap "${CMAKE_CURRENT_SOURCE_DIR}/record_cycle_overlap.b" ${module_headers}
+  VERBATIM)
+ add_custom_target(disvm_record_cycle_overlap_module ALL DEPENDS "${record_cycle_overlap_module}")
+ add_test(NAME disvm_record_cycle_overlap COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
+  "${record_cycle_overlap_module}")
+ set_tests_properties(disvm_record_cycle_overlap PROPERTIES TIMEOUT 330)
+
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
