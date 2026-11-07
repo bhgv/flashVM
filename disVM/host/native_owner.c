@@ -48,6 +48,31 @@ int dvm_native_owner_enter(DVM_HeapOwner *owner)
 }
 
 
+/* Collectors borrow an idle registration without blocking other owners. */
+int dvm_native_owner_try_enter_idle_shared(DVM_HeapOwner *owner)
+{
+    if (!current(owner) || owner->phase != DVM_HEAP_IDLE ||
+        !dvm_world_try_enter_shared(owner->roots))
+    {
+        return 0;
+    }
+    owner->phase = DVM_HEAP_SHARED;
+    return 1;
+}
+
+
+int dvm_native_owner_leave_idle_shared(DVM_HeapOwner *owner)
+{
+    if (!current(owner) || owner->phase != DVM_HEAP_SHARED ||
+        !dvm_world_leave(owner->roots))
+    {
+        return 0;
+    }
+    owner->phase = DVM_HEAP_IDLE;
+    return 1;
+}
+
+
 /* [GC:] Publish ACTIVE roots and return IDLE. owner is borrowed, no allocation;
  * pending epoch samples refuse before relinquishing any managed access. */
 int dvm_native_owner_leave(DVM_HeapOwner *owner)

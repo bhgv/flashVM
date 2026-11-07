@@ -49,6 +49,10 @@ int dvm_native_owner_attach(DVM_HeapOwner *owner, DVM_NativeWorld *world);
  * Return zero for wrong phase/foreign owner without consuming an admission. */
 int dvm_native_owner_enter(DVM_HeapOwner *owner);
 
+/* Pair a try-only shared lease with return to an idle registration. */
+int dvm_native_owner_try_enter_idle_shared(DVM_HeapOwner *owner);
+int dvm_native_owner_leave_idle_shared(DVM_HeapOwner *owner);
+
 
 /* [GC:] Publish stable roots and leave ACTIVE for IDLE. No heap access afterward;
  * no native-call token is created. Pending progress/foreign owners are refused. */

@@ -9,6 +9,8 @@
 #include "disvm/native_owner.h"
 #include "runtime_rc.h"
 #include "runtime_gc.h"
+#include "managed_owner.h"
+#include "disvm/range_access.h"
 #include "retirement_queue.h"
 #include "root_batch.h"
 #include "root_registry.h"
@@ -48,6 +50,7 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
+static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_groups;
 static unsigned long shared_record_groups_with_peer;
 static unsigned long record_groups; /* Closed record groups reclaimed from queued owners. */
@@ -89,6 +92,7 @@ static int admitted(void)
 void dvm_runtime_rc_start(void)
 {
     owner = dvm_native_context_current();
+    record_cells = dvm_managed_cell_domain();
     world = dvm_native_owner_world(dvm_native_owner_current());
     helper_enqueued = 0;
     helper_saturated = 0;
@@ -256,13 +260,15 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
                 }
                 void *cell = (unsigned char *)record + slot * sizeof(edge);
                 memcpy(&edge, cell, sizeof(edge));
-                if (edge == H)
-                {
-                    continue;
-                }
                 if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
                 {
                     return 0;
+                }
+                group->cells[group->edges_used] = cell;
+                if (edge == H)
+                {
+                    group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
+                    continue;
                 }
                 unsigned int target = 0;
                 while (target < group->nodes_used && group->nodes[target] != edge)
@@ -278,7 +284,6 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
                     group->nodes[group->nodes_used++] = edge;
                 }
                 group->incoming[target]++;
-                group->cells[group->edges_used] = cell;
                 group->targets[group->edges_used++] = target;
             }
         }
@@ -311,6 +316,10 @@ static void unlink_record_group(const RecordGroup *group)
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
+        if (group->targets[index] == RECORD_GROUP_LIMIT)
+        {
+            continue;
+        }
         void *edge = H;
         Heap *target = D2H(group->nodes[group->targets[index]]);
         memcpy(group->cells[index], &edge, sizeof(edge));
@@ -813,6 +822,45 @@ static int claim_record_group(const RecordGroup *group)
 }
 
 
+/* Re-read the entire edge set under the guest's canonical cell guards.
+ * The rooted entry pins storage. Keep every acquired stripe through the count
+ * claim so a guarded reader cannot observe a partially claimed graph. */
+static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group)
+{
+    DVM_RangeAccess access = {0};
+    DVM_CellResult result = dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access);
+    if (result != DVM_CELL_ACQUIRED)
+    {
+        return result;
+    }
+    for (unsigned int index = 0; index < group->edges_used; index++)
+    {
+        result = dvm_range_access_extend(&access, group->cells[index], sizeof(void *));
+        if (result != DVM_CELL_ACQUIRED)
+        {
+            break;
+        }
+        void *edge;
+        memcpy(&edge, group->cells[index], sizeof(edge));
+        unsigned int target = group->targets[index];
+        if (edge != (target == RECORD_GROUP_LIMIT ? H : group->nodes[target]))
+        {
+            result = DVM_CELL_REFUSED;
+            break;
+        }
+    }
+    if (result == DVM_CELL_ACQUIRED && !claim_record_group(group))
+    {
+        result = DVM_CELL_REFUSED;
+    }
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return result;
+}
+
+
 /* The producer proved closure under exclusive admission and transferred the
  * sole outside owner. Wait out old borrows before touching the saved cells. */
 static void reclaim_detached_records(LeafRetirement *entry, int shared)
@@ -855,13 +903,13 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
     {
         return 0;
     }
-    DVM_WorldParticipant *reader = dvm_world_join(world, context);
-    if (!reader)
+    DVM_HeapOwner *reader = dvm_native_owner_current();
+    if (context != dvm_native_context_current() || !dvm_native_owner_attach(reader, world))
     {
         return 0;
     }
     unsigned int completed = 0;
-    if (dvm_world_try_enter_shared(reader))
+    if (dvm_native_owner_try_enter_idle_shared(reader))
     {
         while (budget && !heapmonitor)
         {
@@ -872,9 +920,14 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (entry->records)
             {
-                if (entry->claim_refused || !claim_record_group(entry->snapshot))
+                if (entry->claim_refused)
                 {
-                    entry->claim_refused = 1;
+                    break;
+                }
+                DVM_CellResult claim = validate_and_claim_record_group(entry->snapshot);
+                if (claim != DVM_CELL_ACQUIRED)
+                {
+                    entry->claim_refused = claim != DVM_CELL_BUSY;
                     break;
                 }
                 void *value;
@@ -948,13 +1001,13 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         {
             completed += drain_shared_children(budget);
         }
-        if (!dvm_world_leave(reader))
+        if (!dvm_native_owner_leave_idle_shared(reader))
         {
             abort();
         }
     }
 
-    if (!dvm_world_detach(reader))
+    if (!dvm_native_owner_detach(reader))
     {
         abort();
     }
