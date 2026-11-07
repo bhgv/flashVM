@@ -43,7 +43,7 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
-static unsigned long record_rings; /* Singly linked record rings reclaimed from queued owners. */
+static unsigned long record_groups; /* Closed record groups reclaimed from queued owners. */
 static unsigned long shared_children; /* Packet references consumed under shared admission. */
 static unsigned long frames_drained; /* Stopped collector's packet count. */
 
@@ -101,7 +101,7 @@ void dvm_runtime_rc_start(void)
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;
-    record_rings = 0;
+    record_groups = 0;
     enqueued = 0;
     released = 0;
     saturated = 0;
@@ -194,77 +194,96 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
-/* Locate the sole mapped reference in an ordinary record. */
-static void *record_ring_edge(void *record, const Type *type)
+#define RECORD_GROUP_LIMIT 32
+#define RECORD_EDGE_LIMIT 128
+
+typedef struct RecordGroup
 {
-    if (!type || type->free != freeheap || type->size < (int)sizeof(void *))
-    {
-        return NULL;
-    }
-    void *cell = NULL;
-    for (int byte = 0; byte < type->np; byte++)
-    {
-        unsigned int bits = type->map[byte];
-        if (!bits)
-        {
-            continue;
-        }
-        if (cell || (bits & (bits - 1)))
-        {
-            return NULL;
-        }
-        unsigned int bit = 0;
-        while (!(bits & (0x80U >> bit)))
-        {
-            bit++;
-        }
-        size_t slot = (size_t)byte * 8 + bit;
-        if (slot >= (size_t)type->size / sizeof(void *))
-        {
-            return NULL;
-        }
-        cell = (unsigned char *)record + slot * sizeof(void *);
-    }
-    return cell;
-}
+    void *nodes[RECORD_GROUP_LIMIT];
+    unsigned int incoming[RECORD_GROUP_LIMIT];
+    void *cells[RECORD_EDGE_LIMIT];
+    unsigned int targets[RECORD_EDGE_LIMIT];
+    unsigned int nodes_used;
+    unsigned int edges_used;
+} RecordGroup;
 
 
-/* Return the closing reference cell of a bounded, singly linked ring. The caller
- * owns start and holds exclusive admission. Every other record must have
- * exactly one incoming owner and no registered roots. */
-static void *queued_record_ring(void *start, unsigned long start_roots)
+/* Snapshot a closed graph of ordinary records under exclusive admission.
+ * The caller owns start. Only its own queue root may be present. */
+static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group)
 {
-    void *record = start;
     if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
     {
-        return NULL;
+        return 0;
     }
-    for (unsigned int index = 0; index < 32; index++)
+    group->nodes[0] = start;
+    group->nodes_used = 1;
+    for (unsigned int index = 0; index < group->nodes_used; index++)
     {
+        void *record = group->nodes[index];
         Heap *heap = D2H(record);
-        void *edge;
-        if (dvm_refcount_load_u(&heap->ref) != (index == 0 ? 2UL : 1UL) ||
+        Type *type = heap->t;
+        if (!type || type->free != freeheap || type->size < (int)sizeof(void *) ||
             dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
         {
-            return NULL;
+            return 0;
         }
-        void *cell = record_ring_edge(record, heap->t);
-        if (!cell)
+        for (int byte = 0; byte < type->np; byte++)
         {
-            return NULL;
+            for (unsigned int bit = 0; bit < 8; bit++)
+            {
+                if (!(type->map[byte] & (0x80U >> bit)))
+                {
+                    continue;
+                }
+                size_t slot = (size_t)byte * 8 + bit;
+                void *edge;
+                if (slot >= (size_t)type->size / sizeof(edge))
+                {
+                    return 0;
+                }
+                void *cell = (unsigned char *)record + slot * sizeof(edge);
+                memcpy(&edge, cell, sizeof(edge));
+                if (edge == H)
+                {
+                    continue;
+                }
+                if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
+                {
+                    return 0;
+                }
+                unsigned int target = 0;
+                while (target < group->nodes_used && group->nodes[target] != edge)
+                {
+                    target++;
+                }
+                if (target == group->nodes_used)
+                {
+                    if (target == RECORD_GROUP_LIMIT)
+                    {
+                        return 0;
+                    }
+                    group->nodes[group->nodes_used++] = edge;
+                }
+                group->incoming[target]++;
+                group->cells[group->edges_used] = cell;
+                group->targets[group->edges_used++] = target;
+            }
         }
-        memcpy(&edge, cell, sizeof(edge));
-        if (edge == start)
-        {
-            return cell;
-        }
-        if (!edge || edge == H)
-        {
-            return NULL;
-        }
-        record = edge;
     }
-    return NULL;
+    if (!group->incoming[0])
+    {
+        return 0;
+    }
+    for (unsigned int index = 0; index < group->nodes_used; index++)
+    {
+        Heap *heap = D2H(group->nodes[index]);
+        if (dvm_refcount_load_u(&heap->ref) != group->incoming[index] + (index == 0))
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
@@ -288,9 +307,13 @@ int dvm_runtime_rc_defer(void *value)
     }
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
-    if (dvm_refcount_load_u(&heap->ref) != 1 && !queued_record_ring(value, 0))
+    if (dvm_refcount_load_u(&heap->ref) != 1)
     {
-        return 0;
+        RecordGroup group = {0};
+        if (!queued_record_group(value, 0, &group))
+        {
+            return 0;
+        }
     }
     bytes = poolmsize(heapmem,heap);
     if (defer_leaf(heap, bytes, 1))
@@ -745,21 +768,37 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
 }
 
 
-/* Revalidate the ring while the queue still owns and roots its first record. */
-static void break_queued_record_ring(void *value)
+/* Revalidate under collector admission before mutating any edge. Keep one
+ * owner per node through the whole unlink, then use ordinary destruction. */
+static void break_queued_record_group(void *value)
 {
-    Heap *heap = D2H(value);
-    void *closing = queued_record_ring(value, 1);
-    if (closing)
+    RecordGroup group = {0};
+    if (!queued_record_group(value, 1, &group))
     {
-        void *edge = H;
-        memcpy(closing, &edge, sizeof(edge));
-        if (!dvm_refcount_drop_nonfinal_u(&heap->ref))
+        return;
+    }
+    for (unsigned int index = 1; index < group.nodes_used; index++)
+    {
+        if (dvm_refcount_retain_u(&D2H(group.nodes[index])->ref) != DVM_REFCOUNT_LIVE)
         {
             abort();
         }
-        record_rings++;
     }
+    for (unsigned int index = 0; index < group.edges_used; index++)
+    {
+        void *edge = H;
+        Heap *target = D2H(group.nodes[group.targets[index]]);
+        memcpy(group.cells[index], &edge, sizeof(edge));
+        if (!dvm_refcount_drop_nonfinal_u(&target->ref))
+        {
+            abort();
+        }
+    }
+    for (unsigned int index = 1; index < group.nodes_used; index++)
+    {
+        destroy(group.nodes[index]);
+    }
+    record_groups++;
 }
 
 
@@ -781,7 +820,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     {
         (void)bytes;
         budget--;
-        break_queued_record_ring(value);
+        break_queued_record_group(value);
         ptrdel(D2H(value));
         destroy(value);
         released++;
@@ -801,7 +840,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         budget--;
         for (size_t index = packet->next; index < packet->count; index++)
         {
-            break_queued_record_ring(H2D(void *, packet->keys[index]));
+            break_queued_record_group(H2D(void *, packet->keys[index]));
             if (!dvm_runtime_root_batch_remove(packet->roots, index))
             {
                 abort();
@@ -883,8 +922,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_rings=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_rings);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups);
     }
     if (diagnostics)
     {
