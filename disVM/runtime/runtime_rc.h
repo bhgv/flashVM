@@ -1,6 +1,7 @@
 /* Deferred RC ownership inside the production stopped-world heap protocol. */
 #ifndef DVM_RUNTIME_RC_H
 #define DVM_RUNTIME_RC_H
+#include <stddef.h>
 
 /* [GC:] Enable an empty bounded queue on the current Dis mutator. Called only
  * after collector startup, before any collection request. No ownership transfer. Native metadata
@@ -43,4 +44,8 @@ void dvm_runtime_rc_close(void);
 
 /* [GC:] Report/reset after collector join. Returns zero if owners remain. */
 int dvm_runtime_rc_finish(int diagnostics);
+struct DVM_NativeContext;
+/* Process eligible leaf strings on the Fast lane without stopping guests. */
+unsigned int dvm_runtime_rc_shared_strings(struct DVM_NativeContext *context, size_t budget);
+
 #endif

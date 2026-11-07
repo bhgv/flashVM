@@ -203,6 +203,20 @@ int dvm_retirement_cancel(DVM_RetirementQueue *queue, DVM_RetirementReservation 
 }
 
 
+/* Read the head identity for the single consumer. Producers only append. */
+void *dvm_retirement_peek(DVM_RetirementQueue *queue)
+{
+    if (!queue)
+    {
+        return NULL;
+    }
+    fvm_port_sync_lock(queue->sync);
+    void *value = queue->ready ? queue->slots[queue->ring[queue->head]].value : NULL;
+    fvm_port_sync_unlock(queue->sync);
+    return value;
+}
+
+
 /* Detach before caller runs any root removal/destructor. Empty output unchanged. */
 int dvm_retirement_take(DVM_RetirementQueue *queue, void **value, unsigned long *bytes)
 {

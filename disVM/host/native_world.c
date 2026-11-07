@@ -257,7 +257,7 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
 
 
 /* A new active interval cannot overlap an already requested root scan. */
-static int enter_world(DVM_WorldParticipant *participant, int shared, int promote)
+static int enter_world(DVM_WorldParticipant *participant, int shared, int promote, int try_only)
 {
     DVM_NativeWorld *world;
     size_t ticket = 0;
@@ -296,6 +296,12 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
         fvm_port_sync_signal_all(world->sync);
     }
     else if (participant->active || (shared && (!world->serial || world->sealed)))
+    {
+        fvm_port_sync_unlock(world->sync);
+        return 0;
+    }
+    if (try_only && (world->collector || world->resuming || world->waiting ||
+        world->active != world->shared))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
@@ -428,14 +434,21 @@ int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch)
 /* Enter the ordinary exclusive interval in a serialized world. */
 int dvm_world_enter(DVM_WorldParticipant *participant)
 {
-    return enter_world(participant, 0, 0);
+    return enter_world(participant, 0, 0, 0);
 }
 
 
 /* Enter an audited shared interval without bypassing earlier FIFO tickets. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant)
 {
-    return enter_world(participant, 1, 0);
+    return enter_world(participant, 1, 0, 0);
+}
+
+
+/* Attempt one shared turn without waiting behind a collector or older ticket. */
+int dvm_world_try_enter_shared(DVM_WorldParticipant *participant)
+{
+    return enter_world(participant, 1, 0, 1);
 }
 
 
@@ -468,7 +481,7 @@ int dvm_world_try_share(DVM_WorldParticipant *participant)
 
 int dvm_world_promote_shared(DVM_WorldParticipant *participant)
 {
-    return enter_world(participant, 0, 1);
+    return enter_world(participant, 0, 1, 0);
 }
 
 
@@ -537,11 +550,14 @@ static int stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector, int 
         return 0;
     }
     world->collector = collector;
-    dvm_world_request_store(&world->request,1);
-    fvm_port_sync_signal_all(world->sync);
-    while (world->active != world->parked)
+    if (!quiescent)
     {
-        fvm_port_sync_wait(world->sync);
+        dvm_world_request_store(&world->request,1);
+        fvm_port_sync_signal_all(world->sync);
+        while (world->active != world->parked)
+        {
+            fvm_port_sync_wait(world->sync);
+        }
     }
     world->stopped = 1;
     fvm_port_sync_unlock(world->sync);

@@ -104,6 +104,14 @@ static void wake_fast(void)
 }
 
 
+/* Try leaf retirement before requesting an idle heap turn. */
+static unsigned int fast_shared(DVM_NativeContext *context, size_t budget, void *user)
+{
+    USED(user);
+    return dvm_runtime_rc_shared_strings(context, budget);
+}
+
+
 /* A coalesced Fast request may outlive the entries that caused it. */
 static int fast_ready(void *user)
 {
@@ -189,6 +197,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.roots = publish;
     config.Fast.run = fast_pass;
     config.fast_ready = fast_ready;
+    config.fast_shared = fast_shared;
     config.fast_quiescent_only = 1;
     config.Fast.pause_us = 1000;
     config.Fast.budget = 256;

@@ -57,6 +57,7 @@ typedef struct DVM_GCWorkersConfig
     DVM_GCPass Cycles;                  /* Incremental reachability/cycle passes. */
     void *user;                         /* Borrowed backend and its synchronized queues. */
     int fast_quiescent_only;            /* Fast claims idle admission without parking guests. */
+    unsigned int (*fast_shared)(DVM_NativeContext *, size_t, void *); /* Optional shared leaf work. */
     int (*fast_ready)(void *user);       /* Optional native-only queue check before a Fast stop. */
 } DVM_GCWorkersConfig;
 

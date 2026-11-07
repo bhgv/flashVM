@@ -170,6 +170,8 @@ static void execute(void *argument)
     else
     {
         wait_flag(shared,&shared->first_active);
+        check(!dvm_world_try_enter_shared(worker->roots),
+            "collector-style shared attempt must refuse an active exclusive owner");
         check(dvm_world_enter(worker->roots),"queued older ticket");
         initial(worker);
         check(dvm_world_leave(worker->roots),"release older ticket");

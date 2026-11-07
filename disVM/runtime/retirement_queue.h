@@ -69,6 +69,9 @@ int dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
 int dvm_retirement_cancel(DVM_RetirementQueue *queue, DVM_RetirementReservation *token);
 
 
+/* Borrow head identity until the sole consumer takes it. */
+void *dvm_retirement_peek(DVM_RetirementQueue *queue);
+
 /* Move oldest committed identity into *value and its extent into *bytes.
  * Output pointers are private, nonaliasing and live; unchanged on empty/invalid.
  * Return1 if moved. Caller handles root/destruction only AFTER this returns.

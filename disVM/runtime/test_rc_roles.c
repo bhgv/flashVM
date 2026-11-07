@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+Type Tstring; /* Type identity only. This fixture owns no real strings. */
+void (*heapmonitor)(int, void *, ulong); /* Monitoring stays disabled. */
 Pool *heapmem; /* Never used: rejected roles must not ask the allocator anything. */
 int mutator;  /* Link retained marking declarations; marking is forbidden here. */
 int nprop;    /* Link retained marking declarations; no mark may be published. */
@@ -37,6 +39,13 @@ ulong poolmsize(Pool *pool, void *block)
     (void)block;
     fputs("RC role reached forbidden payload operation\n", stderr);
     exit(10);
+}
+
+
+/* The role fixture may never free a managed pool block. */
+void poolfree(Pool *pool, void *value)
+{
+    (void)poolmsize(pool, value);
 }
 
 

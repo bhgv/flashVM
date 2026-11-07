@@ -104,6 +104,9 @@ int dvm_world_enter(DVM_WorldParticipant *participant);
  * before collection. This grants no permission to run ordinary VM code. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant);
 
+/* Attempt shared admission without taking a ticket if it would have to wait. */
+int dvm_world_try_enter_shared(DVM_WorldParticipant *participant);
+
 /* Promote an active shared owner. If it must wait, publish its roots and
  * join the exclusive FIFO without an intervening unlocked interval. */
 /* Convert an active exclusive turn if neither GC nor an earlier ticket waits. */
