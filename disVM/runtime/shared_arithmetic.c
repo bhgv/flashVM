@@ -2,6 +2,7 @@
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
+#include "kernel.h"
 #include "isa.h"
 #include "interp.h"
 #include "raise.h"
@@ -1309,8 +1310,9 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     if (dvm_runtime_shared_extend_quantum && guest && guest->pid > 1 &&
         !dvm_runtime_gc_shared_has_exclusive_waiters())
     {
-        /* Bound the extension even if the next operation is always shared. */
-        int extra = quantum < 256 ? quantum : 256;
+        /* Allow one more default quantum. Queued exclusive work still
+         * ends the interval at the next periodic admission check. */
+        int extra = PQUANTA;
         if (limit <= INT_MAX - extra)
         {
             limit += extra;
