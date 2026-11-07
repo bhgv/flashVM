@@ -27,14 +27,16 @@ typedef struct FrameRetirement
 } FrameRetirement;
 
 /* Keep the original strong owner and registry root until the old readers end. */
-typedef struct StringRetirement
+typedef struct LeafRetirement
 {
     Heap *heap;           /* Rooted string header until the sole consumer takes it. */
     unsigned long epoch;  /* Last potentially interested reader generation. */
-} StringRetirement;
+} LeafRetirement;
 
-static DVM_RetirementQueue *strings; /* Plain strings eligible for shared release. */
+static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
 static unsigned long shared_strings_with_peer; /* Final releases with another active owner. */
+static unsigned long shared_arrays; /* Final scalar-array releases on Fast. */
+static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an active guest. */
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
@@ -79,14 +81,16 @@ void dvm_runtime_rc_start(void)
     helper_enqueued = 0;
     helper_saturated = 0;
     helper_byte_limited = 0;
-    if (retirement || frames || strings)
+    if (retirement || frames || leaves)
     {
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
     }
     retirement = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     frames = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    strings = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    shared_arrays = 0;
+    shared_arrays_with_peer = 0;
     shared_strings = 0;
     shared_strings_with_peer = 0;
     frames_drained = 0;
@@ -105,24 +109,56 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 }
 
 
-/* Try the shared-string queue while the destroying guest owns exclusion.
- * All failure paths keep the existing owner available to ordinary destroy. */
-static int defer_string(Heap *heap, unsigned long bytes)
+/* Read leaf payload only while its queue or caller owns a strong reference.
+ * Scalar array views and arrays with mapped elements need ordinary cleanup. */
+static int leaf_eligible(const Heap *heap)
 {
-    if (!strings || heapmonitor || heap->t != &Tstring ||
-        H2D(String *, heap)->tmp || bytes > RC_BYTES)
+    if (heap->t == &Tstring)
+    {
+        return !H2D(const String *, heap)->tmp;
+    }
+    if (heap->t == &Tarray)
+    {
+        const Array *array = H2D(const Array *, heap);
+        return array->root == H && array->t && array->t != H && array->t->np == 0;
+    }
+    return 0;
+}
+
+
+/* Drop the array's independent descriptor owner. No VM callback is invoked. */
+static void release_array_descriptor(Type *type)
+{
+    DVM_RefcountResult result = dvm_refcount_release_i(&type->ref);
+    if (result == DVM_REFCOUNT_LAST)
+    {
+        free(type->initialize);
+        free(type);
+    }
+    else if (result != DVM_REFCOUNT_LIVE)
+    {
+        abort();
+    }
+}
+
+
+/* Try the shared leaf queue while the destroying guest owns exclusion.
+ * All failure paths keep the existing owner available to ordinary destroy. */
+static int defer_leaf(Heap *heap, unsigned long bytes)
+{
+    if (!leaves || heapmonitor || !leaf_eligible(heap) || bytes > RC_BYTES)
     {
         return 0;
     }
     DVM_RetirementReservation token = {0};
-    if (dvm_retirement_reserve(strings, bytes, &token) != DVM_RETIRE_OK)
+    if (dvm_retirement_reserve(leaves, bytes, &token) != DVM_RETIRE_OK)
     {
         return 0;
     }
-    StringRetirement *entry = malloc(sizeof(*entry));
+    LeafRetirement *entry = malloc(sizeof(*entry));
     if (!entry)
     {
-        dvm_retirement_cancel(strings, &token);
+        dvm_retirement_cancel(leaves, &token);
         return 0;
     }
     entry->heap = heap;
@@ -130,12 +166,12 @@ static int defer_string(Heap *heap, unsigned long bytes)
     if (!entry->epoch || !dvm_runtime_root_add(heap))
     {
         free(entry);
-        dvm_retirement_cancel(strings, &token);
+        dvm_retirement_cancel(leaves, &token);
         return 0;
     }
     Setmark(heap);
     int became_ready;
-    if (!dvm_retirement_commit_ready(strings, &token, entry, &became_ready))
+    if (!dvm_retirement_commit_ready(leaves, &token, entry, &became_ready))
     {
         abort();
     }
@@ -172,7 +208,7 @@ int dvm_runtime_rc_defer(void *value)
         return 0;
     }
     bytes = poolmsize(heapmem,heap);
-    if (defer_string(heap, bytes))
+    if (defer_leaf(heap, bytes))
     {
         enqueued++;
         helper_enqueued += helper != 0;
@@ -357,9 +393,9 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
 
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * and touches only the leaf queue. Cycles cannot run during this callback. */
-unsigned int dvm_runtime_rc_shared_strings(DVM_NativeContext *context, size_t budget)
+unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
-    if (!dvm_retirement_peek(strings))
+    if (!dvm_retirement_peek(leaves))
     {
         return 0;
     }
@@ -373,15 +409,15 @@ unsigned int dvm_runtime_rc_shared_strings(DVM_NativeContext *context, size_t bu
     {
         while (budget && !heapmonitor)
         {
-            StringRetirement *entry = dvm_retirement_peek(strings);
+            LeafRetirement *entry = dvm_retirement_peek(leaves);
             if (!entry || !dvm_world_epoch_elapsed(world, entry->epoch) ||
-                H2D(String *, entry->heap)->tmp)
+                !leaf_eligible(entry->heap))
             {
                 break;
             }
             void *value;
             unsigned long bytes;
-            if (!dvm_retirement_take(strings, &value, &bytes) || value != entry ||
+            if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
                 !dvm_runtime_root_remove(entry->heap))
             {
                 abort();
@@ -389,17 +425,25 @@ unsigned int dvm_runtime_rc_shared_strings(DVM_NativeContext *context, size_t bu
             DVM_RefcountResult result = dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
             {
-                if (dvm_refcount_release_i(&Tstring.ref) != DVM_REFCOUNT_LIVE)
+                Type *type = entry->heap->t;
+                DVM_WorldState activity;
+                int peer = dvm_world_state(world, &activity) && activity.active > 1;
+                if (type == &Tarray)
+                {
+                    release_array_descriptor(H2D(Array *, entry->heap)->t);
+                    shared_arrays++;
+                    shared_arrays_with_peer += peer;
+                }
+                else
+                {
+                    shared_strings++;
+                    shared_strings_with_peer += peer;
+                }
+                if (dvm_refcount_release_i(&type->ref) != DVM_REFCOUNT_LIVE)
                 {
                     abort();
                 }
-                DVM_WorldState activity;
-                if (dvm_world_state(world, &activity) && activity.active > 1)
-                {
-                    shared_strings_with_peer++;
-                }
                 poolfree(heapmem, entry->heap);
-                shared_strings++;
             }
             else if (result != DVM_REFCOUNT_LIVE)
             {
@@ -446,9 +490,9 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         destroy(value);
         released++;
     }
-    while (budget && dvm_retirement_take(strings, &value, &bytes))
+    while (budget && dvm_retirement_take(leaves, &value, &bytes))
     {
-        StringRetirement *entry = value;
+        LeafRetirement *entry = value;
         budget--;
         ptrdel(entry->heap);
         destroy(H2D(void *, entry->heap));
@@ -479,7 +523,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
     return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(strings) != NULL);
+        (dvm_retirement_peek(leaves) != NULL);
 }
 
 
@@ -495,7 +539,7 @@ unsigned int dvm_runtime_rc_pending(void)
         (void)dvm_retirement_statistics(frames, &frame_stats);
         (void)dvm_retirement_statistics(retirement, &stats);
         return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(strings) != NULL);
+        (dvm_retirement_peek(leaves) != NULL);
     }
     return stats.ready+stats.reserved;
 }
@@ -509,7 +553,7 @@ int dvm_runtime_rc_ready(void)
     DVM_RetirementStats packets = {0};
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
-    return refs.ready != 0 || packets.ready != 0 || dvm_retirement_peek(strings) != NULL;
+    return refs.ready != 0 || packets.ready != 0 || dvm_retirement_peek(leaves) != NULL;
 }
 
 
@@ -520,7 +564,7 @@ void dvm_runtime_rc_close(void)
     accepting = 0;
     dvm_retirement_close(retirement);
     dvm_retirement_close(frames);
-    dvm_retirement_close(strings);
+    dvm_retirement_close(leaves);
 }
 
 
@@ -548,8 +592,9 @@ int dvm_runtime_rc_finish(int diagnostics)
     if (diagnostics)
     {
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
+        printf("NATIVEARRAYRC shared=%lu with_peer=%lu\n", shared_arrays, shared_arrays_with_peer);
     }
-    result = (strings == NULL || dvm_retirement_destroy(&strings)) &&
+    result = (leaves == NULL || dvm_retirement_destroy(&leaves)) &&
         (retirement == NULL || dvm_retirement_destroy(&retirement)) &&
         (frames == NULL || dvm_retirement_destroy(&frames));
     if (result)

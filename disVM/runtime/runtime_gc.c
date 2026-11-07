@@ -108,7 +108,7 @@ static void wake_fast(void)
 static unsigned int fast_shared(DVM_NativeContext *context, size_t budget, void *user)
 {
     USED(user);
-    return dvm_runtime_rc_shared_strings(context, budget);
+    return dvm_runtime_rc_shared_leaves(context, budget);
 }
 
 

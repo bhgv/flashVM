@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+Type Tarray;  /* Type identity only. This fixture owns no real arrays. */
 Type Tstring; /* Type identity only. This fixture owns no real strings. */
 void (*heapmonitor)(int, void *, ulong); /* Monitoring stays disabled. */
 Pool *heapmem; /* Never used: rejected roles must not ask the allocator anything. */
