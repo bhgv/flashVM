@@ -51,9 +51,6 @@ DVM_NativeWorld *dvm_world_create_serial(int locked_poll);
  * out is caller-owned. This snapshot does not reserve an admission or root scan. */
 int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
 
-/* Observe queued exclusive turns under the world mutex. NULL returns zero. */
-size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world);
-
 /* Return peak SHARED occupancy of a borrowed live world, or zero for NULL. */
 size_t dvm_world_shared_peak(DVM_NativeWorld *world);
 
@@ -145,4 +142,14 @@ int dvm_world_collector_owns(DVM_NativeWorld *world);
 #ifdef __cplusplus
 }
 #endif
+/* Announce a bounded raw-pointer borrow before its first load. Owner-only,
+ * nestable and independent of ordinary admission. End after the last use. */
+int dvm_world_read_begin(DVM_WorldParticipant *participant);
+int dvm_world_read_end(DVM_WorldParticipant *participant);
+
+/* After unlinking a retired object, issue its epoch. Zero disables early
+ * reclamation. A positive observation covers only registered old borrows. */
+unsigned long dvm_world_retire_epoch(DVM_NativeWorld *world);
+int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch);
+
 #endif

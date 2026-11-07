@@ -146,6 +146,8 @@ static void execute(void *argument)
     if (!worker->identity)
     {
         check(dvm_world_enter(worker->roots),"first turn");
+        check(dvm_world_read_begin(worker->roots) && dvm_world_read_begin(worker->roots),
+            "announce nested raw borrows");
         check(!dvm_world_enter(worker->roots),"reject nested turn without consuming a ticket");
         fvm_port_sync_lock(shared->control);
         shared->first_active = 1;
@@ -162,6 +164,8 @@ static void execute(void *argument)
         fvm_port_sync_signal_all(shared->control);
         fvm_port_sync_unlock(shared->control);
         wait_flag(shared,&shared->stress);
+        check(dvm_world_read_end(worker->roots) && dvm_world_read_end(worker->roots),
+            "finish both raw borrows");
     }
     else
     {
@@ -285,11 +289,16 @@ int main(int argc, char **argv)
             fvm_port_thread_sleep_us(50);
         }
     } while (!admission.waiting);
+    unsigned long retired_epoch = dvm_world_retire_epoch(shared.world);
+    check(retired_epoch && !dvm_world_epoch_elapsed(shared.world, retired_epoch),
+        "old reader defers reclamation");
     fvm_port_sync_lock(shared.control);
     shared.release_first = 1;
     fvm_port_sync_signal_all(shared.control);
     fvm_port_sync_unlock(shared.control);
     wait_flag(&shared,&shared.progressed);
+    check(!dvm_world_epoch_elapsed(shared.world, retired_epoch),
+        "inactive old reader still pins retirement while peer progresses");
     check(!dvm_world_enter(workers[0].roots),"reject foreign owner");
     check(!dvm_world_destroy(shared.world),"reject live world destruction");
     for (index = 0; index < SCANS; index++)
@@ -328,6 +337,8 @@ int main(int argc, char **argv)
     }
     check(dvm_native_context_unbind(collector),"unbind collector");
     check(dvm_native_context_destroy(collector),"destroy collector");
+    check(dvm_world_epoch_elapsed(shared.world, retired_epoch),
+        "retirement becomes eligible after old borrows end");
     check(dvm_world_destroy(shared.world),"destroy empty domain");
     fvm_port_sync_destroy(shared.control);
     puts("PASS FIFO heap admission: two native REG owners, shared addw, native-wait progress, 201 root scans, complete joins");

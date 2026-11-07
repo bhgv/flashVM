@@ -3,6 +3,7 @@
 #include "channel_sync.h"
 #include "world_request.h"
 #include <stdlib.h>
+#include <limits.h>
 
 
 /* [GC:] Registered roots stay alive through detach. Only the owner mutates active
@@ -17,6 +18,8 @@ struct DVM_WorldParticipant
     void *process;              /* Root value published at leave/poll. */
     size_t fast_polls;           /* Owner-only count, never read by the collector. */
     size_t locked_polls;         /* Owner-only slow-path count. */
+    unsigned long read_epoch;   /* Oldest live explicit borrow, or zero. */
+    unsigned long read_depth;   /* Nested borrows held by this owner. */
     int active;                 /* Owner may execute mutator instructions. */
     int parked;                 /* Owner is currently waiting for resume. */
     int shared;                 /* Active interval is restricted to audited shared work. */
@@ -30,6 +33,7 @@ struct DVM_NativeWorld
     FVM_PortSync *sync;                 /* Guards state, never instruction bodies. */
     DVM_WorldParticipant *participants; /* Registered roots, including inactive ones. */
     DVM_NativeContext *collector;       /* Bound collecting owner, or null. */
+    unsigned long reclaim_epoch;       /* Latest issued reader generation. */
     size_t count;                       /* Number of root sets. */
     size_t active;                      /* Mutators between enter and leave. */
     size_t parked;                      /* Active mutators stopped at poll. */
@@ -40,7 +44,6 @@ struct DVM_NativeWorld
     int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
     size_t next_ticket;                /* Next FIFO admission ticket under sync; unsigned wrap is intentional. */
     size_t serving_ticket;             /* Oldest queued admission; advances only on a successful enter. */
-    size_t exclusive_waiting;          /* Queued owners requiring exclusive admission. */
     size_t waiting;                    /* Inactive owners queued for admission, including a ready ticket. */
     size_t admissions;                 /* Successful serialized entries under sync. */
     size_t contentions;                /* Entries that observed another owner, collector or older waiter. */
@@ -235,6 +238,7 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
     world = participant->world;
     fvm_port_sync_lock(world->sync);
     if (participant->active || world->collector ||
+        participant->read_depth ||
         !dvm_native_context_clear_poll(participant->context, poll_mutator, participant))
     {
         fvm_port_sync_unlock(world->sync);
@@ -298,7 +302,6 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
     {
         ticket = world->next_ticket++;
         world->waiting++;
-        world->exclusive_waiting += !shared;
         if ((world->active && (!shared || world->active != world->shared)) ||
             world->collector || world->resuming || ticket != world->serving_ticket)
         {
@@ -314,7 +317,6 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
     if (world->serial)
     {
         world->waiting--;
-        world->exclusive_waiting -= !shared;
         world->serving_ticket++;
         world->admissions++;
     }
@@ -333,6 +335,87 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
     }
     fvm_port_sync_unlock(world->sync);
     return 1;
+}
+
+
+/* Announce a borrow before reading a published pointer. Nesting keeps the
+ * oldest epoch until the last matching end. No heap admission is granted. */
+int dvm_world_read_begin(DVM_WorldParticipant *participant)
+{
+    if (!owns(participant))
+    {
+        return 0;
+    }
+    DVM_NativeWorld *world = participant->world;
+    fvm_port_sync_lock(world->sync);
+    int ok = participant->read_depth != ULONG_MAX;
+    if (ok)
+    {
+        if (!participant->read_depth)
+        {
+            participant->read_epoch = world->reclaim_epoch + 1;
+        }
+        participant->read_depth++;
+    }
+    fvm_port_sync_unlock(world->sync);
+    return ok;
+}
+
+
+/* End one owner-local borrow after the final pointer access. */
+int dvm_world_read_end(DVM_WorldParticipant *participant)
+{
+    if (!owns(participant))
+    {
+        return 0;
+    }
+    DVM_NativeWorld *world = participant->world;
+    fvm_port_sync_lock(world->sync);
+    int ok = participant->read_depth != 0;
+    if (ok && --participant->read_depth == 0)
+    {
+        participant->read_epoch = 0;
+    }
+    fvm_port_sync_unlock(world->sync);
+    return ok;
+}
+
+
+/* Capture a retirement generation after withdrawing the pointer from new
+ * readers. A zero result at counter exhaustion disables concurrent reclaim. */
+unsigned long dvm_world_retire_epoch(DVM_NativeWorld *world)
+{
+    if (!world)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(world->sync);
+    unsigned long epoch = 0;
+    if (world->reclaim_epoch < ULONG_MAX - 1)
+    {
+        epoch = ++world->reclaim_epoch;
+    }
+    fvm_port_sync_unlock(world->sync);
+    return epoch;
+}
+
+
+/* Observe grace-period completion without parking any participant. The
+ * retained stopped collector is conservatively treated as a live reader. */
+int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch)
+{
+    if (!world || !epoch)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(world->sync);
+    int elapsed = epoch <= world->reclaim_epoch && !world->collector;
+    for (DVM_WorldParticipant *reader = world->participants; elapsed && reader; reader = reader->next)
+    {
+        elapsed = !reader->read_depth || reader->read_epoch > epoch;
+    }
+    fvm_port_sync_unlock(world->sync);
+    return elapsed;
 }
 
 
@@ -570,20 +653,6 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
     out->contentions = world->contentions;
     fvm_port_sync_unlock(world->sync);
     return 1;
-}
-
-
-/* Return the number of exclusive waiters in the borrowed live world. */
-size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world)
-{
-    if (!world)
-    {
-        return 0;
-    }
-    fvm_port_sync_lock(world->sync);
-    size_t count = world->exclusive_waiting;
-    fvm_port_sync_unlock(world->sync);
-    return count;
 }
 
 
