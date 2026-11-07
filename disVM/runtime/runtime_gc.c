@@ -42,6 +42,7 @@ typedef struct RuntimeGC
 } RuntimeGC;
 
 extern ulong gcepochs; /* Completed retained tracing epochs. */
+int dvm_runtime_disable_cycles; /* Startup-only Fast-only policy. */
 int dvm_runtime_event_cycles; /* Startup-only cycle admission policy. */
 extern uvlong gcdestroys; /* Retained cycle collector reclaimed-object count. */
 static RuntimeGC state;  /* One managed runtime heap, not multi-instance admission. */
@@ -276,6 +277,10 @@ int dvm_runtime_gc_request(void)
     else
     {
         state.fast_empty_skips++;
+    }
+    if (dvm_runtime_disable_cycles)
+    {
+        return 1;
     }
     if (dvm_runtime_event_cycles)
     {
