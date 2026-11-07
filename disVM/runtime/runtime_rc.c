@@ -8,6 +8,7 @@
 #include "disvm/native_context.h"
 #include "disvm/native_owner.h"
 #include "runtime_rc.h"
+#include "runtime_gc.h"
 #include "retirement_queue.h"
 #include "root_batch.h"
 #include "root_registry.h"
@@ -539,7 +540,11 @@ static unsigned int drain_shared_children(size_t budget)
         while (budget && packet->next < packet->count)
         {
             Heap *heap = packet->keys[packet->next];
-            if (!dvm_refcount_drop_nonfinal_u(&heap->ref))
+            if (dvm_refcount_drop_nonfinal_u(&heap->ref))
+            {
+                dvm_runtime_gc_owner_lost();
+            }
+            else
             {
                 if (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0))
                 {

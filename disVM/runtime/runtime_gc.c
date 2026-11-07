@@ -7,6 +7,7 @@
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
 #include "runtime_gc.h"
+#include "channel_sync.h"
 #include "exception_host.h"
 #include "runtime_rc.h"
 #include "shared_pointer.h"
@@ -243,9 +244,11 @@ void dvm_runtime_gc_owner_lost(void)
 {
     if (dvm_runtime_event_cycles && state.world)
     {
+        fvm_port_registry_lock();
         state.cycle_losses++;
         state.cycle_epoch = gcepochs;
         state.clean_requests = 0;
+        fvm_port_registry_unlock();
     }
 }
 
@@ -274,15 +277,21 @@ int dvm_runtime_gc_request(void)
     {
         state.fast_empty_skips++;
     }
-    if (dvm_runtime_event_cycles && gcepochs - state.cycle_epoch >= 3)
+    if (dvm_runtime_event_cycles)
     {
-        if (++state.clean_requests < 256)
+        fvm_port_registry_lock();
+        if (gcepochs - state.cycle_epoch >= 3)
         {
-            state.cycle_skips++;
-            return 1;
+            if (++state.clean_requests < 256)
+            {
+                state.cycle_skips++;
+                fvm_port_registry_unlock();
+                return 1;
+            }
+            state.clean_requests = 0;
+            state.cycle_epoch = gcepochs;
         }
-        state.clean_requests = 0;
-        state.cycle_epoch = gcepochs;
+        fvm_port_registry_unlock();
     }
     return dvm_gc_workers_request(state.workers,DVM_GC_CYCLES);
 }
