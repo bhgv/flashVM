@@ -1988,6 +1988,13 @@ add_test(NAME disvm_native_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
  "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis")
 set_tests_properties(disvm_native_cycle_gc PROPERTIES TIMEOUT 180)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_idle_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
+  "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis" --idle-cycles)
+ set_tests_properties(disvm_idle_cycle_gc PROPERTIES TIMEOUT 130)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
  add_test(NAME disvm_parallel_gc_graph COMMAND "${CMAKE_COMMAND}" -E env
   "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}" "${root}/disVM/tests/inferno_gc.py"
   --workers --flashvm-root "${root}/flashVM")

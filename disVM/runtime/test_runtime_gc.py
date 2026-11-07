@@ -9,7 +9,7 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False):
+def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False, idle_cycles=False):
     command = [str(runtime), "--gc-worker", "--stats", mode,
                "--quantum", str(quantum)]
     if pool:
@@ -20,6 +20,8 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
                     "--parallel-byte-copies", "--parallel-integer"]
     if event_cycles:
         command += ["--native-spawn", "--gc-event-cycles"]
+    if idle_cycles:
+        command += ["--gc-idle-cycles", "--managed-workers", "2"]
     if locked:
         command.append("--gc-locked-poll")
     if budget is not None:
@@ -52,12 +54,14 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     counters = re.search(r"instructions=(\d+) native=(\d+) gc_runs=(\d+) gc_epochs=(\d+)", output)
     if not counters or int(counters[3]) != int(gc[1]):
         raise RuntimeError("actual collector accounting mismatch:\n" + output[-5000:])
+    if idle_cycles and (int(gc[2]) != 0 or int(gc[3]) == 0 or int(counters[4]) == 0):
+        raise RuntimeError("idle Cycles must reclaim without parking active owners:\n" + output[-5000:])
     if budget is None:
         if ("PASS gc-worker: 12000" not in output or
                 "PASS gc-worker shared graph: 64 unordered publications after unwind" not in output or
                 "PASS gc-worker deep frame return and unwind" not in output or
                 "PASS Dis application completed" not in output or
-                (quantum != 65536 and min(int(gc[2]), int(gc[3]), int(counters[4])) == 0) or
+                (not idle_cycles and quantum != 65536 and min(int(gc[2]), int(gc[3]), int(counters[4])) == 0) or
                 (int(counters[2]) > 0) != (mode == "--jit")):
             raise RuntimeError("missing real roots/reclamation evidence:\n" + output[-5000:])
     if event_cycles:
@@ -100,6 +104,11 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
 # A limited execution must also join a collector after managed error unwinding.
 def main():
     runtime, module = (Path(value).resolve() for value in sys.argv[1:3])
+    if sys.argv[3:] == ["--idle-cycles"]:
+        for mode in ("--jit", "--no-jit"):
+            execute(runtime, module, mode, 32, idle_cycles=True)
+        print("PASS idle Cycles and Fast GC in interpreter and JIT")
+        return
     for mode in ("--jit", "--no-jit"):
         for quantum in (31, 257, 2000, 65536):
             execute(runtime, module, mode, quantum)
