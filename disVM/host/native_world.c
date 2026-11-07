@@ -579,6 +579,25 @@ int dvm_world_try_quiescent(DVM_NativeWorld *world, DVM_NativeContext *collector
 }
 
 
+/* Do not reserve admission. The caller must retry the full quiescence check. */
+void dvm_world_wait_quiescent_retry(DVM_NativeWorld *world)
+{
+    fvm_port_sync_lock(world->sync);
+    int busy = world->active || world->collector || world->parked || world->resuming;
+    for (DVM_WorldParticipant *participant = world->participants;
+         !busy && participant; participant = participant->next)
+    {
+        busy = participant->read_depth != 0;
+    }
+    if (busy)
+    {
+        fvm_port_sync_wait_ms(world->sync, 1);
+    }
+    fvm_port_sync_unlock(world->sync);
+}
+
+
+
 /* [GC:] No active participant can mutate its published roots during this visit. */
 int dvm_world_visit(DVM_NativeWorld *world, DVM_WorldRoots visitor, void *user)
 {

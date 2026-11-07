@@ -176,7 +176,14 @@ static void run_worker(void *argument)
         if (result == DVM_GC_MORE && pause_us && !workers->stopping && !workers->failed)
         {
             fvm_port_sync_unlock(workers->sync);
-            fvm_port_thread_sleep_us(pause_us);
+            if (worker->kind == DVM_GC_CYCLES && workers->config.cycles_quiescent_only)
+            {
+                dvm_world_wait_quiescent_retry(workers->config.world);
+            }
+            else
+            {
+                fvm_port_thread_sleep_us(pause_us);
+            }
             fvm_port_sync_lock(workers->sync);
         }
     }

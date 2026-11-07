@@ -128,6 +128,9 @@ int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector);
 /* Claim only an already idle world. Pair success with stop_end. */
 int dvm_world_try_quiescent(DVM_NativeWorld *world, DVM_NativeContext *collector);
 
+/* Wait for a heap transition or a short timeout when admission is busy. */
+void dvm_world_wait_quiescent_retry(DVM_NativeWorld *world);
+
 
 /* [GC:] Visit stable roots under the world mutex. Callback must not reenter world
  * APIs, block, throw/longjmp or free context/register/process storage. */
