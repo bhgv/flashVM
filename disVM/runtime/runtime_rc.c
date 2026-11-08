@@ -1587,7 +1587,11 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
                 dvm_retirement_rotate(cycle_candidates);
                 cycle_candidates_rotated++;
             }
-            /* Finish the in-flight candidate, then yield the shared lease. */
+            /* A queued exclusive owner must not wait for another graph walk. */
+            if (dvm_world_exclusive_waiting(world))
+            {
+                break;
+            }
             budget = cost < budget ? budget - cost : 0;
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
