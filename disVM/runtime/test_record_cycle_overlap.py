@@ -1,4 +1,7 @@
-"""Check live roots and concurrent record-cycle collection in a real Dis VM."""
+# Copyright (c) 2026 bhgv
+"""EN: Check live roots and shared cycle collection in DisVM.
+RU: Проверка живых корней и параллельной сборки циклов в DisVM.
+"""
 import argparse
 import os
 from pathlib import Path
@@ -6,7 +9,15 @@ import re
 import subprocess
 
 
-def check(runtime, module, mode, require_peer, require_snapshot, require_confirmation, native_spawn, large_cycle):
+def check(runtime, module, mode, require_peer, require_snapshot, require_confirmation,
+          native_spawn, large_cycle, live_branch_charge):
+    """EN: Run module on runtime in mode and check the selected GC requirements.
+    The require flags select overlap evidence. native_spawn selects native guests.
+    large_cycle and live_branch_charge select dedicated regression scenarios.
+    RU: Запустить module через runtime в режиме mode и проверить требования к GC.
+    Флаги require задают проверки перекрытия, native_spawn включает нативные потоки.
+    large_cycle и live_branch_charge выбирают отдельные сценарии регрессий.
+    """
     environment = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
     command = [str(runtime), "--gc-idle-cycles", "--stats", mode, str(module)]
     if native_spawn:
@@ -28,6 +39,12 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
             raise RuntimeError(f"{mode}: runtime does not report concurrent graph snapshots")
         confirmations = re.search(r"shared_record_confirmations=(\d+)", output)
         observations.append((*map(int, counters.groups()), int(snapshots[1]) if snapshots else None))
+        if live_branch_charge:
+            retained = re.search(r"NATIVERCPASSES .*? groups=(\d+)", output)
+            if int(counters[2]) >= 1 and retained and int(retained[1]) == 0:
+                print(f"PASS {mode}: live array preserved and cycle freed by shared GC")
+                return
+            continue
         if large_cycle:
             oversized = re.search(r"cycle_candidates_oversized=(\d+)", output)
             traced = re.search(r"NATIVEGC .*? reclaimed=(\d+)", output)
@@ -50,6 +67,7 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
 
 
 def main():
+    """EN: Run both execution modes. RU: Проверить оба режима исполнения."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("runtime", type=Path)
     parser.add_argument("module", type=Path)
@@ -58,13 +76,14 @@ def main():
     parser.add_argument("--require-confirmation", action="store_true")
     parser.add_argument("--native-spawn", action="store_true")
     parser.add_argument("--large-cycle", action="store_true")
+    parser.add_argument("--live-branch-charge", action="store_true")
     args = parser.parse_args()
     failures = []
     for mode in ("--jit", "--no-jit"):
         try:
             check(args.runtime.resolve(), args.module.resolve(), mode,
                   args.require_peer, args.require_snapshot, args.require_confirmation, args.native_spawn,
-                  args.large_cycle)
+                  args.large_cycle, args.live_branch_charge)
         except RuntimeError as error:
             failures.append(str(error))
     if failures:

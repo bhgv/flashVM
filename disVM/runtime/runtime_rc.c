@@ -929,12 +929,15 @@ static unsigned int drain_shared_children(size_t budget)
 }
 
 
-/* Reserve and root existing owners before the caller commits a transfer. */
+/* EN: Root count owners from keys. Charge payload bytes for the first
+ * charged_keys entries. token receives the reservation, retry reports pressure.
+ * RU: Удержать count ссылок из keys. Учесть память первых charged_keys объектов.
+ * token получает резервацию, retry сообщает о временном заполнении очереди. */
 static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
-    DVM_RetirementReservation *token, int *retry)
+    size_t charged_keys, DVM_RetirementReservation *token, int *retry)
 {
     unsigned long charge = sizeof(FrameRetirement) + count * sizeof(void *);
-    for (size_t index = 0; index < count; index++)
+    for (size_t index = 0; index < charged_keys; index++)
     {
         unsigned long size = poolmsize(heapmem, keys[index]);
         if (size > RC_BYTES - charge)
@@ -979,8 +982,10 @@ static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
 }
 
 
-/* Transfer one discovery hold per live node plus each dead-to-live edge.
- * The original rooted entry stays intact if packet setup cannot complete. */
+/* EN: Transfer one hold per live node and every dead-to-live edge in group.
+ * Refusal preserves existing roots. Charge each live allocation only once.
+ * RU: Передать удержания живых узлов и каждую ссылку на них из мёртвых узлов group.
+ * При отказе корни сохраняются. Память каждого живого объекта учитывается один раз. */
 static int release_record_branches(const RecordGroup *group)
 {
     if (!group->live_count)
@@ -1006,6 +1011,7 @@ static int release_record_branches(const RecordGroup *group)
             keys[count++] = D2H(group->nodes[index]);
         }
     }
+    size_t unique = count;
     for (unsigned int edge = 0; edge < group->edges_used; edge++)
     {
         unsigned int target = group->targets[edge];
@@ -1015,7 +1021,7 @@ static int release_record_branches(const RecordGroup *group)
         }
     }
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(keys, count, &token, NULL);
+    FrameRetirement *packet = prepare_release_packet(keys, count, unique, &token, NULL);
     if (keys != local_keys)
     {
         free(keys);
@@ -1092,7 +1098,7 @@ static int transfer_object_fields(Heap *heap, int *retry)
         return dvm_refcount_claim_last_u(&heap->ref);
     }
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(keys, count, &token, retry);
+    FrameRetirement *packet = prepare_release_packet(keys, count, count, &token, retry);
     if (!packet)
     {
         return 0;
@@ -1129,7 +1135,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped)
     }
     void *key = D2H(buffer);
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(&key, 1, &token, NULL);
+    FrameRetirement *packet = prepare_release_packet(&key, 1, 1, &token, NULL);
     if (!packet)
     {
         return 0;

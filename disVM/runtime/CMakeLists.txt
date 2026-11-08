@@ -2034,6 +2034,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
   "${large_record_cycle_module}" --native-spawn --large-cycle)
  set_tests_properties(disvm_large_record_cycle PROPERTIES TIMEOUT 330)
+ set(live_branch_charge_module "${CMAKE_CURRENT_BINARY_DIR}/live-branch-charge.dis")
+ add_custom_command(OUTPUT "${live_branch_charge_module}"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module"
+   -o "${live_branch_charge_module}" "${CMAKE_CURRENT_SOURCE_DIR}/gc/fast/live_branch_charge.b"
+  DEPENDS limbo-bootstrap "${CMAKE_CURRENT_SOURCE_DIR}/gc/fast/live_branch_charge.b" ${module_headers}
+  VERBATIM)
+ add_custom_target(disvm_live_branch_charge_module ALL DEPENDS "${live_branch_charge_module}")
+ add_test(NAME disvm_live_branch_charge COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
+  "${live_branch_charge_module}" --native-spawn --live-branch-charge)
+ set_tests_properties(disvm_live_branch_charge PROPERTIES TIMEOUT 330)
+
 
 
 
