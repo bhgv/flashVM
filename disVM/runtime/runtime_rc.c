@@ -1989,6 +1989,20 @@ unsigned int dvm_runtime_rc_shared_duke(DVM_NativeContext *context, size_t budge
 static int retirement_ready(int include_shared_retries); /* Queue metadata only. */
 
 
+/* Withdraw the sole Fast consumer's head and its corresponding root.
+ * The caller retains the entry metadata until its release is complete. */
+static void take_shared_leaf(LeafRetirement *entry)
+{
+    void *value;
+    unsigned long bytes;
+    if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
+        !dvm_runtime_root_remove(entry->heap))
+    {
+        abort();
+    }
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * while serving leaves, retries and packet children. Cycles cannot run here. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
@@ -2142,6 +2156,16 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 break;
             }
+            if (dvm_refcount_drop_nonfinal_u(&entry->heap->ref))
+            {
+                take_shared_leaf(entry);
+                dvm_runtime_gc_owner_lost();
+                free(entry);
+                __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
+                budget--;
+                completed++;
+                continue;
+            }
             Type *mapped_channel = NULL;
             int channel = entry->heap->t == &Tchannel;
             if (channel && !claim_quiet_channel(entry->heap, &mapped_channel))
@@ -2176,13 +2200,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 completed++;
                 continue;
             }
-            void *value;
-            unsigned long bytes;
-            if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
-                !dvm_runtime_root_remove(entry->heap))
-            {
-                abort();
-            }
+            take_shared_leaf(entry);
             DVM_RefcountResult result = has_children || channel || record || list ? DVM_REFCOUNT_LAST :
                 dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
