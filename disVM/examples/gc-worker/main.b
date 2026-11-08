@@ -53,7 +53,7 @@ largecycle()
 {
     first := ref Node(nil, nil);
     current := first;
-    for (i := 1; i < 80; i++)
+    for (i := 1; i < 160; i++)
     {
         current.next = ref Node(nil, nil);
         current = current.next;
