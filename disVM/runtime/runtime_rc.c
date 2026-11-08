@@ -148,7 +148,7 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 }
 
 
-extern int dvm_runtime_channel_claim_quiet(Heap *heap, Type **mapped);
+extern int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped);
 
 
 /* Read leaf payload only while its queue or caller owns a strong reference.
@@ -161,7 +161,7 @@ static int leaf_eligible(const Heap *heap)
     }
     if (heap->t == &Tchannel)
     {
-        return H2D(const Channel *, heap)->buf == H;
+        return H2D(const Channel *, heap)->buf != NULL;
     }
     if (heap->t == &Tarray)
     {
@@ -1068,6 +1068,48 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
 }
 
 
+/* Reserve and root existing owners before the caller commits a transfer. */
+static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
+    DVM_RetirementReservation *token)
+{
+    unsigned long charge = sizeof(FrameRetirement) + count * sizeof(void *);
+    for (size_t index = 0; index < count; index++)
+    {
+        unsigned long size = poolmsize(heapmem, keys[index]);
+        if (size > RC_BYTES - charge)
+        {
+            return NULL;
+        }
+        charge += size;
+    }
+    if (dvm_retirement_reserve(frames, charge, token) != DVM_RETIRE_OK)
+    {
+        return NULL;
+    }
+    FrameRetirement *packet = malloc(sizeof(*packet) + count * sizeof(void *));
+    DVM_RootBatch *roots = dvm_runtime_root_batch_create(count);
+    if (!packet || !roots)
+    {
+        if (roots)
+        {
+            dvm_runtime_root_batch_destroy(&roots);
+        }
+        free(packet);
+        dvm_retirement_cancel(frames, token);
+        return NULL;
+    }
+    packet->roots = roots;
+    packet->count = count;
+    packet->next = 0;
+    memcpy(packet->keys, keys, count * sizeof(void *));
+    if (!dvm_runtime_root_batch_publish(roots, packet->keys, count))
+    {
+        abort();
+    }
+    return packet;
+}
+
+
 /* Transfer one discovery hold per live node plus each dead-to-live edge.
  * The original rooted entry stays intact if packet setup cannot complete. */
 static int release_record_branches(const RecordGroup *group)
@@ -1093,43 +1135,54 @@ static int release_record_branches(const RecordGroup *group)
             keys[count++] = D2H(group->nodes[target]);
         }
     }
-    unsigned long charge = sizeof(FrameRetirement) + count * sizeof(void *);
-    for (size_t index = 0; index < count; index++)
-    {
-        unsigned long size = poolmsize(heapmem, keys[index]);
-        if (size > RC_BYTES - charge)
-        {
-            return 0;
-        }
-        charge += size;
-    }
     DVM_RetirementReservation token = {0};
-    if (dvm_retirement_reserve(frames, charge, &token) != DVM_RETIRE_OK)
+    FrameRetirement *packet = prepare_release_packet(keys, count, &token);
+    if (!packet)
     {
         return 0;
     }
-    FrameRetirement *packet = malloc(sizeof(*packet) + count * sizeof(void *));
-    DVM_RootBatch *roots = dvm_runtime_root_batch_create(count);
-    if (!packet || !roots)
-    {
-        if (roots)
-        {
-            dvm_runtime_root_batch_destroy(&roots);
-        }
-        free(packet);
-        dvm_retirement_cancel(frames, &token);
-        return 0;
-    }
-    packet->roots = roots;
-    packet->count = count;
-    packet->next = 0;
-    memcpy(packet->keys, keys, count * sizeof(void *));
-    if (!dvm_runtime_root_batch_publish(roots, packet->keys, count) ||
-        !dvm_retirement_commit(frames, &token, packet))
+    if (!dvm_retirement_commit(frames, &token, packet))
     {
         abort();
     }
     return 1;
+}
+
+
+static int claim_quiet_channel(Heap *heap, Type **mapped)
+{
+    Array *buffer = H2D(Channel *, heap)->buf;
+    if (buffer == H)
+    {
+        return dvm_runtime_channel_claim_quiet(heap, buffer, mapped);
+    }
+    if (!buffer)
+    {
+        return 0;
+    }
+    void *key = D2H(buffer);
+    DVM_RetirementReservation token = {0};
+    FrameRetirement *packet = prepare_release_packet(&key, 1, &token);
+    if (!packet)
+    {
+        return 0;
+    }
+    if (dvm_runtime_channel_claim_quiet(heap, buffer, mapped))
+    {
+        if (!dvm_retirement_commit(frames, &token, packet))
+        {
+            abort();
+        }
+        return 1;
+    }
+    if (!dvm_runtime_root_batch_clear(packet->roots) ||
+        !dvm_runtime_root_batch_destroy(&packet->roots) ||
+        !dvm_retirement_cancel(frames, &token))
+    {
+        abort();
+    }
+    free(packet);
+    return 0;
 }
 
 
@@ -1391,7 +1444,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             Type *mapped_channel = NULL;
             int channel = entry->heap->t == &Tchannel;
-            if (channel && !dvm_runtime_channel_claim_quiet(entry->heap, &mapped_channel))
+            if (channel && !claim_quiet_channel(entry->heap, &mapped_channel))
             {
                 if (!move_leaf(leaves, difficult, entry))
                 {

@@ -1890,13 +1890,13 @@ void killcomm(Progq **queue)
 
 
 /* Try the callback-free last-owner path after the reader epoch. */
-int dvm_runtime_channel_claim_quiet(Heap *heap, Type **mapped)
+int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped)
 {
     Channel *channel = H2D(Channel *, heap);
     fvm_port_sync_lock(channel_queue_mutex);
     Progq *send = channel->send;
     Progq *recv = channel->recv;
-    int claimed = channel->buf == H && !channel->aux &&
+    int claimed = channel->buf == buffer && !channel->aux &&
         (!send || (!send->prog && !send->next && send != recv)) &&
         (!recv || (!recv->prog && !recv->next)) &&
         !dvm_runtime_channel_buffer_busy(channel) && dvm_refcount_claim_last_u(&heap->ref);
@@ -1905,6 +1905,7 @@ int dvm_runtime_channel_claim_quiet(Heap *heap, Type **mapped)
         *mapped = channel->mover == movtmp ? channel->mid.t : nil;
         channel->send = nil;
         channel->recv = nil;
+        channel->buf = H;
     }
     fvm_port_sync_unlock(channel_queue_mutex);
     if (claimed)
