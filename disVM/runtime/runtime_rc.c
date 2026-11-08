@@ -16,6 +16,7 @@
 #include "root_batch.h"
 #include "root_registry.h"
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -266,11 +267,13 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 
 #define RECORD_GROUP_LIMIT 64
 #define RECORD_EDGE_LIMIT 256
+#define RECORD_INDEX_SLOTS (RECORD_GROUP_LIMIT * 2)
 
 struct RecordGroup
 {
     void *nodes[RECORD_GROUP_LIMIT];
     unsigned int incoming[RECORD_GROUP_LIMIT];
+    unsigned int index[RECORD_INDEX_SLOTS]; /* Stored node index plus one. */
     void *cells[RECORD_EDGE_LIMIT];
     unsigned int targets[RECORD_EDGE_LIMIT];
     unsigned int sources[RECORD_EDGE_LIMIT];
@@ -280,6 +283,31 @@ struct RecordGroup
     unsigned int nodes_used;
     unsigned int edges_used;
 };
+
+
+/* The table stays at most half full. Every indexed object is held live. */
+static unsigned int record_group_index(RecordGroup *group, void *value)
+{
+    uintptr_t address = (uintptr_t)value / sizeof(void *);
+    unsigned int slot = (address ^ (address >> 7)) % RECORD_INDEX_SLOTS;
+    while (group->index[slot])
+    {
+        unsigned int index = group->index[slot] - 1;
+        if (group->nodes[index] == value)
+        {
+            return index;
+        }
+        slot = (slot + 1) % RECORD_INDEX_SLOTS;
+    }
+    if (group->nodes_used == RECORD_GROUP_LIMIT)
+    {
+        return RECORD_GROUP_LIMIT;
+    }
+    unsigned int index = group->nodes_used++;
+    group->nodes[index] = value;
+    group->index[slot] = index + 1;
+    return index;
+}
 
 
 /* The held source field preserves the target while the graph is scanned. */
@@ -303,18 +331,10 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
         group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
         return 1;
     }
-    unsigned int target = 0;
-    while (target < group->nodes_used && group->nodes[target] != edge)
+    unsigned int target = record_group_index(group, edge);
+    if (target == RECORD_GROUP_LIMIT)
     {
-        target++;
-    }
-    if (target == group->nodes_used)
-    {
-        if (target == RECORD_GROUP_LIMIT)
-        {
-            return 0;
-        }
-        group->nodes[group->nodes_used++] = edge;
+        return 0;
     }
     group->incoming[target]++;
     group->targets[group->edges_used++] = target;
@@ -331,8 +351,7 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
     {
         return 0;
     }
-    group->nodes[0] = start;
-    group->nodes_used = 1;
+    (void)record_group_index(group, start);
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         void *record = group->nodes[index];
@@ -431,6 +450,9 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
         }
         group->live[0] = 1;
     }
+    unsigned int ready[RECORD_GROUP_LIMIT];
+    unsigned int starts[RECORD_GROUP_LIMIT + 1];
+    unsigned int edge = 0;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         Heap *heap = D2H(group->nodes[index]);
@@ -441,24 +463,33 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
             return 0;
         }
         group->live[index] |= actual > expected;
-        group->live_count += group->live[index];
+        if (group->live[index])
+        {
+            ready[group->live_count++] = index;
+        }
+        starts[index] = edge;
+        while (edge < group->edges_used && group->sources[edge] == index)
+        {
+            edge++;
+        }
     }
-    /* Propagate from external owners along outgoing edges only. */
-    unsigned int previous;
-    do
+    starts[group->nodes_used] = edge;
+
+    /* Edges are captured in source order. Visit each live node's outgoing
+     * range once, even when reachability runs against discovery order. */
+    for (unsigned int head = 0; head < group->live_count; head++)
     {
-        previous = group->live_count;
-        for (unsigned int edge = 0; edge < group->edges_used; edge++)
+        unsigned int source = ready[head];
+        for (edge = starts[source]; edge < starts[source + 1]; edge++)
         {
             unsigned int target = group->targets[edge];
-            if (target != RECORD_GROUP_LIMIT && group->live[group->sources[edge]] &&
-                !group->live[target])
+            if (target != RECORD_GROUP_LIMIT && !group->live[target])
             {
                 group->live[target] = 1;
-                group->live_count++;
+                ready[group->live_count++] = target;
             }
         }
-    } while (previous != group->live_count);
+    }
     return 1;
 }
 
