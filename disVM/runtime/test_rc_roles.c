@@ -4,6 +4,10 @@
 #include "fns.h"
 #include "interp.h"
 #include "pool.h"
+#include "heap_pool.h"
+#include "gc_fields.h"
+#include "managed_owner.h"
+#include "runtime_gc.h"
 #include "runtime_rc.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
@@ -14,6 +18,9 @@
 
 Type Tarray;  /* Type identity only. This fixture owns no real arrays. */
 Type Tstring; /* Type identity only. This fixture owns no real strings. */
+Type Tchannel, Tlist, Tmodlink, Tptr;
+int dvm_runtime_idle_cycles;
+int gchalt;
 void (*heapmonitor)(int, void *, ulong); /* Monitoring stays disabled. */
 Pool *heapmem; /* Never used: rejected roles must not ask the allocator anything. */
 int mutator;  /* Link retained marking declarations; marking is forbidden here. */
@@ -73,6 +80,55 @@ void destroy(void *value)
     ptradd(NULL);
 }
 
+
+/* The fixture initializes service metadata but never opens a shared cell
+ * domain or publishes managed objects. Fail loudly if either is attempted. */
+DVM_CellDomain *dvm_managed_cell_domain(void)
+{
+    return NULL;
+}
+
+DVM_HeapKey dvm_heap_pool_key(Pool *pool, void *block)
+{
+    (void)poolmsize(pool, block);
+    return (DVM_HeapKey){0};
+}
+
+int dvm_gc_field_mark(int *color, const int *selector, int *pending)
+{
+    (void)color;
+    (void)selector;
+    (void)pending;
+    ptradd(NULL);
+    return 0;
+}
+
+void freeheap(Heap *heap, int swept)
+{
+    (void)swept;
+    ptradd(heap);
+}
+
+int dvm_runtime_channel_is_quiet(Channel *channel)
+{
+    (void)channel;
+    ptradd(NULL);
+    return 0;
+}
+
+int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed)
+{
+    (void)buffer;
+    (void)mapped;
+    (void)already_claimed;
+    ptradd(heap);
+    return 0;
+}
+
+void dvm_runtime_gc_owner_lost(void)
+{
+    ptradd(NULL);
+}
 
 /* A genuine stopped-world collector has no ACTIVE mutator admission. world is
  * borrowed through parent join; the collector context unregisters before exit. */

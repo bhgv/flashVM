@@ -40,12 +40,15 @@ def main():
             command += [str(runtime / 'test_rc_roles.c'), str(runtime / 'retirement_queue.c'),
                         str(runtime / 'root_batch.c'), str(runtime / 'root_registry.c'), str(path)]
             command += [str(root / name) for name in (
-                'disVM/host/refcount.c', 'disVM/host/native_registers.c', 'disVM/host/native_context.c',
+                'disVM/host/refcount.c', 'disVM/host/object_guard.c',
+                'disVM/host/cell_access.c', 'disVM/host/range_access.c', 'disVM/host/native_registers.c', 'disVM/host/native_context.c',
                 'disVM/host/native_owner.c', 'disVM/host/native_world.c',
                 'disVM/host/flashvm_thread.c', 'flashVM/ports/linux/thread.c',
                 'flashVM/ports/linux/channel_sync.c')]
             binary = work / mode
-            subprocess.run(command + ['-o', str(binary)], check=True, capture_output=True, text=True)
+            build = subprocess.run(command + ['-o', str(binary)], capture_output=True, text=True)
+            if build.returncode:
+                raise RuntimeError(build.stdout + build.stderr)
             result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=30)
             if mode == 'normal':
                 if result.returncode:
