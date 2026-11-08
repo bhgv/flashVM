@@ -330,7 +330,8 @@ static void unlink_record_group(const RecordGroup *group)
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        if (group->targets[index] == UINT_MAX || group->live[group->sources[index]])
+        if (group->targets[index] == UINT_MAX ||
+            (group->sources && group->live[group->sources[index]]))
         {
             continue;
         }
@@ -393,7 +394,7 @@ static int defer_record_group(RecordGroup *group, int shared, int *retry)
     }
     LeafRetirement *entry = malloc(sizeof(*entry));
     FrameRetirement *records = malloc(packet_bytes);
-    RecordGroup *snapshot = dvm_rc_copy_record_group(group, edges);
+    RecordGroup *snapshot = dvm_rc_copy_record_group(group, edges, H);
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
     unsigned long epoch = dvm_world_retire_epoch(world);
     if (!entry || !records || !snapshot || !roots || !epoch)
@@ -1057,7 +1058,7 @@ static int release_record_branches(const RecordGroup *group)
     for (unsigned int edge = 0; edge < group->edges_used; edge++)
     {
         unsigned int target = group->targets[edge];
-        if (target != UINT_MAX && group->live[target] && !group->live[group->sources[edge]])
+        if (target != UINT_MAX && group->live[target])
         {
             keys[count++] = D2H(group->nodes[target]);
         }
@@ -1263,8 +1264,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         for (unsigned int edge = 0; edge < snapshot->edges_used; edge++)
         {
             unsigned int target = snapshot->targets[edge];
-            if (target != UINT_MAX && snapshot->live[target] &&
-                !snapshot->live[snapshot->sources[edge]])
+            if (target != UINT_MAX && snapshot->live[target])
             {
                 destroy(snapshot->nodes[target]);
             }

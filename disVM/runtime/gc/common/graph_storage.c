@@ -54,16 +54,16 @@ size_t dvm_rc_record_group_bytes(const RecordGroup *group, unsigned int edges)
 {
     size_t nodes = group->nodes_used;
     size_t dead_index = group->live_count ? nodes - group->live_count : 0;
-    return sizeof(*group) + (nodes + edges) * sizeof(void *) +
+    return sizeof(*group) + (nodes + 2 * edges) * sizeof(void *) +
         (nodes + 2 * edges + dead_index) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
 }
 
 
 /* EN: Copy group with edges checked fields into one allocation. Return NULL
- * on failure. The caller keeps every referent live.
+ * on failure. nil_sentinel is the Dis nil value; the caller keeps referents live.
  * RU: Скопировать group с edges проверенными полями в один блок или вернуть NULL.
- * Вызывающая сторона удерживает все объекты. */
-RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edges)
+ * nil_sentinel задаёт nil в Dis. Вызывающая сторона удерживает все объекты. */
+RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edges, void *nil_sentinel)
 {
     size_t nodes = group->nodes_used;
     RecordGroup *copy = malloc(dvm_rc_record_group_bytes(group, edges));
@@ -74,12 +74,14 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
     *copy = *group;
     copy->nodes = (void **)(copy + 1);
     copy->cells = copy->nodes + nodes;
-    copy->incoming = (unsigned int *)(copy->cells + edges);
+    copy->expected_fields = copy->cells + edges;
+    copy->incoming = (unsigned int *)(copy->expected_fields + edges);
     copy->targets = copy->incoming + nodes;
-    copy->sources = copy->targets + edges;
+    copy->field_runs = copy->targets + edges;
+    copy->sources = NULL;
     copy->dead_count = group->nodes_used - group->live_count;
-    copy->dead_nodes = group->live_count ? copy->sources + edges : NULL;
-    copy->live = (unsigned char *)(copy->sources + edges +
+    copy->dead_nodes = group->live_count ? copy->field_runs + edges : NULL;
+    copy->live = (unsigned char *)(copy->field_runs + edges +
         (copy->dead_nodes ? copy->dead_count : 0));
     copy->index = NULL;
     copy->owned_scratch = NULL;
@@ -88,26 +90,30 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
     copy->omitted_live_fields = group->edges_used - edges;
     memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
     memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));
-    if (edges == group->edges_used)
+    unsigned int next_edge = 0;
+    unsigned int run_start = 0;
+    unsigned int previous_source = UINT_MAX;
+    for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        memcpy(copy->cells, group->cells, edges * sizeof(*copy->cells));
-        memcpy(copy->targets, group->targets, edges * sizeof(*copy->targets));
-        memcpy(copy->sources, group->sources, edges * sizeof(*copy->sources));
-    }
-    else
-    {
-        unsigned int next = 0;
-        for (unsigned int index = 0; index < group->edges_used; index++)
+        unsigned int source = group->sources[index];
+        if (group->live[source])
         {
-            unsigned int source = group->sources[index];
-            if (!group->live[source])
-            {
-                copy->cells[next] = group->cells[index];
-                copy->targets[next] = group->targets[index];
-                copy->sources[next] = source;
-                next++;
-            }
+            continue;
         }
+        unsigned int target = group->targets[index];
+        void *cell = group->cells[index];
+        copy->cells[next_edge] = cell;
+        copy->targets[next_edge] = target;
+        copy->expected_fields[next_edge] = target == UINT_MAX ? nil_sentinel : group->nodes[target];
+        if (!next_edge || source != previous_source ||
+            (uintptr_t)cell - (uintptr_t)copy->cells[next_edge - 1] != sizeof(void *))
+        {
+            run_start = next_edge;
+            copy->field_runs[run_start] = 0;
+        }
+        copy->field_runs[run_start]++;
+        previous_source = source;
+        next_edge++;
     }
     memcpy(copy->live, group->live, nodes * sizeof(*copy->live));
     if (copy->dead_nodes)

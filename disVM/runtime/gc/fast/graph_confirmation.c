@@ -82,6 +82,32 @@ static int claim_record_group(const RecordGroup *group)
 }
 
 
+/* EN: Compare the captured values of group under the acquired guards.
+ * RU: Сверить сохранённые значения group под захваченными блокировками. */
+static int retained_fields_match(const RecordGroup *group)
+{
+    for (unsigned int index = 0; index < group->edges_used;)
+    {
+        unsigned int count = group->field_runs[index];
+        if (count == 1 || memcmp(group->cells[index], &group->expected_fields[index],
+                count * sizeof(void *)) != 0)
+        {
+            for (unsigned int offset = 0; offset < count; offset++)
+            {
+                void *value;
+                memcpy(&value, group->cells[index + offset], sizeof(value));
+                if (value != group->expected_fields[index + offset])
+                {
+                    return 0;
+                }
+            }
+        }
+        index += count;
+    }
+    return 1;
+}
+
+
 /* EN: Validate the retained fields of group in cells, then claim in world.
  * final_epoch receives the reader cutoff when supplied.
  * RU: Сверить сохранённые поля group в cells и захватить группу в world.
@@ -99,16 +125,9 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
     {
         return result;
     }
-    for (unsigned int index = 0; index < group->edges_used; index++)
+    if (!retained_fields_match(group))
     {
-        void *edge;
-        memcpy(&edge, group->cells[index], sizeof(edge));
-        unsigned int target = group->targets[index];
-        if (edge != (target == UINT_MAX ? H : group->nodes[target]))
-        {
-            result = DVM_CELL_REFUSED;
-            break;
-        }
+        result = DVM_CELL_REFUSED;
     }
     for (unsigned int position = 0; result == DVM_CELL_ACQUIRED && position < group->dead_count; position++)
     {
