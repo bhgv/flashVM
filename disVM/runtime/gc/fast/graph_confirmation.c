@@ -57,76 +57,21 @@ static int claim_record_group(const RecordGroup *group)
 }
 
 
-/* EN: Collect the cells of dead sources from group into selected. The caller
- * owns selected and sizes it for every edge. Return zero for invalid closure.
- * RU: Собрать поля мёртвых узлов group в буфер selected вызывающей стороны.
- * Буфер вмещает все рёбра. Вернуть ноль при незамкнутой группе. */
-static int collect_dead_cells(const RecordGroup *group, void **selected, size_t *count)
-{
-    *count = 0;
-    for (unsigned int index = 0; index < group->edges_used; index++)
-    {
-        unsigned int source = group->sources[index];
-        unsigned int target = group->targets[index];
-        if (!group->live[source])
-        {
-            selected[(*count)++] = group->cells[index];
-        }
-        else if (target != UINT_MAX && !group->live[target])
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-
-/* EN: Validate group under cells and claim it in world. Set final_epoch when requested and count skipped live fields in ignored.
- * RU: Сверить group под блокировками cells и захватить его в world.
- * Если final_epoch задан, записать эпоху. В ignored вернуть число пропущенных живых полей. */
+/* EN: Validate the retained fields of group in cells, then claim in world.
+ * final_epoch receives the reader cutoff when supplied.
+ * RU: Сверить сохранённые поля group в cells и захватить группу в world.
+ * Если задан final_epoch, записать эпоху для ожидания читателей. */
 DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomain *cells,
-    DVM_NativeWorld *world, unsigned long *final_epoch, size_t *ignored)
+    DVM_NativeWorld *world, unsigned long *final_epoch)
 {
-    void *local[RECORD_EDGE_LIMIT];
-    void **selected = group->cells;
-    size_t count = group->edges_used;
-    *ignored = 0;
-    if (group->live_count)
-    {
-        selected = local;
-        if (count > sizeof(local) / sizeof(*local))
-        {
-            selected = malloc(count * sizeof(*selected));
-            if (!selected)
-            {
-                return DVM_CELL_REFUSED;
-            }
-        }
-        if (!collect_dead_cells(group, selected, &count))
-        {
-            if (selected != local)
-            {
-                free(selected);
-            }
-            return DVM_CELL_REFUSED;
-        }
-    }
     DVM_RangeAccess access = {0};
-    DVM_CellResult result = dvm_range_access_cells_begin(cells, selected, count, &access);
+    DVM_CellResult result = dvm_range_access_cells_begin(cells, group->cells, group->edges_used, &access);
     if (result != DVM_CELL_ACQUIRED)
     {
-        if (selected != local && selected != group->cells)
-        {
-            free(selected);
-        }
         return result;
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        if (group->live[group->sources[index]])
-        {
-            continue;
-        }
         void *edge;
         memcpy(&edge, group->cells[index], sizeof(edge));
         unsigned int target = group->targets[index];
@@ -161,14 +106,6 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
     if (!dvm_range_access_end(&access))
     {
         abort();
-    }
-    if (selected != local && selected != group->cells)
-    {
-        free(selected);
-    }
-    if (result == DVM_CELL_ACQUIRED)
-    {
-        *ignored = group->edges_used - count;
     }
     return result;
 }

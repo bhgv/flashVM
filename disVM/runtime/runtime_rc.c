@@ -353,9 +353,14 @@ static void unlink_record_group(const RecordGroup *group)
 static int defer_record_group(RecordGroup *group, int shared, int *retry)
 {
     *retry = 0;
+    unsigned int edges;
+    if (!dvm_rc_snapshot_edges(group, &edges))
+    {
+        return 0;
+    }
     DVM_RetirementReservation token = {0};
     size_t packet_bytes = sizeof(FrameRetirement) + group->nodes_used * sizeof(void *);
-    size_t metadata = sizeof(LeafRetirement) + dvm_rc_record_group_bytes(group) +
+    size_t metadata = sizeof(LeafRetirement) + dvm_rc_record_group_bytes(group, edges) +
         packet_bytes + dvm_runtime_root_batch_bytes(group->nodes_used);
     if (metadata > RC_BYTES)
     {
@@ -384,7 +389,7 @@ static int defer_record_group(RecordGroup *group, int shared, int *retry)
     }
     LeafRetirement *entry = malloc(sizeof(*entry));
     FrameRetirement *records = malloc(packet_bytes);
-    RecordGroup *snapshot = dvm_rc_copy_record_group(group);
+    RecordGroup *snapshot = dvm_rc_copy_record_group(group, edges);
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
     unsigned long epoch = dvm_world_retire_epoch(world);
     if (!entry || !records || !snapshot || !roots || !epoch)
@@ -1296,7 +1301,7 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 static DVM_RetirementResult release_refused_snapshot(DVM_RetirementQueue *source, LeafRetirement *entry)
 {
     FrameRetirement *records = entry->records;
-    unsigned long charge = entry->bytes - sizeof(*entry) - dvm_rc_record_group_bytes(entry->snapshot);
+    unsigned long charge = entry->bytes - sizeof(*entry) - dvm_rc_record_group_bytes(entry->snapshot, entry->snapshot->edges_used);
     DVM_RetirementReservation token = {0};
     DVM_RetirementResult result = dvm_retirement_reserve(frames, charge, &token);
     if (result != DVM_RETIRE_OK)
@@ -1785,10 +1790,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 else
                 {
-                    size_t ignored;
                     claim = dvm_gc_fast_confirm_graph(entry->snapshot, record_cells, world,
-                        entry->pinned_children ? &final_epoch : NULL, &ignored);
-                    fast_ignored_live_fields += ignored;
+                        entry->pinned_children ? &final_epoch : NULL);
+                    if (claim == DVM_CELL_ACQUIRED)
+                    {
+                        fast_ignored_live_fields += entry->snapshot->omitted_live_fields;
+                    }
                     budget = cost < budget ? budget - cost : 0;
                 }
                 if (claim != DVM_CELL_ACQUIRED)

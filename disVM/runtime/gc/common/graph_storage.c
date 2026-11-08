@@ -5,6 +5,7 @@
  */
 #include "graph_snapshot.h"
 #include <stdint.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,24 +20,52 @@ RecordGroup dvm_rc_empty_record_group(RecordGroupScratch *scratch)
 }
 
 
-/* EN: Return the bytes needed to copy captured nodes and fields in group.
- * RU: Вернуть размер копии прочитанных узлов и полей снимка group. */
-size_t dvm_rc_record_group_bytes(const RecordGroup *group)
+/* EN: Count the dead-source fields of group in edges. A live-to-dead
+ * captured edge makes the proposed collection unsafe and returns zero.
+ * RU: Подсчитать в edges поля мёртвых узлов group. Ребро из живого узла
+ * в мёртвый делает снимок непригодным и даёт нулевой результат. */
+int dvm_rc_snapshot_edges(const RecordGroup *group, unsigned int *edges)
+{
+    *edges = group->edges_used;
+    if (!group->live_count)
+    {
+        return 1;
+    }
+    *edges = 0;
+    for (unsigned int index = 0; index < group->edges_used; index++)
+    {
+        unsigned int target = group->targets[index];
+        if (!group->live[group->sources[index]])
+        {
+            (*edges)++;
+        }
+        else if (target != UINT_MAX && !group->live[target])
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN: Return bytes for the nodes of group and edges retained fields.
+ * RU: Вернуть размер памяти узлов group и edges сохраняемых полей. */
+size_t dvm_rc_record_group_bytes(const RecordGroup *group, unsigned int edges)
 {
     size_t nodes = group->nodes_used;
-    size_t edges = group->edges_used;
     return sizeof(*group) + (nodes + edges) * sizeof(void *) +
         (nodes + 2 * edges) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
 }
 
 
-/* EN: Copy group into one owned allocation, or return NULL. The caller keeps referents live.
- * RU: Скопировать group в один блок или вернуть NULL. Вызывающий код удерживает объекты. */
-RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group)
+/* EN: Copy group with edges checked fields into one allocation. Return NULL
+ * on failure. The caller keeps every referent live.
+ * RU: Скопировать group с edges проверенными полями в один блок или вернуть NULL.
+ * Вызывающая сторона удерживает все объекты. */
+RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edges)
 {
     size_t nodes = group->nodes_used;
-    size_t edges = group->edges_used;
-    RecordGroup *copy = malloc(dvm_rc_record_group_bytes(group));
+    RecordGroup *copy = malloc(dvm_rc_record_group_bytes(group, edges));
     if (!copy)
     {
         return NULL;
@@ -51,11 +80,31 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group)
     copy->index = NULL;
     copy->owned_scratch = NULL;
     copy->pinned_nodes = 0;
+    copy->edges_used = edges;
+    copy->omitted_live_fields = group->edges_used - edges;
     memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
-    memcpy(copy->cells, group->cells, edges * sizeof(*copy->cells));
     memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));
-    memcpy(copy->targets, group->targets, edges * sizeof(*copy->targets));
-    memcpy(copy->sources, group->sources, edges * sizeof(*copy->sources));
+    if (edges == group->edges_used)
+    {
+        memcpy(copy->cells, group->cells, edges * sizeof(*copy->cells));
+        memcpy(copy->targets, group->targets, edges * sizeof(*copy->targets));
+        memcpy(copy->sources, group->sources, edges * sizeof(*copy->sources));
+    }
+    else
+    {
+        unsigned int next = 0;
+        for (unsigned int index = 0; index < group->edges_used; index++)
+        {
+            unsigned int source = group->sources[index];
+            if (!group->live[source])
+            {
+                copy->cells[next] = group->cells[index];
+                copy->targets[next] = group->targets[index];
+                copy->sources[next] = source;
+                next++;
+            }
+        }
+    }
     memcpy(copy->live, group->live, nodes * sizeof(*copy->live));
     return copy;
 }

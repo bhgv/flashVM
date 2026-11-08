@@ -38,6 +38,7 @@ typedef struct RecordGroup
     int has_views; /* A detached view needs descriptor-only destruction. */
     unsigned int nodes_used;    /* Indexed object count. */
     unsigned int edges_used;    /* Captured field count. */
+    unsigned int omitted_live_fields; /* Live-source fields omitted from a published snapshot. */
 } RecordGroup;
 
 
@@ -57,11 +58,16 @@ typedef struct RecordGroupScratch
 /* EN: Use caller-owned zeroed scratch. RU: Использовать обнулённый буфер scratch. */
 RecordGroup dvm_rc_empty_record_group(RecordGroupScratch *scratch);
 
-/* EN: Measure captured group storage. RU: Измерить объём снимка group. */
-size_t dvm_rc_record_group_bytes(const RecordGroup *group);
+/* EN: Count dead-source fields in group. Refuse a live-to-dead captured edge.
+ * RU: Записать число полей мёртвых узлов group в edges. Отказать при ребре из живого узла в мёртвый. */
+int dvm_rc_snapshot_edges(const RecordGroup *group, unsigned int *edges);
 
-/* EN: Copy group into one allocation. RU: Скопировать group в один блок памяти. */
-RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group);
+/* EN: Measure group storage for edges fields. RU: Измерить объём group для edges полей. */
+size_t dvm_rc_record_group_bytes(const RecordGroup *group, unsigned int edges);
+
+/* EN: Copy group with edges validated dead-source fields.
+ * RU: Скопировать group с edges проверенными полями мёртвых узлов. */
+RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edges);
 
 /* EN: First hash probe for value in group. RU: Начальная позиция value в group. */
 unsigned int dvm_rc_record_index_slot(const RecordGroup *group, void *value);
