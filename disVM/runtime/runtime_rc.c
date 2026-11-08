@@ -73,6 +73,8 @@ static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_rooted;
 static unsigned long cycle_candidates_oversized;
+static size_t candidate_sweep_left; /* Entries left in the current no-progress sweep. */
+static int candidate_sweep_busy; /* Every failed scan in this sweep hit a busy field. */
 static int candidate_busy_retry; /* Cycles lane already retried an all-busy batch. */
 static int candidate_fallback_ready; /* Atomic readiness published to the Fast scheduler. */
 static unsigned long shared_record_confirmations;
@@ -153,6 +155,8 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_coalesced = 0;
     cycle_candidates_rooted = 0;
     cycle_candidates_oversized = 0;
+    candidate_sweep_left = 0;
+    candidate_sweep_busy = 0;
     candidate_busy_retry = 0;
     __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     shared_record_confirmations = 0;
@@ -1679,13 +1683,15 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
     {
         DVM_RetirementStats queued = {0};
         (void)dvm_retirement_statistics(cycle_candidates, &queued);
-        size_t busy_attempts = 0;
-        size_t attempts = 0;
+        if (!candidate_sweep_left || candidate_sweep_left > queued.ready)
+        {
+            candidate_sweep_left = queued.ready;
+            candidate_sweep_busy = 1;
+        }
         for (size_t index = 0; index < queued.ready && budget; index++)
         {
             size_t cost;
             int busy;
-            attempts++;
             if (scan_retiring_record(&cost, &busy))
             {
                 completed++;
@@ -1694,18 +1700,34 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             {
                 dvm_retirement_rotate(cycle_candidates);
                 cycle_candidates_rotated++;
-                busy_attempts += busy;
+                candidate_sweep_busy &= busy;
             }
-            /* A queued exclusive owner must not wait for another graph walk. */
-            if (dvm_world_exclusive_waiting(world))
+            candidate_sweep_left--;
+            if (!candidate_sweep_left || dvm_world_exclusive_waiting(world))
             {
                 break;
             }
             budget = cost < budget ? budget - cost : 0;
         }
-        retry = attempts && busy_attempts == attempts && !candidate_busy_retry;
-        candidate_busy_retry = retry;
-        int fallback_ready = attempts && !completed && !retry;
+        int fallback_ready = 0;
+        if (completed)
+        {
+            candidate_sweep_left = 0;
+            candidate_busy_retry = 0;
+        }
+        else if (queued.ready)
+        {
+            if (candidate_sweep_left)
+            {
+                retry = 1;
+            }
+            else
+            {
+                retry = candidate_sweep_busy && !candidate_busy_retry;
+                candidate_busy_retry = retry;
+                fallback_ready = !retry;
+            }
+        }
         __atomic_store_n(&candidate_fallback_ready, fallback_ready, __ATOMIC_RELEASE);
         if (fallback_ready && notify_ready)
         {
