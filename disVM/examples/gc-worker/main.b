@@ -48,6 +48,20 @@ cycle(seed: int)
 }
 
 
+# A ring larger than Fast GC's bounded record walk exercises the tracer.
+largecycle()
+{
+    first := ref Node(nil, nil);
+    current := first;
+    for (i := 1; i < 40; i++)
+    {
+        current.next = ref Node(nil, nil);
+        current = current.next;
+    }
+    current.next = first;
+}
+
+
 # Publish a cyclic node through a shared array slice. The command and reply
 # channels release both writers and leave the shared cell as the only live root.
 graphwriter(shared: array of ref Node, commands, replies: chan of int)
@@ -232,6 +246,9 @@ init()
     sharedgraph();
     if (checkframes(192, 0) != 18528 || checkframes(192, 1) != 192)
         raise "deep frame return or exception mismatch";
+    for (ring := 0; ring < 16; ring++)
+        largecycle();
+    sys->sleep(30);
     # Give the event scheduler a clean interval after deferred owners drain.
     # The interval spans many turns even at the hosted test's larger quantum.
     total := 0;
