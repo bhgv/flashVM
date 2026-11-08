@@ -297,7 +297,7 @@ def main():
                     raise RuntimeError('pointer stage control anchor drift')
                 private = work/filename
                 private.write_text('extern int dvm_pointer_prepare_control(void);\n'+original.replace(before,after,1))
-                bad = relink(runtime,work,wrapper,index+1,symbols,**{filename.removesuffix('.c')+'_source':private})
+                bad = relink(runtime,work,wrapper,index+1,symbols,**{Path(filename).stem+'_source':private})
                 run = subprocess.run([str(bad),'--no-jit','--gc-worker','--guarded-copies',
                     '--managed-owner-probe',str(image)],capture_output=True,text=True,timeout=90)
                 if run.returncode != 10 or 'FAIL pointer prepare: '+marker not in run.stdout+run.stderr:

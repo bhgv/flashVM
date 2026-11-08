@@ -476,7 +476,7 @@ def adapt_alt_header_replay(source):
     reads = ('\tmemmove(&sends, (uchar*)a+offsetof(Alt, nsend), sizeof(sends));\n'
              '\tmemmove(&receives, (uchar*)a+offsetof(Alt, nrecv), sizeof(receives));')
     before, after = body.split(reads)
-    validate = after.removesuffix('\n}')
+    validate = after[:-2]  # body ends at the closing newline and brace
     body = """/* Validate counts against the original borrowed guard table address. */
 static int altcounts(Alt *a, WORD sends, WORD receives, int *nsend, int *nrecv)
 {
