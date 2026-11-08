@@ -3038,6 +3038,12 @@ int main(int argc, char **argv)
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
         return 2;
     }
+    /* The implicit native profile never asks active guests to park for Cycles.
+     * Explicit --gc-worker retains the stopped reference path for diagnostics. */
+    if (gc_worker && !gc_selected && !dvm_runtime_disable_cycles)
+    {
+        dvm_runtime_idle_cycles = 1;
+    }
     if (dvm_runtime_idle_cycles && (!gc_worker || dvm_runtime_disable_cycles))
     {
         fprintf(stderr, "--gc-idle-cycles requires native GC and conflicts with --gc-no-cycles\n");
