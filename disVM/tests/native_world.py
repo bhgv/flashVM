@@ -39,6 +39,7 @@ def main():
                 root / "upstream/libinterp",
                 root / "upstream/emu/port",
                 root / "include",
+                root / "runtime",
                 fvm / "include",
                 fvm / "ports",
             ]
@@ -50,6 +51,7 @@ def main():
             str(root / "host/native_registers.c"),
             str(root / "host/native_context.c"),
             str(root / "host/native_world.c"),
+            str(root / "runtime/heap_pool.c"),
             str(root / "host/flashvm_thread.c"),
             str(fvm / "ports/linux/thread.c"),
             str(fvm / "ports/linux/channel_sync.c"),

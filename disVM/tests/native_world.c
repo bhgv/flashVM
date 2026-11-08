@@ -5,9 +5,13 @@
 #include "dat.h"
 #include "isa.h"
 #include "interp.h"
+#include "pool.h"
+#include "heap_pool.h"
 #include "raise.h"
 #include "disvm/native_process.h"
 #include "disvm/native_world.h"
+
+void (*poolfault)(void *, char *, ulong);
 
 #ifdef DVM_GC_WORKERS
 #include "disvm/gc_workers.h"
@@ -261,6 +265,17 @@ static void check_idle_modes(void)
             fprintf(stderr,"FAIL idle world initialization\n");
             exit(EXIT_FAILURE);
         }
+        Pool pool = {0};
+        if (!dvm_heap_pool_init(&pool, 4096))
+        {
+            exit(EXIT_FAILURE);
+        }
+        void *block = poolalloc(&pool, 32);
+        DVM_HeapKey key = dvm_heap_pool_key(&pool, block);
+        if (!key.generation)
+        {
+            exit(EXIT_FAILURE);
+        }
         unsigned long retired = dvm_world_retire_epoch(world);
         if (!retired || dvm_world_epoch_elapsed(world, retired))
         {
@@ -298,11 +313,30 @@ static void check_idle_modes(void)
             exit(EXIT_FAILURE);
         }
         unsigned long confirmed = dvm_world_retire_epoch(world);
-        if (confirmed <= retired || dvm_world_epoch_elapsed(world, confirmed) ||
-            !dvm_world_read_end(participant) || !dvm_world_epoch_elapsed(world, confirmed) ||
+        if (dvm_world_epoch_elapsed(world, confirmed))
+        {
+            poolfree(&pool, block);
+        }
+        void *other = poolalloc(&pool, 32);
+        if (confirmed <= retired || !other || other == block ||
+            !dvm_heap_pool_key_matches(&pool, block, key) ||
+            !dvm_world_read_end(participant) || !dvm_world_epoch_elapsed(world, confirmed))
+        {
+            fprintf(stderr,"FAIL final epoch released an intervening reader's allocation\n");
+            exit(EXIT_FAILURE);
+        }
+        poolfree(&pool, block);
+        void *reused = poolalloc(&pool, 32);
+        if ((uintptr_t)reused != key.address || dvm_heap_pool_key_matches(&pool, reused, key))
+        {
+            fprintf(stderr,"FAIL allocator did not reuse the released address with a new generation\n");
+            exit(EXIT_FAILURE);
+        }
+        poolfree(&pool, other);
+        poolfree(&pool, reused);
+        if (!dvm_heap_pool_destroy(&pool) ||
             !dvm_world_detach(participant) || !dvm_world_destroy(world))
         {
-            fprintf(stderr,"FAIL final claim epoch did not wait for intervening borrow\n");
             exit(EXIT_FAILURE);
         }
     }
