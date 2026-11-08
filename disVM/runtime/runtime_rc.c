@@ -247,6 +247,46 @@ struct RecordGroup
 };
 
 
+/* The held source field preserves the target while the graph is scanned. */
+static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
+    DVM_RangeAccess *access)
+{
+    void *edge;
+    if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
+    {
+        return 0;
+    }
+    memcpy(&edge, cell, sizeof(edge));
+    if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
+    {
+        return 0;
+    }
+    group->cells[group->edges_used] = cell;
+    group->sources[group->edges_used] = index;
+    if (edge == H)
+    {
+        group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
+        return 1;
+    }
+    unsigned int target = 0;
+    while (target < group->nodes_used && group->nodes[target] != edge)
+    {
+        target++;
+    }
+    if (target == group->nodes_used)
+    {
+        if (target == RECORD_GROUP_LIMIT)
+        {
+            return 0;
+        }
+        group->nodes[group->nodes_used++] = edge;
+    }
+    group->incoming[target]++;
+    group->targets[group->edges_used++] = target;
+    return 1;
+}
+
+
 /* Snapshot ordinary records and owning arrays. Opaque targets are
  * live boundaries. The caller owns start through its queue root. */
 static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
@@ -291,8 +331,19 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
                 data = array->data;
             }
         }
-        if (!type || type->size < (int)sizeof(void *) ||
-            (heap->t != &Tarray && type->free != freeheap))
+        if (heap->t == &Tlist)
+        {
+            List *list = record;
+            if (!record_group_edge(group, index, &list->tail, access))
+            {
+                return 0;
+            }
+            type = list->t;
+            data = (unsigned char *)list->data;
+            elements = type ? 1 : 0;
+        }
+        if (heap->t != &Tlist && (!type || type->size < (int)sizeof(void *) ||
+            (heap->t != &Tarray && type->free != freeheap)))
         {
             group->live[index] = 1;
             continue;
@@ -318,37 +369,10 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
                         return 0;
                     }
                     void *cell = data + element * type->size + slot * sizeof(edge);
-                    if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
+                    if (!record_group_edge(group, index, cell, access))
                     {
                         return 0;
                     }
-                    memcpy(&edge, cell, sizeof(edge));
-                    if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
-                    {
-                        return 0;
-                    }
-                    group->cells[group->edges_used] = cell;
-                    group->sources[group->edges_used] = index;
-                    if (edge == H)
-                    {
-                        group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
-                        continue;
-                    }
-                    unsigned int target = 0;
-                    while (target < group->nodes_used && group->nodes[target] != edge)
-                    {
-                        target++;
-                    }
-                    if (target == group->nodes_used)
-                    {
-                        if (target == RECORD_GROUP_LIMIT)
-                        {
-                            return 0;
-                        }
-                        group->nodes[group->nodes_used++] = edge;
-                    }
-                    group->incoming[target]++;
-                    group->targets[group->edges_used++] = target;
                 }
             }
         }
@@ -525,7 +549,7 @@ static int record_candidate(const Heap *heap)
         return array->root && array->t && (array->root != H ||
             (array->len > 0 && array->len <= RECORD_EDGE_LIMIT && array->t->np));
     }
-    return heap->t->free == freeheap && heap->t->np;
+    return heap->t == &Tlist || (heap->t->free == freeheap && heap->t->np);
 }
 
 
@@ -1131,6 +1155,10 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
             if (heap->t == &Tarray)
             {
                 release_owned_descriptor(H2D(Array *, heap)->t);
+            }
+            if (heap->t == &Tlist && H2D(List *, heap)->t)
+            {
+                release_owned_descriptor(H2D(List *, heap)->t);
             }
             release_owned_descriptor(heap->t);
             poolfree(heapmem, heap);
