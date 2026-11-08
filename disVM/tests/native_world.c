@@ -283,10 +283,26 @@ static void check_idle_modes(void)
         }
         if (dvm_world_owner_polls(participant,NULL,&locked) ||
             !dvm_world_leave(participant) || dvm_native_context_poll() ||
-            !dvm_world_epoch_elapsed(world, retired) ||
-            !dvm_world_detach(participant) || !dvm_world_destroy(world))
+            !dvm_world_epoch_elapsed(world, retired))
         {
             fprintf(stderr,"FAIL inactive poll/owner retirement\n");
+            exit(EXIT_FAILURE);
+        }
+
+        /* An intervening reader is newer than the queue epoch, but older than
+         * the final claim. Only the final epoch must wait for this borrow. */
+        if (!dvm_world_read_begin(participant) ||
+            !dvm_world_epoch_elapsed(world, retired))
+        {
+            fprintf(stderr,"FAIL intervening borrow blocked the old epoch\n");
+            exit(EXIT_FAILURE);
+        }
+        unsigned long confirmed = dvm_world_retire_epoch(world);
+        if (confirmed <= retired || dvm_world_epoch_elapsed(world, confirmed) ||
+            !dvm_world_read_end(participant) || !dvm_world_epoch_elapsed(world, confirmed) ||
+            !dvm_world_detach(participant) || !dvm_world_destroy(world))
+        {
+            fprintf(stderr,"FAIL final claim epoch did not wait for intervening borrow\n");
             exit(EXIT_FAILURE);
         }
     }
