@@ -264,8 +264,8 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
-#define RECORD_GROUP_LIMIT 32
-#define RECORD_EDGE_LIMIT 128
+#define RECORD_GROUP_LIMIT 64
+#define RECORD_EDGE_LIMIT 256
 
 struct RecordGroup
 {
