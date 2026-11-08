@@ -241,6 +241,7 @@ struct RecordGroup
     unsigned int sources[RECORD_EDGE_LIMIT];
     unsigned char live[RECORD_GROUP_LIMIT];
     unsigned int live_count;
+    int has_views; /* A detached view needs descriptor-only destruction. */
     unsigned int nodes_used;
     unsigned int edges_used;
 };
@@ -267,15 +268,28 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
         if (type == &Tarray)
         {
             Array *array = record;
-            if (array->root != H || array->len < 0 || array->len > RECORD_EDGE_LIMIT ||
-                !array->t || array->data != (unsigned char *)array + sizeof(*array))
+            if (!array->root || !array->t)
             {
-                group->live[index] = 1;
-                continue;
+                return 0;
             }
-            type = array->t;
-            elements = array->len;
-            data = array->data;
+            if (array->root != H)
+            {
+                group->has_views = 1;
+                type = &Tptr;
+                data = (unsigned char *)&array->root;
+            }
+            else
+            {
+                if (array->len < 0 || array->len > RECORD_EDGE_LIMIT ||
+                    array->data != (unsigned char *)array + sizeof(*array))
+                {
+                    group->live[index] = 1;
+                    continue;
+                }
+                type = array->t;
+                elements = array->len;
+                data = array->data;
+            }
         }
         if (!type || type->size < (int)sizeof(void *) ||
             (heap->t != &Tarray && type->free != freeheap))
@@ -452,7 +466,7 @@ static int defer_record_group(const RecordGroup *group, int shared)
         records->keys[index] = D2H(group->nodes[index]);
     }
     *snapshot = *group;
-    int pin_children = shared || group->live_count;
+    int pin_children = shared || group->live_count || group->has_views;
     if (pin_children)
     {
         for (unsigned int index = 1; index < group->nodes_used; index++)
@@ -508,8 +522,8 @@ static int record_candidate(const Heap *heap)
     if (heap->t == &Tarray)
     {
         const Array *array = H2D(const Array *, heap);
-        return array->root == H && array->len > 0 && array->len <= RECORD_EDGE_LIMIT &&
-            array->t && array->t->np;
+        return array->root && array->t && (array->root != H ||
+            (array->len > 0 && array->len <= RECORD_EDGE_LIMIT && array->t->np));
     }
     return heap->t->free == freeheap && heap->t->np;
 }
@@ -1421,6 +1435,12 @@ static int process_queued_record_group(void *value, int promote)
     if (promote && defer_record_group(&group, 0))
     {
         return 1;
+    }
+    /* Clearing a view's root would make its legacy destructor treat borrowed
+     * data as owned. Leave unpromoted views to the retained tracer. */
+    if (group.has_views)
+    {
+        return 0;
     }
     unlink_record_group(&group);
     for (unsigned int index = 1; index < group.nodes_used; index++)
