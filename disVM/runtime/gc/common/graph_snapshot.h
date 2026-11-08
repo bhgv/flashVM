@@ -17,6 +17,7 @@
 
 typedef struct RecordGroup
 {
+    DVM_RangePlan field_plan; /* Precomputed stripe selection for published fields. */
     void **nodes;             /* Captured object payloads. */
     unsigned int *incoming;   /* Internal incoming edge counts. */
     unsigned int *index;      /* Discovery hash slots, unused after capture. */

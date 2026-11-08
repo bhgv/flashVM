@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Native range guard tests covering reuse, contention and rollback.
+ * RU: Проверки повторного захвата, конкуренции и отката блокировок диапазонов.
+ */
 /* Actual canonical guard extension: bounded acquisition and continuous prefix. */
 #include "disvm/range_access.h"
 #include "disvm/refcount.h"
@@ -275,10 +280,19 @@ int main(void)
     check(dvm_range_access_cells_begin(shared.domain, batch, 4, &access) == DVM_CELL_ACQUIRED &&
         access.count == 6 && access.held == 6 && dvm_range_access_end(&access),
         "unordered cell batch deduplicates overlapping stripes");
+    DVM_RangePlan plan;
+    check(dvm_range_plan_cells(&plan, batch, 4), "prepare reusable cell plan");
     batch[3] = NULL;
     check(dvm_range_access_cells_begin(shared.domain, batch, 4, &access) == DVM_CELL_REFUSED &&
         !access.count && !access.domain && !dvm_native_context_object_count(context),
         "invalid final batch cell leaves no claims");
+    check(!dvm_range_plan_cells(&plan, batch, 4), "refuse invalid replacement plan");
+    for (unsigned int repeat = 0; repeat < 2; repeat++)
+    {
+        check(dvm_range_plan_begin(shared.domain, &plan, &access) == DVM_CELL_ACQUIRED &&
+            access.count == 6 && access.held == 6 && dvm_range_access_end(&access),
+            "reuse original plan after refusal");
+    }
     monitor = 0;
     check(!allocations && dvm_refcount_load_u(&shared.domain->references) == 1,
         "single domain borrow restored");

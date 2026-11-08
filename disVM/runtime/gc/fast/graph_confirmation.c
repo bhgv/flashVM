@@ -94,7 +94,7 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
         return DVM_CELL_REFUSED;
     }
     DVM_RangeAccess access = {0};
-    DVM_CellResult result = dvm_range_access_cells_begin(cells, group->cells, group->edges_used, &access);
+    DVM_CellResult result = dvm_range_plan_begin(cells, &group->field_plan, &access);
     if (result != DVM_CELL_ACQUIRED)
     {
         return result;

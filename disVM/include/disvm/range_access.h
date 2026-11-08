@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Native field guards and reusable stripe plans.
+ * RU: Нативные блокировки полей и переиспользуемые карты захвата.
+ */
 /* Ordered native byte-span exclusion sharing the existing pointer-cell domain. */
 #ifndef DVM_RANGE_ACCESS_H
 #define DVM_RANGE_ACCESS_H
@@ -41,6 +46,23 @@ DVM_CellResult dvm_range_access_begin(DVM_CellDomain *domain,
 DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
     const void *first, size_t first_size, const void *second, size_t second_size,
     void *output, size_t output_size, DVM_RangeAccess *access);
+
+
+/* Domain-independent stripe selection, computed from stable field addresses. */
+typedef struct DVM_RangePlan
+{
+    unsigned char bits[DVM_RANGE_GUARDS / 8]; /* One bit per selected stripe. */
+} DVM_RangePlan;
+
+
+/* EN: Build plan for count borrowed cells. Return zero without changing plan on refusal.
+ * RU: Построить plan для count полей cells. При отказе вернуть ноль и сохранить plan. */
+int dvm_range_plan_cells(DVM_RangePlan *plan, void *const *cells, size_t count);
+
+/* EN: Try plan in domain, returning the acquired guards in access on success.
+ * RU: Попробовать захват plan в domain. При успехе сохранить блокировки в access. */
+DVM_CellResult dvm_range_plan_begin(DVM_CellDomain *domain,
+    const DVM_RangePlan *plan, DVM_RangeAccess *access);
 
 
 /* Claim the ordered union of count borrowed pointer-sized cells in domain.

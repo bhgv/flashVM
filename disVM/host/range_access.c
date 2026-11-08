@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Select and acquire native guards for byte ranges and pointer cells.
+ * RU: Выбор и захват нативных блокировок для диапазонов байтов и полей ссылок.
+ */
 /* Arbitrary byte ranges use the SAME native stripe identities as pointer cells. */
 #include "disvm/range_access.h"
 #include "cell_access_private.h"
@@ -145,24 +150,47 @@ DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
 }
 
 
-/* Select count borrowed pointer cells and acquire their stripe union once.
- * A refused geometry or busy stripe leaves the caller's access unchanged. */
-DVM_CellResult dvm_range_access_cells_begin(DVM_CellDomain *domain,
-    void *const *cells, size_t count, DVM_RangeAccess *access)
+/* EN: Compute plan for count pointer cells without reading their contents.
+ * RU: Вычислить plan для count полей cells без чтения их содержимого. */
+int dvm_range_plan_cells(DVM_RangePlan *plan, void *const *cells, size_t count)
 {
-    unsigned char bits[DVM_CELL_STRIPES / 8] = {0};
-    if (count && !cells)
+    DVM_RangePlan candidate = {0};
+    if (!plan || (count && !cells))
     {
-        return DVM_CELL_REFUSED;
+        return 0;
     }
     for (size_t index = 0; index < count; index++)
     {
-        if (!select_span(cells[index], sizeof(void *), bits))
+        if (!select_span(cells[index], sizeof(void *), candidate.bits))
         {
-            return DVM_CELL_REFUSED;
+            return 0;
         }
     }
-    return begin_selected(domain, bits, access);
+    *plan = candidate;
+    return 1;
+}
+
+
+/* EN: Try to acquire plan in domain. Borrowed access is empty on entry.
+ * RU: Попробовать захватить plan в domain. На входе access пуст. */
+DVM_CellResult dvm_range_plan_begin(DVM_CellDomain *domain,
+    const DVM_RangePlan *plan, DVM_RangeAccess *access)
+{
+    return plan ? begin_selected(domain, plan->bits, access) : DVM_CELL_REFUSED;
+}
+
+
+/* EN: Build and acquire the stripe union for count cells in domain.
+ * RU: Построить и захватить набор блокировок count полей cells в domain через access. */
+DVM_CellResult dvm_range_access_cells_begin(DVM_CellDomain *domain,
+    void *const *cells, size_t count, DVM_RangeAccess *access)
+{
+    DVM_RangePlan plan;
+    if (!dvm_range_plan_cells(&plan, cells, count))
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return dvm_range_plan_begin(domain, &plan, access);
 }
 
 

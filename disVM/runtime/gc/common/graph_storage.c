@@ -121,6 +121,11 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
             }
         }
     }
+    if (!dvm_range_plan_cells(&copy->field_plan, copy->cells, copy->edges_used))
+    {
+        free(copy);
+        return NULL;
+    }
     return copy;
 }
 
