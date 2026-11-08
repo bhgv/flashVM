@@ -217,6 +217,20 @@ void *dvm_retirement_peek(DVM_RetirementQueue *queue)
 }
 
 
+/* Rotate ready metadata without borrowing capacity or withdrawing roots. */
+void dvm_retirement_rotate(DVM_RetirementQueue *queue)
+{
+    fvm_port_sync_lock(queue->sync);
+    if (queue->ready > 1)
+    {
+        unsigned int tail = (queue->head + queue->ready) % queue->capacity;
+        queue->ring[tail] = queue->ring[queue->head];
+        queue->head = (queue->head + 1) % queue->capacity;
+    }
+    fvm_port_sync_unlock(queue->sync);
+}
+
+
 /* Detach before caller runs any root removal/destructor. Empty output unchanged. */
 int dvm_retirement_take(DVM_RetirementQueue *queue, void **value, unsigned long *bytes)
 {

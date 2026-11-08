@@ -1077,6 +1077,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 if (source == record_retries)
                 {
+                    dvm_retirement_rotate(source);
                     continue;
                 }
                 break;
@@ -1094,6 +1095,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     entry->claim_refused = claim != DVM_CELL_BUSY;
                     if (claim == DVM_CELL_BUSY && source == record_retries)
                     {
+                        dvm_retirement_rotate(source);
                         continue;
                     }
                     DVM_RetirementQueue *destination = claim == DVM_CELL_BUSY ?
@@ -1116,7 +1118,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     entry->epoch = final_epoch;
                     budget--;
                     completed++;
-                    if (source == record_retries || move_leaf(source, record_retries, entry))
+                    if (source == record_retries)
+                    {
+                        dvm_retirement_rotate(source);
+                        continue;
+                    }
+                    if (move_leaf(source, record_retries, entry))
                     {
                         continue;
                     }

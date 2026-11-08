@@ -72,6 +72,10 @@ int dvm_retirement_cancel(DVM_RetirementQueue *queue, DVM_RetirementReservation 
 /* Borrow head identity until the sole consumer takes it. */
 void *dvm_retirement_peek(DVM_RetirementQueue *queue);
 
+/* Move the head to the tail, even at capacity. Single consumer only.
+ * The queue must be live. An empty or singleton queue is unchanged. */
+void dvm_retirement_rotate(DVM_RetirementQueue *queue);
+
 /* Move oldest committed identity into *value and its extent into *bytes.
  * Output pointers are private, nonaliasing and live; unchanged on empty/invalid.
  * Return1 if moved. Caller handles root/destruction only AFTER this returns.
