@@ -246,7 +246,7 @@ struct RecordGroup
 };
 
 
-/* Snapshot ordinary records under exclusive admission. Opaque targets are
+/* Snapshot ordinary records and owning arrays. Opaque targets are
  * live boundaries. The caller owns start through its queue root. */
 static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
     DVM_RangeAccess *access)
@@ -262,7 +262,23 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
         void *record = group->nodes[index];
         Heap *heap = D2H(record);
         Type *type = heap->t;
-        if (!type || type->free != freeheap || type->size < (int)sizeof(void *))
+        unsigned char *data = record;
+        size_t elements = 1;
+        if (type == &Tarray)
+        {
+            Array *array = record;
+            if (array->root != H || array->len < 0 || array->len > RECORD_EDGE_LIMIT ||
+                !array->t || array->data != (unsigned char *)array + sizeof(*array))
+            {
+                group->live[index] = 1;
+                continue;
+            }
+            type = array->t;
+            elements = array->len;
+            data = array->data;
+        }
+        if (!type || type->size < (int)sizeof(void *) ||
+            (heap->t != &Tarray && type->free != freeheap))
         {
             group->live[index] = 1;
             continue;
@@ -271,52 +287,55 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
         {
             group->live[index] = 1;
         }
-        for (int byte = 0; byte < type->np; byte++)
+        for (size_t element = 0; element < elements; element++)
         {
-            for (unsigned int bit = 0; bit < 8; bit++)
+            for (int byte = 0; byte < type->np; byte++)
             {
-                if (!(type->map[byte] & (0x80U >> bit)))
+                for (unsigned int bit = 0; bit < 8; bit++)
                 {
-                    continue;
-                }
-                size_t slot = (size_t)byte * 8 + bit;
-                void *edge;
-                if (slot >= (size_t)type->size / sizeof(edge))
-                {
-                    return 0;
-                }
-                void *cell = (unsigned char *)record + slot * sizeof(edge);
-                if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
-                {
-                    return 0;
-                }
-                memcpy(&edge, cell, sizeof(edge));
-                if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
-                {
-                    return 0;
-                }
-                group->cells[group->edges_used] = cell;
-                group->sources[group->edges_used] = index;
-                if (edge == H)
-                {
-                    group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
-                    continue;
-                }
-                unsigned int target = 0;
-                while (target < group->nodes_used && group->nodes[target] != edge)
-                {
-                    target++;
-                }
-                if (target == group->nodes_used)
-                {
-                    if (target == RECORD_GROUP_LIMIT)
+                    if (!(type->map[byte] & (0x80U >> bit)))
+                    {
+                        continue;
+                    }
+                    size_t slot = (size_t)byte * 8 + bit;
+                    void *edge;
+                    if (slot >= (size_t)type->size / sizeof(edge))
                     {
                         return 0;
                     }
-                    group->nodes[group->nodes_used++] = edge;
+                    void *cell = data + element * type->size + slot * sizeof(edge);
+                    if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
+                    {
+                        return 0;
+                    }
+                    memcpy(&edge, cell, sizeof(edge));
+                    if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
+                    {
+                        return 0;
+                    }
+                    group->cells[group->edges_used] = cell;
+                    group->sources[group->edges_used] = index;
+                    if (edge == H)
+                    {
+                        group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
+                        continue;
+                    }
+                    unsigned int target = 0;
+                    while (target < group->nodes_used && group->nodes[target] != edge)
+                    {
+                        target++;
+                    }
+                    if (target == group->nodes_used)
+                    {
+                        if (target == RECORD_GROUP_LIMIT)
+                        {
+                            return 0;
+                        }
+                        group->nodes[group->nodes_used++] = edge;
+                    }
+                    group->incoming[target]++;
+                    group->targets[group->edges_used++] = target;
                 }
-                group->incoming[target]++;
-                group->targets[group->edges_used++] = target;
             }
         }
     }
@@ -479,11 +498,20 @@ static int defer_record_group(const RecordGroup *group, int shared)
 }
 
 
-/* Only ordinary records with managed fields participate in this trial. */
+/* Ordinary records and bounded owning arrays with managed fields. */
 static int record_candidate(const Heap *heap)
 {
-    return dvm_runtime_idle_cycles && heap->t && heap->t->free == freeheap &&
-        heap->t->np && !gchalt && !heapmonitor;
+    if (!dvm_runtime_idle_cycles || !heap->t || gchalt || heapmonitor)
+    {
+        return 0;
+    }
+    if (heap->t == &Tarray)
+    {
+        const Array *array = H2D(const Array *, heap);
+        return array->root == H && array->len > 0 && array->len <= RECORD_EDGE_LIMIT &&
+            array->t && array->t->np;
+    }
+    return heap->t->free == freeheap && heap->t->np;
 }
 
 
@@ -535,12 +563,13 @@ int dvm_runtime_rc_defer(void *value)
     }
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
-    if (dvm_refcount_load_u(&heap->ref) != 1 && !record_candidate(heap))
+    int last = dvm_refcount_load_u(&heap->ref) == 1;
+    if (!last && !record_candidate(heap))
     {
         return 0;
     }
     bytes = poolmsize(heapmem,heap);
-    if (defer_leaf(heap, bytes, 1))
+    if (last && defer_leaf(heap, bytes, 1))
     {
         enqueued++;
         helper_enqueued += helper != 0;
@@ -1085,6 +1114,10 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         }
         else if (shared || entry->claimed)
         {
+            if (heap->t == &Tarray)
+            {
+                release_owned_descriptor(H2D(Array *, heap)->t);
+            }
             release_owned_descriptor(heap->t);
             poolfree(heapmem, heap);
         }
