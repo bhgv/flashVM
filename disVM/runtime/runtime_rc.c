@@ -148,7 +148,8 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 }
 
 
-extern int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped);
+extern int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed);
+extern int dvm_runtime_channel_is_quiet(Channel *channel);
 
 
 /* Read leaf payload only while its queue or caller owns a strong reference.
@@ -351,8 +352,19 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
             data = (unsigned char *)list->data;
             elements = type ? 1 : 0;
         }
+        if (heap->t == &Tchannel)
+        {
+            Channel *channel = record;
+            if (!dvm_runtime_channel_is_quiet(channel))
+            {
+                group->live[index] = 1;
+                continue;
+            }
+            type = &Tptr;
+            data = (unsigned char *)&channel->buf;
+        }
         if (heap->t != &Tlist && (!type || type->size < (int)sizeof(void *) ||
-            (heap->t != &Tarray && type->free != freeheap)))
+            (heap->t != &Tarray && heap->t != &Tchannel && type->free != freeheap)))
         {
             group->live[index] = 1;
             continue;
@@ -558,7 +570,7 @@ static int record_candidate(const Heap *heap)
         return array->root && array->t && (array->root != H ||
             (array->len > 0 && array->len <= RECORD_EDGE_LIMIT && array->t->np));
     }
-    return heap->t == &Tlist || (heap->t->free == freeheap && heap->t->np);
+    return heap->t == &Tlist || heap->t == &Tchannel || (heap->t->free == freeheap && heap->t->np);
 }
 
 
@@ -1044,7 +1056,9 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
     }
     for (unsigned int index = 0; result == DVM_CELL_ACQUIRED && index < group->nodes_used; index++)
     {
-        if (!group->live[index] && dvm_runtime_root_count(D2H(group->nodes[index])) != 1)
+        Heap *heap = D2H(group->nodes[index]);
+        if (!group->live[index] && (dvm_runtime_root_count(heap) != 1 ||
+            (heap->t == &Tchannel && !dvm_runtime_channel_is_quiet(H2D(Channel *, heap)))))
         {
             result = DVM_CELL_REFUSED;
         }
@@ -1154,7 +1168,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped)
     Array *buffer = H2D(Channel *, heap)->buf;
     if (buffer == H)
     {
-        return dvm_runtime_channel_claim_quiet(heap, buffer, mapped);
+        return dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0);
     }
     if (!buffer)
     {
@@ -1167,7 +1181,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped)
     {
         return 0;
     }
-    if (dvm_runtime_channel_claim_quiet(heap, buffer, mapped))
+    if (dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0))
     {
         if (!dvm_retirement_commit(frames, &token, packet))
         {
@@ -1217,6 +1231,19 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
             if (heap->t == &Tarray)
             {
                 release_owned_descriptor(H2D(Array *, heap)->t);
+            }
+            if (heap->t == &Tchannel)
+            {
+                Type *mapped = NULL;
+                if (!dvm_runtime_channel_claim_quiet(heap, H2D(Channel *, heap)->buf, &mapped, 1))
+                {
+                    abort();
+                }
+                if (mapped)
+                {
+                    release_owned_descriptor(mapped);
+                }
+                shared_channels += shared;
             }
             if (heap->t == &Tlist && H2D(List *, heap)->t)
             {

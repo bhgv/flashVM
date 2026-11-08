@@ -1889,17 +1889,35 @@ void killcomm(Progq **queue)
 }
 
 
+/* Caller holds the channel queue mutex. Empty queues may own sentinels. */
+static int channel_quiet(Channel *channel)
+{
+    Progq *send = channel->send;
+    Progq *recv = channel->recv;
+    return !channel->aux && (!send || (!send->prog && !send->next && send != recv)) &&
+        (!recv || (!recv->prog && !recv->next)) && !dvm_runtime_channel_buffer_busy(channel);
+}
+
+
+int dvm_runtime_channel_is_quiet(Channel *channel)
+{
+    fvm_port_sync_lock(channel_queue_mutex);
+    int quiet = channel_quiet(channel);
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return quiet;
+}
+
+
 /* Try the callback-free last-owner path after the reader epoch. */
-int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped)
+int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed)
 {
     Channel *channel = H2D(Channel *, heap);
     fvm_port_sync_lock(channel_queue_mutex);
     Progq *send = channel->send;
     Progq *recv = channel->recv;
-    int claimed = channel->buf == buffer && !channel->aux &&
-        (!send || (!send->prog && !send->next && send != recv)) &&
-        (!recv || (!recv->prog && !recv->next)) &&
-        !dvm_runtime_channel_buffer_busy(channel) && dvm_refcount_claim_last_u(&heap->ref);
+    int claimed = channel->buf == buffer && channel_quiet(channel) &&
+        (already_claimed ? dvm_refcount_load_u(&heap->ref) == 0 :
+            dvm_refcount_claim_last_u(&heap->ref));
     if (claimed)
     {
         *mapped = channel->mover == movtmp ? channel->mid.t : nil;
