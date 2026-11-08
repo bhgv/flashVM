@@ -479,6 +479,42 @@ static int defer_record_group(const RecordGroup *group, int shared)
 }
 
 
+/* Only ordinary records with managed fields participate in this trial. */
+static int record_candidate(const Heap *heap)
+{
+    return dvm_runtime_idle_cycles && heap->t && heap->t->free == freeheap &&
+        heap->t->np && !gchalt && !heapmonitor;
+}
+
+
+/* Keep the packet owner intact until its replacement queue root is published. */
+static int transfer_record_candidate(Heap *heap)
+{
+    if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1)
+    {
+        return 0;
+    }
+    DVM_RetirementReservation token = {0};
+    unsigned long bytes = poolmsize(heapmem, heap);
+    if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop) || !dvm_runtime_root_add(heap))
+    {
+        dvm_retirement_cancel(retirement, &token);
+        return 0;
+    }
+    if (!dvm_retirement_commit(retirement, &token, H2D(void *, heap)))
+    {
+        abort();
+    }
+    enqueued++;
+    helper_enqueued++;
+    return 1;
+}
+
+
 /* [GC:] value has passed destroy's retained block check. Keep its retiring reference
  * as queue ownership rather than publishing an unrooted zero-count object.
  * A failed ptradd leaves ownership untouched and restores the caller error text,
@@ -499,9 +535,7 @@ int dvm_runtime_rc_defer(void *value)
     }
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
-    if (dvm_refcount_load_u(&heap->ref) != 1 &&
-        (!dvm_runtime_idle_cycles || !heap->t || heap->t->free != freeheap ||
-         !heap->t->np || gchalt || heapmonitor))
+    if (dvm_refcount_load_u(&heap->ref) != 1 && !record_candidate(heap))
     {
         return 0;
     }
@@ -829,18 +863,21 @@ static unsigned int drain_shared_children(size_t budget)
         while (budget && packet->next < packet->count)
         {
             Heap *heap = packet->keys[packet->next];
-            if (dvm_refcount_drop_nonfinal_u(&heap->ref))
+            if (!transfer_record_candidate(heap))
             {
-                dvm_runtime_gc_owner_lost();
-            }
-            else
-            {
-                if (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0))
+                if (dvm_refcount_drop_nonfinal_u(&heap->ref))
                 {
-                    return completed;
+                    dvm_runtime_gc_owner_lost();
                 }
-                enqueued++;
-                helper_enqueued++;
+                else
+                {
+                    if (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0))
+                    {
+                        return completed;
+                    }
+                    enqueued++;
+                    helper_enqueued++;
+                }
             }
             if (!dvm_runtime_root_batch_remove(packet->roots, packet->next))
             {
