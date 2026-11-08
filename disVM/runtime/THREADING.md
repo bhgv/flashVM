@@ -44,7 +44,8 @@ heap can defer collection indefinitely. The option can be combined with
 
 On Linux AMD64, console DisVM starts two managed executors and native GC when
 no explicit execution profile is selected. Implicit native GC, including with
-`--native-spawn`, uses idle-only cycle admission. An explicit `--gc-worker`
+`--native-spawn`, uses idle-only cycle admission and coalesces cycle passes after ownership loss.
+An explicit `--gc-worker`
 selects the stopped reference path unless `--gc-idle-cycles` is also specified. The default enables guarded copies
 and restricted shared admission for typed pointer, record, byte, slice and
 channel transfers. Other instructions continue to use exclusive admission.

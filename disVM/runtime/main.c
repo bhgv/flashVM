@@ -3089,6 +3089,7 @@ int main(int argc, char **argv)
     if (gc_worker && !gc_selected && !dvm_runtime_disable_cycles)
     {
         dvm_runtime_idle_cycles = 1;
+        dvm_runtime_event_cycles = 1;
     }
     if (dvm_runtime_idle_cycles && (!gc_worker || dvm_runtime_disable_cycles))
     {
