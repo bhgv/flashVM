@@ -17,22 +17,50 @@
 extern int dvm_runtime_channel_is_quiet(Channel *channel); /* Native channel state check. */
 
 
-/* EN: Restore claimed counts for dead nodes below end in group.
- * RU: Восстановить счётчики захваченных мёртвых узлов group до end. */
+/* EN: Translate a claim position into the node index of group.
+ * RU: Преобразовать позицию position в индекс мёртвого узла group. */
+static unsigned int dead_node_at(const RecordGroup *group, unsigned int position)
+{
+    return group->dead_nodes ? group->dead_nodes[position] : position;
+}
+
+
+/* EN: Restore counts for the first end claimed nodes in group.
+ * RU: Восстановить счётчики первых end захваченных узлов group. */
 static void restore_claimed_counts(const RecordGroup *group, unsigned int end)
 {
     while (end)
     {
-        unsigned int index = --end;
-        if (!group->live[index])
+        unsigned int index = dead_node_at(group, --end);
+        Heap *heap = D2H(group->nodes[index]);
+        if (!dvm_refcount_replace_u(&heap->ref, 0, group->incoming[index] + (index == 0)))
         {
-            Heap *heap = D2H(group->nodes[index]);
-            if (!dvm_refcount_replace_u(&heap->ref, 0, group->incoming[index] + (index == 0)))
-            {
-                abort();
-            }
+            abort();
         }
     }
+}
+
+
+/* EN: Reject a stale group before taking field guards. A successful check
+ * is provisional. The locked root check and atomic claims still follow.
+ * RU: Отклонить устаревший снимок group до захвата полей. Успех предварительный.
+ * Далее корни проверяются под блокировками, а счётчики захватываются атомарно. */
+static int counts_still_match(const RecordGroup *group)
+{
+    if (dvm_runtime_root_count(D2H(group->nodes[0])) != 1)
+    {
+        return 0;
+    }
+    for (unsigned int position = 0; position < group->dead_count; position++)
+    {
+        unsigned int index = dead_node_at(group, position);
+        Heap *heap = D2H(group->nodes[index]);
+        if (dvm_refcount_load_u(&heap->ref) != group->incoming[index] + (index == 0))
+        {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 
@@ -40,16 +68,13 @@ static void restore_claimed_counts(const RecordGroup *group, unsigned int end)
  * RU: Зарезервировать счётчики мёртвых узлов group с откатом при отказе. */
 static int claim_record_group(const RecordGroup *group)
 {
-    for (unsigned int index = 0; index < group->nodes_used; index++)
+    for (unsigned int position = 0; position < group->dead_count; position++)
     {
-        if (group->live[index])
-        {
-            continue;
-        }
+        unsigned int index = dead_node_at(group, position);
         Heap *heap = D2H(group->nodes[index]);
         if (!dvm_refcount_replace_u(&heap->ref, group->incoming[index] + (index == 0), 0))
         {
-            restore_claimed_counts(group, index);
+            restore_claimed_counts(group, position);
             return 0;
         }
     }
@@ -64,6 +89,10 @@ static int claim_record_group(const RecordGroup *group)
 DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomain *cells,
     DVM_NativeWorld *world, unsigned long *final_epoch)
 {
+    if (!counts_still_match(group))
+    {
+        return DVM_CELL_REFUSED;
+    }
     DVM_RangeAccess access = {0};
     DVM_CellResult result = dvm_range_access_cells_begin(cells, group->cells, group->edges_used, &access);
     if (result != DVM_CELL_ACQUIRED)
@@ -81,11 +110,12 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
             break;
         }
     }
-    for (unsigned int index = 0; result == DVM_CELL_ACQUIRED && index < group->nodes_used; index++)
+    for (unsigned int position = 0; result == DVM_CELL_ACQUIRED && position < group->dead_count; position++)
     {
+        unsigned int index = dead_node_at(group, position);
         Heap *heap = D2H(group->nodes[index]);
-        if (!group->live[index] && (dvm_runtime_root_count(heap) != 1 ||
-            (heap->t == &Tchannel && !dvm_runtime_channel_is_quiet(H2D(Channel *, heap)))))
+        if (dvm_runtime_root_count(heap) != 1 ||
+            (heap->t == &Tchannel && !dvm_runtime_channel_is_quiet(H2D(Channel *, heap))))
         {
             result = DVM_CELL_REFUSED;
         }
@@ -100,7 +130,7 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
     if (result == DVM_CELL_ACQUIRED && final_epoch &&
         !(*final_epoch = dvm_world_retire_epoch(world)))
     {
-        restore_claimed_counts(group, group->nodes_used);
+        restore_claimed_counts(group, group->dead_count);
         result = DVM_CELL_REFUSED;
     }
     if (!dvm_range_access_end(&access))

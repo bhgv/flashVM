@@ -20,6 +20,7 @@ typedef struct RecordGroup
     void **nodes;             /* Captured object payloads. */
     unsigned int *incoming;   /* Internal incoming edge counts. */
     unsigned int *index;      /* Discovery hash slots, unused after capture. */
+    unsigned int *dead_nodes; /* Claim order in a mixed published snapshot. */
     void **cells;             /* Captured source field addresses. */
     unsigned int *targets;    /* Target node index or nil sentinel. */
     unsigned int *sources;    /* Source node index for each captured edge. */
@@ -32,6 +33,7 @@ typedef struct RecordGroup
     unsigned int next_source;  /* Next source node in a suspended Duke scan. */
     unsigned int pinned_nodes; /* Duke holds nodes at indices 1 through this count. */
     int growing;             /* Duke can enlarge discovery storage under guards. */
+    unsigned int dead_count;    /* Dead nodes in a published snapshot. */
     unsigned int live_count;    /* Nodes marked reachable. */
     int busy; /* A field stripe was temporarily owned elsewhere. */
     int oversized; /* Bounded discovery could not fit another field. */

@@ -53,8 +53,9 @@ int dvm_rc_snapshot_edges(const RecordGroup *group, unsigned int *edges)
 size_t dvm_rc_record_group_bytes(const RecordGroup *group, unsigned int edges)
 {
     size_t nodes = group->nodes_used;
+    size_t dead_index = group->live_count ? nodes - group->live_count : 0;
     return sizeof(*group) + (nodes + edges) * sizeof(void *) +
-        (nodes + 2 * edges) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
+        (nodes + 2 * edges + dead_index) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
 }
 
 
@@ -76,7 +77,10 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
     copy->incoming = (unsigned int *)(copy->cells + edges);
     copy->targets = copy->incoming + nodes;
     copy->sources = copy->targets + edges;
-    copy->live = (unsigned char *)(copy->sources + edges);
+    copy->dead_count = group->nodes_used - group->live_count;
+    copy->dead_nodes = group->live_count ? copy->sources + edges : NULL;
+    copy->live = (unsigned char *)(copy->sources + edges +
+        (copy->dead_nodes ? copy->dead_count : 0));
     copy->index = NULL;
     copy->owned_scratch = NULL;
     copy->pinned_nodes = 0;
@@ -106,6 +110,17 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
         }
     }
     memcpy(copy->live, group->live, nodes * sizeof(*copy->live));
+    if (copy->dead_nodes)
+    {
+        unsigned int next = 0;
+        for (unsigned int index = 0; index < copy->nodes_used; index++)
+        {
+            if (!copy->live[index])
+            {
+                copy->dead_nodes[next++] = index;
+            }
+        }
+    }
     return copy;
 }
 
