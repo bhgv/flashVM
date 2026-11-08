@@ -2210,14 +2210,17 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     }
     /* Give Cycles first refusal. The idle fallback may take candidates only
      * after an actual shared attempt stalled, or while closing the queues. */
-    while (budget && (dvm_retirement_take(retirement, &value, &bytes) ||
+    int direct_release;
+    while (budget && ((direct_release = dvm_retirement_take(retirement, &value, &bytes)) ||
                       ((!accepting ||
                         __atomic_load_n(&candidate_fallback_ready, __ATOMIC_ACQUIRE) || heapmonitor) &&
                        dvm_retirement_take(cycle_candidates, &value, &bytes))))
     {
         (void)bytes;
         budget--;
-        int promoted = process_queued_record_group(value, 1);
+        /* Direct entries held the last owner or exhausted the snapshot
+         * budget in Cycles. The retained tracer handles oversized closure. */
+        int promoted = !direct_release && process_queued_record_group(value, 1);
         ptrdel(D2H(value));
         fallback.promoted += promoted;
         if (!promoted)
