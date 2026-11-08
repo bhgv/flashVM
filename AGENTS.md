@@ -9,6 +9,12 @@ supersede older local exemptions from
 readability work. Keep upstream snapshots, third-party libraries, generated
 outputs and deliberately raw oracle fixtures unchanged.
 
+- Code generated from a Coco/R `.atg` grammar must carry a
+  `Copyright (c) YYYY bhgv` notice for the current year. Add the notice
+  through the generator or its templates so regeneration preserves it.
+  Keep Coco/R's formatting. Generated code requires no added function comments
+  or manual splitting. Preserve existing authorship and license notices.
+
 - Start each handwritten source file with `Copyright (c) YYYY bhgv`, using
   the current year for newly written files, followed by an English and Russian
   overview of the responsibilities and state in that file. Preserve existing
