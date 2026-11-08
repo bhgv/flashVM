@@ -1,6 +1,7 @@
 /* Native retirement metadata; managed ownership/root policy belongs to caller. */
 #ifndef DVM_RETIREMENT_QUEUE_H
 #define DVM_RETIREMENT_QUEUE_H
+#include "disvm/heap_settings.h"
 
 typedef struct DVM_RetirementQueue DVM_RetirementQueue; /* Stable opaque native owner. */
 
@@ -41,6 +42,11 @@ typedef enum DVM_RetirementResult
  * Return NULL on invalid capacity/allocation failure. Publish externally only
  * after success. No callbacks, managed pointers or locks escape initialization. */
 DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long byte_limit);
+DVM_RetirementQueue *dvm_retirement_create_indexed(unsigned int capacity, unsigned long byte_limit);
+int dvm_retirement_commit_key(DVM_RetirementQueue *queue,
+    DVM_RetirementReservation *token, void *value, DVM_HeapKey key, int *became_ready);
+int dvm_retirement_contains_key(DVM_RetirementQueue *queue, DVM_HeapKey key);
+
 
 
 /* Reserve metadata before producer performs fallible root setup outside lock.
@@ -71,10 +77,6 @@ int dvm_retirement_cancel(DVM_RetirementQueue *queue, DVM_RetirementReservation 
 
 /* Borrow head identity until the sole consumer takes it. */
 void *dvm_retirement_peek(DVM_RetirementQueue *queue);
-
-/* Observe whether a ready slot contains the identity. This does not reserve
- * it. Callers requiring uniqueness must serialize their producer transaction. */
-int dvm_retirement_contains(DVM_RetirementQueue *queue, const void *value);
 
 /* Move the head to the tail, even at capacity. Single consumer only.
  * The queue must be live. An empty or singleton queue is unchanged. */

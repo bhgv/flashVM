@@ -13,6 +13,7 @@ typedef struct RetirementSlot
     unsigned long bytes; /* Reserved direct extent. */
     unsigned long generation; /* Token generation for reserved state only. */
     unsigned int next; /* Free-list link while free. */
+    DVM_HeapKey key; /* Only populated in indexed ready slots. */
     int state; /* 0 free,1 reserved,2 ready. */
 } RetirementSlot;
 
@@ -23,6 +24,7 @@ struct DVM_RetirementQueue
     FVM_PortSync *sync; /* Owned metadata mutex. */
     RetirementSlot *slots; /* Owned fixed native slot storage. */
     unsigned int *ring; /* Commit-order FIFO of ready slot indexes. */
+    unsigned int *buckets; /* Optional chained index. Zero means no entry. */
     unsigned int capacity; /* Immutable initialized slot capacity. */
     unsigned int free_head; /* capacity means no free slot. */
     unsigned int head; /* Oldest committed ring position. */
@@ -36,7 +38,7 @@ struct DVM_RetirementQueue
 
 
 /* Private initialization only; failure cleans native resources with no users. */
-DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long byte_limit)
+static DVM_RetirementQueue *create_queue(unsigned int capacity, unsigned long byte_limit, int indexed)
 {
     DVM_RetirementQueue *queue;
     unsigned int index;
@@ -52,8 +54,9 @@ DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long 
     }
     queue->slots = calloc(capacity, sizeof(*queue->slots));
     queue->ring = calloc(capacity, sizeof(*queue->ring));
+    queue->buckets = indexed ? calloc(capacity, sizeof(*queue->buckets)) : NULL;
     queue->sync = fvm_port_sync_create();
-    if (!queue->slots || !queue->ring || !queue->sync)
+    if (!queue->slots || !queue->ring || !queue->sync || (indexed && !queue->buckets))
     {
         if (queue->sync)
         {
@@ -61,6 +64,7 @@ DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long 
         }
         free(queue->slots);
         free(queue->ring);
+        free(queue->buckets);
         free(queue);
         return NULL;
     }
@@ -72,6 +76,37 @@ DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long 
         queue->slots[index].next = index+1;
     }
     return queue;
+}
+
+
+DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long byte_limit)
+{
+    return create_queue(capacity, byte_limit, 0);
+}
+
+
+DVM_RetirementQueue *dvm_retirement_create_indexed(unsigned int capacity, unsigned long byte_limit)
+{
+    return create_queue(capacity, byte_limit, 1);
+}
+
+
+/* Return the link that names this key, or the terminal zero link. */
+static unsigned int *key_link(DVM_RetirementQueue *queue, DVM_HeapKey key)
+{
+    uint64_t hash = key.generation * UINT64_C(11400714819323198485);
+    hash ^= (uint64_t)(key.address / sizeof(void *));
+    unsigned int *link = &queue->buckets[(hash ^ (hash >> 32)) % queue->capacity];
+    while (*link)
+    {
+        RetirementSlot *slot = &queue->slots[*link - 1];
+        if (slot->key.address == key.address && slot->key.generation == key.generation)
+        {
+            break;
+        }
+        link = &slot->next;
+    }
+    return link;
 }
 
 
@@ -137,18 +172,30 @@ DVM_RetirementResult dvm_retirement_reserve(DVM_RetirementQueue *queue,
 
 /* Caller consumes reservation only after publication succeeds; ready FIFO is
  * commit order, not reservation order. No referent ownership operation occurs. */
-int dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
-    DVM_RetirementReservation *token, void *value, int *became_ready)
+int dvm_retirement_commit_key(DVM_RetirementQueue *queue,
+    DVM_RetirementReservation *token, void *value, DVM_HeapKey key, int *became_ready)
 {
     RetirementSlot *slot;
-    if (!queue || !value)
+    if (!queue || !value || (queue->buckets && (!key.generation || !key.address)) ||
+        (!queue->buckets && key.generation))
     {
         return 0;
     }
     fvm_port_sync_lock(queue->sync);
     slot = reserved_slot(queue, token);
+    unsigned int *link = slot && queue->buckets ? key_link(queue, key) : NULL;
+    if (link && *link)
+    {
+        slot = NULL;
+    }
     if (slot)
     {
+        if (link)
+        {
+            slot->key = key;
+            slot->next = 0;
+            *link = token->slot + 1;
+        }
         slot->value = value;
         slot->state = 2;
         queue->ring[(queue->head+queue->ready)%queue->capacity] = token->slot;
@@ -164,6 +211,13 @@ int dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
     }
     fvm_port_sync_unlock(queue->sync);
     return slot != NULL;
+}
+
+
+int dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
+    DVM_RetirementReservation *token, void *value, int *became_ready)
+{
+    return dvm_retirement_commit_key(queue, token, value, (DVM_HeapKey){0}, became_ready);
 }
 
 
@@ -217,24 +271,14 @@ void *dvm_retirement_peek(DVM_RetirementQueue *queue)
 }
 
 
-/* Compare ready identities without dereferencing managed storage. */
-int dvm_retirement_contains(DVM_RetirementQueue *queue, const void *value)
+int dvm_retirement_contains_key(DVM_RetirementQueue *queue, DVM_HeapKey key)
 {
-    if (!queue || !value)
+    if (!queue || !queue->buckets || !key.generation)
     {
         return 0;
     }
     fvm_port_sync_lock(queue->sync);
-    int found = 0;
-    for (unsigned int index = 0; index < queue->ready; index++)
-    {
-        unsigned int position = (queue->head + index) % queue->capacity;
-        if (queue->slots[queue->ring[position]].value == value)
-        {
-            found = 1;
-            break;
-        }
-    }
+    int found = *key_link(queue, key) != 0;
     fvm_port_sync_unlock(queue->sync);
     return found;
 }
@@ -269,6 +313,12 @@ int dvm_retirement_take(DVM_RetirementQueue *queue, void **value, unsigned long 
     {
         index = queue->ring[queue->head];
         slot = &queue->slots[index];
+        if (queue->buckets)
+        {
+            unsigned int *link = key_link(queue, slot->key);
+            *link = slot->next;
+            slot->key = (DVM_HeapKey){0};
+        }
         *value = slot->value;
         *bytes = slot->bytes;
         queue->head = (queue->head+1)%queue->capacity;
@@ -336,6 +386,7 @@ int dvm_retirement_destroy(DVM_RetirementQueue **owner)
     fvm_port_sync_destroy(queue->sync);
     free(queue->slots);
     free(queue->ring);
+    free(queue->buckets);
     free(queue);
     return 1;
 }

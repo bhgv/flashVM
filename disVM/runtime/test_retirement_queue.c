@@ -169,8 +169,7 @@ static void boundaries(void)
         "FAIL retire ready publication");
     check(!edge, "FAIL retire duplicate wake on nonempty queue");
     check(!dvm_retirement_destroy(&queue), "FAIL retire ready destroy");
-    check(dvm_retirement_peek(queue) == &second && dvm_retirement_contains(queue, &first) &&
-        dvm_retirement_contains(queue, &second), "FAIL retire initial FIFO identities");
+    check(dvm_retirement_peek(queue) == &second, "FAIL retire initial FIFO head");
     dvm_retirement_rotate(queue);
     check(dvm_retirement_peek(queue) == &first &&
         dvm_retirement_statistics(queue, &stats) && stats.ready == 2 && stats.bytes == 10,
@@ -181,6 +180,30 @@ static void boundaries(void)
     check(dvm_retirement_take(queue, &value, &bytes) && value == &first && bytes == 6,
         "FAIL retire final FIFO");
     check(dvm_retirement_destroy(&queue) && dvm_retirement_destroy(&foreign), "FAIL retire destroy");
+}
+
+
+/* A duplicate key is refused without consuming its reservation. */
+static void indexed_case(void)
+{
+    DVM_RetirementQueue *queue = dvm_retirement_create_indexed(2, 8);
+    DVM_RetirementReservation first = {0}, second = {0};
+    int value;
+    DVM_HeapKey key = {(uintptr_t)&value, 1}, next = {(uintptr_t)&value, 2};
+    check(queue && dvm_retirement_reserve(queue, 4, &first) == DVM_RETIRE_OK &&
+        dvm_retirement_reserve(queue, 4, &second) == DVM_RETIRE_OK &&
+        dvm_retirement_commit_key(queue, &first, &value, key, NULL) &&
+        !dvm_retirement_commit_key(queue, &second, &value, key, NULL) &&
+        dvm_retirement_commit_key(queue, &second, &value, next, NULL),
+        "FAIL indexed retirement duplicate or generation");
+    dvm_retirement_rotate(queue);
+    void *out;
+    unsigned long bytes;
+    check(dvm_retirement_contains_key(queue, key) && dvm_retirement_contains_key(queue, next) &&
+        dvm_retirement_take(queue, &out, &bytes) && !dvm_retirement_contains_key(queue, next) &&
+        dvm_retirement_contains_key(queue, key) && dvm_retirement_take(queue, &out, &bytes) &&
+        !dvm_retirement_contains_key(queue, key) && dvm_retirement_destroy(&queue),
+        "FAIL indexed retirement removal");
 }
 
 
@@ -235,6 +258,7 @@ int main(int argc, char **argv)
     unsigned int index;
     unsigned int received = 0;
     boundaries();
+    indexed_case();
     if (argc > 1 && !strcmp(argv[1], "--serial-only"))
     {
         puts("PASS retire serial boundaries");

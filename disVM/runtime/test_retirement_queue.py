@@ -13,6 +13,7 @@ def main():
     root = runtime.parents[1]
     installed = not (root / 'disVM/runtime/retirement_queue.c').exists()
     ports = root / ('source/ports' if installed else 'flashVM/ports')
+    headers = root / ('source/include' if installed else 'disVM/include')
     source = (runtime / 'retirement_queue.c').read_text()
     changes = {
         'commit': ('        queue->ready++;', '        (void)queue;', 'ready publication'),
@@ -33,7 +34,7 @@ def main():
             private.write_text(code)
             command = shlex.split(os.environ.get('CC', 'cc'))
             command += shlex.split(os.environ.get('CFLAGS', '-O2 -g'))
-            command += ['-std=c99', '-pthread', '-I'+str(runtime), '-I'+str(ports),
+            command += ['-std=c99', '-pthread', '-I'+str(runtime), '-I'+str(ports), '-I'+str(headers),
                         str(runtime / 'test_retirement_queue.c'), str(private),
                         str(ports / 'linux/thread.c'), str(ports / 'linux/channel_sync.c')]
             command += ['-Wl,--wrap='+name for name in

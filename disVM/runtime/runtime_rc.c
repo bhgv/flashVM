@@ -5,6 +5,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "pool.h"
+#include "heap_pool.h"
 #include "disvm/native_context.h"
 #include "disvm/native_owner.h"
 #include "runtime_rc.h"
@@ -128,7 +129,7 @@ void dvm_runtime_rc_start(void)
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    cycle_candidates = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    cycle_candidates = dvm_retirement_create_indexed(RC_CAPACITY, RC_BYTES);
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
@@ -642,9 +643,9 @@ static int record_candidate(const Heap *heap)
 
 /* Producers are exclusive Dis owners or the single Fast lane. A ready
  * entry holds the same allocation alive through this observation. */
-static int cycle_candidate_already_queued(void *value)
+static int cycle_candidate_already_queued(DVM_HeapKey key)
 {
-    int queued = dvm_retirement_contains(cycle_candidates, value);
+    int queued = dvm_retirement_contains_key(cycle_candidates, key);
     cycle_candidates_coalesced += queued;
     return queued;
 }
@@ -653,8 +654,12 @@ static int cycle_candidate_already_queued(void *value)
 /* Keep the packet owner intact until its replacement queue root is published. */
 static int transfer_record_candidate(Heap *heap)
 {
-    if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1 ||
-        cycle_candidate_already_queued(H2D(void *, heap)))
+    if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1)
+    {
+        return 0;
+    }
+    DVM_HeapKey key = dvm_heap_pool_key(heapmem, heap);
+    if (!key.generation || cycle_candidate_already_queued(key))
     {
         return 0;
     }
@@ -670,7 +675,7 @@ static int transfer_record_candidate(Heap *heap)
         return 0;
     }
     int became_ready;
-    if (!dvm_retirement_commit_ready(cycle_candidates, &token, H2D(void *, heap), &became_ready))
+    if (!dvm_retirement_commit_key(cycle_candidates, &token, H2D(void *, heap), key, &became_ready))
     {
         abort();
     }
@@ -705,9 +710,18 @@ int dvm_runtime_rc_defer(void *value)
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
     int last = dvm_refcount_load_u(&heap->ref) == 1;
-    if (!last && (!record_candidate(heap) || cycle_candidate_already_queued(value)))
+    DVM_HeapKey key = {0};
+    if (!last)
     {
-        return 0;
+        if (!record_candidate(heap))
+        {
+            return 0;
+        }
+        key = dvm_heap_pool_key(heapmem, heap);
+        if (!key.generation || cycle_candidate_already_queued(key))
+        {
+            return 0;
+        }
     }
     bytes = poolmsize(heapmem,heap);
     if (last && defer_leaf(heap, bytes, 1))
@@ -743,7 +757,7 @@ int dvm_runtime_rc_defer(void *value)
     poperror();
     Setmark(heap);
     int became_ready;
-    if (!dvm_retirement_commit_ready(queue, &token, value, &became_ready))
+    if (!dvm_retirement_commit_key(queue, &token, value, key, &became_ready))
     {
         (void)dvm_retirement_cancel(queue, &token);
         ptrdel(heap);
