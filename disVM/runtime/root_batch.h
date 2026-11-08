@@ -6,6 +6,10 @@
 typedef struct DVM_RootBatch DVM_RootBatch; /* Opaque native owner-local metadata. */
 
 
+/* Report native batch storage for capacity occurrences. Zero means invalid size. */
+size_t dvm_runtime_root_batch_bytes(size_t capacity);
+
+
 /* Reserve capacity occurrences and initialize registry exclusion before locks.
  * Return NULL on native allocation/overflow/zero capacity; no roots published.
  * Caller owns stable batch and excludes concurrent operations on that batch.

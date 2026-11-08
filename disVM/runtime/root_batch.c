@@ -15,13 +15,24 @@ struct DVM_RootBatch
 };
 
 
+/* Return the requested allocation size for capacity roots, or zero on overflow. */
+size_t dvm_runtime_root_batch_bytes(size_t capacity)
+{
+    if (!capacity || capacity > ((size_t)-1 - sizeof(DVM_RootBatch)) / sizeof(RootEntry))
+    {
+        return 0;
+    }
+    return sizeof(DVM_RootBatch) + capacity * sizeof(RootEntry);
+}
+
+
 /* Initialize everything privately before returning native ownership to caller.
  * Allocation/refusal occurs outside registry and object locks. No managed keys. */
 DVM_RootBatch *dvm_runtime_root_batch_create(size_t capacity)
 {
     DVM_RootBatch *batch;
     FVM_PortSync *mutex;
-    if (!capacity || capacity > (size_t)-1 / sizeof(RootEntry))
+    if (!dvm_runtime_root_batch_bytes(capacity))
     {
         return NULL;
     }

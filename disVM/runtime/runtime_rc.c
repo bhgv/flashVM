@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define RC_BYTES (4UL*1024UL*1024UL) /* Bound queued direct block bytes, excluding descendants. */
+#define RC_BYTES (4UL*1024UL*1024UL) /* Bound queued direct block bytes and charged packet metadata. */
 #define RC_CAPACITY 512 /* Fixed native slots; saturation falls back to inline RC. */
 
 /* A packet owns each captured reference through the collector's drain. */
@@ -328,14 +328,23 @@ static RecordGroup empty_record_group(RecordGroupScratch *scratch)
 }
 
 
+/* Return the allocation size for a captured, bounded graph. */
+static size_t record_group_bytes(const RecordGroup *group)
+{
+    size_t nodes = group->nodes_used;
+    size_t edges = group->edges_used;
+    return sizeof(*group) + (nodes + edges) * sizeof(void *) +
+        (nodes + 2 * edges) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
+}
+
+
 /* Copy a complete graph into one owned allocation sized to its contents.
  * The caller keeps the graph objects alive and frees the result with free. */
 static RecordGroup *copy_record_group(const RecordGroup *group)
 {
     size_t nodes = group->nodes_used;
     size_t edges = group->edges_used;
-    RecordGroup *copy = malloc(sizeof(*copy) + (nodes + edges) * sizeof(void *) +
-        (nodes + 2 * edges) * sizeof(unsigned int) + nodes * sizeof(unsigned char));
+    RecordGroup *copy = malloc(record_group_bytes(group));
     if (!copy)
     {
         return NULL;
@@ -641,7 +650,14 @@ static int defer_record_group(const RecordGroup *group, int shared)
         return 0;
     }
     DVM_RetirementReservation token = {0};
-    unsigned long bytes = 0;
+    size_t packet_bytes = sizeof(FrameRetirement) + group->nodes_used * sizeof(void *);
+    size_t metadata = sizeof(LeafRetirement) + record_group_bytes(group) +
+        packet_bytes + dvm_runtime_root_batch_bytes(group->nodes_used);
+    if (metadata > RC_BYTES)
+    {
+        return 0;
+    }
+    unsigned long bytes = metadata;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         unsigned long size = poolmsize(heapmem, D2H(group->nodes[index]));
@@ -656,7 +672,7 @@ static int defer_record_group(const RecordGroup *group, int shared)
         return 0;
     }
     LeafRetirement *entry = malloc(sizeof(*entry));
-    FrameRetirement *records = malloc(sizeof(*records) + group->nodes_used * sizeof(void *));
+    FrameRetirement *records = malloc(packet_bytes);
     RecordGroup *snapshot = copy_record_group(group);
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
     unsigned long epoch = dvm_world_retire_epoch(world);
@@ -1586,10 +1602,9 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 static int release_refused_snapshot(DVM_RetirementQueue *source, LeafRetirement *entry)
 {
     FrameRetirement *records = entry->records;
-    unsigned long storage = sizeof(*records) + records->count * sizeof(void *);
+    unsigned long charge = entry->bytes - sizeof(*entry) - record_group_bytes(entry->snapshot);
     DVM_RetirementReservation token = {0};
-    if (storage > RC_BYTES - entry->bytes ||
-        dvm_retirement_reserve(frames, entry->bytes + storage, &token) != DVM_RETIRE_OK)
+    if (dvm_retirement_reserve(frames, charge, &token) != DVM_RETIRE_OK)
     {
         return 0;
     }
