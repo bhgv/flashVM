@@ -31,9 +31,10 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
         if large_cycle:
             oversized = re.search(r"cycle_candidates_oversized=(\d+)", output)
             traced = re.search(r"NATIVEGC .*? reclaimed=(\d+)", output)
-            if (int(counters[2]) >= 1 and oversized and int(oversized[1]) == 0
-                    and traced and int(traced[1]) < 400):
-                print(f"PASS {mode}: large cycle collected by shared GC")
+            full = re.search(r"cycle_candidates_full=(\d+)", output)
+            if (int(counters[2]) >= 9 and oversized and int(oversized[1]) == 0
+                    and full and int(full[1]) == 0 and traced and int(traced[1]) < 40):
+                print(f"PASS {mode}: large and eight small cycles collected by shared GC")
                 return
             continue
         if (int(counters[1]) >= 64 and int(counters[2]) and (not require_peer or int(counters[3]))

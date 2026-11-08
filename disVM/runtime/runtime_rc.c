@@ -23,6 +23,7 @@
 
 #define RC_BYTES (4UL*1024UL*1024UL) /* Bound queued direct block bytes and charged packet metadata. */
 #define RC_CAPACITY 512 /* Fixed native slots; saturation falls back to inline RC. */
+#define RC_CANDIDATE_CAPACITY 1024 /* Keep bursts of nonfinal owners on the Cycles lane. */
 
 /* A packet owns each captured reference through the collector's drain. */
 typedef struct FrameRetirement
@@ -71,6 +72,7 @@ static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_scans;
 static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
+static unsigned long cycle_candidates_full; /* Candidate reservations refused for capacity. */
 static unsigned long cycle_candidates_rooted;
 static unsigned long cycle_candidates_oversized;
 static size_t candidate_sweep_left; /* Entries left in the current no-progress sweep. */
@@ -135,7 +137,7 @@ void dvm_runtime_rc_start(void)
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    cycle_candidates = dvm_retirement_create_indexed(RC_CAPACITY, RC_BYTES);
+    cycle_candidates = dvm_retirement_create_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
@@ -153,6 +155,7 @@ void dvm_runtime_rc_start(void)
     shared_record_scans = 0;
     cycle_candidates_rotated = 0;
     cycle_candidates_coalesced = 0;
+    cycle_candidates_full = 0;
     cycle_candidates_rooted = 0;
     cycle_candidates_oversized = 0;
     candidate_sweep_left = 0;
@@ -807,8 +810,10 @@ static int transfer_record_candidate(Heap *heap)
     }
     DVM_RetirementReservation token = {0};
     unsigned long bytes = poolmsize(heapmem, heap);
-    if (dvm_retirement_reserve(cycle_candidates, bytes, &token) != DVM_RETIRE_OK)
+    DVM_RetirementResult reservation = dvm_retirement_reserve(cycle_candidates, bytes, &token);
+    if (reservation != DVM_RETIRE_OK)
     {
+        cycle_candidates_full += reservation == DVM_RETIRE_FULL;
         return 0;
     }
     if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop) || !dvm_runtime_root_add(heap))
@@ -2369,8 +2374,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized, cycle_candidates_full);
     }
     if (diagnostics)
     {
