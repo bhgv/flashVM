@@ -41,6 +41,7 @@ typedef struct LeafRetirement
     unsigned long epoch;  /* Last potentially interested reader generation. */
     FrameRetirement *records; /* Optional rooted closed record group. */
     RecordGroup *snapshot;    /* Edges frozen by withdrawal of the last outside owner. */
+    int claimed;          /* Counts withdrawn, awaiting the final reader epoch. */
     int pinned_children;  /* Shared discovery retained every child separately. */
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
@@ -203,6 +204,7 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
     entry->snapshot = NULL;
     entry->claim_refused = 0;
     entry->pinned_children = 0;
+    entry->claimed = 0;
     entry->epoch = dvm_world_retire_epoch(world);
     if (!entry->epoch || !dvm_runtime_root_add(heap))
     {
@@ -894,7 +896,7 @@ static int claim_record_group(const RecordGroup *group)
 /* Re-read the entire edge set under the guest's canonical cell guards.
  * The rooted entry pins storage. Keep every acquired stripe through the count
  * claim so a guarded reader cannot observe a partially claimed graph. */
-static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group)
+static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, unsigned long *final_epoch)
 {
     DVM_RangeAccess access = {0};
     DVM_CellResult result = dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access);
@@ -924,6 +926,13 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group)
         {
             result = DVM_CELL_REFUSED;
         }
+    }
+    /* Issue the final epoch under the same guards as the count withdrawal.
+     * Guarded readers cannot start between the epoch and the claim. */
+    if (result == DVM_CELL_ACQUIRED && final_epoch &&
+        !(*final_epoch = dvm_world_retire_epoch(world)))
+    {
+        result = DVM_CELL_REFUSED;
     }
     if (result == DVM_CELL_ACQUIRED && !claim_record_group(group))
     {
@@ -956,7 +965,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
     for (size_t index = 0; index < owners; index++)
     {
         Heap *heap = records->keys[index];
-        if (shared)
+        if (shared || entry->claimed)
         {
             release_owned_descriptor(heap->t);
             poolfree(heapmem, heap);
@@ -967,7 +976,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         }
     }
     free(records);
-    record_groups += !entry->claim_refused && (shared || !entry->pinned_children);
+    record_groups += !entry->claim_refused && (shared || entry->claimed || !entry->pinned_children);
 }
 
 
@@ -1074,9 +1083,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (entry->records)
             {
-                DVM_CellResult claim = entry->claim_refused ? DVM_CELL_REFUSED :
+                unsigned long final_epoch = 0;
+                DVM_CellResult claim = entry->claimed ? DVM_CELL_ACQUIRED :
+                    entry->claim_refused ? DVM_CELL_REFUSED :
                     entry->pinned_children && dvm_world_has_borrowers(world) ? DVM_CELL_BUSY :
-                    validate_and_claim_record_group(entry->snapshot);
+                    validate_and_claim_record_group(entry->snapshot,
+                        entry->pinned_children ? &final_epoch : NULL);
                 if (claim != DVM_CELL_ACQUIRED)
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
@@ -1097,6 +1109,18 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     budget--;
                     completed++;
                     continue;
+                }
+                if (final_epoch)
+                {
+                    entry->claimed = 1;
+                    entry->epoch = final_epoch;
+                    budget--;
+                    completed++;
+                    if (source == record_retries)
+                    {
+                        continue;
+                    }
+                    break;
                 }
                 void *value;
                 unsigned long bytes;
