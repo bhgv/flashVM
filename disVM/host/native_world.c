@@ -23,6 +23,7 @@ struct DVM_WorldParticipant
     unsigned long read_depth;   /* Nested borrows held by this owner. */
     int active;                 /* Owner may execute mutator instructions. */
     int parked;                 /* Owner is currently waiting for resume. */
+    int service;                /* Collector participant restricted to shared try-entry. */
     int shared;                 /* Active interval is restricted to audited shared work. */
 };
 
@@ -187,8 +188,9 @@ int dvm_world_destroy(DVM_NativeWorld *world)
 }
 
 
-/* Install the poll hook before publishing a root set to a collector. */
-DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *context)
+/* Register context roots in world and install their poll hook. Service roots
+ * are for a collector that only tries shared admission. Return NULL on refusal. */
+static DVM_WorldParticipant *join_world(DVM_NativeWorld *world, DVM_NativeContext *context, int service)
 {
     DVM_WorldParticipant *participant;
     if (dvm_native_context_object_count(dvm_native_context_current()))
@@ -204,6 +206,7 @@ DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *
     {
         return 0;
     }
+    participant->service = service;
     participant->world = world;
     participant->context = context;
     participant->registers = dvm_native_context_registers(context);
@@ -221,6 +224,21 @@ DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *
     world->count++;
     fvm_port_sync_unlock(world->sync);
     return participant;
+}
+
+
+/* Register ordinary owner context roots in world. Return NULL on refusal. */
+DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *context)
+{
+    return join_world(world, context, 0);
+}
+
+
+/* Register a collector context for nonblocking shared work in world.
+ * The caller detaches on its own context before the world is destroyed. */
+DVM_WorldParticipant *dvm_world_join_service(DVM_NativeWorld *world, DVM_NativeContext *context)
+{
+    return join_world(world, context, 1);
 }
 
 
@@ -266,6 +284,10 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
         return 0;
     }
     if (!owns(participant))
+    {
+        return 0;
+    }
+    if (participant->service && (!shared || promote || !try_only))
     {
         return 0;
     }
@@ -771,10 +793,18 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
     }
     world = participant->world;
     fvm_port_sync_lock(world->sync);
-    if (!world->serial || world->count != 1 || !participant->active || participant->parked || participant->shared)
+    if (!world->serial || world->active != 1 || !participant->active || participant->parked || participant->shared)
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
+    }
+    for (DVM_WorldParticipant *other = world->participants; other; other = other->next)
+    {
+        if (other != participant && (!other->service || other->read_depth))
+        {
+            fvm_port_sync_unlock(world->sync);
+            return 0;
+        }
     }
     world->sealed = 1;
     fvm_port_sync_unlock(world->sync);

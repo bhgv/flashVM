@@ -44,6 +44,9 @@ DVM_HeapOwner *dvm_native_owner_current(void);
  * IDLE; caller must enter before reading/writing managed memory. */
 int dvm_native_owner_attach(DVM_HeapOwner *owner, DVM_NativeWorld *world);
 
+/* Collector registration for nonblocking shared turns only. */
+int dvm_native_owner_attach_service(DVM_HeapOwner *owner, DVM_NativeWorld *world);
+
 
 /* Enter an IDLE owner's FIFO heap turn. Borrow owner; may block for peers/GC.
  * Return zero for wrong phase/foreign owner without consuming an admission. */
@@ -92,7 +95,7 @@ int dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch);
 
 
 /* Close new root registration only when this ACTIVE owner is the world's last
- * registration. Peers/foreign/pending-progress refuse without closing the world.
+ * ordinary registration. Idle collector services may still detach after sealing.
  * Existing last-owner operations remain valid until leave/detach. */
 int dvm_native_owner_seal(DVM_HeapOwner *owner);
 

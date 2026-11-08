@@ -1673,7 +1673,7 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
 {
     DVM_HeapOwner *reader = dvm_native_owner_current();
     if (!budget || !dvm_runtime_rc_candidates_ready() || context != dvm_native_context_current() ||
-        !dvm_native_owner_attach(reader, world))
+        !dvm_native_owner_attach_service(reader, world))
     {
         return 0;
     }
@@ -1761,7 +1761,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         return 0;
     }
     DVM_HeapOwner *reader = dvm_native_owner_current();
-    if (context != dvm_native_context_current() || !dvm_native_owner_attach(reader, world))
+    if (context != dvm_native_context_current() || !dvm_native_owner_attach_service(reader, world))
     {
         return 0;
     }

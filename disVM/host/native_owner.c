@@ -13,7 +13,7 @@ static int current(DVM_HeapOwner *owner)
 
 /* [GC:] Register current immutable roots in a live exclusive world. world/owner
  * remain borrowed. Failure leaves DETACHED metadata and allocates no heap data. */
-int dvm_native_owner_attach(DVM_HeapOwner *owner, DVM_NativeWorld *world)
+static int attach_owner(DVM_HeapOwner *owner, DVM_NativeWorld *world, int service)
 {
     DVM_WorldAdmission mode;
     DVM_WorldParticipant *roots;
@@ -22,7 +22,8 @@ int dvm_native_owner_attach(DVM_HeapOwner *owner, DVM_NativeWorld *world)
     {
         return 0;
     }
-    roots = dvm_world_join(world,dvm_native_context_current());
+    roots = service ? dvm_world_join_service(world, dvm_native_context_current()) :
+        dvm_world_join(world, dvm_native_context_current());
     if (!roots)
     {
         return 0;
@@ -31,6 +32,20 @@ int dvm_native_owner_attach(DVM_HeapOwner *owner, DVM_NativeWorld *world)
     owner->roots = roots;
     owner->phase = DVM_HEAP_IDLE;
     return 1;
+}
+
+
+/* Attach current detached owner to world for ordinary mutator admission. */
+int dvm_native_owner_attach(DVM_HeapOwner *owner, DVM_NativeWorld *world)
+{
+    return attach_owner(owner, world, 0);
+}
+
+
+/* Attach current detached collector owner to world for shared try-entry only. */
+int dvm_native_owner_attach_service(DVM_HeapOwner *owner, DVM_NativeWorld *world)
+{
+    return attach_owner(owner, world, 1);
 }
 
 

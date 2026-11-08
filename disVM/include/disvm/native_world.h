@@ -81,13 +81,16 @@ int dvm_world_destroy(DVM_NativeWorld *world);
  * Fails during collection or if another poll owner already uses the context. */
 DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *context);
 
+/* Collector registration for nonblocking shared turns only. */
+DVM_WorldParticipant *dvm_world_join_service(DVM_NativeWorld *world, DVM_NativeContext *context);
+
 
 /* Remove an inactive root set on its owner. Fails while collection is requested. */
 int dvm_world_detach(DVM_WorldParticipant *participant);
 
 
 /* Close new registrations atomically only when participant is the current last
- * active serialized owner. Others/faults return zero without closing. Existing
+ * serialized owner, apart from idle collector services without borrows. Existing
  * root operations remain usable; this does not cancel tickets or join threads. */
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant);
 
