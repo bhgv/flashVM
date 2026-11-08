@@ -9,6 +9,7 @@
 #include "disvm/native_owner.h"
 #include "runtime_rc.h"
 #include "runtime_gc.h"
+#include "gc_fields.h"
 #include "managed_owner.h"
 #include "disvm/range_access.h"
 #include "retirement_queue.h"
@@ -40,6 +41,7 @@ typedef struct LeafRetirement
     unsigned long epoch;  /* Last potentially interested reader generation. */
     FrameRetirement *records; /* Optional rooted closed record group. */
     RecordGroup *snapshot;    /* Edges frozen by withdrawal of the last outside owner. */
+    int pinned_children;  /* Shared discovery retained every child separately. */
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
@@ -56,6 +58,7 @@ static unsigned long shared_strings; /* Final releases by the Fast shared pass. 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
 static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_scans;
+static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
 static unsigned long shared_record_groups_with_peer;
@@ -124,6 +127,7 @@ void dvm_runtime_rc_start(void)
     record_groups = 0;
     shared_record_groups = 0;
     shared_record_scans = 0;
+    shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
     enqueued = 0;
@@ -198,6 +202,7 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
     entry->records = NULL;
     entry->snapshot = NULL;
     entry->claim_refused = 0;
+    entry->pinned_children = 0;
     entry->epoch = dvm_world_retire_epoch(world);
     if (!entry->epoch || !dvm_runtime_root_add(heap))
     {
@@ -381,7 +386,7 @@ static void unlink_record_group(const RecordGroup *group)
 }
 
 
-static int defer_record_group(const RecordGroup *group)
+static int defer_record_group(const RecordGroup *group, int shared)
 {
     if (dvm_world_has_borrowers(world))
     {
@@ -426,6 +431,17 @@ static int defer_record_group(const RecordGroup *group)
         records->keys[index] = D2H(group->nodes[index]);
     }
     *snapshot = *group;
+    if (shared)
+    {
+        for (unsigned int index = 1; index < group->nodes_used; index++)
+        {
+            if (dvm_refcount_retain_u(&D2H(group->nodes[index])->ref) != DVM_REFCOUNT_LIVE)
+            {
+                abort();
+            }
+            snapshot->incoming[index]++;
+        }
+    }
     if (!dvm_runtime_root_batch_publish(roots, records->keys, records->count))
     {
         abort();
@@ -433,9 +449,20 @@ static int defer_record_group(const RecordGroup *group)
     for (size_t index = 0; index < records->count; index++)
     {
         Heap *heap = records->keys[index];
-        Setmark(heap);
+        if (shared)
+        {
+            if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop))
+            {
+                abort();
+            }
+        }
+        else
+        {
+            Setmark(heap);
+        }
     }
-    *entry = (LeafRetirement){.bytes = bytes, .epoch = epoch, .records = records, .snapshot = snapshot};
+    *entry = (LeafRetirement){.bytes = bytes, .epoch = epoch, .records = records,
+        .snapshot = snapshot, .pinned_children = shared};
     int became_ready;
     if (!dvm_retirement_commit_ready(leaves, &token, entry, &became_ready))
     {
@@ -891,6 +918,13 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group)
             break;
         }
     }
+    for (unsigned int index = 0; result == DVM_CELL_ACQUIRED && index < group->nodes_used; index++)
+    {
+        if (dvm_runtime_root_count(D2H(group->nodes[index])) != 1)
+        {
+            result = DVM_CELL_REFUSED;
+        }
+    }
     if (result == DVM_CELL_ACQUIRED && !claim_record_group(group))
     {
         result = DVM_CELL_REFUSED;
@@ -908,7 +942,7 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group)
 static void reclaim_detached_records(LeafRetirement *entry, int shared)
 {
     FrameRetirement *records = entry->records;
-    if (!shared && !entry->claim_refused)
+    if (!shared && !entry->claim_refused && !entry->pinned_children)
     {
         unlink_record_group(entry->snapshot);
     }
@@ -918,7 +952,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
     {
         abort();
     }
-    size_t owners = entry->claim_refused ? 1 : records->count;
+    size_t owners = entry->claim_refused && !entry->pinned_children ? 1 : records->count;
     for (size_t index = 0; index < owners; index++)
     {
         Heap *heap = records->keys[index];
@@ -933,7 +967,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         }
     }
     free(records);
-    record_groups += !entry->claim_refused;
+    record_groups += !entry->claim_refused && (shared || !entry->pinned_children);
 }
 
 
@@ -977,6 +1011,7 @@ static int scan_retiring_record(void)
         return 0;
     }
     int scanned = queued_record_group(value, 1, &group, &access);
+    int promoted = scanned && !group.live_count && defer_record_group(&group, 1);
     DVM_WorldState activity;
     shared_record_snapshots_with_peer += scanned &&
         dvm_world_state(world, &activity) && activity.active > 1;
@@ -985,7 +1020,7 @@ static int scan_retiring_record(void)
         abort();
     }
     shared_record_scans += scanned;
-    if (!scanned || !group.live[0] || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref))
+    if (!promoted && (!scanned || !group.live[0] || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref)))
     {
         return 0;
     }
@@ -996,8 +1031,11 @@ static int scan_retiring_record(void)
     {
         abort();
     }
-    dvm_runtime_gc_owner_lost();
-    released++;
+    if (!promoted)
+    {
+        dvm_runtime_gc_owner_lost();
+        released++;
+    }
     return 1;
 }
 
@@ -1037,6 +1075,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             if (entry->records)
             {
                 DVM_CellResult claim = entry->claim_refused ? DVM_CELL_REFUSED :
+                    entry->pinned_children && dvm_world_has_borrowers(world) ? DVM_CELL_BUSY :
                     validate_and_claim_record_group(entry->snapshot);
                 if (claim != DVM_CELL_ACQUIRED)
                 {
@@ -1067,6 +1106,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 DVM_WorldState activity;
                 shared_record_groups_with_peer += dvm_world_state(world, &activity) && activity.active > 1;
+                shared_record_confirmations += entry->pinned_children;
                 reclaim_detached_records(entry, 1);
                 shared_record_groups++;
                 free(entry);
@@ -1165,7 +1205,7 @@ static int process_queued_record_group(void *value, int promote)
     {
         return 0;
     }
-    if (promote && !group.live_count && defer_record_group(&group))
+    if (promote && !group.live_count && defer_record_group(&group, 0))
     {
         return 1;
     }
@@ -1318,8 +1358,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations);
     }
     if (diagnostics)
     {
