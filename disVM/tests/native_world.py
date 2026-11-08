@@ -52,6 +52,7 @@ def main():
             str(root / "host/native_context.c"),
             str(root / "host/native_world.c"),
             str(root / "runtime/heap_pool.c"),
+            str(root / "runtime/retirement_queue.c"),
             str(root / "host/flashvm_thread.c"),
             str(fvm / "ports/linux/thread.c"),
             str(fvm / "ports/linux/channel_sync.c"),

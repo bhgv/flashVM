@@ -7,6 +7,7 @@
 #include "interp.h"
 #include "pool.h"
 #include "heap_pool.h"
+#include "retirement_queue.h"
 #include "raise.h"
 #include "disvm/native_process.h"
 #include "disvm/native_world.h"
@@ -313,16 +314,42 @@ static void check_idle_modes(void)
             exit(EXIT_FAILURE);
         }
         unsigned long confirmed = dvm_world_retire_epoch(world);
-        if (dvm_world_epoch_elapsed(world, confirmed))
-        {
-            poolfree(&pool, block);
-        }
         void *other = poolalloc(&pool, 32);
-        if (confirmed <= retired || !other || other == block ||
+        DVM_RetirementQueue *retries = dvm_retirement_create(2, 64);
+        DVM_RetirementReservation first = {0}, second = {0};
+        if (!other || !retries ||
+            dvm_retirement_reserve(retries, 32, &first) != DVM_RETIRE_OK ||
+            dvm_retirement_reserve(retries, 32, &second) != DVM_RETIRE_OK ||
+            !dvm_retirement_commit(retries, &first, block) ||
+            !dvm_retirement_commit(retries, &second, other) ||
+            confirmed <= retired || dvm_world_epoch_elapsed(world, confirmed))
+        {
+            fprintf(stderr,"FAIL prepare deferred record and ready successor\n");
+            exit(EXIT_FAILURE);
+        }
+        dvm_retirement_rotate(retries);
+        void *ready;
+        unsigned long bytes;
+        if (!dvm_world_epoch_elapsed(world, retired) ||
+            !dvm_retirement_take(retries, &ready, &bytes) || ready != other || bytes != 32)
+        {
+            fprintf(stderr,"FAIL final epoch blocked a ready successor\n");
+            exit(EXIT_FAILURE);
+        }
+        uintptr_t other_address = (uintptr_t)other;
+        poolfree(&pool, other);
+        other = poolalloc(&pool, 32);
+        if ((uintptr_t)other != other_address ||
             !dvm_heap_pool_key_matches(&pool, block, key) ||
-            !dvm_world_read_end(participant) || !dvm_world_epoch_elapsed(world, confirmed))
+            !dvm_world_read_end(participant) || !dvm_world_epoch_elapsed(world, confirmed) ||
+            !dvm_retirement_take(retries, &ready, &bytes) || ready != block || bytes != 32)
         {
             fprintf(stderr,"FAIL final epoch released an intervening reader's allocation\n");
+            exit(EXIT_FAILURE);
+        }
+        dvm_retirement_close(retries);
+        if (!dvm_retirement_destroy(&retries))
+        {
             exit(EXIT_FAILURE);
         }
         poolfree(&pool, block);
