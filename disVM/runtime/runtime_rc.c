@@ -56,6 +56,7 @@ static unsigned long shared_arrays; /* Final scalar-array releases on Fast. */
 static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an active guest. */
 static unsigned long shared_channels;
 static unsigned long shared_plain_records;
+static unsigned long shared_lists;
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
@@ -126,6 +127,7 @@ void dvm_runtime_rc_start(void)
     shared_strings = 0;
     shared_channels = 0;
     shared_plain_records = 0;
+    shared_lists = 0;
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;
@@ -171,7 +173,7 @@ static int leaf_eligible(const Heap *heap)
         const Array *array = H2D(const Array *, heap);
         return array->t && array->t != H;
     }
-    return heap->t && heap->t->free == freeheap;
+    return heap->t && ((dvm_runtime_idle_cycles && heap->t == &Tlist) || heap->t->free == freeheap);
 }
 
 
@@ -1122,6 +1124,14 @@ static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
     packet->count = count;
     packet->next = 0;
     memcpy(packet->keys, keys, count * sizeof(void *));
+    for (size_t index = 0; index < count; index++)
+    {
+        Heap *heap = keys[index];
+        if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop))
+        {
+            abort();
+        }
+    }
     if (!dvm_runtime_root_batch_publish(roots, packet->keys, count))
     {
         abort();
@@ -1171,7 +1181,7 @@ static int release_record_branches(const RecordGroup *group)
 
 /* A retiring record still owns every mapped field. Publish the child
  * packet before claiming the record, with rollback on a changed count. */
-static int transfer_record_fields(Heap *heap)
+static int transfer_object_fields(Heap *heap)
 {
     Type *type = heap->t;
     if (dvm_refcount_load_u(&heap->ref) != 1)
@@ -1181,7 +1191,21 @@ static int transfer_record_fields(Heap *heap)
     void *keys[RECORD_EDGE_LIMIT];
     size_t count = 0;
     unsigned char *data = H2D(unsigned char *, heap);
-    for (int byte = 0; byte < type->np; byte++)
+    if (type == &Tlist)
+    {
+        List *list = H2D(List *, heap);
+        if (!list->tail)
+        {
+            return 0;
+        }
+        if (list->tail != H)
+        {
+            keys[count++] = D2H(list->tail);
+        }
+        type = list->t;
+        data = (unsigned char *)list->data;
+    }
+    for (int byte = 0; type && byte < type->np; byte++)
     {
         for (unsigned int bit = 0; bit < 8; bit++)
         {
@@ -1575,8 +1599,9 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             Array *array = entry->heap->t == &Tarray ? H2D(Array *, entry->heap) : NULL;
             int has_children = array && (array->root != H || array->t->np);
             int record = entry->heap->t->free == freeheap;
+            int list = entry->heap->t == &Tlist;
             if ((has_children && !transfer_array_children(entry->heap)) ||
-                (record && !transfer_record_fields(entry->heap)))
+                ((record || list) && !transfer_object_fields(entry->heap)))
             {
                 if (!move_leaf(leaves, difficult, entry))
                 {
@@ -1593,7 +1618,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 abort();
             }
-            DVM_RefcountResult result = has_children || channel || record ? DVM_REFCOUNT_LAST :
+            DVM_RefcountResult result = has_children || channel || record || list ? DVM_REFCOUNT_LAST :
                 dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
             {
@@ -1614,6 +1639,15 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                         release_owned_descriptor(mapped_channel);
                     }
                     shared_channels++;
+                }
+                else if (list)
+                {
+                    Type *element = H2D(List *, entry->heap)->t;
+                    if (element)
+                    {
+                        release_owned_descriptor(element);
+                    }
+                    shared_lists++;
                 }
                 else if (!record)
                 {
@@ -1839,6 +1873,7 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
+        printf("NATIVELISTRC shared=%lu\n", shared_lists);
         printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);
         printf("NATIVECHANNELRC shared=%lu\n", shared_channels);
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
