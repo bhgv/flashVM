@@ -362,109 +362,112 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
 }
 
 
-/* Snapshot ordinary records and owning arrays. Opaque targets are
- * live boundaries. The caller owns start through its queue root. */
-static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
-    DVM_RangeAccess *access)
+/* [GC:] Capture one source in group, recording opaque nodes as live.
+ * start_roots is the expected queue-root count for node zero. The caller
+ * keeps the source live and supplies a guard set or exclusive admission.
+ * Return zero on contention, invalid metadata or exhausted snapshot space. */
+static int capture_record_source(RecordGroup *group, unsigned int index,
+    unsigned long start_roots, DVM_RangeAccess *access)
 {
-    if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
+    void *record = group->nodes[index];
+    Heap *heap = D2H(record);
+    Type *type = heap->t;
+    unsigned char *data = record;
+    size_t elements = 1;
+    if (type == &Tarray)
     {
-        return 0;
-    }
-    (void)record_group_index(group, start);
-    for (unsigned int index = 0; index < group->nodes_used; index++)
-    {
-        void *record = group->nodes[index];
-        Heap *heap = D2H(record);
-        Type *type = heap->t;
-        unsigned char *data = record;
-        size_t elements = 1;
-        if (type == &Tarray)
+        Array *array = record;
+        if (!array->root || !array->t)
         {
-            Array *array = record;
-            if (!array->root || !array->t)
-            {
-                return 0;
-            }
-            if (array->root != H)
-            {
-                group->has_views = 1;
-                type = &Tptr;
-                data = (unsigned char *)&array->root;
-            }
-            else
-            {
-                if (array->len < 0 ||
-                    array->data != (unsigned char *)array + sizeof(*array))
-                {
-                    group->live[index] = 1;
-                    continue;
-                }
-                type = array->t;
-                elements = type->np ? array->len : 0;
-                data = array->data;
-            }
+            return 0;
         }
-        if (heap->t == &Tlist)
+        if (array->root != H)
         {
-            List *list = record;
-            if (!record_group_edge(group, index, &list->tail, access))
-            {
-                return 0;
-            }
-            type = list->t;
-            data = (unsigned char *)list->data;
-            elements = type ? 1 : 0;
+            group->has_views = 1;
+            type = &Tptr;
+            data = (unsigned char *)&array->root;
         }
-        if (heap->t == &Tchannel)
+        else
         {
-            Channel *channel = record;
-            if (!dvm_runtime_channel_is_quiet(channel))
+            if (array->len < 0 ||
+                array->data != (unsigned char *)array + sizeof(*array))
             {
                 group->live[index] = 1;
-                continue;
+                return 1;
             }
-            type = &Tptr;
-            data = (unsigned char *)&channel->buf;
+            type = array->t;
+            elements = type->np ? array->len : 0;
+            data = array->data;
         }
-        if (heap->t != &Tlist && (!type || type->size < (int)sizeof(void *) ||
-            (heap->t != &Tarray && heap->t != &Tchannel && type->free != freeheap)))
+    }
+    if (heap->t == &Tlist)
+    {
+        List *list = record;
+        if (!record_group_edge(group, index, &list->tail, access))
+        {
+            return 0;
+        }
+        type = list->t;
+        data = (unsigned char *)list->data;
+        elements = type ? 1 : 0;
+    }
+    if (heap->t == &Tchannel)
+    {
+        Channel *channel = record;
+        if (!dvm_runtime_channel_is_quiet(channel))
         {
             group->live[index] = 1;
-            continue;
+            return 1;
         }
-        if (dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
+        type = &Tptr;
+        data = (unsigned char *)&channel->buf;
+    }
+    if (heap->t != &Tlist && (!type || type->size < (int)sizeof(void *) ||
+        (heap->t != &Tarray && heap->t != &Tchannel && type->free != freeheap)))
+    {
+        group->live[index] = 1;
+        return 1;
+    }
+    if (dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
+    {
+        group->live[index] = 1;
+    }
+    for (size_t element = 0; element < elements; element++)
+    {
+        for (int byte = 0; byte < type->np; byte++)
         {
-            group->live[index] = 1;
-        }
-        for (size_t element = 0; element < elements; element++)
-        {
-            for (int byte = 0; byte < type->np; byte++)
+            for (unsigned int bit = 0; bit < 8; bit++)
             {
-                for (unsigned int bit = 0; bit < 8; bit++)
+                if (!(type->map[byte] & (0x80U >> bit)))
                 {
-                    if (!(type->map[byte] & (0x80U >> bit)))
-                    {
-                        continue;
-                    }
-                    size_t slot = (size_t)byte * 8 + bit;
-                    void *edge;
-                    if (slot >= (size_t)type->size / sizeof(edge))
-                    {
-                        return 0;
-                    }
-                    void *cell = data + element * type->size + slot * sizeof(edge);
-                    if (!record_group_edge(group, index, cell, access))
-                    {
-                        return 0;
-                    }
+                    continue;
+                }
+                size_t slot = (size_t)byte * 8 + bit;
+                void *edge;
+                if (slot >= (size_t)type->size / sizeof(edge))
+                {
+                    return 0;
+                }
+                void *cell = data + element * type->size + slot * sizeof(edge);
+                if (!record_group_edge(group, index, cell, access))
+                {
+                    return 0;
                 }
             }
         }
     }
+    return 1;
+}
+
+
+/* [GC:] Classify a complete guarded snapshot by counting outside references
+ * and propagating liveness. shared permits a candidate with no incoming edge
+ * to be dropped as live. Return zero if the counts invalidate the snapshot. */
+static int classify_record_group(RecordGroup *group, int shared)
+{
     if (!group->incoming[0])
     {
-        if (!access)
+        if (!shared)
         {
             return 0;
         }
@@ -511,6 +514,27 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
         }
     }
     return 1;
+}
+
+
+/* [GC:] Capture and classify a candidate rooted by its queue. access remains
+ * held by the caller when supplied. A zero result leaves the graph unclaimed. */
+static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
+    DVM_RangeAccess *access)
+{
+    if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
+    {
+        return 0;
+    }
+    (void)record_group_index(group, start);
+    for (unsigned int index = 0; index < group->nodes_used; index++)
+    {
+        if (!capture_record_source(group, index, start_roots, access))
+        {
+            return 0;
+        }
+    }
+    return classify_record_group(group, access != NULL);
 }
 
 
