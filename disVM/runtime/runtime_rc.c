@@ -72,6 +72,7 @@ static unsigned long shared_record_scans;
 static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_rooted;
+static int candidate_fallback_ready; /* Cycles attempted a batch without progress. */
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
@@ -149,6 +150,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_rotated = 0;
     cycle_candidates_coalesced = 0;
     cycle_candidates_rooted = 0;
+    candidate_fallback_ready = 0;
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
@@ -1594,10 +1596,20 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             }
             budget = cost < budget ? budget - cost : 0;
         }
+        candidate_fallback_ready = queued.ready && !completed;
+        if (candidate_fallback_ready && notify_ready)
+        {
+            notify_ready();
+        }
         if (!dvm_native_owner_leave_idle_shared(reader))
         {
             abort();
         }
+    }
+    else
+    {
+        /* The lane retries after releasing its scheduler lease. */
+        completed = 1;
     }
     if (!dvm_native_owner_detach(reader))
     {
@@ -1933,8 +1945,11 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         free(entry);
         released++;
     }
+    /* Give Cycles first refusal. The idle fallback may take candidates only
+     * after an actual shared attempt stalled, or while closing the queues. */
     while (budget && (dvm_retirement_take(retirement, &value, &bytes) ||
-                      dvm_retirement_take(cycle_candidates, &value, &bytes)))
+                      ((!accepting || candidate_fallback_ready || heapmonitor) &&
+                       dvm_retirement_take(cycle_candidates, &value, &bytes))))
     {
         (void)bytes;
         budget--;
@@ -2006,6 +2021,10 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         free(packet);
         frames_drained++;
     }
+    if (!dvm_runtime_rc_candidates_ready())
+    {
+        candidate_fallback_ready = 0;
+    }
     DVM_RetirementStats frame_stats = {0};
     (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
@@ -2038,11 +2057,14 @@ int dvm_runtime_rc_ready(void)
 {
     DVM_RetirementStats refs = {0};
     DVM_RetirementStats packets = {0};
+    DVM_RetirementStats candidates = {0};
+    (void)dvm_retirement_statistics(cycle_candidates, &candidates);
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
     return refs.ready != 0 || packets.ready != 0 ||
         dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
-        dvm_retirement_peek(record_retries) != NULL || dvm_runtime_rc_candidates_ready();
+        dvm_retirement_peek(record_retries) != NULL ||
+        (candidates.ready && (!candidates.accepting || candidate_fallback_ready));
 }
 
 
