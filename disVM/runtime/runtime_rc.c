@@ -1818,6 +1818,9 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
 }
 
 
+static int retirement_ready(int include_shared_retries); /* Queue metadata only. */
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * while serving leaves, retries and packet children. Cycles cannot run here. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
@@ -1833,6 +1836,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         return 0;
     }
     unsigned int completed = 0;
+    int retry = 0;
     if (dvm_native_owner_try_enter_idle_shared(reader))
     {
         DVM_RetirementStats retry_stats = {0};
@@ -2061,6 +2065,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         if (!heapmonitor)
         {
             completed += drain_shared_children(budget);
+            /* An accepting retry queue is outside the exclusive drain.
+             * Ask for another paced shared pass if nothing else can run. */
+            DVM_RetirementStats pending = {0};
+            (void)dvm_retirement_statistics(record_retries, &pending);
+            retry = !completed && pending.accepting && pending.ready &&
+                !retirement_ready(0) && !dvm_managed_owner_pending();
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
         {
@@ -2072,7 +2082,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
     {
         abort();
     }
-    return completed;
+    return completed + retry;
 }
 
 
@@ -2278,19 +2288,28 @@ unsigned int dvm_runtime_rc_pending(void)
 
 /* Check only committed native entries. Queue storage stays live through
  * worker join, including during shutdown. No managed object is inspected. */
-int dvm_runtime_rc_ready(void)
+static int retirement_ready(int include_shared_retries)
 {
     DVM_RetirementStats refs = {0};
     DVM_RetirementStats packets = {0};
     DVM_RetirementStats candidates = {0};
+    DVM_RetirementStats retries = {0};
+    (void)dvm_retirement_statistics(record_retries, &retries);
     (void)dvm_retirement_statistics(cycle_candidates, &candidates);
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
     return refs.ready != 0 || packets.ready != 0 ||
         dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
-        dvm_retirement_peek(record_retries) != NULL ||
+        (retries.ready && (include_shared_retries || !retries.accepting)) ||
         (candidates.ready && (!candidates.accepting ||
             __atomic_load_n(&candidate_fallback_ready, __ATOMIC_ACQUIRE)));
+}
+
+
+/* Report pending Fast work, including snapshots queued for shared retry. */
+int dvm_runtime_rc_ready(void)
+{
+    return retirement_ready(1);
 }
 
 
