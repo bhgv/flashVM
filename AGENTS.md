@@ -1,9 +1,11 @@
 # Repository-wide source readability
 
-The user's current readability requirements apply to handwritten implementation,
-headers, tests and examples in every component. They supersede older local
-exemptions from readability work. Keep upstream snapshots, third-party libraries,
-generated parser outputs and deliberately raw oracle fixtures unchanged.
+These rules apply to every handwritten source file in the entire repository,
+in every language and component, including headers, tests, examples and build
+scripts. They explicitly cover Limbo (`.b`, `.m`), assembler (`.as`, `.s`, `.S`)
+and Coco/R grammars (`.atg`). They supersede older local exemptions from
+readability work. Keep upstream snapshots, third-party libraries, generated
+outputs and deliberately raw oracle fixtures unchanged.
 
 - Start each handwritten source file with `Copyright (c) YYYY bhgv`, using
   the current year for newly written files, followed by an English and Russian
@@ -11,6 +13,9 @@ generated parser outputs and deliberately raw oracle fixtures unchanged.
   authorship and license notices.
 - Before each function, document its purpose and parameters in English and
   Russian. Cover ownership, results, failure and threading where relevant.
+  Apply the same rule to assembly routines and grammar productions, including
+  their inputs, outputs and side effects. Use the source language's comment
+  syntax and preserve the parser or assembler's required source structure.
 - Group code by responsibility under descriptive names. Keep each handwritten
   source file and header at or below 500 lines. Split oversized files by
   responsibility as they are reworked.
