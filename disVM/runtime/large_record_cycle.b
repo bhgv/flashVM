@@ -15,17 +15,15 @@ ring(length: int): ref Node
     current.next = first;
     return first;
 }
-# Drop nine rings and retain one to check that live links survive collection.
+# Drop the large ring and retain a separate ring to check that live links survive collection.
 init()
 {
     sys := load Sys Sys->PATH;
     live := ring(40);
-    ring(160);
-    for(i := 0; i < 8; i++)
-        ring(40);
-    sys->sleep(150);
+    ring(400);
+    sys->sleep(250);
     current := live;
-    for(i = 0; i < 40; i++)
+    for(i := 0; i < 40; i++)
         current = current.next;
     if(current != live)
         raise "live ring changed";

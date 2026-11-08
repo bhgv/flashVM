@@ -284,9 +284,9 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
-#define RECORD_GROUP_LIMIT 256 /* Maximum nodes in one guarded snapshot. */
-#define RECORD_EDGE_LIMIT 512
-#define RECORD_INDEX_SLOTS (RECORD_GROUP_LIMIT * 2)
+#define RECORD_EDGE_LIMIT 512 /* Maximum mapped fields in one guarded snapshot. */
+#define RECORD_NODE_CAPACITY (RECORD_EDGE_LIMIT + 1) /* Seed plus one target per field. */
+#define RECORD_INDEX_SLOTS (RECORD_EDGE_LIMIT * 4) /* Power of two, below half full. */
 
 struct RecordGroup
 {
@@ -299,7 +299,7 @@ struct RecordGroup
     unsigned char *live;      /* Nodes reachable from outside the group. */
     unsigned int live_count;
     int busy; /* A field stripe was temporarily owned elsewhere. */
-    int oversized; /* Bounded discovery could not fit another node or field. */
+    int oversized; /* Bounded discovery could not fit another field. */
     int has_views; /* A detached view needs descriptor-only destruction. */
     unsigned int nodes_used;
     unsigned int edges_used;
@@ -309,13 +309,13 @@ struct RecordGroup
 /* Scratch storage owned by one guarded discovery call. */
 typedef struct RecordGroupScratch
 {
-    void *nodes[RECORD_GROUP_LIMIT];             /* Object payloads. */
-    unsigned int incoming[RECORD_GROUP_LIMIT];  /* Internal incoming counts. */
+    void *nodes[RECORD_NODE_CAPACITY];             /* Object payloads. */
+    unsigned int incoming[RECORD_NODE_CAPACITY];  /* Internal incoming counts. */
     unsigned int index[RECORD_INDEX_SLOTS];      /* Node indices plus one. */
     void *cells[RECORD_EDGE_LIMIT];              /* Captured field addresses. */
     unsigned int targets[RECORD_EDGE_LIMIT];     /* Target indices. */
     unsigned int sources[RECORD_EDGE_LIMIT];     /* Source indices. */
-    unsigned char live[RECORD_GROUP_LIMIT];      /* Reachability flags. */
+    unsigned char live[RECORD_NODE_CAPACITY];      /* Reachability flags. */
 } RecordGroupScratch;
 
 
@@ -381,10 +381,6 @@ static unsigned int record_group_index(RecordGroup *group, void *value)
         }
         slot = (slot + 1) % RECORD_INDEX_SLOTS;
     }
-    if (group->nodes_used == RECORD_GROUP_LIMIT)
-    {
-        return RECORD_GROUP_LIMIT;
-    }
     unsigned int index = group->nodes_used++;
     group->nodes[index] = value;
     group->index[slot] = index + 1;
@@ -420,15 +416,10 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
     group->sources[group->edges_used] = index;
     if (edge == H)
     {
-        group->targets[group->edges_used++] = RECORD_GROUP_LIMIT;
+        group->targets[group->edges_used++] = RECORD_NODE_CAPACITY;
         return 1;
     }
     unsigned int target = record_group_index(group, edge);
-    if (target == RECORD_GROUP_LIMIT)
-    {
-        group->oversized = 1;
-        return 0;
-    }
     group->incoming[target]++;
     group->targets[group->edges_used++] = target;
     return 1;
@@ -579,8 +570,8 @@ static int classify_record_group(RecordGroup *group, int shared)
         }
         group->live[0] = 1;
     }
-    unsigned int ready[RECORD_GROUP_LIMIT];
-    unsigned int starts[RECORD_GROUP_LIMIT + 1];
+    unsigned int ready[RECORD_NODE_CAPACITY];
+    unsigned int starts[RECORD_NODE_CAPACITY + 1];
     unsigned int edge = 0;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
@@ -612,7 +603,7 @@ static int classify_record_group(RecordGroup *group, int shared)
         for (edge = starts[source]; edge < starts[source + 1]; edge++)
         {
             unsigned int target = group->targets[edge];
-            if (target != RECORD_GROUP_LIMIT && !group->live[target])
+            if (target != RECORD_NODE_CAPACITY && !group->live[target])
             {
                 group->live[target] = 1;
                 ready[group->live_count++] = target;
@@ -656,7 +647,7 @@ static void unlink_record_group(const RecordGroup *group)
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        if (group->targets[index] == RECORD_GROUP_LIMIT || group->live[group->sources[index]])
+        if (group->targets[index] == RECORD_NODE_CAPACITY || group->live[group->sources[index]])
         {
             continue;
         }
@@ -1292,7 +1283,7 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
         void *edge;
         memcpy(&edge, group->cells[index], sizeof(edge));
         unsigned int target = group->targets[index];
-        if (edge != (target == RECORD_GROUP_LIMIT ? H : group->nodes[target]))
+        if (edge != (target == RECORD_NODE_CAPACITY ? H : group->nodes[target]))
         {
             result = DVM_CELL_REFUSED;
             break;
@@ -1379,7 +1370,7 @@ static int release_record_branches(const RecordGroup *group)
     {
         return 1;
     }
-    void *keys[RECORD_GROUP_LIMIT + RECORD_EDGE_LIMIT];
+    void *keys[RECORD_NODE_CAPACITY + RECORD_EDGE_LIMIT];
     size_t count = 0;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
@@ -1391,7 +1382,7 @@ static int release_record_branches(const RecordGroup *group)
     for (unsigned int edge = 0; edge < group->edges_used; edge++)
     {
         unsigned int target = group->targets[edge];
-        if (target != RECORD_GROUP_LIMIT && group->live[target] && !group->live[group->sources[edge]])
+        if (target != RECORD_NODE_CAPACITY && group->live[target] && !group->live[group->sources[edge]])
         {
             keys[count++] = D2H(group->nodes[target]);
         }
@@ -1593,7 +1584,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         for (unsigned int edge = 0; edge < snapshot->edges_used; edge++)
         {
             unsigned int target = snapshot->targets[edge];
-            if (target != RECORD_GROUP_LIMIT && snapshot->live[target] &&
+            if (target != RECORD_NODE_CAPACITY && snapshot->live[target] &&
                 !snapshot->live[snapshot->sources[edge]])
             {
                 destroy(snapshot->nodes[target]);
