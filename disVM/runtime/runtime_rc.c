@@ -56,6 +56,7 @@ static unsigned long shared_strings; /* Final releases by the Fast shared pass. 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
 static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_scans;
+static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
 static unsigned long shared_record_groups_with_peer;
 static unsigned long record_groups; /* Closed record groups reclaimed from queued owners. */
@@ -123,6 +124,7 @@ void dvm_runtime_rc_start(void)
     record_groups = 0;
     shared_record_groups = 0;
     shared_record_scans = 0;
+    shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
     enqueued = 0;
     released = 0;
@@ -975,6 +977,9 @@ static int scan_retiring_record(void)
         return 0;
     }
     int scanned = queued_record_group(value, 1, &group, &access);
+    DVM_WorldState activity;
+    shared_record_snapshots_with_peer += scanned &&
+        dvm_world_state(world, &activity) && activity.active > 1;
     if (!dvm_range_access_end(&access))
     {
         abort();
@@ -1313,8 +1318,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer);
     }
     if (diagnostics)
     {
