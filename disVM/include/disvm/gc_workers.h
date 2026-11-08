@@ -58,6 +58,7 @@ typedef struct DVM_GCWorkersConfig
     void *user;                         /* Borrowed backend and its synchronized queues. */
     int cycles_quiescent_only;          /* Cycles claims idle admission without parking guests. */
     int fast_quiescent_only;            /* Fast claims idle admission without parking guests. */
+    unsigned int (*cycles_shared)(DVM_NativeContext *, size_t, void *); /* Optional candidate walk. */
     unsigned int (*fast_shared)(DVM_NativeContext *, size_t, void *); /* Optional shared leaf work. */
     int (*fast_ready)(void *user);       /* Optional native-only queue check before a Fast stop. */
 } DVM_GCWorkersConfig;

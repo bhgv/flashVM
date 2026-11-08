@@ -46,6 +46,8 @@ void dvm_runtime_rc_close(void);
 int dvm_runtime_rc_finish(int diagnostics);
 struct DVM_NativeContext;
 /* Process eligible leaf strings on the Fast lane without stopping guests. */
+int dvm_runtime_rc_candidates_ready(void);
+unsigned int dvm_runtime_rc_shared_candidates(struct DVM_NativeContext *context, size_t budget);
 unsigned int dvm_runtime_rc_shared_leaves(struct DVM_NativeContext *context, size_t budget);
 
 #endif

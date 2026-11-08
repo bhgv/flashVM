@@ -66,6 +66,12 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int *executed)
     DVM_GCPass *pass = worker->kind == DVM_GC_FAST ? &workers->config.Fast : &workers->config.Cycles;
     DVM_GCWorkResult result;
     *executed = 0;
+    if (worker->kind == DVM_GC_CYCLES && workers->config.cycles_shared &&
+        workers->config.cycles_shared(worker->context, pass->budget, workers->config.user))
+    {
+        *executed = 1;
+        return DVM_GC_MORE;
+    }
     if (worker->kind == DVM_GC_FAST && workers->config.fast_shared)
     {
         unsigned int completed = workers->config.fast_shared(worker->context, pass->budget,

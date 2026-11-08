@@ -102,7 +102,9 @@ static void collector_environment(void)
  * native worker metadata and is safe before a producer leaves admission. */
 static void wake_fast(void)
 {
-    if (!dvm_gc_workers_request(state.workers, DVM_GC_FAST))
+    if (!dvm_gc_workers_request(state.workers, DVM_GC_FAST) ||
+        (dvm_runtime_rc_candidates_ready() &&
+         !dvm_gc_workers_request(state.workers, DVM_GC_CYCLES)))
     {
         abort();
     }
@@ -114,6 +116,13 @@ static unsigned int fast_shared(DVM_NativeContext *context, size_t budget, void 
 {
     USED(user);
     return dvm_runtime_rc_shared_leaves(context, budget);
+}
+
+
+static unsigned int cycles_shared(DVM_NativeContext *context, size_t budget, void *user)
+{
+    USED(user);
+    return dvm_runtime_rc_shared_candidates(context, budget);
 }
 
 
@@ -215,13 +224,14 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.Fast.run = fast_pass;
     config.fast_ready = fast_ready;
     config.fast_shared = fast_shared;
+    config.cycles_shared = cycles_shared;
     config.fast_quiescent_only = 1;
     config.Fast.pause_us = 1000;
     config.Fast.budget = 256;
     config.cycles_quiescent_only = dvm_runtime_idle_cycles;
     config.Cycles.pause_us = dvm_runtime_idle_cycles ? 1000 : 0;
     config.Cycles.run = cycle_pass;
-    config.Cycles.budget = 1;
+    config.Cycles.budget = 256;
     config.user = &state;
     if (attached)
     {

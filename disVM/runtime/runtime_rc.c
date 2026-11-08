@@ -47,6 +47,7 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static DVM_RetirementQueue *cycle_candidates; /* Nonfinal owners for the Cycles lane. */
 static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and final epochs. */
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
 static struct
@@ -115,7 +116,7 @@ void dvm_runtime_rc_start(void)
     helper_enqueued = 0;
     helper_saturated = 0;
     helper_byte_limited = 0;
-    if (retirement || frames || leaves || difficult || record_retries)
+    if (retirement || frames || leaves || difficult || record_retries || cycle_candidates)
     {
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
@@ -125,6 +126,7 @@ void dvm_runtime_rc_start(void)
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
+    cycle_candidates = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
@@ -643,18 +645,23 @@ static int transfer_record_candidate(Heap *heap)
     }
     DVM_RetirementReservation token = {0};
     unsigned long bytes = poolmsize(heapmem, heap);
-    if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+    if (dvm_retirement_reserve(cycle_candidates, bytes, &token) != DVM_RETIRE_OK)
     {
         return 0;
     }
     if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop) || !dvm_runtime_root_add(heap))
     {
-        dvm_retirement_cancel(retirement, &token);
+        dvm_retirement_cancel(cycle_candidates, &token);
         return 0;
     }
-    if (!dvm_retirement_commit(retirement, &token, H2D(void *, heap)))
+    int became_ready;
+    if (!dvm_retirement_commit_ready(cycle_candidates, &token, H2D(void *, heap), &became_ready))
     {
         abort();
+    }
+    if (became_ready && notify_ready)
+    {
+        notify_ready();
     }
     enqueued++;
     helper_enqueued++;
@@ -694,7 +701,8 @@ int dvm_runtime_rc_defer(void *value)
         helper_enqueued += helper != 0;
         return 1;
     }
-    reserved = dvm_retirement_reserve(retirement, bytes, &token);
+    DVM_RetirementQueue *queue = last ? retirement : cycle_candidates;
+    reserved = dvm_retirement_reserve(queue, bytes, &token);
     if (reserved != DVM_RETIRE_OK)
     {
         if (reserved == DVM_RETIRE_FULL)
@@ -712,7 +720,7 @@ int dvm_runtime_rc_defer(void *value)
     memcpy(previous,up->env->errstr,sizeof(previous));
     if (waserror())
     {
-        (void)dvm_retirement_cancel(retirement, &token);
+        (void)dvm_retirement_cancel(queue, &token);
         memcpy(up->env->errstr,previous,sizeof(previous));
         return 0;
     }
@@ -720,9 +728,9 @@ int dvm_runtime_rc_defer(void *value)
     poperror();
     Setmark(heap);
     int became_ready;
-    if (!dvm_retirement_commit_ready(retirement, &token, value, &became_ready))
+    if (!dvm_retirement_commit_ready(queue, &token, value, &became_ready))
     {
-        (void)dvm_retirement_cancel(retirement, &token);
+        (void)dvm_retirement_cancel(queue, &token);
         ptrdel(heap);
         return 0;
     }
@@ -1449,7 +1457,7 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
  * the existing final confirmation path. */
 static int scan_retiring_record(void)
 {
-    void *value = dvm_retirement_peek(retirement);
+    void *value = dvm_retirement_peek(cycle_candidates);
     if (!dvm_runtime_idle_cycles || !value)
     {
         return 0;
@@ -1463,7 +1471,7 @@ static int scan_retiring_record(void)
         }
         void *head;
         unsigned long bytes;
-        if (!dvm_retirement_take(retirement, &head, &bytes) || head != value ||
+        if (!dvm_retirement_take(cycle_candidates, &head, &bytes) || head != value ||
             !dvm_runtime_root_remove(heap))
         {
             abort();
@@ -1492,7 +1500,7 @@ static int scan_retiring_record(void)
     }
     void *head;
     unsigned long bytes;
-    if (!dvm_retirement_take(retirement, &head, &bytes) || head != value ||
+    if (!dvm_retirement_take(cycle_candidates, &head, &bytes) || head != value ||
         !dvm_runtime_root_remove(D2H(value)))
     {
         abort();
@@ -1506,12 +1514,46 @@ static int scan_retiring_record(void)
 }
 
 
+int dvm_runtime_rc_candidates_ready(void)
+{
+    return dvm_retirement_peek(cycle_candidates) != NULL;
+}
+
+
+unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t budget)
+{
+    DVM_HeapOwner *reader = dvm_native_owner_current();
+    if (!dvm_runtime_rc_candidates_ready() || context != dvm_native_context_current() ||
+        !dvm_native_owner_attach(reader, world))
+    {
+        return 0;
+    }
+    unsigned int completed = 0;
+    if (dvm_native_owner_try_enter_idle_shared(reader))
+    {
+        while (completed < budget && scan_retiring_record())
+        {
+            completed++;
+        }
+        if (!dvm_native_owner_leave_idle_shared(reader))
+        {
+            abort();
+        }
+    }
+    if (!dvm_native_owner_detach(reader))
+    {
+        abort();
+    }
+    return completed;
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * while serving leaves, retries and packet children. Cycles cannot run here. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
     if (!dvm_retirement_peek(leaves) && !dvm_retirement_peek(frames) &&
-        !dvm_retirement_peek(record_retries) && !dvm_retirement_peek(retirement))
+        !dvm_retirement_peek(record_retries))
     {
         return 0;
     }
@@ -1724,14 +1766,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         }
         if (!heapmonitor)
         {
-            unsigned int children = drain_shared_children(budget);
-            completed += children;
-            budget -= children;
-            while (budget && scan_retiring_record())
-            {
-                completed++;
-                budget--;
-            }
+            completed += drain_shared_children(budget);
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
         {
@@ -1839,7 +1874,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         free(entry);
         released++;
     }
-    while (budget && dvm_retirement_take(retirement, &value, &bytes))
+    while (budget && (dvm_retirement_take(retirement, &value, &bytes) ||
+                      dvm_retirement_take(cycle_candidates, &value, &bytes)))
     {
         (void)bytes;
         budget--;
@@ -1915,7 +1951,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
     return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL);
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready();
 }
 
 
@@ -1931,7 +1967,7 @@ unsigned int dvm_runtime_rc_pending(void)
         (void)dvm_retirement_statistics(frames, &frame_stats);
         (void)dvm_retirement_statistics(retirement, &stats);
         return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL);
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready();
     }
     return stats.ready+stats.reserved;
 }
@@ -1947,7 +1983,7 @@ int dvm_runtime_rc_ready(void)
     (void)dvm_retirement_statistics(frames, &packets);
     return refs.ready != 0 || packets.ready != 0 ||
         dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
-        dvm_retirement_peek(record_retries) != NULL;
+        dvm_retirement_peek(record_retries) != NULL || dvm_runtime_rc_candidates_ready();
 }
 
 
@@ -1957,6 +1993,7 @@ void dvm_runtime_rc_close(void)
 {
     accepting = 0;
     dvm_retirement_close(retirement);
+    dvm_retirement_close(cycle_candidates);
     dvm_retirement_close(frames);
     dvm_retirement_close(leaves);
     dvm_retirement_close(difficult);
@@ -2004,7 +2041,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(difficult, &difficult_stats);
         printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, difficult_stats.ready + difficult_stats.reserved);
     }
-    result = (record_retries == NULL || dvm_retirement_destroy(&record_retries)) &&
+    result = (cycle_candidates == NULL || dvm_retirement_destroy(&cycle_candidates)) &&
+        (record_retries == NULL || dvm_retirement_destroy(&record_retries)) &&
         (difficult == NULL || dvm_retirement_destroy(&difficult)) &&
         (leaves == NULL || dvm_retirement_destroy(&leaves)) &&
         (retirement == NULL || dvm_retirement_destroy(&retirement)) &&
