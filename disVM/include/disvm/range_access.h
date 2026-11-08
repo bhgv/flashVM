@@ -43,6 +43,13 @@ DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
     void *output, size_t output_size, DVM_RangeAccess *access);
 
 
+/* Claim the ordered union of count borrowed pointer-sized cells in domain.
+ * Access uses the same ownership, lifetime and failure contract as begin.
+ * Selection reads cell addresses only, before any guard is acquired. */
+DVM_CellResult dvm_range_access_cells_begin(DVM_CellDomain *domain,
+    void *const *cells, size_t count, DVM_RangeAccess *access);
+
+
 /* Add an independently live span to a live exact-owner access, without releasing
  * original claims or its one domain borrow. Empty size ignores the address.
  * New guards use bounded try-only acquisition, even below existing keys. Success

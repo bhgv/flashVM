@@ -90,20 +90,15 @@ static void unwind(DVM_RangeAccess *access)
 }
 
 
-/* domain/access are live native metadata; source/second/destination borrow
- * spans of the supplied sizes. Return ACQUIRED, BUSY or REFUSED without payload
- * reads. Geometry and full selection precede claims; all partial failures unwind.
- * Guard order is stripe order, independent of source/destination argument order. */
-DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
-    const void *source, size_t source_size, const void *second, size_t second_size,
-    void *destination, size_t destination_size, DVM_RangeAccess *access)
+/* Acquire the selected stripes for domain in the current native context.
+ * Access is caller-owned, empty storage. Failed claims release the acquired
+ * prefix and domain reference before returning BUSY or REFUSED. */
+static DVM_CellResult begin_selected(DVM_CellDomain *domain,
+    const unsigned char *bits, DVM_RangeAccess *access)
 {
-    unsigned char bits[DVM_CELL_STRIPES / 8] = {0};
     DVM_NativeContext *context = dvm_native_context_current();
     unsigned int index;
-    if (!domain || !context || dvm_native_context_object_count(context) || !empty(access) ||
-        !select_span(source, source_size, bits) || !select_span(second, second_size, bits) ||
-        !select_span(destination, destination_size, bits))
+    if (!domain || !context || dvm_native_context_object_count(context) || !empty(access))
     {
         return DVM_CELL_REFUSED;
     }
@@ -131,6 +126,43 @@ DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
         access->held++;
     }
     return DVM_CELL_ACQUIRED;
+}
+
+
+/* Select three borrowed spans before taking any guards. Domain and access
+ * follow begin_selected's ownership and rollback contract. */
+DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, const void *second, size_t second_size,
+    void *destination, size_t destination_size, DVM_RangeAccess *access)
+{
+    unsigned char bits[DVM_CELL_STRIPES / 8] = {0};
+    if (!select_span(source, source_size, bits) || !select_span(second, second_size, bits) ||
+        !select_span(destination, destination_size, bits))
+    {
+        return DVM_CELL_REFUSED;
+    }
+    return begin_selected(domain, bits, access);
+}
+
+
+/* Select count borrowed pointer cells and acquire their stripe union once.
+ * A refused geometry or busy stripe leaves the caller's access unchanged. */
+DVM_CellResult dvm_range_access_cells_begin(DVM_CellDomain *domain,
+    void *const *cells, size_t count, DVM_RangeAccess *access)
+{
+    unsigned char bits[DVM_CELL_STRIPES / 8] = {0};
+    if (count && !cells)
+    {
+        return DVM_CELL_REFUSED;
+    }
+    for (size_t index = 0; index < count; index++)
+    {
+        if (!select_span(cells[index], sizeof(void *), bits))
+        {
+            return DVM_CELL_REFUSED;
+        }
+    }
+    return begin_selected(domain, bits, access);
 }
 
 

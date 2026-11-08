@@ -271,6 +271,14 @@ int main(void)
     check(dvm_range_access_three_begin(shared.domain, cells, sizeof(cells), NULL, 0, NULL, 0, &access) == DVM_CELL_ACQUIRED &&
         access.count == DVM_RANGE_GUARDS && dvm_range_access_extend(&access, cells, sizeof(cells)) == DVM_CELL_ACQUIRED &&
         access.count == DVM_RANGE_GUARDS && dvm_range_access_end(&access), "full canonical domain extension");
+    void *batch[] = {third, (void *)first, (void *)second, third};
+    check(dvm_range_access_cells_begin(shared.domain, batch, 4, &access) == DVM_CELL_ACQUIRED &&
+        access.count == 6 && access.held == 6 && dvm_range_access_end(&access),
+        "unordered cell batch deduplicates overlapping stripes");
+    batch[3] = NULL;
+    check(dvm_range_access_cells_begin(shared.domain, batch, 4, &access) == DVM_CELL_REFUSED &&
+        !access.count && !access.domain && !dvm_native_context_object_count(context),
+        "invalid final batch cell leaves no claims");
     monitor = 0;
     check(!allocations && dvm_refcount_load_u(&shared.domain->references) == 1,
         "single domain borrow restored");

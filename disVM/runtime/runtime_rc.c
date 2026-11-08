@@ -1139,18 +1139,14 @@ static int claim_record_group(const RecordGroup *group)
 static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, unsigned long *final_epoch)
 {
     DVM_RangeAccess access = {0};
-    DVM_CellResult result = dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access);
+    DVM_CellResult result = dvm_range_access_cells_begin(record_cells,
+        group->cells, group->edges_used, &access);
     if (result != DVM_CELL_ACQUIRED)
     {
         return result;
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        result = dvm_range_access_extend(&access, group->cells[index], sizeof(void *));
-        if (result != DVM_CELL_ACQUIRED)
-        {
-            break;
-        }
         void *edge;
         memcpy(&edge, group->cells[index], sizeof(edge));
         unsigned int target = group->targets[index];
