@@ -68,6 +68,7 @@ static unsigned long shared_strings; /* Final releases by the Fast shared pass. 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
 static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_scans;
+static unsigned long cycle_candidates_rotated;
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
@@ -142,6 +143,7 @@ void dvm_runtime_rc_start(void)
     record_groups = 0;
     shared_record_groups = 0;
     shared_record_scans = 0;
+    cycle_candidates_rotated = 0;
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
@@ -1531,9 +1533,20 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
     unsigned int completed = 0;
     if (dvm_native_owner_try_enter_idle_shared(reader))
     {
-        while (completed < budget && scan_retiring_record())
+        DVM_RetirementStats queued = {0};
+        (void)dvm_retirement_statistics(cycle_candidates, &queued);
+        size_t attempts = queued.ready < budget ? queued.ready : budget;
+        for (size_t index = 0; index < attempts; index++)
         {
-            completed++;
+            if (scan_retiring_record())
+            {
+                completed++;
+            }
+            else
+            {
+                dvm_retirement_rotate(cycle_candidates);
+                cycle_candidates_rotated++;
+            }
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
         {
@@ -2019,8 +2032,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated);
     }
     if (diagnostics)
     {
