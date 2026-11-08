@@ -1404,9 +1404,10 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             unsigned int children = drain_shared_children(budget);
             completed += children;
             budget -= children;
-            if (budget)
+            while (budget && scan_retiring_record())
             {
-                completed += scan_retiring_record();
+                completed++;
+                budget--;
             }
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
