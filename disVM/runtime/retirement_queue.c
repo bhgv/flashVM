@@ -217,6 +217,29 @@ void *dvm_retirement_peek(DVM_RetirementQueue *queue)
 }
 
 
+/* Compare ready identities without dereferencing managed storage. */
+int dvm_retirement_contains(DVM_RetirementQueue *queue, const void *value)
+{
+    if (!queue || !value)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(queue->sync);
+    int found = 0;
+    for (unsigned int index = 0; index < queue->ready; index++)
+    {
+        unsigned int position = (queue->head + index) % queue->capacity;
+        if (queue->slots[queue->ring[position]].value == value)
+        {
+            found = 1;
+            break;
+        }
+    }
+    fvm_port_sync_unlock(queue->sync);
+    return found;
+}
+
+
 /* Rotate ready metadata without borrowing capacity or withdrawing roots. */
 void dvm_retirement_rotate(DVM_RetirementQueue *queue)
 {

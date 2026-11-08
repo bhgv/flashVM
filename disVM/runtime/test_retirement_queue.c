@@ -169,7 +169,8 @@ static void boundaries(void)
         "FAIL retire ready publication");
     check(!edge, "FAIL retire duplicate wake on nonempty queue");
     check(!dvm_retirement_destroy(&queue), "FAIL retire ready destroy");
-    check(dvm_retirement_peek(queue) == &second, "FAIL retire initial FIFO head");
+    check(dvm_retirement_peek(queue) == &second && dvm_retirement_contains(queue, &first) &&
+        dvm_retirement_contains(queue, &second), "FAIL retire initial FIFO identities");
     dvm_retirement_rotate(queue);
     check(dvm_retirement_peek(queue) == &first &&
         dvm_retirement_statistics(queue, &stats) && stats.ready == 2 && stats.bytes == 10,

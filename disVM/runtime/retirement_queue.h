@@ -72,6 +72,10 @@ int dvm_retirement_cancel(DVM_RetirementQueue *queue, DVM_RetirementReservation 
 /* Borrow head identity until the sole consumer takes it. */
 void *dvm_retirement_peek(DVM_RetirementQueue *queue);
 
+/* Observe whether a ready slot contains the identity. This does not reserve
+ * it. Callers requiring uniqueness must serialize their producer transaction. */
+int dvm_retirement_contains(DVM_RetirementQueue *queue, const void *value);
+
 /* Move the head to the tail, even at capacity. Single consumer only.
  * The queue must be live. An empty or singleton queue is unchanged. */
 void dvm_retirement_rotate(DVM_RetirementQueue *queue);

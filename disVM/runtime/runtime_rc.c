@@ -69,6 +69,7 @@ static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
 static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_scans;
 static unsigned long cycle_candidates_rotated;
+static unsigned long cycle_candidates_coalesced;
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
@@ -144,6 +145,7 @@ void dvm_runtime_rc_start(void)
     shared_record_groups = 0;
     shared_record_scans = 0;
     cycle_candidates_rotated = 0;
+    cycle_candidates_coalesced = 0;
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
@@ -638,10 +640,21 @@ static int record_candidate(const Heap *heap)
 }
 
 
+/* Producers are exclusive Dis owners or the single Fast lane. A ready
+ * entry holds the same allocation alive through this observation. */
+static int cycle_candidate_already_queued(void *value)
+{
+    int queued = dvm_retirement_contains(cycle_candidates, value);
+    cycle_candidates_coalesced += queued;
+    return queued;
+}
+
+
 /* Keep the packet owner intact until its replacement queue root is published. */
 static int transfer_record_candidate(Heap *heap)
 {
-    if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1)
+    if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1 ||
+        cycle_candidate_already_queued(H2D(void *, heap)))
     {
         return 0;
     }
@@ -692,7 +705,7 @@ int dvm_runtime_rc_defer(void *value)
     helper = dvm_native_context_current() != owner;
     heap = D2H(value);
     int last = dvm_refcount_load_u(&heap->ref) == 1;
-    if (!last && !record_candidate(heap))
+    if (!last && (!record_candidate(heap) || cycle_candidate_already_queued(value)))
     {
         return 0;
     }
@@ -2032,8 +2045,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced);
     }
     if (diagnostics)
     {
