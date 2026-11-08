@@ -19,14 +19,14 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
         counters = re.search(
             r"record_groups=(\d+) shared_record_groups=(\d+) "
             r"shared_record_groups_with_peer=(\d+)", output)
-        if "PASS live group" not in output or not counters or int(counters[1]) < 64:
+        if "PASS live group" not in output or not counters:
             raise RuntimeError(output)
         snapshots = re.search(r"shared_record_snapshots_with_peer=(\d+)", output)
         if require_snapshot and snapshots is None:
             raise RuntimeError(f"{mode}: runtime does not report concurrent graph snapshots")
         confirmations = re.search(r"shared_record_confirmations=(\d+)", output)
         observations.append((*map(int, counters.groups()), int(snapshots[1]) if snapshots else None))
-        if (int(counters[2]) and (not require_peer or int(counters[3]))
+        if (int(counters[1]) >= 64 and int(counters[2]) and (not require_peer or int(counters[3]))
                 and (not require_snapshot or int(snapshots[1]))
                 and (not require_confirmation or (confirmations and int(confirmations[1])))):
             print(f"PASS {mode}: live group preserved, groups/shared/reclaim-peer/scan-peer {observations[-1]}")

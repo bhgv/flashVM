@@ -1267,6 +1267,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     dvm_retirement_rotate(source);
                     continue;
                 }
+                if (entry && entry->records && move_leaf(source, record_retries, entry))
+                {
+                    budget--;
+                    completed++;
+                    continue;
+                }
                 break;
             }
             if (entry->records)
