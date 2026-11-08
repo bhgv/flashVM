@@ -46,7 +46,7 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
-static DVM_RetirementQueue *record_retries; /* Transient guard conflicts. */
+static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and final epochs. */
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
 static unsigned long difficult_moved;
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
@@ -1116,7 +1116,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     entry->epoch = final_epoch;
                     budget--;
                     completed++;
-                    if (source == record_retries)
+                    if (source == record_retries || move_leaf(source, record_retries, entry))
                     {
                         continue;
                     }
