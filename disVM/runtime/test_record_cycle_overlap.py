@@ -6,9 +6,11 @@ import re
 import subprocess
 
 
-def check(runtime, module, mode, require_peer, require_snapshot, require_confirmation):
+def check(runtime, module, mode, require_peer, require_snapshot, require_confirmation, native_spawn):
     environment = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
     command = [str(runtime), "--gc-idle-cycles", "--stats", mode, str(module)]
+    if native_spawn:
+        command.insert(1, "--native-spawn")
     observations = []
     # A bounded retry allows for scheduler variation in the overlap window.
     for _ in range(8):
@@ -41,12 +43,13 @@ def main():
     parser.add_argument("--require-peer", action="store_true")
     parser.add_argument("--require-snapshot", action="store_true")
     parser.add_argument("--require-confirmation", action="store_true")
+    parser.add_argument("--native-spawn", action="store_true")
     args = parser.parse_args()
     failures = []
     for mode in ("--jit", "--no-jit"):
         try:
             check(args.runtime.resolve(), args.module.resolve(), mode,
-                  args.require_peer, args.require_snapshot, args.require_confirmation)
+                  args.require_peer, args.require_snapshot, args.require_confirmation, args.native_spawn)
         except RuntimeError as error:
             failures.append(str(error))
     if failures:

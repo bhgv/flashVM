@@ -2003,6 +2003,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
   "${record_cycle_overlap_module}")
  set_tests_properties(disvm_record_cycle_overlap PROPERTIES TIMEOUT 330)
+ set(container_cycle_overlap_module "${CMAKE_CURRENT_BINARY_DIR}/container-cycle-overlap.dis")
+ add_custom_command(OUTPUT "${container_cycle_overlap_module}"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module"
+   -o "${container_cycle_overlap_module}" "${CMAKE_CURRENT_SOURCE_DIR}/container_cycle_overlap.b"
+  DEPENDS limbo-bootstrap "${CMAKE_CURRENT_SOURCE_DIR}/container_cycle_overlap.b" ${module_headers}
+  VERBATIM)
+ add_custom_target(disvm_container_cycle_overlap_module ALL DEPENDS "${container_cycle_overlap_module}")
+ add_test(NAME disvm_container_cycle_overlap COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
+  "${container_cycle_overlap_module}" --native-spawn --require-confirmation)
+ set_tests_properties(disvm_container_cycle_overlap PROPERTIES TIMEOUT 330)
+
 
 endif()
 
