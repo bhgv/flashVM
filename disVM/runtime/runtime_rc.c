@@ -874,12 +874,20 @@ static int claim_record_group(const RecordGroup *group)
 {
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
+        if (group->live[index])
+        {
+            continue;
+        }
         Heap *heap = D2H(group->nodes[index]);
         if (!dvm_refcount_replace_u(&heap->ref, group->incoming[index] + (index == 0), 0))
         {
             while (index)
             {
                 index--;
+                if (group->live[index])
+                {
+                    continue;
+                }
                 heap = D2H(group->nodes[index]);
                 if (!dvm_refcount_replace_u(&heap->ref, 0, group->incoming[index] + (index == 0)))
                 {
@@ -922,7 +930,7 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
     }
     for (unsigned int index = 0; result == DVM_CELL_ACQUIRED && index < group->nodes_used; index++)
     {
-        if (dvm_runtime_root_count(D2H(group->nodes[index])) != 1)
+        if (!group->live[index] && dvm_runtime_root_count(D2H(group->nodes[index])) != 1)
         {
             result = DVM_CELL_REFUSED;
         }
@@ -946,6 +954,71 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
 }
 
 
+/* Transfer one discovery hold per live node plus each dead-to-live edge.
+ * The original rooted entry stays intact if packet setup cannot complete. */
+static int release_record_branches(const RecordGroup *group)
+{
+    if (!group->live_count)
+    {
+        return 1;
+    }
+    void *keys[RECORD_GROUP_LIMIT + RECORD_EDGE_LIMIT];
+    size_t count = 0;
+    for (unsigned int index = 0; index < group->nodes_used; index++)
+    {
+        if (group->live[index])
+        {
+            keys[count++] = D2H(group->nodes[index]);
+        }
+    }
+    for (unsigned int edge = 0; edge < group->edges_used; edge++)
+    {
+        unsigned int target = group->targets[edge];
+        if (target != RECORD_GROUP_LIMIT && group->live[target] && !group->live[group->sources[edge]])
+        {
+            keys[count++] = D2H(group->nodes[target]);
+        }
+    }
+    unsigned long charge = sizeof(FrameRetirement) + count * sizeof(void *);
+    for (size_t index = 0; index < count; index++)
+    {
+        unsigned long size = poolmsize(heapmem, keys[index]);
+        if (size > RC_BYTES - charge)
+        {
+            return 0;
+        }
+        charge += size;
+    }
+    DVM_RetirementReservation token = {0};
+    if (dvm_retirement_reserve(frames, charge, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    FrameRetirement *packet = malloc(sizeof(*packet) + count * sizeof(void *));
+    DVM_RootBatch *roots = dvm_runtime_root_batch_create(count);
+    if (!packet || !roots)
+    {
+        if (roots)
+        {
+            dvm_runtime_root_batch_destroy(&roots);
+        }
+        free(packet);
+        dvm_retirement_cancel(frames, &token);
+        return 0;
+    }
+    packet->roots = roots;
+    packet->count = count;
+    packet->next = 0;
+    memcpy(packet->keys, keys, count * sizeof(void *));
+    if (!dvm_runtime_root_batch_publish(roots, packet->keys, count) ||
+        !dvm_retirement_commit(frames, &token, packet))
+    {
+        abort();
+    }
+    return 1;
+}
+
+
 /* The producer proved closure under exclusive admission and transferred the
  * sole outside owner. Wait out old borrows before touching the saved cells. */
 static void reclaim_detached_records(LeafRetirement *entry, int shared)
@@ -955,7 +1028,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
     {
         unlink_record_group(entry->snapshot);
     }
-    free(entry->snapshot);
+    RecordGroup *snapshot = entry->snapshot;
     if (!dvm_runtime_root_batch_clear(records->roots) ||
         !dvm_runtime_root_batch_destroy(&records->roots))
     {
@@ -965,7 +1038,14 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
     for (size_t index = 0; index < owners; index++)
     {
         Heap *heap = records->keys[index];
-        if (shared || entry->claimed)
+        if ((shared || entry->claimed) && snapshot->live[index])
+        {
+            if (!shared)
+            {
+                destroy(H2D(void *, heap));
+            }
+        }
+        else if (shared || entry->claimed)
         {
             release_owned_descriptor(heap->t);
             poolfree(heapmem, heap);
@@ -975,6 +1055,19 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
             destroy(H2D(void *, heap));
         }
     }
+    if (!shared && entry->claimed)
+    {
+        for (unsigned int edge = 0; edge < snapshot->edges_used; edge++)
+        {
+            unsigned int target = snapshot->targets[edge];
+            if (target != RECORD_GROUP_LIMIT && snapshot->live[target] &&
+                !snapshot->live[snapshot->sources[edge]])
+            {
+                destroy(snapshot->nodes[target]);
+            }
+        }
+    }
+    free(snapshot);
     free(records);
     record_groups += !entry->claim_refused && (shared || entry->claimed || !entry->pinned_children);
 }
@@ -1020,7 +1113,7 @@ static int scan_retiring_record(void)
         return 0;
     }
     int scanned = queued_record_group(value, 1, &group, &access);
-    int promoted = scanned && !group.live_count && defer_record_group(&group, 1);
+    int promoted = scanned && !group.live[0] && defer_record_group(&group, 1);
     DVM_WorldState activity;
     shared_record_snapshots_with_peer += scanned &&
         dvm_world_state(world, &activity) && activity.active > 1;
@@ -1125,6 +1218,15 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     }
                     if (move_leaf(source, record_retries, entry))
                     {
+                        continue;
+                    }
+                    break;
+                }
+                if (entry->claimed && !release_record_branches(entry->snapshot))
+                {
+                    if (source == record_retries)
+                    {
+                        dvm_retirement_rotate(source);
                         continue;
                     }
                     break;
