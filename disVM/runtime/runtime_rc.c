@@ -684,12 +684,11 @@ static void unlink_record_group(const RecordGroup *group)
 }
 
 
-static int defer_record_group(const RecordGroup *group, int shared)
+/* [GC:] Publish a guarded graph for Fast. retry reports a transient
+ * borrower or queue limit; a graph too large for an empty queue refuses. */
+static int defer_record_group(const RecordGroup *group, int shared, int *retry)
 {
-    if (dvm_world_has_borrowers(world))
-    {
-        return 0;
-    }
+    *retry = 0;
     DVM_RetirementReservation token = {0};
     size_t packet_bytes = sizeof(FrameRetirement) + group->nodes_used * sizeof(void *);
     size_t metadata = sizeof(LeafRetirement) + record_group_bytes(group) +
@@ -708,8 +707,15 @@ static int defer_record_group(const RecordGroup *group, int shared)
         }
         bytes += size;
     }
-    if (dvm_retirement_reserve(leaves, bytes, &token) != DVM_RETIRE_OK)
+    if (dvm_world_has_borrowers(world))
     {
+        *retry = 1;
+        return 0;
+    }
+    DVM_RetirementResult reserved = dvm_retirement_reserve(leaves, bytes, &token);
+    if (reserved != DVM_RETIRE_OK)
+    {
+        *retry = reserved == DVM_RETIRE_FULL || reserved == DVM_RETIRE_BYTES;
         return 0;
     }
     LeafRetirement *entry = malloc(sizeof(*entry));
@@ -1741,7 +1747,7 @@ static int move_cycle_candidate(DVM_RetirementQueue *source,
 
 
 /* [GC:] Try to consume the head candidate under shared admission. Charge
- * captured work to cost and report retryable field contention through busy.
+ * captured work to cost and report transient contention through busy.
  * The queue keeps its owner on failure. */
 static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit, size_t *cost, int *busy)
 {
@@ -1789,7 +1795,8 @@ static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit,
     }
     int scanned = queued_record_group(value, 1, &group, &access);
     *cost += group.edges_used;
-    int promoted = scanned && !group.live[0] && defer_record_group(&group, 1);
+    int retry_promotion = 0;
+    int promoted = scanned && !group.live[0] && defer_record_group(&group, 1, &retry_promotion);
     if (source == duke_candidates)
     {
         duke_promoted += promoted;
@@ -1801,7 +1808,7 @@ static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit,
         abort();
     }
     __atomic_fetch_add(&shared_record_scans, scanned, __ATOMIC_RELAXED);
-    *busy = group.busy;
+    *busy = group.busy || retry_promotion;
     if (group.oversized)
     {
         DVM_RetirementQueue *destination = source == cycle_candidates && duke_candidates &&
@@ -2246,7 +2253,8 @@ static int process_queued_record_group(void *value, int promote)
     {
         return 0;
     }
-    if (promote && defer_record_group(&group, 0))
+    int retry;
+    if (promote && defer_record_group(&group, 0, &retry))
     {
         return 1;
     }
