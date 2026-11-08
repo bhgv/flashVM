@@ -158,7 +158,7 @@ static int leaf_eligible(const Heap *heap)
 {
     if (heap->t == &Tstring)
     {
-        return !H2D(const String *, heap)->tmp;
+        return 1;
     }
     if (heap->t == &Tchannel)
     {
@@ -1524,6 +1524,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 else
                 {
+                    free(H2D(String *, entry->heap)->tmp);
                     shared_strings++;
                     shared_strings_with_peer += peer;
                 }
