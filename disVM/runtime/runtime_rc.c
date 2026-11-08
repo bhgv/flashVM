@@ -55,6 +55,7 @@ static unsigned long shared_array_graphs; /* Shared releases that transfer array
 static unsigned long shared_arrays; /* Final scalar-array releases on Fast. */
 static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an active guest. */
 static unsigned long shared_channels;
+static unsigned long shared_plain_records;
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
@@ -124,6 +125,7 @@ void dvm_runtime_rc_start(void)
     shared_arrays_with_peer = 0;
     shared_strings = 0;
     shared_channels = 0;
+    shared_plain_records = 0;
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;
@@ -169,7 +171,7 @@ static int leaf_eligible(const Heap *heap)
         const Array *array = H2D(const Array *, heap);
         return array->t && array->t != H;
     }
-    return 0;
+    return heap->t && heap->t->free == freeheap;
 }
 
 
@@ -400,7 +402,11 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
     }
     if (!group->incoming[0])
     {
-        return 0;
+        if (!access)
+        {
+            return 0;
+        }
+        group->live[0] = 1;
     }
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
@@ -1163,6 +1169,76 @@ static int release_record_branches(const RecordGroup *group)
 }
 
 
+/* A retiring record still owns every mapped field. Publish the child
+ * packet before claiming the record, with rollback on a changed count. */
+static int transfer_record_fields(Heap *heap)
+{
+    Type *type = heap->t;
+    if (dvm_refcount_load_u(&heap->ref) != 1)
+    {
+        return 0;
+    }
+    void *keys[RECORD_EDGE_LIMIT];
+    size_t count = 0;
+    unsigned char *data = H2D(unsigned char *, heap);
+    for (int byte = 0; byte < type->np; byte++)
+    {
+        for (unsigned int bit = 0; bit < 8; bit++)
+        {
+            if (!(type->map[byte] & (0x80U >> bit)))
+            {
+                continue;
+            }
+            size_t slot = (size_t)byte * 8 + bit;
+            void *child;
+            if (slot >= (size_t)type->size / sizeof(child))
+            {
+                return 0;
+            }
+            memcpy(&child, data + slot * sizeof(child), sizeof(child));
+            if (!child)
+            {
+                return 0;
+            }
+            if (child != H)
+            {
+                if (count == RECORD_EDGE_LIMIT)
+                {
+                    return 0;
+                }
+                keys[count++] = D2H(child);
+            }
+        }
+    }
+    if (!count)
+    {
+        return dvm_refcount_claim_last_u(&heap->ref);
+    }
+    DVM_RetirementReservation token = {0};
+    FrameRetirement *packet = prepare_release_packet(keys, count, &token);
+    if (!packet)
+    {
+        return 0;
+    }
+    if (dvm_refcount_claim_last_u(&heap->ref))
+    {
+        if (!dvm_retirement_commit(frames, &token, packet))
+        {
+            abort();
+        }
+        return 1;
+    }
+    if (!dvm_runtime_root_batch_clear(packet->roots) ||
+        !dvm_runtime_root_batch_destroy(&packet->roots) ||
+        !dvm_retirement_cancel(frames, &token))
+    {
+        abort();
+    }
+    free(packet);
+    return 0;
+}
+
+
 static int claim_quiet_channel(Heap *heap, Type **mapped)
 {
     Array *buffer = H2D(Channel *, heap)->buf;
@@ -1303,10 +1379,25 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 static int scan_retiring_record(void)
 {
     void *value = dvm_retirement_peek(retirement);
-    if (!dvm_runtime_idle_cycles || !value ||
-        dvm_refcount_load_u(&D2H(value)->ref) <= 1)
+    if (!dvm_runtime_idle_cycles || !value)
     {
         return 0;
+    }
+    Heap *heap = D2H(value);
+    if (dvm_refcount_load_u(&heap->ref) == 1)
+    {
+        if (!defer_leaf(heap, poolmsize(heapmem, heap), 0))
+        {
+            return 0;
+        }
+        void *head;
+        unsigned long bytes;
+        if (!dvm_retirement_take(retirement, &head, &bytes) || head != value ||
+            !dvm_runtime_root_remove(heap))
+        {
+            abort();
+        }
+        return 1;
     }
     RecordGroup group = {0};
     DVM_RangeAccess access = {0};
@@ -1483,7 +1574,9 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             Array *array = entry->heap->t == &Tarray ? H2D(Array *, entry->heap) : NULL;
             int has_children = array && (array->root != H || array->t->np);
-            if (has_children && !transfer_array_children(entry->heap))
+            int record = entry->heap->t->free == freeheap;
+            if ((has_children && !transfer_array_children(entry->heap)) ||
+                (record && !transfer_record_fields(entry->heap)))
             {
                 if (!move_leaf(leaves, difficult, entry))
                 {
@@ -1500,7 +1593,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 abort();
             }
-            DVM_RefcountResult result = has_children || channel ? DVM_REFCOUNT_LAST :
+            DVM_RefcountResult result = has_children || channel || record ? DVM_REFCOUNT_LAST :
                 dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
             {
@@ -1522,13 +1615,18 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     }
                     shared_channels++;
                 }
-                else
+                else if (!record)
                 {
                     free(H2D(String *, entry->heap)->tmp);
                     shared_strings++;
                     shared_strings_with_peer += peer;
                 }
-                if (dvm_refcount_release_i(&type->ref) != DVM_REFCOUNT_LIVE)
+                if (record)
+                {
+                    release_owned_descriptor(type);
+                    shared_plain_records++;
+                }
+                else if (dvm_refcount_release_i(&type->ref) != DVM_REFCOUNT_LIVE)
                 {
                     abort();
                 }
@@ -1741,6 +1839,7 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
+        printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);
         printf("NATIVECHANNELRC shared=%lu\n", shared_channels);
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
         printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
