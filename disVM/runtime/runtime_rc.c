@@ -433,7 +433,8 @@ static int defer_record_group(const RecordGroup *group, int shared)
         records->keys[index] = D2H(group->nodes[index]);
     }
     *snapshot = *group;
-    if (shared)
+    int pin_children = shared || group->live_count;
+    if (pin_children)
     {
         for (unsigned int index = 1; index < group->nodes_used; index++)
         {
@@ -464,7 +465,7 @@ static int defer_record_group(const RecordGroup *group, int shared)
         }
     }
     *entry = (LeafRetirement){.bytes = bytes, .epoch = epoch, .records = records,
-        .snapshot = snapshot, .pinned_children = shared};
+        .snapshot = snapshot, .pinned_children = pin_children};
     int became_ready;
     if (!dvm_retirement_commit_ready(leaves, &token, entry, &became_ready))
     {
@@ -1159,12 +1160,21 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
     unsigned int completed = 0;
     if (dvm_native_owner_try_enter_idle_shared(reader))
     {
-        int retry = 1;
+        DVM_RetirementStats retry_stats = {0};
+        (void)dvm_retirement_statistics(record_retries, &retry_stats);
+        size_t retries = budget / 2 + budget % 2;
+        if (retries > retry_stats.ready)
+        {
+            retries = retry_stats.ready;
+        }
         while (budget && !heapmonitor)
         {
-            DVM_RetirementQueue *source = retry && dvm_retirement_peek(record_retries) ?
-                record_retries : leaves;
-            retry = 0;
+            DVM_RetirementQueue *source = leaves;
+            if (retries)
+            {
+                retries--;
+                source = record_retries;
+            }
             LeafRetirement *entry = dvm_retirement_peek(source);
             if (!entry || !dvm_world_epoch_elapsed(world, entry->epoch))
             {
@@ -1338,7 +1348,7 @@ static int process_queued_record_group(void *value, int promote)
     {
         return 0;
     }
-    if (promote && !group.live_count && defer_record_group(&group, 0))
+    if (promote && defer_record_group(&group, 0))
     {
         return 1;
     }
