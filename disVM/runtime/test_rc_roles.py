@@ -41,7 +41,8 @@ def main():
                         str(runtime / 'root_batch.c'), str(runtime / 'root_registry.c'),
                         str(runtime / 'gc/common/graph_storage.c'), str(runtime / 'gc/common/graph_capture.c'),
                         str(runtime / 'gc/duke/snapshot_growth.c'), str(runtime / 'gc/duke/large_graph_pass.c'),
-                        str(runtime / 'gc/fast/graph_confirmation.c'), str(path)]
+                        str(runtime / 'gc/fast/graph_confirmation.c'),
+                        str(runtime / 'gc/fast/packet_budget.c'), str(path)]
             command += [str(root / name) for name in (
                 'disVM/host/refcount.c', 'disVM/host/object_guard.c',
                 'disVM/host/cell_access.c', 'disVM/host/range_access.c', 'disVM/host/native_registers.c', 'disVM/host/native_context.c',

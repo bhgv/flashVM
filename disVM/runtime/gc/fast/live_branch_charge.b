@@ -24,6 +24,17 @@ ring(length: int, data: array of byte): ref Node
     return first;
 }
 
+# EN: Retire an array of 300 references to the same live data.
+# RU: Освободить массив из 300 ссылок на один живой объект data.
+drop_aliases(data: array of byte)
+{
+    slots := array[300] of array of byte;
+    for (i := 0; i < len slots; i++)
+    {
+        slots[i] = data;
+    }
+}
+
 # EN: Drop the ring and verify the array still holds its value.
 # RU: Отпустить кольцо и проверить, что массив сохранил значение.
 init()
@@ -32,6 +43,7 @@ init()
     data := array[32768] of byte;
     data[1] = byte 42;
     ring(300, data);
+    drop_aliases(data);
     sys->sleep(1200);
     if (int data[1] != 42)
         raise "live branch changed";

@@ -41,8 +41,10 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
         observations.append((*map(int, counters.groups()), int(snapshots[1]) if snapshots else None))
         if live_branch_charge:
             retained = re.search(r"NATIVERCPASSES .*? groups=(\d+)", output)
-            if int(counters[2]) >= 1 and retained and int(retained[1]) == 0:
-                print(f"PASS {mode}: live array preserved and cycle freed by shared GC")
+            arrays = re.search(r"NATIVEARRAYRC shared=\d+ with_peer=\d+ graphs=(\d+)", output)
+            if (int(counters[2]) >= 1 and retained and int(retained[1]) == 0
+                    and arrays and int(arrays[1]) >= 1):
+                print(f"PASS {mode}: live array preserved, both containers freed by shared GC")
                 return
             continue
         if large_cycle:

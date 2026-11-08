@@ -16,6 +16,7 @@
 #include "gc/common/graph_snapshot.h"
 #include "gc/common/candidate_pass.h"
 #include "gc/fast/graph_confirmation.h"
+#include "gc/fast/packet_budget.h"
 #include "runtime_gc.h"
 #include "gc_fields.h"
 #include "managed_owner.h"
@@ -826,19 +827,8 @@ static int transfer_array_children(Heap *heap, int *retry)
             }
         }
     }
-    unsigned long charge = (unsigned long)storage;
-    for (size_t index = 0; valid && index < packet->count; index++)
-    {
-        unsigned long size = poolmsize(heapmem, packet->keys[index]);
-        if (size > RC_BYTES - charge)
-        {
-            valid = 0;
-        }
-        else
-        {
-            charge += size;
-        }
-    }
+    unsigned long charge = 0;
+    valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, RC_BYTES, &charge);
     DVM_RetirementReservation token = {0};
     DVM_RetirementResult reservation = valid ?
         dvm_retirement_reserve(frames, charge, &token) : DVM_RETIRE_INVALID;
@@ -936,15 +926,11 @@ static unsigned int drain_shared_children(size_t budget)
 static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
     size_t charged_keys, DVM_RetirementReservation *token, int *retry)
 {
-    unsigned long charge = sizeof(FrameRetirement) + count * sizeof(void *);
-    for (size_t index = 0; index < charged_keys; index++)
+    unsigned long charge;
+    size_t storage = sizeof(FrameRetirement) + count * sizeof(void *);
+    if (!dvm_gc_packet_charge(keys, charged_keys, storage, RC_BYTES, &charge))
     {
-        unsigned long size = poolmsize(heapmem, keys[index]);
-        if (size > RC_BYTES - charge)
-        {
-            return NULL;
-        }
-        charge += size;
+        return NULL;
     }
     DVM_RetirementResult reservation = dvm_retirement_reserve(frames, charge, token);
     if (reservation != DVM_RETIRE_OK)

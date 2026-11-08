@@ -140,6 +140,7 @@ add_executable(disvm
     gc/common/native_admission.c
     gc/fast/retirement_pass.c
     gc/fast/graph_confirmation.c
+    gc/fast/packet_budget.c
     gc/common/graph_capture.c
     gc/cycles/cycle_pass.c
     gc/duke/snapshot_growth.c
