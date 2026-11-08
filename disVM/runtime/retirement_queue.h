@@ -23,6 +23,7 @@ typedef struct DVM_RetirementStats
     unsigned int reserved; /* Unpublished entries still owned by producers. */
     unsigned long bytes; /* Ready plus reserved direct extents. */
     int accepting; /* New reservations allowed; existing ones can still finish. */
+    unsigned int capacity; /* Current native slot count. */
 } DVM_RetirementStats;
 
 
@@ -31,7 +32,7 @@ typedef enum DVM_RetirementResult
 {
     DVM_RETIRE_OK, /* Slot and byte budget reserved, value not yet published. */
     DVM_RETIRE_CLOSED, /* No new work after close. */
-    DVM_RETIRE_FULL, /* All slots ready or reserved. */
+    DVM_RETIRE_FULL, /* No free slot and growth unavailable. */
     DVM_RETIRE_BYTES, /* Direct-byte budget exhausted. */
     DVM_RETIRE_INVALID, /* Invalid queue or occupied reservation. */
     DVM_RETIRE_EXHAUSTED /* Nonwrapping generation counter exhausted. */
@@ -43,6 +44,13 @@ typedef enum DVM_RetirementResult
  * after success. No callbacks, managed pointers or locks escape initialization. */
 DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long byte_limit);
 DVM_RetirementQueue *dvm_retirement_create_indexed(unsigned int capacity, unsigned long byte_limit);
+
+
+/* As indexed creation, with doubling on slot exhaustion up to a native
+ * metadata budget of byte_limit or the initial allocation, whichever is larger.
+ * Returns to its initial size when empty. Allocation occurs outside the mutex. */
+DVM_RetirementQueue *dvm_retirement_create_growing_indexed(unsigned int capacity,
+    unsigned long byte_limit);
 int dvm_retirement_commit_key(DVM_RetirementQueue *queue,
     DVM_RetirementReservation *token, void *value, DVM_HeapKey key, int *became_ready);
 int dvm_retirement_contains_key(DVM_RetirementQueue *queue, DVM_HeapKey key);

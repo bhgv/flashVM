@@ -86,7 +86,7 @@ void *__wrap_malloc(size_t bytes)
 }
 
 
-/* Initialization allocates only before native owner publication. */
+/* Initial and replacement storage must be allocated outside queue exclusion. */
 void *__wrap_calloc(size_t count, size_t bytes)
 {
     check(!depth, "FAIL retire allocation under lock");
@@ -132,7 +132,7 @@ static void boundaries(void)
     void *value = &first;
     unsigned long bytes = 99;
     tracking = 1;
-    for (refusal = 1; refusal <= 4; refusal++)
+    for (refusal = 1; refusal <= 3; refusal++)
     {
         refuse_at = refusal;
         check(!dvm_retirement_create(2, 10) && !live_allocations && !refuse_at,
@@ -207,6 +207,67 @@ static void indexed_case(void)
 }
 
 
+/* Exercise growth with a published key and an outstanding reservation.
+ * Check FIFO, token validity and shrinking after both take and cancel. */
+static void growing_indexed_case(void)
+{
+    DVM_RetirementQueue *queue = dvm_retirement_create_growing_indexed(2, 4096);
+    DVM_RetirementReservation tokens[3] = {0};
+    DVM_RetirementStats stats;
+    int values[3] = {0};
+    DVM_HeapKey first = {(uintptr_t)&values[0], 1};
+    DVM_HeapKey second = {(uintptr_t)&values[1], 2};
+    void *out;
+    unsigned long bytes;
+    check(queue && dvm_retirement_reserve(queue, 1, &tokens[0]) == DVM_RETIRE_OK &&
+        dvm_retirement_commit_key(queue, &tokens[0], &values[0], first, NULL),
+        "FAIL growing indexed initial commit");
+    check(dvm_retirement_reserve(queue, 2, &tokens[1]) == DVM_RETIRE_OK,
+        "FAIL reserve before indexed growth");
+    tracking = 1;
+    for (unsigned int allocation = 1; allocation <= 2; allocation++)
+    {
+        refuse_at = allocation;
+        check(dvm_retirement_reserve(queue, 3, &tokens[2]) == DVM_RETIRE_FULL &&
+            !tokens[2].queue && !live_allocations && !refuse_at &&
+            dvm_retirement_statistics(queue, &stats) && stats.capacity == 2 &&
+            stats.ready == 1 && stats.reserved == 1 && stats.bytes == 3,
+            "FAIL indexed growth allocation rollback");
+    }
+    tracking = 0;
+    check(dvm_retirement_reserve(queue, 3, &tokens[2]) == DVM_RETIRE_OK &&
+        dvm_retirement_statistics(queue, &stats) && stats.capacity == 4 &&
+        stats.ready == 1 && stats.reserved == 2 && stats.bytes == 6,
+        "FAIL indexed growth with live reservation");
+    check(dvm_retirement_contains_key(queue, first) &&
+        !dvm_retirement_commit_key(queue, &tokens[1], &values[1], first, NULL) &&
+        dvm_retirement_commit_key(queue, &tokens[1], &values[1], second, NULL),
+        "FAIL indexed growth lookup or reservation identity");
+    check(dvm_retirement_take(queue, &out, &bytes) && out == &values[0] && bytes == 1 &&
+        dvm_retirement_take(queue, &out, &bytes) && out == &values[1] && bytes == 2 &&
+        dvm_retirement_statistics(queue, &stats) && stats.capacity == 4 &&
+        stats.ready == 0 && stats.reserved == 1,
+        "FAIL indexed growth FIFO or early shrink");
+    check(dvm_retirement_cancel(queue, &tokens[2]) &&
+        dvm_retirement_statistics(queue, &stats) && stats.capacity == 2 && !stats.bytes,
+        "FAIL shrink after cancellation");
+    for (unsigned int index = 0; index < 3; index++)
+    {
+        DVM_HeapKey key = {(uintptr_t)&values[index], index + 1};
+        check(dvm_retirement_reserve(queue, 1, &tokens[index]) == DVM_RETIRE_OK &&
+            dvm_retirement_commit_key(queue, &tokens[index], &values[index], key, NULL),
+            "FAIL grow again after shrinking");
+    }
+    for (unsigned int index = 0; index < 3; index++)
+    {
+        check(dvm_retirement_take(queue, &out, &bytes) && out == &values[index] && bytes == 1,
+            "FAIL FIFO after regrowth");
+    }
+    check(dvm_retirement_statistics(queue, &stats) && stats.capacity == 2 &&
+        dvm_retirement_destroy(&queue), "FAIL shrink after last take");
+}
+
+
 /* A full queue is a bounded immediate refusal. Retry outside its lock; producer
  * owns token and identity until commit succeeds, including a cancelled draft. */
 static void produce(void *argument)
@@ -259,6 +320,7 @@ int main(int argc, char **argv)
     unsigned int received = 0;
     boundaries();
     indexed_case();
+    growing_indexed_case();
     if (argc > 1 && !strcmp(argv[1], "--serial-only"))
     {
         puts("PASS retire serial boundaries");

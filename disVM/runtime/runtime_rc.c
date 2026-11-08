@@ -23,7 +23,7 @@
 
 #define RC_BYTES (4UL*1024UL*1024UL) /* Bound queued direct block bytes and charged packet metadata. */
 #define RC_CAPACITY 512 /* Fixed native slots; saturation falls back to inline RC. */
-#define RC_CANDIDATE_CAPACITY 1024 /* Keep bursts of nonfinal owners on the Cycles lane. */
+#define RC_CANDIDATE_CAPACITY 256 /* Initial slots; grow during nonfinal-owner bursts. */
 
 /* A packet owns each captured reference through the collector's drain. */
 typedef struct FrameRetirement
@@ -137,7 +137,7 @@ void dvm_runtime_rc_start(void)
     leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    cycle_candidates = dvm_retirement_create_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
+    cycle_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
