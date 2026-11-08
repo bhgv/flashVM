@@ -97,6 +97,7 @@ static int candidate_sweep_busy; /* Every failed scan in this sweep hit a busy f
 static int candidate_busy_retry; /* Cycles lane already retried an all-busy batch. */
 static int candidate_fallback_ready; /* Atomic readiness published to the Fast scheduler. */
 static unsigned long shared_record_confirmations;
+static size_t fast_ignored_live_fields; /* Surviving fields skipped during successful claims. */
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
 static unsigned long shared_record_groups_with_peer;
@@ -189,6 +190,7 @@ void dvm_runtime_rc_start(void)
     candidate_busy_retry = 0;
     __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     shared_record_confirmations = 0;
+    fast_ignored_live_fields = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
     enqueued = 0;
@@ -1783,8 +1785,10 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 else
                 {
+                    size_t ignored;
                     claim = dvm_gc_fast_confirm_graph(entry->snapshot, record_cells, world,
-                        entry->pinned_children ? &final_epoch : NULL);
+                        entry->pinned_children ? &final_epoch : NULL, &ignored);
+                    fast_ignored_live_fields += ignored;
                     budget = cost < budget ? budget - cost : 0;
                 }
                 if (claim != DVM_CELL_ACQUIRED)
@@ -2286,6 +2290,7 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(cycle_candidates, &candidates);
         printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
             candidates.ready, candidates.reserved, candidates.capacity, candidates.peak_capacity);
+        printf("NATIVEFASTGC ignored_live_fields=%zu\n", fast_ignored_live_fields);
         printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu\n",
             duke_promoted, duke_peak_fields, duke_resumed_slices, duke_adopted_pins);
         printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",

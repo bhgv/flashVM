@@ -42,8 +42,9 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
         if live_branch_charge:
             retained = re.search(r"NATIVERCPASSES .*? groups=(\d+)", output)
             arrays = re.search(r"NATIVEARRAYRC shared=\d+ with_peer=\d+ graphs=(\d+)", output)
+            skipped = re.search(r"NATIVEFASTGC ignored_live_fields=(\d+)", output)
             if (int(counters[2]) >= 1 and retained and int(retained[1]) == 0
-                    and arrays and int(arrays[1]) >= 1):
+                    and arrays and int(arrays[1]) >= 1 and skipped and int(skipped[1]) >= 8):
                 print(f"PASS {mode}: live array preserved, both containers freed by shared GC")
                 return
             continue
