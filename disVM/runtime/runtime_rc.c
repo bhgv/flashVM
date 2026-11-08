@@ -1093,7 +1093,7 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
 
 /* Prepare the complete child packet before claiming the parent. A refusal
  * leaves the original array, queue entry and reference count unchanged. */
-static int transfer_array_children(Heap *heap)
+static int transfer_array_children(Heap *heap, int *retry)
 {
     Array *array = H2D(Array *, heap);
     Type *type = array->t;
@@ -1188,7 +1188,10 @@ static int transfer_array_children(Heap *heap)
         }
     }
     DVM_RetirementReservation token = {0};
-    int reserved = valid && dvm_retirement_reserve(frames, charge, &token) == DVM_RETIRE_OK;
+    DVM_RetirementResult reservation = valid ?
+        dvm_retirement_reserve(frames, charge, &token) : DVM_RETIRE_INVALID;
+    *retry = reservation == DVM_RETIRE_FULL || reservation == DVM_RETIRE_BYTES;
+    int reserved = reservation == DVM_RETIRE_OK;
     int rooted = reserved && publish_release_roots(packet->roots, packet->keys, packet->count);
     if (rooted && dvm_refcount_claim_last_u(&heap->ref))
     {
@@ -1360,7 +1363,7 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
 
 /* Reserve and root existing owners before the caller commits a transfer. */
 static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
-    DVM_RetirementReservation *token)
+    DVM_RetirementReservation *token, int *retry)
 {
     unsigned long charge = sizeof(FrameRetirement) + count * sizeof(void *);
     for (size_t index = 0; index < count; index++)
@@ -1372,8 +1375,13 @@ static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
         }
         charge += size;
     }
-    if (dvm_retirement_reserve(frames, charge, token) != DVM_RETIRE_OK)
+    DVM_RetirementResult reservation = dvm_retirement_reserve(frames, charge, token);
+    if (reservation != DVM_RETIRE_OK)
     {
+        if (retry)
+        {
+            *retry = reservation == DVM_RETIRE_FULL || reservation == DVM_RETIRE_BYTES;
+        }
         return NULL;
     }
     FrameRetirement *packet = malloc(sizeof(*packet) + count * sizeof(void *));
@@ -1429,7 +1437,7 @@ static int release_record_branches(const RecordGroup *group)
         }
     }
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(keys, count, &token);
+    FrameRetirement *packet = prepare_release_packet(keys, count, &token, NULL);
     if (!packet)
     {
         return 0;
@@ -1444,7 +1452,7 @@ static int release_record_branches(const RecordGroup *group)
 
 /* A retiring record still owns every mapped field. Publish the child
  * packet before claiming the record, with rollback on a changed count. */
-static int transfer_object_fields(Heap *heap)
+static int transfer_object_fields(Heap *heap, int *retry)
 {
     Type *type = heap->t;
     if (dvm_refcount_load_u(&heap->ref) != 1)
@@ -1502,7 +1510,7 @@ static int transfer_object_fields(Heap *heap)
         return dvm_refcount_claim_last_u(&heap->ref);
     }
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(keys, count, &token);
+    FrameRetirement *packet = prepare_release_packet(keys, count, &token, retry);
     if (!packet)
     {
         return 0;
@@ -1539,7 +1547,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped)
     }
     void *key = D2H(buffer);
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(&key, 1, &token);
+    FrameRetirement *packet = prepare_release_packet(&key, 1, &token, NULL);
     if (!packet)
     {
         return 0;
@@ -2150,9 +2158,16 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             int has_children = array && (array->root != H || array->t->np);
             int record = entry->heap->t->free == freeheap;
             int list = entry->heap->t == &Tlist;
-            if ((has_children && !transfer_array_children(entry->heap)) ||
-                ((record || list) && !transfer_object_fields(entry->heap)))
+            int retry_children = 0;
+            if ((has_children && !transfer_array_children(entry->heap, &retry_children)) ||
+                ((record || list) && !transfer_object_fields(entry->heap, &retry_children)))
             {
+                if (retry_children)
+                {
+                    /* Keep the rooted parent and give the occupied frame queue
+                     * the remaining budget before trying the transfer again. */
+                    break;
+                }
                 if (!move_leaf(leaves, difficult, entry))
                 {
                     break;
