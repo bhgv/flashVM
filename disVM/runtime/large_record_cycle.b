@@ -20,10 +20,10 @@ init()
 {
     sys := load Sys Sys->PATH;
     live := ring(40);
-    ring(700);
+    ring(2300);
     for(i := 0; i < 32; i++)
         ring(40);
-    sys->sleep(3000);
+    sys->sleep(7000);
     current := live;
     for(i = 0; i < 40; i++)
         current = current.next;
