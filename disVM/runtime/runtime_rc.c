@@ -71,6 +71,7 @@ static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
 static unsigned long shared_record_scans;
 static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
+static unsigned long cycle_candidates_rooted;
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
@@ -147,6 +148,7 @@ void dvm_runtime_rc_start(void)
     shared_record_scans = 0;
     cycle_candidates_rotated = 0;
     cycle_candidates_coalesced = 0;
+    cycle_candidates_rooted = 0;
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
@@ -484,7 +486,7 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
 
     /* Edges are captured in source order. Visit each live node's outgoing
      * range once, even when reachability runs against discovery order. */
-    for (unsigned int head = 0; head < group->live_count; head++)
+    for (unsigned int head = 0; head < group->live_count && !group->live[0]; head++)
     {
         unsigned int source = ready[head];
         for (edge = starts[source]; edge < starts[source + 1]; edge++)
@@ -1484,6 +1486,19 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 /* Guarded incoming fields keep discovered children alive. Live candidates
  * can give up the queue owner here. Potential garbage retains its root for
  * the existing final confirmation path. */
+/* Withdrawal clears the FIFO key and the corresponding queue root. */
+static void take_cycle_candidate(Heap *heap)
+{
+    void *head;
+    unsigned long bytes;
+    if (!dvm_retirement_take(cycle_candidates, &head, &bytes) || head != H2D(void *, heap) ||
+        !dvm_runtime_root_remove(heap))
+    {
+        abort();
+    }
+}
+
+
 static int scan_retiring_record(void)
 {
     void *value = dvm_retirement_peek(cycle_candidates);
@@ -1498,13 +1513,15 @@ static int scan_retiring_record(void)
         {
             return 0;
         }
-        void *head;
-        unsigned long bytes;
-        if (!dvm_retirement_take(cycle_candidates, &head, &bytes) || head != value ||
-            !dvm_runtime_root_remove(heap))
-        {
-            abort();
-        }
+        take_cycle_candidate(heap);
+        return 1;
+    }
+    if (dvm_runtime_root_count(heap) > 1 && dvm_refcount_drop_nonfinal_u(&heap->ref))
+    {
+        take_cycle_candidate(heap);
+        dvm_runtime_gc_owner_lost();
+        cycle_candidates_rooted++;
+        released++;
         return 1;
     }
     RecordGroup group = {0};
@@ -1527,13 +1544,7 @@ static int scan_retiring_record(void)
     {
         return 0;
     }
-    void *head;
-    unsigned long bytes;
-    if (!dvm_retirement_take(cycle_candidates, &head, &bytes) || head != value ||
-        !dvm_runtime_root_remove(D2H(value)))
-    {
-        abort();
-    }
+    take_cycle_candidate(heap);
     if (!promoted)
     {
         dvm_runtime_gc_owner_lost();
@@ -2059,8 +2070,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted);
     }
     if (diagnostics)
     {
