@@ -48,6 +48,10 @@ typedef struct LeafRetirement
 
 static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and final epochs. */
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
+static struct
+{
+    unsigned long passes, promoted, groups, nonfinal, records, arrays, lists, channels, strings, modules, other;
+} fallback;
 static unsigned long difficult_moved;
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
 static unsigned long shared_strings_with_peer; /* Final releases with another active owner. */
@@ -121,6 +125,7 @@ void dvm_runtime_rc_start(void)
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     difficult_moved = 0;
+    memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
     shared_arrays = 0;
     shared_arrays_with_peer = 0;
@@ -1743,6 +1748,31 @@ static int process_queued_record_group(void *value, int promote)
 }
 
 
+/* Count the retiring owner before a destructor can invalidate its header. */
+static void fallback_destroy(void *value)
+{
+    Heap *heap = D2H(value);
+    Type *type = heap->t;
+    if (dvm_refcount_load_u(&heap->ref) > 1)
+        fallback.nonfinal++;
+    else if (type == &Tarray)
+        fallback.arrays++;
+    else if (type == &Tlist)
+        fallback.lists++;
+    else if (type == &Tchannel)
+        fallback.channels++;
+    else if (type == &Tstring)
+        fallback.strings++;
+    else if (type == &Tmodlink)
+        fallback.modules++;
+    else if (type && type->free == freeheap)
+        fallback.records++;
+    else
+        fallback.other++;
+    destroy(value);
+}
+
+
 /* [GC:] Release rooted queue owners only on a stopped-world collector. Each
  * destructor and its nested releases use the retained algorithm; they bypass
  * admission because the collector has no ACTIVE mutator ownership. Budget
@@ -1757,20 +1787,23 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         fputs("disvm RC retirement outside stopped collector\n", stderr);
         abort();
     }
+    fallback.passes++;
     while (budget && ((!accepting && dvm_retirement_take(record_retries, &value, &bytes)) ||
                       dvm_retirement_take(difficult, &value, &bytes) ||
-                      dvm_retirement_take(leaves, &value, &bytes)))
+                      ((!dvm_runtime_idle_cycles || !accepting || heapmonitor) &&
+                       dvm_retirement_take(leaves, &value, &bytes))))
     {
         LeafRetirement *entry = value;
         budget--;
         if (entry->records)
         {
+            fallback.groups++;
             reclaim_detached_records(entry, 0);
         }
         else
         {
             ptrdel(entry->heap);
-            destroy(H2D(void *, entry->heap));
+            fallback_destroy(H2D(void *, entry->heap));
         }
         free(entry);
         released++;
@@ -1781,26 +1814,39 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         budget--;
         int promoted = process_queued_record_group(value, 1);
         ptrdel(D2H(value));
+        fallback.promoted += promoted;
         if (!promoted)
         {
-            destroy(value);
+            fallback_destroy(value);
             released++;
         }
     }
-    while (budget && dvm_retirement_take(frames, &value, &bytes))
+    /* Charge individual children so one frame cannot hold the idle heap
+     * across all of its nested releases. Shared Fast can resume the suffix. */
+    while (budget)
     {
-        FrameRetirement *packet = value;
-        budget--;
-        for (size_t index = packet->next; index < packet->count; index++)
+        FrameRetirement *packet = dvm_retirement_peek(frames);
+        if (!packet)
         {
+            break;
+        }
+        while (budget && packet->next < packet->count)
+        {
+            size_t index = packet->next++;
+            budget--;
             process_queued_record_group(H2D(void *, packet->keys[index]), 0);
             if (!dvm_runtime_root_batch_remove(packet->roots, index))
             {
                 abort();
             }
-            destroy(H2D(void *, packet->keys[index]));
+            fallback_destroy(H2D(void *, packet->keys[index]));
         }
-        if (!dvm_runtime_root_batch_clear(packet->roots) ||
+        if (packet->next != packet->count)
+        {
+            break;
+        }
+        if (!dvm_retirement_take(frames, &value, &bytes) || value != packet ||
+            !dvm_runtime_root_batch_clear(packet->roots) ||
             !dvm_runtime_root_batch_destroy(&packet->roots))
         {
             abort();
@@ -1893,9 +1939,13 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
-        DVM_RetirementStats fallback = {0};
-        (void)dvm_retirement_statistics(difficult, &fallback);
-        printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, fallback.ready + fallback.reserved);
+        printf("NATIVERCPASSES idle=%lu promoted=%lu groups=%lu nonfinal=%lu records=%lu arrays=%lu lists=%lu channels=%lu strings=%lu modules=%lu other=%lu\n",
+            fallback.passes, fallback.promoted, fallback.groups, fallback.nonfinal,
+            fallback.records, fallback.arrays, fallback.lists, fallback.channels,
+            fallback.strings, fallback.modules, fallback.other);
+        DVM_RetirementStats difficult_stats = {0};
+        (void)dvm_retirement_statistics(difficult, &difficult_stats);
+        printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, difficult_stats.ready + difficult_stats.reserved);
     }
     result = (record_retries == NULL || dvm_retirement_destroy(&record_retries)) &&
         (difficult == NULL || dvm_retirement_destroy(&difficult)) &&
