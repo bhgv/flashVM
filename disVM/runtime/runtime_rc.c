@@ -1868,19 +1868,34 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (entry->records)
             {
+                size_t cost = entry->records->count + entry->snapshot->edges_used;
                 unsigned long final_epoch = 0;
-                DVM_CellResult claim = entry->claimed ? DVM_CELL_ACQUIRED :
-                    entry->claim_refused ? DVM_CELL_REFUSED :
-                    entry->pinned_children && dvm_world_has_borrowers(world) ? DVM_CELL_BUSY :
-                    validate_and_claim_record_group(entry->snapshot,
+                DVM_CellResult claim;
+                if (entry->claimed)
+                {
+                    claim = DVM_CELL_ACQUIRED;
+                }
+                else if (entry->claim_refused)
+                {
+                    claim = DVM_CELL_REFUSED;
+                }
+                else if (entry->pinned_children && dvm_world_has_borrowers(world))
+                {
+                    claim = DVM_CELL_BUSY;
+                }
+                else
+                {
+                    claim = validate_and_claim_record_group(entry->snapshot,
                         entry->pinned_children ? &final_epoch : NULL);
+                    budget = cost < budget ? budget - cost : 0;
+                }
                 if (claim != DVM_CELL_ACQUIRED)
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
                     if (entry->claim_refused && entry->pinned_children &&
                         release_refused_snapshot(source, entry))
                     {
-                        budget--;
+                        budget -= budget != 0;
                         completed++;
                         continue;
                     }
@@ -1899,7 +1914,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                         }
                         break;
                     }
-                    budget--;
+                    budget -= budget != 0;
                     completed++;
                     continue;
                 }
@@ -1907,7 +1922,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 {
                     entry->claimed = 1;
                     entry->epoch = final_epoch;
-                    budget--;
+                    budget -= budget != 0;
                     completed++;
                     if (source == record_retries)
                     {
@@ -1940,7 +1955,6 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 shared_record_confirmations += entry->pinned_children;
                 /* A claimed group must leave the traced heap as a unit. Charge
                  * the full group so another large reclamation waits its turn. */
-                size_t cost = entry->records->count + entry->snapshot->edges_used;
                 reclaim_detached_records(entry, 1);
                 shared_record_groups++;
                 free(entry);
