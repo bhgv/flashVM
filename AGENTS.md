@@ -4,7 +4,7 @@ These rules apply to every handwritten source file in the entire repository,
 in every language and component, including headers, tests, examples and build
 scripts. They explicitly cover Limbo (`.b`, `.m`), ActionScript (`.as`) for Flash
 and FlashVM, assembly (`.s`, `.S`), and Coco/R grammars (`.atg`). The same
-rules apply to the AS, AS2, and AS3 compilers in this repository. These rules
+rules apply to the AS (also called AS1), AS2, and AS3 compilers in this repository. These rules
 supersede older local exemptions from
 readability work. Keep upstream snapshots, third-party libraries, generated
 outputs and deliberately raw oracle fixtures unchanged.
