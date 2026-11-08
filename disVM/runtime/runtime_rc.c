@@ -1938,11 +1938,14 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 DVM_WorldState activity;
                 shared_record_groups_with_peer += dvm_world_state(world, &activity) && activity.active > 1;
                 shared_record_confirmations += entry->pinned_children;
+                /* A claimed group must leave the traced heap as a unit. Charge
+                 * the full group so another large reclamation waits its turn. */
+                size_t cost = entry->records->count + entry->snapshot->edges_used;
                 reclaim_detached_records(entry, 1);
                 shared_record_groups++;
                 free(entry);
                 released++;
-                budget--;
+                budget = cost < budget ? budget - cost : 0;
                 completed++;
                 continue;
             }
