@@ -361,6 +361,28 @@ static void register_isolation(void)
 }
 
 
+/* Keep a service registered across sealing. Shared is borrowed through join.
+ * The worker owns its bound context until it has detached from the world. */
+static void idle_service(void *argument)
+{
+    Shared *shared = argument;
+    DVM_NativeContext *context = dvm_native_process_create(NULL);
+    check(context && dvm_native_context_bind(context), "bind GC service");
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    check(dvm_native_owner_attach_service(owner, shared->world), "register GC service");
+    check(!dvm_native_owner_enter(owner), "GC service cannot enter exclusively");
+    fvm_port_sync_lock(shared->control);
+    shared->joined = 1;
+    fvm_port_sync_signal_all(shared->control);
+    fvm_port_sync_unlock(shared->control);
+    wait_flag(shared, &shared->retire);
+    check(!dvm_native_owner_try_enter_idle_shared(owner), "sealed world refuses GC service turn");
+    check(dvm_native_owner_detach(owner), "detach idle GC service after sealing");
+    check(dvm_native_context_unbind(context), "unbind GC service");
+    check(dvm_native_context_destroy(context), "destroy GC service");
+}
+
+
 /* Main owns the world/control/contexts. argv optionally selects locked polling;
  * every run proves FIFO, real peer progress during native wait, exact arithmetic,
  * stable roots and full teardown. Return zero only after all joined resources. */
@@ -473,7 +495,17 @@ int main(int argc, char **argv)
         private_copy.phase == DVM_HEAP_ACTIVE && private_copy.releases == 2 &&
         private_copy.reentries == 2 && !private_copy.pending_progress,
         "shared handoff preserves the native lease accounting");
-    check(dvm_native_owner_seal(dvm_native_owner_current()),"seal last owner");
+    shared.joined = 0;
+    shared.retire = 0;
+    FVM_PortThread *service = fvm_port_thread_start(idle_service, &shared);
+    check(service != NULL, "start idle GC service");
+    wait_flag(&shared, &shared.joined);
+    check(dvm_native_owner_seal(dvm_native_owner_current()), "seal with idle GC service");
+    fvm_port_sync_lock(shared.control);
+    shared.retire = 1;
+    fvm_port_sync_signal_all(shared.control);
+    fvm_port_sync_unlock(shared.control);
+    fvm_port_thread_join(service);
     {
         FVM_PortThread *late = fvm_port_thread_start(late_join,shared.world);
         check(late != NULL,"start late registration attempt");
