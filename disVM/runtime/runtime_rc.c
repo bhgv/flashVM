@@ -328,15 +328,19 @@ static unsigned int record_group_index(RecordGroup *group, void *value)
 static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
     DVM_RangeAccess *access)
 {
+    if (group->edges_used == RECORD_EDGE_LIMIT)
+    {
+        group->oversized = 1;
+        return 0;
+    }
     void *edge;
     if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
     {
         return 0;
     }
     memcpy(&edge, cell, sizeof(edge));
-    if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
+    if (!edge)
     {
-        group->oversized = edge != NULL;
         return 0;
     }
     group->cells[group->edges_used] = cell;
@@ -390,14 +394,14 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
             }
             else
             {
-                if (array->len < 0 || array->len > RECORD_EDGE_LIMIT ||
+                if (array->len < 0 ||
                     array->data != (unsigned char *)array + sizeof(*array))
                 {
                     group->live[index] = 1;
                     continue;
                 }
                 type = array->t;
-                elements = array->len;
+                elements = type->np ? array->len : 0;
                 data = array->data;
             }
         }
@@ -634,7 +638,8 @@ static int defer_record_group(const RecordGroup *group, int shared)
 }
 
 
-/* Ordinary records and bounded owning arrays with managed fields. */
+/* Ordinary records and owning arrays with managed fields can start discovery.
+ * The scanner charges mapped fields as it encounters them. */
 static int record_candidate(const Heap *heap)
 {
     if (!dvm_runtime_idle_cycles || !heap->t || gchalt || heapmonitor)
@@ -645,7 +650,7 @@ static int record_candidate(const Heap *heap)
     {
         const Array *array = H2D(const Array *, heap);
         return array->root && array->t && (array->root != H ||
-            (array->len > 0 && array->len <= RECORD_EDGE_LIMIT && array->t->np));
+            (array->len > 0 && array->t->np));
     }
     return heap->t == &Tlist || heap->t == &Tchannel || (heap->t->free == freeheap && heap->t->np);
 }
