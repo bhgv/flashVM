@@ -16,6 +16,7 @@
 #include "retirement_queue.h"
 #include "root_batch.h"
 #include "root_registry.h"
+#include "channel_sync.h"
 #include <stdlib.h>
 #include <stdint.h>
 #include <limits.h>
@@ -50,6 +51,7 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static FVM_PortSync *candidate_transfer; /* Cross-index ownership handoff. */
 static DVM_RetirementQueue *duke_candidates; /* Rooted large graphs for Duke GC. */
 static DVM_RetirementQueue *cycle_candidates; /* Nonfinal owners for the Cycles lane. */
 static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and final epochs. */
@@ -141,7 +143,11 @@ void dvm_runtime_rc_start(void)
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     cycle_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
-    duke_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
+    candidate_transfer = fvm_port_sync_create();
+    if (candidate_transfer)
+    {
+        duke_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
+    }
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
@@ -806,7 +812,7 @@ static int cycle_candidate_already_queued(DVM_HeapKey key)
 
 
 /* Keep the packet owner intact until its replacement queue root is published. */
-static int transfer_record_candidate(Heap *heap)
+static int transfer_record_candidate(Heap *heap, FrameRetirement *packet, size_t index)
 {
     if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1)
     {
@@ -825,15 +831,29 @@ static int transfer_record_candidate(Heap *heap)
         cycle_candidates_full += reservation == DVM_RETIRE_FULL;
         return 0;
     }
-    if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop) || !dvm_runtime_root_add(heap))
+    if (candidate_transfer)
     {
+        fvm_port_sync_lock(candidate_transfer);
+    }
+    if (cycle_candidate_already_queued(key) ||
+        !dvm_gc_field_mark(&heap->color, &mutator, &nprop) || !dvm_runtime_root_add(heap))
+    {
+        if (candidate_transfer)
+        {
+            fvm_port_sync_unlock(candidate_transfer);
+        }
         dvm_retirement_cancel(cycle_candidates, &token);
         return 0;
     }
     int became_ready;
-    if (!dvm_retirement_commit_key(cycle_candidates, &token, H2D(void *, heap), key, &became_ready))
+    if (!dvm_runtime_root_batch_remove(packet->roots, index) ||
+        !dvm_retirement_commit_key(cycle_candidates, &token, H2D(void *, heap), key, &became_ready))
     {
         abort();
+    }
+    if (candidate_transfer)
+    {
+        fvm_port_sync_unlock(candidate_transfer);
     }
     if (became_ready && notify_ready)
     {
@@ -1204,7 +1224,8 @@ static unsigned int drain_shared_children(size_t budget)
         while (budget && packet->next < packet->count)
         {
             Heap *heap = packet->keys[packet->next];
-            if (!transfer_record_candidate(heap))
+            int transferred = transfer_record_candidate(heap, packet, packet->next);
+            if (!transferred)
             {
                 if (dvm_refcount_drop_nonfinal_u(&heap->ref))
                 {
@@ -1220,7 +1241,7 @@ static unsigned int drain_shared_children(size_t budget)
                     helper_enqueued++;
                 }
             }
-            if (!dvm_runtime_root_batch_remove(packet->roots, packet->next))
+            if (!transferred && !dvm_runtime_root_batch_remove(packet->roots, packet->next))
             {
                 abort();
             }
@@ -1695,6 +1716,10 @@ static int move_cycle_candidate(DVM_RetirementQueue *source,
     {
         return 0;
     }
+    if (destination == duke_candidates)
+    {
+        fvm_port_sync_lock(candidate_transfer);
+    }
     void *value;
     unsigned long prior_bytes;
     if (!dvm_retirement_take(source, &value, &prior_bytes) ||
@@ -1702,6 +1727,10 @@ static int move_cycle_candidate(DVM_RetirementQueue *source,
         !dvm_retirement_commit_key(destination, &token, value, key, NULL))
     {
         abort();
+    }
+    if (destination == duke_candidates)
+    {
+        fvm_port_sync_unlock(candidate_transfer);
     }
     if (notify_ready)
     {
@@ -1737,8 +1766,8 @@ static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit,
     {
         take_cycle_candidate(source, heap);
         dvm_runtime_gc_owner_lost();
-        cycle_candidates_rooted++;
-        released++;
+        __atomic_fetch_add(&cycle_candidates_rooted, 1, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
         return 1;
     }
     void *nodes[limit + 1];
@@ -1761,15 +1790,17 @@ static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit,
     int scanned = queued_record_group(value, 1, &group, &access);
     *cost += group.edges_used;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1);
-    duke_promoted += promoted && source == duke_candidates;
-    DVM_WorldState activity;
-    shared_record_snapshots_with_peer += scanned &&
-        dvm_world_state(world, &activity) && activity.active > 1;
+    if (source == duke_candidates)
+    {
+        duke_promoted += promoted;
+    }
+    __atomic_fetch_add(&shared_record_snapshots_with_peer,
+        scanned && dvm_world_has_active_guest(world), __ATOMIC_RELAXED);
     if (!dvm_range_access_end(&access))
     {
         abort();
     }
-    shared_record_scans += scanned;
+    __atomic_fetch_add(&shared_record_scans, scanned, __ATOMIC_RELAXED);
     *busy = group.busy;
     if (group.oversized)
     {
@@ -1777,7 +1808,10 @@ static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit,
             !dvm_retirement_contains_key(duke_candidates, dvm_heap_pool_key(heapmem, heap)) ?
             duke_candidates : retirement;
         int moved = move_cycle_candidate(source, destination, heap);
-        cycle_candidates_oversized += moved && source == cycle_candidates;
+        if (source == cycle_candidates)
+        {
+            cycle_candidates_oversized += moved;
+        }
         return moved;
     }
     if (!promoted && (!scanned || !group.live[0] || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref)))
@@ -1788,7 +1822,7 @@ static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit,
     if (!promoted)
     {
         dvm_runtime_gc_owner_lost();
-        released++;
+        __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
     }
     return 1;
 }
@@ -2072,15 +2106,14 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 {
                     abort();
                 }
-                DVM_WorldState activity;
-                shared_record_groups_with_peer += dvm_world_state(world, &activity) && activity.active > 1;
+                shared_record_groups_with_peer += dvm_world_has_active_guest(world);
                 shared_record_confirmations += entry->pinned_children;
                 /* A claimed group must leave the traced heap as a unit. Charge
                  * the full group so another large reclamation waits its turn. */
                 reclaim_detached_records(entry, 1);
                 shared_record_groups++;
                 free(entry);
-                released++;
+                __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
                 budget = cost < budget ? budget - cost : 0;
                 completed++;
                 continue;
@@ -2128,8 +2161,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             if (result == DVM_REFCOUNT_LAST)
             {
                 Type *type = entry->heap->t;
-                DVM_WorldState activity;
-                int peer = dvm_world_state(world, &activity) && activity.active > 1;
+                int peer = dvm_world_has_active_guest(world);
                 if (type == &Tarray)
                 {
                     release_owned_descriptor(H2D(Array *, entry->heap)->t);
@@ -2176,7 +2208,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 abort();
             }
             free(entry);
-            released++;
+            __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
             budget--;
             completed++;
         }
@@ -2295,7 +2327,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
             fallback_destroy(H2D(void *, entry->heap));
         }
         free(entry);
-        released++;
+        __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
     }
     /* Give Cycles first refusal. The idle fallback may take candidates only
      * after an actual shared attempt stalled, or while closing the queues. */
@@ -2316,7 +2348,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         if (!promoted)
         {
             fallback_destroy(value);
-            released++;
+            __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
         }
     }
     /* Charge individual children so one frame cannot hold the idle heap
@@ -2335,6 +2367,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
             Heap *heap = packet->keys[index];
             void *child = H2D(void *, heap);
             int promoted = 0;
+            int transferred = 0;
             if (dvm_runtime_idle_cycles && accepting && !heapmonitor)
             {
                 if (dvm_refcount_load_u(&heap->ref) == 1 &&
@@ -2345,14 +2378,15 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
                 }
                 else
                 {
-                    promoted = transfer_record_candidate(heap);
+                    transferred = transfer_record_candidate(heap, packet, index);
+                    promoted = transferred;
                 }
             }
             if (!promoted)
             {
                 process_queued_record_group(child, 0);
             }
-            if (!dvm_runtime_root_batch_remove(packet->roots, index))
+            if (!transferred && !dvm_runtime_root_batch_remove(packet->roots, index))
             {
                 abort();
             }
@@ -2507,6 +2541,11 @@ int dvm_runtime_rc_finish(int diagnostics)
         (frames == NULL || dvm_retirement_destroy(&frames));
     if (result)
     {
+        if (candidate_transfer)
+        {
+            fvm_port_sync_destroy(candidate_transfer);
+            candidate_transfer = NULL;
+        }
         owner = NULL;
         world = NULL;
         notify_ready = NULL;

@@ -236,6 +236,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     config.fast_shared = fast_shared;
     config.cycles_shared = cycles_shared;
     config.duke_shared = duke_shared;
+    config.parallel_shared = 1;
     config.duke_budget = 1;
     config.duke_pause_us = 1000;
     config.fast_quiescent_only = 1;
@@ -682,6 +683,13 @@ int dvm_runtime_gc_stop(int diagnostics)
     {
         ok = 0;
     }
+    else if (dvm_runtime_idle_cycles &&
+        (!dvm_gc_workers_request(state.workers, DVM_GC_CYCLES) ||
+         !dvm_gc_workers_wait_idle(state.workers)))
+    {
+        /* Queue owners may have been released after the last retained pass. */
+        ok = 0;
+    }
     if (!dvm_managed_owner_finish(diagnostics))
     {
         return 0;
@@ -701,6 +709,8 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
+        printf("NATIVEGCLANES shared_peak=%u duke_passes=%zu\n",
+            workers.shared_peak, workers.Duke.passes);
         printf("NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=3 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu cycle_losses=%lu cycle_skips=%lu shared_peak=%lu shared_integer_commits=%lu shared_integer_batches=%lu shared_integer_branches=%lu shared_byte_steps=%lu shared_long_steps=%lu shared_calls=%lu shared_returns=%lu shared_module_calls=%lu shared_module_returns=%lu shared_extended_steps=%lu\n",
             state.passes,state.snapshots,(unsigned long long)gcdestroys,
             workers.failed,(unsigned long)workers.Fast.passes,

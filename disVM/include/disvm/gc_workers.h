@@ -58,6 +58,7 @@ typedef struct DVM_GCWorkersConfig
     DVM_GCPass Cycles;                  /* Incremental reachability/cycle passes. */
     void *user;                         /* Borrowed backend and its synchronized queues. */
     int cycles_quiescent_only;          /* Cycles claims idle admission without parking guests. */
+    int parallel_shared;               /* Shared callbacks on distinct lanes may overlap. */
     int fast_quiescent_only;            /* Fast claims idle admission without parking guests. */
     unsigned int (*cycles_shared)(DVM_NativeContext *, size_t, void *); /* Optional candidate walk. */
     unsigned int (*fast_shared)(DVM_NativeContext *, size_t, void *); /* Optional shared leaf work. */
@@ -82,7 +83,8 @@ typedef struct DVM_GCWorkersState
     DVM_GCLaneState Fast;
     DVM_GCLaneState Cycles;
     DVM_GCLaneState Duke;
-    int active;   /* 0 idle, 1 fast, 2 cycles, 3 large; only one heap pass runs at a time. */
+    int active;   /* 0 idle, otherwise one active lane ID plus one. */
+    unsigned int shared_peak; /* Peak simultaneous callbacks in parallel mode. */
     int stopping; /* Shutdown requested; queued requests are discarded. */
     int failed;   /* Startup/callback/world protocol failure latched. */
 } DVM_GCWorkersState;

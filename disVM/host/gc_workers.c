@@ -30,7 +30,9 @@ struct DVM_GCWorkers
     DVM_GCWorker Cycles;        /* Named cycle worker group. */
     unsigned int started;       /* Context startup handshakes. */
     DVM_GCKind turn;            /* Round-robin start among pending lanes. */
-    int active;                 /* Exclusive heap-pass lease: 0/1/2/3. */
+    unsigned int active;        /* Bit mask of callbacks in flight. */
+    unsigned int exclusive;     /* Lane bit owning the retained-collector gate. */
+    unsigned int shared_peak;   /* Maximum simultaneous callbacks in parallel mode. */
     int stopping;               /* Cooperative shutdown. */
     int failed;                 /* Latched failure; never silently retried as success. */
 };
@@ -81,6 +83,23 @@ static int stopping(DVM_GCWorkers *workers)
 }
 
 
+/* Reserve the retained pass only after all other callbacks have detached.
+ * The service mutex protects this gate, never a shared callback body. */
+static int try_retained_pass(DVM_GCWorker *worker)
+{
+    DVM_GCWorkers *workers = worker->owner;
+    unsigned int bit = 1U << worker->kind;
+    fvm_port_sync_lock(workers->sync);
+    int acquired = workers->active == bit;
+    if (acquired)
+    {
+        workers->exclusive = bit;
+    }
+    fvm_port_sync_unlock(workers->sync);
+    return acquired;
+}
+
+
 /* Run one bounded backend pass with stable roots; always resume before returning.
  * Parameters: worker owns a bound collector context; executed receives zero until
  * the backend callback starts, then one. Both pointers must remain valid.
@@ -123,6 +142,10 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int requested, int *execut
         !workers->config.fast_ready(workers->config.user))
     {
         return DVM_GC_DONE;
+    }
+    if (workers->config.parallel_shared && !try_retained_pass(worker))
+    {
+        return DVM_GC_MORE;
     }
     if (worker->kind == DVM_GC_FAST ? workers->config.fast_quiescent_only :
         workers->config.cycles_quiescent_only)
@@ -169,6 +192,7 @@ static void run_worker(void *argument)
 {
     DVM_GCWorker *worker = (DVM_GCWorker *)argument;
     DVM_GCWorkers *workers = worker->owner;
+    unsigned int bit = 1U << worker->kind;
     int bound;
     worker->context = workers->config.create_context(workers->config.user);
     bound = worker->context && dvm_native_context_bind(worker->context);
@@ -185,7 +209,8 @@ static void run_worker(void *argument)
         int executed;
         unsigned long pause_us;
         while (!workers->stopping && !workers->failed &&
-               (workers->active || next_pending(workers) != worker))
+               (!worker->pending || workers->exclusive ||
+                (!workers->config.parallel_shared && (workers->active || next_pending(workers) != worker))))
         {
             fvm_port_sync_wait(workers->sync);
         }
@@ -195,7 +220,15 @@ static void run_worker(void *argument)
         }
         int requested = worker->pending;
         worker->pending = 0;
-        workers->active = (int)worker->kind + 1;
+        workers->active |= bit;
+        if (workers->config.parallel_shared)
+        {
+            unsigned int active = __builtin_popcount(workers->active);
+            if (active > workers->shared_peak)
+            {
+                workers->shared_peak = active;
+            }
+        }
         fvm_port_sync_unlock(workers->sync);
         result = collect(worker, requested, &executed);
         fvm_port_sync_lock(workers->sync);
@@ -203,7 +236,8 @@ static void run_worker(void *argument)
         {
             worker->passes++;
         }
-        workers->active = 0;
+        workers->active &= ~bit;
+        workers->exclusive &= ~bit;
         workers->turn = (worker->kind + 1) % 3;
         if (result == DVM_GC_MORE && !workers->stopping)
         {
@@ -355,7 +389,7 @@ static int wait_idle(DVM_GCWorkers *workers, int fast_only)
     }
     fvm_port_sync_lock(workers->sync);
     while (!workers->failed && !workers->stopping &&
-           (workers->Fast.pending || workers->active == (int)DVM_GC_FAST + 1 ||
+           (workers->Fast.pending || (workers->active & (1U << DVM_GC_FAST)) ||
             (!fast_only && (workers->active || workers->Cycles.pending || workers->Duke.pending))))
     {
         fvm_port_sync_wait(workers->sync);
@@ -397,7 +431,8 @@ int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out)
     out->Cycles.pending = workers->Cycles.pending != 0;
     out->Duke.passes = workers->Duke.passes;
     out->Duke.pending = workers->Duke.pending != 0;
-    out->active = workers->active;
+    out->active = workers->active ? __builtin_ctz(workers->active) + 1 : 0;
+    out->shared_peak = workers->shared_peak;
     out->stopping = workers->stopping;
     out->failed = workers->failed;
     fvm_port_sync_unlock(workers->sync);

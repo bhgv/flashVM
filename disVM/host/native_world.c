@@ -748,6 +748,29 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
 }
 
 
+/* Check for active guest work in the borrowed live world. The mutex
+ * protects participant membership and phase while the observation is made. */
+int dvm_world_has_active_guest(DVM_NativeWorld *world)
+{
+    if (!world)
+    {
+        return 0;
+    }
+    int found = 0;
+    fvm_port_sync_lock(world->sync);
+    for (DVM_WorldParticipant *participant = world->participants; participant; participant = participant->next)
+    {
+        if (participant->active && !participant->parked && !participant->service)
+        {
+            found = 1;
+            break;
+        }
+    }
+    fvm_port_sync_unlock(world->sync);
+    return found;
+}
+
+
 /* Observe exclusive waiters in the borrowed live world under its mutex. */
 size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world)
 {

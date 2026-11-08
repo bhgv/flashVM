@@ -51,6 +51,10 @@ DVM_NativeWorld *dvm_world_create_serial(int locked_poll);
  * out is caller-owned. This snapshot does not reserve an admission or root scan. */
 int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
 
+/* Observe any admitted guest, excluding shared collector participants. */
+int dvm_world_has_active_guest(DVM_NativeWorld *world);
+
+
 /* Observe exclusive waiters under the world mutex. NULL returns zero. */
 size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world);
 
