@@ -13,6 +13,8 @@
 int dvm_rc_move_candidate(DVM_RetirementQueue *source, DVM_RetirementQueue *destination,
     void *candidate);
 
+#define DVM_CANDIDATE_RESUME 2 /* Keep the current Duke head for the next slice. */
+
 /* EN: Scan source head, returning cost and retry status in busy.
  * RU: Проверить первый элемент source, вернуть затраты в cost и признак повтора в busy. */
 int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy);

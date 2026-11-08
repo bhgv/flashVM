@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Native root registry interface for externally held heap references.
+ * RU: Интерфейс реестра корней для внешних удержаний объектов кучи.
+ */
 /* Native external-root metadata; registration never supplies object ownership.
  * Hosted GC visits this process-global table as managed Heap headers. There,
  * keys must be independently valid managed roots. Native-key tests run separate
@@ -23,6 +28,13 @@ int dvm_runtime_root_add(void *key);
  * Return 1 removed, 0 absent/null; no source dereference,
  * allocation or destructor. Caller must coordinate referent lifetime/collector. */
 int dvm_runtime_root_remove(const void *key);
+
+
+/* EN: Remove one ordinary key occurrence if permit(argument) succeeds.
+ * The predicate runs under the registry mutex and must neither block nor reenter.
+ * RU: Снять обычный корень key при успехе permit(argument).
+ * Предикат выполняется под мьютексом реестра и не должен ждать или входить повторно. */
+int dvm_runtime_root_remove_if(const void *key, int (*permit)(void *), void *argument);
 
 
 /* Observe occurrences under mutex; return0 for absent/null. No owner/root

@@ -57,6 +57,9 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static RecordGroup duke_inflight; /* Partially captured graph with rooted targets. */
+static RecordGroup duke_abandoned; /* Owned discovery pins awaiting rollback. */
+static int duke_cleanup_fallback; /* Atomic readiness for an exceptional stopped drain. */
 static FVM_PortSync *candidate_transfer; /* Cross-index ownership handoff. */
 static DVM_RetirementQueue *duke_candidates; /* Rooted large graphs for Duke GC. */
 static DVM_RetirementQueue *cycle_candidates; /* Nonfinal owners for the Cycles lane. */
@@ -85,6 +88,7 @@ static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_full; /* Candidate reservations refused for capacity. */
 static unsigned long cycle_candidates_rooted;
 static unsigned int duke_peak_fields; /* Largest successfully published Duke snapshot. */
+static unsigned long duke_resumed_slices; /* Partial scans saved for another admitted turn. */
 static unsigned long duke_promoted; /* Large snapshots handed to Fast GC. */
 static unsigned long cycle_candidates_oversized;
 static size_t candidate_sweep_left; /* Entries left in the current no-progress sweep. */
@@ -175,6 +179,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_full = 0;
     cycle_candidates_rooted = 0;
     duke_promoted = 0;
+    duke_resumed_slices = 0;
     duke_peak_fields = 0;
     cycle_candidates_oversized = 0;
     candidate_sweep_left = 0;
@@ -518,7 +523,7 @@ static int transfer_record_candidate(Heap *heap, FrameRetirement *packet, size_t
     {
         notify_ready();
     }
-    enqueued++;
+    __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
     helper_enqueued++;
     return 1;
 }
@@ -561,7 +566,7 @@ int dvm_runtime_rc_defer(void *value)
     bytes = poolmsize(heapmem,heap);
     if (last && defer_leaf(heap, bytes, 1))
     {
-        enqueued++;
+        __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
         helper_enqueued += helper != 0;
         return 1;
     }
@@ -598,7 +603,7 @@ int dvm_runtime_rc_defer(void *value)
         ptrdel(heap);
         return 0;
     }
-    enqueued++;
+    __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
     helper_enqueued += helper != 0;
     if (became_ready && notify_ready)
     {
@@ -909,7 +914,7 @@ static unsigned int drain_shared_children(size_t budget)
                     {
                         return completed;
                     }
-                    enqueued++;
+                    __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
                     helper_enqueued++;
                 }
             }
@@ -1351,19 +1356,101 @@ int dvm_rc_move_candidate(DVM_RetirementQueue *source,
 }
 
 
+/* EN: Drop a nonfinal pin through the borrowed refcount argument.
+ * RU: Снять непоследнее удержание через заимствованный счётчик argument. */
+static int drop_duke_pin_nonfinal(void *argument)
+{
+    return dvm_refcount_drop_nonfinal_u(argument);
+}
+
+
+/* EN: Release up to budget abandoned Duke pins. stopped permits retained
+ * destruction. Return nonzero when the journal is empty.
+ * RU: Снять до budget удержаний отменённого обхода. stopped разрешает
+ * резервное освобождение. Ненулевой результат означает пустой журнал. */
+static int release_duke_pins(size_t budget, int stopped)
+{
+    while (duke_abandoned.pinned_nodes && budget)
+    {
+        void *value = duke_abandoned.nodes[duke_abandoned.pinned_nodes];
+        Heap *heap = D2H(value);
+        int transferred = 0;
+        if (!stopped && dvm_runtime_root_remove_if(heap, drop_duke_pin_nonfinal, &heap->ref))
+        {
+            transferred = 1;
+        }
+        else if (!stopped)
+        {
+            unsigned long bytes = poolmsize(heapmem, heap);
+            if (!defer_leaf(heap, bytes, 0))
+            {
+                DVM_RetirementReservation token = {0};
+                if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+                {
+                    __atomic_store_n(&duke_cleanup_fallback, 1, __ATOMIC_RELEASE);
+                    if (notify_ready)
+                    {
+                        notify_ready();
+                    }
+                    return 0;
+                }
+                if (!dvm_retirement_commit(retirement, &token, value))
+                {
+                    abort();
+                }
+                transferred = 1;
+                __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
+                if (notify_ready)
+                {
+                    notify_ready();
+                }
+            }
+            else
+            {
+                __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
+            }
+        }
+        if (!transferred && !dvm_runtime_root_remove(heap))
+        {
+            abort();
+        }
+        if (stopped)
+        {
+            destroy(value);
+        }
+        duke_abandoned.pinned_nodes--;
+        budget--;
+    }
+    if (duke_abandoned.pinned_nodes)
+    {
+        return 0;
+    }
+    free(duke_abandoned.owned_scratch);
+    memset(&duke_abandoned, 0, sizeof(duke_abandoned));
+    __atomic_store_n(&duke_cleanup_fallback, 0, __ATOMIC_RELEASE);
+    return 1;
+}
+
+
 /* EN: Try the source head under shared admission. cost counts work, busy signals retry.
  * RU: Проверить первый элемент source под параллельным допуском. cost учитывает работу, busy означает повтор. */
 int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
 {
     *cost = 1;
     *busy = 0;
+    if (source == duke_candidates && duke_abandoned.pinned_nodes && !release_duke_pins(64, 0))
+    {
+        *busy = 1;
+        return 0;
+    }
     void *value = dvm_retirement_peek(source);
     if (!dvm_runtime_idle_cycles || !value)
     {
         return 0;
     }
     Heap *heap = D2H(value);
-    if (dvm_refcount_load_u(&heap->ref) == 1)
+    int resume = source == duke_candidates && duke_inflight.owned_scratch;
+    if (!resume && dvm_refcount_load_u(&heap->ref) == 1)
     {
         if (!defer_leaf(heap, poolmsize(heapmem, heap), 0))
         {
@@ -1372,7 +1459,7 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
         take_cycle_candidate(source, heap);
         return 1;
     }
-    if (dvm_runtime_root_count(heap) > 1 && dvm_refcount_drop_nonfinal_u(&heap->ref))
+    if (!resume && dvm_runtime_root_count(heap) > 1 && dvm_refcount_drop_nonfinal_u(&heap->ref))
     {
         take_cycle_candidate(source, heap);
         dvm_runtime_gc_owner_lost();
@@ -1383,18 +1470,49 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
     RecordGroupScratch scratch = {0};
     RecordGroup group = dvm_rc_empty_record_group(&scratch);
     group.growing = source == duke_candidates;
-    if (group.growing && !dvm_rc_grow_record_group(&group, DUKE_INITIAL_FIELDS))
+    if (resume)
+    {
+        if (duke_inflight.nodes[0] != value)
+        {
+            fputs("disvm Duke candidate changed between slices\n", stderr);
+            abort();
+        }
+        group = duke_inflight;
+    }
+    else if (group.growing && !dvm_rc_grow_record_group(&group, DUKE_INITIAL_FIELDS))
     {
         return 0;
     }
     DVM_RangeAccess access = {0};
     if (dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
     {
+        if (resume)
+        {
+            return DVM_CANDIDATE_RESUME;
+        }
         free(group.owned_scratch);
+        *busy = 1;
         return 0;
     }
-    int scanned = dvm_rc_queued_record_group(value, 1, &group, &access);
-    *cost += group.edges_used;
+    unsigned int previous_fields = group.edges_used;
+    int scanned = group.growing ?
+        dvm_rc_duke_capture_slice(value, &group, &access) :
+        dvm_rc_queued_record_group(value, 1, &group, &access);
+    *cost += group.edges_used - previous_fields;
+    if (scanned == DVM_DUKE_CAPTURE_RESUME)
+    {
+        if (!dvm_range_access_end(&access))
+        {
+            abort();
+        }
+        duke_inflight = group;
+        duke_resumed_slices++;
+        return DVM_CANDIDATE_RESUME;
+    }
+    if (resume)
+    {
+        memset(&duke_inflight, 0, sizeof(duke_inflight));
+    }
     int retry_promotion = 0;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1, &retry_promotion);
     if (source == duke_candidates)
@@ -1407,14 +1525,26 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
     }
     __atomic_fetch_add(&shared_record_snapshots_with_peer,
         scanned && dvm_world_has_active_guest(world), __ATOMIC_RELAXED);
-    if (!dvm_range_access_end(&access))
+    if (access.domain && !dvm_range_access_end(&access))
     {
         abort();
     }
     __atomic_fetch_add(&shared_record_scans, scanned, __ATOMIC_RELAXED);
     *busy = group.busy || retry_promotion;
     int live = scanned && group.live[0];
-    free(group.owned_scratch);
+    if (group.pinned_nodes)
+    {
+        duke_abandoned = group;
+        if (!release_duke_pins(64, 0))
+        {
+            *busy = 1;
+            return 0;
+        }
+    }
+    else
+    {
+        free(group.owned_scratch);
+    }
     if (group.oversized)
     {
         DVM_RetirementQueue *destination = source == cycle_candidates && duke_candidates &&
@@ -1913,6 +2043,23 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         abort();
     }
     fallback.passes++;
+    if (!accepting && duke_inflight.owned_scratch)
+    {
+        if (duke_abandoned.owned_scratch)
+        {
+            abort();
+        }
+        duke_abandoned = duke_inflight;
+        memset(&duke_inflight, 0, sizeof(duke_inflight));
+    }
+    if (budget && (!accepting || __atomic_load_n(&duke_cleanup_fallback, __ATOMIC_ACQUIRE)) &&
+        duke_abandoned.owned_scratch)
+    {
+        size_t pins = duke_abandoned.pinned_nodes;
+        (void)release_duke_pins(budget, 1);
+        size_t consumed = pins - duke_abandoned.pinned_nodes;
+        budget -= consumed;
+    }
     while (budget && ((!accepting && dvm_retirement_take(record_retries, &value, &bytes)) ||
                       dvm_retirement_take(difficult, &value, &bytes) ||
                       ((!dvm_runtime_idle_cycles || !accepting || heapmonitor) &&
@@ -1977,7 +2124,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
                 if (dvm_refcount_load_u(&heap->ref) == 1 &&
                     defer_leaf(heap, poolmsize(heapmem, heap), 1))
                 {
-                    enqueued++;
+                    __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
                     promoted = 1;
                 }
                 else
@@ -2025,7 +2172,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     (void)dvm_retirement_statistics(retirement, &stats);
     return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
         (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready() +
-        (!accepting && dvm_runtime_rc_duke_ready());
+        (!accepting && (dvm_runtime_rc_duke_ready() || duke_abandoned.pinned_nodes)) +
+        __atomic_load_n(&duke_cleanup_fallback, __ATOMIC_ACQUIRE);
 }
 
 
@@ -2061,7 +2209,8 @@ static int retirement_ready(int include_shared_retries)
     (void)dvm_retirement_statistics(cycle_candidates, &candidates);
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
-    return refs.ready != 0 || packets.ready != 0 || (duke.ready && !duke.accepting) ||
+    return __atomic_load_n(&duke_cleanup_fallback, __ATOMIC_ACQUIRE) ||
+        refs.ready != 0 || packets.ready != 0 || (duke.ready && !duke.accepting) ||
         dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
         (retries.ready && (include_shared_retries || !retries.accepting)) ||
         (candidates.ready && (!candidates.accepting ||
@@ -2113,7 +2262,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(cycle_candidates, &candidates);
         printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
             candidates.ready, candidates.reserved, candidates.capacity, candidates.peak_capacity);
-        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u\n", duke_promoted, duke_peak_fields);
+        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu\n",
+            duke_promoted, duke_peak_fields, duke_resumed_slices);
         printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",
             frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized, cycle_candidates_full);
     }
@@ -2136,7 +2286,7 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(difficult, &difficult_stats);
         printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, difficult_stats.ready + difficult_stats.reserved);
     }
-    result = (duke_candidates == NULL || dvm_retirement_destroy(&duke_candidates)) &&
+    result = !duke_inflight.owned_scratch && !duke_abandoned.pinned_nodes && (duke_candidates == NULL || dvm_retirement_destroy(&duke_candidates)) &&
         (cycle_candidates == NULL || dvm_retirement_destroy(&cycle_candidates)) &&
         (record_retries == NULL || dvm_retirement_destroy(&record_retries)) &&
         (difficult == NULL || dvm_retirement_destroy(&difficult)) &&

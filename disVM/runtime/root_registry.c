@@ -1,4 +1,8 @@
-/* Synchronized opaque root multiset, independent of managed Heap/GC headers. */
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Synchronized root occurrences and reusable registry entries.
+ * RU: Синхронизированный реестр корней и переиспользуемые записи.
+ */
 #include "root_registry.h"
 #include "root_registry_private.h"
 #include "channel_sync.h"
@@ -118,9 +122,9 @@ int dvm_runtime_root_add(void *key)
 }
 
 
-/* Unlink before making metadata reusable. Native keys have separate owners;
- * root removal never frees or reads their referents. */
-int dvm_runtime_root_remove(const void *key)
+/* EN: Remove the ordinary occurrence for key if permit accepts argument.
+ * RU: Снять обычный корень key, если permit разрешает операцию с argument. */
+int dvm_runtime_root_remove_if(const void *key, int (*permit)(void *), void *argument)
 {
     FVM_PortSync *mutex = published();
     RootEntry **link;
@@ -134,6 +138,10 @@ int dvm_runtime_root_remove(const void *key)
     {
         if (entry->key == key && !entry->batch)
         {
+            if (permit && !permit(argument))
+            {
+                break;
+            }
             *link = entry->next;
             entry->key = NULL;
             entry->next = unused;
@@ -144,6 +152,14 @@ int dvm_runtime_root_remove(const void *key)
     }
     fvm_port_sync_unlock(mutex);
     return 0;
+}
+
+
+/* EN: Remove one ordinary occurrence of key.
+ * RU: Снять один обычный корень для key. */
+int dvm_runtime_root_remove(const void *key)
+{
+    return dvm_runtime_root_remove_if(key, NULL, NULL);
 }
 
 

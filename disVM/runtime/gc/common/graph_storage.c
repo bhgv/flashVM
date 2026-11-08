@@ -50,6 +50,7 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group)
     copy->live = (unsigned char *)(copy->sources + edges);
     copy->index = NULL;
     copy->owned_scratch = NULL;
+    copy->pinned_nodes = 0;
     memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
     memcpy(copy->cells, group->cells, edges * sizeof(*copy->cells));
     memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));

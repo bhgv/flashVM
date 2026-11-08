@@ -26,6 +26,11 @@ typedef struct RecordGroup
     unsigned char *live;      /* Nodes reachable from outside the group. */
     void *owned_scratch;      /* Duke's allocated discovery storage, or NULL. */
     unsigned int field_limit; /* Capture capacity of the backing storage. */
+    size_t source_element;      /* Element cursor inside a suspended source. */
+    size_t source_bit;          /* Next mapped bit within the current element. */
+    int source_tail_seen;       /* List tail captured before its element fields. */
+    unsigned int next_source;  /* Next source node in a suspended Duke scan. */
+    unsigned int pinned_nodes; /* Duke holds nodes at indices 1 through this count. */
     int growing;             /* Duke can enlarge discovery storage under guards. */
     unsigned int live_count;    /* Nodes marked reachable. */
     int busy; /* A field stripe was temporarily owned elsewhere. */
@@ -74,5 +79,11 @@ int dvm_rc_reserve_record_fields(RecordGroup *group, size_t fields);
  * RU: Обойти граф от start с ожидаемым числом корней start_roots под защитой access. */
 int dvm_rc_queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
     DVM_RangeAccess *access);
+
+#define DVM_DUKE_CAPTURE_RESUME 2 /* The current slice ended with rooted work left. */
+
+/* EN: Capture a slice from start into group under access. Return 2 to resume.
+ * RU: Прочитать порцию графа start в group под access. Вернуть 2 для продолжения. */
+int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *access);
 
 #endif
