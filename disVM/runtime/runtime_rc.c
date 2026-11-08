@@ -55,6 +55,7 @@ static unsigned long shared_strings; /* Final releases by the Fast shared pass. 
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
 static DVM_CellDomain *record_cells; /* Borrowed until the collectors join. */
+static unsigned long shared_record_scans;
 static unsigned long shared_record_groups;
 static unsigned long shared_record_groups_with_peer;
 static unsigned long record_groups; /* Closed record groups reclaimed from queued owners. */
@@ -121,6 +122,7 @@ void dvm_runtime_rc_start(void)
     shared_children = 0;
     record_groups = 0;
     shared_record_groups = 0;
+    shared_record_scans = 0;
     shared_record_groups_with_peer = 0;
     enqueued = 0;
     released = 0;
@@ -237,7 +239,8 @@ struct RecordGroup
 
 /* Snapshot ordinary records under exclusive admission. Opaque targets are
  * live boundaries. The caller owns start through its queue root. */
-static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group)
+static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
+    DVM_RangeAccess *access)
 {
     if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
     {
@@ -274,6 +277,10 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
                     return 0;
                 }
                 void *cell = (unsigned char *)record + slot * sizeof(edge);
+                if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
+                {
+                    return 0;
+                }
                 memcpy(&edge, cell, sizeof(edge));
                 if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
                 {
@@ -336,7 +343,7 @@ static int queued_record_group(void *start, unsigned long start_roots, RecordGro
             }
         }
     } while (previous != group->live_count);
-    return !group->live[0];
+    return 1;
 }
 
 
@@ -950,12 +957,52 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 }
 
 
+/* Guarded incoming fields keep discovered children alive. Live candidates
+ * can give up the queue owner here. Potential garbage retains its root for
+ * the existing final confirmation path. */
+static int scan_retiring_record(void)
+{
+    void *value = dvm_retirement_peek(retirement);
+    if (!dvm_runtime_idle_cycles || !value ||
+        dvm_refcount_load_u(&D2H(value)->ref) <= 1)
+    {
+        return 0;
+    }
+    RecordGroup group = {0};
+    DVM_RangeAccess access = {0};
+    if (dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    {
+        return 0;
+    }
+    int scanned = queued_record_group(value, 1, &group, &access);
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    shared_record_scans += scanned;
+    if (!scanned || !group.live[0] || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref))
+    {
+        return 0;
+    }
+    void *head;
+    unsigned long bytes;
+    if (!dvm_retirement_take(retirement, &head, &bytes) || head != value ||
+        !dvm_runtime_root_remove(D2H(value)))
+    {
+        abort();
+    }
+    dvm_runtime_gc_owner_lost();
+    released++;
+    return 1;
+}
+
+
 /* Try a bounded shared pass on the Fast thread. It never waits for admission
  * while serving leaves, retries and packet children. Cycles cannot run here. */
 unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
     if (!dvm_retirement_peek(leaves) && !dvm_retirement_peek(frames) &&
-        !dvm_retirement_peek(record_retries))
+        !dvm_retirement_peek(record_retries) && !dvm_retirement_peek(retirement))
     {
         return 0;
     }
@@ -1082,7 +1129,13 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         }
         if (!heapmonitor)
         {
-            completed += drain_shared_children(budget);
+            unsigned int children = drain_shared_children(budget);
+            completed += children;
+            budget -= children;
+            if (budget)
+            {
+                completed += scan_retiring_record();
+            }
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
         {
@@ -1103,7 +1156,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
 static int process_queued_record_group(void *value, int promote)
 {
     RecordGroup group = {0};
-    if (!queued_record_group(value, 1, &group))
+    if (!queued_record_group(value, 1, &group, NULL) || group.live[0])
     {
         return 0;
     }
@@ -1260,8 +1313,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans);
     }
     if (diagnostics)
     {
