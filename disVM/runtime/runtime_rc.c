@@ -156,6 +156,21 @@ extern int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **map
 extern int dvm_runtime_channel_is_quiet(Channel *channel);
 
 
+/* Publish transferred owners to an incremental pass already in progress. */
+static int publish_release_roots(DVM_RootBatch *roots, void *const *keys, size_t count)
+{
+    for (size_t index = 0; index < count; index++)
+    {
+        Heap *heap = keys[index];
+        if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop))
+        {
+            return 0;
+        }
+    }
+    return dvm_runtime_root_batch_publish(roots, keys, count);
+}
+
+
 /* Read leaf payload only while its queue or caller owns a strong reference.
  * Array children require a prepared retirement packet. */
 static int leaf_eligible(const Heap *heap)
@@ -220,7 +235,8 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
     entry->pinned_children = 0;
     entry->claimed = 0;
     entry->epoch = dvm_world_retire_epoch(world);
-    if (!entry->epoch || !dvm_runtime_root_add(heap))
+    if (!entry->epoch || (!exclusive && !dvm_gc_field_mark(&heap->color, &mutator, &nprop)) ||
+        !dvm_runtime_root_add(heap))
     {
         free(entry);
         dvm_retirement_cancel(leaves, &token);
@@ -797,7 +813,7 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
         return 1;
     }
     if (!packet->roots || !valid ||
-        !dvm_runtime_root_batch_publish(packet->roots, packet->keys, packet->count))
+        !publish_release_roots(packet->roots, packet->keys, packet->count))
     {
         if (packet->roots)
         {
@@ -918,7 +934,7 @@ static int transfer_array_children(Heap *heap)
     }
     DVM_RetirementReservation token = {0};
     int reserved = valid && dvm_retirement_reserve(frames, charge, &token) == DVM_RETIRE_OK;
-    int rooted = reserved && dvm_runtime_root_batch_publish(packet->roots, packet->keys, packet->count);
+    int rooted = reserved && publish_release_roots(packet->roots, packet->keys, packet->count);
     if (rooted && dvm_refcount_claim_last_u(&heap->ref))
     {
         if (!dvm_retirement_commit(frames, &token, packet))
@@ -1124,17 +1140,12 @@ static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
     packet->count = count;
     packet->next = 0;
     memcpy(packet->keys, keys, count * sizeof(void *));
-    for (size_t index = 0; index < count; index++)
+    if (!publish_release_roots(roots, packet->keys, count))
     {
-        Heap *heap = keys[index];
-        if (!dvm_gc_field_mark(&heap->color, &mutator, &nprop))
-        {
-            abort();
-        }
-    }
-    if (!dvm_runtime_root_batch_publish(roots, packet->keys, count))
-    {
-        abort();
+        dvm_runtime_root_batch_destroy(&roots);
+        free(packet);
+        dvm_retirement_cancel(frames, token);
+        return NULL;
     }
     return packet;
 }
