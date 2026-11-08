@@ -24,6 +24,7 @@ typedef struct DVM_RetirementStats
     unsigned long bytes; /* Ready plus reserved direct extents. */
     int accepting; /* New reservations allowed; existing ones can still finish. */
     unsigned int capacity; /* Current native slot count. */
+    unsigned int peak_capacity; /* Largest native slot count since creation. */
 } DVM_RetirementStats;
 
 

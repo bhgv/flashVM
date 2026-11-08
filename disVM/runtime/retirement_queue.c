@@ -27,6 +27,7 @@ struct DVM_RetirementQueue
     RetirementSlot *slots; /* Owned native slot storage. */
     unsigned int *buckets; /* Optional chained index. Zero means no entry. */
     unsigned int capacity; /* Current slot capacity under sync. */
+    unsigned int peak_capacity; /* Largest allocated slot count since creation. */
     unsigned int initial_capacity; /* Capacity restored after a burst drains. */
     unsigned int max_capacity; /* Maximum slot count, including native metadata budget. */
     unsigned int free_head; /* capacity means no free slot. */
@@ -71,6 +72,7 @@ static DVM_RetirementQueue *create_queue(unsigned int capacity, unsigned long by
         return NULL;
     }
     queue->capacity = capacity;
+    queue->peak_capacity = capacity;
     queue->initial_capacity = capacity;
     queue->max_capacity = capacity;
     queue->byte_limit = byte_limit;
@@ -169,6 +171,10 @@ static int resize_indexed_queue(DVM_RetirementQueue *queue, unsigned int capacit
         queue->slots = slots;
         queue->buckets = buckets;
         queue->capacity = capacity;
+        if (capacity > queue->peak_capacity)
+        {
+            queue->peak_capacity = capacity;
+        }
         queue->free_head = used_capacity;
         for (unsigned int link = queue->head; link; link = slots[link - 1].ready_next)
         {
@@ -509,6 +515,7 @@ int dvm_retirement_statistics(DVM_RetirementQueue *queue, DVM_RetirementStats *s
     stats->bytes = queue->bytes;
     stats->accepting = queue->accepting;
     stats->capacity = queue->capacity;
+    stats->peak_capacity = queue->peak_capacity;
     fvm_port_sync_unlock(queue->sync);
     return 1;
 }
