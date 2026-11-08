@@ -72,6 +72,7 @@ static unsigned long shared_record_scans;
 static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_rooted;
+static unsigned long cycle_candidates_oversized;
 static int candidate_fallback_ready; /* Cycles attempted a batch without progress. */
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
@@ -150,6 +151,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_rotated = 0;
     cycle_candidates_coalesced = 0;
     cycle_candidates_rooted = 0;
+    cycle_candidates_oversized = 0;
     candidate_fallback_ready = 0;
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
@@ -290,6 +292,7 @@ struct RecordGroup
     unsigned int sources[RECORD_EDGE_LIMIT];
     unsigned char live[RECORD_GROUP_LIMIT];
     unsigned int live_count;
+    int oversized; /* Bounded discovery could not fit another node or field. */
     int has_views; /* A detached view needs descriptor-only destruction. */
     unsigned int nodes_used;
     unsigned int edges_used;
@@ -333,6 +336,7 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
     memcpy(&edge, cell, sizeof(edge));
     if (!edge || group->edges_used == RECORD_EDGE_LIMIT)
     {
+        group->oversized = edge != NULL;
         return 0;
     }
     group->cells[group->edges_used] = cell;
@@ -345,6 +349,7 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
     unsigned int target = record_group_index(group, edge);
     if (target == RECORD_GROUP_LIMIT)
     {
+        group->oversized = 1;
         return 0;
     }
     group->incoming[target]++;
@@ -1501,6 +1506,32 @@ static void take_cycle_candidate(Heap *heap)
 }
 
 
+/* Move the existing owner and root to the fallback queue unchanged. */
+static int defer_oversized_candidate(Heap *heap)
+{
+    DVM_RetirementReservation token = {0};
+    unsigned long bytes = poolmsize(heapmem, heap);
+    if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    void *value;
+    unsigned long prior_bytes;
+    if (!dvm_retirement_take(cycle_candidates, &value, &prior_bytes) ||
+        value != H2D(void *, heap) || prior_bytes != bytes ||
+        !dvm_retirement_commit(retirement, &token, value))
+    {
+        abort();
+    }
+    cycle_candidates_oversized++;
+    if (notify_ready)
+    {
+        notify_ready();
+    }
+    return 1;
+}
+
+
 static int scan_retiring_record(size_t *cost)
 {
     *cost = 1;
@@ -1544,6 +1575,10 @@ static int scan_retiring_record(size_t *cost)
         abort();
     }
     shared_record_scans += scanned;
+    if (group.oversized)
+    {
+        return defer_oversized_candidate(heap);
+    }
     if (!promoted && (!scanned || !group.live[0] || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref)))
     {
         return 0;
@@ -2100,8 +2135,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     if (diagnostics)
     {
-        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu\n",
-            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted);
+        printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu\n",
+            frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized);
     }
     if (diagnostics)
     {
