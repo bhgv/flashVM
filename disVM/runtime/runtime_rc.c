@@ -57,6 +57,7 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static int duke_publish_pending; /* Inflight snapshot is complete and waiting for Fast. */
 static RecordGroup duke_inflight; /* Partially captured graph with rooted targets. */
 static RecordGroup duke_abandoned; /* Owned discovery pins awaiting rollback. */
 static int duke_cleanup_fallback; /* Atomic readiness for an exceptional stopped drain. */
@@ -88,6 +89,7 @@ static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_full; /* Candidate reservations refused for capacity. */
 static unsigned long cycle_candidates_rooted;
 static unsigned int duke_peak_fields; /* Largest successfully published Duke snapshot. */
+static unsigned long duke_publish_retries; /* Complete snapshots retained under pressure. */
 static unsigned long duke_adopted_pins; /* Discovery holds transferred to Fast. */
 static unsigned long duke_resumed_slices; /* Partial scans saved for another admitted turn. */
 static unsigned long duke_promoted; /* Large snapshots handed to Fast GC. */
@@ -183,6 +185,8 @@ void dvm_runtime_rc_start(void)
     duke_promoted = 0;
     duke_resumed_slices = 0;
     duke_adopted_pins = 0;
+    duke_publish_retries = 0;
+    duke_publish_pending = 0;
     duke_peak_fields = 0;
     cycle_candidates_oversized = 0;
     candidate_sweep_left = 0;
@@ -1510,34 +1514,44 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
         return 0;
     }
     DVM_RangeAccess access = {0};
-    if (dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    int publishing = resume && duke_publish_pending;
+    int scanned;
+    if (publishing)
     {
-        if (resume)
+        scanned = !gchalt && !heapmonitor;
+    }
+    else
+    {
+        if (dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
         {
+            if (resume)
+            {
+                return DVM_CANDIDATE_RESUME;
+            }
+            free(group.owned_scratch);
+            *busy = 1;
+            return 0;
+        }
+        unsigned int previous_fields = group.edges_used;
+        scanned = group.growing ?
+            dvm_rc_duke_capture_slice(value, &group, &access) :
+            dvm_rc_queued_record_group(value, 1, &group, &access);
+        *cost += group.edges_used - previous_fields;
+        if (scanned == DVM_DUKE_CAPTURE_RESUME)
+        {
+            if (!dvm_range_access_end(&access))
+            {
+                abort();
+            }
+            duke_inflight = group;
+            duke_resumed_slices++;
             return DVM_CANDIDATE_RESUME;
         }
-        free(group.owned_scratch);
-        *busy = 1;
-        return 0;
-    }
-    unsigned int previous_fields = group.edges_used;
-    int scanned = group.growing ?
-        dvm_rc_duke_capture_slice(value, &group, &access) :
-        dvm_rc_queued_record_group(value, 1, &group, &access);
-    *cost += group.edges_used - previous_fields;
-    if (scanned == DVM_DUKE_CAPTURE_RESUME)
-    {
-        if (!dvm_range_access_end(&access))
-        {
-            abort();
-        }
-        duke_inflight = group;
-        duke_resumed_slices++;
-        return DVM_CANDIDATE_RESUME;
     }
     if (resume)
     {
         memset(&duke_inflight, 0, sizeof(duke_inflight));
+        duke_publish_pending = 0;
     }
     unsigned int discovery_pins = group.pinned_nodes;
     int retry_promotion = 0;
@@ -1555,12 +1569,21 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
         }
     }
     __atomic_fetch_add(&shared_record_snapshots_with_peer,
-        scanned && dvm_world_has_active_guest(world), __ATOMIC_RELAXED);
+        !publishing && scanned && dvm_world_has_active_guest(world), __ATOMIC_RELAXED);
     if (access.domain && !dvm_range_access_end(&access))
     {
         abort();
     }
-    __atomic_fetch_add(&shared_record_scans, scanned, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&shared_record_scans, !publishing && scanned, __ATOMIC_RELAXED);
+    if (group.growing && retry_promotion)
+    {
+        /* Fast will revalidate the fields. Keep the rooted snapshot intact
+         * while its destination is temporarily unavailable. */
+        duke_inflight = group;
+        duke_publish_pending = 1;
+        duke_publish_retries++;
+        return DVM_CANDIDATE_RESUME;
+    }
     *busy = group.busy || retry_promotion;
     int live = scanned && group.live[0];
     if (group.pinned_nodes)
@@ -2086,6 +2109,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         }
         duke_abandoned = duke_inflight;
         memset(&duke_inflight, 0, sizeof(duke_inflight));
+        duke_publish_pending = 0;
     }
     if (budget && (!accepting || __atomic_load_n(&duke_cleanup_fallback, __ATOMIC_ACQUIRE)) &&
         duke_abandoned.owned_scratch)
@@ -2298,8 +2322,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
             candidates.ready, candidates.reserved, candidates.capacity, candidates.peak_capacity);
         printf("NATIVEFASTGC ignored_live_fields=%zu\n", fast_ignored_live_fields);
-        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu\n",
-            duke_promoted, duke_peak_fields, duke_resumed_slices, duke_adopted_pins);
+        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu publish_retries=%lu\n",
+            duke_promoted, duke_peak_fields, duke_resumed_slices, duke_adopted_pins, duke_publish_retries);
         printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",
             frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized, cycle_candidates_full);
     }
