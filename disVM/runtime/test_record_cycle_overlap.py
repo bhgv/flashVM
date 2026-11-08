@@ -6,7 +6,7 @@ import re
 import subprocess
 
 
-def check(runtime, module, mode, require_peer, require_snapshot, require_confirmation, native_spawn):
+def check(runtime, module, mode, require_peer, require_snapshot, require_confirmation, native_spawn, large_cycle):
     environment = dict(os.environ, SDL_VIDEODRIVER="dummy", SDL_AUDIODRIVER="dummy")
     command = [str(runtime), "--gc-idle-cycles", "--stats", mode, str(module)]
     if native_spawn:
@@ -28,6 +28,12 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
             raise RuntimeError(f"{mode}: runtime does not report concurrent graph snapshots")
         confirmations = re.search(r"shared_record_confirmations=(\d+)", output)
         observations.append((*map(int, counters.groups()), int(snapshots[1]) if snapshots else None))
+        if large_cycle:
+            oversized = re.search(r"cycle_candidates_oversized=(\d+)", output)
+            if int(counters[2]) >= 9 and oversized and int(oversized[1]) == 0:
+                print(f"PASS {mode}: large and eight small cycles collected by shared GC")
+                return
+            continue
         if (int(counters[1]) >= 64 and int(counters[2]) and (not require_peer or int(counters[3]))
                 and (not require_snapshot or int(snapshots[1]))
                 and (not require_confirmation or (confirmations and int(confirmations[1])))):
@@ -44,12 +50,14 @@ def main():
     parser.add_argument("--require-snapshot", action="store_true")
     parser.add_argument("--require-confirmation", action="store_true")
     parser.add_argument("--native-spawn", action="store_true")
+    parser.add_argument("--large-cycle", action="store_true")
     args = parser.parse_args()
     failures = []
     for mode in ("--jit", "--no-jit"):
         try:
             check(args.runtime.resolve(), args.module.resolve(), mode,
-                  args.require_peer, args.require_snapshot, args.require_confirmation, args.native_spawn)
+                  args.require_peer, args.require_snapshot, args.require_confirmation, args.native_spawn,
+                  args.large_cycle)
         except RuntimeError as error:
             failures.append(str(error))
     if failures:

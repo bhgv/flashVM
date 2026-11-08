@@ -2014,6 +2014,18 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
   "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
   "${container_cycle_overlap_module}" --native-spawn --require-confirmation)
  set_tests_properties(disvm_container_cycle_overlap PROPERTIES TIMEOUT 330)
+ set(large_record_cycle_module "${CMAKE_CURRENT_BINARY_DIR}/large-record-cycle.dis")
+ add_custom_command(OUTPUT "${large_record_cycle_module}"
+  COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module"
+   -o "${large_record_cycle_module}" "${CMAKE_CURRENT_SOURCE_DIR}/large_record_cycle.b"
+  DEPENDS limbo-bootstrap "${CMAKE_CURRENT_SOURCE_DIR}/large_record_cycle.b" ${module_headers}
+  VERBATIM)
+ add_custom_target(disvm_large_record_cycle_module ALL DEPENDS "${large_record_cycle_module}")
+ add_test(NAME disvm_large_record_cycle COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_record_cycle_overlap.py" "$<TARGET_FILE:disvm>"
+  "${large_record_cycle_module}" --native-spawn --large-cycle)
+ set_tests_properties(disvm_large_record_cycle PROPERTIES TIMEOUT 330)
+
 
 
 endif()
