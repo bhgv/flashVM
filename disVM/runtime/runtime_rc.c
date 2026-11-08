@@ -744,8 +744,10 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
 }
 
 
-/* Prepare the complete child packet before claiming the parent. A refusal
- * leaves the original array, queue entry and reference count unchanged. */
+/* EN: Stage the children of array heap before claiming its last owner.
+ * retry reports temporary packet pressure. Refusal preserves the array.
+ * RU: Подготовить ссылки массива heap до снятия последнего владельца.
+ * retry сообщает о временном заполнении. При отказе массив сохраняется. */
 static int transfer_array_children(Heap *heap, int *retry)
 {
     Array *array = H2D(Array *, heap);
@@ -758,12 +760,21 @@ static int transfer_array_children(Heap *heap, int *retry)
     if (array->root == H)
     {
         if (array->len < 0 || type->size <= 0 || type->np <= 0 ||
-            (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8 ||
-            (size_t)array->len > RC_BYTES / (size_t)type->np / 8 / sizeof(void *))
+            (size_t)type->np > ((size_t)type->size / sizeof(void *) + 7) / 8)
         {
             return 0;
         }
-        capacity = (size_t)array->len * type->np * 8;
+        size_t mapped = 0;
+        for (int byte = 0; byte < type->np; byte++)
+        {
+            mapped += __builtin_popcount((unsigned char)type->map[byte]);
+        }
+        size_t available = (RC_BYTES - sizeof(FrameRetirement)) / sizeof(void *);
+        if (mapped && (size_t)array->len > available / mapped)
+        {
+            return 0;
+        }
+        capacity = (size_t)array->len * mapped;
     }
     if (!capacity)
     {
@@ -779,10 +790,10 @@ static int transfer_array_children(Heap *heap, int *retry)
     {
         return 0;
     }
-    packet->roots = dvm_runtime_root_batch_create(capacity);
+    packet->roots = NULL;
     packet->count = 0;
     packet->next = 0;
-    int valid = packet->roots != NULL;
+    int valid = 1;
     if (array->root != H)
     {
         if (!array->root)
@@ -826,6 +837,16 @@ static int transfer_array_children(Heap *heap, int *retry)
                 }
             }
         }
+    }
+    if (valid && !packet->count)
+    {
+        free(packet);
+        return dvm_refcount_claim_last_u(&heap->ref);
+    }
+    if (valid)
+    {
+        packet->roots = dvm_runtime_root_batch_create(packet->count);
+        valid = packet->roots != NULL;
     }
     unsigned long charge = 0;
     valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, RC_BYTES, &charge);

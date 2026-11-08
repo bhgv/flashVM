@@ -24,12 +24,12 @@ ring(length: int, data: array of byte): ref Node
     return first;
 }
 
-# EN: Retire an array of 300 references to the same live data.
-# RU: Освободить массив из 300 ссылок на один живой объект data.
+# EN: Retire a sparse array with 300 references to the same live data.
+# RU: Освободить разреженный массив с 300 ссылками на один живой объект data.
 drop_aliases(data: array of byte)
 {
-    slots := array[300] of array of byte;
-    for (i := 0; i < len slots; i++)
+    slots := array[70000] of array of byte;
+    for (i := 0; i < 300; i++)
     {
         slots[i] = data;
     }
