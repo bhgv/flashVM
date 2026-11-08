@@ -54,6 +54,7 @@ static unsigned long shared_strings_with_peer; /* Final releases with another ac
 static unsigned long shared_array_graphs; /* Shared releases that transfer array children. */
 static unsigned long shared_arrays; /* Final scalar-array releases on Fast. */
 static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an active guest. */
+static unsigned long shared_channels;
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
@@ -122,6 +123,7 @@ void dvm_runtime_rc_start(void)
     shared_arrays = 0;
     shared_arrays_with_peer = 0;
     shared_strings = 0;
+    shared_channels = 0;
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;
@@ -146,6 +148,9 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 }
 
 
+extern int dvm_runtime_channel_claim_quiet(Heap *heap, Type **mapped);
+
+
 /* Read leaf payload only while its queue or caller owns a strong reference.
  * Array children require a prepared retirement packet. */
 static int leaf_eligible(const Heap *heap)
@@ -153,6 +158,10 @@ static int leaf_eligible(const Heap *heap)
     if (heap->t == &Tstring)
     {
         return !H2D(const String *, heap)->tmp;
+    }
+    if (heap->t == &Tchannel)
+    {
+        return H2D(const Channel *, heap)->buf == H;
     }
     if (heap->t == &Tarray)
     {
@@ -1380,6 +1389,18 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 break;
             }
+            Type *mapped_channel = NULL;
+            int channel = entry->heap->t == &Tchannel;
+            if (channel && !dvm_runtime_channel_claim_quiet(entry->heap, &mapped_channel))
+            {
+                if (!move_leaf(leaves, difficult, entry))
+                {
+                    break;
+                }
+                budget--;
+                completed++;
+                continue;
+            }
             Array *array = entry->heap->t == &Tarray ? H2D(Array *, entry->heap) : NULL;
             int has_children = array && (array->root != H || array->t->np);
             if (has_children && !transfer_array_children(entry->heap))
@@ -1399,7 +1420,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             {
                 abort();
             }
-            DVM_RefcountResult result = has_children ? DVM_REFCOUNT_LAST :
+            DVM_RefcountResult result = has_children || channel ? DVM_REFCOUNT_LAST :
                 dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
             {
@@ -1412,6 +1433,14 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     shared_arrays++;
                     shared_array_graphs += has_children;
                     shared_arrays_with_peer += peer;
+                }
+                else if (channel)
+                {
+                    if (mapped_channel)
+                    {
+                        release_owned_descriptor(mapped_channel);
+                    }
+                    shared_channels++;
                 }
                 else
                 {
@@ -1631,6 +1660,7 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
+        printf("NATIVECHANNELRC shared=%lu\n", shared_channels);
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
         printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
             shared_arrays, shared_arrays_with_peer, shared_array_graphs);
