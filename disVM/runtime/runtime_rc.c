@@ -73,7 +73,7 @@ static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_rooted;
 static unsigned long cycle_candidates_oversized;
-static int candidate_fallback_ready; /* Cycles attempted a batch without progress. */
+static int candidate_fallback_ready; /* Atomic readiness published to the Fast scheduler. */
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
@@ -152,7 +152,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_coalesced = 0;
     cycle_candidates_rooted = 0;
     cycle_candidates_oversized = 0;
-    candidate_fallback_ready = 0;
+    __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
@@ -1655,7 +1655,7 @@ int dvm_runtime_rc_candidates_ready(void)
 unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t budget)
 {
     DVM_HeapOwner *reader = dvm_native_owner_current();
-    if (!dvm_runtime_rc_candidates_ready() || context != dvm_native_context_current() ||
+    if (!budget || !dvm_runtime_rc_candidates_ready() || context != dvm_native_context_current() ||
         !dvm_native_owner_attach(reader, world))
     {
         return 0;
@@ -1684,8 +1684,9 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             }
             budget = cost < budget ? budget - cost : 0;
         }
-        candidate_fallback_ready = queued.ready && !completed;
-        if (candidate_fallback_ready && notify_ready)
+        int fallback_ready = queued.ready && !completed;
+        __atomic_store_n(&candidate_fallback_ready, fallback_ready, __ATOMIC_RELEASE);
+        if (fallback_ready && notify_ready)
         {
             notify_ready();
         }
@@ -2043,7 +2044,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     /* Give Cycles first refusal. The idle fallback may take candidates only
      * after an actual shared attempt stalled, or while closing the queues. */
     while (budget && (dvm_retirement_take(retirement, &value, &bytes) ||
-                      ((!accepting || candidate_fallback_ready || heapmonitor) &&
+                      ((!accepting ||
+                        __atomic_load_n(&candidate_fallback_ready, __ATOMIC_ACQUIRE) || heapmonitor) &&
                        dvm_retirement_take(cycle_candidates, &value, &bytes))))
     {
         (void)bytes;
@@ -2118,7 +2120,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     }
     if (!dvm_runtime_rc_candidates_ready())
     {
-        candidate_fallback_ready = 0;
+        __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     }
     DVM_RetirementStats frame_stats = {0};
     (void)dvm_retirement_statistics(frames, &frame_stats);
@@ -2159,7 +2161,8 @@ int dvm_runtime_rc_ready(void)
     return refs.ready != 0 || packets.ready != 0 ||
         dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
         dvm_retirement_peek(record_retries) != NULL ||
-        (candidates.ready && (!candidates.accepting || candidate_fallback_ready));
+        (candidates.ready && (!candidates.accepting ||
+            __atomic_load_n(&candidate_fallback_ready, __ATOMIC_ACQUIRE)));
 }
 
 
