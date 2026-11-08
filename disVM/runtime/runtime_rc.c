@@ -73,6 +73,7 @@ static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_rooted;
 static unsigned long cycle_candidates_oversized;
+static int candidate_busy_retry; /* Cycles lane already retried an all-busy batch. */
 static int candidate_fallback_ready; /* Atomic readiness published to the Fast scheduler. */
 static unsigned long shared_record_confirmations;
 static unsigned long shared_record_snapshots_with_peer;
@@ -152,6 +153,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_coalesced = 0;
     cycle_candidates_rooted = 0;
     cycle_candidates_oversized = 0;
+    candidate_busy_retry = 0;
     __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     shared_record_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
@@ -292,6 +294,7 @@ struct RecordGroup
     unsigned int sources[RECORD_EDGE_LIMIT];
     unsigned char live[RECORD_GROUP_LIMIT];
     unsigned int live_count;
+    int busy; /* A field stripe was temporarily owned elsewhere. */
     int oversized; /* Bounded discovery could not fit another node or field. */
     int has_views; /* A detached view needs descriptor-only destruction. */
     unsigned int nodes_used;
@@ -334,9 +337,14 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
         return 0;
     }
     void *edge;
-    if (access && dvm_range_access_extend(access, cell, sizeof(edge)) != DVM_CELL_ACQUIRED)
+    if (access)
     {
-        return 0;
+        DVM_CellResult result = dvm_range_access_extend(access, cell, sizeof(edge));
+        if (result != DVM_CELL_ACQUIRED)
+        {
+            group->busy = result == DVM_CELL_BUSY;
+            return 0;
+        }
     }
     memcpy(&edge, cell, sizeof(edge));
     if (!edge)
@@ -1585,9 +1593,13 @@ static int defer_oversized_candidate(Heap *heap)
 }
 
 
-static int scan_retiring_record(size_t *cost)
+/* [GC:] Try to consume the head candidate under shared admission. Charge
+ * captured work to cost and report retryable field contention through busy.
+ * The queue keeps its owner on failure. */
+static int scan_retiring_record(size_t *cost, int *busy)
 {
     *cost = 1;
+    *busy = 0;
     void *value = dvm_retirement_peek(cycle_candidates);
     if (!dvm_runtime_idle_cycles || !value)
     {
@@ -1628,6 +1640,7 @@ static int scan_retiring_record(size_t *cost)
         abort();
     }
     shared_record_scans += scanned;
+    *busy = group.busy;
     if (group.oversized)
     {
         return defer_oversized_candidate(heap);
@@ -1661,14 +1674,19 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
         return 0;
     }
     unsigned int completed = 0;
+    int retry = 0;
     if (dvm_native_owner_try_enter_idle_shared(reader))
     {
         DVM_RetirementStats queued = {0};
         (void)dvm_retirement_statistics(cycle_candidates, &queued);
+        size_t busy_attempts = 0;
+        size_t attempts = 0;
         for (size_t index = 0; index < queued.ready && budget; index++)
         {
             size_t cost;
-            if (scan_retiring_record(&cost))
+            int busy;
+            attempts++;
+            if (scan_retiring_record(&cost, &busy))
             {
                 completed++;
             }
@@ -1676,6 +1694,7 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             {
                 dvm_retirement_rotate(cycle_candidates);
                 cycle_candidates_rotated++;
+                busy_attempts += busy;
             }
             /* A queued exclusive owner must not wait for another graph walk. */
             if (dvm_world_exclusive_waiting(world))
@@ -1684,7 +1703,9 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             }
             budget = cost < budget ? budget - cost : 0;
         }
-        int fallback_ready = queued.ready && !completed;
+        retry = attempts && busy_attempts == attempts && !candidate_busy_retry;
+        candidate_busy_retry = retry;
+        int fallback_ready = attempts && !completed && !retry;
         __atomic_store_n(&candidate_fallback_ready, fallback_ready, __ATOMIC_RELEASE);
         if (fallback_ready && notify_ready)
         {
@@ -1704,7 +1725,7 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
     {
         abort();
     }
-    return completed;
+    return completed + retry;
 }
 
 
