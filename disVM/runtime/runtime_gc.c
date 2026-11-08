@@ -256,8 +256,8 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
 }
 
 
-/* Notify cycle scheduling before a managed owner is consumed. The caller
- * already owns the heap or a stopped collector phase. No allocation or scan. */
+/* Notify cycle scheduling after a nonfinal managed owner is consumed.
+ * The caller holds heap admission. No allocation or scan. */
 void dvm_runtime_gc_owner_lost(void)
 {
     if (dvm_runtime_event_cycles && state.world)

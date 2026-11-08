@@ -27,7 +27,7 @@ its own thread lifecycle independently of the fixed or elastic pool.
 
 ## Cycle collection after owner loss
 
-`--gc-event-cycles` records ownership losses at the retained destroy entry.
+`--gc-event-cycles` records nonfinal ownership losses after decrementing the retained count.
 The Fast queue still requests service only when work is pending. Cycles keeps
 requesting bounded passes until three tracing epochs have completed since
 the last recorded loss. Clean scheduler requests then skip the cycle pass,

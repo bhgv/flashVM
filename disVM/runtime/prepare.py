@@ -1176,11 +1176,14 @@ def main():
         code = adapt_gc_fields(path.read_text(), unit)
         if unit == "heap":
             code = adapt_channel_finalizer(code)
-            anchor = "\tif(dvm_runtime_rc_defer(v))"
+            anchor = ("\tif(!dvm_runtime_heap_release(&h->ref) || gchalt > 64) "
+                      "\t/* Protect 'C' thread stack */\n\t\treturn;")
             if code.count(anchor) != 1:
                 raise ValueError("hosted cycle loss boundary drift")
             code = '#include "runtime_gc.h"\n' + code.replace(
-                anchor, "\tdvm_runtime_gc_owner_lost();\n" + anchor, 1)
+                anchor, "\tif(!dvm_runtime_heap_release(&h->ref)) {\n"
+                "\t\tdvm_runtime_gc_owner_lost();\n\t\treturn;\n\t}\n"
+                "\tif(gchalt > 64)  /* Protect 'C' thread stack */\n\t\treturn;", 1)
         path.write_text(code)
 
 
