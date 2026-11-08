@@ -50,7 +50,7 @@ static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and fin
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
 static struct
 {
-    unsigned long passes, promoted, groups, nonfinal, records, arrays, lists, channels, strings, modules, other;
+    unsigned long passes, promoted, packet_promoted, groups, nonfinal, records, arrays, lists, channels, strings, modules, other;
 } fallback;
 static unsigned long difficult_moved;
 static DVM_RetirementQueue *leaves; /* Plain leaves eligible for shared release. */
@@ -1834,12 +1834,38 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         {
             size_t index = packet->next++;
             budget--;
-            process_queued_record_group(H2D(void *, packet->keys[index]), 0);
+            Heap *heap = packet->keys[index];
+            void *child = H2D(void *, heap);
+            int promoted = 0;
+            if (dvm_runtime_idle_cycles && accepting && !heapmonitor)
+            {
+                if (dvm_refcount_load_u(&heap->ref) == 1 &&
+                    defer_leaf(heap, poolmsize(heapmem, heap), 1))
+                {
+                    enqueued++;
+                    promoted = 1;
+                }
+                else
+                {
+                    promoted = transfer_record_candidate(heap);
+                }
+            }
+            if (!promoted)
+            {
+                process_queued_record_group(child, 0);
+            }
             if (!dvm_runtime_root_batch_remove(packet->roots, index))
             {
                 abort();
             }
-            fallback_destroy(H2D(void *, packet->keys[index]));
+            if (promoted)
+            {
+                fallback.packet_promoted++;
+            }
+            else
+            {
+                fallback_destroy(child);
+            }
         }
         if (packet->next != packet->count)
         {
@@ -1939,8 +1965,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVERCPASSES idle=%lu promoted=%lu groups=%lu nonfinal=%lu records=%lu arrays=%lu lists=%lu channels=%lu strings=%lu modules=%lu other=%lu\n",
-            fallback.passes, fallback.promoted, fallback.groups, fallback.nonfinal,
+        printf("NATIVERCPASSES idle=%lu promoted=%lu packet_promoted=%lu groups=%lu nonfinal=%lu records=%lu arrays=%lu lists=%lu channels=%lu strings=%lu modules=%lu other=%lu\n",
+            fallback.passes, fallback.promoted, fallback.packet_promoted, fallback.groups, fallback.nonfinal,
             fallback.records, fallback.arrays, fallback.lists, fallback.channels,
             fallback.strings, fallback.modules, fallback.other);
         DVM_RetirementStats difficult_stats = {0};
