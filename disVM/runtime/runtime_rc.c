@@ -1499,8 +1499,9 @@ static void take_cycle_candidate(Heap *heap)
 }
 
 
-static int scan_retiring_record(void)
+static int scan_retiring_record(size_t *cost)
 {
+    *cost = 1;
     void *value = dvm_retirement_peek(cycle_candidates);
     if (!dvm_runtime_idle_cycles || !value)
     {
@@ -1531,6 +1532,7 @@ static int scan_retiring_record(void)
         return 0;
     }
     int scanned = queued_record_group(value, 1, &group, &access);
+    *cost += group.edges_used;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1);
     DVM_WorldState activity;
     shared_record_snapshots_with_peer += scanned &&
@@ -1573,10 +1575,10 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
     {
         DVM_RetirementStats queued = {0};
         (void)dvm_retirement_statistics(cycle_candidates, &queued);
-        size_t attempts = queued.ready < budget ? queued.ready : budget;
-        for (size_t index = 0; index < attempts; index++)
+        for (size_t index = 0; index < queued.ready && budget; index++)
         {
-            if (scan_retiring_record())
+            size_t cost;
+            if (scan_retiring_record(&cost))
             {
                 completed++;
             }
@@ -1585,6 +1587,8 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
                 dvm_retirement_rotate(cycle_candidates);
                 cycle_candidates_rotated++;
             }
+            /* Finish the in-flight candidate, then yield the shared lease. */
+            budget = cost < budget ? budget - cost : 0;
         }
         if (!dvm_native_owner_leave_idle_shared(reader))
         {
