@@ -5,6 +5,18 @@ headers, tests and examples in every component. They supersede older local
 exemptions from readability work. Keep upstream snapshots, third-party libraries,
 generated parser outputs and deliberately raw oracle fixtures unchanged.
 
+- Start each handwritten source file with `Copyright (c) YYYY bhgv`, using
+  the current year for newly written files, followed by an English and Russian
+  overview of the responsibilities and state in that file. Preserve existing
+  authorship and license notices.
+- Before each function, document its purpose and parameters in English and
+  Russian. Cover ownership, results, failure and threading where relevant.
+- Group code by responsibility under descriptive names. Keep each handwritten
+  source file and header at or below 500 lines. Split oversized files by
+  responsibility as they are reworked.
+- Give each GC collector its own directory under `gc/`, including its private
+  helpers. Put code used by multiple collectors in `gc/common/`.
+
 - Do not use assert. Use an explicit if with an error message or appropriate
   recovery/failure action; preserve evaluation and required calls in conditions.
 - Use braces for every controlled body, even one statement. Do not combine

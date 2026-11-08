@@ -1,4 +1,8 @@
-/* A bounded last-owner queue; all heap work remains under native_world. */
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Deferred reference ownership, GC lane queues and heap retirement.
+ * RU: Отложенные ссылки, очереди потоков GC и освобождение объектов кучи.
+ */
 #include "disvm/refcount.h"
 #include "lib9.h"
 #include "dat.h"
@@ -9,6 +13,9 @@
 #include "disvm/native_context.h"
 #include "disvm/native_owner.h"
 #include "runtime_rc.h"
+#include "gc/common/graph_snapshot.h"
+#include "gc/common/candidate_pass.h"
+#include "gc/fast/graph_confirmation.h"
 #include "runtime_gc.h"
 #include "gc_fields.h"
 #include "managed_owner.h"
@@ -35,8 +42,6 @@ typedef struct FrameRetirement
     size_t next;          /* First owner not yet consumed by Fast. */
     void *keys[];        /* Heap headers in frame-map order. */
 } FrameRetirement;
-
-typedef struct RecordGroup RecordGroup;
 
 /* Keep the original strong owner and registry root until the old readers end. */
 typedef struct LeafRetirement
@@ -194,7 +199,6 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 
 
 extern int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed);
-extern int dvm_runtime_channel_is_quiet(Channel *channel);
 
 
 /* Publish transferred owners to an incremental pass already in progress. */
@@ -300,443 +304,6 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
-#define DUKE_INITIAL_FIELDS 2048 /* Initial shared snapshot capacity on the Duke lane. */
-#define RECORD_EDGE_LIMIT 512 /* Maximum mapped fields in one guarded snapshot. */
-#define RECORD_NODE_CAPACITY (RECORD_EDGE_LIMIT + 1) /* Seed plus one target per field. */
-#define RECORD_INDEX_SLOTS (RECORD_EDGE_LIMIT * 4) /* Power of two, below half full. */
-
-struct RecordGroup
-{
-    void **nodes;             /* Captured object payloads. */
-    unsigned int *incoming;   /* Internal incoming edge counts. */
-    unsigned int *index;      /* Discovery hash slots, unused after capture. */
-    void **cells;             /* Captured source field addresses. */
-    unsigned int *targets;    /* Target node index or nil sentinel. */
-    unsigned int *sources;    /* Source node index for each captured edge. */
-    unsigned char *live;      /* Nodes reachable from outside the group. */
-    void *owned_scratch;      /* Duke's allocated discovery storage, or NULL. */
-    unsigned int field_limit; /* Capture capacity of the backing storage. */
-    int growing;             /* Duke can enlarge discovery storage under guards. */
-    unsigned int live_count;
-    int busy; /* A field stripe was temporarily owned elsewhere. */
-    int oversized; /* Bounded discovery could not fit another field. */
-    int has_views; /* A detached view needs descriptor-only destruction. */
-    unsigned int nodes_used;
-    unsigned int edges_used;
-};
-
-
-/* Scratch storage owned by one guarded discovery call. */
-typedef struct RecordGroupScratch
-{
-    void *nodes[RECORD_NODE_CAPACITY];             /* Object payloads. */
-    unsigned int incoming[RECORD_NODE_CAPACITY];  /* Internal incoming counts. */
-    unsigned int index[RECORD_INDEX_SLOTS];      /* Node indices plus one. */
-    void *cells[RECORD_EDGE_LIMIT];              /* Captured field addresses. */
-    unsigned int targets[RECORD_EDGE_LIMIT];     /* Target indices. */
-    unsigned int sources[RECORD_EDGE_LIMIT];     /* Source indices. */
-    unsigned char live[RECORD_NODE_CAPACITY];      /* Reachability flags. */
-} RecordGroupScratch;
-
-
-/* Bind an empty graph to zeroed scratch that outlives its discovery call. */
-static RecordGroup empty_record_group(RecordGroupScratch *scratch)
-{
-    return (RecordGroup){.nodes = scratch->nodes, .incoming = scratch->incoming,
-        .index = scratch->index, .cells = scratch->cells, .targets = scratch->targets,
-        .sources = scratch->sources, .live = scratch->live, .field_limit = RECORD_EDGE_LIMIT};
-}
-
-
-/* Return the allocation size for a captured, bounded graph. */
-static size_t record_group_bytes(const RecordGroup *group)
-{
-    size_t nodes = group->nodes_used;
-    size_t edges = group->edges_used;
-    return sizeof(*group) + (nodes + edges) * sizeof(void *) +
-        (nodes + 2 * edges) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
-}
-
-
-/* Copy a complete graph into one owned allocation sized to its contents.
- * The caller keeps the graph objects alive and frees the result with free. */
-static RecordGroup *copy_record_group(const RecordGroup *group)
-{
-    size_t nodes = group->nodes_used;
-    size_t edges = group->edges_used;
-    RecordGroup *copy = malloc(record_group_bytes(group));
-    if (!copy)
-    {
-        return NULL;
-    }
-    *copy = *group;
-    copy->nodes = (void **)(copy + 1);
-    copy->cells = copy->nodes + nodes;
-    copy->incoming = (unsigned int *)(copy->cells + edges);
-    copy->targets = copy->incoming + nodes;
-    copy->sources = copy->targets + edges;
-    copy->live = (unsigned char *)(copy->sources + edges);
-    copy->index = NULL;
-    copy->owned_scratch = NULL;
-    memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
-    memcpy(copy->cells, group->cells, edges * sizeof(*copy->cells));
-    memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));
-    memcpy(copy->targets, group->targets, edges * sizeof(*copy->targets));
-    memcpy(copy->sources, group->sources, edges * sizeof(*copy->sources));
-    memcpy(copy->live, group->live, nodes * sizeof(*copy->live));
-    return copy;
-}
-
-
-/* Compute the first probe for a payload address in the discovery index. */
-static unsigned int record_index_slot(const RecordGroup *group, void *value)
-{
-    uintptr_t address = (uintptr_t)value / sizeof(void *);
-    return (address ^ (address >> 7)) % (group->field_limit * 4);
-}
-
-
-/* The table stays at most half full. Every indexed object is held live. */
-static unsigned int record_group_index(RecordGroup *group, void *value)
-{
-    unsigned int slots = group->field_limit * 4;
-    unsigned int slot = record_index_slot(group, value);
-    while (group->index[slot])
-    {
-        unsigned int index = group->index[slot] - 1;
-        if (group->nodes[index] == value)
-        {
-            return index;
-        }
-        slot = (slot + 1) % slots;
-    }
-    unsigned int index = group->nodes_used++;
-    group->nodes[index] = value;
-    group->index[slot] = index + 1;
-    return index;
-}
-
-
-/* Increase Duke's discovery storage within the native byte budget.
- * No object addresses or indices change. Caller keeps existing fields guarded.
- * Allocation failure leaves the previous storage intact. */
-static int grow_record_group(RecordGroup *group, size_t required)
-{
-    const size_t per_node = sizeof(void *) + sizeof(unsigned int) + sizeof(unsigned char);
-    const size_t per_field = sizeof(void *) + 6 * sizeof(unsigned int);
-    size_t maximum = (RC_BYTES - per_node) / (per_node + per_field);
-    if (required > maximum)
-    {
-        return 0;
-    }
-    size_t capacity = group->field_limit;
-    while (capacity < required)
-    {
-        capacity = capacity <= maximum / 2 ? capacity * 2 : maximum;
-    }
-    size_t nodes = capacity + 1;
-    void **storage = calloc(1, nodes * per_node + capacity * per_field);
-    if (!storage)
-    {
-        return 0;
-    }
-    RecordGroup expanded = *group;
-    expanded.owned_scratch = storage;
-    expanded.field_limit = capacity;
-    expanded.nodes = storage;
-    expanded.cells = storage + nodes;
-    expanded.incoming = (unsigned int *)(expanded.cells + capacity);
-    expanded.targets = expanded.incoming + nodes;
-    expanded.sources = expanded.targets + capacity;
-    expanded.index = expanded.sources + capacity;
-    expanded.live = (unsigned char *)(expanded.index + capacity * 4);
-    memcpy(expanded.nodes, group->nodes, group->nodes_used * sizeof(*expanded.nodes));
-    memcpy(expanded.incoming, group->incoming, group->nodes_used * sizeof(*expanded.incoming));
-    memcpy(expanded.live, group->live, group->nodes_used * sizeof(*expanded.live));
-    memcpy(expanded.cells, group->cells, group->edges_used * sizeof(*expanded.cells));
-    memcpy(expanded.targets, group->targets, group->edges_used * sizeof(*expanded.targets));
-    memcpy(expanded.sources, group->sources, group->edges_used * sizeof(*expanded.sources));
-    for (unsigned int index = 0; index < expanded.nodes_used; index++)
-    {
-        unsigned int slot = record_index_slot(&expanded, expanded.nodes[index]);
-        while (expanded.index[slot])
-        {
-            slot = (slot + 1) % (expanded.field_limit * 4);
-        }
-        expanded.index[slot] = index + 1;
-    }
-    free(group->owned_scratch);
-    *group = expanded;
-    return 1;
-}
-
-
-/* Reserve space for additional fields or classify this capture as oversized. */
-static int reserve_record_fields(RecordGroup *group, size_t fields)
-{
-    if (fields <= group->field_limit - group->edges_used ||
-        (group->growing && fields <= RC_BYTES &&
-         grow_record_group(group, group->edges_used + fields)))
-    {
-        return 1;
-    }
-    group->oversized = 1;
-    return 0;
-}
-
-
-/* The held source field preserves the target while the graph is scanned. */
-static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
-    DVM_RangeAccess *access)
-{
-    if (!reserve_record_fields(group, 1))
-    {
-        return 0;
-    }
-    void *edge;
-    if (access)
-    {
-        DVM_CellResult result = dvm_range_access_extend(access, cell, sizeof(edge));
-        if (result != DVM_CELL_ACQUIRED)
-        {
-            group->busy = result == DVM_CELL_BUSY;
-            return 0;
-        }
-    }
-    memcpy(&edge, cell, sizeof(edge));
-    if (!edge)
-    {
-        return 0;
-    }
-    group->cells[group->edges_used] = cell;
-    group->sources[group->edges_used] = index;
-    if (edge == H)
-    {
-        group->targets[group->edges_used++] = UINT_MAX;
-        return 1;
-    }
-    unsigned int target = record_group_index(group, edge);
-    group->incoming[target]++;
-    group->targets[group->edges_used++] = target;
-    return 1;
-}
-
-
-/* [GC:] Check whether every mapped field in a repeated element fits.
- * The immutable type map is borrowed and no object fields are accessed.
- * Return zero if the snapshot would overflow and report fields per element. */
-static int repeated_record_fields_fit(const Type *type, size_t elements,
-    size_t available, size_t *mapped)
-{
-    size_t limit = available / elements;
-    *mapped = 0;
-    for (int byte = 0; byte < type->np; byte++)
-    {
-        *mapped += __builtin_popcount((unsigned char)type->map[byte]);
-        if (*mapped > limit)
-        {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-
-/* [GC:] Capture one source in group, recording opaque nodes as live.
- * start_roots is the expected queue-root count for node zero. The caller
- * keeps the source live and supplies a guard set or exclusive admission.
- * Return zero on contention, invalid metadata or exhausted snapshot space. */
-static int capture_record_source(RecordGroup *group, unsigned int index,
-    unsigned long start_roots, DVM_RangeAccess *access)
-{
-    void *record = group->nodes[index];
-    Heap *heap = D2H(record);
-    Type *type = heap->t;
-    unsigned char *data = record;
-    size_t elements = 1;
-    if (type == &Tarray)
-    {
-        Array *array = record;
-        if (!array->root || !array->t)
-        {
-            return 0;
-        }
-        if (array->root != H)
-        {
-            group->has_views = 1;
-            type = &Tptr;
-            data = (unsigned char *)&array->root;
-        }
-        else
-        {
-            if (array->len < 0 ||
-                array->data != (unsigned char *)array + sizeof(*array))
-            {
-                group->live[index] = 1;
-                return 1;
-            }
-            type = array->t;
-            elements = type->np ? array->len : 0;
-            data = array->data;
-        }
-    }
-    if (heap->t == &Tlist)
-    {
-        List *list = record;
-        if (!record_group_edge(group, index, &list->tail, access))
-        {
-            return 0;
-        }
-        type = list->t;
-        data = (unsigned char *)list->data;
-        elements = type ? 1 : 0;
-    }
-    if (heap->t == &Tchannel)
-    {
-        Channel *channel = record;
-        if (!dvm_runtime_channel_is_quiet(channel))
-        {
-            group->live[index] = 1;
-            return 1;
-        }
-        type = &Tptr;
-        data = (unsigned char *)&channel->buf;
-    }
-    if (heap->t != &Tlist && (!type || type->size < (int)sizeof(void *) ||
-        (heap->t != &Tarray && heap->t != &Tchannel && type->free != freeheap)))
-    {
-        group->live[index] = 1;
-        return 1;
-    }
-    if (dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
-    {
-        group->live[index] = 1;
-    }
-    if (elements > 1)
-    {
-        size_t mapped;
-        size_t available = group->growing ? RC_BYTES : group->field_limit - group->edges_used;
-        if (!repeated_record_fields_fit(type, elements, available, &mapped))
-        {
-            group->oversized = 1;
-            return 0;
-        }
-        if (!mapped)
-        {
-            return 1;
-        }
-        if (!reserve_record_fields(group, elements * mapped))
-        {
-            return 0;
-        }
-    }
-    for (size_t element = 0; element < elements; element++)
-    {
-        for (int byte = 0; byte < type->np; byte++)
-        {
-            for (unsigned int bit = 0; bit < 8; bit++)
-            {
-                if (!(type->map[byte] & (0x80U >> bit)))
-                {
-                    continue;
-                }
-                size_t slot = (size_t)byte * 8 + bit;
-                void *edge;
-                if (slot >= (size_t)type->size / sizeof(edge))
-                {
-                    return 0;
-                }
-                void *cell = data + element * type->size + slot * sizeof(edge);
-                if (!record_group_edge(group, index, cell, access))
-                {
-                    return 0;
-                }
-            }
-        }
-    }
-    return 1;
-}
-
-
-/* [GC:] Classify a complete guarded snapshot by counting outside references
- * and propagating liveness. shared permits a candidate with no incoming edge
- * to be dropped as live. Return zero if the counts invalidate the snapshot. */
-static int classify_record_group(RecordGroup *group, int shared)
-{
-    if (!group->incoming[0])
-    {
-        if (!shared)
-        {
-            return 0;
-        }
-        group->live[0] = 1;
-    }
-    /* Discovery is complete; reuse its index as two dense work arrays. */
-    unsigned int *ready = group->index;
-    unsigned int *starts = ready + group->nodes_used;
-    unsigned int edge = 0;
-    for (unsigned int index = 0; index < group->nodes_used; index++)
-    {
-        Heap *heap = D2H(group->nodes[index]);
-        unsigned long expected = group->incoming[index] + (index == 0);
-        unsigned long actual = dvm_refcount_load_u(&heap->ref);
-        if (actual < expected)
-        {
-            return 0;
-        }
-        group->live[index] |= actual > expected;
-        if (group->live[index])
-        {
-            ready[group->live_count++] = index;
-        }
-        starts[index] = edge;
-        while (edge < group->edges_used && group->sources[edge] == index)
-        {
-            edge++;
-        }
-    }
-    starts[group->nodes_used] = edge;
-
-    /* Edges are captured in source order. Visit each live node's outgoing
-     * range once, even when reachability runs against discovery order. */
-    for (unsigned int head = 0; head < group->live_count && !group->live[0]; head++)
-    {
-        unsigned int source = ready[head];
-        for (edge = starts[source]; edge < starts[source + 1]; edge++)
-        {
-            unsigned int target = group->targets[edge];
-            if (target != UINT_MAX && !group->live[target])
-            {
-                group->live[target] = 1;
-                ready[group->live_count++] = target;
-            }
-        }
-    }
-    return 1;
-}
-
-
-/* [GC:] Capture and classify a candidate rooted by its queue. access remains
- * held by the caller when supplied. A zero result leaves the graph unclaimed. */
-static int queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
-    DVM_RangeAccess *access)
-{
-    if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
-    {
-        return 0;
-    }
-    (void)record_group_index(group, start);
-    for (unsigned int index = 0; index < group->nodes_used; index++)
-    {
-        if (!capture_record_source(group, index, start_roots, access))
-        {
-            return 0;
-        }
-    }
-    return classify_record_group(group, access != NULL);
-}
-
-
 /* No operation after publishing the roots can fail recoverably. */
 static void unlink_record_group(const RecordGroup *group)
 {
@@ -776,7 +343,7 @@ static int defer_record_group(const RecordGroup *group, int shared, int *retry)
     *retry = 0;
     DVM_RetirementReservation token = {0};
     size_t packet_bytes = sizeof(FrameRetirement) + group->nodes_used * sizeof(void *);
-    size_t metadata = sizeof(LeafRetirement) + record_group_bytes(group) +
+    size_t metadata = sizeof(LeafRetirement) + dvm_rc_record_group_bytes(group) +
         packet_bytes + dvm_runtime_root_batch_bytes(group->nodes_used);
     if (metadata > RC_BYTES)
     {
@@ -805,7 +372,7 @@ static int defer_record_group(const RecordGroup *group, int shared, int *retry)
     }
     LeafRetirement *entry = malloc(sizeof(*entry));
     FrameRetirement *records = malloc(packet_bytes);
-    RecordGroup *snapshot = copy_record_group(group);
+    RecordGroup *snapshot = dvm_rc_copy_record_group(group);
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
     unsigned long epoch = dvm_world_retire_epoch(world);
     if (!entry || !records || !snapshot || !roots || !epoch)
@@ -1362,90 +929,6 @@ static unsigned int drain_shared_children(size_t budget)
 }
 
 
-/* Reserve every count before freeing any storage. Roll back in reverse order
- * on refusal, while the rooted queue entry still owns the group. */
-static int claim_record_group(const RecordGroup *group)
-{
-    for (unsigned int index = 0; index < group->nodes_used; index++)
-    {
-        if (group->live[index])
-        {
-            continue;
-        }
-        Heap *heap = D2H(group->nodes[index]);
-        if (!dvm_refcount_replace_u(&heap->ref, group->incoming[index] + (index == 0), 0))
-        {
-            while (index)
-            {
-                index--;
-                if (group->live[index])
-                {
-                    continue;
-                }
-                heap = D2H(group->nodes[index]);
-                if (!dvm_refcount_replace_u(&heap->ref, 0, group->incoming[index] + (index == 0)))
-                {
-                    abort();
-                }
-            }
-            return 0;
-        }
-    }
-    return 1;
-}
-
-
-/* Re-read the entire edge set under the guest's canonical cell guards.
- * The rooted entry pins storage. Keep every acquired stripe through the count
- * claim so a guarded reader cannot observe a partially claimed graph. */
-static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, unsigned long *final_epoch)
-{
-    DVM_RangeAccess access = {0};
-    DVM_CellResult result = dvm_range_access_cells_begin(record_cells,
-        group->cells, group->edges_used, &access);
-    if (result != DVM_CELL_ACQUIRED)
-    {
-        return result;
-    }
-    for (unsigned int index = 0; index < group->edges_used; index++)
-    {
-        void *edge;
-        memcpy(&edge, group->cells[index], sizeof(edge));
-        unsigned int target = group->targets[index];
-        if (edge != (target == UINT_MAX ? H : group->nodes[target]))
-        {
-            result = DVM_CELL_REFUSED;
-            break;
-        }
-    }
-    for (unsigned int index = 0; result == DVM_CELL_ACQUIRED && index < group->nodes_used; index++)
-    {
-        Heap *heap = D2H(group->nodes[index]);
-        if (!group->live[index] && (dvm_runtime_root_count(heap) != 1 ||
-            (heap->t == &Tchannel && !dvm_runtime_channel_is_quiet(H2D(Channel *, heap)))))
-        {
-            result = DVM_CELL_REFUSED;
-        }
-    }
-    /* Issue the final epoch under the same guards as the count withdrawal.
-     * Guarded readers cannot start between the epoch and the claim. */
-    if (result == DVM_CELL_ACQUIRED && final_epoch &&
-        !(*final_epoch = dvm_world_retire_epoch(world)))
-    {
-        result = DVM_CELL_REFUSED;
-    }
-    if (result == DVM_CELL_ACQUIRED && !claim_record_group(group))
-    {
-        result = DVM_CELL_REFUSED;
-    }
-    if (!dvm_range_access_end(&access))
-    {
-        abort();
-    }
-    return result;
-}
-
-
 /* Reserve and root existing owners before the caller commits a transfer. */
 static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
     DVM_RetirementReservation *token, int *retry)
@@ -1774,7 +1257,7 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 static DVM_RetirementResult release_refused_snapshot(DVM_RetirementQueue *source, LeafRetirement *entry)
 {
     FrameRetirement *records = entry->records;
-    unsigned long charge = entry->bytes - sizeof(*entry) - record_group_bytes(entry->snapshot);
+    unsigned long charge = entry->bytes - sizeof(*entry) - dvm_rc_record_group_bytes(entry->snapshot);
     DVM_RetirementReservation token = {0};
     DVM_RetirementResult result = dvm_retirement_reserve(frames, charge, &token);
     if (result != DVM_RETIRE_OK)
@@ -1810,11 +1293,12 @@ static void take_cycle_candidate(DVM_RetirementQueue *source, Heap *heap)
 }
 
 
-/* Move the queue owner and root without releasing either. Duke keeps a
- * generation index; the retained fallback uses its ordinary FIFO. */
-static int move_cycle_candidate(DVM_RetirementQueue *source,
-    DVM_RetirementQueue *destination, Heap *heap)
+/* EN: Move candidate and its root from source to destination. Return zero if full.
+ * RU: Передать candidate и его корень из source в destination. При отказе вернуть ноль. */
+int dvm_rc_move_candidate(DVM_RetirementQueue *source,
+    DVM_RetirementQueue *destination, void *candidate)
 {
+    Heap *heap = D2H(candidate);
     DVM_RetirementReservation token = {0};
     unsigned long bytes = poolmsize(heapmem, heap);
     DVM_HeapKey key = {0};
@@ -1854,10 +1338,9 @@ static int move_cycle_candidate(DVM_RetirementQueue *source,
 }
 
 
-/* [GC:] Try to consume the head candidate under shared admission. Charge
- * captured work to cost and report transient contention through busy.
- * The queue keeps its owner on failure. */
-static int scan_retiring_record(DVM_RetirementQueue *source, size_t *cost, int *busy)
+/* EN: Try the source head under shared admission. cost counts work, busy signals retry.
+ * RU: Проверить первый элемент source под параллельным допуском. cost учитывает работу, busy означает повтор. */
+int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
 {
     *cost = 1;
     *busy = 0;
@@ -1885,9 +1368,9 @@ static int scan_retiring_record(DVM_RetirementQueue *source, size_t *cost, int *
         return 1;
     }
     RecordGroupScratch scratch = {0};
-    RecordGroup group = empty_record_group(&scratch);
+    RecordGroup group = dvm_rc_empty_record_group(&scratch);
     group.growing = source == duke_candidates;
-    if (group.growing && !grow_record_group(&group, DUKE_INITIAL_FIELDS))
+    if (group.growing && !dvm_rc_grow_record_group(&group, DUKE_INITIAL_FIELDS))
     {
         return 0;
     }
@@ -1897,7 +1380,7 @@ static int scan_retiring_record(DVM_RetirementQueue *source, size_t *cost, int *
         free(group.owned_scratch);
         return 0;
     }
-    int scanned = queued_record_group(value, 1, &group, &access);
+    int scanned = dvm_rc_queued_record_group(value, 1, &group, &access);
     *cost += group.edges_used;
     int retry_promotion = 0;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1, &retry_promotion);
@@ -1924,7 +1407,7 @@ static int scan_retiring_record(DVM_RetirementQueue *source, size_t *cost, int *
         DVM_RetirementQueue *destination = source == cycle_candidates && duke_candidates &&
             !dvm_retirement_contains_key(duke_candidates, dvm_heap_pool_key(heapmem, heap)) ?
             duke_candidates : retirement;
-        int moved = move_cycle_candidate(source, destination, heap);
+        int moved = dvm_rc_move_candidate(source, destination, value);
         if (source == cycle_candidates)
         {
             cycle_candidates_oversized += moved;
@@ -1974,7 +1457,7 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
         {
             size_t cost;
             int busy;
-            if (scan_retiring_record(cycle_candidates, &cost, &busy))
+            if (dvm_rc_scan_candidate(cycle_candidates, &cost, &busy))
             {
                 completed++;
             }
@@ -2040,50 +1523,11 @@ int dvm_runtime_rc_duke_ready(void)
 }
 
 
-/* [GC:] Duke attempts one larger snapshot on its own context. Leave shared
- * admission before another pass. A failed snapshot goes to retained release. */
+/* EN: Run Duke on context with budget using the runtime-owned queues.
+ * RU: Запустить ДюкGC на context с бюджетом budget и очередями рантайма. */
 unsigned int dvm_runtime_rc_shared_duke(DVM_NativeContext *context, size_t budget)
 {
-    DVM_RetirementStats queued = {0};
-    (void)dvm_retirement_statistics(duke_candidates, &queued);
-    DVM_HeapOwner *reader = dvm_native_owner_current();
-    if (!budget || !queued.ready || !queued.accepting || context != dvm_native_context_current())
-    {
-        return 0;
-    }
-    if (!dvm_native_owner_attach_service(reader, world))
-    {
-        return 1;
-    }
-    if (dvm_native_owner_try_enter_idle_shared(reader))
-    {
-        size_t cost;
-        int busy;
-        if (!scan_retiring_record(duke_candidates, &cost, &busy))
-        {
-            if (busy)
-            {
-                dvm_retirement_rotate(duke_candidates);
-            }
-            else
-            {
-                void *value = dvm_retirement_peek(duke_candidates);
-                if (value)
-                {
-                    (void)move_cycle_candidate(duke_candidates, retirement, D2H(value));
-                }
-            }
-        }
-        if (!dvm_native_owner_leave_idle_shared(reader))
-        {
-            abort();
-        }
-    }
-    if (!dvm_native_owner_detach(reader))
-    {
-        abort();
-    }
-    return dvm_runtime_rc_duke_ready();
+    return dvm_gc_duke_run(context, budget, world, duke_candidates, retirement);
 }
 
 
@@ -2172,7 +1616,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 else
                 {
-                    claim = validate_and_claim_record_group(entry->snapshot,
+                    claim = dvm_gc_fast_confirm_graph(entry->snapshot, record_cells, world,
                         entry->pinned_children ? &final_epoch : NULL);
                     budget = cost < budget ? budget - cost : 0;
                 }
@@ -2384,11 +1828,11 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
 
 /* Revalidate under collector admission before mutating any edge. Keep one
  * owner per node through the whole unlink, then use ordinary destruction. */
-static int process_queued_record_group(void *value, int promote)
+static int process_dvm_rc_queued_record_group(void *value, int promote)
 {
     RecordGroupScratch scratch = {0};
-    RecordGroup group = empty_record_group(&scratch);
-    if (!queued_record_group(value, 1, &group, NULL) || group.live[0])
+    RecordGroup group = dvm_rc_empty_record_group(&scratch);
+    if (!dvm_rc_queued_record_group(value, 1, &group, NULL) || group.live[0])
     {
         return 0;
     }
@@ -2489,7 +1933,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
         budget--;
         /* Direct entries held the last owner or exhausted the snapshot
          * budget in Cycles. The retained tracer handles oversized closure. */
-        int promoted = !direct_release && process_queued_record_group(value, 1);
+        int promoted = !direct_release && process_dvm_rc_queued_record_group(value, 1);
         ptrdel(D2H(value));
         fallback.promoted += promoted;
         if (!promoted)
@@ -2531,7 +1975,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
             }
             if (!promoted)
             {
-                process_queued_record_group(child, 0);
+                process_dvm_rc_queued_record_group(child, 0);
             }
             if (!transferred && !dvm_runtime_root_batch_remove(packet->roots, index))
             {

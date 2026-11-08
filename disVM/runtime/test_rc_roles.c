@@ -1,4 +1,8 @@
-/* Real owner/world role checks; no managed allocation or collector is simulated. */
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Test native GC role boundaries using real owners and a real world.
+ * RU: Проверка границ ролей GC на реальных владельцах и домене кучи.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -26,6 +30,14 @@ Pool *heapmem; /* Never used: rejected roles must not ask the allocator anything
 int mutator;  /* Link retained marking declarations; marking is forbidden here. */
 int nprop;    /* Link retained marking declarations; no mark may be published. */
 static void *probe; /* Native-backed sentinel, never admitted as a managed object. */
+
+
+/* EN: No managed-owner tickets exist in this role fixture.
+ * RU: В этой проверке ролей нет заданий управляемого владения. */
+unsigned long dvm_managed_owner_pending(void)
+{
+    return 0;
+}
 
 
 /* Fail a lifecycle check. valid/message are borrowed; no VM exception is forged. */

@@ -135,6 +135,15 @@ add_executable(disvm
     close_worker.c
     runtime_gc.c
     runtime_rc.c
+    gc/common/graph_storage.c
+    gc/common/collector_environment.c
+    gc/common/native_admission.c
+    gc/fast/retirement_pass.c
+    gc/fast/graph_confirmation.c
+    gc/common/graph_capture.c
+    gc/cycles/cycle_pass.c
+    gc/duke/snapshot_growth.c
+    gc/duke/large_graph_pass.c
     retirement_queue.c
     gc_fields.c
     type_counts.c

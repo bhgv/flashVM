@@ -99,7 +99,7 @@ def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:]
                                 if value != '--positive-only')
     implementation = Path(__file__).with_name('runtime_rc.c').read_text()
-    anchor = '        (void)dvm_retirement_cancel(retirement, &token);\n        memcpy'
+    anchor = '        (void)dvm_retirement_cancel(queue, &token);\n        memcpy'
     if implementation.count(anchor) != 1:
         raise RuntimeError('RC cancellation control source drift')
     with tempfile.TemporaryDirectory(prefix='RC reservation ') as directory:

@@ -1,0 +1,78 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Native snapshot data and interfaces for Cycles and Duke GC.
+ * RU: Данные снимка графа и интерфейсы для Cycles и ДюкGC.
+ */
+#ifndef DVM_RC_GRAPH_SNAPSHOT_H
+#define DVM_RC_GRAPH_SNAPSHOT_H
+
+#include "disvm/range_access.h"
+#include <stddef.h>
+
+#define DUKE_INITIAL_FIELDS 2048 /* Initial shared snapshot capacity on the Duke lane. */
+#define RECORD_SCRATCH_BYTES (4UL * 1024UL * 1024UL) /* Maximum Duke discovery storage. */
+#define RECORD_EDGE_LIMIT 512 /* Maximum mapped fields in one guarded snapshot. */
+#define RECORD_NODE_CAPACITY (RECORD_EDGE_LIMIT + 1) /* Seed plus one target per field. */
+#define RECORD_INDEX_SLOTS (RECORD_EDGE_LIMIT * 4) /* Power of two, below half full. */
+
+typedef struct RecordGroup
+{
+    void **nodes;             /* Captured object payloads. */
+    unsigned int *incoming;   /* Internal incoming edge counts. */
+    unsigned int *index;      /* Discovery hash slots, unused after capture. */
+    void **cells;             /* Captured source field addresses. */
+    unsigned int *targets;    /* Target node index or nil sentinel. */
+    unsigned int *sources;    /* Source node index for each captured edge. */
+    unsigned char *live;      /* Nodes reachable from outside the group. */
+    void *owned_scratch;      /* Duke's allocated discovery storage, or NULL. */
+    unsigned int field_limit; /* Capture capacity of the backing storage. */
+    int growing;             /* Duke can enlarge discovery storage under guards. */
+    unsigned int live_count;    /* Nodes marked reachable. */
+    int busy; /* A field stripe was temporarily owned elsewhere. */
+    int oversized; /* Bounded discovery could not fit another field. */
+    int has_views; /* A detached view needs descriptor-only destruction. */
+    unsigned int nodes_used;    /* Indexed object count. */
+    unsigned int edges_used;    /* Captured field count. */
+} RecordGroup;
+
+
+/* Scratch storage owned by one guarded discovery call. */
+typedef struct RecordGroupScratch
+{
+    void *nodes[RECORD_NODE_CAPACITY];             /* Object payloads. */
+    unsigned int incoming[RECORD_NODE_CAPACITY];  /* Internal incoming counts. */
+    unsigned int index[RECORD_INDEX_SLOTS];      /* Node indices plus one. */
+    void *cells[RECORD_EDGE_LIMIT];              /* Captured field addresses. */
+    unsigned int targets[RECORD_EDGE_LIMIT];     /* Target indices. */
+    unsigned int sources[RECORD_EDGE_LIMIT];     /* Source indices. */
+    unsigned char live[RECORD_NODE_CAPACITY];      /* Reachability flags. */
+} RecordGroupScratch;
+
+
+/* EN: Use caller-owned zeroed scratch. RU: Использовать обнулённый буфер scratch. */
+RecordGroup dvm_rc_empty_record_group(RecordGroupScratch *scratch);
+
+/* EN: Measure captured group storage. RU: Измерить объём снимка group. */
+size_t dvm_rc_record_group_bytes(const RecordGroup *group);
+
+/* EN: Copy group into one allocation. RU: Скопировать group в один блок памяти. */
+RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group);
+
+/* EN: First hash probe for value in group. RU: Начальная позиция value в group. */
+unsigned int dvm_rc_record_index_slot(const RecordGroup *group, void *value);
+
+/* EN: Index payload value in group. RU: Найти или добавить адрес value в group. */
+unsigned int dvm_rc_record_group_index(RecordGroup *group, void *value);
+
+/* EN: Grow group for required fields. RU: Увеличить ёмкость group до required полей. */
+int dvm_rc_grow_record_group(RecordGroup *group, size_t required);
+
+/* EN: Reserve additional fields in group. RU: Зарезервировать fields мест в group. */
+int dvm_rc_reserve_record_fields(RecordGroup *group, size_t fields);
+
+/* EN: Read from rooted start using start_roots and borrowed access.
+ * RU: Обойти граф от start с ожидаемым числом корней start_roots под защитой access. */
+int dvm_rc_queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
+    DVM_RangeAccess *access);
+
+#endif
