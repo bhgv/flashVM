@@ -18,6 +18,7 @@
 #include "root_registry.h"
 #include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -49,6 +50,7 @@ typedef struct LeafRetirement
     int claim_refused;        /* Fall back to normal release if closure changed. */
 } LeafRetirement;
 
+static DVM_RetirementQueue *duke_candidates; /* Rooted large graphs for Duke GC. */
 static DVM_RetirementQueue *cycle_candidates; /* Nonfinal owners for the Cycles lane. */
 static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and final epochs. */
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
@@ -74,6 +76,7 @@ static unsigned long cycle_candidates_rotated;
 static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_full; /* Candidate reservations refused for capacity. */
 static unsigned long cycle_candidates_rooted;
+static unsigned long duke_promoted; /* Large snapshots handed to Fast GC. */
 static unsigned long cycle_candidates_oversized;
 static size_t candidate_sweep_left; /* Entries left in the current no-progress sweep. */
 static int candidate_sweep_busy; /* Every failed scan in this sweep hit a busy field. */
@@ -127,7 +130,7 @@ void dvm_runtime_rc_start(void)
     helper_enqueued = 0;
     helper_saturated = 0;
     helper_byte_limited = 0;
-    if (retirement || frames || leaves || difficult || record_retries || cycle_candidates)
+    if (retirement || frames || leaves || difficult || record_retries || cycle_candidates || duke_candidates)
     {
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
@@ -138,6 +141,7 @@ void dvm_runtime_rc_start(void)
     difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
     cycle_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
+    duke_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
     shared_array_graphs = 0;
@@ -157,6 +161,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_coalesced = 0;
     cycle_candidates_full = 0;
     cycle_candidates_rooted = 0;
+    duke_promoted = 0;
     cycle_candidates_oversized = 0;
     candidate_sweep_left = 0;
     candidate_sweep_busy = 0;
@@ -287,6 +292,7 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 }
 
 
+#define DUKE_EDGE_LIMIT 2048 /* Initial shared snapshot bound on the Duke lane. */
 #define RECORD_EDGE_LIMIT 512 /* Maximum mapped fields in one guarded snapshot. */
 #define RECORD_NODE_CAPACITY (RECORD_EDGE_LIMIT + 1) /* Seed plus one target per field. */
 #define RECORD_INDEX_SLOTS (RECORD_EDGE_LIMIT * 4) /* Power of two, below half full. */
@@ -300,6 +306,7 @@ struct RecordGroup
     unsigned int *targets;    /* Target node index or nil sentinel. */
     unsigned int *sources;    /* Source node index for each captured edge. */
     unsigned char *live;      /* Nodes reachable from outside the group. */
+    unsigned int field_limit; /* Capture capacity of the borrowed backing storage. */
     unsigned int live_count;
     int busy; /* A field stripe was temporarily owned elsewhere. */
     int oversized; /* Bounded discovery could not fit another field. */
@@ -327,7 +334,7 @@ static RecordGroup empty_record_group(RecordGroupScratch *scratch)
 {
     return (RecordGroup){.nodes = scratch->nodes, .incoming = scratch->incoming,
         .index = scratch->index, .cells = scratch->cells, .targets = scratch->targets,
-        .sources = scratch->sources, .live = scratch->live};
+        .sources = scratch->sources, .live = scratch->live, .field_limit = RECORD_EDGE_LIMIT};
 }
 
 
@@ -374,7 +381,8 @@ static RecordGroup *copy_record_group(const RecordGroup *group)
 static unsigned int record_group_index(RecordGroup *group, void *value)
 {
     uintptr_t address = (uintptr_t)value / sizeof(void *);
-    unsigned int slot = (address ^ (address >> 7)) % RECORD_INDEX_SLOTS;
+    unsigned int slots = group->field_limit * 4;
+    unsigned int slot = (address ^ (address >> 7)) % slots;
     while (group->index[slot])
     {
         unsigned int index = group->index[slot] - 1;
@@ -382,7 +390,7 @@ static unsigned int record_group_index(RecordGroup *group, void *value)
         {
             return index;
         }
-        slot = (slot + 1) % RECORD_INDEX_SLOTS;
+        slot = (slot + 1) % slots;
     }
     unsigned int index = group->nodes_used++;
     group->nodes[index] = value;
@@ -395,7 +403,7 @@ static unsigned int record_group_index(RecordGroup *group, void *value)
 static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
     DVM_RangeAccess *access)
 {
-    if (group->edges_used == RECORD_EDGE_LIMIT)
+    if (group->edges_used == group->field_limit)
     {
         group->oversized = 1;
         return 0;
@@ -419,7 +427,7 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
     group->sources[group->edges_used] = index;
     if (edge == H)
     {
-        group->targets[group->edges_used++] = RECORD_NODE_CAPACITY;
+        group->targets[group->edges_used++] = UINT_MAX;
         return 1;
     }
     unsigned int target = record_group_index(group, edge);
@@ -522,7 +530,7 @@ static int capture_record_source(RecordGroup *group, unsigned int index,
     if (elements > 1)
     {
         size_t mapped;
-        if (!repeated_record_fields_fit(type, elements, RECORD_EDGE_LIMIT - group->edges_used, &mapped))
+        if (!repeated_record_fields_fit(type, elements, group->field_limit - group->edges_used, &mapped))
         {
             group->oversized = 1;
             return 0;
@@ -573,8 +581,8 @@ static int classify_record_group(RecordGroup *group, int shared)
         }
         group->live[0] = 1;
     }
-    unsigned int ready[RECORD_NODE_CAPACITY];
-    unsigned int starts[RECORD_NODE_CAPACITY + 1];
+    unsigned int ready[group->nodes_used];
+    unsigned int starts[group->nodes_used + 1];
     unsigned int edge = 0;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
@@ -606,7 +614,7 @@ static int classify_record_group(RecordGroup *group, int shared)
         for (edge = starts[source]; edge < starts[source + 1]; edge++)
         {
             unsigned int target = group->targets[edge];
-            if (target != RECORD_NODE_CAPACITY && !group->live[target])
+            if (target != UINT_MAX && !group->live[target])
             {
                 group->live[target] = 1;
                 ready[group->live_count++] = target;
@@ -650,7 +658,7 @@ static void unlink_record_group(const RecordGroup *group)
     }
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
-        if (group->targets[index] == RECORD_NODE_CAPACITY || group->live[group->sources[index]])
+        if (group->targets[index] == UINT_MAX || group->live[group->sources[index]])
         {
             continue;
         }
@@ -790,7 +798,8 @@ static int record_candidate(const Heap *heap)
  * entry holds the same allocation alive through this observation. */
 static int cycle_candidate_already_queued(DVM_HeapKey key)
 {
-    int queued = dvm_retirement_contains_key(cycle_candidates, key);
+    int queued = dvm_retirement_contains_key(cycle_candidates, key) ||
+        dvm_retirement_contains_key(duke_candidates, key);
     cycle_candidates_coalesced += queued;
     return queued;
 }
@@ -1288,7 +1297,7 @@ static DVM_CellResult validate_and_claim_record_group(const RecordGroup *group, 
         void *edge;
         memcpy(&edge, group->cells[index], sizeof(edge));
         unsigned int target = group->targets[index];
-        if (edge != (target == RECORD_NODE_CAPACITY ? H : group->nodes[target]))
+        if (edge != (target == UINT_MAX ? H : group->nodes[target]))
         {
             result = DVM_CELL_REFUSED;
             break;
@@ -1375,7 +1384,7 @@ static int release_record_branches(const RecordGroup *group)
     {
         return 1;
     }
-    void *keys[RECORD_NODE_CAPACITY + RECORD_EDGE_LIMIT];
+    void *keys[group->nodes_used + group->edges_used];
     size_t count = 0;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
@@ -1387,7 +1396,7 @@ static int release_record_branches(const RecordGroup *group)
     for (unsigned int edge = 0; edge < group->edges_used; edge++)
     {
         unsigned int target = group->targets[edge];
-        if (target != RECORD_NODE_CAPACITY && group->live[target] && !group->live[group->sources[edge]])
+        if (target != UINT_MAX && group->live[target] && !group->live[group->sources[edge]])
         {
             keys[count++] = D2H(group->nodes[target]);
         }
@@ -1589,7 +1598,7 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
         for (unsigned int edge = 0; edge < snapshot->edges_used; edge++)
         {
             unsigned int target = snapshot->targets[edge];
-            if (target != RECORD_NODE_CAPACITY && snapshot->live[target] &&
+            if (target != UINT_MAX && snapshot->live[target] &&
                 !snapshot->live[snapshot->sources[edge]])
             {
                 destroy(snapshot->nodes[target]);
@@ -1654,11 +1663,11 @@ static int release_refused_snapshot(DVM_RetirementQueue *source, LeafRetirement 
  * can give up the queue owner here. Potential garbage retains its root for
  * the existing final confirmation path. */
 /* Withdrawal clears the FIFO key and the corresponding queue root. */
-static void take_cycle_candidate(Heap *heap)
+static void take_cycle_candidate(DVM_RetirementQueue *source, Heap *heap)
 {
     void *head;
     unsigned long bytes;
-    if (!dvm_retirement_take(cycle_candidates, &head, &bytes) || head != H2D(void *, heap) ||
+    if (!dvm_retirement_take(source, &head, &bytes) || head != H2D(void *, heap) ||
         !dvm_runtime_root_remove(heap))
     {
         abort();
@@ -1666,24 +1675,34 @@ static void take_cycle_candidate(Heap *heap)
 }
 
 
-/* Move the existing owner and root to the fallback queue unchanged. */
-static int defer_oversized_candidate(Heap *heap)
+/* Move the queue owner and root without releasing either. Duke keeps a
+ * generation index; the retained fallback uses its ordinary FIFO. */
+static int move_cycle_candidate(DVM_RetirementQueue *source,
+    DVM_RetirementQueue *destination, Heap *heap)
 {
     DVM_RetirementReservation token = {0};
     unsigned long bytes = poolmsize(heapmem, heap);
-    if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+    DVM_HeapKey key = {0};
+    if (destination == duke_candidates)
+    {
+        key = dvm_heap_pool_key(heapmem, heap);
+        if (!key.generation)
+        {
+            return 0;
+        }
+    }
+    if (dvm_retirement_reserve(destination, bytes, &token) != DVM_RETIRE_OK)
     {
         return 0;
     }
     void *value;
     unsigned long prior_bytes;
-    if (!dvm_retirement_take(cycle_candidates, &value, &prior_bytes) ||
+    if (!dvm_retirement_take(source, &value, &prior_bytes) ||
         value != H2D(void *, heap) || prior_bytes != bytes ||
-        !dvm_retirement_commit(retirement, &token, value))
+        !dvm_retirement_commit_key(destination, &token, value, key, NULL))
     {
         abort();
     }
-    cycle_candidates_oversized++;
     if (notify_ready)
     {
         notify_ready();
@@ -1695,11 +1714,11 @@ static int defer_oversized_candidate(Heap *heap)
 /* [GC:] Try to consume the head candidate under shared admission. Charge
  * captured work to cost and report retryable field contention through busy.
  * The queue keeps its owner on failure. */
-static int scan_retiring_record(size_t *cost, int *busy)
+static int scan_retiring_record(DVM_RetirementQueue *source, unsigned int limit, size_t *cost, int *busy)
 {
     *cost = 1;
     *busy = 0;
-    void *value = dvm_retirement_peek(cycle_candidates);
+    void *value = dvm_retirement_peek(source);
     if (!dvm_runtime_idle_cycles || !value)
     {
         return 0;
@@ -1711,19 +1730,29 @@ static int scan_retiring_record(size_t *cost, int *busy)
         {
             return 0;
         }
-        take_cycle_candidate(heap);
+        take_cycle_candidate(source, heap);
         return 1;
     }
     if (dvm_runtime_root_count(heap) > 1 && dvm_refcount_drop_nonfinal_u(&heap->ref))
     {
-        take_cycle_candidate(heap);
+        take_cycle_candidate(source, heap);
         dvm_runtime_gc_owner_lost();
         cycle_candidates_rooted++;
         released++;
         return 1;
     }
-    RecordGroupScratch scratch = {0};
-    RecordGroup group = empty_record_group(&scratch);
+    void *nodes[limit + 1];
+    unsigned int incoming[limit + 1];
+    unsigned int index[limit * 4];
+    void *cells[limit];
+    unsigned int targets[limit];
+    unsigned int sources[limit];
+    unsigned char live[limit + 1];
+    memset(incoming, 0, sizeof(incoming));
+    memset(index, 0, sizeof(index));
+    memset(live, 0, sizeof(live));
+    RecordGroup group = {.nodes = nodes, .incoming = incoming, .index = index,
+        .cells = cells, .targets = targets, .sources = sources, .live = live, .field_limit = limit};
     DVM_RangeAccess access = {0};
     if (dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
     {
@@ -1732,6 +1761,7 @@ static int scan_retiring_record(size_t *cost, int *busy)
     int scanned = queued_record_group(value, 1, &group, &access);
     *cost += group.edges_used;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1);
+    duke_promoted += promoted && source == duke_candidates;
     DVM_WorldState activity;
     shared_record_snapshots_with_peer += scanned &&
         dvm_world_state(world, &activity) && activity.active > 1;
@@ -1743,13 +1773,18 @@ static int scan_retiring_record(size_t *cost, int *busy)
     *busy = group.busy;
     if (group.oversized)
     {
-        return defer_oversized_candidate(heap);
+        DVM_RetirementQueue *destination = source == cycle_candidates && duke_candidates &&
+            !dvm_retirement_contains_key(duke_candidates, dvm_heap_pool_key(heapmem, heap)) ?
+            duke_candidates : retirement;
+        int moved = move_cycle_candidate(source, destination, heap);
+        cycle_candidates_oversized += moved && source == cycle_candidates;
+        return moved;
     }
     if (!promoted && (!scanned || !group.live[0] || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref)))
     {
         return 0;
     }
-    take_cycle_candidate(heap);
+    take_cycle_candidate(source, heap);
     if (!promoted)
     {
         dvm_runtime_gc_owner_lost();
@@ -1788,7 +1823,7 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
         {
             size_t cost;
             int busy;
-            if (scan_retiring_record(&cost, &busy))
+            if (scan_retiring_record(cycle_candidates, RECORD_EDGE_LIMIT, &cost, &busy))
             {
                 completed++;
             }
@@ -1844,6 +1879,60 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
         abort();
     }
     return completed + retry;
+}
+
+
+/* Report rooted work queued for the optional Duke collector. */
+int dvm_runtime_rc_duke_ready(void)
+{
+    return dvm_retirement_peek(duke_candidates) != NULL;
+}
+
+
+/* [GC:] Duke attempts one larger snapshot on its own context. Leave shared
+ * admission before another pass. A failed snapshot goes to retained release. */
+unsigned int dvm_runtime_rc_shared_duke(DVM_NativeContext *context, size_t budget)
+{
+    DVM_RetirementStats queued = {0};
+    (void)dvm_retirement_statistics(duke_candidates, &queued);
+    DVM_HeapOwner *reader = dvm_native_owner_current();
+    if (!budget || !queued.ready || !queued.accepting || context != dvm_native_context_current())
+    {
+        return 0;
+    }
+    if (!dvm_native_owner_attach_service(reader, world))
+    {
+        return 1;
+    }
+    if (dvm_native_owner_try_enter_idle_shared(reader))
+    {
+        size_t cost;
+        int busy;
+        if (!scan_retiring_record(duke_candidates, DUKE_EDGE_LIMIT, &cost, &busy))
+        {
+            if (busy)
+            {
+                dvm_retirement_rotate(duke_candidates);
+            }
+            else
+            {
+                void *value = dvm_retirement_peek(duke_candidates);
+                if (value)
+                {
+                    (void)move_cycle_candidate(duke_candidates, retirement, D2H(value));
+                }
+            }
+        }
+        if (!dvm_native_owner_leave_idle_shared(reader))
+        {
+            abort();
+        }
+    }
+    if (!dvm_native_owner_detach(reader))
+    {
+        abort();
+    }
+    return dvm_runtime_rc_duke_ready();
 }
 
 
@@ -2211,7 +2300,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     /* Give Cycles first refusal. The idle fallback may take candidates only
      * after an actual shared attempt stalled, or while closing the queues. */
     int direct_release;
-    while (budget && ((direct_release = dvm_retirement_take(retirement, &value, &bytes)) ||
+    while (budget && ((direct_release = dvm_retirement_take(retirement, &value, &bytes) ||
+                       (!accepting && dvm_retirement_take(duke_candidates, &value, &bytes))) ||
                       ((!accepting ||
                         __atomic_load_n(&candidate_fallback_ready, __ATOMIC_ACQUIRE) || heapmonitor) &&
                        dvm_retirement_take(cycle_candidates, &value, &bytes))))
@@ -2296,7 +2386,8 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
     (void)dvm_retirement_statistics(frames, &frame_stats);
     (void)dvm_retirement_statistics(retirement, &stats);
     return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready();
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready() +
+        (!accepting && dvm_runtime_rc_duke_ready());
 }
 
 
@@ -2312,7 +2403,7 @@ unsigned int dvm_runtime_rc_pending(void)
         (void)dvm_retirement_statistics(frames, &frame_stats);
         (void)dvm_retirement_statistics(retirement, &stats);
         return stats.ready + stats.reserved + frame_stats.ready + frame_stats.reserved +
-        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready();
+        (dvm_retirement_peek(leaves) != NULL) + (dvm_retirement_peek(difficult) != NULL) + (dvm_retirement_peek(record_retries) != NULL) + dvm_runtime_rc_candidates_ready() + dvm_runtime_rc_duke_ready();
     }
     return stats.ready+stats.reserved;
 }
@@ -2325,12 +2416,14 @@ static int retirement_ready(int include_shared_retries)
     DVM_RetirementStats refs = {0};
     DVM_RetirementStats packets = {0};
     DVM_RetirementStats candidates = {0};
+    DVM_RetirementStats duke = {0};
+    (void)dvm_retirement_statistics(duke_candidates, &duke);
     DVM_RetirementStats retries = {0};
     (void)dvm_retirement_statistics(record_retries, &retries);
     (void)dvm_retirement_statistics(cycle_candidates, &candidates);
     (void)dvm_retirement_statistics(retirement, &refs);
     (void)dvm_retirement_statistics(frames, &packets);
-    return refs.ready != 0 || packets.ready != 0 ||
+    return refs.ready != 0 || packets.ready != 0 || (duke.ready && !duke.accepting) ||
         dvm_retirement_peek(leaves) != NULL || dvm_retirement_peek(difficult) != NULL ||
         (retries.ready && (include_shared_retries || !retries.accepting)) ||
         (candidates.ready && (!candidates.accepting ||
@@ -2352,6 +2445,7 @@ void dvm_runtime_rc_close(void)
     accepting = 0;
     dvm_retirement_close(retirement);
     dvm_retirement_close(cycle_candidates);
+    dvm_retirement_close(duke_candidates);
     dvm_retirement_close(frames);
     dvm_retirement_close(leaves);
     dvm_retirement_close(difficult);
@@ -2381,6 +2475,7 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(cycle_candidates, &candidates);
         printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
             candidates.ready, candidates.reserved, candidates.capacity, candidates.peak_capacity);
+        printf("NATIVEDUKEGC promoted=%lu\n", duke_promoted);
         printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",
             frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized, cycle_candidates_full);
     }
@@ -2403,7 +2498,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(difficult, &difficult_stats);
         printf("NATIVERCFALLBACK moved=%lu pending=%u\n", difficult_moved, difficult_stats.ready + difficult_stats.reserved);
     }
-    result = (cycle_candidates == NULL || dvm_retirement_destroy(&cycle_candidates)) &&
+    result = (duke_candidates == NULL || dvm_retirement_destroy(&duke_candidates)) &&
+        (cycle_candidates == NULL || dvm_retirement_destroy(&cycle_candidates)) &&
         (record_retries == NULL || dvm_retirement_destroy(&record_retries)) &&
         (difficult == NULL || dvm_retirement_destroy(&difficult)) &&
         (leaves == NULL || dvm_retirement_destroy(&leaves)) &&

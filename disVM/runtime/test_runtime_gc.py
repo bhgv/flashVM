@@ -43,9 +43,9 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         raise RuntimeError("deferred RC did not drain:\n" + output[-5000:])
     if budget is None and int(limits[1]) == 0:
         raise RuntimeError("large-block bound did not execute:\n" + output[-5000:])
-    lanes = re.search(r"failed=0 fast_passes=(\d+) workers=2", output)
+    lanes = re.search(r"failed=0 fast_passes=(\d+) workers=3", output)
     if not lanes or int(lanes[1]) == 0:
-        raise RuntimeError("real Fast/Cycles workers did not execute:\n" + output[-5000:])
+        raise RuntimeError("real Fast/Cycles/Duke workers did not execute:\n" + output[-5000:])
     polls = re.search(r"fast_polls=(\d+) locked_polls=(\d+)", output)
     if not polls or (locked and (int(polls[1]) != 0 or int(polls[2]) == 0)) or (not locked and int(polls[1]) == 0):
         raise RuntimeError("poll path evidence mismatch:\n" + output[-5000:])

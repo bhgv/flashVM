@@ -26,10 +26,11 @@ struct DVM_GCWorkers
     FVM_PortSync *sync;         /* Request/lease/state mutex and condition. */
     DVM_GCWorkersConfig config; /* Copied callbacks; user remains borrowed. */
     DVM_GCWorker Fast;          /* Named RC worker group. */
+    DVM_GCWorker Duke;         /* Optional shared large-graph worker. */
     DVM_GCWorker Cycles;        /* Named cycle worker group. */
     unsigned int started;       /* Context startup handshakes. */
-    DVM_GCKind turn;            /* Alternate when both lanes have pending work. */
-    int active;                 /* Exclusive heap-pass lease: 0/1/2. */
+    DVM_GCKind turn;            /* Round-robin start among pending lanes. */
+    int active;                 /* Exclusive heap-pass lease: 0/1/2/3. */
     int stopping;               /* Cooperative shutdown. */
     int failed;                 /* Latched failure; never silently retried as success. */
 };
@@ -37,10 +38,33 @@ struct DVM_GCWorkers
 
 /* Select one of the explicitly named lane groups.
  * Parameters: workers is a borrowed service; kind is a validated lane ID.
- * Returns: its embedded Fast or Cycles record, never a new allocation. */
+ * Returns: its embedded lane record, never a new allocation. */
 static DVM_GCWorker *lane(DVM_GCWorkers *workers, DVM_GCKind kind)
 {
-    return kind == DVM_GC_FAST ? &workers->Fast : &workers->Cycles;
+    switch (kind)
+    {
+    case DVM_GC_FAST:
+        return &workers->Fast;
+    case DVM_GC_CYCLES:
+        return &workers->Cycles;
+    default:
+        return &workers->Duke;
+    }
+}
+
+
+/* Select the first pending lane in rotation while the service mutex is held. */
+static DVM_GCWorker *next_pending(DVM_GCWorkers *workers)
+{
+    for (unsigned int offset = 0; offset < 3; offset++)
+    {
+        DVM_GCWorker *worker = lane(workers, (workers->turn + offset) % 3);
+        if (worker->pending)
+        {
+            return worker;
+        }
+    }
+    return NULL;
 }
 
 
@@ -68,6 +92,12 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int requested, int *execut
     DVM_GCPass *pass = worker->kind == DVM_GC_FAST ? &workers->config.Fast : &workers->config.Cycles;
     DVM_GCWorkResult result;
     *executed = 0;
+    if (worker->kind == DVM_GC_DUKE)
+    {
+        *executed = 1;
+        return workers->config.duke_shared(worker->context,
+            workers->config.duke_budget, workers->config.user) ? DVM_GC_MORE : DVM_GC_DONE;
+    }
     if (worker->kind == DVM_GC_CYCLES && workers->config.cycles_shared &&
         workers->config.cycles_shared(worker->context, pass->budget, workers->config.user))
     {
@@ -139,7 +169,6 @@ static void run_worker(void *argument)
 {
     DVM_GCWorker *worker = (DVM_GCWorker *)argument;
     DVM_GCWorkers *workers = worker->owner;
-    DVM_GCWorker *other = lane(workers, worker->kind == DVM_GC_FAST ? DVM_GC_CYCLES : DVM_GC_FAST);
     int bound;
     worker->context = workers->config.create_context(workers->config.user);
     bound = worker->context && dvm_native_context_bind(worker->context);
@@ -156,7 +185,7 @@ static void run_worker(void *argument)
         int executed;
         unsigned long pause_us;
         while (!workers->stopping && !workers->failed &&
-               (!worker->pending || workers->active || (other->pending && workers->turn == other->kind)))
+               (workers->active || next_pending(workers) != worker))
         {
             fvm_port_sync_wait(workers->sync);
         }
@@ -175,7 +204,7 @@ static void run_worker(void *argument)
             worker->passes++;
         }
         workers->active = 0;
-        workers->turn = other->kind;
+        workers->turn = (worker->kind + 1) % 3;
         if (result == DVM_GC_MORE && !workers->stopping)
         {
             worker->pending |= requested;
@@ -185,7 +214,8 @@ static void run_worker(void *argument)
             workers->failed = 1;
         }
         fvm_port_sync_signal_all(workers->sync);
-        pause_us = worker->kind == DVM_GC_FAST ? workers->config.Fast.pause_us : workers->config.Cycles.pause_us;
+        pause_us = worker->kind == DVM_GC_FAST ? workers->config.Fast.pause_us :
+            worker->kind == DVM_GC_CYCLES ? workers->config.Cycles.pause_us : workers->config.duke_pause_us;
         if (result == DVM_GC_MORE && pause_us && !workers->stopping && !workers->failed)
         {
             fvm_port_sync_unlock(workers->sync);
@@ -216,7 +246,7 @@ static void run_worker(void *argument)
 
 /* Startup waits only for native context binding, never for a collection request.
  * Parameters: config is borrowed and copied after validation; its world, user
- * and callback-owned root state must outlive both worker joins.
+ * and callback-owned root state must outlive all worker joins.
  * Returns: an owned service, or null after startup/validation/allocation failure. */
 DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
 {
@@ -224,7 +254,8 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
     int failed;
     if (!config || !config->world || !config->create_context || !config->roots || !config->Fast.run ||
         !config->Cycles.run || !config->Fast.budget || !config->Cycles.budget ||
-        config->Fast.pause_us > DVM_GC_MAX_PAUSE_US || config->Cycles.pause_us > DVM_GC_MAX_PAUSE_US)
+        config->Fast.pause_us > DVM_GC_MAX_PAUSE_US || config->Cycles.pause_us > DVM_GC_MAX_PAUSE_US ||
+        (config->duke_shared && (!config->duke_budget || config->duke_pause_us > DVM_GC_MAX_PAUSE_US)))
     {
         return 0;
     }
@@ -246,12 +277,19 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
     workers->Cycles.kind = DVM_GC_CYCLES;
     workers->Fast.thread = fvm_port_thread_start(run_worker, &workers->Fast);
     workers->Cycles.thread = fvm_port_thread_start(run_worker, &workers->Cycles);
+    if (config->duke_shared)
+    {
+        workers->Duke.owner = workers;
+        workers->Duke.kind = DVM_GC_DUKE;
+        workers->Duke.thread = fvm_port_thread_start(run_worker, &workers->Duke);
+    }
     fvm_port_sync_lock(workers->sync);
-    if (!workers->Fast.thread || !workers->Cycles.thread)
+    if (!workers->Fast.thread || !workers->Cycles.thread ||
+        (config->duke_shared && !workers->Duke.thread))
     {
         workers->failed = 1;
     }
-    while (!workers->failed && workers->started != 2)
+    while (!workers->failed && workers->started != 2U + (config->duke_shared != NULL))
     {
         fvm_port_sync_wait(workers->sync);
     }
@@ -272,7 +310,8 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
  * Returns: one after coalescing a request, zero for invalid or stopped/failed state. */
 static int request(DVM_GCWorkers *workers, DVM_GCKind kind, int requested)
 {
-    if (!workers || (kind != DVM_GC_FAST && kind != DVM_GC_CYCLES))
+    if (!workers || (kind != DVM_GC_FAST && kind != DVM_GC_CYCLES &&
+        (kind != DVM_GC_DUKE || !workers->config.duke_shared)))
     {
         return 0;
     }
@@ -303,20 +342,21 @@ int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers)
 
 /* Caller must have left any mutator interval needed by the collector.
  * Parameters: workers is borrowed; the caller must leave its mutator interval first.
- * Returns: one when both lanes are idle, zero for invalid/self-worker calls or
+ * Returns: one when the requested lanes are idle, zero for invalid/self-worker calls or
  * shutdown/failure. This call blocks and does not impose a collection timeout. */
 static int wait_idle(DVM_GCWorkers *workers, int fast_only)
 {
     int result;
     if (!workers || fvm_port_thread_is_current(workers->Fast.thread) ||
-        fvm_port_thread_is_current(workers->Cycles.thread))
+        fvm_port_thread_is_current(workers->Cycles.thread) ||
+        (workers->Duke.thread && fvm_port_thread_is_current(workers->Duke.thread)))
     {
         return 0;
     }
     fvm_port_sync_lock(workers->sync);
     while (!workers->failed && !workers->stopping &&
            (workers->Fast.pending || workers->active == (int)DVM_GC_FAST + 1 ||
-            (!fast_only && (workers->active || workers->Cycles.pending))))
+            (!fast_only && (workers->active || workers->Cycles.pending || workers->Duke.pending))))
     {
         fvm_port_sync_wait(workers->sync);
     }
@@ -326,7 +366,7 @@ static int wait_idle(DVM_GCWorkers *workers, int fast_only)
 }
 
 
-/* Wait for both lanes before collector shutdown. */
+/* Wait for all configured lanes before collector shutdown. */
 int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers)
 {
     return wait_idle(workers, 0);
@@ -355,6 +395,8 @@ int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out)
     out->Fast.pending = workers->Fast.pending != 0;
     out->Cycles.passes = workers->Cycles.passes;
     out->Cycles.pending = workers->Cycles.pending != 0;
+    out->Duke.passes = workers->Duke.passes;
+    out->Duke.pending = workers->Duke.pending != 0;
     out->active = workers->active;
     out->stopping = workers->stopping;
     out->failed = workers->failed;
@@ -375,7 +417,8 @@ int dvm_gc_workers_destroy(DVM_GCWorkers *workers)
         return 1;
     }
     if ((workers->Fast.thread && fvm_port_thread_is_current(workers->Fast.thread)) ||
-        (workers->Cycles.thread && fvm_port_thread_is_current(workers->Cycles.thread)))
+        (workers->Cycles.thread && fvm_port_thread_is_current(workers->Cycles.thread)) ||
+        (workers->Duke.thread && fvm_port_thread_is_current(workers->Duke.thread)))
     {
         return 0;
     }
@@ -383,6 +426,7 @@ int dvm_gc_workers_destroy(DVM_GCWorkers *workers)
     workers->stopping = 1;
     workers->Fast.pending = 0;
     workers->Cycles.pending = 0;
+    workers->Duke.pending = 0;
     fvm_port_sync_signal_all(workers->sync);
     fvm_port_sync_unlock(workers->sync);
     if (workers->Fast.thread)
@@ -392,6 +436,10 @@ int dvm_gc_workers_destroy(DVM_GCWorkers *workers)
     if (workers->Cycles.thread)
     {
         fvm_port_thread_join(workers->Cycles.thread);
+    }
+    if (workers->Duke.thread)
+    {
+        fvm_port_thread_join(workers->Duke.thread);
     }
     result = !workers->failed;
     fvm_port_sync_destroy(workers->sync);

@@ -1,4 +1,4 @@
-/* Two native GC workers with bounded passes and explicit stopped-world ownership. */
+/* Native GC workers with bounded passes and explicit stopped-world ownership. */
 #ifndef DISVM_GC_WORKERS_H
 #define DISVM_GC_WORKERS_H
 #include "native_world.h"
@@ -11,11 +11,12 @@ extern "C"
 #define DVM_GC_MAX_PAUSE_US 1000000UL
 
 
-/* One worker drains deferred RC work; the other advances cycle collection. */
+/* Fast drains deferred RC; Cycles and optional Duke discover garbage. */
 typedef enum DVM_GCKind
 {
     DVM_GC_FAST = 0,  /* Deferred reference-count work. */
-    DVM_GC_CYCLES = 1 /* Incremental cyclic-garbage collection. */
+    DVM_GC_CYCLES = 1, /* Incremental cyclic-garbage collection. */
+    DVM_GC_DUKE = 2 /* Optional shared large-graph discovery. */
 } DVM_GCKind;
 
 
@@ -46,7 +47,7 @@ typedef struct DVM_GCPass
 } DVM_GCPass;
 
 
-/* [GC:] user/world/backend roots must outlive both joins. Pending RC objects must
+/* [GC:] user/world/backend roots must outlive all worker joins. Pending RC objects must
  * remain rooted in the backend until processed; this API queues requests, not pointers. */
 typedef struct DVM_GCWorkersConfig
 {
@@ -60,6 +61,9 @@ typedef struct DVM_GCWorkersConfig
     int fast_quiescent_only;            /* Fast claims idle admission without parking guests. */
     unsigned int (*cycles_shared)(DVM_NativeContext *, size_t, void *); /* Optional candidate walk. */
     unsigned int (*fast_shared)(DVM_NativeContext *, size_t, void *); /* Optional shared leaf work. */
+    size_t duke_budget;                 /* Large-graph work units per shared pass. */
+    unsigned long duke_pause_us;        /* Pacing outside heap admission. */
+    unsigned int (*duke_shared)(DVM_NativeContext *, size_t, void *); /* Shared large graphs. */
     int (*fast_ready)(void *user);       /* Optional native-only queue check before a Fast stop. */
 } DVM_GCWorkersConfig;
 
@@ -77,13 +81,14 @@ typedef struct DVM_GCWorkersState
 {
     DVM_GCLaneState Fast;
     DVM_GCLaneState Cycles;
-    int active;   /* 0 idle, 1 fast, 2 cycles; only one heap pass runs at a time. */
+    DVM_GCLaneState Duke;
+    int active;   /* 0 idle, 1 fast, 2 cycles, 3 large; only one heap pass runs at a time. */
     int stopping; /* Shutdown requested; queued requests are discarded. */
     int failed;   /* Startup/callback/world protocol failure latched. */
 } DVM_GCWorkersState;
 
 
-/* Start two full OS threads and wait until both collector contexts are bound. */
+/* Start Fast, Cycles and optional Duke. Wait until their contexts are bound. */
 DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config);
 
 
@@ -94,7 +99,7 @@ int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
 int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers);
 
 
-/* Wait for both lanes to become idle. Do not call from an active mutator or
+/* Wait for all configured lanes to become idle. Do not call from an active mutator or
  * GC callback: the collector may be waiting for that same mutator to poll. */
 int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers);
 
@@ -106,9 +111,9 @@ int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers);
 int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out);
 
 
-/* Cancel queued requests, finish the current pass, join both OS threads and free.
+/* Cancel queued requests, finish the current pass, join all OS threads and free.
  * Backend keeps ownership of unprocessed work. No forced thread termination.
- * Fails without destroying if called from either collector thread. */
+ * Fails without destroying if called from a collector thread. */
 int dvm_gc_workers_destroy(DVM_GCWorkers *workers);
 #ifdef __cplusplus
 }
