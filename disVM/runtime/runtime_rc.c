@@ -88,6 +88,7 @@ static unsigned long cycle_candidates_coalesced;
 static unsigned long cycle_candidates_full; /* Candidate reservations refused for capacity. */
 static unsigned long cycle_candidates_rooted;
 static unsigned int duke_peak_fields; /* Largest successfully published Duke snapshot. */
+static unsigned long duke_adopted_pins; /* Discovery holds transferred to Fast. */
 static unsigned long duke_resumed_slices; /* Partial scans saved for another admitted turn. */
 static unsigned long duke_promoted; /* Large snapshots handed to Fast GC. */
 static unsigned long cycle_candidates_oversized;
@@ -180,6 +181,7 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_rooted = 0;
     duke_promoted = 0;
     duke_resumed_slices = 0;
+    duke_adopted_pins = 0;
     duke_peak_fields = 0;
     cycle_candidates_oversized = 0;
     candidate_sweep_left = 0;
@@ -342,9 +344,11 @@ static void unlink_record_group(const RecordGroup *group)
 }
 
 
-/* [GC:] Publish a guarded graph for Fast. retry reports a transient
- * borrower or queue limit; a graph too large for an empty queue refuses. */
-static int defer_record_group(const RecordGroup *group, int shared, int *retry)
+/* EN: Publish group for Fast using guarded fields or existing Duke pins.
+ * shared selects the parallel path. retry reports transient pressure.
+ * RU: Передать group в Fast под защитой полей или с удержаниями ДюкGC.
+ * shared выбирает параллельный путь. retry сообщает о временном отказе. */
+static int defer_record_group(RecordGroup *group, int shared, int *retry)
 {
     *retry = 0;
     DVM_RetirementReservation token = {0};
@@ -401,11 +405,16 @@ static int defer_record_group(const RecordGroup *group, int shared, int *retry)
         records->keys[index] = D2H(group->nodes[index]);
     }
     int pin_children = shared || group->live_count || group->has_views;
+    unsigned int adopted = group->pinned_nodes;
+    if (adopted && (!shared || adopted != group->nodes_used - 1))
+    {
+        abort();
+    }
     if (pin_children)
     {
         for (unsigned int index = 1; index < group->nodes_used; index++)
         {
-            if (dvm_refcount_retain_u(&D2H(group->nodes[index])->ref) != DVM_REFCOUNT_LIVE)
+            if (!adopted && dvm_refcount_retain_u(&D2H(group->nodes[index])->ref) != DVM_REFCOUNT_LIVE)
             {
                 abort();
             }
@@ -415,6 +424,16 @@ static int defer_record_group(const RecordGroup *group, int shared, int *retry)
     if (!dvm_runtime_root_batch_publish(roots, records->keys, records->count))
     {
         abort();
+    }
+    /* Publish every replacement root before withdrawing the discovery roots.
+     * The snapshot now owns the same strong references without another retain. */
+    while (group->pinned_nodes)
+    {
+        if (!dvm_runtime_root_remove(records->keys[group->pinned_nodes]))
+        {
+            abort();
+        }
+        group->pinned_nodes--;
     }
     for (size_t index = 0; index < records->count; index++)
     {
@@ -1513,11 +1532,16 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
     {
         memset(&duke_inflight, 0, sizeof(duke_inflight));
     }
+    unsigned int discovery_pins = group.pinned_nodes;
     int retry_promotion = 0;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1, &retry_promotion);
     if (source == duke_candidates)
     {
         duke_promoted += promoted;
+        if (promoted)
+        {
+            duke_adopted_pins += discovery_pins;
+        }
         if (promoted && group.edges_used > duke_peak_fields)
         {
             duke_peak_fields = group.edges_used;
@@ -2262,8 +2286,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(cycle_candidates, &candidates);
         printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
             candidates.ready, candidates.reserved, candidates.capacity, candidates.peak_capacity);
-        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu\n",
-            duke_promoted, duke_peak_fields, duke_resumed_slices);
+        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu\n",
+            duke_promoted, duke_peak_fields, duke_resumed_slices, duke_adopted_pins);
         printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",
             frames_drained, frame_stats.ready + frame_stats.reserved, shared_children, record_groups, shared_record_groups, shared_record_groups_with_peer, shared_record_scans, shared_record_snapshots_with_peer, shared_record_confirmations, cycle_candidates_rotated, cycle_candidates_coalesced, cycle_candidates_rooted, cycle_candidates_oversized, cycle_candidates_full);
     }

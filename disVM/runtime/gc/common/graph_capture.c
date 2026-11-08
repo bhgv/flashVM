@@ -281,7 +281,7 @@ static int classify_record_group(RecordGroup *group, int shared)
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         Heap *heap = D2H(group->nodes[index]);
-        unsigned long expected = group->incoming[index] + (index == 0);
+        unsigned long expected = group->incoming[index] + (index == 0 || index <= group->pinned_nodes);
         unsigned long actual = dvm_refcount_load_u(&heap->ref);
         if (actual < expected)
         {
@@ -414,9 +414,20 @@ int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *
             return DVM_DUKE_CAPTURE_RESUME;
         }
     }
-    if (!confirm_duke_capture(group, access))
+    if (!classify_record_group(group, 1))
     {
+        group->busy = 1;
         return 0;
     }
-    return classify_record_group(group, 1);
+    if (group->live[0])
+    {
+        /* A live result drops the original queue owner, so verify the
+         * observed graph first. Garbage candidates are rechecked by Fast. */
+        return confirm_duke_capture(group, access);
+    }
+    if (!dvm_range_access_end(access))
+    {
+        abort();
+    }
+    return 1;
 }

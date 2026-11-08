@@ -52,9 +52,9 @@ def check(runtime, module, mode, require_peer, require_snapshot, require_confirm
             traced = re.search(r"NATIVEGC .*? reclaimed=(\d+)", output)
             full = re.search(r"cycle_candidates_full=(\d+)", output)
             queue = re.search(r"NATIVECYCLEQUEUE ready=0 reserved=0 capacity=256 peak_capacity=(\d+)", output)
-            duke = re.search(r"NATIVEDUKEGC promoted=(\d+) peak_fields=(\d+) resumed=(\d+)", output)
+            duke = re.search(r"NATIVEDUKEGC promoted=(\d+) peak_fields=(\d+) resumed=(\d+) adopted_pins=(\d+)", output)
             if (int(counters[2]) >= 33 and oversized and int(oversized[1]) > 0
-                    and duke and int(duke[1]) >= 1 and int(duke[2]) >= 2300 and int(duke[3]) > 0
+                    and duke and int(duke[1]) >= 1 and int(duke[2]) >= 2300 and int(duke[3]) > 0 and int(duke[4]) >= 2299
                     and full and int(full[1]) == 0 and traced and int(traced[1]) < 40
                     and queue and int(queue[1]) > 1024):
                 print(f"PASS {mode}: 33 cycles collected by shared GC, queue peaked at {queue[1]}")
