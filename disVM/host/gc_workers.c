@@ -4,6 +4,8 @@
 #include "channel_sync.h"
 #include <stdlib.h>
 
+enum { GC_PASS_REQUEST = 1, GC_CANDIDATE_REQUEST = 2 };
+
 
 /* One native lane, owned until its thread has joined. */
 typedef struct DVM_GCWorker
@@ -13,7 +15,7 @@ typedef struct DVM_GCWorker
     FVM_PortThread *thread;      /* Owned native handle. */
     DVM_NativeContext *context;  /* Worker-owned bound collector context. */
     size_t passes;               /* Completed callbacks under service mutex. */
-    int pending;                 /* Coalesced work flag. */
+    int pending;                 /* Coalesced request bits. */
 } DVM_GCWorker;
 
 
@@ -60,7 +62,7 @@ static int stopping(DVM_GCWorkers *workers)
  * the backend callback starts, then one. Both pointers must remain valid.
  * Returns: DONE for cancelled acquisition, the backend result, or FAILED for a
  * rendezvous/root/resume failure. A successful stop is always paired with resume. */
-static DVM_GCWorkResult collect(DVM_GCWorker *worker, int *executed)
+static DVM_GCWorkResult collect(DVM_GCWorker *worker, int requested, int *executed)
 {
     DVM_GCWorkers *workers = worker->owner;
     DVM_GCPass *pass = worker->kind == DVM_GC_FAST ? &workers->config.Fast : &workers->config.Cycles;
@@ -71,6 +73,10 @@ static DVM_GCWorkResult collect(DVM_GCWorker *worker, int *executed)
     {
         *executed = 1;
         return DVM_GC_MORE;
+    }
+    if (!(requested & GC_PASS_REQUEST))
+    {
+        return DVM_GC_DONE;
     }
     if (worker->kind == DVM_GC_FAST && workers->config.fast_shared)
     {
@@ -158,10 +164,11 @@ static void run_worker(void *argument)
         {
             break;
         }
+        int requested = worker->pending;
         worker->pending = 0;
         workers->active = (int)worker->kind + 1;
         fvm_port_sync_unlock(workers->sync);
-        result = collect(worker, &executed);
+        result = collect(worker, requested, &executed);
         fvm_port_sync_lock(workers->sync);
         if (executed)
         {
@@ -171,7 +178,7 @@ static void run_worker(void *argument)
         workers->turn = other->kind;
         if (result == DVM_GC_MORE && !workers->stopping)
         {
-            worker->pending = 1;
+            worker->pending |= requested;
         }
         else if (result != DVM_GC_DONE && result != DVM_GC_MORE)
         {
@@ -263,7 +270,7 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
  * Parameters: workers is borrowed; kind selects Fast or Cycles. No object pointer
  * is enqueued. Backend code must separately root any deferred managed references.
  * Returns: one after coalescing a request, zero for invalid or stopped/failed state. */
-int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind)
+static int request(DVM_GCWorkers *workers, DVM_GCKind kind, int requested)
 {
     if (!workers || (kind != DVM_GC_FAST && kind != DVM_GC_CYCLES))
     {
@@ -275,10 +282,22 @@ int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind)
         fvm_port_sync_unlock(workers->sync);
         return 0;
     }
-    lane(workers, kind)->pending = 1;
+    lane(workers, kind)->pending |= requested;
     fvm_port_sync_signal_all(workers->sync);
     fvm_port_sync_unlock(workers->sync);
     return 1;
+}
+
+
+int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind)
+{
+    return request(workers, kind, GC_PASS_REQUEST);
+}
+
+
+int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers)
+{
+    return request(workers, DVM_GC_CYCLES, GC_CANDIDATE_REQUEST);
 }
 
 
@@ -333,9 +352,9 @@ int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out)
     }
     fvm_port_sync_lock(workers->sync);
     out->Fast.passes = workers->Fast.passes;
-    out->Fast.pending = workers->Fast.pending;
+    out->Fast.pending = workers->Fast.pending != 0;
     out->Cycles.passes = workers->Cycles.passes;
-    out->Cycles.pending = workers->Cycles.pending;
+    out->Cycles.pending = workers->Cycles.pending != 0;
     out->active = workers->active;
     out->stopping = workers->stopping;
     out->failed = workers->failed;

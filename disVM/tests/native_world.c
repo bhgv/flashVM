@@ -229,6 +229,18 @@ static DVM_GCWorkResult fast_pass(DVM_NativeContext *context, size_t budget, voi
 }
 
 
+static unsigned int candidate_calls;
+
+static unsigned int candidate_pass(DVM_NativeContext *context, size_t budget, void *user)
+{
+    (void)context;
+    (void)budget;
+    (void)user;
+    candidate_calls++;
+    return 0;
+}
+
+
 /* Record the separate cycle collector's distinct up/context. */
 static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, void *user)
 {
@@ -394,12 +406,20 @@ int main(void)
     config.Fast.run = fast_pass;
     config.Fast.budget = 1;
     config.Cycles.run = cycle_pass;
+    config.cycles_shared = candidate_pass;
     config.Cycles.budget = 1;
     config.user = &scan;
     gc = dvm_gc_workers_create(&config);
     if (!(gc))
     {
         fprintf(stderr, "%s:%d: condition check failed\n", __FILE__, __LINE__);
+        exit(EXIT_FAILURE);
+    }
+    if (!dvm_gc_workers_request_candidates(gc) || !dvm_gc_workers_wait_idle(gc) ||
+        candidate_calls != 1 || !dvm_gc_workers_state(gc, &gc_state) ||
+        gc_state.Cycles.passes || scan.Cycles)
+    {
+        fprintf(stderr, "FAIL candidate-only wake ran a legacy trace\n");
         exit(EXIT_FAILURE);
     }
 #endif

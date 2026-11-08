@@ -104,7 +104,7 @@ static void wake_fast(void)
 {
     if (!dvm_gc_workers_request(state.workers, DVM_GC_FAST) ||
         (dvm_runtime_rc_candidates_ready() &&
-         !dvm_gc_workers_request(state.workers, DVM_GC_CYCLES)))
+         !dvm_gc_workers_request_candidates(state.workers)))
     {
         abort();
     }

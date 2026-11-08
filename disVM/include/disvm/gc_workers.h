@@ -90,6 +90,9 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config);
 /* Coalesce a request; returns 0 on invalid kind, failure or shutdown. */
 int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
 
+/* Request shared candidate work without requesting the legacy trace. */
+int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers);
+
 
 /* Wait for both lanes to become idle. Do not call from an active mutator or
  * GC callback: the collector may be waiting for that same mutator to poll. */
