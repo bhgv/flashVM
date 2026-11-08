@@ -582,6 +582,7 @@ static int defer_record_group(const RecordGroup *group, int shared)
     }
     records->roots = roots;
     records->count = group->nodes_used;
+    records->next = 0;
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         records->keys[index] = D2H(group->nodes[index]);
@@ -1486,6 +1487,33 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 }
 
 
+/* [GC:] Hand a refused snapshot's published owners back to Fast as an
+ * ordinary release packet. Source and entry belong to the current consumer.
+ * A full queue leaves both intact; success consumes entry and its snapshot
+ * while the packet keeps every existing strong reference and root. */
+static int release_refused_snapshot(DVM_RetirementQueue *source, LeafRetirement *entry)
+{
+    FrameRetirement *records = entry->records;
+    unsigned long storage = sizeof(*records) + records->count * sizeof(void *);
+    DVM_RetirementReservation token = {0};
+    if (storage > RC_BYTES - entry->bytes ||
+        dvm_retirement_reserve(frames, entry->bytes + storage, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    void *value;
+    unsigned long bytes;
+    if (!dvm_retirement_take(source, &value, &bytes) || value != entry ||
+        bytes != entry->bytes || !dvm_retirement_commit(frames, &token, records))
+    {
+        abort();
+    }
+    free(entry->snapshot);
+    free(entry);
+    return 1;
+}
+
+
 /* Guarded incoming fields keep discovered children alive. Live candidates
  * can give up the queue owner here. Potential garbage retains its root for
  * the existing final confirmation path. */
@@ -1709,6 +1737,13 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 if (claim != DVM_CELL_ACQUIRED)
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
+                    if (entry->claim_refused && entry->pinned_children &&
+                        release_refused_snapshot(source, entry))
+                    {
+                        budget--;
+                        completed++;
+                        continue;
+                    }
                     if (claim == DVM_CELL_BUSY && source == record_retries)
                     {
                         dvm_retirement_rotate(source);
