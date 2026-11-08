@@ -290,13 +290,13 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 
 struct RecordGroup
 {
-    void *nodes[RECORD_GROUP_LIMIT];
-    unsigned int incoming[RECORD_GROUP_LIMIT];
-    unsigned int index[RECORD_INDEX_SLOTS]; /* Stored node index plus one. */
-    void *cells[RECORD_EDGE_LIMIT];
-    unsigned int targets[RECORD_EDGE_LIMIT];
-    unsigned int sources[RECORD_EDGE_LIMIT];
-    unsigned char live[RECORD_GROUP_LIMIT];
+    void **nodes;             /* Captured object payloads. */
+    unsigned int *incoming;   /* Internal incoming edge counts. */
+    unsigned int *index;      /* Discovery hash slots, unused after capture. */
+    void **cells;             /* Captured source field addresses. */
+    unsigned int *targets;    /* Target node index or nil sentinel. */
+    unsigned int *sources;    /* Source node index for each captured edge. */
+    unsigned char *live;      /* Nodes reachable from outside the group. */
     unsigned int live_count;
     int busy; /* A field stripe was temporarily owned elsewhere. */
     int oversized; /* Bounded discovery could not fit another node or field. */
@@ -304,6 +304,58 @@ struct RecordGroup
     unsigned int nodes_used;
     unsigned int edges_used;
 };
+
+
+/* Scratch storage owned by one guarded discovery call. */
+typedef struct RecordGroupScratch
+{
+    void *nodes[RECORD_GROUP_LIMIT];             /* Object payloads. */
+    unsigned int incoming[RECORD_GROUP_LIMIT];  /* Internal incoming counts. */
+    unsigned int index[RECORD_INDEX_SLOTS];      /* Node indices plus one. */
+    void *cells[RECORD_EDGE_LIMIT];              /* Captured field addresses. */
+    unsigned int targets[RECORD_EDGE_LIMIT];     /* Target indices. */
+    unsigned int sources[RECORD_EDGE_LIMIT];     /* Source indices. */
+    unsigned char live[RECORD_GROUP_LIMIT];      /* Reachability flags. */
+} RecordGroupScratch;
+
+
+/* Bind an empty graph to zeroed scratch that outlives its discovery call. */
+static RecordGroup empty_record_group(RecordGroupScratch *scratch)
+{
+    return (RecordGroup){.nodes = scratch->nodes, .incoming = scratch->incoming,
+        .index = scratch->index, .cells = scratch->cells, .targets = scratch->targets,
+        .sources = scratch->sources, .live = scratch->live};
+}
+
+
+/* Copy a complete graph into one owned allocation sized to its contents.
+ * The caller keeps the graph objects alive and frees the result with free. */
+static RecordGroup *copy_record_group(const RecordGroup *group)
+{
+    size_t nodes = group->nodes_used;
+    size_t edges = group->edges_used;
+    RecordGroup *copy = malloc(sizeof(*copy) + (nodes + edges) * sizeof(void *) +
+        (nodes + 2 * edges) * sizeof(unsigned int) + nodes * sizeof(unsigned char));
+    if (!copy)
+    {
+        return NULL;
+    }
+    *copy = *group;
+    copy->nodes = (void **)(copy + 1);
+    copy->cells = copy->nodes + nodes;
+    copy->incoming = (unsigned int *)(copy->cells + edges);
+    copy->targets = copy->incoming + nodes;
+    copy->sources = copy->targets + edges;
+    copy->live = (unsigned char *)(copy->sources + edges);
+    copy->index = NULL;
+    memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
+    memcpy(copy->cells, group->cells, edges * sizeof(*copy->cells));
+    memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));
+    memcpy(copy->targets, group->targets, edges * sizeof(*copy->targets));
+    memcpy(copy->sources, group->sources, edges * sizeof(*copy->sources));
+    memcpy(copy->live, group->live, nodes * sizeof(*copy->live));
+    return copy;
+}
 
 
 /* The table stays at most half full. Every indexed object is held live. */
@@ -605,7 +657,7 @@ static int defer_record_group(const RecordGroup *group, int shared)
     }
     LeafRetirement *entry = malloc(sizeof(*entry));
     FrameRetirement *records = malloc(sizeof(*records) + group->nodes_used * sizeof(void *));
-    RecordGroup *snapshot = malloc(sizeof(*snapshot));
+    RecordGroup *snapshot = copy_record_group(group);
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
     unsigned long epoch = dvm_world_retire_epoch(world);
     if (!entry || !records || !snapshot || !roots || !epoch)
@@ -627,7 +679,6 @@ static int defer_record_group(const RecordGroup *group, int shared)
     {
         records->keys[index] = D2H(group->nodes[index]);
     }
-    *snapshot = *group;
     int pin_children = shared || group->live_count || group->has_views;
     if (pin_children)
     {
@@ -1627,7 +1678,8 @@ static int scan_retiring_record(size_t *cost, int *busy)
         released++;
         return 1;
     }
-    RecordGroup group = {0};
+    RecordGroupScratch scratch = {0};
+    RecordGroup group = empty_record_group(&scratch);
     DVM_RangeAccess access = {0};
     if (dvm_range_access_begin(record_cells, NULL, 0, NULL, 0, &access) != DVM_CELL_ACQUIRED)
     {
@@ -1996,7 +2048,8 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
  * owner per node through the whole unlink, then use ordinary destruction. */
 static int process_queued_record_group(void *value, int promote)
 {
-    RecordGroup group = {0};
+    RecordGroupScratch scratch = {0};
+    RecordGroup group = empty_record_group(&scratch);
     if (!queued_record_group(value, 1, &group, NULL) || group.live[0])
     {
         return 0;
