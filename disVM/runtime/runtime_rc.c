@@ -435,6 +435,26 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
 }
 
 
+/* [GC:] Check whether every mapped field in a repeated element fits.
+ * The immutable type map is borrowed and no object fields are accessed.
+ * Return zero if the snapshot would overflow and report fields per element. */
+static int repeated_record_fields_fit(const Type *type, size_t elements,
+    size_t available, size_t *mapped)
+{
+    size_t limit = available / elements;
+    *mapped = 0;
+    for (int byte = 0; byte < type->np; byte++)
+    {
+        *mapped += __builtin_popcount((unsigned char)type->map[byte]);
+        if (*mapped > limit)
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
 /* [GC:] Capture one source in group, recording opaque nodes as live.
  * start_roots is the expected queue-root count for node zero. The caller
  * keeps the source live and supplies a guard set or exclusive admission.
@@ -504,6 +524,19 @@ static int capture_record_source(RecordGroup *group, unsigned int index,
     if (dvm_runtime_root_count(heap) != (index == 0 ? start_roots : 0))
     {
         group->live[index] = 1;
+    }
+    if (elements > 1)
+    {
+        size_t mapped;
+        if (!repeated_record_fields_fit(type, elements, RECORD_EDGE_LIMIT - group->edges_used, &mapped))
+        {
+            group->oversized = 1;
+            return 0;
+        }
+        if (!mapped)
+        {
+            return 1;
+        }
     }
     for (size_t element = 0; element < elements; element++)
     {
