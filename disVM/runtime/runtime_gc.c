@@ -257,8 +257,27 @@ int dvm_runtime_gc_stop(int diagnostics)
         return 1;
     }
     if (dvm_native_context_current() != dvm_gc_runtime.owner ||
-        !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
-        call.pending_progress || dvm_runqueue_inflight() || !dvm_managed_owner_can_close() || !dvm_native_owner_seal(owner) ||
+        !dvm_native_owner_statistics(owner,&call) || call.pending_progress || dvm_runqueue_inflight())
+    {
+        return 0;
+    }
+    DVM_NativeExecution *execution = dvm_native_execution();
+    if (call.phase == DVM_HEAP_IDLE && execution->world_last_exit == DVM_NW_SITE_JOIN)
+    {
+        /* NATIVEWORLD: enter only at managed root teardown, after native joins and cleanup. */
+        execution->world_entry_site = DVM_NW_SITE_GC_STOP;
+        execution->world_entry_pending = 1;
+        if (!dvm_native_owner_enter(owner))
+        {
+            return 0;
+        }
+        execution->world_entry_pending = 0;
+    }
+    else if (call.phase != DVM_HEAP_ACTIVE)
+    {
+        return 0;
+    }
+    if (!dvm_managed_owner_can_close() || !dvm_native_owner_seal(owner) ||
         !dvm_world_admission(dvm_gc_runtime.world,&admission) || !admission.serial || admission.waiting)
     {
         return 0;

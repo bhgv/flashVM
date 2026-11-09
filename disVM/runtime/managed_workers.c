@@ -742,8 +742,8 @@ int dvm_managed_workers_current(void)
 }
 
 
-/* Stop accepting helper turns, release controller ownership before join, then
- * restore it before root/collector teardown. The helper owns all its TLS cleanup. */
+/* EN: Stop and join helpers. Native slot cleanup runs with controller IDLE.
+ * RU: Остановить и присоединить исполнителей. Нативные слоты очищаются в IDLE. */
 int dvm_managed_workers_stop(int diagnostics)
 {
     int ok;
@@ -775,16 +775,6 @@ int dvm_managed_workers_stop(int diagnostics)
         releases += worker->owner.releases;
         reentries += worker->owner.reentries;
     }
-    /* NATIVEWORLD: return to exclusive admission after the rootless wait. */
-    DVM_NativeExecution *execution = dvm_native_execution();
-    execution->world_entry_site = DVM_NW_SITE_JOIN;
-    execution->world_entry_pending = 1;
-    if (!dvm_native_owner_enter(dvm_native_owner_current()))
-    {
-        fprintf(stderr,"disvm: cannot reenter after managed worker join\n");
-        exit(1);
-    }
-    execution->world_entry_pending = 0;
     ok = !service.failed && !service.returning;
     if (diagnostics)
     {
