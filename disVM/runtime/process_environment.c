@@ -15,7 +15,7 @@
 
 
 /* Initialize only native storage, not a second heap or full Inferno namespace.
- * Parent buffers remain borrowed under the exclusive heap turn during the copy. */
+ * Parent buffers belong to the calling executor during the copy. */
 void dvm_process_environment_init(Prog *process, Prog *parent)
 {
     Osenv *environment = &((DVM_RuntimeProcess *)process)->environment;

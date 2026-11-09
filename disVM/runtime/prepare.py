@@ -1033,11 +1033,14 @@ def main():
         'extern void Processctl_killwait(void *frame);\n'
         'extern int dvm_processctl_call_ready(void *frame);')
     code = relative_replace(code, 'static int\nspawnready(void *arg)',
-        'extern void dvm_runtime_spawn_prepared(Prog *, Modlink *, const REG *);\n\n'
+        'extern void dvm_runtime_spawn_prepared(Prog *, Modlink *, Inst *, Prog *);\n\n'
         'static int\nspawnready(void *arg)')
     code = relative_replace(code, '\tSpawnProg *c;\n\tProg *p;', '\tSpawnProg *c;')
-    code = relative_replace(code, '\tp = newprog(currun(), c->module);\n\tp->R = c->initial.R;',
-        '\tdvm_runtime_spawn_prepared(currun(), c->module, &c->initial.R);')
+    code = relative_replace(code,
+        '\tc->initial.R.M = c->module;\n\tc->initial.R.MP = c->module->MP;\n'
+        '\tc->initial.R.PC = c->pc;\n\tnewstack(&c->initial);\n'
+        '\tp = newprog(currun(), c->module);\n\tp->R = c->initial.R;',
+        '\tdvm_runtime_spawn_prepared(currun(), c->module, c->pc, &c->initial);')
     code = relative_replace(code, "\tvmstart(p);",
         "\tDVM_NativeExecution *execution = dvm_native_execution();\n"
         "\tint restore = !execution->resident_registers_valid;\n"

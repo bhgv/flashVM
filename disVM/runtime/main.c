@@ -25,6 +25,7 @@
 #include "close_worker.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "root_registry.h"
 #include "shared_bytes.h"
 #include "shared_arithmetic.h"
 #include "shared_pointer.h"
@@ -1360,22 +1361,11 @@ static void drop_guest_messages(Prog *guest)
 }
 
 
-/* EN: Build a complete resident from initial registers before starting its owner.
- * RU: Создать процесс с готовыми регистрами до запуска его владельца. */
-static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
+/* EN: Initialize private process storage from an owner-local image.
+ * RU: Инициализировать приватный Prog из локального образа владельца. */
+static void initialize_process(Prog *process, Prog *parent, Modlink *module, const REG *initial)
 {
-    Prog *process;
-    if (live == PROCESS_MAX || nextpid == INT_MAX)
-    {
-        error("process quota exceeded");
-    }
-    process = calloc(1, sizeof(DVM_RuntimeProcess));
-    if (!process)
-    {
-        error(exNomem);
-    }
-    dvm_process_environment_init(process,parent);
-    process->pid = ++nextpid;
+    dvm_process_environment_init(process, parent);
     ((DVM_RuntimeProcess *)process)->parent_pid = parent ? parent->pid : 0;
     process->quanta = scheduler_quantum;
     process->xec = xec;
@@ -1389,6 +1379,29 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
         process->R.M = module;
         process->R.MP = module->MP;
     }
+}
+
+
+/* EN: Register a prepared resident and start its owner. Consumes prepared storage.
+ * RU: Зарегистрировать готовый процесс и запустить его владельца. Поглощает prepared. */
+static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, Prog *prepared)
+{
+    Prog *process = prepared;
+    if (live == PROCESS_MAX || nextpid == INT_MAX)
+    {
+        free(prepared);
+        error("process quota exceeded");
+    }
+    if (!process)
+    {
+        process = calloc(1, sizeof(DVM_RuntimeProcess));
+        if (!process)
+        {
+            error(exNomem);
+        }
+        initialize_process(process, parent, module, initial);
+    }
+    process->pid = ++nextpid;
     if (dvm_refcount_retain_u(&D2H(module)->ref) != DVM_REFCOUNT_LIVE)
     {
         free(process);
@@ -1446,15 +1459,80 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
  * RU: Вход для вызывающих без подготовленного образа регистров. */
 Prog *newprog(Prog *parent, Modlink *module)
 {
-    return create_process(parent, module, NULL);
+    return create_process(parent, module, NULL, NULL);
 }
 
 
-/* EN: Transfer a completed child stack and register image to its owner.
- * RU: Передать владельцу готовый стек и образ регистров потомка. */
-void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, const REG *initial)
+/* EN: Native preparation ledger for a child whose source frame is still owned.
+ * RU: Журнал подготовки потомка, исходный кадр ещё во владении создателя. */
+typedef struct SpawnPreparation
 {
-    (void)create_process(parent, module, initial);
+    Prog *parent;   /* Current resident, whose source argument frame stays rooted. */
+    Modlink *module; /* Rooted for the duration of private preparation. */
+    Inst *entry;     /* Initial program counter captured by the spawn opcode. */
+    Prog *initial;  /* Private stack and initial registers, freed by spawn on failure. */
+    Prog *storage;  /* Private Prog allocation, transferred only after preparation. */
+} SpawnPreparation;
+
+
+/* EN: Allocate and fill only the child stack and its private process storage.
+ * RU: Выделить и заполнить только приватный стек и Prog потомка. */
+static int prepare_spawn_storage(void *argument)
+{
+    SpawnPreparation *request = argument;
+    request->storage = calloc(1, sizeof(DVM_RuntimeProcess));
+    if (!request->storage)
+    {
+        error(exNomem);
+    }
+    request->initial->R.M = request->module;
+    request->initial->R.MP = request->module->MP;
+    request->initial->R.PC = request->entry;
+    newstack(request->initial);
+    initialize_process(request->storage, request->parent, request->module, &request->initial->R);
+    return 1;
+}
+
+
+/* EN: Prepare native storage outside exclusive admission, then publish the child.
+ * RU: Подготовить нативную память вне эксклюзива, затем опубликовать потомка. */
+void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog *initial)
+{
+    SpawnPreparation request = {parent, module, entry, initial, NULL};
+    if (native_spawn)
+    {
+        Heap *module_root = D2H(module);
+        if (!dvm_runtime_root_add(module_root))
+        {
+            error(exHeap);
+        }
+        int shared = dvm_runtime_gc_shared_try_enter();
+        if (shared <= 0)
+        {
+            if (!dvm_runtime_root_remove(module_root))
+            {
+                abort();
+            }
+            error("cannot prepare native guest outside exclusive admission");
+        }
+        int prepared = kprotect(prepare_spawn_storage, &request);
+        dvm_runtime_gc_shared_finish();
+        if (!dvm_runtime_root_remove(module_root))
+        {
+            abort();
+        }
+        if (!prepared)
+        {
+            free(request.storage);
+            krethrow();
+        }
+    }
+    else if (!kprotect(prepare_spawn_storage, &request))
+    {
+        free(request.storage);
+        krethrow();
+    }
+    (void)create_process(parent, module, NULL, request.storage);
 }
 
 
@@ -2600,7 +2678,7 @@ static Prog *start_module(Module *module)
     DVM_R.s = &frame;
     newstack(&initial);
     initmem(module->entryt, initial.R.FP);
-    process = create_process(nil, link, &initial.R);
+    process = create_process(nil, link, &initial.R, NULL);
     if (dvm_refcount_release_u(&D2H(link)->ref) != DVM_REFCOUNT_LIVE)
     {
         error(exHeap);
