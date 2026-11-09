@@ -16,6 +16,21 @@ extern "C"
 DVM_NativeContext *dvm_native_process_create(void *runtime);
 
 
+/* EN: Diagnostic sites in the hosted NativeWorld lifecycle.
+ * RU: Диагностические точки переходов NativeWorld в хосте. */
+typedef enum DVM_NativeWorldSite
+{
+    DVM_NW_SITE_NONE,           /* No transition recorded yet. */
+    DVM_NW_SITE_STARTUP,        /* Initial controller admission. */
+    DVM_NW_SITE_ATTACH,         /* Executor admission after attaching. */
+    DVM_NW_SITE_NATIVE_CALL,    /* Native operation with a saved continuation. */
+    DVM_NW_SITE_SHARED,         /* Audited shared instruction interval. */
+    DVM_NW_SITE_IDLE,           /* Rootless scheduler yield. */
+    DVM_NW_SITE_JOIN,           /* Controller releases admission for shutdown joins. */
+    DVM_NW_SITE_DETACH          /* Executor leaves before unregistering. */
+} DVM_NativeWorldSite;
+
+
 /* Host execution guards travel with extended up, never with a saved Prog.REG.
  * Scalars only: no field is a GC root or a file-format ABI member. */
 typedef struct DVM_NativeExecution
@@ -24,6 +39,9 @@ typedef struct DVM_NativeExecution
     int arithmetic_retry_opcode;    /* Armed decoded opcode, or zero outside dispatch; -1 requests retry. */
     int instruction_boundary_error; /* Quota rejected before PC fetch/advance on this owner. */
     unsigned long progress_epoch;   /* Last shared stdin/UI progress generation observed by this owner. */
+    DVM_NativeWorldSite world_last_exit;  /* Last successful exit from exclusive admission. */
+    DVM_NativeWorldSite world_entry_site; /* Last attempted exclusive admission. */
+    int world_entry_pending;             /* Set until admission and continuation checks complete. */
     fenv_t host_fp_environment;      /* Native caller FP environment saved for a managed turn. */
 } DVM_NativeExecution;
 

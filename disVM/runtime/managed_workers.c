@@ -134,11 +134,21 @@ static void fail(const char *message)
 /* Rootless scheduler suspension differs from an audited native call: the turn
  * token and both current-process slots must be empty and REG already saved.
  * Return one only after leaving the heap; no C-held managed root is admitted. */
-static int leave_empty(void)
+static int leave_empty(DVM_NativeWorldSite site)
 {
     DVM_NativeContext *context = dvm_native_context_current();
-    return context && up && up->env == &up->defenv && !up->prog && !dvm_native_context_process(context) &&
-        !dvm_native_context_turn(context) && dvm_native_owner_leave(dvm_native_owner_current());
+    if (!context || !up || up->env != &up->defenv || up->prog ||
+        dvm_native_context_process(context) || dvm_native_context_turn(context))
+    {
+        return 0;
+    }
+    /* NATIVEWORLD: release a rootless exclusive turn before sleeping or joining. */
+    if (!dvm_native_owner_leave(dvm_native_owner_current()))
+    {
+        return 0;
+    }
+    dvm_native_execution()->world_last_exit = site;
+    return 1;
 }
 
 
@@ -195,7 +205,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         idle_created = service.created;
         idle_reaped = service.reaped;
     }
-    if (!leave_empty())
+    if (!leave_empty(DVM_NW_SITE_IDLE))
     {
         /* The caller still owns the heap. Keep every unjoined slot visible
          * to shutdown even when rootless admission is refused. */
@@ -248,12 +258,17 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     {
         fvm_port_thread_sleep_us(1000);
     }
+    /* NATIVEWORLD: return to exclusive admission after the rootless wait. */
+    DVM_NativeExecution *execution = dvm_native_execution();
+    execution->world_entry_site = DVM_NW_SITE_IDLE;
+    execution->world_entry_pending = 1;
     if (!dvm_native_owner_enter(dvm_native_owner_current()))
     {
         /* Returning to a managed error handler requires ACTIVE ownership. */
         fprintf(stderr, "disvm: cannot reenter after empty scheduler yield\n");
         exit(1);
     }
+    execution->world_entry_pending = 0;
     while (finished)
     {
         worker = finished;
@@ -748,7 +763,7 @@ int dvm_managed_workers_stop(int diagnostics)
     stop_dedicated_waits();
     fvm_port_sync_signal_all(service.sync);
     fvm_port_sync_unlock(service.sync);
-    if (!leave_empty())
+    if (!leave_empty(DVM_NW_SITE_JOIN))
     {
         fprintf(stderr,"disvm: cannot release controller for managed worker join\n");
         exit(1);
@@ -760,11 +775,16 @@ int dvm_managed_workers_stop(int diagnostics)
         releases += worker->owner.releases;
         reentries += worker->owner.reentries;
     }
+    /* NATIVEWORLD: return to exclusive admission after the rootless wait. */
+    DVM_NativeExecution *execution = dvm_native_execution();
+    execution->world_entry_site = DVM_NW_SITE_JOIN;
+    execution->world_entry_pending = 1;
     if (!dvm_native_owner_enter(dvm_native_owner_current()))
     {
         fprintf(stderr,"disvm: cannot reenter after managed worker join\n");
         exit(1);
     }
+    execution->world_entry_pending = 0;
     ok = !service.failed && !service.returning;
     if (diagnostics)
     {

@@ -138,8 +138,16 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
     {
         dvm_gc_runtime.workers = dvm_gc_workers_create(&config);
     }
+    DVM_NativeExecution *execution = dvm_native_execution();
+    if (dvm_gc_runtime.workers)
+    {
+        /* NATIVEWORLD: initial controller admission after starting collectors. */
+        execution->world_entry_site = DVM_NW_SITE_STARTUP;
+        execution->world_entry_pending = 1;
+    }
     if (dvm_gc_runtime.workers && dvm_native_owner_enter(owner))
     {
+        execution->world_entry_pending = 0;
         if (dvm_managed_owner_start(dvm_gc_runtime.world, dvm_gc_runtime.workers))
         {
             dvm_runtime_rc_start();
@@ -151,7 +159,11 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
             }
             return 1;
         }
-        dvm_native_owner_leave(owner);
+        /* NATIVEWORLD: rollback the controller admission after failed setup. */
+        if (dvm_native_owner_leave(owner))
+        {
+            execution->world_last_exit = DVM_NW_SITE_STARTUP;
+        }
     }
     if (dvm_gc_runtime.workers)
     {
@@ -267,9 +279,14 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     dvm_native_context_set_process(dvm_native_context_current(),NULL);
     ok = dvm_runtime_gc_request();
+    /* NATIVEWORLD: final controller exit before collector teardown. */
     if (!dvm_native_owner_leave(owner))
     {
         ok = 0;
+    }
+    else
+    {
+        dvm_native_execution()->world_last_exit = DVM_NW_SITE_DETACH;
     }
     if (!dvm_gc_workers_wait_idle(dvm_gc_runtime.workers))
     {

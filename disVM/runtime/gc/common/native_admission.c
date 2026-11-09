@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "disvm/gc_workers.h"
 #include "disvm/native_owner.h"
+#include "disvm/native_process.h"
 #include "../../runtime_gc.h"
 #include "../collector_passes.h"
 #include "runtime_state.h"
@@ -86,13 +87,17 @@ static int native_try_leave(int shared)
     }
     if (shared && !dvm_queue_probe_requested && dvm_native_owner_try_share(owner, dvm_gc_runtime.passes))
     {
+        /* NATIVEWORLD: exclusive -> shared, with guest roots published. */
+        dvm_native_execution()->world_last_exit = DVM_NW_SITE_SHARED;
         return 1;
     }
+    /* NATIVEWORLD: leave exclusive admission before native work. */
     if (!dvm_native_owner_suspend(owner,dvm_gc_runtime.passes))
     {
         fprintf(stderr,"disvm: native heap release failed\n");
         exit(1);
     }
+    dvm_native_execution()->world_last_exit = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
     if (process && dvm_queue_probe_requested)
     {
         dvm_queue_probe_run(process,dvm_native_context_current(),dvm_gc_runtime.roots);
@@ -147,6 +152,10 @@ static void native_enter(int released, int shared)
         fprintf(stderr,"disvm: invalid native heap reentry phase\n");
         exit(1);
     }
+    /* NATIVEWORLD: reenter exclusive admission before restoring the continuation. */
+    DVM_NativeExecution *execution = dvm_native_execution();
+    execution->world_entry_site = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
+    execution->world_entry_pending = 1;
     returning = dvm_managed_workers_returning(1);
     if (!(shared ? dvm_native_owner_resume_shared(owner) : dvm_native_owner_resume(owner)) ||
         !dvm_native_owner_progress(owner,dvm_gc_runtime.passes))
@@ -176,6 +185,7 @@ static void native_enter(int released, int shared)
     {
         dvm_managed_workers_returning(0);
     }
+    execution->world_entry_pending = 0;
 }
 
 
@@ -278,12 +288,17 @@ int dvm_runtime_gc_attach(void)
     {
         return 0;
     }
+    /* NATIVEWORLD: a newly attached executor enters exclusive admission. */
+    DVM_NativeExecution *execution = dvm_native_execution();
+    execution->world_entry_site = DVM_NW_SITE_ATTACH;
+    execution->world_entry_pending = 1;
     if (!dvm_native_owner_enter(owner))
     {
         dvm_native_owner_detach(owner);
         return 0;
     }
     dvm_runtime_exception_reserve_start();
+    execution->world_entry_pending = 0;
     return 1;
 }
 
@@ -308,10 +323,12 @@ int dvm_runtime_gc_detach(void)
         if (call.phase == DVM_HEAP_ACTIVE)
         {
             dvm_runtime_exception_reserve_stop();
+            /* NATIVEWORLD: final exclusive exit before unregistering the executor. */
             if (!dvm_native_owner_leave(owner))
             {
                 return 0;
             }
+            dvm_native_execution()->world_last_exit = DVM_NW_SITE_DETACH;
         }
         return dvm_native_owner_detach(owner);
     }

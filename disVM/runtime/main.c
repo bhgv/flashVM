@@ -606,6 +606,18 @@ static int guest_cancel_pending_or_close(void)
 {
     int pending;
 
+    /* A dedicated owner can have work before its guest becomes runnable. */
+    if (native_spawn)
+    {
+        for (Prog *guest = processes; guest; guest = guest->next)
+        {
+            DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+            if (__atomic_load_n(&process->channel_message, __ATOMIC_ACQUIRE) != DVM_PROG_MESSAGE_NONE)
+            {
+                return 1;
+            }
+        }
+    }
     fvm_port_sync_lock(channel_queue_mutex);
     pending = cancel_request_count != 0;
     if (!pending)
