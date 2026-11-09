@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include "channel_sync.h"
 #include "thread_port.h"
+#include "thread_registrar.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,7 @@ typedef struct ManagedWorker
     int guest_pid;              /* Dedicated guest identity, or zero for pool execution. */
     int guest_retired;          /* Set by this guest thread after managed retirement. */
     int done;                   /* Published under service.sync after TLS destruction. */
-    FVM_PortThread *thread;    /* Joined before this slot or service is reset. */
+    DVM_ThreadSlot *thread;    /* Registrar handle, joined before this slot is reset. */
     uintptr identity;          /* Live helper context identity; zero before/after attachment. */
     unsigned long turns;       /* Successful bytecode turns executed by this helper. */
     unsigned long handoffs;    /* Completed rootless scheduler releases, distinct from native I/O. */
@@ -43,6 +44,7 @@ typedef struct ManagedWorker
  * All slots and immutable callback data are published before thread creation. */
 typedef struct ManagedWorkers
 {
+    DVM_ThreadRegistrar *registrar; /* Owns OS handles, independent of managed admission. */
     FVM_PortSync *sync;             /* Protect stop/failure/ready publication. */
     DVM_NativeWorld *world;         /* Borrowed shared heap domain, immutable through join. */
     int (*turn)(void);             /* Shared scheduler callback under heap exclusion. */
@@ -220,7 +222,11 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     }
     for (worker = finished; worker; worker = worker->next)
     {
-        fvm_port_thread_join(worker->thread);
+        if (!dvm_thread_registrar_join(service.registrar, worker->thread))
+        {
+            fprintf(stderr, "disvm: cannot join registered worker\n");
+            abort();
+        }
     }
     if (rendezvous && service.awaiting_start)
     {
@@ -433,7 +439,7 @@ static void execute(void *argument)
 static int start_helper(Prog *guest)
 {
     ManagedWorker *worker;
-    if (service.created == ULONG_MAX)
+    if (stopping() || service.created == ULONG_MAX)
     {
         return 0;
     }
@@ -458,7 +464,7 @@ static int start_helper(Prog *guest)
         service.wake_slots = worker;
         fvm_port_sync_unlock(service.sync);
     }
-    worker->thread = fvm_port_thread_start(execute, worker);
+    worker->thread = dvm_thread_registrar_start(service.registrar, execute, worker);
     if (!worker->thread)
     {
         if (worker->wake)
@@ -520,6 +526,13 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     service.peak = 1;
     if (!service.sync)
     {
+        return 0;
+    }
+    service.registrar = dvm_thread_registrar_create();
+    if (!service.registrar)
+    {
+        fvm_port_sync_destroy(service.sync);
+        memset(&service, 0, sizeof(service));
         return 0;
     }
     for (index = 0; index < count - 1; index++)
@@ -770,7 +783,11 @@ int dvm_managed_workers_stop(int diagnostics)
     }
     for (worker = service.helpers; worker; worker = worker->next)
     {
-        fvm_port_thread_join(worker->thread);
+        if (!dvm_thread_registrar_join(service.registrar, worker->thread))
+        {
+            fprintf(stderr, "disvm: cannot join registered worker\n");
+            abort();
+        }
         turns += worker->turns;
         releases += worker->owner.releases;
         reentries += worker->owner.reentries;
@@ -803,6 +820,7 @@ int dvm_managed_workers_stop(int diagnostics)
         }
         free(worker);
     }
+    dvm_thread_registrar_destroy(service.registrar);
     fvm_port_sync_destroy(service.sync);
     memset(&service, 0, sizeof(service));
     return ok;

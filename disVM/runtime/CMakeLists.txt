@@ -126,6 +126,7 @@ add_executable(disvm
     native_jump.c
     runqueue.c
     owner_messages.c
+    thread_registrar.c
     queue_probe.c
     managed_workers.c
     process_environment.c
