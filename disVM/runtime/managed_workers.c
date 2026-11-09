@@ -164,6 +164,19 @@ static int dedicated_work_pending(ManagedWorker *worker)
 }
 
 
+/* EN: Wait for the dedicated resident's first or next work notification.
+ * RU: Дождаться первой или следующей работы закреплённого процесса. */
+static void wait_dedicated_work(ManagedWorker *worker)
+{
+    fvm_port_sync_lock(worker->wake);
+    while (!worker->wake_stopped && !dedicated_work_pending(worker))
+    {
+        fvm_port_sync_wait(worker->wake);
+    }
+    fvm_port_sync_unlock(worker->wake);
+}
+
+
 /* Release an empty scheduler turn, join already terminated helpers without the
  * heap, then reclaim their native slots after reentry. Any rootless executor
  * can reap, including when the controller is blocked in native I/O. */
@@ -247,12 +260,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     }
     if (current_guest && idle && !finished)
     {
-        fvm_port_sync_lock(current_guest->wake);
-        while (!current_guest->wake_stopped && !dedicated_work_pending(current_guest))
-        {
-            fvm_port_sync_wait(current_guest->wake);
-        }
-        fvm_port_sync_unlock(current_guest->wake);
+        wait_dedicated_work(current_guest);
     }
     else if (wait_for_work && !finished)
     {
@@ -325,6 +333,11 @@ static void execute(void *argument)
         fvm_port_sync_signal_all(service.sync);
         fvm_port_sync_unlock(service.sync);
         return;
+    }
+    if (worker->guest_pid)
+    {
+        /* The creator publishes readiness after publishing the resident. */
+        wait_dedicated_work(worker);
     }
     while (!stopping())
     {

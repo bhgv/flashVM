@@ -27,7 +27,7 @@
 | Суффикс `DVM_NW_SITE_` | Место |
 | --- | --- |
 | `STARTUP` | Первый вход контроллера и выход при откате запуска в [runtime_gc.c](runtime_gc.c). |
-| `ATTACH` | Первый вход рабочего потока после регистрации в [native_admission.c](gc/common/native_admission.c). |
+| `ATTACH` | Первый вход рабочего потока в [native_admission.c](gc/common/native_admission.c). Выделенный поток до этого ждёт первой работы вне NativeWorld. |
 | `NATIVE_CALL` | Выход перед нативной работой и возврат на сохранённое продолжение в [native_admission.c](gc/common/native_admission.c). |
 | `SHARED` | Выход в защищённую скалярную серию и обратный переход из SHARED в эксклюзив. |
 | `IDLE` | Выход с пустым scheduler turn. Выделенный поток проверяет опубликованную готовность и оба FIFO вне NativeWorld. При пустых очередях снова спит. Вход для обработки готовой работы пока остаётся. |
