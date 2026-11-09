@@ -1418,12 +1418,34 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
  * PERFORMANCE-COSTS.md. Divisor checks/error-path cost is not isolated. */
 
 
+/* EN: Recognize a rooted scalar, TLS immediate or immutable instruction literal.
+ * RU: Распознать скаляр с корнем, локальный операнд или литерал инструкции. */
+static int shared_integer_operand(int opcode, const void *cell, size_t width)
+{
+    if (dvm_runtime_rooted_scalar(cell, width) ||
+        (cell == &DVM_R.t && width <= sizeof(DVM_R.t)))
+    {
+        return 1;
+    }
+    Modlink *link = DVM_R.M;
+    uintptr_t next = (uintptr_t)DVM_R.PC;
+    if (!link || link == H || link->compiled || !link->m || link->m == H ||
+        next < sizeof(Inst) || width > sizeof(WORD))
+    {
+        return 0;
+    }
+    const Inst *instruction = (const Inst *)(next - sizeof(Inst));
+    return batch_pc(link->m, instruction) && instruction->op == opcode &&
+        USRC(instruction->add) == AIMM && cell == &instruction->s;
+}
+
+
 /* [GC:] opcode selects width/operation; first/second/output borrow live storage.
  * Reject context/opcode/geometry before reads. Return static error or NULL.
  * retryable points to caller-private storage and receives one only for a
  * fully rolled-back BUSY claim. Existing NativeWorld/root rules remain. */
-const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const void *second,
-    void *output, int *retryable)
+static const char *arithmetic_attempt(int opcode, const void *first, const void *second,
+    void *output, int *retryable, DVM_CellDomain *domain)
 {
     DVM_TripleAccess access = {0};
     DVM_CellResult claim;
@@ -1432,7 +1454,7 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
     int invalid_outer;
     const char *problem = NULL;
     *retryable = 0;
-    if (dvm_runtime_shared_mode() != 2)
+    if (!domain && dvm_runtime_shared_mode() != 2)
     {
         return exHeap;
     }
@@ -1485,8 +1507,18 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
     /* Invalid dividend/output geometry is not payload access. For DIV/MOD,
      * claim only the valid divisor (three aliases) before choosing Zdiv/Bounds.
      * Valid operations keep all three spans locked through their single snapshot. */
-    claim = dvm_managed_small_three_begin(invalid_outer ? second : first, width,
-        second, width, invalid_outer ? (void *)second : output, width, &access);
+    if (domain && (!shared_integer_operand(opcode, second, width) ||
+        (!invalid_outer && (!shared_integer_operand(opcode, first, width) ||
+                           !dvm_runtime_rooted_scalar(output, width)))))
+    {
+        return exHeap;
+    }
+    const void *guarded_first = invalid_outer ? second : first;
+    void *guarded_output = invalid_outer ? (void *)second : output;
+    claim = domain ? dvm_small_range_access_begin(domain, guarded_first, width,
+        second, width, guarded_output, width, &access) :
+        dvm_managed_small_three_begin(guarded_first, width, second, width,
+            guarded_output, width, &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
         *retryable = claim == DVM_CELL_BUSY;
@@ -1502,7 +1534,7 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
     }
     else
     {
-        if (dvm_runtime_parallel_add && (opcode == IADDW || dvm_runtime_parallel_add == 2) &&
+        if (!domain && dvm_runtime_parallel_add && (opcode == IADDW || dvm_runtime_parallel_add == 2) &&
             dvm_native_execution()->arithmetic_retry_opcode == opcode && up->prog)
         {
             Type *type = current_frame_type();
@@ -1519,6 +1551,31 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
         abort();
     }
     return problem;
+}
+
+
+/* EN: Accept the current SHARED dispatch for proven integer operands.
+ * RU: Использовать текущий SHARED для проверенных целочисленных операндов. */
+const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const void *second,
+    void *output, int *retryable)
+{
+    if (!dvm_runtime_gc_dispatch_is_shared())
+    {
+        return arithmetic_attempt(opcode, first, second, output, retryable, NULL);
+    }
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (domain)
+    {
+        const char *problem = arithmetic_attempt(opcode, first, second, output, retryable, domain);
+        if (problem != exHeap)
+        {
+            return problem;
+        }
+    }
+    dvm_runtime_gc_dispatch_finish();
+    const char *problem = arithmetic_attempt(opcode, first, second, output, retryable, NULL);
+    dvm_runtime_gc_dispatch_restore();
+    return problem == exHeap ? "integer arithmetic guard refused" : problem;
 }
 
 
