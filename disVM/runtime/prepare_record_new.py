@@ -174,6 +174,54 @@ def adapt_leaf(source):
 ARRAY = "705c18a3915a741a703ba881e09c14e12e84806792d273f8d70fd75ab9f020e6"  # Exact adapted array coordinator before guarded selection.
 
 
+SHARED_ARRAY = r"""
+/* EN: Keep legacy array replacement behind its admitted handler.
+ * RU: Оставить замену массива в старом обработчике с допуском. */
+static int admitted_array_new(void *argument)
+{
+    int clear = *(int *)argument;
+    WORD index;
+    WORD count;
+    const char *problem = dvm_runtime_bytes_snapshot(DVM_R.m, &index, sizeof(index));
+    if (problem)
+    {
+        error((char *)problem);
+    }
+    Type *element = moduletype(DVM_R.M, index);
+    problem = dvm_runtime_bytes_snapshot(DVM_R.s, &count, sizeof(count));
+    if (problem)
+    {
+        error((char *)problem);
+    }
+    dvm_runtime_array_new(DVM_R.d, element, count, clear);
+    return 1;
+}
+
+
+/* EN: Use the current SHARED phase for a private array and an empty slot.
+ * RU: Использовать текущий SHARED для приватного массива и пустой ячейки. */
+static void shared_array_new(int clear)
+{
+    WORD index;
+    WORD count;
+    if (dvm_runtime_array_shared_operands(DVM_R.s, DVM_R.m, &count, &index) &&
+        dvm_runtime_array_try_shared(DVM_R.d, moduletype(DVM_R.M, index), count, clear))
+    {
+        return;
+    }
+    dvm_runtime_gc_dispatch_finish();
+    int completed = kprotect(admitted_array_new, &clear);
+    dvm_runtime_gc_dispatch_restore();
+    if (!completed)
+    {
+        krethrow();
+    }
+}
+
+
+"""
+
+
 def adapt_array(source):
     """Capture the full count and descriptor index before the first callback."""
     match = re.search(r"static void\nnewarray\(int clear\)\n\{.*?\n\}", source, re.S)
@@ -184,31 +232,21 @@ def adapt_array(source):
     selection = r"""
     if (dvm_runtime_guarded_copies)
     {
+        if (dvm_runtime_gc_dispatch_is_shared())
+        {
+            shared_array_new(clear);
+            return;
+        }
         int selected = dvm_runtime_shared_mode();
         if (!selected)
         {
-            error(exHeap);
+            error("array constructor requires managed dispatch");
         }
         if (selected == 2)
         {
-            WORD captured_index;
-            WORD captured_count;
-            Type *element;
-            const char *problem = dvm_runtime_bytes_snapshot(DVM_R.m, &captured_index,
-                sizeof(captured_index));
-            if (problem)
-            {
-                error((char *)problem);
-            }
-            element = moduletype(DVM_R.M, captured_index);
-            problem = dvm_runtime_bytes_snapshot(DVM_R.s, &captured_count, sizeof(captured_count));
-            if (problem)
-            {
-                error((char *)problem);
-            }
-            dvm_runtime_array_new(DVM_R.d, element, captured_count, clear);
+            admitted_array_new(&clear);
             return;
         }
     }
 """
-    return source[:match.start()] + body[:at] + selection + body[at:] + source[match.end():]
+    return source[:match.start()] + SHARED_ARRAY + body[:at] + selection + body[at:] + source[match.end():]

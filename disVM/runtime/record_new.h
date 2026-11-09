@@ -20,6 +20,11 @@ void dvm_runtime_record_new(void *destination, struct Type *type, int clear);
 int dvm_runtime_record_shared_index(const void *source, WORD *index);
 int dvm_runtime_record_try_shared(void *destination, struct Type *type, int clear);
 
+/* EN: Read array operands and publish an empty-slot array in SHARED.
+ * RU: Прочитать операнды массива и опубликовать его в пустую ячейку из SHARED. */
+int dvm_runtime_array_shared_operands(const void *source, const void *middle, WORD *count, WORD *index);
+int dvm_runtime_array_try_shared(void *destination, struct Type *type, WORD count, int clear);
+
 /* [GC:] Same publication contract for an owning array. count is a full native
  * WORD. Each element gets H in mapped slots, with optional scalar zeroing. */
 void dvm_runtime_array_new(void *destination, struct Type *type, WORD count, int clear);

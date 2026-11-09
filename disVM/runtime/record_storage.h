@@ -14,4 +14,9 @@ int dvm_record_valid_type(Type *type);
  * RU: Инициализировать выделенную приватную память по проверенной карте. */
 void dvm_record_initialize_payload(Type *type, int clear, uchar *data, size_t bytes, WORD count);
 
+
+/* EN: Initialize a private Array header and its trailing mapped elements.
+ * RU: Инициализировать приватный заголовок массива и его элементы. */
+void dvm_record_initialize_array(Array *array, Type *type, WORD count, int clear);
+
 #endif

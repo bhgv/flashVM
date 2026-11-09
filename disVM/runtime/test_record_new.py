@@ -49,7 +49,7 @@ def verify_existing_shared_dispatch(runtime, work, image):
     if source.count(boundary) != 1 or source.count("executed:\n") != 1:
         raise RuntimeError("record handler dispatch boundary drift")
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ || op == IMOVP || op == IMOVW) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -101,9 +101,18 @@ const char *__wrap_dvm_runtime_bytes_copy_opcode(int op, const void *source, voi
     return result;
 }
 
+int __real_dvm_runtime_array_try_shared(void *, Type *, WORD, int);
+int __wrap_dvm_runtime_array_try_shared(void *cell, Type *type, WORD count, int clear)
+{
+    int result = __real_dvm_runtime_array_try_shared(cell, type, count, clear);
+    if (result)
+        puts("PASS array published directly in SHARED");
+    return result;
+}
+
 """)
     binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode",
-                            "dvm_runtime_bytes_copy_opcode"], executor=executor)
+                            "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
@@ -111,6 +120,7 @@ const char *__wrap_dvm_runtime_bytes_copy_opcode(int op, const void *source, voi
         if (result.returncode or "PASS record published directly in SHARED" not in output
                 or "PASS pointer published directly in SHARED" not in output
                 or "PASS word copied directly in SHARED" not in output
+                or "PASS array published directly in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 

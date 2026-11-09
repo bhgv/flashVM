@@ -122,11 +122,7 @@ static Array *build_array(AllocationTransaction *state, Heap **slot)
     retain_type(&Tarray, &state->array_retained);
     *slot = private_heap(&Tarray, sizeof(Array)+payload);
     array = H2D(Array *, *slot);
-    array->len = state->count;
-    array->t = state->type;
-    array->root = H;
-    array->data = (uchar *)array + sizeof(*array);
-    dvm_record_initialize_payload(state->type, state->clear, array->data, payload, state->count);
+    dvm_record_initialize_array(array, state->type, state->count, state->clear);
     Setmark(*slot);
     return array;
 }
@@ -173,13 +169,7 @@ static void initialize_candidate(AllocationTransaction *state)
     Heap *header = state->unpublished;
     if (state->array)
     {
-        Array *array = H2D(Array *, header);
-        size_t bytes = (size_t)state->type->size * (size_t)state->count;
-        array->len = state->count;
-        array->t = state->type;
-        array->root = H;
-        array->data = (uchar *)array + sizeof(*array);
-        dvm_record_initialize_payload(state->type, state->clear, array->data, bytes, state->count);
+        dvm_record_initialize_array(H2D(Array *, header), state->type, state->count, state->clear);
     }
     else
     {
