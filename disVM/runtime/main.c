@@ -617,7 +617,7 @@ static int guest_cancel_pending_or_close(void)
         for (Prog *guest = processes; guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-            if (process->startup_pending || (process->messages && (
+            if (__atomic_load_n(&process->startup_pending, __ATOMIC_ACQUIRE) || (process->messages && (
                 dvm_messages_pending(process->messages, 0, 0) ||
                 dvm_messages_pending(process->messages, 1, 0) ||
                 dvm_managed_workers_reply_in_transit(guest))))
@@ -625,6 +625,10 @@ static int guest_cancel_pending_or_close(void)
                 return 1;
             }
         }
+    }
+    if (native_spawn && dvm_runqueue_ready())
+    {
+        return 1;
     }
     fvm_port_sync_lock(channel_queue_mutex);
     pending = cancel_request_count != 0;
@@ -1411,7 +1415,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
     if (native_spawn && parent)
     {
-        resident->startup_pending = 1;
+        __atomic_store_n(&resident->startup_pending, 1, __ATOMIC_RELEASE);
         process->state = Pready;
         if (!dvm_managed_workers_start_guest(process))
         {
@@ -1425,7 +1429,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
     processes = process;
     live++;
     /* The creator holds a GC root while the resident starts. */
-    if (!resident->startup_pending)
+    if (!native_spawn || !parent)
     {
         addrun(process);
     }
@@ -1448,19 +1452,6 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, const REG *initia
     (void)create_process(parent, module, initial);
 }
 
-
-/* EN: Publish readiness once from this dedicated executor's first turn.
- * RU: Один раз опубликовать готовность на первом проходе владельца. */
-void dvm_runtime_publish_resident(Prog *process)
-{
-    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
-    if (!resident->startup_pending || dvm_managed_workers_guest() != process)
-    {
-        error("invalid dedicated resident publication");
-    }
-    addrun(process);
-    resident->startup_pending = 0;
-}
 
 typedef struct ChannelClaim
 {

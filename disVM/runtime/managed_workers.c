@@ -355,6 +355,10 @@ static void execute(void *argument)
         fvm_port_sync_unlock(service.sync);
         return;
     }
+    if (worker->guest_pid && !dvm_runqueue_publish_startup(worker->guest))
+    {
+        fail("invalid dedicated resident publication");
+    }
     while (!stopping())
     {
         if (dvm_runtime_gc_attach())
@@ -401,10 +405,6 @@ static void execute(void *argument)
         }
         else
         {
-            if (worker->guest_pid && !stopping())
-            {
-                dvm_runtime_publish_resident(worker->guest);
-            }
             while (!stopping() && !worker->guest_retired)
             {
                 int progress = service.turn();

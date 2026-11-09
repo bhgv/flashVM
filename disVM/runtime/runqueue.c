@@ -16,7 +16,7 @@
 static int dedicated_dispatch; /* Startup-only direct dispatch mode. */
 static Prog *head;             /* Runnable FIFO, modified only under the exclusive heap turn. */
 static Prog *tail;             /* Last runnable member, never a native waiter. */
-static unsigned int count;     /* Runnable nodes, bounded independently of the process root list. */
+static unsigned int runnable_count; /* Atomic count, including startup publication outside admission. */
 static unsigned long leases;   /* Native withdrawals before audited world leave. */
 static unsigned long returns;  /* Matched same-owner restorations after world enter. */
 static unsigned long inflight; /* Native continuations absent from runnable dispatch. */
@@ -27,11 +27,19 @@ static unsigned long migrated; /* Turns of the same Prog assigned to another liv
 static unsigned long peak;     /* Maximum simultaneous audited native continuation leases. */
 static int trace_waits;        /* Immutable opt-in diagnostics, enabled before thread launch. */
 
+/* EN: Read the number of published ready processes.
+ * RU: Прочитать число процессов с опубликованной готовностью. */
+static unsigned int ready_count(void)
+{
+    return __atomic_load_n(&runnable_count, __ATOMIC_ACQUIRE);
+}
+
+
 /* EN: Select direct dispatch before publishing the first Prog.
  * RU: Включить прямой запуск перед публикацией первого Prog. */
 void dvm_runqueue_enable_direct(void)
 {
-    if (count || inflight || active)
+    if (ready_count() || inflight || active)
     {
         abort();
     }
@@ -42,7 +50,7 @@ void dvm_runqueue_enable_direct(void)
  * RU: Проверить наличие готовых Prog без выбора владельца. */
 int dvm_runqueue_ready(void)
 {
-    return count != 0;
+    return ready_count() != 0;
 }
 
 /* Check the FIFO endpoints under the caller's exclusive heap turn.
@@ -50,12 +58,12 @@ int dvm_runqueue_ready(void)
  * endpoint/count or continuation accounting before a mutation. */
 static int endpoints_valid(void)
 {
-    if (count + inflight > DVM_RUNTIME_PROCESS_MAX || inflight > active ||
+    if (ready_count() + inflight > DVM_RUNTIME_PROCESS_MAX || inflight > active ||
         leases - returns != inflight || claims - finishes != active)
     {
         return 0;
     }
-    if (dedicated_dispatch || !count)
+    if (dedicated_dispatch || !ready_count())
     {
         return !head && !tail;
     }
@@ -63,7 +71,7 @@ static int endpoints_valid(void)
     {
         return 0;
     }
-    if (count == 1)
+    if (ready_count() == 1)
     {
         return head == tail && !head->link;
     }
@@ -222,7 +230,7 @@ int dvm_runqueue_contains(Prog *process)
     }
     for (cursor = head; cursor; cursor = cursor->link)
     {
-        if (++seen > count || cursor->state != Pready || !runtime_process(cursor)->queued ||
+        if (++seen > ready_count() || cursor->state != Pready || !runtime_process(cursor)->queued ||
             runtime_process(cursor)->native_owner || runtime_process(cursor)->ready_previous != last)
         {
             return -1;
@@ -233,7 +241,7 @@ int dvm_runqueue_contains(Prog *process)
         }
         last = cursor;
     }
-    return seen == count && last == tail &&
+    return seen == ready_count() && last == tail &&
         (!process || runtime_process(process)->queued == found) ? found : -1;
 }
 
@@ -298,7 +306,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
     if (!process || runtime_process(process)->native_owner || process->link ||
         (runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
-        count + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
+        ready_count() + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
         !endpoints_valid())
     {
         return 0;
@@ -340,13 +348,31 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
         }
         tail = process;
     }
-    count++;
+    __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
     if (!runtime_process(process)->channel_claimed)
     {
         dvm_managed_workers_wake_guest(process);
     }
     return 1;
 }
+
+/* EN: Publish a prepared resident from its dedicated thread before admission.
+ * RU: Опубликовать подготовленный процесс из его потока до допуска к куче. */
+int dvm_runqueue_publish_startup(Prog *process)
+{
+    DVM_RuntimeProcess *resident = runtime_process(process);
+    if (!dedicated_dispatch || !__atomic_load_n(&resident->startup_pending, __ATOMIC_ACQUIRE))
+    {
+        return 0;
+    }
+    /* The creator reserved a process slot and initialized Pready before spawn. */
+    __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
+    __atomic_store_n(&resident->queued, 1, __ATOMIC_RELEASE);
+    __atomic_store_n(&resident->startup_pending, 0, __ATOMIC_RELEASE);
+    dvm_managed_workers_wake();
+    return 1;
+}
+
 
 /* Append a borrowed runtime process after validation. Keep its wait fields. */
 int dvm_runqueue_append(Prog *process)
@@ -365,7 +391,7 @@ int dvm_runqueue_complete_channel_wait(Prog *process, char *cause)
  * RU: Снять готовый process и установить state, сохранив связи с GC. */
 static Prog *withdraw_ready(Prog *process, int state)
 {
-    if (!process || !count || !runtime_process(process)->queued ||
+    if (!process || !ready_count() || !runtime_process(process)->queued ||
         runtime_process(process)->channel_claimed ||
         (runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
@@ -385,7 +411,7 @@ static Prog *withdraw_ready(Prog *process, int state)
             tail = NULL;
         }
     }
-    count--;
+    __atomic_fetch_sub(&runnable_count, 1, __ATOMIC_RELEASE);
     __atomic_store_n(&runtime_process(process)->queued, 0, __ATOMIC_RELEASE);
     runtime_process(process)->ready_previous = NULL;
     process->link = NULL;
@@ -456,7 +482,7 @@ int dvm_runqueue_resume(Prog *process)
     if (!process || !context || runtime_process(process)->native_owner != context ||
         runtime_process(process)->dispatch_owner != context ||
         dvm_native_context_process(context) != process || process->state != Prelease ||
-        process->link || !inflight || count == DVM_RUNTIME_PROCESS_MAX ||
+        process->link || !inflight || ready_count() == DVM_RUNTIME_PROCESS_MAX ||
         runtime_process(process)->queued || !endpoints_valid())
     {
         return 0;
@@ -477,7 +503,7 @@ int dvm_runqueue_resume(Prog *process)
             tail = process;
         }
     }
-    count++;
+    __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
     returns++;
     inflight--;
     dvm_managed_workers_wake();
@@ -503,6 +529,6 @@ unsigned long dvm_runqueue_inflight(void)
 void dvm_runqueue_statistics(void)
 {
     fprintf(stderr,"NATIVEQUEUE queued=%u leases=%lu returns=%lu inflight=%lu peak=%lu\n",
-        count,leases,returns,inflight,peak);
+        ready_count(),leases,returns,inflight,peak);
     fprintf(stderr,"NATIVEDISPATCH claims=%lu finishes=%lu active=%u migrated=%lu\n",claims,finishes,active,migrated);
 }

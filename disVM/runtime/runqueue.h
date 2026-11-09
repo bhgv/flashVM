@@ -44,7 +44,7 @@ typedef struct DVM_RuntimeProcess
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */
     Prog *ready_previous;             /* Borrowed predecessor while ready. */
-    int startup_pending;               /* Initial root held until resident publishes readiness. */
+    int startup_pending;               /* Atomic startup handshake; creator keeps the GC root live. */
     int queued;                       /* Queue membership; published atomically for the dedicated idle loop. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
@@ -62,6 +62,11 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message);
 /* EN: Enable direct dispatch before any ready Prog exists.
  * RU: Включить прямой запуск до появления готовых Prog. */
 void dvm_runqueue_enable_direct(void);
+
+
+/* EN: Publish this thread's prepared resident once, without entering the heap.
+ * RU: Однократно опубликовать готовность своего процесса без входа в кучу. */
+int dvm_runqueue_publish_startup(Prog *process);
 
 
 /* EN: Report whether at least one Prog is ready.
