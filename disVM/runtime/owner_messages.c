@@ -141,8 +141,8 @@ int dvm_messages_unregister(DVM_MessageRouter *router, DVM_MessageEndpoint *endp
 
 /* EN: Publish node in destination's selected FIFO and notify on empty transition.
  * RU: Опубликовать узел в выбранном FIFO destination и уведомить при переходе из пустого. */
-int dvm_messages_send(DVM_MessageRouter *router, uintptr_t destination,
-    int reply, DVM_OwnerMessage *node)
+static int send_node(DVM_MessageRouter *router, uintptr_t destination,
+    int reply, DVM_OwnerMessage *node, int once)
 {
     pthread_mutex_lock(&router->lock);
     DVM_MessageEndpoint *endpoint = *find_slot(router, destination);
@@ -152,6 +152,17 @@ int dvm_messages_send(DVM_MessageRouter *router, uintptr_t destination,
         return 0;
     }
     DVM_MessageQueue *queue = reply ? &endpoint->replies : &endpoint->requests;
+    if (once)
+    {
+        for (DVM_OwnerMessage *pending = queue->head; pending; pending = pending->next)
+        {
+            if (pending == node)
+            {
+                pthread_mutex_unlock(&router->lock);
+                return 2;
+            }
+        }
+    }
     node->next = NULL;
     if (queue->tail)
     {
@@ -165,6 +176,43 @@ int dvm_messages_send(DVM_MessageRouter *router, uintptr_t destination,
     queue->tail = node;
     pthread_mutex_unlock(&router->lock);
     return 1;
+}
+
+
+/* EN: Send a uniquely owned node. RU: Отправить узел отправителя. */
+int dvm_messages_send(DVM_MessageRouter *router, uintptr_t destination,
+    int reply, DVM_OwnerMessage *node)
+{
+    return send_node(router, destination, reply, node, 0);
+}
+
+
+/* EN: Coalesce an embedded request until the consumer takes it.
+ * RU: Объединить повторы встроенного запроса до его извлечения. */
+int dvm_messages_send_once(DVM_MessageRouter *router, uintptr_t destination,
+    DVM_OwnerMessage *node)
+{
+    return send_node(router, destination, 0, node, 1);
+}
+
+
+/* EN: Test the selected FIFO for kind, or any request if kind is zero.
+ * RU: Проверить наличие kind в выбранном FIFO, либо любого запроса при нуле. */
+int dvm_messages_pending(DVM_MessageEndpoint *endpoint, int reply, unsigned kind)
+{
+    int found = 0;
+    pthread_mutex_lock(&endpoint->router->lock);
+    DVM_MessageQueue *queue = reply ? &endpoint->replies : &endpoint->requests;
+    for (DVM_OwnerMessage *node = queue->head; node; node = node->next)
+    {
+        if (!kind || node->kind == kind)
+        {
+            found = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&endpoint->router->lock);
+    return found;
 }
 
 

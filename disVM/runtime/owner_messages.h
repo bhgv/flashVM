@@ -41,6 +41,15 @@ int dvm_messages_unregister(DVM_MessageRouter *router, DVM_MessageEndpoint *endp
 int dvm_messages_send(DVM_MessageRouter *router, uintptr_t destination,
     int reply, DVM_OwnerMessage *node);
 
+/* EN: Post a stable embedded request. Return 2 if already pending.
+ * RU: Поставить встроенный запрос. Вернуть 2, если он уже в очереди. */
+int dvm_messages_send_once(DVM_MessageRouter *router, uintptr_t destination,
+    DVM_OwnerMessage *node);
+
+/* EN: Test for kind, or any request when kind is zero.
+ * RU: Проверить наличие kind, либо любого запроса при нуле. */
+int dvm_messages_pending(DVM_MessageEndpoint *endpoint, int reply, unsigned kind);
+
 /* EN: Take one node from the selected FIFO. With wait set, sleep until a
  * node arrives or stop is requested. Existing nodes remain drainable.
  * RU: Извлечь узел из выбранного FIFO. С wait ждать узла или остановки.

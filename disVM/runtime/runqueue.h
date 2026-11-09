@@ -3,15 +3,16 @@
 #define DVM_RUNTIME_RUNQUEUE_H
 #include "disvm/native_context.h"
 #include <fenv.h>
+#include "owner_messages.h"
 #ifndef DVM_RUNTIME_PROCESS_MAX
 #define DVM_RUNTIME_PROCESS_MAX 2147483647U /* Native signed process/count representation, not a128-task policy. */
 #endif
 
 
 enum {
-    DVM_PROG_MESSAGE_NONE,            /* No pending channel message. */
-    DVM_PROG_MESSAGE_CHANNEL_CLOSE,   /* The channel is retiring. */
-    DVM_PROG_MESSAGE_CHANNEL_EXIT     /* The guest was asked to exit. */
+    DVM_PROG_MESSAGE_CHANNEL_CLOSE = 1,   /* The channel is retiring. */
+    DVM_PROG_MESSAGE_CHANNEL_EXIT,    /* The guest was asked to exit. */
+    DVM_PROG_MESSAGE_CHILD_RETIRED   /* Child retirement reply to killwait. */
 };
 
 
@@ -25,7 +26,10 @@ typedef struct DVM_RuntimeProcess
     int exit_ready_pid;               /* Retired child acknowledged by the next MCALL retry. */
     int parent_pid;                   /* Immutable numeric identity of the spawning guest. */
     int lifetime_holds;      /* Native borrows acquired under the heap turn. */
-    unsigned char channel_message;    /* Atomic owner mailbox for the current wait. */
+    DVM_MessageEndpoint *messages;    /* Dedicated guest registration, stable until retirement. */
+    DVM_OwnerMessage channel_close;   /* Embedded close request, coalesced until wait completes. */
+    DVM_OwnerMessage channel_exit;    /* Embedded exit request, coalesced until wait completes. */
+    DVM_OwnerMessage child_retired;  /* Embedded reply for the one parked killwait. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */

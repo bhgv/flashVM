@@ -309,7 +309,14 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
         {
             return 0;
         }
-        __atomic_store_n(&runtime_process(process)->channel_message, DVM_PROG_MESSAGE_NONE, __ATOMIC_RELEASE);
+        DVM_MessageEndpoint *messages = runtime_process(process)->messages;
+        if (messages)
+        {
+            while (dvm_messages_take(messages, 0, 0))
+            {
+                /* Embedded requests belong to this wait only. */
+            }
+        }
         process->ptr = nil;
         process->chan = nil;
         if (cause)

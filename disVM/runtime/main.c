@@ -108,6 +108,7 @@ extern ulong gcepochs;                    /* Completed collector epochs; distinc
 
 static Pool memory;                       /* Pool mutated by Dis or its stopped-world collector. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
+static DVM_MessageRouter *guest_messages; /* Dedicated guest endpoints, keyed by immutable PID. */
 static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
@@ -612,7 +613,8 @@ static int guest_cancel_pending_or_close(void)
         for (Prog *guest = processes; guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-            if (__atomic_load_n(&process->channel_message, __ATOMIC_ACQUIRE) != DVM_PROG_MESSAGE_NONE)
+            if (process->messages && (dvm_messages_pending(process->messages, 0, 0) ||
+                dvm_messages_pending(process->messages, 1, 0)))
             {
                 return 1;
             }
@@ -1287,6 +1289,31 @@ Prog *delrun(int state)
     return process;
 }
 
+/* EN: Dispose guest's endpoint once no producer can borrow the guest.
+ * RU: Освободить endpoint гостя после ухода всех отправителей. */
+static void drop_guest_messages(Prog *guest)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+    if (process->messages)
+    {
+        dvm_messages_stop(process->messages);
+        while (dvm_messages_take(process->messages, 0, 0))
+        {
+            /* The request nodes are embedded in the guest. */
+        }
+        while (dvm_messages_take(process->messages, 1, 0))
+        {
+            /* Embedded replies are discarded on guest teardown. */
+        }
+        if (!dvm_messages_unregister(guest_messages, process->messages))
+        {
+            abort();
+        }
+        process->messages = NULL;
+    }
+}
+
+
 /* Create one Limbo process; it is scheduled above one bound native OS owner. */
 Prog *newprog(Prog *parent, Modlink *module)
 {
@@ -1313,8 +1340,22 @@ Prog *newprog(Prog *parent, Modlink *module)
         free(process);
         error(exHeap);
     }
+    if (native_spawn)
+    {
+        DVM_RuntimeProcess *guest = (DVM_RuntimeProcess *)process;
+        guest->channel_close.kind = DVM_PROG_MESSAGE_CHANNEL_CLOSE;
+        guest->channel_exit.kind = DVM_PROG_MESSAGE_CHANNEL_EXIT;
+        guest->messages = dvm_messages_register(guest_messages, (uintptr_t)process->pid);
+        if (!guest->messages)
+        {
+            free(process);
+            destroy(module);
+            error(exNomem);
+        }
+    }
     if (native_spawn && parent && !dvm_managed_workers_start_guest(process))
     {
+        drop_guest_messages(process);
         free(process);
         destroy(module);
         error("cannot create native guest thread");
@@ -1597,7 +1638,6 @@ static int wake_for_termination(Prog *child)
 static int post_channel_exit(Prog *child)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)child;
-    unsigned char prior = DVM_PROG_MESSAGE_NONE;
 
     if (!native_spawn ||
         (child->state != Psend && child->state != Precv && child->state != Palt) ||
@@ -1606,8 +1646,7 @@ static int post_channel_exit(Prog *child)
         return 0;
     }
     child->flags |= Pkilled;
-    if (__atomic_compare_exchange_n(&process->channel_message, &prior,
-        DVM_PROG_MESSAGE_CHANNEL_EXIT, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+    if (dvm_messages_send_once(guest_messages, (uintptr_t)child->pid, &process->channel_exit) == 1)
     {
         dvm_managed_workers_wake_guest(child);
     }
@@ -1706,8 +1745,23 @@ static void publish_child_exit(int parent_pid, int child_pid)
         ((DVM_RuntimeProcess *)parent)->exit_wait_pid == child_pid)
     {
         DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
-        process->exit_ready_pid = child_pid;
-        wake_child_exit_wait(parent);
+        if (process->messages)
+        {
+            DVM_OwnerMessage *reply = &process->child_retired;
+            reply->sender = (uintptr_t)child_pid;
+            reply->request = (uint64_t)child_pid;
+            reply->kind = DVM_PROG_MESSAGE_CHILD_RETIRED;
+            if (!dvm_messages_send(guest_messages, (uintptr_t)parent_pid, 1, reply))
+            {
+                abort();
+            }
+            dvm_managed_workers_wake_guest(parent);
+        }
+        else
+        {
+            process->exit_ready_pid = child_pid;
+            wake_child_exit_wait(parent);
+        }
     }
 }
 
@@ -1979,9 +2033,8 @@ int dvm_runtime_channel_post_close(Channel *channel)
                 if (peer)
                 {
                     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
-                    unsigned char prior = __atomic_exchange_n(&process->channel_message,
-                        DVM_PROG_MESSAGE_CHANNEL_CLOSE, __ATOMIC_ACQ_REL);
-                    if (prior == DVM_PROG_MESSAGE_NONE)
+                    if (dvm_messages_send_once(guest_messages, (uintptr_t)peer->pid,
+                        &process->channel_close) == 1)
                     {
                         dvm_managed_workers_wake_guest(peer);
                     }
@@ -2429,17 +2482,37 @@ static int consume_channel_message(Prog *guest)
         return 0;
     }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-    unsigned char message = __atomic_load_n(&process->channel_message, __ATOMIC_ACQUIRE);
-    if (message == DVM_PROG_MESSAGE_NONE ||
+    if (!process->messages || !dvm_messages_pending(process->messages, 0, 0) ||
         process->channel_claimed || dvm_runqueue_dispatch_owner(guest))
     {
         return 0;
     }
-    if (message == DVM_PROG_MESSAGE_CHANNEL_CLOSE && !guest->kill)
+    if (!guest->kill && dvm_messages_pending(process->messages, 0, DVM_PROG_MESSAGE_CHANNEL_CLOSE))
     {
         guest->kill = "channel hangup";
     }
     return cancel_parked_guest(guest);
+}
+
+
+/* EN: Consume a retirement reply before selecting the waiting parent.
+ * RU: Принять ответ о завершении до выбора ожидающего родителя. */
+static int consume_child_reply(Prog *guest)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+    if (!process || !process->messages)
+    {
+        return 0;
+    }
+    DVM_OwnerMessage *reply = dvm_messages_take(process->messages, 1, 0);
+    if (!reply || guest->state != DVM_CHILD_EXIT_WAIT ||
+        reply->kind != DVM_PROG_MESSAGE_CHILD_RETIRED ||
+        reply->request != (uint64_t)process->exit_wait_pid)
+    {
+        return 0;
+    }
+    process->exit_ready_pid = (int)reply->request;
+    return wake_child_exit_wait(guest);
 }
 
 
@@ -2459,6 +2532,7 @@ static int runtime_dispatch_turn(void)
         Prog *guest = dvm_managed_workers_guest();
         guest = guest ? guest : initial_guest;
         cancelled |= consume_channel_message(guest);
+        cancelled |= consume_child_reply(guest);
         process = dvm_runqueue_select_guest(guest);
     }
     else
@@ -2578,6 +2652,7 @@ static int runtime_dispatch_turn(void)
             {
                 dvm_managed_workers_guest_retired(child_pid);
             }
+            drop_guest_messages(process);
             free(process);
             live--;
             publish_child_exit(parent_pid, child_pid);
@@ -2687,6 +2762,11 @@ static int runtime_execute_inner(void *argument)
     }
     if (native_spawn)
     {
+        guest_messages = dvm_messages_create();
+        if (!guest_messages)
+        {
+            error(exNomem);
+        }
         dvm_runqueue_enable_direct();
     }
     process = start_module(module);
@@ -2837,6 +2917,15 @@ static int runtime_execute(void *argument)
         result = 1;
     }
     dvm_close_worker_stop();
+    if (guest_messages)
+    {
+        for (Prog *guest = processes; guest; guest = guest->next)
+        {
+            drop_guest_messages(guest);
+        }
+        dvm_messages_destroy(guest_messages);
+        guest_messages = NULL;
+    }
     runtime_statistics();
     dvm_queue_probe_finish();
     if (!result)
