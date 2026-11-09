@@ -14,6 +14,12 @@ struct Type; /* Immutable live descriptor owned by the caller. */
 void dvm_runtime_record_new(void *destination, struct Type *type, int clear);
 
 
+/* EN: Read the type index or fill an empty slot from an existing SHARED dispatch.
+ * RU: Прочитать индекс типа или заполнить пустую ячейку из текущего SHARED.
+ * Zero leaves the destination unchanged and requests the admitted fallback. */
+int dvm_runtime_record_shared_index(const void *source, WORD *index);
+int dvm_runtime_record_try_shared(void *destination, struct Type *type, int clear);
+
 /* [GC:] Same publication contract for an owning array. count is a full native
  * WORD. Each element gets H in mapped slots, with optional scalar zeroing. */
 void dvm_runtime_array_new(void *destination, struct Type *type, WORD count, int clear);

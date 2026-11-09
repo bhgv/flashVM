@@ -63,6 +63,11 @@ void dvm_runtime_gc_shared_poll(void);
 int dvm_runtime_gc_dispatch_share(void);
 void dvm_runtime_gc_dispatch_finish(void);
 
+/* EN: Detect or restore the dispatch SHARED phase around one legacy operation.
+ * RU: Проверить или восстановить SHARED вокруг одной старой операции. */
+int dvm_runtime_gc_dispatch_is_shared(void);
+void dvm_runtime_gc_dispatch_restore(void);
+
 int dvm_runtime_gc_shared_has_exclusive_waiters(void);
 /* Park a shared guest with its current published roots, then reenter shared. */
 void dvm_runtime_gc_shared_drain(void);

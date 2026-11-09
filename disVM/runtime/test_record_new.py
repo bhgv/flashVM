@@ -36,6 +36,47 @@ init() {
 '''
 
 
+
+def verify_existing_shared_dispatch(runtime, work, image):
+    """Run real NEW/NEWZ after entering SHARED at the handler boundary."""
+    executor = work / "shared-record-executor.c"
+    source = (runtime.parent / "native/xec.c").read_text()
+    boundary = "\t\t/* Successful translated steps own their register/PC publication. */"
+    if source.count(boundary) != 1 or source.count("executed:\n") != 1:
+        raise RuntimeError("record handler dispatch boundary drift")
+    source = source.replace(boundary, """
+        int shared_record = (op == INEW || op == INEWZ) && dvm_runtime_gc_dispatch_share();
+""" + boundary)
+    executor.write_text(source.replace("executed:\n", """
+executed:
+        if (shared_record)
+            dvm_runtime_gc_dispatch_finish();
+"""))
+    wrapper = work / "shared-record-check.c"
+    wrapper.write_text(r"""
+#include "lib9.h"
+#include "dat.h"
+#include "interp.h"
+#include <stdio.h>
+int __real_dvm_runtime_record_try_shared(void *, Type *, int);
+int __wrap_dvm_runtime_record_try_shared(void *cell, Type *type, int clear)
+{
+    int result = __real_dvm_runtime_record_try_shared(cell, type, clear);
+    if (result)
+        puts("PASS record published directly in SHARED");
+    return result;
+}
+""")
+    binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared"], executor=executor)
+    for mode in ("--no-jit", "--jit"):
+        result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
+                                capture_output=True, text=True, timeout=30)
+        output = result.stdout + result.stderr
+        if (result.returncode or "PASS record published directly in SHARED" not in output
+                or "PASS record guest" not in output):
+            raise RuntimeError(output)
+
+
 def main():
     """Run real dispatch and rooted interleaving in both runtime profiles."""
     runtime, compiler, include = (Path(arg).resolve() for arg in sys.argv[1:4])
@@ -61,6 +102,7 @@ def main():
                 "PASS detached ALT publication failure", "PASS native channel buffer wait", "PASS rooted channel buffer lifetime", "PASS buffered channel completion", "PASS direct channel mover failure", "PASS two-sided channel finalization", "PASS native Prog hold race", "PASS guarded channel drain", "PASS mapped channel receive ownership", "PASS mapped channel send publication", "PASS guarded mapped channel mover", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
+        verify_existing_shared_dispatch(runtime, work, image)
     print("PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest")
 
 

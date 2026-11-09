@@ -277,6 +277,41 @@ void dvm_runtime_gc_dispatch_finish(void)
 }
 
 
+/* EN: Recognize a rooted dispatch, distinct from an audited native lease.
+ * RU: Отличить SHARED текущего назначения от нативной аренды. */
+int dvm_runtime_gc_dispatch_is_shared(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    Prog *resident = dvm_native_context_process(context);
+    DVM_HeapOwnerStats state;
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    return resident && resident->state == Pready && up->prog == resident &&
+        dvm_runqueue_dispatch_owner(resident) == context &&
+        dvm_native_owner_world(owner) == dvm_gc_runtime.world &&
+        dvm_native_owner_statistics(owner, &state) &&
+        state.phase == DVM_HEAP_SHARED && !state.pending_progress;
+}
+
+
+/* EN: Restore a caller's shared dispatch after completing a legacy operation.
+ * RU: Вернуть SHARED вызывающему после завершения старой операции. */
+void dvm_runtime_gc_dispatch_restore(void)
+{
+    Prog *resident = dvm_native_context_process(dvm_native_context_current());
+    resident->R = DVM_R;
+    if (!dvm_runtime_gc_dispatch_share())
+    {
+        DVM_HeapOwner *owner = dvm_native_owner_current();
+        if (!dvm_native_owner_suspend(owner, dvm_gc_runtime.passes) ||
+            !dvm_native_owner_enter_shared(owner))
+        {
+            abort();
+        }
+        dvm_native_execution()->world_last_exit = DVM_NW_SITE_DISPATCH;
+    }
+}
+
+
 /* EN: Observe exclusive requests without taking one.
  * RU: Проверить наличие эксклюзивных запросов. */
 int dvm_runtime_gc_shared_has_exclusive_waiters(void)

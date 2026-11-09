@@ -552,6 +552,28 @@ DVM_CellDomain *dvm_managed_cell_domain(void)
 }
 
 
+/* EN: Borrow the cell lock domain while a SHARED dispatch pins its service.
+ * RU: Получить домен блокировок, пока SHARED удерживает сервис. */
+DVM_CellDomain *dvm_managed_dispatch_cell_domain(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats state;
+    if (!dvm_native_owner_statistics(owner, &state) || state.phase != DVM_HEAP_SHARED ||
+        state.pending_progress || dvm_native_context_object_count(dvm_native_context_current()))
+    {
+        return NULL;
+    }
+    FVM_PortSync *mutex = lock_service();
+    if (!mutex)
+    {
+        return NULL;
+    }
+    DVM_CellDomain *domain = owners.world == dvm_native_owner_world(owner) ? owners.cells : NULL;
+    fvm_port_sync_unlock(mutex);
+    return domain;
+}
+
+
 /* [GC:] Stable service/world identity is checked before native registry use.
  * Existing serialized admission stabilizes the service and caller-owned spans.
  * Cell guards do not replace source lifetime, roots or future GC epoch proof. */

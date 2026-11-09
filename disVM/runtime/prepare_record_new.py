@@ -8,6 +8,46 @@ EXPECTED = {'new': '5de4e3aa3cd1b9cf998676decf15c972e05d79a7b8a0e70e63a6314d2dbb
 IMPORTED = "5a6c439637da7a1f19732b3b454fed77a8674f838a4570203b0ffbe7eeecb718"  # Exact adapted MNEWZ body.
 
 
+SHARED_RECORD = r"""
+/* EN: Keep the constructor's legacy retirement isolated from SHARED dispatch.
+ * RU: Изолировать старое освобождение записи от диспетчеризации в SHARED. */
+static int admitted_record_new(void *argument)
+{
+    int clear = *(int *)argument;
+    WORD captured;
+    const char *problem = dvm_runtime_bytes_snapshot(DVM_R.s, &captured, sizeof(captured));
+    if (problem)
+    {
+        error((char *)problem);
+    }
+    dvm_runtime_record_new(DVM_R.d, moduletype(DVM_R.M, captured), clear);
+    return 1;
+}
+
+
+/* EN: Accept an already shared dispatch and promote only on fallback.
+ * RU: Принять текущий SHARED и повысить допуск только при резервном пути. */
+static void shared_record_new(int clear)
+{
+    WORD index;
+    if (dvm_runtime_record_shared_index(DVM_R.s, &index) &&
+        dvm_runtime_record_try_shared(DVM_R.d, moduletype(DVM_R.M, index), clear))
+    {
+        return;
+    }
+    dvm_runtime_gc_dispatch_finish();
+    int completed = kprotect(admitted_record_new, &clear);
+    dvm_runtime_gc_dispatch_restore();
+    if (!completed)
+    {
+        krethrow();
+    }
+}
+
+
+"""
+
+
 def adapt(source):
     """Insert worker-mode dispatch or raise on source drift."""
     for name, digest in EXPECTED.items():
@@ -20,25 +60,26 @@ def adapt(source):
         selection = f"""
     if (dvm_runtime_guarded_copies)
     {{
+        if (dvm_runtime_gc_dispatch_is_shared())
+        {{
+            shared_record_new({clear});
+            return;
+        }}
         int selected = dvm_runtime_shared_mode();
         if (!selected)
         {{
-            error(exHeap);
+            error("record constructor requires managed dispatch");
         }}
         if (selected == 2)
         {{
-            WORD captured;
-            const char *problem = dvm_runtime_bytes_snapshot(DVM_R.s, &captured, sizeof(captured));
-            if (problem)
-            {{
-                error((char *)problem);
-            }}
-            dvm_runtime_record_new(DVM_R.d, moduletype(DVM_R.M, captured), {clear});
+            int clear = {clear};
+            admitted_record_new(&clear);
             return;
         }}
     }}
 """
-        source = source[:match.start()] + body[:at] + selection + body[at:] + source[match.end():]
+        helper = SHARED_RECORD if name == "new" else ""
+        source = source[:match.start()] + helper + body[:at] + selection + body[at:] + source[match.end():]
     source = adapt_array(adapt_imported(source))
     anchor = '#include "interp.h"'
     if source.count(anchor) != 1:

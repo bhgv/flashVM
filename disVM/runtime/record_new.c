@@ -10,6 +10,7 @@
 #include "heap_commit.h"
 #include "heap_pool.h"
 #include "runtime_gc.h"
+#include "record_storage.h"
 #include "gc_fields.h"
 #include "disvm/refcount.h"
 #include <limits.h>
@@ -43,45 +44,6 @@ typedef struct AllocationTransaction
     void *result; /* Borrowed identity of the committed object. */
     DVM_HeapHold retired; /* Displaced destination owner. */
 } AllocationTransaction;
-
-
-/* Return1 for nonwrapping native address/size geometry; never infer mapping. */
-static int span(const void *address, size_t size)
-{
-    return (uintptr_t)address >= sizeof(void *) &&
-        (uintptr_t)address <= (uintptr_t)-1-size;
-}
-
-
-/* [GC:] Validate immutable genuine Type shape before initmem/map traversal.
- * Return0 for malformed extent/map,1 valid; no allocation/retention/callback.
- * Caller supplies real descriptor lifetime and mapped storage, not just address. */
-static int valid_type(Type *type)
-{
-    int byte;
-    int bit;
-    if (!span(type, offsetof(Type, map)) || type == H ||
-        (uintptr_t)type % sizeof(void *) || type->size < 0 ||
-        (ulong)type->size > 0x7fffffff-sizeof(Heap) ||
-        dvm_refcount_load_i(&type->ref) <= 0 || type->np < 0 || type->np > type->size/(8*sizeof(void *))+
-        (type->size%(8*sizeof(void *)) != 0) ||
-        !span(type, offsetof(Type, map)+(size_t)type->np))
-    {
-        return 0;
-    }
-    for (byte = 0; byte < type->np; byte++)
-    {
-        for (bit = 0; bit < 8; bit++)
-        {
-            if ((type->map[byte] & (0x80U>>bit)) &&
-                (size_t)byte*8+bit >= (size_t)type->size/sizeof(void *))
-            {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
 
 
 /* [GC:] Consume one nonzero exclusive hold from argument. Return1 or propagate
@@ -120,26 +82,6 @@ static void finish_all(AllocationTransaction *state, int body_ok)
     {
         memmove(getup()->env->errstr, first_error, sizeof(first_error));
         krethrow();
-    }
-}
-
-
-/* [GC:] Initialize privately allocated bytes and every mapped slot before rooting.
- * count is already bounded, and a zero-sized element has an empty map. */
-static void initialize_payload(AllocationTransaction *state, uchar *data, size_t bytes, WORD count)
-{
-    WORD index;
-    if (state->clear && bytes)
-    {
-        memset(data, 0, bytes);
-    }
-    if (state->type->np)
-    {
-        for (index = 0; index < count; index++)
-        {
-            initmem(state->type, data);
-            data += state->type->size;
-        }
     }
 }
 
@@ -184,7 +126,7 @@ static Array *build_array(AllocationTransaction *state, Heap **slot)
     array->t = state->type;
     array->root = H;
     array->data = (uchar *)array + sizeof(*array);
-    initialize_payload(state, array->data, payload, state->count);
+    dvm_record_initialize_payload(state->type, state->clear, array->data, payload, state->count);
     Setmark(*slot);
     return array;
 }
@@ -237,11 +179,11 @@ static void initialize_candidate(AllocationTransaction *state)
         array->t = state->type;
         array->root = H;
         array->data = (uchar *)array + sizeof(*array);
-        initialize_payload(state, array->data, bytes, state->count);
+        dvm_record_initialize_payload(state->type, state->clear, array->data, bytes, state->count);
     }
     else
     {
-        initialize_payload(state, H2D(void *, header), (size_t)state->type->size, 1);
+        dvm_record_initialize_payload(state->type, state->clear, H2D(void *, header), (size_t)state->type->size, 1);
     }
 }
 
@@ -446,7 +388,7 @@ static void check_array(Type *type, WORD count, int extra_refs)
 static void allocate(void *destination, Type *type, int clear, int array, WORD count)
 {
     AllocationTransaction state = {0};
-    if (!valid_type(type) || !span(destination, sizeof(void *)) || destination == H)
+    if (!dvm_record_valid_type(type) || !dvm_record_span(destination, sizeof(void *)) || destination == H)
     {
         error(exHeap);
     }
@@ -488,11 +430,11 @@ Channel *dvm_runtime_channel_new(void *destination, Type *type, WORD count,
         error(exNegsize);
     }
     if (count > INT_MAX || !mover ||
-        !span(destination, sizeof(void *)) || destination == H)
+        !dvm_record_span(destination, sizeof(void *)) || destination == H)
     {
         error(exHeap);
     }
-    if ((count || mover == movtmp) && !valid_type(type))
+    if ((count || mover == movtmp) && !dvm_record_valid_type(type))
     {
         error(exHeap);
     }
