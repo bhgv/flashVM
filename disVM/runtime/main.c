@@ -614,7 +614,8 @@ static int guest_cancel_pending_or_close(void)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
             if (process->messages && (dvm_messages_pending(process->messages, 0, 0) ||
-                dvm_messages_pending(process->messages, 1, 0)))
+                dvm_messages_pending(process->messages, 1, 0) ||
+                dvm_managed_workers_reply_in_transit(guest)))
             {
                 return 1;
             }
@@ -2628,7 +2629,11 @@ static int consume_child_reply(Prog *guest)
     {
         return 0;
     }
-    DVM_OwnerMessage *reply = dvm_messages_take(process->messages, 1, 0);
+    DVM_OwnerMessage *reply = dvm_managed_workers_take_reply(guest);
+    if (!reply)
+    {
+        reply = dvm_messages_take(process->messages, 1, 0);
+    }
     if (!reply || guest->state != DVM_CHILD_EXIT_WAIT ||
         reply->request != (uint64_t)process->exit_wait_pid)
     {

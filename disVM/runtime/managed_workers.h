@@ -32,6 +32,15 @@ int dvm_managed_workers_start_guest(struct Prog *guest);
 struct Prog *dvm_managed_workers_guest(void);
 void dvm_managed_workers_guest_retired(int pid);
 
+/* EN: Query a staged native reply after inspecting the resident's FIFO.
+ * RU: Проверить извлечённый ответ после проверки FIFO процесса. */
+int dvm_managed_workers_reply_in_transit(struct Prog *guest);
+
+/* EN: Take the current owner's staged reply, if any.
+ * RU: Забрать извлечённый ответ текущего владельца, если он есть. */
+struct DVM_OwnerMessage *dvm_managed_workers_take_reply(struct Prog *guest);
+
+
 /* Compensate an impending audited native suspension while still ACTIVE.
  * Return a stable diagnostic if compensation is refused, or NULL on success. */
 const char *dvm_managed_workers_native_wait(void);
@@ -81,9 +90,8 @@ void dvm_managed_workers_file_call(void);
 int dvm_managed_workers_current(void);
 
 
-/* Stop and join all started helpers BEFORE collector shutdown. Controller temporarily
- * leaves its empty heap turn so every helper can enter/reenter/detach, then
- * reacquires it. Native OS I/O cancellation is cooperative, not preemptive.
- * diagnostics prints native counters after join. No-op when not started. */
+/* EN: Stop and join helpers, leaving the controller idle for collector shutdown.
+ * RU: Остановить и присоединить исполнителей, оставив контроллер в IDLE.
+ * diagnostics reports joined counters. No-op if the service was never started. */
 int dvm_managed_workers_stop(int diagnostics);
 #endif

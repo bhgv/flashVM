@@ -23,6 +23,8 @@
 typedef struct ManagedWorker
 {
     struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
+    DVM_OwnerMessage *staged_reply; /* Owner-only reply removed before heap admission. */
+    int reply_in_transit;       /* Published to the controller until the owner takes the reply. */
     FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
     int wake_stopped;           /* Stop/failure latch under wake. */
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
@@ -177,6 +179,20 @@ static void wait_dedicated_work(ManagedWorker *worker)
 }
 
 
+/* EN: Take one native reply after waking, before entering NativeWorld.
+ * RU: Извлечь один нативный ответ после пробуждения, до входа в NativeWorld. */
+static void stage_dedicated_reply(ManagedWorker *worker)
+{
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
+    __atomic_store_n(&worker->reply_in_transit, 1, __ATOMIC_RELEASE);
+    worker->staged_reply = dvm_messages_take(resident->messages, 1, 0);
+    if (!worker->staged_reply)
+    {
+        __atomic_store_n(&worker->reply_in_transit, 0, __ATOMIC_RELEASE);
+    }
+}
+
+
 /* Release an empty scheduler turn, join already terminated helpers without the
  * heap, then reclaim their native slots after reentry. Any rootless executor
  * can reap, including when the controller is blocked in native I/O. */
@@ -265,6 +281,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         {
             return 0;
         }
+        stage_dedicated_reply(current_guest);
     }
     else if (wait_for_work && !finished)
     {
@@ -585,6 +602,30 @@ int dvm_managed_workers_start_guest(Prog *guest)
 Prog *dvm_managed_workers_guest(void)
 {
     return current_guest ? current_guest->guest : NULL;
+}
+
+
+/* EN: Tell the controller about an extracted reply, after checking the FIFO.
+ * RU: Сообщить контроллеру об извлечённом ответе после проверки FIFO. */
+int dvm_managed_workers_reply_in_transit(Prog *guest)
+{
+    ManagedWorker *worker = ((DVM_RuntimeProcess *)guest)->dedicated;
+    return worker && __atomic_load_n(&worker->reply_in_transit, __ATOMIC_ACQUIRE);
+}
+
+
+/* EN: Consume this executor's staged reply, if it belongs to guest.
+ * RU: Забрать извлечённый ответ текущего исполнителя для guest. */
+DVM_OwnerMessage *dvm_managed_workers_take_reply(Prog *guest)
+{
+    if (!current_guest || current_guest->guest != guest || !current_guest->staged_reply)
+    {
+        return NULL;
+    }
+    DVM_OwnerMessage *reply = current_guest->staged_reply;
+    current_guest->staged_reply = NULL;
+    __atomic_store_n(&current_guest->reply_in_transit, 0, __ATOMIC_RELEASE);
+    return reply;
 }
 
 
