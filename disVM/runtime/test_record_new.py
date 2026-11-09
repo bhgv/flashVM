@@ -50,7 +50,7 @@ def verify_existing_shared_dispatch(runtime, work, image):
     if source.count(boundary) != 1 or source.count("executed:\n") != 1:
         raise RuntimeError("record handler dispatch boundary drift")
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL || op == ILENA) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -120,10 +120,23 @@ int __wrap_dvm_runtime_array_index_publish_shared(void *cell, WORD address)
     return result;
 }
 
+const char *__real_dvm_runtime_array_length(const void *, void *);
+const char *__wrap_dvm_runtime_array_length(const void *source, void *destination)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats before, after;
+    int shared = dvm_runtime_gc_dispatch_is_shared() && dvm_native_owner_statistics(owner, &before);
+    const char *result = __real_dvm_runtime_array_length(source, destination);
+    if (shared && !result &&
+        dvm_native_owner_statistics(owner, &after) && before.reentries == after.reentries)
+        puts("PASS array length read directly in SHARED");
+    return result;
+}
+
 """)
     binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode",
                             "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared",
-                            "dvm_runtime_array_index_publish_shared"], executor=executor)
+                            "dvm_runtime_array_index_publish_shared", "dvm_runtime_array_length"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
@@ -133,6 +146,7 @@ int __wrap_dvm_runtime_array_index_publish_shared(void *cell, WORD address)
                 or "PASS word copied directly in SHARED" not in output
                 or "PASS array published directly in SHARED" not in output
                 or "PASS array address published directly in SHARED" not in output
+                or "PASS array length read directly in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 

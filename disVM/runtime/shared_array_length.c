@@ -9,6 +9,7 @@
 #include "array_length_value.h"
 #include "shared_access.h"
 #include "shared_arithmetic.h"
+#include "runtime_gc.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
 #include "disvm/native_process.h"
@@ -25,27 +26,26 @@
  * allocation, retain/destructor, VM callback or object-owner wait. Native metadata
  * retains its existing mutex contract. Original guards are ended even
  * when extension refuses; error is returned only after complete release. */
-const char *dvm_runtime_array_length(const void *source, void *destination)
+static const char *array_length_attempt(const void *source, void *destination,
+    DVM_CellDomain *domain, DVM_CellResult *claim)
 {
     DVM_TripleAccess access = {0};
-    DVM_CellResult claim;
     Array *array;
     const void *field = NULL;
     const char *problem = NULL;
-    if (dvm_runtime_shared_mode() != 2)
-    {
-        return exHeap;
-    }
+    *claim = DVM_CELL_REFUSED;
     if (!source || source == H || (uintptr_t)source > (uintptr_t)-1-sizeof(array) ||
         !destination || destination == H || (uintptr_t)destination > (uintptr_t)-1-sizeof(WORD))
     {
         return exBounds;
     }
-    claim = dvm_managed_small_three_begin(source, sizeof(array), source, sizeof(array),
-        destination, sizeof(WORD), &access);
-    if (claim != DVM_CELL_ACQUIRED)
+    *claim = domain ? dvm_small_range_access_begin(domain, source, sizeof(array), source, sizeof(array),
+        destination, sizeof(WORD), &access) :
+        dvm_managed_small_three_begin(source, sizeof(array), source, sizeof(array),
+            destination, sizeof(WORD), &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA) ? NULL : exHeap;
+        return exHeap;
     }
     array = dvm_runtime_array_length_source(source);
     if (array && array != H)
@@ -57,8 +57,8 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
         else
         {
             field = (const unsigned char *)array+offsetof(Array, len);
-            claim = dvm_small_range_access_extend(&access, field, sizeof(WORD));
-            if (claim != DVM_CELL_ACQUIRED)
+            *claim = dvm_small_range_access_extend(&access, field, sizeof(WORD));
+            if (*claim != DVM_CELL_ACQUIRED)
             {
                 problem = exHeap;
             }
@@ -72,7 +72,40 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
     {
         abort();
     }
-    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA) ? NULL : problem;
+    return problem;
+}
+
+
+/* EN: Query length in the existing shared phase when decoded slots are rooted.
+ * RU: Прочитать длину в текущем SHARED, если ячейки удерживаются корнями. */
+const char *dvm_runtime_array_length(const void *source, void *destination)
+{
+    DVM_CellResult claim;
+    if (!dvm_runtime_gc_dispatch_is_shared())
+    {
+        if (dvm_runtime_shared_mode() != 2)
+        {
+            return "array length requires managed dispatch";
+        }
+        const char *problem = array_length_attempt(source, destination, NULL, &claim);
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA) ? NULL : problem;
+    }
+
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (domain && (dvm_runtime_frame_pointer(source) || dvm_runtime_module_pointer(source)) &&
+        dvm_runtime_rooted_scalar(destination, sizeof(WORD)))
+    {
+        const char *problem = array_length_attempt(source, destination, domain, &claim);
+        if (problem != exHeap)
+        {
+            return problem;
+        }
+    }
+    dvm_runtime_gc_dispatch_finish();
+    const char *problem = array_length_attempt(source, destination, NULL, &claim);
+    int replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA);
+    dvm_runtime_gc_dispatch_restore();
+    return replay ? NULL : problem == exHeap ? "array length guard refused" : problem;
 }
 
 
