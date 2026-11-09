@@ -1580,6 +1580,29 @@ static int wake_for_termination(Prog *child)
 }
 
 
+/* EN: Post termination to a dedicated child parked on a channel.
+ * RU: Передать завершение выделенному потомку, ожидающему канал. */
+static int post_channel_exit(Prog *child)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)child;
+    unsigned char prior = DVM_PROG_MESSAGE_NONE;
+
+    if (!native_spawn ||
+        (child->state != Psend && child->state != Precv && child->state != Palt) ||
+        process->channel_claimed || dvm_runqueue_dispatch_owner(child))
+    {
+        return 0;
+    }
+    child->flags |= Pkilled;
+    if (__atomic_compare_exchange_n(&process->channel_message, &prior,
+        DVM_PROG_MESSAGE_CHANNEL_EXIT, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+    {
+        dvm_managed_workers_wake_guest(child);
+    }
+    return 1;
+}
+
+
 /* Schedule termination for a runnable or supported blocked child. Never
  * retire a native stack on a foreign worker. The child unwinds it first. */
 static int request_child_exit(Prog *child)
@@ -1592,6 +1615,10 @@ static int request_child_exit(Prog *child)
     {
         child->flags |= Pkilled;
         dvm_runtime_cancel_guest_wait(child->pid);
+        return Processctl_Requested;
+    }
+    if (post_channel_exit(child))
+    {
         return Processctl_Requested;
     }
     if (child->state == Pready || wake_for_termination(child))
@@ -2381,21 +2408,22 @@ static char *entry_resource(char *path)
     return separator + 1;
 }
 
-/* EN: Let the dedicated owner complete guest's posted channel hangup.
- * RU: Завершить ожидание guest по сообщению о закрытии на его потоке. */
-static int consume_channel_close(Prog *guest)
+/* EN: Let the dedicated owner complete guest's posted channel wait request.
+ * RU: Завершить ожидание guest по сообщению на его потоке. */
+static int consume_channel_message(Prog *guest)
 {
-    if (!hosted_channel_waiter(guest) ||
-        __atomic_load_n(&((DVM_RuntimeProcess *)guest)->channel_message, __ATOMIC_ACQUIRE) !=
-            DVM_PROG_MESSAGE_CHANNEL_CLOSE)
+    if (!hosted_channel_waiter(guest))
     {
         return 0;
     }
-    if (((DVM_RuntimeProcess *)guest)->channel_claimed || dvm_runqueue_dispatch_owner(guest))
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+    unsigned char message = __atomic_load_n(&process->channel_message, __ATOMIC_ACQUIRE);
+    if (message == DVM_PROG_MESSAGE_NONE ||
+        process->channel_claimed || dvm_runqueue_dispatch_owner(guest))
     {
         return 0;
     }
-    if (!guest->kill)
+    if (message == DVM_PROG_MESSAGE_CHANNEL_CLOSE && !guest->kill)
     {
         guest->kill = "channel hangup";
     }
@@ -2418,7 +2446,7 @@ static int runtime_dispatch_turn(void)
     {
         Prog *guest = dvm_managed_workers_guest();
         guest = guest ? guest : initial_guest;
-        cancelled |= consume_channel_close(guest);
+        cancelled |= consume_channel_message(guest);
         process = dvm_runqueue_select_guest(guest);
     }
     else

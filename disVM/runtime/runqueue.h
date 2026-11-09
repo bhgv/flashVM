@@ -8,7 +8,11 @@
 #endif
 
 
-enum { DVM_PROG_MESSAGE_NONE, DVM_PROG_MESSAGE_CHANNEL_CLOSE };
+enum {
+    DVM_PROG_MESSAGE_NONE,            /* No pending channel message. */
+    DVM_PROG_MESSAGE_CHANNEL_CLOSE,   /* The channel is retiring. */
+    DVM_PROG_MESSAGE_CHANNEL_EXIT     /* The guest was asked to exit. */
+};
 
 
 /* Native allocation preserves the complete retained Prog prefix. Every Prog
