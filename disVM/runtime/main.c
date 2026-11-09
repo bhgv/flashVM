@@ -127,7 +127,7 @@ int cflag;                                /* Native leaf compilation switch cons
 int keepbroken;                           /* No debugger retention is implemented in this initial runner. */
 Type *TFD;                                /* Descriptor owner for supported module/control input handles. */
 Type *TFileIO;                            /* Unavailable file-to-channel host type. */
-unsigned long dvm_runtime_instructions;   /* Dispatched instruction attempts across every Limbo process. */
+unsigned long dvm_runtime_instructions;   /* Atomic instruction attempts across every Limbo process. */
 static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
 unsigned long dvm_runtime_instruction_limit; /* Explicit total quota; zero retains the legacy slice policy. */
 static int show_stats;                       /* Emit actual instruction counts on explicit request. */
@@ -164,7 +164,7 @@ static void runtime_statistics(void)
         dvm_bigtable_owners(&tables, &keys);
         fprintf(stderr,
                 "instructions=%lu native=%lu gc_runs=%lu gc_epochs=%lu tables_live=%lu keys_live=%lu\n",
-                dvm_runtime_instructions,
+                __atomic_load_n(&dvm_runtime_instructions, __ATOMIC_RELAXED),
                 native_instructions,
                 gcnruns,
                 gcepochs,
@@ -213,12 +213,16 @@ static void runtime_error_location(const char **path, long *pc)
  * A rejection leaves the current PC and registers unmodified and raises through the process guard. */
 void dvm_runtime_step(void)
 {
-    if (dvm_runtime_instruction_limit && dvm_runtime_instructions >= dvm_runtime_instruction_limit)
+    unsigned long count = __atomic_load_n(&dvm_runtime_instructions, __ATOMIC_RELAXED);
+    do
     {
-        dvm_native_execution()->instruction_boundary_error = 1;
-        error("instruction limit exceeded");
-    }
-    dvm_runtime_instructions++;
+        if (dvm_runtime_instruction_limit && count >= dvm_runtime_instruction_limit)
+        {
+            dvm_native_execution()->instruction_boundary_error = 1;
+            error("instruction limit exceeded");
+        }
+    } while (!__atomic_compare_exchange_n(&dvm_runtime_instructions, &count, count + 1,
+        0, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
 }
 
 /* Parse one nonnegative decimal extent into caller storage, without signs, bases or overflow.
