@@ -315,7 +315,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
             DVM_OwnerMessage *message;
             while ((message = dvm_messages_take(messages, 0, 0)))
             {
-                dvm_runtime_channel_request_finished(process, message);
+                dvm_runtime_wait_request_finished(process, message);
             }
         }
         process->ptr = nil;

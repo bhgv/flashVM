@@ -631,9 +631,12 @@ static int guest_cancel_pending_or_close(void)
 }
 
 
-/* EN: Route an asynchronous host cancellation to a dedicated channel waiter.
- * RU: Передать асинхронную отмену хоста владельцу ожидания канала. */
-static int post_host_channel_cancel(int pid)
+#define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Hosted scheduler state distinct from Bigtable waits. */
+
+
+/* EN: Route asynchronous host cancellation to the owner of a supported wait.
+ * RU: Передать асинхронную отмену хоста владельцу поддерживаемого ожидания. */
+static int post_host_wait_cancel(int pid)
 {
     if (!native_spawn)
     {
@@ -643,7 +646,8 @@ static int post_host_channel_cancel(int pid)
     for (peer = processes; peer && peer->pid != pid; peer = peer->next)
     {
     }
-    if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt))
+    if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt &&
+        peer->state != DVM_CHILD_EXIT_WAIT))
     {
         return 0;
     }
@@ -677,7 +681,7 @@ static int dispatch_guest_cancellations(void)
         int pid = cancel_requests[0];
 
         fvm_port_sync_unlock(channel_queue_mutex);
-        if (!post_host_channel_cancel(pid))
+        if (!post_host_wait_cancel(pid))
         {
             dvm_runtime_cancel_guest_wait(pid);
         }
@@ -1617,17 +1621,15 @@ int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 }
 
 
-#define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Hosted scheduler state distinct from Bigtable waits. */
-
-
-/* EN: Post a cancellation for the child's current channel wait and park caller.
- * RU: Отправить отмену текущего ожидания потомка и припарковать caller. */
+/* EN: Post a cancellation for the child's supported wait and park caller.
+ * RU: Отправить отмену поддерживаемого ожидания потомка и припарковать caller. */
 int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
     Prog *child = find_child(caller, pid);
     if (!native_spawn || process->cancel_ready_pid == pid || !child ||
-        (child->state != Psend && child->state != Precv && child->state != Palt))
+        (child->state != Psend && child->state != Precv && child->state != Palt &&
+         child->state != DVM_CHILD_EXIT_WAIT))
     {
         return 1;
     }
@@ -1639,7 +1641,7 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
     DVM_OwnerMessage *request = &target->cancel_wait;
     if (!dvm_messages_send_once(guest_messages, (uintptr_t)pid, request))
     {
-        error("cannot post channel cancellation");
+        error("cannot post wait cancellation");
     }
     process->exit_wait_pid = pid;
     process->cancel_waiting = 1;
@@ -1654,7 +1656,7 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
 
 /* EN: Publish the outcome after taking the request off the old wait.
  * RU: Опубликовать исход после снятия запроса со старого ожидания. */
-void dvm_runtime_channel_request_finished(Prog *guest, DVM_OwnerMessage *message)
+void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
 {
     if (message->kind != DVM_PROG_MESSAGE_CANCEL_WAIT)
     {
@@ -1723,6 +1725,14 @@ static int detach_child_exit_wait(Prog *process)
  * before parking. The normal exception path owns prepared-frame cleanup. */
 static int cancel_child_exit_wait(Prog *process)
 {
+    if (native_spawn)
+    {
+        Prog *resident = dvm_managed_workers_guest();
+        if (process != (resident ? resident : initial_guest))
+        {
+            return 0;
+        }
+    }
     if ((process->flags & Pkilled) || !detach_child_exit_wait(process))
     {
         return 0;
@@ -2641,6 +2651,33 @@ static int consume_child_reply(Prog *guest)
 }
 
 
+/* EN: Finish process-wait cancellation on this resident's own executor.
+ * RU: Завершить отмену ожидания процесса на его собственном исполнителе. */
+static int consume_process_wait_requests(Prog *guest)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+    if (!process || !process->messages ||
+        (guest->state != DVM_CHILD_EXIT_WAIT && guest->state != Pready))
+    {
+        return 0;
+    }
+    int cancelled = 0;
+    DVM_OwnerMessage *message;
+    while ((message = dvm_messages_take(process->messages, 0, 0)))
+    {
+        if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT ||
+            message->kind == DVM_PROG_MESSAGE_CHANNEL_CANCEL)
+        {
+            process->cancel_delivering = cancel_child_exit_wait(guest);
+            cancelled |= process->cancel_delivering;
+            dvm_runtime_wait_request_finished(guest, message);
+            process->cancel_delivering = 0;
+        }
+    }
+    return cancelled;
+}
+
+
 /* Execute one complete managed turn under exclusive heap ownership. Both OS
  * executors call the same interpreter/JIT/error/retirement logic. Return a
  * managed turn status, or -1 after retiring the claim on failure.
@@ -2658,6 +2695,7 @@ static int runtime_dispatch_turn(void)
         guest = guest ? guest : initial_guest;
         cancelled |= consume_channel_message(guest);
         cancelled |= consume_child_reply(guest);
+        cancelled |= consume_process_wait_requests(guest);
         process = dvm_runqueue_select_guest(guest);
     }
     else

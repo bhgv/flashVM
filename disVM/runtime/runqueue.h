@@ -53,9 +53,9 @@ typedef struct DVM_RuntimeProcess
 } DVM_RuntimeProcess;
 
 
-/* EN: Resolve a correlated request when its channel wait is removed.
- * RU: Ответить на запрос отмены при снятии ожидания канала. */
-void dvm_runtime_channel_request_finished(Prog *guest, DVM_OwnerMessage *message);
+/* EN: Resolve a correlated request when its wait is removed.
+ * RU: Ответить на запрос отмены при снятии ожидания. */
+void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message);
 
 
 /* EN: Enable direct dispatch before any ready Prog exists.

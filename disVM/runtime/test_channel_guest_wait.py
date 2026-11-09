@@ -1771,6 +1771,8 @@ def main():
                     "processctl": "PASS guest process control",
                     "host-fixed": "PASS guest channel payloads",
                     "killwait-channel": "PASS guest child retirement",
+                    "killwait-cancel": "PASS guest child retirement",
+                    "killwait-host-fixed": "PASS guest child retirement",
                     "killwait-native": "PASS guest child retirement",
                 }
                 if name in dedicated_markers:
