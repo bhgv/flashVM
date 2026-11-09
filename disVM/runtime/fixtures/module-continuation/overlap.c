@@ -166,13 +166,16 @@ int __wrap_dvm_runtime_exception_convert(Prog *process)
 static __thread int unicode_message; /* Keep Unicode verification separate from the fault. */
 static __thread int use_emergency_message; /* A forced failure on this guest. */
 
+static __thread Prog *monitored_guest; /* Borrowed only during this guest's message call. */
+
+
 /* Refuse two shared message allocations to exercise the retained fallback. */
 void *__real_dvm_heap_pool_try_alloc(Pool *pool, ulong size);
 void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 {
     static int refused; /* Protected by the test mutex. */
     pthread_mutex_lock(&mutex);
-    int inject = refused < 2 && !unicode_message;
+    int inject = monitored_guest && refused < 2 && !unicode_message;
     refused += inject;
     pthread_mutex_unlock(&mutex);
     if (inject)

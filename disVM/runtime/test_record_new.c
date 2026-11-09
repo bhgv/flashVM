@@ -35,6 +35,8 @@ static Type *reject_root_type; /* Fail the candidate handoff after initializatio
 static Heap *previous_owner; /* Existing owner excluded from candidate refusal. */
 static int root_refusals; /* Counts candidate-specific refusal injections. */
 static WORD length; /* Requested array extent in the current diagnostic. */
+static __thread int observe_shared_root; /* Real constructor expects a SHARED candidate root. */
+static __thread int shared_root_seen;    /* Set by the publication wrapper for this call. */
 static int guest_entries; /* Real adapted opcode calls after the probe. */
 
 extern void mnewz(void); /* Real hosted opcode with decoded operands. */
@@ -74,7 +76,14 @@ void __wrap_dvm_runtime_record_new(void *slot, Type *type, int clear)
         }
         puts("PASS record opcode route");
     }
+    observe_shared_root = !record;
+    shared_root_seen = 0;
     __real_dvm_runtime_record_new(slot,type,clear);
+    if (observe_shared_root)
+    {
+        check(shared_root_seen, "record candidate rooted while SHARED");
+    }
+    observe_shared_root = 0;
 }
 
 
@@ -86,7 +95,14 @@ void __wrap_dvm_runtime_array_new(void *slot, Type *type, WORD count, int clear)
     {
         puts("PASS array opcode route");
     }
+    observe_shared_root = !record;
+    shared_root_seen = 0;
     __real_dvm_runtime_array_new(slot, type, count, clear);
+    if (observe_shared_root)
+    {
+        check(shared_root_seen, "array candidate rooted while SHARED");
+    }
+    observe_shared_root = 0;
 }
 
 
@@ -94,6 +110,15 @@ void __wrap_dvm_runtime_array_new(void *slot, Type *type, WORD count, int clear)
 int __real_dvm_runtime_root_batch_publish(DVM_RootBatch *, void *const *, size_t);
 int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *keys, size_t count)
 {
+    if (observe_shared_root)
+    {
+        DVM_HeapOwnerStats owner;
+        if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
+            owner.phase == DVM_HEAP_SHARED)
+        {
+            shared_root_seen = 1;
+        }
+    }
     if (reject_root_type && count == 1 && keys[0] != previous_owner &&
         ((Heap *)keys[0])->t == reject_root_type)
     {

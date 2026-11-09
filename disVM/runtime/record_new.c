@@ -8,6 +8,8 @@
 #include "raise.h"
 #include "record_new.h"
 #include "heap_commit.h"
+#include "heap_pool.h"
+#include "runtime_gc.h"
 #include "gc_fields.h"
 #include "disvm/refcount.h"
 #include <limits.h>
@@ -222,6 +224,60 @@ static void build_channel(AllocationTransaction *state)
 }
 
 
+/* [GC:] Initialize a private record or array without callbacks.
+ * RU: Инициализировать приватную запись или массив без обратных вызовов. */
+static void initialize_candidate(AllocationTransaction *state)
+{
+    Heap *header = state->unpublished;
+    if (state->array)
+    {
+        Array *array = H2D(Array *, header);
+        size_t bytes = (size_t)state->type->size * (size_t)state->count;
+        array->len = state->count;
+        array->t = state->type;
+        array->root = H;
+        array->data = (uchar *)array + sizeof(*array);
+        initialize_payload(state, array->data, bytes, state->count);
+    }
+    else
+    {
+        initialize_payload(state, H2D(void *, header), (size_t)state->type->size, 1);
+    }
+}
+
+
+/* [GC:] Try private construction and publish its temporary root in SHARED.
+ * RU: Попробовать собрать приватный объект и опубликовать корень в SHARED. */
+static int allocate_shared_candidate(AllocationTransaction *state, Type *header_type, size_t extent)
+{
+    if (dvm_runtime_gc_shared_try_enter() <= 0)
+    {
+        return 0;
+    }
+    Heap *header = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + extent);
+    int rooted = 0;
+    if (header)
+    {
+        header->t = header_type;
+        header->ref = 1;
+        dvm_runtime_gc_store(&header->color, dvm_runtime_gc_load(&mutator));
+        state->unpublished = header;
+        initialize_candidate(state);
+        Setmark(header);
+        void *key = header;
+        rooted = dvm_runtime_root_batch_publish(state->roots, &key, 1);
+        if (!rooted)
+        {
+            poolfree(heapmem, header);
+            state->unpublished = NULL;
+            rooted = -1;
+        }
+    }
+    dvm_runtime_gc_shared_finish();
+    return rooted;
+}
+
+
 /* [GC:] Hand the complete candidate to the rooted ledger before invoking any
  * allocation monitor, including the monitor for a channel's owned buffer. */
 static void allocate_candidate(AllocationTransaction *state)
@@ -230,6 +286,7 @@ static void allocate_candidate(AllocationTransaction *state)
     void *key;
     Heap *buffer;
     size_t extent;
+    int rooted = 0;
     state->roots = dvm_runtime_root_batch_create(1);
     if (!state->roots)
     {
@@ -240,24 +297,36 @@ static void allocate_candidate(AllocationTransaction *state)
         build_channel(state);
         extent = sizeof(Channel);
     }
-    else if (state->array)
-    {
-        build_array(state, &state->unpublished);
-        extent = sizeof(Array) + (size_t)state->type->size * (size_t)state->count;
-    }
     else
     {
+        Type *header_type = state->array ? &Tarray : state->type;
+        extent = state->array ? sizeof(Array) +
+            (size_t)state->type->size * (size_t)state->count : (size_t)state->type->size;
         retain_type(state->type, &state->retained);
-        extent = (size_t)state->type->size;
-        state->unpublished = private_heap(state->type, extent);
-        initialize_payload(state, H2D(void *, state->unpublished), extent, 1);
+        if (state->array)
+        {
+            retain_type(&Tarray, &state->array_retained);
+        }
+        rooted = allocate_shared_candidate(state, header_type, extent);
+        if (rooted < 0)
+        {
+            error(exHeap);
+        }
+        if (!rooted)
+        {
+            state->unpublished = private_heap(header_type, extent);
+            initialize_candidate(state);
+        }
     }
     object = H2D(void *, state->unpublished);
-    Setmark(state->unpublished);
     key = state->unpublished;
-    if (!dvm_runtime_root_batch_publish(state->roots, &key, 1))
+    if (!rooted)
     {
-        error(exHeap);
+        Setmark(state->unpublished);
+        if (!dvm_runtime_root_batch_publish(state->roots, &key, 1))
+        {
+            error(exHeap);
+        }
     }
     buffer = state->private_array;
     state->private_array = NULL;
