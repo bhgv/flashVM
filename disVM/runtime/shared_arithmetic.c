@@ -159,6 +159,42 @@ int dvm_runtime_private_copy_count(const void *cell)
 }
 
 
+/* EN: Check the return-address slot of a prepared frame in this stack extent.
+ * RU: Проверить ячейку адреса результата в подготовленном кадре этого стека. */
+int dvm_runtime_prepared_return_slot(const void *cell)
+{
+    REG probe = DVM_R;
+    const Type *type = frame_type(&probe);
+    uintptr_t top = (uintptr_t)probe.SP;
+    uintptr_t slot = (uintptr_t)cell;
+    const size_t offset = REGRET * IBY2WD;
+    if (!type || slot >= top)
+    {
+        return 0;
+    }
+    uintptr_t frame = (uintptr_t)probe.FP + (size_t)type->size;
+    while (frame <= slot && top - frame >= sizeof(Frame))
+    {
+        if (frame % sizeof(void *))
+        {
+            return 0;
+        }
+        probe.FP = (uchar *)frame;
+        type = frame_type(&probe);
+        if (!type)
+        {
+            return 0;
+        }
+        if (slot - frame == offset)
+        {
+            return scalar_span(cell, type, sizeof(WORD), frame, offset);
+        }
+        frame += (size_t)type->size;
+    }
+    return 0;
+}
+
+
 static int mapped_pointer(const void *cell, const void *base, const Type *type, size_t minimum)
 {
     uintptr_t address = (uintptr_t)cell;

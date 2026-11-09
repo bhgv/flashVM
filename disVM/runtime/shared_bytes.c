@@ -248,7 +248,8 @@ const char *dvm_runtime_bytes_snapshot_pair_attempt(const void *first, size_t fi
 }
 
 /* Publish caller-private bytes under the destination guard only. */
-static const char *publish_attempt(const void *snapshot, void *destination, size_t size, DVM_CellResult *claim)
+static const char *publish_attempt(const void *snapshot, void *destination, size_t size,
+    DVM_CellResult *claim, DVM_CellDomain *domain)
 {
     DVM_RangeAccess access = {0};
 
@@ -261,7 +262,8 @@ static const char *publish_attempt(const void *snapshot, void *destination, size
     {
         return exBounds;
     }
-    *claim = dvm_managed_ranges_begin(NULL, 0, destination, size, &access);
+    *claim = domain ? dvm_range_access_begin(domain, NULL, 0, destination, size, &access) :
+        dvm_managed_ranges_begin(NULL, 0, destination, size, &access);
     if (*claim != DVM_CELL_ACQUIRED)
     {
         return exHeap;
@@ -280,7 +282,7 @@ const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, s
 {
     DVM_CellResult claim;
 
-    return publish_attempt(snapshot, destination, size, &claim);
+    return publish_attempt(snapshot, destination, size, &claim, NULL);
 }
 
 
@@ -289,8 +291,27 @@ const char *dvm_runtime_bytes_publish(const void *snapshot, void *destination, s
 const char *dvm_runtime_bytes_publish_opcode(int opcode, const void *snapshot, void *destination, size_t size)
 {
     DVM_CellResult claim;
-    const char *problem = publish_attempt(snapshot, destination, size, &claim);
-
+    if (opcode == ILEA && dvm_runtime_gc_dispatch_is_shared())
+    {
+        DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+        if (domain && size == sizeof(WORD) &&
+            (dvm_runtime_frame_pointer(DVM_R.s) || dvm_runtime_private_copy_count(DVM_R.s)) &&
+            (dvm_runtime_private_copy_count(destination) ||
+             dvm_runtime_prepared_return_slot(destination)))
+        {
+            const char *problem = publish_attempt(snapshot, destination, size, &claim, domain);
+            if (problem != exHeap)
+            {
+                return problem;
+            }
+        }
+        dvm_runtime_gc_dispatch_finish();
+        const char *problem = publish_attempt(snapshot, destination, size, &claim, NULL);
+        int replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
+        dvm_runtime_gc_dispatch_restore();
+        return replay ? NULL : problem == exHeap ? "address publication guard refused" : problem;
+    }
+    const char *problem = publish_attempt(snapshot, destination, size, &claim, NULL);
     return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
 }
 

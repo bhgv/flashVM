@@ -54,6 +54,9 @@ const struct Inst *dvm_runtime_decoded_instruction(int opcode);
 int dvm_runtime_shared_integer_operand(int opcode, const void *cell, size_t width);
 int dvm_runtime_rooted_scalar(const void *cell, size_t size);
 int dvm_runtime_private_copy_count(const void *cell);
+/* EN: Test a prepared frame's private return slot.
+ * RU: Проверить приватную ячейку результата подготовленного кадра. */
+int dvm_runtime_prepared_return_slot(const void *cell);
 int dvm_runtime_module_pointer(const void *cell);
 int dvm_runtime_module_record(const void *cell, const struct Type *record);
 int dvm_runtime_frame_pointer(const void *cell);
