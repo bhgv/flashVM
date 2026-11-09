@@ -32,6 +32,10 @@ int dvm_managed_workers_start_guest(struct Prog *guest);
 struct Prog *dvm_managed_workers_guest(void);
 void dvm_managed_workers_guest_retired(int pid);
 
+/* EN: Publish the prepared resident from its own admitted executor.
+ * RU: Опубликовать готовность процесса на его собственном исполнителе. */
+void dvm_runtime_publish_resident(struct Prog *resident);
+
 /* EN: Query a staged native reply after inspecting the resident's FIFO.
  * RU: Проверить извлечённый ответ после проверки FIFO процесса. */
 int dvm_managed_workers_reply_in_transit(struct Prog *guest);

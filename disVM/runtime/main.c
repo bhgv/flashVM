@@ -617,9 +617,10 @@ static int guest_cancel_pending_or_close(void)
         for (Prog *guest = processes; guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-            if (process->messages && (dvm_messages_pending(process->messages, 0, 0) ||
+            if (process->startup_pending || (process->messages && (
+                dvm_messages_pending(process->messages, 0, 0) ||
                 dvm_messages_pending(process->messages, 1, 0) ||
-                dvm_managed_workers_reply_in_transit(guest)))
+                dvm_managed_workers_reply_in_transit(guest))))
             {
                 return 1;
             }
@@ -1356,8 +1357,9 @@ static void drop_guest_messages(Prog *guest)
 }
 
 
-/* Create one Limbo process; it is scheduled above one bound native OS owner. */
-Prog *newprog(Prog *parent, Modlink *module)
+/* EN: Build a complete resident from initial registers before starting its owner.
+ * RU: Создать процесс с готовыми регистрами до запуска его владельца. */
+static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
 {
     Prog *process;
     if (live == PROCESS_MAX || nextpid == INT_MAX)
@@ -1375,8 +1377,15 @@ Prog *newprog(Prog *parent, Modlink *module)
     process->quanta = scheduler_quantum;
     process->xec = xec;
     process->exval = H;
-    process->R.M = module;
-    process->R.MP = module->MP;
+    if (initial)
+    {
+        process->R = *initial;
+    }
+    else
+    {
+        process->R.M = module;
+        process->R.MP = module->MP;
+    }
     if (dvm_refcount_retain_u(&D2H(module)->ref) != DVM_REFCOUNT_LIVE)
     {
         free(process);
@@ -1399,18 +1408,58 @@ Prog *newprog(Prog *parent, Modlink *module)
             error(exNomem);
         }
     }
-    if (native_spawn && parent && !dvm_managed_workers_start_guest(process))
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
+    if (native_spawn && parent)
     {
-        drop_guest_messages(process);
-        free(process);
-        destroy(module);
-        error("cannot create native guest thread");
+        resident->startup_pending = 1;
+        process->state = Pready;
+        if (!dvm_managed_workers_start_guest(process))
+        {
+            drop_guest_messages(process);
+            free(process);
+            destroy(module);
+            error("cannot create native guest thread");
+        }
     }
     process->next = processes;
     processes = process;
     live++;
-    addrun(process);
+    /* The creator holds a GC root while the resident starts. */
+    if (!resident->startup_pending)
+    {
+        addrun(process);
+    }
     return process;
+}
+
+
+/* EN: Retained entry for callers without a prepared register image.
+ * RU: Вход для вызывающих без подготовленного образа регистров. */
+Prog *newprog(Prog *parent, Modlink *module)
+{
+    return create_process(parent, module, NULL);
+}
+
+
+/* EN: Transfer a completed child stack and register image to its owner.
+ * RU: Передать владельцу готовый стек и образ регистров потомка. */
+void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, const REG *initial)
+{
+    (void)create_process(parent, module, initial);
+}
+
+
+/* EN: Publish readiness once from this dedicated executor's first turn.
+ * RU: Один раз опубликовать готовность на первом проходе владельца. */
+void dvm_runtime_publish_resident(Prog *process)
+{
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
+    if (!resident->startup_pending || dvm_managed_workers_guest() != process)
+    {
+        error("invalid dedicated resident publication");
+    }
+    addrun(process);
+    resident->startup_pending = 0;
 }
 
 typedef struct ChannelClaim
@@ -2555,8 +2604,7 @@ static Prog *start_module(Module *module)
     DVM_R.s = &frame;
     newstack(&initial);
     initmem(module->entryt, initial.R.FP);
-    process = newprog(nil, link);
-    process->R = initial.R;
+    process = create_process(nil, link, &initial.R);
     if (dvm_refcount_release_u(&D2H(link)->ref) != DVM_REFCOUNT_LIVE)
     {
         error(exHeap);
