@@ -82,7 +82,7 @@ def main():
         fetch = second["vmfetch.h"]
         pc_guard = fetch.index(b"if(base > (uintptr)-1-bytes")
         capture = fetch.index(b"f->op = ((uchar*)f->pc)[O(Inst, op)];", pc_guard)
-        checked = dispatch.index(b"if(!vmfetch(&fetched))")
+        checked = dispatch.index(b"if(!fetch_for_dispatch(&fetched))")
         identity = dispatch.index(b"op = fetched.op;", checked)
         if not pc_guard < capture or b"R.PC" in fetch.replace(b"DVM_R.PC", b""):
             raise RuntimeError("shared checked fetch lost bounds or TLS register isolation")

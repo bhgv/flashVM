@@ -58,6 +58,11 @@ int dvm_runtime_gc_shared_try_enter(void);
 /* Publish changed registers after the instruction is complete and unguarded. */
 void dvm_runtime_gc_shared_publish(void);
 void dvm_runtime_gc_shared_poll(void);
+/* EN: Share the active turn for read-only dispatch without withdrawing Prog.
+ * RU: Перейти в SHARED для чтения инструкции, сохранив назначение Prog. */
+int dvm_runtime_gc_dispatch_share(void);
+void dvm_runtime_gc_dispatch_finish(void);
+
 int dvm_runtime_gc_shared_has_exclusive_waiters(void);
 /* Park a shared guest with its current published roots, then reenter shared. */
 void dvm_runtime_gc_shared_drain(void);

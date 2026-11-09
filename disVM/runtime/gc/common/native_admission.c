@@ -242,6 +242,41 @@ void dvm_runtime_gc_shared_poll(void)
 }
 
 
+/* EN: Convert the current claimed turn to read-only shared dispatch.
+ * RU: Перевести текущее назначение в параллельный режим чтения инструкции. */
+int dvm_runtime_gc_dispatch_share(void)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    Prog *resident = dvm_native_context_process(context);
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    if (!resident || resident->state != Pready || up->prog != resident ||
+        dvm_runqueue_dispatch_owner(resident) != context ||
+        !dvm_native_owner_try_share(owner, dvm_gc_runtime.passes))
+    {
+        return 0;
+    }
+    dvm_native_execution()->world_last_exit = DVM_NW_SITE_DISPATCH;
+    return 1;
+}
+
+
+/* EN: Reacquire admission for a legacy handler or error without moving Prog.
+ * RU: Вернуть допуск для старого обработчика или ошибки без переноса Prog. */
+void dvm_runtime_gc_dispatch_finish(void)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_NativeExecution *execution = dvm_native_execution();
+    execution->world_entry_site = DVM_NW_SITE_DISPATCH;
+    execution->world_entry_pending = 1;
+    if (!dvm_native_owner_resume_shared(owner) ||
+        !dvm_native_owner_progress(owner, dvm_gc_runtime.passes))
+    {
+        abort();
+    }
+    execution->world_entry_pending = 0;
+}
+
+
 /* EN: Observe exclusive requests without taking one.
  * RU: Проверить наличие эксклюзивных запросов. */
 int dvm_runtime_gc_shared_has_exclusive_waiters(void)

@@ -1131,6 +1131,46 @@ def main():
         '#include "disvm/native_process.h"\n'
         '#include "runtime_gc.h"\n'
         'extern void dvm_runtime_termination_checkpoint(Prog *process);', 1)
+    dispatch_fetch = r"""
+/* [GC:] Keep the current assignment rooted while capturing the instruction. */
+typedef struct HostedDispatchFetch
+{
+    VmFetch *instruction; /* Caller-owned destination. */
+    int bytecode;         /* Whether the current PC is interpreted. */
+} HostedDispatchFetch;
+
+
+/* Capture without modifying active registers or shared heap state. */
+static int capture_dispatch_fetch(void *argument)
+{
+    HostedDispatchFetch *fetch = argument;
+    fetch->bytecode = vmfetch(fetch->instruction);
+    return 1;
+}
+
+
+/* Read the instruction in SHARED, then admit the legacy handler or error. */
+static int fetch_for_dispatch(VmFetch *instruction)
+{
+    if (!dvm_runtime_guest_unbounded || !dvm_runtime_gc_dispatch_share())
+    {
+        return vmfetch(instruction);
+    }
+    HostedDispatchFetch fetch = {instruction, 0};
+    int captured = kprotect(capture_dispatch_fetch, &fetch);
+    dvm_runtime_gc_dispatch_finish();
+    if (!captured)
+    {
+        krethrow();
+    }
+    return fetch.bytecode;
+}
+
+
+"""
+    code = relative_replace(code, "void\nxec(Prog *p)\n{",
+        dispatch_fetch + "void\nxec(Prog *p)\n{")
+    code = relative_replace(code, "if(!vmfetch(&fetched))", "if(!fetch_for_dispatch(&fetched))")
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()
     for operation in ("icase", "casel", "igoto"):

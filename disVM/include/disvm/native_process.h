@@ -28,7 +28,8 @@ typedef enum DVM_NativeWorldSite
     DVM_NW_SITE_IDLE,           /* Rootless scheduler yield. */
     DVM_NW_SITE_JOIN,           /* Controller releases admission for shutdown joins. */
     DVM_NW_SITE_GC_STOP,        /* Controller admission to tear down managed roots. */
-    DVM_NW_SITE_DETACH          /* Executor leaves before unregistering. */
+    DVM_NW_SITE_DETACH,         /* Executor leaves before unregistering. */
+    DVM_NW_SITE_DISPATCH        /* Read-only instruction fetch before legacy handler. */
 } DVM_NativeWorldSite;
 
 
