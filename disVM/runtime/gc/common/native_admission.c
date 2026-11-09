@@ -77,7 +77,9 @@ static int native_try_leave(int shared)
         }
     }
     dvm_managed_workers_native_suspended();
-    if (!dvm_runtime_gc_request())
+    /* Event mode already wakes retirement consumers at publication. A
+     * bounded shared interval gets its periodic trace request at turn end. */
+    if ((!shared || !dvm_runtime_event_cycles) && !dvm_runtime_gc_request())
     {
         fprintf(stderr,"disvm: native GC request failed\n");
         exit(1);
