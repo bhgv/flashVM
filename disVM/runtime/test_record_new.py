@@ -38,14 +38,14 @@ init() {
 
 
 def verify_existing_shared_dispatch(runtime, work, image):
-    """Run real NEW/NEWZ after entering SHARED at the handler boundary."""
+    """Run real record and pointer handlers after entering SHARED."""
     executor = work / "shared-record-executor.c"
     source = (runtime.parent / "native/xec.c").read_text()
     boundary = "\t\t/* Successful translated steps own their register/PC publication. */"
     if source.count(boundary) != 1 or source.count("executed:\n") != 1:
         raise RuntimeError("record handler dispatch boundary drift")
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == IMOVP) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -57,6 +57,9 @@ executed:
 #include "lib9.h"
 #include "dat.h"
 #include "interp.h"
+#include "isa.h"
+#include "disvm/native_owner.h"
+#include "runtime_gc.h"
 #include <stdio.h>
 int __real_dvm_runtime_record_try_shared(void *, Type *, int);
 int __wrap_dvm_runtime_record_try_shared(void *cell, Type *type, int clear)
@@ -66,13 +69,28 @@ int __wrap_dvm_runtime_record_try_shared(void *cell, Type *type, int clear)
         puts("PASS record published directly in SHARED");
     return result;
 }
+const char *__real_dvm_runtime_movp_opcode(int, const void *, void *, int *);
+const char *__wrap_dvm_runtime_movp_opcode(int op, const void *source, void *destination, int *replay)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats before, after;
+    int shared = op == IMOVP && dvm_runtime_gc_dispatch_is_shared() &&
+        dvm_native_owner_statistics(owner, &before);
+    const char *result = __real_dvm_runtime_movp_opcode(op, source, destination, replay);
+    if (shared && !result && !*replay &&
+        dvm_native_owner_statistics(owner, &after) && before.reentries == after.reentries)
+        puts("PASS pointer published directly in SHARED");
+    return result;
+}
+
 """)
-    binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared"], executor=executor)
+    binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
         output = result.stdout + result.stderr
         if (result.returncode or "PASS record published directly in SHARED" not in output
+                or "PASS pointer published directly in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 

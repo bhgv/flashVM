@@ -2,6 +2,7 @@
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
+#include "kernel.h"
 #include "interp.h"
 #include "raise.h"
 #include "shared_pointer.h"
@@ -20,7 +21,7 @@
 
 
 unsigned long dvm_runtime_parallel_movp_module_commits;
-unsigned long dvm_runtime_parallel_movp_commits; /* Written after exclusive reentry. */
+unsigned long dvm_runtime_parallel_movp_commits; /* Atomic completed shared pointer moves. */
 int dvm_runtime_parallel_movp; /* Startup-only restricted frame-pointer experiment. */
 
 
@@ -195,7 +196,7 @@ const char *dvm_runtime_movp_copy(const void *source, void *destination, void **
 
 /* Execute a decoded move and retire its displaced owner after publication.
  * The stack root spans publication and unlock. It never survives a VM error. */
-const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, int *replay)
+static const char *movp_active_opcode(int opcode, const void *source, void *destination, int *replay)
 {
     RootEntry root = {0};
     FVM_PortSync *mutex = NULL;
@@ -208,6 +209,10 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
     int module_operand = 0;
 
     *replay = 0;
+    if (!mode)
+    {
+        return "pointer move requires managed dispatch";
+    }
     if (mode == 2)
     {
         mutex = dvm_root_registry_sync(1);
@@ -239,9 +244,9 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
         dvm_runtime_gc_shared_finish();
         if (!problem)
         {
-            dvm_runtime_parallel_movp_commits++;
+            __atomic_fetch_add(&dvm_runtime_parallel_movp_commits, 1, __ATOMIC_RELAXED);
             if (module_operand)
-                dvm_runtime_parallel_movp_module_commits++;
+                __atomic_fetch_add(&dvm_runtime_parallel_movp_module_commits, 1, __ATOMIC_RELAXED);
         }
     }
     *replay = claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode);
@@ -259,5 +264,104 @@ const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destin
         unroot_displaced(&root, mutex);
     }
     destroy(previous);
+    return NULL;
+}
+
+
+/* EN: Record either an untouched fallback or a displaced, rooted reference.
+ * RU: Хранить данные резервного пути либо вытесненную ссылку с корнем. */
+typedef struct MovpDispatch
+{
+    int opcode;           /* Decoded operation used for retry policy. */
+    const void *source;   /* Borrowed rooted source cell. */
+    void *destination;    /* Borrowed rooted destination cell. */
+    int *replay;          /* Caller-owned retry result. */
+    const char *problem;  /* Error returned by the admitted implementation. */
+    RootEntry *root;      /* Stack root after a committed shared move. */
+    FVM_PortSync *mutex;   /* Protects the displaced root list link. */
+    void *previous;       /* Displaced reference, or H if no owner to retire. */
+} MovpDispatch;
+
+
+/* EN: Finish a legacy copy or retire the old reference after shared publication.
+ * RU: Выполнить старое копирование или снять ссылку после публикации в SHARED. */
+static int complete_movp_dispatch(void *argument)
+{
+    MovpDispatch *move = argument;
+    if (move->root)
+    {
+        unroot_displaced(move->root, move->mutex);
+        destroy(move->previous);
+    }
+    else
+    {
+        move->problem = movp_active_opcode(move->opcode, move->source, move->destination, move->replay);
+    }
+    return 1;
+}
+
+
+/* EN: Admit only the fallback or old-owner destruction, then restore SHARED.
+ * RU: Допустить только резервный путь или освобождение старой ссылки. */
+static const char *finish_movp_dispatch(MovpDispatch *move)
+{
+    dvm_runtime_gc_dispatch_finish();
+    int completed = kprotect(complete_movp_dispatch, move);
+    dvm_runtime_gc_dispatch_restore();
+    if (!completed)
+    {
+        krethrow();
+    }
+    return move->problem;
+}
+
+
+/* EN: Copy proven direct operands in the caller's existing SHARED dispatch.
+ * RU: Копировать проверенные прямые операнды в текущем SHARED. */
+const char *dvm_runtime_movp_opcode(int opcode, const void *source, void *destination, int *replay)
+{
+    *replay = 0;
+    if (!dvm_runtime_gc_dispatch_is_shared())
+    {
+        return movp_active_opcode(opcode, source, destination, replay);
+    }
+
+    MovpDispatch move = {opcode, source, destination, replay, NULL, NULL, NULL, H};
+    int source_module = dvm_runtime_module_pointer(source);
+    int destination_module = dvm_runtime_module_pointer(destination);
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (opcode != IMOVP || !domain ||
+        (!source_module && !dvm_runtime_frame_pointer(source)) ||
+        (!destination_module && !dvm_runtime_frame_pointer(destination)))
+    {
+        return finish_movp_dispatch(&move);
+    }
+    move.mutex = dvm_root_registry_sync(1);
+    if (!move.mutex)
+    {
+        return exNomem;
+    }
+    RootEntry root = {0};
+    DVM_CellResult claim;
+    const char *problem = movp_attempt(source, destination, &move.previous, &claim,
+        &root, move.mutex, 2, domain);
+    if (claim == DVM_CELL_BUSY)
+    {
+        return finish_movp_dispatch(&move);
+    }
+    if (problem)
+    {
+        return problem == exHeap ? "invalid shared pointer move" : problem;
+    }
+    __atomic_fetch_add(&dvm_runtime_parallel_movp_commits, 1, __ATOMIC_RELAXED);
+    if (source_module || destination_module)
+    {
+        __atomic_fetch_add(&dvm_runtime_parallel_movp_module_commits, 1, __ATOMIC_RELAXED);
+    }
+    if (root.key)
+    {
+        move.root = &root;
+        return finish_movp_dispatch(&move);
+    }
     return NULL;
 }
