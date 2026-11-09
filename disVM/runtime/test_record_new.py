@@ -26,6 +26,8 @@ init() {
     right := len items;
     (left, right) = (right, left);
     if (left != 3 || right != 73) { raise "word swap"; }
+    plain := chan of int;
+    if (plain == nil) { raise "unbuffered word channel"; }
     words := chan[2] of int;
     words <-= 29;
     if (<-words != 29) { raise "word channel"; }
@@ -54,7 +56,7 @@ def verify_existing_shared_dispatch(runtime, work, image):
     source = source.replace(batch,
         "if(op != IADDW && op != ISUBW && op != IBNEW && op != IBGEW && !dvm_runtime_instruction_limit && dvm_runtime_shared_integer)", 1)
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL || op == ILENA || op == IADDW || op == ISUBW || op == IBNEW || op == IBGEW || op == ILEA || op == IBNEC) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL || op == ILENA || op == IADDW || op == ISUBW || op == IBNEW || op == IBGEW || op == ILEA || op == IBNEC || op == INEWCW) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -78,6 +80,15 @@ int __wrap_dvm_runtime_record_try_shared(void *cell, Type *type, int clear)
         puts("PASS record published directly in SHARED");
     return result;
 }
+Channel *__real_dvm_runtime_channel_try_shared(void *, Type *, WORD, void (*)(void));
+Channel *__wrap_dvm_runtime_channel_try_shared(void *cell, Type *type, WORD count, void (*mover)(void))
+{
+    Channel *result = __real_dvm_runtime_channel_try_shared(cell, type, count, mover);
+    if (result)
+        puts(count ? "PASS buffered channel in SHARED" : "PASS unbuffered channel in SHARED");
+    return result;
+}
+
 const char *__real_dvm_runtime_movp_opcode(int, const void *, void *, int *);
 const char *__wrap_dvm_runtime_movp_opcode(int op, const void *source, void *destination, int *replay)
 {
@@ -197,7 +208,8 @@ const char *__wrap_dvm_runtime_string_branch(int condition, const void *source, 
                             "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared",
                             "dvm_runtime_array_index_publish_shared", "dvm_runtime_array_length",
                             "dvm_runtime_arithmetic", "dvm_runtime_integer_branch",
-                            "dvm_runtime_bytes_publish_opcode", "dvm_runtime_string_branch"], executor=executor)
+                            "dvm_runtime_bytes_publish_opcode", "dvm_runtime_string_branch",
+                            "dvm_runtime_channel_try_shared"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
@@ -212,6 +224,8 @@ const char *__wrap_dvm_runtime_string_branch(int condition, const void *source, 
                 or "PASS integer branch directly in SHARED" not in output
                 or "PASS address copied directly in SHARED" not in output
                 or "PASS string branch directly in SHARED" not in output
+                or "PASS buffered channel in SHARED" not in output
+                or "PASS unbuffered channel in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 

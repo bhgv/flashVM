@@ -34,6 +34,11 @@ void dvm_runtime_array_new(void *destination, struct Type *type, WORD count, int
  * the payload descriptor for buffered or mapped channels. */
 Channel *dvm_runtime_channel_new(void *destination, struct Type *type, WORD count,
     void (*mover)(void), WORD message_size);
+/* EN: Publish a typed channel directly into an empty shared slot.
+ * RU: Опубликовать типизированный канал в пустую ячейку из SHARED. */
+Channel *dvm_runtime_channel_try_shared(void *destination, struct Type *type,
+    WORD count, void (*mover)(void));
+
 void dvm_runtime_raw_channel_new(void *destination, WORD count, WORD size,
     void (*mover)(void));
 #endif

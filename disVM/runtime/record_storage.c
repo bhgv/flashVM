@@ -13,6 +13,7 @@
 #include "heap_pool.h"
 #include "gc_fields.h"
 #include "disvm/refcount.h"
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -156,6 +157,21 @@ static int fill_empty_record(DVM_CellDomain *domain, void *destination, void *va
 }
 
 
+/* EN: Allocate one private managed header with an already retained Type.
+ * RU: Выделить приватный заголовок с уже удержанным Type. */
+static Heap *shared_heap(Type *type, size_t extent)
+{
+    Heap *header = dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + extent);
+    if (header)
+    {
+        header->t = type;
+        header->ref = 1;
+        dvm_runtime_gc_store(&header->color, dvm_runtime_gc_load(&mutator));
+    }
+    return header;
+}
+
+
 /* EN: Construct a private record and publish it without retiring an old owner.
  * RU: Собрать приватную запись и опубликовать её без снятия старой ссылки. */
 static int try_shared(void *destination, Type *type, WORD count, int clear, int array)
@@ -176,12 +192,9 @@ static int try_shared(void *destination, Type *type, WORD count, int clear, int 
     }
     int array_retained = array && dvm_refcount_retain_i(&Tarray.ref) == DVM_REFCOUNT_LIVE;
     size_t extent = array ? sizeof(Array) + (size_t)type->size * (size_t)count : (size_t)type->size;
-    Heap *header = !array || array_retained ? dvm_heap_pool_try_alloc(heapmem, sizeof(Heap) + extent) : NULL;
+    Heap *header = !array || array_retained ? shared_heap(array ? &Tarray : type, extent) : NULL;
     if (header)
     {
-        header->t = array ? &Tarray : type;
-        header->ref = 1;
-        dvm_runtime_gc_store(&header->color, dvm_runtime_gc_load(&mutator));
         if (array)
         {
             dvm_record_initialize_array(H2D(Array *, header), type, count, clear);
@@ -220,4 +233,78 @@ int dvm_runtime_record_try_shared(void *destination, Type *type, int clear)
 int dvm_runtime_array_try_shared(void *destination, Type *type, WORD count, int clear)
 {
     return try_shared(destination, type, count, clear, 1);
+}
+
+
+/* EN: Drop a constructor's temporary descriptor retain. The type stays owned.
+ * RU: Снять временное удержание дескриптора. Владелец Type остаётся жив. */
+static void drop_channel_type(Type *type, int retained)
+{
+    if (retained && dvm_refcount_release_i(&type->ref) != DVM_REFCOUNT_LIVE)
+    {
+        abort();
+    }
+}
+
+
+/* EN: Construct a typed channel privately, publishing only into an empty slot.
+ * RU: Собрать типизированный канал приватно и опубликовать в пустую ячейку. */
+Channel *dvm_runtime_channel_try_shared(void *destination, Type *type, WORD count, void (*mover)(void))
+{
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (!domain || heapmonitor || count < 0 || count > INT_MAX || !mover || mover == movtmp ||
+        destination == H || !dvm_record_span(destination, sizeof(void *)) ||
+        (count && !dvm_record_valid_type(type)) || !fill_empty_record(domain, destination, NULL))
+    {
+        return NULL;
+    }
+    if (count)
+    {
+        acheck(type->size, count);
+    }
+    if (dvm_refcount_retain_i(&Tchannel.ref) != DVM_REFCOUNT_LIVE)
+    {
+        return NULL;
+    }
+    int element_retained = count && dvm_refcount_retain_i(&type->ref) == DVM_REFCOUNT_LIVE;
+    int array_retained = element_retained && dvm_refcount_retain_i(&Tarray.ref) == DVM_REFCOUNT_LIVE;
+    Heap *buffer = array_retained ? shared_heap(&Tarray,
+        sizeof(Array) + (size_t)type->size * (size_t)count) : NULL;
+    Heap *header = !count || buffer ? shared_heap(&Tchannel, sizeof(Channel)) : NULL;
+    Progq *send = header ? calloc(1, sizeof(*send)) : NULL;
+    Progq *recv = send ? calloc(1, sizeof(*recv)) : NULL;
+    if (recv)
+    {
+        Channel *channel = H2D(Channel *, header);
+        memset(channel, 0, sizeof(*channel));
+        channel->send = send;
+        channel->recv = recv;
+        channel->mover = mover;
+        channel->buf = H;
+        if (buffer)
+        {
+            channel->buf = H2D(Array *, buffer);
+            dvm_record_initialize_array(channel->buf, type, count, 0);
+            Setmark(buffer);
+        }
+        Setmark(header);
+        if (fill_empty_record(domain, destination, channel))
+        {
+            return channel;
+        }
+    }
+    free(recv);
+    free(send);
+    if (header)
+    {
+        poolfree(heapmem, header);
+    }
+    if (buffer)
+    {
+        poolfree(heapmem, buffer);
+    }
+    drop_channel_type(&Tarray, array_retained);
+    drop_channel_type(type, element_retained);
+    drop_channel_type(&Tchannel, 1);
+    return NULL;
 }

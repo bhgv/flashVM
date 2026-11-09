@@ -62,7 +62,7 @@ static int guarded_channel_selected(void)
     mode = dvm_runtime_shared_mode();
     if (!mode)
     {
-        error(exHeap);
+        error("channel constructor requires managed dispatch");
     }
     return mode == 2;
 }
@@ -97,6 +97,52 @@ static int guarded_capacity(int opcode, WORD *capacity)
     return guarded_channel_input(opcode, DVM_R.m, capacity, sizeof(*capacity));
 }
 
+/* EN: Complete a typed constructor on its legacy path.
+ * RU: Завершить типизированный конструктор по старому пути. */
+typedef struct SharedChannelNew
+{
+    Type *type;              /* Borrowed payload descriptor. */
+    void (*mover)(void);     /* Typed mover. */
+    Channel *result;         /* Published channel or a scheduled retry. */
+} SharedChannelNew;
+
+static int admitted_typed_channel(void *argument)
+{
+    SharedChannelNew *request = argument;
+    WORD capacity;
+    if (guarded_capacity(dvm_native_execution()->arithmetic_retry_opcode, &capacity))
+    {
+        request->result = dvm_runtime_channel_new(DVM_R.d, request->type, capacity,
+            request->mover, 0);
+    }
+    return 1;
+}
+
+
+/* EN: Reuse SHARED for typed channels with an empty destination.
+ * RU: Использовать текущий SHARED для канала с пустой целевой ячейкой. */
+static Channel *shared_typed_channel(Type *type, void (*mover)(void))
+{
+    WORD count = 0;
+    if (DVM_R.m == DVM_R.d || dvm_runtime_record_shared_index(DVM_R.m, &count))
+    {
+        Channel *channel = dvm_runtime_channel_try_shared(DVM_R.d, type, count, mover);
+        if (channel)
+        {
+            return channel;
+        }
+    }
+    SharedChannelNew request = {type, mover, nil};
+    dvm_runtime_gc_dispatch_finish();
+    int completed = kprotect(admitted_typed_channel, &request);
+    dvm_runtime_gc_dispatch_restore();
+    if (!completed)
+    {
+        krethrow();
+    }
+    return request.result;
+}
+
 """
 
 
@@ -109,6 +155,13 @@ def adapt(source):
         body = match.group()
         offset = body.index("\n{") + 2
         selection = "\n    if (guarded_channel_selected())\n    {\n        " + dispatch + "\n    }\n"
+        if index == 0:
+            selection = """
+    if (dvm_runtime_guarded_copies && dvm_runtime_gc_dispatch_is_shared())
+    {
+        return shared_typed_channel(t, mover);
+    }
+""" + selection
         helpers = HELPERS if index == 0 else ""
         source = (source[:match.start()] + helpers + body[:offset] + selection
                   + body[offset:] + source[match.end():])
