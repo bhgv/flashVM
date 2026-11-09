@@ -18,6 +18,10 @@ void dvm_runtime_gc_owner_lost(void);
  * returns zero after native failure. Does not wait for collection completion. */
 int dvm_runtime_gc_request(void);
 
+/* EN: Notify Fast of published native retirement work without admission.
+ * RU: Уведомить Fast о опубликованном задании без допуска к куче. */
+void dvm_runtime_gc_notify_fast(void);
+
 /* [GC:] Register a newly bound native owner with empty process slots and enter
  * its heap turn. Host publishes the live service first and joins all registration
  * attempts/owners before stop. Zero refuses; no managed executor is created. */

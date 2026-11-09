@@ -10,6 +10,7 @@
 #include "../collector_passes.h"
 #include "../../runtime_rc.h"
 #include "../../managed_owner.h"
+#include "../../exception_host.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -28,7 +29,8 @@ unsigned int dvm_gc_fast_shared(DVM_NativeContext *context, size_t budget, void 
 int dvm_gc_fast_ready(void *user)
 {
     (void)user;
-    return dvm_runtime_rc_ready() || dvm_managed_owner_pending() != 0;
+    return dvm_runtime_rc_ready() || dvm_managed_owner_pending() != 0 ||
+        dvm_runtime_exception_retirement_ready();
 }
 
 
@@ -46,6 +48,11 @@ DVM_GCWorkResult dvm_gc_fast_retained(DVM_NativeContext *context, size_t budget,
         fprintf(stderr,"disvm RC collector: %s\n",up->env->errstr);
         exit(1);
     }
+    if (budget && dvm_runtime_exception_retirement_ready())
+    {
+        dvm_runtime_exception_retire_one();
+        budget--;
+    }
     tickets = dvm_managed_owner_pending() ? (unsigned int)(budget / 2) : 0;
     if (!tickets && dvm_managed_owner_pending())
     {
@@ -53,6 +60,7 @@ DVM_GCWorkResult dvm_gc_fast_retained(DVM_NativeContext *context, size_t budget,
     }
     remaining = dvm_runtime_rc_drain((unsigned int)budget - tickets);
     remaining |= dvm_managed_owner_drain(tickets);
+    remaining |= dvm_runtime_exception_retirement_ready();
     poperror();
     return remaining ? DVM_GC_MORE : DVM_GC_DONE;
 }

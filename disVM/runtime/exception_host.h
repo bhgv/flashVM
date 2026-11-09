@@ -30,4 +30,13 @@ int dvm_runtime_exception_message(struct Prog *process, const char *message);
 void dvm_runtime_exception_reserve_start(void);
 void dvm_runtime_exception_reserve_stop(void);
 
+/* EN: Borrow this thread's reserve, or null. Only for admitted managed use.
+ * RU: Получить резерв текущего потока либо null. Нужен допуск к куче. */
+String *dvm_runtime_exception_reserve_value(void);
+
+/* EN: Inspect pending reserves, or retire one from the Fast collector.
+ * RU: Проверить очередь резервов либо снять один на потоке Fast. */
+int dvm_runtime_exception_retirement_ready(void);
+void dvm_runtime_exception_retire_one(void);
+
 #endif

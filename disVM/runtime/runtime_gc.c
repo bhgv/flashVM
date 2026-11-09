@@ -71,7 +71,7 @@ static DVM_NativeContext *collector_create(void *user)
 
 /* EN: Signal the native lanes with queued work without taking heap admission.
  * RU: Разбудить нативные потоки с заданиями без захвата допуска к куче. */
-static void wake_fast(void)
+void dvm_runtime_gc_notify_fast(void)
 {
     if (!dvm_gc_workers_request(dvm_gc_runtime.workers, DVM_GC_FAST) ||
         (dvm_runtime_rc_candidates_ready() &&
@@ -151,7 +151,7 @@ int dvm_runtime_gc_start(Prog **roots, int locked_poll)
         if (dvm_managed_owner_start(dvm_gc_runtime.world, dvm_gc_runtime.workers))
         {
             dvm_runtime_rc_start();
-            dvm_runtime_rc_set_notifier(wake_fast);
+            dvm_runtime_rc_set_notifier(dvm_runtime_gc_notify_fast);
             dvm_runtime_exception_reserve_start();
             if (dvm_managed_owner_probe_requested)
             {
@@ -261,6 +261,11 @@ int dvm_runtime_gc_stop(int diagnostics)
     {
         return 0;
     }
+    if (call.phase != DVM_HEAP_ACTIVE && call.phase != DVM_HEAP_IDLE)
+    {
+        return 0;
+    }
+    dvm_runtime_exception_reserve_stop();
     DVM_NativeExecution *execution = dvm_native_execution();
     if (call.phase == DVM_HEAP_IDLE && execution->world_last_exit == DVM_NW_SITE_JOIN)
     {
@@ -290,11 +295,10 @@ int dvm_runtime_gc_stop(int diagnostics)
     {
         return 0;
     }
-    dvm_runtime_exception_reserve_stop();
     dvm_runtime_rc_close();
     if (dvm_runtime_rc_ready())
     {
-        wake_fast();
+        dvm_runtime_gc_notify_fast();
     }
     dvm_native_context_set_process(dvm_native_context_current(),NULL);
     ok = dvm_runtime_gc_request();

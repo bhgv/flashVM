@@ -187,6 +187,7 @@ add_executable(disvm
     integer_value.c
     arithmetic_value.c
     shared_arithmetic.c
+    exception_reserve.c
     shared_shift.c
     shift_value.c
     shared_branch.c

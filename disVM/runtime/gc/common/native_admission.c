@@ -320,9 +320,13 @@ int dvm_runtime_gc_detach(void)
         {
             return 0;
         }
+        if (call.phase != DVM_HEAP_ACTIVE && call.phase != DVM_HEAP_IDLE)
+        {
+            return 0;
+        }
+        dvm_runtime_exception_reserve_stop();
         if (call.phase == DVM_HEAP_ACTIVE)
         {
-            dvm_runtime_exception_reserve_stop();
             /* NATIVEWORLD: final exclusive exit before unregistering the executor. */
             if (!dvm_native_owner_leave(owner))
             {

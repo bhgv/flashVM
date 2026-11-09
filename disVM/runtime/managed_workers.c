@@ -261,6 +261,10 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     if (current_guest && idle && !finished)
     {
         wait_dedicated_work(current_guest);
+        if (stopping())
+        {
+            return 0;
+        }
     }
     else if (wait_for_work && !finished)
     {
@@ -426,12 +430,16 @@ static void execute(void *argument)
                 worker->guest_pid, (unsigned long)pthread_self());
         }
         current_guest = NULL;
-        worker->identity = 0;
-        service.live--;
         if (!dvm_native_owner_statistics(dvm_native_owner_current(),&worker->owner))
         {
             fail("cannot snapshot executor ownership");
         }
+        else if (worker->owner.phase == DVM_HEAP_ACTIVE)
+        {
+            worker->identity = 0;
+            service.live--;
+        }
+        /* A dedicated worker stopped while IDLE leaves its slot for shutdown join. */
         while (!dvm_runtime_gc_detach())
         {
             fvm_port_thread_sleep_us(50);
