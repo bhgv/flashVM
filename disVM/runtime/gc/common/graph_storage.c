@@ -55,7 +55,7 @@ size_t dvm_rc_record_group_bytes(const RecordGroup *group, unsigned int edges)
     size_t nodes = group->nodes_used;
     size_t dead_index = group->live_count ? nodes - group->live_count : 0;
     return sizeof(*group) + (nodes + 2 * edges) * sizeof(void *) +
-        (nodes + 2 * edges + dead_index) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
+        (nodes + edges + dead_index) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
 }
 
 
@@ -77,11 +77,10 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
     copy->expected_fields = copy->cells + edges;
     copy->incoming = (unsigned int *)(copy->expected_fields + edges);
     copy->targets = copy->incoming + nodes;
-    copy->field_runs = copy->targets + edges;
     copy->sources = NULL;
     copy->dead_count = group->nodes_used - group->live_count;
-    copy->dead_nodes = group->live_count ? copy->field_runs + edges : NULL;
-    copy->live = (unsigned char *)(copy->field_runs + edges +
+    copy->dead_nodes = group->live_count ? copy->targets + edges : NULL;
+    copy->live = (unsigned char *)(copy->targets + edges +
         (copy->dead_nodes ? copy->dead_count : 0));
     copy->index = NULL;
     copy->owned_scratch = NULL;
@@ -91,8 +90,6 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
     memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
     memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));
     unsigned int next_edge = 0;
-    unsigned int run_start = 0;
-    unsigned int previous_source = UINT_MAX;
     for (unsigned int index = 0; index < group->edges_used; index++)
     {
         unsigned int source = group->sources[index];
@@ -101,18 +98,9 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
             continue;
         }
         unsigned int target = group->targets[index];
-        void *cell = group->cells[index];
-        copy->cells[next_edge] = cell;
+        copy->cells[next_edge] = group->cells[index];
         copy->targets[next_edge] = target;
         copy->expected_fields[next_edge] = target == UINT_MAX ? nil_sentinel : group->nodes[target];
-        if (!next_edge || source != previous_source ||
-            (uintptr_t)cell - (uintptr_t)copy->cells[next_edge - 1] != sizeof(void *))
-        {
-            run_start = next_edge;
-            copy->field_runs[run_start] = 0;
-        }
-        copy->field_runs[run_start]++;
-        previous_source = source;
         next_edge++;
     }
     memcpy(copy->live, group->live, nodes * sizeof(*copy->live));
@@ -126,11 +114,6 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
                 copy->dead_nodes[next++] = index;
             }
         }
-    }
-    if (!dvm_range_plan_cells(&copy->field_plan, copy->cells, copy->edges_used))
-    {
-        free(copy);
-        return NULL;
     }
     return copy;
 }

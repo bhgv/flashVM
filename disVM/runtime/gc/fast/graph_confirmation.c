@@ -82,41 +82,14 @@ static int claim_record_group(const RecordGroup *group)
 }
 
 
-/* EN: Compare the captured values of group under the acquired guards.
- * RU: Сверить сохранённые значения group под захваченными блокировками. */
-static int retained_fields_match(const RecordGroup *group)
-{
-    for (unsigned int index = 0; index < group->edges_used;)
-    {
-        unsigned int count = group->field_runs[index];
-        if (count == 1 || memcmp(group->cells[index], &group->expected_fields[index],
-                count * sizeof(void *)) != 0)
-        {
-            for (unsigned int offset = 0; offset < count; offset++)
-            {
-                void *value;
-                memcpy(&value, group->cells[index + offset], sizeof(value));
-                if (value != group->expected_fields[index + offset])
-                {
-                    return 0;
-                }
-            }
-        }
-        index += count;
-    }
-    return 1;
-}
-
-
-#define FAST_RESERVE_MIN_FIELDS 1024 /* Reserve exact fields for large snapshots. */
 #define FAST_RESERVE_BATCH 64 /* Maximum fields per preliminary guard set. */
 
 
 /* EN: Validate reserved fields of group in cells. Taking each guard after
- * publication drains writers that entered before the reservation was visible.
+ * publication drains earlier accesses. Compare edges only when compare is set.
  * RU: Сверить зарезервированные поля group в cells. Захват каждой блокировки
- * после публикации исключает запись, начатую до появления резервации. */
-static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDomain *cells)
+ * после публикации исключает более ранние обращения. При compare сверить рёбра. */
+static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDomain *cells, int compare)
 {
     for (unsigned int first = 0; first < group->edges_used;)
     {
@@ -131,7 +104,7 @@ static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDo
         {
             return result;
         }
-        for (unsigned int offset = 0; offset < count; offset++)
+        for (unsigned int offset = 0; compare && offset < count; offset++)
         {
             unsigned int index = first + offset;
             void *value;
@@ -169,34 +142,22 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
         return DVM_CELL_REFUSED;
     }
     const void *reservation = NULL;
-    if (group->edges_used >= FAST_RESERVE_MIN_FIELDS)
+    DVM_CellResult result = DVM_CELL_ACQUIRED;
+    if (group->edges_used)
     {
         reservation = dvm_cell_reserve_fields(cells, group->cells, group->edges_used);
         if (!reservation)
         {
             return DVM_CELL_BUSY;
         }
-    }
-    DVM_RangeAccess access = {0};
-    DVM_CellResult result;
-    if (reservation)
-    {
-        result = check_reserved_fields(group, cells);
-    }
-    else
-    {
-        result = dvm_range_plan_begin(cells, &group->field_plan, &access);
-        if (result == DVM_CELL_ACQUIRED && !retained_fields_match(group))
+        result = check_reserved_fields(group, cells, 1);
+        if (result == DVM_CELL_ACQUIRED)
         {
-            result = DVM_CELL_REFUSED;
+            /* Drain readers that entered during the edge comparison. Writes
+             * have been excluded since that comparison began. */
+            dvm_cell_reservation_claim(cells, reservation);
+            result = check_reserved_fields(group, cells, 0);
         }
-    }
-    /* Close only captured fields to readers during count claims. Acquiring
-     * each stripe after publication drains any reader that entered earlier. */
-    if (reservation && result == DVM_CELL_ACQUIRED)
-    {
-        dvm_cell_reservation_claim(cells, reservation);
-        result = check_reserved_fields(group, cells);
     }
     for (unsigned int position = 0; result == DVM_CELL_ACQUIRED && position < group->dead_count; position++)
     {
@@ -222,10 +183,6 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
         result = DVM_CELL_REFUSED;
     }
     *reserved = result == DVM_CELL_ACQUIRED && reservation != NULL;
-    if (access.domain && !dvm_range_access_end(&access))
-    {
-        abort();
-    }
     if (reservation)
     {
         dvm_cell_unreserve_fields(cells, reservation);

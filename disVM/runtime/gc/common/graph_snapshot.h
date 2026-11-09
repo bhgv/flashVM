@@ -17,14 +17,12 @@
 
 typedef struct RecordGroup
 {
-    DVM_RangePlan field_plan; /* Precomputed stripe selection for published fields. */
     void **nodes;             /* Captured object payloads. */
     unsigned int *incoming;   /* Internal incoming edge counts. */
     unsigned int *index;      /* Discovery hash slots, unused after capture. */
     unsigned int *dead_nodes; /* Claim order in a mixed published snapshot. */
     void **cells;             /* Captured source field addresses. */
     void **expected_fields;   /* Published values in field order, including nil. */
-    unsigned int *field_runs; /* Contiguous fields from one source per published run. */
     unsigned int *targets;    /* Target node index or nil sentinel. */
     unsigned int *sources;    /* Source indices during discovery; NULL after publication. */
     unsigned char *live;      /* Nodes reachable from outside the group. */
