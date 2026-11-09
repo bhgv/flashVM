@@ -9,6 +9,7 @@
 #include "branch_value.h"
 #include "managed_owner.h"
 #include "shared_access.h"
+#include "shared_arithmetic.h"
 #include "runtime_gc.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -79,15 +80,15 @@ static const char *leased_branch(int opcode, const void *source, const void *oth
  * Exact ACTIVE admission precedes geometry and all reads. Native metadata may
  * wait under its existing policy; no VM callback or blocking under object guards.
  * Caller independently proves live cells and target code/module lifetime. */
-const char *dvm_runtime_integer_branch(int opcode, const void *source,
-    const void *other, const void *target, void *pc)
+static const char *integer_branch(int opcode, const void *source,
+    const void *other, const void *target, void *pc, DVM_CellDomain *domain)
 {
     DVM_TripleAccess access = {0};
     DVM_CellResult claim;
     size_t width;
     int invalid_target;
     const char *problem = NULL;
-    if (dvm_runtime_shared_mode() != 2 || pc != &DVM_R.PC)
+    if ((!domain && dvm_runtime_shared_mode() != 2) || pc != &DVM_R.PC)
     {
         return exHeap;
     }
@@ -127,14 +128,27 @@ const char *dvm_runtime_integer_branch(int opcode, const void *source,
     }
     invalid_target = !target || target == H ||
         (uintptr_t)target > (uintptr_t)-1-sizeof(Inst *);
-    claim = dvm_managed_small_three_begin(source, width, other, width,
-        invalid_target ? (void *)source : (void *)target,
-        invalid_target ? width : sizeof(Inst *), &access);
+    if (domain)
+    {
+        const Inst *instruction = dvm_runtime_decoded_instruction(opcode);
+        if (!dvm_runtime_shared_integer_operand(opcode, source, width) ||
+            !dvm_runtime_shared_integer_operand(opcode, other, width) ||
+            (!invalid_target && (!instruction || UDST(instruction->add) != AIMM ||
+                                 target != &instruction->d)))
+        {
+            return exHeap;
+        }
+    }
+    void *guarded_target = invalid_target ? (void *)source : (void *)target;
+    size_t target_size = invalid_target ? width : sizeof(Inst *);
+    claim = domain ? dvm_small_range_access_begin(domain, source, width, other, width,
+        guarded_target, target_size, &access) :
+        dvm_managed_small_three_begin(source, width, other, width, guarded_target, target_size, &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
+        return !domain && claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
     }
-    if (!invalid_target && dvm_runtime_instruction_target(target) &&
+    if (!domain && !invalid_target && dvm_runtime_instruction_target(target) &&
         dvm_runtime_parallel_scalar_spans(opcode, source, width, other, width, NULL, 0))
     {
         return leased_branch(opcode, source, other, target, pc, width, &access);
@@ -151,4 +165,29 @@ const char *dvm_runtime_integer_branch(int opcode, const void *source,
         abort();
     }
     return problem;
+}
+
+
+/* EN: Execute a verified branch in the current SHARED dispatch.
+ * RU: Выполнить проверенный переход в текущем SHARED. */
+const char *dvm_runtime_integer_branch(int opcode, const void *source,
+    const void *other, const void *target, void *pc)
+{
+    if (!dvm_runtime_gc_dispatch_is_shared())
+    {
+        return integer_branch(opcode, source, other, target, pc, NULL);
+    }
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (domain)
+    {
+        const char *problem = integer_branch(opcode, source, other, target, pc, domain);
+        if (problem != exHeap)
+        {
+            return problem;
+        }
+    }
+    dvm_runtime_gc_dispatch_finish();
+    const char *problem = integer_branch(opcode, source, other, target, pc, NULL);
+    dvm_runtime_gc_dispatch_restore();
+    return problem == exHeap ? "integer branch guard refused" : problem;
 }

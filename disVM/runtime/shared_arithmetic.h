@@ -48,6 +48,10 @@ int dvm_runtime_rooted_record(const struct REG *registers, const void *cell,
 int dvm_runtime_frame_record_for(const struct REG *registers, const void *cell,
     const struct Type *record);
 int dvm_runtime_frame_record(const void *cell, const struct Type *record);
+/* EN: Verify an instruction or scalar operand of the current decoded opcode.
+ * RU: Проверить инструкцию или скалярный операнд текущего опкода. */
+const struct Inst *dvm_runtime_decoded_instruction(int opcode);
+int dvm_runtime_shared_integer_operand(int opcode, const void *cell, size_t width);
 int dvm_runtime_rooted_scalar(const void *cell, size_t size);
 int dvm_runtime_private_copy_count(const void *cell);
 int dvm_runtime_module_pointer(const void *cell);

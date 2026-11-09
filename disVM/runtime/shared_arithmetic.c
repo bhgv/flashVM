@@ -1418,24 +1418,33 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
  * PERFORMANCE-COSTS.md. Divisor checks/error-path cost is not isolated. */
 
 
+/* EN: Borrow the checked bytecode instruction before the current decoded PC.
+ * RU: Получить проверенную инструкцию перед текущим декодированным PC. */
+const Inst *dvm_runtime_decoded_instruction(int opcode)
+{
+    Modlink *link = DVM_R.M;
+    uintptr_t next = (uintptr_t)DVM_R.PC;
+    if (!link || link == H || link->compiled || !link->m || link->m == H ||
+        next < sizeof(Inst))
+    {
+        return NULL;
+    }
+    const Inst *instruction = (const Inst *)(next - sizeof(Inst));
+    return batch_pc(link->m, instruction) && instruction->op == opcode ? instruction : NULL;
+}
+
+
 /* EN: Recognize a rooted scalar, TLS immediate or immutable instruction literal.
  * RU: Распознать скаляр с корнем, локальный операнд или литерал инструкции. */
-static int shared_integer_operand(int opcode, const void *cell, size_t width)
+int dvm_runtime_shared_integer_operand(int opcode, const void *cell, size_t width)
 {
     if (dvm_runtime_rooted_scalar(cell, width) ||
         (cell == &DVM_R.t && width <= sizeof(DVM_R.t)))
     {
         return 1;
     }
-    Modlink *link = DVM_R.M;
-    uintptr_t next = (uintptr_t)DVM_R.PC;
-    if (!link || link == H || link->compiled || !link->m || link->m == H ||
-        next < sizeof(Inst) || width > sizeof(WORD))
-    {
-        return 0;
-    }
-    const Inst *instruction = (const Inst *)(next - sizeof(Inst));
-    return batch_pc(link->m, instruction) && instruction->op == opcode &&
+    const Inst *instruction = dvm_runtime_decoded_instruction(opcode);
+    return instruction && width <= sizeof(WORD) &&
         USRC(instruction->add) == AIMM && cell == &instruction->s;
 }
 
@@ -1507,8 +1516,8 @@ static const char *arithmetic_attempt(int opcode, const void *first, const void 
     /* Invalid dividend/output geometry is not payload access. For DIV/MOD,
      * claim only the valid divisor (three aliases) before choosing Zdiv/Bounds.
      * Valid operations keep all three spans locked through their single snapshot. */
-    if (domain && (!shared_integer_operand(opcode, second, width) ||
-        (!invalid_outer && (!shared_integer_operand(opcode, first, width) ||
+    if (domain && (!dvm_runtime_shared_integer_operand(opcode, second, width) ||
+        (!invalid_outer && (!dvm_runtime_shared_integer_operand(opcode, first, width) ||
                            !dvm_runtime_rooted_scalar(output, width)))))
     {
         return exHeap;
