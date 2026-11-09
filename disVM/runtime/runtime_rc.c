@@ -2321,8 +2321,8 @@ int dvm_runtime_rc_ready(void)
 }
 
 
-/* [GC:] Caller is the active mutator; the collector cannot access admission
- * fields until this owner leaves. Existing queued references stay rooted. */
+/* [GC:] Close with the mutator active, or after sealing with every collector idle.
+ * Existing queued references stay rooted until Fast resumes. */
 void dvm_runtime_rc_close(void)
 {
     accepting = 0;

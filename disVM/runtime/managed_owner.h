@@ -32,7 +32,7 @@ int dvm_managed_owner_drain(unsigned int budget);
 int dvm_managed_owner_can_close(void);
 
 
-/* [GC:] Close capture admission on ACTIVE controller after sealing owner joins.
+/* [GC:] Close capture admission after sealing owner joins. The startup controller may be IDLE.
  * Return 0 unchanged with live owners/producers; rooted queued work remains for
  * Fast. Never destroy the world/workers while outstanding tickets exist. */
 int dvm_managed_owner_close(void);

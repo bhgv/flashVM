@@ -266,10 +266,11 @@ int dvm_runtime_gc_stop(int diagnostics)
         return 0;
     }
     dvm_runtime_exception_reserve_stop();
-    DVM_NativeExecution *execution = dvm_native_execution();
-    if (call.phase == DVM_HEAP_IDLE && execution->world_last_exit == DVM_NW_SITE_JOIN)
+    /* An IDLE controller closes native queues only between collector passes. */
+    if (call.phase == DVM_HEAP_IDLE && !dvm_gc_workers_wait_idle(dvm_gc_runtime.workers))
     {
-        /* NATIVEWORLD: enter only at managed root teardown, after native joins and cleanup. */
+        /* Preserve the admitted error cleanup if a collector failed. */
+        DVM_NativeExecution *execution = dvm_native_execution();
         execution->world_entry_site = DVM_NW_SITE_GC_STOP;
         execution->world_entry_pending = 1;
         if (!dvm_native_owner_enter(owner))
@@ -277,10 +278,7 @@ int dvm_runtime_gc_stop(int diagnostics)
             return 0;
         }
         execution->world_entry_pending = 0;
-    }
-    else if (call.phase != DVM_HEAP_ACTIVE)
-    {
-        return 0;
+        call.phase = DVM_HEAP_ACTIVE;
     }
     if (!dvm_managed_owner_can_close() || !dvm_native_owner_seal(owner) ||
         !dvm_world_admission(dvm_gc_runtime.world,&admission) || !admission.serial || admission.waiting)
@@ -300,16 +298,20 @@ int dvm_runtime_gc_stop(int diagnostics)
     {
         dvm_runtime_gc_notify_fast();
     }
-    dvm_native_context_set_process(dvm_native_context_current(),NULL);
-    ok = dvm_runtime_gc_request();
-    /* NATIVEWORLD: final controller exit before collector teardown. */
-    if (!dvm_native_owner_leave(owner))
+    ok = 1;
+    if (call.phase == DVM_HEAP_ACTIVE)
     {
-        ok = 0;
-    }
-    else
-    {
-        dvm_native_execution()->world_last_exit = DVM_NW_SITE_DETACH;
+        dvm_native_context_set_process(dvm_native_context_current(), NULL);
+        ok = dvm_runtime_gc_request();
+        /* NATIVEWORLD: final controller exit before collector teardown. */
+        if (!dvm_native_owner_leave(owner))
+        {
+            ok = 0;
+        }
+        else
+        {
+            dvm_native_execution()->world_last_exit = DVM_NW_SITE_DETACH;
+        }
     }
     if (!dvm_gc_workers_wait_idle(dvm_gc_runtime.workers))
     {

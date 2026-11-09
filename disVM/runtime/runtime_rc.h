@@ -39,7 +39,7 @@ unsigned int dvm_runtime_rc_pending(void);
 /* Inspect committed native queue entries without admission or heap reads. */
 int dvm_runtime_rc_ready(void);
 
-/* [GC:] Stop admission on the mutator before leaving its heap interval. */
+/* [GC:] Stop admission under the active mutator or after sealing with all collectors idle. */
 void dvm_runtime_rc_close(void);
 
 /* [GC:] Report/reset after collector join. Returns zero if owners remain. */

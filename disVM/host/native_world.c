@@ -800,7 +800,7 @@ size_t dvm_world_shared_peak(DVM_NativeWorld *world)
 }
 
 
-/* Atomically refuse new registrations only for the last active serialized
+/* Atomically refuse new registrations only for the last serialized
  * owner. participant is borrowed/current; peers or invalid phase leave the
  * domain open. Existing owner can still finish and detach after success. */
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
@@ -816,7 +816,9 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
     }
     world = participant->world;
     fvm_port_sync_lock(world->sync);
-    if (!world->serial || world->active != 1 || !participant->active || participant->parked || participant->shared)
+    if (!world->serial || world->active != (size_t)participant->active ||
+        participant->service || participant->parked || participant->shared ||
+        (!participant->active && (world->waiting || world->collector || world->resuming)))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;

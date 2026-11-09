@@ -97,6 +97,7 @@ int dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch);
 /* Close new root registration only when this ACTIVE owner is the world's last
  * ordinary registration. Idle collector services may still detach after sealing.
  * Existing last-owner operations remain valid until leave/detach. */
+/* The last serialized owner may seal while ACTIVE or IDLE. */
 int dvm_native_owner_seal(DVM_HeapOwner *owner);
 
 

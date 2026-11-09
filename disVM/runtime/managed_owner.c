@@ -30,6 +30,7 @@ typedef struct ManagedTicket
 typedef struct ManagedOwners
 {
     DVM_NativeWorld *world; /* Borrowed through complete ticket/producer retirement. */
+    DVM_NativeContext *controller; /* Startup owner authorized to close from IDLE. */
     DVM_GCWorkers *workers; /* Borrowed Fast wake target through producer retirement. */
     ManagedTicket *head;    /* Native pending queue, each ticket still owns root/reference. */
     ManagedTicket *tail;    /* Last pending ticket or NULL. */
@@ -225,6 +226,7 @@ int dvm_managed_owner_start(DVM_NativeWorld *world, DVM_GCWorkers *workers)
     }
     memset(&owners, 0, sizeof(owners));
     owners.world = world;
+    owners.controller = dvm_native_context_current();
     owners.workers = workers;
     owners.guards = registry;
     owners.cells = cells;
@@ -440,17 +442,22 @@ int dvm_managed_owner_can_close(void)
 }
 
 
-/* [GC:] Close only in the admitted ACTIVE controller phase. Pending rooted work
+/* [GC:] Close from ACTIVE admission or the IDLE startup controller. Pending rooted work
  * is still drained by Fast; no root/reference is discarded on refusal. */
 int dvm_managed_owner_close(void)
 {
-    FVM_PortSync *mutex;
-    if (!admitted())
+    int active = admitted();
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats state;
+    int idle = dvm_native_owner_statistics(owner, &state) &&
+        state.phase == DVM_HEAP_IDLE && !state.pending_progress;
+    FVM_PortSync *mutex = lock_service();
+    if (!mutex)
     {
         return 0;
     }
-    mutex = lock_service();
-    if (owners.live || owners.producers)
+    if ((!active && (!idle || owners.controller != dvm_native_context_current() ||
+        dvm_native_owner_world(owner) != owners.world)) || owners.live || owners.producers)
     {
         fvm_port_sync_unlock(mutex);
         return 0;

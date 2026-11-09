@@ -209,11 +209,11 @@ int dvm_native_owner_progress(DVM_HeapOwner *owner, unsigned long epoch)
 }
 
 
-/* Seal only the last ACTIVE owner. owner is borrowed; queue membership and seal
+/* Seal only the last ACTIVE or IDLE owner. owner is borrowed; queue membership and seal
  * change atomically under the world mutex, so stop cannot race a new join. */
 int dvm_native_owner_seal(DVM_HeapOwner *owner)
 {
-    return current(owner) && owner->phase == DVM_HEAP_ACTIVE &&
+    return current(owner) && (owner->phase == DVM_HEAP_ACTIVE || owner->phase == DVM_HEAP_IDLE) &&
         !owner->pending_progress && dvm_world_seal_last_owner(owner->roots);
 }
 

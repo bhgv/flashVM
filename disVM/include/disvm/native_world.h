@@ -94,7 +94,7 @@ int dvm_world_detach(DVM_WorldParticipant *participant);
 
 
 /* Close new registrations atomically only when participant is the current last
- * serialized owner, apart from idle collector services without borrows. Existing
+ * serialized owner (active or idle), apart from idle collector services without borrows. Existing
  * root operations remain usable; this does not cancel tickets or join threads. */
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant);
 
