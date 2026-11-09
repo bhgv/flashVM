@@ -1162,17 +1162,27 @@ static int transfer_object_fields(Heap *heap, int *retry)
 }
 
 
+extern int dvm_runtime_channel_buffer_busy(Channel *channel);
+
+
 /* EN: Claim the last owner of heap and return mapped descriptor on success.
- * retry reports temporary packet pressure or a competing retain.
+ * retry reports packet pressure, an active buffer transfer or a competing retain.
  * RU: Захватить последнюю ссылку heap и вернуть дескриптор mapped при успехе.
- * retry сообщает о заполнении очереди или конкурирующей новой ссылке. */
+ * retry сообщает о заполнении очереди, передаче буфера или новой ссылке. */
 static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
 {
-    Array *buffer = H2D(Channel *, heap)->buf;
+    Channel *channel = H2D(Channel *, heap);
+    if (dvm_runtime_channel_buffer_busy(channel))
+    {
+        *retry = 1;
+        return 0;
+    }
+    Array *buffer = channel->buf;
     if (buffer == H)
     {
         int claimed = dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0);
-        *retry = !claimed && dvm_refcount_load_u(&heap->ref) > 1;
+        *retry = !claimed && (dvm_runtime_channel_buffer_busy(channel) ||
+            dvm_refcount_load_u(&heap->ref) > 1);
         return claimed;
     }
     if (!buffer)
@@ -1201,7 +1211,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
         abort();
     }
     free(packet);
-    *retry = dvm_refcount_load_u(&heap->ref) > 1;
+    *retry = dvm_runtime_channel_buffer_busy(channel) || dvm_refcount_load_u(&heap->ref) > 1;
     return 0;
 }
 
