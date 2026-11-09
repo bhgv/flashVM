@@ -15,8 +15,9 @@ init() {
     sys := load Sys Sys->PATH;
     item := ref Pair("record", 73);
     items := array[3] of ref Pair;
-    items[2] = item;
-    if (items[0] != nil || items[2] != item) { raise "array initialization"; }
+    last := len items - 1;
+    items[last] = item;
+    if (items[0] != nil || items[last] != item) { raise "array initialization"; }
     if (item.name != "record" || item.value != 73) {
         raise "record initialization";
     }
@@ -49,7 +50,7 @@ def verify_existing_shared_dispatch(runtime, work, image):
     if source.count(boundary) != 1 or source.count("executed:\n") != 1:
         raise RuntimeError("record handler dispatch boundary drift")
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -110,9 +111,19 @@ int __wrap_dvm_runtime_array_try_shared(void *cell, Type *type, WORD count, int 
     return result;
 }
 
+int __real_dvm_runtime_array_index_publish_shared(void *, WORD);
+int __wrap_dvm_runtime_array_index_publish_shared(void *cell, WORD address)
+{
+    int result = __real_dvm_runtime_array_index_publish_shared(cell, address);
+    if (result)
+        puts("PASS array address published directly in SHARED");
+    return result;
+}
+
 """)
     binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode",
-                            "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared"], executor=executor)
+                            "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared",
+                            "dvm_runtime_array_index_publish_shared"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
@@ -121,6 +132,7 @@ int __wrap_dvm_runtime_array_try_shared(void *cell, Type *type, WORD count, int 
                 or "PASS pointer published directly in SHARED" not in output
                 or "PASS word copied directly in SHARED" not in output
                 or "PASS array published directly in SHARED" not in output
+                or "PASS array address published directly in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 

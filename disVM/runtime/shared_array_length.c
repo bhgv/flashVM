@@ -8,6 +8,7 @@
 #include "shared_array_length.h"
 #include "array_length_value.h"
 #include "shared_access.h"
+#include "shared_arithmetic.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"
 #include "disvm/native_process.h"
@@ -87,7 +88,7 @@ const char *dvm_runtime_array_index_operands(const void *source, const void *ind
     *replay = 0;
     if (dvm_runtime_shared_mode() != 2)
     {
-        return exHeap;
+        return "array indexing requires managed dispatch";
     }
     problem = dvm_runtime_bytes_snapshot_pair_attempt(source, sizeof(Array *), array_snapshot,
         index, sizeof(WORD), index_snapshot, &claim);
@@ -101,4 +102,50 @@ const char *dvm_runtime_array_index_operands(const void *source, const void *ind
         }
     }
     return *replay ? NULL : problem;
+}
+
+
+/* EN: Capture only an owner-local array slot, which pins the interior address
+ * after this instruction. The index may be a rooted scalar or private scratch.
+ * RU: Считать массив только из собственного кадра, удерживающего адрес элемента.
+ * Индекс может быть проверенным скаляром или локальным регистром. */
+int dvm_runtime_array_index_shared(const void *source, const void *index,
+    const void *result, void *array_snapshot, WORD *index_snapshot)
+{
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    DVM_TripleAccess access = {0};
+    if (!domain || !dvm_runtime_frame_pointer(source) || !dvm_runtime_private_copy_count(result) ||
+        (!dvm_runtime_private_copy_count(index) && !dvm_runtime_rooted_scalar(index, sizeof(WORD))) ||
+        dvm_small_range_access_begin(domain, source, sizeof(Array *), index, sizeof(WORD),
+            (void *)source, sizeof(Array *), &access) != DVM_CELL_ACQUIRED)
+    {
+        return 0;
+    }
+    memmove(array_snapshot, source, sizeof(Array *));
+    memmove(index_snapshot, index, sizeof(*index_snapshot));
+    if (!dvm_small_range_access_end(&access))
+    {
+        abort();
+    }
+    return 1;
+}
+
+
+/* EN: Store the derived address in the already validated private result slot.
+ * RU: Записать вычисленный адрес в проверенную приватную ячейку результата. */
+int dvm_runtime_array_index_publish_shared(void *result, WORD address)
+{
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    DVM_RangeAccess access = {0};
+    if (!domain || !dvm_runtime_private_copy_count(result) ||
+        dvm_range_access_begin(domain, NULL, 0, result, sizeof(address), &access) != DVM_CELL_ACQUIRED)
+    {
+        return 0;
+    }
+    memmove(result, &address, sizeof(address));
+    if (!dvm_range_access_end(&access))
+    {
+        abort();
+    }
+    return 1;
 }

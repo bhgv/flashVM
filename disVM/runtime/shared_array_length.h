@@ -14,4 +14,10 @@ const char *dvm_runtime_array_length(const void *source, void *destination);
  * snapshots untouched. Otherwise return NULL on success or a static error. */
 const char *dvm_runtime_array_index_operands(const void *source, const void *index,
     void *array_snapshot, void *index_snapshot, int *replay);
+
+/* EN: Capture owner-local array/index or publish its private interior address.
+ * RU: Считать массив с индексом или опубликовать приватный адрес элемента. */
+int dvm_runtime_array_index_shared(const void *source, const void *index,
+    const void *result, void *array_snapshot, WORD *index_snapshot);
+int dvm_runtime_array_index_publish_shared(void *result, WORD address);
 #endif
