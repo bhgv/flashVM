@@ -46,7 +46,7 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
                 child.communicate()
     text = output.decode(errors="replace")
     pool = f"NATIVEPOOL executors={workers} joined=1 failed=0" in text
-    if dedicated:
+    if dedicated or (default_profile and workers == 2):
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", text)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", text)
         expected = 2 if image == "kill.dis" else 43

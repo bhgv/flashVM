@@ -33,7 +33,7 @@ unsigned long dvm_runtime_shared_calls;
 unsigned long dvm_runtime_shared_returns;
 unsigned long dvm_runtime_shared_module_calls;
 unsigned long dvm_runtime_shared_module_returns;
-int dvm_runtime_shared_extend_quantum; /* Default dedicated guests may extend an uncontended trace. */
+int dvm_runtime_shared_extend_quantum; /* Dedicated guests use the OS timeslice for audited traces. */
 unsigned long dvm_runtime_shared_extended_steps; /* Steps completed beyond the original quantum. */
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
 unsigned long dvm_runtime_shared_byte_steps; /* Shared BYTE arithmetic/comparisons. */
@@ -1306,17 +1306,12 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     }
     int quantum = DVM_R.IC;
     limit = quantum;
-    const Prog *guest = dvm_native_context_process(dvm_native_context_current());
-    if (dvm_runtime_shared_extend_quantum && guest && guest->pid > 1 &&
-        !dvm_runtime_gc_shared_has_exclusive_waiters())
+    if (dvm_runtime_shared_extend_quantum)
     {
-        /* Allow one more default quantum. Queued exclusive work still
-         * ends the interval at the next periodic admission check. */
-        int extra = PQUANTA;
-        if (limit <= INT_MAX - extra)
-        {
-            limit += extra;
-        }
+        /* The OS already schedules this guest. Exhausting a VM quantum
+         * alone does not require an exclusive reentry. The counter still
+         * bounds accumulation and a queued exclusive owner ends the trace. */
+        limit = INT_MAX;
     }
     released = dvm_runtime_gc_shared_try_enter();
     if (released <= 0)
