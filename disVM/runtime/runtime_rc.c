@@ -1403,6 +1403,7 @@ static int release_duke_pins(size_t budget, int stopped)
         void *value = duke_abandoned.nodes[duke_abandoned.pinned_nodes];
         Heap *heap = D2H(value);
         int transferred = 0;
+        int fast_queued = 0;
         if (!stopped && dvm_runtime_root_remove_if(heap, drop_duke_pin_nonfinal, &heap->ref))
         {
             transferred = 1;
@@ -1410,7 +1411,22 @@ static int release_duke_pins(size_t budget, int stopped)
         else if (!stopped)
         {
             unsigned long bytes = poolmsize(heapmem, heap);
-            if (!defer_leaf(heap, bytes, 0))
+            if (leaves && !heapmonitor && bytes <= RC_BYTES && leaf_eligible(heap))
+            {
+                if (!defer_leaf(heap, bytes, 0))
+                {
+                    /* Fast can accept this object after queue pressure clears.
+                     * Preserve Duke's reference and root until then. */
+                    if (notify_ready)
+                    {
+                        notify_ready();
+                    }
+                    return 0;
+                }
+                __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
+                fast_queued = 1;
+            }
+            else
             {
                 DVM_RetirementReservation token = {0};
                 if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
@@ -1433,14 +1449,14 @@ static int release_duke_pins(size_t budget, int stopped)
                     notify_ready();
                 }
             }
-            else
-            {
-                __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
-            }
         }
         if (!transferred && !dvm_runtime_root_remove(heap))
         {
             abort();
+        }
+        if (fast_queued && notify_ready)
+        {
+            notify_ready();
         }
         if (stopped)
         {
@@ -1457,6 +1473,24 @@ static int release_duke_pins(size_t budget, int stopped)
     memset(&duke_abandoned, 0, sizeof(duke_abandoned));
     __atomic_store_n(&duke_cleanup_fallback, 0, __ATOMIC_RELEASE);
     return 1;
+}
+
+
+/* EN: Send the current Cycles candidate to the next collector after a hard refusal.
+ * RU: Передать текущего кандидата Cycles следующему сборщику после отказа. */
+static int route_refused_cycle(void)
+{
+    void *value = dvm_retirement_peek(cycle_candidates);
+    if (duke_candidates && dvm_runtime_idle_cycles && !gchalt && !heapmonitor)
+    {
+        DVM_HeapKey key = dvm_heap_pool_key(heapmem, D2H(value));
+        if (dvm_retirement_contains_key(duke_candidates, key))
+        {
+            return 0;
+        }
+        return dvm_rc_move_candidate(cycle_candidates, duke_candidates, value);
+    }
+    return cycle_refused && dvm_rc_move_candidate(cycle_candidates, cycle_refused, value);
 }
 
 
@@ -1656,8 +1690,7 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             {
                 completed++;
             }
-            else if (!busy && cycle_refused &&
-                dvm_rc_move_candidate(cycle_candidates, cycle_refused, dvm_retirement_peek(cycle_candidates)))
+            else if (!busy && route_refused_cycle())
             {
                 completed++;
             }
