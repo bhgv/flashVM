@@ -72,6 +72,7 @@ typedef struct
     uint32_t connected_at;         /* Site registry ID for this particular connection. */
     uint64_t heartbeat_ms;         /* Maximum peer silence; zero disables automatic liveness expiry. */
     uint64_t last_peer_ms;         /* Last observation reported by the transport adapter. */
+    uint64_t close_deadline_ms;    /* Pending transport close; zero while idle. */
     int open;                      /* Nonzero while this session admits requests. */
 } DVM_BrokerChannel;
 
@@ -172,6 +173,16 @@ DVM_BrokerResult dvm_broker_reconnect(
 
 /* Publish actual peer liveness without a success event; stale generations are rejected. */
 DVM_BrokerResult dvm_broker_heartbeat(DVM_Broker *broker, uint32_t channel, uint32_t generation, uint64_t now_ms);
+
+
+/* EN: Schedule close for the exact channel generation until deadline_ms.
+ * A broker transport reads the channel card, sends close, and calls
+ * dvm_broker_close on acknowledgement. tick handles deadline expiry.
+ * RU: Запланировать закрытие поколения канала до deadline_ms. Транспорт
+ * брокера читает карточку, отправляет запрос и вызывает dvm_broker_close
+ * после подтверждения. tick обрабатывает истечение срока. */
+DVM_BrokerResult dvm_broker_request_close(DVM_Broker *broker, uint32_t channel,
+    uint32_t generation, uint64_t now_ms, uint64_t deadline_ms);
 
 
 /* Revoke one session and diagnose pending requests; does not pretend to stop remote execution. */

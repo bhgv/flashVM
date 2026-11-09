@@ -153,6 +153,7 @@ static void close_channel(DVM_Broker *broker, DVM_BrokerChannel *card, uint64_t 
     DVM_BrokerSnapshot snapshot;
     size_t index;
     card->open = 0;
+    card->close_deadline_ms = 0;
     memset(&snapshot, 0, sizeof(snapshot));
     snapshot.channel = *card;
     snapshot.key.channel = card->id;
@@ -243,6 +244,7 @@ DVM_BrokerResult dvm_broker_open(DVM_Broker *broker, const DVM_BrokerChannel *ca
     value.generation = 1;
     value.last_peer_ms = now;
     value.open = 1;
+    value.close_deadline_ms = 0;
     broker->channels[broker->channel_count++] = value;
     broker->clock = now;
     *out = value.id;
@@ -312,6 +314,36 @@ DVM_BrokerResult dvm_broker_heartbeat(DVM_Broker *broker, uint32_t id, uint32_t 
 }
 
 
+/* EN: Schedule channel id/generation close with no transport call under
+ * the broker lock. Repeated requests preserve the first deadline.
+ * RU: Запланировать закрытие id/generation без сетевого вызова под мьютексом.
+ * Повторный запрос сохраняет первый срок. */
+DVM_BrokerResult dvm_broker_request_close(DVM_Broker *broker, uint32_t id,
+    uint32_t generation, uint64_t now, uint64_t deadline)
+{
+    if (!broker || deadline <= now)
+    {
+        return DVM_BROKER_INVALID;
+    }
+    broker->sync.enter(broker->sync.user);
+    DVM_BrokerChannel *card = channel(broker, id);
+    if (!card || card->generation != generation)
+    {
+        return leave(broker, DVM_BROKER_STALE);
+    }
+    if (now < broker->clock)
+    {
+        return leave(broker, DVM_BROKER_INVALID);
+    }
+    if (card->open && !card->close_deadline_ms)
+    {
+        card->close_deadline_ms = deadline;
+    }
+    broker->clock = now;
+    return leave(broker, DVM_BROKER_OK);
+}
+
+
 /* Explicit disconnect is idempotent for the same generation and never completes target work. */
 DVM_BrokerResult dvm_broker_close(DVM_Broker *broker, uint32_t id, uint32_t generation, uint64_t now)
 {
@@ -351,7 +383,7 @@ DVM_BrokerResult dvm_broker_begin(DVM_Broker *broker, const DVM_BrokerSnapshot *
     }
     broker->sync.enter(broker->sync.user);
     card = channel(broker, input->key.channel);
-    if (!card || !card->open || card->generation != input->key.generation)
+    if (!card || !card->open || card->close_deadline_ms || card->generation != input->key.generation)
     {
         return leave(broker, DVM_BROKER_STALE);
     }
@@ -522,7 +554,9 @@ DVM_BrokerResult dvm_broker_tick(DVM_Broker *broker, uint64_t now)
     for (index = 0; index < broker->channel_count; index++)
     {
         DVM_BrokerChannel *card = &broker->channels[index];
-        if (card->open && card->heartbeat_ms && now - card->last_peer_ms >= card->heartbeat_ms)
+        if (card->open &&
+            ((card->close_deadline_ms && now >= card->close_deadline_ms) ||
+             (card->heartbeat_ms && now - card->last_peer_ms >= card->heartbeat_ms)))
         {
             close_channel(broker, card, now);
         }

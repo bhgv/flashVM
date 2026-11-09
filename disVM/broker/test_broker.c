@@ -220,6 +220,10 @@ static void behavior(void)
     silent(broker, global);
     require(dvm_broker_forget(broker, slow) == DVM_BROKER_OK, "retire after actual completion");
     resumed = begin(broker, channel, 1, second, 32, 0);
+    require(dvm_broker_request_close(broker, channel, 1, 32, 42) == DVM_BROKER_OK &&
+                dvm_broker_request_close(broker, channel, 1, 32, 43) == DVM_BROKER_OK &&
+                dvm_broker_channel(broker, channel, &card) == DVM_BROKER_OK &&
+                card.open && card.close_deadline_ms == 42, "broker publishes first close deadline");
     require(dvm_broker_close(broker, channel, 1, 33) == DVM_BROKER_OK, "revoke old session");
     event(broker, global, DVM_BROKER_DISCONNECTED);
     message = event(broker, global, DVM_BROKER_DISCONNECTED);
@@ -238,6 +242,19 @@ static void behavior(void)
             "old session cannot receive a late success");
     require(dvm_broker_forget(broker, resumed) == DVM_BROKER_OK, "retire acknowledged revoked work");
     require(dvm_broker_tick(broker, 134) == DVM_BROKER_OK, "heartbeat expiry");
+    event(broker, global, DVM_BROKER_DISCONNECTED);
+    silent(broker, global);
+    require(dvm_broker_reconnect(broker, channel, "ipc://local", "tcp://127.0.0.1:9003", second, 135) ==
+                DVM_BROKER_OK &&
+                dvm_broker_request_close(broker, channel, 3, 135, 140) == DVM_BROKER_OK &&
+                dvm_broker_tick(broker, 139) == DVM_BROKER_OK &&
+                dvm_broker_channel(broker, channel, &card) == DVM_BROKER_OK && card.open,
+            "broker leaves session open until close deadline");
+    require(dvm_broker_tick(broker, 140) == DVM_BROKER_OK &&
+                dvm_broker_channel(broker, channel, &card) == DVM_BROKER_OK &&
+                !card.open && !card.close_deadline_ms &&
+                dvm_broker_close(broker, channel, 3, 141) == DVM_BROKER_OK,
+            "broker expires pending close and accepts a late duplicate");
     event(broker, global, DVM_BROKER_DISCONNECTED);
     silent(broker, global);
     require(dvm_broker_unwatch(broker, filtered) == DVM_BROKER_OK &&
