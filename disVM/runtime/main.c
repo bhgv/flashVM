@@ -1379,6 +1379,9 @@ Prog *newprog(Prog *parent, Modlink *module)
         guest->channel_close.kind = DVM_PROG_MESSAGE_CHANNEL_CLOSE;
         guest->channel_exit.kind = DVM_PROG_MESSAGE_CHANNEL_EXIT;
         guest->channel_cancel.kind = DVM_PROG_MESSAGE_CHANNEL_CANCEL;
+        guest->cancel_wait.kind = DVM_PROG_MESSAGE_CANCEL_WAIT;
+        guest->cancel_wait.sender = (uintptr_t)guest->parent_pid;
+        guest->cancel_wait.request = (uint64_t)process->pid;
         guest->messages = dvm_messages_register(guest_messages, (uintptr_t)process->pid);
         if (!guest->messages)
         {
@@ -1598,6 +1601,12 @@ int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 {
     Prog *child = find_child(caller, pid);
 
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
+    if (process->cancel_ready_pid == pid)
+    {
+        process->cancel_ready_pid = 0;
+        return process->cancel_ready_result;
+    }
     if (!child)
     {
         return Processctl_Denied;
@@ -1611,6 +1620,73 @@ int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 #define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Hosted scheduler state distinct from Bigtable waits. */
 
 
+/* EN: Post a cancellation for the child's current channel wait and park caller.
+ * RU: Отправить отмену текущего ожидания потомка и припарковать caller. */
+int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
+    Prog *child = find_child(caller, pid);
+    if (!native_spawn || process->cancel_ready_pid == pid || !child ||
+        (child->state != Psend && child->state != Precv && child->state != Palt))
+    {
+        return 1;
+    }
+    DVM_RuntimeProcess *target = (DVM_RuntimeProcess *)child;
+    if (target->channel_claimed || dvm_runqueue_dispatch_owner(child))
+    {
+        return 1;
+    }
+    DVM_OwnerMessage *request = &target->cancel_wait;
+    if (!dvm_messages_send_once(guest_messages, (uintptr_t)pid, request))
+    {
+        error("cannot post channel cancellation");
+    }
+    process->exit_wait_pid = pid;
+    process->cancel_waiting = 1;
+    DVM_R.PC--;
+    DVM_R.IC = 1;
+    DVM_R.t = 1;
+    delrun(DVM_CHILD_EXIT_WAIT);
+    dvm_managed_workers_wake_guest(child);
+    return 0;
+}
+
+
+/* EN: Publish the outcome after taking the request off the old wait.
+ * RU: Опубликовать исход после снятия запроса со старого ожидания. */
+void dvm_runtime_channel_request_finished(Prog *guest, DVM_OwnerMessage *message)
+{
+    if (message->kind != DVM_PROG_MESSAGE_CANCEL_WAIT)
+    {
+        return;
+    }
+    Prog *parent;
+    for (parent = processes; parent && (uintptr_t)parent->pid != message->sender; parent = parent->next)
+    {
+    }
+    if (!parent || parent->state != DVM_CHILD_EXIT_WAIT)
+    {
+        return;
+    }
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
+    if (!process->cancel_waiting || process->exit_wait_pid != guest->pid)
+    {
+        return;
+    }
+    DVM_OwnerMessage *reply = &process->cancel_result;
+    reply->sender = (uintptr_t)guest->pid;
+    reply->request = message->request;
+    reply->kind = DVM_PROG_MESSAGE_CANCEL_RESULT;
+    reply->value = ((DVM_RuntimeProcess *)guest)->cancel_delivering ?
+        Processctl_Cancelled : Processctl_NotWaiting;
+    if (!dvm_messages_send(guest_messages, (uintptr_t)parent->pid, 1, reply))
+    {
+        abort();
+    }
+    dvm_managed_workers_wake_guest(parent);
+}
+
+
 /* Requeue an exiting parent without disturbing the child's exit request. */
 static int wake_child_exit_wait(Prog *process)
 {
@@ -1619,6 +1695,7 @@ static int wake_child_exit_wait(Prog *process)
         return 0;
     }
     ((DVM_RuntimeProcess *)process)->exit_wait_pid = 0;
+    ((DVM_RuntimeProcess *)process)->cancel_waiting = 0;
     addrun(process);
     return 1;
 }
@@ -1634,7 +1711,7 @@ static int detach_child_exit_wait(Prog *process)
         return 0;
     }
     child = find_child(process, ((DVM_RuntimeProcess *)process)->exit_wait_pid);
-    if (child)
+    if (child && !((DVM_RuntimeProcess *)process)->cancel_waiting)
     {
         ((DVM_RuntimeProcess *)child)->exit_notify_parent = 0;
     }
@@ -2525,12 +2602,15 @@ static int consume_channel_message(Prog *guest)
     {
         guest->kill = "channel hangup";
     }
-    return cancel_parked_guest(guest);
+    process->cancel_delivering = 1;
+    int cancelled = cancel_parked_guest(guest);
+    process->cancel_delivering = 0;
+    return cancelled;
 }
 
 
-/* EN: Consume a retirement reply before selecting the waiting parent.
- * RU: Принять ответ о завершении до выбора ожидающего родителя. */
+/* EN: Consume a cancellation or retirement reply before dispatching the parent.
+ * RU: Принять ответ об отмене или завершении до запуска родителя. */
 static int consume_child_reply(Prog *guest)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
@@ -2540,12 +2620,23 @@ static int consume_child_reply(Prog *guest)
     }
     DVM_OwnerMessage *reply = dvm_messages_take(process->messages, 1, 0);
     if (!reply || guest->state != DVM_CHILD_EXIT_WAIT ||
-        reply->kind != DVM_PROG_MESSAGE_CHILD_RETIRED ||
         reply->request != (uint64_t)process->exit_wait_pid)
     {
         return 0;
     }
-    process->exit_ready_pid = (int)reply->request;
+    if (process->cancel_waiting && reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+    {
+        process->cancel_ready_pid = (int)reply->request;
+        process->cancel_ready_result = (int)reply->value;
+    }
+    else if (!process->cancel_waiting && reply->kind == DVM_PROG_MESSAGE_CHILD_RETIRED)
+    {
+        process->exit_ready_pid = (int)reply->request;
+    }
+    else
+    {
+        return 0;
+    }
     return wake_child_exit_wait(guest);
 }
 

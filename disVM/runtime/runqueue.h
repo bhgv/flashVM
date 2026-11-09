@@ -13,6 +13,8 @@ enum {
     DVM_PROG_MESSAGE_CHANNEL_CLOSE = 1,   /* The channel is retiring. */
     DVM_PROG_MESSAGE_CHANNEL_EXIT,    /* The guest was asked to exit. */
     DVM_PROG_MESSAGE_CHANNEL_CANCEL, /* Host requested cancellation of this wait. */
+    DVM_PROG_MESSAGE_CANCEL_WAIT,    /* Parent requests cancellation with a reply. */
+    DVM_PROG_MESSAGE_CANCEL_RESULT,  /* Outcome of a parent cancellation request. */
     DVM_PROG_MESSAGE_CHILD_RETIRED   /* Child retirement reply to killwait. */
 };
 
@@ -31,6 +33,12 @@ typedef struct DVM_RuntimeProcess
     DVM_OwnerMessage channel_close;   /* Embedded close request, coalesced until wait completes. */
     DVM_OwnerMessage channel_exit;    /* Embedded exit request, coalesced until wait completes. */
     DVM_OwnerMessage channel_cancel; /* Embedded host cancellation for the current wait. */
+    DVM_OwnerMessage cancel_wait;   /* One correlated cancellation request from the parent. */
+    DVM_OwnerMessage cancel_result; /* Reply storage for this guest's parked cancelwait. */
+    int cancel_waiting;             /* This guest is parked for a cancellation reply. */
+    int cancel_ready_pid;           /* Child matched by the prepared cancelwait retry. */
+    int cancel_ready_result;        /* Result delivered to that retry. */
+    int cancel_delivering;          /* Owner is completing a posted cancellation. */
     DVM_OwnerMessage child_retired;  /* Embedded reply for the one parked killwait. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
@@ -43,6 +51,11 @@ typedef struct DVM_RuntimeProcess
     Osenv environment;                /* Native guest error storage follows this logical Prog across owner migration. */
     fenv_t floating_environment;       /* Guest FP environment retained across complete turns and OS owners. */
 } DVM_RuntimeProcess;
+
+
+/* EN: Resolve a correlated request when its channel wait is removed.
+ * RU: Ответить на запрос отмены при снятии ожидания канала. */
+void dvm_runtime_channel_request_finished(Prog *guest, DVM_OwnerMessage *message);
 
 
 /* EN: Enable direct dispatch before any ready Prog exists.

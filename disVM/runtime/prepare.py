@@ -1024,6 +1024,8 @@ def main():
     path = args.output / "xec.c"
     code = path.read_text()
     code = relative_replace(code, '#include "interp.h"', '#include "interp.h"\n#include "table_leases.h"\n'
+        'extern void Processctl_cancelwait(void *frame);\n'
+        'extern int dvm_processctl_cancel_ready(void *frame);\n'
         'extern void Processctl_killwait(void *frame);\n'
         'extern int dvm_processctl_call_ready(void *frame);')
     start = code.index('OP(mcall)')
@@ -1033,6 +1035,7 @@ def main():
         '\tmemmove((uchar*)f+offsetof(Frame, lr), &DVM_R.PC, sizeof(f->lr));',
         '\t/* Host lease gate runs before call-frame/module publication. */\n'
         '\tif(program == nil && (!dvm_bigtable_call_ready(entry.u.runt, f) ||\n'
+        '\t   (entry.u.runt == Processctl_cancelwait && !dvm_processctl_cancel_ready(f)) ||\n'
         '\t   (entry.u.runt == Processctl_killwait && !dvm_processctl_call_ready(f)))){\n'
         '\t\treturn;\n'
         '\t}\n'

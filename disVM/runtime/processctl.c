@@ -12,6 +12,7 @@
 #include <stddef.h>
 
 
+extern int dvm_runtime_prepare_cancelwait(Prog *caller, int pid);
 extern int dvm_runtime_cancel_child_wait(Prog *caller, int pid);
 extern int dvm_runtime_kill_child(Prog *caller, int pid);
 extern int dvm_runtime_prepare_killwait(Prog *caller, int pid);
@@ -44,6 +45,24 @@ void Processctl_cancelwait(void *frame)
         result = dvm_runtime_cancel_child_wait(currun(), (int)call.pid);
     }
     memmove(call.ret, &result, sizeof(result));
+}
+
+
+/* EN: Validate the prepared cancelwait frame before parking its caller.
+ * RU: Проверить подготовленный кадр cancelwait перед парковкой вызывающего. */
+int dvm_processctl_cancel_ready(void *frame)
+{
+    F_Processctl_cancelwait call;
+    uintptr start = (uintptr)frame;
+    uintptr top = (uintptr)DVM_R.SP;
+    if (start < (uintptr)DVM_R.EX || top > (uintptr)DVM_R.TS ||
+        start > top || top - start != sizeof(call))
+    {
+        error(exBounds);
+    }
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_cancelwait, ret), sizeof(*call.ret));
+    return call.pid <= 0 || call.pid > INT_MAX ||
+        dvm_runtime_prepare_cancelwait(currun(), (int)call.pid);
 }
 
 
