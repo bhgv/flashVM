@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 int dvm_runtime_parallel_byte_copies; /* Startup-only shared scalar/raw move flag. */
-unsigned long dvm_runtime_parallel_byte_commits; /* Counted after exclusive reentry. */
+unsigned long dvm_runtime_parallel_byte_commits; /* Atomic count of guarded shared byte moves. */
 int dvm_runtime_guarded_copies; /* CLI startup publication; never changed while workers/code exist. */
 
 
@@ -115,12 +115,37 @@ static DVM_CellResult shared_copy(DVM_CellDomain *domain, const void *source,
 }
 
 
+/* EN: Copy only proven rooted scalar spans from an already shared dispatch.
+ * RU: Копировать только проверенные скалярные диапазоны из текущего SHARED. */
+static const char *copy_in_shared_dispatch(const void *source, void *destination, size_t size)
+{
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (domain && dvm_runtime_rooted_scalar(source, size) &&
+        dvm_runtime_rooted_scalar(destination, size) &&
+        shared_copy(domain, source, destination, size) == DVM_CELL_ACQUIRED)
+    {
+        __atomic_fetch_add(&dvm_runtime_parallel_byte_commits, 1, __ATOMIC_RELAXED);
+        return NULL;
+    }
+    dvm_runtime_gc_dispatch_finish();
+    DVM_CellResult claim;
+    const char *problem = copy_attempt(source, destination, size, &claim);
+    dvm_runtime_gc_dispatch_restore();
+    return problem == exHeap ? "guarded byte move refused" : problem;
+}
+
+
 /* Retry only a prepublication BUSY. Exhausted shared retries fall back to the
  * ordinary exclusive path. Both spans are borrowed for the active instruction. */
 const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *destination, size_t size)
 {
     DVM_CellResult claim;
     const char *problem;
+    if (dvm_runtime_gc_dispatch_is_shared() &&
+        (opcode == IMOVB || opcode == IMOVW || opcode == IMOVL || opcode == IMOVF))
+    {
+        return copy_in_shared_dispatch(source, destination, size);
+    }
     if (dvm_runtime_parallel_byte_copies && dvm_runtime_shared_mode() == 2 && up->prog &&
         dvm_native_execution()->arithmetic_retry_opcode == opcode &&
         (opcode == IMOVB || opcode == IMOVW || opcode == IMOVL || opcode == IMOVF ||
@@ -134,7 +159,7 @@ const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *
             dvm_runtime_gc_shared_finish();
             if (claim == DVM_CELL_ACQUIRED)
             {
-                dvm_runtime_parallel_byte_commits++;
+                __atomic_fetch_add(&dvm_runtime_parallel_byte_commits, 1, __ATOMIC_RELAXED);
                 return NULL;
             }
             if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode))

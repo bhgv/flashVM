@@ -355,7 +355,7 @@ int dvm_runtime_gc_stop(int diagnostics)
             dvm_runtime_parallel_channel_receives, dvm_runtime_parallel_channel_refills,
             dvm_runtime_parallel_channel_alts, dvm_runtime_parallel_rendezvous,
             __atomic_load_n(&dvm_runtime_parallel_movp_module_commits, __ATOMIC_RELAXED), dvm_runtime_parallel_movmp_module_commits, dvm_runtime_parallel_channel_raw,
-            dvm_runtime_parallel_byte_commits, dvm_gc_runtime.cycle_losses, dvm_gc_runtime.cycle_skips,
+            __atomic_load_n(&dvm_runtime_parallel_byte_commits, __ATOMIC_RELAXED), dvm_gc_runtime.cycle_losses, dvm_gc_runtime.cycle_skips,
             (unsigned long)dvm_world_shared_peak(dvm_gc_runtime.world), dvm_runtime_shared_integer_commits, dvm_runtime_shared_integer_batches, dvm_runtime_shared_integer_branches,
             dvm_runtime_shared_byte_steps, dvm_runtime_shared_long_steps,
             dvm_runtime_shared_calls, dvm_runtime_shared_returns,

@@ -20,6 +20,10 @@ init() {
     if (item.name != "record" || item.value != 73) {
         raise "record initialization";
     }
+    left := item.value;
+    right := len items;
+    (left, right) = (right, left);
+    if (left != 3 || right != 73) { raise "word swap"; }
     words := chan[2] of int;
     words <-= 29;
     if (<-words != 29) { raise "word channel"; }
@@ -45,7 +49,7 @@ def verify_existing_shared_dispatch(runtime, work, image):
     if source.count(boundary) != 1 or source.count("executed:\n") != 1:
         raise RuntimeError("record handler dispatch boundary drift")
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ || op == IMOVP) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == IMOVP || op == IMOVW) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -83,14 +87,30 @@ const char *__wrap_dvm_runtime_movp_opcode(int op, const void *source, void *des
     return result;
 }
 
+const char *__real_dvm_runtime_bytes_copy_opcode(int, const void *, void *, size_t);
+const char *__wrap_dvm_runtime_bytes_copy_opcode(int op, const void *source, void *destination, size_t size)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats before, after;
+    int shared = op == IMOVW && dvm_runtime_gc_dispatch_is_shared() &&
+        dvm_native_owner_statistics(owner, &before);
+    const char *result = __real_dvm_runtime_bytes_copy_opcode(op, source, destination, size);
+    if (shared && !result &&
+        dvm_native_owner_statistics(owner, &after) && before.reentries == after.reentries)
+        puts("PASS word copied directly in SHARED");
+    return result;
+}
+
 """)
-    binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode"], executor=executor)
+    binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode",
+                            "dvm_runtime_bytes_copy_opcode"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
         output = result.stdout + result.stderr
         if (result.returncode or "PASS record published directly in SHARED" not in output
                 or "PASS pointer published directly in SHARED" not in output
+                or "PASS word copied directly in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 
