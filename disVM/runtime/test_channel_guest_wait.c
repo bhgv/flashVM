@@ -825,7 +825,8 @@ static void *submit_during_host_cancel(void *argument)
 
 int __wrap_dvm_runqueue_complete_channel_wait(Prog *process, char *cause)
 {
-    if ((host_cancel_mode || host_cancel_on_publish) && !host_cancel_delivery_seen &&
+    if (!getenv("DVM_TEST_DEDICATED_CANCEL") &&
+        (host_cancel_mode || host_cancel_on_publish) && !host_cancel_delivery_seen &&
         process->state == Precv && process->pid == parked_pid)
     {
         pthread_t thread;

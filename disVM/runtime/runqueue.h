@@ -12,6 +12,7 @@
 enum {
     DVM_PROG_MESSAGE_CHANNEL_CLOSE = 1,   /* The channel is retiring. */
     DVM_PROG_MESSAGE_CHANNEL_EXIT,    /* The guest was asked to exit. */
+    DVM_PROG_MESSAGE_CHANNEL_CANCEL, /* Host requested cancellation of this wait. */
     DVM_PROG_MESSAGE_CHILD_RETIRED   /* Child retirement reply to killwait. */
 };
 
@@ -29,6 +30,7 @@ typedef struct DVM_RuntimeProcess
     DVM_MessageEndpoint *messages;    /* Dedicated guest registration, stable until retirement. */
     DVM_OwnerMessage channel_close;   /* Embedded close request, coalesced until wait completes. */
     DVM_OwnerMessage channel_exit;    /* Embedded exit request, coalesced until wait completes. */
+    DVM_OwnerMessage channel_cancel; /* Embedded host cancellation for the current wait. */
     DVM_OwnerMessage child_retired;  /* Embedded reply for the one parked killwait. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */

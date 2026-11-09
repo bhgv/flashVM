@@ -1769,6 +1769,7 @@ def main():
                     "parked-alt": "PASS cancelled scheduler channel wait",
                     "parked-array-alt": "PASS cancelled scheduler channel wait",
                     "processctl": "PASS guest process control",
+                    "host-fixed": "PASS guest channel payloads",
                     "killwait-channel": "PASS guest child retirement",
                     "killwait-native": "PASS guest child retirement",
                 }
@@ -1776,6 +1777,7 @@ def main():
                     dedicated = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
                         cwd=work, capture_output=True, text=True, timeout=30,
+                        env=dict(os.environ, DVM_TEST_DEDICATED_CANCEL="1") if name == "host-fixed" else None,
                     )
                     native_output = dedicated.stdout + dedicated.stderr
                     starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", native_output)

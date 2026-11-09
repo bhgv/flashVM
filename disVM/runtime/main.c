@@ -631,6 +631,36 @@ static int guest_cancel_pending_or_close(void)
 }
 
 
+/* EN: Route an asynchronous host cancellation to a dedicated channel waiter.
+ * RU: Передать асинхронную отмену хоста владельцу ожидания канала. */
+static int post_host_channel_cancel(int pid)
+{
+    if (!native_spawn)
+    {
+        return 0;
+    }
+    Prog *peer;
+    for (peer = processes; peer && peer->pid != pid; peer = peer->next)
+    {
+    }
+    if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt))
+    {
+        return 0;
+    }
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+    if (process->channel_claimed || dvm_runqueue_dispatch_owner(peer))
+    {
+        return 0;
+    }
+    int posted = dvm_messages_send_once(guest_messages, (uintptr_t)pid, &process->channel_cancel);
+    if (posted == 1)
+    {
+        dvm_managed_workers_wake_guest(peer);
+    }
+    return posted != 0;
+}
+
+
 /* Limit cancellation work before the next guest turn. Keep each PID
  * visible until its delivery finishes so concurrent submissions coalesce. */
 static int dispatch_guest_cancellations(void)
@@ -647,7 +677,10 @@ static int dispatch_guest_cancellations(void)
         int pid = cancel_requests[0];
 
         fvm_port_sync_unlock(channel_queue_mutex);
-        dvm_runtime_cancel_guest_wait(pid);
+        if (!post_host_channel_cancel(pid))
+        {
+            dvm_runtime_cancel_guest_wait(pid);
+        }
         fvm_port_sync_lock(channel_queue_mutex);
         if (cancel_request_count)
         {
@@ -1345,6 +1378,7 @@ Prog *newprog(Prog *parent, Modlink *module)
         DVM_RuntimeProcess *guest = (DVM_RuntimeProcess *)process;
         guest->channel_close.kind = DVM_PROG_MESSAGE_CHANNEL_CLOSE;
         guest->channel_exit.kind = DVM_PROG_MESSAGE_CHANNEL_EXIT;
+        guest->channel_cancel.kind = DVM_PROG_MESSAGE_CHANNEL_CANCEL;
         guest->messages = dvm_messages_register(guest_messages, (uintptr_t)process->pid);
         if (!guest->messages)
         {
