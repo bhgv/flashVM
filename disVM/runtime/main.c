@@ -2702,6 +2702,10 @@ static int runtime_dispatch_turn(void)
     {
         process = dvm_runqueue_head();
     }
+    if (cancelled)
+    {
+        dvm_native_execution()->resident_registers_valid = 0;
+    }
     if (!process)
     {
         return cancelled ? DVM_MANAGED_TURN_MAINTENANCE : DVM_MANAGED_TURN_IDLE;
@@ -2730,6 +2734,7 @@ static int runtime_dispatch_turn(void)
     dvm_native_execution()->instruction_boundary_error = 0;
     if (waserror())
     {
+        dvm_native_execution()->resident_registers_valid = 0;
         dvm_native_execution()->arithmetic_retry_opcode = 0;
         ((DVM_RuntimeProcess *)process)->arithmetic_retries = 0;
         process->R = DVM_R;
@@ -2830,6 +2835,11 @@ static int runtime_dispatch_turn(void)
         }
         xec(process);
         dvm_runtime_termination_checkpoint(process);
+        /* Ready and channel-wait paths keep the resident's saved register image.
+         * Other waits can still adjust saved PC while the executor is parked. */
+        dvm_native_execution()->resident_registers_valid =
+            native_spawn && dvm_managed_workers_guest() == process &&
+            (process->state == Pready || hosted_channel_waiter(process));
         if (!dvm_runqueue_finish(process))
         {
             error("cannot finish completed dispatch");

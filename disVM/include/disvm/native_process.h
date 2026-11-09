@@ -36,6 +36,7 @@ typedef enum DVM_NativeWorldSite
  * Scalars only: no field is a GC root or a file-format ABI member. */
 typedef struct DVM_NativeExecution
 {
+    int resident_registers_valid;   /* TLS still holds the resident after a normal turn. */
     unsigned long idle_slices;      /* Owner-local turns since acknowledged input progress. */
     int arithmetic_retry_opcode;    /* Armed decoded opcode, or zero outside dispatch; -1 requests retry. */
     int instruction_boundary_error; /* Quota rejected before PC fetch/advance on this owner. */

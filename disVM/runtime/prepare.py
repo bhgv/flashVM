@@ -743,6 +743,10 @@ def main():
         ],
         check=True,
     )
+    fetch_path = args.output / "vmfetch.h"
+    fetch = relative_replace(fetch_path.read_text(), "vmstart(Prog *p)", "vmstart(Prog *p, int restore)")
+    fetch = relative_replace(fetch, "\tDVM_R = p->R;", "\tif(restore){\n\t\tDVM_R = p->R;\n\t}")
+    fetch_path.write_text(fetch)
     layout_path = args.output / "leaf64-ops.h"
     layout_path.write_text(adapt_record_leaf(adapt_jit_counts(layout_path.read_text())))
     emitter_path = args.output / "amd64-emit.h"
@@ -1028,6 +1032,11 @@ def main():
         'extern int dvm_processctl_cancel_ready(void *frame);\n'
         'extern void Processctl_killwait(void *frame);\n'
         'extern int dvm_processctl_call_ready(void *frame);')
+    code = relative_replace(code, "\tvmstart(p);",
+        "\tDVM_NativeExecution *execution = dvm_native_execution();\n"
+        "\tint restore = !execution->resident_registers_valid;\n"
+        "\texecution->resident_registers_valid = 0;\n"
+        "\tvmstart(p, restore);")
     start = code.index('OP(mcall)')
     stop = code.index('\nOP(', start + len('OP(mcall)'))
     body = code[start:stop]
