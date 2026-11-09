@@ -1162,12 +1162,18 @@ static int transfer_object_fields(Heap *heap, int *retry)
 }
 
 
-static int claim_quiet_channel(Heap *heap, Type **mapped)
+/* EN: Claim the last owner of heap and return mapped descriptor on success.
+ * retry reports temporary packet pressure or a competing retain.
+ * RU: Захватить последнюю ссылку heap и вернуть дескриптор mapped при успехе.
+ * retry сообщает о заполнении очереди или конкурирующей новой ссылке. */
+static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
 {
     Array *buffer = H2D(Channel *, heap)->buf;
     if (buffer == H)
     {
-        return dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0);
+        int claimed = dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0);
+        *retry = !claimed && dvm_refcount_load_u(&heap->ref) > 1;
+        return claimed;
     }
     if (!buffer)
     {
@@ -1175,7 +1181,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped)
     }
     void *key = D2H(buffer);
     DVM_RetirementReservation token = {0};
-    FrameRetirement *packet = prepare_release_packet(&key, 1, 1, &token, NULL);
+    FrameRetirement *packet = prepare_release_packet(&key, 1, 1, &token, retry);
     if (!packet)
     {
         return 0;
@@ -1195,6 +1201,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped)
         abort();
     }
     free(packet);
+    *retry = dvm_refcount_load_u(&heap->ref) > 1;
     return 0;
 }
 
@@ -1757,11 +1764,11 @@ static int retirement_ready(int include_shared_retries); /* Queue metadata only.
 
 /* Withdraw the sole Fast consumer's head and its corresponding root.
  * The caller retains the entry metadata until its release is complete. */
-static void take_shared_leaf(LeafRetirement *entry)
+static void take_shared_leaf(DVM_RetirementQueue *source, LeafRetirement *entry)
 {
     void *value;
     unsigned long bytes;
-    if (!dvm_retirement_take(leaves, &value, &bytes) || value != entry ||
+    if (!dvm_retirement_take(source, &value, &bytes) || value != entry ||
         !dvm_runtime_root_remove(entry->heap))
     {
         abort();
@@ -1930,7 +1937,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (dvm_refcount_drop_nonfinal_u(&entry->heap->ref))
             {
-                take_shared_leaf(entry);
+                take_shared_leaf(source, entry);
                 dvm_runtime_gc_owner_lost();
                 free(entry);
                 __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
@@ -1940,39 +1947,35 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             Type *mapped_channel = NULL;
             int channel = entry->heap->t == &Tchannel;
-            if (channel && !claim_quiet_channel(entry->heap, &mapped_channel))
-            {
-                if (!move_leaf(leaves, difficult, entry))
-                {
-                    break;
-                }
-                budget--;
-                completed++;
-                continue;
-            }
             Array *array = entry->heap->t == &Tarray ? H2D(Array *, entry->heap) : NULL;
             int has_children = array && (array->root != H || array->t->np);
             int record = entry->heap->t->free == freeheap;
             int list = entry->heap->t == &Tlist;
-            int retry_children = 0;
-            if ((has_children && !transfer_array_children(entry->heap, &retry_children)) ||
-                ((record || list) && !transfer_object_fields(entry->heap, &retry_children)))
+            int retry_leaf = 0;
+            if ((channel && !claim_quiet_channel(entry->heap, &mapped_channel, &retry_leaf)) ||
+                (has_children && !transfer_array_children(entry->heap, &retry_leaf)) ||
+                ((record || list) && !transfer_object_fields(entry->heap, &retry_leaf)))
             {
-                if (retry_children)
+                retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;
+                if (retry_leaf && source == record_retries)
                 {
-                    /* Keep the rooted parent and give the occupied frame queue
-                     * the remaining budget before trying the transfer again. */
-                    break;
+                    dvm_retirement_rotate(source);
+                    continue;
                 }
-                if (!move_leaf(leaves, difficult, entry))
+                if (!move_leaf(source, retry_leaf ? record_retries : difficult, entry))
                 {
+                    if (source == record_retries)
+                    {
+                        dvm_retirement_rotate(source);
+                        continue;
+                    }
                     break;
                 }
                 budget--;
                 completed++;
                 continue;
             }
-            take_shared_leaf(entry);
+            take_shared_leaf(source, entry);
             DVM_RefcountResult result = has_children || channel || record || list ? DVM_REFCOUNT_LAST :
                 dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
