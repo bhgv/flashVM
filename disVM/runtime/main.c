@@ -1677,7 +1677,7 @@ static void publish_child_exit(int parent_pid, int child_pid)
  * are complete. The process guard then takes the ordinary exit path. */
 void dvm_runtime_termination_checkpoint(Prog *process)
 {
-    if ((process->flags & Pkilled) && dvm_runqueue_head() == process)
+    if ((process->flags & Pkilled) && (native_spawn ? process->state == Pready : dvm_runqueue_head() == process))
     {
         error("");
     }
@@ -2458,7 +2458,7 @@ static int runtime_dispatch_turn(void)
         process->R = DVM_R;
         dvm_native_context_set_process(context, nil);
         dvm_bigtable_abort(process);
-        if ((process->flags & Pkilled) && dvm_runqueue_head() == process)
+        if ((process->flags & Pkilled) && (native_spawn ? process->state == Pready : dvm_runqueue_head() == process))
         {
             owner_error()[0] = 0;
         }
@@ -2560,7 +2560,7 @@ static int runtime_dispatch_turn(void)
         dvm_native_context_set_process(context, nil);
         up->prog = nil;
         poperror();
-        if ((process->flags & Pkilled) && dvm_runqueue_head() != process)
+        if ((process->flags & Pkilled) && (native_spawn ? process->state != Pready : dvm_runqueue_head() != process))
         {
             wake_for_termination(process);
         }
@@ -2645,6 +2645,10 @@ static int runtime_execute_inner(void *argument)
     {
         error(owner_error());
     }
+    if (native_spawn)
+    {
+        dvm_runqueue_enable_direct();
+    }
     process = start_module(module);
     initial_guest = process;
     if (inspect_requested)
@@ -2669,7 +2673,7 @@ static int runtime_execute_inner(void *argument)
     fvm_port_sync_lock(channel_queue_mutex);
     cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
-    while (dvm_runqueue_head() || ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
+    while (dvm_runqueue_ready() || ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
 #ifdef DVM_RUNTIME_EDITOR
            || (live && dvm_editor_attached())
 #endif
@@ -2730,7 +2734,7 @@ static int runtime_execute_inner(void *argument)
             }
 #ifndef DVM_RUNTIME_EDITOR
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
-                (dvm_runqueue_head() || dvm_runqueue_inflight()))
+                (dvm_runqueue_ready() || dvm_runqueue_inflight()))
             {
                 if (!dvm_managed_workers_park(guest_cancel_pending))
                 {
@@ -3040,7 +3044,7 @@ int main(int argc, char **argv)
 #endif
             puts("GC execution: --gc-worker (native collectors), --gc-inline (single-worker reference), --gc-locked-poll (mutex reference polling)");
 #if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
-            puts("Default: two managed workers, native GC and shared typed copies and channel transfers.");
+            puts("Default console profile: one native thread per spawn, with native GC.");
 #endif
             puts("Explicit GC and guarded/parallel switches select a custom profile.");
             puts("--native-spawn starts one dedicated OS thread per spawned guest with a guarded parallel profile where supported.");
@@ -3070,9 +3074,8 @@ int main(int argc, char **argv)
         return 2;
     }
 #if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
-    /* Default only for the reviewed console backend. Explicit execution and
-     * diagnostic profiles retain their independently selected settings. A requested
-     * pool size alone changes only the executor count. */
+    /* The console defaults to dedicated native guests. Explicit diagnostic
+     * profiles still select their own runtime settings. */
     if (!native_spawn && !gc_selected && (!managed_workers_selected || managed_workers != 1) &&
         !dvm_runtime_guarded_copies && !dvm_runtime_parallel_add &&
         !dvm_runtime_parallel_real && !dvm_runtime_parallel_string &&
@@ -3083,15 +3086,18 @@ int main(int argc, char **argv)
     {
         if (!managed_workers_selected)
         {
-            managed_workers = 2;
+            native_spawn = 1;
         }
-        gc_worker = 1;
-        dvm_runtime_guarded_copies = 1;
-        dvm_runtime_parallel_movp = 1;
-        dvm_runtime_parallel_movmp = 1;
-        dvm_runtime_parallel_slicela = 1;
-        dvm_runtime_parallel_channel_buffer = 1;
-        dvm_runtime_parallel_byte_copies = 1;
+        else
+        {
+            gc_worker = 1;
+            dvm_runtime_guarded_copies = 1;
+            dvm_runtime_parallel_movp = 1;
+            dvm_runtime_parallel_movmp = 1;
+            dvm_runtime_parallel_slicela = 1;
+            dvm_runtime_parallel_channel_buffer = 1;
+            dvm_runtime_parallel_byte_copies = 1;
+        }
     }
 #else
     USED(gc_selected);

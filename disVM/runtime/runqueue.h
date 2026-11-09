@@ -35,6 +35,16 @@ typedef struct DVM_RuntimeProcess
 } DVM_RuntimeProcess;
 
 
+/* EN: Enable direct dispatch before any ready Prog exists.
+ * RU: Включить прямой запуск до появления готовых Prog. */
+void dvm_runqueue_enable_direct(void);
+
+
+/* EN: Report whether at least one Prog is ready.
+ * RU: Проверить наличие хотя бы одного готового Prog. */
+int dvm_runqueue_ready(void);
+
+
 /* Pin a scheduler-owned Prog under the heap turn. Each successful pin must
  * be released before that Prog can retire. The caller already owns its input. */
 int dvm_runqueue_pin(Prog *process);

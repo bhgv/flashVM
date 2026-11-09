@@ -311,6 +311,19 @@ int main(void)
     check(thread != NULL,"start reassigned dispatcher");
     fvm_port_thread_join(thread);
     check(!dvm_runqueue_head() && !dvm_runqueue_dispatch_owner(process),"reassigned turn retained ownership");
+    dvm_runqueue_enable_direct();
+    Prog *first = &nodes[0].process;
+    Prog *second = &nodes[1].process;
+    check(dvm_runqueue_append(first) && dvm_runqueue_append(second) &&
+        dvm_runqueue_ready() && !dvm_runqueue_head() && !first->link && !second->link,
+        "direct readiness publishes no FIFO links");
+    check(dvm_runqueue_select_guest(second) == second && dvm_runqueue_claim(second) &&
+        dvm_runqueue_head() == second, "second guest dispatches directly");
+    check(dvm_runqueue_suspend(second) && dvm_runqueue_ready() &&
+        dvm_runqueue_resume(second) && !second->link, "direct native return preserves independent readiness");
+    check(dvm_runqueue_finish(second) && dvm_runqueue_pop_expected(second, Pexiting) == second &&
+        dvm_runqueue_pop_expected(first, Pexiting) == first && !dvm_runqueue_ready(),
+        "direct guests retire independently of admission order");
     check(dvm_native_context_unbind(context),"unbind original owner");
     check(dvm_native_context_destroy(context),"destroy original owner");
     puts("PASS actual runnable FIFO: 20000 oracle operations, real foreign owner refusal, independent root links, bounded diagnostics");

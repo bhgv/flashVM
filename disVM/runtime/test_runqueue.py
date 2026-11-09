@@ -44,7 +44,7 @@ def main():
              "count + inflight >= DVM_RUNTIME_PROCESS_MAX ||", "duplicate runnable admission accepted"),
             ("count + inflight >= DVM_RUNTIME_PROCESS_MAX", "count >= DVM_RUNTIME_PROCESS_MAX",
              "native return slot was not reserved"),
-            ("    if (dvm_runqueue_pop(Prelease) != process)\n    {\n        return 0;\n    }", "",
+            ("    if (dvm_runqueue_pop_expected(process, Prelease) != process)\n    {\n        return 0;\n    }", "",
              "native continuation remained runnable"),
         ]
         context_path = root/"disVM/host/native_context.c"
