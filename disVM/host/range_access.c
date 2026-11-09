@@ -147,7 +147,8 @@ DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
         return DVM_CELL_REFUSED;
     }
     DVM_CellResult result = begin_selected(domain, bits, access);
-    if (result == DVM_CELL_ACQUIRED && dvm_cell_write_reserved(domain, destination, destination_size))
+    if (result == DVM_CELL_ACQUIRED && (dvm_cell_write_reserved(domain, destination, destination_size) ||
+        dvm_cell_read_reserved(domain, source, source_size) || dvm_cell_read_reserved(domain, second, second_size)))
     {
         unwind(access);
         return DVM_CELL_BUSY;
@@ -196,7 +197,20 @@ DVM_CellResult dvm_range_access_cells_begin(DVM_CellDomain *domain,
     {
         return DVM_CELL_REFUSED;
     }
-    return dvm_range_plan_begin(domain, &plan, access);
+    DVM_CellResult result = dvm_range_plan_begin(domain, &plan, access);
+    if (result == DVM_CELL_ACQUIRED &&
+        __atomic_load_n(&domain->reservation_active, __ATOMIC_ACQUIRE) == 2)
+    {
+        for (size_t index = 0; index < count; index++)
+        {
+            if (dvm_cell_read_reserved(domain, cells[index], sizeof(void *)))
+            {
+                unwind(access);
+                return DVM_CELL_BUSY;
+            }
+        }
+    }
+    return result;
 }
 
 
@@ -429,6 +443,11 @@ DVM_CellResult dvm_range_access_extend(DVM_RangeAccess *access,
             return result == DVM_OBJECT_BUSY ? DVM_CELL_BUSY : DVM_CELL_REFUSED;
         }
         access->held++;
+    }
+    if (dvm_cell_read_reserved(access->domain, span, size))
+    {
+        undo_additions(access, original);
+        return DVM_CELL_BUSY;
     }
     for (item = original; item < access->count; item++)
     {

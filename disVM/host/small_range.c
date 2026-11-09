@@ -136,7 +136,8 @@ DVM_CellResult dvm_small_range_access_begin(DVM_CellDomain *domain,
         }
         access->held++;
     }
-    if (dvm_cell_write_reserved(domain, destination, destination_size))
+    if (dvm_cell_write_reserved(domain, destination, destination_size) ||
+        dvm_cell_read_reserved(domain, source, source_size) || dvm_cell_read_reserved(domain, second, second_size))
     {
         unwind(access);
         return DVM_CELL_BUSY;
@@ -222,6 +223,11 @@ DVM_CellResult dvm_small_range_access_extend(DVM_TripleAccess *access,
             return result == DVM_OBJECT_BUSY ? DVM_CELL_BUSY : DVM_CELL_REFUSED;
         }
         access->held++;
+    }
+    if (dvm_cell_read_reserved(access->domain, span, size))
+    {
+        undo_extension(access, original);
+        return DVM_CELL_BUSY;
     }
     return DVM_CELL_ACQUIRED;
 }

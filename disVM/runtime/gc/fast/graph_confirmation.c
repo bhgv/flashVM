@@ -191,11 +191,12 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
             result = DVM_CELL_REFUSED;
         }
     }
-    /* A count claim can temporarily expose zero before rollback. Exclude
-     * readers of graph edges only for the claim and reader cutoff. */
+    /* Close only captured fields to readers during count claims. Acquiring
+     * each stripe after publication drains any reader that entered earlier. */
     if (reservation && result == DVM_CELL_ACQUIRED)
     {
-        result = dvm_range_plan_begin(cells, &group->field_plan, &access);
+        dvm_cell_reservation_claim(cells, reservation);
+        result = check_reserved_fields(group, cells);
     }
     for (unsigned int position = 0; result == DVM_CELL_ACQUIRED && position < group->dead_count; position++)
     {

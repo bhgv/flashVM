@@ -249,6 +249,27 @@ static void *prior_writer(void *value)
 }
 
 
+/* EN: Check that the claim phase refuses only reads touching reserved fields.
+ * RU: Проверить, что захват счётчиков отклоняет чтение лишь зарезервированных полей. */
+static void *claim_reader(void *value)
+{
+    Shared *shared = value;
+    DVM_NativeContext *context = bind_owner();
+    DVM_RangeAccess range = {0};
+    DVM_CellAccess cell = {0};
+    check(dvm_cell_access_begin(shared->domain, shared->b, shared->a, &cell) == DVM_CELL_BUSY,
+        "reserved source retries during claim");
+    check(dvm_range_access_begin(shared->domain, shared->b, sizeof(void *), NULL, 0, &range) ==
+        DVM_CELL_BUSY, "reserved range read retries during claim");
+    check(dvm_range_access_begin(shared->domain, shared->b + 256, sizeof(void *), NULL, 0, &range) ==
+        DVM_CELL_ACQUIRED, "unrelated reader on same stripe can enter");
+    check(dvm_range_access_extend(&range, shared->b, sizeof(void *)) == DVM_CELL_BUSY &&
+        range.count == 1 && dvm_range_access_end(&range), "refused read extension preserves prefix");
+    retire(context);
+    return NULL;
+}
+
+
 /* EN: Verify exact reservation of cells[9] in domain, including overlaps.
  * RU: Проверить точную резервацию cells[9] в domain, включая пересечения. */
 static void check_reservation(DVM_CellDomain *domain, unsigned long *cells)
@@ -279,6 +300,11 @@ static void check_reservation(DVM_CellDomain *domain, unsigned long *cells)
         dvm_range_access_end(&range), "reserved field remains readable");
     check(dvm_cell_access_begin(domain, &cells[9], &cells[265], &cell) == DVM_CELL_ACQUIRED &&
         dvm_cell_access_end(&cell), "unrelated write on same stripe");
+    dvm_cell_reservation_claim(domain, token);
+    check(!pthread_create(&writer, NULL, claim_reader, &shared) && !pthread_join(writer, NULL),
+        "check claim phase from foreign context");
+    check(dvm_range_access_cells_begin(domain, fields, 1, &range) == DVM_CELL_ACQUIRED &&
+        dvm_range_access_end(&range), "claim owner can drain reserved field");
     dvm_cell_unreserve_fields(domain, token);
     check(dvm_cell_access_begin(domain, &cells[8], &cells[9], &cell) == DVM_CELL_ACQUIRED,
         "write proceeds after release");
@@ -306,7 +332,6 @@ int main(void)
     memset(&shared, 0, sizeof(shared));
     shared.domain = dvm_cell_domain_create();
     check(shared.domain != NULL && sizeof(unsigned long) == sizeof(void *), "native domain and width");
-    check_reservation(shared.domain, cells);
     monitor = 1;
     check(dvm_range_access_three_begin(shared.domain, first, sizeof(void *), second,
         sizeof(void *), third, sizeof(void *), &access) == DVM_CELL_ACQUIRED && access.count == 6,
@@ -421,6 +446,9 @@ int main(void)
     }
     check(*shared.a == 16000 && *shared.b == 16000 &&
         dvm_refcount_load_u(&shared.domain->references) == 1, "complete paired updates and borrows");
+    context = bind_owner();
+    check_reservation(shared.domain, cells);
+    retire(context);
     check(dvm_cell_domain_destroy(&shared.domain) && !shared.domain, "domain retirement");
     puts("PASS range extend: opposed/partial rollback,16000 pairs,eight OS writers,no allocation");
     return 0;

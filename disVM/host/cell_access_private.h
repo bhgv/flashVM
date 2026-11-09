@@ -18,15 +18,17 @@ struct DVM_CellDomain
 {
     unsigned long references; /* Checked native count; caller protects first lookup. */
     DVM_ObjectDomain *parking; /* Owned shared parking metadata. */
-    unsigned int reservation_active; /* Atomic hint for writes in this domain. */
+    unsigned int reservation_active; /* Atomic phase: 0 inactive, 1 writes, 2 reads and writes. */
     const uintptr_t *reserved_cells; /* Sorted exact addresses under the registry mutex. */
+    DVM_NativeContext *reservation_owner; /* Collector allowed to drain reserved fields. */
     size_t reserved_count; /* Size of reserved_cells under the registry mutex. */
     DVM_NativeContext *watch_owner; /* Atomic observer, NULL outside a watched pass. */
     unsigned long revision[DVM_CELL_STRIPES]; /* Guarded by the corresponding stripe. */
     DVM_ObjectGuard stripes[DVM_CELL_STRIPES]; /* Stable native guard addresses. */
 };
-/* EN: Test a guarded destination span in domain against active GC fields.
- * RU: Проверить защищённый диапазон записи destination в domain на резервации GC. */
+/* EN: Check a guarded source span during the exact-field claim phase.
+ * RU: Проверить защищённый диапазон чтения во время захвата счётчиков. */
+int dvm_cell_read_reserved(DVM_CellDomain *domain, const void *source, size_t size);
 int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, size_t size);
 
 

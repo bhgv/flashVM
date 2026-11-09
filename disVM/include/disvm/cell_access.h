@@ -41,6 +41,13 @@ typedef struct DVM_CellAccess
 const void *dvm_cell_reserve_fields(DVM_CellDomain *domain, void *const *fields, size_t count);
 
 
+/* EN: Close the reservation token in domain to foreign readers. The owner
+ * must drain each field guard again before changing reference counts.
+ * RU: Закрыть поля резервации token в domain для чужого чтения. Перед
+ * изменением счётчиков владелец должен снова захватить каждую блокировку. */
+void dvm_cell_reservation_claim(DVM_CellDomain *domain, const void *token);
+
+
 /* EN: Release the reservation identified by token in domain.
  * RU: Снять резервацию token в domain. */
 void dvm_cell_unreserve_fields(DVM_CellDomain *domain, const void *token);

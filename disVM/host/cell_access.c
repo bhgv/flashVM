@@ -63,9 +63,9 @@ DVM_CellDomain *dvm_cell_domain_create(void)
 
 /* EN: Test a guarded destination for overlap with exact reserved pointer fields.
  * RU: Проверить пересечение защищённого destination длиной size с полями domain. */
-int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, size_t size)
+static int span_reserved(DVM_CellDomain *domain, const void *destination, size_t size, int read)
 {
-    if (!size || !__atomic_load_n(&domain->reservation_active, __ATOMIC_ACQUIRE))
+    if (!size || __atomic_load_n(&domain->reservation_active, __ATOMIC_ACQUIRE) <= (unsigned int)read)
     {
         return 0;
     }
@@ -75,6 +75,12 @@ int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, siz
     fvm_port_registry_lock();
     size_t left = 0;
     size_t right = domain->reserved_count;
+    if (read && (__atomic_load_n(&domain->reservation_active, __ATOMIC_RELAXED) != 2 ||
+        domain->reservation_owner == dvm_native_context_current()))
+    {
+        fvm_port_registry_unlock();
+        return 0;
+    }
     while (left < right)
     {
         size_t middle = left + (right - left) / 2;
@@ -93,6 +99,22 @@ int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, siz
 }
 
 
+/* EN: Check a guarded write span in domain.
+ * RU: Проверить защищённый диапазон записи в domain. */
+int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, size_t size)
+{
+    return span_reserved(domain, destination, size, 0);
+}
+
+
+/* EN: Check a guarded read span in domain during count claims.
+ * RU: Проверить защищённый диапазон чтения в domain во время захвата счётчиков. */
+int dvm_cell_read_reserved(DVM_CellDomain *domain, const void *source, size_t size)
+{
+    return span_reserved(domain, source, size, 1);
+}
+
+
 /* EN: Order the pointer addresses at left and right for exact lookup.
  * RU: Упорядочить адреса left и right для точного поиска. */
 static int compare_field_addresses(const void *left, const void *right)
@@ -107,7 +129,8 @@ static int compare_field_addresses(const void *left, const void *right)
  * RU: Опубликовать count отсортированных fields и удерживать domain до снятия. */
 const void *dvm_cell_reserve_fields(DVM_CellDomain *domain, void *const *fields, size_t count)
 {
-    if (!domain || !fields || !count || count > SIZE_MAX / sizeof(uintptr_t))
+    DVM_NativeContext *context = dvm_native_context_current();
+    if (!context || !domain || !fields || !count || count > SIZE_MAX / sizeof(uintptr_t))
     {
         return NULL;
     }
@@ -137,11 +160,27 @@ const void *dvm_cell_reserve_fields(DVM_CellDomain *domain, void *const *fields,
         }
         return NULL;
     }
+    domain->reservation_owner = context;
     domain->reserved_cells = addresses;
     domain->reserved_count = count;
     __atomic_store_n(&domain->reservation_active, 1, __ATOMIC_RELEASE);
     fvm_port_registry_unlock();
     return addresses;
+}
+
+
+/* EN: Close reserved fields to readers before draining their guards.
+ * RU: Закрыть зарезервированные поля для чтения перед обходом блокировок. */
+void dvm_cell_reservation_claim(DVM_CellDomain *domain, const void *token)
+{
+    fvm_port_registry_lock();
+    if (!token || domain->reserved_cells != token ||
+        domain->reservation_owner != dvm_native_context_current())
+    {
+        abort();
+    }
+    __atomic_store_n(&domain->reservation_active, 2, __ATOMIC_RELEASE);
+    fvm_port_registry_unlock();
 }
 
 
@@ -154,6 +193,7 @@ void dvm_cell_unreserve_fields(DVM_CellDomain *domain, const void *token)
     {
         abort();
     }
+    domain->reservation_owner = NULL;
     domain->reserved_cells = NULL;
     domain->reserved_count = 0;
     __atomic_store_n(&domain->reservation_active, 0, __ATOMIC_RELEASE);
@@ -296,7 +336,8 @@ DVM_CellResult dvm_cell_access_spans_begin(DVM_CellDomain *domain,
         }
         access->held++;
     }
-    if (dvm_cell_write_reserved(domain, destination, destination_size))
+    if (dvm_cell_write_reserved(domain, destination, destination_size) ||
+        dvm_cell_read_reserved(domain, source, source_size))
     {
         unwind(access);
         return DVM_CELL_BUSY;
