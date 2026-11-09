@@ -1163,6 +1163,7 @@ static int transfer_object_fields(Heap *heap, int *retry)
 
 
 extern int dvm_runtime_channel_buffer_busy(Channel *channel);
+extern int dvm_runtime_channel_post_close(Channel *channel);
 
 
 /* EN: Claim the last owner of heap and return mapped descriptor on success.
@@ -1182,7 +1183,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
     {
         int claimed = dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0);
         *retry = !claimed && (dvm_runtime_channel_buffer_busy(channel) ||
-            dvm_refcount_load_u(&heap->ref) > 1);
+            dvm_refcount_load_u(&heap->ref) > 1 || dvm_runtime_channel_post_close(channel));
         return claimed;
     }
     if (!buffer)
@@ -1211,7 +1212,8 @@ static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
         abort();
     }
     free(packet);
-    *retry = dvm_runtime_channel_buffer_busy(channel) || dvm_refcount_load_u(&heap->ref) > 1;
+    *retry = dvm_runtime_channel_buffer_busy(channel) || dvm_refcount_load_u(&heap->ref) > 1 ||
+        dvm_runtime_channel_post_close(channel);
     return 0;
 }
 

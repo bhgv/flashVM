@@ -8,6 +8,9 @@
 #endif
 
 
+enum { DVM_PROG_MESSAGE_NONE, DVM_PROG_MESSAGE_CHANNEL_CLOSE };
+
+
 /* Native allocation preserves the complete retained Prog prefix. Every Prog
  * passed to this module must come from this wrapper; free its prefix normally. */
 typedef struct DVM_RuntimeProcess
@@ -18,6 +21,7 @@ typedef struct DVM_RuntimeProcess
     int exit_ready_pid;               /* Retired child acknowledged by the next MCALL retry. */
     int parent_pid;                   /* Immutable numeric identity of the spawning guest. */
     int lifetime_holds;      /* Native borrows acquired under the heap turn. */
+    unsigned char channel_message;    /* Atomic owner mailbox for the current wait. */
     const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */

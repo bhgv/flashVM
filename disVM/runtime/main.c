@@ -1908,6 +1908,54 @@ int dvm_runtime_channel_is_quiet(Channel *channel)
 }
 
 
+/* EN: Post a close message to owners of the waits registered on channel.
+ * Return zero for waiters outside dedicated mode or transport-owned channels.
+ * RU: Передать закрытие владельцам ожиданий на channel. Вернуть ноль для
+ * ожиданий вне выделенного режима или каналов под управлением транспорта. */
+int dvm_runtime_channel_post_close(Channel *channel)
+{
+    int posted = 0;
+    fvm_port_sync_lock(channel_queue_mutex);
+    if (native_spawn && !channel->aux)
+    {
+        Progq *queues[] = {channel->send, channel->recv};
+        int supported = 1;
+        for (size_t index = 0; supported && index < sizeof(queues) / sizeof(*queues); index++)
+        {
+            for (Progq *entry = queues[index]; entry; entry = entry->next)
+            {
+                Prog *peer = entry->prog;
+                if (peer && !hosted_channel_waiter(peer))
+                {
+                    supported = 0;
+                    break;
+                }
+            }
+        }
+        for (size_t index = 0; supported && index < sizeof(queues) / sizeof(*queues); index++)
+        {
+            for (Progq *entry = queues[index]; entry; entry = entry->next)
+            {
+                Prog *peer = entry->prog;
+                if (peer)
+                {
+                    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+                    unsigned char prior = __atomic_exchange_n(&process->channel_message,
+                        DVM_PROG_MESSAGE_CHANNEL_CLOSE, __ATOMIC_ACQ_REL);
+                    if (prior == DVM_PROG_MESSAGE_NONE)
+                    {
+                        dvm_managed_workers_wake_guest(peer);
+                    }
+                    posted = 1;
+                }
+            }
+        }
+    }
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return posted;
+}
+
+
 /* Try the callback-free last-owner path after the reader epoch. */
 int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed)
 {
@@ -2333,6 +2381,28 @@ static char *entry_resource(char *path)
     return separator + 1;
 }
 
+/* EN: Let the dedicated owner complete guest's posted channel hangup.
+ * RU: Завершить ожидание guest по сообщению о закрытии на его потоке. */
+static int consume_channel_close(Prog *guest)
+{
+    if (!hosted_channel_waiter(guest) ||
+        __atomic_load_n(&((DVM_RuntimeProcess *)guest)->channel_message, __ATOMIC_ACQUIRE) !=
+            DVM_PROG_MESSAGE_CHANNEL_CLOSE)
+    {
+        return 0;
+    }
+    if (((DVM_RuntimeProcess *)guest)->channel_claimed || dvm_runqueue_dispatch_owner(guest))
+    {
+        return 0;
+    }
+    if (!guest->kill)
+    {
+        guest->kill = "channel hangup";
+    }
+    return cancel_parked_guest(guest);
+}
+
+
 /* Execute one complete managed turn under exclusive heap ownership. Both OS
  * executors call the same interpreter/JIT/error/retirement logic. Return a
  * managed turn status, or -1 after retiring the claim on failure.
@@ -2347,7 +2417,9 @@ static int runtime_dispatch_turn(void)
     if (native_spawn)
     {
         Prog *guest = dvm_managed_workers_guest();
-        process = dvm_runqueue_select_guest(guest ? guest : initial_guest);
+        guest = guest ? guest : initial_guest;
+        cancelled |= consume_channel_close(guest);
+        process = dvm_runqueue_select_guest(guest);
     }
     else
     {

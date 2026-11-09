@@ -287,6 +287,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
         {
             return 0;
         }
+        __atomic_store_n(&runtime_process(process)->channel_message, DVM_PROG_MESSAGE_NONE, __ATOMIC_RELEASE);
         process->ptr = nil;
         process->chan = nil;
         if (cause)

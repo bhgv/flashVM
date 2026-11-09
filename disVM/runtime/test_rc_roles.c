@@ -130,6 +130,15 @@ int dvm_runtime_channel_buffer_busy(Channel *channel)
 }
 
 
+/* EN: The role fixture has no guest waiting on channel.
+ * RU: В тесте ролей нет потока, ожидающего channel. */
+int dvm_runtime_channel_post_close(Channel *channel)
+{
+    (void)channel;
+    return 0;
+}
+
+
 int dvm_runtime_channel_is_quiet(Channel *channel)
 {
     (void)channel;
