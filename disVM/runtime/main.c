@@ -111,7 +111,7 @@ static Pool memory;                       /* Pool mutated by Dis or its stopped-
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static DVM_MessageRouter *guest_messages; /* Dedicated guest endpoints, keyed by immutable PID. */
 static int nextpid;                       /* Monotonic process identity. */
-static int live;                          /* Process quota accounting. */
+static int live;                          /* Atomic process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static Prog *initial_guest; /* Controller-owned root guest in dedicated mode. */
 static int native_spawn; /* One dedicated OS thread per spawned Prog. */
@@ -1382,16 +1382,42 @@ static void initialize_process(Prog *process, Prog *parent, Modlink *module, con
 }
 
 
+/* EN: Reserve identity and initialize the private native message endpoint.
+ * RU: Зарезервировать PID и подготовить приватный нативный ящик сообщений. */
+int dvm_runtime_prepare_resident(Prog *process)
+{
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
+    if (__atomic_load_n(&live, __ATOMIC_RELAXED) == PROCESS_MAX || nextpid == INT_MAX)
+    {
+        resident->startup_error = "process quota exceeded";
+        return 0;
+    }
+    process->pid = ++nextpid;
+    if (native_spawn)
+    {
+        resident->channel_close.kind = DVM_PROG_MESSAGE_CHANNEL_CLOSE;
+        resident->channel_exit.kind = DVM_PROG_MESSAGE_CHANNEL_EXIT;
+        resident->channel_cancel.kind = DVM_PROG_MESSAGE_CHANNEL_CANCEL;
+        resident->cancel_wait.kind = DVM_PROG_MESSAGE_CANCEL_WAIT;
+        resident->cancel_wait.sender = (uintptr_t)resident->parent_pid;
+        resident->cancel_wait.request = (uint64_t)process->pid;
+        resident->messages = dvm_messages_register(guest_messages, (uintptr_t)process->pid);
+        if (!resident->messages)
+        {
+            resident->startup_error = exNomem;
+            return 0;
+        }
+    }
+    __atomic_fetch_add(&live, 1, __ATOMIC_RELAXED);
+    return 1;
+}
+
+
 /* EN: Register a prepared resident and start its owner. Consumes prepared storage.
  * RU: Зарегистрировать готовый процесс и запустить его владельца. Поглощает prepared. */
 static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, Prog *prepared)
 {
     Prog *process = prepared;
-    if (live == PROCESS_MAX || nextpid == INT_MAX)
-    {
-        free(prepared);
-        error("process quota exceeded");
-    }
     if (!process)
     {
         process = calloc(1, sizeof(DVM_RuntimeProcess));
@@ -1401,54 +1427,52 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
         }
         initialize_process(process, parent, module, initial);
     }
-    process->pid = ++nextpid;
     if (dvm_refcount_retain_u(&D2H(module)->ref) != DVM_REFCOUNT_LIVE)
     {
         free(process);
         error(exHeap);
-    }
-    if (native_spawn)
-    {
-        DVM_RuntimeProcess *guest = (DVM_RuntimeProcess *)process;
-        guest->channel_close.kind = DVM_PROG_MESSAGE_CHANNEL_CLOSE;
-        guest->channel_exit.kind = DVM_PROG_MESSAGE_CHANNEL_EXIT;
-        guest->channel_cancel.kind = DVM_PROG_MESSAGE_CHANNEL_CANCEL;
-        guest->cancel_wait.kind = DVM_PROG_MESSAGE_CANCEL_WAIT;
-        guest->cancel_wait.sender = (uintptr_t)guest->parent_pid;
-        guest->cancel_wait.request = (uint64_t)process->pid;
-        guest->messages = dvm_messages_register(guest_messages, (uintptr_t)process->pid);
-        if (!guest->messages)
-        {
-            free(process);
-            destroy(module);
-            error(exNomem);
-        }
     }
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
     if (native_spawn && parent)
     {
         __atomic_store_n(&resident->startup_pending, 1, __ATOMIC_RELEASE);
         process->state = Pready;
-        /* Keep the prepared stack rooted while the creator waits outside the heap. */
-        dvm_runtime_process_root_add(process);
-        live++;
-        if (!dvm_managed_workers_start_guest(process))
+        /* Until registrar publication, the caller's frame still owns the arguments. */
+        Heap *module_root = D2H(module);
+        if (!dvm_runtime_root_add(module_root))
         {
-            if (!dvm_runtime_process_root_remove(process))
+            free(process);
+            destroy(module);
+            error(exHeap);
+        }
+        int started = dvm_managed_workers_start_guest(process);
+        if (!dvm_runtime_root_remove(module_root))
+        {
+            abort();
+        }
+        if (!started)
+        {
+            const char *failure = resident->startup_error;
+            if (resident->messages)
             {
-                abort();
+                __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
             }
-            live--;
             drop_guest_messages(process);
             free(process);
             destroy(module);
-            error("cannot create native guest thread");
+            error((char *)(failure ? failure : "cannot create native guest thread"));
         }
     }
     else
     {
+        if (!dvm_runtime_prepare_resident(process))
+        {
+            const char *failure = resident->startup_error;
+            free(process);
+            destroy(module);
+            error((char *)failure);
+        }
         dvm_runtime_process_root_add(process);
-        live++;
         addrun(process);
     }
     return process;
@@ -2949,7 +2973,7 @@ static int runtime_dispatch_turn(void)
             }
             drop_guest_messages(process);
             free(process);
-            live--;
+            __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
             publish_child_exit(parent_pid, child_pid);
         }
     }
@@ -3093,13 +3117,13 @@ static int runtime_execute_inner(void *argument)
     fvm_port_sync_lock(channel_queue_mutex);
     cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
-    while (dvm_runqueue_ready() || ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && live)
+    while (dvm_runqueue_ready() || ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && __atomic_load_n(&live, __ATOMIC_RELAXED))
 #ifdef DVM_RUNTIME_EDITOR
-           || (live && dvm_editor_attached())
+           || (__atomic_load_n(&live, __ATOMIC_RELAXED) && dvm_editor_attached())
 #endif
            || guest_cancel_pending_or_close())
     {
-        if (managed_workers == 0 && live && !dvm_runqueue_head() && !dvm_runqueue_inflight()
+        if (managed_workers == 0 && __atomic_load_n(&live, __ATOMIC_RELAXED) && !dvm_runqueue_head() && !dvm_runqueue_inflight()
             && !guest_cancel_pending()
 #ifdef DVM_RUNTIME_EDITOR
             && !dvm_editor_attached()
@@ -3108,7 +3132,7 @@ static int runtime_execute_inner(void *argument)
         {
             if (show_stats && !quiescent_reported)
             {
-                fprintf(stderr, "NATIVEPOOL_QUIESCENT processes=%d\n", live);
+                fprintf(stderr, "NATIVEPOOL_QUIESCENT processes=%d\n", __atomic_load_n(&live, __ATOMIC_RELAXED));
             }
             quiescent_reported = 1;
             if (!dvm_managed_workers_park(guest_cancel_pending))
@@ -3169,7 +3193,7 @@ static int runtime_execute_inner(void *argument)
             error("managed scheduler worker failed");
         }
     }
-    if (live)
+    if (__atomic_load_n(&live, __ATOMIC_RELAXED))
     {
         error("deadlock: processes remain blocked on channels");
     }

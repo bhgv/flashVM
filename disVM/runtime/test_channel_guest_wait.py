@@ -1776,8 +1776,21 @@ def main():
                     "killwait-native": "PASS guest child retirement",
                 }
                 if name in dedicated_markers:
+                    dedicated_image = image
+                    if name == "killwait-cancel":
+                        # The owner may already have advanced to a different wait
+                        # by the time the caller receives its first reply.
+                        dedicated_source = work / "killwait-owner-cancel.b"
+                        dedicated_image = work / "killwait-owner-cancel.dis"
+                        dedicated_source.write_text(guest.replace(
+                            "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
+                            "<-reports != 1",
+                        ))
+                        subprocess.run([compiler, "-I", include, "-I",
+                                        Path(__file__).resolve().parents[1] / "module",
+                                        "-o", dedicated_image, dedicated_source], check=True)
                     dedicated = subprocess.run(
-                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
+                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", dedicated_image],
                         cwd=work, capture_output=True, text=True, timeout=30,
                         env=dict(os.environ, DVM_TEST_DEDICATED_CANCEL="1") if name == "host-fixed" else None,
                     )

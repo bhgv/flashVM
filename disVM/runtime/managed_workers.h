@@ -29,6 +29,7 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
 /* Dedicated guest lifecycle. Call under exclusive heap admission. */
 struct Prog;
 int dvm_managed_workers_start_guest(struct Prog *guest);
+int dvm_runtime_prepare_resident(struct Prog *guest);
 struct Prog *dvm_managed_workers_guest(void);
 void dvm_managed_workers_guest_retired(int pid);
 

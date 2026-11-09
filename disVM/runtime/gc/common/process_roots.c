@@ -14,9 +14,9 @@ static Prog *root_head; /* Atomic publication head, including startup residents.
 
 
 /* EN: Publish a fully initialized process exactly once. The creator keeps the
- * source roots and heap turn until the startup owner acknowledges registration.
+ * source roots until the registrar acknowledges publication.
  * RU: Однократно зарегистрировать готовый процесс. Создатель держит исходные
- * корни и допуск к куче до подтверждения регистрации владельцем. */
+ * корни до подтверждения публикации регистратором. */
 void dvm_runtime_process_root_add(Prog *process)
 {
     pthread_mutex_lock(&roots_lock);

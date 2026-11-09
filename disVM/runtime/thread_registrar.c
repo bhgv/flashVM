@@ -43,6 +43,8 @@ typedef struct DVM_ThreadCommand
     FVM_PortThreadFn fn;      /* Native worker entry for a start request. */
     void *arg;                /* Opaque native argument passed through to fn. */
     DVM_ThreadSlot *slot;     /* Start output or join input. */
+    int (*prepare)(void *);  /* Optional registrar-side preflight. */
+    void (*commit)(void *, DVM_ThreadSlot *); /* Optional registrar-side publication. */
 } DVM_ThreadCommand;
 
 
@@ -55,6 +57,11 @@ static int start_slot(DVM_ThreadRegistrar *registrar, DVM_ThreadCommand *command
     {
         return 0;
     }
+    if (command->prepare && !command->prepare(command->arg))
+    {
+        free(slot);
+        return 0;
+    }
     slot->handle = fvm_port_thread_start(command->fn, command->arg);
     if (!slot->handle)
     {
@@ -64,6 +71,10 @@ static int start_slot(DVM_ThreadRegistrar *registrar, DVM_ThreadCommand *command
     slot->next = registrar->slots;
     registrar->slots = slot;
     command->slot = slot;
+    if (command->commit)
+    {
+        command->commit(command->arg, slot);
+    }
     return 1;
 }
 
@@ -191,10 +202,22 @@ static int roundtrip(DVM_ThreadRegistrar *registrar, DVM_ThreadCommand *command)
 DVM_ThreadSlot *dvm_thread_registrar_start(DVM_ThreadRegistrar *registrar,
     FVM_PortThreadFn fn, void *arg)
 {
+    return dvm_thread_registrar_start_prepared(registrar, fn, arg, NULL, NULL);
+}
+
+
+/* EN: Prepare and publish the native slot on the registrar.
+ * RU: Подготовить и опубликовать нативный слот на регистраторе. */
+DVM_ThreadSlot *dvm_thread_registrar_start_prepared(DVM_ThreadRegistrar *registrar,
+    FVM_PortThreadFn fn, void *arg, int (*prepare)(void *),
+    void (*commit)(void *, DVM_ThreadSlot *))
+{
     DVM_ThreadCommand command = {0};
     command.message.kind = THREAD_START;
     command.fn = fn;
     command.arg = arg;
+    command.prepare = prepare;
+    command.commit = commit;
     return roundtrip(registrar, &command) ? command.slot : NULL;
 }
 

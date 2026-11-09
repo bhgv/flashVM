@@ -23,6 +23,12 @@ void dvm_thread_registrar_destroy(DVM_ThreadRegistrar *registrar);
 DVM_ThreadSlot *dvm_thread_registrar_start(DVM_ThreadRegistrar *registrar,
     FVM_PortThreadFn fn, void *arg);
 
+/* EN: Prepare before OS creation and commit after it succeeds, on the registrar.
+ * RU: Подготовить до создания OS-потока и подтвердить после успеха в регистраторе. */
+DVM_ThreadSlot *dvm_thread_registrar_start_prepared(DVM_ThreadRegistrar *registrar,
+    FVM_PortThreadFn fn, void *arg, int (*prepare)(void *),
+    void (*commit)(void *, DVM_ThreadSlot *));
+
 /* EN: Join and release slot. The caller must let the worker finish first and
  * must not hold admission the worker needs. Returns zero on delivery failure.
  * RU: Присоединить и освободить slot. Поток должен иметь возможность завершиться.
