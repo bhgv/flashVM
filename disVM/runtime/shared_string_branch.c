@@ -9,6 +9,7 @@
 #include "string_branch_value.h"
 #include "branch_value.h"
 #include "shared_access.h"
+#include "shared_arithmetic.h"
 #include "managed_owner.h"
 #include "runtime_gc.h"
 #include "disvm/native_process.h"
@@ -180,8 +181,8 @@ static const char *leased_string_branch(int opcode, int condition, StringView le
  * every discovered span excluded until the conditional target snapshot/store.
  * Error returns only after complete end. Long prefixes may occupy all stripes;
  * no collector admission, provenance, root or code lifetime is inferred. */
-const char *dvm_runtime_string_branch(int condition, const void *source,
-    const void *other, const void *target, void *pc)
+static const char *string_branch(int condition, const void *source,
+    const void *other, const void *target, void *pc, DVM_CellDomain *domain)
 {
     static const int opcodes[] = {IBEQC, IBNEC, IBLTC, IBLEC, IBGTC, IBGEC}; /* Condition to Dis opcode. */
     DVM_RangeAccess access = {0};
@@ -193,7 +194,7 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
     int order = 0;
     int take;
     size_t count;
-    if (dvm_runtime_shared_mode() != 2 || pc != &DVM_R.PC || condition < 0 || condition > 5)
+    if ((!domain && dvm_runtime_shared_mode() != 2) || pc != &DVM_R.PC || condition < 0 || condition > 5)
     {
         return exHeap;
     }
@@ -203,11 +204,25 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
         return exHeap;
     }
     invalid_target = !target || target == H || (uintptr_t)target > (uintptr_t)-1-sizeof(Inst *);
-    claim = dvm_managed_three_begin(source, sizeof(void *), other, sizeof(void *),
-        invalid_target ? (void *)source : (void *)target, sizeof(void *), &access);
+    if (domain)
+    {
+        const Inst *instruction = dvm_runtime_decoded_instruction(opcodes[condition]);
+        if ((!dvm_runtime_frame_pointer(source) && !dvm_runtime_module_pointer(source)) ||
+            (!dvm_runtime_frame_pointer(other) && !dvm_runtime_module_pointer(other)) ||
+            (!invalid_target && (!instruction || UDST(instruction->add) != AIMM ||
+                                 target != &instruction->d)))
+        {
+            return exHeap;
+        }
+    }
+    void *guarded_target = invalid_target ? (void *)source : (void *)target;
+    claim = domain ? dvm_range_access_three_begin(domain, source, sizeof(void *), other,
+        sizeof(void *), guarded_target, sizeof(void *), &access) :
+        dvm_managed_three_begin(source, sizeof(void *), other, sizeof(void *),
+            guarded_target, sizeof(void *), &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]) ? NULL : exHeap;
+        return !domain && claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]) ? NULL : exHeap;
     }
     left.object = dvm_runtime_string_branch_source(source);
     right.object = dvm_runtime_string_branch_source(other);
@@ -233,7 +248,7 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
         {
             size_t left_bytes = count * (left.encoded < 0 ? sizeof(Rune) : 1);
             size_t right_bytes = count * (right.encoded < 0 ? sizeof(Rune) : 1);
-            if (dvm_runtime_parallel_string && count &&
+            if (!domain && dvm_runtime_parallel_string && count &&
                 left_bytes <= DVM_STRING_LEASE_BYTES && right_bytes <= DVM_STRING_LEASE_BYTES &&
                 dvm_native_execution()->arithmetic_retry_opcode == opcodes[condition] &&
                 dvm_runtime_instruction_target(target))
@@ -259,6 +274,31 @@ const char *dvm_runtime_string_branch(int condition, const void *source,
     return problem;
 }
 
+
+
+/* EN: Use the current SHARED dispatch for proven string operands.
+ * RU: Использовать текущий SHARED для проверенных строковых операндов. */
+const char *dvm_runtime_string_branch(int condition, const void *source,
+    const void *other, const void *target, void *pc)
+{
+    if (!dvm_runtime_gc_dispatch_is_shared())
+    {
+        return string_branch(condition, source, other, target, pc, NULL);
+    }
+    DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
+    if (domain)
+    {
+        const char *problem = string_branch(condition, source, other, target, pc, domain);
+        if (problem != exHeap)
+        {
+            return problem;
+        }
+    }
+    dvm_runtime_gc_dispatch_finish();
+    const char *problem = string_branch(condition, source, other, target, pc, NULL);
+    dvm_runtime_gc_dispatch_restore();
+    return problem == exHeap ? "string branch operands or guard refused" : problem;
+}
 
 
 /* Guard the reference, index and result together, then extend the same

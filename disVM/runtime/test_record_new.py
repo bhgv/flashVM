@@ -18,7 +18,8 @@ init() {
     last := len items - 1;
     items[last] = item;
     if (items[0] != nil || items[last] != item) { raise "array initialization"; }
-    if (item.name != "record" || item.value != 73) {
+    name := item.name;
+    if (name != "record" || item.value != 73) {
         raise "record initialization";
     }
     left := item.value;
@@ -53,7 +54,7 @@ def verify_existing_shared_dispatch(runtime, work, image):
     source = source.replace(batch,
         "if(op != IADDW && op != ISUBW && op != IBNEW && op != IBGEW && !dvm_runtime_instruction_limit && dvm_runtime_shared_integer)", 1)
     source = source.replace(boundary, """
-        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL || op == ILENA || op == IADDW || op == ISUBW || op == IBNEW || op == IBGEW || op == ILEA) && dvm_runtime_gc_dispatch_share();
+        int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL || op == ILENA || op == IADDW || op == ISUBW || op == IBNEW || op == IBGEW || op == ILEA || op == IBNEC) && dvm_runtime_gc_dispatch_share();
 """ + boundary)
     executor.write_text(source.replace("executed:\n", """
 executed:
@@ -177,12 +178,26 @@ const char *__wrap_dvm_runtime_bytes_publish_opcode(int op, const void *snapshot
     return result;
 }
 
+const char *__real_dvm_runtime_string_branch(int, const void *, const void *, const void *, void *);
+const char *__wrap_dvm_runtime_string_branch(int condition, const void *source, const void *other,
+    const void *target, void *pc)
+{
+    DVM_HeapOwner *owner = dvm_native_owner_current();
+    DVM_HeapOwnerStats before, after;
+    int shared = dvm_runtime_gc_dispatch_is_shared() && dvm_native_owner_statistics(owner, &before);
+    const char *result = __real_dvm_runtime_string_branch(condition, source, other, target, pc);
+    if (shared && !result &&
+        dvm_native_owner_statistics(owner, &after) && before.reentries == after.reentries)
+        puts("PASS string branch directly in SHARED");
+    return result;
+}
+
 """)
     binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode",
                             "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared",
                             "dvm_runtime_array_index_publish_shared", "dvm_runtime_array_length",
                             "dvm_runtime_arithmetic", "dvm_runtime_integer_branch",
-                            "dvm_runtime_bytes_publish_opcode"], executor=executor)
+                            "dvm_runtime_bytes_publish_opcode", "dvm_runtime_string_branch"], executor=executor)
     for mode in ("--no-jit", "--jit"):
         result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
                                 capture_output=True, text=True, timeout=30)
@@ -196,6 +211,7 @@ const char *__wrap_dvm_runtime_bytes_publish_opcode(int op, const void *snapshot
                 or "PASS integer arithmetic directly in SHARED" not in output
                 or "PASS integer branch directly in SHARED" not in output
                 or "PASS address copied directly in SHARED" not in output
+                or "PASS string branch directly in SHARED" not in output
                 or "PASS record guest" not in output):
             raise RuntimeError(output)
 
