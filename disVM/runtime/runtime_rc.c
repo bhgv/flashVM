@@ -1295,10 +1295,10 @@ static int move_leaf(DVM_RetirementQueue *source, DVM_RetirementQueue *destinati
 }
 
 
-/* [GC:] Hand a refused snapshot's published owners back to Fast as an
- * ordinary release packet. Source and entry belong to the current consumer.
- * A full queue leaves both intact; success consumes entry and its snapshot
- * while the packet keeps every existing strong reference and root. */
+/* EN: Return strong references from a refused entry to Fast as a release
+ * packet. source and entry remain intact if the packet cannot be queued.
+ * RU: Передать сильные ссылки отклонённого entry в Fast. Если пакет нельзя
+ * поставить в очередь, source и entry остаются целыми. */
 static DVM_RetirementResult release_refused_snapshot(DVM_RetirementQueue *source, LeafRetirement *entry)
 {
     FrameRetirement *records = entry->records;
@@ -1308,6 +1308,19 @@ static DVM_RetirementResult release_refused_snapshot(DVM_RetirementQueue *source
     if (result != DVM_RETIRE_OK)
     {
         return result;
+    }
+    if (!entry->pinned_children)
+    {
+        /* Exclusive discovery published descendant roots without retaining
+         * their counts. Only the initial node owns a releasable reference. */
+        for (size_t index = 1; index < records->count; index++)
+        {
+            if (!dvm_runtime_root_batch_remove(records->roots, index))
+            {
+                abort();
+            }
+        }
+        records->count = 1;
     }
     void *value;
     unsigned long bytes;
@@ -1838,7 +1851,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
                     int retry = claim == DVM_CELL_BUSY;
-                    if (entry->claim_refused && entry->pinned_children)
+                    if (entry->claim_refused)
                     {
                         DVM_RetirementResult release = release_refused_snapshot(source, entry);
                         if (release == DVM_RETIRE_OK)
