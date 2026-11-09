@@ -1,3 +1,5 @@
+[NativeWorld transition diagnostics and owner messages (Russian)](NATIVEWORLD-DEBUG.ru.md).
+
 ## Dedicated spawn threads
 
 `--native-spawn` creates one OS thread for each `spawn` and `mspawn` via
