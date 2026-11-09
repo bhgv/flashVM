@@ -96,7 +96,6 @@ static unsigned long duke_promoted; /* Large snapshots handed to Fast GC. */
 static unsigned long cycle_candidates_oversized;
 static size_t candidate_sweep_left; /* Entries left in the current no-progress sweep. */
 static int candidate_sweep_busy; /* Every failed scan in this sweep hit a busy field. */
-static int candidate_busy_retry; /* Cycles lane already retried an all-busy batch. */
 static int candidate_fallback_ready; /* Atomic readiness published to the Fast scheduler. */
 static unsigned long shared_record_confirmations;
 static size_t fast_reserved_confirmations; /* Claims confirmed under exact field reservations. */
@@ -192,7 +191,6 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_oversized = 0;
     candidate_sweep_left = 0;
     candidate_sweep_busy = 0;
-    candidate_busy_retry = 0;
     __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     shared_record_confirmations = 0;
     fast_ignored_live_fields = 0;
@@ -1486,6 +1484,7 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
     {
         if (!defer_leaf(heap, poolmsize(heapmem, heap), 0))
         {
+            *busy = !gchalt && !heapmonitor;
             return 0;
         }
         take_cycle_candidate(source, heap);
@@ -1607,6 +1606,10 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
             !dvm_retirement_contains_key(duke_candidates, dvm_heap_pool_key(heapmem, heap)) ?
             duke_candidates : retirement;
         int moved = dvm_rc_move_candidate(source, destination, value);
+        if (!moved && destination == duke_candidates)
+        {
+            *busy = 1;
+        }
         if (source == cycle_candidates)
         {
             cycle_candidates_oversized += moved;
@@ -1677,7 +1680,6 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
         if (completed)
         {
             candidate_sweep_left = 0;
-            candidate_busy_retry = 0;
         }
         else if (queued.ready)
         {
@@ -1687,8 +1689,9 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
             }
             else
             {
-                retry = candidate_sweep_busy && !candidate_busy_retry;
-                candidate_busy_retry = retry;
+                /* Contended fields and temporary queue pressure stay with
+                 * Cycles. The worker releases its lease before the next sweep. */
+                retry = candidate_sweep_busy;
                 fallback_ready = !retry;
             }
         }
