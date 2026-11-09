@@ -100,7 +100,7 @@ static int native_try_leave(int shared)
     dvm_native_execution()->world_last_exit = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
     if (process && dvm_queue_probe_requested)
     {
-        dvm_queue_probe_run(process,dvm_native_context_current(),dvm_gc_runtime.roots);
+        dvm_queue_probe_run(process, dvm_native_context_current());
     }
     if (shared && !dvm_native_owner_enter_shared(owner))
     {

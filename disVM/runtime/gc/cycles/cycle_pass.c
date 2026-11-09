@@ -26,9 +26,9 @@ unsigned int dvm_gc_cycles_shared(DVM_NativeContext *context, size_t budget, voi
 }
 
 
-/* EN: Trace roots and update idle_passes, idle_epoch and passes for the next pass.
+/* EN: Trace the registered process roots and update idle_passes, idle_epoch and passes for the next pass.
  * RU: Обойти roots и обновить счётчики idle_passes, idle_epoch и passes. */
-DVM_GCWorkResult dvm_gc_cycles_trace(Prog **roots, unsigned int *idle_passes,
+DVM_GCWorkResult dvm_gc_cycles_trace(unsigned int *idle_passes,
     unsigned long *idle_epoch, unsigned long *passes)
 {
     dvm_gc_collector_environment();
@@ -41,7 +41,7 @@ DVM_GCWorkResult dvm_gc_cycles_trace(Prog **roots, unsigned int *idle_passes,
     {
         (*idle_epoch) = gcepochs;
     }
-    rungc(*roots);
+    rungc(dvm_runtime_process_roots());
     poperror();
     (*passes)++;
     /* A native wait can leave the heap idle for many passes without another

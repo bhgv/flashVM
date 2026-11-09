@@ -141,6 +141,7 @@ add_executable(disvm
     gc/common/collector_environment.c
     gc/common/native_admission.c
     gc/fast/retirement_pass.c
+    gc/common/process_roots.c
     gc/fast/graph_confirmation.c
     gc/fast/packet_budget.c
     gc/common/graph_capture.c

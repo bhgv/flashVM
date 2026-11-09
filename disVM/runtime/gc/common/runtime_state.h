@@ -15,7 +15,6 @@ typedef struct RuntimeGC
     DVM_NativeContext *owner;         /* Immutable Dis context through collector joins. */
     DVM_NativeWorld *world;           /* Owned root coordination domain. */
     DVM_GCWorkers *workers;           /* Native Fast, Cycles and Duke contexts. */
-    struct Prog **roots;                    /* Borrowed complete process-list slot. */
     unsigned long fast_empty_skips;   /* Mutator skipped an empty Fast request. */
     unsigned long passes;            /* Real retained rungc callbacks. */
     unsigned long idle_cycle_epoch;  /* First epoch of the current idle burst. */

@@ -26,6 +26,7 @@ typedef struct ManagedWorker
     DVM_OwnerMessage *staged_reply; /* Owner-only reply removed before heap admission. */
     int reply_in_transit;       /* Published to the controller until the owner takes the reply. */
     FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
+    int root_registered;        /* Startup acknowledgement under wake. */
     int wake_stopped;           /* Stop/failure latch under wake. */
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
     unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
@@ -335,9 +336,17 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
  * No UI event pump runs here. Managed faults return through the same turn logic. */
 static void execute(void *argument)
 {
+    ManagedWorker *worker = argument;
+    if (worker->guest_pid)
+    {
+        dvm_runtime_process_root_add(worker->guest);
+        fvm_port_sync_lock(worker->wake);
+        worker->root_registered = 1;
+        fvm_port_sync_signal_all(worker->wake);
+        fvm_port_sync_unlock(worker->wake);
+    }
     int cancellation = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
     DVM_NativeContext *context = cancellation ? NULL : dvm_native_process_create(NULL);
-    ManagedWorker *worker = argument;
     int attached = 0;
     unsigned int idle_turns = 0;
     if (!context || !dvm_native_context_bind(context))
@@ -588,11 +597,22 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
 }
 
 
-/* Start one OS thread for pid while the creator still owns NativeWorld.
- * No guest pointer is passed to a thread before scheduler publication. */
+/* EN: Start a prepared resident and wait only for native root registration.
+ * RU: Запустить готовый процесс и дождаться только нативной регистрации корня. */
 int dvm_managed_workers_start_guest(Prog *guest)
 {
-    return service.sync && guest && !stopping() && start_helper(guest);
+    if (!service.sync || !guest || stopping() || !start_helper(guest))
+    {
+        return 0;
+    }
+    ManagedWorker *worker = ((DVM_RuntimeProcess *)guest)->dedicated;
+    fvm_port_sync_lock(worker->wake);
+    while (!worker->root_registered)
+    {
+        fvm_port_sync_wait(worker->wake);
+    }
+    fvm_port_sync_unlock(worker->wake);
+    return 1;
 }
 
 

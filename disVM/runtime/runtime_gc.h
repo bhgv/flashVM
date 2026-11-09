@@ -3,11 +3,16 @@
 #define DVM_RUNTIME_GC_H
 
 /* [GC:] Start Fast/Cycles collectors on the current bound mutator. locked_poll
- * selects mutex reference polling; roots addresses the runtime Prog list and
- * remains owned/alive until stop. Returns zero on failure.
+ * selects mutex reference polling. Returns zero on failure.
  * The caller must keep all heap work inside the resulting active interval. */
 struct Prog;
-int dvm_runtime_gc_start(struct Prog **roots, int locked_poll);
+int dvm_runtime_gc_start(int locked_poll);
+
+/* EN: Publish a complete process, borrow the root head, or withdraw a process.
+ * RU: Опубликовать готовый процесс, получить голову корней или снять процесс. */
+void dvm_runtime_process_root_add(struct Prog *process);
+struct Prog *dvm_runtime_process_roots(void);
+int dvm_runtime_process_root_remove(struct Prog *process);
 
 extern int dvm_runtime_event_cycles;
 extern int dvm_runtime_disable_cycles;

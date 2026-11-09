@@ -33,7 +33,6 @@ typedef struct QueueObservation
 {
     Prog *process;                 /* Borrowed leased Prog, still in the real GC process list. */
     DVM_NativeContext *owner;       /* Borrowed original continuation identity. */
-    Prog **roots;                  /* Borrowed process-list slot through this synchronous call. */
     int idle_first;                /* Exercise already-IDLE detach, independent of GC timing. */
     int ok;                        /* Observer publishes result before join; no concurrent read. */
 } QueueObservation;
@@ -197,9 +196,9 @@ static void observe(void *argument)
     }
     /* Both the run queue and retained root-list links are protected by this
      * actual heap turn. The original owner's C stack and REG remain frozen. */
-    slow = *observation->roots;
+    slow = dvm_runtime_process_roots();
     fast = slow;
-    for (cursor = *observation->roots; cursor && root_count++ < DVM_RUNTIME_PROCESS_MAX; cursor = cursor->next)
+    for (cursor = slow; cursor && root_count++ < DVM_RUNTIME_PROCESS_MAX; cursor = cursor->next)
     {
         if (cursor == observation->process)
         {
@@ -253,14 +252,13 @@ static void observe(void *argument)
 /* [GC:] Run the diagnostic while caller is NATIVE, then join before it reenters.
  * All arguments are borrowed native identities; only observe reads heap fields.
  * Failure terminates rather than returning an unowned managed continuation. */
-void dvm_queue_probe_run(Prog *process, DVM_NativeContext *owner, Prog **roots)
+void dvm_queue_probe_run(Prog *process, DVM_NativeContext *owner)
 {
     QueueObservation observation;
     FVM_PortThread *thread;
     memset(&observation,0,sizeof(observation));
     observation.process = process;
     observation.owner = owner;
-    observation.roots = roots;
     fvm_port_sync_lock(diagnostics);
     observation.idle_first = (++started & 1) != 0;
     fvm_port_sync_unlock(diagnostics);

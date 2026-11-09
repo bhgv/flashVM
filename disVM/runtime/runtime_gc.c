@@ -91,24 +91,23 @@ static DVM_GCWorkResult cycle_pass(DVM_NativeContext *context, size_t budget, vo
     RuntimeGC *gc = user;
     (void)context;
     (void)budget;
-    return dvm_gc_cycles_trace(gc->roots, &gc->idle_cycle_passes, &gc->idle_cycle_epoch, &gc->passes);
+    return dvm_gc_cycles_trace(&gc->idle_cycle_passes, &gc->idle_cycle_epoch, &gc->passes);
 }
 
 
 /* EN: Start collector lanes for roots. locked_poll selects the mutex polling path.
  * RU: Запустить потоки GC для roots. locked_poll выбирает проверку под мьютексом. */
-int dvm_runtime_gc_start(Prog **roots, int locked_poll)
+int dvm_runtime_gc_start(int locked_poll)
 {
     DVM_GCWorkersConfig config;
     DVM_HeapOwner *owner = dvm_native_owner_current();
     int attached = 0;
-    if (!roots || dvm_gc_runtime.world)
+    if (dvm_gc_runtime.world)
     {
         return 0;
     }
     memset(&dvm_gc_runtime,0,sizeof(dvm_gc_runtime));
     memset(&config,0,sizeof(config));
-    dvm_gc_runtime.roots = roots;
     dvm_gc_runtime.owner = dvm_native_context_current();
     dvm_gc_runtime.world = dvm_world_create_serial(locked_poll);
     if (dvm_gc_runtime.world)

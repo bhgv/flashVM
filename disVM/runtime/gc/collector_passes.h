@@ -25,9 +25,9 @@ DVM_GCWorkResult dvm_gc_fast_retained(DVM_NativeContext *context, size_t budget,
 /* EN: Cycles shared work. RU: Обход кандидатов на context в пределах budget. */
 unsigned int dvm_gc_cycles_shared(DVM_NativeContext *context, size_t budget, void *user);
 
-/* EN: Trace roots and update pass counters.
- * RU: Обойти roots, обновить idle_passes, idle_epoch и passes. */
-DVM_GCWorkResult dvm_gc_cycles_trace(struct Prog **roots, unsigned int *idle_passes,
+/* EN: Trace the registered process roots and update pass counters.
+ * RU: Обойти зарегистрированные корни и обновить счётчики прохода. */
+DVM_GCWorkResult dvm_gc_cycles_trace(unsigned int *idle_passes,
     unsigned long *idle_epoch, unsigned long *passes);
 
 /* EN: Duke shared work. RU: Обход больших графов на context в пределах budget. */

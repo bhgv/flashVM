@@ -109,7 +109,6 @@ extern ulong gcepochs;                    /* Completed collector epochs; distinc
 static Pool memory;                       /* Pool mutated by Dis or its stopped-world collector. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static DVM_MessageRouter *guest_messages; /* Dedicated guest endpoints, keyed by immutable PID. */
-static Prog *processes;                   /* Complete GC root/process list. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Process quota accounting. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
@@ -614,7 +613,7 @@ static int guest_cancel_pending_or_close(void)
     /* A dedicated owner can have work before its guest becomes runnable. */
     if (native_spawn)
     {
-        for (Prog *guest = processes; guest; guest = guest->next)
+        for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
             if (__atomic_load_n(&process->startup_pending, __ATOMIC_ACQUIRE) || (process->messages && (
@@ -653,7 +652,7 @@ static int post_host_wait_cancel(int pid)
         return 0;
     }
     Prog *peer;
-    for (peer = processes; peer && peer->pid != pid; peer = peer->next)
+    for (peer = dvm_runtime_process_roots(); peer && peer->pid != pid; peer = peer->next)
     {
     }
     if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt &&
@@ -1425,12 +1424,10 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
             error("cannot create native guest thread");
         }
     }
-    process->next = processes;
-    processes = process;
     live++;
-    /* The creator holds a GC root while the resident starts. */
     if (!native_spawn || !parent)
     {
+        dvm_runtime_process_root_add(process);
         addrun(process);
     }
     return process;
@@ -1625,7 +1622,7 @@ static int cancel_scheduler_guest_wait(int pid)
     {
         return 0;
     }
-    for (peer = processes; peer && peer->pid != pid; peer = peer->next)
+    for (peer = dvm_runtime_process_roots(); peer && peer->pid != pid; peer = peer->next)
     {
     }
     return peer && !dvm_runqueue_dispatch_owner(peer) &&
@@ -1638,7 +1635,7 @@ static Prog *find_child(Prog *caller, int pid)
 {
     Prog *child;
 
-    for (child = processes; child && child->pid != pid; child = child->next)
+    for (child = dvm_runtime_process_roots(); child && child->pid != pid; child = child->next)
     {
     }
     return child && ((DVM_RuntimeProcess *)child)->parent_pid == caller->pid ? child : nil;
@@ -1708,7 +1705,7 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
         return;
     }
     Prog *parent;
-    for (parent = processes; parent && (uintptr_t)parent->pid != message->sender; parent = parent->next)
+    for (parent = dvm_runtime_process_roots(); parent && (uintptr_t)parent->pid != message->sender; parent = parent->next)
     {
     }
     if (!parent || parent->state != DVM_CHILD_EXIT_WAIT)
@@ -1904,7 +1901,7 @@ static void publish_child_exit(int parent_pid, int child_pid)
     {
         return;
     }
-    for (parent = processes; parent && parent->pid != parent_pid; parent = parent->next)
+    for (parent = dvm_runtime_process_roots(); parent && parent->pid != parent_pid; parent = parent->next)
     {
     }
     if (parent && parent->state == DVM_CHILD_EXIT_WAIT &&
@@ -2734,7 +2731,6 @@ static int runtime_dispatch_turn(void)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     Prog *process;
-    Prog **slot;
     int cancelled = gc_worker && dispatch_guest_cancellations();
 
     if (native_spawn)
@@ -2842,12 +2838,9 @@ static int runtime_dispatch_turn(void)
         }
         dvm_process_environment_release(process);
         delrun(Pexiting);
-        for (slot = &processes; *slot && *slot != process; slot = &(*slot)->next)
+        if (!dvm_runtime_process_root_remove(process))
         {
-        }
-        if (*slot)
-        {
-            *slot = process->next;
+            error("retiring process lost its GC root");
         }
         /* Withdraw this root set before running any frame or module destructor. */
         dvm_native_context_set_process(context, nil);
@@ -2909,13 +2902,13 @@ static int runtime_dispatch_turn(void)
             addrun(process);
         }
     }
-    if (processes && gc_worker && !dvm_runtime_gc_request())
+    if (dvm_runtime_process_roots() && gc_worker && !dvm_runtime_gc_request())
     {
         error("native collector failed");
     }
-    if (processes && !gc_worker)
+    if (dvm_runtime_process_roots() && !gc_worker)
     {
-        rungc(processes);
+        rungc(dvm_runtime_process_roots());
     }
     return 1;
 }
@@ -2996,7 +2989,7 @@ static int runtime_execute_inner(void *argument)
     {
         inspect_retain(process);
     }
-    if (gc_worker && !dvm_runtime_gc_start(&processes,gc_locked_poll))
+    if (gc_worker && !dvm_runtime_gc_start(gc_locked_poll))
     {
         error("cannot start native collector");
     }
@@ -3140,7 +3133,7 @@ static int runtime_execute(void *argument)
     dvm_close_worker_stop();
     if (guest_messages)
     {
-        for (Prog *guest = processes; guest; guest = guest->next)
+        for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)
         {
             drop_guest_messages(guest);
         }
