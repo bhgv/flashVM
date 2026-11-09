@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Native pointer-cell guards and bounded ownership transitions.
+ * RU: Нативные блокировки ссылочных полей и ограниченные переходы владения.
+ */
 /* Allocation-free ordered stripe exclusion for possibly unaligned pointer cells. */
 #include "disvm/cell_access.h"
 #include "cell_access_private.h"
@@ -77,7 +82,7 @@ static void unwind(DVM_CellAccess *access)
     while (access->held)
     {
         access->held--;
-        if (!dvm_object_guard_leave(access->guards[access->held]))
+        if (!dvm_cell_guard_leave(access->domain, access->guards[access->held], access->context))
         {
             abort();
         }

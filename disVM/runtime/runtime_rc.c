@@ -99,6 +99,7 @@ static int candidate_sweep_busy; /* Every failed scan in this sweep hit a busy f
 static int candidate_busy_retry; /* Cycles lane already retried an all-busy batch. */
 static int candidate_fallback_ready; /* Atomic readiness published to the Fast scheduler. */
 static unsigned long shared_record_confirmations;
+static size_t fast_watched_confirmations; /* Claims confirmed by unchanged stripe revisions. */
 static size_t fast_ignored_live_fields; /* Surviving fields skipped during successful claims. */
 static unsigned long shared_record_snapshots_with_peer;
 static unsigned long shared_record_groups;
@@ -195,6 +196,7 @@ void dvm_runtime_rc_start(void)
     __atomic_store_n(&candidate_fallback_ready, 0, __ATOMIC_RELEASE);
     shared_record_confirmations = 0;
     fast_ignored_live_fields = 0;
+    fast_watched_confirmations = 0;
     shared_record_snapshots_with_peer = 0;
     shared_record_groups_with_peer = 0;
     enqueued = 0;
@@ -1813,8 +1815,10 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 }
                 else
                 {
+                    int watched;
                     claim = dvm_gc_fast_confirm_graph(entry->snapshot, record_cells, world,
-                        entry->pinned_children ? &final_epoch : NULL);
+                        entry->pinned_children ? &final_epoch : NULL, &watched);
+                    fast_watched_confirmations += watched;
                     if (claim == DVM_CELL_ACQUIRED)
                     {
                         fast_ignored_live_fields += entry->snapshot->omitted_live_fields;
@@ -2321,7 +2325,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         (void)dvm_retirement_statistics(cycle_candidates, &candidates);
         printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
             candidates.ready, candidates.reserved, candidates.capacity, candidates.peak_capacity);
-        printf("NATIVEFASTGC ignored_live_fields=%zu\n", fast_ignored_live_fields);
+        printf("NATIVEFASTGC ignored_live_fields=%zu watched_confirmations=%zu\n",
+            fast_ignored_live_fields, fast_watched_confirmations);
         printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu publish_retries=%lu\n",
             duke_promoted, duke_peak_fields, duke_resumed_slices, duke_adopted_pins, duke_publish_retries);
         printf("NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",

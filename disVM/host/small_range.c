@@ -1,3 +1,8 @@
+/* Copyright (c) 2026 bhgv
+ *
+ * EN: Guard short native spans used by shared instructions.
+ * RU: Блокировки коротких нативных диапазонов для параллельных инструкций.
+ */
 /* Compact three-small-span exclusion in the canonical cell/range domain. */
 #include "disvm/small_range.h"
 #include "cell_access_private.h"
@@ -15,7 +20,7 @@ static void unwind(DVM_TripleAccess *access)
     while (access->held)
     {
         access->held--;
-        if (!dvm_object_guard_leave(access->guards[access->held]))
+        if (!dvm_cell_guard_leave(access->domain, access->guards[access->held], access->context))
         {
             abort();
         }
@@ -143,7 +148,7 @@ static void undo_extension(DVM_TripleAccess *access, unsigned int original)
     while (access->held > original)
     {
         access->held--;
-        if (!dvm_object_guard_leave(access->guards[access->held]))
+        if (!dvm_cell_guard_leave(access->domain, access->guards[access->held], access->context))
         {
             abort();
         }

@@ -105,6 +105,22 @@ static void retire(DVM_NativeContext *context)
 }
 
 
+/* EN: Write the borrowed fixture's cell from a separate bound context.
+ * RU: Записать поле заимствованного fixture из другого нативного контекста. */
+static void *watch_write(void *fixture)
+{
+    Shared *shared = fixture;
+    DVM_NativeContext *context = bind_owner();
+    DVM_CellAccess access = {0};
+    check(dvm_cell_access_begin(shared->domain, shared->a, shared->a, &access) == DVM_CELL_ACQUIRED,
+        "foreign watch writer enters");
+    (*shared->a)++;
+    check(dvm_cell_access_end(&access), "foreign watch writer leaves");
+    retire(context);
+    return NULL;
+}
+
+
 /* Bounded test-only atomic polling of an independent handshake; no OS park,
  * VM/world transition or callback while original guards are held. */
 static void await(unsigned long *counter, unsigned long value)
@@ -293,6 +309,22 @@ int main(void)
             access.count == 6 && access.held == 6 && dvm_range_access_end(&access),
             "reuse original plan after refusal");
     }
+    DVM_RangeWatch watch = {0};
+    check(dvm_range_watch_begin(shared.domain, &watch) &&
+        dvm_range_plan_begin(shared.domain, &plan, &access) == DVM_CELL_ACQUIRED &&
+        dvm_range_watch_sample(&watch, &access) && dvm_range_access_end(&access) &&
+        dvm_range_plan_begin(shared.domain, &plan, &access) == DVM_CELL_ACQUIRED &&
+        dvm_range_watch_unchanged(&watch, &access) && dvm_range_access_end(&access),
+        "observer releases preserve its observations");
+    monitor = 0;
+    shared.a = &cells[9];
+    pthread_t writer;
+    check(!pthread_create(&writer, NULL, watch_write, &shared) && !pthread_join(writer, NULL),
+        "join foreign watch writer");
+    monitor = 1;
+    check(dvm_range_plan_begin(shared.domain, &plan, &access) == DVM_CELL_ACQUIRED &&
+        !dvm_range_watch_unchanged(&watch, &access) && dvm_range_access_end(&access) &&
+        dvm_range_watch_end(&watch), "foreign cell release invalidates sampled range");
     monitor = 0;
     check(!allocations && dvm_refcount_load_u(&shared.domain->references) == 1,
         "single domain borrow restored");

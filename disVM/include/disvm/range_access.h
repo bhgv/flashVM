@@ -65,6 +65,32 @@ DVM_CellResult dvm_range_plan_begin(DVM_CellDomain *domain,
     const DVM_RangePlan *plan, DVM_RangeAccess *access);
 
 
+/* Native observer state. Initialize to zero and keep domain alive until end. */
+typedef struct DVM_RangeWatch
+{
+    DVM_CellDomain *domain; /* Borrowed while observation is active. */
+    DVM_NativeContext *context; /* The observer's bound context. */
+    DVM_RangePlan sampled; /* Stripes observed at least once. */
+    unsigned long revision[DVM_RANGE_GUARDS]; /* First revision per sampled stripe. */
+} DVM_RangeWatch;
+
+
+/* EN: Start exclusive observation in domain with empty watch.
+ * RU: Начать наблюдение в domain через пустой watch. */
+int dvm_range_watch_begin(DVM_CellDomain *domain, DVM_RangeWatch *watch);
+
+/* EN: Record or recheck the revisions of held access in watch.
+ * RU: Запомнить или сверить версии захваченных access в watch. */
+int dvm_range_watch_sample(DVM_RangeWatch *watch, const DVM_RangeAccess *access);
+
+/* EN: Check that every stripe in held access was sampled and remains unchanged.
+ * RU: Проверить, что все полосы access наблюдались в watch и сохранили версии. */
+int dvm_range_watch_unchanged(const DVM_RangeWatch *watch, const DVM_RangeAccess *access);
+
+/* EN: End watch on its original context. RU: Завершить watch в исходном контексте. */
+int dvm_range_watch_end(DVM_RangeWatch *watch);
+
+
 /* Claim the ordered union of count borrowed pointer-sized cells in domain.
  * Access uses the same ownership, lifetime and failure contract as begin.
  * Selection reads cell addresses only, before any guard is acquired. */

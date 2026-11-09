@@ -77,7 +77,7 @@ static void unwind(DVM_RangeAccess *access)
     while (access->held)
     {
         access->held--;
-        if (!dvm_object_guard_leave(access->guards[access->held]))
+        if (!dvm_cell_guard_leave(access->domain, access->guards[access->held], access->context))
         {
             abort();
         }
@@ -194,6 +194,108 @@ DVM_CellResult dvm_range_access_cells_begin(DVM_CellDomain *domain,
 }
 
 
+/* EN: Register the current observer in domain for the lifetime of watch.
+ * RU: Зарегистрировать текущего наблюдателя в domain на время жизни watch. */
+int dvm_range_watch_begin(DVM_CellDomain *domain, DVM_RangeWatch *watch)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    DVM_NativeContext *expected = NULL;
+    if (!domain || !context || !watch || watch->domain ||
+        dvm_refcount_retain_u(&domain->references) != DVM_REFCOUNT_LIVE)
+    {
+        return 0;
+    }
+    if (!__atomic_compare_exchange_n(&domain->watch_owner, &expected, context, 0,
+            __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
+    {
+        if (dvm_refcount_release_u(&domain->references) != DVM_REFCOUNT_LIVE)
+        {
+            abort();
+        }
+        return 0;
+    }
+    *watch = (DVM_RangeWatch){.domain = domain, .context = context};
+    return 1;
+}
+
+
+/* EN: Check that watch and held access belong to this context and domain.
+ * RU: Проверить принадлежность watch и захваченного access контексту и домену. */
+static int watch_access_matches(const DVM_RangeWatch *watch, const DVM_RangeAccess *access)
+{
+    return watch && access && watch->domain && access->domain == watch->domain &&
+        access->context == watch->context && watch->context == dvm_native_context_current() &&
+        access->held == access->count;
+}
+
+
+/* EN: Add held access stripes to watch, refusing any changed observation.
+ * RU: Добавить захваченные полосы access в watch, отклоняя изменившиеся версии. */
+int dvm_range_watch_sample(DVM_RangeWatch *watch, const DVM_RangeAccess *access)
+{
+    if (!watch_access_matches(watch, access))
+    {
+        return 0;
+    }
+    for (unsigned int index = 0; index < access->held; index++)
+    {
+        size_t key = access->guards[index] - watch->domain->stripes;
+        unsigned char bit = 1U << (key % 8);
+        unsigned long revision = watch->domain->revision[key];
+        if (revision == ULONG_MAX ||
+            ((watch->sampled.bits[key / 8] & bit) && watch->revision[key] != revision))
+        {
+            return 0;
+        }
+        watch->sampled.bits[key / 8] |= bit;
+        watch->revision[key] = revision;
+    }
+    return 1;
+}
+
+
+/* EN: Recheck all held access stripes against watch without reading fields.
+ * RU: Сверить захваченные полосы access с watch без чтения самих полей. */
+int dvm_range_watch_unchanged(const DVM_RangeWatch *watch, const DVM_RangeAccess *access)
+{
+    if (!watch_access_matches(watch, access))
+    {
+        return 0;
+    }
+    for (unsigned int index = 0; index < access->held; index++)
+    {
+        size_t key = access->guards[index] - watch->domain->stripes;
+        if (!(watch->sampled.bits[key / 8] & (1U << (key % 8))) ||
+            watch->domain->revision[key] != watch->revision[key])
+        {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+
+/* EN: Withdraw watch from its borrowed domain on the original context.
+ * RU: Снять наблюдение watch с домена в исходном контексте. */
+int dvm_range_watch_end(DVM_RangeWatch *watch)
+{
+    if (!watch || !watch->domain || !watch->context ||
+        watch->context != dvm_native_context_current())
+    {
+        return 0;
+    }
+    DVM_CellDomain *domain = watch->domain;
+    __atomic_store_n(&domain->watch_owner, NULL, __ATOMIC_RELEASE);
+    if (dvm_refcount_release_u(&domain->references) != DVM_REFCOUNT_LIVE)
+    {
+        abort();
+    }
+    watch->domain = NULL;
+    watch->context = NULL;
+    return 1;
+}
+
+
 /* Search only the unchanged sorted original subset. access/guard are live
  * same-domain native metadata, count is its prior owned count. Return boolean;
  * no payload/VM access, allocation, reference operation or owner wait. */
@@ -228,7 +330,7 @@ static void undo_additions(DVM_RangeAccess *access, unsigned int original)
     while (access->held > original)
     {
         access->held--;
-        if (!dvm_object_guard_leave(access->guards[access->held]))
+        if (!dvm_cell_guard_leave(access->domain, access->guards[access->held], access->context))
         {
             abort();
         }
