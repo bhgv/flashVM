@@ -44,7 +44,7 @@ typedef struct DVM_RuntimeProcess
     unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */
     Prog *ready_previous;             /* Borrowed predecessor while ready. */
-    int queued;                       /* O(1) membership, changed only by this queue module. */
+    int queued;                       /* Queue membership; published atomically for the dedicated idle loop. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
     uintptr last_dispatcher;           /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */

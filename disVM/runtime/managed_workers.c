@@ -24,7 +24,6 @@ typedef struct ManagedWorker
 {
     struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
     FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
-    unsigned long wake_epoch;   /* Changes under wake, before signal. */
     int wake_stopped;           /* Stop/failure latch under wake. */
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
     unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
@@ -154,6 +153,17 @@ static int leave_empty(DVM_NativeWorldSite site)
 }
 
 
+/* EN: Read only published readiness and FIFO state while outside NativeWorld.
+ * RU: Вне NativeWorld читать только опубликованную готовность и состояние FIFO. */
+static int dedicated_work_pending(ManagedWorker *worker)
+{
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
+    return __atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) ||
+        dvm_messages_pending(resident->messages, 0, 0) ||
+        dvm_messages_pending(resident->messages, 1, 0);
+}
+
+
 /* Release an empty scheduler turn, join already terminated helpers without the
  * heap, then reclaim their native slots after reentry. Any rootless executor
  * can reap, including when the controller is blocked in native I/O. */
@@ -163,7 +173,6 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     ManagedWorker *finished = NULL;
     ManagedWorker *worker;
     unsigned long generation;
-    unsigned long guest_epoch = 0;
     unsigned long idle_created = 0;
     unsigned long idle_reaped = 0;
     int wait_for_work;
@@ -173,12 +182,6 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     if (pending && pending())
     {
         return !stopping();
-    }
-    if (current_guest && idle)
-    {
-        fvm_port_sync_lock(current_guest->wake);
-        guest_epoch = current_guest->wake_epoch;
-        fvm_port_sync_unlock(current_guest->wake);
     }
     wait_for_work = idle && !rendezvous &&
         (service.count == 1 || (service.automatic && service.live == 1));
@@ -245,7 +248,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     if (current_guest && idle && !finished)
     {
         fvm_port_sync_lock(current_guest->wake);
-        while (current_guest->wake_epoch == guest_epoch && !current_guest->wake_stopped)
+        while (!current_guest->wake_stopped && !dedicated_work_pending(current_guest))
         {
             fvm_port_sync_wait(current_guest->wake);
         }
@@ -601,7 +604,6 @@ void dvm_managed_workers_wake_guest(Prog *guest)
     if (worker)
     {
         fvm_port_sync_lock(worker->wake);
-        worker->wake_epoch++;
         fvm_port_sync_signal_all(worker->wake);
         fvm_port_sync_unlock(worker->wake);
     }

@@ -326,7 +326,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
         }
     }
     process->state = Pready;
-    runtime_process(process)->queued = 1;
+    __atomic_store_n(&runtime_process(process)->queued, 1, __ATOMIC_RELEASE);
     if (!dedicated_dispatch)
     {
         runtime_process(process)->ready_previous = tail;
@@ -386,7 +386,7 @@ static Prog *withdraw_ready(Prog *process, int state)
         }
     }
     count--;
-    runtime_process(process)->queued = 0;
+    __atomic_store_n(&runtime_process(process)->queued, 0, __ATOMIC_RELEASE);
     runtime_process(process)->ready_previous = NULL;
     process->link = NULL;
     process->state = state;
@@ -462,7 +462,7 @@ int dvm_runqueue_resume(Prog *process)
         return 0;
     }
     runtime_process(process)->native_owner = NULL;
-    runtime_process(process)->queued = 1;
+    __atomic_store_n(&runtime_process(process)->queued, 1, __ATOMIC_RELEASE);
     process->state = Pready;
     if (!dedicated_dispatch)
     {
