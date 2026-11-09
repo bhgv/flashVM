@@ -228,6 +228,65 @@ static void *increment(void *value)
 }
 
 
+/* EN: Hold the original writer until the test publishes its reservation.
+ * RU: Удерживать исходную запись до публикации резервации в тесте. */
+static void *prior_writer(void *value)
+{
+    Shared *shared = value;
+    DVM_NativeContext *context = bind_owner();
+    DVM_CellAccess access = {0};
+    check(dvm_cell_access_begin(shared->domain, shared->a, shared->b, &access) == DVM_CELL_ACQUIRED,
+        "writer entered before publication");
+    dvm_refcount_retain_u(&shared->ready);
+    while (dvm_refcount_load_u(&shared->attempted) == 1)
+    {
+        sched_yield();
+    }
+    *shared->b = 42;
+    check(dvm_cell_access_end(&access), "prior writer releases");
+    retire(context);
+    return NULL;
+}
+
+
+/* EN: Verify exact reservation of cells[9] in domain, including overlaps.
+ * RU: Проверить точную резервацию cells[9] в domain, включая пересечения. */
+static void check_reservation(DVM_CellDomain *domain, unsigned long *cells)
+{
+    void *fields[] = { &cells[9] };
+    DVM_CellAccess cell = {0};
+    DVM_RangeAccess range = {0};
+    Shared shared = { .domain = domain, .a = &cells[8], .b = &cells[9], .ready = 1, .attempted = 1 };
+    pthread_t writer;
+    check(!pthread_create(&writer, NULL, prior_writer, &shared), "start prior writer");
+    while (dvm_refcount_load_u(&shared.ready) == 1)
+    {
+        sched_yield();
+    }
+    const void *token = dvm_cell_reserve_fields(domain, fields, 1);
+    check(token != NULL, "publish reservation");
+    check(dvm_range_access_cells_begin(domain, fields, 1, &range) == DVM_CELL_BUSY,
+        "collector cannot skip a prior writer");
+    dvm_refcount_retain_u(&shared.attempted);
+    check(!pthread_join(writer, NULL) && cells[9] == 42, "prior writer completed");
+    check(dvm_range_access_cells_begin(domain, fields, 1, &range) == DVM_CELL_ACQUIRED &&
+        dvm_range_access_end(&range), "drain earlier writers");
+    check(dvm_cell_access_begin(domain, &cells[8], &cells[9], &cell) == DVM_CELL_BUSY,
+        "reserved pointer write retries");
+    check(dvm_range_access_begin(domain, NULL, 0, (char *)&cells[9] - 1, 2, &range) == DVM_CELL_BUSY,
+        "partial overlap retries");
+    check(dvm_range_access_begin(domain, &cells[9], sizeof(void *), NULL, 0, &range) == DVM_CELL_ACQUIRED &&
+        dvm_range_access_end(&range), "reserved field remains readable");
+    check(dvm_cell_access_begin(domain, &cells[9], &cells[265], &cell) == DVM_CELL_ACQUIRED &&
+        dvm_cell_access_end(&cell), "unrelated write on same stripe");
+    dvm_cell_unreserve_fields(domain, token);
+    check(dvm_cell_access_begin(domain, &cells[8], &cells[9], &cell) == DVM_CELL_ACQUIRED,
+        "write proceeds after release");
+    cells[9] = 0;
+    check(dvm_cell_access_end(&cell), "release restored field");
+}
+
+
 /* No arguments. Own real native domain/cells until all joins; verify full-domain/empty access,
  * dedup, malformed extension, partial rollback and16000 coherent paired updates. */
 int main(void)
@@ -247,6 +306,7 @@ int main(void)
     memset(&shared, 0, sizeof(shared));
     shared.domain = dvm_cell_domain_create();
     check(shared.domain != NULL && sizeof(unsigned long) == sizeof(void *), "native domain and width");
+    check_reservation(shared.domain, cells);
     monitor = 1;
     check(dvm_range_access_three_begin(shared.domain, first, sizeof(void *), second,
         sizeof(void *), third, sizeof(void *), &access) == DVM_CELL_ACQUIRED && access.count == 6,

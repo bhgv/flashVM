@@ -8,6 +8,7 @@
 #define DVM_CELL_ACCESS_PRIVATE_H
 #include "disvm/cell_access.h"
 #include <limits.h>
+#include <stdint.h>
 
 #define DVM_CELL_STRIPES 256 /* Collision exclusion, not an object/thread quota. */
 
@@ -17,10 +18,18 @@ struct DVM_CellDomain
 {
     unsigned long references; /* Checked native count; caller protects first lookup. */
     DVM_ObjectDomain *parking; /* Owned shared parking metadata. */
+    unsigned int reservation_active; /* Atomic hint for writes in this domain. */
+    const uintptr_t *reserved_cells; /* Sorted exact addresses under the registry mutex. */
+    size_t reserved_count; /* Size of reserved_cells under the registry mutex. */
     DVM_NativeContext *watch_owner; /* Atomic observer, NULL outside a watched pass. */
     unsigned long revision[DVM_CELL_STRIPES]; /* Guarded by the corresponding stripe. */
     DVM_ObjectGuard stripes[DVM_CELL_STRIPES]; /* Stable native guard addresses. */
 };
+/* EN: Test a guarded destination span in domain against active GC fields.
+ * RU: Проверить защищённый диапазон записи destination в domain на резервации GC. */
+int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, size_t size);
+
+
 /* EN: Release guard in domain on context and invalidate a foreign observer.
  * RU: Освободить guard в domain на context и уведомить чужого наблюдателя. */
 static inline int dvm_cell_guard_leave(DVM_CellDomain *domain, DVM_ObjectGuard *guard,

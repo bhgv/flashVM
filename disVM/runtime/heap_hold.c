@@ -24,7 +24,7 @@
 const char *dvm_runtime_heap_hold_attempt(const void *cell, Type *expected, int allow_nil,
     DVM_HeapHold *hold, DVM_CellResult *claim)
 {
-    DVM_CellAccess access = {0};
+    DVM_RangeAccess access = {0};
     DVM_RootBatch *roots;
     void *value = NULL;
     Heap *heap = NULL;
@@ -43,7 +43,7 @@ const char *dvm_runtime_heap_hold_attempt(const void *cell, Type *expected, int 
     {
         return exNomem;
     }
-    *claim = dvm_managed_cells_begin(cell, (void *)cell, &access);
+    *claim = dvm_range_access_begin(dvm_managed_cell_domain(), cell, sizeof(void *), NULL, 0, &access);
     if (*claim != DVM_CELL_ACQUIRED)
     {
         if (!dvm_runtime_root_batch_destroy(&roots))
@@ -102,7 +102,7 @@ const char *dvm_runtime_heap_hold_attempt(const void *cell, Type *expected, int 
     {
         abort();
     }
-    if (!dvm_cell_access_end(&access))
+    if (!dvm_range_access_end(&access))
     {
         abort();
     }

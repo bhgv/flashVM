@@ -108,90 +108,94 @@ static int retained_fields_match(const RecordGroup *group)
 }
 
 
-#define FAST_WATCH_MIN_FIELDS 1024 /* Only large snapshots use speculative checking. */
-#define FAST_WATCH_FIELDS 64 /* Maximum fields per preliminary guard set. */
+#define FAST_RESERVE_MIN_FIELDS 1024 /* Reserve exact fields for large snapshots. */
+#define FAST_RESERVE_BATCH 64 /* Maximum fields per preliminary guard set. */
 
 
-/* EN: Compare group in batches in cells and leave watch active on success.
- * A busy or changed stripe falls back to the ordinary final comparison.
- * RU: Сверить group порциями в cells и сохранить watch при успехе.
- * При конфликте или смене версии вернуться к обычной финальной сверке. */
-static int observe_retained_fields(const RecordGroup *group, DVM_CellDomain *cells,
-    DVM_RangeWatch *watch)
+/* EN: Validate reserved fields of group in cells. Taking each guard after
+ * publication drains writers that entered before the reservation was visible.
+ * RU: Сверить зарезервированные поля group в cells. Захват каждой блокировки
+ * после публикации исключает запись, начатую до появления резервации. */
+static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDomain *cells)
 {
-    if (group->edges_used < FAST_WATCH_MIN_FIELDS || !dvm_range_watch_begin(cells, watch))
-    {
-        return 0;
-    }
-    for (unsigned int first = 0; first < group->edges_used; first += FAST_WATCH_FIELDS)
+    for (unsigned int first = 0; first < group->edges_used;)
     {
         unsigned int count = group->edges_used - first;
-        if (count > FAST_WATCH_FIELDS)
+        if (count > FAST_RESERVE_BATCH)
         {
-            count = FAST_WATCH_FIELDS;
+            count = FAST_RESERVE_BATCH;
         }
         DVM_RangeAccess access = {0};
-        if (dvm_range_access_cells_begin(cells, group->cells + first, count, &access) != DVM_CELL_ACQUIRED)
+        DVM_CellResult result = dvm_range_access_cells_begin(cells, group->cells + first, count, &access);
+        if (result != DVM_CELL_ACQUIRED)
         {
-            break;
+            return result;
         }
-        int matches = dvm_range_watch_sample(watch, &access);
-        for (unsigned int index = first; matches && index < first + count; index++)
+        for (unsigned int offset = 0; offset < count; offset++)
         {
+            unsigned int index = first + offset;
             void *value;
             memcpy(&value, group->cells[index], sizeof(value));
-            matches = value == group->expected_fields[index];
+            if (value != group->expected_fields[index])
+            {
+                result = DVM_CELL_REFUSED;
+                break;
+            }
         }
         if (!dvm_range_access_end(&access))
         {
             abort();
         }
-        if (!matches)
+        if (result != DVM_CELL_ACQUIRED)
         {
-            break;
+            return result;
         }
-        if (first + count == group->edges_used)
-        {
-            return 1;
-        }
+        first += count;
     }
-    if (!dvm_range_watch_end(watch))
-    {
-        abort();
-    }
-    return 0;
+    return DVM_CELL_ACQUIRED;
 }
 
 
 /* EN: Validate the retained fields of group in cells, then claim in world.
- * final_epoch receives the reader cutoff. watched reports a successful version check.
+ * final_epoch receives the reader cutoff. reserved reports a successful reservation check.
  * RU: Сверить сохранённые поля group в cells и захватить группу в world.
- * В final_epoch записать эпоху, в watched сообщить об успешной сверке версий. */
+ * В final_epoch записать эпоху, в reserved сообщить об успешной проверке под резервацией. */
 DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomain *cells,
-    DVM_NativeWorld *world, unsigned long *final_epoch, int *watched)
+    DVM_NativeWorld *world, unsigned long *final_epoch, int *reserved)
 {
-    *watched = 0;
+    *reserved = 0;
     if (!counts_still_match(group))
     {
         return DVM_CELL_REFUSED;
     }
-    DVM_RangeWatch watch = {0};
-    int observed = observe_retained_fields(group, cells, &watch);
+    const void *reservation = NULL;
+    if (group->edges_used >= FAST_RESERVE_MIN_FIELDS)
+    {
+        reservation = dvm_cell_reserve_fields(cells, group->cells, group->edges_used);
+        if (!reservation)
+        {
+            return DVM_CELL_BUSY;
+        }
+    }
     DVM_RangeAccess access = {0};
-    DVM_CellResult result = dvm_range_plan_begin(cells, &group->field_plan, &access);
-    int unchanged = result == DVM_CELL_ACQUIRED && observed &&
-        dvm_range_watch_unchanged(&watch, &access);
-    if (observed && !dvm_range_watch_end(&watch))
+    DVM_CellResult result;
+    if (reservation)
     {
-        abort();
+        result = check_reserved_fields(group, cells);
     }
-    if (result != DVM_CELL_ACQUIRED)
+    else
     {
-        return result;
+        result = dvm_range_plan_begin(cells, &group->field_plan, &access);
+        if (result == DVM_CELL_ACQUIRED && !retained_fields_match(group))
+        {
+            result = DVM_CELL_REFUSED;
+        }
     }
-    if (!unchanged && !retained_fields_match(group))
+    /* A count claim can temporarily expose zero before rollback. Exclude
+     * readers of graph edges only for the claim and reader cutoff. */
+    if (reservation && result == DVM_CELL_ACQUIRED)
     {
-        result = DVM_CELL_REFUSED;
+        result = dvm_range_plan_begin(cells, &group->field_plan, &access);
     }
     for (unsigned int position = 0; result == DVM_CELL_ACQUIRED && position < group->dead_count; position++)
     {
@@ -216,10 +220,14 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
         restore_claimed_counts(group, group->dead_count);
         result = DVM_CELL_REFUSED;
     }
-    if (!dvm_range_access_end(&access))
+    *reserved = result == DVM_CELL_ACQUIRED && reservation != NULL;
+    if (access.domain && !dvm_range_access_end(&access))
     {
         abort();
     }
-    *watched = result == DVM_CELL_ACQUIRED && unchanged;
+    if (reservation)
+    {
+        dvm_cell_unreserve_fields(cells, reservation);
+    }
     return result;
 }

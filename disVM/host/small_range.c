@@ -136,6 +136,11 @@ DVM_CellResult dvm_small_range_access_begin(DVM_CellDomain *domain,
         }
         access->held++;
     }
+    if (dvm_cell_write_reserved(domain, destination, destination_size))
+    {
+        unwind(access);
+        return DVM_CELL_BUSY;
+    }
     return DVM_CELL_ACQUIRED;
 }
 

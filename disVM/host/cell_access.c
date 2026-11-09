@@ -6,6 +6,7 @@
 /* Allocation-free ordered stripe exclusion for possibly unaligned pointer cells. */
 #include "disvm/cell_access.h"
 #include "cell_access_private.h"
+#include "channel_sync.h"
 #include "disvm/refcount.h"
 #include <stdint.h>
 #include <stdlib.h>
@@ -57,6 +58,111 @@ DVM_CellDomain *dvm_cell_domain_create(void)
     }
     domain->references = 1;
     return domain;
+}
+
+
+/* EN: Test a guarded destination for overlap with exact reserved pointer fields.
+ * RU: Проверить пересечение защищённого destination длиной size с полями domain. */
+int dvm_cell_write_reserved(DVM_CellDomain *domain, const void *destination, size_t size)
+{
+    if (!size || !__atomic_load_n(&domain->reservation_active, __ATOMIC_ACQUIRE))
+    {
+        return 0;
+    }
+    uintptr_t first = (uintptr_t)destination;
+    uintptr_t last = first + size - 1;
+    uintptr_t earliest = first >= sizeof(void *) - 1 ? first - (sizeof(void *) - 1) : 0;
+    fvm_port_registry_lock();
+    size_t left = 0;
+    size_t right = domain->reserved_count;
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (domain->reserved_cells[middle] < earliest)
+        {
+            left = middle + 1;
+        }
+        else
+        {
+            right = middle;
+        }
+    }
+    int reserved = left < domain->reserved_count && domain->reserved_cells[left] <= last;
+    fvm_port_registry_unlock();
+    return reserved;
+}
+
+
+/* EN: Order the pointer addresses at left and right for exact lookup.
+ * RU: Упорядочить адреса left и right для точного поиска. */
+static int compare_field_addresses(const void *left, const void *right)
+{
+    uintptr_t a = *(const uintptr_t *)left;
+    uintptr_t b = *(const uintptr_t *)right;
+    return (a > b) - (a < b);
+}
+
+
+/* EN: Publish count sorted fields in domain and pin it until release.
+ * RU: Опубликовать count отсортированных fields и удерживать domain до снятия. */
+const void *dvm_cell_reserve_fields(DVM_CellDomain *domain, void *const *fields, size_t count)
+{
+    if (!domain || !fields || !count || count > SIZE_MAX / sizeof(uintptr_t))
+    {
+        return NULL;
+    }
+    uintptr_t *addresses = malloc(count * sizeof(*addresses));
+    if (!addresses)
+    {
+        return NULL;
+    }
+    for (size_t index = 0; index < count; index++)
+    {
+        addresses[index] = (uintptr_t)fields[index];
+    }
+    qsort(addresses, count, sizeof(*addresses), compare_field_addresses);
+    if (dvm_refcount_retain_u(&domain->references) != DVM_REFCOUNT_LIVE)
+    {
+        free(addresses);
+        return NULL;
+    }
+    fvm_port_registry_lock();
+    if (domain->reserved_cells)
+    {
+        fvm_port_registry_unlock();
+        free(addresses);
+        if (dvm_refcount_release_u(&domain->references) != DVM_REFCOUNT_LIVE)
+        {
+            abort();
+        }
+        return NULL;
+    }
+    domain->reserved_cells = addresses;
+    domain->reserved_count = count;
+    __atomic_store_n(&domain->reservation_active, 1, __ATOMIC_RELEASE);
+    fvm_port_registry_unlock();
+    return addresses;
+}
+
+
+/* EN: Remove token from domain before freeing its address array.
+ * RU: Снять token в domain перед освобождением массива адресов. */
+void dvm_cell_unreserve_fields(DVM_CellDomain *domain, const void *token)
+{
+    fvm_port_registry_lock();
+    if (!token || domain->reserved_cells != token)
+    {
+        abort();
+    }
+    domain->reserved_cells = NULL;
+    domain->reserved_count = 0;
+    __atomic_store_n(&domain->reservation_active, 0, __ATOMIC_RELEASE);
+    fvm_port_registry_unlock();
+    free((void *)token);
+    if (dvm_refcount_release_u(&domain->references) != DVM_REFCOUNT_LIVE)
+    {
+        abort();
+    }
 }
 
 
@@ -189,6 +295,11 @@ DVM_CellResult dvm_cell_access_spans_begin(DVM_CellDomain *domain,
             return result == DVM_OBJECT_BUSY ? DVM_CELL_BUSY : DVM_CELL_REFUSED;
         }
         access->held++;
+    }
+    if (dvm_cell_write_reserved(domain, destination, destination_size))
+    {
+        unwind(access);
+        return DVM_CELL_BUSY;
     }
     return DVM_CELL_ACQUIRED;
 }

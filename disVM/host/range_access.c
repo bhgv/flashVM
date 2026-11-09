@@ -146,7 +146,13 @@ DVM_CellResult dvm_range_access_three_begin(DVM_CellDomain *domain,
     {
         return DVM_CELL_REFUSED;
     }
-    return begin_selected(domain, bits, access);
+    DVM_CellResult result = begin_selected(domain, bits, access);
+    if (result == DVM_CELL_ACQUIRED && dvm_cell_write_reserved(domain, destination, destination_size))
+    {
+        unwind(access);
+        return DVM_CELL_BUSY;
+    }
+    return result;
 }
 
 

@@ -428,8 +428,8 @@ def main():
                 ('dvm_refcount_retain_u(&heap->ref)','DVM_REFCOUNT_LIVE','real capture owner and root'),
                 ('dvm_gc_field_mark(&heap->color, &mutator, &nprop)','1','real capture owner and root'),
                 ('dvm_runtime_root_batch_publish(roots, &key, 1)','1','real capture owner and root'),
-                ('dvm_managed_cells_begin(cell, (void *)cell, &access)','DVM_CELL_ACQUIRED','reference count read remains guarded'),
-                ('dvm_cell_access_end(&access)','1','capture releases guards')]
+                ('dvm_range_access_begin(dvm_managed_cell_domain(), cell, sizeof(void *), NULL, 0, &access)','DVM_CELL_ACQUIRED','reference count read remains guarded'),
+                ('dvm_range_access_end(&access)','1','capture releases guards')]
             for index,(before,after,marker) in enumerate(controls):
                 if original.count(before) != 1:
                     raise RuntimeError('Heap hold omission anchor drift')

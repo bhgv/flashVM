@@ -33,6 +33,19 @@ typedef struct DVM_CellAccess
 } DVM_CellAccess;
 
 
+/* EN: Reserve pointer-sized fields in domain for one collector. The caller keeps
+ * fields mapped and must acquire each field guard after publication before relying
+ * on the reservation. Return a token for release, or NULL on failure.
+ * RU: Зарезервировать ссылочные fields в domain. После публикации нужно
+ * захватить блокировку каждого поля. Вернуть токен снятия или NULL при отказе. */
+const void *dvm_cell_reserve_fields(DVM_CellDomain *domain, void *const *fields, size_t count);
+
+
+/* EN: Release the reservation identified by token in domain.
+ * RU: Снять резервацию token в domain. */
+void dvm_cell_unreserve_fields(DVM_CellDomain *domain, const void *token);
+
+
 /* Allocate an unpublished native table/shared parking domain. Return NULL on
  * native allocation failure with partial resources retired. No VM/root access. */
 DVM_CellDomain *dvm_cell_domain_create(void);
