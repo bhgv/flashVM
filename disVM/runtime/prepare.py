@@ -1098,10 +1098,17 @@ def main():
         "\t\t   p->R.M != DVM_R.M || p->R.MP != DVM_R.MP)\n"
         "\t\t\tp->R = DVM_R;\n"
         "\t\tif(p->flags & Pkilled)\n"
-        "\t\t\tdvm_runtime_termination_checkpoint(p);\n\t\tif(!vmyield())", 1)
+        "\t\t\tdvm_runtime_termination_checkpoint(p);\n"
+        "\t\t/* Bound the legacy exclusive section only when another owner is queued. */\n"
+        "\t\tif(dvm_runtime_guest_unbounded && (dvm_runtime_instructions & 63) == 0 &&\n"
+        "\t\t   dvm_runtime_gc_shared_has_exclusive_waiters())\n"
+        "\t\t\tDVM_R.IC = 0;\n"
+        "\t\t/* IC <= 1 remains the explicit yield signal. */\n"
+        "\t\tif((!dvm_runtime_guest_unbounded || DVM_R.IC <= 1) && !vmyield())", 1)
     code = code.replace(
         '#include "interp.h"', '#include "interp.h"\n'
         '#include "disvm/native_process.h"\n'
+        '#include "runtime_gc.h"\n'
         'extern void dvm_runtime_termination_checkpoint(Prog *process);', 1)
     # Classic upstream rows are fixed-width; NC64 keeps its explicitly private cell layout.
     adapters = Path(__file__).with_name("native_tables.c").read_text()

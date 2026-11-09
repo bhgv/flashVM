@@ -33,7 +33,7 @@ unsigned long dvm_runtime_shared_calls;
 unsigned long dvm_runtime_shared_returns;
 unsigned long dvm_runtime_shared_module_calls;
 unsigned long dvm_runtime_shared_module_returns;
-int dvm_runtime_shared_extend_quantum; /* Dedicated guests use the OS timeslice for audited traces. */
+int dvm_runtime_guest_unbounded; /* Dedicated guests run until an explicit VM yield. */
 unsigned long dvm_runtime_shared_extended_steps; /* Steps completed beyond the original quantum. */
 int dvm_runtime_shared_integer; /* Dedicated guests can publish under SHARED. */
 unsigned long dvm_runtime_shared_byte_steps; /* Shared BYTE arithmetic/comparisons. */
@@ -1038,7 +1038,7 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
         }
     }
     DVM_R.PC = (Inst *)target;
-    if (DVM_R.IC > 0)
+    if (!dvm_runtime_guest_unbounded && DVM_R.IC > 0)
     {
         DVM_R.IC--;
     }
@@ -1306,7 +1306,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     }
     int quantum = DVM_R.IC;
     limit = quantum;
-    if (dvm_runtime_shared_extend_quantum)
+    if (dvm_runtime_guest_unbounded)
     {
         /* The OS already schedules this guest. Exhausting a VM quantum
          * alone does not require an exclusive reentry. The counter still
@@ -1354,7 +1354,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
             cursor = step.target;
             DVM_R.m = DVM_R.d = step.destination;
             DVM_R.PC = (Inst *)cursor;
-            if (DVM_R.IC > 0)
+            if (!dvm_runtime_guest_unbounded && DVM_R.IC > 0)
             {
                 DVM_R.IC--;
             }
@@ -1423,7 +1423,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
         DVM_R.m = step.immediate_middle ? (void *)&DVM_R.t : (void *)step.middle;
         DVM_R.d = step.destination;
         DVM_R.PC = (Inst *)cursor;
-        if (DVM_R.IC > 0)
+        if (!dvm_runtime_guest_unbounded && DVM_R.IC > 0)
         {
             DVM_R.IC--;
         }
