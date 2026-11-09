@@ -26,7 +26,7 @@ typedef struct ManagedWorker
     DVM_OwnerMessage *staged_reply; /* Owner-only reply removed before heap admission. */
     int reply_in_transit;       /* Published to the controller until the owner takes the reply. */
     FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
-    int root_registered;        /* Startup acknowledgement under wake. */
+    int startup_committed;      /* Creator has installed the slot, under wake. */
     int wake_stopped;           /* Stop/failure latch under wake. */
     struct ManagedWorker *next; /* Native registry link, changed only under heap exclusion. */
     unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
@@ -59,7 +59,8 @@ typedef struct ManagedWorkers
     unsigned long limit;          /* Optional total live executor limit; zero is uncapped. */
     unsigned long live;           /* Live helpers, under heap exclusion. */
     unsigned long peak;           /* Maximum total live executors including controller. */
-    unsigned long created;        /* Successfully created helper lifetime IDs. */
+    unsigned long created;        /* Successfully created helpers. */
+    unsigned long next_id;        /* Lifetime IDs reserved before a creator can yield. */
     unsigned long idle_reported;  /* Creation generation last reported fully idle/reaped. */
     unsigned long generation;     /* Runnable-work publication under sync; prevents lost wakeups. */
     unsigned long returning;      /* Native completions queued for heap reentry, under sync. */
@@ -339,10 +340,11 @@ static void execute(void *argument)
     ManagedWorker *worker = argument;
     if (worker->guest_pid)
     {
-        dvm_runtime_process_root_add(worker->guest);
         fvm_port_sync_lock(worker->wake);
-        worker->root_registered = 1;
-        fvm_port_sync_signal_all(worker->wake);
+        while (!worker->startup_committed)
+        {
+            fvm_port_sync_wait(worker->wake);
+        }
         fvm_port_sync_unlock(worker->wake);
     }
     int cancellation = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
@@ -483,12 +485,13 @@ static void execute(void *argument)
 }
 
 
-/* Allocate one stable slot before creating its OS thread. Caller owns the heap;
- * no wait for attachment is allowed here. Failure leaves registry unchanged. */
+/* EN: Allocate a stable worker slot and start it through the registrar.
+ * RU: Выделить стабильный слот и запустить поток через регистратор.
+ * Dedicated startup releases admission while waiting for the native handle. */
 static int start_helper(Prog *guest)
 {
     ManagedWorker *worker;
-    if (stopping() || service.created == ULONG_MAX)
+    if (stopping() || service.next_id == ULONG_MAX)
     {
         return 0;
     }
@@ -497,7 +500,6 @@ static int start_helper(Prog *guest)
     {
         return 0;
     }
-    worker->id = service.created + 1;
     worker->guest = guest;
     worker->guest_pid = guest ? guest->pid : 0;
     if (guest)
@@ -513,7 +515,27 @@ static int start_helper(Prog *guest)
         service.wake_slots = worker;
         fvm_port_sync_unlock(service.sync);
     }
-    worker->thread = dvm_thread_registrar_start(service.registrar, execute, worker);
+    worker->id = ++service.next_id;
+    if (guest)
+    {
+        int released = dvm_runtime_gc_native_try_leave();
+        if (released > 0)
+        {
+            /* Order creation before shutdown's first join request. The new
+             * worker only waits on its private condition until commit. */
+            fvm_port_sync_lock(service.sync);
+            if (!service.stopping && !service.failed)
+            {
+                worker->thread = dvm_thread_registrar_start(service.registrar, execute, worker);
+            }
+            fvm_port_sync_unlock(service.sync);
+            dvm_runtime_gc_native_enter(released);
+        }
+    }
+    else
+    {
+        worker->thread = dvm_thread_registrar_start(service.registrar, execute, worker);
+    }
     if (!worker->thread)
     {
         if (worker->wake)
@@ -530,13 +552,20 @@ static int start_helper(Prog *guest)
     {
         ((DVM_RuntimeProcess *)guest)->dedicated = worker;
     }
+    service.created++;
     worker->next = service.helpers;
     service.helpers = worker;
-    service.created++;
     service.live++;
     if (service.live + 1 > service.peak)
     {
         service.peak = service.live + 1;
+    }
+    if (guest)
+    {
+        fvm_port_sync_lock(worker->wake);
+        worker->startup_committed = 1;
+        fvm_port_sync_signal_all(worker->wake);
+        fvm_port_sync_unlock(worker->wake);
     }
     return 1;
 }
@@ -597,22 +626,11 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
 }
 
 
-/* EN: Start a prepared resident and wait only for native root registration.
- * RU: Запустить готовый процесс и дождаться только нативной регистрации корня. */
+/* EN: Start a rooted resident, waiting for the registrar outside admission.
+ * RU: Запустить укоренённый процесс, ожидая регистратора вне допуска. */
 int dvm_managed_workers_start_guest(Prog *guest)
 {
-    if (!service.sync || !guest || stopping() || !start_helper(guest))
-    {
-        return 0;
-    }
-    ManagedWorker *worker = ((DVM_RuntimeProcess *)guest)->dedicated;
-    fvm_port_sync_lock(worker->wake);
-    while (!worker->root_registered)
-    {
-        fvm_port_sync_wait(worker->wake);
-    }
-    fvm_port_sync_unlock(worker->wake);
-    return 1;
+    return service.sync && guest && !stopping() && start_helper(guest);
 }
 
 

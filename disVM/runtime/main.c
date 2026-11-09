@@ -1416,18 +1416,26 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial)
     {
         __atomic_store_n(&resident->startup_pending, 1, __ATOMIC_RELEASE);
         process->state = Pready;
+        /* Keep the prepared stack rooted while the creator waits outside the heap. */
+        dvm_runtime_process_root_add(process);
+        live++;
         if (!dvm_managed_workers_start_guest(process))
         {
+            if (!dvm_runtime_process_root_remove(process))
+            {
+                abort();
+            }
+            live--;
             drop_guest_messages(process);
             free(process);
             destroy(module);
             error("cannot create native guest thread");
         }
     }
-    live++;
-    if (!native_spawn || !parent)
+    else
     {
         dvm_runtime_process_root_add(process);
+        live++;
         addrun(process);
     }
     return process;
