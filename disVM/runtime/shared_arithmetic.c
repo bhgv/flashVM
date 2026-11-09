@@ -1247,7 +1247,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     module_type = module_data_type(&DVM_R);
     if (!local_frame &&
         (!decode_integer_step(module, pc, frame, module_type, &step) ||
-         (!step.target && (index >= module->nprog - 1 ||
+         (!dvm_runtime_guest_unbounded && !step.target && (index >= module->nprog - 1 ||
           (!decode_integer_step(module, pc + 1, frame, module_type, &step) &&
            !shared_frame_step(module, pc + 1, frame, 1, 1))))))
     {
