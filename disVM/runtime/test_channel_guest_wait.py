@@ -1712,7 +1712,8 @@ def main():
                                 ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST),
                                 ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST),
                                 ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
-                                ("alt-array-peer", ALT_ARRAY_PEER_GUEST)):
+                                ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
+                                ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]"))):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
