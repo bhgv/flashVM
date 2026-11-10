@@ -1708,7 +1708,8 @@ def main():
                              "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                              "dvm_native_owner_progress", "dvm_gc_workers_create"])
         if "--dedicated-buffer-only" in sys.argv[4:]:
-            for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST)):
+            for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
+                                ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
@@ -1721,6 +1722,7 @@ def main():
                     output = result.stdout + result.stderr
                     if (result.returncode or output.count("PASS foreign channel guest wait") != 1
                             or "PASS guest channel payloads" not in output
+                            or (name.startswith("alt-") and "PASS ALT owns the waiting continuation" not in output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
             return
