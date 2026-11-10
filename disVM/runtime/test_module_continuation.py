@@ -120,6 +120,7 @@ def portable_overlap(runtime, compiler, include, runner):
                 or not widths or min(map(int, widths.groups())) < 40
                 or not dispatch or dispatch[1] != dispatch[2]
                 or not gc or int(gc[1]) == 0
+                or not re.search(r"NATIVEGC .* contentions=0 waiters=0\b", output)
                 or not queue or queue[1] == "0" or queue[1] != queue[2]
                 or not retirement or retirement[1] == "0" or retirement[1] != retirement[2]
                 or not frame_retirement or int(frame_retirement[1]) < 40):

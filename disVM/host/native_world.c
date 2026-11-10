@@ -46,10 +46,7 @@ struct DVM_NativeWorld
     int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
     size_t next_ticket;                /* Next FIFO admission ticket under sync; unsigned wrap is intentional. */
     size_t serving_ticket;             /* Oldest queued admission; advances only on a successful enter. */
-    size_t exclusive_waiting;          /* Atomic hint for queued exclusive owners. */
-    size_t waiting;                    /* Inactive owners queued for admission, including a ready ticket. */
     size_t admissions;                 /* Successful serialized entries under sync. */
-    size_t contentions;                /* Entries that observed another owner, collector or older waiter. */
     int locked_poll;                    /* Immutable reference-mode selection. */
     int stopped;                        /* Collector may inspect roots. */
     int resuming;                       /* Drain the previous parked generation before another collector. */
@@ -307,8 +304,7 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
             fvm_port_sync_unlock(world->sync);
             return 1;
         }
-        /* Publish before becoming inactive, and queue before unlocking.
-         * Earlier tickets and an outstanding collector keep precedence. */
+        /* Publish before becoming inactive so the pending collection can proceed. */
         publish(participant);
         participant->active = 0;
         participant->shared = 0;
@@ -479,7 +475,7 @@ int dvm_world_try_share(DVM_WorldParticipant *participant)
     }
     DVM_NativeWorld *world = participant->world;
     fvm_port_sync_lock(world->sync);
-    if (!world->serial || world->sealed || world->waiting || world->collector ||
+    if (!world->serial || world->sealed || world->collector ||
         world->resuming || !participant->active || participant->shared || participant->parked)
     {
         fvm_port_sync_unlock(world->sync);
@@ -721,9 +717,9 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out)
     }
     fvm_port_sync_lock(world->sync);
     out->serial = world->serial;
-    out->waiting = world->waiting;
+    out->waiting = 0;
     out->admissions = world->admissions;
-    out->contentions = world->contentions;
+    out->contentions = 0;
     fvm_port_sync_unlock(world->sync);
     return 1;
 }
@@ -756,7 +752,8 @@ int dvm_world_has_active_guest(DVM_NativeWorld *world)
  * RU: Узнать число ожидающих эксклюзивного допуска в world без его мьютекса. */
 size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world)
 {
-    return world ? __atomic_load_n(&world->exclusive_waiting, __ATOMIC_ACQUIRE) : 0;
+    (void)world;
+    return 0;
 }
 
 
@@ -793,7 +790,7 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
     fvm_port_sync_lock(world->sync);
     if (!world->serial || world->active != (size_t)participant->active ||
         participant->service || participant->parked || participant->shared ||
-        (!participant->active && (world->waiting || world->collector || world->resuming)))
+        (!participant->active && (world->collector || world->resuming)))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
