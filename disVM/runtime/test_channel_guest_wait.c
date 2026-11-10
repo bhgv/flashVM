@@ -83,6 +83,7 @@ static int worker_failure; /* A third guest fails while the channel waiter sleep
 static int isolate_waits; /* Two waiters share a reservation. */
 static int waiting_count; /* Fixture arrivals, under gate. */
 static int target_cancel; /* Cancel the selected guest instead of stopping all waits. */
+static int dedicated_cancel_posted; /* Protected by gate. */
 static int waiting_pid; /* Published by the fixture under gate. */
 static int cancel_wait; /* Simulate shutdown after the waiting guest yields. */
 static int alternate_peer; /* The spare sender, not the mover, wakes ALT. */
@@ -326,7 +327,15 @@ static void rendezvous_mover(void)
             dvm_runqueue_head() == first_process &&
             DVM_R.FP == saved_frame && DVM_R.d == saved_destination,
             "native return preserves the original frame and result address");
-        if (target_cancel)
+        if (target_cancel && getenv("DVM_TEST_DEDICATED_BUFFER"))
+        {
+            check(dvm_runtime_request_guest_cancel(waiting_pid), "post ALT cancellation");
+            pthread_mutex_lock(&gate);
+            dedicated_cancel_posted = 1;
+            pthread_cond_broadcast(&waiting);
+            pthread_mutex_unlock(&gate);
+        }
+        else if (target_cancel)
         {
             check(!dvm_runtime_cancel_guest_wait(first_process->pid) &&
                 dvm_runtime_cancel_guest_wait(waiting_pid) &&
@@ -1343,6 +1352,13 @@ int __wrap_dvm_runtime_channel_wait_change(uint64_t generation)
     }
     pthread_cond_broadcast(&waiting);
     pthread_mutex_unlock(&gate);
+    if (target_cancel && getenv("DVM_TEST_DEDICATED_BUFFER"))
+    {
+        pthread_mutex_lock(&gate);
+        while (!dedicated_cancel_posted)
+            pthread_cond_wait(&waiting, &gate);
+        pthread_mutex_unlock(&gate);
+    }
     result = __real_dvm_runtime_channel_wait_change(generation);
     check(result == (pool_refusal ? -2 : (cancel_wait ? -1 : 1)) && dvm_native_context_current() == owner &&
         dvm_native_context_process(owner) == process, "distinct-channel ALT resumes");

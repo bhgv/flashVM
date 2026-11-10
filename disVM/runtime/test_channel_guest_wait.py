@@ -320,6 +320,24 @@ ALT_STOP_GUEST = STOP_GUEST.replace(
 )
 
 
+ALT_ARRAY_CANCEL_GUEST = ALT_STOP_GUEST.replace("chan[8]", "chan[10]").replace(
+    """    value := 0;
+    {
+        alt {
+            value = <-messages => raise "cancelled receive selected";
+            value = <-spare => raise "cancelled spare selected";
+        }""",
+    """    channels := array[3] of chan of int;
+    channels[1] = messages;
+    channels[2] = spare;
+    selected: (int, int);
+    {
+        alt {
+            selected = <-channels => raise "cancelled array receive selected";
+        }""",
+)
+
+
 ISOLATED_CANCEL_GUEST = r'''implement ChannelWait;
 include "sys.m";
 ChannelWait: module { init: fn(); };
@@ -1713,7 +1731,8 @@ def main():
                                 ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST),
                                 ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
                                 ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
-                                ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]"))):
+                                ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
+                                ("alt-array-cancel", ALT_ARRAY_CANCEL_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
