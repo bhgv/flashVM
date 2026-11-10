@@ -358,7 +358,11 @@ static int channel_match_{opcode}(void *argument)
         dispatch = f"""    request.channel = c;
     request.peer = p;
     request.queue = &c->{direction};
-    dvm_runtime_channel_with_queue_claim(p, validate_channel_head, channel_match_{opcode}, &request);"""
+    if (!dvm_runtime_channel_with_queue_claim(p, validate_channel_head, channel_match_{opcode}, &request) &&
+        !dvm_runtime_scalar_retry({"ISEND" if opcode == "isend" else "IRECV"}))
+    {{
+        error("channel waiter changed before transfer");
+    }}"""
         prefix = prefix.replace("\tProg *p;\n", "\tProg *p;\n    ChannelMatch request;\n", 1)
         body = body[:start] + callback + prefix + dispatch + body[end:]
     return body
@@ -366,7 +370,7 @@ static int channel_match_{opcode}(void *argument)
 
 WAIT_COMPLETION = r"""
 extern void dvm_runtime_alt_preflight(Alt *alt);
-extern void dvm_runtime_channel_with_queue_claim(Prog *peer, void (*validate)(void *),
+extern int dvm_runtime_channel_with_queue_claim(Prog *peer, int (*validate)(void *),
     int (*match)(void *), void *request);
 
 typedef struct ChannelMatch
@@ -378,11 +382,10 @@ typedef struct ChannelMatch
 
 
 /* Validate the expected identity before acquiring its completion hold. */
-static void validate_channel_head(void *argument)
+static int validate_channel_head(void *argument)
 {
     ChannelMatch *request = argument;
-    if (vmchanhead(request->queue)->prog != request->peer)
-        error(exHeap);
+    return vmchanhead(request->queue)->prog == request->peer;
 }
 
 extern void dvm_runtime_channel_wake(Prog *peer, char *cause);

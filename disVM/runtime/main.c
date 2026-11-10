@@ -1569,7 +1569,8 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
 typedef struct ChannelClaim
 {
     Prog *peer;
-    void (*validate)(void *); /* Optional queue-head check under the queue mutex. */
+    int (*validate)(void *); /* Optional queue-head check under the queue mutex. */
+    int acquired;            /* Waiter was pinned and claimed. */
     void *request;
 } ChannelClaim;
 
@@ -1580,13 +1581,17 @@ static int acquire_channel_claim(void *argument)
     ChannelClaim *claim = argument;
     Prog *peer = claim->peer;
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
-    if (claim->validate)
+    if (claim->validate && !claim->validate(claim->request))
     {
-        claim->validate(claim->request);
+        return 1;
     }
     if (process->channel_claimed ||
         (peer->state != Psend && peer->state != Precv && peer->state != Palt))
     {
+        if (native_spawn && claim->validate)
+        {
+            return 1;
+        }
         error("channel waiter cannot be claimed");
     }
     if (!dvm_runqueue_pin(peer))
@@ -1594,6 +1599,7 @@ static int acquire_channel_claim(void *argument)
         error("channel waiter cannot be pinned");
     }
     process->channel_claimed = claim;
+    claim->acquired = 1;
     return 1;
 }
 
@@ -1610,14 +1616,14 @@ static void release_channel_claim(Prog *peer, const void *owner)
     {
         abort();
     }
-    process->channel_claimed = nil;
     runnable = process->queued;
-    fvm_port_sync_unlock(channel_queue_mutex);
     dvm_runqueue_unpin(peer);
+    process->channel_claimed = nil;
     if (runnable)
     {
         dvm_managed_workers_wake_guest(peer);
     }
+    fvm_port_sync_unlock(channel_queue_mutex);
 }
 
 
@@ -1637,19 +1643,23 @@ static void finish_channel_claim(ChannelClaim *claim, int (*match)(void *))
 /* External cancellation borrows the scheduler-owned waiter under NativeWorld. */
 void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request)
 {
-    ChannelClaim claim = {peer, nil, request};
+    ChannelClaim claim = {peer, nil, 0, request};
     dvm_runtime_channel_queue_guard(acquire_channel_claim, &claim);
     finish_channel_claim(&claim, match);
 }
 
 
 /* Check the queue head and pin it in the same mutex acquisition. */
-void dvm_runtime_channel_with_queue_claim(Prog *peer, void (*validate)(void *),
+int dvm_runtime_channel_with_queue_claim(Prog *peer, int (*validate)(void *),
     int (*match)(void *), void *request)
 {
-    ChannelClaim claim = {peer, validate, request};
+    ChannelClaim claim = {peer, validate, 0, request};
     dvm_runtime_channel_queue_guard(acquire_channel_claim, &claim);
-    finish_channel_claim(&claim, match);
+    if (claim.acquired)
+    {
+        finish_channel_claim(&claim, match);
+    }
+    return claim.acquired;
 }
 
 
@@ -2872,7 +2882,9 @@ static int runtime_dispatch_turn(void)
         cancelled |= consume_child_reply(guest);
         dvm_managed_workers_finish_reply(guest);
         cancelled |= consume_process_wait_requests(guest);
+        fvm_port_sync_lock(channel_queue_mutex);
         process = dvm_runqueue_select_guest(guest);
+        fvm_port_sync_unlock(channel_queue_mutex);
     }
     else
     {
