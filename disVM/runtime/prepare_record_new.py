@@ -162,7 +162,9 @@ def adapt_leaf(source):
     if source.count(anchor) != 1 or "Guarded allocation and channel transfers" in source:
         raise ValueError("record leaf classification drift")
     selection = """    /* Guarded allocation and channel transfers use their C coordinators. */
-    if (dvm_runtime_guarded_copies && (op == INEW || op == INEWZ || op == IMNEWZ || op == INEWA || op == INEWAZ ||
+    /* Module calls and returns must use the checked atomic count paths. */
+    if (dvm_runtime_guarded_copies && (op == IMCALL || op == IRET ||
+        op == INEW || op == INEWZ || op == IMNEWZ || op == INEWA || op == INEWAZ ||
         op == INEWCB || op == INEWCW || op == INEWCL || op == INEWCF ||
         op == INEWCP || op == INEWCM || op == INEWCMP || op == ISEND || op == IRECV))
     {
