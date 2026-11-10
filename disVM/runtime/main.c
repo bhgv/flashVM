@@ -1995,6 +1995,34 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
 }
 
 
+/* EN: Arm the parent's wait before waking a child in a native operation.
+ * RU: Опубликовать ожидание родителя до пробуждения потомка из native. */
+static int prepare_native_child_wait(Prog *caller, int pid)
+{
+    fvm_port_sync_lock(channel_queue_mutex);
+    Prog *child = find_child(caller, pid);
+    if (!child || child->state != Prelease)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        return 0;
+    }
+    if (!dvm_runqueue_pop_expected(caller, DVM_CHILD_EXIT_WAIT))
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        error("invalid runnable process removal");
+    }
+    ((DVM_RuntimeProcess *)caller)->exit_wait_pid = pid;
+    DVM_R.PC--;
+    DVM_R.IC = 1;
+    DVM_R.t = 1;
+    ((DVM_RuntimeProcess *)child)->exit_notify_parent = 1;
+    child->flags |= Pkilled;
+    cancel_registered_guest_wait(pid);
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return 1;
+}
+
+
 /* Request termination before committing MCALL. A successful request parks
  * the parent on its prepared frame until the child's exit publishes completion. */
 int dvm_runtime_prepare_killwait(Prog *caller, int pid)
@@ -2005,6 +2033,10 @@ int dvm_runtime_prepare_killwait(Prog *caller, int pid)
     if (process->exit_ready_pid == pid)
     {
         return 1;
+    }
+    if (native_spawn && prepare_native_child_wait(caller, pid))
+    {
+        return 0;
     }
     child = find_child(caller, pid);
     if (request_child_exit(child) != Processctl_Requested)
@@ -2991,7 +3023,10 @@ static int runtime_dispatch_turn(void)
         }
         dvm_process_environment_release(process);
         delrun(Pexiting);
-        if (!dvm_runtime_process_root_remove(process))
+        fvm_port_sync_lock(channel_queue_mutex);
+        int removed = dvm_runtime_process_root_remove(process);
+        fvm_port_sync_unlock(channel_queue_mutex);
+        if (!removed)
         {
             error("retiring process lost its GC root");
         }
