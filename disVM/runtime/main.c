@@ -2981,7 +2981,11 @@ static int runtime_dispatch_turn(void)
     {
         if (process->flags & Pkilled)
         {
-            DVM_R = process->R;
+            /* A resident with live registers already owns its unwind state. */
+            if (!dvm_native_execution()->resident_registers_valid)
+            {
+                DVM_R = process->R;
+            }
             dvm_runtime_termination_checkpoint(process);
         }
         xec(process);
