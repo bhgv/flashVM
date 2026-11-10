@@ -537,6 +537,14 @@ unsigned long dvm_runqueue_inflight(void)
     return __atomic_load_n(&inflight, __ATOMIC_RELAXED);
 }
 
+/* EN: Report resident dispatches still completing a transition.
+ * RU: Проверить, заканчивает ли какой-либо поток переход состояния. */
+int dvm_runqueue_dispatch_pending(void)
+{
+    return __atomic_load_n(&active, __ATOMIC_ACQUIRE) != 0;
+}
+
+
 /* Print native counters after owner/collector joins; no managed/root operations.
  * A successful managed return or ordinary error unwind must have inflight=0. */
 void dvm_runqueue_statistics(void)

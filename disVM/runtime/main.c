@@ -3117,7 +3117,8 @@ static int runtime_execute_inner(void *argument)
     fvm_port_sync_lock(channel_queue_mutex);
     cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
-    while (dvm_runqueue_ready() || ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && __atomic_load_n(&live, __ATOMIC_RELAXED))
+    while (dvm_runqueue_ready() || (native_spawn && dvm_runqueue_dispatch_pending()) ||
+           ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && __atomic_load_n(&live, __ATOMIC_RELAXED))
 #ifdef DVM_RUNTIME_EDITOR
            || (__atomic_load_n(&live, __ATOMIC_RELAXED) && dvm_editor_attached())
 #endif
@@ -3178,7 +3179,7 @@ static int runtime_execute_inner(void *argument)
             }
 #ifndef DVM_RUNTIME_EDITOR
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
-                (dvm_runqueue_ready() || dvm_runqueue_inflight()))
+                (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending()))
             {
                 if (!dvm_managed_workers_park(guest_cancel_pending))
                 {

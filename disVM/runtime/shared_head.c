@@ -8,6 +8,7 @@
 #include "pool.h"
 #include "raise.h"
 #include "shared_head.h"
+#include "shared_access.h"
 #include "shared_bytes.h"
 #include "shared_mapped.h"
 #include "list_hold.h"

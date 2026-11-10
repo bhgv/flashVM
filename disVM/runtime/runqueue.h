@@ -161,6 +161,7 @@ DVM_NativeContext *dvm_runqueue_owner(Prog *process);
 /* Copy the outstanding native-lease count under exclusive heap ownership.
  * No heap/root changes or implicit scheduling; used after all owners return. */
 unsigned long dvm_runqueue_inflight(void);
+int dvm_runqueue_dispatch_pending(void);
 
 
 /* Print actual queue/lease diagnostics after all native workers have joined. */
