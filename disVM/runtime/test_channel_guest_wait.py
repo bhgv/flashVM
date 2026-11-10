@@ -1662,12 +1662,23 @@ def main():
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                          "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                          "dvm_native_owner_progress", "dvm_gc_workers_create"])
-        if "--cancelwait-only" in sys.argv[4:]:
+        if "--cancelwait-only" in sys.argv[4:] or "--table-cancel-only" in sys.argv[4:]:
+            table_cancel = "--table-cancel-only" in sys.argv[4:]
             source, image = work / "cancelwait.b", work / "cancelwait.dis"
-            source.write_text(KILLWAIT_CANCEL_GUEST.replace(
-                "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
-                "<-reports != 1",
-            ))
+            if table_cancel:
+                guest = TABLE_CANCEL_GUEST.replace(
+                    " != Processctl->Cancelled ||\n"
+                    "        control->cancelwait(pid) == Processctl->Cancelled)",
+                    " != Processctl->Cancelled)",
+                )
+                marker = "PASS cancelled table retry"
+            else:
+                guest = KILLWAIT_CANCEL_GUEST.replace(
+                    "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
+                    "<-reports != 1",
+                )
+                marker = "PASS guest child retirement"
+            source.write_text(guest)
             subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
                             "-o", image, source], check=True)
             for mode in ("--no-jit", "--jit"):
@@ -1676,9 +1687,9 @@ def main():
                         [binary, mode, "--native-spawn", "--guarded-copies", image],
                         cwd=work, capture_output=True, text=True, timeout=5,
                     )
-                    if result.returncode or "PASS guest child retirement" not in result.stdout:
-                        raise RuntimeError(f"{mode} cancelwait attempt {attempt + 1} exited {result.returncode}\n"
-                                           + result.stdout + result.stderr)
+                    if result.returncode or marker not in result.stdout:
+                        raise RuntimeError(f"{mode} {marker[5:]} attempt {attempt + 1} "
+                                           f"exited {result.returncode}\n" + result.stdout + result.stderr)
             return
         for operation in ("input <-= 7", "<-input", "alt { <-input => {} <-report => {} }"):
             close_source, close_image = work / "close.b", work / "close.dis"
