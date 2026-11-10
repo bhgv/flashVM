@@ -18,7 +18,8 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
         explicit = ["--managed-workers", str(workers)]
     if dedicated:
         explicit = ["--native-spawn", "--guarded-copies", *shared]
-    command = [str(runtime), mode, "--stats", *explicit, "--quantum", "65536", *poll, image]
+    quantum = [] if dedicated else ["--quantum", "65536"]
+    command = [str(runtime), mode, "--stats", *explicit, *quantum, *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           bufsize=0) as child:
@@ -38,7 +39,11 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
             suspended = b"NATIVEWAITERS inflight=1\n"
             if suspended not in output or output.index(suspended) > output.index(peer):
                 raise RuntimeError("peer ran before native suspension: " + repr(output))
-            rest, _ = child.communicate(payload, timeout=15)
+            try:
+                rest, _ = child.communicate(payload, timeout=15)
+            except subprocess.TimeoutExpired as failure:
+                raise RuntimeError(f"{mode} {image} did not finish after input: "
+                                   f"{bytes(output) + (failure.output or b'')!r}") from failure
             output.extend(rest)
         finally:
             if child.poll() is None:
@@ -127,6 +132,7 @@ def main():
     for name in ("runtime", "compiler", "include"):
         parser.add_argument(name, type=lambda value: Path(value).resolve())
     parser.add_argument("--portable-overlap", action="store_true")
+    parser.add_argument("--dedicated-only", action="store_true")
     parser.add_argument("--runner", nargs=argparse.REMAINDER, default=[])
     args = parser.parse_args()
     runtime, compiler, include = args.runtime, args.compiler, args.include
@@ -192,14 +198,17 @@ def main():
                         or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < 40
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
                     raise RuntimeError(f"{mode} {options}\n{output}")
-        run(runtime, directory, "--jit", [], b"R", "PASS provider return",
-            default_profile=True, workers=24)
+        if not args.dedicated_only:
+            run(runtime, directory, "--jit", [], b"R", "PASS provider return",
+                default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):
             run(runtime, directory, mode, [], b"R", "PASS provider return", dedicated=True)
             run(runtime, directory, mode, [], b"E", "PASS provider unwind",
                 shared_channels=True, dedicated=True)
             run(runtime, directory, mode, [], b"R", "PASS provider termination and reload",
                 "kill.dis", dedicated=True)
+            if args.dedicated_only:
+                continue
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind")
