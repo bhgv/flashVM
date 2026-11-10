@@ -1057,7 +1057,7 @@ static int publish_channel_park(void *argument)
     if (dvm_runtime_guest_unbounded)
     {
         int receive = request->state == Precv;
-        if (channelpeer(request->channel, receive))
+        if (vmchanready(request->channel, receive))
         {
             if (!dvm_runtime_scalar_retry(receive ? IRECV : ISEND))
             {
