@@ -1792,21 +1792,26 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
         return 1;
     }
     DVM_RuntimeProcess *target = (DVM_RuntimeProcess *)child;
-    if (target->channel_claimed || dvm_runqueue_dispatch_owner(child))
+    if (target->channel_claimed)
     {
         return 1;
     }
     DVM_OwnerMessage *request = &target->cancel_wait;
-    if (!dvm_messages_send_once(guest_messages, (uintptr_t)pid, request))
-    {
-        error("cannot post wait cancellation");
-    }
     process->exit_wait_pid = pid;
     process->cancel_waiting = 1;
+    delrun(DVM_CHILD_EXIT_WAIT);
+    /* The child may already be polling its mailbox. Publish the caller's
+     * reply destination and wait state before making the request visible. */
+    if (!dvm_messages_send_once(guest_messages, (uintptr_t)pid, request))
+    {
+        process->exit_wait_pid = 0;
+        process->cancel_waiting = 0;
+        addrun(caller);
+        error("cannot post wait cancellation");
+    }
     DVM_R.PC--;
     DVM_R.IC = 1;
     DVM_R.t = 1;
-    delrun(DVM_CHILD_EXIT_WAIT);
     dvm_managed_workers_wake_guest(child);
     return 0;
 }
