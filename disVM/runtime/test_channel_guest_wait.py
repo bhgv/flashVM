@@ -1807,8 +1807,9 @@ def main():
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", native_output)):
                         raise RuntimeError(f"{name} {mode} dedicated wake or retirement failed\n{native_output}")
                 if name == "send":
+                    resident_command = [binary, mode, "--native-spawn", "--guarded-copies", image]
                     for field in range(15):
-                        refused = subprocess.run(command, cwd=work, capture_output=True, text=True,
+                        refused = subprocess.run(resident_command, cwd=work, capture_output=True, text=True,
                                                  timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field)))
                         if (refused.returncode != 1 or
                                 "disvm: native continuation restoration failed" not in refused.stderr):
@@ -1838,7 +1839,7 @@ def main():
                     }
                     for phase, diagnostic in phase_controls.items():
                         refused = subprocess.run(
-                            command, cwd=work, capture_output=True, text=True, timeout=30,
+                            resident_command, cwd=work, capture_output=True, text=True, timeout=30,
                             env=dict(os.environ, DVM_TEST_NATIVE_RETURN_PHASE=phase),
                         )
                         if refused.returncode != 1 or diagnostic not in refused.stderr:
