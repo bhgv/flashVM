@@ -1747,7 +1747,8 @@ def main():
                                 ("alt-array-cancel", ALT_ARRAY_CANCEL_GUEST),
                                 ("parked-send", PARKED_SEND_GUEST), ("parked-receive", PARKED_RECEIVE_GUEST),
                                 ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST),
-                                ("parked-isolation", DEDICATED_PARKED_ISOLATION_GUEST)):
+                                ("parked-isolation", DEDICATED_PARKED_ISOLATION_GUEST),
+                                ("native-isolation", ISOLATED_CANCEL_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
@@ -1763,7 +1764,11 @@ def main():
                               else "PASS foreign channel guest wait")
                     if name.startswith("parked-"):
                         marker = "PASS cancelled scheduler channel wait"
-                    if (result.returncode or output.count(marker) != 1
+                    expected = 1
+                    if name == "native-isolation":
+                        marker = "PASS isolated channel guest wait"
+                        expected = 2
+                    if (result.returncode or output.count(marker) != expected
                             or (bypass and "PASS foreign channel guest wait" in output)
                             or "PASS guest channel payloads" not in output
                             or (name.startswith("alt-") and not bypass

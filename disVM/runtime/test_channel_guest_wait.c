@@ -329,7 +329,7 @@ static void rendezvous_mover(void)
             "native return preserves the original frame and result address");
         if (target_cancel && getenv("DVM_TEST_DEDICATED_BUFFER"))
         {
-            check(dvm_runtime_request_guest_cancel(waiting_pid), "post ALT cancellation");
+            check(dvm_runtime_request_guest_cancel(waiting_pid), "post native channel cancellation");
             pthread_mutex_lock(&gate);
             dedicated_cancel_posted = 1;
             pthread_cond_broadcast(&waiting);
@@ -583,6 +583,11 @@ static int wait_with_other_guest(Channel *channel, DVM_NativeContext *owner, Pro
     int result, cancelled;
 
     pthread_mutex_lock(&gate);
+    if (waiting_count == 2 && getenv("DVM_TEST_DEDICATED_BUFFER"))
+    {
+        pthread_mutex_unlock(&gate);
+        return __real_dvm_runtime_channel_wait_guest(channel);
+    }
     check(process && owner != first_owner && waiting_count < 2, "different guest waits on the reservation");
     if (!waiting_count)
     {
@@ -593,6 +598,11 @@ static int wait_with_other_guest(Channel *channel, DVM_NativeContext *owner, Pro
     {
         resume_mover = 1;
         pthread_cond_broadcast(&waiting);
+    }
+    if (cancelled && getenv("DVM_TEST_DEDICATED_BUFFER"))
+    {
+        while (!dedicated_cancel_posted)
+            pthread_cond_wait(&waiting, &gate);
     }
     pthread_mutex_unlock(&gate);
 
