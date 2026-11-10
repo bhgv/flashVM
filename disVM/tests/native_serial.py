@@ -96,6 +96,7 @@ def main():
             (overlap_refused, "ordinary", "enter while peer is active"),
             (bypass_gc, "ordinary", "SHARED entered during GC barrier"),
             (promotion_refused, "mixed", "promote SHARED while peer is active"),
+            (original.replace(promote, "        if (1)"), "ordinary", "promotion bypassed pending GC"),
         ):
             control.write_text(source_text)
             subprocess.run(control_command, check=True)

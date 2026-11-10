@@ -57,6 +57,8 @@ typedef struct Shared
     int done;             /* Finished stress owners, still registered/inactive. */
     int probe_stopped;    /* Collector holds the final barrier. */
     int probe_refused;    /* Owner zero observed the closed barrier. */
+    int promotion_shared; /* Owner zero is ready to promote during a stop. */
+    int promotion_done;   /* Owner zero promoted after the collector left. */
     int probe_reopened;   /* Collector released the barrier. */
     int retire;           /* Final collector observation finished; detach is allowed. */
 } Shared;
@@ -212,7 +214,25 @@ static void execute(void *argument)
         fvm_port_sync_unlock(shared->control);
         wait_flag(shared, &shared->probe_reopened);
         check(dvm_world_try_enter_shared(worker->roots), "SHARED refused after GC barrier");
-        check(dvm_world_leave(worker->roots), "leave SHARED after GC barrier");
+        fvm_port_sync_lock(shared->control);
+        shared->promotion_shared = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
+        DVM_WorldState state;
+        do
+        {
+            check(dvm_world_state(shared->world, &state), "observe promotion barrier");
+            if (!state.stopping)
+                fvm_port_thread_sleep_us(50);
+        } while (!state.stopping);
+        check(dvm_world_promote_shared(worker->roots), "promote after pending GC");
+        check(dvm_world_state(shared->world, &state) && !state.stopping,
+            "promotion bypassed pending GC");
+        check(dvm_world_leave(worker->roots), "leave promoted turn");
+        fvm_port_sync_lock(shared->control);
+        shared->promotion_done = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
     }
     wait_flag(shared,&shared->retire);
     check(dvm_world_detach(worker->roots),"detach inactive roots");
@@ -350,6 +370,19 @@ int main(int argc, char **argv)
     }
     fvm_port_sync_unlock(shared.control);
     scan_roots(&shared,collector,0,1);
+    wait_flag(&shared, &shared.promotion_shared);
+    check(dvm_world_stop_begin(shared.world, collector), "stop during SHARED promotion");
+    DVM_WorldState promotion_state;
+    check(dvm_world_state(shared.world, &promotion_state) && !promotion_state.active &&
+        !promotion_state.parked, "promotion published roots and left SHARED");
+    fvm_port_sync_lock(shared.control);
+    check(!shared.promotion_done, "promotion completed while GC held barrier");
+    fvm_port_sync_unlock(shared.control);
+    Scan promotion_scan = {0, 0};
+    check(dvm_world_visit(shared.world, roots, &promotion_scan) && promotion_scan.count == 2,
+        "collector sees both roots during promotion");
+    check(dvm_world_stop_end(shared.world), "release promotion barrier");
+    wait_flag(&shared, &shared.promotion_done);
     check(workers[0].value == workers[0].iterations &&
         workers[1].value == workers[1].iterations,"independent owner arithmetic");
     check(dvm_world_admission(shared.world,&admission) && admission.serial &&
@@ -372,6 +405,6 @@ int main(int argc, char **argv)
     check(dvm_native_context_destroy(collector),"destroy collector");
     check(dvm_world_destroy(shared.world),"destroy empty domain");
     fvm_port_sync_destroy(shared.control);
-    puts("PASS parallel GC admission: two native REG owners, independent addw, native-wait progress, 201 root scans, complete joins");
+    puts("PASS parallel GC admission: two native REG owners, independent addw, native-wait progress, 202 root scans, complete joins");
     return 0;
 }
