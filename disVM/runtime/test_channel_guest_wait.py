@@ -1666,16 +1666,17 @@ def main():
             close_source, close_image = work / "close.b", work / "close.dis"
             close_source.write_text(CLOSE_PARKED_GUEST.replace("WAIT_OPERATION", operation))
             subprocess.run([compiler, "-I", include, "-o", close_image, close_source], check=True)
-            for mode in ("--no-jit", "--jit"):
-                closed = subprocess.run(
-                    [binary, mode, "--native-spawn", "--guarded-copies", "--stats", close_image],
-                    cwd=work, capture_output=True, text=True, timeout=30,
-                    env=dict(os.environ, DVM_TEST_CLOSE_PARKED="1"),
-                )
-                close_output = closed.stdout + closed.stderr
-                if (closed.returncode or "PASS dedicated channel close" not in close_output
-                        or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
-                    raise RuntimeError(f"{mode} dedicated close failed\n{close_output}")
+            for close_mode in ("direct", "mailbox"):
+                for mode in ("--no-jit", "--jit"):
+                    closed = subprocess.run(
+                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", close_image],
+                        cwd=work, capture_output=True, text=True, timeout=30,
+                        env=dict(os.environ, DVM_TEST_CLOSE_PARKED=close_mode),
+                    )
+                    close_output = closed.stdout + closed.stderr
+                    if (closed.returncode or "PASS dedicated channel close" not in close_output
+                            or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
+                        raise RuntimeError(f"{mode} {close_mode} dedicated close failed\n{close_output}")
         if "--close-only" in sys.argv[4:]:
             print("PASS dedicated SEND and RECV close with and without JIT")
             return

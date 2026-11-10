@@ -29,6 +29,7 @@
 
 /* Exercise the production WORD mover from the rendezvous fixture. */
 extern void movw(void);
+extern int dvm_runtime_channel_post_close(Channel *channel);
 
 static pthread_mutex_t gate = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t waiting = PTHREAD_COND_INITIALIZER;
@@ -938,13 +939,24 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
         }
         pthread_mutex_unlock(&gate);
     }
-    if (getenv("DVM_TEST_CLOSE_PARKED"))
+    const char *close_mode = getenv("DVM_TEST_CLOSE_PARKED");
+    if (close_mode)
     {
         process = dvm_native_context_process(dvm_native_context_current());
         if (process && (process->state == Psend || process->state == Precv) &&
             process->chan && process->chan != H)
         {
-            killcomm(process->state == Psend ? &process->chan->send : &process->chan->recv);
+            if (strcmp(close_mode, "mailbox") == 0)
+            {
+                if (!dvm_runtime_channel_post_close(process->chan))
+                {
+                    error("cannot post test channel close");
+                }
+            }
+            else
+            {
+                killcomm(process->state == Psend ? &process->chan->send : &process->chan->recv);
+            }
         }
     }
     __real_dvm_runtime_channel_waiter_published();
