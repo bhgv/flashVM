@@ -10,7 +10,7 @@
 struct DVM_FileGate
 {
     FVM_PortSync *sync;          /* Protect ticket state, never held through I/O. */
-    DVM_FileGate *next_gate;     /* Live native registry link, under heap exclusion. */
+    DVM_FileGate *next_gate;     /* Live native registry link, under the registry mutex. */
     DVM_FileTicket *head;       /* First ticket, including any admitted operation. */
     DVM_FileTicket *tail;       /* Most recently reserved ticket. */
     size_t pending;             /* Number of linked tickets. */
@@ -22,9 +22,9 @@ struct DVM_FileGate
     int busy;                   /* Exactly one admitted native operation. */
 };
 
-static DVM_FileGate *gates;     /* Live gates, modified only under heap exclusion. */
-static size_t created;          /* Successful allocations under heap exclusion. */
-static size_t closed;           /* Successful retirements under heap exclusion. */
+static DVM_FileGate *gates;     /* Live gates, modified only under the registry mutex. */
+static size_t created;          /* Successful allocations under the registry mutex. */
+static size_t closed;           /* Successful retirements under the registry mutex. */
 static size_t completed;        /* Operations accumulated from retired gates. */
 static size_t waits;            /* Contended admissions accumulated from retired gates. */
 static size_t peak_pending;     /* Largest per-file reservation peak, including retired gates. */
@@ -45,9 +45,11 @@ DVM_FileGate *dvm_file_gate_create(void)
         free(gate);
         return NULL;
     }
+    fvm_port_registry_lock();
     gate->next_gate = gates;
     gates = gate;
     created++;
+    fvm_port_registry_unlock();
     return gate;
 }
 
@@ -220,10 +222,12 @@ int dvm_file_gate_destroy(DVM_FileGate *gate)
     {
         return 1;
     }
+    fvm_port_registry_lock();
     fvm_port_sync_lock(gate->sync);
     if (gate->busy || gate->pending || gate->sleepers)
     {
         fvm_port_sync_unlock(gate->sync);
+        fvm_port_registry_unlock();
         return 0;
     }
     for (slot = &gates; *slot && *slot != gate; slot = &(*slot)->next_gate)
@@ -232,6 +236,7 @@ int dvm_file_gate_destroy(DVM_FileGate *gate)
     if (!*slot)
     {
         fvm_port_sync_unlock(gate->sync);
+        fvm_port_registry_unlock();
         return 0;
     }
     completed += gate->operations;
@@ -241,10 +246,11 @@ int dvm_file_gate_destroy(DVM_FileGate *gate)
         peak_pending = gate->peak;
     }
     *slot = gate->next_gate;
+    closed++;
     fvm_port_sync_unlock(gate->sync);
+    fvm_port_registry_unlock();
     fvm_port_sync_destroy(gate->sync);
     free(gate);
-    closed++;
     return 1;
 }
 
@@ -271,11 +277,11 @@ void dvm_file_gate_snapshot(DVM_FileGate *gate, size_t *pending, size_t *waiting
 }
 
 
-/* Called after executor joins. Registry lifecycle is excluded by the heap gate;
- * mutexes also make snapshots well-defined if a native operation is inspected. */
+/* Snapshot the live registry and each gate in registry-to-gate lock order. */
 void dvm_file_gate_statistics(void)
 {
     DVM_FileGate *gate;
+    fvm_port_registry_lock();
     size_t operations = completed;
     size_t contended = waits;
     size_t pending = 0;
@@ -292,8 +298,11 @@ void dvm_file_gate_statistics(void)
         }
         fvm_port_sync_unlock(gate->sync);
     }
+    size_t opened = created;
+    size_t retired = closed;
+    fvm_port_registry_unlock();
     fprintf(stderr, "NATIVEFILES created=%lu closed=%lu live=%lu operations=%lu waits=%lu pending=%lu peak=%lu\n",
-        (unsigned long)created, (unsigned long)closed, (unsigned long)(created - closed),
+        (unsigned long)opened, (unsigned long)retired, (unsigned long)(opened - retired),
         (unsigned long)operations, (unsigned long)contended, (unsigned long)pending,
         (unsigned long)peak);
 }

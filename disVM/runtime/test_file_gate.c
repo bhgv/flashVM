@@ -93,6 +93,23 @@ void __wrap_fvm_port_sync_wait(FVM_PortSync *sync)
 }
 
 
+/* EN: Create and retire independent gates on a native thread.
+ * RU: Создать и закрыть независимые шлюзы в нативном потоке. */
+static void exercise_registry(void *argument)
+{
+    int *failed = argument;
+    for (unsigned int iteration = 0; iteration < 512; iteration++)
+    {
+        DVM_FileGate *gate = dvm_file_gate_create();
+        if (!gate || !dvm_file_gate_destroy(gate))
+        {
+            *failed = 1;
+            break;
+        }
+    }
+}
+
+
 /* Native controller serializes reservations/lifetime as the runtime heap gate
  * does. Reverse-start all contenders; completed order must remain0..7. Return1
  * only for a semantic guard failure,2 for fixture setup,0 on all checks. */
@@ -302,6 +319,24 @@ int main(void)
         return 2;
     }
     fvm_port_sync_destroy(sync);
+    int registry_failed[8] = {0};
+    for (unsigned int index = 0; index < 8; index++)
+    {
+        threads[index] = fvm_port_thread_start(exercise_registry, &registry_failed[index]);
+        if (!threads[index])
+        {
+            return 2;
+        }
+    }
+    for (unsigned int index = 0; index < 8; index++)
+    {
+        fvm_port_thread_join(threads[index]);
+        if (registry_failed[index])
+        {
+            fprintf(stderr, "FAIL concurrent file gate registry lost a gate\n");
+            return 1;
+        }
+    }
     dvm_file_gate_statistics();
     puts("PASS native file FIFO: reverse-start8, foreign/duplicate finish, busy/reserved lifetime");
     return 0;

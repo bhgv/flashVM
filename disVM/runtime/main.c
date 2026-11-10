@@ -900,13 +900,15 @@ static FVM_Result write_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descr
  * the same pipe, so share their gate when the native identities match. */
 static DVM_FileGate *stdio_pipe_gate(int descriptor, const struct stat *metadata)
 {
-    DVM_FileGate *gate = stdio_gates[descriptor];
+    DVM_FileGate *gate;
     struct stat other_metadata;
     int other = 3 - descriptor;
     int shared = descriptor != 0 && !fstat(other, &other_metadata) &&
         S_ISFIFO(other_metadata.st_mode) && metadata->st_dev == other_metadata.st_dev &&
         metadata->st_ino == other_metadata.st_ino;
 
+    fvm_port_sync_lock(channel_queue_mutex);
+    gate = stdio_gates[descriptor];
     if (!gate && shared)
     {
         gate = stdio_gates[other];
@@ -920,6 +922,7 @@ static DVM_FileGate *stdio_pipe_gate(int descriptor, const struct stat *metadata
     {
         stdio_gates[other] = gate;
     }
+    fvm_port_sync_unlock(channel_queue_mutex);
     return gate;
 }
 
