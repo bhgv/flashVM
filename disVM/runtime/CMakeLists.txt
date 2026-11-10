@@ -2159,9 +2159,9 @@ endif()
 
 # Actual native owners share retained instruction operands through FIFO heap turns.
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
- add_test(NAME disvm_serial_heap_admission COMMAND "${PYTHON_EXECUTABLE}"
+ add_test(NAME disvm_parallel_gc_admission COMMAND "${PYTHON_EXECUTABLE}"
   "${root}/disVM/tests/native_serial.py" --flashvm-root "${root}/flashVM")
- set_tests_properties(disvm_serial_heap_admission PROPERTIES TIMEOUT 80 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+ set_tests_properties(disvm_parallel_gc_admission PROPERTIES TIMEOUT 80 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()
 
 
