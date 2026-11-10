@@ -1036,7 +1036,7 @@ typedef struct ChannelQueueRequest
 } ChannelQueueRequest;
 
 
-extern void dvm_runtime_channel_buffer_notify(void);
+extern void dvm_runtime_channel_waiter_published(void);
 
 typedef struct ChannelPark
 {
@@ -1044,6 +1044,7 @@ typedef struct ChannelPark
     Progq **queue;    /* Queue belonging to channel. */
     void *slot;      /* Borrowed operand in the waiting frame. */
     int state;       /* Psend or Precv. */
+    int published;   /* Queue and waiter state committed. */
 } ChannelPark;
 
 
@@ -1071,7 +1072,7 @@ static int publish_channel_park(void *argument)
     DVM_R.IC = 1;
     DVM_R.t = 1;
     delrun(request->state);
-    dvm_runtime_channel_buffer_notify();
+    request->published = 1;
     return 1;
 }
 
@@ -1080,8 +1081,12 @@ static int publish_channel_park(void *argument)
  * RU: Опубликовать ожидание и операнд до захвата другим потоком. */
 static void park_channel_waiter(Channel *channel, Progq **queue, void *slot, int state)
 {
-    ChannelPark request = {channel, queue, slot, state};
+    ChannelPark request = {channel, queue, slot, state, 0};
     dvm_runtime_channel_queue_guard(publish_channel_park, &request);
+    if (request.published)
+    {
+        dvm_runtime_channel_waiter_published();
+    }
 }
 
 
