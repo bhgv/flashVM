@@ -44,6 +44,7 @@ typedef enum DVM_RetirementResult
  * Return NULL on invalid capacity/allocation failure. Publish externally only
  * after success. No callbacks, managed pointers or locks escape initialization. */
 DVM_RetirementQueue *dvm_retirement_create(unsigned int capacity, unsigned long byte_limit);
+DVM_RetirementQueue *dvm_retirement_create_growing(unsigned int capacity);
 DVM_RetirementQueue *dvm_retirement_create_indexed(unsigned int capacity, unsigned long byte_limit);
 
 

@@ -58,12 +58,18 @@ int dvm_runqueue_ready(void)
  * endpoint/count or continuation accounting before a mutation. */
 static int endpoints_valid(void)
 {
+    /* Dedicated residents do not share FIFO links. Their counters may be
+     * sampled between independent updates by different owners. */
+    if (dedicated_dispatch)
+    {
+        return 1;
+    }
     if (ready_count() + inflight > DVM_RUNTIME_PROCESS_MAX || inflight > active ||
         leases - returns != inflight || claims - finishes != active)
     {
         return 0;
     }
-    if (dedicated_dispatch || !ready_count())
+    if (!ready_count())
     {
         return !head && !tail;
     }
@@ -146,7 +152,7 @@ int dvm_runqueue_claim(Prog *process)
         !runtime_process(process)->queued || runtime_process(process)->channel_claimed ||
         runtime_process(process)->native_owner ||
         runtime_process(process)->dispatch_owner || dvm_native_context_process(context) ||
-        active == DVM_RUNTIME_PROCESS_MAX || !endpoints_valid())
+        __atomic_load_n(&active, __ATOMIC_RELAXED) == DVM_RUNTIME_PROCESS_MAX || !endpoints_valid())
     {
         return 0;
     }
@@ -162,11 +168,11 @@ int dvm_runqueue_claim(Prog *process)
     runtime_process(process)->dispatch_owner = context;
     if (runtime_process(process)->last_dispatcher && runtime_process(process)->last_dispatcher != (uintptr)context)
     {
-        migrated++;
+        __atomic_fetch_add(&migrated, 1, __ATOMIC_RELAXED);
     }
     runtime_process(process)->last_dispatcher = (uintptr)context;
-    claims++;
-    active++;
+    __atomic_fetch_add(&claims, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&active, 1, __ATOMIC_RELAXED);
     return 1;
 }
 
@@ -184,7 +190,7 @@ int dvm_runqueue_finish(Prog *process)
     DVM_NativeContext *context = dvm_native_context_current();
     void *current = dvm_native_context_process(context);
     if (!context || !process || runtime_process(process)->dispatch_owner != context ||
-        runtime_process(process)->native_owner || !active || (current && current != process))
+        runtime_process(process)->native_owner || !__atomic_load_n(&active, __ATOMIC_RELAXED) || (current && current != process))
     {
         return 0;
     }
@@ -201,8 +207,8 @@ int dvm_runqueue_finish(Prog *process)
         return 0;
     }
     runtime_process(process)->dispatch_owner = NULL;
-    finishes++;
-    active--;
+    __atomic_fetch_add(&finishes, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_sub(&active, 1, __ATOMIC_RELAXED);
     return 1;
 }
 
@@ -305,8 +311,10 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
 {
     if (!process || runtime_process(process)->native_owner || process->link ||
         (runtime_process(process)->dispatch_owner &&
-         runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
-        ready_count() + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
+         runtime_process(process)->dispatch_owner != dvm_native_context_current() &&
+         !(dedicated_dispatch && complete_wait && runtime_process(process)->channel_claimed &&
+           process->state != Palt)) ||
+        ready_count() + __atomic_load_n(&inflight, __ATOMIC_RELAXED) >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
         !endpoints_valid())
     {
         return 0;
@@ -460,14 +468,19 @@ int dvm_runqueue_suspend(Prog *process)
         return 0;
     }
     runtime_process(process)->native_owner = context;
-    leases++;
-    inflight++;
-    if (inflight > peak)
+    __atomic_fetch_add(&leases, 1, __ATOMIC_RELAXED);
+    unsigned long count = __atomic_add_fetch(&inflight, 1, __ATOMIC_RELAXED);
+    unsigned long previous = __atomic_load_n(&peak, __ATOMIC_RELAXED);
+    while (count > previous)
     {
-        peak = inflight;
-        if (trace_waits)
+        if (__atomic_compare_exchange_n(&peak, &previous, count, 0,
+                __ATOMIC_RELAXED, __ATOMIC_RELAXED))
         {
-            fprintf(stderr,"NATIVEWAITERS inflight=%lu\n",inflight);
+            if (trace_waits)
+            {
+                fprintf(stderr, "NATIVEWAITERS inflight=%lu\n", count);
+            }
+            break;
         }
     }
     return 1;
@@ -482,7 +495,7 @@ int dvm_runqueue_resume(Prog *process)
     if (!process || !context || runtime_process(process)->native_owner != context ||
         runtime_process(process)->dispatch_owner != context ||
         dvm_native_context_process(context) != process || process->state != Prelease ||
-        process->link || !inflight || ready_count() == DVM_RUNTIME_PROCESS_MAX ||
+        process->link || !__atomic_load_n(&inflight, __ATOMIC_RELAXED) || ready_count() == DVM_RUNTIME_PROCESS_MAX ||
         runtime_process(process)->queued || !endpoints_valid())
     {
         return 0;
@@ -504,8 +517,8 @@ int dvm_runqueue_resume(Prog *process)
         }
     }
     __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
-    returns++;
-    inflight--;
+    __atomic_fetch_add(&returns, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_sub(&inflight, 1, __ATOMIC_RELAXED);
     dvm_managed_workers_wake();
     return 1;
 }
@@ -521,7 +534,7 @@ DVM_NativeContext *dvm_runqueue_owner(Prog *process)
  * or has joined all actors. No reservation or lifecycle transition occurs. */
 unsigned long dvm_runqueue_inflight(void)
 {
-    return inflight;
+    return __atomic_load_n(&inflight, __ATOMIC_RELAXED);
 }
 
 /* Print native counters after owner/collector joins; no managed/root operations.

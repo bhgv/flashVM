@@ -29,6 +29,7 @@ static int mode; /* 1 interleaves a writer, 2 raises, 3 drops module, 4 drops mo
 static void *module_slot; /* Rooted source slot for the imported opcode. */
 static Modlink *imported; /* Borrowed through the imported constructor hold. */
 static int callbacks; /* Complete record allocations observed by monitor. */
+static int busy_publication; /* Inject one prepublication guard collision. */
 static int stale; /* Actual failed identity comparisons. */
 static int array_mode; /* Inspect arrays instead of records in the monitor. */
 static Type *reject_root_type; /* Fail the candidate handoff after initialization. */
@@ -42,7 +43,7 @@ static int guest_entries; /* Real adapted opcode calls after the probe. */
 extern void mnewz(void); /* Real hosted opcode with decoded operands. */
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *);
 void __real_dvm_runtime_record_new(void *,Type *,int);
-int __real_dvm_runtime_heap_commit(void *,const DVM_HeapHold *,DVM_HeapHold *,DVM_HeapHold *);
+int __real_dvm_runtime_heap_commit_attempt(void *,const DVM_HeapHold *,DVM_HeapHold *,DVM_HeapHold *,DVM_CellResult *);
 
 
 /* Stop before dereferencing an invalid candidate or allowing collection. */
@@ -130,10 +131,16 @@ int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *key
 
 
 /* Preserve real publication and count its stale result for this field only. */
-int __wrap_dvm_runtime_heap_commit(void *slot, const DVM_HeapHold *observed,
-    DVM_HeapHold *incoming, DVM_HeapHold *retired)
+int __wrap_dvm_runtime_heap_commit_attempt(void *slot, const DVM_HeapHold *observed,
+    DVM_HeapHold *incoming, DVM_HeapHold *retired, DVM_CellResult *claim)
 {
-    int result = __real_dvm_runtime_heap_commit(slot,observed,incoming,retired);
+    if (slot == destination && busy_publication)
+    {
+        busy_publication--;
+        *claim = DVM_CELL_BUSY;
+        return -1;
+    }
+    int result = __real_dvm_runtime_heap_commit_attempt(slot,observed,incoming,retired,claim);
     if (slot == destination && result == 0)
     {
         stale++;
@@ -306,8 +313,9 @@ static void array_case(DVM_GCWorkers *workers)
     mode = 1;
     length = 3;
     heapmonitor = monitor;
-    check(kprotect(construct_array, NULL) && stale == 2 && callbacks == before_callbacks+1,
-        "array reuses candidate after stale comparison");
+    busy_publication = 1;
+    check(kprotect(construct_array, NULL) && !busy_publication && stale == 2 &&
+        callbacks == before_callbacks+1, "array reuses candidate after busy and stale publication");
     collect(workers, DVM_GC_FAST);
     memmove(&published, destination, sizeof(published));
     check(D2H(published)->t == &Tarray && dvm_refcount_load_i(&Tarray.ref) == before_array+1 &&

@@ -149,6 +149,10 @@ int dvm_runtime_gc_start(int locked_poll)
         execution->world_entry_pending = 0;
         if (dvm_managed_owner_start(dvm_gc_runtime.world, dvm_gc_runtime.workers))
         {
+            if (dvm_runtime_guest_unbounded)
+            {
+                dvm_cell_domain_enable_blocking(dvm_managed_cell_domain());
+            }
             dvm_runtime_rc_start();
             dvm_runtime_rc_set_notifier(dvm_runtime_gc_notify_fast);
             dvm_runtime_exception_reserve_start();

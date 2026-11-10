@@ -57,6 +57,9 @@ void dvm_cell_unreserve_fields(DVM_CellDomain *domain, const void *token);
  * native allocation failure with partial resources retired. No VM/root access. */
 DVM_CellDomain *dvm_cell_domain_create(void);
 
+/* Enable ordered blocking acquisition before any concurrent domain use. */
+void dvm_cell_domain_enable_blocking(DVM_CellDomain *domain);
+
 
 /* Destroy empty QUIESCENT domain and clear *domain. Return0 unchanged for NULL,
  * current held guards or active accesses. Caller must exclude current/future

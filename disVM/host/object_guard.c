@@ -206,6 +206,27 @@ DVM_ObjectResult dvm_object_guard_try_enter(DVM_ObjectGuard *guard)
 }
 
 
+/* EN: Acquire guard in canonical order, parking behind its owner.
+ * RU: Захватить guard в установленном порядке, ожидая его владельца. */
+DVM_ObjectResult dvm_object_guard_enter(DVM_ObjectGuard *guard)
+{
+    DVM_NativeContext *context = dvm_native_context_current();
+    if (!can_enter(context) || !guard || !guard->domain || owner_load(guard) == context ||
+        !dvm_native_context_object_acquire(context))
+    {
+        return DVM_OBJECT_REFUSED;
+    }
+    FVM_PortSync *sync = stripe(guard);
+    fvm_port_sync_lock(sync);
+    while (!owner_swap(guard, NULL, context))
+    {
+        fvm_port_sync_wait(sync);
+    }
+    fvm_port_sync_unlock(sync);
+    return DVM_OBJECT_ACQUIRED;
+}
+
+
 /* Predicate registration/recheck/wait all use the SAME stripe as unlock/wake.
  * A wake before registration is observed by owner_load; a wake after recheck
  * cannot be lost because condition wait atomically releases that mutex. */

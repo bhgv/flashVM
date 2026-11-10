@@ -57,10 +57,15 @@ static const char *array_length_attempt(const void *source, void *destination,
         else
         {
             field = (const unsigned char *)array+offsetof(Array, len);
-            *claim = dvm_small_range_access_extend(&access, field, sizeof(WORD));
-            if (*claim != DVM_CELL_ACQUIRED)
+            /* The source slot retains the array. Dedicated execution only
+             * needs its published length, which is set before publication. */
+            if (!dvm_runtime_guest_unbounded)
             {
-                problem = exHeap;
+                *claim = dvm_small_range_access_extend(&access, field, sizeof(WORD));
+                if (*claim != DVM_CELL_ACQUIRED)
+                {
+                    problem = exHeap;
+                }
             }
         }
     }
@@ -88,7 +93,11 @@ const char *dvm_runtime_array_length(const void *source, void *destination)
             return "array length requires managed dispatch";
         }
         const char *problem = array_length_attempt(source, destination, NULL, &claim);
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA) ? NULL : problem;
+        if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ILENA))
+        {
+            return NULL;
+        }
+        return problem == exHeap ? "array length guard refused" : problem;
     }
 
     DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
@@ -134,7 +143,11 @@ const char *dvm_runtime_array_index_operands(const void *source, const void *ind
             *replay = dvm_runtime_scalar_retry(opcode);
         }
     }
-    return *replay ? NULL : problem;
+    if (*replay)
+    {
+        return NULL;
+    }
+    return problem == exHeap ? "array index operand guard refused" : problem;
 }
 
 

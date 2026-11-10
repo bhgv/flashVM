@@ -12,6 +12,7 @@
 #include "runtime_gc.h"
 #include "record_storage.h"
 #include "gc_fields.h"
+#include "thread_port.h"
 #include "disvm/refcount.h"
 #include <limits.h>
 #include <stddef.h>
@@ -281,6 +282,45 @@ static void allocate_candidate(AllocationTransaction *state)
 }
 
 
+/* [GC:] Capture the live destination into the transaction. BUSY has released
+ * all guards, so the owner can poll GC and retry. Returns a static error.
+ * RU: Захватить ячейку в транзакции. При BUSY блокировки сняты, можно
+ * опросить GC и повторить захват. Возвращает статическую ошибку. */
+static const char *hold_destination(AllocationTransaction *state)
+{
+    DVM_CellResult claim;
+    const char *problem;
+    for (unsigned int attempt = 0; ; attempt++)
+    {
+        problem = dvm_runtime_heap_hold_attempt(state->destination, NULL, 1,
+            &state->tail, &claim);
+        if (claim != DVM_CELL_BUSY || attempt == 63 || !dvm_native_context_poll())
+        {
+            return problem == exHeap ? "allocation destination guard refused" : problem;
+        }
+        fvm_port_thread_sleep_us(50);
+    }
+}
+
+
+/* [GC:] Publish the already rooted candidate. Retry only a busy guard.
+ * RU: Опубликовать уже укоренённый объект. Повторять только при BUSY. */
+static int commit_destination(AllocationTransaction *state)
+{
+    for (unsigned int attempt = 0; ; attempt++)
+    {
+        DVM_CellResult claim;
+        int result = dvm_runtime_heap_commit_attempt(state->destination, &state->tail,
+            &state->candidate, &state->retired, &claim);
+        if (claim != DVM_CELL_BUSY || attempt == 63 || !dvm_native_context_poll())
+        {
+            return result;
+        }
+        fvm_port_thread_sleep_us(50);
+    }
+}
+
+
 /* [GC:] Build once, then compare and publish. A fresh allocation has no dependency
  * on the observed destination, so a stale comparison can reuse the candidate. */
 static int construct(void *argument)
@@ -289,7 +329,7 @@ static int construct(void *argument)
     const char *problem;
     unsigned int attempt;
     int result;
-    problem = dvm_runtime_heap_hold(state->destination, NULL, 1, &state->tail);
+    problem = hold_destination(state);
     if (problem)
     {
         error((char *)problem);
@@ -298,8 +338,7 @@ static int construct(void *argument)
     for (attempt = 0; attempt < 8; attempt++)
     {
         void *candidate = state->candidate.value;
-        result = dvm_runtime_heap_commit(state->destination, &state->tail,
-            &state->candidate, &state->retired);
+        result = commit_destination(state);
         if (result == 1)
         {
             state->result = candidate;
@@ -307,10 +346,10 @@ static int construct(void *argument)
         }
         if (result < 0)
         {
-            error(exHeap);
+            error("allocation publication refused");
         }
         dvm_runtime_heap_finish(&state->tail, 1);
-        problem = dvm_runtime_heap_hold(state->destination, NULL, 1, &state->tail);
+        problem = hold_destination(state);
         if (problem)
         {
             error((char *)problem);

@@ -497,7 +497,10 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
                         replacement = &code[2];
                         if (CONTROL == 5 || CONTROL == 7 || (CONTROL == 6 && expected))
                         {
-                            check(!operation() && !strcmp(getup()->env->errstr,CONTROL == 5 ? exZdiv : exHeap) &&
+                            const char *diagnostic = CONTROL == 5 ? exZdiv :
+                                CONTROL == 6 ? "real branch target guard refused" :
+                                "real branch operand guard refused";
+                            check(!operation() && !strcmp(getup()->env->errstr, diagnostic) &&
                                 DVM_R.PC == &code[0] && !memcmp(bytes,before,sizeof(bytes)),"refusal or FP-boundary error unchanged");
                             goto finish;
                         }

@@ -175,6 +175,22 @@ ARRAY = "705c18a3915a741a703ba881e09c14e12e84806792d273f8d70fd75ab9f020e6"  # Ex
 
 
 SHARED_ARRAY = r"""
+/* EN: Capture the decoded count literal and TLS type index into private outputs.
+ * RU: Считать литерал длины и индекс типа из TLS в локальные переменные. */
+static int array_literal_operands(int clear, WORD *count, WORD *index)
+{
+    const Inst *instruction = dvm_runtime_decoded_instruction(clear ? INEWAZ : INEWA);
+    if (!instruction || USRC(instruction->add) != AIMM ||
+        DVM_R.s != &instruction->s || DVM_R.m != &DVM_R.t)
+    {
+        return 0;
+    }
+    memmove(count, DVM_R.s, sizeof(*count));
+    memmove(index, DVM_R.m, sizeof(*index));
+    return 1;
+}
+
+
 /* EN: Keep legacy array replacement behind its admitted handler.
  * RU: Оставить замену массива в старом обработчике с допуском. */
 static int admitted_array_new(void *argument)
@@ -182,17 +198,22 @@ static int admitted_array_new(void *argument)
     int clear = *(int *)argument;
     WORD index;
     WORD count;
-    const char *problem = dvm_runtime_bytes_snapshot(DVM_R.m, &index, sizeof(index));
+    DVM_CellResult claim;
+    const char *problem = NULL;
+    if (!array_literal_operands(clear, &count, &index))
+    {
+        problem = dvm_runtime_bytes_snapshot_pair_attempt(
+            DVM_R.m, sizeof(index), &index, DVM_R.s, sizeof(count), &count, &claim);
+    }
     if (problem)
     {
-        error((char *)problem);
+        if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(clear ? INEWAZ : INEWA))
+        {
+            return 1;
+        }
+        error((char *)(problem == exHeap ? "array operand guard refused" : problem));
     }
     Type *element = moduletype(DVM_R.M, index);
-    problem = dvm_runtime_bytes_snapshot(DVM_R.s, &count, sizeof(count));
-    if (problem)
-    {
-        error((char *)problem);
-    }
     dvm_runtime_array_new(DVM_R.d, element, count, clear);
     return 1;
 }
@@ -204,7 +225,8 @@ static void shared_array_new(int clear)
 {
     WORD index;
     WORD count;
-    if (dvm_runtime_array_shared_operands(DVM_R.s, DVM_R.m, &count, &index) &&
+    if ((array_literal_operands(clear, &count, &index) ||
+         dvm_runtime_array_shared_operands(DVM_R.s, DVM_R.m, &count, &index)) &&
         dvm_runtime_array_try_shared(DVM_R.d, moduletype(DVM_R.M, index), count, clear))
     {
         return;

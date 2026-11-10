@@ -11,6 +11,7 @@
 #include "shared_access.h"
 #include "shared_arithmetic.h"
 #include "runtime_gc.h"
+#include "thread_port.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -55,7 +56,7 @@ static const char *leased_branch(int opcode, const void *source, const void *oth
         (void *)target, sizeof(Inst *), access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : "integer branch guard refused";
     }
     if (memcmp(source, left, width) || memcmp(other, right, width))
     {
@@ -144,6 +145,18 @@ static const char *integer_branch(int opcode, const void *source,
     claim = domain ? dvm_small_range_access_begin(domain, source, width, other, width,
         guarded_target, target_size, &access) :
         dvm_managed_small_three_begin(source, width, other, width, guarded_target, target_size, &access);
+    /* The range API releases every guard on BUSY. Retry only that outcome;
+     * polling here lets a requested GC rendezvous finish between attempts. */
+    for (unsigned int attempt = 0; !domain && claim == DVM_CELL_BUSY && attempt < 64; attempt++)
+    {
+        if (!dvm_native_context_poll())
+        {
+            break;
+        }
+        fvm_port_thread_sleep_us(50);
+        claim = dvm_managed_small_three_begin(source, width, other, width,
+            guarded_target, target_size, &access);
+    }
     if (claim != DVM_CELL_ACQUIRED)
     {
         return !domain && claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
@@ -175,7 +188,8 @@ const char *dvm_runtime_integer_branch(int opcode, const void *source,
 {
     if (!dvm_runtime_gc_dispatch_is_shared())
     {
-        return integer_branch(opcode, source, other, target, pc, NULL);
+        const char *problem = integer_branch(opcode, source, other, target, pc, NULL);
+        return problem == exHeap ? "integer branch guard refused" : problem;
     }
     DVM_CellDomain *domain = dvm_managed_dispatch_cell_domain();
     if (domain)

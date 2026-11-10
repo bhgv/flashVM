@@ -278,7 +278,6 @@ int dvm_world_detach(DVM_WorldParticipant *participant)
 static int enter_world(DVM_WorldParticipant *participant, int shared, int promote, int try_only)
 {
     DVM_NativeWorld *world;
-    size_t ticket = 0;
     if (dvm_native_context_object_count(dvm_native_context_current()))
     {
         return 0;
@@ -300,7 +299,7 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
             fvm_port_sync_unlock(world->sync);
             return 0;
         }
-        if (world->active == 1 && !world->waiting && !world->collector && !world->resuming)
+        if (!world->collector && !world->resuming)
         {
             participant->shared = 0;
             world->shared--;
@@ -322,42 +321,18 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
         fvm_port_sync_unlock(world->sync);
         return 0;
     }
-    if (try_only && (world->collector || world->resuming || world->waiting ||
-        world->active != world->shared))
+    /* EN: Experiment: wait for GC rendezvous only, never for other mutators.
+     * RU: Эксперимент: ждать только барьер GC, без ожидания других исполнителей. */
+    if (try_only && (world->collector || world->resuming))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
     }
-    if (world->serial)
-    {
-        ticket = world->next_ticket++;
-        world->waiting++;
-        if (!shared)
-        {
-            __atomic_add_fetch(&world->exclusive_waiting, 1, __ATOMIC_RELEASE);
-        }
-        if ((world->active && (!shared || world->active != world->shared)) ||
-            world->collector || world->resuming || ticket != world->serving_ticket)
-        {
-            world->contentions++;
-        }
-    }
-    while (world->collector || (world->serial &&
-           ((world->active && (!shared || world->active != world->shared)) ||
-            world->resuming || ticket != world->serving_ticket)))
+    while (world->collector || world->resuming)
     {
         fvm_port_sync_wait(world->sync);
     }
-    if (world->serial)
-    {
-        world->waiting--;
-        if (!shared)
-        {
-            __atomic_sub_fetch(&world->exclusive_waiting, 1, __ATOMIC_RELEASE);
-        }
-        world->serving_ticket++;
-        world->admissions++;
-    }
+    world->admissions++;
     participant->admission_epoch = world->reclaim_epoch + 1;
     participant->active = 1;
     participant->shared = shared;

@@ -115,6 +115,20 @@ static DVM_CellResult shared_copy(DVM_CellDomain *domain, const void *source,
 }
 
 
+/* EN: Report the difference between a reserved cell and a refused guard.
+ * RU: Различить занятое поле и отказ в захвате защиты. */
+static const char *copy_opcode_attempt(const void *source,
+    void *destination, size_t size, DVM_CellResult *claim)
+{
+    const char *problem = copy_attempt(source, destination, size, claim);
+    if (problem == exHeap)
+    {
+        return *claim == DVM_CELL_BUSY ? "byte move guard busy" : "byte move guard refused";
+    }
+    return problem;
+}
+
+
 /* EN: Copy only proven rooted scalar spans from an already shared dispatch.
  * RU: Копировать только проверенные скалярные диапазоны из текущего SHARED. */
 static const char *copy_in_shared_dispatch(const void *source, void *destination, size_t size)
@@ -129,9 +143,9 @@ static const char *copy_in_shared_dispatch(const void *source, void *destination
     }
     dvm_runtime_gc_dispatch_finish();
     DVM_CellResult claim;
-    const char *problem = copy_attempt(source, destination, size, &claim);
+    const char *problem = copy_opcode_attempt(source, destination, size, &claim);
     dvm_runtime_gc_dispatch_restore();
-    return problem == exHeap ? "guarded byte move refused" : problem;
+    return problem;
 }
 
 
@@ -168,8 +182,12 @@ const char *dvm_runtime_bytes_copy_opcode(int opcode, const void *source, void *
             }
         }
     }
-    problem = copy_attempt(source, destination, size, &claim);
-    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
+    problem = copy_opcode_attempt(source, destination, size, &claim);
+    if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode))
+    {
+        return NULL;
+    }
+    return problem;
 }
 
 
@@ -312,7 +330,7 @@ const char *dvm_runtime_bytes_publish_opcode(int opcode, const void *snapshot, v
         return replay ? NULL : problem == exHeap ? "address publication guard refused" : problem;
     }
     const char *problem = publish_attempt(snapshot, destination, size, &claim, NULL);
-    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
+    return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : problem == exHeap ? "address publication guard refused" : problem;
 }
 
 

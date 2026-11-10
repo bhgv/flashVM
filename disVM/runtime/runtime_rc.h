@@ -18,12 +18,10 @@ struct Type;
 int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type,
     void *extra);
 
-/* [GC:] Transfer the caller's last reference into the native queue, retaining
- * one queue-owned reference and an external GC root. Called by generated destroy
- * after its normal header check. Returns one when transferred, zero to retain
- * inline destruction. Only an ACTIVE executor of the owning runtime world is
- * admitted; native/idle/foreign/collector contexts refuse before payload reads.
- * Never queues collector-side recursive destruction. */
+/* [GC:] Consume a reference from an ACTIVE or SHARED executor in the live
+ * owning world. Nonfinal drops may complete atomically. Queued drops retain
+ * the original strong reference and publish an external GC root. Return zero
+ * outside live mutator admission so collector recursion and shutdown work. */
 int dvm_runtime_rc_defer(void *value);
 
 /* [GC:] Release at most budget queue owners with the retained destroy algorithm.

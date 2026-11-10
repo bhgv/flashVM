@@ -441,7 +441,7 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     if (claim != DVM_CELL_ACQUIRED)
     {
         dispose(&copy);
-        error(exHeap);
+        error("mapped transfer guard refused");
     }
     if (problem)
     {

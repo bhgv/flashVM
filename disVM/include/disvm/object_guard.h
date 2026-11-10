@@ -58,6 +58,9 @@ int dvm_object_guard_fini(DVM_ObjectGuard *guard);
  * do not call it while already holding that mutex. */
 DVM_ObjectResult dvm_object_guard_try_enter(DVM_ObjectGuard *guard);
 
+/* Wait for and take guard. Caller must acquire multiple guards in one order. */
+DVM_ObjectResult dvm_object_guard_enter(DVM_ObjectGuard *guard);
+
 
 /* Park without taking ownership. Caller retains object and publishes any VM
  * roots BEFORE leaving its heap interval. ACTIVE/collector or held-guard callers

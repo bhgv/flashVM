@@ -42,7 +42,7 @@ static const char *leased_conversion(int opcode, const void *source, size_t inpu
     claim = dvm_managed_spans_begin(source, input, destination, output, access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : "integer conversion guard refused";
     }
     if (memcmp(source, saved, input))
     {
@@ -73,7 +73,7 @@ const char *dvm_runtime_integer_convert(int opcode, const void *source, void *de
     size_t output;
     if (dvm_runtime_shared_mode() != 2)
     {
-        return exHeap;
+        return "integer conversion requires managed dispatch";
     }
     switch (opcode)
     {
@@ -102,7 +102,7 @@ const char *dvm_runtime_integer_convert(int opcode, const void *source, void *de
         output = sizeof(WORD);
         break;
     default:
-        return exHeap;
+        return "invalid integer conversion opcode";
     }
     if (!destination || destination == H || (uintptr_t)destination > (uintptr_t)-1 - output ||
         !source || source == H || (uintptr_t)source > (uintptr_t)-1 - input)
@@ -112,7 +112,7 @@ const char *dvm_runtime_integer_convert(int opcode, const void *source, void *de
     claim = dvm_managed_spans_begin(source, input, destination, output, &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcode) ? NULL : "integer conversion guard refused";
     }
     if (dvm_runtime_parallel_scalar_spans(opcode, source, input, destination, output, NULL, 0))
     {

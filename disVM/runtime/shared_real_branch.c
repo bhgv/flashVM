@@ -10,6 +10,7 @@
 #include "branch_value.h"
 #include "shared_access.h"
 #include "managed_owner.h"
+#include "thread_port.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -45,7 +46,7 @@ const char *dvm_runtime_real_branch(int condition, const void *source,
         &access);
     if (claim != DVM_CELL_ACQUIRED)
     {
-        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]) ? NULL : exHeap;
+        return claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]) ? NULL : "real branch operand guard refused";
     }
     dvm_runtime_real_branch_capture(source, other, pair);
     if (!dvm_range_access_end(&access))
@@ -67,9 +68,20 @@ const char *dvm_runtime_real_branch(int condition, const void *source,
     {
         return exBounds;
     }
-    if (dvm_managed_ranges_begin(target, sizeof(Inst *), NULL, 0, &access) != DVM_CELL_ACQUIRED)
+    claim = dvm_managed_ranges_begin(target, sizeof(Inst *), NULL, 0, &access);
+    /* Retry only the target read. The FP comparison has already run. */
+    for (unsigned int attempt = 0; claim == DVM_CELL_BUSY && attempt < 64; attempt++)
     {
-        return exHeap;
+        if (!dvm_native_context_poll())
+        {
+            break;
+        }
+        fvm_port_thread_sleep_us(50);
+        claim = dvm_managed_ranges_begin(target, sizeof(Inst *), NULL, 0, &access);
+    }
+    if (claim != DVM_CELL_ACQUIRED)
+    {
+        return "real branch target guard refused";
     }
     if (!dvm_runtime_branch_target(target, pc))
     {

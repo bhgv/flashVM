@@ -19,4 +19,10 @@
  * collector admission, a history/version CAS or a root snapshot lease. */
 int dvm_runtime_heap_commit(void *cell, const DVM_HeapHold *observed,
     DVM_HeapHold *incoming, DVM_HeapHold *retired);
+
+
+/* Also return guard status in caller-private claim storage. BUSY leaves all
+ * leases unchanged and permits retry. ACQUIRED may still refuse publication. */
+int dvm_runtime_heap_commit_attempt(void *cell, const DVM_HeapHold *observed,
+    DVM_HeapHold *incoming, DVM_HeapHold *retired, DVM_CellResult *claim);
 #endif

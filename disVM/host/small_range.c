@@ -128,7 +128,8 @@ DVM_CellResult dvm_small_range_access_begin(DVM_CellDomain *domain,
     }
     for (index = 0; index < access->count; index++)
     {
-        DVM_ObjectResult result = dvm_object_guard_try_enter(access->guards[index]);
+        DVM_ObjectResult result = domain->blocking ? dvm_object_guard_enter(access->guards[index]) :
+            dvm_object_guard_try_enter(access->guards[index]);
         if (result != DVM_OBJECT_ACQUIRED)
         {
             unwind(access);

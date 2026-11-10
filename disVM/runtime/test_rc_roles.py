@@ -15,7 +15,7 @@ def main():
     runtime = root / 'disVM/runtime'
     source = (runtime / 'runtime_rc.c').read_text()
     controls = {
-        'phase': ('state.phase == DVM_HEAP_ACTIVE && ', ''),
+        'phase': ('(state.phase == DVM_HEAP_ACTIVE || (allow_shared && state.phase == DVM_HEAP_SHARED)) &&', ''),
         'progress': ('!state.pending_progress &&', ''),
         'world': ('dvm_native_owner_world(current) == world', '1'),
     }

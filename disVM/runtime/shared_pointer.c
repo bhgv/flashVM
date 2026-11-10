@@ -257,7 +257,11 @@ static const char *movp_active_opcode(int opcode, const void *source, void *dest
     }
     if (*replay || problem)
     {
-        return *replay ? NULL : problem;
+        if (*replay)
+        {
+            return NULL;
+        }
+        return problem == exHeap ? "pointer move refused" : problem;
     }
     if (root.key)
     {

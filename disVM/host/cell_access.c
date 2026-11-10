@@ -61,6 +61,14 @@ DVM_CellDomain *dvm_cell_domain_create(void)
 }
 
 
+/* EN: Configure blocking claims on a private domain before publication.
+ * RU: Включить ожидающий захват на domain до начала параллельной работы. */
+void dvm_cell_domain_enable_blocking(DVM_CellDomain *domain)
+{
+    domain->blocking = 1;
+}
+
+
 /* EN: Test a guarded destination for overlap with exact reserved pointer fields.
  * RU: Проверить пересечение защищённого destination длиной size с полями domain. */
 static int span_reserved(DVM_CellDomain *domain, const void *destination, size_t size, int read)
@@ -328,7 +336,8 @@ DVM_CellResult dvm_cell_access_spans_begin(DVM_CellDomain *domain,
     }
     for (index = 0; index < access->count; index++)
     {
-        DVM_ObjectResult result = dvm_object_guard_try_enter(access->guards[index]);
+        DVM_ObjectResult result = domain->blocking ? dvm_object_guard_enter(access->guards[index]) :
+            dvm_object_guard_try_enter(access->guards[index]);
         if (result != DVM_OBJECT_ACQUIRED)
         {
             unwind(access);

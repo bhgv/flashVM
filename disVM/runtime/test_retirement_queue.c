@@ -207,6 +207,32 @@ static void indexed_case(void)
 }
 
 
+/* EN: Verify mandatory FIFO growth keeps a live token and queued order.
+ * RU: Проверить порядок FIFO и действительность резерва после роста. */
+static void growing_release_case(void)
+{
+    DVM_RetirementQueue *queue = dvm_retirement_create_growing(1);
+    DVM_RetirementReservation first = {0};
+    DVM_RetirementReservation second = {0};
+    DVM_RetirementStats stats;
+    int values[2];
+    void *out;
+    unsigned long bytes;
+    unsigned long charge = 8UL * 1024 * 1024;
+    check(queue && dvm_retirement_reserve(queue, charge, &first) == DVM_RETIRE_OK &&
+        dvm_retirement_reserve(queue, charge, &second) == DVM_RETIRE_OK &&
+        dvm_retirement_commit(queue, &first, &values[0]) &&
+        dvm_retirement_commit(queue, &second, &values[1]),
+        "FAIL mandatory FIFO growth with outstanding reservation");
+    check(dvm_retirement_take(queue, &out, &bytes) && out == &values[0] && bytes == charge &&
+        dvm_retirement_take(queue, &out, &bytes) && out == &values[1] && bytes == charge &&
+        dvm_retirement_statistics(queue, &stats) && stats.capacity == 1 &&
+        stats.peak_capacity == 2, "FAIL mandatory FIFO order or shrink");
+    dvm_retirement_close(queue);
+    check(dvm_retirement_destroy(&queue), "FAIL mandatory FIFO destroy");
+}
+
+
 /* Exercise growth with a published key and an outstanding reservation.
  * Check FIFO, token validity and shrinking after both take and cancel. */
 static void growing_indexed_case(void)
@@ -321,6 +347,7 @@ int main(int argc, char **argv)
     boundaries();
     indexed_case();
     growing_indexed_case();
+    growing_release_case();
     if (argc > 1 && !strcmp(argv[1], "--serial-only"))
     {
         puts("PASS retire serial boundaries");

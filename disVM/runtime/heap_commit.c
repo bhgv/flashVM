@@ -36,8 +36,8 @@ static int overlaps(const void *first, size_t first_size, const void *second, si
  * Retained observed identity prevents allocator ABA while that owner stays live;
  * this does not distinguish an intervening write away and back to the same value.
  * Neither strong reference count changes nor consuming callbacks occur here. */
-int dvm_runtime_heap_commit(void *cell, const DVM_HeapHold *observed,
-    DVM_HeapHold *incoming, DVM_HeapHold *retired)
+int dvm_runtime_heap_commit_attempt(void *cell, const DVM_HeapHold *observed,
+    DVM_HeapHold *incoming, DVM_HeapHold *retired, DVM_CellResult *claim)
 {
     DVM_CellAccess access = {0};
     void *previous;
@@ -45,6 +45,7 @@ int dvm_runtime_heap_commit(void *cell, const DVM_HeapHold *observed,
     void *key = NULL;
     size_t count = 0;
     int outcome = -1;
+    *claim = DVM_CELL_REFUSED;
     if (dvm_runtime_shared_mode() != 2 || !span(cell, sizeof(void *)) ||
         !span(observed, sizeof(*observed)) || !span(incoming, sizeof(*incoming)) ||
         !span(retired, sizeof(*retired)))
@@ -67,7 +68,8 @@ int dvm_runtime_heap_commit(void *cell, const DVM_HeapHold *observed,
     {
         return -1;
     }
-    if (dvm_managed_cells_begin(cell, cell, &access) != DVM_CELL_ACQUIRED)
+    *claim = dvm_managed_cells_begin(cell, cell, &access);
+    if (*claim != DVM_CELL_ACQUIRED)
     {
         return -1;
     }
@@ -108,4 +110,14 @@ int dvm_runtime_heap_commit(void *cell, const DVM_HeapHold *observed,
         abort();
     }
     return outcome;
+}
+
+
+/* EN: Publish an owner using the same contract without returning guard status.
+ * RU: Опубликовать ссылку по тому же контракту без статуса блокировки. */
+int dvm_runtime_heap_commit(void *cell, const DVM_HeapHold *observed,
+    DVM_HeapHold *incoming, DVM_HeapHold *retired)
+{
+    DVM_CellResult claim;
+    return dvm_runtime_heap_commit_attempt(cell, observed, incoming, retired, &claim);
 }

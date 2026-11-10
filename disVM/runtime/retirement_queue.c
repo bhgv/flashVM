@@ -97,6 +97,20 @@ DVM_RetirementQueue *dvm_retirement_create_indexed(unsigned int capacity, unsign
 }
 
 
+/* EN: Create a FIFO with no policy limit on pending release bytes.
+ * RU: Создать FIFO без заданного лимита байтов ожидающих освобождений. */
+DVM_RetirementQueue *dvm_retirement_create_growing(unsigned int capacity)
+{
+    DVM_RetirementQueue *queue = create_queue(capacity, ULONG_MAX, 0);
+    if (queue)
+    {
+        size_t maximum = SIZE_MAX / sizeof(RetirementSlot);
+        queue->max_capacity = maximum < UINT_MAX / 2 ? maximum : UINT_MAX / 2;
+    }
+    return queue;
+}
+
+
 /* Grow an indexed queue up to a metadata budget equal to byte_limit.
  * The initial allocation and ownership contract match create_indexed. */
 DVM_RetirementQueue *dvm_retirement_create_growing_indexed(unsigned int capacity,
@@ -106,6 +120,10 @@ DVM_RetirementQueue *dvm_retirement_create_growing_indexed(unsigned int capacity
     if (queue)
     {
         unsigned long maximum = byte_limit / (sizeof(RetirementSlot) + sizeof(unsigned int));
+        if (maximum > SIZE_MAX / sizeof(RetirementSlot))
+        {
+            maximum = SIZE_MAX / sizeof(RetirementSlot);
+        }
         if (maximum > UINT_MAX / 2)
         {
             maximum = UINT_MAX / 2;
@@ -148,14 +166,15 @@ static unsigned int *key_link(DVM_RetirementQueue *queue, DVM_HeapKey key)
 /* Enter and return with the metadata mutex held. Allocate and release native
  * storage outside it, then recheck that the requested resize still applies.
  * Existing token indices and committed FIFO order survive growth. */
-static int resize_indexed_queue(DVM_RetirementQueue *queue, unsigned int capacity)
+static int resize_queue(DVM_RetirementQueue *queue, unsigned int capacity)
 {
     unsigned int old_capacity = queue->capacity;
     int growing = capacity > old_capacity;
+    int indexed = queue->buckets != NULL;
     fvm_port_sync_unlock(queue->sync);
     RetirementSlot *slots = calloc(capacity, sizeof(*slots));
-    unsigned int *buckets = calloc(capacity, sizeof(*buckets));
-    int allocated = slots && buckets;
+    unsigned int *buckets = indexed ? calloc(capacity, sizeof(*buckets)) : NULL;
+    int allocated = slots && (!indexed || buckets);
     fvm_port_sync_lock(queue->sync);
     if (allocated && queue->accepting && queue->capacity == old_capacity &&
         (growing ? queue->free_head == old_capacity : !queue->ready && !queue->reserved))
@@ -176,7 +195,7 @@ static int resize_indexed_queue(DVM_RetirementQueue *queue, unsigned int capacit
             queue->peak_capacity = capacity;
         }
         queue->free_head = used_capacity;
-        for (unsigned int link = queue->head; link; link = slots[link - 1].ready_next)
+        for (unsigned int link = indexed ? queue->head : 0; link; link = slots[link - 1].ready_next)
         {
             RetirementSlot *slot = &slots[link - 1];
             unsigned int *bucket = key_bucket(queue, slot->key);
@@ -206,7 +225,7 @@ static int grow_full_queue(DVM_RetirementQueue *queue)
     {
         capacity = queue->max_capacity;
     }
-    return resize_indexed_queue(queue, capacity);
+    return resize_queue(queue, capacity);
 }
 
 
@@ -217,7 +236,7 @@ static void shrink_empty_queue(DVM_RetirementQueue *queue)
     if (queue->accepting && !queue->ready && !queue->reserved &&
         queue->capacity > queue->initial_capacity)
     {
-        (void)resize_indexed_queue(queue, queue->initial_capacity);
+        (void)resize_queue(queue, queue->initial_capacity);
     }
 }
 

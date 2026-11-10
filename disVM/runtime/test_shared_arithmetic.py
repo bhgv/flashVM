@@ -44,6 +44,10 @@ def wrapper():
     code = TEMPLATE.replace('shared_integer.h', 'shared_arithmetic.h').replace('integer_value.h', 'arithmetic_value.h')
     code = code.replace('dvm_runtime_integer_value', 'dvm_runtime_arithmetic_value')
     code = code.replace('dvm_runtime_integer_convert', 'dvm_runtime_arithmetic')
+    code = code.replace('problem == exHeap',
+                        'problem && !strcmp(problem, "integer arithmetic guard refused")')
+    code = code.replace('== exHeap &&\n            !memcmp',
+                        '&&\n            !memcmp')
     code = code.replace('dvm_managed_spans_begin', 'dvm_managed_three_begin')
     code = code.replace('static void *output_cell;', 'static const void *second_cell; /* Borrowed second input. */\nstatic void *output_cell;')
     code = code.replace('DVM_CellResult __real_dvm_managed_three_begin(const void *, size_t, void *, size_t, DVM_CellAccess *);',
@@ -281,7 +285,7 @@ static int force_busy;''')
     return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);''')
     code = code.replace('    __real_error(message);', '''    if (CONTROL == 5 && busy_attempts)
     {
-        check(!strcmp(message, exHeap) && busy_attempts == 9 &&
+        check(!strcmp(message, "integer arithmetic guard refused") && busy_attempts == 9 &&
             retry_pc == DVM_R.PC && retry_instruction_count == dvm_runtime_instructions &&
             !memcmp(busy_before, busy_output, busy_width) &&
             !dvm_native_context_object_count(dvm_native_context_current()),

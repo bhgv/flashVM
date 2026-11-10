@@ -1040,7 +1040,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
                     memcpy(wanted, bytes, sizeof(bytes));
                     if (CONTROL == 4)
                     {
-                        check(!operation() && !strcmp(getup()->env->errstr, exHeap) &&
+                        check(!operation() && !strcmp(getup()->env->errstr, "array length guard refused") &&
                             !memcmp(bytes, wanted, sizeof(bytes)) && dvm_refcount_load_u(&heap->ref) == 1 &&
                             dvm_runtime_root_count(heap) == 1, "extension refusal unchanged");
                         ptrdel(heap);

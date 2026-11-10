@@ -987,11 +987,15 @@ def adapt_queue_holds(source):
             raise ValueError("channel queue wrapper drift: " + name)
         body = body.replace(signature, f"static void\n{name}_locked({parameters})", 1)
     tail = source[end:]
-    for state in ("Psend", "Precv"):
-        start_wait = tail.index(f"p = delrun({state});")
+    for state, queue, cell in (("Psend", "send", "s"), ("Precv", "recv", "d")):
+        old = f"\t\tp = currun();\n\t\tcqadd(&c->{queue}, p);"
+        start_wait = tail.index(old)
         end_wait = tail.index("DVM_R.t = 1;", start_wait) + len("DVM_R.t = 1;")
-        tail = tail[:end_wait] + "\n        dvm_runtime_channel_waiter_published();" + tail[end_wait:]
+        tail = (tail[:start_wait] +
+                f"        park_channel_waiter(c, &c->{queue}, DVM_R.{cell}, {state});" +
+                tail[end_wait:])
     return source[:start] + declarations + body + QUEUE_WRAPPERS + tail
+
 
 
 
@@ -1032,7 +1036,54 @@ typedef struct ChannelQueueRequest
 } ChannelQueueRequest;
 
 
-extern void dvm_runtime_channel_waiter_published(void);
+extern void dvm_runtime_channel_buffer_notify(void);
+
+typedef struct ChannelPark
+{
+    Channel *channel; /* Borrowed live channel. */
+    Progq **queue;    /* Queue belonging to channel. */
+    void *slot;      /* Borrowed operand in the waiting frame. */
+    int state;       /* Psend or Precv. */
+} ChannelPark;
+
+
+/* EN: Publish the queue node and parked state under the same mutex.
+ * RU: Опубликовать узел очереди и состояние ожидания под одним мьютексом. */
+static int publish_channel_park(void *argument)
+{
+    ChannelPark *request = argument;
+    Prog *peer = currun();
+    if (dvm_runtime_guest_unbounded)
+    {
+        int receive = request->state == Precv;
+        if (channelpeer(request->channel, receive))
+        {
+            if (!dvm_runtime_scalar_retry(receive ? IRECV : ISEND))
+            {
+                error("channel readiness changed repeatedly before parking");
+            }
+            return 1;
+        }
+    }
+    cqadd_locked(request->queue, peer);
+    peer->ptr = request->slot;
+    peer->chan = request->channel;
+    DVM_R.IC = 1;
+    DVM_R.t = 1;
+    delrun(request->state);
+    dvm_runtime_channel_buffer_notify();
+    return 1;
+}
+
+
+/* EN: Commit this thread's wait and operand before a peer can claim it.
+ * RU: Опубликовать ожидание и операнд до захвата другим потоком. */
+static void park_channel_waiter(Channel *channel, Progq **queue, void *slot, int state)
+{
+    ChannelPark request = {channel, queue, slot, state};
+    dvm_runtime_channel_queue_guard(publish_channel_park, &request);
+}
+
 
 /* Publish a queue node with its native hold. */
 static int queue_add(void *argument)

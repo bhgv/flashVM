@@ -31,8 +31,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define RC_BYTES (4UL*1024UL*1024UL) /* Bound queued direct block bytes and charged packet metadata. */
-#define RC_CAPACITY 512 /* Fixed native slots; saturation falls back to inline RC. */
+#define RC_CAPACITY 512 /* Initial FIFO slots for release and packet lanes. */
 #define RC_CANDIDATE_CAPACITY 256 /* Initial slots; grow during nonfinal-owner bursts. */
 
 /* A packet owns each captured reference through the collector's drain. */
@@ -124,12 +123,13 @@ static int accepting;                /* Closed before mutator leaves on shutdown
  * Only a bound ACTIVE owner of this runtime's exclusive world may proceed.
  * Native/idle/detached/collector contexts refuse without reading the queue.
  * The world lifetime is retained through all producer/collector joins. */
-static int admitted(void)
+static int admitted(int allow_shared)
 {
     DVM_HeapOwner *current = dvm_native_owner_current();
     DVM_HeapOwnerStats state;
     return current && dvm_native_owner_statistics(current, &state) &&
-        state.phase == DVM_HEAP_ACTIVE && !state.pending_progress &&
+        (state.phase == DVM_HEAP_ACTIVE || (allow_shared && state.phase == DVM_HEAP_SHARED)) &&
+        !state.pending_progress &&
         dvm_native_owner_world(current) == world;
 }
 
@@ -150,17 +150,22 @@ void dvm_runtime_rc_start(void)
         fprintf(stderr, "disvm RC queue restarted before successful finish\n");
         abort();
     }
-    retirement = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    frames = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    leaves = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    difficult = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    record_retries = dvm_retirement_create(RC_CAPACITY, RC_BYTES);
-    cycle_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
+    retirement = dvm_retirement_create_growing(RC_CAPACITY);
+    if (!retirement)
+    {
+        fprintf(stderr, "disvm: out of memory creating mandatory GC release queue\n");
+        abort();
+    }
+    frames = dvm_retirement_create_growing(RC_CAPACITY);
+    leaves = dvm_retirement_create_growing(RC_CAPACITY);
+    difficult = dvm_retirement_create_growing(RC_CAPACITY);
+    record_retries = dvm_retirement_create_growing(RC_CAPACITY);
+    cycle_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, ULONG_MAX);
     candidate_transfer = fvm_port_sync_create();
     if (candidate_transfer)
     {
-        cycle_refused = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
-        duke_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, RC_BYTES);
+        cycle_refused = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, ULONG_MAX);
+        duke_candidates = dvm_retirement_create_growing_indexed(RC_CANDIDATE_CAPACITY, ULONG_MAX);
     }
     difficult_moved = 0;
     memset(&fallback, 0, sizeof(fallback));
@@ -267,7 +272,7 @@ static void release_owned_descriptor(Type *type)
  * All failure paths keep the existing owner available to ordinary destroy. */
 static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
 {
-    if (!leaves || heapmonitor || !leaf_eligible(heap) || bytes > RC_BYTES)
+    if (!leaves || heapmonitor || !leaf_eligible(heap))
     {
         return 0;
     }
@@ -363,7 +368,7 @@ static int defer_record_group(RecordGroup *group, int shared, int *retry)
     size_t packet_bytes = sizeof(FrameRetirement) + group->nodes_used * sizeof(void *);
     size_t metadata = sizeof(LeafRetirement) + dvm_rc_record_group_bytes(group, edges) +
         packet_bytes + dvm_runtime_root_batch_bytes(group->nodes_used);
-    if (metadata > RC_BYTES)
+    if (metadata > ULONG_MAX)
     {
         return 0;
     }
@@ -371,7 +376,7 @@ static int defer_record_group(RecordGroup *group, int shared, int *retry)
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         unsigned long size = poolmsize(heapmem, D2H(group->nodes[index]));
-        if (size > RC_BYTES - bytes)
+        if (size > ULONG_MAX - bytes)
         {
             return 0;
         }
@@ -557,86 +562,69 @@ static int transfer_record_candidate(Heap *heap, FrameRetirement *packet, size_t
 }
 
 
-/* [GC:] value has passed destroy's retained block check. Keep its retiring reference
- * as queue ownership rather than publishing an unrooted zero-count object.
- * A failed ptradd leaves ownership untouched and restores the caller error text,
- * allowing ordinary inline destruction. Reserve precedes root setup; metadata
- * mutex never spans ptradd/Setmark/errors or referent destruction. Mutable
- * statistics/accepting and all managed source access still require world exclusion. */
+/* [GC:] Transfer the caller's reference to GC. Optional leaf and cycle
+ * lanes may decline, but a live mutator always publishes to the release FIFO.
+ * RU: Передать ссылку вызывающего в GC. Специализированные очереди могут
+ * отказаться, но действующий исполнитель всегда публикует её в FIFO. */
 int dvm_runtime_rc_defer(void *value)
 {
-    Heap *heap;
-    unsigned long bytes;
-    char previous[ERRMAX];
-    int helper;
-    DVM_RetirementReservation token = {0};
-    DVM_RetirementResult reserved;
-    if (!admitted() || !accepting)
+    if (!admitted(1) || !accepting)
     {
         return 0;
     }
-    helper = dvm_native_context_current() != owner;
-    heap = D2H(value);
-    int last = dvm_refcount_load_u(&heap->ref) == 1;
-    DVM_HeapKey key = {0};
-    if (!last)
+    int active = admitted(0);
+    int helper = dvm_native_context_current() != owner;
+    Heap *heap = D2H(value);
+    int candidate = active && record_candidate(heap);
+    if (!candidate && dvm_refcount_drop_nonfinal_u(&heap->ref))
     {
-        if (!record_candidate(heap))
-        {
-            return 0;
-        }
-        key = dvm_heap_pool_key(heapmem, heap);
-        if (!key.generation || cycle_candidate_already_queued(key))
-        {
-            return 0;
-        }
-    }
-    bytes = poolmsize(heapmem,heap);
-    if (last && defer_leaf(heap, bytes, 1))
-    {
-        __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
-        helper_enqueued += helper != 0;
         return 1;
     }
-    DVM_RetirementQueue *queue = last ? retirement : cycle_candidates;
-    reserved = dvm_retirement_reserve(queue, bytes, &token);
-    if (reserved != DVM_RETIRE_OK)
+    int last = dvm_refcount_load_u(&heap->ref) == 1;
+    unsigned long bytes = poolmsize(heapmem, heap);
+    if (!active || !last || !defer_leaf(heap, bytes, 1))
     {
-        if (reserved == DVM_RETIRE_FULL)
+        DVM_RetirementReservation token = {0};
+        DVM_HeapKey key = {0};
+        int ready = 0;
+        int queued = 0;
+        if (!last && candidate)
         {
-            saturated++;
-            helper_saturated += helper != 0;
+            key = dvm_heap_pool_key(heapmem, heap);
         }
-        else if (reserved == DVM_RETIRE_BYTES)
+        /* Transfer the existing strong reference and root it for tracing. */
+        if (!dvm_runtime_root_add(heap))
         {
-            byte_limited++;
-            helper_byte_limited += helper != 0;
+            fprintf(stderr, "disvm: out of memory rooting mandatory GC release\n");
+            abort();
         }
-        return 0;
-    }
-    memcpy(previous,up->env->errstr,sizeof(previous));
-    if (waserror())
-    {
-        (void)dvm_retirement_cancel(queue, &token);
-        memcpy(up->env->errstr,previous,sizeof(previous));
-        return 0;
-    }
-    ptradd(heap);
-    poperror();
-    Setmark(heap);
-    int became_ready;
-    if (!dvm_retirement_commit_key(queue, &token, value, key, &became_ready))
-    {
-        (void)dvm_retirement_cancel(queue, &token);
-        ptrdel(heap);
-        return 0;
+        Setmark(heap);
+        if (key.generation && !cycle_candidate_already_queued(key) &&
+            dvm_retirement_reserve(cycle_candidates, bytes, &token) == DVM_RETIRE_OK)
+        {
+            queued = dvm_retirement_commit_key(cycle_candidates, &token, value, key, &ready);
+            if (!queued && !dvm_retirement_cancel(cycle_candidates, &token))
+            {
+                abort();
+            }
+        }
+        if (!queued)
+        {
+            DVM_RetirementResult result = dvm_retirement_reserve(retirement, bytes, &token);
+            if (result != DVM_RETIRE_OK ||
+                !dvm_retirement_commit_ready(retirement, &token, value, &ready))
+            {
+                fprintf(stderr, "disvm: mandatory GC release publication failed (%d)\n", result);
+                abort();
+            }
+        }
+        if (ready && notify_ready)
+        {
+            notify_ready();
+        }
     }
     __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
-    helper_enqueued += helper != 0;
-    if (became_ready && notify_ready)
-    {
-        notify_ready();
-    }
+    __atomic_fetch_add(&helper_enqueued, helper != 0, __ATOMIC_RELAXED);
     return 1;
 }
 
@@ -658,10 +646,6 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
         return 0;
     }
     unsigned long direct = extra ? poolmsize(heapmem, D2H(extra)) : 0;
-    if (direct > RC_BYTES)
-    {
-        return 0;
-    }
     for (int byte = 0; type && byte < type->np; byte++)
     {
         for (unsigned bit = 0; bit < 8; bit++)
@@ -683,7 +667,7 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
                 if (value != H)
                 {
                     unsigned long size = poolmsize(heapmem, D2H(value));
-                    if (size > RC_BYTES - direct)
+                    if (size > ULONG_MAX - direct)
                     {
                         return 0;
                     }
@@ -697,12 +681,12 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *ext
     {
         return 1;
     }
-    if (capacity > (RC_BYTES - sizeof(FrameRetirement)) / sizeof(void *))
+    if (capacity > (SIZE_MAX - sizeof(FrameRetirement)) / sizeof(void *))
     {
         return 0;
     }
     size_t bytes = sizeof(FrameRetirement) + capacity * sizeof(void *);
-    if (bytes > RC_BYTES - direct)
+    if (bytes > ULONG_MAX - direct)
     {
         return 0;
     }
@@ -802,7 +786,7 @@ static int transfer_array_children(Heap *heap, int *retry)
         {
             mapped += __builtin_popcount((unsigned char)type->map[byte]);
         }
-        size_t available = (RC_BYTES - sizeof(FrameRetirement)) / sizeof(void *);
+        size_t available = (SIZE_MAX - sizeof(FrameRetirement)) / sizeof(void *);
         if (mapped && (size_t)array->len > available / mapped)
         {
             return 0;
@@ -814,10 +798,6 @@ static int transfer_array_children(Heap *heap, int *retry)
         return dvm_refcount_claim_last_u(&heap->ref);
     }
     size_t storage = sizeof(FrameRetirement) + capacity * sizeof(void *);
-    if (storage > RC_BYTES)
-    {
-        return 0;
-    }
     FrameRetirement *packet = malloc(storage);
     if (!packet)
     {
@@ -882,7 +862,7 @@ static int transfer_array_children(Heap *heap, int *retry)
         valid = packet->roots != NULL;
     }
     unsigned long charge = 0;
-    valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, RC_BYTES, &charge);
+    valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, ULONG_MAX, &charge);
     DVM_RetirementReservation token = {0};
     DVM_RetirementResult reservation = valid ?
         dvm_retirement_reserve(frames, charge, &token) : DVM_RETIRE_INVALID;
@@ -982,7 +962,7 @@ static FrameRetirement *prepare_release_packet(void *const *keys, size_t count,
 {
     unsigned long charge;
     size_t storage = sizeof(FrameRetirement) + count * sizeof(void *);
-    if (!dvm_gc_packet_charge(keys, charged_keys, storage, RC_BYTES, &charge))
+    if (!dvm_gc_packet_charge(keys, charged_keys, storage, ULONG_MAX, &charge))
     {
         return NULL;
     }
@@ -1443,7 +1423,7 @@ static int release_duke_pins(size_t budget, int stopped)
         else if (!stopped)
         {
             unsigned long bytes = poolmsize(heapmem, heap);
-            if (leaves && !heapmonitor && bytes <= RC_BYTES && leaf_eligible(heap))
+            if (leaves && !heapmonitor && leaf_eligible(heap))
             {
                 if (!defer_leaf(heap, bytes, 0))
                 {
@@ -2279,7 +2259,7 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
 unsigned int dvm_runtime_rc_pending(void)
 {
     DVM_RetirementStats stats = {0};
-    if (admitted())
+    if (admitted(0))
     {
         DVM_RetirementStats frame_stats = {0};
         (void)dvm_retirement_statistics(frames, &frame_stats);

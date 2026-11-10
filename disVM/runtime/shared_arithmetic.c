@@ -1558,6 +1558,27 @@ static const char *arithmetic_attempt(int opcode, const void *first, const void 
     {
         return exHeap;
     }
+    /* A dedicated resident owns its scalar frame slots. The decoded immediate
+     * is immutable or lives in TLS. MP and indirect shared cells use guards. */
+    if (!invalid_outer && dvm_runtime_guest_unbounded &&
+        !dvm_runtime_parallel_add)
+    {
+        const Type *frame = current_frame_type();
+        const Inst *instruction = dvm_runtime_decoded_instruction(opcode);
+        if (frame && instruction && UDST(instruction->add) == AFP &&
+            frame_scalar(output, frame, width) &&
+            (frame_scalar(first, frame, width) || first == &DVM_R.t) &&
+            ((USRC(instruction->add) == AFP && frame_scalar(second, frame, width)) ||
+             (USRC(instruction->add) == AIMM && second == &instruction->s)))
+        {
+            if (division && dvm_runtime_divisor_zero(opcode, second))
+            {
+                return exZdiv;
+            }
+            dvm_runtime_arithmetic_value(opcode, first, second, output);
+            return NULL;
+        }
+    }
     const void *guarded_first = invalid_outer ? second : first;
     void *guarded_output = invalid_outer ? (void *)second : output;
     claim = domain ? dvm_small_range_access_begin(domain, guarded_first, width,
@@ -1653,7 +1674,11 @@ const char *dvm_runtime_arithmetic(int opcode, const void *first, const void *se
     int retryable;
     const char *problem = dvm_runtime_arithmetic_attempt(opcode, first, second, output, &retryable);
 
-    return retryable && dvm_runtime_scalar_retry(opcode) ? NULL : problem;
+    if (retryable && dvm_runtime_scalar_retry(opcode))
+    {
+        return NULL;
+    }
+    return problem == exHeap ? "integer arithmetic guard refused" : problem;
 }
 
 

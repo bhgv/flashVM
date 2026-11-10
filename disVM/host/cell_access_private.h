@@ -17,6 +17,7 @@
 struct DVM_CellDomain
 {
     unsigned long references; /* Checked native count; caller protects first lookup. */
+    int blocking; /* Initial claims wait in stripe order when enabled at startup. */
     DVM_ObjectDomain *parking; /* Owned shared parking metadata. */
     unsigned int reservation_active; /* Atomic phase: 0 inactive, 1 writes, 2 reads and writes. */
     const uintptr_t *reserved_cells; /* Sorted exact addresses under the registry mutex. */
