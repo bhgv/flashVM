@@ -2912,8 +2912,6 @@ static int runtime_dispatch_turn(void)
     Prog *process;
     int cancelled = gc_worker && dispatch_guest_cancellations();
 
-    int reload_registers = cancelled;
-
     if (native_spawn)
     {
         Prog *guest = dvm_managed_workers_guest();
@@ -2929,10 +2927,6 @@ static int runtime_dispatch_turn(void)
     else
     {
         process = dvm_runqueue_head();
-    }
-    if (reload_registers)
-    {
-        dvm_native_execution()->resident_registers_valid = 0;
     }
     if (!process)
     {
