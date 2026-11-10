@@ -2,30 +2,30 @@
 
 ## Dedicated spawn threads
 
-`--native-spawn` creates one OS thread for each `spawn` and `mspawn` via
-the host thread port. The initial guest runs on the controller. Each
-child binds a native TLS context and can dispatch only its own PID.
-A guest retains that thread through channel and native waits. Its managed
-retirement ends the thread and the runtime joins it before collector teardown.
+In the no-exclusive experiment, `--native-spawn` binds one `Prog` and one
+live register set to each OS execution thread. The initial process runs on the
+controller. Each `spawn` or `mspawn` receives its own thread through the native
+registrar. The assignment lasts until retirement, including channel waits,
+native calls, idle intervals and wakeups. The owner publishes register snapshots
+for GC and diagnostics while continuing from its live registers.
 
-This profile defaults to exclusive NativeWorld admission. On AMD64 it can
-enable the guarded `--parallel-*` options, including typed shared transfers
-and private integer evaluation. `shared_peak` reports simultaneous restricted
-admissions. There is no two-guest cap on this admission class. The hosted
-regression runs forty dedicated guests through actual slice copies and
-uses a bounded private admission barrier to verify overlap without
-blocking queued exclusive tickets indefinitely. The profile retains the existing
-runnable list for retained interpreter and GC integration. Each thread
-selects its own ready guest from TLS in constant time, independently of list order. A blocked
-thread releases heap admission and waits on its own native readiness condition.
-Queue changes notify the controller separately, while fatal shutdown wakes
-all parked guests. The channel publication hook runs after the parked
-operand and channel fields are installed. Dedicated-thread tests cover
-send/receive hangup at that boundary, cancellation of scalar and array ALT,
-native sleep cancellation, and child retirement. The retained quantum
-still supplies exclusive heap handoff and GC safepoints.
-The mode requires native GC and selects
-its own thread lifecycle independently of the fixed or elastic pool.
+Mutators run concurrently. NativeWorld coordinates GC root publication and
+collector stops. Object and field guards protect shared operations, and owner
+mailboxes carry cross-thread requests and completions. The controller receives
+readiness notifications separately. A blocked resident waits on its own native
+condition and resumes its assigned process. Managed retirement ends the thread,
+and the runtime joins it before collector teardown.
+
+Dedicated execution has no instruction quantum or implicit dispatch-count limit.
+The OS schedules its threads. VM waits, cancellation, exceptions, termination
+and an explicit `--max-instructions` limit still affect execution. Temporary
+pre-effect contention replays the same instruction without a fixed attempt limit.
+The replay path releases its guards before returning to the owner dispatch loop.
+
+Dedicated tests cover forty simultaneous residents, module and register
+continuations, scalar and array ALT, buffered transfers and rendezvous, channel
+closure, cancellation, FIFO table waits, native waits and GC shutdown. They
+check matched thread retirement and `NATIVEDISPATCH active=0 migrated=0`.
 
 ## Cycle collection after owner loss
 
@@ -44,21 +44,19 @@ heap can defer collection indefinitely. The option can be combined with
 
 ## Default console profile
 
-On Linux AMD64, console DisVM starts two managed executors and native GC when
-no explicit execution profile is selected. Implicit native GC, including with
-`--native-spawn`, uses idle-only cycle admission and coalesces cycle passes after ownership loss.
-An explicit `--gc-worker`
-selects the stopped reference path unless `--gc-idle-cycles` is also specified. The default enables guarded copies
-and restricted shared admission for typed pointer, record, byte, slice and
-channel transfers. Other instructions continue to use exclusive admission.
-Use `--gc-inline` or `--managed-workers 1` for a single-executor run. Explicit
-GC and experimental switches select a custom profile. On this console backend,
-`--managed-workers 24` keeps the parallel profile and starts 24 executors.
-`--managed-workers auto` starts with two executors and can grow to compensate
-for native waits when guest work is runnable. An optional
-`--managed-workers-limit N` caps that growth. Guest channels and runnable
-processes are multiplexed over the executor pool. The
-graphical host and other backends keep their existing launch defaults.
+On Linux AMD64, the console selects the dedicated profile when no explicit
+execution profile is supplied. It enables native GC, idle cycle collection and
+the guarded parallel instruction paths. `--gc-inline` selects the inline
+reference profile.
+
+Explicit `--managed-workers` selects the legacy executor pool and FIFO
+assignment path. Its two-executor regression currently fails with
+`cannot publish active Dis process in TLS owner` after concurrent executors
+select the same FIFO head. This issue belongs to that scheduling path.
+The dedicated profile selects its resident by the thread's assigned identity.
+
+The Runtime links below describe historical implementation stages and their
+original admission restrictions.
 
 [Runtime0.89: opt-in guarded scalar/raw copies and checked SELF](SHARED-BYTES.md).
 NativeWorld remains required; the flag is not parallel heap activation.

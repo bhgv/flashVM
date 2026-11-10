@@ -2738,10 +2738,18 @@ DVM_FileGate *dvm_runtime_file_gate(int descriptor)
 }
 
 
-/* Record successful stdin progress after managed reentry, never from a worker
- * or inactive heap interval. No parameters/result, allocation or blocking. */
+/* EN: Reset the reference scheduler's watchdog after successful stdin.
+ * Called by its active controller after managed reentry. Resident execution
+ * has no slice watchdog. No parameters, result, allocation or blocking.
+ * RU: Сбросить счётчик ссылочного планировщика после успешного stdin.
+ * Вызывается активным контроллером после возврата. У закреплённого потока
+ * такого счётчика нет. Параметров, результата и выделения памяти нет. */
 void dvm_runtime_input_progress(void)
 {
+    if (native_spawn)
+    {
+        return;
+    }
     progress_epoch++;
     dvm_native_execution()->idle_slices = 0;
     dvm_native_execution()->progress_epoch = progress_epoch;
@@ -3070,14 +3078,17 @@ static int runtime_dispatch_turn(void)
     {
         return cancelled ? DVM_MANAGED_TURN_MAINTENANCE : DVM_MANAGED_TURN_IDLE;
     }
-    if (dvm_native_execution()->progress_epoch != progress_epoch)
+    if (!native_spawn && dvm_native_execution()->progress_epoch != progress_epoch)
     {
         dvm_native_execution()->idle_slices = 0;
         dvm_native_execution()->progress_epoch = progress_epoch;
     }
-    /* An explicit instruction budget must remain independent of quantum.
-     * Otherwise quantum=1 silently stops at 100000 despite a larger limit. */
-    if (!dvm_runtime_instruction_limit && ++dvm_native_execution()->idle_slices > 100000)
+    /* EN: The legacy slice watchdog does not bound a resident's lifetime or
+     * contention retries. Explicit instruction limits are checked separately.
+     * RU: Счётчик старых тактов не ограничивает жизнь закреплённого потока
+     * или ожидание блокировки. Явный лимит инструкций проверяется отдельно. */
+    if (!native_spawn && !dvm_runtime_instruction_limit &&
+        ++dvm_native_execution()->idle_slices > 100000)
     {
         fprintf(stderr,"disvm: execution budget exceeded\n");
         return -1;

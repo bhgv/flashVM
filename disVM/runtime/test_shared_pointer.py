@@ -88,12 +88,13 @@ DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destinat
             retry_pc = DVM_R.PC;
         }
         check(retry_pc == DVM_R.PC, "MOVP replays the same instruction");
-        if (refusals++ < 32)
+        unsigned int delay = getenv("DVM_TEST_MOVP_LONG_WAIT") ? 100001 : 32;
+        if (refusals++ < delay)
         {
             return DVM_CELL_BUSY;
         }
         replayed = 1;
-        fprint(1, "PASS scheduled MOVP retry\n");
+        fprint(1, "PASS scheduled MOVP retry: %ud refusals\n", delay);
     }
 
     if (active && CONTROL == 1)
@@ -354,12 +355,18 @@ init() {
                             executor=private_executor if executor is not None else None,
                             shared_pointer_source=private)
             for mode in ('--jit', '--no-jit'):
-                for locked in (False, True):
+                profiles = [(False, False), (True, False)]
+                if variant == 0:
+                    profiles.append((False, True))
+                for locked, dedicated in profiles:
                     command = [str(binary), mode, '--gc-worker', '--managed-owner-probe']
+                    if dedicated:
+                        command.append('--native-spawn')
                     if locked:
                         command += ['--gc-locked-poll']
                     run = subprocess.run(command+[str(image)], capture_output=True, text=True,
-                                         timeout=45, env=dict(os.environ, TMPDIR=str(work)))
+                                         timeout=45, env=dict(os.environ, TMPDIR=str(work),
+                                             **({"DVM_TEST_MOVP_LONG_WAIT": "1"} if dedicated else {})))
                     output = run.stdout+run.stderr
                     if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
                         raise RuntimeError(output)
@@ -367,7 +374,8 @@ init() {
                         if run.returncode != 10 or 'FAIL shared MOVP: '+marker not in output:
                             raise RuntimeError('shared MOVP control missed '+str(variant)+': '+output)
                     elif run.returncode or 'PASS actual shared MOVP:' not in output or 'PASS normal Dis' not in output or \
-                            'PASS scheduled MOVP retry' not in output:
+                            'PASS scheduled MOVP retry' not in output or \
+                            (dedicated and 'PASS scheduled MOVP retry: 100001 refusals' not in output):
                         raise RuntimeError('shared MOVP positive failed: '+output)
     print('PASS actual shared MOVP: C/JIT, both polls, rooted real owners'+
           ('; positives only' if '--positive-only' in sys.argv else '; five semantic controls'))
