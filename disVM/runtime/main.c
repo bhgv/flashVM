@@ -634,7 +634,8 @@ static int guest_cancel_pending_or_close(void)
         for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-            if (__atomic_load_n(&process->startup_pending, __ATOMIC_ACQUIRE) || (process->messages && (
+            if (process->channel_claimed ||
+                __atomic_load_n(&process->startup_pending, __ATOMIC_ACQUIRE) || (process->messages && (
                 dvm_messages_pending(process->messages, 0, 0) ||
                 dvm_messages_pending(process->messages, 1, 0) ||
                 dvm_managed_workers_reply_in_transit(guest))))
@@ -667,6 +668,7 @@ static int guest_cancel_pending_or_close(void)
 
 /* EN: Route asynchronous host cancellation to the owner of a supported wait.
  * RU: Передать асинхронную отмену хоста владельцу поддерживаемого ожидания. */
+/* The channel queue mutex keeps the target rooted during publication. */
 static int post_host_wait_cancel(int pid)
 {
     if (!native_spawn)
@@ -683,10 +685,8 @@ static int post_host_wait_cancel(int pid)
         return 0;
     }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
-    if (process->channel_claimed || dvm_runqueue_dispatch_owner(peer))
-    {
-        return 0;
-    }
+    /* The owner may still be finishing the turn that published its wait.
+     * Leave the message for its next turn. */
     int posted = dvm_messages_send_once(guest_messages, (uintptr_t)pid, &process->channel_cancel);
     if (posted == 1)
     {
@@ -711,16 +711,18 @@ static int dispatch_guest_cancellations(void)
     {
         int pid = cancel_requests[0];
 
-        fvm_port_sync_unlock(channel_queue_mutex);
-        if (!post_host_wait_cancel(pid))
+        if (post_host_wait_cancel(pid))
         {
-            dvm_runtime_cancel_guest_wait(pid);
-        }
-        fvm_port_sync_lock(channel_queue_mutex);
-        if (cancel_request_count)
-        {
-            /* Only shutdown can clear the queue while this owner delivers. */
             remove_guest_cancel_request(0);
+            continue;
+        }
+        fvm_port_sync_unlock(channel_queue_mutex);
+        dvm_runtime_cancel_guest_wait(pid);
+        fvm_port_sync_lock(channel_queue_mutex);
+        size_t request = guest_cancel_request_index(pid);
+        if (request < cancel_request_count)
+        {
+            remove_guest_cancel_request(request);
         }
     }
     fvm_port_sync_unlock(channel_queue_mutex);

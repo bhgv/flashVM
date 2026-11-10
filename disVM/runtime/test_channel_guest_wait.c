@@ -415,12 +415,20 @@ Channel *__wrap_dvm_runtime_channel_new(void *destination, Type *type, WORD capa
             dvm_runtime_gc_native_enter(released);
             return __real_dvm_runtime_channel_new(destination, type, capacity, mover, width);
         }
-        check(!dvm_runtime_cancel_guest_wait(parked_pid), "native-only caller cannot touch a parked guest");
-        dvm_runtime_gc_native_enter(released);
-        check(!dvm_runtime_cancel_guest_wait(0) &&
-            dvm_runtime_cancel_guest_wait(parked_pid) &&
-            !dvm_runtime_cancel_guest_wait(parked_pid),
-            "parked waiter cancels exactly once through the scheduler");
+        if (getenv("DVM_TEST_DEDICATED_BUFFER"))
+        {
+            check(dvm_runtime_request_guest_cancel(parked_pid), "post cancellation to the parked owner");
+            dvm_runtime_gc_native_enter(released);
+        }
+        else
+        {
+            check(!dvm_runtime_cancel_guest_wait(parked_pid), "native-only caller cannot touch a parked guest");
+            dvm_runtime_gc_native_enter(released);
+            check(!dvm_runtime_cancel_guest_wait(0) &&
+                dvm_runtime_cancel_guest_wait(parked_pid) &&
+                !dvm_runtime_cancel_guest_wait(parked_pid),
+                "parked waiter cancels exactly once through the scheduler");
+        }
         puts("PASS cancelled scheduler channel wait");
     }
     if (type == &Tword && capacity == 31)
@@ -1243,7 +1251,7 @@ int __wrap_dvm_runtime_channel_wait_guest(Channel *channel)
     DVM_NativeContext *owner = dvm_native_context_current();
     Prog *process = dvm_native_context_process(owner);
     int result;
-    if (child_exit_cancel_mode)
+    if (child_exit_cancel_mode || parked_cancel_mode)
     {
         return __real_dvm_runtime_channel_wait_guest(channel);
     }
@@ -1256,6 +1264,11 @@ int __wrap_dvm_runtime_channel_wait_guest(Channel *channel)
         return wait_with_growth_retry(channel, owner, process, 0);
     }
     pthread_mutex_lock(&gate);
+    if (getenv("DVM_TEST_DEDICATED_BUFFER"))
+    {
+        while (!first_owner)
+            pthread_cond_wait(&waiting, &gate);
+    }
     if (resume_mover && getenv("DVM_TEST_DEDICATED_BUFFER"))
     {
         pthread_mutex_unlock(&gate);
