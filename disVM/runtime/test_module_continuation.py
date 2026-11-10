@@ -70,12 +70,14 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     raw = re.search(r"parallel_channel_raw=(\d+)", text)
     byte_moves = re.search(r"parallel_byte_commits=(\d+)", text)
     native = re.search(r"instructions=\d+ native=(\d+)", text)
+    # ALT can use the checked transfer path instead of the counted fast path.
+    # The guest verifies both selected branches and all transferred owners.
     if (child.returncode or not pool or outcome not in text
             or (image == "main.dis" and "PASS forty independent channels" not in text) or "PASS Dis application completed" not in text
             or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
             or not dispatch or dispatch[1] != dispatch[2] or not gc or int(gc[1]) == 0
             or ((shared_channels or default_profile) and (not channel or min(map(int, channel.groups())) == 0
-                                         or not alts or int(alts[1]) != 2
+                                         or not alts or int(alts[1]) > 2
                                          or not rendezvous or int(rendezvous[1]) != 2
                                          or not raw or int(raw[1]) < 2
                                          or not byte_moves or int(byte_moves[1]) < 2))

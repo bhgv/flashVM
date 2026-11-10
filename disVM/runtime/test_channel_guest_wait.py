@@ -2164,6 +2164,52 @@ def main():
             subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
                             "-o", image, source], check=True)
             for mode in ("--no-jit", "--jit"):
+                dedicated_markers = {
+                    "parked-send": "PASS cancelled scheduler channel wait",
+                    "parked-receive": "PASS cancelled scheduler channel wait",
+                    "parked-alt": "PASS cancelled scheduler channel wait",
+                    "parked-array-alt": "PASS cancelled scheduler channel wait",
+                    "processctl": "PASS guest process control",
+                    "host-fixed": "PASS guest channel payloads",
+                    "killwait-channel": "PASS guest child retirement",
+                    "killwait-cancel": "PASS guest child retirement",
+                    "killwait-host-fixed": "PASS guest child retirement",
+                    "killwait-native": "PASS guest child retirement",
+                }
+                if name in dedicated_markers:
+                    dedicated_image = image
+                    if name == "killwait-cancel":
+                        # The owner may already have advanced to a different wait
+                        # by the time the caller receives its first reply.
+                        dedicated_source = work / "killwait-owner-cancel.b"
+                        dedicated_image = work / "killwait-owner-cancel.dis"
+                        dedicated_source.write_text(guest.replace(
+                            "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
+                            "<-reports != 1",
+                        ))
+                        subprocess.run([compiler, "-I", include, "-I",
+                                        Path(__file__).resolve().parents[1] / "module",
+                                        "-o", dedicated_image, dedicated_source], check=True)
+                    native_environment = dict(os.environ)
+                    if name.startswith("parked-") or name == "killwait-host-fixed":
+                        native_environment["DVM_TEST_DEDICATED_BUFFER"] = "1"
+                    if name == "host-fixed":
+                        native_environment["DVM_TEST_DEDICATED_CANCEL"] = "1"
+                    dedicated = subprocess.run(
+                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", dedicated_image],
+                        cwd=work, capture_output=True, text=True, timeout=30,
+                        env=native_environment,
+                    )
+                    native_output = dedicated.stdout + dedicated.stderr
+                    starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", native_output)
+                    exits = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", native_output)
+                    if (dedicated.returncode or dedicated_markers[name] not in native_output
+                            or not starts or sorted(starts) != sorted(exits)
+                            or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", native_output)
+                            or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", native_output)):
+                        raise RuntimeError(f"{name} {mode} dedicated wake or retirement failed\n{native_output}")
+                if "--dedicated-waits-only" in sys.argv[4:]:
+                    continue
                 workers = "3" if name in ("alt-peer", "alt-array-peer", "cancel-isolated", "worker-failure", "file-cancel", "stdio-alias-cancel", "killwait-cancel", "killwait-nested", "killwait-host-fixed") else "2"
                 if name.endswith("-serial"):
                     workers = "1"
@@ -2204,45 +2250,6 @@ def main():
                         result.stdout = stream.read()
                 else:
                     result = subprocess.run(command, cwd=work, capture_output=True, text=True, timeout=30)
-                dedicated_markers = {
-                    "parked-send": "PASS cancelled scheduler channel wait",
-                    "parked-receive": "PASS cancelled scheduler channel wait",
-                    "parked-alt": "PASS cancelled scheduler channel wait",
-                    "parked-array-alt": "PASS cancelled scheduler channel wait",
-                    "processctl": "PASS guest process control",
-                    "host-fixed": "PASS guest channel payloads",
-                    "killwait-channel": "PASS guest child retirement",
-                    "killwait-cancel": "PASS guest child retirement",
-                    "killwait-host-fixed": "PASS guest child retirement",
-                    "killwait-native": "PASS guest child retirement",
-                }
-                if name in dedicated_markers:
-                    dedicated_image = image
-                    if name == "killwait-cancel":
-                        # The owner may already have advanced to a different wait
-                        # by the time the caller receives its first reply.
-                        dedicated_source = work / "killwait-owner-cancel.b"
-                        dedicated_image = work / "killwait-owner-cancel.dis"
-                        dedicated_source.write_text(guest.replace(
-                            "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
-                            "<-reports != 1",
-                        ))
-                        subprocess.run([compiler, "-I", include, "-I",
-                                        Path(__file__).resolve().parents[1] / "module",
-                                        "-o", dedicated_image, dedicated_source], check=True)
-                    dedicated = subprocess.run(
-                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", dedicated_image],
-                        cwd=work, capture_output=True, text=True, timeout=30,
-                        env=dict(os.environ, DVM_TEST_DEDICATED_CANCEL="1") if name == "host-fixed" else None,
-                    )
-                    native_output = dedicated.stdout + dedicated.stderr
-                    starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", native_output)
-                    exits = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", native_output)
-                    if (dedicated.returncode or dedicated_markers[name] not in native_output
-                            or not starts or sorted(starts) != sorted(exits)
-                            or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", native_output)
-                            or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", native_output)):
-                        raise RuntimeError(f"{name} {mode} dedicated wake or retirement failed\n{native_output}")
                 if name == "send":
                     for pool in ("2", "auto"):
                         for locked in (False, True):

@@ -49,11 +49,12 @@ execution profile is supplied. It enables native GC, idle cycle collection and
 the guarded parallel instruction paths. `--gc-inline` selects the inline
 reference profile.
 
-Explicit `--managed-workers` selects the legacy executor pool and FIFO
-assignment path. Its two-executor regression currently fails with
-`cannot publish active Dis process in TLS owner` after concurrent executors
-select the same FIFO head. This issue belongs to that scheduling path.
-The dedicated profile selects its resident by the thread's assigned identity.
+The fixed and elastic executor pool has been removed. Requests for
+`--managed-workers` counts above one, `auto`, or `--managed-workers-limit`
+fail before heap or thread startup. The internal registry start entry also
+rejects pool parameters. `--managed-workers 1` selects the single-worker
+reference profile. Dedicated threads start only with an assigned `Prog`;
+native waits preserve that assignment.
 
 The Runtime links below describe historical implementation stages and their
 original admission restrictions.

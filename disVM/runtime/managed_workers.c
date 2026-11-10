@@ -1,4 +1,7 @@
-/* Fixed/elastic OS executor pool; roots and heap are serialized by NativeWorld. */
+/* Copyright (c) 2026 bhgv
+ * EN: Lifecycle and wakeups for permanently assigned native process threads.
+ * RU: Жизненный цикл и пробуждения закреплённых за процессами нативных потоков.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -54,16 +57,12 @@ typedef struct ManagedWorkers
     int failed;                   /* Latched attach/dispatch/retirement/start error. */
     int ready;                    /* Helpers that acquired their first heap turn, under sync. */
     int awaiting_start;           /* Controller-only admission rendezvous flag. */
-    int automatic;                /* Elastic growth/idle retirement selected explicitly. */
     int diagnostics;              /* Emit lifecycle evidence only for --stats. */
-    unsigned long limit;          /* Optional total live executor limit; zero is uncapped. */
     unsigned long live;           /* Live helpers, under heap exclusion. */
     unsigned long peak;           /* Maximum total live executors including controller. */
     unsigned long created;        /* Successfully created helpers. */
     unsigned long next_id;        /* Lifetime IDs allocated by the startup owner. */
-    unsigned long idle_reported;  /* Creation generation last reported fully idle/reaped. */
     unsigned long generation;     /* Runnable-work publication under sync; prevents lost wakeups. */
-    unsigned long returning;      /* Native completions queued for heap reentry, under sync. */
     unsigned long reaped;         /* Helpers joined during rootless scheduling. */
     unsigned long retired_turns;  /* Counters accumulated from reaped helper slots. */
     unsigned long retired_releases; /* Audited releases accumulated after join. */
@@ -204,8 +203,6 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
     ManagedWorker *finished = NULL;
     ManagedWorker *worker;
     unsigned long generation;
-    unsigned long idle_created = 0;
-    unsigned long idle_reaped = 0;
     int wait_for_work;
     fvm_port_sync_lock(service.sync);
     generation = service.generation;
@@ -215,8 +212,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         return !stopping();
     }
     fvm_port_sync_lock(service.sync);
-    wait_for_work = idle && !rendezvous &&
-        (service.count == 1 || (service.automatic && service.live == 1));
+    wait_for_work = idle && !rendezvous;
     while (*slot)
     {
         worker = *slot;
@@ -230,13 +226,6 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         {
             slot = &worker->next;
         }
-    }
-    if (service.automatic && idle && service.live == 1 && !finished && service.reaped && service.helpers && !service.helpers->next &&
-        service.idle_reported != service.created)
-    {
-        service.idle_reported = service.created;
-        idle_created = service.created;
-        idle_reaped = service.reaped;
     }
     fvm_port_sync_unlock(service.sync);
     if (!leave_empty(DVM_NW_SITE_IDLE))
@@ -271,10 +260,6 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         }
         service.awaiting_start = 0;
         fvm_port_sync_unlock(service.sync);
-    }
-    if (idle_created && service.diagnostics)
-    {
-        fprintf(stderr, "NATIVEPOOL_IDLE executors=2 created=%lu reaped=%lu\n", idle_created, idle_reaped);
     }
     if (current_guest && idle && !finished)
     {
@@ -319,7 +304,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         service.retired_reentries += worker->owner.reentries;
         if (service.diagnostics)
         {
-            fprintf(stderr, "NATIVEPOOL_REAP id=%lu joined=1 turns=%lu\n", worker->id, worker->turns);
+            fprintf(stderr, "NATIVEWORKERS_REAP id=%lu joined=1 turns=%lu\n", worker->id, worker->turns);
         }
         if (worker->wake)
         {
@@ -350,7 +335,6 @@ static void execute(void *argument)
     int cancellation = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
     DVM_NativeContext *context = cancellation ? NULL : dvm_native_process_create(NULL);
     int attached = 0;
-    unsigned int idle_turns = 0;
     if (!context || !dvm_native_context_bind(context))
     {
         fail(cancellation ? "cannot disable executor thread cancellation" : "cannot bind executor");
@@ -431,11 +415,6 @@ static void execute(void *argument)
                 /* Stop owns the registry through join. A resumed native call
                  * may finish its current turn, but must not reap/mutate links. */
                 if (stopping() || worker->guest_retired)
-                {
-                    break;
-                }
-                idle_turns = progress ? 0 : idle_turns + 1;
-                if (service.automatic && !progress && idle_turns >= 64 && service.live > 1)
                 {
                     break;
                 }
@@ -535,7 +514,7 @@ static void publish_resident_slot(void *argument, DVM_ThreadSlot *thread)
 static int start_helper(Prog *guest)
 {
     ManagedWorker *worker;
-    if (stopping() || (!guest && service.next_id == ULONG_MAX))
+    if (!guest || stopping())
     {
         return 0;
     }
@@ -545,82 +524,66 @@ static int start_helper(Prog *guest)
         return 0;
     }
     worker->guest = guest;
-    if (guest)
+    worker->wake = fvm_port_sync_create();
+    if (!worker->wake)
     {
-        worker->wake = fvm_port_sync_create();
-        if (!worker->wake)
-        {
-            free(worker);
-            return 0;
-        }
-        fvm_port_sync_lock(service.sync);
-        worker->wake_next = service.wake_slots;
-        service.wake_slots = worker;
-        fvm_port_sync_unlock(service.sync);
-    }
-    if (guest)
-    {
-        int released = dvm_runtime_gc_native_try_leave();
-        if (released > 0)
-        {
-            /* Order creation before shutdown's first join request. The new
-             * worker only waits on its private condition until commit. */
-            fvm_port_sync_lock(service.sync);
-            if (!service.stopping && !service.failed)
-            {
-                (void)dvm_thread_registrar_start_prepared(service.registrar, execute, worker,
-                    prepare_resident_slot, publish_resident_slot);
-            }
-            fvm_port_sync_unlock(service.sync);
-            dvm_runtime_gc_native_enter(released);
-        }
-    }
-    else
-    {
-        worker->id = ++service.next_id;
-        worker->thread = dvm_thread_registrar_start(service.registrar, execute, worker);
-    }
-    if (!worker->thread)
-    {
-        if (worker->wake)
-        {
-            fvm_port_sync_lock(service.sync);
-            unregister_dedicated_wait(worker);
-            fvm_port_sync_unlock(service.sync);
-            fvm_port_sync_destroy(worker->wake);
-        }
         free(worker);
         return 0;
     }
-    if (!guest)
+    fvm_port_sync_lock(service.sync);
+    worker->wake_next = service.wake_slots;
+    service.wake_slots = worker;
+    fvm_port_sync_unlock(service.sync);
+
+    int released = dvm_runtime_gc_native_try_leave();
+    if (released > 0)
+    {
+        /* Order creation before shutdown's first join request. The new
+         * resident waits on its private condition until commit. */
+        fvm_port_sync_lock(service.sync);
+        if (!service.stopping && !service.failed)
+        {
+            (void)dvm_thread_registrar_start_prepared(service.registrar, execute, worker,
+                prepare_resident_slot, publish_resident_slot);
+        }
+        fvm_port_sync_unlock(service.sync);
+        dvm_runtime_gc_native_enter(released);
+    }
+    if (!worker->thread)
     {
         fvm_port_sync_lock(service.sync);
-        install_worker(worker);
+        unregister_dedicated_wait(worker);
         fvm_port_sync_unlock(service.sync);
+        fvm_port_sync_destroy(worker->wake);
+        free(worker);
+        return 0;
     }
-    if (guest)
-    {
-        fvm_port_sync_lock(worker->wake);
-        worker->startup_committed = 1;
-        fvm_port_sync_signal_all(worker->wake);
-        fvm_port_sync_unlock(worker->wake);
-    }
+    fvm_port_sync_lock(worker->wake);
+    worker->startup_committed = 1;
+    fvm_port_sync_signal_all(worker->wake);
+    fvm_port_sync_unlock(worker->wake);
     return 1;
 }
 
 
-/* Publish the service before creating count-1 helpers. automatic enables native
- * wait compensation and idle retirement; limit zero uses available OS resources.
- * diagnostics controls copied lifecycle evidence. turn is the shared dispatcher.
- * cancel_waits wakes suspended native operations after fatal failure.
- * All partial startup threads join before failure returns to the caller. */
+/* EN: Start the resident registry on the bound controller. count must be one,
+ * automatic and limit zero. Pool requests fail before service publication.
+ * diagnostics selects lifecycle output; turn and cancel_waits are borrowed
+ * callbacks through stop. Return zero on invalid state or native allocation.
+ * RU: Запустить реестр закреплённых потоков на контроллере. count равен одному,
+ * automatic и limit равны нулю. Запрос пула отклоняется до публикации сервиса.
+ * Обратные вызовы заимствованы до остановки. При ошибке вернуть ноль. */
 int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
     int (*turn)(void), void (*cancel_waits)(void))
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
-    int index;
-    if (count < 1 || !turn || !cancel_waits || service.sync || !context || !up || up->prog ||
+    if (count != 1 || automatic || limit)
+    {
+        fprintf(stderr, "disvm: shared executor pool has been removed\n");
+        return 0;
+    }
+    if (!turn || !cancel_waits || service.sync || !context || !up || up->prog ||
         (limit && (unsigned long)count > limit) ||
         dvm_native_context_process(context) || dvm_native_context_turn(context) ||
         !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
@@ -636,8 +599,6 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     service.world = dvm_native_owner_world(dvm_native_owner_current());
     service.awaiting_start = 1;
     service.count = count;
-    service.automatic = automatic;
-    service.limit = limit;
     service.diagnostics = diagnostics;
     service.peak = 1;
     if (!service.sync)
@@ -650,15 +611,6 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
         fvm_port_sync_destroy(service.sync);
         memset(&service, 0, sizeof(service));
         return 0;
-    }
-    for (index = 0; index < count - 1; index++)
-    {
-        if (!start_helper(NULL))
-        {
-            fail("cannot start executor");
-            dvm_managed_workers_stop(0);
-            return 0;
-        }
     }
     return 1;
 }
@@ -758,84 +710,27 @@ void dvm_managed_workers_wake_guest(Prog *guest)
 }
 
 
-/* Mark a native completion before it queues for heap reentry, then consume the
- * mark after admission. arriving is one/zero; return one only when tracked.
- * Native mutex protects this scalar; no managed pointer or heap lock is used. */
+/* EN: Retained completion hook. arriving is ignored; return zero.
+ * RU: Совместимый вход завершения. arriving игнорируется, вернуть ноль. */
 int dvm_managed_workers_returning(int arriving)
 {
-    if (!service.sync || !service.automatic)
-    {
-        return 0;
-    }
-    fvm_port_sync_lock(service.sync);
-    if (arriving)
-    {
-        service.returning++;
-    }
-    else if (service.returning)
-    {
-        service.returning--;
-    }
-    else
-    {
-        fvm_port_sync_unlock(service.sync);
-        fprintf(stderr, "disvm: unmatched automatic executor reentry\n");
-        exit(1);
-    }
-    fvm_port_sync_unlock(service.sync);
-    return 1;
+    (void)arriving;
+    return 0;
 }
 
 
-/* Before an audited native wait, retain an executor for other ready work.
- * Caller is ACTIVE and has not withdrawn its current Prog yet. Never grow for
- * protected C stacks. Return a stable diagnostic on resource refusal. The
- * caller decides how to unwind before it withdraws its current Prog. */
+/* EN: Continue a resident native wait without creating another executor.
+ * RU: Продолжить ожидание native без создания дополнительного исполнителя. */
 const char *dvm_managed_workers_native_wait(void)
 {
-    Prog *head;
-    unsigned long returning;
-    if (!service.sync || !service.automatic || stopping())
-    {
-        return NULL;
-    }
-    head = dvm_runqueue_head();
-    if (!head || !head->link || dvm_runqueue_inflight() + 1 < service.live + 1)
-    {
-        return NULL;
-    }
-    fvm_port_sync_lock(service.sync);
-    returning = service.returning;
-    fvm_port_sync_unlock(service.sync);
-    if (returning)
-    {
-        return NULL;
-    }
-    if (service.limit && service.live + 1 >= service.limit)
-    {
-        fprintf(stderr, "disvm: automatic executor resource limit=%lu reached\n", service.limit);
-        return "automatic executor resource limit reached";
-    }
-    if (!start_helper(NULL))
-    {
-        fprintf(stderr, "disvm: automatic executor OS thread or native allocation failure\n");
-        return "automatic executor OS thread or native allocation failure";
-    }
-    if (service.diagnostics)
-    {
-        fprintf(stderr, "NATIVEPOOL_GROW executors=%lu created=%lu\n", service.live + 1, service.created);
-    }
     return NULL;
 }
 
-/* Trace a committed withdrawal under heap exclusion, only in automatic stats
- * mode. No scheduling or ownership change; records distinguish repeated waves. */
+/* EN: Retained suspension notification with no pool state.
+ * RU: Совместимое уведомление об ожидании без состояния пула. */
 void dvm_managed_workers_native_suspended(void)
 {
-    if (service.sync && service.automatic && service.diagnostics)
-    {
-        fprintf(stderr, "NATIVEPOOL_SUSPEND inflight=%lu created=%lu\n", dvm_runqueue_inflight(), service.created);
-    }
+
 }
 
 
@@ -915,7 +810,6 @@ int dvm_managed_workers_stop(int diagnostics)
     int ok;
     ManagedWorker *worker;
     ManagedWorker *next;
-    unsigned long before;
     unsigned long turns = 0;
     unsigned long releases = 0;
     unsigned long reentries = 0;
@@ -924,7 +818,6 @@ int dvm_managed_workers_stop(int diagnostics)
         return 1;
     }
     fvm_port_sync_lock(service.sync);
-    before = service.live + 1;
     service.stopping = 1;
     stop_dedicated_waits();
     fvm_port_sync_signal_all(service.sync);
@@ -945,23 +838,18 @@ int dvm_managed_workers_stop(int diagnostics)
         releases += worker->owner.releases;
         reentries += worker->owner.reentries;
     }
-    ok = !service.failed && !service.returning;
+    ok = !service.failed;
     if (diagnostics)
     {
-        fprintf(stderr,"NATIVEPOOL executors=%lu joined=1 failed=%d controller_turns=%lu worker_turns=%lu worker_releases=%lu worker_reentries=%lu serialized_files=%lu ui_requests=%lu\n",
-            (service.automatic ? service.peak : (unsigned long)service.count),service.failed,service.controller,turns + service.retired_turns,releases + service.retired_releases,reentries + service.retired_reentries,service.files,service.ui_requests);
+        fprintf(stderr,"NATIVEWORKERS threads=%lu joined=1 failed=%d controller_turns=%lu worker_turns=%lu worker_releases=%lu worker_reentries=%lu serialized_files=%lu ui_requests=%lu\n",
+            service.peak,service.failed,service.controller,turns + service.retired_turns,releases + service.retired_releases,reentries + service.retired_reentries,service.files,service.ui_requests);
     }
     if (diagnostics)
     {
         for (worker = service.helpers; worker; worker = worker->next)
         {
-            fprintf(stderr, "NATIVEPOOL_WORKER id=%lu joined=1 turns=%lu releases=%lu reentries=%lu handoffs=%lu\n",
+            fprintf(stderr, "NATIVEWORKERS_THREAD id=%lu joined=1 turns=%lu releases=%lu reentries=%lu handoffs=%lu\n",
                 worker->id, worker->turns, worker->owner.releases, worker->owner.reentries, worker->handoffs);
-        }
-        if (service.automatic)
-        {
-            fprintf(stderr, "NATIVEPOOL_AUTO created=%lu reaped=%lu live_before_stop=%lu peak=%lu live=0 returning=%lu\n",
-                service.created, service.reaped, before, service.peak, service.returning);
         }
     }
     for (worker = service.helpers; worker; worker = next)

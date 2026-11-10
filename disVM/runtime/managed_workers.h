@@ -1,4 +1,7 @@
-/* Opt-in fixed/elastic managed scheduling; all heap turns remain exclusive. */
+/* Copyright (c) 2026 bhgv
+ * EN: Lifecycle of native execution threads permanently assigned to one Prog.
+ * RU: Жизненный цикл нативных потоков, закреплённых за одним Prog.
+ */
 #ifndef DVM_MANAGED_WORKERS_H
 #define DVM_MANAGED_WORKERS_H
 
@@ -12,21 +15,19 @@ enum
 };
 
 
-/* Start count-1 extra OS executors after GC/world startup.
- * count selects at least one initial executor. automatic grows on native waits
- * and retires idle helpers; limit zero is uncapped, diagnostics emits --stats.
- * turn runs one
- * shared-heap scheduler turn on its caller: positive progress, zero idle,
- * negative fatal managed failure. cancel_waits wakes native waits on failure
- * without taking heap ownership. No managed pointer crosses this interface.
- * Return one when all helpers were created; zero on invalid input or after
- * joining every partially started helper and restoring controller ownership.
- * Requires the controller's empty ACTIVE turn. No startup wait holds the heap. */
+/* EN: Start the resident registry on the active controller. count must be one,
+ * automatic and limit zero. Other values fail with a removed-pool diagnostic.
+ * turn and cancel_waits are borrowed callbacks until stop. diagnostics enables
+ * lifecycle output. Return zero on invalid state or native allocation failure.
+ * RU: Запустить реестр закреплённых потоков на активном контроллере.
+ * count равен одному, automatic и limit нулю. Другие значения отклоняются.
+ * Обратные вызовы заимствованы до stop. При ошибке вернуть ноль. */
 int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
     int (*turn)(void), void (*cancel_waits)(void));
 
 
-/* Dedicated guest lifecycle. Call under exclusive heap admission. */
+/* EN: Start and retire one resident on its permanently assigned thread.
+ * RU: Запуск и завершение процесса на закреплённом потоке. */
 struct Prog;
 int dvm_managed_workers_start_guest(struct Prog *guest);
 int dvm_runtime_prepare_resident(struct Prog *guest);
@@ -43,18 +44,20 @@ struct DVM_OwnerMessage *dvm_managed_workers_take_reply(struct Prog *guest);
 void dvm_managed_workers_finish_reply(struct Prog *guest);
 
 
-/* Compensate an impending audited native suspension while still ACTIVE.
- * Return a stable diagnostic if compensation is refused, or NULL on success. */
+/* EN: Retained native-wait hook. Resident threads need no replacement
+ * executor. Returns NULL without creating threads or changing ownership.
+ * RU: Совместимый вход ожидания. Вернуть NULL без создания исполнителей. */
 const char *dvm_managed_workers_native_wait(void);
 
 
-/* Mark/consume native completion queued for heap reentry. arriving selects1/0;
- * returns one when tracked. Native mutex only; never borrows managed data. */
+/* EN: Compatibility hook for native completion accounting. arriving is ignored,
+ * return zero. Resident identity remains assigned throughout the native call.
+ * RU: Совместимый вход завершения native. arriving игнорируется, вернуть ноль. */
 int dvm_managed_workers_returning(int arriving);
 
 
-/* Record committed native withdrawal for automatic --stats lifecycle evidence.
- * Requires ACTIVE heap ownership; does not change scheduling or roots. */
+/* EN: Compatibility notification of native suspension. No state is changed.
+ * RU: Совместимое уведомление об ожидании native. Состояние не меняется. */
 void dvm_managed_workers_native_suspended(void);
 
 

@@ -117,9 +117,6 @@ static unsigned int resident_retirements; /* Dedicated exits still publishing co
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static Prog *initial_guest; /* Controller-owned root guest in dedicated mode. */
 static int native_spawn; /* One dedicated OS thread per spawned Prog. */
-static int managed_workers = 1; /* Executor count before launch-profile selection. */
-static unsigned long managed_workers_limit; /* Optional automatic pool resource cap; zero is uncapped. */
-static int managed_limit_selected; /* Reject duplicate physical resource limits. */
 static int managed_workers_selected; /* Reject duplicate executor options. */
 static unsigned long progress_epoch; /* Shared acknowledged input generation, protected by the heap gate. */
 static int gc_worker;                     /* Collector-worker admission selected at launch. */
@@ -3281,7 +3278,6 @@ static int runtime_dispatch_turn(void)
  * native GC obtains exclusive heap access through the world rendezvous. */
 static int runtime_execute_inner(void *argument)
 {
-    int quiescent_reported = 0; /* One diagnostic per all-channel-wait episode. */
     DVM_NativeContext *context;
     Module *module;
     Prog *process;
@@ -3354,12 +3350,11 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    if ((native_spawn || managed_workers != 1) && !dvm_managed_workers_start(
-        native_spawn ? 1 : (managed_workers ? managed_workers : 2), !native_spawn && managed_workers == 0,
-        managed_workers_limit, show_stats, runtime_dispatch_turn,
+    if (native_spawn && !dvm_managed_workers_start(
+        1, 0, 0, show_stats, runtime_dispatch_turn,
         dvm_runtime_cancel_native_waits))
     {
-        error("cannot start managed executor");
+        error("cannot start resident thread registry");
     }
     if (gc_worker && !dvm_close_worker_start())
     {
@@ -3369,31 +3364,13 @@ static int runtime_execute_inner(void *argument)
     cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
     while (dvm_runqueue_ready() || (native_spawn && dvm_runqueue_dispatch_pending()) ||
-           ((native_spawn || managed_workers != 1) && dvm_runqueue_inflight()) || (managed_workers == 0 && __atomic_load_n(&live, __ATOMIC_RELAXED))
+           (native_spawn && dvm_runqueue_inflight())
 #ifdef DVM_RUNTIME_EDITOR
            || (__atomic_load_n(&live, __ATOMIC_RELAXED) && dvm_editor_attached())
 #endif
            || guest_cancel_pending_or_close())
     {
-        if (managed_workers == 0 && __atomic_load_n(&live, __ATOMIC_RELAXED) && !dvm_runqueue_head() && !dvm_runqueue_inflight()
-            && !guest_cancel_pending()
-#ifdef DVM_RUNTIME_EDITOR
-            && !dvm_editor_attached()
-#endif
-        )
-        {
-            if (show_stats && !quiescent_reported)
-            {
-                fprintf(stderr, "NATIVEPOOL_QUIESCENT processes=%d\n", __atomic_load_n(&live, __ATOMIC_RELAXED));
-            }
-            quiescent_reported = 1;
-            if (!dvm_managed_workers_park(guest_cancel_pending))
-            {
-                error("automatic executor park failed");
-            }
-            continue;
-        }
-        quiescent_reported = 0;
+
         if (gc_worker && !dvm_native_context_poll())
         {
             error("native collector safepoint failed");
@@ -3411,7 +3388,7 @@ static int runtime_execute_inner(void *argument)
                 dvm_runtime_input_progress();
             }
         }
-        if (!native_spawn && managed_workers == 1 && !dvm_runqueue_head() && !guest_cancel_pending())
+        if (!native_spawn && !dvm_runqueue_head() && !guest_cancel_pending())
         {
             fvm_port_thread_sleep_us(1000);
             continue;
@@ -3637,26 +3614,22 @@ int main(int argc, char **argv)
             if (managed_workers_selected || argc < 3 ||
                 (strcmp(argv[2], "auto") && (!runtime_extent(argv[2], &count) || count < 1)))
             {
-                fprintf(stderr, "--managed-workers requires one positive count or auto\n");
+                fprintf(stderr, "--managed-workers requires 1 for the single-worker reference\n");
                 return 2;
             }
-            managed_workers = (int)count;
+            if (count != 1)
+            {
+                fprintf(stderr, "shared executor pool has been removed; use --native-spawn\n");
+                return 2;
+            }
             managed_workers_selected = 1;
             argv++;
             argc--;
         }
         else if (strcmp(argv[1], "--managed-workers-limit") == 0)
         {
-            size_t limit;
-            if (managed_limit_selected || argc < 3 || !runtime_extent(argv[2], &limit) || limit < 2)
-            {
-                fprintf(stderr, "--managed-workers-limit requires one count >=2\n");
-                return 2;
-            }
-            managed_workers_limit = (unsigned long)limit;
-            managed_limit_selected = 1;
-            argv++;
-            argc--;
+            fprintf(stderr, "shared executor pool has been removed; --managed-workers-limit is unavailable\n");
+            return 2;
         }
         else if (strcmp(argv[1], "--guarded-copies") == 0)
         {
@@ -3758,8 +3731,8 @@ int main(int argc, char **argv)
             puts("--gc-event-cycles coalesces cycle scans after managed owner loss.");
             puts("Diagnostic: --managed-owner-probe with --gc-worker checks managed roots across native owners");
             puts("Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
-            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; unaudited heap operations use exclusive turns.");
-            puts("Managed execution: --managed-workers 1 or a positive count / auto (multiple workers require --gc-worker); --managed-workers-limit caps auto.");
+            puts("Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; shared operations use object and field synchronization.");
+            puts("Managed execution: --native-spawn binds one process per OS thread; --managed-workers 1 selects the single-worker reference.");
 #ifdef DVM_RUNTIME_EDITOR
             puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
 #endif
@@ -3781,7 +3754,7 @@ int main(int argc, char **argv)
 #if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
     /* The console defaults to dedicated native guests. Explicit diagnostic
      * profiles still select their own runtime settings. */
-    if (!native_spawn && !gc_selected && (!managed_workers_selected || managed_workers != 1) &&
+    if (!native_spawn && !gc_selected && !managed_workers_selected &&
         !dvm_runtime_guarded_copies && !dvm_runtime_parallel_add &&
         !dvm_runtime_parallel_real && !dvm_runtime_parallel_string &&
         !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp &&
@@ -3789,27 +3762,14 @@ int main(int argc, char **argv)
         !dvm_runtime_parallel_byte_copies && !dvm_managed_owner_probe_requested &&
         !dvm_queue_probe_requested)
     {
-        if (!managed_workers_selected)
-        {
-            native_spawn = 1;
-        }
-        else
-        {
-            gc_worker = 1;
-            dvm_runtime_guarded_copies = 1;
-            dvm_runtime_parallel_movp = 1;
-            dvm_runtime_parallel_movmp = 1;
-            dvm_runtime_parallel_slicela = 1;
-            dvm_runtime_parallel_channel_buffer = 1;
-            dvm_runtime_parallel_byte_copies = 1;
-        }
+        native_spawn = 1;
     }
 #else
     USED(gc_selected);
 #endif
     if (native_spawn)
     {
-        if (managed_workers_selected || managed_limit_selected || (gc_selected && !gc_worker))
+        if (managed_workers_selected || (gc_selected && !gc_worker))
         {
             fprintf(stderr, "--native-spawn requires native GC and selects its own executor lifecycle\n");
             return 2;
@@ -3839,11 +3799,6 @@ int main(int argc, char **argv)
         dvm_runtime_guest_unbounded = 1;
         scheduler_quantum = PQUANTA;
     }
-    if (managed_limit_selected && managed_workers != 0)
-    {
-        fprintf(stderr, "--managed-workers-limit requires --managed-workers auto\n");
-        return 2;
-    }
 #if !defined(__x86_64__)
     if (dvm_runtime_guarded_copies && cflag)
     {
@@ -3852,18 +3807,18 @@ int main(int argc, char **argv)
     }
 #endif
     if ((dvm_runtime_parallel_add || dvm_runtime_parallel_real || dvm_runtime_parallel_string) &&
-        (!dvm_runtime_guarded_copies || (managed_workers == 1 && !native_spawn)))
+        (!dvm_runtime_guarded_copies || !native_spawn))
     {
         fprintf(stderr, "parallel scalar modes require --guarded-copies and multiple managed workers\n");
         return 2;
     }
-    if (dvm_runtime_parallel_movp && (!dvm_runtime_guarded_copies || (managed_workers == 1 && !native_spawn)))
+    if (dvm_runtime_parallel_movp && (!dvm_runtime_guarded_copies || !native_spawn))
     {
         fprintf(stderr, "--parallel-movp requires --guarded-copies and multiple managed workers\n");
         return 2;
     }
     if ((dvm_runtime_parallel_slicela || dvm_runtime_parallel_movmp || dvm_runtime_parallel_channel_buffer ||
-         dvm_runtime_parallel_byte_copies) && (!dvm_runtime_guarded_copies || (managed_workers == 1 && !native_spawn)))
+         dvm_runtime_parallel_byte_copies) && (!dvm_runtime_guarded_copies || !native_spawn))
     {
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
         return 2;
@@ -3895,15 +3850,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "--guarded-copies requires --gc-worker\n");
         return 2;
     }
-    if (managed_workers != 1 && !gc_worker)
-    {
-        fprintf(stderr,"--managed-workers >1 requires --gc-worker\n");
-        return 2;
-    }
 #ifdef DVM_RUNTIME_EDITOR
-    if ((native_spawn || managed_workers != 1) && !threaded)
+    if (native_spawn && !threaded)
     {
-        fprintf(stderr,"--managed-workers >1 requires --threaded-ui for the graphical host\n");
+        fprintf(stderr,"--native-spawn requires --threaded-ui for the graphical host\n");
         return 2;
     }
 #endif
@@ -3918,7 +3868,7 @@ int main(int argc, char **argv)
         dvm_queue_probe_finish();
         return 2;
     }
-    if ((native_spawn || managed_workers != 1) && show_stats)
+    if (native_spawn && show_stats)
     {
         dvm_runqueue_trace_waits();
     }
