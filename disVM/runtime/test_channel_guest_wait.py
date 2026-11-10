@@ -1709,7 +1709,8 @@ def main():
                              "dvm_native_owner_progress", "dvm_gc_workers_create"])
         if "--dedicated-buffer-only" in sys.argv[4:]:
             for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
-                                ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST)):
+                                ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST),
+                                ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
@@ -1720,9 +1721,14 @@ def main():
                         env=dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
                     )
                     output = result.stdout + result.stderr
-                    if (result.returncode or output.count("PASS foreign channel guest wait") != 1
+                    bypass = name in ("alt-ready", "alt-default")
+                    marker = ("PASS ALT bypassed the reservation" if bypass
+                              else "PASS foreign channel guest wait")
+                    if (result.returncode or output.count(marker) != 1
+                            or (bypass and "PASS foreign channel guest wait" in output)
                             or "PASS guest channel payloads" not in output
-                            or (name.startswith("alt-") and "PASS ALT owns the waiting continuation" not in output)
+                            or (name.startswith("alt-") and not bypass
+                                and "PASS ALT owns the waiting continuation" not in output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
             return
