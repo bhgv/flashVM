@@ -42,6 +42,8 @@ def main():
     )
     print(result.stdout, end="")
     print(result.stderr, end="", file=sys.stderr)
+    if result.returncode or "FAIL" in result.stdout or "PASS" not in result.stdout:
+        raise SystemExit("native Dis application failed: " + str(result.returncode))
     counters = re.search(r"instructions=(\d+) native=(\d+)", result.stderr)
     if (
         not counters
@@ -49,8 +51,6 @@ def main():
         or (mode != "jit" and int(counters[2]) != 0)
     ):
         raise SystemExit("incorrect native/interpreter dispatch counters")
-    if result.returncode or "FAIL" in result.stdout or "PASS" not in result.stdout:
-        raise SystemExit("native Dis application failed: " + str(result.returncode))
 
 
 if __name__ == "__main__":
