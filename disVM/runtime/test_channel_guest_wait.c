@@ -9,6 +9,7 @@
 #include "disvm/gc_workers.h"
 #include "runtime_gc.h"
 #include "managed_owner.h"
+#include "shared_access.h"
 #include "runqueue.h"
 #include "raise.h"
 #include "kernel.h"
@@ -25,6 +26,9 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+/* Exercise the production WORD mover from the rendezvous fixture. */
+extern void movw(void);
 
 static pthread_mutex_t gate = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t waiting = PTHREAD_COND_INITIALIZER;
