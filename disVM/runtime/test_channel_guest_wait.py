@@ -1651,6 +1651,24 @@ def main():
     runtime, compiler, include = (Path(arg).resolve() for arg in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix="channel-guest-wait-") as directory:
         work = Path(directory)
+        if "--table-fifo-only" in sys.argv[4:]:
+            for name, guest in (("table-fifo", TABLE_FIFO_GUEST),
+                                ("table-fifo-move", TABLE_FIFO_MOVE_GUEST)):
+                source, image = work / f"{name}.b", work / f"{name}.dis"
+                source.write_text(guest)
+                subprocess.run([compiler, "-I", include,
+                                "-I", Path(__file__).resolve().parents[1] / "module",
+                                "-o", image, source], check=True)
+                for mode in ("--no-jit", "--jit"):
+                    for attempt in range(8):
+                        result = subprocess.run(
+                            [runtime, mode, "--native-spawn", "--guarded-copies", image],
+                            cwd=work, capture_output=True, text=True, timeout=5,
+                        )
+                        if result.returncode or "PASS cooperative table FIFO" not in result.stdout:
+                            raise RuntimeError(f"{mode} {name} attempt {attempt + 1} "
+                                               f"exited {result.returncode}\n" + result.stdout + result.stderr)
+            return
         table_cancel = "--table-cancel-only" in sys.argv[4:]
         binary = runtime
         if not table_cancel:
