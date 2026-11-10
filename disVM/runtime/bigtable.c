@@ -54,7 +54,6 @@ struct TableWait
     TableWait *next;   /* Owned FIFO link. */
 };
 
-#define DVM_TABLE_WAIT (Pbroken + 1) /* Host-private blocked state; no upstream enum change. */
 static TableActor *table_actors;     /* Sole-executor contexts, not a cross-thread heap registry. */
 
 
@@ -1130,11 +1129,11 @@ int dvm_bigtable_cancel_wait(Prog *process)
         return 0;
     }
     table_remove_wait(actor);
-    process->R.PC++;
     if (!process->kill)
     {
         process->kill = "table lease wait cancelled";
     }
+    dvm_runtime_table_cancel_pc(process);
     if (process->state == DVM_TABLE_WAIT)
     {
         addrun(process);

@@ -2902,6 +2902,22 @@ static int consume_process_wait_requests(Prog *guest)
 }
 
 
+/* EN: Post the cancelled table call's PC adjustment to its TLS owner.
+ * RU: Передать поправку PC отменённого вызова владельцу регистров. */
+void dvm_runtime_table_cancel_pc(Prog *process)
+{
+    if (native_spawn)
+    {
+        DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
+        __atomic_store_n(&resident->table_cancel_pc, 1, __ATOMIC_RELEASE);
+    }
+    else
+    {
+        process->R.PC++;
+    }
+}
+
+
 /* Execute one complete managed turn under exclusive heap ownership. Both OS
  * executors call the same interpreter/JIT/error/retirement logic. Return a
  * managed turn status, or -1 after retiring the claim on failure.
@@ -2947,6 +2963,19 @@ static int runtime_dispatch_turn(void)
     if (!dvm_runqueue_claim(process))
     {
         error("cannot publish active Dis process in TLS owner");
+    }
+    if (native_spawn && __atomic_exchange_n(
+        &((DVM_RuntimeProcess *)process)->table_cancel_pc, 0, __ATOMIC_ACQUIRE))
+    {
+        if (dvm_native_execution()->resident_registers_valid)
+        {
+            DVM_R.PC++;
+            process->R.PC = DVM_R.PC;
+        }
+        else
+        {
+            process->R.PC++;
+        }
     }
     up->prog = process;
     if (!dvm_process_environment_bind(process))
@@ -3079,7 +3108,7 @@ static int runtime_dispatch_turn(void)
         dvm_native_execution()->resident_registers_valid =
             native_spawn &&
             (process->state == Pready || hosted_channel_waiter(process) ||
-             process->state == DVM_CHILD_EXIT_WAIT);
+             process->state == DVM_CHILD_EXIT_WAIT || process->state == DVM_TABLE_WAIT);
         if (!dvm_runqueue_finish(process))
         {
             error("cannot finish completed dispatch");

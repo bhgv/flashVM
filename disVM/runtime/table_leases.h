@@ -2,6 +2,11 @@
 #ifndef DVM_TABLE_LEASES_H
 #define DVM_TABLE_LEASES_H
 
+#define DVM_TABLE_WAIT (Pbroken + 1) /* Hosted table wait state. */
+
+/* Publish an MCALL cancellation for application by its register owner. */
+void dvm_runtime_table_cancel_pc(Prog *process);
+
 
 /* Before native MCALL publication, admit a typed table call or park/retry it.
  * function/frame are borrowed validated native call metadata. Returns 1 to run,
