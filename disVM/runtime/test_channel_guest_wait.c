@@ -1432,8 +1432,10 @@ int __wrap_dvm_runtime_channel_wait_change(uint64_t generation)
 int __real_dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive);
 int __wrap_dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive)
 {
-    if (getenv("DVM_TEST_ALT_STALE"))
+    static int forced;
+    if (getenv("DVM_TEST_ALT_STALE") && !forced)
     {
+        forced = 1;
         WORD contender = receive ? 0 : 11;
         check(__real_dvm_runtime_alt_try_transfer(channel, &contender, receive) &&
             contender == 11, "change readiness after ALT selected the branch");

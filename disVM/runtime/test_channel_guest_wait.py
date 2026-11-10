@@ -177,6 +177,34 @@ ALT_STALE_SEND_GUEST = ALT_STALE_GUEST.replace(
 )
 
 
+ALT_STALE_BLOCK_GUEST = r'''implement ChannelWait;
+include "sys.m";
+ChannelWait: module { init: fn(); };
+
+init()
+{
+    sys := load Sys Sys->PATH;
+    first := chan[1] of int;
+    second := chan[1] of int;
+    first <-= 11;
+    second <-= 11;
+    value := 0;
+    alt {
+        value = <-first => {}
+        value = <-second => {}
+    }
+    if (value != 11)
+        raise "ALT did not receive from the remaining ready channel";
+    alt {
+        <-first => raise "first channel still ready";
+        <-second => raise "second channel still ready";
+        * => {}
+    }
+    sys->print("PASS guest channel payloads\n");
+}
+'''
+
+
 ALT_EMPTY_GUEST = SEND_GUEST.replace(
     """    messages <-= 31;
     first := <-messages;
@@ -1774,6 +1802,7 @@ def main():
                                 ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST),
                                 ("stale-alt", ALT_STALE_GUEST),
                                 ("stale-alt-send", ALT_STALE_SEND_GUEST),
+                                ("stale-alt-block", ALT_STALE_BLOCK_GUEST),
                                 ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
                                 ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
                                 ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
