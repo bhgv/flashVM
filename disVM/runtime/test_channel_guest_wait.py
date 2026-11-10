@@ -167,6 +167,16 @@ init()
 '''
 
 
+ALT_STALE_SEND_GUEST = ALT_STALE_GUEST.replace(
+    "    input <-= 11;\n    value := 73;\n", "",
+).replace(
+    "value = <-input", "input <-= 73",
+).replace(
+    '    if (value != 73)\n        raise "stale guard modified its destination";',
+    '    if (<-input != 11)\n        raise "stale send changed the buffered message";',
+)
+
+
 ALT_EMPTY_GUEST = SEND_GUEST.replace(
     """    messages <-= 31;
     first := <-messages;
@@ -1763,6 +1773,7 @@ def main():
                                 ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST),
                                 ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST),
                                 ("stale-alt", ALT_STALE_GUEST),
+                                ("stale-alt-send", ALT_STALE_SEND_GUEST),
                                 ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
                                 ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
                                 ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
@@ -1779,7 +1790,7 @@ def main():
                     result = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
                         cwd=work, capture_output=True, text=True, timeout=5,
-                        env=dict(os.environ, DVM_TEST_ALT_STALE="1") if name == "stale-alt"
+                        env=dict(os.environ, DVM_TEST_ALT_STALE="1") if name.startswith("stale-alt")
                         else dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
                     )
                     output = result.stdout + result.stderr
@@ -1788,7 +1799,7 @@ def main():
                               else "PASS foreign channel guest wait")
                     if name.startswith("parked-"):
                         marker = "PASS cancelled scheduler channel wait"
-                    if name == "stale-alt":
+                    if name.startswith("stale-alt"):
                         marker = "PASS stale ALT selection refused"
                     expected = 1
                     if name == "native-isolation":

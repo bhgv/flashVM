@@ -1434,9 +1434,9 @@ int __wrap_dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int rec
 {
     if (getenv("DVM_TEST_ALT_STALE"))
     {
-        WORD stolen = 0;
-        check(receive && __real_dvm_runtime_alt_try_transfer(channel, &stolen, 1) &&
-            stolen == 11, "consume readiness after ALT selected the branch");
+        WORD contender = receive ? 0 : 11;
+        check(__real_dvm_runtime_alt_try_transfer(channel, &contender, receive) &&
+            contender == 11, "change readiness after ALT selected the branch");
         check(!__real_dvm_runtime_alt_try_transfer(channel, payload, receive),
             "stale ALT must not publish a channel wait");
         puts("PASS stale ALT selection refused");
