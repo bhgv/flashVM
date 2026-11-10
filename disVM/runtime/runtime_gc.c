@@ -283,8 +283,28 @@ int dvm_runtime_gc_stop(int diagnostics)
         execution->world_entry_pending = 0;
         call.phase = DVM_HEAP_ACTIVE;
     }
-    if (!dvm_managed_owner_can_close() || !dvm_native_owner_seal(owner) ||
-        !dvm_world_admission(dvm_gc_runtime.world,&admission) || !admission.serial || admission.waiting)
+    if (!dvm_managed_owner_can_close())
+    {
+        return 0;
+    }
+    if (!dvm_native_owner_seal(owner))
+    {
+        /* A collector service can still be active after the final guest.
+         * Leave the mutator interval so its pending pass can finish. */
+        if (call.phase != DVM_HEAP_ACTIVE || !dvm_native_owner_leave(owner))
+            return 0;
+        DVM_NativeExecution *execution = dvm_native_execution();
+        execution->world_last_exit = DVM_NW_SITE_GC_STOP;
+        int idle = dvm_gc_workers_wait_idle(dvm_gc_runtime.workers);
+        execution->world_entry_site = DVM_NW_SITE_GC_STOP;
+        execution->world_entry_pending = 1;
+        if (!dvm_native_owner_enter(owner))
+            return 0;
+        execution->world_entry_pending = 0;
+        if (!idle || !dvm_native_owner_seal(owner))
+            return 0;
+    }
+    if (!dvm_world_admission(dvm_gc_runtime.world,&admission) || !admission.serial || admission.waiting)
     {
         return 0;
     }
