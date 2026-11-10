@@ -682,12 +682,8 @@ static int granted_table_retry(Prog *process)
         __atomic_load_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, __ATOMIC_ACQUIRE);
 }
 
-static int post_host_wait_cancel(int pid)
+static void post_host_wait_cancel(int pid)
 {
-    if (!native_spawn)
-    {
-        return 0;
-    }
     Prog *peer;
     for (peer = dvm_runtime_process_roots(); peer && peer->pid != pid; peer = peer->next)
     {
@@ -695,7 +691,7 @@ static int post_host_wait_cancel(int pid)
     if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt &&
         peer->state != DVM_CHILD_EXIT_WAIT && peer->state != DVM_TABLE_WAIT && !granted_table_retry(peer)))
     {
-        return 0;
+        return;
     }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
     /* The owner may still be finishing the turn that published its wait.
@@ -705,7 +701,6 @@ static int post_host_wait_cancel(int pid)
     {
         dvm_managed_workers_wake_guest(peer);
     }
-    return posted != 0;
 }
 
 
@@ -724,8 +719,13 @@ static int dispatch_guest_cancellations(void)
     {
         int pid = cancel_requests[0];
 
-        if (post_host_wait_cancel(pid))
+        if (native_spawn)
         {
+            /* Registration, mailbox publication and queue removal share the
+             * ledger mutex. Another resident cannot deliver this PID twice. */
+            if (cancel_registered_guest_wait(pid) < 0)
+                post_host_wait_cancel(pid);
+
             remove_guest_cancel_request(0);
             continue;
         }

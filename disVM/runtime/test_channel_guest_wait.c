@@ -51,6 +51,7 @@ static int child_exit_host_cancel; /* Queue cancellation from outside NativeWorl
 static int child_exit_wait_count; /* Published killwait parks, under gate. */
 static int parked_cancel_mode; /* Cancel an ordinary scheduler-blocked guest. */
 static int parked_count; /* Number of fixture registrations published under gate. */
+static int second_parked_pid; /* Published under gate. */
 static int parked_pid; /* Published under gate after the guest parks. */
 static int directory_fault_mode; /* Fail managed publication with a second read queued. */
 static int directory_fault_strings; /* Fail after one mapped string was published. */
@@ -436,6 +437,9 @@ Channel *__wrap_dvm_runtime_channel_new(void *destination, Type *type, WORD capa
         if (getenv("DVM_TEST_DEDICATED_BUFFER"))
         {
             check(dvm_runtime_request_guest_cancel(parked_pid), "post cancellation to the parked owner");
+            if (getenv("DVM_TEST_CANCEL_BOTH"))
+                check(second_parked_pid && dvm_runtime_request_guest_cancel(second_parked_pid),
+                    "post cancellation to the second parked owner");
             dvm_runtime_gc_native_enter(released);
         }
         else
@@ -1000,6 +1004,10 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
                 {
                     cancel_pid = parked_pid;
                 }
+            }
+            else
+            {
+                second_parked_pid = process->pid;
             }
             parked_count++;
             pthread_cond_broadcast(&waiting);

@@ -1162,6 +1162,13 @@ DEDICATED_PARKED_ISOLATION_GUEST = PARKED_ISOLATION_GUEST.replace(
 )
 
 
+DEDICATED_CANCEL_BOTH_GUEST = DEDICATED_PARKED_ISOLATION_GUEST.replace(
+    "    input <-= 11;\n", "",
+).replace(
+    "first != -1 || second != 11", "first != -1 || second != -1",
+)
+
+
 HOST_CANCEL_GUEST = r'''implement ChannelWait;
 include "sys.m";
 ChannelWait: module { init: fn(); };
@@ -1876,6 +1883,7 @@ def main():
                                 ("parked-send", PARKED_SEND_GUEST), ("parked-receive", PARKED_RECEIVE_GUEST),
                                 ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST),
                                 ("parked-isolation", DEDICATED_PARKED_ISOLATION_GUEST),
+                                ("parked-cancel-both", DEDICATED_CANCEL_BOTH_GUEST),
                                 ("native-isolation", ISOLATED_CANCEL_GUEST),
                                 ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST),
                                 ("killwait-channel", killwait_guest(PROCESS_KILL_GUEST)),
@@ -1889,6 +1897,7 @@ def main():
                                 ("killwait-table", PROCESS_KILLWAIT_TABLE_GUEST),
                                 ("killwait-nested", KILLWAIT_NESTED_GUEST),
                                 ("killwait-host", KILLWAIT_HOST_GUEST),
+                                ("host-fixed", HOST_CANCEL_GUEST.replace("chan[35]", "chan[44]")),
                                 ("killwait-cancel", KILLWAIT_CANCEL_GUEST.replace(
                                     "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
                                     "<-reports != 1",
@@ -1903,6 +1912,10 @@ def main():
                         env["DVM_TEST_ALT_STALE"] = "1"
                     if name == "killwait-before-sleep":
                         env["DVM_TEST_KILLWAIT_BEFORE_SLEEP"] = "1"
+                    if name == "parked-cancel-both":
+                        env["DVM_TEST_CANCEL_BOTH"] = "1"
+                    if name == "host-fixed":
+                        env["DVM_TEST_DEDICATED_CANCEL"] = "1"
                     if name == "kill-before-sleep":
                         env["DVM_TEST_KILL_BEFORE_SLEEP"] = "1"
                     result = subprocess.run(
@@ -1928,6 +1941,8 @@ def main():
                         payload = "PASS guest child retirement"
                         marker = ("PASS cancelled native sleep" if name in ("killwait-native", "killwait-before-sleep")
                                   else payload)
+                    if name == "host-fixed":
+                        marker = "PASS submitted host cancellation batch"
                     expected = 1
                     if name == "native-isolation":
                         marker = "PASS isolated channel guest wait"
