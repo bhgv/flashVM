@@ -1835,7 +1835,10 @@ def main():
                                 ("native-isolation", ISOLATED_CANCEL_GUEST),
                                 ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST),
                                 ("killwait-channel", killwait_guest(PROCESS_KILL_GUEST)),
-                                ("killwait-native", killwait_guest(PROCESS_KILL_NATIVE_GUEST))):
+                                ("killwait-native", killwait_guest(PROCESS_KILL_NATIVE_GUEST)),
+                                ("killwait-ready", killwait_guest(PROCESS_KILL_READY_GUEST)),
+                                ("killwait-table", PROCESS_KILLWAIT_TABLE_GUEST),
+                                ("killwait-nested", KILLWAIT_NESTED_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
@@ -1876,6 +1879,8 @@ def main():
                             or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
+                    if name == "killwait-nested" and (work / "killwait-nested.bin").read_bytes() != b"a":
+                        raise RuntimeError(f"{mode} nested killwait lost admitted output")
                     if name == "send":
                         for polling in ("--gc-worker", "--gc-locked-poll"):
                             rooted = subprocess.run(
@@ -1891,7 +1896,7 @@ def main():
                         command = [binary, mode, "--native-spawn", "--guarded-copies", image]
                         for field in range(15):
                             refused = subprocess.run(command, cwd=work, capture_output=True, text=True,
-                                                     timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field)))
+                                                     timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field), DVM_TEST_DEDICATED_BUFFER="1"))
                             if (refused.returncode != 1 or
                                     "disvm: native continuation restoration failed" not in refused.stderr):
                                 raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
@@ -1906,7 +1911,7 @@ def main():
                         for phase, diagnostic in phase_controls.items():
                             refused = subprocess.run(
                                 command, cwd=work, capture_output=True, text=True, timeout=5,
-                                env=dict(os.environ, DVM_TEST_NATIVE_RETURN_PHASE=phase),
+                                env=dict(os.environ, DVM_TEST_NATIVE_RETURN_PHASE=phase, DVM_TEST_DEDICATED_BUFFER="1"),
                             )
                             if refused.returncode != 1 or diagnostic not in refused.stderr:
                                 raise RuntimeError(f"{mode} missed native phase control {phase}\n"

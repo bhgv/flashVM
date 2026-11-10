@@ -112,6 +112,7 @@ Pool *heapmem = &memory;                  /* Pool consumed by the production RC/
 static DVM_MessageRouter *guest_messages; /* Dedicated guest endpoints, keyed by immutable PID. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Atomic process quota accounting. */
+static unsigned int resident_wait_deliveries; /* Mailbox requests being applied by residents. */
 static unsigned int resident_retirements; /* Dedicated exits still publishing completion. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static Prog *initial_guest; /* Controller-owned root guest in dedicated mode. */
@@ -646,7 +647,8 @@ static int guest_cancel_pending_or_close(void)
         }
     }
     /* Read the source of each handoff before the destination it publishes. */
-    if (native_spawn && (dvm_runqueue_dispatch_pending() ||
+    if (native_spawn && (__atomic_load_n(&resident_wait_deliveries, __ATOMIC_ACQUIRE) ||
+        dvm_runqueue_dispatch_pending() ||
         __atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE) ||
         dvm_runqueue_inflight() || dvm_runqueue_ready()))
     {
@@ -1961,9 +1963,8 @@ static int wake_for_termination(Prog *child)
 }
 
 
-/* EN: Post termination to a dedicated child parked on a channel.
- * RU: Передать завершение выделенному потомку, ожидающему канал. */
-static void send_channel_exit(Prog *child)
+/* Post termination to the child owner before it resumes execution. */
+static void send_resident_exit(Prog *child)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)child;
     child->flags |= Pkilled;
@@ -1980,7 +1981,7 @@ static int post_channel_exit(Prog *child)
     {
         return 0;
     }
-    send_channel_exit(child);
+    send_resident_exit(child);
     return 1;
 }
 
@@ -2019,13 +2020,14 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
 }
 
 
-/* Publish the parent wait before waking a child blocked in native or on a channel. */
+/* Publish the parent wait before requesting termination on the child owner. */
 static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
     int state = child ? child->state : Pexiting;
-    if (state != Prelease && state != Psend && state != Precv && state != Palt)
+    if (state != Prelease && state != Psend && state != Precv && state != Palt &&
+        state != Pready && state != DVM_TABLE_WAIT && state != DVM_CHILD_EXIT_WAIT)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
@@ -2047,7 +2049,7 @@ static int prepare_dedicated_child_wait(Prog *caller, int pid)
     }
     else
     {
-        send_channel_exit(child);
+        send_resident_exit(child);
     }
     fvm_port_sync_unlock(channel_queue_mutex);
     return 1;
@@ -2065,9 +2067,9 @@ int dvm_runtime_prepare_killwait(Prog *caller, int pid)
     {
         return 1;
     }
-    if (native_spawn && prepare_dedicated_child_wait(caller, pid))
+    if (native_spawn)
     {
-        return 0;
+        return !prepare_dedicated_child_wait(caller, pid);
     }
     child = find_child(caller, pid);
     if (request_child_exit(child) != Processctl_Requested)
@@ -2917,15 +2919,21 @@ static int consume_process_wait_requests(Prog *guest)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
     if (!process || !process->messages ||
-        (guest->state != DVM_CHILD_EXIT_WAIT && guest->state != Pready))
+        (guest->state != DVM_CHILD_EXIT_WAIT && guest->state != DVM_TABLE_WAIT && guest->state != Pready) ||
+        !dvm_messages_pending(process->messages, 0, 0))
     {
         return 0;
     }
+    __atomic_fetch_add(&resident_wait_deliveries, 1, __ATOMIC_ACQ_REL);
     int cancelled = 0;
     DVM_OwnerMessage *message;
     while ((message = dvm_messages_take(process->messages, 0, 0)))
     {
-        if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT ||
+        if (message->kind == DVM_PROG_MESSAGE_CHANNEL_EXIT)
+        {
+            cancelled |= wake_for_termination(guest);
+        }
+        else if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT ||
             message->kind == DVM_PROG_MESSAGE_CHANNEL_CANCEL)
         {
             process->cancel_delivering = cancel_child_exit_wait(guest);
@@ -2934,6 +2942,7 @@ static int consume_process_wait_requests(Prog *guest)
             process->cancel_delivering = 0;
         }
     }
+    __atomic_fetch_sub(&resident_wait_deliveries, 1, __ATOMIC_RELEASE);
     return cancelled;
 }
 
