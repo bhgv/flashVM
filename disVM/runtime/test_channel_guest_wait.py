@@ -1836,19 +1836,28 @@ def main():
                                 ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST),
                                 ("killwait-channel", killwait_guest(PROCESS_KILL_GUEST)),
                                 ("killwait-native", killwait_guest(PROCESS_KILL_NATIVE_GUEST)),
+                                ("killwait-before-sleep", killwait_guest(PROCESS_KILL_NATIVE_GUEST)),
                                 ("killwait-ready", killwait_guest(PROCESS_KILL_READY_GUEST)),
                                 ("killwait-table", PROCESS_KILLWAIT_TABLE_GUEST),
-                                ("killwait-nested", KILLWAIT_NESTED_GUEST)):
+                                ("killwait-nested", KILLWAIT_NESTED_GUEST),
+                                ("killwait-cancel", KILLWAIT_CANCEL_GUEST.replace(
+                                    "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
+                                    "<-reports != 1",
+                                ))):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
                                 "-o", image, source], check=True)
                 for mode in ("--no-jit", "--jit"):
+                    env = dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1")
+                    if name.startswith("stale-alt"):
+                        env["DVM_TEST_ALT_STALE"] = "1"
+                    if name == "killwait-before-sleep":
+                        env["DVM_TEST_KILLWAIT_BEFORE_SLEEP"] = "1"
                     result = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
                         cwd=work, capture_output=True, text=True, timeout=5,
-                        env=dict(os.environ, DVM_TEST_ALT_STALE="1") if name.startswith("stale-alt")
-                        else dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
+                        env=env,
                     )
                     output = result.stdout + result.stderr
                     starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
@@ -1863,7 +1872,7 @@ def main():
                     payload = "PASS guest channel payloads"
                     if name.startswith("killwait-"):
                         payload = "PASS guest child retirement"
-                        marker = ("PASS cancelled native sleep" if name == "killwait-native"
+                        marker = ("PASS cancelled native sleep" if name in ("killwait-native", "killwait-before-sleep")
                                   else payload)
                     expected = 1
                     if name == "native-isolation":
@@ -1879,8 +1888,10 @@ def main():
                             or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
-                    if name == "killwait-nested" and (work / "killwait-nested.bin").read_bytes() != b"a":
-                        raise RuntimeError(f"{mode} nested killwait lost admitted output")
+                    if name == "killwait-before-sleep" and "PASS killwait posted before native sleep registration" not in output:
+                        raise RuntimeError(f"{mode} did not exercise pre-registration killwait\n{output}")
+                    if name in ("killwait-nested", "killwait-cancel") and (work / f"{name}.bin").read_bytes() != b"a":
+                        raise RuntimeError(f"{mode} {name} lost admitted output")
                     if name == "send":
                         for polling in ("--gc-worker", "--gc-locked-poll"):
                             rooted = subprocess.run(

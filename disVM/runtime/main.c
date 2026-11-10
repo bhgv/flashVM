@@ -416,8 +416,7 @@ static void remove_guest_cancel_request(size_t index)
 }
 
 
-/* Publish the current guest identity before suspension, and return the
- * readiness epoch from the same critical section. */
+/* Register the current guest before suspension and consume any pending cancellation. */
 static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
 {
     Prog *process = dvm_native_context_process(dvm_native_context_current());
@@ -436,6 +435,12 @@ static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, D
     {
         /* Transfer the queued request to this exact continuation. */
         remove_guest_cancel_request(request);
+        cancel_guest_wait(wait);
+    }
+    /* A dedicated exit can arrive after the instruction starts but before
+     * its native wait is linked. Observe that request before blocking. */
+    if (native_spawn && process && (process->flags & Pkilled))
+    {
         cancel_guest_wait(wait);
     }
     if (native_waits_stopping && gate && !wait->cancelled)
@@ -2042,15 +2047,8 @@ static int prepare_dedicated_child_wait(Prog *caller, int pid)
     DVM_R.IC = 1;
     DVM_R.t = 1;
     ((DVM_RuntimeProcess *)child)->exit_notify_parent = 1;
-    if (state == Prelease)
-    {
-        child->flags |= Pkilled;
-        cancel_registered_guest_wait(pid);
-    }
-    else
-    {
-        send_resident_exit(child);
-    }
+    send_resident_exit(child);
+    cancel_registered_guest_wait(pid);
     fvm_port_sync_unlock(channel_queue_mutex);
     return 1;
 }
@@ -2879,18 +2877,8 @@ static int consume_channel_message(Prog *guest)
 
 /* EN: Consume a cancellation or retirement reply before dispatching the parent.
  * RU: Принять ответ об отмене или завершении до запуска родителя. */
-static int consume_child_reply(Prog *guest)
+static int apply_child_reply(Prog *guest, DVM_RuntimeProcess *process, DVM_OwnerMessage *reply)
 {
-    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-    if (!process || !process->messages)
-    {
-        return 0;
-    }
-    DVM_OwnerMessage *reply = dvm_managed_workers_take_reply(guest);
-    if (!reply)
-    {
-        reply = dvm_messages_take(process->messages, 1, 0);
-    }
     if (!reply || guest->state != DVM_CHILD_EXIT_WAIT ||
         reply->request != (uint64_t)process->exit_wait_pid)
     {
@@ -2910,6 +2898,27 @@ static int consume_child_reply(Prog *guest)
         return 0;
     }
     return wake_child_exit_wait(guest);
+}
+
+
+static int consume_child_reply(Prog *guest)
+{
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+    if (!process || !process->messages ||
+        (!dvm_messages_pending(process->messages, 1, 0) &&
+         !dvm_managed_workers_reply_in_transit(guest)))
+    {
+        return 0;
+    }
+    __atomic_fetch_add(&resident_wait_deliveries, 1, __ATOMIC_ACQ_REL);
+    DVM_OwnerMessage *reply = dvm_managed_workers_take_reply(guest);
+    if (!reply)
+    {
+        reply = dvm_messages_take(process->messages, 1, 0);
+    }
+    int delivered = apply_child_reply(guest, process, reply);
+    __atomic_fetch_sub(&resident_wait_deliveries, 1, __ATOMIC_RELEASE);
+    return delivered;
 }
 
 

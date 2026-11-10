@@ -794,6 +794,7 @@ String *__wrap_c2string(char *value, int length)
 
 
 static void submit_host_cancel_batch(int pid);
+static int early_killwait_posted; /* Protected by gate. */
 
 
 /* Observe the actual prepared MCALL becoming a scheduler wait. */
@@ -801,6 +802,13 @@ int __wrap_dvm_runtime_prepare_killwait(Prog *caller, int pid)
 {
     int ready = __real_dvm_runtime_prepare_killwait(caller, pid);
 
+    if (!ready && getenv("DVM_TEST_KILLWAIT_BEFORE_SLEEP"))
+    {
+        pthread_mutex_lock(&gate);
+        early_killwait_posted = 1;
+        pthread_cond_broadcast(&waiting);
+        pthread_mutex_unlock(&gate);
+    }
     if (child_exit_cancel_mode && !ready)
     {
         pthread_mutex_lock(&gate);
@@ -1190,6 +1198,16 @@ int __wrap_dvm_runtime_guest_sleep(unsigned long milliseconds)
     {
         submit_host_cancel_batch(sleeping_pid);
         verify_sleep_cancel_handoff = 1;
+    }
+    if (getenv("DVM_TEST_KILLWAIT_BEFORE_SLEEP"))
+    {
+        pthread_mutex_lock(&gate);
+        alt_wait_entered = 1;
+        pthread_cond_broadcast(&waiting);
+        while (!early_killwait_posted)
+            pthread_cond_wait(&waiting, &gate);
+        pthread_mutex_unlock(&gate);
+        puts("PASS killwait posted before native sleep registration");
     }
     result = __real_dvm_runtime_guest_sleep(milliseconds);
     check(result == -1 && !dvm_runtime_cancel_guest_wait(sleeping_pid),
