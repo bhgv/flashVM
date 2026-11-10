@@ -719,3 +719,16 @@ removing owner/root/NativeWorld requirements.
 Runtime0.98: [MUL/DIV/MOD](PRODUCT-DIVISION.md) keep both inputs/result under one
 claim; DIV/MOD return semantic errors after unlock, preserving zero precedence
 over invalid outer sentinels. General managed admission remains serialized.
+
+## Один Prog на поток исполнения
+
+При старте выделенного потока ему один раз назначаются `Prog` и рабочий
+набор регистров в TLS. Эта привязка действует до завершения процесса.
+При пробуждении, завершении операции канала, возврате из нативного вызова
+и очередном входе в интерпретатор поток продолжает работу со своими
+регистрами. Другие потоки передают запросы и результаты через почтовый ящик.
+
+`Prog.R` может хранить снимок для GC и диагностики. Публикация снимка идёт
+из регистров владельца. Обратная загрузка рабочего набора из этого снимка
+при возобновлении нарушает контракт. Для проверки этой модели используется
+`--native-spawn`.

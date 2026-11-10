@@ -21,3 +21,15 @@
   master head and resulting tree; never force-push. Upstream fixes remain
   separate changes in their owning repository. Local author/committer:
   bhgv <bhgv@bhgv.bhgv>.
+
+## Dedicated Dis execution
+
+- In the dedicated model, bind exactly one `Prog` and one live register set
+  to each execution thread at startup. Keep that identity and register set
+  until the process terminates. Never pick another `Prog` from a ready queue
+  or reload the live registers from `Prog.R` on wake, channel completion,
+  native return, or the next dispatch. A saved image for GC or diagnostics is
+  a publication from the owner, not the source for resuming the thread.
+- Send cross-thread requests and completions through the resident's mailbox.
+  Test this contract with `--native-spawn`. Legacy shared-worker tests cover
+  a separate scheduling model.
