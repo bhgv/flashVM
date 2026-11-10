@@ -937,6 +937,7 @@ static void table_remove_wait(TableActor *actor);
 /* Rewind the prepared call and suspend this guest, keeping its frame roots. */
 static void table_suspend(void)
 {
+    dvm_runtime_table_retry_pending(currun(), 1);
     DVM_R.PC--;
     DVM_R.IC = 1;
     DVM_R.t = 1;
@@ -1109,6 +1110,7 @@ static void table_remove_wait(TableActor *actor)
         }
         owner->wait_count--;
         actor->waiting = nil;
+        dvm_runtime_table_retry_pending(actor->process, 0);
         free(waiter);
         table_wake(owner);
     }

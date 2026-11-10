@@ -676,6 +676,12 @@ static int guest_cancel_pending_or_close(void)
 /* EN: Route asynchronous host cancellation to the owner of a supported wait.
  * RU: Передать асинхронную отмену хоста владельцу поддерживаемого ожидания. */
 /* The channel queue mutex keeps the target rooted during publication. */
+static int granted_table_retry(Prog *process)
+{
+    return process->state == Pready &&
+        __atomic_load_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, __ATOMIC_ACQUIRE);
+}
+
 static int post_host_wait_cancel(int pid)
 {
     if (!native_spawn)
@@ -687,7 +693,7 @@ static int post_host_wait_cancel(int pid)
     {
     }
     if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt &&
-        peer->state != DVM_CHILD_EXIT_WAIT && peer->state != DVM_TABLE_WAIT))
+        peer->state != DVM_CHILD_EXIT_WAIT && peer->state != DVM_TABLE_WAIT && !granted_table_retry(peer)))
     {
         return 0;
     }
@@ -1834,7 +1840,7 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
     Prog *child = find_child(caller, pid);
     if (!child ||
         (child->state != Psend && child->state != Precv && child->state != Palt &&
-         child->state != DVM_CHILD_EXIT_WAIT && child->state != DVM_TABLE_WAIT))
+         child->state != DVM_CHILD_EXIT_WAIT && child->state != DVM_TABLE_WAIT && !granted_table_retry(child)))
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 1;
@@ -2979,6 +2985,11 @@ static int consume_process_wait_requests(Prog *guest)
 
 /* EN: Post the cancelled table call's PC adjustment to its TLS owner.
  * RU: Передать поправку PC отменённого вызова владельцу регистров. */
+void dvm_runtime_table_retry_pending(Prog *process, int pending)
+{
+    __atomic_store_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, pending, __ATOMIC_RELEASE);
+}
+
 void dvm_runtime_table_cancel_pc(Prog *process)
 {
     if (native_spawn)

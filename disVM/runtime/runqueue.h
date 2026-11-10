@@ -38,6 +38,7 @@ typedef struct DVM_RuntimeProcess
     int cancel_waiting;             /* This guest is parked for a cancellation reply. */
     int cancel_ready_pid;           /* Child matched by the prepared cancelwait retry. */
     int cancel_ready_result;        /* Result delivered to that retry. */
+    int table_retry_pending;        /* Parked Bigtable MCALL, including after wake. */
     int table_cancel_pc;            /* Pending MCALL successor update for the TLS owner. */
     int cancel_delivering;          /* Owner is completing a posted cancellation. */
     DVM_OwnerMessage child_retired;  /* Embedded reply for the one parked killwait. */

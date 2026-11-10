@@ -1818,7 +1818,7 @@ def main():
         if table_kill_head or table_cancel_head:
             binary = relink(runtime, work, Path(__file__).with_name("test_table_kill_head.c"),
                             0, ["dvm_bigtable_call_ready", "dvm_runtime_kill_child",
-                                "dvm_runtime_cancel_child_wait", "dvm_runqueue_claim"])
+                                "dvm_runtime_prepare_cancelwait", "dvm_runqueue_finish"])
         elif not table_cancel:
             binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
                             ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt",

@@ -45,23 +45,24 @@ int __wrap_dvm_runtime_kill_child(Prog *parent, int pid)
     return gated_control(__real_dvm_runtime_kill_child, parent, pid);
 }
 
-int __real_dvm_runtime_cancel_child_wait(Prog *parent, int pid);
-int __wrap_dvm_runtime_cancel_child_wait(Prog *parent, int pid)
+int __real_dvm_runtime_prepare_cancelwait(Prog *parent, int pid);
+int __wrap_dvm_runtime_prepare_cancelwait(Prog *parent, int pid)
 {
-    return gated_control(__real_dvm_runtime_cancel_child_wait, parent, pid);
+    return gated_control(__real_dvm_runtime_prepare_cancelwait, parent, pid);
 }
 
-int __real_dvm_runqueue_claim(Prog *process);
+int __real_dvm_runqueue_finish(Prog *process);
 
-int __wrap_dvm_runqueue_claim(Prog *process)
+int __wrap_dvm_runqueue_finish(Prog *process)
 {
-    /* The first table waiter has been granted a turn. Hold its retry
+    /* Hold the first waiter at the end of its parked turn
      * until the parent has posted termination or cancellation. */
-    if (process->pid == __atomic_load_n(&table_victim_pid, __ATOMIC_ACQUIRE))
+    if (process->pid == __atomic_load_n(&table_victim_pid, __ATOMIC_ACQUIRE) &&
+        !__atomic_load_n(&table_retry_ready, __ATOMIC_ACQUIRE))
     {
         __atomic_store_n(&table_retry_ready, 1, __ATOMIC_RELEASE);
         while (!__atomic_load_n(&table_control_delivered, __ATOMIC_ACQUIRE))
             usleep(1000);
     }
-    return __real_dvm_runqueue_claim(process);
+    return __real_dvm_runqueue_finish(process);
 }
