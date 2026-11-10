@@ -511,7 +511,7 @@ static int cycle_candidate_already_queued(DVM_HeapKey key)
 /* Keep the packet owner intact until its replacement queue root is published. */
 static int transfer_record_candidate(Heap *heap, FrameRetirement *packet, size_t index)
 {
-    if (!record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1)
+    if (!candidate_transfer || !record_candidate(heap) || dvm_refcount_load_u(&heap->ref) <= 1)
     {
         return 0;
     }
@@ -528,17 +528,11 @@ static int transfer_record_candidate(Heap *heap, FrameRetirement *packet, size_t
         cycle_candidates_full += reservation == DVM_RETIRE_FULL;
         return 0;
     }
-    if (candidate_transfer)
-    {
-        fvm_port_sync_lock(candidate_transfer);
-    }
+    fvm_port_sync_lock(candidate_transfer);
     if (cycle_candidate_already_queued(key) ||
         !dvm_gc_field_mark(&heap->color, &mutator, &nprop) || !dvm_runtime_root_add(heap))
     {
-        if (candidate_transfer)
-        {
-            fvm_port_sync_unlock(candidate_transfer);
-        }
+        fvm_port_sync_unlock(candidate_transfer);
         dvm_retirement_cancel(cycle_candidates, &token);
         return 0;
     }
@@ -548,10 +542,7 @@ static int transfer_record_candidate(Heap *heap, FrameRetirement *packet, size_t
     {
         abort();
     }
-    if (candidate_transfer)
-    {
-        fvm_port_sync_unlock(candidate_transfer);
-    }
+    fvm_port_sync_unlock(candidate_transfer);
     if (became_ready && notify_ready)
     {
         notify_ready();
@@ -599,10 +590,12 @@ int dvm_runtime_rc_defer(void *value)
             abort();
         }
         Setmark(heap);
-        if (key.generation && !cycle_candidate_already_queued(key) &&
-            dvm_retirement_reserve(cycle_candidates, bytes, &token) == DVM_RETIRE_OK)
+        if (candidate_transfer && key.generation && dvm_retirement_reserve(cycle_candidates, bytes, &token) == DVM_RETIRE_OK)
         {
-            queued = dvm_retirement_commit_key(cycle_candidates, &token, value, key, &ready);
+            fvm_port_sync_lock(candidate_transfer);
+            if (!cycle_candidate_already_queued(key))
+                queued = dvm_retirement_commit_key(cycle_candidates, &token, value, key, &ready);
+            fvm_port_sync_unlock(candidate_transfer);
             if (!queued && !dvm_retirement_cancel(cycle_candidates, &token))
             {
                 abort();
