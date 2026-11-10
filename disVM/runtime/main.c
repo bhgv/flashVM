@@ -611,12 +611,14 @@ static int guest_cancel_pending(void)
 static int guest_cancel_pending_or_close(void)
 {
     int pending;
+    fvm_port_sync_lock(channel_queue_mutex);
 
     /* A dedicated owner can have work before its guest becomes runnable. */
     if (native_spawn)
     {
         if (__atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE))
         {
+            fvm_port_sync_unlock(channel_queue_mutex);
             return 1;
         }
         for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)
@@ -627,6 +629,7 @@ static int guest_cancel_pending_or_close(void)
                 dvm_messages_pending(process->messages, 1, 0) ||
                 dvm_managed_workers_reply_in_transit(guest))))
             {
+                fvm_port_sync_unlock(channel_queue_mutex);
                 return 1;
             }
         }
@@ -636,9 +639,9 @@ static int guest_cancel_pending_or_close(void)
         __atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE) ||
         dvm_runqueue_inflight() || dvm_runqueue_ready()))
     {
+        fvm_port_sync_unlock(channel_queue_mutex);
         return 1;
     }
-    fvm_port_sync_lock(channel_queue_mutex);
     pending = cancel_request_count != 0;
     if (!pending)
     {

@@ -1677,7 +1677,7 @@ def main():
                         cwd=work, capture_output=True, text=True, timeout=5,
                     )
                     if result.returncode or "PASS guest child retirement" not in result.stdout:
-                        raise RuntimeError(f"{mode} cancelwait attempt {attempt + 1} failed\n"
+                        raise RuntimeError(f"{mode} cancelwait attempt {attempt + 1} exited {result.returncode}\n"
                                            + result.stdout + result.stderr)
             return
         for operation in ("input <-= 7", "<-input", "alt { <-input => {} <-report => {} }"):

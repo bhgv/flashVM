@@ -174,6 +174,9 @@ def main():
                 frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
                 frame_retirement = re.search(r"NATIVEFRAMERC drained=(\d+) pending=0", output)
                 module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
+                # Every guest must finish. A collector can force individual
+                # transfers to use the checked fallback instead of SHARED.
+                minimum_commits = 1 if counter == "parallel_slicela_commits" else 40
                 if (result.returncode or "PASS forty dedicated shared copies" not in output
                         or not pointer_copies or int(pointer_copies[1]) == 0
                         or (not options and (output.count("FRAME exception popped in shared mode") < 40
@@ -195,7 +198,7 @@ def main():
                             or not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120
                             or not widths or min(map(int, widths.groups())) < 40))
-                        or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < 40
+                        or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < minimum_commits
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
                     raise RuntimeError(f"{mode} {options} exited {result.returncode}\n{output}")
         if not args.dedicated_only:
