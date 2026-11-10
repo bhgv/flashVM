@@ -112,6 +112,7 @@ Pool *heapmem = &memory;                  /* Pool consumed by the production RC/
 static DVM_MessageRouter *guest_messages; /* Dedicated guest endpoints, keyed by immutable PID. */
 static int nextpid;                       /* Monotonic process identity. */
 static int live;                          /* Atomic process quota accounting. */
+static unsigned int resident_retirements; /* Dedicated exits still publishing completion. */
 static int gc_locked_poll;                /* Retained mutex polling for reference comparison. */
 static Prog *initial_guest; /* Controller-owned root guest in dedicated mode. */
 static int native_spawn; /* One dedicated OS thread per spawned Prog. */
@@ -614,6 +615,10 @@ static int guest_cancel_pending_or_close(void)
     /* A dedicated owner can have work before its guest becomes runnable. */
     if (native_spawn)
     {
+        if (__atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE))
+        {
+            return 1;
+        }
         for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)
         {
             DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
@@ -626,7 +631,8 @@ static int guest_cancel_pending_or_close(void)
             }
         }
     }
-    if (native_spawn && dvm_runqueue_ready())
+    if (native_spawn && (dvm_runqueue_ready() ||
+        __atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE)))
     {
         return 1;
     }
@@ -2952,6 +2958,10 @@ static int runtime_dispatch_turn(void)
         {
             error("cannot retire a process with a live native or channel claim");
         }
+        if (native_spawn)
+        {
+            __atomic_fetch_add(&resident_retirements, 1, __ATOMIC_RELEASE);
+        }
         if (!dvm_runqueue_finish(process))
         {
             error("cannot finish exiting dispatch");
@@ -2985,6 +2995,11 @@ static int runtime_dispatch_turn(void)
             free(process);
             __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
             publish_child_exit(parent_pid, child_pid);
+            if (native_spawn)
+            {
+                __atomic_fetch_sub(&resident_retirements, 1, __ATOMIC_RELEASE);
+                dvm_managed_workers_wake();
+            }
         }
     }
     else
