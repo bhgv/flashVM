@@ -1070,6 +1070,18 @@ init()
 '''
 
 
+DEDICATED_PARKED_ISOLATION_GUEST = PARKED_ISOLATION_GUEST.replace(
+    """    input <-= 11;
+    first := <-output;
+    second := <-output;
+    if (!((first == -1 && second == 11) || (first == 11 && second == -1)))""",
+    """    first := <-output;
+    input <-= 11;
+    second := <-output;
+    if (first != -1 || second != 11)""",
+)
+
+
 HOST_CANCEL_GUEST = r'''implement ChannelWait;
 include "sys.m";
 ChannelWait: module { init: fn(); };
@@ -1734,7 +1746,8 @@ def main():
                                 ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
                                 ("alt-array-cancel", ALT_ARRAY_CANCEL_GUEST),
                                 ("parked-send", PARKED_SEND_GUEST), ("parked-receive", PARKED_RECEIVE_GUEST),
-                                ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST)):
+                                ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST),
+                                ("parked-isolation", DEDICATED_PARKED_ISOLATION_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
