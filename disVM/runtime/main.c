@@ -1894,17 +1894,20 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
     {
         return;
     }
+    fvm_port_sync_lock(channel_queue_mutex);
     Prog *parent;
     for (parent = dvm_runtime_process_roots(); parent && (uintptr_t)parent->pid != message->sender; parent = parent->next)
     {
     }
     if (!parent || parent->state != DVM_CHILD_EXIT_WAIT)
     {
+        fvm_port_sync_unlock(channel_queue_mutex);
         return;
     }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
     if (!process->cancel_waiting || process->exit_wait_pid != guest->pid)
     {
+        fvm_port_sync_unlock(channel_queue_mutex);
         return;
     }
     DVM_OwnerMessage *reply = &process->cancel_result;
@@ -1918,6 +1921,7 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
         abort();
     }
     dvm_managed_workers_wake_guest(parent);
+    fvm_port_sync_unlock(channel_queue_mutex);
 }
 
 
@@ -1944,12 +1948,17 @@ static int detach_child_exit_wait(Prog *process)
     {
         return 0;
     }
+    if (native_spawn)
+        fvm_port_sync_lock(channel_queue_mutex);
     child = find_child(process, ((DVM_RuntimeProcess *)process)->exit_wait_pid);
     if (child && !((DVM_RuntimeProcess *)process)->cancel_waiting)
     {
         ((DVM_RuntimeProcess *)child)->exit_notify_parent = 0;
     }
-    return wake_child_exit_wait(process);
+    int ready = wake_child_exit_wait(process);
+    if (native_spawn)
+        fvm_port_sync_unlock(channel_queue_mutex);
+    return ready;
 }
 
 
@@ -2951,7 +2960,9 @@ static int consume_child_reply(Prog *guest)
     {
         reply = dvm_messages_take(process->messages, 1, 0);
     }
+    fvm_port_sync_lock(channel_queue_mutex);
     int delivered = apply_child_reply(guest, process, reply);
+    fvm_port_sync_unlock(channel_queue_mutex);
     __atomic_fetch_sub(&resident_wait_deliveries, 1, __ATOMIC_RELEASE);
     return delivered;
 }

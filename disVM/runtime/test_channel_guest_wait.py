@@ -1888,6 +1888,7 @@ def main():
                                 ("killwait-ready", killwait_guest(PROCESS_KILL_READY_GUEST)),
                                 ("killwait-table", PROCESS_KILLWAIT_TABLE_GUEST),
                                 ("killwait-nested", KILLWAIT_NESTED_GUEST),
+                                ("killwait-host", KILLWAIT_HOST_GUEST),
                                 ("killwait-cancel", KILLWAIT_CANCEL_GUEST.replace(
                                     "control->cancelwait(target) == Processctl->Cancelled || <-reports != 1",
                                     "<-reports != 1",
@@ -1943,7 +1944,7 @@ def main():
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
                     if name.endswith("-before-sleep") and "PASS exit posted before native sleep registration" not in output:
                         raise RuntimeError(f"{mode} did not exercise pre-registration killwait\n{output}")
-                    if name in ("killwait-nested", "killwait-cancel") and (work / f"{name}.bin").read_bytes() != b"a":
+                    if name in ("killwait-nested", "killwait-cancel", "killwait-host") and (work / f"{name}.bin").read_bytes() != b"a":
                         raise RuntimeError(f"{mode} {name} lost admitted output")
                     if name == "send":
                         for polling in ("--gc-worker", "--gc-locked-poll"):

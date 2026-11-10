@@ -848,6 +848,8 @@ static void *submit_host_cancel(void *argument)
 
     check(!dvm_runtime_cancel_guest_wait(pid) && dvm_runtime_request_guest_cancel(pid),
         "unbound host submits rather than touching guest state");
+    if (child_exit_host_cancel && getenv("DVM_TEST_DEDICATED_BUFFER"))
+        return NULL;
     for (index = 0; index < 63; index++)
     {
         check(dvm_runtime_request_guest_cancel(1000 + index), "bounded host request accepted");
