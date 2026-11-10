@@ -966,6 +966,7 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
         }
         pthread_mutex_unlock(&gate);
     }
+    static int close_waiters;
     const char *close_mode = getenv("DVM_TEST_CLOSE_PARKED");
     if (close_mode)
     {
@@ -982,7 +983,15 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
         if (process && (process->state == Psend || process->state == Precv) &&
             process->chan && process->chan != H)
         {
-            if (strcmp(close_mode, "mailbox") == 0)
+            if (strcmp(close_mode, "multi-mailbox") == 0)
+            {
+                if (process->pid != 1 && __atomic_add_fetch(&close_waiters, 1, __ATOMIC_ACQ_REL) == 2)
+                {
+                    check(dvm_runtime_channel_post_close(process->chan), "post close to both waiters");
+                    puts("PASS posted close after both waiters parked");
+                }
+            }
+            else if (strcmp(close_mode, "mailbox") == 0)
             {
                 if (!dvm_runtime_channel_post_close(process->chan))
                 {
@@ -1261,7 +1270,7 @@ int __wrap_dvm_runtime_channel_wait_guest(Channel *channel)
     DVM_NativeContext *owner = dvm_native_context_current();
     Prog *process = dvm_native_context_process(owner);
     int result;
-    if (child_exit_cancel_mode || parked_cancel_mode)
+    if (child_exit_cancel_mode || parked_cancel_mode || getenv("DVM_TEST_CLOSE_PARKED"))
     {
         return __real_dvm_runtime_channel_wait_guest(channel);
     }

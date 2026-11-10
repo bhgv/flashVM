@@ -1855,6 +1855,34 @@ def main():
                             or (close_mode == "alt-mailbox" and "TEST posted close to parked ALT" not in close_output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
                         raise RuntimeError(f"{mode} {close_mode} dedicated close failed\n{close_output}")
+        close_source, close_image = work / "close-multiple.b", work / "close-multiple.dis"
+        close_source.write_text(CLOSE_PARKED_GUEST.split("init()\n{", 1)[0].replace(
+            "WAIT_OPERATION", "<-input",
+        ) + r'''init()
+{
+    sys := load Sys Sys->PATH;
+    input := chan of int;
+    first := chan[1] of int;
+    second := chan[1] of int;
+    spawn waiter(input, first);
+    spawn waiter(input, second);
+    if (<-first != 1 || <-second != 1)
+        raise "closed waiter did not report hangup";
+    sys->print("PASS dedicated channel close\n");
+}
+''')
+        subprocess.run([compiler, "-I", include, "-o", close_image, close_source], check=True)
+        for mode in ("--no-jit", "--jit"):
+            closed = subprocess.run(
+                [binary, mode, "--native-spawn", "--guarded-copies", "--stats", close_image],
+                cwd=work, capture_output=True, text=True, timeout=5,
+                env=dict(os.environ, DVM_TEST_CLOSE_PARKED="multi-mailbox"),
+            )
+            output = closed.stdout + closed.stderr
+            if (closed.returncode or "PASS posted close after both waiters parked" not in output
+                    or "PASS dedicated channel close" not in output
+                    or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
+                raise RuntimeError(f"{mode} close of multiple channel waiters\n{output}")
         if "--close-only" in sys.argv[4:]:
             print("PASS dedicated SEND, RECV and ALT close with and without JIT")
             return
