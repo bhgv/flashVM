@@ -707,10 +707,16 @@ def adapt_alt_reservations(source):
          "    {\n"
          "        altvalidate(a, nsend, nrecv, 0);\n"
          "    }"),
+        ("static ulong xrand = 0x20342;", "static _Thread_local ulong xrand = 0x20342;"),
         ("p = currun();\n\n\ta = DVM_R.s;", "p = currun();\nretry_alt:\n\ta = DVM_R.s;"),
         ("delrun(Palt);\n\t\t\tp->R.s = DVM_R.s;\n\t\t\tp->R.d = DVM_R.d;\n"
          "\t\t\tDVM_R.IC = 1;\n\t\t\tDVM_R.t = 1;",
-         "dvm_runtime_channel_queue_guard(publish_alt_park, p);\n"
+         "AltPark park = {p, generation, 0};\n"
+         "            dvm_runtime_channel_queue_guard(publish_alt_park, &park);\n"
+         "            if (!park.published) {\n"
+         "                altdone(a, p, nil, -1);\n"
+         "                goto retry_alt;\n"
+         "            }\n"
          "            dvm_runtime_channel_waiter_published();"),
         ("ready.alt = a;",
          "uint64_t generation = block && dvm_runtime_guarded_copies ? dvm_runtime_channel_snapshot() : 0;\n"
@@ -754,6 +760,7 @@ ALT_SHARED_WAIT = r"""
 extern Prog *dvm_runtime_channel_peer(Channel *channel, int receive, void *owner_cell);
 extern int dvm_runtime_channel_wait_state(Channel *channel);
 extern uint64_t dvm_runtime_channel_snapshot(void);
+extern int dvm_runtime_channel_changed_locked(uint64_t generation);
 extern int dvm_runtime_channel_wait_change(uint64_t generation);
 extern void dvm_runtime_channel_require_wait(int outcome);
 extern void dvm_runtime_channel_waiter_published(void);
@@ -763,14 +770,25 @@ extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argu
 
 /* EN: Publish ALT operands before the queue mutex exposes the parked state.
  * RU: Опубликовать операнды ALT до открытия состояния ожидания под мьютексом. */
+typedef struct AltPark
+{
+    Prog *process;
+    uint64_t generation;
+    int published;
+} AltPark;
+
 static int publish_alt_park(void *argument)
 {
-    Prog *process = argument;
+    AltPark *park = argument;
+    Prog *process = park->process;
+    if (dvm_runtime_guarded_copies && dvm_runtime_channel_changed_locked(park->generation))
+        return 1;
     process->R.s = DVM_R.s;
     process->R.d = DVM_R.d;
     DVM_R.IC = 1;
     DVM_R.t = 1;
     delrun(Palt);
+    park->published = 1;
     return 1;
 }
 

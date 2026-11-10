@@ -1113,6 +1113,13 @@ uint64_t dvm_runtime_channel_snapshot(void)
 }
 
 
+/* The caller holds the channel queue mutex. */
+int dvm_runtime_channel_changed_locked(uint64_t generation)
+{
+    return generation != channel_generation;
+}
+
+
 /* Wait for a change since the guard scan. ALT registrations are withdrawn. */
 int dvm_runtime_channel_wait_change(uint64_t generation)
 {
