@@ -10,6 +10,14 @@
 #include <string.h>
 
 
+/* The standalone fixture has no Processctl callers or pending replies. */
+void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
+{
+    USED(guest);
+    USED(message);
+    abort();
+}
+
 static Prog *expected_waiter; /* Borrowed fixture waiter during notification. */
 static char *expected_cause; /* Exact cause expected in the published waiter. */
 static int observed_waiter; /* Notification observed the completed wait. */

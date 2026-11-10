@@ -9,6 +9,7 @@
 #include "runqueue.h"
 #include "disvm/refcount.h"
 #include "managed_workers.h"
+#include "table_leases.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -309,8 +310,12 @@ Prog *dvm_runqueue_select_guest(Prog *process)
  * No allocation/throw; success gives the FIFO one runnable member. */
 static int append_ready(Prog *process, int complete_wait, char *cause)
 {
+    /* Table wake holds the table scheduler lock. A dedicated resident can
+     * become ready before it finishes its own parked turn on the same thread. */
+    int table_wake = process && dedicated_dispatch && !complete_wait &&
+        process->state == DVM_TABLE_WAIT;
     if (!process || runtime_process(process)->native_owner || process->link ||
-        (runtime_process(process)->dispatch_owner &&
+        (!table_wake && runtime_process(process)->dispatch_owner &&
          runtime_process(process)->dispatch_owner != dvm_native_context_current() &&
          !(dedicated_dispatch && complete_wait && runtime_process(process)->channel_claimed &&
            process->state != Palt)) ||

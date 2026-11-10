@@ -21,7 +21,7 @@ def main():
                         root/"disVM/upstream/libinterp", root/"disVM/upstream/emu/port",
                         root/"disVM/include", root/"flashVM/ports"):
             command += ["-I"+str(include)]
-        command += [str(runtime/"test_runqueue.c"),str(runtime/"runqueue.c"),
+        command += [str(runtime/"test_runqueue.c"),str(runtime/"runqueue.c"), str(runtime/"owner_messages.c"),
                     str(root/"disVM/host/native_context.c"),
                     str(root/"disVM/host/refcount.c"),
                     str(root/"flashVM/ports/linux/thread.c"),
@@ -30,7 +30,7 @@ def main():
         subprocess.run([command[-1]],check=True,timeout=30)
         source = (runtime/"runqueue.c").read_text()
         controls = [
-            ("    returns++;", "    /* private control: omit return accounting */",
+            ("    __atomic_fetch_add(&returns, 1, __ATOMIC_RELAXED);", "    /* private control: omit return accounting */",
              "native return accounting diverged"),
             ("return !process || !process->native64holds;", "(void)process; return 1;",
              "synchronous Native64Caller hold was promoted to resumable"),
@@ -40,9 +40,9 @@ def main():
              "dvm_native_context_process(context) ||", "foreign managed dispatch claim accepted"),
             ("if (!context || !process || runtime_process(process)->dispatch_owner != context ||",
              "if (!context || !process ||", "foreign managed dispatch finish accepted"),
-            ("count + inflight >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||",
-             "count + inflight >= DVM_RUNTIME_PROCESS_MAX ||", "duplicate runnable admission accepted"),
-            ("count + inflight >= DVM_RUNTIME_PROCESS_MAX", "count >= DVM_RUNTIME_PROCESS_MAX",
+            ("ready_count() + __atomic_load_n(&inflight, __ATOMIC_RELAXED) >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||",
+             "ready_count() + __atomic_load_n(&inflight, __ATOMIC_RELAXED) >= DVM_RUNTIME_PROCESS_MAX ||", "duplicate runnable admission accepted"),
+            ("ready_count() + __atomic_load_n(&inflight, __ATOMIC_RELAXED) >= DVM_RUNTIME_PROCESS_MAX", "ready_count() >= DVM_RUNTIME_PROCESS_MAX",
              "native return slot was not reserved"),
             ("    if (dvm_runqueue_pop_expected(process, Prelease) != process)\n    {\n        return 0;\n    }", "",
              "native continuation remained runnable"),
