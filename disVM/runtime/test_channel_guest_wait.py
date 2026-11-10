@@ -1662,11 +1662,12 @@ def main():
                          "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                          "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                          "dvm_native_owner_progress", "dvm_gc_workers_create"])
-        for operation in ("input <-= 7", "<-input"):
+        for operation in ("input <-= 7", "<-input", "alt { <-input => {} <-report => {} }"):
             close_source, close_image = work / "close.b", work / "close.dis"
             close_source.write_text(CLOSE_PARKED_GUEST.replace("WAIT_OPERATION", operation))
             subprocess.run([compiler, "-I", include, "-o", close_image, close_source], check=True)
-            for close_mode in ("direct", "mailbox"):
+            close_modes = ("alt-mailbox",) if operation.startswith("alt") else ("direct", "mailbox")
+            for close_mode in close_modes:
                 for mode in ("--no-jit", "--jit"):
                     closed = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", close_image],
@@ -1675,10 +1676,11 @@ def main():
                     )
                     close_output = closed.stdout + closed.stderr
                     if (closed.returncode or "PASS dedicated channel close" not in close_output
+                            or (close_mode == "alt-mailbox" and "TEST posted close to parked ALT" not in close_output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
                         raise RuntimeError(f"{mode} {close_mode} dedicated close failed\n{close_output}")
         if "--close-only" in sys.argv[4:]:
-            print("PASS dedicated SEND and RECV close with and without JIT")
+            print("PASS dedicated SEND, RECV and ALT close with and without JIT")
             return
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()

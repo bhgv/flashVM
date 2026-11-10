@@ -943,6 +943,15 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
     if (close_mode)
     {
         process = dvm_native_context_process(dvm_native_context_current());
+        if (process && process->state == Palt && strcmp(close_mode, "alt-mailbox") == 0)
+        {
+            Alt *alt = process->R.s;
+            if (!dvm_runtime_channel_post_close(alt->ac[0].c))
+            {
+                error("cannot post test ALT close");
+            }
+            fprintf(stderr, "TEST posted close to parked ALT\n");
+        }
         if (process && (process->state == Psend || process->state == Precv) &&
             process->chan && process->chan != H)
         {

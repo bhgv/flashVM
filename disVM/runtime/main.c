@@ -2849,10 +2849,7 @@ static int runtime_dispatch_turn(void)
     {
         Prog *guest = dvm_managed_workers_guest();
         guest = guest ? guest : initial_guest;
-        int alt_wait = guest && guest->state == Palt;
-        int channel_completed = consume_channel_message(guest);
-        cancelled |= channel_completed;
-        reload_registers |= alt_wait && channel_completed;
+        cancelled |= consume_channel_message(guest);
         int process_completed = consume_child_reply(guest);
         process_completed |= consume_process_wait_requests(guest);
         cancelled |= process_completed;
