@@ -1979,15 +1979,13 @@ static void send_resident_exit(Prog *child)
     }
 }
 
-static int post_channel_exit(Prog *child)
+static int resident_can_exit(Prog *child)
 {
-    if (!native_spawn ||
-        (child->state != Psend && child->state != Precv && child->state != Palt))
-    {
+    if (!child)
         return 0;
-    }
-    send_resident_exit(child);
-    return 1;
+    int state = child->state;
+    return state == Prelease || state == Psend || state == Precv || state == Palt ||
+        state == Pready || state == DVM_TABLE_WAIT || state == DVM_CHILD_EXIT_WAIT;
 }
 
 
@@ -2005,10 +2003,6 @@ static int request_child_exit(Prog *child)
         dvm_runtime_cancel_guest_wait(child->pid);
         return Processctl_Requested;
     }
-    if (post_channel_exit(child))
-    {
-        return Processctl_Requested;
-    }
     if (child->state == Pready || wake_for_termination(child))
     {
         child->flags |= Pkilled;
@@ -2021,7 +2015,24 @@ static int request_child_exit(Prog *child)
 /* Resolve the direct child under the caller's managed turn before requesting exit. */
 int dvm_runtime_kill_child(Prog *caller, int pid)
 {
-    return request_child_exit(find_child(caller, pid));
+    if (!native_spawn)
+        return request_child_exit(find_child(caller, pid));
+
+    int result = Processctl_Denied;
+    fvm_port_sync_lock(channel_queue_mutex);
+    Prog *child = find_child(caller, pid);
+    if (resident_can_exit(child))
+    {
+        send_resident_exit(child);
+        cancel_registered_guest_wait(pid);
+        result = Processctl_Requested;
+    }
+    else if (child)
+    {
+        result = Processctl_NotWaiting;
+    }
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return result;
 }
 
 
@@ -2030,9 +2041,7 @@ static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    int state = child ? child->state : Pexiting;
-    if (state != Prelease && state != Psend && state != Precv && state != Palt &&
-        state != Pready && state != DVM_TABLE_WAIT && state != DVM_CHILD_EXIT_WAIT)
+    if (!resident_can_exit(child))
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;

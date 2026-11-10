@@ -1418,6 +1418,20 @@ init()
 '''
 
 
+DEDICATED_KILL_TABLE_GUEST = PROCESS_KILL_TABLE_GUEST.replace(
+    '        raise "could not kill a table-blocked child";\n'
+    '    (token, depth, waiting) = tables->guardstate(tab);',
+    """        raise "could not kill a table-blocked child";
+    for (attempt = 0; attempt < 1000; attempt++)
+    {
+        (token, depth, waiting) = tables->guardstate(tab);
+        if (waiting == 1)
+            break;
+        sys->sleep(1);
+    }""",
+)
+
+
 TABLE_FIFO_GUEST = r'''implement ChannelWait;
 include "sys.m";
 include "bigtable.m";
@@ -1815,7 +1829,7 @@ def main():
                              "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
                              "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
                              "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
-                             "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
+                             "dvm_runtime_kill_child", "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                              "dvm_native_owner_progress", "dvm_gc_workers_create", "dvm_runtime_alt_try_transfer"])
         if "--dedicated-buffer-only" in sys.argv[4:]:
             for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
@@ -1835,6 +1849,10 @@ def main():
                                 ("native-isolation", ISOLATED_CANCEL_GUEST),
                                 ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST),
                                 ("killwait-channel", killwait_guest(PROCESS_KILL_GUEST)),
+                                ("kill-native", PROCESS_KILL_NATIVE_GUEST),
+                                ("kill-before-sleep", PROCESS_KILL_NATIVE_GUEST),
+                                ("kill-ready", PROCESS_KILL_READY_GUEST),
+                                ("kill-table", DEDICATED_KILL_TABLE_GUEST),
                                 ("killwait-native", killwait_guest(PROCESS_KILL_NATIVE_GUEST)),
                                 ("killwait-before-sleep", killwait_guest(PROCESS_KILL_NATIVE_GUEST)),
                                 ("killwait-ready", killwait_guest(PROCESS_KILL_READY_GUEST)),
@@ -1854,6 +1872,8 @@ def main():
                         env["DVM_TEST_ALT_STALE"] = "1"
                     if name == "killwait-before-sleep":
                         env["DVM_TEST_KILLWAIT_BEFORE_SLEEP"] = "1"
+                    if name == "kill-before-sleep":
+                        env["DVM_TEST_KILL_BEFORE_SLEEP"] = "1"
                     result = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
                         cwd=work, capture_output=True, text=True, timeout=5,
@@ -1870,6 +1890,9 @@ def main():
                     if name.startswith("stale-alt"):
                         marker = "PASS stale ALT selection refused"
                     payload = "PASS guest channel payloads"
+                    if name.startswith("kill-"):
+                        payload = "PASS guest process termination"
+                        marker = "PASS cancelled native sleep" if name in ("kill-native", "kill-before-sleep") else payload
                     if name.startswith("killwait-"):
                         payload = "PASS guest child retirement"
                         marker = ("PASS cancelled native sleep" if name in ("killwait-native", "killwait-before-sleep")
@@ -1888,7 +1911,7 @@ def main():
                             or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
-                    if name == "killwait-before-sleep" and "PASS killwait posted before native sleep registration" not in output:
+                    if name.endswith("-before-sleep") and "PASS exit posted before native sleep registration" not in output:
                         raise RuntimeError(f"{mode} did not exercise pre-registration killwait\n{output}")
                     if name in ("killwait-nested", "killwait-cancel") and (work / f"{name}.bin").read_bytes() != b"a":
                         raise RuntimeError(f"{mode} {name} lost admitted output")
