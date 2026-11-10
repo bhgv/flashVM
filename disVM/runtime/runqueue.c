@@ -208,7 +208,7 @@ int dvm_runqueue_finish(Prog *process)
     }
     runtime_process(process)->dispatch_owner = NULL;
     __atomic_fetch_add(&finishes, 1, __ATOMIC_RELAXED);
-    __atomic_fetch_sub(&active, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_sub(&active, 1, __ATOMIC_RELEASE);
     return 1;
 }
 
@@ -518,7 +518,7 @@ int dvm_runqueue_resume(Prog *process)
     }
     __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
     __atomic_fetch_add(&returns, 1, __ATOMIC_RELAXED);
-    __atomic_fetch_sub(&inflight, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_sub(&inflight, 1, __ATOMIC_RELEASE);
     dvm_managed_workers_wake();
     return 1;
 }
@@ -534,7 +534,7 @@ DVM_NativeContext *dvm_runqueue_owner(Prog *process)
  * or has joined all actors. No reservation or lifecycle transition occurs. */
 unsigned long dvm_runqueue_inflight(void)
 {
-    return __atomic_load_n(&inflight, __ATOMIC_RELAXED);
+    return __atomic_load_n(&inflight, __ATOMIC_ACQUIRE);
 }
 
 /* EN: Report resident dispatches still completing a transition.

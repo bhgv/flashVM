@@ -166,7 +166,7 @@ def main():
                 )
                 output = result.stdout + result.stderr
                 commits = re.search(rf"{counter}=(\d+)", output)
-                peak = re.search(r"shared_peak=(\d+)", output)
+                peak = re.search(r"^NATIVEGC collector=.*?\bshared_peak=(\d+)", output, re.MULTILINE)
                 branches = re.search(r"shared_integer_branches=(\d+)", output)
                 widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
                 batches = re.search(r"shared_integer_batches=(\d+)", output)
@@ -197,7 +197,7 @@ def main():
                             or not widths or min(map(int, widths.groups())) < 40))
                         or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < 40
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
-                    raise RuntimeError(f"{mode} {options}\n{output}")
+                    raise RuntimeError(f"{mode} {options} exited {result.returncode}\n{output}")
         if not args.dedicated_only:
             run(runtime, directory, "--jit", [], b"R", "PASS provider return",
                 default_profile=True, workers=24)

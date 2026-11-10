@@ -1657,11 +1657,23 @@ int dvm_runtime_scalar_retry(int opcode)
         return 0;
     }
     process = (DVM_RuntimeProcess *)up->prog;
-    if (!process || process->arithmetic_retries >= 8)
+    if (!process)
     {
         return 0;
     }
-    process->arithmetic_retries++;
+    if (process->arithmetic_retries >= 8)
+    {
+        /* Dedicated channel contenders can lose to another valid waiter
+         * repeatedly. Each replay returns to the owner dispatch loop. */
+        if (!dvm_runtime_guest_unbounded || (opcode != ISEND && opcode != IRECV))
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        process->arithmetic_retries++;
+    }
     execution->arithmetic_retry_opcode = -1;
     return 1;
 }

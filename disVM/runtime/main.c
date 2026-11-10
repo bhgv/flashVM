@@ -631,8 +631,10 @@ static int guest_cancel_pending_or_close(void)
             }
         }
     }
-    if (native_spawn && (dvm_runqueue_ready() ||
-        __atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE)))
+    /* Read the source of each handoff before the destination it publishes. */
+    if (native_spawn && (dvm_runqueue_dispatch_pending() ||
+        __atomic_load_n(&resident_retirements, __ATOMIC_ACQUIRE) ||
+        dvm_runqueue_inflight() || dvm_runqueue_ready()))
     {
         return 1;
     }
