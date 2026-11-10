@@ -55,8 +55,6 @@ typedef struct ManagedWorkers
     int (*turn)(void);             /* Shared scheduler callback under heap exclusion. */
     int stopping;                 /* Cooperative stop request, under sync. */
     int failed;                   /* Latched attach/dispatch/retirement/start error. */
-    int ready;                    /* Helpers that acquired their first heap turn, under sync. */
-    int awaiting_start;           /* Controller-only admission rendezvous flag. */
     int diagnostics;              /* Emit lifecycle evidence only for --stats. */
     unsigned long live;           /* Live helpers, under heap exclusion. */
     unsigned long peak;           /* Maximum total live executors including controller. */
@@ -68,7 +66,6 @@ typedef struct ManagedWorkers
     unsigned long retired_releases; /* Audited releases accumulated after join. */
     unsigned long retired_reentries; /* Audited reentries accumulated after join. */
     void (*cancel_waits)(void);    /* Native wakeup hook for a fatal worker failure. */
-    int count;                    /* Requested executor count, including the controller. */
     unsigned long controller;     /* Successful controller turns. */
     unsigned long files;          /* Descriptor operations admitted through native per-slot FIFO. */
     unsigned long ui_requests;    /* Helper UI role admissions, under heap exclusion. */
@@ -251,16 +248,6 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
             abort();
         }
     }
-    if (rendezvous && service.awaiting_start)
-    {
-        fvm_port_sync_lock(service.sync);
-        while (service.ready < service.count - 1 && !service.stopping && !service.failed)
-        {
-            fvm_port_sync_wait(service.sync);
-        }
-        service.awaiting_start = 0;
-        fvm_port_sync_unlock(service.sync);
-    }
     if (current_guest && idle && !finished)
     {
         wait_dedicated_work(current_guest);
@@ -376,10 +363,6 @@ static void execute(void *argument)
             }
         }
         fvm_port_sync_lock(service.sync);
-        if (service.ready < service.count - 1)
-        {
-            service.ready++;
-        }
         fvm_port_sync_signal_all(service.sync);
         fvm_port_sync_unlock(service.sync);
         if (waserror())
@@ -566,25 +549,17 @@ static int start_helper(Prog *guest)
 }
 
 
-/* EN: Start the resident registry on the bound controller. count must be one,
- * automatic and limit zero. Pool requests fail before service publication.
- * diagnostics selects lifecycle output; turn and cancel_waits are borrowed
+/* EN: Start the resident registry on the bound active controller.
+ * diagnostics selects lifecycle output. turn and cancel_waits are borrowed
  * callbacks through stop. Return zero on invalid state or native allocation.
- * RU: Запустить реестр закреплённых потоков на контроллере. count равен одному,
- * automatic и limit равны нулю. Запрос пула отклоняется до публикации сервиса.
- * Обратные вызовы заимствованы до остановки. При ошибке вернуть ноль. */
-int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
+ * RU: Запустить реестр закреплённых потоков на активном контроллере.
+ * Обратные вызовы заимствованы до stop. При ошибке вернуть ноль. */
+int dvm_resident_threads_start(int diagnostics,
     int (*turn)(void), void (*cancel_waits)(void))
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
-    if (count != 1 || automatic || limit)
-    {
-        fprintf(stderr, "disvm: shared executor pool has been removed\n");
-        return 0;
-    }
     if (!turn || !cancel_waits || service.sync || !context || !up || up->prog ||
-        (limit && (unsigned long)count > limit) ||
         dvm_native_context_process(context) || dvm_native_context_turn(context) ||
         !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
         state.phase != DVM_HEAP_ACTIVE || state.pending_progress ||
@@ -597,8 +572,6 @@ int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int
     service.turn = turn;
     service.cancel_waits = cancel_waits;
     service.world = dvm_native_owner_world(dvm_native_owner_current());
-    service.awaiting_start = 1;
-    service.count = count;
     service.diagnostics = diagnostics;
     service.peak = 1;
     if (!service.sync)
@@ -707,30 +680,6 @@ void dvm_managed_workers_wake_guest(Prog *guest)
         fvm_port_sync_unlock(worker->wake);
     }
     dvm_managed_workers_wake();
-}
-
-
-/* EN: Retained completion hook. arriving is ignored; return zero.
- * RU: Совместимый вход завершения. arriving игнорируется, вернуть ноль. */
-int dvm_managed_workers_returning(int arriving)
-{
-    (void)arriving;
-    return 0;
-}
-
-
-/* EN: Continue a resident native wait without creating another executor.
- * RU: Продолжить ожидание native без создания дополнительного исполнителя. */
-const char *dvm_managed_workers_native_wait(void)
-{
-    return NULL;
-}
-
-/* EN: Retained suspension notification with no pool state.
- * RU: Совместимое уведомление об ожидании без состояния пула. */
-void dvm_managed_workers_native_suspended(void)
-{
-
 }
 
 

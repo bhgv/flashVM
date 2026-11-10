@@ -9,7 +9,7 @@ import sys
 import tempfile
 import time
 
-from test_managed_workers import evidence
+from resident_evidence import evidence
 
 
 # Compile a private Linux interposer. runtime/module/font are explicit products;
@@ -26,13 +26,14 @@ def main():
             str(Path(__file__).with_suffix('.c')), '-ldl', '-o', str(library)
         ], check=True, capture_output=True, text=True)
         for mode in ('--jit', '--no-jit'):
-            for count in (4, 8):
+            for locked in (False, True):
                 read_fd, write_fd = os.pipe()
                 environment = dict(os.environ, LD_PRELOAD='./file-barrier.so',
                     DVM_TEST_FILE_BARRIER=str(read_fd), SDL_VIDEODRIVER='dummy',
                     SDL_AUDIODRIVER='dummy', TMPDIR=str(work))
                 process = subprocess.Popen([str(runtime), *options, mode, '--gc-worker',
-                    '--managed-workers', str(count), '--stats', '--quantum', '31', str(module)],
+                    '--native-spawn', '--stats',
+                    *(['--gc-locked-poll'] if locked else []), str(module)],
                     env=environment, cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     pass_fds=(read_fd,))
                 os.close(read_fd)
@@ -68,13 +69,13 @@ def main():
                 text = (output + errors).decode(errors='replace')
                 if process.returncode or 'PASS native file overlap completed' not in text:
                     raise RuntimeError(text[-6000:])
-                evidence(text, executors=count)
+                evidence(text, children=2)
                 gates = re.search(r'NATIVEFILES created=(\d+) closed=\1 live=0 operations=\d+ waits=(\d+) pending=0 peak=(\d+)', text)
                 if not gates or int(gates[2]) < 1 or int(gates[3]) < 2:
                     raise RuntimeError('same-file native FIFO wait was not exercised: ' + text[-6000:])
                 if sorted((work / 'file-overlap.bin').read_bytes()) != [ord('a'), ord('b')]:
                     raise RuntimeError('native file wait lost shared cursor bytes')
-        print('PASS native file barrier: C/JIT 4/8 owners, unrelated actor progress, '
+        print('PASS native file barrier: C/JIT dedicated owners, both polls, unrelated actor progress, '
               'same-FD FIFO wait, exact bytes and complete retirement')
 
 

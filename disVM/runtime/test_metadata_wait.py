@@ -9,7 +9,7 @@ import sys
 import tempfile
 import time
 
-from test_managed_workers import evidence
+from resident_evidence import evidence
 
 
 # All paths are explicit products. Native barriers are private Linux/glibc test
@@ -37,14 +37,15 @@ def main():
             str(Path(__file__).with_suffix('.c')), '-ldl', '-o', str(library)
         ], check=True, capture_output=True, text=True)
         for mode in ('--jit', '--no-jit'):
-            for count in (4, 8):
+            for locked in (False, True):
                 (work / 'open-output-Я.bin').unlink(missing_ok=True)
                 read_fd, write_fd = os.pipe()
                 environment = dict(os.environ, LD_PRELOAD='./metadata-barrier.so',
                     DVM_TEST_METADATA_BARRIER=str(read_fd), SDL_VIDEODRIVER='dummy',
                     SDL_AUDIODRIVER='dummy', TMPDIR=str(work))
                 process = subprocess.Popen([str(runtime), *options, mode, '--gc-worker',
-                    '--managed-workers', str(count), '--stats', '--quantum', '31', str(module)],
+                    '--native-spawn', '--stats',
+                    *(['--gc-locked-poll'] if locked else []), str(module)],
                     env=environment, cwd=work, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE, pass_fds=(read_fd,))
                 os.close(read_fd)
@@ -89,7 +90,7 @@ def main():
                 text = (output + errors).decode(errors='replace')
                 if process.returncode or 'PASS metadata native waits completed' not in text:
                     raise RuntimeError(text[-6000:])
-                evidence(text, executors=count)
+                evidence(text, children=3)
                 retired = re.search(r'NATIVECLOSE submitted=(\d+) completed=\1 pending=0 peak=\d+ joined=1', text)
                 if not retired or int(retired[1]) < 2:
                     raise RuntimeError('native close worker failed to drain/join: ' + text[-6000:])
@@ -101,7 +102,7 @@ def main():
                     raise RuntimeError('metadata roots/staging/releases did not retire: ' + text[-6000:])
                 if not re.search(r'NATIVEFILES created=(\d+) closed=\1 live=0 .*pending=0', text):
                     raise RuntimeError('directory/file metadata gate lifetime did not retire')
-        print('PASS native metadata barriers: path/file/directory/batch/open/create/close, C/JIT 4/8 owners, '
+        print('PASS native metadata barriers: path/file/directory/batch/open/create/close, C/JIT dedicated owners, both polls, '
               'stdin-ordered managed progress, UTF-8 snapshots, shared65-entry batches and complete retirement')
 
 

@@ -51,8 +51,8 @@ reference profile.
 
 The fixed and elastic executor pool has been removed. Requests for
 `--managed-workers` counts above one, `auto`, or `--managed-workers-limit`
-fail before heap or thread startup. The internal registry start entry also
-rejects pool parameters. `--managed-workers 1` selects the single-worker
+fail before heap or thread startup. The resident registry API accepts callbacks
+and diagnostics, with no pool size or growth parameters. `--managed-workers 1` selects the single-worker
 reference profile. Dedicated threads start only with an assigned `Prog`;
 native waits preserve that assignment.
 

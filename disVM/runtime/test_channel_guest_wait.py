@@ -1860,7 +1860,7 @@ def main():
             binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
                             ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt",
                              "dvm_runtime_channel_wait_change", "fvm_port_thread_start",
-                             "dvm_managed_workers_native_wait", "dvm_runtime_guest_sleep",
+                             "dvm_runtime_guest_sleep",
                              "fvm_port_sync_wait_ms", "fvm_port_file_write",
                              "dvm_file_gate_try_release", "dvm_file_gate_enter",
                              "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
@@ -2196,7 +2196,8 @@ def main():
                     if name == "host-fixed":
                         native_environment["DVM_TEST_DEDICATED_CANCEL"] = "1"
                     dedicated = subprocess.run(
-                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", dedicated_image],
+                        [runtime if name == "processctl" else binary,
+                         mode, "--native-spawn", "--guarded-copies", "--stats", dedicated_image],
                         cwd=work, capture_output=True, text=True, timeout=30,
                         env=native_environment,
                     )

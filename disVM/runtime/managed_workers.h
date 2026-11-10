@@ -15,14 +15,12 @@ enum
 };
 
 
-/* EN: Start the resident registry on the active controller. count must be one,
- * automatic and limit zero. Other values fail with a removed-pool diagnostic.
+/* EN: Start the resident registry on the active controller.
  * turn and cancel_waits are borrowed callbacks until stop. diagnostics enables
  * lifecycle output. Return zero on invalid state or native allocation failure.
  * RU: Запустить реестр закреплённых потоков на активном контроллере.
- * count равен одному, automatic и limit нулю. Другие значения отклоняются.
  * Обратные вызовы заимствованы до stop. При ошибке вернуть ноль. */
-int dvm_managed_workers_start(int count, int automatic, unsigned long limit, int diagnostics,
+int dvm_resident_threads_start(int diagnostics,
     int (*turn)(void), void (*cancel_waits)(void));
 
 
@@ -42,23 +40,6 @@ int dvm_managed_workers_reply_in_transit(struct Prog *guest);
  * RU: Забрать извлечённый ответ текущего владельца, если он есть. */
 struct DVM_OwnerMessage *dvm_managed_workers_take_reply(struct Prog *guest);
 void dvm_managed_workers_finish_reply(struct Prog *guest);
-
-
-/* EN: Retained native-wait hook. Resident threads need no replacement
- * executor. Returns NULL without creating threads or changing ownership.
- * RU: Совместимый вход ожидания. Вернуть NULL без создания исполнителей. */
-const char *dvm_managed_workers_native_wait(void);
-
-
-/* EN: Compatibility hook for native completion accounting. arriving is ignored,
- * return zero. Resident identity remains assigned throughout the native call.
- * RU: Совместимый вход завершения native. arriving игнорируется, вернуть ноль. */
-int dvm_managed_workers_returning(int arriving);
-
-
-/* EN: Compatibility notification of native suspension. No state is changed.
- * RU: Совместимое уведомление об ожидании native. Состояние не меняется. */
-void dvm_managed_workers_native_suspended(void);
 
 
 /* Signal runnable work or a pending native request. The caller must own

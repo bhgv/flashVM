@@ -106,17 +106,24 @@ int __real_dvm_managed_workers_park(int (*pending)(void));
 extern int dvm_runtime_request_guest_cancel(int pid);
 int __real_dvm_runtime_prepare_killwait(Prog *caller, int pid);
 FVM_PortThread *__real_fvm_port_thread_start(FVM_PortThreadFn fn, void *argument);
-const char *__real_dvm_managed_workers_native_wait(void);
 int __real_dvm_runtime_guest_sleep(unsigned long milliseconds);
 int __real_fvm_port_sync_wait_ms(FVM_PortSync *sync, unsigned long milliseconds);
 FVM_Result __real_fvm_port_file_write(FVM_PortFile *file, const void *bytes, size_t size);
 int __real_dvm_file_gate_try_release(DVM_FileGate *file_gate, DVM_FileTicket *ticket);
 int __real_dvm_file_gate_enter(DVM_FileGate *file_gate, DVM_FileTicket *ticket);
 int __real_dvm_runtime_gc_native_try_leave(void);
+static void check(int condition, const char *reason);
 
 /* Exercise the production no-release path while a different guest owns I/O. */
 int __wrap_dvm_runtime_gc_native_try_leave(void)
 {
+    check(!verify_sleep_cancel_handoff, "cancelled sleep skips native release");
+    if (io_refusals)
+    {
+        io_refusals--;
+        puts("PASS native I/O admission refusal");
+        return -1;
+    }
     if (isolation_cancel_target)
     {
         pthread_mutex_lock(&gate);
@@ -1261,22 +1268,6 @@ int __wrap_fvm_port_sync_wait_ms(FVM_PortSync *sync, unsigned long milliseconds)
         pthread_mutex_unlock(&gate);
     }
     return __real_fvm_port_sync_wait_ms(sync, milliseconds);
-}
-
-
-/* Inject a resource refusal at the audited admission boundary before any
- * managed withdrawal. Later operations use the actual scheduler. */
-const char *__wrap_dvm_managed_workers_native_wait(void)
-{
-    check(!verify_sleep_cancel_handoff,
-        "cancelled sleep must skip native executor admission");
-    if (io_refusals)
-    {
-        io_refusals--;
-        puts("PASS native I/O admission refusal");
-        return "fixture executor unavailable";
-    }
-    return __real_dvm_managed_workers_native_wait();
 }
 
 

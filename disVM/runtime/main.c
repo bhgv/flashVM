@@ -3350,8 +3350,8 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
-    if (native_spawn && !dvm_managed_workers_start(
-        1, 0, 0, show_stats, runtime_dispatch_turn,
+    if (native_spawn && !dvm_resident_threads_start(
+        show_stats, runtime_dispatch_turn,
         dvm_runtime_cancel_native_waits))
     {
         error("cannot start resident thread registry");

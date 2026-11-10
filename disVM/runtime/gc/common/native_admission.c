@@ -15,7 +15,6 @@
 #include "runtime_state.h"
 #include "exception_host.h"
 #include "runqueue.h"
-#include "managed_workers.h"
 #include "queue_probe.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +30,6 @@ static int native_try_leave(int shared)
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
     Prog *process;
-    const char *refusal;
     if (!dvm_gc_runtime.world)
     {
         return 0;
@@ -43,7 +41,7 @@ static int native_try_leave(int shared)
         fprintf(stderr,"disvm: invalid/foreign/nested audited native release\n");
         exit(1);
     }
-    /* Reject before executor growth, queue withdrawal or root publication.
+    /* Reject before queue withdrawal or root publication.
      * Audited native operations may not block while holding a cell guard. */
     if (dvm_native_context_object_count(dvm_native_context_current()))
     {
@@ -63,11 +61,6 @@ static int native_try_leave(int shared)
     {
         return 0;
     }
-    refusal = dvm_managed_workers_native_wait();
-    if (refusal)
-    {
-        return -1;
-    }
     if (process)
     {
         process->R = DVM_R;
@@ -77,7 +70,6 @@ static int native_try_leave(int shared)
             exit(1);
         }
     }
-    dvm_managed_workers_native_suspended();
     /* Event mode already wakes retirement consumers at publication. A
      * bounded shared interval gets its periodic trace request at turn end. */
     if ((!shared || !dvm_runtime_event_cycles) && !dvm_runtime_gc_request())
@@ -116,7 +108,6 @@ static void native_enter(int released, int shared)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats call;
-    int returning;
     if (released != 0 && released != 1)
     {
         fprintf(stderr,"disvm: invalid native heap reentry token\n");
@@ -152,11 +143,10 @@ static void native_enter(int released, int shared)
         fprintf(stderr,"disvm: invalid native heap reentry phase\n");
         exit(1);
     }
-    /* NATIVEWORLD: reenter exclusive admission before restoring the continuation. */
+    /* NATIVEWORLD: restore GC participation on the same native continuation. */
     DVM_NativeExecution *execution = dvm_native_execution();
     execution->world_entry_site = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
     execution->world_entry_pending = 1;
-    returning = dvm_managed_workers_returning(1);
     if (!(shared ? dvm_native_owner_resume_shared(owner) : dvm_native_owner_resume(owner)) ||
         !dvm_native_owner_progress(owner,dvm_gc_runtime.passes))
     {
@@ -180,10 +170,6 @@ static void native_enter(int released, int shared)
             fprintf(stderr,"disvm: native continuation restoration failed\n");
             exit(1);
         }
-    }
-    if (returning)
-    {
-        dvm_managed_workers_returning(0);
     }
     execution->world_entry_pending = 0;
 }
