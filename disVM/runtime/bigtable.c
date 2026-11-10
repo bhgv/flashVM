@@ -946,7 +946,7 @@ static void table_suspend(void)
 
 /* Publish one cooperative waiter. A granted guest may need to wait on
  * a different table in the same call, so return its old grant first. */
-static void table_park(TableOwner *owner, TableActor *actor)
+static void table_enqueue(TableOwner *owner, TableActor *actor)
 {
     TableWait *waiter;
 
@@ -956,7 +956,6 @@ static void table_park(TableOwner *owner, TableActor *actor)
     }
     if (actor->waiting && actor->waiting->owner == owner)
     {
-        table_suspend();
         return;
     }
     waiter = calloc(1, sizeof(*waiter));
@@ -978,7 +977,6 @@ static void table_park(TableOwner *owner, TableActor *actor)
     owner->wait_tail = waiter;
     owner->wait_count++;
     actor->waiting = waiter;
-    table_suspend();
 }
 
 
@@ -1042,18 +1040,24 @@ static int table_call_ready(void (*function)(void *), void *frame)
     for (i = 0; i < count; i++)
     {
         TableOwner *owner = owners[i];
-        if (owner->lease_owner != process &&
+        if ((!owner->lease_owner || owner->lease_owner != process) &&
             (owner->lease_owner || (owner->wait_head && owner->wait_head->actor != actor)))
         {
             if (highest && (uintptr)&owner->owned.guard < highest)
             {
                 error("table lease order violation");
             }
-            table_park(owner, actor ? actor : table_actor(process, 1));
+            table_enqueue(owner, actor ? actor : table_actor(process, 1));
+            table_suspend();
             return 0;
         }
     }
-    if (actor && actor->waiting)
+    if (function == Bigtable_acquire && !owners[0]->lease_owner)
+    {
+        /* Keep the FIFO head linked across native call entry. */
+        table_enqueue(owners[0], actor ? actor : table_actor(process, 1));
+    }
+    else if (actor && actor->waiting)
     {
         table_remove_wait(actor);
         table_actor_idle(actor);
@@ -1232,6 +1236,7 @@ static int table_acquire(void *frame)
     }
     owner->lease_owner = currun();
     owner->lease_depth++;
+    table_remove_wait(actor);
     return 1;
 }
 
