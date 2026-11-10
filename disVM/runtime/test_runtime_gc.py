@@ -92,8 +92,8 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         if (not commits or int(commits[1]) < 64 or not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output
                 or not shared or int(shared[1]) < 64 or shared[1] != shared[2]):
             raise RuntimeError("shared graph did not run with the expected worker pool:\n" + output[-5000:])
-    if budget is None and quantum == 65536 and int(rc[3]) == 0:
-        raise RuntimeError("queue saturation fallback was not exercised:\n" + output[-5000:])
+    if budget is None and quantum == 65536 and (int(rc[3]) or int(limits[1])):
+        raise RuntimeError("growing release queue refused publication:\n" + output[-5000:])
     if budget is not None and ("instruction limit exceeded" not in output or "PASS Dis application completed" in output):
         raise RuntimeError("managed error did not retire collector:\n" + output[-5000:])
     if runtime.name == "disvm-editor" and not re.search(

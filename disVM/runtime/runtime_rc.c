@@ -63,7 +63,7 @@ static int duke_cleanup_fallback; /* Atomic readiness for an exceptional stopped
 static FVM_PortSync *candidate_transfer; /* Cross-index ownership handoff. */
 static DVM_RetirementQueue *duke_candidates; /* Rooted large graphs for Duke GC. */
 static DVM_RetirementQueue *cycle_candidates; /* Nonfinal owners for the Cycles lane. */
-static DVM_RetirementQueue *cycle_refused; /* Candidates individually refused by Cycles. */
+static DVM_RetirementQueue *cycle_refused; /* Candidates finally refused by Cycles or Duke. */
 static DVM_RetirementQueue *record_retries; /* Transient guard conflicts and final epochs. */
 static DVM_RetirementQueue *difficult; /* Fallback work with unchanged roots. */
 static struct
@@ -496,14 +496,17 @@ static int record_candidate(const Heap *heap)
 }
 
 
-/* Producers are exclusive Dis owners or the single Fast lane. A ready
- * entry holds the same allocation alive through this observation. */
+/* [GC:] Dis owners, Fast and retained release processing publish candidates.
+ * The caller's reference keeps the allocation alive during this observation.
+ * Publication rechecks all indexed queues under candidate_transfer.
+ * RU: Ссылку при проверке удерживает вызывающий. Перед публикацией запись
+ * повторно ищется во всех индексированных очередях под candidate_transfer. */
 static int cycle_candidate_already_queued(DVM_HeapKey key)
 {
     int queued = dvm_retirement_contains_key(cycle_candidates, key) ||
         dvm_retirement_contains_key(duke_candidates, key) ||
         dvm_retirement_contains_key(cycle_refused, key);
-    cycle_candidates_coalesced += queued;
+    __atomic_fetch_add(&cycle_candidates_coalesced, queued, __ATOMIC_RELAXED);
     return queued;
 }
 
@@ -1736,7 +1739,7 @@ int dvm_runtime_rc_duke_ready(void)
  * RU: Запустить ДюкGC на context с бюджетом budget и очередями рантайма. */
 unsigned int dvm_runtime_rc_shared_duke(DVM_NativeContext *context, size_t budget)
 {
-    return dvm_gc_duke_run(context, budget, world, duke_candidates, retirement);
+    return dvm_gc_duke_run(context, budget, world, duke_candidates, cycle_refused);
 }
 
 
@@ -2096,6 +2099,46 @@ static void fallback_destroy(void *value)
 }
 
 
+/* [GC:] Give a nonfinal fallback owner another shared discovery opportunity.
+ * The caller has removed the FIFO entry but still owns its reference and root.
+ * On success both move to Cycles. On refusal the caller releases them normally.
+ * RU: Передать непоследнего владельца из резервной очереди обратно в Cycles.
+ * Ссылка и корень остаются у вызывающего до успешной публикации. */
+static int retry_retired_candidate(void *value, unsigned long bytes)
+{
+    Heap *heap = D2H(value);
+    if (!accepting || !candidate_transfer || !record_candidate(heap) ||
+        dvm_refcount_load_u(&heap->ref) <= 1)
+    {
+        return 0;
+    }
+    DVM_HeapKey key = dvm_heap_pool_key(heapmem, heap);
+    DVM_RetirementReservation token = {0};
+    if (!key.generation ||
+        dvm_retirement_reserve(cycle_candidates, bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(candidate_transfer);
+    int queued = !cycle_candidate_already_queued(key) &&
+        dvm_retirement_commit_key(cycle_candidates, &token, value, key, NULL);
+    fvm_port_sync_unlock(candidate_transfer);
+    if (!queued)
+    {
+        if (!dvm_retirement_cancel(cycle_candidates, &token))
+        {
+            abort();
+        }
+        return 0;
+    }
+    if (notify_ready)
+    {
+        notify_ready();
+    }
+    return 1;
+}
+
+
 /* [GC:] Release rooted queue owners only on a stopped-world collector. Each
  * destructor and its nested releases use the retained algorithm; they bypass
  * admission because the collector has no ACTIVE mutator ownership. Budget
@@ -2158,8 +2201,11 @@ unsigned int dvm_runtime_rc_drain(unsigned int budget)
                       ((!accepting || heapmonitor) &&
                        dvm_retirement_take(cycle_candidates, &value, &bytes))))
     {
-        (void)bytes;
         budget--;
+        if (direct_release && retry_retired_candidate(value, bytes))
+        {
+            continue;
+        }
         /* Direct entries held the last owner or exhausted the snapshot
          * budget in Cycles. The retained tracer handles oversized closure. */
         int promoted = !direct_release && process_dvm_rc_queued_record_group(value, 1);

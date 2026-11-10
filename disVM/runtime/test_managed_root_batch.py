@@ -16,6 +16,7 @@ WRAPPER = r'''
 #include "managed_owner.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
