@@ -2870,6 +2870,7 @@ static int runtime_dispatch_turn(void)
         guest = guest ? guest : initial_guest;
         cancelled |= consume_channel_message(guest);
         cancelled |= consume_child_reply(guest);
+        dvm_managed_workers_finish_reply(guest);
         cancelled |= consume_process_wait_requests(guest);
         process = dvm_runqueue_select_guest(guest);
     }

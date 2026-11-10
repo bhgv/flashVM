@@ -40,6 +40,7 @@ int dvm_managed_workers_reply_in_transit(struct Prog *guest);
 /* EN: Take the current owner's staged reply, if any.
  * RU: Забрать извлечённый ответ текущего владельца, если он есть. */
 struct DVM_OwnerMessage *dvm_managed_workers_take_reply(struct Prog *guest);
+void dvm_managed_workers_finish_reply(struct Prog *guest);
 
 
 /* Compensate an impending audited native suspension while still ACTIVE.

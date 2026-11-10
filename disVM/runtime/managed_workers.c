@@ -24,7 +24,7 @@ typedef struct ManagedWorker
 {
     struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
     DVM_OwnerMessage *staged_reply; /* Owner-only reply removed before heap admission. */
-    int reply_in_transit;       /* Published to the controller until the owner takes the reply. */
+    int reply_in_transit;       /* Published to the controller until the owner applies the reply. */
     FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
     int startup_committed;      /* Creator has installed the slot, under wake. */
     int wake_stopped;           /* Stop/failure latch under wake. */
@@ -699,8 +699,18 @@ DVM_OwnerMessage *dvm_managed_workers_take_reply(Prog *guest)
     }
     DVM_OwnerMessage *reply = current_guest->staged_reply;
     current_guest->staged_reply = NULL;
-    __atomic_store_n(&current_guest->reply_in_transit, 0, __ATOMIC_RELEASE);
     return reply;
+}
+
+
+/* EN: Clear the reply marker only after the owner has applied the reply.
+ * RU: Снять отметку ответа только после его обработки владельцем. */
+void dvm_managed_workers_finish_reply(Prog *guest)
+{
+    if (current_guest && current_guest->guest == guest)
+    {
+        __atomic_store_n(&current_guest->reply_in_transit, 0, __ATOMIC_RELEASE);
+    }
 }
 
 

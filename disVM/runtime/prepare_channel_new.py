@@ -1057,7 +1057,8 @@ static int publish_channel_park(void *argument)
     if (dvm_runtime_guest_unbounded)
     {
         int receive = request->state == Precv;
-        if (vmchanready(request->channel, receive))
+        if (dvm_runtime_channel_wait_state(request->channel) ||
+            vmchanready(request->channel, receive))
         {
             if (!dvm_runtime_scalar_retry(receive ? IRECV : ISEND))
             {
@@ -1245,6 +1246,16 @@ static int reserve_channel_buffer(void *argument)
         reservation->available = -1;
         return 1;
     }
+    if (dvm_runtime_guest_unbounded && reservation->replay_opcode &&
+        channelpeer(channel, reservation->receive))
+    {
+        if (!dvm_runtime_scalar_retry(reservation->replay_opcode))
+        {
+            error("channel peer changed repeatedly before reserving buffer");
+        }
+        reservation->available = 2;
+        return 1;
+    }
     status = channelbuffer(channel, reservation->receive, 0, &buffer);
     if (status < 0)
         error(buffer.error);
@@ -1359,8 +1370,11 @@ static int release_channel_read_array(void *array)
 static int read_buffer_owned(Channel *channel, void *destination, int replay_opcode)
 {
     ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil, nil, replay_opcode, 0, nil};
-    if (!claim_channel_buffer(&reservation))
-        return 0;
+    int available = claim_channel_buffer(&reservation);
+    if (available != 1)
+    {
+        return available != 0;
+    }
     reservation.completed = reservation.transaction_type ? kprotect(consume_channel_buffer, &reservation) :
         kprotect(channelread, &reservation.read);
     dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
@@ -1404,8 +1418,11 @@ static int write_buffer_owned(Channel *channel, void *source, int replay_opcode,
     Prog *refill_sender)
 {
     ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil, nil, replay_opcode, 0, refill_sender};
-    if (!claim_channel_buffer(&reservation))
-        return 0;
+    int available = claim_channel_buffer(&reservation);
+    if (available != 1)
+    {
+        return available != 0;
+    }
     reservation.completed = kprotect(write_channel_buffer, &reservation);
     dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
     if (committed)
