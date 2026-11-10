@@ -1863,6 +1863,15 @@ def main():
                                 and "PASS ALT owns the waiting continuation" not in output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
+                    if name == "send":
+                        command = [binary, mode, "--native-spawn", "--guarded-copies", image]
+                        for field in range(15):
+                            refused = subprocess.run(command, cwd=work, capture_output=True, text=True,
+                                                     timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field)))
+                            if (refused.returncode != 1 or
+                                    "disvm: native continuation restoration failed" not in refused.stderr):
+                                raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
+                                                   + refused.stdout + refused.stderr)
             return
         if table_kill_head or table_cancel_head:
             source, image = work / "table-kill-head.b", work / "table-kill-head.dis"
@@ -2103,13 +2112,6 @@ def main():
                         raise RuntimeError(f"{name} {mode} dedicated wake or retirement failed\n{native_output}")
                 if name == "send":
                     resident_command = [binary, mode, "--native-spawn", "--guarded-copies", image]
-                    for field in range(15):
-                        refused = subprocess.run(resident_command, cwd=work, capture_output=True, text=True,
-                                                 timeout=30, env=dict(os.environ, DVM_TEST_NATIVE_RETURN_FIELD=str(field)))
-                        if (refused.returncode != 1 or
-                                "disvm: native continuation restoration failed" not in refused.stderr):
-                            raise RuntimeError(f"{mode} accepted corrupt native return field {field}\n"
-                                               + refused.stdout + refused.stderr)
                     for pool in ("2", "auto"):
                         for locked in (False, True):
                             root_options = ["--gc-locked-poll"] if locked else []
