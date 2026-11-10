@@ -944,18 +944,24 @@ static void altcheckguard(Channel *channel, int receive, int cancelling)
 
 ALT_PREFLIGHT = r"""
 
-/* Run before the initiating opcode changes any queue. NativeWorld protects
- * the checked chains through subsequent cancellation without callbacks. */
-void dvm_runtime_alt_preflight(Alt *alt)
+/* Validate queue links while the channel queue mutex is held. */
+static int alt_preflight_locked(void *argument)
 {
+    Alt *alt = argument;
     int sends, receives;
     if (!altheader(alt, &sends, &receives))
         error(exBounds);
     altvalidate(alt, sends, receives, 1);
+    return 1;
+}
+
+void dvm_runtime_alt_preflight(Alt *alt)
+{
+    dvm_runtime_channel_queue_guard(alt_preflight_locked, alt);
 }
 
 /* Check the closing chain and all ALT siblings before any waiter is detached.
- * The caller keeps NativeWorld until detachment and completion. */
+ * The caller holds the channel queue mutex through detachment. */
 Progq *dvm_runtime_channel_close_preflight(Progq **queue)
 {
     Progq *entry;
@@ -963,7 +969,7 @@ Progq *dvm_runtime_channel_close_preflight(Progq **queue)
     for (entry = *queue; entry; entry = entry->next)
     {
         if (entry->prog && entry->prog->state == Palt)
-            dvm_runtime_alt_preflight(entry->prog->R.s);
+            alt_preflight_locked(entry->prog->R.s);
     }
     return tail;
 }
