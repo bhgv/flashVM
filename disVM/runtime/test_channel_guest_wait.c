@@ -1234,6 +1234,10 @@ int __wrap_dvm_runtime_channel_wait_guest(Channel *channel)
     DVM_NativeContext *owner = dvm_native_context_current();
     Prog *process = dvm_native_context_process(owner);
     int result;
+    if (child_exit_cancel_mode)
+    {
+        return __real_dvm_runtime_channel_wait_guest(channel);
+    }
     if (isolate_waits)
     {
         return wait_with_other_guest(channel, owner, process);

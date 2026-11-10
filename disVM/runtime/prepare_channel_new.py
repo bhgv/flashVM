@@ -1235,8 +1235,16 @@ static int reserve_channel_buffer(void *argument)
     Channel *channel = read->channel;
     ChannelBuffer buffer;
     int status;
-    if (dvm_runtime_channel_buffer_busy(channel))
+    int busy = dvm_runtime_channel_wait_state(channel);
+    if (busy < 0)
+    {
         error("channel buffer transfer already active");
+    }
+    if (busy)
+    {
+        reservation->available = -1;
+        return 1;
+    }
     status = channelbuffer(channel, reservation->receive, 0, &buffer);
     if (status < 0)
         error(buffer.error);
@@ -1288,6 +1296,23 @@ static int reserve_channel_buffer(void *argument)
 }
 
 
+/* EN: Wait outside the queue mutex for a foreign buffer reservation.
+ * RU: Дождаться чужой резервации буфера вне мьютекса очереди. */
+static int claim_channel_buffer(ChannelReservation *reservation)
+{
+    do
+    {
+        reservation->available = 0;
+        dvm_runtime_channel_queue_guard(reserve_channel_buffer, reservation);
+        if (reservation->available >= 0)
+        {
+            return reservation->available;
+        }
+        dvm_runtime_channel_require_wait(dvm_runtime_channel_wait_guest(reservation->read.channel));
+    } while (1);
+}
+
+
 /* Publish a committed transfer and remove its reservation on every exit. */
 static int finish_channel_buffer(void *argument)
 {
@@ -1334,8 +1359,7 @@ static int release_channel_read_array(void *array)
 static int read_buffer_owned(Channel *channel, void *destination, int replay_opcode)
 {
     ChannelReservation reservation = {{channel, nil, nil, destination}, 1, 0, 0, 0, 0, nil, 0, 0, nil, nil, replay_opcode, 0, nil};
-    dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
-    if (!reservation.available)
+    if (!claim_channel_buffer(&reservation))
         return 0;
     reservation.completed = reservation.transaction_type ? kprotect(consume_channel_buffer, &reservation) :
         kprotect(channelread, &reservation.read);
@@ -1380,8 +1404,7 @@ static int write_buffer_owned(Channel *channel, void *source, int replay_opcode,
     Prog *refill_sender)
 {
     ChannelReservation reservation = {{channel, nil, nil, source}, 0, 0, 0, 0, 0, nil, 0, 0, nil, nil, replay_opcode, 0, refill_sender};
-    dvm_runtime_channel_queue_guard(reserve_channel_buffer, &reservation);
-    if (!reservation.available)
+    if (!claim_channel_buffer(&reservation))
         return 0;
     reservation.completed = kprotect(write_channel_buffer, &reservation);
     dvm_runtime_channel_queue_guard(finish_channel_buffer, &reservation);
