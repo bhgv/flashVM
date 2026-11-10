@@ -1889,7 +1889,15 @@ static int cancel_child_exit_wait(Prog *process)
     {
         return 0;
     }
-    process->R.PC++;
+    if (native_spawn && dvm_native_execution()->resident_registers_valid)
+    {
+        DVM_R.PC++;
+        process->R.PC = DVM_R.PC;
+    }
+    else
+    {
+        process->R.PC++;
+    }
     if (!process->kill)
     {
         process->kill = "child exit wait cancelled";
@@ -2850,10 +2858,8 @@ static int runtime_dispatch_turn(void)
         Prog *guest = dvm_managed_workers_guest();
         guest = guest ? guest : initial_guest;
         cancelled |= consume_channel_message(guest);
-        int process_completed = consume_child_reply(guest);
-        process_completed |= consume_process_wait_requests(guest);
-        cancelled |= process_completed;
-        reload_registers |= process_completed;
+        cancelled |= consume_child_reply(guest);
+        cancelled |= consume_process_wait_requests(guest);
         process = dvm_runqueue_select_guest(guest);
     }
     else
@@ -2994,11 +3000,13 @@ static int runtime_dispatch_turn(void)
         }
         xec(process);
         dvm_runtime_termination_checkpoint(process);
-        /* Ready and channel-wait paths keep the resident's saved register image.
-         * Other waits can still adjust saved PC while the executor is parked. */
+        /* Child-wait replies and cancellations are applied by the TLS owner. */
         dvm_native_execution()->resident_registers_valid =
-            native_spawn && dvm_managed_workers_guest() == process &&
-            (process->state == Pready || hosted_channel_waiter(process));
+            native_spawn &&
+            (dvm_managed_workers_guest() == process ||
+             (process == initial_guest && process->state == DVM_CHILD_EXIT_WAIT)) &&
+            (process->state == Pready || hosted_channel_waiter(process) ||
+             process->state == DVM_CHILD_EXIT_WAIT);
         if (!dvm_runqueue_finish(process))
         {
             error("cannot finish completed dispatch");
