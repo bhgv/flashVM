@@ -3080,11 +3080,10 @@ static int runtime_dispatch_turn(void)
         }
         xec(process);
         dvm_runtime_termination_checkpoint(process);
-        /* Child-wait replies and cancellations are applied by the TLS owner. */
+        /* The controller's initial Prog is also bound to its thread.
+         * Channel and child-wait completions keep the live TLS registers. */
         dvm_native_execution()->resident_registers_valid =
             native_spawn &&
-            (dvm_managed_workers_guest() == process ||
-             (process == initial_guest && process->state == DVM_CHILD_EXIT_WAIT)) &&
             (process->state == Pready || hosted_channel_waiter(process) ||
              process->state == DVM_CHILD_EXIT_WAIT);
         if (!dvm_runqueue_finish(process))
