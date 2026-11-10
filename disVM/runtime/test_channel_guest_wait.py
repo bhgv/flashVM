@@ -1651,19 +1651,21 @@ def main():
     runtime, compiler, include = (Path(arg).resolve() for arg in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix="channel-guest-wait-") as directory:
         work = Path(directory)
-        binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
-                        ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt",
-                         "dvm_runtime_channel_wait_change", "fvm_port_thread_start",
-                         "dvm_managed_workers_native_wait", "dvm_runtime_guest_sleep",
-                         "fvm_port_sync_wait_ms", "fvm_port_file_write",
-                         "dvm_file_gate_try_release", "dvm_file_gate_enter",
-                         "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
-                         "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
-                         "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
-                         "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
-                         "dvm_native_owner_progress", "dvm_gc_workers_create"])
-        if "--cancelwait-only" in sys.argv[4:] or "--table-cancel-only" in sys.argv[4:]:
-            table_cancel = "--table-cancel-only" in sys.argv[4:]
+        table_cancel = "--table-cancel-only" in sys.argv[4:]
+        binary = runtime
+        if not table_cancel:
+            binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
+                            ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt",
+                             "dvm_runtime_channel_wait_change", "fvm_port_thread_start",
+                             "dvm_managed_workers_native_wait", "dvm_runtime_guest_sleep",
+                             "fvm_port_sync_wait_ms", "fvm_port_file_write",
+                             "dvm_file_gate_try_release", "dvm_file_gate_enter",
+                             "dvm_runtime_read_stdin", "dvm_runtime_write_stdio", "splice",
+                             "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
+                             "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
+                             "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
+                             "dvm_native_owner_progress", "dvm_gc_workers_create"])
+        if table_cancel or "--cancelwait-only" in sys.argv[4:]:
             source, image = work / "cancelwait.b", work / "cancelwait.dis"
             if table_cancel:
                 guest = TABLE_CANCEL_GUEST.replace(
