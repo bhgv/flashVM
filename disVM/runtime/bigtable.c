@@ -5,6 +5,8 @@
 #include "interp.h"
 #include "runt.h"
 #include "raise.h"
+#include "kernel.h"
+#include <pthread.h>
 #include <limits.h>
 #include "bigtablemod.h"
 #include "table.h"
@@ -54,7 +56,8 @@ struct TableWait
     TableWait *next;   /* Owned FIFO link. */
 };
 
-static TableActor *table_actors;     /* Sole-executor contexts, not a cross-thread heap registry. */
+static TableActor *table_actors; /* Registry protected by table_scheduler_lock. */
+static pthread_mutex_t table_scheduler_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 /* Find/create a context on the bound owner; definition follows checked handle access. */
@@ -111,6 +114,20 @@ static FvmTableOwner *table_owner(Bigtable_Handle *handle)
     return &owner->owned;
 }
 
+/* EN: Serialize table scheduling metadata and unlock before propagating errors.
+ * RU: Защитить метаданные ожиданий таблицы и снять мьютекс перед исключением. */
+static void table_schedule(int (*operation)(void *), void *argument)
+{
+    pthread_mutex_lock(&table_scheduler_lock);
+    int completed = kprotect(operation, argument);
+    pthread_mutex_unlock(&table_scheduler_lock);
+    if (!completed)
+    {
+        krethrow();
+    }
+}
+
+
 /* Execute a complete scalar request on the VM owner thread. Native cancellation
  * stays disabled while guards are live; runtime errors occur only after release.
  * Requests borrow frame-rooted owners/keys and return scalar/native snapshots. */
@@ -118,8 +135,10 @@ static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
 {
     FvmTableOwner *owner = table_owner(handle);
     FvmTableOwner *source = request->operation == FVM_TABLE_SPLICE ? request->replacement : owner;
+    pthread_mutex_lock(&table_scheduler_lock);
     TableActor *actor = table_actor(currun(), 0);
     uint64_t token = actor && actor->held ? actor->token : 0;
+    pthread_mutex_unlock(&table_scheduler_lock);
     int previous;
     int entered_owner = 0;
     int entered_source = 0;
@@ -806,7 +825,9 @@ void Bigtable_guardstate(void *frame)
     }
     memmove(&call->ret->t0, &token, sizeof(token));
     call->ret->t1 = depth;
+    pthread_mutex_lock(&table_scheduler_lock);
     call->ret->t2 = (WORD)waiters + ((TableOwner *)call->tab)->wait_count;
+    pthread_mutex_unlock(&table_scheduler_lock);
 }
 
 /* Classify only mutable-table native calls; diagnostics and immutable conversions
@@ -977,7 +998,7 @@ static void table_wake(TableOwner *owner)
 /* Admit or cooperatively park a mutable-table call before MCALL changes FP/M.
  * Stable ordering rejects a wait below an already-held owner, avoiding cycles.
  * Idle scalar calls can still read an unleased lower owner without suspension. */
-int dvm_bigtable_call_ready(void (*function)(void *), void *frame)
+static int table_call_ready(void (*function)(void *), void *frame)
 {
     unsigned count = table_call_arguments(function);
     Bigtable_Handle *handle;
@@ -1092,7 +1113,7 @@ static void table_remove_wait(TableActor *actor)
 
 /* Requeue a table-blocked guest for termination without executing its call.
  * Keep its retained leases rooted until the managed exit turn retires them. */
-int dvm_bigtable_wake_for_exit(Prog *process)
+static int table_wake_for_exit(Prog *process)
 {
     TableActor *actor;
 
@@ -1114,7 +1135,7 @@ int dvm_bigtable_wake_for_exit(Prog *process)
 /* Cancel a parked call or a granted retry. table_suspend rewound the PC
  * to MCALL. Restore its successor so the exception handler attributes the
  * error to MCALL and unwinds the uncalled frame through the usual path. */
-int dvm_bigtable_cancel_wait(Prog *process)
+static int table_cancel_wait(Prog *process)
 {
     TableActor *actor;
 
@@ -1144,7 +1165,7 @@ int dvm_bigtable_cancel_wait(Prog *process)
 
 /* Retire a parked request and all pinned leases before unwinding application
  * frames. Does not allocate, enter a payload lock or throw through a live lease. */
-void dvm_bigtable_abort(Prog *process)
+static void table_abort(Prog *process)
 {
     TableActor *actor = table_actor(process, 0);
     if (!actor)
@@ -1164,7 +1185,7 @@ void dvm_bigtable_abort(Prog *process)
 /* Pin one table across source instructions/channel waits on its owning process.
  * The executor never blocks on another actor: preflight queues before this call.
  * Nested acquisition shares token/owner and adds exactly one recursion level. */
-void Bigtable_acquire(void *frame)
+static int table_acquire(void *frame)
 {
     F_Bigtable_acquire *call = frame;
     TableOwner *owner = (TableOwner *)call->tab;
@@ -1211,11 +1232,12 @@ void Bigtable_acquire(void *frame)
     }
     owner->lease_owner = currun();
     owner->lease_depth++;
+    return 1;
 }
 
 /* Leave one application lease level; a foreign process cannot release an owner.
  * Final release wakes waiters and retires the private pin, not caller references. */
-void Bigtable_release(void *frame)
+static int table_release(void *frame)
 {
     F_Bigtable_release *call = frame;
     TableOwner *owner = (TableOwner *)call->tab;
@@ -1233,7 +1255,7 @@ void Bigtable_release(void *frame)
             error("table lease release failure");
         }
         owner->lease_depth--;
-        return;
+        return 1;
     }
     for (slot = &actor->held; *slot && *slot != owner; slot = &(*slot)->lease_next)
     {
@@ -1245,4 +1267,94 @@ void Bigtable_release(void *frame)
     *slot = owner->lease_next;
     table_lease_drop(owner, actor);
     table_actor_idle(actor);
+    return 1;
+}
+
+
+typedef struct TableCallCheck
+{
+    void (*function)(void *); /* Borrowed builtin identity. */
+    void *frame;              /* Borrowed prepared call frame. */
+    int ready;                /* Set after inspecting the lease and FIFO. */
+} TableCallCheck;
+
+
+/* EN: Capture the result separately from the VM error checkpoint.
+ * RU: Сохранить результат отдельно от контрольной точки исключения VM. */
+static int check_table_call(void *argument)
+{
+    TableCallCheck *call = argument;
+    call->ready = table_call_ready(call->function, call->frame);
+    return 1;
+}
+
+
+int dvm_bigtable_call_ready(void (*function)(void *), void *frame)
+{
+    if (!table_call_arguments(function))
+    {
+        return 1;
+    }
+    TableCallCheck call = {function, frame, 0};
+    table_schedule(check_table_call, &call);
+    return call.ready;
+}
+
+
+typedef struct TableWaitChange
+{
+    Prog *process;                 /* Borrowed process whose wait may change. */
+    int (*operation)(Prog *);       /* Scheduler operation under the mutex. */
+    int changed;                   /* Whether an outstanding wait changed. */
+} TableWaitChange;
+
+
+/* EN: Apply a table wait change while preserving VM error cleanup.
+ * RU: Изменить ожидание таблицы с сохранением обработки исключений. */
+static int change_table_wait(void *argument)
+{
+    TableWaitChange *request = argument;
+    request->changed = request->operation(request->process);
+    return 1;
+}
+
+
+int dvm_bigtable_wake_for_exit(Prog *process)
+{
+    TableWaitChange request = {process, table_wake_for_exit, 0};
+    table_schedule(change_table_wait, &request);
+    return request.changed;
+}
+
+
+int dvm_bigtable_cancel_wait(Prog *process)
+{
+    TableWaitChange request = {process, table_cancel_wait, 0};
+    table_schedule(change_table_wait, &request);
+    return request.changed;
+}
+
+
+static int abort_table_actor(void *argument)
+{
+    table_abort(argument);
+    return 1;
+}
+
+
+void dvm_bigtable_abort(Prog *process)
+{
+    table_schedule(abort_table_actor, process);
+}
+
+
+void Bigtable_acquire(void *frame)
+{
+    table_schedule(table_acquire, frame);
+}
+
+
+void Bigtable_release(void *frame)
+{
+    table_schedule(table_release, frame);
 }
