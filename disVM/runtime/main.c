@@ -687,7 +687,7 @@ static int post_host_wait_cancel(int pid)
     {
     }
     if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt &&
-        peer->state != DVM_CHILD_EXIT_WAIT))
+        peer->state != DVM_CHILD_EXIT_WAIT && peer->state != DVM_TABLE_WAIT))
     {
         return 0;
     }
@@ -1827,22 +1827,32 @@ int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
+    if (!native_spawn || process->cancel_ready_pid == pid)
+        return 1;
+
+    fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    if (!native_spawn || process->cancel_ready_pid == pid || !child ||
+    if (!child ||
         (child->state != Psend && child->state != Precv && child->state != Palt &&
-         child->state != DVM_CHILD_EXIT_WAIT))
+         child->state != DVM_CHILD_EXIT_WAIT && child->state != DVM_TABLE_WAIT))
     {
+        fvm_port_sync_unlock(channel_queue_mutex);
         return 1;
     }
     DVM_RuntimeProcess *target = (DVM_RuntimeProcess *)child;
     if (target->channel_claimed)
     {
+        fvm_port_sync_unlock(channel_queue_mutex);
         return 1;
     }
     DVM_OwnerMessage *request = &target->cancel_wait;
     process->exit_wait_pid = pid;
     process->cancel_waiting = 1;
-    delrun(DVM_CHILD_EXIT_WAIT);
+    if (!dvm_runqueue_pop_expected(caller, DVM_CHILD_EXIT_WAIT))
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        error("invalid runnable process removal");
+    }
     /* The child may already be polling its mailbox. Publish the caller's
      * reply destination and wait state before making the request visible. */
     if (!dvm_messages_send_once(guest_messages, (uintptr_t)pid, request))
@@ -1850,12 +1860,14 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
         process->exit_wait_pid = 0;
         process->cancel_waiting = 0;
         addrun(caller);
+        fvm_port_sync_unlock(channel_queue_mutex);
         error("cannot post wait cancellation");
     }
     DVM_R.PC--;
     DVM_R.IC = 1;
     DVM_R.t = 1;
     dvm_managed_workers_wake_guest(child);
+    fvm_port_sync_unlock(channel_queue_mutex);
     return 0;
 }
 
@@ -2954,7 +2966,7 @@ static int consume_process_wait_requests(Prog *guest)
         else if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT ||
             message->kind == DVM_PROG_MESSAGE_CHANNEL_CANCEL)
         {
-            process->cancel_delivering = cancel_child_exit_wait(guest);
+            process->cancel_delivering = dvm_bigtable_cancel_wait(guest) || cancel_child_exit_wait(guest);
             cancelled |= process->cancel_delivering;
             dvm_runtime_wait_request_finished(guest, message);
             process->cancel_delivering = 0;
