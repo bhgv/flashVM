@@ -1,4 +1,7 @@
-/* Actual retained addw, two extended-up owners and FIFO exclusive heap turns. */
+/* Copyright (c) 2026 bhgv
+ * EN: Two permanent native owners, guarded shared arithmetic and GC root scans.
+ * RU: Два постоянных нативных владельца, защищённая арифметика и корни GC.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +28,7 @@ char exBounds[] = "array bounds error"; /* Retained addw's rejected-span error i
  * message is borrowed; no return, managed allocation or VM unwind is simulated. */
 void error(char *message)
 {
-    fprintf(stderr,"FAIL serialized native world: %s\n",message);
+    fprintf(stderr,"FAIL concurrent native owners: %s\n",message);
     exit(EXIT_FAILURE);
 }
 
@@ -43,19 +46,23 @@ static void check(int valid, const char *message)
 PRODUCTION_ADDW
 
 
-/* Control messages use their own native condition. Shared value/order are plain
- * instruction operands protected ONLY by the production world's admission gate. */
+/* EN: Control phases and one shared operand have independent native mutexes.
+ * RU: Фазы проверки и общий операнд защищены отдельными нативными мьютексами. */
 typedef struct Shared
 {
     DVM_NativeWorld *world; /* Owned by main through worker joins. */
-    FVM_PortSync *control; /* Protect phase flags, never the arithmetic operand. */
+    FVM_PortSync *control; /* Protect phase flags. */
+    FVM_PortSync *operand; /* Protect the shared arithmetic operand. */
     unsigned long epoch;  /* Collector increments only under a world stop. */
     UWORD value;           /* Shared non-atomic addw source/destination. */
     unsigned int order[3]; /* First three admissions, written only during heap turns. */
-    unsigned int used;     /* Initialized order entries, protected by the heap gate. */
+    unsigned int used;     /* Initialized order entries, protected by control. */
     int joined;           /* Workers with registered, stable root sets. */
     int first_active;     /* Owner zero holds the initial heap turn. */
-    int release_first;    /* Main observed owner one's queued ticket. */
+    int peer_active;      /* Both native owners hold admission. */
+    int overlap_verified; /* Owner zero checked simultaneous participation. */
+    int peer_finished;    /* Owner one finished its first arithmetic operation. */
+    int release_first;    /* Main observed both admitted owners. */
     int inactive;         /* Owner zero waits in native code with saved roots. */
     int progressed;       /* Owner one executed at least 16384 adds during that wait. */
     int stress;           /* Main completed stopped-root checks; both may stress reentry. */
@@ -97,33 +104,36 @@ static void wait_flag(Shared *shared, int *flag)
 
 /* Run count retained instructions during this owner's admitted heap interval.
  * worker/count are borrowed. Poll before each addw, then publish the local REG
- * mirror. No extra mutex or atomic counter protects the shared operand. */
+ * mirror. The operand mutex spans one add and ends before the next poll.
+ * RU: Проверить GC перед addw и защитить общий операнд отдельным мьютексом.
+ * worker заимствован. Блокировка снимается до следующего опроса GC. */
 static void add(Worker *worker, unsigned int count)
 {
     unsigned int index;
     for (index = 0; index < count; index++)
     {
         check(dvm_native_context_poll(),"instruction poll");
+        fvm_port_sync_lock(worker->shared->operand);
         addw();
         worker->last = worker->shared->value;
+        fvm_port_sync_unlock(worker->shared->operand);
         DVM_R.t = worker->last;
         worker->iterations++;
     }
 }
 
 
-/* Record one initial FIFO turn on shared native test data. worker is borrowed;
- * the caller already owns admission. Raises a fatal test failure on overflow. */
+/* EN: Record an initial operation under the phase mutex, then add one.
+ * worker is borrowed. Initial phases finish before the first GC stop.
+ * RU: Записать начальную операцию под мьютексом фаз и прибавить единицу.
+ * worker заимствован. Начальные фазы завершаются до первого GC. */
 static void initial(Worker *worker)
 {
     Shared *shared = worker->shared;
-    if (worker->identity)
-    {
-        check(shared->used == 1 && shared->order[0] == 0,
-            "FIFO peer admitted before first owner released");
-    }
+    fvm_port_sync_lock(shared->control);
     check(shared->used < 3,"initial order capacity");
     shared->order[shared->used++] = worker->identity;
+    fvm_port_sync_unlock(shared->control);
     add(worker,1);
 }
 
@@ -155,7 +165,7 @@ static void resume_owner(Worker *worker)
 
 
 /* OS worker entry; argument borrows one Worker. Register complete roots before
- * admission, demonstrate FIFO under contention, then simulate native waiting and
+ * admission, demonstrate concurrent entry, then simulate native waiting and
  * stress reentry. Published roots stay immutable while inactive. Detach/unbind
  * follow the final collector scan; main owns context destruction after join. */
 static void execute(void *argument)
@@ -183,18 +193,22 @@ static void execute(void *argument)
     if (!worker->identity)
     {
         check(dvm_native_owner_enter(worker->owner),"first turn");
-        check(!dvm_native_owner_enter(worker->owner),"reject nested turn without consuming a ticket");
+        check(!dvm_native_owner_enter(worker->owner),"reject nested active entry");
+        initial(worker);
         fvm_port_sync_lock(shared->control);
         shared->first_active = 1;
         fvm_port_sync_signal_all(shared->control);
         fvm_port_sync_unlock(shared->control);
+        wait_flag(shared,&shared->peer_active);
+        check(!dvm_native_owner_seal(worker->owner), "refuse seal with another active owner");
+        fvm_port_sync_lock(shared->control);
+        shared->overlap_verified = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
         wait_flag(shared,&shared->release_first);
-        check(!dvm_native_owner_seal(worker->owner),"refuse seal with a queued peer");
-        check(!dvm_native_owner_try_share(worker->owner, shared->epoch),
-            "shared transition must respect the older exclusive ticket");
-        initial(worker);
+        wait_flag(shared,&shared->peer_finished);
         check(dvm_native_owner_leave(worker->owner),"release initial turn");
-        check(dvm_native_owner_enter(worker->owner),"FIFO reentry");
+        check(dvm_native_owner_enter(worker->owner),"same-owner reentry");
         initial(worker);
         suspend_owner(worker);
         check(!dvm_native_owner_enter(worker->owner) && !dvm_native_owner_detach(worker->owner),
@@ -210,9 +224,18 @@ static void execute(void *argument)
     else
     {
         wait_flag(shared,&shared->first_active);
-        check(dvm_native_owner_enter(worker->owner),"queued older ticket");
+        check(dvm_native_owner_enter(worker->owner),"concurrent peer admission");
         initial(worker);
-        check(dvm_native_owner_leave(worker->owner),"release older ticket");
+        fvm_port_sync_lock(shared->control);
+        shared->peer_active = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
+        wait_flag(shared,&shared->release_first);
+        check(dvm_native_owner_leave(worker->owner),"release concurrent peer");
+        fvm_port_sync_lock(shared->control);
+        shared->peer_finished = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
         wait_flag(shared,&shared->inactive);
         index = 0;
         do
@@ -295,8 +318,8 @@ static void scan_roots(Shared *shared, DVM_NativeContext *collector, int native_
     scan.count = 0;
     scan.native_wait = native_wait;
     check(dvm_world_stop_begin(shared->world,collector),"collector begin");
-    check(dvm_world_state(shared->world,&state) && state.active <= 1 &&
-        state.active == state.parked && state.participants == 2,"exclusive stopped state");
+    check(dvm_world_state(shared->world,&state) && state.active <= 2 &&
+        state.active == state.parked && state.participants == 2,"stopped collector state");
     shared->epoch++;
     check(dvm_world_visit(shared->world,roots,&scan) && scan.count == 2,"visit both owners");
     check(dvm_world_stop_end(shared->world),"collector end");
@@ -370,7 +393,7 @@ static void idle_service(void *argument)
     check(context && dvm_native_context_bind(context), "bind GC service");
     DVM_HeapOwner *owner = dvm_native_owner_current();
     check(dvm_native_owner_attach_service(owner, shared->world), "register GC service");
-    check(!dvm_native_owner_enter(owner), "GC service cannot enter exclusively");
+    check(!dvm_native_owner_enter(owner), "GC service cannot enter as an ACTIVE mutator");
     fvm_port_sync_lock(shared->control);
     shared->joined = 1;
     fvm_port_sync_signal_all(shared->control);
@@ -383,140 +406,4 @@ static void idle_service(void *argument)
 }
 
 
-/* Main owns the world/control/contexts. argv optionally selects locked polling;
- * every run proves FIFO, real peer progress during native wait, exact arithmetic,
- * stable roots and full teardown. Return zero only after all joined resources. */
-int main(int argc, char **argv)
-{
-    Shared shared;
-    Worker workers[2];
-    FVM_PortThread *threads[2];
-    DVM_NativeContext *collector;
-    DVM_WorldAdmission admission;
-    unsigned int index;
-    DVM_HeapOwnerStats private_copy;
-    unsigned long example_clock = ULONG_MAX-5;
-    int example_status = 99;
-    memset(&shared,0,sizeof(shared));
-    memset(workers,0,sizeof(workers));
-    shared.world = dvm_world_create_serial(argc > 1 && strcmp(argv[1],"locked") == 0);
-    shared.control = fvm_port_sync_create();
-    collector = dvm_native_process_create(NULL);
-    check(shared.world && shared.control && collector,"allocate domain");
-    check(dvm_native_context_bind(collector),"bind collector");
-    for (index = 0; index < 2; index++)
-    {
-        workers[index].shared = &shared;
-        workers[index].identity = index;
-        workers[index].context = dvm_native_process_create(NULL);
-        check(workers[index].context != NULL,"allocate owner");
-        threads[index] = fvm_port_thread_start(execute,&workers[index]);
-        check(threads[index] != NULL,"start real OS owner");
-    }
-    /* No collection yet: owner zero deliberately holds its first turn until an
-     * older peer ticket exists. This is a deterministic contention handshake. */
-    do
-    {
-        check(dvm_world_admission(shared.world,&admission),"observe FIFO wait");
-        if (!admission.waiting)
-        {
-            fvm_port_thread_sleep_us(50);
-        }
-    } while (!admission.waiting);
-    check(dvm_world_exclusive_waiting(shared.world) == 1,"one queued exclusive peer");
-    fvm_port_sync_lock(shared.control);
-    shared.release_first = 1;
-    fvm_port_sync_signal_all(shared.control);
-    fvm_port_sync_unlock(shared.control);
-    wait_flag(&shared,&shared.progressed);
-    check(!dvm_native_owner_enter(workers[0].owner),"reject foreign owner");
-    check(!dvm_native_owner_statistics(workers[0].owner,&private_copy),"reject foreign private counter read");
-    check(!dvm_world_destroy(shared.world),"reject live world destruction");
-    for (index = 0; index < SCANS; index++)
-    {
-        scan_roots(&shared,collector,1);
-    }
-    fvm_port_sync_lock(shared.control);
-    shared.stress = 1;
-    fvm_port_sync_signal_all(shared.control);
-    fvm_port_sync_unlock(shared.control);
-    for (index = 0; index < SCANS; index++)
-    {
-        scan_roots(&shared,collector,0);
-    }
-    fvm_port_sync_lock(shared.control);
-    while (shared.done != 2)
-    {
-        fvm_port_sync_wait(shared.control);
-    }
-    fvm_port_sync_unlock(shared.control);
-    scan_roots(&shared,collector,0);
-    check(workers[0].snapshot.releases == 2 && workers[1].snapshot.releases >= 257 &&
-        workers[0].snapshot.gc_progress >= SCANS,"independent overlapping native waits");
-    check(shared.used == 3 && shared.order[0] == 0 && shared.order[1] == 1 &&
-        shared.order[2] == 0,"older waiter precedes releasing owner's reentry");
-    check(shared.value == workers[0].iterations+workers[1].iterations,"no lost shared adds");
-    check(dvm_world_admission(shared.world,&admission) && admission.serial &&
-        !admission.waiting && !dvm_world_exclusive_waiting(shared.world) && admission.contentions &&
-        admission.admissions >= 2*STRESS_TURNS+259,"FIFO counters fully drained");
-    fvm_port_sync_lock(shared.control);
-    shared.retire = 1;
-    fvm_port_sync_signal_all(shared.control);
-    fvm_port_sync_unlock(shared.control);
-    for (index = 0; index < 2; index++)
-    {
-        fvm_port_thread_join(threads[index]);
-        check(dvm_native_context_destroy(workers[index].context),"destroy joined owner");
-    }
-    check(dvm_native_owner_attach(dvm_native_owner_current(),shared.world),"attach last owner");
-    check(dvm_native_owner_enter(dvm_native_owner_current()),"last owner enter");
-    register_isolation();
-    check(dvm_example_native_wait(dvm_native_owner_current(),example_epoch,&example_clock,
-        example_failure,&example_clock,&example_status) && example_status == -7,
-        "tutorial negative native status returned after reentry");
-    check(dvm_native_owner_statistics(dvm_native_owner_current(),&private_copy) &&
-        private_copy.gc_progress == 9 && private_copy.releases == 1 && private_copy.reentries == 1,
-        "unsigned epoch wrap arithmetic");
-    check(dvm_native_context_object_acquire(collector),"hold guard accounting");
-    check(!dvm_native_owner_try_share(dvm_native_owner_current(), 3),
-        "reject shared transition while a guard is held");
-    check(dvm_native_context_object_release(collector),"release guard accounting");
-    check(dvm_native_owner_try_share(dvm_native_owner_current(), 3),
-        "convert uncontended exclusive turn to shared");
-    check(dvm_world_shared_peak(shared.world) == 1,"record shared occupancy");
-    check(dvm_native_context_object_acquire(collector),"hold shared guard accounting");
-    check(!dvm_native_owner_resume_shared(dvm_native_owner_current()),
-        "reject exclusive promotion while a guard is held");
-    check(dvm_native_context_object_release(collector),"release shared guard accounting");
-    check(dvm_native_owner_resume_shared(dvm_native_owner_current()) &&
-        dvm_native_owner_progress(dvm_native_owner_current(), 3),
-        "promote uncontended shared turn and acknowledge epoch");
-    check(dvm_native_owner_statistics(dvm_native_owner_current(),&private_copy) &&
-        private_copy.phase == DVM_HEAP_ACTIVE && private_copy.releases == 2 &&
-        private_copy.reentries == 2 && !private_copy.pending_progress,
-        "shared handoff preserves the native lease accounting");
-    shared.joined = 0;
-    shared.retire = 0;
-    FVM_PortThread *service = fvm_port_thread_start(idle_service, &shared);
-    check(service != NULL, "start idle GC service");
-    wait_flag(&shared, &shared.joined);
-    check(dvm_native_owner_seal(dvm_native_owner_current()), "seal with idle GC service");
-    fvm_port_sync_lock(shared.control);
-    shared.retire = 1;
-    fvm_port_sync_signal_all(shared.control);
-    fvm_port_sync_unlock(shared.control);
-    fvm_port_thread_join(service);
-    {
-        FVM_PortThread *late = fvm_port_thread_start(late_join,shared.world);
-        check(late != NULL,"start late registration attempt");
-        fvm_port_thread_join(late);
-    }
-    check(dvm_native_owner_leave(dvm_native_owner_current()),"last owner leave");
-    check(dvm_native_owner_detach(dvm_native_owner_current()),"last owner detach");
-    check(dvm_native_context_unbind(collector),"unbind collector");
-    check(dvm_native_context_destroy(collector),"destroy collector");
-    check(dvm_world_destroy(shared.world),"destroy empty domain");
-    fvm_port_sync_destroy(shared.control);
-    puts("PASS per-owner native leases: independent overlapping calls/epochs, FIFO, 201 root scans, sealed registration, complete joins");
-    return 0;
-}
+PRODUCTION_DRIVER

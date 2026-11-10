@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Run isolated native-call states, epoch sampling and registration sealing with actual OS owners."""
+# Copyright (c) 2026 bhgv
+"""EN: Check concurrent native owners, roots, epoch sampling and registration.
+RU: Проверка параллельных владельцев, корней, эпох и регистрации.
+"""
 import argparse
 import os
 from pathlib import Path
@@ -25,6 +28,7 @@ def main():
         .replace(
             "PRODUCTION_ADDW", instruction((root / "upstream/libinterp/xec.c").read_text(), "addw")
         )
+        .replace("PRODUCTION_DRIVER", (root / "tests/native_owner_driver.inc").read_text())
     )
     with tempfile.TemporaryDirectory(prefix="disvm-native-owner-") as directory:
         output = Path(directory)
@@ -62,28 +66,26 @@ def main():
         subprocess.run(command, check=True)
         for mode in ("atomic", "locked"):
             subprocess.run([str(output / "test"), mode], check=True, timeout=30)
-        # Build a deliberate removal of the real exclusive-active predicate.
-        # The older peer must fail immediately while owner zero still holds its
-        # first turn; a timeout or a different failure is not accepted evidence.
+        # Reject a deliberately restored global mutator exclusion predicate.
+        # The peer must fail on entry while the first owner is still active.
         original = (root / "host/native_world.c").read_text()
-        predicate = ("(world->active && (!shared || world->active != world->shared)) ||\n"
-                     "            world->resuming || ticket != world->serving_ticket")
+        predicate = "else if (participant->active || (shared && (!world->serial || world->sealed)))"
         if original.count(predicate) != 1:
-            raise RuntimeError("exclusive admission predicate is not unique")
+            raise RuntimeError("native entry predicate is not unique")
         control_source = output / "world-control.c"
         control_source.write_text(original.replace(predicate,
-            "world->resuming || ticket != world->serving_ticket"))
+            "else if (participant->active || (!shared && world->active) || "
+            "(shared && (!world->serial || world->sealed)))"))
         control_binary = output / "control"
         control_command = [str(control_source) if item == str(root / "host/native_world.c")
                            else item for item in command]
         control_command[-1] = str(control_binary)
-        # Native-world's private atomic helper is borrowed from its source dir.
-        control_command.insert(1,"-I"+str(root / "host"))
-        subprocess.run(control_command,check=True)
-        result = subprocess.run([str(control_binary),"atomic"],capture_output=True,
-                                text=True,timeout=30)
-        if not result.returncode or "FIFO peer admitted before first owner released" not in result.stderr:
-            raise RuntimeError("inactive exclusive-admission control: "+result.stdout+result.stderr)
+        control_command.insert(1, "-I" + str(root / "host"))
+        subprocess.run(control_command, check=True)
+        result = subprocess.run([str(control_binary), "atomic"], capture_output=True,
+                                text=True, timeout=30)
+        if not result.returncode or "concurrent peer admission" not in result.stderr:
+            raise RuntimeError("inactive mutator-exclusion control: " + result.stdout + result.stderr)
         owner_source = (root / "host/native_owner.c").read_text()
         snapshot = "    owner->before = epoch;"
         if owner_source.count(snapshot) != 1:
@@ -98,15 +100,15 @@ def main():
         result = subprocess.run([alternate[-1],"atomic"],capture_output=True,text=True,timeout=30)
         if not result.returncode or "owner epoch/call counters" not in result.stderr:
             raise RuntimeError("inactive epoch-snapshot removal control: "+result.stdout+result.stderr)
-        sealed = "world->sealed || world->collector"
+        sealed = "if (world->sealed || world->collector || !dvm_native_context_set_poll"
         if original.count(sealed) != 1:
             raise RuntimeError("registration seal predicate is not unique")
-        control_source.write_text(original.replace(sealed,"world->collector"))
+        control_source.write_text(original.replace(sealed,"if (world->collector || !dvm_native_context_set_poll"))
         subprocess.run(control_command,check=True)
         result = subprocess.run([str(control_binary),"atomic"],capture_output=True,text=True,timeout=30)
         if not result.returncode or "sealed owner registration reopened" not in result.stderr:
             raise RuntimeError("inactive registration-seal control: "+result.stdout+result.stderr)
-    print("PASS active admission-removal control: queued peer cannot bypass the current heap owner")
+    print("PASS global exclusion control: simultaneous native owners are required")
     print("PASS owner leases: atomic/locked, epoch snapshot and registration-seal removal controls")
 
 
