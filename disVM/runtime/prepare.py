@@ -1120,10 +1120,6 @@ def main():
         "\t\t\tp->R = DVM_R;\n"
         "\t\tif(p->flags & Pkilled)\n"
         "\t\t\tdvm_runtime_termination_checkpoint(p);\n"
-        "\t\t/* Bound the legacy exclusive section only when another owner is queued. */\n"
-        "\t\tif(dvm_runtime_guest_unbounded && (__atomic_load_n(&dvm_runtime_instructions, __ATOMIC_RELAXED) & 63) == 0 &&\n"
-        "\t\t   dvm_runtime_gc_shared_has_exclusive_waiters())\n"
-        "\t\t\tDVM_R.IC = 0;\n"
         "\t\t/* IC <= 1 remains the explicit yield signal. */\n"
         "\t\tif((!dvm_runtime_guest_unbounded || DVM_R.IC <= 1) && !vmyield())", 1)
     code = code.replace(

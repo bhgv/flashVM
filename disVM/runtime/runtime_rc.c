@@ -1711,10 +1711,6 @@ unsigned int dvm_runtime_rc_shared_candidates(DVM_NativeContext *context, size_t
                 dvm_retirement_rotate(cycle_candidates);
                 cycle_candidates_rotated++;
             }
-            if (dvm_world_exclusive_waiting(world))
-            {
-                break;
-            }
             budget = cost < budget ? budget - cost : 0;
         }
         retry = queued.accepting && dvm_runtime_rc_candidates_ready();

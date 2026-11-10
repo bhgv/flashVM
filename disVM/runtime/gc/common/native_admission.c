@@ -312,14 +312,6 @@ void dvm_runtime_gc_dispatch_restore(void)
 }
 
 
-/* EN: Observe exclusive requests without taking one.
- * RU: Проверить наличие эксклюзивных запросов. */
-int dvm_runtime_gc_shared_has_exclusive_waiters(void)
-{
-    return !dvm_gc_runtime.world || dvm_world_exclusive_waiting(dvm_gc_runtime.world) != 0;
-}
-
-
 /* EN: Withdraw the current guest while Fast GC drains queued owners.
  * RU: Вывести текущего исполнителя из допуска на время обработки очереди Fast GC. */
 void dvm_runtime_gc_shared_drain(void)

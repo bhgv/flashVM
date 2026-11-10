@@ -1299,8 +1299,7 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     if (dvm_runtime_guest_unbounded)
     {
         /* The OS already schedules this guest. Exhausting a VM quantum
-         * alone does not require an exclusive reentry. The counter still
-         * bounds accumulation and a queued exclusive owner ends the trace. */
+         * alone does not end the trace. The counter bounds accumulation. */
         limit = INT_MAX;
     }
     released = dvm_runtime_gc_shared_try_enter();
@@ -1312,11 +1311,6 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         /* Frame steps publish updated roots before the next unguarded poll. */
         dvm_runtime_gc_shared_poll();
-        if (completed && (completed == quantum || completed % 16 == 0) &&
-            dvm_runtime_gc_shared_has_exclusive_waiters())
-        {
-            break;
-        }
         if (!batch_pc(module, cursor))
         {
             break;
