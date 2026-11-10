@@ -708,8 +708,10 @@ def adapt_alt_reservations(source):
          "        altvalidate(a, nsend, nrecv, 0);\n"
          "    }"),
         ("p = currun();\n\n\ta = DVM_R.s;", "p = currun();\nretry_alt:\n\ta = DVM_R.s;"),
-        ("DVM_R.t = 1;\n\t\t\treturn;",
-         "DVM_R.t = 1;\n            dvm_runtime_channel_waiter_published();\n\t\t\treturn;"),
+        ("delrun(Palt);\n\t\t\tp->R.s = DVM_R.s;\n\t\t\tp->R.d = DVM_R.d;\n"
+         "\t\t\tDVM_R.IC = 1;\n\t\t\tDVM_R.t = 1;",
+         "dvm_runtime_channel_queue_guard(publish_alt_park, p);\n"
+         "            dvm_runtime_channel_waiter_published();"),
         ("nrdy = ready.ready;",
          "if (block && dvm_runtime_guarded_copies && !ready.available && altpending(a, nsend + nrecv))\n"
          "    {\n"
@@ -751,6 +753,22 @@ extern int dvm_runtime_channel_wait_change(void);
 extern void dvm_runtime_channel_require_wait(int outcome);
 extern void dvm_runtime_channel_waiter_published(void);
 extern int dvm_runtime_guarded_copies;
+
+extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
+
+/* EN: Publish ALT operands before the queue mutex exposes the parked state.
+ * RU: Опубликовать операнды ALT до открытия состояния ожидания под мьютексом. */
+static int publish_alt_park(void *argument)
+{
+    Prog *process = argument;
+    process->R.s = DVM_R.s;
+    process->R.d = DVM_R.d;
+    DVM_R.IC = 1;
+    DVM_R.t = 1;
+    delrun(Palt);
+    return 1;
+}
+
 
 /* Classify the validated members of an array receive guard while NativeWorld
  * protects its storage. Nil Dis members are disabled guards. */

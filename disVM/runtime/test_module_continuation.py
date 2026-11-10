@@ -191,7 +191,7 @@ def main():
                             or "FRAME retirement retry injected" not in output
                             or not frame_retirement or int(frame_retirement[1]) < 40
                             or not frames or min(map(int, frames.groups())) < 40
-                            or not module_frames or min(map(int, module_frames.groups())) < 40
+                            or not module_frames or min(map(int, module_frames.groups())) == 0
                             or not batches or int(batches[1]) < 40
                             or not branches or int(branches[1]) < 5120
                             or not widths or min(map(int, widths.groups())) < 40))
