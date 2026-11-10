@@ -4,6 +4,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "runqueue.h"
+#include "table_leases.h"
 #include "thread_port.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -111,6 +112,21 @@ static void reassigned_dispatch(void *argument)
         "reassigned blocked turn finish");
     check(dvm_native_context_unbind(context),"reassigned context unbind");
     check(dvm_native_context_destroy(context),"reassigned context destroy");
+}
+
+
+/* The releasing thread publishes readiness while the parked owner still
+ * holds its turn. The owner joins this thread before finishing that turn. */
+static void early_table_wake(void *argument)
+{
+    Prog *process = argument;
+    DVM_NativeContext *context = dvm_native_context_create(sizeof(long),NULL);
+    check(context && dvm_native_context_bind(context),"table releaser bind");
+    check(dvm_runqueue_append(process),"early table wake refused");
+    check(process->state == Pready && !dvm_runqueue_claim(process),
+        "early table wake transferred the parked turn");
+    check(dvm_native_context_unbind(context),"table releaser unbind");
+    check(dvm_native_context_destroy(context),"table releaser destroy");
 }
 
 
@@ -332,6 +348,17 @@ int main(void)
     check(dvm_runqueue_finish(second) && dvm_runqueue_pop_expected(second, Pexiting) == second &&
         dvm_runqueue_pop_expected(first, Pexiting) == first && !dvm_runqueue_ready(),
         "direct guests retire independently of admission order");
+    check(dvm_runqueue_append(first) && dvm_runqueue_claim(first) &&
+        dvm_runqueue_pop_expected(first, DVM_TABLE_WAIT) == first,
+        "park table waiter with a live turn");
+    thread = fvm_port_thread_start(early_table_wake,first);
+    check(thread != NULL,"start table releaser");
+    fvm_port_thread_join(thread);
+    check(dvm_runqueue_dispatch_owner(first) == context &&
+        dvm_runqueue_finish(first) && dvm_runqueue_select_guest(first) == first &&
+        dvm_runqueue_claim(first),"table waiter could not resume on its owner");
+    check(dvm_runqueue_finish(first) && dvm_runqueue_pop_expected(first, Pexiting) == first &&
+        !dvm_runqueue_ready(),"retire the resumed table waiter");
     check(dvm_native_context_unbind(context),"unbind original owner");
     check(dvm_native_context_destroy(context),"destroy original owner");
     puts("PASS actual runnable FIFO: 20000 oracle operations, real foreign owner refusal, independent root links, bounded diagnostics");

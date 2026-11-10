@@ -30,6 +30,8 @@ def main():
         subprocess.run([command[-1]],check=True,timeout=30)
         source = (runtime/"runqueue.c").read_text()
         controls = [
+            ("!table_wake && runtime_process(process)->dispatch_owner &&",
+             "runtime_process(process)->dispatch_owner &&", "early table wake refused"),
             ("    __atomic_fetch_add(&returns, 1, __ATOMIC_RELAXED);", "    /* private control: omit return accounting */",
              "native return accounting diverged"),
             ("return !process || !process->native64holds;", "(void)process; return 1;",
@@ -78,7 +80,7 @@ def main():
             result = subprocess.run([altered_command[-1]],capture_output=True,text=True,timeout=30)
             if result.returncode != 1 or marker not in result.stderr:
                 raise RuntimeError("inactive ownership control: "+marker+"\n"+result.stdout+result.stderr)
-    print("PASS ten active ownership controls: return accounting, synchronous hold, foreign restore/claim/finish, "
+    print("PASS eleven active ownership controls: early table wake, return accounting, synchronous hold, foreign restore/claim/finish, "
           "duplicate admission, reserved return slot, missing withdrawal, nested cleared-root turn, early unbind")
 
 
