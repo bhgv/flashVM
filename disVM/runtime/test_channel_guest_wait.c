@@ -1248,6 +1248,11 @@ int __wrap_dvm_runtime_channel_wait_guest(Channel *channel)
     }
     check(!alt_bypass, "ALT must not wait when another branch can run");
     pthread_mutex_lock(&gate);
+    if (resume_mover && getenv("DVM_TEST_DEDICATED_BUFFER"))
+    {
+        pthread_mutex_unlock(&gate);
+        return __real_dvm_runtime_channel_wait_guest(channel);
+    }
     check(first_owner && owner != first_owner && process && process != first_process &&
         !resume_mover, "second transfer owns a different guest and native context");
     pthread_mutex_unlock(&gate);

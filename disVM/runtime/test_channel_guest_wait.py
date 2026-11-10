@@ -1707,6 +1707,23 @@ def main():
                              "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                              "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                              "dvm_native_owner_progress", "dvm_gc_workers_create"])
+        if "--dedicated-buffer-only" in sys.argv[4:]:
+            for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST)):
+                source, image = work / f"{name}.b", work / f"{name}.dis"
+                source.write_text(guest)
+                subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
+                for mode in ("--no-jit", "--jit"):
+                    result = subprocess.run(
+                        [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
+                        cwd=work, capture_output=True, text=True, timeout=5,
+                        env=dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
+                    )
+                    output = result.stdout + result.stderr
+                    if (result.returncode or output.count("PASS foreign channel guest wait") != 1
+                            or "PASS guest channel payloads" not in output
+                            or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
+                        raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
+            return
         if table_kill_head or table_cancel_head:
             source, image = work / "table-kill-head.b", work / "table-kill-head.dis"
             guest = TABLE_FIFO_KILL_HEAD_GUEST.replace(
