@@ -1733,7 +1733,8 @@ def main():
                                 ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
                                 ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
                                 ("alt-array-cancel", ALT_ARRAY_CANCEL_GUEST),
-                                ("parked-array-alt", PARKED_ARRAY_ALT_GUEST)):
+                                ("parked-send", PARKED_SEND_GUEST), ("parked-receive", PARKED_RECEIVE_GUEST),
+                                ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
@@ -1747,7 +1748,7 @@ def main():
                     bypass = name in ("alt-ready", "alt-default")
                     marker = ("PASS ALT bypassed the reservation" if bypass
                               else "PASS foreign channel guest wait")
-                    if name == "parked-array-alt":
+                    if name.startswith("parked-"):
                         marker = "PASS cancelled scheduler channel wait"
                     if (result.returncode or output.count(marker) != 1
                             or (bypass and "PASS foreign channel guest wait" in output)
