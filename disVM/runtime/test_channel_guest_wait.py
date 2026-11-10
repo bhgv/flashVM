@@ -1710,7 +1710,9 @@ def main():
         if "--dedicated-buffer-only" in sys.argv[4:]:
             for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
                                 ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST),
-                                ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST)):
+                                ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST),
+                                ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
+                                ("alt-array-peer", ALT_ARRAY_PEER_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)

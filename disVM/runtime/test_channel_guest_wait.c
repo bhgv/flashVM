@@ -94,7 +94,7 @@ static int moves; /* Updated under NativeWorld. */
 Channel *__real_dvm_runtime_channel_new(void *, Type *, WORD, void (*)(void), WORD);
 int __real_dvm_runtime_channel_wait_guest(Channel *);
 void __real_xecalt(int block);
-int __real_dvm_runtime_channel_wait_change(void);
+int __real_dvm_runtime_channel_wait_change(uint64_t generation);
 extern void dvm_runtime_cancel_native_waits(void);
 extern int dvm_runtime_cancel_guest_wait(int pid);
 void __real_dvm_runtime_channel_waiter_published(void);
@@ -1210,7 +1210,7 @@ FVM_PortThread *__wrap_fvm_port_thread_start(FVM_PortThreadFn fn, void *argument
 
 /* Run the same guest wait twice. Refusal must keep the guest attached
  * and remove its native wait record before the next attempt. */
-static int wait_with_growth_retry(Channel *channel, DVM_NativeContext *owner, Prog *process)
+static int wait_with_growth_retry(Channel *channel, DVM_NativeContext *owner, Prog *process, uint64_t generation)
 {
     int expected = growth_attempts ? 1 : -2;
     int result;
@@ -1218,7 +1218,7 @@ static int wait_with_growth_retry(Channel *channel, DVM_NativeContext *owner, Pr
     check(process && owner != first_owner, "growth retry belongs to the waiting guest");
     growth_armed = 1;
     result = channel ? __real_dvm_runtime_channel_wait_guest(channel) :
-        __real_dvm_runtime_channel_wait_change();
+        __real_dvm_runtime_channel_wait_change(generation);
     growth_armed = 0;
     check(result == expected && dvm_native_context_current() == owner &&
         dvm_native_context_process(owner) == process &&
@@ -1244,7 +1244,7 @@ int __wrap_dvm_runtime_channel_wait_guest(Channel *channel)
     }
     if (thread_retry)
     {
-        return wait_with_growth_retry(channel, owner, process);
+        return wait_with_growth_retry(channel, owner, process, 0);
     }
     pthread_mutex_lock(&gate);
     if (resume_mover && getenv("DVM_TEST_DEDICATED_BUFFER"))
@@ -1313,7 +1313,7 @@ static void check_retry_alt_queues(void)
 
 /* Verify ALT waits without leaving either guard registered, then let the
  * transfer finish before or during entry to the actual epoch wait. */
-int __wrap_dvm_runtime_channel_wait_change(void)
+int __wrap_dvm_runtime_channel_wait_change(uint64_t generation)
 {
     DVM_NativeContext *owner = dvm_native_context_current();
     Prog *process = dvm_native_context_process(owner);
@@ -1323,7 +1323,7 @@ int __wrap_dvm_runtime_channel_wait_change(void)
     {
         check(owner == alt_owner, "ALT owns the growth retry");
         check_retry_alt_queues();
-        result = wait_with_growth_retry(NULL, owner, process);
+        result = wait_with_growth_retry(NULL, owner, process, generation);
         check_retry_alt_queues();
         puts("PASS ALT owns the waiting continuation");
         return result;
@@ -1343,7 +1343,7 @@ int __wrap_dvm_runtime_channel_wait_change(void)
     }
     pthread_cond_broadcast(&waiting);
     pthread_mutex_unlock(&gate);
-    result = __real_dvm_runtime_channel_wait_change();
+    result = __real_dvm_runtime_channel_wait_change(generation);
     check(result == (pool_refusal ? -2 : (cancel_wait ? -1 : 1)) && dvm_native_context_current() == owner &&
         dvm_native_context_process(owner) == process, "distinct-channel ALT resumes");
     if (pool_refusal)

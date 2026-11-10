@@ -712,11 +712,14 @@ def adapt_alt_reservations(source):
          "\t\t\tDVM_R.IC = 1;\n\t\t\tDVM_R.t = 1;",
          "dvm_runtime_channel_queue_guard(publish_alt_park, p);\n"
          "            dvm_runtime_channel_waiter_published();"),
+        ("ready.alt = a;",
+         "uint64_t generation = block && dvm_runtime_guarded_copies ? dvm_runtime_channel_snapshot() : 0;\n"
+         "    ready.alt = a;"),
         ("nrdy = ready.ready;",
          "if (block && dvm_runtime_guarded_copies && !ready.available && altpending(a, nsend + nrecv))\n"
          "    {\n"
          "        altdone(a, p, nil, -1);\n"
-         "        dvm_runtime_channel_require_wait(dvm_runtime_channel_wait_change());\n"
+         "        dvm_runtime_channel_require_wait(dvm_runtime_channel_wait_change(generation));\n"
          "        goto retry_alt;\n"
          "    }\n"
          "    ready.skip_reserved = ready.available != 0 || !block;\n"
@@ -747,9 +750,11 @@ def adapt_alt_reservations(source):
 
 
 ALT_SHARED_WAIT = r"""
+#include <stdint.h>
 extern Prog *dvm_runtime_channel_peer(Channel *channel, int receive, void *owner_cell);
 extern int dvm_runtime_channel_wait_state(Channel *channel);
-extern int dvm_runtime_channel_wait_change(void);
+extern uint64_t dvm_runtime_channel_snapshot(void);
+extern int dvm_runtime_channel_wait_change(uint64_t generation);
 extern void dvm_runtime_channel_require_wait(int outcome);
 extern void dvm_runtime_channel_waiter_published(void);
 extern int dvm_runtime_guarded_copies;

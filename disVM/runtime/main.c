@@ -417,10 +417,9 @@ static void remove_guest_cancel_request(size_t index)
 
 /* Publish the current guest identity before suspension, and return the
  * readiness epoch from the same critical section. */
-static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
+static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
 {
     Prog *process = dvm_native_context_process(dvm_native_context_current());
-    uint64_t generation;
     size_t request;
 
     wait->pid = process ? process->pid : 0;
@@ -442,9 +441,7 @@ static uint64_t native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gat
     {
         wait->cancelled = dvm_file_gate_cancel(gate, ticket);
     }
-    generation = channel_generation;
     fvm_port_sync_unlock(channel_queue_mutex);
-    return generation;
 }
 
 
@@ -1104,13 +1101,21 @@ int dvm_runtime_channel_wait_guest(Channel *channel)
 }
 
 
-/* Wait for queue publication or reservation completion without managed
- * access. Capture the epoch before releasing NativeWorld to avoid losing a
- * wakeup. The caller has withdrawn ALT registrations and will retry. */
-int dvm_runtime_channel_wait_change(void)
+/* Snapshot before inspecting guards so any later publication forces a retry. */
+uint64_t dvm_runtime_channel_snapshot(void)
+{
+    fvm_port_sync_lock(channel_queue_mutex);
+    uint64_t generation = channel_generation;
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return generation;
+}
+
+
+/* Wait for a change since the guard scan. ALT registrations are withdrawn. */
+int dvm_runtime_channel_wait_change(uint64_t generation)
 {
     NativeGuestWait wait;
-    uint64_t generation = native_guest_wait_begin(&wait, NULL, NULL, -1);
+    native_guest_wait_begin(&wait, NULL, NULL, -1);
     int released = native_guest_wait_try_leave(&wait);
 
     if (released > 0)
