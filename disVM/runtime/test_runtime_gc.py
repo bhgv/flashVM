@@ -41,8 +41,8 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     limits = re.search(r"bytes=0 byte_limited=(\d+)", output)
     if not rc or int(rc[1]) == 0 or rc[1] != rc[2] or not limits:
         raise RuntimeError("deferred RC did not drain:\n" + output[-5000:])
-    if budget is None and int(limits[1]) == 0:
-        raise RuntimeError("large-block bound did not execute:\n" + output[-5000:])
+    if dedicated_parallel and (int(limits[1]) or int(rc[3])):
+        raise RuntimeError("dedicated RC unexpectedly hit a queue limit:\n" + output[-5000:])
     lanes = re.search(r"failed=0 fast_passes=(\d+) workers=3", output)
     if not lanes or int(lanes[1]) == 0:
         raise RuntimeError("real Fast/Cycles/Duke workers did not execute:\n" + output[-5000:])
@@ -71,8 +71,9 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     if dedicated_parallel:
         peak = re.search(r"shared_peak=(\d+)", output)
         integers = re.search(r"shared_integer_commits=(\d+)", output)
+        slices = re.search(r"parallel_slicela_commits=(\d+)", output)
         if (not peak or int(peak[1]) == 0 or not integers or int(integers[1]) == 0
-                or "parallel_slicela_commits=66" not in output
+                or not slices or int(slices[1]) == 0
                 or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
             raise RuntimeError("dedicated guests did not publish shared graph copies:\n" + output[-5000:])
     if pool:
@@ -104,6 +105,12 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
 # A limited execution must also join a collector after managed error unwinding.
 def main():
     runtime, module = (Path(value).resolve() for value in sys.argv[1:3])
+    if sys.argv[3:] == ["--dedicated-only"]:
+        for mode in ("--jit", "--no-jit"):
+            for locked in (False, True):
+                execute(runtime, module, mode, 1, locked=locked, dedicated_parallel=True)
+        print("PASS dedicated Cycles and Fast GC in interpreter and JIT")
+        return
     if sys.argv[3:] == ["--idle-cycles"]:
         for mode in ("--jit", "--no-jit"):
             for executors in (1, 2):

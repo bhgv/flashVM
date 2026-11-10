@@ -2002,6 +2002,12 @@ add_test(NAME disvm_native_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
  "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
  "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis")
 set_tests_properties(disvm_native_cycle_gc PROPERTIES TIMEOUT 180)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
+ add_test(NAME disvm_dedicated_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
+  "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis" --dedicated-only)
+ set_tests_properties(disvm_dedicated_cycle_gc PROPERTIES TIMEOUT 180)
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
  add_test(NAME disvm_idle_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"

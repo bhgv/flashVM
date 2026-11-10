@@ -15,6 +15,7 @@
 #include "runtime_gc.h"
 #include "heap_hold.h"
 #include "shared_arithmetic.h"
+#include "thread_port.h"
 #include "disvm/native_owner.h"
 #include "gc_fields.h"
 #include "disvm/refcount.h"
@@ -381,6 +382,19 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     else
     {
         claim = dvm_managed_ranges_begin(source, bytes, destination, bytes, &access);
+    }
+    /* A matched peer is already detached and pinned. Temporary range or
+     * collector contention cannot replay the rendezvous as a new instruction. */
+    while (rendezvous && claim == DVM_CELL_BUSY)
+    {
+        if (released > 0)
+            dvm_runtime_gc_shared_poll();
+        else if (!dvm_native_context_poll())
+            break;
+        fvm_port_thread_sleep_us(50);
+        claim = released > 0 ?
+            dvm_range_access_begin(domain, source, bytes, destination, bytes, &access) :
+            dvm_managed_ranges_begin(source, bytes, destination, bytes, &access);
     }
     if (claim == DVM_CELL_ACQUIRED)
     {

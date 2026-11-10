@@ -79,7 +79,7 @@ static const char *header(StringView *view, DVM_RangeAccess *access, DVM_CellRes
 /* view has a guarded validated header; count is the shared prefix length.
  * Add that complete payload before any key read. Return error/NULL with access
  * still live. No allocation, owner change, callback or payload read. */
-static const char *prefix(StringView *view, size_t count, DVM_RangeAccess *access)
+static const char *prefix(StringView *view, size_t count, DVM_RangeAccess *access, DVM_CellResult *claim)
 {
     uintptr_t address;
     size_t unit = view->encoded < 0 ? sizeof(Rune) : 1;
@@ -98,7 +98,8 @@ static const char *prefix(StringView *view, size_t count, DVM_RangeAccess *acces
         return exHeap;
     }
     view->data = (const void *)address;
-    return dvm_range_access_extend(access, view->data, count*unit) == DVM_CELL_ACQUIRED ? NULL : exHeap;
+    *claim = dvm_range_access_extend(access, view->data, count*unit);
+    return *claim == DVM_CELL_ACQUIRED ? NULL : exHeap;
 }
 
 
@@ -230,19 +231,19 @@ static const char *string_branch(int condition, const void *source,
     problem = (!left.object || !right.object) ? exNilref : NULL;
     if (!problem)
     {
-        problem = header(&left, &access, NULL);
+        problem = header(&left, &access, &claim);
     }
     if (!problem)
     {
-        problem = header(&right, &access, NULL);
+        problem = header(&right, &access, &claim);
     }
     if (!problem && left.object != right.object)
     {
         count = left.count < right.count ? left.count : right.count;
-        problem = prefix(&left, count, &access);
+        problem = prefix(&left, count, &access, &claim);
         if (!problem)
         {
-            problem = prefix(&right, count, &access);
+            problem = prefix(&right, count, &access, &claim);
         }
         if (!problem)
         {
@@ -271,6 +272,8 @@ static const char *string_branch(int condition, const void *source,
     {
         abort();
     }
+    if (!domain && claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(opcodes[condition]))
+        return NULL;
     return problem;
 }
 
