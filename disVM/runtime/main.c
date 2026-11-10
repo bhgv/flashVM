@@ -3825,7 +3825,8 @@ int main(int argc, char **argv)
             dvm_runtime_parallel_byte_copies = 1;
         }
         dvm_runtime_shared_integer = dvm_runtime_parallel_add != 0;
-        dvm_runtime_guest_unbounded = !quantum_selected;
+        dvm_runtime_guest_unbounded = 1;
+        scheduler_quantum = PQUANTA;
     }
     if (managed_limit_selected && managed_workers != 0)
     {

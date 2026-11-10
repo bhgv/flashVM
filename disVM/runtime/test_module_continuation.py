@@ -93,7 +93,7 @@ def portable_overlap(runtime, compiler, include, runner):
                             "-o", str(Path(temporary) / (name + ".dis")),
                             str(fixtures / (name + ".b"))], check=True)
         result = subprocess.run(
-            [*runner, str(runtime), "--no-jit", "--native-spawn", "--stats", str(image)],
+            [*runner, str(runtime), "--no-jit", "--native-spawn", "--quantum", "1", "--stats", str(image)],
             cwd=temporary, capture_output=True, text=True, timeout=120,
         )
         output = result.stdout + result.stderr
