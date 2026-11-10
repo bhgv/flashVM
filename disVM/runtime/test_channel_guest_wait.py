@@ -1748,7 +1748,8 @@ def main():
                                 ("parked-send", PARKED_SEND_GUEST), ("parked-receive", PARKED_RECEIVE_GUEST),
                                 ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST),
                                 ("parked-isolation", DEDICATED_PARKED_ISOLATION_GUEST),
-                                ("native-isolation", ISOLATED_CANCEL_GUEST)):
+                                ("native-isolation", ISOLATED_CANCEL_GUEST),
+                                ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
                 subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
