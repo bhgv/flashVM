@@ -2843,20 +2843,27 @@ static int runtime_dispatch_turn(void)
     Prog *process;
     int cancelled = gc_worker && dispatch_guest_cancellations();
 
+    int reload_registers = cancelled;
+
     if (native_spawn)
     {
         Prog *guest = dvm_managed_workers_guest();
         guest = guest ? guest : initial_guest;
-        cancelled |= consume_channel_message(guest);
-        cancelled |= consume_child_reply(guest);
-        cancelled |= consume_process_wait_requests(guest);
+        int alt_wait = guest && guest->state == Palt;
+        int channel_completed = consume_channel_message(guest);
+        cancelled |= channel_completed;
+        reload_registers |= alt_wait && channel_completed;
+        int process_completed = consume_child_reply(guest);
+        process_completed |= consume_process_wait_requests(guest);
+        cancelled |= process_completed;
+        reload_registers |= process_completed;
         process = dvm_runqueue_select_guest(guest);
     }
     else
     {
         process = dvm_runqueue_head();
     }
-    if (cancelled)
+    if (reload_registers)
     {
         dvm_native_execution()->resident_registers_valid = 0;
     }
