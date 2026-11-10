@@ -29,17 +29,17 @@ typedef struct DVM_WorldState
 } DVM_WorldState;
 
 
-/* Mutex-protected FIFO admission observation, never permission to mutate. */
+/* Mutex-protected admission observation, never permission to mutate. */
 typedef struct DVM_WorldAdmission
 {
-    int serial;          /* Nonzero means ordinary mutator intervals are exclusive. */
-    size_t waiting;      /* Queued inactive native owners with stable published roots. */
-    size_t admissions;   /* Successful serialized entries; unsigned counter may wrap. */
-    size_t contentions;  /* Entries which could not initially acquire their turn. */
+    int serial;          /* Nonzero selects coordinated hosted GC admission. */
+    size_t waiting;      /* Legacy exclusive-queue counter, always zero. */
+    size_t admissions;   /* Successful entries and promotions; counter may wrap. */
+    size_t contentions;  /* Legacy exclusive-queue counter, always zero. */
 } DVM_WorldAdmission;
 
 
-/* Allocate an exclusive FIFO mutator domain; locked_poll selects the reference
+/* Allocate a hosted GC admission domain; locked_poll selects the reference
  * instruction poll. NULL reports allocation failure. Enter/leave are heap-turn
  * boundaries; no thread may cancel while waiting. Inactive roots stay immutable
  * through reentry/detach. This does not retrofit synchronization into a VM's
@@ -55,7 +55,7 @@ int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
 int dvm_world_has_active_guest(DVM_NativeWorld *world);
 
 
-/* Observe exclusive waiters under the world mutex. NULL returns zero. */
+/* Legacy exclusive waiter query. Always returns zero. */
 size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world);
 
 /* Return peak SHARED occupancy of a borrowed live world, or zero for NULL. */
@@ -95,30 +95,26 @@ int dvm_world_detach(DVM_WorldParticipant *participant);
 
 /* Close new registrations atomically only when participant is the current last
  * serialized owner (active or idle), apart from idle collector services without borrows. Existing
- * root operations remain usable; this does not cancel tickets or join threads. */
+ * root operations remain usable until the remaining threads join. */
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant);
 
 
-/* Enter mutator execution after collection; a serialized world also waits for
- * its FIFO heap turn. Double/foreign entry fails without consuming a ticket. */
+/* Enter mutator execution after any pending collection. Other mutators can
+ * remain active. Double and foreign entry fail without changing the world. */
 int dvm_world_enter(DVM_WorldParticipant *participant);
 
 
-/* Enter a restricted shared interval in a serialized world. Earlier FIFO
- * tickets and collector stops take priority. Shared intervals may overlap each
- * other, while ordinary enter stays exclusive. Use the same poll/leave API.
- * Caller independently protects the complete graph and must finish or poll
- * before collection. This grants no permission to run ordinary VM code. */
+/* Enter an audited shared interval. The caller protects the accessed graph
+ * and finishes or polls before collection. Use the same poll and leave API. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant);
 
-/* Attempt shared admission without taking a ticket if it would have to wait. */
+/* Attempt shared admission without waiting for a pending GC barrier. */
 int dvm_world_try_enter_shared(DVM_WorldParticipant *participant);
 
-/* Promote an active shared owner. If it must wait, publish its roots and
- * join the exclusive FIFO without an intervening unlocked interval. */
-/* Convert an active exclusive turn if neither GC nor an earlier ticket waits. */
+/* Convert an active mutator to SHARED if the GC barrier is open. */
 int dvm_world_try_share(DVM_WorldParticipant *participant);
 
+/* Return to ordinary mutation. Publish roots before waiting for pending GC. */
 int dvm_world_promote_shared(DVM_WorldParticipant *participant);
 
 

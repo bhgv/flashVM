@@ -57,7 +57,8 @@ def main():
         ]
         subprocess.run(command, check=True)
         for mode in ("atomic", "locked"):
-            subprocess.run([str(output / "test"), mode], check=True, timeout=30)
+            for entry in ("ordinary", "mixed", "shared-pair"):
+                subprocess.run([str(output / "test"), mode, entry], check=True, timeout=30)
         # Reject overlapping ordinary entry in a private copy. The test must
         # detect this directly, without relying on a timeout.
         world = root / "host/native_world.c"
@@ -79,15 +80,26 @@ def main():
         bypass_gc = original.replace(anchor, "    if (0)").replace(
             wait, "    while (!try_only && (world->collector || world->resuming))"
         )
+        promote = "        if (!world->collector && !world->resuming)"
+        if original.count(promote) != 1:
+            raise RuntimeError("promotion control anchor changed")
+        promotion_refused = original.replace(promote, """
+        if (world->active > 1)
+        {
+            fvm_port_sync_unlock(world->sync);
+            return 0;
+        }
+""" + promote)
         control_command = [str(control) if item == str(world) else item for item in command]
         control_command.insert(1, "-I" + str(world.parent))
-        for source_text, marker in (
-            (overlap_refused, "enter while peer is active"),
-            (bypass_gc, "SHARED entered during GC barrier"),
+        for source_text, entry, marker in (
+            (overlap_refused, "ordinary", "enter while peer is active"),
+            (bypass_gc, "ordinary", "SHARED entered during GC barrier"),
+            (promotion_refused, "mixed", "promote SHARED while peer is active"),
         ):
             control.write_text(source_text)
             subprocess.run(control_command, check=True)
-            result = subprocess.run([str(output / "test"), "atomic"], capture_output=True,
+            result = subprocess.run([str(output / "test"), "atomic", entry], capture_output=True,
                                     text=True, timeout=30)
             if result.returncode == 0 or marker not in result.stderr:
                 raise RuntimeError("inactive admission control: " + result.stdout + result.stderr)

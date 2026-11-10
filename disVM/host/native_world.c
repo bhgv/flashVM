@@ -1,4 +1,4 @@
-/* Native root rendezvous, with optional FIFO exclusive heap-mutator admission. */
+/* Native root rendezvous and mutator phase tracking for GC. */
 #include "disvm/native_world.h"
 #include "channel_sync.h"
 #include "world_request.h"
@@ -43,9 +43,7 @@ struct DVM_NativeWorld
     size_t shared;                      /* Active restricted shared intervals. */
     long request;                       /* Atomic stop request, not root publication. */
     int sealed;                        /* Registration closed by the last active owner before shutdown. */
-    int serial;                        /* Immutable exclusive-mutator mode; not a parallel heap barrier. */
-    size_t next_ticket;                /* Next FIFO admission ticket under sync; unsigned wrap is intentional. */
-    size_t serving_ticket;             /* Oldest queued admission; advances only on a successful enter. */
+    int serial;                        /* Immutable hosted GC admission mode. */
     size_t admissions;                 /* Successful serialized entries under sync. */
     int locked_poll;                    /* Immutable reference-mode selection. */
     int stopped;                        /* Collector may inspect roots. */
@@ -143,10 +141,8 @@ DVM_NativeWorld *dvm_world_create_mode(int locked_poll)
 }
 
 
-/* Create a FIFO exclusive-mutator domain. locked_poll selects the reference
- * instruction poll, not admission fairness. Returns an owned empty world or NULL.
- * Waiting owners keep published roots stable; native thread cancellation while
- * queued is unsupported. No allocation/GC or external execution mutex is added. */
+/* Create a hosted GC admission domain. locked_poll selects the reference
+ * instruction poll. Returns an owned empty world or NULL. */
 DVM_NativeWorld *dvm_world_create_serial(int locked_poll)
 {
     DVM_NativeWorld *world = dvm_world_create_mode(locked_poll);
@@ -340,7 +336,7 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
         {
             world->shared_peak = world->shared;
         }
-        /* A following shared ticket can enter this same group. */
+        /* Wake observers of the updated shared occupancy. */
         fvm_port_sync_signal_all(world->sync);
     }
     fvm_port_sync_unlock(world->sync);
@@ -445,21 +441,21 @@ int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch)
 }
 
 
-/* Enter the ordinary exclusive interval in a serialized world. */
+/* Enter an ordinary mutator interval between GC stops. */
 int dvm_world_enter(DVM_WorldParticipant *participant)
 {
     return enter_world(participant, 0, 0, 0);
 }
 
 
-/* Enter an audited shared interval without bypassing earlier FIFO tickets. */
+/* Enter an audited shared interval between GC stops. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant)
 {
     return enter_world(participant, 1, 0, 0);
 }
 
 
-/* Attempt one shared turn without waiting behind a collector or older ticket. */
+/* Attempt one shared interval without waiting for GC. */
 int dvm_world_try_enter_shared(DVM_WorldParticipant *participant)
 {
     return enter_world(participant, 1, 0, 1);

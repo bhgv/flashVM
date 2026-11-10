@@ -47,6 +47,8 @@ typedef struct Shared
     FVM_PortSync *control; /* Protect phase flags, never the arithmetic operand. */
     int joined;           /* Workers with registered, stable root sets. */
     int first_active;     /* Owner zero holds the initial heap turn. */
+    int mixed_entry;     /* Owner one enters SHARED then promotes beside owner zero. */
+    int shared_pair;     /* Both owners start in SHARED. */
     int second_active;   /* Both owners entered without waiting for one another. */
     int release_first;   /* Main observed both active owners. */
     int inactive;         /* Owner zero waits in native code with saved roots. */
@@ -130,7 +132,8 @@ static void execute(void *argument)
     fvm_port_sync_unlock(shared->control);
     if (!worker->identity)
     {
-        check(dvm_world_enter(worker->roots),"first turn");
+        check(shared->shared_pair ? dvm_world_try_enter_shared(worker->roots) :
+            dvm_world_enter(worker->roots), "first turn");
         check(dvm_world_read_begin(worker->roots) && dvm_world_read_begin(worker->roots),
             "announce nested raw borrows");
         check(!dvm_world_enter(worker->roots),"reject nested entry on the same owner");
@@ -155,7 +158,15 @@ static void execute(void *argument)
     else
     {
         wait_flag(shared,&shared->first_active);
-        check(dvm_world_enter(worker->roots),"enter while peer is active");
+        if (shared->mixed_entry)
+        {
+            check(dvm_world_try_enter_shared(worker->roots), "enter SHARED while peer is active");
+            check(dvm_world_promote_shared(worker->roots), "promote SHARED while peer is active");
+        }
+        else
+        {
+            check(dvm_world_enter(worker->roots),"enter while peer is active");
+        }
         fvm_port_sync_lock(shared->control);
         shared->second_active = 1;
         fvm_port_sync_signal_all(shared->control);
@@ -283,6 +294,8 @@ int main(int argc, char **argv)
     memset(&shared,0,sizeof(shared));
     memset(workers,0,sizeof(workers));
     shared.world = dvm_world_create_serial(argc > 1 && strcmp(argv[1],"locked") == 0);
+    shared.shared_pair = argc > 2 && strcmp(argv[2], "shared-pair") == 0;
+    shared.mixed_entry = shared.shared_pair || (argc > 2 && strcmp(argv[2], "mixed") == 0);
     shared.control = fvm_port_sync_create();
     collector = dvm_native_process_create(NULL);
     check(shared.world && shared.control && collector,"allocate domain");
@@ -298,6 +311,9 @@ int main(int argc, char **argv)
     }
     /* Both turns must be active before either owner is allowed to leave. */
     wait_flag(&shared, &shared.second_active);
+    if (shared.mixed_entry)
+        check(dvm_world_shared_peak(shared.world) == (shared.shared_pair ? 2 : 1),
+            "overlapping SHARED entry observed");
     DVM_WorldState busy_state;
     check(!dvm_world_try_quiescent(shared.world, collector) &&
         dvm_world_state(shared.world, &busy_state) && !busy_state.stopping &&
