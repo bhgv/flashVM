@@ -1651,6 +1651,24 @@ def main():
     runtime, compiler, include = (Path(arg).resolve() for arg in sys.argv[1:4])
     with tempfile.TemporaryDirectory(prefix="channel-guest-wait-") as directory:
         work = Path(directory)
+        if "--controller-wake-only" in sys.argv[4:]:
+            binary = relink(runtime, work, Path(__file__).with_name("test_controller_wake.c"),
+                            0, ["dvm_runqueue_claim", "dvm_managed_workers_wake_guest",
+                                "dvm_managed_workers_park"])
+            source, image = work / "controller-wake.b", work / "controller-wake.dis"
+            source.write_text(TABLE_FIFO_MOVE_GUEST)
+            subprocess.run([compiler, "-I", include,
+                            "-I", Path(__file__).resolve().parents[1] / "module",
+                            "-o", image, source], check=True)
+            for mode in ("--no-jit", "--jit"):
+                result = subprocess.run(
+                    [binary, mode, "--native-spawn", "--guarded-copies", image],
+                    cwd=work, capture_output=True, text=True, timeout=5,
+                )
+                if (result.returncode or "PASS controller wake before park" not in result.stdout
+                        or "PASS cooperative table FIFO" not in result.stdout):
+                    raise RuntimeError(f"{mode} controller wake\n" + result.stdout + result.stderr)
+            return
         if "--table-fifo-only" in sys.argv[4:]:
             for name, guest in (("table-fifo", TABLE_FIFO_GUEST),
                                 ("table-fifo-move", TABLE_FIFO_MOVE_GUEST)):
