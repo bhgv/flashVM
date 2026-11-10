@@ -1302,6 +1302,14 @@ int dvm_bigtable_call_ready(void (*function)(void *), void *frame)
     {
         return 1;
     }
+    if (!dvm_runtime_table_retry_begin(currun()))
+    {
+        /* Leave the MCALL prepared for its owner to apply the mailbox request. */
+        DVM_R.PC--;
+        DVM_R.IC = 1;
+        DVM_R.t = 1;
+        return 0;
+    }
     TableCallCheck call = {function, frame, 0};
     table_schedule(check_table_call, &call);
     return call.ready;

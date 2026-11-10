@@ -5,6 +5,7 @@
 #define DVM_TABLE_WAIT (Pbroken + 1) /* Hosted table wait state. */
 
 /* Publish an MCALL cancellation for application by its register owner. */
+int dvm_runtime_table_retry_begin(Prog *process);
 void dvm_runtime_table_retry_pending(Prog *process, int pending);
 void dvm_runtime_table_cancel_pc(Prog *process);
 

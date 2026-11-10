@@ -1624,6 +1624,35 @@ TABLE_CANCEL_GRANTED_GUEST = TABLE_CANCEL_GUEST.replace(
 )
 
 
+TABLE_CANCEL_LATE_GUEST = TABLE_CANCEL_GUEST.split("victim(", 1)[0] + r'''victim(tables: Bigtable, tab: ref Bigtable->Handle, ids, reports: chan of int)
+{
+    control := load Processctl Processctl->PATH;
+    ids <-= control->pid();
+    tables->acquire(tab);
+    tables->release(tab);
+    reports <-= 51;
+}
+
+init()
+{
+    sys := load Sys Sys->PATH;
+    control := load Processctl Processctl->PATH;
+    tables := load Bigtable Bigtable->PATH;
+    tab := tables->create();
+    ids := chan of int;
+    reports := chan[1] of int;
+    tables->acquire(tab);
+    spawn victim(tables, tab, ids, reports);
+    pid := <-ids;
+    waitqueued(tables, tab, 1);
+    tables->release(tab);
+    if (control->cancelwait(pid) != Processctl->NotWaiting || <-reports != 51)
+        raise "late cancellation affected admitted retry";
+    sys->print("PASS admitted table retry completed\n");
+}
+'''
+
+
 def killwait_guest(guest):
     """Retire the same child without a timer or a separate wait-state query."""
     prefix = guest.split("    if (gate == nil || control->kill(target)", 1)[0]
@@ -1818,7 +1847,8 @@ def main():
         if table_kill_head or table_cancel_head:
             binary = relink(runtime, work, Path(__file__).with_name("test_table_kill_head.c"),
                             0, ["dvm_bigtable_call_ready", "dvm_runtime_kill_child",
-                                "dvm_runtime_prepare_cancelwait", "dvm_runqueue_finish"])
+                                "dvm_runtime_prepare_cancelwait", "dvm_runqueue_finish",
+                                "dvm_runtime_table_retry_begin"])
         elif not table_cancel:
             binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
                             ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt",
@@ -1970,19 +2000,28 @@ def main():
                     " != Processctl->Cancelled)",
                 )
                 marker = "PASS cancelled table retry"
-            source.write_text(guest)
-            subprocess.run([compiler, "-I", include,
-                            "-I", Path(__file__).resolve().parents[1] / "module",
-                            "-o", image, source], check=True)
-            for mode in ("--no-jit", "--jit"):
-                for attempt in range(8):
-                    result = subprocess.run(
-                        [binary, mode, "--native-spawn", "--guarded-copies", image],
-                        cwd=work, capture_output=True, text=True, timeout=5,
-                    )
-                    if result.returncode or marker not in result.stdout:
-                        raise RuntimeError(f"{mode} table head attempt {attempt + 1}\n"
-                                           + result.stdout + result.stderr)
+            cases = [(guest, marker, "early" if table_cancel_head else None)]
+            if table_cancel_head:
+                cases.append((TABLE_CANCEL_LATE_GUEST, "PASS admitted table retry completed", "late"))
+            for fixture, expected, admission in cases:
+                source.write_text(fixture)
+                subprocess.run([compiler, "-I", include,
+                                "-I", Path(__file__).resolve().parents[1] / "module",
+                                "-o", image, source], check=True)
+                env = dict(os.environ)
+                if admission:
+                    env["DVM_TEST_TABLE_RETRY_ADMISSION"] = admission
+                for mode in ("--no-jit", "--jit"):
+                    for attempt in range(8):
+                        result = subprocess.run(
+                            [binary, mode, "--native-spawn", "--guarded-copies", image],
+                            cwd=work, capture_output=True, text=True, timeout=5, env=env,
+                        )
+                        boundary = f"PASS cancellation {'before' if admission == 'early' else 'after'} retry admission"
+                        if (result.returncode or expected not in result.stdout
+                                or (admission and boundary not in result.stdout)):
+                            raise RuntimeError(f"{mode} table head {admission} attempt {attempt + 1}\n"
+                                               + result.stdout + result.stderr)
             return
         if table_cancel or "--cancelwait-only" in sys.argv[4:]:
             source, image = work / "cancelwait.b", work / "cancelwait.dis"

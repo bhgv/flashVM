@@ -1782,7 +1782,7 @@ static int cancel_scheduler_guest_wait(int pid)
     DVM_HeapOwnerStats state;
     Prog *peer;
 
-    if (pid <= 0 || !dvm_native_owner_world(owner) ||
+    if (native_spawn || pid <= 0 || !dvm_native_owner_world(owner) ||
         !dvm_native_owner_statistics(owner, &state) || state.phase != DVM_HEAP_ACTIVE)
     {
         return 0;
@@ -1810,14 +1810,22 @@ static Prog *find_child(Prog *caller, int pid)
 /* Authorize the hosted builtin against immutable spawning identity. */
 int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 {
-    Prog *child = find_child(caller, pid);
-
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;
     if (process->cancel_ready_pid == pid)
     {
         process->cancel_ready_pid = 0;
         return process->cancel_ready_result;
     }
+    if (native_spawn)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+        int result = Processctl_Denied;
+        if (find_child(caller, pid))
+            result = cancel_registered_guest_wait(pid) == 1 ? Processctl_Cancelled : Processctl_NotWaiting;
+        fvm_port_sync_unlock(channel_queue_mutex);
+        return result;
+    }
+    Prog *child = find_child(caller, pid);
     if (!child)
     {
         return Processctl_Denied;
@@ -2985,6 +2993,23 @@ static int consume_process_wait_requests(Prog *guest)
 
 /* EN: Post the cancelled table call's PC adjustment to its TLS owner.
  * RU: Передать поправку PC отменённого вызова владельцу регистров. */
+/* Serialize retry admission with publication of a cancellation request. */
+int dvm_runtime_table_retry_begin(Prog *process)
+{
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)process;
+    if (!native_spawn || !__atomic_load_n(&resident->table_retry_pending, __ATOMIC_ACQUIRE))
+        return 1;
+
+    fvm_port_sync_lock(channel_queue_mutex);
+    int pending = dvm_messages_pending(resident->messages, 0, DVM_PROG_MESSAGE_CANCEL_WAIT) ||
+        dvm_messages_pending(resident->messages, 0, DVM_PROG_MESSAGE_CHANNEL_CANCEL) ||
+        dvm_messages_pending(resident->messages, 0, DVM_PROG_MESSAGE_CHANNEL_EXIT);
+    if (!pending)
+        __atomic_store_n(&resident->table_retry_pending, 0, __ATOMIC_RELEASE);
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return !pending;
+}
+
 void dvm_runtime_table_retry_pending(Prog *process, int pending)
 {
     __atomic_store_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, pending, __ATOMIC_RELEASE);
