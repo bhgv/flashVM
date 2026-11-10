@@ -156,7 +156,8 @@ init() {
 
 
 def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32", variants=None,
-         coverage_marker="five guarded entries reached", tail_label="five actual byte tails", extra_symbols=(), dispatcher_controls=None):
+         coverage_marker="five guarded entries reached", tail_label="five actual byte tails", extra_symbols=(),
+         dispatcher_controls=None, required_markers=None):
     """Run the real guest/oracle with matching objects and exact emitter controls.
 
     extra_symbols extends linker observations. dispatcher_controls maps private
@@ -237,7 +238,9 @@ def main(guest=GUEST, wrapper_text=WRAPPER, success="PASS copy guest32", variant
                     marker = 'return PC belongs to JIT mapping' if variant == 10 else coverage_marker
                     if run.returncode != 10 or 'FAIL byte-tail: '+marker not in output:
                         raise RuntimeError('byte-tail semantic control missed: '+output)
-                elif run.returncode or success not in output or 'NATIVEGC ' not in output:
+                elif (run.returncode or success not in output or 'NATIVEGC ' not in output
+                      or (required_markers and variant in required_markers
+                          and required_markers[variant] not in output)):
                     raise RuntimeError(f'byte-tail variant={variant} locked={locked} exit={run.returncode}\n{output}')
     print('PASS '+tail_label+': coverage, individual unmap, error/combined, both polls'+
           ('; positives only' if '--positive-only' in sys.argv else '; bad-CALL/old-emitter controls'))

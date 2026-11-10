@@ -68,7 +68,7 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
         events = re.search(r"cycle_losses=(\d+) cycle_skips=(\d+)", output)
         if not events or min(map(int, events.groups())) == 0 or int(gc[3]) == 0:
             raise RuntimeError("event cycles did not skip clean work and reclaim cycles:\n" + output[-5000:])
-    if dedicated_parallel:
+    if dedicated_parallel and budget is None:
         peak = re.search(r"shared_peak=(\d+)", output)
         integers = re.search(r"shared_integer_commits=(\d+)", output)
         slices = re.search(r"parallel_slicela_commits=(\d+)", output)
@@ -109,6 +109,7 @@ def main():
         for mode in ("--jit", "--no-jit"):
             for locked in (False, True):
                 execute(runtime, module, mode, 1, locked=locked, dedicated_parallel=True)
+                execute(runtime, module, mode, 1, budget=10000, locked=locked, dedicated_parallel=True)
         print("PASS dedicated Cycles and Fast GC in interpreter and JIT")
         return
     if sys.argv[3:] == ["--idle-cycles"]:

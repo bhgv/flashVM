@@ -3,6 +3,23 @@ import sys
 from test_bytes_tail import main, WRAPPER
 from test_shared_string_branch import GUEST
 
+SHUTDOWN_CONTROL = r"""
+#include "disvm/native_owner.h"
+
+int __real_dvm_native_owner_seal(DVM_HeapOwner *owner);
+int __wrap_dvm_native_owner_seal(DVM_HeapOwner *owner)
+{
+    static int attempted;
+    if (CONTROL == 9 && !attempted++)
+        return 0;
+    int sealed = __real_dvm_native_owner_seal(owner);
+    if (CONTROL == 9 && sealed)
+        print("PASS collector shutdown retried\n");
+    return sealed;
+}
+"""
+
+
 OPS = ('beqc', 'bnec', 'bltc', 'blec', 'bgtc', 'bgec')  # Existing six string operations.
 
 
@@ -23,11 +40,13 @@ def wrapper():
     code = code.replace('registers->m = &negative;', 'registers->s = H;').replace('IMOVM', 'IBNEC')
     code = code.replace('five guarded entries reached', 'six guarded entries reached')
     code = code.replace('five guarded byte tails', 'six guarded branch tails')
-    return code.replace('actual MOVM', 'actual BNEC').replace('negative-count C MOVM', 'invalid-source C BNEC')
+    return code.replace('actual MOVM', 'actual BNEC').replace('negative-count C MOVM', 'invalid-source C BNEC') + SHUTDOWN_CONTROL
 
 
 if __name__ == '__main__':
     variants = (9, *range(100, 106), 12, 13)
     if '--positive-only' not in sys.argv:
         variants += (10, 11)
-    main(GUEST, wrapper(), 'PASS string branches6', variants, 'six guarded entries reached', 'six actual branch tails')
+    main(GUEST, wrapper(), 'PASS string branches6', variants, 'six guarded entries reached', 'six actual branch tails',
+         extra_symbols=('dvm_native_owner_seal',),
+         required_markers={9: 'PASS collector shutdown retried'})
