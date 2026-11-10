@@ -1963,21 +1963,24 @@ static int wake_for_termination(Prog *child)
 
 /* EN: Post termination to a dedicated child parked on a channel.
  * RU: Передать завершение выделенному потомку, ожидающему канал. */
-static int post_channel_exit(Prog *child)
+static void send_channel_exit(Prog *child)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)child;
-
-    if (!native_spawn ||
-        (child->state != Psend && child->state != Precv && child->state != Palt) ||
-        process->channel_claimed || dvm_runqueue_dispatch_owner(child))
-    {
-        return 0;
-    }
     child->flags |= Pkilled;
     if (dvm_messages_send_once(guest_messages, (uintptr_t)child->pid, &process->channel_exit) == 1)
     {
         dvm_managed_workers_wake_guest(child);
     }
+}
+
+static int post_channel_exit(Prog *child)
+{
+    if (!native_spawn ||
+        (child->state != Psend && child->state != Precv && child->state != Palt))
+    {
+        return 0;
+    }
+    send_channel_exit(child);
     return 1;
 }
 
@@ -2016,13 +2019,13 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
 }
 
 
-/* EN: Arm the parent's wait before waking a child in a native operation.
- * RU: Опубликовать ожидание родителя до пробуждения потомка из native. */
-static int prepare_native_child_wait(Prog *caller, int pid)
+/* Publish the parent wait before waking a child blocked in native or on a channel. */
+static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    if (!child || child->state != Prelease)
+    int state = child ? child->state : Pexiting;
+    if (state != Prelease && state != Psend && state != Precv && state != Palt)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
@@ -2037,8 +2040,15 @@ static int prepare_native_child_wait(Prog *caller, int pid)
     DVM_R.IC = 1;
     DVM_R.t = 1;
     ((DVM_RuntimeProcess *)child)->exit_notify_parent = 1;
-    child->flags |= Pkilled;
-    cancel_registered_guest_wait(pid);
+    if (state == Prelease)
+    {
+        child->flags |= Pkilled;
+        cancel_registered_guest_wait(pid);
+    }
+    else
+    {
+        send_channel_exit(child);
+    }
     fvm_port_sync_unlock(channel_queue_mutex);
     return 1;
 }
@@ -2055,7 +2065,7 @@ int dvm_runtime_prepare_killwait(Prog *caller, int pid)
     {
         return 1;
     }
-    if (native_spawn && prepare_native_child_wait(caller, pid))
+    if (native_spawn && prepare_dedicated_child_wait(caller, pid))
     {
         return 0;
     }
@@ -2098,6 +2108,10 @@ static void publish_child_exit(int parent_pid, int child_pid)
     {
         return;
     }
+    if (native_spawn)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+    }
     for (parent = dvm_runtime_process_roots(); parent && parent->pid != parent_pid; parent = parent->next)
     {
     }
@@ -2122,6 +2136,10 @@ static void publish_child_exit(int parent_pid, int child_pid)
             process->exit_ready_pid = child_pid;
             wake_child_exit_wait(parent);
         }
+    }
+    if (native_spawn)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
     }
 }
 

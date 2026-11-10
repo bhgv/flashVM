@@ -1833,10 +1833,13 @@ def main():
                                 ("parked-alt", PARKED_ALT_GUEST), ("parked-array-alt", PARKED_ARRAY_ALT_GUEST),
                                 ("parked-isolation", DEDICATED_PARKED_ISOLATION_GUEST),
                                 ("native-isolation", ISOLATED_CANCEL_GUEST),
-                                ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST)):
+                                ("failure", FAILURE_GUEST), ("alt-failure", ALT_FAILURE_GUEST),
+                                ("killwait-channel", killwait_guest(PROCESS_KILL_GUEST)),
+                                ("killwait-native", killwait_guest(PROCESS_KILL_NATIVE_GUEST))):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
                 source.write_text(guest)
-                subprocess.run([compiler, "-I", include, "-o", image, source], check=True)
+                subprocess.run([compiler, "-I", include, "-I", Path(__file__).resolve().parents[1] / "module",
+                                "-o", image, source], check=True)
                 for mode in ("--no-jit", "--jit"):
                     result = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
@@ -1845,6 +1848,8 @@ def main():
                         else dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
                     )
                     output = result.stdout + result.stderr
+                    starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
+                    exits = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
                     bypass = name in ("alt-ready", "alt-default")
                     marker = ("PASS ALT bypassed the reservation" if bypass
                               else "PASS foreign channel guest wait")
@@ -1852,18 +1857,37 @@ def main():
                         marker = "PASS cancelled scheduler channel wait"
                     if name.startswith("stale-alt"):
                         marker = "PASS stale ALT selection refused"
+                    payload = "PASS guest channel payloads"
+                    if name.startswith("killwait-"):
+                        payload = "PASS guest child retirement"
+                        marker = ("PASS cancelled native sleep" if name == "killwait-native"
+                                  else payload)
                     expected = 1
                     if name == "native-isolation":
                         marker = "PASS isolated channel guest wait"
                         expected = 2
                     if (result.returncode or output.count(marker) != expected
                             or (bypass and "PASS foreign channel guest wait" in output)
-                            or "PASS guest channel payloads" not in output
+                            or payload not in output
                             or (name.startswith("alt-") and not bypass
                                 and "PASS ALT owns the waiting continuation" not in output)
+                            or (not name.startswith("stale-alt") and not starts)
+                            or sorted(starts) != sorted(exits)
+                            or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", output)):
                         raise RuntimeError(f"{mode} dedicated buffered {name}\n{output}")
                     if name == "send":
+                        for polling in ("--gc-worker", "--gc-locked-poll"):
+                            rooted = subprocess.run(
+                                [binary, mode, "--native-spawn", "--guarded-copies", polling, image],
+                                cwd=work, capture_output=True, text=True, timeout=5,
+                                env=dict(os.environ, DVM_TEST_SUSPENDED_ROOTS="1", DVM_TEST_DEDICATED_BUFFER="1"),
+                            )
+                            if (rooted.returncode
+                                    or "PASS collector preserves suspended continuation roots" not in rooted.stdout
+                                    or "PASS guest channel payloads" not in rooted.stdout):
+                                raise RuntimeError(f"{mode} {polling} suspended roots\n"
+                                                   + rooted.stdout + rooted.stderr)
                         command = [binary, mode, "--native-spawn", "--guarded-copies", image]
                         for field in range(15):
                             refused = subprocess.run(command, cwd=work, capture_output=True, text=True,
@@ -2126,7 +2150,6 @@ def main():
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", native_output)):
                         raise RuntimeError(f"{name} {mode} dedicated wake or retirement failed\n{native_output}")
                 if name == "send":
-                    resident_command = [binary, mode, "--native-spawn", "--guarded-copies", image]
                     for pool in ("2", "auto"):
                         for locked in (False, True):
                             root_options = ["--gc-locked-poll"] if locked else []
