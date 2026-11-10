@@ -205,6 +205,27 @@ init()
 '''
 
 
+ALT_STALE_ARRAY_GUEST = ALT_STALE_BLOCK_GUEST.replace(
+    """    second <-= 11;
+    value := 0;
+    alt {
+        value = <-first => {}
+        value = <-second => {}
+    }
+    if (value != 11)""",
+    """    second <-= 31;
+    channels := array[3] of chan of int;
+    channels[0] = first;
+    channels[2] = second;
+    selected: (int, int);
+    alt {
+        selected = <-channels => {}
+    }
+    (index, value) := selected;
+    if (!((index == 0 && value == 11) || (index == 2 && value == 31)))""",
+)
+
+
 ALT_EMPTY_GUEST = SEND_GUEST.replace(
     """    messages <-= 31;
     first := <-messages;
@@ -1803,6 +1824,7 @@ def main():
                                 ("stale-alt", ALT_STALE_GUEST),
                                 ("stale-alt-send", ALT_STALE_SEND_GUEST),
                                 ("stale-alt-block", ALT_STALE_BLOCK_GUEST),
+                                ("stale-alt-array", ALT_STALE_ARRAY_GUEST),
                                 ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
                                 ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
                                 ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
