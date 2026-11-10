@@ -1655,7 +1655,7 @@ def main():
             for name, guest in (("table-fifo", TABLE_FIFO_GUEST),
                                 ("table-fifo-move", TABLE_FIFO_MOVE_GUEST)):
                 source, image = work / f"{name}.b", work / f"{name}.dis"
-                source.write_text(guest.replace("done := chan[1]", "done := chan[2]"))
+                source.write_text(guest)
                 subprocess.run([compiler, "-I", include,
                                 "-I", Path(__file__).resolve().parents[1] / "module",
                                 "-o", image, source], check=True)
