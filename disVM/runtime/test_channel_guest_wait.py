@@ -146,6 +146,27 @@ ALT_READY_GUEST = SEND_GUEST.replace(
 )
 
 
+ALT_STALE_GUEST = r'''implement ChannelWait;
+include "sys.m";
+ChannelWait: module { init: fn(); };
+
+init()
+{
+    sys := load Sys Sys->PATH;
+    input := chan[1] of int;
+    input <-= 11;
+    value := 73;
+    alt {
+        value = <-input => raise "stale guard selected";
+        * => {}
+    }
+    if (value != 73)
+        raise "stale guard modified its destination";
+    sys->print("PASS guest channel payloads\n");
+}
+'''
+
+
 ALT_EMPTY_GUEST = SEND_GUEST.replace(
     """    messages <-= 31;
     first := <-messages;
@@ -1736,11 +1757,12 @@ def main():
                              "dvm_runtime_gc_native_try_leave", "fvm_port_directory_read", "c2string",
                              "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                              "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
-                             "dvm_native_owner_progress", "dvm_gc_workers_create"])
+                             "dvm_native_owner_progress", "dvm_gc_workers_create", "dvm_runtime_alt_try_transfer"])
         if "--dedicated-buffer-only" in sys.argv[4:]:
             for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
                                 ("alt-send", ALT_SEND_GUEST), ("alt-receive", ALT_RECEIVE_GUEST),
                                 ("alt-ready", ALT_READY_GUEST), ("alt-default", ALT_DEFAULT_GUEST),
+                                ("stale-alt", ALT_STALE_GUEST),
                                 ("alt-peer", ALT_PEER_GUEST), ("alt-array", ALT_ARRAY_GUEST),
                                 ("alt-array-peer", ALT_ARRAY_PEER_GUEST),
                                 ("alt-cancel", ALT_STOP_GUEST.replace("chan[8]", "chan[10]")),
@@ -1757,7 +1779,8 @@ def main():
                     result = subprocess.run(
                         [binary, mode, "--native-spawn", "--guarded-copies", "--stats", image],
                         cwd=work, capture_output=True, text=True, timeout=5,
-                        env=dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
+                        env=dict(os.environ, DVM_TEST_ALT_STALE="1") if name == "stale-alt"
+                        else dict(os.environ, DVM_TEST_DEDICATED_BUFFER="1"),
                     )
                     output = result.stdout + result.stderr
                     bypass = name in ("alt-ready", "alt-default")
@@ -1765,6 +1788,8 @@ def main():
                               else "PASS foreign channel guest wait")
                     if name.startswith("parked-"):
                         marker = "PASS cancelled scheduler channel wait"
+                    if name == "stale-alt":
+                        marker = "PASS stale ALT selection refused"
                     expected = 1
                     if name == "native-isolation":
                         marker = "PASS isolated channel guest wait"

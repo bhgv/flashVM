@@ -83,6 +83,8 @@ static int worker_failure; /* A third guest fails while the channel waiter sleep
 static int isolate_waits; /* Two waiters share a reservation. */
 static int waiting_count; /* Fixture arrivals, under gate. */
 static int target_cancel; /* Cancel the selected guest instead of stopping all waits. */
+static _Thread_local int isolation_cancel_target;
+static int isolation_wait_registered; /* Protected by gate. */
 static int dedicated_cancel_posted; /* Protected by gate. */
 static int waiting_pid; /* Published by the fixture under gate. */
 static int cancel_wait; /* Simulate shutdown after the waiting guest yields. */
@@ -114,6 +116,15 @@ int __real_dvm_runtime_gc_native_try_leave(void);
 /* Exercise the production no-release path while a different guest owns I/O. */
 int __wrap_dvm_runtime_gc_native_try_leave(void)
 {
+    if (isolation_cancel_target)
+    {
+        pthread_mutex_lock(&gate);
+        isolation_wait_registered = 1;
+        pthread_cond_broadcast(&waiting);
+        while (!dedicated_cancel_posted)
+            pthread_cond_wait(&waiting, &gate);
+        pthread_mutex_unlock(&gate);
+    }
     return protected_output ? 0 : __real_dvm_runtime_gc_native_try_leave();
 }
 FVM_Result __real_dvm_runtime_read_stdin(void *bytes, size_t capacity, size_t *received);
@@ -329,6 +340,13 @@ static void rendezvous_mover(void)
             "native return preserves the original frame and result address");
         if (target_cancel && getenv("DVM_TEST_DEDICATED_BUFFER"))
         {
+            if (isolate_waits)
+            {
+                pthread_mutex_lock(&gate);
+                while (!isolation_wait_registered)
+                    pthread_cond_wait(&waiting, &gate);
+                pthread_mutex_unlock(&gate);
+            }
             check(dvm_runtime_request_guest_cancel(waiting_pid), "post native channel cancellation");
             pthread_mutex_lock(&gate);
             dedicated_cancel_posted = 1;
@@ -530,7 +548,7 @@ void __wrap_xecalt(int block)
 {
     int released;
 
-    if (parked_cancel_mode || sleep_mode == 38 || getenv("DVM_TEST_CLOSE_PARKED"))
+    if (parked_cancel_mode || sleep_mode == 38 || getenv("DVM_TEST_CLOSE_PARKED") || getenv("DVM_TEST_ALT_STALE"))
     {
         __real_xecalt(block);
         return;
@@ -599,14 +617,11 @@ static int wait_with_other_guest(Channel *channel, DVM_NativeContext *owner, Pro
         resume_mover = 1;
         pthread_cond_broadcast(&waiting);
     }
-    if (cancelled && getenv("DVM_TEST_DEDICATED_BUFFER"))
-    {
-        while (!dedicated_cancel_posted)
-            pthread_cond_wait(&waiting, &gate);
-    }
     pthread_mutex_unlock(&gate);
 
+    isolation_cancel_target = cancelled && getenv("DVM_TEST_DEDICATED_BUFFER");
     result = __real_dvm_runtime_channel_wait_guest(channel);
+    isolation_cancel_target = 0;
     check(result == (cancelled ? -1 : 1) && dvm_native_context_current() == owner &&
         dvm_native_context_process(owner) == process, "only the targeted guest is cancelled");
     puts("PASS isolated channel guest wait");
@@ -1412,4 +1427,20 @@ int __wrap_dvm_runtime_channel_wait_change(uint64_t generation)
     puts("PASS foreign channel guest wait");
     puts("PASS ALT owns the waiting continuation");
     return result;
+}
+
+int __real_dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive);
+int __wrap_dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive)
+{
+    if (getenv("DVM_TEST_ALT_STALE"))
+    {
+        WORD stolen = 0;
+        check(receive && __real_dvm_runtime_alt_try_transfer(channel, &stolen, 1) &&
+            stolen == 11, "consume readiness after ALT selected the branch");
+        check(!__real_dvm_runtime_alt_try_transfer(channel, payload, receive),
+            "stale ALT must not publish a channel wait");
+        puts("PASS stale ALT selection refused");
+        return 0;
+    }
+    return __real_dvm_runtime_alt_try_transfer(channel, payload, receive);
 }

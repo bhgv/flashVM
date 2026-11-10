@@ -365,7 +365,48 @@ static int channel_match_{opcode}(void *argument)
     }}"""
         prefix = prefix.replace("\tProg *p;\n", "\tProg *p;\n    ChannelMatch request;\n", 1)
         body = body[:start] + callback + prefix + dispatch + body[end:]
-    return body
+    return body + ALT_CHANNEL_ATTEMPT
+
+
+ALT_CHANNEL_ATTEMPT = r"""
+static int validate_alt_channel_head(void *argument)
+{
+    ChannelMatch *request = argument;
+    return !dvm_runtime_channel_wait_state(request->channel) && validate_channel_head(argument);
+}
+
+/* Try the captured channel without publishing a new SEND or RECV wait. */
+int dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive)
+{
+    ChannelPeerRead read = {channel, receive, 0, nil, nil};
+    dvm_runtime_channel_queue_guard(read_channel_peer, &read);
+    if (read.busy)
+        return 0;
+    void *source = DVM_R.s;
+    void *destination = DVM_R.d;
+    void *middle = DVM_R.m;
+    int done;
+    if (!read.peer)
+    {
+        done = transfer_channel_buffer(channel, payload, receive, CHANNEL_ALT_TRY, NULL, NULL);
+    }
+    else
+    {
+        ChannelMatch request = {channel, read.peer, receive ? &channel->send : &channel->recv};
+        if (receive)
+            DVM_R.d = payload;
+        else
+            DVM_R.s = payload;
+        done = dvm_runtime_channel_with_queue_claim(read.peer, validate_alt_channel_head,
+            receive ? channel_match_irecv : channel_match_isend, &request);
+    }
+    DVM_R.s = source;
+    DVM_R.d = destination;
+    DVM_R.m = middle;
+    return done;
+}
+
+"""
 
 
 WAIT_COMPLETION = r"""
@@ -494,9 +535,6 @@ def adapt_alt_result_guards(source):
     matched = ('\t\taltstore(selected.result, selected.guard);\n'
                '\t\tif(selected.array)\n'
                '\t\t\tmemmove(selected.tuple, &selected.member, sizeof(selected.member));')
-    immediate = ('\taltstore(selected->result, selected->guard);\n'
-                 '\tif(selected->array)\n'
-                 '\t\tmemmove(selected->tuple, &selected->member, sizeof(selected->member));')
     replacements = (
         (matched, """        const char *problem = altpublish(selected.result, selected.guard,
             selected.array ? selected.tuple : NULL, selected.array ? selected.member : 0);
@@ -505,18 +543,15 @@ def adapt_alt_result_guards(source):
             dvm_runtime_channel_wake(p, "channel transfer failed");
             error((char *)problem);
         }"""),
-        (immediate, """    const char *problem = altpublish(selected->result, selected->guard,
-        selected->array ? selected->tuple : NULL, selected->member);
-    if (problem)
-    {
-        error((char *)problem);
-    }"""),
         ('\t\taltstore(result, nsend+nrecv);', """        const char *problem = altpublish(result, nsend+nrecv, NULL, 0);
         if (problem)
         {
             error((char *)problem);
         }"""),
     )
+    start = source.index("static void\nalttransfer(")
+    end = source.index("\n}", start) + 2
+    source = source[:start] + ALT_TRY_TRANSFER + source[end:]
     for old, new in replacements:
         if source.count(old) != 1:
             raise ValueError('ALT guarded result drift: '+old)
@@ -602,6 +637,24 @@ def adapt_alt_selection_capture(source):
             raise ValueError('ALT selected payload drift')
         body = body.replace(old, new)
     return source[:start]+ALT_SELECTION_CAPTURE+body+source[end:]
+
+
+ALT_TRY_TRANSFER = r"""
+extern int dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive);
+
+/* A stale selection has no channel or result side effects. */
+static int
+alttransfer(AltSelection *selected)
+{
+    if (!dvm_runtime_alt_try_transfer(selected->channel, selected->payload, selected->receive))
+        return 0;
+    const char *problem = altpublish(selected->result, selected->guard,
+        selected->array ? selected->tuple : NULL, selected->member);
+    if (problem)
+        error((char *)problem);
+    return 1;
+}
+"""
 
 
 ALT_SELECTION_CAPTURE = r"""
@@ -704,7 +757,8 @@ def adapt_alt_reservations(source):
          "r->available = 0;\n    r->ready = altrdy(r->alt, r->prog, &r->available);"),
         ("int registered; // Cleanup still owns the guard table until cancellation completes.",
          "int registered; // Cleanup still owns the guard table until cancellation completes.\n"
-         "    AltSelection selected;"),
+         "    AltSelection selected;\n"
+         "    int transferred;"),
         ("static int\naltcommunicate(void *arg)", """static int altselect_locked(void *arg)
 {
     AltReady *ready = arg;
@@ -719,12 +773,12 @@ altcommunicate(void *arg)"""),
          "\n\tr = arg;\n"
          "    dvm_runtime_channel_queue_guard(altselect_locked, r);\n"
          "\tif(r->selected.found){"),
-        ("alttransfer(&selected);", "alttransfer(&r->selected);"),
+        ("alttransfer(&selected);", "r->transferred = alttransfer(&r->selected);"),
         ("if(ready.registered)\n\t\taltdone(a, p, nil, -1);",
          "if(ready.registered){\n"
          "        altdone(a, p, nil, -1);\n"
-         "        goto retry_alt;\n"
-         "    }"),
+         "    }\n"
+         "    if (!ready.transferred) goto retry_alt;"),
         ("altvalidate(a, nsend, nrecv, 0);",
          "altvalidate_guarded(a, nsend, nrecv);\n"
          "    if (block && altwaitshared(a, nsend, nrecv))\n"
@@ -744,6 +798,7 @@ altcommunicate(void *arg)"""),
          "            dvm_runtime_channel_waiter_published();"),
         ("ready.alt = a;",
          "uint64_t generation = block && dvm_runtime_guarded_copies ? dvm_runtime_channel_snapshot() : 0;\n"
+         "    ready.transferred = 0;\n"
          "    ready.alt = a;"),
         ("nrdy = ready.ready;",
          "if (block && dvm_runtime_guarded_copies && !ready.available && altpending(a, nsend + nrecv))\n"
@@ -1293,6 +1348,8 @@ extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argu
 extern void dvm_runtime_channel_buffer_notify(void);
 #include "disvm/native_context.h"
 
+enum { CHANNEL_ALT_TRY = -1 };
+
 typedef struct ChannelReservation
 {
     ChannelRead read; /* Receive retains the array through its mover. */
@@ -1383,10 +1440,13 @@ static int reserve_channel_buffer(void *argument)
     }
     if (busy)
     {
-        reservation->available = -1;
+        reservation->available = reservation->replay_opcode == CHANNEL_ALT_TRY ? 0 : -1;
         return 1;
     }
-    if (dvm_runtime_guest_unbounded && reservation->replay_opcode &&
+    if (reservation->replay_opcode == CHANNEL_ALT_TRY &&
+        channelpeer(channel, reservation->receive))
+        return 1;
+    if (dvm_runtime_guest_unbounded && reservation->replay_opcode > 0 &&
         channelpeer(channel, reservation->receive))
     {
         if (!dvm_runtime_scalar_retry(reservation->replay_opcode))
@@ -1493,7 +1553,7 @@ static int consume_channel_buffer(void *argument)
     reservation->deferred = !dvm_runtime_mapped_buffer_transfer(reservation->read.slot,
         reservation->read.destination, reservation->transaction_type,
         reservation->transaction_type->np != 0, &reservation->committed,
-        reservation->replay_opcode, NULL);
+        reservation->replay_opcode == CHANNEL_ALT_TRY ? 0 : reservation->replay_opcode, NULL);
     return 1;
 }
 
@@ -1543,7 +1603,8 @@ static int write_channel_buffer(void *argument)
     {
         reservation->deferred = !dvm_runtime_mapped_buffer_transfer(read->destination,
             read->slot, reservation->transaction_type, 0, &reservation->committed,
-            reservation->replay_opcode, reservation->refill_sender);
+            reservation->replay_opcode == CHANNEL_ALT_TRY ? 0 : reservation->replay_opcode,
+            reservation->refill_sender);
     }
     else
     {
