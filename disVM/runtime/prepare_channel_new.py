@@ -702,8 +702,29 @@ def adapt_alt_reservations(source):
          "    int skip_reserved; // Immediate selection excludes active transfers."),
         ("r->ready = altrdy(r->alt, r->prog);",
          "r->available = 0;\n    r->ready = altrdy(r->alt, r->prog, &r->available);"),
-        ("altchoose(r->alt, r->choice, &selected);",
-         "altchoose(r->alt, r->choice, &selected, r->skip_reserved);"),
+        ("int registered; // Cleanup still owns the guard table until cancellation completes.",
+         "int registered; // Cleanup still owns the guard table until cancellation completes.\n"
+         "    AltSelection selected;"),
+        ("static int\naltcommunicate(void *arg)", """static int altselect_locked(void *arg)
+{
+    AltReady *ready = arg;
+    altchoose(ready->alt, ready->choice, &ready->selected, ready->skip_reserved);
+    return 1;
+}
+
+static int
+altcommunicate(void *arg)"""),
+        ("AltSelection selected;\n\n\tr = arg;\n\taltchoose(r->alt, r->choice, &selected);\n"
+         "\tif(selected.found){",
+         "\n\tr = arg;\n"
+         "    dvm_runtime_channel_queue_guard(altselect_locked, r);\n"
+         "\tif(r->selected.found){"),
+        ("alttransfer(&selected);", "alttransfer(&r->selected);"),
+        ("if(ready.registered)\n\t\taltdone(a, p, nil, -1);",
+         "if(ready.registered){\n"
+         "        altdone(a, p, nil, -1);\n"
+         "        goto retry_alt;\n"
+         "    }"),
         ("altvalidate(a, nsend, nrecv, 0);",
          "altvalidate(a, nsend, nrecv, 0);\n"
          "    if (block && altwaitshared(a, nsend, nrecv))\n"
