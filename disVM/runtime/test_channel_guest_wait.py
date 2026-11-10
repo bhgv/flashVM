@@ -1676,6 +1676,9 @@ def main():
                 if (closed.returncode or "PASS dedicated channel close" not in close_output
                         or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
                     raise RuntimeError(f"{mode} dedicated close failed\n{close_output}")
+        if "--close-only" in sys.argv[4:]:
+            print("PASS dedicated SEND and RECV close with and without JIT")
+            return
         (work / "directory-publication").mkdir()
         (work / "directory-publication" / "entry").touch()
         for name, guest in (("send", SEND_GUEST), ("receive", RECEIVE_GUEST),
