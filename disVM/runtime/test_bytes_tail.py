@@ -10,6 +10,7 @@ WRAPPER = r'''
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
+#include "kernel.h"
 #include "isa.h"
 #include "interp.h"
 #include "bytes_fast.h"

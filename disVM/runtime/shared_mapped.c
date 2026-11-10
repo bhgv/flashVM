@@ -383,9 +383,11 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     {
         claim = dvm_managed_ranges_begin(source, bytes, destination, bytes, &access);
     }
-    /* A matched peer is already detached and pinned. Temporary range or
-     * collector contention cannot replay the rendezvous as a new instruction. */
-    while (rendezvous && claim == DVM_CELL_BUSY)
+    /* A matched peer or reserved ALT buffer cannot replay as a plain
+     * channel instruction. Keep the reservation while its ranges are busy. */
+    int channel_must_finish = rendezvous || refill_sender ||
+        (selected_alt && committed && !replay_opcode);
+    while (channel_must_finish && claim == DVM_CELL_BUSY)
     {
         if (released > 0)
             dvm_runtime_gc_shared_poll();
