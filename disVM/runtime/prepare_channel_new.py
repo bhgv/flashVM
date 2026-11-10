@@ -899,6 +899,16 @@ def adapt_alt_preflight(source):
         if source.count(old) != 1:
             raise ValueError("ALT preflight boundary drift: " + old)
         source = source.replace(old, new, 1)
+    for condition, queue in (("c != H && c != nil && c->recv != nil && c->recv->prog", "recv"),
+                             ("c->send != nil && c->send->prog", "send"),
+                             ("c->recv && c->recv->prog", "recv")):
+        old = f"if({condition})"
+        start = source.index(old)
+        end = source.index(f"cqdelp(&c->{queue}, p);", start) + len(f"cqdelp(&c->{queue}, p);")
+        remove = f"dvm_runtime_channel_unmark(&c->{queue}, p);"
+        if condition.startswith("c != H"):
+            remove = "if(c != H && c != nil)\n\t\t\t" + remove
+        source = source[:start] + remove + source[end:]
     anchor = "/* Check every guard/member before"
     if source.count(anchor) != 1:
         raise ValueError("ALT traversal declaration drift")
@@ -911,6 +921,7 @@ def adapt_alt_preflight(source):
 
 
 ALT_GUARD_CHECK = r"""
+extern void dvm_runtime_channel_unmark(Progq **queue, Prog *peer);
 /* Cancellation checks only the affected queue. A finalized queue may already
  * be detached. Registration still checks both queues and buffer readiness. */
 static void altcheckguard(Channel *channel, int receive, int cancelling)
@@ -1138,6 +1149,22 @@ static int queue_delete_peer(void *argument)
     return 1;
 }
 
+
+/* ALT may already be detached. Check the head under the same guard used
+ * to remove its registration so a concurrent close cannot free it first. */
+static int queue_unmark(void *argument)
+{
+    ChannelQueueRequest *request = argument;
+    if (*request->queue && (*request->queue)->prog)
+        cqdelp_locked(request->queue, request->peer);
+    return 1;
+}
+
+void dvm_runtime_channel_unmark(Progq **queue, Prog *peer)
+{
+    ChannelQueueRequest request = {queue, peer};
+    dvm_runtime_channel_queue_guard(queue_unmark, &request);
+}
 
 void cqadd(Progq **queue, Prog *peer)
 {
