@@ -1856,15 +1856,18 @@ def main():
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", close_output)):
                         raise RuntimeError(f"{mode} {close_mode} dedicated close failed\n{close_output}")
         close_source, close_image = work / "close-multiple.b", work / "close-multiple.dis"
-        close_source.write_text(CLOSE_PARKED_GUEST.split("init()\n{", 1)[0].replace(
-            "WAIT_OPERATION", "<-input",
-        ) + r'''init()
+        prefix = CLOSE_PARKED_GUEST.split("init()\n{", 1)[0]
+        second_waiter = prefix[prefix.index("waiter("):].replace("waiter(", "waiteralt(", 1)
+        second_waiter = second_waiter.replace(
+            "WAIT_OPERATION", "spare := chan of int; alt { <-input => {} <-spare => {} }",
+        )
+        close_source.write_text(prefix.replace("WAIT_OPERATION", "<-input") + second_waiter + r'''init()
 {
     sys := load Sys Sys->PATH;
     input := chan of int;
     report := chan[1] of int;
     spawn waiter(input, report);
-    spawn waiter(input, report);
+    spawn waiteralt(input, report);
     if (<-report != 1 || <-report != 1)
         raise "closed waiter did not report hangup";
     sys->print("PASS dedicated channel close\n");

@@ -980,18 +980,22 @@ void __wrap_dvm_runtime_channel_waiter_published(void)
             }
             fprintf(stderr, "TEST posted close to parked ALT\n");
         }
-        if (process && (process->state == Psend || process->state == Precv) &&
-            process->chan && process->chan != H)
+        if (strcmp(close_mode, "multi-mailbox") == 0)
         {
-            if (strcmp(close_mode, "multi-mailbox") == 0)
+            if (process && process->pid != 1 &&
+                (process->state == Precv || process->state == Palt) &&
+                __atomic_add_fetch(&close_waiters, 1, __ATOMIC_ACQ_REL) == 2)
             {
-                if (process->pid != 1 && __atomic_add_fetch(&close_waiters, 1, __ATOMIC_ACQ_REL) == 2)
-                {
-                    check(dvm_runtime_channel_post_close(process->chan), "post close to both waiters");
-                    puts("PASS posted close after both waiters parked");
-                }
+                Alt *alt = process->R.s;
+                Channel *channel = process->state == Palt ? alt->ac[0].c : process->chan;
+                check(dvm_runtime_channel_post_close(channel), "post close to both waiters");
+                puts("PASS posted close after both waiters parked");
             }
-            else if (strcmp(close_mode, "mailbox") == 0)
+        }
+        else if (process && (process->state == Psend || process->state == Precv) &&
+                 process->chan && process->chan != H)
+        {
+            if (strcmp(close_mode, "mailbox") == 0)
             {
                 if (!dvm_runtime_channel_post_close(process->chan))
                 {

@@ -1709,6 +1709,13 @@ void dvm_runtime_channel_wake(Prog *peer, char *cause)
 extern void dvm_runtime_alt_preflight(Alt *alt);
 
 
+static int preflight_parked_alt(void *argument)
+{
+    dvm_runtime_alt_preflight(argument);
+    return 1;
+}
+
+
 /* Remove this guest's registrations under its completion claim. A pending
  * exception survives cancellation; a detached waiter is made runnable once. */
 static int cancel_parked_channel_wait(void *argument)
@@ -1717,28 +1724,19 @@ static int cancel_parked_channel_wait(void *argument)
 
     if (peer->state == Palt)
     {
-        dvm_runtime_alt_preflight(peer->R.s);
+        dvm_runtime_channel_queue_guard(preflight_parked_alt, peer->R.s);
         altdone(peer->R.s, peer, nil, -1);
     }
     else
     {
         Channel *channel = peer->chan;
         Progq **queue;
-        Progq *entry;
 
         if (!channel || channel == H)
         {
             error(exHeap);
         }
         queue = peer->state == Psend ? &channel->send : &channel->recv;
-        vmchanend(queue);
-        for (entry = *queue; entry && entry->prog != peer; entry = entry->next)
-        {
-        }
-        if (!entry)
-        {
-            error("channel waiter is missing its registration");
-        }
         cqdelp(queue, peer);
     }
     dvm_runtime_channel_wake(peer, peer->kill ? nil : "channel wait cancelled");
