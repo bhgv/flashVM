@@ -2873,6 +2873,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     add_test(NAME disvm_dedicated_table_fifo COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_channel_guest_wait.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --table-fifo-only)
+    add_test(NAME disvm_dedicated_table_kill_head COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_channel_guest_wait.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --table-kill-head-only)
+    set_tests_properties(disvm_dedicated_table_kill_head PROPERTIES TIMEOUT 90)
     set_tests_properties(disvm_dedicated_table_fifo PROPERTIES TIMEOUT 180)
     set_tests_properties(disvm_dedicated_table_cancel PROPERTIES TIMEOUT 90)
     set_tests_properties(disvm_dedicated_cancelwait PROPERTIES TIMEOUT 90)

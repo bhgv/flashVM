@@ -1671,7 +1671,11 @@ def main():
             return
         table_cancel = "--table-cancel-only" in sys.argv[4:]
         binary = runtime
-        if not table_cancel:
+        table_kill_head = "--table-kill-head-only" in sys.argv[4:]
+        if table_kill_head:
+            binary = relink(runtime, work, Path(__file__).with_name("test_table_kill_head.c"),
+                            0, ["dvm_bigtable_call_ready", "dvm_runtime_kill_child", "dvm_runqueue_claim"])
+        elif not table_cancel:
             binary = relink(runtime, work, Path(__file__).with_suffix(".c").resolve(), 0,
                             ["dvm_runtime_channel_new", "dvm_runtime_channel_wait_guest", "xecalt",
                              "dvm_runtime_channel_wait_change", "fvm_port_thread_start",
@@ -1683,6 +1687,30 @@ def main():
                              "dvm_runtime_channel_waiter_published", "dvm_managed_workers_park", "dvm_runtime_prepare_killwait",
                              "dvm_runqueue_complete_channel_wait", "dvm_runqueue_claim", "dvm_managed_workers_yield",
                              "dvm_native_owner_progress", "dvm_gc_workers_create"])
+        if table_kill_head:
+            source, image = work / "table-kill-head.b", work / "table-kill-head.dis"
+            source.write_text(TABLE_FIFO_KILL_HEAD_GUEST.replace(
+                "    spawn worker(tab, ids, results, 31);",
+                "    for (first := 0; first < 1000; first++) {\n"
+                "        (firsttoken, firstdepth, firstwaiting) := tables->guardstate(tab);\n"
+                "        if (firsttoken != big 0 && firstdepth == 1 && firstwaiting == 1) break;\n"
+                "        sys->sleep(1);\n"
+                "    }\n"
+                "    spawn worker(tab, ids, results, 31);",
+            ))
+            subprocess.run([compiler, "-I", include,
+                            "-I", Path(__file__).resolve().parents[1] / "module",
+                            "-o", image, source], check=True)
+            for mode in ("--no-jit", "--jit"):
+                for attempt in range(8):
+                    result = subprocess.run(
+                        [binary, mode, "--native-spawn", "--guarded-copies", image],
+                        cwd=work, capture_output=True, text=True, timeout=5,
+                    )
+                    if result.returncode or "PASS guest process termination" not in result.stdout:
+                        raise RuntimeError(f"{mode} table head attempt {attempt + 1}\n"
+                                           + result.stdout + result.stderr)
+            return
         if table_cancel or "--cancelwait-only" in sys.argv[4:]:
             source, image = work / "cancelwait.b", work / "cancelwait.dis"
             if table_cancel:
