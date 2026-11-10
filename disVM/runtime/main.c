@@ -606,6 +606,19 @@ static int guest_cancel_pending(void)
 }
 
 
+/* Recheck controller work after sampling the wake generation. A peer
+ * may have completed a channel wait before that generation was sampled. */
+static int dedicated_controller_pending(void)
+{
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)initial_guest;
+    return (resident && (__atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) ||
+            dvm_messages_pending(resident->messages, 0, 0) ||
+            dvm_messages_pending(resident->messages, 1, 0))) ||
+        guest_cancel_pending() ||
+        (!dvm_runqueue_ready() && !dvm_runqueue_inflight() && !dvm_runqueue_dispatch_pending());
+}
+
+
 /* At the final idle boundary, either keep the controller alive to drain
  * accepted requests or close admission before releasing the ledger lock. */
 static int guest_cancel_pending_or_close(void)
@@ -3299,7 +3312,7 @@ static int runtime_execute_inner(void *argument)
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
                 (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending()))
             {
-                if (!dvm_managed_workers_park(guest_cancel_pending))
+                if (!dvm_managed_workers_park(dedicated_controller_pending))
                 {
                     error("dedicated guest wait failed");
                 }
