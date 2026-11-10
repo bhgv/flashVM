@@ -686,6 +686,9 @@ static const char *altpublish(void *slot, WORD guard, void *tuple, WORD member)
 def adapt_alt_reservations(source):
     """Prefer ready guards whose channel has no active buffer transfer."""
     changes = (
+        ("if(!kprotect(altready, &ready)){", "if(!kprotect(altready_guarded, &ready)){"),
+        ("cqadd(&c->recv, p);", "dvm_runtime_alt_register_locked(&c->recv, p);"),
+        ("cqadd(&c->send, p);", "dvm_runtime_alt_register_locked(&c->send, p);"),
         ("altmark(Channel *c, Prog *p)", "altmark(Channel *c, Prog *p, int *available)"),
         ("altrdy(Alt *a, Prog *p)", "altrdy(Alt *a, Prog *p, int *available)"),
         ("added = altmark(c, p);", "added = altmark(c, p, available);"),
@@ -732,7 +735,7 @@ def adapt_alt_reservations(source):
          "    nrdy = ready.skip_reserved ? ready.available : ready.ready;"),
     )
     for old, new in changes:
-        expected = 3 if old == "&& which-- == 0" else 1
+        expected = {"&& which-- == 0": 3, "cqadd(&c->recv, p);": 2}.get(old, 1)
         if source.count(old) != expected:
             raise ValueError("ALT reservation boundary drift: " + old)
         source = source.replace(old, new)
@@ -749,6 +752,18 @@ def adapt_alt_reservations(source):
         "extern int dvm_runtime_channel_buffer_busy(Channel *channel);\n\nextern\tOP(isend);",
         1,
     )
+    anchor = "static int\naltready(void *arg)"
+    if source.count(anchor) != 1:
+        raise ValueError("ALT readiness callback boundary drift")
+    source = source.replace(anchor, """static int altready(void *arg);
+
+static int altready_guarded(void *arg)
+{
+    dvm_runtime_channel_queue_guard(altready, arg);
+    return 1;
+}
+
+""" + anchor, 1)
     anchor = "/* Cancel this process's registrations"
     if source.count(anchor) != 1:
         raise ValueError("ALT reservation entry boundary drift")
@@ -766,7 +781,6 @@ extern void dvm_runtime_channel_require_wait(int outcome);
 extern void dvm_runtime_channel_waiter_published(void);
 extern int dvm_runtime_guarded_copies;
 
-extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 
 /* EN: Publish ALT operands before the queue mutex exposes the parked state.
  * RU: Опубликовать операнды ALT до открытия состояния ожидания под мьютексом. */
@@ -939,7 +953,9 @@ def adapt_alt_preflight(source):
 
 
 ALT_GUARD_CHECK = r"""
+extern void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument);
 extern void dvm_runtime_channel_unmark(Progq **queue, Prog *peer);
+extern void dvm_runtime_alt_register_locked(Progq **queue, Prog *peer);
 /* Cancellation checks only the affected queue. A finalized queue may already
  * be detached. Registration still checks both queues and buffer readiness. */
 static void altcheckguard(Channel *channel, int receive, int cancelling)
@@ -1153,6 +1169,11 @@ static void park_channel_waiter(Channel *channel, Progq **queue, void *slot, int
 
 
 /* Publish a queue node with its native hold. */
+void dvm_runtime_alt_register_locked(Progq **queue, Prog *peer)
+{
+    cqadd_locked(queue, peer);
+}
+
 static int queue_add(void *argument)
 {
     ChannelQueueRequest *request = argument;
