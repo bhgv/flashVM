@@ -726,10 +726,10 @@ altcommunicate(void *arg)"""),
          "        goto retry_alt;\n"
          "    }"),
         ("altvalidate(a, nsend, nrecv, 0);",
-         "altvalidate(a, nsend, nrecv, 0);\n"
+         "altvalidate_guarded(a, nsend, nrecv);\n"
          "    if (block && altwaitshared(a, nsend, nrecv))\n"
          "    {\n"
-         "        altvalidate(a, nsend, nrecv, 0);\n"
+         "        altvalidate_guarded(a, nsend, nrecv);\n"
          "    }"),
         ("static ulong xrand = 0x20342;", "static _Thread_local ulong xrand = 0x20342;"),
         ("p = currun();\n\n\ta = DVM_R.s;", "p = currun();\nretry_alt:\n\ta = DVM_R.s;"),
@@ -801,6 +801,27 @@ extern int dvm_runtime_channel_wait_change(uint64_t generation);
 extern void dvm_runtime_channel_require_wait(int outcome);
 extern void dvm_runtime_channel_waiter_published(void);
 extern int dvm_runtime_guarded_copies;
+
+typedef struct AltValidation
+{
+    Alt *alt;
+    int sends;
+    int receives;
+} AltValidation;
+
+static int altvalidate_locked(void *argument)
+{
+    AltValidation *check = argument;
+    altvalidate(check->alt, check->sends, check->receives, 0);
+    return 1;
+}
+
+static void altvalidate_guarded(Alt *alt, int sends, int receives)
+{
+    AltValidation check = {alt, sends, receives};
+    dvm_runtime_channel_queue_guard(altvalidate_locked, &check);
+}
+
 
 
 /* EN: Publish ALT operands before the queue mutex exposes the parked state.
