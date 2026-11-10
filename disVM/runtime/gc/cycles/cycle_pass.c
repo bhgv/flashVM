@@ -37,16 +37,20 @@ DVM_GCWorkResult dvm_gc_cycles_trace(unsigned int *idle_passes,
         fprintf(stderr,"disvm cycle collector: %s\n",up->env->errstr);
         exit(1);
     }
-    if (dvm_runtime_idle_cycles && !(*idle_passes))
+    int continued = dvm_runtime_idle_cycles || dvm_runtime_event_cycles;
+    if (continued && !(*idle_passes))
     {
         (*idle_epoch) = gcepochs;
     }
     rungc(dvm_runtime_process_roots());
     poperror();
     (*passes)++;
-    /* A native wait can leave the heap idle for many passes without another
-     * dispatch request. Continue across the color rotation, with a hard cap. */
-    if (dvm_runtime_idle_cycles && !gchalt &&
+    /* [GC:] One event must finish its color rotations even when its owner
+     * sleeps or keeps executing without another scheduler turn.
+     * A bounded pass series releases admission between tracing calls.
+     * RU: Одно событие продолжает смену цветов без новых запросов от
+     * исполнителя. Между ограниченными проходами допуск освобождается. */
+    if (continued && !gchalt &&
         ++(*idle_passes) < 256 && gcepochs - (*idle_epoch) < 3)
     {
         return DVM_GC_MORE;

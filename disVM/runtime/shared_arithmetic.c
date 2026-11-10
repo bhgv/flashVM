@@ -1639,8 +1639,14 @@ const char *dvm_runtime_arithmetic_attempt(int opcode, const void *first, const 
 }
 
 
-/* Request a bounded retry for the armed opcode. NativeWorld still protects
- * the current process, whose retry count follows it across OS turns. */
+/* EN: Replay an armed instruction after a pre-effect contention result.
+ * opcode must match the current dispatch. Return zero outside a live dispatch.
+ * Each replay releases its guards and yields to owner/GC progress. The diagnostic
+ * count saturates at UINT_MAX, but contention never becomes an execution error.
+ * RU: Повторить текущую инструкцию после временного конфликта до её эффектов.
+ * opcode должен совпадать с текущей инструкцией живого процесса. Повтор снимает
+ * блокировки и даёт продолжить работу владельцу или GC. Счётчик насыщается на
+ * UINT_MAX, но число попыток не ограничивает допустимое ожидание. */
 int dvm_runtime_scalar_retry(int opcode)
 {
     DVM_NativeExecution *execution = dvm_native_execution();
@@ -1655,16 +1661,7 @@ int dvm_runtime_scalar_retry(int opcode)
     {
         return 0;
     }
-    if (process->arithmetic_retries >= 8)
-    {
-        /* Dedicated channel contenders can lose to another valid waiter
-         * repeatedly. Each replay returns to the owner dispatch loop. */
-        if (!dvm_runtime_guest_unbounded || (opcode != ISEND && opcode != IRECV))
-        {
-            return 0;
-        }
-    }
-    else
+    if (process->arithmetic_retries < UINT_MAX)
     {
         process->arithmetic_retries++;
     }

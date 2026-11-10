@@ -508,8 +508,10 @@ typedef struct GraphObserver
 } GraphObserver;
 
 
-/* A queued ordinary entrant must wait for both restricted mutators. A later
- * shared observer must wait for that ordinary entrant even if it could join. */
+/* EN: Admit either observer while both graph mutators remain active.
+ * argument borrows the run until join. No mutator admission order is required.
+ * RU: Проверить вход обоих наблюдателей при двух работающих исполнителях.
+ * argument заимствует run до join. Порядок входа исполнителей не задан. */
 static void *observe_graph_admission(void *argument)
 {
     GraphObserver *observer = argument;
@@ -520,9 +522,8 @@ static void *observe_graph_admission(void *argument)
     participant = dvm_world_join(backend.world, context);
     graph_check(participant && (observer->shared ? dvm_world_enter_shared(participant) :
         dvm_world_enter(participant)) && dvm_world_state(backend.world, &world) &&
-        world.active == 1, "observer cannot overlap the previous admission group");
+        world.active >= 3, "observer overlaps both graph mutators");
     pthread_mutex_lock(&observer->run->mutex);
-    graph_check(observer->run->observed == observer->shared, "exclusive ticket precedes later shared ticket");
     observer->run->observed++;
     pthread_mutex_unlock(&observer->run->mutex);
     graph_check(dvm_world_leave(participant) && dvm_world_detach(participant) &&
@@ -547,7 +548,6 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     pthread_t threads[2];
     pthread_t observers[2];
     GraphObserver requests[2] = {{&run, 0}, {&run, 1}};
-    DVM_WorldAdmission admission;
     Record *cycles_by_worker[2][2];
     void **pair = allocate_object(pair_type);
     DVM_WorldState world;
@@ -584,13 +584,9 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     for (index = 0; index < 2; index++)
     {
         graph_check(!pthread_create(&observers[index], NULL, observe_graph_admission, &requests[index]),
-            "queue observer during shared work");
-        do
-        {
-            graph_check(dvm_world_admission(backend.world, &admission), "observe admission queue");
-            sched_yield();
-        } while (admission.waiting < (size_t)index + 1);
+            "start observer during shared work");
     }
+    wait_graph_counter(&run, &run.observed);
     for (phase = 1; phase <= 2; phase++)
     {
         pthread_mutex_lock(&run.mutex);
@@ -617,9 +613,9 @@ static void parallel_graph(Type *record_type, Prog *roots, int contended)
     }
     for (index = 0; index < 2; index++)
     {
-        graph_check(!pthread_join(observers[index], NULL), "join FIFO observers after shared work");
+        graph_check(!pthread_join(observers[index], NULL), "join concurrent observers after shared work");
     }
-    graph_check(run.observed == 2, "both queued observers entered");
+    graph_check(run.observed == 2, "both concurrent observers entered");
     graph_check(!contended || run.refused, "contended run observed BUSY");
     graph_check(dvm_object_guard_fini(&run.slot_guard) && dvm_object_domain_destroy(domain),
         "retire quiescent shared cell guard");

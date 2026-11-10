@@ -77,7 +77,8 @@ DVM_RefcountResult __wrap_dvm_refcount_retain_u(unsigned long *reference)
 DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
 {
     static Inst *retry_pc; /* Post-decode MOVP PC at the first refusal. */
-    static int replayed; /* One matching guest replay has reached admission. */
+    static int replayed; /* Matching guest replay eventually reaches admission. */
+    static unsigned int refusals; /* Delay access beyond the old eight-retry limit. */
 
     if (CONTROL == 0 && !active && !replayed &&
         dvm_native_execution()->arithmetic_retry_opcode == IMOVP)
@@ -85,9 +86,12 @@ DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destinat
         if (!retry_pc)
         {
             retry_pc = DVM_R.PC;
-            return DVM_CELL_BUSY;
         }
         check(retry_pc == DVM_R.PC, "MOVP replays the same instruction");
+        if (refusals++ < 32)
+        {
+            return DVM_CELL_BUSY;
+        }
         replayed = 1;
         fprint(1, "PASS scheduled MOVP retry\n");
     }

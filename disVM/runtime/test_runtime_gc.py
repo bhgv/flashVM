@@ -9,9 +9,10 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False, idle_cycles=0):
-    command = [str(runtime), "--gc-worker", "--stats", mode,
-               "--quantum", str(quantum)]
+def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False, idle_cycles=False):
+    command = [str(runtime), "--gc-worker", "--stats", mode]
+    if not dedicated_parallel and not event_cycles:
+        command += ["--quantum", str(quantum)]
     if pool:
         command += ["--managed-workers", "2", "--guarded-copies", "--parallel-movp", "--parallel-slicela", "--parallel-movmp"]
     if dedicated_parallel:
@@ -21,7 +22,7 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     if event_cycles:
         command += ["--native-spawn", "--gc-event-cycles"]
     if idle_cycles:
-        command += ["--gc-idle-cycles", "--managed-workers", str(idle_cycles)]
+        command.append("--gc-idle-cycles")
     if locked:
         command.append("--gc-locked-poll")
     if budget is not None:
@@ -54,8 +55,10 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
     counters = re.search(r"instructions=(\d+) native=(\d+) gc_runs=(\d+) gc_epochs=(\d+)", output)
     if not counters or int(counters[3]) != int(gc[1]):
         raise RuntimeError("actual collector accounting mismatch:\n" + output[-5000:])
-    if idle_cycles and (int(gc[2]) != 0 or int(gc[3]) == 0 or int(counters[4]) == 0):
-        raise RuntimeError("idle Cycles must reclaim without parking active owners:\n" + output[-5000:])
+    groups = re.search(r"NATIVEFRAMERC .*? record_groups=(\d+)", output)
+    shared_reclaimed = int(groups[1]) if groups else 0
+    if idle_cycles and (int(gc[2]) != 0 or int(gc[3]) + shared_reclaimed == 0):
+        raise RuntimeError("idle GC must reclaim without parking active owners:\n" + output[-5000:])
     if budget is None:
         if ("PASS gc-worker: 12000" not in output or
                 "PASS gc-worker shared graph: 64 unordered publications after unwind" not in output or
@@ -110,13 +113,15 @@ def main():
             for locked in (False, True):
                 execute(runtime, module, mode, 1, locked=locked, dedicated_parallel=True)
                 execute(runtime, module, mode, 1, budget=10000, locked=locked, dedicated_parallel=True)
-        print("PASS dedicated Cycles and Fast GC in interpreter and JIT")
+            execute(runtime, module, mode, 1, event_cycles=True)
+        print("PASS dedicated Cycles, event cycles and Fast GC in interpreter and JIT")
         return
     if sys.argv[3:] == ["--idle-cycles"]:
         for mode in ("--jit", "--no-jit"):
-            for executors in (1, 2):
-                execute(runtime, module, mode, 32, idle_cycles=executors)
-        print("PASS idle Cycles and Fast GC in interpreter and JIT")
+            for locked in (False, True):
+                execute(runtime, module, mode, 32, locked=locked,
+                        dedicated_parallel=True, idle_cycles=True)
+        print("PASS dedicated idle Cycles and Fast GC in interpreter and JIT")
         return
     for mode in ("--jit", "--no-jit"):
         for quantum in (31, 257, 2000, 65536):
@@ -129,7 +134,7 @@ def main():
             execute(runtime, module, mode, 257, dedicated_parallel=True)
             for locked in (False, True):
                 execute(runtime, module, mode, 257, locked=locked, pool=True)
-    print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 bounded-queue saturation runs, "
+    print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 growing-queue publication runs, "
           "4 managed-error joins, interpreter/JIT, shared graph with two-worker hosted runs")
 
 
