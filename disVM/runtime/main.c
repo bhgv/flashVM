@@ -2987,6 +2987,10 @@ static int runtime_dispatch_turn(void)
         }
         if (handled)
         {
+            /* The handler already installed its target and frame in TLS. */
+            Prog *resident = native_spawn ? dvm_managed_workers_guest() : nil;
+            dvm_native_execution()->resident_registers_valid =
+                native_spawn && process == (resident ? resident : initial_guest);
             owner_error()[0] = 0;
             if (!dvm_runqueue_finish(process))
             {
