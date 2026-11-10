@@ -53,6 +53,9 @@ typedef struct Shared
     int progressed;       /* Owner one executed at least 16384 adds during that wait. */
     int stress;           /* Main completed stopped-root checks; both may stress reentry. */
     int done;             /* Finished stress owners, still registered/inactive. */
+    int probe_stopped;    /* Collector holds the final barrier. */
+    int probe_refused;    /* Owner zero observed the closed barrier. */
+    int probe_reopened;   /* Collector released the barrier. */
     int retire;           /* Final collector observation finished; detach is allowed. */
 } Shared;
 
@@ -188,6 +191,18 @@ static void execute(void *argument)
     shared->done++;
     fvm_port_sync_signal_all(shared->control);
     fvm_port_sync_unlock(shared->control);
+    if (!worker->identity)
+    {
+        wait_flag(shared, &shared->probe_stopped);
+        check(!dvm_world_try_enter_shared(worker->roots), "SHARED entered during GC barrier");
+        fvm_port_sync_lock(shared->control);
+        shared->probe_refused = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
+        wait_flag(shared, &shared->probe_reopened);
+        check(dvm_world_try_enter_shared(worker->roots), "SHARED refused after GC barrier");
+        check(dvm_world_leave(worker->roots), "leave SHARED after GC barrier");
+    }
     wait_flag(shared,&shared->retire);
     check(dvm_world_detach(worker->roots),"detach inactive roots");
     check(dvm_native_context_unbind(worker->context),"unbind owner");
@@ -225,7 +240,7 @@ static void roots(DVM_NativeContext *context, void *registers, size_t size,
 /* Stop all admitted work and inspect two stable root sets. shared/collector are
  * borrowed live native owners; native_wait selects the inactive-root invariant.
  * No timing assumption is used; begin waits for explicit instruction polls. */
-static void scan_roots(Shared *shared, DVM_NativeContext *collector, int native_wait)
+static void scan_roots(Shared *shared, DVM_NativeContext *collector, int native_wait, int probe_entry)
 {
     DVM_WorldState state;
     Scan scan;
@@ -235,7 +250,22 @@ static void scan_roots(Shared *shared, DVM_NativeContext *collector, int native_
     check(dvm_world_state(shared->world,&state) && state.active <= 2 &&
         state.active == state.parked && state.participants == 2,"collector stopped state");
     check(dvm_world_visit(shared->world,roots,&scan) && scan.count == 2,"visit both owners");
+    if (probe_entry)
+    {
+        fvm_port_sync_lock(shared->control);
+        shared->probe_stopped = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
+        wait_flag(shared, &shared->probe_refused);
+    }
     check(dvm_world_stop_end(shared->world),"collector end");
+    if (probe_entry)
+    {
+        fvm_port_sync_lock(shared->control);
+        shared->probe_reopened = 1;
+        fvm_port_sync_signal_all(shared->control);
+        fvm_port_sync_unlock(shared->control);
+    }
 }
 
 
@@ -287,7 +317,7 @@ int main(int argc, char **argv)
     check(!dvm_world_destroy(shared.world),"reject live world destruction");
     for (index = 0; index < SCANS; index++)
     {
-        scan_roots(&shared,collector,1);
+        scan_roots(&shared,collector,1,0);
     }
     fvm_port_sync_lock(shared.control);
     shared.stress = 1;
@@ -295,7 +325,7 @@ int main(int argc, char **argv)
     fvm_port_sync_unlock(shared.control);
     for (index = 0; index < SCANS; index++)
     {
-        scan_roots(&shared,collector,0);
+        scan_roots(&shared,collector,0,0);
     }
     fvm_port_sync_lock(shared.control);
     while (shared.done != 2)
@@ -303,7 +333,7 @@ int main(int argc, char **argv)
         fvm_port_sync_wait(shared.control);
     }
     fvm_port_sync_unlock(shared.control);
-    scan_roots(&shared,collector,0);
+    scan_roots(&shared,collector,0,1);
     check(workers[0].value == workers[0].iterations &&
         workers[1].value == workers[1].iterations,"independent owner arithmetic");
     check(dvm_world_admission(shared.world,&admission) && admission.serial &&

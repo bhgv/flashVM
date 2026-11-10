@@ -66,20 +66,31 @@ def main():
         if original.count(anchor) != 1:
             raise RuntimeError("parallel admission control anchor changed")
         control = output / "world-control.c"
-        control.write_text(original.replace(anchor, """
+        overlap_refused = original.replace(anchor, """
     if (!shared && world->active)
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
     }
-""" + anchor))
+""" + anchor)
+        wait = "    while (world->collector || world->resuming)"
+        if original.count(wait) != 1:
+            raise RuntimeError("collector barrier control anchor changed")
+        bypass_gc = original.replace(anchor, "    if (0)").replace(
+            wait, "    while (!try_only && (world->collector || world->resuming))"
+        )
         control_command = [str(control) if item == str(world) else item for item in command]
         control_command.insert(1, "-I" + str(world.parent))
-        subprocess.run(control_command, check=True)
-        result = subprocess.run([str(output / "test"), "atomic"], capture_output=True,
-                                text=True, timeout=30)
-        if result.returncode == 0 or "enter while peer is active" not in result.stderr:
-            raise RuntimeError("inactive parallel admission control: " + result.stdout + result.stderr)
+        for source_text, marker in (
+            (overlap_refused, "enter while peer is active"),
+            (bypass_gc, "SHARED entered during GC barrier"),
+        ):
+            control.write_text(source_text)
+            subprocess.run(control_command, check=True)
+            result = subprocess.run([str(output / "test"), "atomic"], capture_output=True,
+                                    text=True, timeout=30)
+            if result.returncode == 0 or marker not in result.stderr:
+                raise RuntimeError("inactive admission control: " + result.stdout + result.stderr)
     print("PASS parallel GC admission with atomic and locked polling")
 
 
