@@ -1862,11 +1862,10 @@ def main():
 {
     sys := load Sys Sys->PATH;
     input := chan of int;
-    first := chan[1] of int;
-    second := chan[1] of int;
-    spawn waiter(input, first);
-    spawn waiter(input, second);
-    if (<-first != 1 || <-second != 1)
+    report := chan[1] of int;
+    spawn waiter(input, report);
+    spawn waiter(input, report);
+    if (<-report != 1 || <-report != 1)
         raise "closed waiter did not report hangup";
     sys->print("PASS dedicated channel close\n");
 }
