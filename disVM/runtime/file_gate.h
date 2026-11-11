@@ -7,7 +7,7 @@ typedef struct DVM_FileGate DVM_FileGate; /* Owned native gate, lifetime follows
 
 
 /* Allocate an empty native gate before opening a file. Returns NULL on failure.
- * Caller owns the gate; creation/close/statistics run under runtime heap exclusion. */
+ * Caller owns the gate; native registry changes use the registry mutex. */
 DVM_FileGate *dvm_file_gate_create(void);
 
 
@@ -56,7 +56,7 @@ int dvm_file_gate_leave(DVM_FileGate *gate, DVM_FileTicket *ticket);
 /* Destroy only an empty gate after its file becomes unreachable. Return zero
  * if an operation remains reserved/admitted or a cancelled waiter is still
  * waking. Storage stays live on refusal.
- * Requires runtime heap exclusion and no future borrowers. NULL succeeds. */
+ * Requires no future borrowers; registry changes are locked internally. NULL succeeds. */
 int dvm_file_gate_destroy(DVM_FileGate *gate);
 
 
@@ -67,11 +67,11 @@ void dvm_file_gate_snapshot(DVM_FileGate *gate, size_t *pending, size_t *waiting
 
 
 /* Report native gate lifetime/operation totals after managed workers join.
- * Requires heap exclusion; takes only short native mutexes, no OS I/O waits. */
+ * Takes only short native mutexes, no OS I/O waits. */
 void dvm_file_gate_statistics(void);
 
 
-/* Borrow the descriptor's gate under heap exclusion, while its FD is rooted.
+/* Borrow the descriptor's gate under the registry mutex, while its FD is rooted.
  * NULL rejects stdio/invalid slots; open directories have their own gate. No ownership transfer occurs. */
 DVM_FileGate *dvm_runtime_file_gate(int descriptor);
 #endif

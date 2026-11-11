@@ -34,7 +34,11 @@ void dvm_close_submit(DVM_CloseJob *job, FVM_PortFile *file, FVM_PortDirectory *
 void dvm_close_worker_stop(void);
 
 
-/* Print counters after stop, with no concurrent producers. No arguments/result;
- * no heap access. Pending jobs must be zero after worker join. */
+/* EN: Print a native snapshot, normally after stop (pending must then be zero).
+ * Caller guarantees service start/stop do not overlap this call; producers may.
+ * No arguments/result or heap access.
+ * RU: Вывести снимок, обычно после stop (тогда pending обязан быть нулём).
+ * Вызов не совмещается со start/stop службы; производители могут работать.
+ * Без параметров/результата и доступа к куче. */
 void dvm_close_statistics(void);
 #endif

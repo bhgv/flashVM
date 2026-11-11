@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Native I/O with rooted arguments and mutex-protected shared accounting.
+ * RU: Нативный I/O с укоренёнными аргументами и общим учётом под мьютексом.
+ */
 /* Native input stages outside the managed heap, then copies after reentry. */
 #include "lib9.h"
 #include "dat.h"
@@ -8,6 +12,7 @@
 #include "raise.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "channel_sync.h"
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
@@ -21,19 +26,26 @@ extern FVM_Result dvm_runtime_read_stdin(void *bytes, size_t capacity, size_t *r
 #define READ_STAGE_BYTES 65536U /* Maximum native staging allocation per builtin call. */
 
 
-static size_t staged_bytes;       /* Native staging currently owned by this mutator. */
-static size_t peak_staged_bytes;  /* Maximum direct staging bytes, excluding managed roots. */
-static unsigned int pinned;      /* External root registrations owned by read callbacks. */
-static unsigned long fragments;  /* Completed native read attempts, including EOF/errors. */
-static unsigned long copied;     /* Actual bytes committed after managed reentry. */
+static size_t staged_bytes;       /* Aggregate native staging, under the registry mutex. */
+static size_t peak_staged_bytes;  /* Maximum direct staging bytes, excluding managed roots; updates under registry mutex. */
+static unsigned int pinned;      /* External root registrations owned by read callbacks; updates under registry mutex. */
+static unsigned long fragments;  /* Completed native read attempts, including EOF/errors; updates under registry mutex. */
+static unsigned long copied;     /* Actual bytes committed after managed reentry; updates under registry mutex. */
 
 
-/* Report actual read-resource retirement. No parameters/result; caller is the
- * Dis owner after native return or unwind. No collector accesses these counters. */
+/* EN: Report counters from a locked snapshot (normally after all producers join). No parameters/result.
+ * RU: Сообщить счётчики из снимка под мьютексом (обычно после join производителей). Без параметров/результата. */
 void dvm_runtime_read_statistics(void)
 {
+    fvm_port_registry_lock();
+    unsigned int snapshot_pinned = pinned;
+    size_t snapshot_staged_bytes = staged_bytes;
+    size_t snapshot_peak_staged_bytes = peak_staged_bytes;
+    unsigned long snapshot_fragments = fragments;
+    unsigned long snapshot_copied = copied;
+    fvm_port_registry_unlock();
     fprintf(stderr,"NATIVEINPUT pins=%u staging=%lu peak=%lu fragments=%lu copied=%lu\n",
-        pinned,(unsigned long)staged_bytes,(unsigned long)peak_staged_bytes,fragments,copied);
+        snapshot_pinned,(unsigned long)snapshot_staged_bytes,(unsigned long)snapshot_peak_staged_bytes,snapshot_fragments,snapshot_copied);
 }
 
 
@@ -79,34 +91,46 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     {
         error(exNomem);
     }
+    fvm_port_registry_lock();
     staged_bytes += capacity;
     if (staged_bytes > peak_staged_bytes)
     {
         peak_staged_bytes = staged_bytes;
     }
+    fvm_port_registry_unlock();
     if (waserror())
     {
         if (buffer_pinned)
         {
             ptrdel(D2H(buffer));
+            fvm_port_registry_lock();
             pinned--;
+            fvm_port_registry_unlock();
         }
         if (fd_pinned)
         {
             ptrdel(D2H(fd));
+            fvm_port_registry_lock();
             pinned--;
+            fvm_port_registry_unlock();
         }
+        fvm_port_registry_lock();
         staged_bytes -= capacity;
+        fvm_port_registry_unlock();
         free(stage);
         nexterror();
     }
     ptradd(D2H(fd));
     fd_pinned = 1;
+    fvm_port_registry_lock();
     pinned++;
+    fvm_port_registry_unlock();
     Setmark(D2H(fd));
     ptradd(D2H(buffer));
     buffer_pinned = 1;
+    fvm_port_registry_lock();
     pinned++;
+    fvm_port_registry_unlock();
     Setmark(D2H(buffer));
     while (result < extent)
     {
@@ -120,7 +144,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         {
             fragment = capacity;
         }
-        /* [GC:] Reserve under heap exclusion, wait after native release. The
+        /* [GC:] Reserve under the gate mutex, wait after native release. The
          * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
         if (file)
         {
@@ -150,7 +174,9 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
             }
             dvm_runtime_gc_native_enter(released);
         }
+        fvm_port_registry_lock();
         fragments++;
+        fvm_port_registry_unlock();
         if (status != FVM_OK)
         {
             kwerrstr("native input failed");
@@ -182,7 +208,9 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         }
         memmove(data+result,stage,received);
         result += (WORD)received;
+        fvm_port_registry_lock();
         copied += (unsigned long)received;
+        fvm_port_registry_unlock();
         if (descriptor == 0)
         {
             dvm_runtime_input_progress();
@@ -194,9 +222,13 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     }
     ptrdel(D2H(buffer));
     ptrdel(D2H(fd));
+    fvm_port_registry_lock();
     pinned -= 2;
+    fvm_port_registry_unlock();
     poperror();
+    fvm_port_registry_lock();
     staged_bytes -= capacity;
+    fvm_port_registry_unlock();
     free(stage);
     memmove(ret,&result,sizeof(result));
 }

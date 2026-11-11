@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Native I/O with rooted arguments and mutex-protected shared accounting.
+ * RU: Нативный I/O с укоренёнными аргументами и общим учётом под мьютексом.
+ */
 /* Metadata waits stage native paths/records and retain mapped descriptor roots. */
 #include "lib9.h"
 #include "dat.h"
@@ -12,18 +16,19 @@
 #include "io_buffer.h"
 #include "file_gate.h"
 #include "runtime_gc.h"
+#include "channel_sync.h"
 #include "managed_workers.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static unsigned long paths;       /* Completed native path queries, under heap exclusion. */
-static unsigned long descriptors; /* Completed native file/directory queries. */
-static unsigned long batches;     /* Native directory read attempts, including EOF/errors. */
-static unsigned long releases;    /* Queries that released the native heap lease. */
-static unsigned int pins;         /* Explicit FD roots retained by this adapter. */
-static size_t staging;            /* Current native path bytes, including terminators. */
-static size_t peak_staging;       /* Largest simultaneous native path staging. */
+static unsigned long paths;       /* Completed native path queries, under the registry mutex. */
+static unsigned long descriptors; /* Completed native file/directory queries; updates under registry mutex. */
+static unsigned long batches;     /* Native directory read attempts, including EOF/errors; updates under registry mutex. */
+static unsigned long releases;    /* Queries that released the native heap lease; updates under registry mutex. */
+static unsigned int pins;         /* Explicit FD roots retained by this adapter; updates under registry mutex. */
+static size_t staging;            /* Current native path bytes, including terminators; updates under registry mutex. */
+static size_t peak_staging;       /* Largest simultaneous native path staging; updates under registry mutex. */
 
 
 /* Snapshot path before native release. path/output are borrowed ACTIVE inputs;
@@ -50,23 +55,29 @@ FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output)
         return FVM_OUT_OF_MEMORY;
     }
     memcpy(snapshot, path, length + 1);
+    fvm_port_registry_lock();
     staging += length + 1;
     if (staging > peak_staging)
     {
         peak_staging = staging;
     }
+    fvm_port_registry_unlock();
     released = dvm_runtime_gc_native_try_leave();
     if (released < 0)
     {
+        fvm_port_registry_lock();
         staging -= length + 1;
+        fvm_port_registry_unlock();
         free(snapshot);
         return FVM_OUT_OF_MEMORY;
     }
     status = fvm_port_path_info(snapshot, output);
     dvm_runtime_gc_native_enter(released);
+    fvm_port_registry_lock();
     paths++;
     releases += released != 0;
     staging -= length + 1;
+    fvm_port_registry_unlock();
     free(snapshot);
     return status;
 }
@@ -88,14 +99,18 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
         return FVM_INVALID_ARGUMENT;
     }
     ptradd(D2H(fd));
+    fvm_port_registry_lock();
     pins++;
+    fvm_port_registry_unlock();
     Setmark(D2H(fd));
     dvm_managed_workers_file_call();
     released = dvm_file_gate_try_release(gate, &ticket);
     if (released < 0)
     {
         ptrdel(D2H(fd));
+        fvm_port_registry_lock();
         pins--;
+        fvm_port_registry_unlock();
         return FVM_OUT_OF_MEMORY;
     }
     status = file ? fvm_port_file_info(file, output) : fvm_port_directory_info(directory, output);
@@ -105,10 +120,14 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
         exit(1);
     }
     dvm_runtime_gc_native_enter(released);
+    fvm_port_registry_lock();
     descriptors++;
     releases += released != 0;
+    fvm_port_registry_unlock();
     ptrdel(D2H(fd));
+    fvm_port_registry_lock();
     pins--;
+    fvm_port_registry_unlock();
     return status;
 }
 
@@ -129,20 +148,26 @@ FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo 
         return FVM_INVALID_ARGUMENT;
     }
     ptradd(D2H(fd));
+    fvm_port_registry_lock();
     pins++;
+    fvm_port_registry_unlock();
     Setmark(D2H(fd));
     dvm_managed_workers_file_call();
     released = dvm_file_gate_try_release(gate, &ticket);
     if (released < 0)
     {
         ptrdel(D2H(fd));
+        fvm_port_registry_lock();
         pins--;
+        fvm_port_registry_unlock();
         return FVM_OUT_OF_MEMORY;
     }
     status = fvm_port_directory_read(directory, entries, count);
     dvm_runtime_gc_native_enter(released);
+    fvm_port_registry_lock();
     batches++;
     releases += released != 0;
+    fvm_port_registry_unlock();
     if (status == FVM_OK && *count)
     {
         published = kprotect(publish, argument);
@@ -159,7 +184,9 @@ FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo 
     fvm_port_directory_entries_free(*entries);
     *entries = NULL;
     ptrdel(D2H(fd));
+    fvm_port_registry_lock();
     pins--;
+    fvm_port_registry_unlock();
     if (!published)
     {
         krethrow();
@@ -168,10 +195,19 @@ FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo 
 }
 
 
-/* Called with heap exclusion after all native continuations returned. No args,
- * allocation or managed root traversal; stderr is the diagnostic destination. */
+/* EN: Print counters from a locked snapshot, normally after native producer join. No arguments/result.
+ * RU: Вывести счётчики из снимка под мьютексом, обычно после join производителей. Без параметров/результата. */
 void dvm_metadata_statistics(void)
 {
+    fvm_port_registry_lock();
+    unsigned long snapshot_paths = paths;
+    unsigned long snapshot_descriptors = descriptors;
+    unsigned long snapshot_releases = releases;
+    unsigned int snapshot_pins = pins;
+    size_t snapshot_staging = staging;
+    size_t snapshot_peak_staging = peak_staging;
+    unsigned long snapshot_batches = batches;
+    fvm_port_registry_unlock();
     fprintf(stderr, "NATIVEMETADATA paths=%lu descriptors=%lu releases=%lu pins=%u staging=%lu peak=%lu batches=%lu\n",
-        paths, descriptors, releases, pins, (unsigned long)staging, (unsigned long)peak_staging, batches);
+        snapshot_paths, snapshot_descriptors, snapshot_releases, snapshot_pins, (unsigned long)snapshot_staging, (unsigned long)snapshot_peak_staging, snapshot_batches);
 }

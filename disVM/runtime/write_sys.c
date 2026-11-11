@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Native I/O with rooted arguments and mutex-protected shared accounting.
+ * RU: Нативный I/O с укоренёнными аргументами и общим учётом под мьютексом.
+ */
 /* Immutable bounded native output snapshots outside the managed heap interval. */
 #include "lib9.h"
 #include "dat.h"
@@ -7,6 +11,7 @@
 #include "runt.h"
 #include "raise.h"
 #include "runtime_gc.h"
+#include "channel_sync.h"
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
@@ -18,19 +23,26 @@ extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
 
 #define WRITE_STAGE_BYTES 65536U /* Maximum native output snapshot per call. */
 
-static size_t staged_bytes;      /* Native snapshot storage currently owned by Dis. */
-static size_t peak_staged_bytes; /* Maximum direct output storage before return. */
-static unsigned int pinned;     /* External FD/source-array root registrations. */
-static unsigned long fragments; /* Completed native port attempts. */
-static unsigned long copied;    /* Actual bytes acknowledged by the native port. */
+static size_t staged_bytes;      /* Aggregate native snapshots, under the registry mutex. */
+static size_t peak_staged_bytes; /* Maximum direct output storage before return; updates under registry mutex. */
+static unsigned int pinned;     /* External FD/source-array root registrations; updates under registry mutex. */
+static unsigned long fragments; /* Completed native port attempts; updates under registry mutex. */
+static unsigned long copied;    /* Actual bytes acknowledged by the native port; updates under registry mutex. */
 
 
-/* Report native output resources for explicit --stats. No arguments/result;
- * called on the Dis owner after managed return or cleanup, never by collectors. */
+/* EN: Report native output counters from a locked snapshot (normally after all producers join), for --stats.
+ * RU: Сообщить счётчики вывода из снимка под мьютексом (обычно после join производителей), для --stats. */
 void dvm_runtime_write_statistics(void)
 {
+    fvm_port_registry_lock();
+    unsigned int snapshot_pinned = pinned;
+    size_t snapshot_staged_bytes = staged_bytes;
+    size_t snapshot_peak_staged_bytes = peak_staged_bytes;
+    unsigned long snapshot_fragments = fragments;
+    unsigned long snapshot_copied = copied;
+    fvm_port_registry_unlock();
     fprintf(stderr,"NATIVEOUTPUT pins=%u staging=%lu peak=%lu fragments=%lu copied=%lu\n",
-        pinned,(unsigned long)staged_bytes,(unsigned long)peak_staged_bytes,fragments,copied);
+        snapshot_pinned,(unsigned long)snapshot_staged_bytes,(unsigned long)snapshot_peak_staged_bytes,snapshot_fragments,snapshot_copied);
 }
 
 
@@ -97,37 +109,49 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     {
         error(exNomem);
     }
+    fvm_port_registry_lock();
     staged_bytes += capacity;
     if (staged_bytes > peak_staged_bytes)
     {
         peak_staged_bytes = staged_bytes;
     }
+    fvm_port_registry_unlock();
     if (waserror())
     {
         if (buffer_pinned)
         {
             ptrdel(D2H(bytes));
+            fvm_port_registry_lock();
             pinned--;
+            fvm_port_registry_unlock();
         }
         if (fd_pinned)
         {
             ptrdel(D2H(fd));
+            fvm_port_registry_lock();
             pinned--;
+            fvm_port_registry_unlock();
         }
+        fvm_port_registry_lock();
         staged_bytes -= capacity;
+        fvm_port_registry_unlock();
         free(stage);
         nexterror();
     }
     ptradd(D2H(fd));
     fd_pinned = 1;
+    fvm_port_registry_lock();
     pinned++;
+    fvm_port_registry_unlock();
     Setmark(D2H(fd));
     ptradd(D2H(bytes));
     buffer_pinned = 1;
+    fvm_port_registry_lock();
     pinned++;
+    fvm_port_registry_unlock();
     Setmark(D2H(bytes));
     memmove(stage,data,capacity);
-    /* [GC:] Reserve under heap exclusion, wait after native release. The
+    /* [GC:] Reserve under the gate mutex, wait after native release. The
      * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
     if (file)
     {
@@ -158,7 +182,9 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         }
         dvm_runtime_gc_native_enter(released);
     }
+    fvm_port_registry_lock();
     fragments++;
+    fvm_port_registry_unlock();
     if (status != FVM_OK)
     {
         kwerrstr("native output failed");
@@ -171,14 +197,20 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
             error(exBounds);
         }
         result = (WORD)written;
+        fvm_port_registry_lock();
         copied += (unsigned long)written;
+        fvm_port_registry_unlock();
     }
 finish:
     ptrdel(D2H(bytes));
     ptrdel(D2H(fd));
+    fvm_port_registry_lock();
     pinned -= 2;
+    fvm_port_registry_unlock();
     poperror();
+    fvm_port_registry_lock();
     staged_bytes -= capacity;
+    fvm_port_registry_unlock();
     free(stage);
     return result;
 }

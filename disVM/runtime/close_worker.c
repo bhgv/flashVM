@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Detached native close FIFO with mutex-protected publication and snapshots.
+ * RU: Нативная FIFO закрытий с публикацией и снимками под мьютексом.
+ */
 /* Native close queue: finalizers detach ownership without waiting on filesystem I/O. */
 #include "close_worker.h"
 #include "channel_sync.h"
@@ -179,9 +183,27 @@ void dvm_close_worker_stop(void)
 }
 
 
-/* Statistics are terminal evidence, not a concurrent queue inspection API. */
+/* EN: Snapshot native close totals; sync lifetime is stable throughout the call.
+ * Normally called after stop; the explicit halt test can inspect live producers.
+ * No arguments/result. Never hold the queue mutex through diagnostic I/O.
+ * RU: Снять итоги закрытий; время жизни sync стабильно до возврата.
+ * Обычно после stop; явный тест halt может видеть живых производителей.
+ * Без параметров/результата. Не держать мьютекс очереди во время вывода. */
 void dvm_close_statistics(void)
 {
+    if (service.sync)
+    {
+        fvm_port_sync_lock(service.sync);
+    }
+    unsigned long submitted = service.submitted;
+    unsigned long completed = service.completed;
+    unsigned long pending = service.pending;
+    unsigned long peak = service.peak;
+    int joined = service.joined;
+    if (service.sync)
+    {
+        fvm_port_sync_unlock(service.sync);
+    }
     fprintf(stderr, "NATIVECLOSE submitted=%lu completed=%lu pending=%lu peak=%lu joined=%d\n",
-        service.submitted, service.completed, service.pending, service.peak, service.joined);
+        submitted, completed, pending, peak, joined);
 }

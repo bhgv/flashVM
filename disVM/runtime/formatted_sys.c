@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Native I/O with rooted arguments and mutex-protected shared accounting.
+ * RU: Нативный I/O с укоренёнными аргументами и общим учётом под мьютексом.
+ */
 /* Formatting stays on Dis; only completed native bytes leave heap ownership. */
 #include "lib9.h"
 #include "dat.h"
@@ -8,6 +12,7 @@
 #include "raise.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "channel_sync.h"
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
@@ -22,16 +27,21 @@ extern Type *TFD; /* Retained typed FD identity, read only on the active heap ow
 
 #define FORMAT_BYTES 4096 /* Existing bounded formatting contract, including UTF tail reserve. */
 
-static unsigned long calls;    /* Native port attempts completed on the sole Dis owner. */
-static unsigned long releases; /* Attempts which actually released native_world ownership. */
-static unsigned int pins;      /* External FD roots currently held by formatted output. */
+static unsigned long calls;    /* Native port attempts completed under the registry mutex. */
+static unsigned long releases; /* Attempts which released native heap admission; updates under registry mutex. */
+static unsigned int pins;      /* External FD roots currently held by formatted output; updates under registry mutex. */
 
 
-/* Report counters after managed return/cleanup on the Dis owner. No arguments,
- * allocation or heap mutation; stderr is the existing diagnostic destination. */
+/* EN: Print a locked counter snapshot on stderr, normally after producer join.
+ * RU: Вывести снимок счётчиков под мьютексом, обычно после join производителей. */
 void dvm_formatted_statistics(void)
 {
-    fprintf(stderr,"NATIVEFORMATTED pins=%u calls=%lu releases=%lu\n",pins,calls,releases);
+    fvm_port_registry_lock();
+    unsigned int snapshot_pins = pins;
+    unsigned long snapshot_calls = calls;
+    unsigned long snapshot_releases = releases;
+    fvm_port_registry_unlock();
+    fprintf(stderr,"NATIVEFORMATTED pins=%u calls=%lu releases=%lu\n",snapshot_pins,snapshot_calls,snapshot_releases);
 }
 
 
@@ -57,10 +67,12 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     if (fd)
     {
         ptradd(D2H(fd));
+        fvm_port_registry_lock();
         pins++;
+        fvm_port_registry_unlock();
         Setmark(D2H(fd));
     }
-    /* [GC:] Reserve under heap exclusion, wait after native release. The
+    /* [GC:] Reserve under the gate mutex, wait after native release. The
      * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
     if (file)
     {
@@ -78,7 +90,9 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
             if (fd)
             {
                 ptrdel(D2H(fd));
+                fvm_port_registry_lock();
                 pins--;
+                fvm_port_registry_unlock();
             }
             kwerrstr(released == -2 ? "native formatted output cancelled" : "native formatted output needs an executor");
             return -1;
@@ -95,12 +109,16 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
         }
         dvm_runtime_gc_native_enter(released);
     }
+    fvm_port_registry_lock();
     calls++;
     releases += released != 0;
+    fvm_port_registry_unlock();
     if (fd)
     {
         ptrdel(D2H(fd));
+        fvm_port_registry_lock();
         pins--;
+        fvm_port_registry_unlock();
     }
     if (status != FVM_OK)
     {

@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Native Dis runtime, permanent resident ownership and synchronized shared services.
+ * RU: Нативная Dis VM, постоянные владельцы Prog и синхронизированные общие службы.
+ */
 /* Retained Dis interpreter/JIT with explicit native execution and GC owners. */
 #define _GNU_SOURCE
 #include "disvm/refcount.h"
@@ -19,6 +23,7 @@
 #include "vmchannel.h"
 #include "file_port.h"
 #include "file_gate.h"
+#include "file_slots.h"
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
 #include "open_wait.h"
@@ -140,10 +145,7 @@ static size_t inspect_offset; /* Requested byte offset, aligned to the NC64 word
 static size_t inspect_count;  /* Requested native words, bounded to 4096 before execution. */
 static uchar *inspect_data;   /* [GC:] Registered native MP root; only verified scalar cells are reported. */
 static int test_control;      /* Explicit isolated-test halt capability; disabled for normal applications. */
-static DVM_CloseJob *close_jobs[32]; /* Reserved native retirement nodes, under heap exclusion. */
-static FVM_PortDirectory *directories[32]; /* Owned OS-port cursors; share the descriptor quota with files. */
-static DVM_FileGate *file_gates[32];       /* Native per-slot FIFO, retained by rooted FD owners. */
-static FVM_PortFile *files[32];            /* File slots 3..31 use FlashVM ports; standard 0..2 remain borrowed. */
+
 
 /* Print copied instruction/native counters only for an explicit --stats request.
  * No parameters or VM mutation; terminal success/error/test-halt paths share this exact format. */
@@ -2635,53 +2637,50 @@ int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
     return 0;
 }
 
-/* Reserve a descriptor under heap exclusion before constructing an unpublished
- * native handle. path is borrowed UTF-8, mode an immutable r/w/wx literal.
- * asynchronous admits audited Sys calls; loader calls retain their protected
- * synchronous boundary. Return a published slot or -1 with a logical error.
- * A non-NULL gate reserves the slot even before any handle exists. */
+/* EN: Reserve one slot under the registry mutex, then open outside that mutex.
+ * path/mode are borrowed; asynchronous selects audited Sys calls. Return a
+ * published descriptor or -1. A gate reserves even an unpublished/failed open.
+ * RU: Занять слот под мьютексом реестра, затем открыть вне мьютекса.
+ * path/mode заимствованы; asynchronous выбирает Sys. Вернуть дескриптор либо -1.
+ * До публикации и при откате слот остаётся занят своим шлюзом. */
 static int open_file_mode(const char *path, const char *mode, int asynchronous)
 {
     int index;
-    for (index = 3; index < 32; index++)
+    DVM_FileGate *gate = dvm_file_gate_create();
+    DVM_CloseJob *job = gate ? dvm_close_prepare() : NULL;
+    FVM_PortFile *file = NULL;
+    FVM_PortDirectory *directory = NULL;
+    FVM_Result status;
+    if (!gate || !job)
     {
-        if (!files[index] && !directories[index] && !file_gates[index])
-        {
-            FVM_PortFile *file = NULL;
-            FVM_PortDirectory *directory = NULL;
-            FVM_Result status;
-            file_gates[index] = dvm_file_gate_create();
-            if (!file_gates[index])
-            {
-                kwerrstr("cannot allocate native file gate");
-                return -1;
-            }
-            close_jobs[index] = dvm_close_prepare();
-            if (!close_jobs[index])
-            {
-                dvm_file_gate_destroy(file_gates[index]);
-                file_gates[index] = NULL;
-                kwerrstr("cannot reserve native handle retirement");
-                return -1;
-            }
-            status = dvm_open_wait(path, mode, asynchronous, &file, &directory);
-            if (status == FVM_OK)
-            {
-                files[index] = file;
-                directories[index] = directory;
-                return index;
-            }
-            dvm_file_gate_destroy(file_gates[index]);
-            file_gates[index] = NULL;
-            dvm_close_discard(close_jobs[index]);
-            close_jobs[index] = NULL;
-            /* string2c storage may have been reused by another executor during
-             * release. Do not inspect the caller's original path here. */
-            kwerrstr("cannot open native file or directory (status %d)", status);
-            return -1;
-        }
+        dvm_file_gate_destroy(gate);
+        dvm_close_discard(job);
+        kwerrstr("cannot reserve native handle lifetime");
+        return -1;
     }
-    kwerrstr("file handle quota exceeded");
+    index = dvm_file_slots_reserve(gate, job);
+    if (index < 0)
+    {
+        dvm_file_gate_destroy(gate);
+        dvm_close_discard(job);
+        kwerrstr("file handle quota exceeded");
+        return -1;
+    }
+    status = dvm_open_wait(path, mode, asynchronous, &file, &directory);
+    if (status == FVM_OK)
+    {
+        dvm_file_slots_publish(index, file, directory);
+        return index;
+    }
+    DVM_FileSlot abandoned;
+    if (!dvm_file_slots_take(index, 0, &abandoned))
+    {
+        fprintf(stderr, "disvm: native open reservation disappeared\n");
+        exit(1);
+    }
+    dvm_file_gate_destroy(abandoned.gate);
+    dvm_close_discard(abandoned.job);
+    kwerrstr("cannot open native file or directory (status %d)", status);
     return -1;
 }
 
@@ -2758,17 +2757,19 @@ long kread(int fd, void *bytes, long size)
     size_t received;
     DVM_FileTicket ticket;
     FVM_Result status;
-    if (fd < 0 || fd >= 32 || !files[fd] || size < 0)
+    FVM_PortFile *file = dvm_runtime_file(fd);
+    DVM_FileGate *gate = dvm_runtime_file_gate(fd);
+    if (!file || size < 0)
     {
         return -1;
     }
-    dvm_file_gate_reserve(file_gates[fd], &ticket);
-    if (!dvm_file_gate_enter_now(file_gates[fd], &ticket))
+    dvm_file_gate_reserve(gate, &ticket);
+    if (!dvm_file_gate_enter_now(gate, &ticket))
     {
         return -1;
     }
-    status = fvm_port_file_read(files[fd], bytes, size, &received);
-    if (!dvm_file_gate_leave(file_gates[fd], &ticket))
+    status = fvm_port_file_read(file, bytes, size, &received);
+    if (!dvm_file_gate_leave(gate, &ticket))
     {
         fprintf(stderr, "disvm: loader file admission lost\n");
         exit(1);
@@ -2779,23 +2780,6 @@ long kread(int fd, void *bytes, long size)
     }
     return received;
 }
-
-/* Borrow a live native file handle on the Dis owner. descriptor is a validated
- * runtime slot. The caller keeps its managed FD rooted until native I/O ends;
- * only then may GC close this same handle. Null rejects non-file slots. */
-FVM_PortFile *dvm_runtime_file(int descriptor)
-{
-    return descriptor >= 3 && descriptor < 32 ? files[descriptor] : NULL;
-}
-
-
-/* Borrow only under the heap gate while a mapped FD/private loader slot pins
- * the paired native handle. No managed references cross into gate storage. */
-DVM_FileGate *dvm_runtime_file_gate(int descriptor)
-{
-    return descriptor >= 3 && descriptor < 32 ? file_gates[descriptor] : NULL;
-}
-
 
 /* EN: Reset the reference scheduler's watchdog after successful stdin.
  * Called by its active controller after managed reentry. Resident execution
@@ -2815,28 +2799,25 @@ void dvm_runtime_input_progress(void)
 }
 
 
-/* Close exactly the module handle owned by the loader. */
+/* EN: Detach an exclusively owned slot under the registry mutex. Borrowers must
+ * already be gone (loader ownership or unreachable rooted FD). Retire the gate
+ * and submit detached native handles outside the mutex. Return 0 or -1 if absent.
+ * RU: Снять принадлежащий вызывающему слот под мьютексом реестра. Заёмщиков
+ * уже нет: загрузчик владеет слотом либо FD недостижим. Удалить шлюз и передать
+ * handles на закрытие вне мьютекса. Вернуть 0 либо -1 при отсутствии. */
 int kclose(int fd)
 {
-    if (fd < 3 || fd >= 32 || (!files[fd] && !directories[fd]))
+    DVM_FileSlot slot;
+    if (!dvm_file_slots_take(fd, 1, &slot))
     {
         return -1;
     }
-    if (!dvm_file_gate_destroy(file_gates[fd]))
+    if (!dvm_file_gate_destroy(slot.gate))
     {
         fprintf(stderr, "disvm: closing a file with pending native operations\n");
         exit(1);
     }
-    file_gates[fd] = NULL;
-    {
-        FVM_PortFile *file = files[fd];
-        FVM_PortDirectory *directory = directories[fd];
-        DVM_CloseJob *job = close_jobs[fd];
-        files[fd] = nil;
-        directories[fd] = nil;
-        close_jobs[fd] = NULL;
-        dvm_close_submit(job, file, directory);
-    }
+    dvm_close_submit(slot.job, slot.file, slot.directory);
     return 0;
 }
 
@@ -2847,17 +2828,19 @@ Dir *kdirfstat(int fd)
     size_t available;
     DVM_FileTicket ticket;
     FVM_Result status;
-    if (fd < 0 || fd >= 32 || !files[fd])
+    FVM_PortFile *file = dvm_runtime_file(fd);
+    DVM_FileGate *gate = dvm_runtime_file_gate(fd);
+    if (!file)
     {
         return nil;
     }
-    dvm_file_gate_reserve(file_gates[fd], &ticket);
-    if (!dvm_file_gate_enter_now(file_gates[fd], &ticket))
+    dvm_file_gate_reserve(gate, &ticket);
+    if (!dvm_file_gate_enter_now(gate, &ticket))
     {
         return nil;
     }
-    status = fvm_port_file_size(files[fd], &available);
-    if (!dvm_file_gate_leave(file_gates[fd], &ticket))
+    status = fvm_port_file_size(file, &available);
+    if (!dvm_file_gate_leave(gate, &ticket))
     {
         fprintf(stderr, "disvm: loader metadata admission lost\n");
         exit(1);
@@ -4175,10 +4158,4 @@ void Sys_create(void *frame)
         kwerrstr("create supports OWRITE, optional OEXCL and permission 0666 only");
     }
     publish_descriptor(call->ret, result, old);
-}
-
-/* Borrow a directory cursor only for the current serial owner call. */
-FVM_PortDirectory *dvm_runtime_directory(int descriptor)
-{
-    return descriptor >= 3 && descriptor < 32 ? directories[descriptor] : nil;
 }

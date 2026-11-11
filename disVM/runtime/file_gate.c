@@ -213,7 +213,7 @@ int dvm_file_gate_leave(DVM_FileGate *gate, DVM_FileTicket *ticket)
 }
 
 
-/* Registry changes require heap exclusion. FD pins must make pending retirement
+/* Registry changes take the registry mutex. FD pins must make pending retirement
  * impossible; refuse rather than freeing mutex/storage under a native borrower. */
 int dvm_file_gate_destroy(DVM_FileGate *gate)
 {
