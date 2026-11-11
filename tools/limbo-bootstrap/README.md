@@ -123,3 +123,11 @@ Both streaming and buffered writers use its checked signed30 encoding, with
 unsigned shifts and no partial write on range/capacity failure. The registered
 dis-constants test exercises both production writers and fixed-word output.
 This preserves classic wire bytes; it does not enable the proposed Dis64 ABI.
+
+
+The POSIX support library also supplies decimal conversion to native DisVM.
+Its owned `host/decimal_sync.c` facade protects Gay dtoa/strtod/freedtoa caches
+with one native mutex; returned digit buffers remain caller-owned until freedtoa.
+`prepare_dtoa.py` renames only the private entry points in the build view and
+preserves imported sources. With BUILD_TESTING, `limbo_bootstrap_decimal_threads`
+checks real concurrent parsing, exact binary64 round-trips and digit ownership.

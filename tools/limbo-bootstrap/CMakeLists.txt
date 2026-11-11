@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Build explicit native Limbo tooling and shared synchronized POSIX decimal support.
+# RU: Собрать явный native Limbo bootstrap и общий синхронный POSIX decimal support.
 # Temporary native Limbo bootstrap from selected owned upstream sources.
 cmake_minimum_required(VERSION 3.10)
 project(limbo_bootstrap VERSION 0.1.0 LANGUAGES C)
@@ -7,6 +10,7 @@ endif()
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
+find_package(Threads REQUIRED)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
   add_compile_options(-fno-strict-aliasing)
 endif()
@@ -149,10 +153,10 @@ add_library(limbo_bootstrap_bio STATIC
   upstream/libbio/bwrite.c
 )
 target_link_libraries(limbo_bootstrap_bio PUBLIC limbo_bootstrap_lib9)
-add_library(limbo_bootstrap_support STATIC host/bootstrap_support.c
+add_library(limbo_bootstrap_support STATIC host/bootstrap_support.c host/decimal_sync.c
   upstream/libmath/FPcontrol-Linux.c "${limbo_dtoa}" upstream/libmath/g_fmt.c upstream/libmath/gfltconv.c
   upstream/libsec/port/md5.c upstream/libsec/port/md5block.c)
-target_link_libraries(limbo_bootstrap_support PUBLIC limbo_bootstrap_lib9 m)
+target_link_libraries(limbo_bootstrap_support PUBLIC limbo_bootstrap_lib9 m Threads::Threads)
 # Optional owner-supplied yacc regeneration; default standalone builds can still
 # consume committed bootstrap artifacts. New project grammars remain Coco/R.
 set(IYACC_EXECUTABLE "" CACHE FILEPATH "Optional source-built Inferno iyacc")
@@ -362,4 +366,12 @@ if(BUILD_TESTING AND LIMBO_BOOTSTRAP_CELL_BYTES STREQUAL "4")
       --root "${CMAKE_CURRENT_BINARY_DIR}" ${dis64_reader_arguments})
     set_tests_properties(limbo_bootstrap_dis64_${kind} PROPERTIES TIMEOUT 180)
   endforeach()
+endif()
+
+# Real native decimal caches are shared by the compiler and DisVM consumers.
+if(BUILD_TESTING)
+  add_executable(limbo_bootstrap_decimal_threads host/test_decimal_threads.c)
+  target_link_libraries(limbo_bootstrap_decimal_threads PRIVATE limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support)
+  add_test(NAME limbo_bootstrap_decimal_threads COMMAND limbo_bootstrap_decimal_threads)
+  set_tests_properties(limbo_bootstrap_decimal_threads PROPERTIES TIMEOUT 60)
 endif()

@@ -108,3 +108,11 @@ primary Coco/R compiler or the upstream snapshot.
 сдвигами и без частичной записи при отказе по диапазону/ёмкости. Тест
 dis-constants проверяет оба production writer и fixed-word output. Байты
 классического формата сохраняются; новый Dis64 ABI этим не включается.
+
+
+POSIX support-библиотека предоставляет decimal-преобразования также native DisVM.
+Собственный фасад `host/decimal_sync.c` защищает кэши Gay dtoa/strtod/freedtoa
+одним native mutex; буфер цифр принадлежит вызывающему до freedtoa.
+`prepare_dtoa.py` переименовывает только приватные входы в личном source-view,
+не меняя импорт. При BUILD_TESTING тест `limbo_bootstrap_decimal_threads`
+проверяет параллельный parse, точный binary64 round-trip и владение цифрами.
