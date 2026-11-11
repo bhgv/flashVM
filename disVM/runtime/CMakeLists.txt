@@ -3000,7 +3000,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     add_test(NAME disvm_table_transfer COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_table_transfer.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
-    set_tests_properties(disvm_table_retirement disvm_table_scope_kill disvm_table_transfer PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_table_fifo_edit COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_table_fifo_edit.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_table_retirement disvm_table_scope_kill disvm_table_transfer disvm_table_fifo_edit PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_resident_tables COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_tables.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
