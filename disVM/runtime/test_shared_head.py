@@ -1,4 +1,7 @@
-"""Actual rooted HEADMP projection, source-list lifetime and guarded guest."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual rooted HEADMP projection, source-list lifetime and guarded guest.
+RU: Проверки проекции головы списка, корней и обработки конфликтов.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -24,6 +27,7 @@ WRAPPER = r'''
 #include "gc_fields.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -212,13 +216,21 @@ DVM_RefcountResult __wrap_dvm_refcount_release_u(unsigned long *count)
 
 
 /* Missing source claim must stop before its actual retain. */
-DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
+DVM_CellResult __real_dvm_range_access_begin(DVM_CellDomain *, const void *, size_t,
+    void *, size_t, DVM_RangeAccess *);
+
+
+/* EN: Delay actual source capture before obtaining its root and guard.
+ * RU: Задержать чтение источника до получения его корня и блокировки. */
+DVM_CellResult __wrap_dvm_range_access_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, void *destination, size_t destination_size,
+    DVM_RangeAccess *access)
 {
     static Inst *retry_pc; /* Decoded HEADMP PC at the first failed source claim. */
     static int replayed; /* The actual guest has reached admission again. */
 
     if (CONTROL == 0 && !active && !replayed &&
-        dvm_native_execution()->arithmetic_retry_opcode == IHEADMP && source == destination)
+        dvm_native_execution()->arithmetic_retry_opcode == IHEADMP && source_size == sizeof(void *) && !destination && !destination_size)
     {
         if (!retry_pc)
         {
@@ -231,6 +243,17 @@ DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destinat
         print("PASS scheduled HEADMP source retry\n");
     }
 
+    if (active && CONTROL == 1)
+    {
+        return DVM_CELL_ACQUIRED;
+    }
+    return __real_dvm_range_access_begin(domain, source, source_size,
+        destination, destination_size, access);
+}
+
+
+DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
+{
     if (active && CONTROL == 1)
     {
         return DVM_CELL_ACQUIRED;
@@ -258,6 +281,21 @@ int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *key
         return 1;
     }
     return __real_dvm_runtime_root_batch_publish(batch, keys, count);
+}
+
+
+int __real_dvm_range_access_end(DVM_RangeAccess *access);
+
+
+/* EN: Detect a missing source unlock at the current range-guard boundary.
+ * RU: Проверить снятие блокировки источника на границе диапазона. */
+int __wrap_dvm_range_access_end(DVM_RangeAccess *access)
+{
+    if (active && CONTROL == 4)
+    {
+        return 1;
+    }
+    return __real_dvm_range_access_end(access);
 }
 
 
@@ -396,7 +434,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     strings = dvm_refcount_load_i(&Tstring.ref);
     lists = dvm_refcount_load_i(&Tlist.ref);
     collectors = workers;
-    record = dtype(destroy, sizeof(expected), &map, 1);
+    record = dtype(freeheap, sizeof(expected), &map, 1);
     check(record != NULL, "real dtype");
     selected = record;
     value = c2string("head-data", 9);
@@ -441,7 +479,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     check(!release_error, "release error was actually exercised");
     resolver_error = 0;
     release_error = 0;
-    wrong = dtype(destroy, sizeof(expected) + 4096, NULL, 0);
+    wrong = dtype(freeheap, sizeof(expected) + 4096, NULL, 0);
     check(wrong != NULL, "real oversized descriptor");
     selected = wrong;
     check(!kprotect(invoke, NULL) && !memcmp(before, target, sizeof(before)) && heapref(node) == 1,
@@ -450,7 +488,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     freetype(wrong);
     {
         unsigned char different_map = 0x40;
-        wrong = dtype(destroy, sizeof(expected), &different_map, 1);
+        wrong = dtype(freeheap, sizeof(expected), &different_map, 1);
         check(wrong != NULL, "real incompatible map descriptor");
         selected = wrong;
         check(!kprotect(invoke, NULL) && !strcmp(getup()->env->errstr, exType) &&
@@ -459,7 +497,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
         selected = record;
         freetype(wrong);
     }
-    wrong = dtype(destroy, 0, NULL, 0);
+    wrong = dtype(freeheap, 0, NULL, 0);
     check(wrong != NULL, "real empty descriptor");
     selected = wrong;
     {
@@ -495,7 +533,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
         dvm_refcount_load_i(&Tlist.ref) == lists && dvm_refcount_load_i(&record->ref) == 1,
         "node and descriptor baseline after Fast");
     freeptrs(target, record);
-    selected = dtype(destroy, sizeof(expected), NULL, 0);
+    selected = dtype(freeheap, sizeof(expected), NULL, 0);
     check(selected != NULL, "real raw descriptor");
     slot = H;
     node = cons(sizeof(expected), &slot);
@@ -509,7 +547,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     {
         unsigned char zero_map = 0;
         Type *plain = selected;
-        selected = dtype(destroy, sizeof(expected), &zero_map, 1);
+        selected = dtype(freeheap, sizeof(expected), &zero_map, 1);
         check(selected != NULL && kprotect(invoke, NULL) && !memcmp(target, expected, sizeof(expected)),
             "zero-tail maps are compatible with raw list storage");
         freetype(selected);
@@ -573,7 +611,7 @@ def main():
             binary = relink(runtime, work, wrapper, variant,
                             ['dvm_runtime_root_registry_probe', 'dvm_runtime_guarded_headmp',
                              'dvm_runtime_mapped_copy', 'destroy', 'error', 'malloc', 'calloc',
-                             'dvm_managed_cells_begin', 'dvm_cell_access_end',
+                             'dvm_range_access_end', 'dvm_range_access_begin', 'dvm_managed_cells_begin', 'dvm_cell_access_end',
                              'dvm_runtime_root_batch_publish', 'dvm_runtime_root_batch_create',
                              'dvm_runtime_root_batch_destroy', 'free', 'dvm_refcount_retain_u',
                              'dvm_refcount_release_u', 'dvm_gc_field_mark'])

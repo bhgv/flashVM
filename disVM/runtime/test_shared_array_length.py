@@ -1,4 +1,7 @@
-"""Actual LENA: continuous source guard, discovered field, real arrays and GC."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual LENA: continuous source guard, discovered field, real arrays and GC.
+RU: Проверки массивов, захвата полей и передачи буферизованных сообщений.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -287,6 +290,8 @@ init() {
     spawn sender(records, ready, done, 55);
     if (<-ready != 1)
         raise "sender did not start";
+    if (sys->sleep(42421) != 0)
+        raise "queued sender handshake failed";
     {
         value = <-records;
         raise "expected refill failure";
@@ -307,6 +312,8 @@ init() {
     spawn sender(records, ready, done, 55);
     if (<-ready != 1)
         raise "second sender did not start";
+    if (sys->sleep(42421) != 0)
+        raise "second queued sender handshake failed";
     {
         value = <-records;
         raise "expected uncommitted refill failure";
@@ -344,6 +351,7 @@ WRAPPER = r'''
 #include "runtime_gc.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -417,6 +425,54 @@ void __wrap_destroy(void *value)
     }
     __real_destroy(value);
 }
+
+static pthread_mutex_t sender_gate = PTHREAD_MUTEX_INITIALIZER; /* Protect queued-send evidence. */
+static pthread_cond_t sender_ready = PTHREAD_COND_INITIALIZER; /* Notify actual waiter publication. */
+static unsigned int queued_senders; /* Published SEND waits in the receive-error guest. */
+static unsigned int required_senders; /* Parent's completed test handshakes. */
+static void check(int valid, const char *message);
+void __real_dvm_runtime_channel_waiter_published(void);
+int __real_dvm_runtime_guest_sleep(unsigned long milliseconds);
+
+
+/* EN: Observe committed SEND waiting state after normal waiter publication.
+ * RU: Зафиксировать опубликованное ожидание SEND после штатной публикации. */
+void __wrap_dvm_runtime_channel_waiter_published(void)
+{
+    __real_dvm_runtime_channel_waiter_published();
+    if (getenv("DVM_TEST_RECEIVE_ERRORS") && up->prog && ((Prog *)up->prog)->state == Psend)
+    {
+        pthread_mutex_lock(&sender_gate);
+        queued_senders++;
+        pthread_cond_broadcast(&sender_ready);
+        pthread_mutex_unlock(&sender_gate);
+    }
+}
+
+
+/* EN: The guest's sentinel sleep waits outside heap admission for its queued sender.
+ * milliseconds otherwise passes to the real sleep unchanged. Return one when the handshake handled the sleep.
+ * RU: Тестовое ожидание подтверждает очередь отправителя вне допуска к куче.
+ * Иные milliseconds передаются штатному ожиданию. При подтверждении вернуть единицу. */
+int __wrap_dvm_runtime_guest_sleep(unsigned long milliseconds)
+{
+    if (milliseconds != 42421 || !getenv("DVM_TEST_RECEIVE_ERRORS"))
+    {
+        return __real_dvm_runtime_guest_sleep(milliseconds);
+    }
+    int released = dvm_runtime_gc_native_try_leave();
+    check(released == 1, "queued sender handshake releases heap participation");
+    pthread_mutex_lock(&sender_gate);
+    required_senders++;
+    while (queued_senders < required_senders)
+    {
+        pthread_cond_wait(&sender_ready, &sender_gate);
+    }
+    pthread_mutex_unlock(&sender_gate);
+    dvm_runtime_gc_native_enter(released);
+    return 1;
+}
+
 
 static __thread int ring_kind; /* 1 mapped, 2 native scalar, 3 raw record. */
 int __real_dvm_runtime_mapped_buffer_transfer(const void *, void *, Type *, int, int *, int, const Prog *);
@@ -1151,12 +1207,13 @@ def main():
                  'dvm_runtime_array_length_value', 'dvm_runtime_array_index_operands',
                  'dvm_runtime_bytes_publish_opcode', 'dvm_managed_ranges_begin',
                  'dvm_runtime_string_view', 'dvm_managed_three_begin', 'dvm_managed_spans_begin',
+                 'dvm_runtime_channel_waiter_published', 'dvm_runtime_guest_sleep',
                  'dvm_runtime_mapped_buffer_transfer', 'destroy', 'error', 'malloc', 'calloc', 'free'])
             for mode in ('--no-jit', '--jit'):
                 if variant == 0:
                     run = subprocess.run([str(binary), mode, '--gc-worker', '--guarded-copies',
-                                          '--managed-workers', '2', '--parallel-channel-buffer',
-                                          '--stats', '--quantum', '65536', str(error_image)], capture_output=True, text=True, timeout=30,
+                                          '--native-spawn', '--parallel-channel-buffer',
+                                          '--stats', str(error_image)], capture_output=True, text=True, timeout=30,
                                          env=dict(os.environ, DVM_TEST_RECEIVE_ERRORS='1'))
                     if (run.returncode or 'PASS buffered receive commit boundary' not in run.stdout
                             or run.stdout.count('PASS injected receive array release failure') != 2

@@ -1,4 +1,7 @@
-"""Actual mapped replacement, retained/rooted retirement and guarded MOVMP guest."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual mapped replacement, retained/rooted retirement and guarded MOVMP guest.
+RU: Проверки копирования значений по карте ссылок.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -22,6 +25,7 @@ WRAPPER = r'''
 #include "gc_fields.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -286,7 +290,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     memcpy(previous, getup()->env->errstr, sizeof(previous));
     baseline = dvm_refcount_load_i(&Tstring.ref);
     collectors = workers;
-    record_type = dtype(destroy, sizeof(expected), &map, 1);
+    record_type = dtype(freeheap, sizeof(expected), &map, 1);
     check(record_type != NULL, "real mapped dtype");
     first = c2string("mapped-first", 12);
     second = c2string("mapped-second", 13);

@@ -1,4 +1,7 @@
-"""Actual scalar/raw list projection, allocation extents and rooted cleanup."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual scalar/raw list projection, allocation extents and rooted cleanup.
+RU: Проверки скалярных элементов списков и времени жизни источника.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -26,6 +29,7 @@ WRAPPER = r'''
 #include "disvm/native_owner.h"
 #include <fenv.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

@@ -1,4 +1,7 @@
-"""Actual 24-op arithmetic, jointly guarded operands and overlap semantics."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual 24-op arithmetic, jointly guarded operands and overlap semantics.
+RU: Проверки арифметики, повторов и закреплённых нативных владельцев.
+"""
 from pathlib import Path
 import os
 import re
@@ -6,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 from relink_private import relink
+from resident_evidence import evidence
 from test_shared_integer import WRAPPER as TEMPLATE
 
 FAMILIES = (('add', '+'), ('sub', '-'), ('and', '&'), ('or', '|'), ('xor', '^'),
@@ -274,28 +278,25 @@ static int force_busy;''')
             "scheduler redecodes the same PC without double charging quota");
         check(busy_output == d && busy_width == m && !memcmp(busy_before, d, m),
             "scheduler retry preserves the destination before acquisition");
-        if (CONTROL == 5)
+        if (CONTROL == 5 && busy_attempts < 130)
         {
             busy_attempts++;
             return DVM_CELL_BUSY;
+        }
+        if (CONTROL == 5)
+        {
+            check(busy_attempts == 130, "all temporary conflicts were retried");
+            print("PASS sustained arithmetic retry\\n");
         }
         retry_observed = 1;
         print("PASS scheduled arithmetic retry\\n");
     }
     return __real_dvm_managed_three_begin(s, n, b, bn, d, m, access);''')
-    code = code.replace('    __real_error(message);', '''    if (CONTROL == 5 && busy_attempts)
-    {
-        check(!strcmp(message, "integer arithmetic guard refused") && busy_attempts == 9 &&
-            retry_pc == DVM_R.PC && retry_instruction_count == dvm_runtime_instructions &&
-            !memcmp(busy_before, busy_output, busy_width) &&
-            !dvm_native_context_object_count(dvm_native_context_current()),
-            "persistent busy raises after eight retries with output and quota intact");
-        print("PASS arithmetic retry limit\\n");
-    }
-    __real_error(message);''')
     opcode_check = ' || '.join('dvm_native_execution()->arithmetic_retry_opcode == I'+op.upper() for op in OPS)
     code = code.replace('SCHEDULED_ARITHMETIC_OPCODE', '('+opcode_check+')')
     code = code.replace('FAIL integer:', 'FAIL arithmetic:').replace('PASS integer', 'PASS arithmetic')
+    code = code.replace("invalid integer conversion opcode", "integer arithmetic guard refused")
+    code = code.replace("integer conversion requires managed dispatch", "integer arithmetic guard refused")
     return code.replace('dvm_managed_three_begin', 'dvm_managed_small_three_begin').replace('DVM_RangeAccess held', 'DVM_TripleAccess held').replace('dvm_range_access_end(&held)', 'dvm_small_range_access_end(&held)').replace('DVM_RangeAccess *access', 'DVM_TripleAccess *access').replace('DVM_RangeAccess *);', 'DVM_TripleAccess *);')
 
 
@@ -330,19 +331,18 @@ def parallel_guest():
 
 
 def parallel_wrapper():
-    """Observe distinct native contexts inside actual leased ADDW evaluation."""
+    """Observe real arithmetic on distinct resident contexts without a guard-held barrier."""
     source = '#include "disvm/native_owner.h"\n#include <pthread.h>\n'+wrapper()
     signature = 'void __wrap_dvm_runtime_arithmetic_value(int op, const void *s, const void *b, void *d)'
-    instrumented = source.replace(signature+'\n{', '''static pthread_mutex_t parallel_lock = PTHREAD_MUTEX_INITIALIZER; /* Rendezvous lock. */
-static pthread_cond_t parallel_ready = PTHREAD_COND_INITIALIZER; /* Wake the first evaluator. */
-static DVM_NativeContext *parallel_first; /* First live evaluator identity. */
-static int parallel_count; /* Observed evaluators, capped at two. */
+    instrumented = source.replace(signature+'\n{', '''static pthread_mutex_t parallel_lock = PTHREAD_MUTEX_INITIALIZER; /* Protect observations. */
+static DVM_NativeContext *parallel_first; /* Identity recorded at the start of an overlap window. */
+static int parallel_observed; /* Two different residents executed actual arithmetic. */
 
 '''+signature+r'''
 {
     DVM_HeapOwnerStats owner;
     if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         DVM_NativeContext *context = dvm_native_context_current();
         pthread_mutex_lock(&parallel_lock);
@@ -350,37 +350,25 @@ static int parallel_count; /* Observed evaluators, capped at two. */
         {
 LEASED_OPCODE_NAMES
         }
-        if (op != IADDW)
-        {
-            pthread_mutex_unlock(&parallel_lock);
-            __real_dvm_runtime_arithmetic_value(op, s, b, d);
-            return;
-        }
-        if (!parallel_count)
+        if (!parallel_first)
         {
             parallel_first = context;
-            parallel_count = 1;
-            while (parallel_count < 2)
-            {
-                pthread_cond_wait(&parallel_ready, &parallel_lock);
-            }
         }
-        else if (parallel_count == 1)
+        else if (!parallel_observed && parallel_first != context)
         {
-            check(parallel_first != context, "two distinct OS evaluators");
-            parallel_count = 2;
-            print("PASS concurrent leased evaluators\n");
-            pthread_cond_broadcast(&parallel_ready);
+            parallel_observed = 1;
+            print("PASS independent frame evaluators\n");
         }
         pthread_mutex_unlock(&parallel_lock);
+        __real_dvm_runtime_arithmetic_value(op, s, b, d);
+        return;
     }''',1)
-
     names = '\n'.join(f'        case I{op.upper()}: fprint(2, "LEASED {op}\\n"); break;' for op in OPS)
     return instrumented.replace('LEASED_OPCODE_NAMES', names)
 
 
 def run_parallel(runtime, compiler, include, work):
-    """Require two workers to overlap in both dispatch modes."""
+    """Require two fixed residents to execute all operations in both dispatch modes."""
     source, image, fixture = (work/name for name in ('parallel.b', 'parallel.dis', 'parallel.c'))
     source.write_text(parallel_guest())
     fixture.write_text(parallel_wrapper())
@@ -391,14 +379,15 @@ def run_parallel(runtime, compiler, include, work):
     for mode in ('--no-jit', '--jit'):
         for locked_poll in (False, True):
             args = [str(binary), mode, '--gc-worker', '--guarded-copies',
-                    '--managed-workers', '2', '--parallel-integer']
+                    '--native-spawn', '--parallel-integer', '--stats']
             if locked_poll:
                 args.append('--gc-locked-poll')
             run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=20,
                 env=dict(os.environ, TMPDIR=str(work)))
             output = run.stdout+run.stderr
-            if run.returncode or 'PASS concurrent leased evaluators' not in output or 'PASS parallel frame arithmetic' not in output:
+            if run.returncode or 'PASS independent frame evaluators' not in output or 'PASS parallel frame arithmetic' not in output:
                 raise RuntimeError('parallel integer failed: '+output)
+            evidence(output, children=2)
             leased = {line[len('LEASED '):] for line in output.splitlines() if line.startswith('LEASED ')}
             if leased != set(OPS):
                 raise RuntimeError(f'parallel integer opcode mismatch in {mode}: missing {sorted(set(OPS)-leased)}, '
@@ -434,8 +423,8 @@ def main():
                         if run.returncode != 10 or 'FAIL arithmetic: '+marker not in output:
                             raise RuntimeError('semantic control missed: '+output)
                     elif variant == 5:
-                        if run.returncode != 1 or 'PASS arithmetic retry limit' not in output:
-                            raise RuntimeError('scheduler retry limit missed: '+output)
+                        if run.returncode or 'PASS sustained arithmetic retry' not in output or 'PASS arithmetic24' not in output:
+                            raise RuntimeError('sustained scheduler retry failed: '+output)
                     elif run.returncode or ('PASS arithmetic admission refusal' if variant == 3 else 'PASS arithmetic probe:') not in output or 'PASS arithmetic24' not in output:
                         raise RuntimeError('arithmetic positive failed: '+output)
                     if variant == 3 and 'PASS scheduled arithmetic retry' not in output:

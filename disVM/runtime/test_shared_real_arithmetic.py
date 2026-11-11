@@ -1,4 +1,7 @@
-"""Actual REAL arithmetic: overlap, unlocked FP, exact source/output guards and phases."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual REAL arithmetic: overlap, unlocked FP, exact source/output guards and phases.
+RU: Проверки вещественной арифметики и защищённых фаз вычисления.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -279,7 +282,7 @@ void __wrap_dvm_runtime_real_arithmetic_value(int opcode,const void *pair,void *
 
     if (CONTROL == 0 && !active &&
         dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         switch (opcode)
         {
@@ -387,7 +390,7 @@ static const char *observe_scaled(const WORD *coefficients, const void *first, c
     const char *problem = scaled_evaluator(coefficients, first, second, out);
 
     if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         switch (scaled_opcode)
         {
@@ -479,7 +482,7 @@ static const char *observe_fixed(WORD scale, const void *first, const void *seco
     DVM_HeapOwnerStats owner;
 
     if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         print(fixed_opcode == IMULX ? "LEASED MULX\n" : "LEASED DIVX\n");
     }
@@ -546,10 +549,11 @@ static void invoke(int opcode,const void *a,const void *b,void *out)
 }
 
 
-static void invalid_fixed_scale(void *unused)
+static int invalid_fixed_scale(void *unused)
 {
     (void)unused;
     dvm_runtime_bytes_fast(&DVM_R, ICVTXX);
+    return 1;
 }
 
 
@@ -589,10 +593,11 @@ static void fixed_conversions(void)
 
 
 /* Invoke actual DIVX under the fixture's exception boundary. */
-static void zero_fixed_divisor(void *unused)
+static int zero_fixed_divisor(void *unused)
 {
     (void)unused;
     dvm_runtime_bytes_fast(&DVM_R, IDIVX);
+    return 1;
 }
 
 
@@ -648,13 +653,14 @@ static void fixed_products(void)
 
 /* Throw through the actual VM protection boundary with independently live cells.
  * Argument is unused; the caller checks rollback after kprotect unwinds. */
-static void unwind(void *unused)
+static int unwind(void *unused)
 {
     REAL left = 1.0;
     REAL right = 0.0;
     REAL out = 123.0;
     (void)unused;
     (void)__real_dvm_runtime_real_arithmetic(IDIVF,&left,&right,&out);
+    return 1;
 }
 
 
@@ -774,7 +780,7 @@ def main():
         for mode in ('--jit','--no-jit'):
             for locked in (False,True):
                 args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe',
-                        '--managed-workers','2','--parallel-real','--parallel-integer','--quantum','1']
+                        '--native-spawn','--parallel-real','--parallel-integer']
                 if locked:
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,
@@ -806,7 +812,7 @@ def main():
                 if before not in original:
                     raise RuntimeError('REAL control source drift')
                 private = work/'shared_real_arithmetic.c'
-                private.write_text(original.replace(before,after,1))
+                private.write_text('#include "byte_transfer.h"\n' + original.replace(before,after,1))
                 bad = relink(runtime,work,wrapper,index+1,symbols,shared_real_arithmetic_source=private)
                 run = subprocess.run([str(bad),'--no-jit','--gc-worker','--guarded-copies',
                     '--managed-owner-probe',str(image)],capture_output=True,text=True,timeout=60,

@@ -1,4 +1,7 @@
-"""Exercise real prepared pointer nodes, refusal rollback and dependent-tail retry."""
+# Copyright (c) 2026 bhgv
+"""EN: Exercise real prepared pointer nodes, refusal rollback and dependent-tail retry.
+RU: Проверки подготовки укоренённых указательных списков и обработки отказов.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -112,8 +115,9 @@ int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch,void *const *keys
 
 /* Inspect a real coherent ordinary-rooted node; errors must unwind without
  * calling this monitor again. The callback does not mutate its borrowed inputs. */
-static void monitor(int event,Heap *heap,ulong bytes)
+static void monitor(int event,void *argument,ulong bytes)
 {
+    Heap *heap = argument;
     List *node = H2D(List *,heap);
     void *value;
     (void)bytes;

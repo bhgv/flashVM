@@ -1,4 +1,7 @@
-"""Actual eight mixed-width shifts, protected error ordering and alias oracles."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual eight mixed-width shifts, protected error ordering and alias oracles.
+RU: Проверки сдвигов, размеров операндов и повторов.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -318,7 +321,7 @@ static int active;""")
     DVM_HeapOwnerStats owner;
     if (CONTROL == 0 && !active &&
         dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         switch (op)
         {
@@ -350,7 +353,7 @@ def main():
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
                     if variant == 0:
-                        args += ['--managed-workers', '2', '--parallel-integer']
+                        args += ['--native-spawn', '--parallel-integer']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=60,

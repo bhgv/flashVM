@@ -1,4 +1,7 @@
-"""Actual guarded FP conversions versus retained-source differential and boundary oracles."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual guarded FP conversions versus retained-source differential and boundary oracles.
+RU: Проверки вещественных преобразований и очистки при отказах.
+"""
 from pathlib import Path
 import os
 import hashlib
@@ -211,7 +214,7 @@ const char *__wrap_dvm_runtime_real_conversion_value(int opcode,const void *sour
 
     if (CONTROL == 0 && !active &&
         dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         switch (opcode)
         {
@@ -515,7 +518,7 @@ def main():
         for mode in ('--jit','--no-jit'):
             for locked in (False,True):
                 args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe',
-                        '--managed-workers','2','--parallel-real']
+                        '--native-spawn','--parallel-real']
                 if locked:
                     args += ['--gc-locked-poll']
                 run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=60,
@@ -545,7 +548,7 @@ def main():
                 if before not in original:
                     raise RuntimeError('conversion control anchor drift')
                 private = work/'shared_real_conversion.c'
-                private.write_text(original.replace(before,after,1))
+                private.write_text('#include "byte_transfer.h"\n' + original.replace(before,after,1))
                 bad = relink(runtime,work,wrapper,index+1,symbols,shared_real_conversion_source=private)
                 run = subprocess.run([str(bad),'--no-jit','--gc-worker','--guarded-copies',
                     '--managed-owner-probe',str(image)],capture_output=True,text=True,timeout=60,

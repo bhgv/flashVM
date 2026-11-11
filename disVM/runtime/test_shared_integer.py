@@ -1,4 +1,7 @@
-"""Real managed-owner integer conversions with joint-guard semantic controls."""
+# Copyright (c) 2026 bhgv
+"""EN: Real managed-owner integer conversions with joint-guard semantic controls.
+RU: Проверки целочисленных преобразований и защищённого доступа.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -261,7 +264,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
         check(!kprotect(invoke, NULL) && !memcmp(bytes, wanted, sizeof(bytes)), "opcode error unchanged");
     }
     problem = dvm_runtime_integer_convert(MAXDIS, H, H);
-    check(problem == exHeap && !dvm_native_context_object_count(dvm_native_context_current()), "unknown opcode preflight");
+    check(problem && !strcmp(problem, "invalid integer conversion opcode") && !dvm_native_context_object_count(dvm_native_context_current()), "unknown opcode preflight");
     active = 0;
     {
         DVM_CellAccess held = {0};
@@ -269,7 +272,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
         memcpy(wanted, bytes, sizeof(bytes));
         check(__real_dvm_managed_spans_begin(bytes, 1, bytes, 1, &held) == DVM_CELL_ACQUIRED,
             "held-guard fixture");
-        check(dvm_runtime_integer_convert(ICVTBW, H, H) == exHeap &&
+        check(!strcmp(dvm_runtime_integer_convert(ICVTBW, H, H), "integer conversion requires managed dispatch") &&
             !memcmp(bytes, wanted, sizeof(bytes)), "held guard preflight before operands");
         check(dvm_cell_access_end(&held), "held-guard fixture release");
     }
@@ -307,7 +310,7 @@ static int active;""")
     DVM_HeapOwnerStats owner;
     if (CONTROL == 0 && !active &&
         dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
         switch (op)
         {
@@ -348,7 +351,7 @@ def main():
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
                     if variant == 0:
-                        args += ['--managed-workers', '2', '--parallel-integer']
+                        args += ['--native-spawn', '--parallel-integer']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(image)], capture_output=True, text=True, timeout=45,

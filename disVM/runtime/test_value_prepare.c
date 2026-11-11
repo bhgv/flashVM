@@ -1,4 +1,7 @@
-/* Real raw/scalar staging fixture: failures, stale-tail rebuild and Cycles/Fast. */
+/* Copyright (c) 2026 bhgv
+ * EN: Rooted scalar-list preparation, fault controls and exact cleanup checks.
+ * RU: Подготовка укоренённых скалярных списков, отказы и полная очистка.
+ */
 
 #include "lib9.h"
 #include "dat.h"
@@ -122,8 +125,9 @@ int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch,void *const *keys
 
 /* Inspect a real coherent ordinary-rooted node; errors must unwind without
  * calling this monitor again. The callback does not mutate its borrowed inputs. */
-static void monitor(int event,Heap *heap,ulong bytes)
+static void monitor(int event,void *argument,ulong bytes)
 {
+    Heap *heap = argument;
     List *node = H2D(List *,heap);
     void *value;
     (void)bytes;

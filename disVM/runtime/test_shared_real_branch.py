@@ -1,4 +1,7 @@
-"""Actual REAL branches: coherent byte snapshots, unlocked FP, lazy target and flags."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual REAL branches: coherent byte snapshots, unlocked FP, lazy target and flags.
+RU: Проверки вещественных сравнений и ветвлений.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -624,7 +627,7 @@ def main():
                 for locked in (False,True):
                     args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe']
                     if variant == 0:
-                        args += ['--managed-workers', '2', '--parallel-real']
+                        args += ['--native-spawn', '--parallel-real']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(frame_image if variant == 0 else image)],capture_output=True,text=True,timeout=90,

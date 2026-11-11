@@ -1,4 +1,7 @@
-"""Actual HEADP/TAIL source lifetimes, interior guards, aliases and GC errors."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual HEADP/TAIL source lifetimes, interior guards, aliases and GC errors.
+RU: Проверки указательных элементов списков и удержания владельцев.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -25,6 +28,7 @@ WRAPPER = r'''
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include "disvm/native_process.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

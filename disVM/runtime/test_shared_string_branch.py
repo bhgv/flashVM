@@ -1,4 +1,7 @@
-"""Actual six string branches with real ASCII/Rune owners and exact guard controls."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual six string branches with real ASCII/Rune owners and exact guard controls.
+RU: Проверки строковых сравнений и ветвлений.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -801,7 +804,7 @@ def main():
                 for locked in (False, True):
                     args = [str(binary),mode,'--gc-worker','--guarded-copies','--managed-owner-probe']
                     if variant == 0:
-                        args += ['--managed-workers', '2', '--parallel-string']
+                        args += ['--native-spawn', '--parallel-string']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(image)],capture_output=True,text=True,timeout=90,

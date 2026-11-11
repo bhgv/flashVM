@@ -1,4 +1,7 @@
-"""Actual x64 aggregate tail entries, checked C operations and strict cache ABI."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual x64 aggregate tail entries, checked C operations and strict cache ABI.
+RU: Проверки скомпилированных операций над составными значениями и соглашения вызова.
+"""
 from pathlib import Path
 import os
 import hashlib
@@ -14,6 +17,7 @@ WRAPPER = r'''
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "kernel.h"
 #include "aggregate_fast.h"
 #include "managed_owner.h"
 #include "shared_bytes.h"

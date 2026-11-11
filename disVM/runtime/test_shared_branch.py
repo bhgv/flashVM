@@ -1,4 +1,7 @@
-"""Actual eighteen guarded branches: aliases, lazy targets and semantic controls."""
+# Copyright (c) 2026 bhgv
+"""EN: Actual eighteen guarded branches: aliases, lazy targets and semantic controls.
+RU: Проверки ветвлений, блокировок операндов и неизменности при отказах.
+"""
 from pathlib import Path
 import os
 import subprocess
@@ -201,9 +204,10 @@ int __wrap_dvm_runtime_branch_predicate(int op, const void *a, const void *b)
     DVM_HeapOwnerStats owner;
     if (CONTROL == 0 && !active &&
         dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        owner.phase == DVM_HEAP_NATIVE)
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
     {
-        check(!dvm_native_context_object_count(dvm_native_context_current()), "leased predicate has no guard");
+        check((dvm_native_context_object_count(dvm_native_context_current()) != 0) ==
+            (owner.phase == DVM_HEAP_SHARED), "predicate guard matches its owner phase");
         fprint(2, "LEASED branch %d\n", op);
         return __real_dvm_runtime_branch_predicate(op, a, b);
     }
@@ -338,7 +342,7 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
                         DVM_R.PC = &code[0];
                         if (CONTROL == 3)
                         {
-                            check(!kprotect(invoke, NULL) && !strcmp(getup()->env->errstr, exHeap) &&
+                            check(!kprotect(invoke, NULL) && !strcmp(getup()->env->errstr, "integer branch guard refused") &&
                                 DVM_R.PC == &code[0] && !memcmp(before, cells, sizeof(cells)), "refusal unchanged");
                             goto finish;
                         }
@@ -405,8 +409,11 @@ void __wrap_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers)
     }
     {
         Inst *foreign = &code[0];
-        check(dvm_runtime_integer_branch(MAXDIS, H, H, H, &DVM_R.PC) == exHeap, "unknown opcode first");
-        check(dvm_runtime_integer_branch(IBEQW, H, H, H, &foreign) == exHeap && foreign == &code[0], "foreign PC refused");
+        const char *invalid = dvm_runtime_integer_branch(MAXDIS, H, H, H, &DVM_R.PC);
+        check(invalid && !strcmp(invalid, "integer branch guard refused"), "unknown opcode first");
+        invalid = dvm_runtime_integer_branch(IBEQW, H, H, H, &foreign);
+        check(invalid && !strcmp(invalid, "integer branch guard refused") &&
+            foreign == &code[0], "foreign PC refused");
     }
 finish:
     check(!dvm_native_context_object_count(dvm_native_context_current()), "finish unlocked");
@@ -450,7 +457,7 @@ def main():
                 for locked in (False, True):
                     args = [str(binary), mode, '--gc-worker', '--guarded-copies', '--managed-owner-probe']
                     if variant == 0:
-                        args += ['--managed-workers', '2', '--parallel-integer']
+                        args += ['--native-spawn', '--parallel-integer']
                     if locked:
                         args += ['--gc-locked-poll']
                     run = subprocess.run(args+[str(frame_image if variant == 0 else image)], capture_output=True, text=True, timeout=90,
