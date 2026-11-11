@@ -11,6 +11,7 @@
 #include "gc/fast/owner_publication.inc"
 #include "gc/fast/frame_publication.inc"
 #include "gc/fast/array_children.inc"
+#include "gc/cycles/packet_rescue.inc"
 #include "gc/fast/packet_children.inc"
 #include "gc/fast/module_data.inc"
 #include "gc/fast/object_children.inc"

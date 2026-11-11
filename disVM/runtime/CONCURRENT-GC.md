@@ -136,3 +136,8 @@ transfer, rollback and native Module/code cleanup through the existing registry.
 Actual MP/metadata frees and executable-code unmap precede peer release. Dynamic
 native modules, module cycles and closed-admission shutdown remain outside this
 new path.
+
+[Packet cycle retirement](PACKET-CYCLE-RETIREMENT.md) preserves field/snapshot
+owners on indexed publication refusal and stages shared ticket owners until
+their old root is withdrawn. Reachable cycles survive an actual scan before
+their independent owner is released. General stopped tracing remains.

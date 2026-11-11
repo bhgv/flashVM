@@ -130,6 +130,9 @@ static unsigned long record_groups;                     /* Closed record groups 
 static unsigned long mandatory_cycle_transfers;         /* Mandatory owners transferred intact to Cycles by Fast. */
 static unsigned long mandatory_cycle_retries;           /* Duplicate index observations preserving the pending owner. */
 static unsigned long shared_mandatory_owners;           /* Mandatory FIFO owners rescued without a world stop. */
+static unsigned long packet_candidates_preserved;       /* Packet seed owners preserved in mandatory FIFO. */
+static unsigned long snapshots_replayed;                /* Refused accepted snapshot owners converted to packet work. */
+static unsigned long packet_candidate_retries;          /* Refused packet handoffs retaining original roots. */
 static unsigned long shared_children;                   /* Packet references consumed under shared admission. */
 static unsigned long frames_drained;                    /* Stopped collector's packet count. */
 
@@ -137,8 +140,8 @@ extern Pool *heapmem;                                   /* Retained pool, access
 static DVM_RetirementQueue *retirement; /* Native metadata; managed ownership stays under world admission. */
 static DVM_NativeContext *owner;        /* Original controller, valid through collector join. */
 static DVM_NativeWorld *world;          /* Runtime identity, stable through producer/collector joins. */
-static unsigned long enqueued;          /* Ownership transfers, observed after join. */
-static unsigned long released;          /* Collector-side retained destroy calls. */
+static unsigned long enqueued;          /* Accepted queue stages, observed after join. */
+static unsigned long released;          /* Completed queue stages, including snapshot-to-packet replay. */
 static unsigned long saturated;         /* Bounded-queue inline fallbacks. */
 static unsigned long byte_limited;      /* Direct block-byte budget inline fallbacks. */
 static unsigned long helper_enqueued;   /* Accepted releases from other admitted executors. */
@@ -220,6 +223,9 @@ void dvm_runtime_rc_start(void)
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;
+    packet_candidates_preserved = 0;
+    packet_candidate_retries = 0;
+    snapshots_replayed = 0;
     shared_mandatory_owners = 0;
     mandatory_cycle_transfers = 0;
     mandatory_cycle_retries = 0;

@@ -142,5 +142,10 @@ static DVM_RetirementResult release_refused_snapshot(DVM_RetirementQueue *source
     }
     free(entry->snapshot);
     free(entry);
+    /* The accepted snapshot entry has completed its ownership stage. Packet
+     * children enter accepted accounting only when they reach another queue;
+     * discovered pins were never separate accepted entries before this replay. */
+    __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
+    snapshots_replayed++;
     return DVM_RETIRE_OK;
 }

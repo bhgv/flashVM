@@ -7,10 +7,10 @@
 
 /* [GC:] EN: Consume at most budget children of the oldest frame packet on the sole shared Fast consumer.
  * Unconsumed suffix retains its roots. Return completed child count; refusal preserves the next child
- * for retry.
+ * for retry. retry receives a pending cycle-publication retry.
  * RU: Снять до budget дочерних ссылок старейшего пакета на единственном shared Fast. Остаток сохраняет корни.
  * Вернуть число снятых ссылок; при отказе следующая ссылка остаётся для повтора. */
-static unsigned int drain_shared_children(size_t budget)
+static unsigned int drain_shared_children(size_t budget, int *retry)
 {
     unsigned int completed = 0;
     while (budget)
@@ -24,6 +24,14 @@ static unsigned int drain_shared_children(size_t budget)
         {
             Heap *heap = packet->keys[packet->next];
             int transferred = transfer_record_candidate(heap, packet, packet->next);
+            if (!transferred && record_candidate(heap) && dvm_refcount_load_u(&heap->ref) > 1)
+            {
+                if (!preserve_packet_candidate(heap, packet, packet->next, retry))
+                {
+                    return completed;
+                }
+                transferred = 1;
+            }
             if (!transferred)
             {
                 if (dvm_refcount_drop_nonfinal_u(&heap->ref))

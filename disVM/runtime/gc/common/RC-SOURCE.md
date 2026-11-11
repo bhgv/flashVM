@@ -19,7 +19,7 @@ preprocessor directives. Compilation and runtime tests remain necessary evidence
 | Shared Fast reclamation | [shared_release.inc](../fast/shared_release.inc) |
 | Remaining stopped release path | [retained_release.inc](../fast/retained_release.inc) |
 | Cycles publication and queue transfer | [candidate_publication.inc](../cycles/candidate_publication.inc), [candidate_transfer.inc](../cycles/candidate_transfer.inc) |
-| Mandatory owner rescue to Cycles | [owner_rescue.inc](../cycles/owner_rescue.inc) |
+| Mandatory owner rescue to Cycles | [owner_rescue.inc](../cycles/owner_rescue.inc), [packet_rescue.inc](../cycles/packet_rescue.inc) |
 | Cycles discovery and entry | [candidate_scan.inc](../cycles/candidate_scan.inc), [rc_passes.inc](../cycles/rc_passes.inc) |
 | Duke rollback and entry | [pin_release.inc](../duke/pin_release.inc), [rc_passes.inc](../duke/rc_passes.inc) |
 
@@ -39,3 +39,6 @@ root-preserving mandatory handoff and the duplicate-index lifetime boundary.
 
 [Ordinary module retirement](../../MODULE-RETIREMENT.md) describes the MP root
 transaction, registry/metadata release and executable-code reader cutoff.
+
+[Packet cycle retirement](../../PACKET-CYCLE-RETIREMENT.md) covers failed child
+publication, snapshot replay and rooted ticket staging before discovery.

@@ -50,6 +50,7 @@ static int injected;                         /* One candidate reservation refusa
 static int cycles_open;                      /* Permit actual Cycles consumption, under sync. */
 static DVM_NativeContext *fast_context;      /* Service identity borrowed through runtime join. */
 static DVM_RetirementQueue *candidate_queue; /* Candidate identity captured at reserve, under sync. */
+static DVM_RetirementQueue *mandatory_queue; /* Ticket staging FIFO, under sync. */
 static _Thread_local int publishing;         /* Only this actual Fast RC publication may inject refusal. */
 
 
@@ -171,28 +172,31 @@ int __wrap_dvm_runtime_rc_defer(void *value)
 }
 
 
-/* [GC:] EN: Refuse only one candidate slot in mandatory-rescue profiles.
+/* [GC:] EN: Identify ticket staging FIFO, then refuse one later Cycles slot
+ * in mandatory-rescue profiles. Source ticket roots are withdrawn before rescue.
  * queue/token remain unchanged on refusal; all other reservations are real.
- * RU: Отказать одному месту кандидата в профилях обязательного восстановления.
+ * RU: Определить FIFO ticket, затем отказать одному месту Cycles при
+ * восстановлении. Корни ticket снимаются до передачи кандидату.
  * queue/token при отказе не меняются; остальные резервации настоящие. */
 DVM_RetirementResult
 __wrap_dvm_retirement_reserve(DVM_RetirementQueue *queue, unsigned long bytes, DVM_RetirementReservation *token)
 {
+    pthread_mutex_lock(&sync);
     if (publishing)
     {
-        pthread_mutex_lock(&sync);
-        if (!candidate_queue)
-        {
-            candidate_queue = queue;
-        }
+        mandatory_queue = queue;
+    }
+    else if (mandatory_queue && queue != mandatory_queue && dvm_native_context_current() == fast_context && !rescued)
+    {
+        candidate_queue = queue;
         if ((CONTROL == 1 || CONTROL == 4 || CONTROL == 5) && !injected)
         {
             injected = 1;
             pthread_mutex_unlock(&sync);
             return DVM_RETIRE_FULL;
         }
-        pthread_mutex_unlock(&sync);
     }
+    pthread_mutex_unlock(&sync);
     return __real_dvm_retirement_reserve(queue, bytes, token);
 }
 
@@ -226,7 +230,9 @@ int __wrap_dvm_retirement_commit_key(
                    !publishing && dvm_native_context_current() == fast_context;
     if (selected)
     {
-        require(dvm_runtime_root_count(nodes[0]) == 1, "mandatory cycle root disappeared before destination commit");
+        unsigned expected_roots = (CONTROL == 2 || CONTROL == 6) && !rescued ? 2 : 1;
+        require(dvm_runtime_root_count(nodes[0]) == expected_roots,
+                "mandatory cycle root disappeared before destination commit");
         rescued++;
     }
     pthread_mutex_unlock(&sync);

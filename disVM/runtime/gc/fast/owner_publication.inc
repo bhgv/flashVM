@@ -42,7 +42,14 @@ int dvm_runtime_rc_defer(void *value)
             abort();
         }
         Setmark(heap);
-        if (candidate_transfer && key.generation &&
+        /* [GC:] EN: Shared ticket handoff still owns its source root here.
+         * Only Fast consumes mandatory owners after finishing ticket-root withdrawal;
+         * publishing directly to Cycles could mistake that temporary root for a
+         * live external owner and discard the final seed.
+         * RU: Shared-передача ticket ещё удерживает исходный корень. Только Fast
+         * читает FIFO после снятия корня ticket; прямая публикация в Cycles могла
+         * бы принять временный корень за внешнего владельца и потерять seed. */
+        if (active && candidate_transfer && key.generation &&
             dvm_retirement_reserve(cycle_candidates, bytes, &token) == DVM_RETIRE_OK)
         {
             fvm_port_sync_lock(candidate_transfer);

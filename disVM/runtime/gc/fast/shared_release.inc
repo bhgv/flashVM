@@ -315,7 +315,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         }
         if (!heapmonitor)
         {
-            completed += drain_shared_children(budget);
+            completed += drain_shared_children(budget, &retry);
             /* An accepting retry queue is outside the exclusive drain.
              * Ask for another paced shared pass if nothing else can run. */
             DVM_RetirementStats pending = {0};

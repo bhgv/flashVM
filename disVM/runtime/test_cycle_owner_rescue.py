@@ -166,7 +166,7 @@ def main():
                     )
     print(
         "PASS actual cycle owner rescue: small/2300-node records physically freed with admitted peers; "
-        "direct/shared, mandatory refusal, duplicate retry, resumed Duke, C/JIT, both polls"
+        "shared staging, candidate refusal, duplicate retry, resumed Duke, C/JIT, both polls"
         + ("; positive profiles only" if positive_only else "; four semantic omission controls")
     )
 
