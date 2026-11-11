@@ -26,6 +26,10 @@ worker(id: int, ready, start, done: chan of int)
             if (missing != nil) {
                 raise "missing module load unexpectedly published an instance";
             }
+            incompatible := load Burst "bad-provider.dis";
+            if (incompatible != nil) {
+                raise "incompatible module load unexpectedly published an instance";
+            }
         }
         provider := load Burst "provider-" + string (round % 4) + ".dis";
         if (provider == nil) {

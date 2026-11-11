@@ -24,7 +24,7 @@ from test_native_kill import wait_marker
 # выбирает отмену с повтором либо исходный прямой kill.
 def execute(binary, image, work, mode, locked, collector, cancel_first):
     read_fd, write_fd = os.pipe()
-    process = subprocess.Popen([str(binary), '--native-spawn', '--stats', mode,
+    process = subprocess.Popen([str(binary), '--native-spawn', '--stats', mode, *collector,
                                 *(['--gc-locked-poll'] if locked else []), str(image)], cwd=work,
                                env=dict(os.environ, DVM_TABLE_SCOPE_RELEASE=str(read_fd)),
                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,

@@ -26,6 +26,9 @@ def main():
         subprocess.run([str(compiler), '-I', str(include), '-I', str(fixture),
                         '-o', str(work / 'provider-0.dis'), str(fixture / 'provider.b')],
                        check=True, capture_output=True, text=True)
+        subprocess.run([str(compiler), '-I', str(include), '-I', str(fixture),
+                        '-o', str(work / 'bad-provider.dis'), str(fixture / 'bad-provider.b')],
+                       check=True, capture_output=True, text=True)
         for index in range(1, 4):
             (work / f'provider-{index}.dis').write_bytes((work / 'provider-0.dis').read_bytes())
         subprocess.run([str(compiler), '-I', str(include), '-I', str(root.parent / 'module'), '-I', str(fixture),
@@ -42,11 +45,13 @@ def main():
                     if result.returncode or 'PASS resident module loads workers=8 loads=256 images=4' not in text:
                         raise RuntimeError(f'{collector} {mode} locked={locked}\n{text[-12000:]}')
                     evidence(text, children=8)
+                    if text.count('link typecheck BadBurst->run()') != 32:
+                        raise RuntimeError('real incompatible-link rollback did not run 32 times\n' + text[-12000:])
                     if (not re.search(r'NATIVERC enqueued=(\d+) released=\1 pending=0 saturated=0 bytes=0 byte_limited=0', text)
                             or 'tables_live=0 keys_live=0' not in text):
                         raise RuntimeError('parallel module loads did not retire RC\n' + text[-12000:])
     print('PASS resident module loads: 96 permanent residents, 3072 provider loads and 3072 self loads, '
-          'missing-path rollback, private MP across native yield, three GC profiles, C/JIT, '
+          'missing-path/signature rollback, private MP across native yield, three GC profiles, C/JIT, '
           'both polls and complete retirement')
 
 

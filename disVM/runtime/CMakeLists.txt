@@ -3010,6 +3010,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     set_tests_properties(disvm_table_retirement disvm_table_scope_kill disvm_table_transfer disvm_table_fifo_edit disvm_table_parent_exit PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_module_registry COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_module_registry.py" "$<TARGET_FILE:disvm>")
+    add_test(NAME disvm_load_kill COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_load_kill.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_load_kill PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_resident_load COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_load.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
