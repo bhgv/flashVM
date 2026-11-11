@@ -18,7 +18,7 @@ int dvm_runtime_rc_defer(void *value)
     int active = admitted(0);
     int helper = dvm_native_context_current() != owner;
     Heap *heap = D2H(value);
-    int candidate = active && record_candidate(heap);
+    int candidate = record_candidate(heap);
     if (!candidate && dvm_refcount_drop_nonfinal_u(&heap->ref))
     {
         return 1;

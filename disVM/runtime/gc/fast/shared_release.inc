@@ -46,7 +46,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
         size_t owner_budget = budget / 3 + (budget % 3 != 0);
         if (!heapmonitor && dvm_retirement_peek(retirement))
         {
-            completed += drain_shared_owners(owner_budget);
+            completed += drain_shared_owners(owner_budget, &retry);
             budget -= owner_budget;
         }
         DVM_RetirementStats retry_stats = {0};

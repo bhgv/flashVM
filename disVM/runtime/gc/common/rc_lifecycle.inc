@@ -142,6 +142,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
+        printf(
+            "NATIVEMANDATORYCYCLE transferred=%lu retries=%lu\n", mandatory_cycle_transfers, mandatory_cycle_retries);
         printf("NATIVEMANDATORYRC shared=%lu\n", shared_mandatory_owners);
         printf("NATIVELISTRC shared=%lu\n", shared_lists);
         printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);

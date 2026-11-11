@@ -18,6 +18,7 @@ preprocessor directives. Compilation and runtime tests remain necessary evidence
 | Shared Fast reclamation | [shared_release.inc](../fast/shared_release.inc) |
 | Remaining stopped release path | [retained_release.inc](../fast/retained_release.inc) |
 | Cycles publication and queue transfer | [candidate_publication.inc](../cycles/candidate_publication.inc), [candidate_transfer.inc](../cycles/candidate_transfer.inc) |
+| Mandatory owner rescue to Cycles | [owner_rescue.inc](../cycles/owner_rescue.inc) |
 | Cycles discovery and entry | [candidate_scan.inc](../cycles/candidate_scan.inc), [rc_passes.inc](../cycles/rc_passes.inc) |
 | Duke rollback and entry | [pin_release.inc](../duke/pin_release.inc), [rc_passes.inc](../duke/rc_passes.inc) |
 
@@ -31,3 +32,6 @@ production files or replace a runtime allocator/collector.
 The size/layout check does not certify every historical comment or every GC
 protocol. Current stop-free scope and outstanding work are described in
 [FAST-FINALIZATION.md](../../FAST-FINALIZATION.md).
+
+[Cycle-owner rescue](../../CYCLE-OWNER-RESCUE.md) describes shared seed publication,
+root-preserving mandatory handoff and the duplicate-index lifetime boundary.

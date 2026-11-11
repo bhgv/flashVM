@@ -19,6 +19,7 @@
 #include "gc/cycles/candidate_scan.inc"
 #include "gc/cycles/rc_passes.inc"
 #include "gc/duke/rc_passes.inc"
+#include "gc/cycles/owner_rescue.inc"
 #include "gc/fast/owner_drain.inc"
 #include "gc/fast/shared_release.inc"
 #include "gc/fast/retained_release.inc"

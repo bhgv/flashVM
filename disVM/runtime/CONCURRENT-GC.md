@@ -124,3 +124,9 @@ actual final-string pool release, separate ticket/leaf reader cutoffs, recovery
 from optional root OOM, and no stopped-admission attempt during the leaf wait.
 It also records the controller fallback TLS race and the remaining acceptance
 limits; the main runtime has not switched to the closed concurrent backend.
+
+[Shared cycle-owner rescue](CYCLE-OWNER-RESCUE.md) extends publication to shared
+native-ticket producers and sends pending mandatory owners to Cycles without
+withdrawing their root. Actual small cycles and a 2300-node Duke ring are freed
+before admitted peers leave. The main runtime still retains general stopped
+tracing and unsupported finalizer/shutdown paths.

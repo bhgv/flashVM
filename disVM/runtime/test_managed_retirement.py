@@ -72,8 +72,8 @@ def main():
                 source = read_rc_source(root)
                 gate, replacement_gate = (
                     (
-                        "static unsigned int drain_shared_owners(size_t budget)\n{\n    if (!budget)",
-                        "static unsigned int drain_shared_owners(size_t budget)\n{\n    if (1)",
+                        "static unsigned int drain_shared_owners(size_t budget, int *retry)\n{\n    if (!budget)",
+                        "static unsigned int drain_shared_owners(size_t budget, int *retry)\n{\n    if (1)",
                     )
                     if control == 6
                     else (

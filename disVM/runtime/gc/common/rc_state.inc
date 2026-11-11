@@ -124,6 +124,8 @@ static unsigned long shared_record_snapshots_with_peer; /* Published snapshots o
 static unsigned long shared_record_groups;              /* Groups reclaimed by shared Fast. */
 static unsigned long shared_record_groups_with_peer;    /* Group reclamations overlapping an active guest. */
 static unsigned long record_groups;                     /* Closed record groups reclaimed from queued owners. */
+static unsigned long mandatory_cycle_transfers;         /* Mandatory owners transferred intact to Cycles by Fast. */
+static unsigned long mandatory_cycle_retries;           /* Duplicate index observations preserving the pending owner. */
 static unsigned long shared_mandatory_owners;           /* Mandatory FIFO owners rescued without a world stop. */
 static unsigned long shared_children;                   /* Packet references consumed under shared admission. */
 static unsigned long frames_drained;                    /* Stopped collector's packet count. */
@@ -214,6 +216,8 @@ void dvm_runtime_rc_start(void)
     frames_drained = 0;
     shared_children = 0;
     shared_mandatory_owners = 0;
+    mandatory_cycle_transfers = 0;
+    mandatory_cycle_retries = 0;
     record_groups = 0;
     shared_record_groups = 0;
     shared_record_scans = 0;
