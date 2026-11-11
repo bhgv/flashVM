@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import prepare_jit_publication
 from prepare_string_view import adapt as adapt_string_view_cache
 from prepare_type_counts import adapt as adapt_type_counts
 from prepare_heap_counts import adapt as adapt_heap_counts
@@ -1212,6 +1213,12 @@ static int fetch_for_dispatch(VmFetch *instruction)
                     adapt_shared_integer, adapt_shared_arithmetic, adapt_shared_shift, adapt_shared_branch, adapt_shared_string_branch, adapt_shared_real_branch, adapt_shared_real_arithmetic, adapt_shared_real_conversion, adapt_shared_array_length, adapt_shared_list_length):
         hosted = adapter(hosted)
     pointer_path.write_text(hosted)
+
+    for unit, adapter in (('comp-leaf64.h', prepare_jit_publication.compiler),
+                          ('xec.c', prepare_jit_publication.dispatch),
+                          ('loader.c', prepare_jit_publication.loader)):
+        path = args.output / unit
+        path.write_text(adapter(path.read_text(), relative_replace))
 
     validate_gc_header((args.source.parent / 'include/interp.h').read_text())
     for unit in ('gc', 'heap'):

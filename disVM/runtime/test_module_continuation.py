@@ -15,7 +15,7 @@ from relink_private import relink
 
 
 # EN: Run runtime/image in directory with mode/poll options and feed payload after
-# peer progress. outcome names the expected application marker. shared_channels
+# peer progress and, for termination, actual killwait acceptance. outcome names the expected application marker. shared_channels
 # selects checked channel paths; default_profile tests default dedicated options.
 # Own the child until join; failures raise, output and message bytes are copied.
 # RU: Запустить runtime/image в directory с mode/poll; передать payload после
@@ -32,10 +32,11 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
         try:
             output = bytearray()
             peer = b"PEER released provider\n"
+            accepted = b"PROVIDER_KILL_ACCEPTED pid=2\n"
             deadline = time.monotonic() + 15
             with selectors.DefaultSelector() as events:
                 events.register(child.stdout, selectors.EVENT_READ)
-                while peer not in output:
+                while peer not in output or (image == "kill.dis" and accepted not in output):
                     if not events.select(max(0, deadline - time.monotonic())):
                         raise RuntimeError("peer did not release provider: " + repr(output))
                     chunk = os.read(child.stdout.fileno(), 4096)
@@ -220,11 +221,16 @@ def main():
                         or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < minimum_commits
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
                     raise RuntimeError(f"{mode} {options} exited {result.returncode}\n{output}")
+        killer = relink(runtime, directory, Path(__file__).with_name("test_module_kill.c"), 0,
+                        ["dvm_runtime_prepare_killwait"])
+        delayed_killer = relink(runtime, directory, Path(__file__).with_name("test_module_kill.c"), 1,
+                                ["dvm_runtime_prepare_killwait"])
         for mode in ("--jit", "--no-jit"):
+            run(delayed_killer, directory, mode, [], b"R", "PASS provider termination and reload", "kill.dis")
             run(runtime, directory, mode, [], b"R", "PASS provider return")
             run(runtime, directory, mode, [], b"E", "PASS provider unwind",
                 shared_channels=True)
-            run(runtime, directory, mode, [], b"R", "PASS provider termination and reload",
+            run(killer, directory, mode, [], b"R", "PASS provider termination and reload",
                 "kill.dis")
             if args.dedicated_only:
                 continue
@@ -234,7 +240,7 @@ def main():
                 run(runtime, directory, mode, poll, b"R", "PASS provider return", shared_channels=True)
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind", shared_channels=True)
                 run(runtime, directory, mode, poll, b"R", "PASS provider return", default_profile=True)
-                run(runtime, directory, mode, poll, b"R", "PASS provider termination and reload", "kill.dis")
+                run(killer, directory, mode, poll, b"R", "PASS provider termination and reload", "kill.dis")
 
 
 if __name__ == "__main__":
