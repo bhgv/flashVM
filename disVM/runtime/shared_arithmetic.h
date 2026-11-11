@@ -5,16 +5,16 @@
 
 extern int dvm_runtime_shared_integer;
 extern int dvm_runtime_guest_unbounded;
-extern unsigned long dvm_runtime_shared_extended_steps;
-extern unsigned long dvm_runtime_shared_integer_commits;
-extern unsigned long dvm_runtime_shared_integer_batches;
-extern unsigned long dvm_runtime_shared_calls;
-extern unsigned long dvm_runtime_shared_returns;
-extern unsigned long dvm_runtime_shared_module_calls;
-extern unsigned long dvm_runtime_shared_module_returns;
-extern unsigned long dvm_runtime_shared_integer_branches;
-extern unsigned long dvm_runtime_shared_byte_steps;
-extern unsigned long dvm_runtime_shared_long_steps;
+extern unsigned long dvm_runtime_shared_extended_steps; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_integer_commits; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_integer_batches; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_calls; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_returns; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_module_calls; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_module_returns; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_integer_branches; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_byte_steps; /* Atomic diagnostic count, not VM state publication. */
+extern unsigned long dvm_runtime_shared_long_steps; /* Atomic diagnostic count, not VM state publication. */
 struct Module;
 struct Inst;
 int dvm_runtime_integer_batch(const struct Module *module, const struct Inst *pc, int index);

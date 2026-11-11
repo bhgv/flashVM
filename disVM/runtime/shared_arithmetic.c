@@ -40,7 +40,7 @@ unsigned long dvm_runtime_shared_byte_steps; /* Shared BYTE arithmetic/compariso
 unsigned long dvm_runtime_shared_long_steps; /* Shared LONG arithmetic/comparisons. */
 unsigned long dvm_runtime_shared_integer_branches; /* WORD branches completed inside shared traces. */
 unsigned long dvm_runtime_shared_integer_batches; /* Completed multi-instruction shared intervals. */
-unsigned long dvm_runtime_shared_integer_commits; /* Counted after exclusive return. */
+unsigned long dvm_runtime_shared_integer_commits; /* Atomic completions after concurrent GC reentry. */
 int dvm_runtime_parallel_add; /* Startup-only leased arithmetic selection, 1 for ADDW or 2 for all. */
 
 
@@ -438,7 +438,7 @@ static const char *leased_arithmetic(int opcode, const void *first, const void *
         {
             if (!problem)
             {
-                dvm_runtime_shared_integer_commits++;
+                __atomic_fetch_add(&dvm_runtime_shared_integer_commits, 1, __ATOMIC_RELAXED);
             }
             return problem;
         }
@@ -1040,16 +1040,16 @@ static int shared_frame_step(const Module *module, const Inst *pc, const Type *c
     dvm_runtime_gc_shared_finish();
     if (departed)
     {
-        dvm_runtime_shared_module_returns++;
+        __atomic_fetch_add(&dvm_runtime_shared_module_returns, 1, __ATOMIC_RELAXED);
     }
     if (source)
     {
-        dvm_runtime_shared_module_calls += callee != NULL;
-        dvm_runtime_shared_calls++;
+        __atomic_fetch_add(&dvm_runtime_shared_module_calls, callee != NULL, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&dvm_runtime_shared_calls, 1, __ATOMIC_RELAXED);
     }
     else
     {
-        dvm_runtime_shared_returns++;
+        __atomic_fetch_add(&dvm_runtime_shared_returns, 1, __ATOMIC_RELAXED);
     }
     return 1;
 }
@@ -1422,17 +1422,17 @@ int dvm_runtime_integer_batch(const Module *module, const Inst *pc, int index)
     {
         if (completed > quantum)
         {
-            dvm_runtime_shared_extended_steps += completed - quantum;
+            __atomic_fetch_add(&dvm_runtime_shared_extended_steps, completed - quantum, __ATOMIC_RELAXED);
         }
-        dvm_runtime_shared_calls += calls;
-        dvm_runtime_shared_returns += returns;
-        dvm_runtime_shared_integer_commits += completed - calls - returns;
-        dvm_runtime_shared_integer_branches += branches;
-        dvm_runtime_shared_byte_steps += byte_steps;
-        dvm_runtime_shared_long_steps += long_steps;
+        __atomic_fetch_add(&dvm_runtime_shared_calls, calls, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&dvm_runtime_shared_returns, returns, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&dvm_runtime_shared_integer_commits, completed - calls - returns, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&dvm_runtime_shared_integer_branches, branches, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&dvm_runtime_shared_byte_steps, byte_steps, __ATOMIC_RELAXED);
+        __atomic_fetch_add(&dvm_runtime_shared_long_steps, long_steps, __ATOMIC_RELAXED);
         if (completed > 1)
         {
-            dvm_runtime_shared_integer_batches++;
+            __atomic_fetch_add(&dvm_runtime_shared_integer_batches, 1, __ATOMIC_RELAXED);
         }
     }
     return completed;

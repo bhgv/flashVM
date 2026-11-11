@@ -404,37 +404,38 @@ static int mapped_transfer(const void *source, void *destination, Type *type, in
     }
     if (released > 0)
     {
+        /* GC reentry admits concurrent residents; statistics publish no VM state. */
         dvm_runtime_gc_shared_finish();
         if (claim == DVM_CELL_ACQUIRED && !problem)
         {
             if (slice)
             {
-                dvm_runtime_parallel_slicela_commits++;
+                __atomic_fetch_add(&dvm_runtime_parallel_slicela_commits, 1, __ATOMIC_RELAXED);
             }
             else if (rendezvous)
             {
-                dvm_runtime_parallel_rendezvous++;
+                __atomic_fetch_add(&dvm_runtime_parallel_rendezvous, 1, __ATOMIC_RELAXED);
             }
             else if (shared_channel)
             {
                 if (!copy.count)
                 {
-                    dvm_runtime_parallel_channel_raw++;
+                    __atomic_fetch_add(&dvm_runtime_parallel_channel_raw, 1, __ATOMIC_RELAXED);
                 }
                 if (refill_sender)
-                    dvm_runtime_parallel_channel_refills++;
+                    __atomic_fetch_add(&dvm_runtime_parallel_channel_refills, 1, __ATOMIC_RELAXED);
                 else if (selected_alt)
-                    dvm_runtime_parallel_channel_alts++;
+                    __atomic_fetch_add(&dvm_runtime_parallel_channel_alts, 1, __ATOMIC_RELAXED);
                 else if (replay_opcode == IRECV)
-                    dvm_runtime_parallel_channel_receives++;
+                    __atomic_fetch_add(&dvm_runtime_parallel_channel_receives, 1, __ATOMIC_RELAXED);
                 else
-                    dvm_runtime_parallel_channel_sends++;
+                    __atomic_fetch_add(&dvm_runtime_parallel_channel_sends, 1, __ATOMIC_RELAXED);
             }
             else
             {
-                dvm_runtime_parallel_movmp_commits++;
+                __atomic_fetch_add(&dvm_runtime_parallel_movmp_commits, 1, __ATOMIC_RELAXED);
                 if (module_record)
-                    dvm_runtime_parallel_movmp_module_commits++;
+                    __atomic_fetch_add(&dvm_runtime_parallel_movmp_module_commits, 1, __ATOMIC_RELAXED);
             }
         }
     }
