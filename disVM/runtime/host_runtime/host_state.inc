@@ -141,7 +141,7 @@ static int live;                          /* Atomic process quota accounting. */
 static unsigned int resident_wait_deliveries; /* Mailbox requests being applied by residents. */
 static unsigned int resident_retirements;     /* Dedicated exits still publishing completion. */
 static int gc_locked_poll;                    /* Retained mutex polling for reference comparison. */
-static Prog *initial_guest;                   /* Controller-owned root guest in dedicated mode. */
+static __thread Prog *initial_guest;          /* This thread's controller fallback; peer residents never borrow it. */
 static int native_spawn;                      /* One dedicated OS thread per spawned Prog. */
 static int managed_workers_selected;          /* Reject duplicate executor options. */
 static unsigned long progress_epoch;          /* Shared acknowledged input generation, protected by the heap gate. */

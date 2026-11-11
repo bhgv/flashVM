@@ -58,3 +58,13 @@ channel, capture and native-boundary CTests passed after source formatting. A
 final full-runtime TSan rebuild also passed all eight positive/refusal profiles.
 This focused result does not replace the broader acceptance failures recorded
 in [CONCURRENT-GC.md](CONCURRENT-GC.md), or validate ARM64/RV64 execution.
+
+## Controller fallback lifetime
+
+The subsequent Fast finalization workload exposed a further retirement race:
+foreign residents compared their process against the shared `initial_guest` while
+the controller cleared that pointer before freeing its own process. The fallback
+is now native thread-local. The controller alone initializes, uses and clears its
+fallback; other residents continue using their permanent dedicated slot. No
+foreign pointer lifetime or register restoration is added. Repeated full-runtime
+TSan verification is recorded in [FAST-FINALIZATION.md](FAST-FINALIZATION.md).
