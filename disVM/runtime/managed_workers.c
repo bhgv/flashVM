@@ -22,7 +22,7 @@
 
 
 /* One helper slot has one writer while alive; the controller reads after join.
- * Native identity is published/read under heap admission; registry links use service.sync. */
+ * Native identity and registry links are published/read under service.sync. */
 typedef struct ManagedWorker
 {
     struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
@@ -38,7 +38,7 @@ typedef struct ManagedWorker
     int guest_retired;          /* Set by this guest thread after managed retirement. */
     int done;                   /* Published under service.sync after TLS destruction. */
     DVM_ThreadSlot *thread;    /* Registrar handle, joined before this slot is reset. */
-    uintptr identity;          /* Live helper context identity; zero before/after attachment. */
+    uintptr identity;          /* Context identity under service.sync; zero before context destruction. */
     unsigned long turns;       /* Successful bytecode turns executed by this helper. */
     unsigned long handoffs;    /* Completed rootless scheduler releases, distinct from native I/O. */
     DVM_HeapOwnerStats owner;   /* Copied counters before the helper detaches. */
@@ -352,7 +352,6 @@ static void execute(void *argument)
     }
     if (attached)
     {
-        worker->identity = (uintptr)context;
         if (worker->guest_pid)
         {
             current_guest = worker;
@@ -363,6 +362,7 @@ static void execute(void *argument)
             }
         }
         fvm_port_sync_lock(service.sync);
+        worker->identity = (uintptr)context;
         fvm_port_sync_signal_all(service.sync);
         fvm_port_sync_unlock(service.sync);
         if (waserror())
@@ -419,13 +419,15 @@ static void execute(void *argument)
                 worker->guest_pid, (unsigned long)pthread_self());
         }
         current_guest = NULL;
+        fvm_port_sync_lock(service.sync);
+        worker->identity = 0;
+        fvm_port_sync_unlock(service.sync);
         if (!dvm_native_owner_statistics(dvm_native_owner_current(),&worker->owner))
         {
             fail("cannot snapshot executor ownership");
         }
         else if (worker->owner.phase == DVM_HEAP_ACTIVE)
         {
-            worker->identity = 0;
             fvm_port_sync_lock(service.sync);
             service.live--;
             fvm_port_sync_unlock(service.sync);

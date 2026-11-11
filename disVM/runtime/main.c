@@ -1733,6 +1733,16 @@ void dvm_runtime_channel_wake(Prog *peer, char *cause)
 extern void dvm_runtime_alt_preflight(Alt *alt);
 
 
+/* EN: Wake a detached borrowed waiter while the cancellation result is scoped.
+ * RU: Пробудить снятый с очереди процесс внутри области результата отмены. */
+static int wake_cancelled_channel_wait(void *argument)
+{
+    Prog *peer = argument;
+    dvm_runtime_channel_wake(peer, peer->kill ? nil : "channel wait cancelled");
+    return 1;
+}
+
+
 /* Remove this guest's registrations under its completion claim. A pending
  * exception survives cancellation; a detached waiter is made runnable once. */
 static int cancel_parked_channel_wait(void *argument)
@@ -1756,21 +1766,47 @@ static int cancel_parked_channel_wait(void *argument)
         queue = peer->state == Psend ? &channel->send : &channel->recv;
         cqdelp(queue, peer);
     }
-    dvm_runtime_channel_wake(peer, peer->kill ? nil : "channel wait cancelled");
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
+    if (!peer->kill && process->messages &&
+        dvm_messages_pending(process->messages, 0, DVM_PROG_MESSAGE_CHANNEL_CLOSE))
+    {
+        peer->kill = "channel hangup";
+    }
+    process->cancel_delivering = 1;
+    int completed = kprotect(wake_cancelled_channel_wait, peer);
+    process->cancel_delivering = 0;
+    if (!completed)
+    {
+        krethrow();
+    }
     return 1;
 }
 
 
-/* Claim one scheduler-owned blocked guest under the active managed turn. */
+/* EN: Check a borrowed resident's wait while holding the channel queue mutex.
+ * A concurrent match may already own or complete it; false leaves it unchanged.
+ * RU: Проверить ожидание заимствованного процесса под мьютексом очереди каналов.
+ * Соперничающая передача могла уже захватить/завершить его; ложь ничего не меняет. */
+static int cancellable_channel_wait(void *argument)
+{
+    Prog *peer = argument;
+    return peer && (peer->state == Psend || peer->state == Precv || peer->state == Palt) &&
+        !((DVM_RuntimeProcess *)peer)->channel_claimed && !dvm_runqueue_dispatch_owner(peer);
+}
+
+
+/* EN: Atomically validate and claim a borrowed channel wait for cancellation.
+ * Return zero when a real transfer won; preserve its result and pending messages.
+ * RU: Атомарно проверить и захватить заимствованное ожидание для отмены.
+ * Вернуть ноль, если передача выиграла; сохранить её результат и сообщения. */
 static int cancel_parked_guest(Prog *peer)
 {
-    if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt) ||
-        ((DVM_RuntimeProcess *)peer)->channel_claimed || dvm_runqueue_dispatch_owner(peer))
+    if (!peer)
     {
         return 0;
     }
-    dvm_runtime_channel_with_claim(peer, cancel_parked_channel_wait, peer);
-    return 1;
+    return dvm_runtime_channel_with_queue_claim(peer, cancellable_channel_wait,
+        cancel_parked_channel_wait, peer, NULL);
 }
 
 
@@ -2078,12 +2114,16 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
 }
 
 
-/* Publish the parent wait before requesting termination on the child owner. */
+/* EN: Publish the parent wait for a live or already retiring registered child.
+ * A sealed/Pexiting child needs only retirement notification, not another exit.
+ * RU: Опубликовать ожидание живого или уже завершающегося ребёнка из реестра.
+ * Для sealed/Pexiting нужна только квитанция завершения, а не новый запрос. */
 static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    if (!resident_can_exit(child))
+    int retiring = child && (child->state == Pexiting || dvm_runqueue_hold_count(child) < 0);
+    if (!retiring && !resident_can_exit(child))
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
@@ -2098,8 +2138,11 @@ static int prepare_dedicated_child_wait(Prog *caller, int pid)
     DVM_R.IC = 1;
     DVM_R.t = 1;
     ((DVM_RuntimeProcess *)child)->exit_notify_parent = 1;
-    send_resident_exit(child);
-    cancel_registered_guest_wait(pid);
+    if (!retiring)
+    {
+        send_resident_exit(child);
+        cancel_registered_guest_wait(pid);
+    }
     fvm_port_sync_unlock(channel_queue_mutex);
     return 1;
 }
@@ -2922,24 +2965,12 @@ static char *entry_resource(char *path)
  * RU: Завершить ожидание guest по сообщению на его потоке. */
 static int consume_channel_message(Prog *guest)
 {
-    if (!hosted_channel_waiter(guest))
-    {
-        return 0;
-    }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
-    if (!process->messages || !dvm_messages_pending(process->messages, 0, 0) ||
-        process->channel_claimed || dvm_runqueue_dispatch_owner(guest))
+    if (!process || !process->messages || !dvm_messages_pending(process->messages, 0, 0))
     {
         return 0;
     }
-    if (!guest->kill && dvm_messages_pending(process->messages, 0, DVM_PROG_MESSAGE_CHANNEL_CLOSE))
-    {
-        guest->kill = "channel hangup";
-    }
-    process->cancel_delivering = 1;
-    int cancelled = cancel_parked_guest(guest);
-    process->cancel_delivering = 0;
-    return cancelled;
+    return cancel_parked_guest(guest);
 }
 
 

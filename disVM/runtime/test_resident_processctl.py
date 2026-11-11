@@ -21,7 +21,9 @@ def main():
     parent_exit = sys.argv[4:] == ['--parent-exit']
     audit_query = sys.argv[4:] == ['--audit-query']
     stream_kill = sys.argv[4:] == ['--stream-kill']
-    if sys.argv[4:] and not parent_exit and not audit_query and not stream_kill:
+    receiver_kill = sys.argv[4:] == ['--receiver-kill']
+    receiver_cancel = sys.argv[4:] == ['--receiver-cancel']
+    if sys.argv[4:] and not parent_exit and not audit_query and not stream_kill and not receiver_kill and not receiver_cancel:
         raise RuntimeError('unknown process-control fixture option')
     fixture = 'main.b'
     marker = 'PASS resident process control children=128 parents=8'
@@ -34,11 +36,24 @@ def main():
         fixture = 'stream-kill.b'
         marker = 'PASS resident stream kill peers=24 victims=24'
         expected = 56
+    elif receiver_kill or receiver_cancel:
+        fixture = 'receiver-kill.b'
+        marker = 'PASS resident receiver kill peers=24 victims=24'
+        expected = 80
+        if receiver_cancel:
+            marker = 'PASS resident receiver cancel peers=24 victims=24'
     source = Path(__file__).parent / 'fixtures/resident-processctl' / fixture
     modules = Path(__file__).resolve().parents[1] / 'module'
     with tempfile.TemporaryDirectory(prefix='resident process control ') as directory:
         work = Path(directory)
         image = work / 'resident-processctl.dis'
+        if receiver_cancel:
+            selected = work / 'receiver-cancel.b'
+            text = source.read_text()
+            if text.count('CancelMode: con 0;') != 1:
+                raise RuntimeError('receiver cancellation fixture anchor changed')
+            selected.write_text(text.replace('CancelMode: con 0;', 'CancelMode: con 1;'))
+            source = selected
         subprocess.run([str(compiler), '-I', str(include), '-I', str(modules), '-o', str(image), str(source)],
                        check=True, capture_output=True, text=True)
         binary = relink(runtime, work, Path(__file__).with_name('test_parent_reply_exit.c'), 0,
@@ -72,6 +87,8 @@ def main():
         print('PASS late reply after parent exit: C/JIT, atomic/locked GC, orphan roots and retirement')
     elif stream_kill:
         print('PASS mapped stream kill: C/JIT, atomic/locked GC, surviving FIFO and exact victim retirement')
+    elif receiver_kill or receiver_cancel:
+        print('PASS mapped receiver kill: C/JIT, atomic/locked GC, one cancellable report, continued producer/peer progress')
     else:
         print('PASS resident process control: 512 children, C/JIT, atomic/locked GC, live foreign denial, cancel/retire/duplicate replies')
 
