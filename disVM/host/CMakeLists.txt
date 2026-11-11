@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Independent host adapters and native collector acceptance targets.
+# RU: Независимые host-адаптеры и цели проверки системных потоков GC.
 # Shared host adapters build independently of the unfinished native Dis host ABI.
 cmake_minimum_required(VERSION 3.10)
 project(disvm_shared_host VERSION 0.5.0 LANGUAGES C)
@@ -29,7 +32,7 @@ if(NOT TARGET disvm_module_image)
   add_library(disvm_module_image STATIC module_image.c)
 endif()
 target_include_directories(disvm_module_image PUBLIC "${dvm_root}/include")
-add_library(disvm_flashvm_host STATIC clock_port.c flashvm_file.c flashvm_socket.c flashvm_channel.c ui_bridge.c ui_pump.c ui_client.c flashvm_thread.c native_context.c native_owner.c native_world.c gc_workers.c)
+add_library(disvm_flashvm_host STATIC clock_port.c flashvm_file.c flashvm_socket.c flashvm_channel.c ui_bridge.c ui_pump.c ui_client.c flashvm_thread.c native_context.c native_owner.c native_world.c gc_workers.c gc_worker_pass.c)
 target_include_directories(disvm_flashvm_host PUBLIC "${dvm_root}/include" "${fvm}/include" "${fvm}/ports")
 target_link_libraries(disvm_flashvm_host PUBLIC disvm_module_image disvm_broker)
 set(DVM_FLASHVM_TARGET "" CACHE STRING "Existing FlashVM CMake target, if embedded in one parent build")
@@ -74,6 +77,10 @@ if(BUILD_TESTING)
   add_executable(disvm_image_test "${dvm_root}/tests/module_image.c")
   target_link_libraries(disvm_image_test PRIVATE disvm_module_image)
   add_test(NAME disvm_module_images COMMAND disvm_image_test)
+  add_executable(disvm_gc_concurrent "${dvm_root}/tests/gc_concurrent.c")
+  target_link_libraries(disvm_gc_concurrent PRIVATE disvm_flashvm_host)
+  add_test(NAME disvm_gc_concurrent COMMAND disvm_gc_concurrent)
+  set_tests_properties(disvm_gc_concurrent PROPERTIES TIMEOUT 20)
   add_executable(disvm_gc_workers_control "${dvm_root}/tests/gc_workers_control.c")
   target_link_libraries(disvm_gc_workers_control PRIVATE disvm_flashvm_host)
   add_test(NAME disvm_gc_workers_control COMMAND disvm_gc_workers_control)

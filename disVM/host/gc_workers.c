@@ -1,46 +1,15 @@
-/* Separate native fast/cycle executors; actual heap algorithms remain in the backend. */
-#include "disvm/gc_workers.h"
-#include "thread_port.h"
-#include "channel_sync.h"
+/* Copyright (c) 2026 bhgv
+ * EN: Native collector thread lifecycle, coalesced requests and observations.
+ * RU: Жизненный цикл системных потоков сборки, запросы и наблюдение состояния.
+ */
+#include "gc_worker_private.h"
 #include <stdlib.h>
-
-enum { GC_PASS_REQUEST = 1, GC_CANDIDATE_REQUEST = 2 };
-
-
-/* One native lane, owned until its thread has joined. */
-typedef struct DVM_GCWorker
-{
-    struct DVM_GCWorkers *owner; /* Borrowed service. */
-    DVM_GCKind kind;             /* Stable lane identity. */
-    FVM_PortThread *thread;      /* Owned native handle. */
-    DVM_NativeContext *context;  /* Worker-owned bound collector context. */
-    size_t passes;               /* Completed callbacks under service mutex. */
-    int pending;                 /* Coalesced request bits. */
-} DVM_GCWorker;
-
-
-/* [GC:] No managed pointers live in the request queue. Backend owns/root-pins
- * deferred references until their eventual pass or explicit shutdown cleanup. */
-struct DVM_GCWorkers
-{
-    FVM_PortSync *sync;         /* Request/lease/state mutex and condition. */
-    DVM_GCWorkersConfig config; /* Copied callbacks; user remains borrowed. */
-    DVM_GCWorker Fast;          /* Named RC worker group. */
-    DVM_GCWorker Duke;         /* Optional shared large-graph worker. */
-    DVM_GCWorker Cycles;        /* Named cycle worker group. */
-    unsigned int started;       /* Context startup handshakes. */
-    DVM_GCKind turn;            /* Round-robin start among pending lanes. */
-    unsigned int active;        /* Bit mask of callbacks in flight. */
-    unsigned int exclusive;     /* Lane bit owning the retained-collector gate. */
-    unsigned int shared_peak;   /* Maximum simultaneous callbacks in parallel mode. */
-    int stopping;               /* Cooperative shutdown. */
-    int failed;                 /* Latched failure; never silently retried as success. */
-};
 
 
 /* Select one of the explicitly named lane groups.
  * Parameters: workers is a borrowed service; kind is a validated lane ID.
- * Returns: its embedded lane record, never a new allocation. */
+ * Returns: its embedded lane record, never a new allocation.
+ * RU: Получить запись потока kind из заимствованной службы workers. Новое владение не создаётся. */
 static DVM_GCWorker *lane(DVM_GCWorkers *workers, DVM_GCKind kind)
 {
     switch (kind)
@@ -55,7 +24,8 @@ static DVM_GCWorker *lane(DVM_GCWorkers *workers, DVM_GCKind kind)
 }
 
 
-/* Select the first pending lane in rotation while the service mutex is held. */
+/* Select the first pending lane in rotation while the service mutex is held.
+ * RU: Найти первый ожидающий поток workers по очереди; вызывающий держит мьютекс службы. */
 static DVM_GCWorker *next_pending(DVM_GCWorkers *workers)
 {
     for (unsigned int offset = 0; offset < 3; offset++)
@@ -70,124 +40,11 @@ static DVM_GCWorker *next_pending(DVM_GCWorkers *workers)
 }
 
 
-/* Read shutdown without retaining the mutex while entering a world rendezvous.
- * Parameters: workers is a live borrowed service with initialized synchronization.
- * Returns: nonzero when shutdown or a latched failure forbids another pass. */
-static int stopping(DVM_GCWorkers *workers)
-{
-    int result;
-    fvm_port_sync_lock(workers->sync);
-    result = workers->stopping || workers->failed;
-    fvm_port_sync_unlock(workers->sync);
-    return result;
-}
-
-
-/* Reserve the retained pass only after all other callbacks have detached.
- * The service mutex protects this gate, never a shared callback body. */
-static int try_retained_pass(DVM_GCWorker *worker)
-{
-    DVM_GCWorkers *workers = worker->owner;
-    unsigned int bit = 1U << worker->kind;
-    fvm_port_sync_lock(workers->sync);
-    int acquired = workers->active == bit;
-    if (acquired)
-    {
-        workers->exclusive = bit;
-    }
-    fvm_port_sync_unlock(workers->sync);
-    return acquired;
-}
-
-
-/* Run one bounded backend pass with stable roots; always resume before returning.
- * Parameters: worker owns a bound collector context; executed receives zero until
- * the backend callback starts, then one. Both pointers must remain valid.
- * Returns: DONE for cancelled acquisition, the backend result, or FAILED for a
- * rendezvous/root/resume failure. A successful stop is always paired with resume. */
-static DVM_GCWorkResult collect(DVM_GCWorker *worker, int requested, int *executed)
-{
-    DVM_GCWorkers *workers = worker->owner;
-    DVM_GCPass *pass = worker->kind == DVM_GC_FAST ? &workers->config.Fast : &workers->config.Cycles;
-    DVM_GCWorkResult result;
-    *executed = 0;
-    if (worker->kind == DVM_GC_DUKE)
-    {
-        *executed = 1;
-        return workers->config.duke_shared(worker->context,
-            workers->config.duke_budget, workers->config.user) ? DVM_GC_MORE : DVM_GC_DONE;
-    }
-    if (worker->kind == DVM_GC_CYCLES && workers->config.cycles_shared &&
-        workers->config.cycles_shared(worker->context, pass->budget, workers->config.user))
-    {
-        *executed = 1;
-        return DVM_GC_MORE;
-    }
-    if (!(requested & GC_PASS_REQUEST))
-    {
-        return DVM_GC_DONE;
-    }
-    if (worker->kind == DVM_GC_FAST && workers->config.fast_shared)
-    {
-        unsigned int completed = workers->config.fast_shared(worker->context, pass->budget,
-            workers->config.user);
-        if (completed)
-        {
-            *executed = 1;
-            return workers->config.fast_ready && !workers->config.fast_ready(workers->config.user) ?
-                DVM_GC_DONE : DVM_GC_MORE;
-        }
-    }
-    if (worker->kind == DVM_GC_FAST && workers->config.fast_ready &&
-        !workers->config.fast_ready(workers->config.user))
-    {
-        return DVM_GC_DONE;
-    }
-    if (workers->config.parallel_shared && !try_retained_pass(worker))
-    {
-        return DVM_GC_MORE;
-    }
-    if (worker->kind == DVM_GC_FAST ? workers->config.fast_quiescent_only :
-        workers->config.cycles_quiescent_only)
-    {
-        if (!dvm_world_try_quiescent(workers->config.world, worker->context))
-        {
-            return DVM_GC_MORE;
-        }
-    }
-    else
-    {
-        while (!dvm_world_stop_begin(workers->config.world, worker->context))
-        {
-            if (stopping(workers))
-            {
-                return DVM_GC_DONE;
-            }
-            /* Another host collector can own the world; no VM execution lock is held. */
-            fvm_port_thread_sleep_us(1000);
-        }
-    }
-    if (!dvm_world_visit(workers->config.world, workers->config.roots, workers->config.user))
-    {
-        result = DVM_GC_FAILED;
-    }
-    else
-    {
-        *executed = 1;
-        result = pass->run(worker->context, pass->budget, workers->config.user);
-    }
-    if (!dvm_world_stop_end(workers->config.world))
-    {
-        result = DVM_GC_FAILED;
-    }
-    return result;
-}
-
-
 /* Bind one native collector, alternate bounded passes, then release its up.
  * Parameters: argument is the embedded worker record retained through thread join.
  * Returns: nothing. Binds its own context, waits for requests, and releases the
- * context after cooperative shutdown; never frees a still-bound failed context. */
+ * context after cooperative shutdown; never frees a still-bound failed context.
+ * RU: На записи argument создать и привязать контекст сборщика, обработать запросы, затем снять привязку. Запись живёт до join. */
 static void run_worker(void *argument)
 {
     DVM_GCWorker *worker = (DVM_GCWorker *)argument;
@@ -230,7 +87,7 @@ static void run_worker(void *argument)
             }
         }
         fvm_port_sync_unlock(workers->sync);
-        result = collect(worker, requested, &executed);
+        result = dvm_gc_worker_collect(worker, requested, &executed);
         fvm_port_sync_lock(workers->sync);
         if (executed)
         {
@@ -248,8 +105,9 @@ static void run_worker(void *argument)
             workers->failed = 1;
         }
         fvm_port_sync_signal_all(workers->sync);
-        pause_us = worker->kind == DVM_GC_FAST ? workers->config.Fast.pause_us :
-            worker->kind == DVM_GC_CYCLES ? workers->config.Cycles.pause_us : workers->config.duke_pause_us;
+        pause_us = worker->kind == DVM_GC_FAST     ? workers->config.Fast.pause_us
+                   : worker->kind == DVM_GC_CYCLES ? workers->config.Cycles.pause_us
+                                                   : workers->config.duke_pause_us;
         if (result == DVM_GC_MORE && pause_us && !workers->stopping && !workers->failed)
         {
             fvm_port_sync_unlock(workers->sync);
@@ -281,14 +139,18 @@ static void run_worker(void *argument)
 /* Startup waits only for native context binding, never for a collection request.
  * Parameters: config is borrowed and copied after validation; its world, user
  * and callback-owned root state must outlive all worker joins.
- * Returns: an owned service, or null after startup/validation/allocation failure. */
+ * Returns: an owned service, or null after startup/validation/allocation failure.
+ * RU: Проверить и скопировать config, запустить службу и дождаться привязки контекстов. Вернуть службу или NULL; world/user живут до join. */
 DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
 {
     DVM_GCWorkers *workers;
     int failed;
-    if (!config || !config->world || !config->create_context || !config->roots || !config->Fast.run ||
-        !config->Cycles.run || !config->Fast.budget || !config->Cycles.budget ||
-        config->Fast.pause_us > DVM_GC_MAX_PAUSE_US || config->Cycles.pause_us > DVM_GC_MAX_PAUSE_US ||
+    if (!config || !config->world || !config->create_context ||
+        (!!config->concurrent_fast != !!config->concurrent_cycles) ||
+        (config->concurrent_fast && !config->parallel_shared) ||
+        (!config->concurrent_fast && (!config->roots || !config->Fast.run || !config->Cycles.run)) ||
+        !config->Fast.budget || !config->Cycles.budget || config->Fast.pause_us > DVM_GC_MAX_PAUSE_US ||
+        config->Cycles.pause_us > DVM_GC_MAX_PAUSE_US ||
         (config->duke_shared && (!config->duke_budget || config->duke_pause_us > DVM_GC_MAX_PAUSE_US)))
     {
         return 0;
@@ -318,8 +180,7 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
         workers->Duke.thread = fvm_port_thread_start(run_worker, &workers->Duke);
     }
     fvm_port_sync_lock(workers->sync);
-    if (!workers->Fast.thread || !workers->Cycles.thread ||
-        (config->duke_shared && !workers->Duke.thread))
+    if (!workers->Fast.thread || !workers->Cycles.thread || (config->duke_shared && !workers->Duke.thread))
     {
         workers->failed = 1;
     }
@@ -341,11 +202,12 @@ DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config)
 /* Requests carry no unrooted object address and can be coalesced freely.
  * Parameters: workers is borrowed; kind selects Fast or Cycles. No object pointer
  * is enqueued. Backend code must separately root any deferred managed references.
- * Returns: one after coalescing a request, zero for invalid or stopped/failed state. */
+ * Returns: one after coalescing a request, zero for invalid or stopped/failed state.
+ * RU: Объединить биты requested для потока kind службы workers под мьютексом. Вернуть ноль при неверном запросе, остановке или ошибке. */
 static int request(DVM_GCWorkers *workers, DVM_GCKind kind, int requested)
 {
-    if (!workers || (kind != DVM_GC_FAST && kind != DVM_GC_CYCLES &&
-        (kind != DVM_GC_DUKE || !workers->config.duke_shared)))
+    if (!workers ||
+        (kind != DVM_GC_FAST && kind != DVM_GC_CYCLES && (kind != DVM_GC_DUKE || !workers->config.duke_shared)))
     {
         return 0;
     }
@@ -362,12 +224,20 @@ static int request(DVM_GCWorkers *workers, DVM_GCKind kind, int requested)
 }
 
 
+/* [GC:] EN: Coalesce a full pass request for kind on borrowed workers; return
+ * zero for invalid/stopped/failed state. The backend separately roots its work.
+ * RU: Объединить запрос полного прохода kind в workers; при неверном состоянии,
+ * остановке или ошибке вернуть ноль. Корни заданий обеспечивает backend. */
 int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind)
 {
     return request(workers, kind, GC_PASS_REQUEST);
 }
 
 
+/* [GC:] EN: Wake Cycles candidate processing on borrowed workers. Return one
+ * if accepted, zero on invalid/stopped/failed state; no object pointer is queued.
+ * RU: Запросить обход кандидатов Cycles службы workers. Вернуть один при приёме
+ * либо ноль при отказе; указатели на объекты в запрос не передаются. */
 int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers)
 {
     return request(workers, DVM_GC_CYCLES, GC_CANDIDATE_REQUEST);
@@ -377,7 +247,8 @@ int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers)
 /* Caller must have left any mutator interval needed by the collector.
  * Parameters: workers is borrowed; the caller must leave its mutator interval first.
  * Returns: one when the requested lanes are idle, zero for invalid/self-worker calls or
- * shutdown/failure. This call blocks and does not impose a collection timeout. */
+ * shutdown/failure. This call blocks and does not impose a collection timeout.
+ * RU: Ждать покоя службы workers либо только Fast при fast_only. Самоожидание и ошибка дают ноль; в резервном режиме вызывающий заранее выходит из допуска. */
 static int wait_idle(DVM_GCWorkers *workers, int fast_only)
 {
     int result;
@@ -400,14 +271,16 @@ static int wait_idle(DVM_GCWorkers *workers, int fast_only)
 }
 
 
-/* Wait for all configured lanes before collector shutdown. */
+/* Wait for all configured lanes before collector shutdown.
+ * RU: Дождаться всех потоков workers; вернуть ноль при ошибке или запрещённом самоожидании. Владение службой не передаётся. */
 int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers)
 {
     return wait_idle(workers, 0);
 }
 
 
-/* Wait only for Fast work while a guest has withdrawn from the heap. */
+/* Wait only for Fast work while a guest has withdrawn from the heap.
+ * RU: Дождаться только Fast службы workers без передачи владения; вернуть ноль при ошибке или самоожидании. */
 int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers)
 {
     return wait_idle(workers, 1);
@@ -417,7 +290,8 @@ int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers)
 /* Observation never waits for an active backend callback to complete.
  * Parameters: workers is borrowed; out receives a caller-owned coherent snapshot.
  * Returns: one after copying state under the mutex, zero for null arguments.
- * The snapshot does not reserve the observed state against later requests. */
+ * The snapshot does not reserve the observed state against later requests.
+ * RU: Скопировать согласованное состояние workers в заимствованный out под мьютексом. Неверные указатели дают ноль; проход не ожидается. */
 int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out)
 {
     if (!workers || !out)
@@ -443,7 +317,8 @@ int dvm_gc_workers_state(DVM_GCWorkers *workers, DVM_GCWorkersState *out)
 /* Stop only cooperatively; never destroy a thread that is still using heap roots.
  * Parameters: workers transfers ownership for cooperative shutdown and joining.
  * Returns: one for successful shutdown or null; zero for a latched failure or a
- * rejected self-join. A self-join rejection retains the service; other paths free it. */
+ * rejected self-join. A self-join rejection retains the service; other paths free it.
+ * RU: Остановить workers, выполнить join и освободить службу. Самоожидание отвергается без освобождения; ошибка службы возвращает ноль. */
 int dvm_gc_workers_destroy(DVM_GCWorkers *workers)
 {
     int result;

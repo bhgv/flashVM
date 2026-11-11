@@ -1,4 +1,7 @@
-/* Native GC workers with bounded passes and explicit stopped-world ownership. */
+/* Copyright (c) 2026 bhgv
+ * EN: Native collector workers with concurrent or retained bounded callbacks.
+ * RU: Системные потоки сборки с конкурентными или резервными проходами.
+ */
 #ifndef DISVM_GC_WORKERS_H
 #define DISVM_GC_WORKERS_H
 #include "native_world.h"
@@ -14,9 +17,9 @@ extern "C"
 /* Fast drains deferred RC; Cycles and optional Duke discover garbage. */
 typedef enum DVM_GCKind
 {
-    DVM_GC_FAST = 0,  /* Deferred reference-count work. */
+    DVM_GC_FAST = 0,   /* Deferred reference-count work. */
     DVM_GC_CYCLES = 1, /* Incremental cyclic-garbage collection. */
-    DVM_GC_DUKE = 2 /* Optional shared large-graph discovery. */
+    DVM_GC_DUKE = 2    /* Optional shared large-graph discovery. */
 } DVM_GCKind;
 
 
@@ -30,8 +33,15 @@ typedef enum DVM_GCWorkResult
 typedef struct DVM_GCWorkers DVM_GCWorkers;
 
 
-/* Called only by its native collector while the world is stopped. The adapter
- * performs at most budget work units and must return normally on every path. */
+/* [GC:] EN: Called on its bound collector context. A retained callback owns the
+ * stopped world; a concurrent callback owns no world stop and must protect all
+ * accessed objects itself. budget bounds backend work; user is borrowed through
+ * worker joins. Return DONE, MORE for retry (including contention), or FAILED.
+ * Never escape by longjmp or wait for this service to become idle.
+ * RU: Вызывается на привязанном контексте сборщика. Резервный обработчик владеет
+ * остановленным миром; конкурентный сам защищает доступ к объектам. budget
+ * ограничивает работу, user заимствован до join. Вернуть DONE, MORE для повтора
+ * (включая конфликт) или FAILED. Запрещены longjmp и ожидание простоя службы. */
 typedef DVM_GCWorkResult (*DVM_GCWork)(DVM_NativeContext *, size_t budget, void *user);
 /* Create an owned collector context; core users supply native_process_create.
  * The service binds/unbinds/destroys it on its worker, never on a mutator. */
@@ -58,14 +68,22 @@ typedef struct DVM_GCWorkersConfig
     DVM_GCPass Cycles;                  /* Incremental reachability/cycle passes. */
     void *user;                         /* Borrowed backend and its synchronized queues. */
     int cycles_quiescent_only;          /* Cycles claims idle admission without parking guests. */
-    int parallel_shared;               /* Shared callbacks on distinct lanes may overlap. */
-    int fast_quiescent_only;            /* Fast claims idle admission without parking guests. */
+    int parallel_shared;                /* Shared callbacks on distinct lanes may overlap. */
+
+
+    int fast_quiescent_only; /* Fast claims idle admission without parking guests. */
+
+
     unsigned int (*cycles_shared)(DVM_NativeContext *, size_t, void *); /* Optional candidate walk. */
-    unsigned int (*fast_shared)(DVM_NativeContext *, size_t, void *); /* Optional shared leaf work. */
-    size_t duke_budget;                 /* Large-graph work units per shared pass. */
-    unsigned long duke_pause_us;        /* Pacing outside heap admission. */
+    unsigned int (*fast_shared)(DVM_NativeContext *, size_t, void *);   /* Optional shared leaf work. */
+    size_t duke_budget;                                                 /* Large-graph work units per shared pass. */
+
+
+    unsigned long duke_pause_us;                                      /* Pacing outside heap admission. */
     unsigned int (*duke_shared)(DVM_NativeContext *, size_t, void *); /* Shared large graphs. */
-    int (*fast_ready)(void *user);       /* Optional native-only queue check before a Fast stop. */
+    int (*fast_ready)(void *user); /* Optional native-only queue check before a Fast stop. */
+    DVM_GCWork concurrent_fast;    /* Paired concurrent route: no retained fallback. */
+    DVM_GCWork concurrent_cycles;  /* Required with concurrent_fast and parallel_shared. */
 } DVM_GCWorkersConfig;
 
 
@@ -83,19 +101,31 @@ typedef struct DVM_GCWorkersState
     DVM_GCLaneState Fast;
     DVM_GCLaneState Cycles;
     DVM_GCLaneState Duke;
-    int active;   /* 0 idle, otherwise one active lane ID plus one. */
+    int active;               /* 0 idle, otherwise one active lane ID plus one. */
     unsigned int shared_peak; /* Peak simultaneous callbacks in parallel mode. */
-    int stopping; /* Shutdown requested; queued requests are discarded. */
-    int failed;   /* Startup/callback/world protocol failure latched. */
+    int stopping;             /* Shutdown requested; queued requests are discarded. */
+    int failed;               /* Startup/callback/world protocol failure latched. */
 } DVM_GCWorkersState;
 
 
-/* Start Fast, Cycles and optional Duke. Wait until their contexts are bound. */
+/* [GC:] EN: Start bound Fast/Cycles and optional Duke contexts. config is copied;
+ * world/user outlive joins. Set both concurrent callbacks and parallel_shared
+ * for concurrent dispatch: retained run/roots/shared callbacks are bypassed for
+ * Fast/Cycles, even on DONE/FAILED. Their run/roots pointers may be NULL. An
+ * incomplete pair, zero budget or invalid pacing fails before any thread starts.
+ * Returns owned workers or NULL; creation waits only for context startup.
+ * RU: Запустить Fast/Cycles и необязательный Duke. config копируется, world/user
+ * живут до join. Оба concurrent-обработчика вместе с parallel_shared выбирают
+ * конкурентный путь: резервные run/roots/shared не вызываются даже при DONE/FAILED.
+ * Их run/roots могут быть NULL. Неполная пара, нулевой бюджет и неверная задержка
+ * отвергаются до запуска потоков. Вернуть службу или NULL; ждать только запуск.
+ */
 DVM_GCWorkers *dvm_gc_workers_create(const DVM_GCWorkersConfig *config);
 
 
 /* Coalesce a request; returns 0 on invalid kind, failure or shutdown. */
 int dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
+
 
 /* Request shared candidate work without requesting the legacy trace. */
 int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers);
@@ -104,6 +134,7 @@ int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers);
 /* Wait for all configured lanes to become idle. Do not call from an active mutator or
  * GC callback: the collector may be waiting for that same mutator to poll. */
 int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers);
+
 
 /* Wait for the Fast lane only. Caller must hold no heap admission. */
 int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers);

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 bhgv
+# EN: Retained native instructions and OS-thread root rendezvous.
+# RU: Нативные инструкции и согласование корней системных потоков.
 """Run actual addw bodies and extended up state across 100 native GC rendezvous."""
 import argparse
 import os
@@ -45,7 +48,11 @@ def main():
             ]
         ]
         if args.gc_workers:
-            command += ["-DDVM_GC_WORKERS=1", str(root / "host/gc_workers.c")]
+            command += [
+                "-DDVM_GC_WORKERS=1",
+                str(root / "host/gc_workers.c"),
+                str(root / "host/gc_worker_pass.c"),
+            ]
         command += [
             str(source),
             str(root / "host/native_registers.c"),

@@ -1,3 +1,8 @@
+Current target (November 11, 2026): no global mutator stop, including cycle GC.
+The current retained/quiescent paths below are implementation limits, not the
+completion criterion. See [the concurrent GC series](CONCURRENT-GC.md) and
+[the current plan](MULTITHREADING-ROADMAP.ru.md).
+
 [NativeWorld transition diagnostics and owner messages (Russian)](NATIVEWORLD-DEBUG.ru.md).
 
 ## Dedicated spawn threads

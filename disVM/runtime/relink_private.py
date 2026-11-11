@@ -1,4 +1,8 @@
+# Copyright (c) 2026 bhgv
+# EN: Relink private diagnostic objects without mutating production builds.
+# RU: Линковка частных диагностов без изменения основной сборки.
 """Relink a private diagnostic wrapper against unchanged CMake runtime objects."""
+
 from pathlib import Path
 import shlex
 import subprocess
@@ -15,60 +19,153 @@ import subprocess
 # benchmark comparisons keep computation and other production objects unchanged.
 # Optional bytes_fast_source changes only the private C dispatcher for exact
 # decline/false-completion/duplicate-execution controls.
+# Optional exception_retirement_source replaces only the shared Fast emergency-string module.
 # Matching private headers/flags remain mandatory.
-def relink(runtime, work, source, variant, symbols, executor=None,
-           compiler_source=None, exception_source=None, loader_source=None,
-           stack_source=None, runtime_rc_source=None, gc_source=None,
-           managed_owner_source=None, shared_pointer_source=None, shared_bytes_source=None,
-           shared_arithmetic_source=None, shared_real_arithmetic_source=None, bytes_fast_source=None, shared_real_conversion_source=None, heap_hold_source=None, list_hold_source=None, heap_commit_source=None, pointer_stage_source=None, pointer_prepare_source=None, pointer_transaction_source=None, pointer_builder_source=None, value_prepare_source=None, scalar_cons_source=None, raw_cons_source=None, mapped_cons_source=None, mapped_prepare_source=None, string_source=None):
-    metadata = runtime.parent / 'CMakeFiles/disvm.dir'
+def relink(
+    runtime,
+    work,
+    source,
+    variant,
+    symbols,
+    executor=None,
+    compiler_source=None,
+    exception_source=None,
+    loader_source=None,
+    stack_source=None,
+    runtime_rc_source=None,
+    gc_source=None,
+    managed_owner_source=None,
+    shared_pointer_source=None,
+    shared_bytes_source=None,
+    shared_arithmetic_source=None,
+    shared_real_arithmetic_source=None,
+    bytes_fast_source=None,
+    shared_real_conversion_source=None,
+    heap_hold_source=None,
+    list_hold_source=None,
+    heap_commit_source=None,
+    pointer_stage_source=None,
+    pointer_prepare_source=None,
+    pointer_transaction_source=None,
+    pointer_builder_source=None,
+    value_prepare_source=None,
+    scalar_cons_source=None,
+    raw_cons_source=None,
+    mapped_cons_source=None,
+    mapped_prepare_source=None,
+    string_source=None,
+    exception_retirement_source=None,
+):
+    metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
-    for line in (metadata / 'flags.make').read_text().splitlines():
-        if ' = ' in line:
-            key, value = line.split(' = ', 1)
+    for line in (metadata / "flags.make").read_text().splitlines():
+        if " = " in line:
+            key, value = line.split(" = ", 1)
             flags[key] = shlex.split(value)
-    link = [value for value in shlex.split((metadata / 'link.txt').read_text())
-            if not value.startswith('-Wl,--dependency-file=')]
-    obj = work / 'wrapper.o'
-    includes = '-I'+str(Path(__file__).resolve().parent)
-    command = [link[0], *flags['C_DEFINES'], *flags['C_INCLUDES'], *flags['C_FLAGS'],
-               includes, '-DCONTROL='+str(variant), '-c', str(source), '-o', str(obj)]
+    link = [
+        value
+        for value in shlex.split((metadata / "link.txt").read_text())
+        if not value.startswith("-Wl,--dependency-file=")
+    ]
+    obj = work / "wrapper.o"
+    includes = "-I" + str(Path(__file__).resolve().parent)
+    command = [
+        link[0],
+        *flags["C_DEFINES"],
+        *flags["C_INCLUDES"],
+        *flags["C_FLAGS"],
+        includes,
+        "-DCONTROL=" + str(variant),
+        "-c",
+        str(source),
+        "-o",
+        str(obj),
+    ]
     built = subprocess.run(command, capture_output=True, text=True)
     if built.returncode:
-        raise RuntimeError('private wrapper compile failed: '+built.stdout+built.stderr)
-    for candidate, filename in ((executor, 'xec.c'), (compiler_source, 'comp-amd64.c'),
-                                (exception_source, 'exception.c'), (loader_source, 'loader.c'),
-                                (stack_source, 'validstk.c'), (runtime_rc_source, 'runtime_rc.c'),
-                                (gc_source, 'gc.c'), (managed_owner_source, 'managed_owner.c'), (string_source, 'string.c'),
-                                (shared_pointer_source, 'shared_pointer.c'), (shared_bytes_source, 'shared_bytes.c'),
-                                (shared_arithmetic_source, 'shared_arithmetic.c'),
-                                (shared_real_arithmetic_source, 'shared_real_arithmetic.c'),
-                                (bytes_fast_source, 'bytes_fast.c'),
-                                (shared_real_conversion_source, 'shared_real_conversion.c'),
-                                (heap_hold_source, 'heap_hold.c'),
-                                (list_hold_source, 'list_hold.c'),
-                                (heap_commit_source, 'heap_commit.c'), (pointer_stage_source, 'pointer_stage.c'),
-                                (pointer_prepare_source, 'pointer_prepare.c'),
-                                (pointer_transaction_source, 'pointer_transaction.c'),
-                                (pointer_builder_source, 'pointer_builder.c'), (value_prepare_source, 'value_prepare.c'), (scalar_cons_source, 'scalar_cons.c'), (raw_cons_source, 'raw_cons.c'), (mapped_cons_source, 'mapped_cons.c'),
-                                (mapped_prepare_source, 'mapped_prepare.c')):
+        raise RuntimeError("private wrapper compile failed: " + built.stdout + built.stderr)
+    for candidate, filename in (
+        (executor, "xec.c"),
+        (compiler_source, "comp-amd64.c"),
+        (exception_source, "exception.c"),
+        (loader_source, "loader.c"),
+        (stack_source, "validstk.c"),
+        (runtime_rc_source, "runtime_rc.c"),
+        (gc_source, "gc.c"),
+        (managed_owner_source, "managed_owner.c"),
+        (string_source, "string.c"),
+        (shared_pointer_source, "shared_pointer.c"),
+        (shared_bytes_source, "shared_bytes.c"),
+        (shared_arithmetic_source, "shared_arithmetic.c"),
+        (shared_real_arithmetic_source, "shared_real_arithmetic.c"),
+        (bytes_fast_source, "bytes_fast.c"),
+        (shared_real_conversion_source, "shared_real_conversion.c"),
+        (heap_hold_source, "heap_hold.c"),
+        (list_hold_source, "list_hold.c"),
+        (heap_commit_source, "heap_commit.c"),
+        (pointer_stage_source, "pointer_stage.c"),
+        (pointer_prepare_source, "pointer_prepare.c"),
+        (pointer_transaction_source, "pointer_transaction.c"),
+        (pointer_builder_source, "pointer_builder.c"),
+        (value_prepare_source, "value_prepare.c"),
+        (scalar_cons_source, "scalar_cons.c"),
+        (raw_cons_source, "raw_cons.c"),
+        (mapped_cons_source, "mapped_cons.c"),
+        (mapped_prepare_source, "mapped_prepare.c"),
+        (exception_retirement_source, "gc/fast/exception_retirement.c"),
+    ):
         if candidate is None:
             continue
-        replacement = work / (filename+'.o')
-        command = [link[0], *flags['C_DEFINES'], *flags['C_INCLUDES'], *flags['C_FLAGS'],
-                   '-c', str(candidate), '-o', str(replacement)]
+        replacement = work / (Path(filename).name + ".o")
+        command = [
+            link[0],
+            *flags["C_DEFINES"],
+            *flags["C_INCLUDES"],
+            *flags["C_FLAGS"],
+            "-c",
+            str(candidate),
+            "-o",
+            str(replacement),
+        ]
         built = subprocess.run(command, capture_output=True, text=True)
         if built.returncode:
-            raise RuntimeError('private replacement compile failed: '+built.stdout+built.stderr)
-        suffix = '/'+filename+'.o' if filename in ('runtime_rc.c', 'managed_owner.c', 'shared_pointer.c', 'shared_bytes.c', 'shared_arithmetic.c', 'shared_real_arithmetic.c', 'bytes_fast.c', 'shared_real_conversion.c', 'heap_hold.c', 'list_hold.c', 'heap_commit.c', 'pointer_stage.c', 'pointer_prepare.c', 'pointer_transaction.c', 'pointer_builder.c', 'value_prepare.c', 'scalar_cons.c', 'raw_cons.c', 'mapped_cons.c', 'mapped_prepare.c') else '/native/'+filename+'.o'
+            raise RuntimeError("private replacement compile failed: " + built.stdout + built.stderr)
+        suffix = (
+            "/" + filename + ".o"
+            if "/" in filename
+            or filename
+            in (
+                "runtime_rc.c",
+                "managed_owner.c",
+                "shared_pointer.c",
+                "shared_bytes.c",
+                "shared_arithmetic.c",
+                "shared_real_arithmetic.c",
+                "bytes_fast.c",
+                "shared_real_conversion.c",
+                "heap_hold.c",
+                "list_hold.c",
+                "heap_commit.c",
+                "pointer_stage.c",
+                "pointer_prepare.c",
+                "pointer_transaction.c",
+                "pointer_builder.c",
+                "value_prepare.c",
+                "scalar_cons.c",
+                "raw_cons.c",
+                "mapped_cons.c",
+                "mapped_prepare.c",
+            )
+            else "/native/" + filename + ".o"
+        )
         targets = [index for index, value in enumerate(link) if value.endswith(suffix)]
         if len(targets) != 1:
-            raise RuntimeError('private replacement object boundary drift: '+filename)
+            raise RuntimeError("private replacement object boundary drift: " + filename)
         link[targets[0]] = str(replacement)
-    binary = work / ('runtime-'+str(variant))
-    link[link.index('-o')+1] = str(binary)
-    link += [str(obj), *['-Wl,--wrap='+symbol for symbol in symbols]]
+    binary = work / ("runtime-" + str(variant))
+    link[link.index("-o") + 1] = str(binary)
+    link += [str(obj), *["-Wl,--wrap=" + symbol for symbol in symbols]]
     built = subprocess.run(link, cwd=runtime.parent, capture_output=True, text=True)
     if built.returncode:
-        raise RuntimeError('private runtime relink failed: '+built.stdout+built.stderr)
+        raise RuntimeError("private runtime relink failed: " + built.stdout + built.stderr)
     return binary

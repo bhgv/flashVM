@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 bhgv
+# EN: Real retained collector bodies with native worker coordination.
+# RU: Настоящие сохранённые сборщики с нативной координацией потоков.
 """Run retained Inferno RC and full GC bodies against a documented test pool."""
 import argparse
 import os
@@ -69,6 +72,7 @@ def main():
                     "refcount.c",
                     "native_world.c",
                     "gc_workers.c",
+                    "gc_worker_pass.c",
                 ]
             ]
             command += [str(fvm / "ports/linux" / name) for name in ["thread.c", "channel_sync.c"]]

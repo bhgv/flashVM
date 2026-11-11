@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Real stack diagnostic reentry with invocation-local traversal budgets.
+# RU: Повторный вход в настоящий диагност стека с личным бюджетом обхода.
 """Actual stack checker: independent reentrant budgets on a real rooted cycle."""
 from pathlib import Path
 import os
@@ -26,6 +29,12 @@ static int active; /* Diagnostic runs only on controller under admission. */
 static int nested; /* Reentrant checker invocation, not an OS-thread identity. */
 static int outer_count; /* Actual hmsize observations in current outer check. */
 static int inner_count; /* Actual hmsize observations in nested check. */
+/* [GC:] EN: Invoke the real diagnostic with independently live/rooted p and t.
+ * The internal helper is not declared by the retained public fns.h header.
+ * RU: Вызвать настоящий диагност с независимо живыми корнями p и t.
+ * Внутренний обработчик не объявлен в сохранённом публичном fns.h. */
+void memchk(void *p, Type *t);
+
 int __real_hmsize(void *value);
 void __real_dvm_runtime_root_registry_probe(DVM_GCWorkers *workers);
 
