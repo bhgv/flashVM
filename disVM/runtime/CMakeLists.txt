@@ -126,6 +126,7 @@ add_executable(disvm
     native_jump.c
     runqueue.c
     owner_messages.c
+    channel_match.c
     host_cancellations.c
     thread_registrar.c
     queue_probe.c
@@ -2944,4 +2945,11 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_startup.py" "$<TARGET_FILE:disvm>"
         "${CMAKE_CURRENT_BINARY_DIR}/managed-rc-overlap.dis")
     set_tests_properties(disvm_resident_startup PROPERTIES TIMEOUT 180)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME disvm_resident_alt COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_alt.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_resident_alt PROPERTIES TIMEOUT 180)
 endif()

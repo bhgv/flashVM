@@ -166,7 +166,7 @@ int dvm_runqueue_claim(Prog *process)
         (void)dvm_native_context_release_turn(context,process);
         return 0;
     }
-    runtime_process(process)->dispatch_owner = context;
+    __atomic_store_n(&runtime_process(process)->dispatch_owner, context, __ATOMIC_RELEASE);
     if (runtime_process(process)->last_dispatcher && runtime_process(process)->last_dispatcher != (uintptr)context)
     {
         __atomic_fetch_add(&migrated, 1, __ATOMIC_RELAXED);
@@ -207,16 +207,17 @@ int dvm_runqueue_finish(Prog *process)
         }
         return 0;
     }
-    runtime_process(process)->dispatch_owner = NULL;
+    __atomic_store_n(&runtime_process(process)->dispatch_owner, NULL, __ATOMIC_RELEASE);
     __atomic_fetch_add(&finishes, 1, __ATOMIC_RELAXED);
     __atomic_fetch_sub(&active, 1, __ATOMIC_RELEASE);
     return 1;
 }
 
-/* Borrow scalar owner identity only while the shared heap/queue is protected. */
+/* EN: Acquire the published owner identity after its register snapshot writes.
+ * RU: Прочитать владельца после публикации его записи регистров. */
 DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process)
 {
-    return process ? runtime_process(process)->dispatch_owner : NULL;
+    return process ? __atomic_load_n(&runtime_process(process)->dispatch_owner, __ATOMIC_ACQUIRE) : NULL;
 }
 
 /* Validate the bounded FIFO and inspect one borrowed process. All reads require

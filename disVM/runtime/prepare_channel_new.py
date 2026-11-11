@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Adapt channel and ALT ownership boundaries without changing vendor files.
+# RU: Адаптация владения каналами и ALT без изменения vendor-исходников.
 """Select the rooted channel constructor without modifying the vendor snapshot."""
 import hashlib
 import re
@@ -358,7 +361,7 @@ static int channel_match_{opcode}(void *argument)
         dispatch = f"""    request.channel = c;
     request.peer = p;
     request.queue = &c->{direction};
-    if (!dvm_runtime_channel_with_queue_claim(p, validate_channel_head, channel_match_{opcode}, &request) &&
+    if (!dvm_runtime_channel_with_queue_claim(p, validate_channel_head, channel_match_{opcode}, &request, c) &&
         !dvm_runtime_scalar_retry({"ISEND" if opcode == "isend" else "IRECV"}))
     {{
         error("channel waiter changed before transfer");
@@ -398,7 +401,7 @@ int dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive)
         else
             DVM_R.s = payload;
         done = dvm_runtime_channel_with_queue_claim(read.peer, validate_alt_channel_head,
-            receive ? channel_match_irecv : channel_match_isend, &request);
+            receive ? channel_match_irecv : channel_match_isend, &request, channel);
     }
     DVM_R.s = source;
     DVM_R.d = destination;
@@ -412,7 +415,7 @@ int dvm_runtime_alt_try_transfer(Channel *channel, void *payload, int receive)
 WAIT_COMPLETION = r"""
 extern void dvm_runtime_alt_preflight(Alt *alt);
 extern int dvm_runtime_channel_with_queue_claim(Prog *peer, int (*validate)(void *),
-    int (*match)(void *), void *request);
+    int (*match)(void *), void *request, Channel *channel);
 
 typedef struct ChannelMatch
 {
@@ -426,7 +429,8 @@ typedef struct ChannelMatch
 static int validate_channel_head(void *argument)
 {
     ChannelMatch *request = argument;
-    return vmchanhead(request->queue)->prog == request->peer;
+    return !dvm_runtime_channel_wait_state(request->channel) &&
+        vmchanhead(request->queue)->prog == request->peer;
 }
 
 extern void dvm_runtime_channel_wake(Prog *peer, char *cause);
@@ -932,7 +936,7 @@ static int altarraypending(Array *array)
 /* Scan validated guards before suspension. A mover may not park behind
  * another reservation while it owns one itself. No array storage or member
  * pointer is used after leaving NativeWorld; ALT revalidates on retry. */
-static int altpending(Alt *alt, int count)
+static int altpending_locked(Alt *alt, int count)
 {
     uchar *cell = (uchar *)alt + offsetof(Alt, ac) + offsetof(Altc, c);
     Channel *channel;
@@ -950,6 +954,36 @@ static int altpending(Alt *alt, int count)
         pending |= state;
     }
     return pending;
+}
+
+
+/* EN: Borrowed guard scan; all reservation lists require the queue mutex.
+ * RU: Заимствованный обход guards; списки резерваций требуют мьютекса очереди. */
+typedef struct AltPending
+{
+    Alt *alt; /* Borrowed live guard table. */
+    int count; /* Previously validated guard count. */
+    int pending; /* Scan result published before unlocking. */
+} AltPending;
+
+
+/* EN: Scan request while the caller holds the channel queue mutex.
+ * RU: Обойти request при удерживаемом мьютексе очереди каналов. */
+static int scan_alt_pending(void *argument)
+{
+    AltPending *request = argument;
+    request->pending = altpending_locked(request->alt, request->count);
+    return 1;
+}
+
+
+/* EN: Protect reservation membership while scanning borrowed guards.
+ * RU: Защитить список резерваций при обходе заимствованных guards. */
+static int altpending(Alt *alt, int count)
+{
+    AltPending request = {alt, count, 0};
+    dvm_runtime_channel_queue_guard(scan_alt_pending, &request);
+    return request.pending;
 }
 
 
@@ -975,7 +1009,10 @@ static int altguardsmatch(uchar *first, int count, Channel *channel)
 /* A same-direction ALT on one concrete channel has no independent branch to
  * service while its buffer is reserved. Wait before registering any guard.
  * The peer reader roots the channel and rechecks the first guard cell.
- * Return one after waiting, so the caller revalidates the queue geometry. */
+ * EN: The peer reader tests reservation membership under the queue mutex;
+ * there is no unlocked busy-list probe. Revalidate after that observation.
+ * RU: Список резерваций проверяет peer reader под мьютексом очереди;
+ * чтения списка без блокировки нет. После проверки повторить валидацию. */
 static int altwaitshared(Alt *alt, int nsend, int nrecv)
 {
     uchar *first = (uchar *)alt + offsetof(Alt, ac) + offsetof(Altc, c);
@@ -988,8 +1025,7 @@ static int altwaitshared(Alt *alt, int nsend, int nrecv)
         return 0;
     }
     memmove(&channel, first, sizeof(channel));
-    if (altobject(channel) || !dvm_runtime_channel_buffer_busy(channel) ||
-        !altguardsmatch(first, count, channel))
+    if (altobject(channel) || !altguardsmatch(first, count, channel))
     {
         return 0;
     }
@@ -1371,11 +1407,17 @@ typedef struct ChannelReservation
 
 /* Stack ledgers are linked only while their operations own a reservation.
  * The queue mutex protects membership. No mover runs with the mutex held. */
+#include "channel_match.h"
+
 static ChannelReservation *active_channel_reservations;
 
 int dvm_runtime_channel_buffer_busy(Channel *channel)
 {
     ChannelReservation *entry;
+    if (dvm_channel_match_blocked(channel, dvm_native_context_current()))
+    {
+        return 1;
+    }
     for (entry = active_channel_reservations; entry; entry = entry->next)
     {
         if (entry->read.channel == channel)
@@ -1398,7 +1440,11 @@ int dvm_runtime_channel_wait_state(Channel *channel)
         busy |= entry->read.channel == channel;
         owns_reservation |= entry->owner == current;
     }
-    return busy ? (owns_reservation ? -1 : 1) : 0;
+    if (busy)
+    {
+        return owns_reservation ? -1 : 1;
+    }
+    return dvm_channel_match_blocked(channel, current);
 }
 
 

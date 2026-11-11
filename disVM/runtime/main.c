@@ -38,6 +38,7 @@
 #include "managed_owner_probe.h"
 #include "managed_workers.h"
 #include "host_cancellations.h"
+#include "channel_match.h"
 #include "process_environment.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
@@ -1581,7 +1582,9 @@ typedef struct ChannelClaim
     Prog *peer;
     int (*validate)(void *); /* Optional queue-head check under the queue mutex. */
     int acquired;            /* Waiter was pinned and claimed. */
-    void *request;
+    void *request;           /* Borrowed completion callback argument. */
+    Channel *channel;        /* Optional channel protected through the match. */
+    DVM_ChannelMatch match;  /* Stack reservation under channel_queue_mutex. */
 } ChannelClaim;
 
 
@@ -1595,6 +1598,16 @@ static int acquire_channel_claim(void *argument)
     {
         return 1;
     }
+    DVM_NativeContext *dispatch = dvm_runqueue_dispatch_owner(peer);
+    /* EN: ALT publishes its wait before its owner finishes saving registers.
+     * A foreign matcher must retry until that turn has released the owner.
+     * RU: ALT публикует ожидание до завершения сохранения регистров владельцем.
+     * Чужой участник повторяет попытку после завершения этого вызова ALT. */
+    if (native_spawn && claim->validate && peer->state == Palt && dispatch &&
+        dispatch != dvm_native_context_current())
+    {
+        return 1;
+    }
     if (process->channel_claimed ||
         (peer->state != Psend && peer->state != Precv && peer->state != Palt))
     {
@@ -1604,8 +1617,17 @@ static int acquire_channel_claim(void *argument)
         }
         error("channel waiter cannot be claimed");
     }
+    if (claim->channel && !dvm_channel_match_begin(&claim->match, claim->channel,
+            dvm_native_context_current()))
+    {
+        return 1;
+    }
     if (!dvm_runqueue_pin(peer))
     {
+        if (claim->channel)
+        {
+            dvm_channel_match_end(&claim->match);
+        }
         error("channel waiter cannot be pinned");
     }
     process->channel_claimed = claim;
@@ -1617,7 +1639,7 @@ static int acquire_channel_claim(void *argument)
 /* Release the exact completion claim under the same mutex as acquisition.
  * peer remains pinned until after the claim is cleared. A mismatched identity
  * indicates a broken ownership invariant and cannot be recovered in the VM. */
-static void release_channel_claim(Prog *peer, const void *owner)
+static void release_channel_claim(Prog *peer, const void *owner, DVM_ChannelMatch *match)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;
     int runnable;
@@ -1627,6 +1649,11 @@ static void release_channel_claim(Prog *peer, const void *owner)
         abort();
     }
     runnable = process->queued;
+    if (match)
+    {
+        dvm_channel_match_end(match);
+        dvm_runtime_channel_buffer_notify();
+    }
     dvm_runqueue_unpin(peer);
     process->channel_claimed = nil;
     if (runnable)
@@ -1642,7 +1669,7 @@ static void finish_channel_claim(ChannelClaim *claim, int (*match)(void *))
 {
     Prog *peer = claim->peer;
     int completed = kprotect(match, claim->request);
-    release_channel_claim(peer, claim);
+    release_channel_claim(peer, claim, claim->channel ? &claim->match : NULL);
     if (!completed)
     {
         krethrow();
@@ -1653,7 +1680,7 @@ static void finish_channel_claim(ChannelClaim *claim, int (*match)(void *))
 /* External cancellation borrows the scheduler-owned waiter under NativeWorld. */
 void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *request)
 {
-    ChannelClaim claim = {peer, nil, 0, request};
+    ChannelClaim claim = {peer, nil, 0, request, NULL, {0}};
     dvm_runtime_channel_queue_guard(acquire_channel_claim, &claim);
     finish_channel_claim(&claim, match);
 }
@@ -1661,9 +1688,9 @@ void dvm_runtime_channel_with_claim(Prog *peer, int (*match)(void *), void *requ
 
 /* Check the queue head and pin it in the same mutex acquisition. */
 int dvm_runtime_channel_with_queue_claim(Prog *peer, int (*validate)(void *),
-    int (*match)(void *), void *request)
+    int (*match)(void *), void *request, Channel *channel)
 {
-    ChannelClaim claim = {peer, validate, 0, request};
+    ChannelClaim claim = {peer, validate, 0, request, channel, {0}};
     dvm_runtime_channel_queue_guard(acquire_channel_claim, &claim);
     if (claim.acquired)
     {
@@ -2283,7 +2310,7 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
             int completed = kprotect(wake_closed_channel, peer);
             if (claimed)
             {
-                release_channel_claim(peer, owner);
+                release_channel_claim(peer, owner, NULL);
             }
             if (!completed && !*failed)
             {
