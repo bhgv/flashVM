@@ -116,3 +116,10 @@ POSIX support-библиотека предоставляет decimal-преоб
 `prepare_dtoa.py` переименовывает только приватные входы в личном source-view,
 не меняя импорт. При BUILD_TESTING тест `limbo_bootstrap_decimal_threads`
 проверяет параллельный parse, точный binary64 round-trip и владение цифрами.
+
+Публикация и поиск native lib9 форматтеров защищены коротким mutex метаданных;
+callback вызывается после снятия mutex и может форматировать рекурсивно.
+Адаптер `prepare_fmt.py` и `host/format_sync.c` не меняют импортированный исходник.
+`prepare_errstr.py` хранит native-текст ошибки в TLS потока ОС вместе с errno.
+Тесты format/error threads проверяют холодную регистрацию, reentry callback,
+личный вывод, свой текст ошибки и обычный fallback OS errno.

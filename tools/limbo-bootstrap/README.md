@@ -131,3 +131,10 @@ with one native mutex; returned digit buffers remain caller-owned until freedtoa
 `prepare_dtoa.py` renames only the private entry points in the build view and
 preserves imported sources. With BUILD_TESTING, `limbo_bootstrap_decimal_threads`
 checks real concurrent parsing, exact binary64 round-trips and digit ownership.
+
+Native lib9 formatter publication and lookup share a short metadata mutex;
+callbacks run after unlock and may format recursively. The build-owned
+`prepare_fmt.py` adaptation and `host/format_sync.c` leave imported source intact.
+`prepare_errstr.py` keeps native custom-error bytes in OS-thread TLS alongside
+errno. The format/error thread tests cover cold registration, callback reentry,
+private output, custom error text and ordinary OS error fallback.

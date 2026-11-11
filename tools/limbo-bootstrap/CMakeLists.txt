@@ -34,6 +34,22 @@ execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prep
 if(NOT ecom_prepared EQUAL 0)
   message(FATAL_ERROR "Limbo constant/source preparation failed")
 endif()
+set(limbo_fmt "${CMAKE_CURRENT_BINARY_DIR}/prepared-fmt.c")
+set(limbo_errstr "${CMAKE_CURRENT_BINARY_DIR}/prepared-errstr.c")
+foreach(unit fmt errstr)
+  if(unit STREQUAL "fmt")
+    set(native_input "${u}/lib9/fmt.c")
+  else()
+    set(native_input "${u}/lib9/errstr-posix.c")
+  endif()
+  execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_${unit}.py"
+    --source "${native_input}" --output "${limbo_${unit}}" RESULT_VARIABLE unit_prepared)
+  if(NOT unit_prepared EQUAL 0)
+    message(FATAL_ERROR "Native ${unit} concurrency preparation failed")
+  endif()
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${native_input}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_${unit}.py")
+endforeach()
 set(limbo_dtoa "${CMAKE_CURRENT_BINARY_DIR}/prepared-dtoa.c")
 execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_dtoa.py"
   --source "${u}/libmath/dtoa.c" --output "${limbo_dtoa}" RESULT_VARIABLE dtoa_prepared)
@@ -84,9 +100,9 @@ add_library(limbo_bootstrap_lib9 STATIC
   upstream/lib9/dorfmt.c
   upstream/lib9/errfmt.c
   upstream/lib9/exits.c
-  upstream/lib9/fmt.c
+  "${limbo_fmt}"
   upstream/lib9/fmtfd.c
-  upstream/lib9/fmtlock.c
+  host/format_sync.c
   upstream/lib9/fmtprint.c
   upstream/lib9/fmtquote.c
   upstream/lib9/fmtrune.c
@@ -126,13 +142,14 @@ add_library(limbo_bootstrap_lib9 STATIC
   upstream/lib9/vsmprint.c
   upstream/lib9/vsnprint.c
   upstream/lib9/dirstat-posix.c
-  upstream/lib9/errstr-posix.c
+  "${limbo_errstr}"
   upstream/lib9/getuser-posix.c
   upstream/lib9/getwd-posix.c
   upstream/lib9/sbrk-posix.c
   upstream/lib9/isnan-posix.c
 )
-target_include_directories(limbo_bootstrap_lib9 PUBLIC ${sdk_include})
+target_include_directories(limbo_bootstrap_lib9 PUBLIC ${sdk_include} PRIVATE "${u}/lib9")
+target_link_libraries(limbo_bootstrap_lib9 PUBLIC Threads::Threads)
 add_library(limbo_bootstrap_bio STATIC
   upstream/libbio/bbuffered.c
   upstream/libbio/bfildes.c
@@ -374,4 +391,13 @@ if(BUILD_TESTING)
   target_link_libraries(limbo_bootstrap_decimal_threads PRIVATE limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support)
   add_test(NAME limbo_bootstrap_decimal_threads COMMAND limbo_bootstrap_decimal_threads)
   set_tests_properties(limbo_bootstrap_decimal_threads PROPERTIES TIMEOUT 60)
+endif()
+
+if(BUILD_TESTING)
+  foreach(unit format error)
+    add_executable(limbo_bootstrap_${unit}_threads host/test_${unit}_threads.c)
+    target_link_libraries(limbo_bootstrap_${unit}_threads PRIVATE limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support)
+    add_test(NAME limbo_bootstrap_${unit}_threads COMMAND limbo_bootstrap_${unit}_threads)
+    set_tests_properties(limbo_bootstrap_${unit}_threads PROPERTIES TIMEOUT 60)
+  endforeach()
 endif()

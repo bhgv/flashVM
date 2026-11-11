@@ -3016,6 +3016,16 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_decimal.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_resident_decimal PROPERTIES TIMEOUT 180)
+    foreach(unit format error)
+        add_executable(disvm_${unit}_threads_test "${root}/tools/limbo-bootstrap/host/test_${unit}_threads.c")
+        target_link_libraries(disvm_${unit}_threads_test PRIVATE limbo_bootstrap_support limbo_bootstrap_lib9 limbo_bootstrap_support)
+        add_test(NAME disvm_${unit}_threads COMMAND disvm_${unit}_threads_test)
+        set_tests_properties(disvm_${unit}_threads PROPERTIES TIMEOUT 60)
+    endforeach()
+    add_test(NAME disvm_resident_errors COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_errors.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_resident_errors PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_module_registry COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_module_registry.py" "$<TARGET_FILE:disvm>")
     add_test(NAME disvm_load_kill COMMAND "${PYTHON_EXECUTABLE}"
