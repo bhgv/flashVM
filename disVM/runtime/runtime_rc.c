@@ -18,6 +18,8 @@
 #include "gc/fast/graph_confirmation.h"
 #include "gc/fast/packet_budget.h"
 #include "gc/fast/file_retirement.h"
+#include "gc/fast/table_retirement.h"
+#include "bigtable_owner.h"
 #include "runtime_gc.h"
 #include "gc_fields.h"
 #include "managed_owner.h"
@@ -80,6 +82,9 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_channels;
 static unsigned long shared_plain_records;
 static unsigned long shared_lists;
+static unsigned long shared_tables; /* Known table heaps finalized on shared Fast. */
+static unsigned long shared_keys; /* Known key-snapshot heaps finalized on shared Fast. */
+static unsigned long shared_table_owners_with_peer; /* Native table/key claims with an active guest. */
 static unsigned long shared_files; /* Last Sys.FD releases on shared Fast. */
 static unsigned long shared_files_with_peer; /* FD finalization with a live peer resident. */
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
@@ -175,6 +180,9 @@ void dvm_runtime_rc_start(void)
     shared_array_graphs = 0;
     shared_arrays = 0;
     shared_arrays_with_peer = 0;
+    shared_tables = 0;
+    shared_keys = 0;
+    shared_table_owners_with_peer = 0;
     shared_files = 0;
     shared_files_with_peer = 0;
     shared_strings = 0;
@@ -253,7 +261,7 @@ static int leaf_eligible(const Heap *heap)
         const Array *array = H2D(const Array *, heap);
         return array->t && array->t != H;
     }
-    return dvm_gc_fast_file_eligible(heap) ||
+    return dvm_gc_fast_file_eligible(heap) || dvm_gc_fast_table_eligible(heap) ||
         (heap->t && ((dvm_runtime_idle_cycles && heap->t == &Tlist) || heap->t->free == freeheap));
 }
 
@@ -2002,6 +2010,13 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     shared_files++;
                     shared_files_with_peer += peer;
                 }
+                else if (dvm_gc_fast_table_eligible(entry->heap))
+                {
+                    int kind = dvm_gc_fast_table_finalize(entry->heap);
+                    shared_tables += kind == DVM_BIGTABLE_NATIVE_TABLE;
+                    shared_keys += kind == DVM_BIGTABLE_NATIVE_KEYS;
+                    shared_table_owners_with_peer += peer;
+                }
                 else if (!record)
                 {
                     free(H2D(String *, entry->heap)->tmp);
@@ -2398,6 +2413,8 @@ int dvm_runtime_rc_finish(int diagnostics)
         printf("NATIVELISTRC shared=%lu\n", shared_lists);
         printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);
         printf("NATIVECHANNELRC shared=%lu\n", shared_channels);
+        printf("NATIVETABLERC tables=%lu keys=%lu with_peer=%lu\n",
+            shared_tables, shared_keys, shared_table_owners_with_peer);
         printf("NATIVEFDRC shared=%lu with_peer=%lu\n", shared_files, shared_files_with_peer);
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
         printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",

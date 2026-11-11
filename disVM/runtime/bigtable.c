@@ -16,6 +16,7 @@
 #include "table.h"
 #include "table_request.h"
 #include "table_leases.h"
+#include "bigtable_owner.h"
 #include "channel_sync.h"
 #include <stddef.h>
 #include <errno.h>
@@ -91,7 +92,44 @@ static Type *keys_type;            /* [GC:] Runtime-lifetime exact descriptor fo
 static unsigned long table_owners; /* [GC:] Live native table owners, under registry mutex. */
 static unsigned long key_owners;   /* [GC:] Live key snapshots, under registry mutex. */
 
-/* Release private C storage during RC destruction or cycle sweep. No VM pointers are contained. */
+
+/* [GC:] EN: Classify the borrowed heap using immutable native type identities.
+ * RU: Проверить заимствованный heap по неизменяемым нативным типам. */
+int dvm_bigtable_native_kind(const Heap *heap)
+{
+    if (table_type && heap->t == table_type)
+    {
+        return DVM_BIGTABLE_NATIVE_TABLE;
+    }
+    return keys_type && heap->t == keys_type ? DVM_BIGTABLE_NATIVE_KEYS : 0;
+}
+
+
+/* [GC:] EN: Check last-owner scheduling metadata under its existing mutex.
+ * heap is borrowed after the collector claimed its final reference.
+ * RU: Проверить метаданные последнего владельца под существующим мьютексом.
+ * heap заимствован после захвата сборщиком последней ссылки. */
+int dvm_bigtable_native_quiet(const Heap *heap)
+{
+    int kind = dvm_bigtable_native_kind(heap);
+    if (kind != DVM_BIGTABLE_NATIVE_TABLE)
+    {
+        return kind == DVM_BIGTABLE_NATIVE_KEYS;
+    }
+    const TableOwner *owner = H2D(const TableOwner *, heap);
+    pthread_mutex_lock(&table_scheduler_lock);
+    int quiet = !owner->lease_owner && !owner->lease_depth && !owner->lease_next &&
+        !owner->wait_head && !owner->wait_tail && !owner->wait_count;
+    pthread_mutex_unlock(&table_scheduler_lock);
+    return quiet;
+}
+
+/* [GC:] EN: Release scalar C storage after all lease/wait ownership is gone.
+ * heap is borrowed by last-owner Fast or stopped sweep; swept is unused.
+ * ready permits cleanup of partial construction. No managed callback is invoked.
+ * RU: Освободить C-хранилище после ухода всех lease/ожиданий.
+ * heap заимствован Fast либо остановленной сборкой; swept не используется.
+ * ready разрешает частичную инициализацию; управляемые callbacks не вызываются. */
 static void free_table(Heap *heap, int swept)
 {
     TableOwner *owner = H2D(TableOwner *, heap);
@@ -109,7 +147,10 @@ static void free_table(Heap *heap, int swept)
     }
 }
 
-/* Release snapshot storage exactly once when Dis retires its native owner. No user code runs. */
+/* [GC:] EN: Release independent native key storage exactly once on GC.
+ * heap is borrowed; swept is unused. NULL keys permit failed construction.
+ * RU: Однократно освободить независимые ключи в GC. heap заимствован,
+ * swept не используется. NULL keys разрешает неудачную инициализацию. */
 static void free_keys(Heap *heap, int swept)
 {
     KeysOwner *owner = H2D(KeysOwner *, heap);

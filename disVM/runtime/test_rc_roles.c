@@ -13,12 +13,31 @@
 #include "managed_owner.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
+#include "bigtable_owner.h"
 #include "disvm/native_process.h"
 #include "disvm/native_owner.h"
 #include "thread_port.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+
+/* [GC:] EN: This role-only unit installs no Bigtable types; heap is not inspected.
+ * RU: Тест ролей не устанавливает типы Bigtable; heap не читается. */
+int dvm_bigtable_native_kind(const Heap *heap)
+{
+    (void)heap;
+    return 0;
+}
+
+
+/* [GC:] EN: No native table can reach finalization in this role-only unit.
+ * RU: В этом тесте ролей нативная таблица не может попасть в финализацию. */
+int dvm_bigtable_native_quiet(const Heap *heap)
+{
+    (void)heap;
+    return 0;
+}
 
 Type *TFD; /* No Sys.FD is initialized in this isolated admission-role unit. */
 Type Tarray;  /* Type identity only. This fixture owns no real arrays. */
