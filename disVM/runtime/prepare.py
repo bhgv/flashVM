@@ -11,7 +11,7 @@ import sys
 from prepare_type_counts import adapt as adapt_type_counts
 from prepare_heap_counts import adapt as adapt_heap_counts
 from prepare_opcode_counts import adapt as adapt_opcode_counts
-from prepare_module_counts import adapt_link, adapt_load, adapt_xec
+from prepare_module_counts import adapt_link, adapt_load, adapt_registry_runt, adapt_xec
 from prepare_snapshots import adapt_string, adapt_xec as adapt_xec_snapshots
 from prepare_observations import adapt_runt, adapt_xec as adapt_xec_observations
 from prepare_jit_counts import adapt as adapt_jit_counts
@@ -939,7 +939,7 @@ def main():
                 "Dis integer arguments occupy four bytes, even on LP64 hosts.",
                 "NC64 arguments occupy the explicitly selected native cell width.",
             )
-        path.write_text(adapt_runt(code) if name == "runt.c" else code)
+        path.write_text(adapt_runt(adapt_registry_runt(code)) if name == "runt.c" else code)
     # Relative indexes are host language extensions, kept outside the snapshot.
     for filename in ("xec.c", "string.c"):
         path = args.output / filename

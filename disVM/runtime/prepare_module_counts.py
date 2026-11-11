@@ -1,8 +1,13 @@
+# Copyright (c) 2026 bhgv
+# EN: Adapt hosted Module/Type counts and short native registry transactions.
+# RU: Адаптировать счётчики Module/Type и короткие операции native-реестра.
 """Adapt reviewed hosted Module/link count sites without changing pinned source."""
 
 
-# Apply exactly reviewed source occurrences. source/changes are private strings
-# and replacement triples; return adapted string or reject boundary drift.
+# EN: Replace exact reviewed source occurrences; source/changes are private text
+# and replacement triples. Return adapted text or reject source-boundary drift.
+# RU: Заменить точные вхождения source по тройкам changes. Вернуть личную строку
+# либо отвергнуть расхождение границ исходника.
 def replace(source, changes):
     for before, after, count in changes:
         if source.count(before) != count:
@@ -11,8 +16,10 @@ def replace(source, changes):
     return source
 
 
-# source is final hosted link.c; convert Type increments/preflights only.
-# Caller still excludes registry, allocation and publication mutations.
+# EN: Convert Type increments/preflights in private hosted link.c source.
+# Return adapted text; do not alter allocation or private link construction.
+# RU: Преобразовать счётчики/проверки Type в личном link.c source. Вернуть
+# адаптацию, не меняя выделения или создание личного link.
 def adapt_link(source):
     changes = (
         ('Tmodlink.ref++;', 'dvm_runtime_type_retain(&Tmodlink.ref);', 1),
@@ -25,8 +32,10 @@ def adapt_link(source):
     return '#include "type_counts.h"\n#include "disvm/refcount.h"\n'+replace(source, changes)
 
 
-# source is final hosted load.c; preserve private Module initializations and
-# exact unlink/MP/type cleanup after LAST. No post-nonfinal counter observation.
+# EN: Adapt hosted load.c source counts and atomic registry membership. Return
+# private text; preserve module construction and destruction outside its mutex.
+# RU: Адаптировать счётчики и атомарные операции реестра в личном load.c source.
+# Вернуть текст, сохранив создание/уничтожение вне mutex реестра.
 def adapt_load(source):
     changes = (
         ('m->ref++;', 'dvm_runtime_module_retain(&m->ref);', 1),
@@ -38,11 +47,45 @@ def adapt_load(source):
         ('Tarray.ref <= 0', 'dvm_refcount_load_i(&Tarray.ref) <= 0', 1),
         ('Tarray.ref == 0x7fffffff', 'dvm_refcount_load_i(&Tarray.ref) == 0x7fffffff', 1),
     )
-    return '#include "module_counts.h"\n#include "type_counts.h"\n#include "disvm/refcount.h"\n'+replace(source, changes)
+    source = replace(source, changes)
+    lookup = """Module*
+lookmod(char *s)
+{
+	Module *m;
+
+	for(m = modules; m != nil; m = m->link)
+		if(strcmp(s, m->path) == 0) {
+			dvm_runtime_module_retain(&m->ref);
+			return m;
+		}
+	return nil;
+}"""
+    release = """	Module **last, *mm;
+
+	if(!dvm_runtime_module_release(&m->ref))
+		return;
+
+	last = &modules;
+	for(mm = modules; mm != nil; mm = mm->link) {
+		if(mm == m) {
+			*last = m->link;
+			break;
+		}
+		last = &mm->link;
+	}"""
+    source = replace(source, (
+        ('\tmodule->link = modules;\n\tmodules = module;', '\tdvm_module_registry_publish(module);', 1),
+        ('\tm->link = modules;\n\tmodules = m;', '\tdvm_module_registry_publish(m);', 1),
+        (lookup, 'Module*\nlookmod(char *s)\n{\n\treturn dvm_module_registry_lookup(s);\n}', 1),
+        (release, '\tif(!dvm_module_registry_release(m))\n\t\treturn;', 1),
+    ))
+    return '#include "module_registry.h"\n#include "module_counts.h"\n#include "type_counts.h"\n#include "disvm/refcount.h"\n'+source
 
 
-# source is final hosted xec.c after opcode-retain conversion. Only Module
-# self-import owner/preflight change here; snapshots remain separately excluded.
+# EN: Adapt private hosted xec.c source after opcode count conversion. Return text
+# with checked self-import references; registry publication is handled separately.
+# RU: Адаптировать личный xec.c source после преобразования счётчиков инструкций.
+# Вернуть текст с проверкой self-ссылок; публикация реестра обрабатывается отдельно.
 def adapt_xec(source):
     changes = (
         ('m->ref++;', 'dvm_runtime_module_retain(&m->ref);', 1),
@@ -50,3 +93,22 @@ def adapt_xec(source):
         ('m->ref == 0x7fffffff', 'dvm_refcount_load_i(&m->ref) == 0x7fffffff', 1),
     )
     return '#include "module_counts.h"\n#include "disvm/refcount.h"\n'+replace(source, changes)
+
+
+# EN: Publish complete builtin batches under the same short registry mutex.
+# source is an owned source-view string; return adapted text or reject drift.
+# RU: Публиковать готовые наборы builtin под тем же коротким mutex реестра.
+# source — личная строка source-view; вернуть адаптацию либо отвергнуть расхождение.
+def adapt_registry_runt(source):
+    batch = """	head = modules;
+	for(i=0; i<count; i++){
+		staged[i]->link = head;
+		head = staged[i];
+	}
+	modules = head;"""
+    changes = (
+        ('\t\tm->link = modules;\n\t\tmodules = m;', '\t\tdvm_module_registry_publish(m);', 1),
+        ('\tModule *head;\n', '', 1),
+        (batch, '\tdvm_module_registry_publish_set(staged, count);', 1),
+    )
+    return '#include "module_registry.h"\n' + replace(source, changes)
