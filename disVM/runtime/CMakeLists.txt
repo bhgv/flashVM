@@ -164,6 +164,7 @@ add_executable(disvm
     root_registry_probe.c
     pointer_stage.c
     record_new.c
+    allocation_publication.c
     record_storage.c
     mapped_cons.c
     mapped_prepare.c

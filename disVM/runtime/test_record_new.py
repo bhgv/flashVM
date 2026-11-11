@@ -1,3 +1,4 @@
+# Copyright (c) 2026 bhgv
 """Exercise guarded record, array and channel construction through native and guest routes."""
 from pathlib import Path
 import subprocess
@@ -5,6 +6,7 @@ import sys
 import tempfile
 
 from relink_private import relink
+from resident_evidence import evidence
 
 
 GUEST = r'''implement Records;
@@ -43,6 +45,27 @@ init() {
 }
 '''
 
+
+
+# EN: Reuse checked record/array/channel operations in forty independent owners.
+# RU: Повторить проверенные операции над записями, массивами и каналами на 40 потоках.
+CONCURRENT_GUEST = GUEST.replace("init() {", "worker(done: chan of int) {", 1).replace(
+    r'sys->print("PASS record guest\n");', 'done <-= 1;', 1
+) + r'''
+# EN: Start forty residents and collect one validated result from each.
+# RU: Запустить сорок потоков и собрать проверенные результаты.
+init()
+{
+    sys := load Sys Sys->PATH;
+    done := chan[40] of int;
+    for (i := 0; i < 40; i++)
+        spawn worker(done);
+    for (i = 0; i < 40; i++)
+        if (<-done != 1)
+            raise "allocation worker failed";
+    sys->print("PASS forty allocation workers\n");
+}
+'''
 
 
 def verify_existing_shared_dispatch(runtime, work, image):
@@ -239,7 +262,13 @@ def main():
         guest, image = work / "main.b", work / "main.dis"
         guest.write_text(GUEST)
         subprocess.run([str(compiler), "-I", str(include), "-o", str(image), str(guest)], check=True)
-        binary = relink(runtime, work, fixture, 0, [
+        delayed_fixture = work / "record-new.c"
+        fixture_source = fixture.read_text()
+        if fixture_source.count("busy_publication = 1;") != 1:
+            raise RuntimeError("allocation contention fixture anchor drift")
+        delayed_fixture.write_text(fixture_source.replace(
+            "busy_publication = 1;", "busy_publication = 130;", 1))
+        binary = relink(runtime, work, delayed_fixture, 0, [
             "dvm_runtime_root_registry_probe", "dvm_runtime_record_new", "dvm_runtime_heap_commit_attempt",
             "dvm_runtime_array_new", "dvm_runtime_root_batch_publish", "destroy", "fvm_port_sync_wait", "dvm_managed_workers_wake_guest", "dvm_managed_ranges_begin"
         ])
@@ -256,6 +285,22 @@ def main():
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
         verify_existing_shared_dispatch(runtime, work, image)
+        concurrent_source, concurrent_image = work / "concurrent.b", work / "concurrent.dis"
+        concurrent_source.write_text(CONCURRENT_GUEST)
+        subprocess.run([str(compiler), "-I", str(include), "-o", str(concurrent_image),
+                        str(concurrent_source)], check=True)
+        for mode in ("--no-jit", "--jit"):
+            for locked in (False, True):
+                command = [str(runtime), mode, "--native-spawn", "--stats"]
+                if locked:
+                    command.append("--gc-locked-poll")
+                run = subprocess.run(command + [str(concurrent_image)], capture_output=True,
+                                     text=True, timeout=60)
+                output = run.stdout + run.stderr
+                if run.returncode or "PASS forty allocation workers" not in output:
+                    raise RuntimeError(output)
+                evidence(output, children=40)
+
     print("PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest")
 
 

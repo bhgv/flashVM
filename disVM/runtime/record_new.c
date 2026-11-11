@@ -1,4 +1,7 @@
-/* Allocate a rooted record, array or channel before exposing it to an allocation monitor. */
+/* Copyright (c) 2026 bhgv
+ * EN: Allocate rooted records, arrays and channels before monitored publication.
+ * RU: Выделение укоренённых записей, массивов и каналов до публикации.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -7,7 +10,7 @@
 #include "pool.h"
 #include "raise.h"
 #include "record_new.h"
-#include "heap_commit.h"
+#include "allocation_publication.h"
 #include "heap_pool.h"
 #include "runtime_gc.h"
 #include "record_storage.h"
@@ -282,63 +285,24 @@ static void allocate_candidate(AllocationTransaction *state)
 }
 
 
-/* [GC:] Capture the live destination into the transaction. BUSY has released
- * all guards, so the owner can poll GC and retry. Returns a static error.
- * RU: Захватить ячейку в транзакции. При BUSY блокировки сняты, можно
- * опросить GC и повторить захват. Возвращает статическую ошибку. */
-static const char *hold_destination(AllocationTransaction *state)
-{
-    DVM_CellResult claim;
-    const char *problem;
-    for (unsigned int attempt = 0; ; attempt++)
-    {
-        problem = dvm_runtime_heap_hold_attempt(state->destination, NULL, 1,
-            &state->tail, &claim);
-        if (claim != DVM_CELL_BUSY || attempt == 63 || !dvm_native_context_poll())
-        {
-            return problem == exHeap ? "allocation destination guard refused" : problem;
-        }
-        fvm_port_thread_sleep_us(50);
-    }
-}
-
-
-/* [GC:] Publish the already rooted candidate. Retry only a busy guard.
- * RU: Опубликовать уже укоренённый объект. Повторять только при BUSY. */
-static int commit_destination(AllocationTransaction *state)
-{
-    for (unsigned int attempt = 0; ; attempt++)
-    {
-        DVM_CellResult claim;
-        int result = dvm_runtime_heap_commit_attempt(state->destination, &state->tail,
-            &state->candidate, &state->retired, &claim);
-        if (claim != DVM_CELL_BUSY || attempt == 63 || !dvm_native_context_poll())
-        {
-            return result;
-        }
-        fvm_port_thread_sleep_us(50);
-    }
-}
-
-
 /* [GC:] Build once, then compare and publish. A fresh allocation has no dependency
  * on the observed destination, so a stale comparison can reuse the candidate. */
 static int construct(void *argument)
 {
     AllocationTransaction *state = argument;
     const char *problem;
-    unsigned int attempt;
     int result;
-    problem = hold_destination(state);
+    problem = dvm_allocation_hold_destination(state->destination, &state->tail);
     if (problem)
     {
         error((char *)problem);
     }
     allocate_candidate(state);
-    for (attempt = 0; attempt < 8; attempt++)
+    for (;;)
     {
         void *candidate = state->candidate.value;
-        result = commit_destination(state);
+        result = dvm_allocation_commit_destination(state->destination, &state->tail,
+            &state->candidate, &state->retired);
         if (result == 1)
         {
             state->result = candidate;
@@ -349,14 +313,17 @@ static int construct(void *argument)
             error("allocation publication refused");
         }
         dvm_runtime_heap_finish(&state->tail, 1);
-        problem = hold_destination(state);
+        if (!dvm_native_context_poll())
+        {
+            error("allocation publication GC poll failed");
+        }
+        fvm_port_thread_sleep_us(50);
+        problem = dvm_allocation_hold_destination(state->destination, &state->tail);
         if (problem)
         {
             error((char *)problem);
         }
     }
-    error("allocation destination changed repeatedly");
-    return 0;
 }
 
 
