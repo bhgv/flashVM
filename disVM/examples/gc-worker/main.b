@@ -249,8 +249,14 @@ init()
     for (ring := 0; ring < 16; ring++)
         largecycle();
     sys->sleep(30);
-    # Give the event scheduler a clean interval after deferred owners drain.
-    # The interval spans many turns even at the hosted test's larger quantum.
+    # EN: Explicit native waits give collectors progress and request clean work.
+    # A dedicated scalar loop has no dispatch quantum and cannot promise turns.
+    # RU: Нативные ожидания дают сборщикам ход и запрашивают чистые проходы.
+    # Скалярный цикл выделенного потока не имеет кванта и не обещает turn.
+    for (clean := 0; clean < 64; clean++)
+    {
+        sys->sleep(10);
+    }
     total := 0;
     for (step := 0; step < 120000; step++)
         total += 1;

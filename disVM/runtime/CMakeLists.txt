@@ -2984,4 +2984,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --receiver-cancel)
     set_tests_properties(disvm_resident_receiver_cancel PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_resident_table_handoff COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --table-handoff)
+    set_tests_properties(disvm_resident_table_handoff PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_file_gate_churn COMMAND "${CMAKE_COMMAND}" -E env
+        "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_file_gate_churn.py")
+    set_tests_properties(disvm_file_gate_churn PROPERTIES TIMEOUT 90)
 endif()

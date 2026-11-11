@@ -18,30 +18,22 @@ from relink_private import relink
 # Проверить интерпретатор/JIT и оба GC polling без пула и квантов.
 def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
-    parent_exit = sys.argv[4:] == ['--parent-exit']
-    audit_query = sys.argv[4:] == ['--audit-query']
-    stream_kill = sys.argv[4:] == ['--stream-kill']
-    receiver_kill = sys.argv[4:] == ['--receiver-kill']
-    receiver_cancel = sys.argv[4:] == ['--receiver-cancel']
-    if sys.argv[4:] and not parent_exit and not audit_query and not stream_kill and not receiver_kill and not receiver_cancel:
+    profiles = {
+        '': ('main.b', 'PASS resident process control children=128 parents=8', 136),
+        '--parent-exit': ('parent-exit.b', 'PASS orphan cancellation after parent retirement', 2),
+        '--audit-query': ('main.b', 'PASS resident process control children=128 parents=8', 136),
+        '--stream-kill': ('stream-kill.b', 'PASS resident stream kill peers=24 victims=24', 56),
+        '--receiver-kill': ('receiver-kill.b', 'PASS resident receiver kill peers=24 victims=24', 80),
+        '--receiver-cancel': ('receiver-kill.b', 'PASS resident receiver cancel peers=24 victims=24', 80),
+        '--table-handoff': ('table-handoff.b', 'PASS resident table handoff tables=72 parents=8', 152),
+    }
+    option = sys.argv[4] if len(sys.argv) == 5 else ''
+    if len(sys.argv) not in (4, 5) or option not in profiles:
         raise RuntimeError('unknown process-control fixture option')
-    fixture = 'main.b'
-    marker = 'PASS resident process control children=128 parents=8'
-    expected = 136
-    if parent_exit:
-        fixture = 'parent-exit.b'
-        marker = 'PASS orphan cancellation after parent retirement'
-        expected = 2
-    elif stream_kill:
-        fixture = 'stream-kill.b'
-        marker = 'PASS resident stream kill peers=24 victims=24'
-        expected = 56
-    elif receiver_kill or receiver_cancel:
-        fixture = 'receiver-kill.b'
-        marker = 'PASS resident receiver kill peers=24 victims=24'
-        expected = 80
-        if receiver_cancel:
-            marker = 'PASS resident receiver cancel peers=24 victims=24'
+    fixture, marker, expected = profiles[option]
+    parent_exit = option == '--parent-exit'
+    audit_query = option == '--audit-query'
+    receiver_cancel = option == '--receiver-cancel'
     source = Path(__file__).parent / 'fixtures/resident-processctl' / fixture
     modules = Path(__file__).resolve().parents[1] / 'module'
     with tempfile.TemporaryDirectory(prefix='resident process control ') as directory:
@@ -76,6 +68,8 @@ def main():
                     raise RuntimeError('collector snapshot audit did not execute\n' + text[-10000:])
                 if parent_exit and text.count('PASS cancellation callback resumed after parent retirement') != 1:
                     raise RuntimeError('held reply fixture did not execute\n' + text[-10000:])
+                if option == '--table-handoff' and not re.search(r'tables_live=0 keys_live=0', text):
+                    raise RuntimeError('table/keys owner leak after handoff\n' + text[-10000:])
                 if (result.returncode or marker not in text
                         or 'PASS Dis application completed' not in text or len(starts) != expected
                         or len({pid for pid, owner in starts}) != expected or sorted(starts) != sorted(retired)
@@ -83,14 +77,7 @@ def main():
                         or not re.search(r'NATIVEGC .*joined=1 failed=0', text)
                         or not re.search(r'NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0', text)):
                     raise RuntimeError(f'{mode} locked={locked} status={result.returncode}\n{text[-10000:]}')
-    if parent_exit:
-        print('PASS late reply after parent exit: C/JIT, atomic/locked GC, orphan roots and retirement')
-    elif stream_kill:
-        print('PASS mapped stream kill: C/JIT, atomic/locked GC, surviving FIFO and exact victim retirement')
-    elif receiver_kill or receiver_cancel:
-        print('PASS mapped receiver kill: C/JIT, atomic/locked GC, one cancellable report, continued producer/peer progress')
-    else:
-        print('PASS resident process control: 512 children, C/JIT, atomic/locked GC, live foreign denial, cancel/retire/duplicate replies')
+    print(f'PASS resident process-control profile {option or "default"}: C/JIT, atomic/locked GC, exact retirement and RC drain')
 
 
 if __name__ == '__main__':
