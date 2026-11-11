@@ -3034,6 +3034,13 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_native_count.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_resident_native_count PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_process_roots COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_process_roots.py" "$<TARGET_FILE:disvm>")
+    set_tests_properties(disvm_process_roots PROPERTIES TIMEOUT 60)
+    add_test(NAME disvm_resident_root_probe COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_root_probe.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_resident_root_probe PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_jit_publication COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_jit_publish.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

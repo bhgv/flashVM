@@ -14,6 +14,13 @@ void dvm_runtime_process_root_add(struct Prog *process);
 struct Prog *dvm_runtime_process_roots(void);
 int dvm_runtime_process_root_remove(struct Prog *process);
 
+
+/* [GC:] EN: Check protected root membership/acyclicity without returning links.
+ * process lifetime is separately retained by caller; GC admission is not a lock.
+ * RU: Проверить корень/отсутствие цикла без выдачи ссылок. Время жизни process
+ * отдельно удерживается вызывающим; допуск GC не является mutex списка. */
+int dvm_runtime_process_root_contains(struct Prog *process);
+
 extern int dvm_runtime_event_cycles;
 extern int dvm_runtime_disable_cycles;
 extern int dvm_runtime_idle_cycles;

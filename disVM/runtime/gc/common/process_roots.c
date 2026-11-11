@@ -26,10 +26,10 @@ void dvm_runtime_process_root_add(Prog *process)
 }
 
 
-/* EN: Borrow the current list head. Traversal requires the heap turn or a
- * collector stop to keep existing links and process storage alive.
- * RU: Получить голову списка. Обход требует допуска или остановки для GC,
- * чтобы сохранить существующие ссылки и память процессов. */
+/* EN: Borrow the current list head. Traversal requires a collector stop or the external registry
+ * lifetime lock; concurrent GC admission alone does not keep links/storage alive.
+ * RU: Получить голову списка. Обход требует остановки для GC либо внешней
+ * блокировки реестра; один допуск GC не сохраняет ссылки и память процессов. */
 Prog *dvm_runtime_process_roots(void)
 {
     return __atomic_load_n(&root_head, __ATOMIC_ACQUIRE);
@@ -59,4 +59,48 @@ int dvm_runtime_process_root_remove(Prog *process)
     }
     pthread_mutex_unlock(&roots_lock);
     return previous != NULL;
+}
+
+
+/* [GC:] EN: Test membership and acyclicity while root links/storage are protected.
+ * process is a borrowed identity retained independently by caller. Return boolean;
+ * no node pointer escapes, ownership changes, callbacks or GC waits occur locked.
+ * RU: Проверить принадлежность и отсутствие цикла под защитой ссылок/памяти.
+ * process — заимствованный идентификатор, отдельно удерживаемый вызывающим.
+ * Вернуть bool; под mutex нет передачи узлов, владения, callbacks или ожидания GC. */
+int dvm_runtime_process_root_contains(Prog *process)
+{
+    if (!process)
+    {
+        return 0;
+    }
+    pthread_mutex_lock(&roots_lock);
+    Prog *head = __atomic_load_n(&root_head, __ATOMIC_RELAXED);
+    Prog *slow = head;
+    Prog *fast = head;
+    int found = 0;
+    int valid = 1;
+    for (Prog *cursor = head; cursor; cursor = cursor->next)
+    {
+        if (cursor == process)
+        {
+            found = 1;
+        }
+        if (fast && fast->next)
+        {
+            slow = slow->next;
+            fast = fast->next->next;
+            if (slow == fast)
+            {
+                valid = 0;
+                break;
+            }
+        }
+        else
+        {
+            fast = NULL;
+        }
+    }
+    pthread_mutex_unlock(&roots_lock);
+    return found && valid;
 }

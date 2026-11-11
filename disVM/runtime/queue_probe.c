@@ -164,18 +164,14 @@ static int suspended_frame_valid(const REG *saved)
 
 
 /* Attach a genuine extended-up OS owner, inspect the shared heap under its
- * FIFO turn, then leave/detach/unbind/destroy. argument borrows QueueObservation;
+ * own GC admission, then leave/detach/unbind/destroy. argument borrows QueueObservation;
  * the caller cannot resume/free its leased process before this worker joins. */
 static void observe(void *argument)
 {
     QueueObservation *observation = argument;
     DVM_NativeContext *context = dvm_native_process_create(NULL);
     unsigned int attempt;
-    unsigned int root_count = 0;
-    Prog *cursor;
-    Prog *slow;
-    Prog *fast;
-    int rooted = 0;
+    int rooted;
     int attached = 0;
     if (!context || !dvm_native_context_bind(context))
     {
@@ -194,31 +190,10 @@ static void observe(void *argument)
     {
         failed("cannot attach extra native owner");
     }
-    /* Both the run queue and retained root-list links are protected by this
-     * actual heap turn. The original owner's C stack and REG remain frozen. */
-    slow = dvm_runtime_process_roots();
-    fast = slow;
-    for (cursor = slow; cursor && root_count++ < DVM_RUNTIME_PROCESS_MAX; cursor = cursor->next)
-    {
-        if (cursor == observation->process)
-        {
-            rooted = 1;
-        }
-        if (fast && fast->next)
-        {
-            slow = slow->next;
-            fast = fast->next->next;
-            if (slow == fast)
-            {
-                failed("cycle in retained process roots");
-            }
-        }
-        else
-        {
-            fast = NULL;
-        }
-    }
-    observation->ok = rooted && !cursor && observation->process->state == Prelease &&
+    /* The caller keeps its own process alive, not the other residents' nodes.
+     * GC admission permits concurrent retirement: return membership, not links. */
+    rooted = dvm_runtime_process_root_contains(observation->process);
+    observation->ok = rooted && observation->process->state == Prelease &&
         observation->process->link == NULL &&
         dvm_runqueue_contains(observation->process) == 0 &&
         dvm_runqueue_head() != observation->process &&
