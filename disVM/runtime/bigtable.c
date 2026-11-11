@@ -37,7 +37,7 @@ struct TableOwner
     Prog *lease_owner;      /* Borrowed live scheduler process while pinned. */
     unsigned lease_depth;   /* Nested retained entries, excluding primitive calls. */
     TableOwner *lease_next; /* Borrowed next owner in its actor's held list. */
-    TableWait *wait_head;   /* Owned cooperative wait nodes in FIFO order. */
+    TableWait *wait_head;   /* Owned resident wait nodes in FIFO order. */
     TableWait *wait_tail;   /* Borrowed final wait node. */
     unsigned wait_count;    /* VM waiters, separate from native condition waiters. */
 };
@@ -985,7 +985,10 @@ static void table_call_frame(void (*function)(void *), void *frame)
 static void table_remove_wait(TableActor *actor);
 
 
-/* Rewind the prepared call and suspend this guest, keeping its frame roots. */
+/* EN: Rewind the prepared MCALL and park its permanent resident, retaining frame
+ * roots. Called by that resident under table_scheduler_lock; no Prog migration.
+ * RU: Вернуть подготовленный MCALL и усыпить закреплённый поток, сохранив корни
+ * кадра. Вызывает сам поток под table_scheduler_lock, без переноса Prog. */
 static void table_suspend(void)
 {
     dvm_runtime_table_retry_pending(currun(), 1);
@@ -996,8 +999,10 @@ static void table_suspend(void)
 }
 
 
-/* Publish one cooperative waiter. A granted guest may need to wait on
- * a different table in the same call, so return its old grant first. */
+/* EN: Enqueue actor on owner under table_scheduler_lock. A retry may move to
+ * the second table in the same call; remove its old FIFO grant before linking.
+ * RU: Поставить actor в FIFO owner под table_scheduler_lock. Повтор может ждать
+ * вторую таблицу того же вызова; снять старый допуск перед постановкой. */
 static void table_enqueue(TableOwner *owner, TableActor *actor)
 {
     TableWait *waiter;
@@ -1045,9 +1050,12 @@ static void table_wake(TableOwner *owner)
 }
 
 
-/* Admit or cooperatively park a mutable-table call before MCALL changes FP/M.
- * Stable ordering rejects a wait below an already-held owner, avoiding cycles.
- * Idle scalar calls can still read an unleased lower owner without suspension. */
+/* EN: Admit or park function/frame before MCALL changes FP/M, holding only
+ * table_scheduler_lock. Check all tables before reserving any implicit lease.
+ * Stable ordering rejects waiting below an explicit retained lease to avoid cycles.
+ * RU: Допустить либо припарковать function/frame до изменения FP/M в MCALL,
+ * удерживая только table_scheduler_lock. Проверить все таблицы до неявных lease.
+ * Порядок запрещает ожидание ниже удержанного явного lease, предотвращая циклы. */
 static int table_call_ready(void (*function)(void *), void *frame)
 {
     unsigned count = table_call_arguments(function);
@@ -1147,8 +1155,10 @@ static void table_lease_drop(TableOwner *owner, TableActor *actor)
     destroy(owner);
 }
 
-/* Remove one cooperative table wait under NativeWorld. The actor may
- * still own independent leases, which are retired by its own exit turn. */
+/* EN: Remove actor's FIFO record under table_scheduler_lock, not a VM exclusive.
+ * Independent retained leases remain rooted until this resident unwinds them.
+ * RU: Снять FIFO-запись actor под table_scheduler_lock, без эксклюзива VM.
+ * Независимые удержанные lease укоренены до их снятия самим потоком. */
 static void table_remove_wait(TableActor *actor)
 {
     if (actor->waiting)
