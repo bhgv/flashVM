@@ -147,6 +147,7 @@ add_executable(disvm
     gc/common/process_roots.c
     gc/fast/graph_confirmation.c
     gc/fast/packet_budget.c
+    gc/fast/file_retirement.c
     gc/common/graph_capture.c
     gc/cycles/cycle_pass.c
     gc/duke/snapshot_growth.c
@@ -2504,10 +2505,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
   "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_retirement_queue.py")
  set_tests_properties(disvm_native_retirement_queue PROPERTIES TIMEOUT 180)
- add_test(NAME disvm_rc_reservation_rollback COMMAND "${PYTHON_EXECUTABLE}"
+ add_test(NAME disvm_rc_mandatory_publication COMMAND "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_rc_reservation.py" "$<TARGET_FILE:disvm>"
   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
- set_tests_properties(disvm_rc_reservation_rollback PROPERTIES TIMEOUT 180)
+ set_tests_properties(disvm_rc_mandatory_publication PROPERTIES TIMEOUT 180)
 endif()
 
 
@@ -2989,6 +2990,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --table-handoff)
     set_tests_properties(disvm_resident_table_handoff PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_native_kill COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_native_kill.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_native_kill PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_native_cancel COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_native_cancel.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

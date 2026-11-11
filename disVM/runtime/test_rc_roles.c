@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+Type *TFD; /* No Sys.FD is initialized in this isolated admission-role unit. */
 Type Tarray;  /* Type identity only. This fixture owns no real arrays. */
 Type Tstring; /* Type identity only. This fixture owns no real strings. */
 Type Tchannel, Tlist, Tmodlink, Tptr;

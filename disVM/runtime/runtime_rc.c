@@ -17,6 +17,7 @@
 #include "gc/common/candidate_pass.h"
 #include "gc/fast/graph_confirmation.h"
 #include "gc/fast/packet_budget.h"
+#include "gc/fast/file_retirement.h"
 #include "runtime_gc.h"
 #include "gc_fields.h"
 #include "managed_owner.h"
@@ -79,6 +80,8 @@ static unsigned long shared_arrays_with_peer; /* Scalar-array releases with an a
 static unsigned long shared_channels;
 static unsigned long shared_plain_records;
 static unsigned long shared_lists;
+static unsigned long shared_files; /* Last Sys.FD releases on shared Fast. */
+static unsigned long shared_files_with_peer; /* FD finalization with a live peer resident. */
 static unsigned long shared_strings; /* Final releases by the Fast shared pass. */
 
 static DVM_RetirementQueue *frames; /* Bounded queue of frame packets. */
@@ -172,6 +175,8 @@ void dvm_runtime_rc_start(void)
     shared_array_graphs = 0;
     shared_arrays = 0;
     shared_arrays_with_peer = 0;
+    shared_files = 0;
+    shared_files_with_peer = 0;
     shared_strings = 0;
     shared_channels = 0;
     shared_plain_records = 0;
@@ -248,7 +253,8 @@ static int leaf_eligible(const Heap *heap)
         const Array *array = H2D(const Array *, heap);
         return array->t && array->t != H;
     }
-    return heap->t && ((dvm_runtime_idle_cycles && heap->t == &Tlist) || heap->t->free == freeheap);
+    return dvm_gc_fast_file_eligible(heap) ||
+        (heap->t && ((dvm_runtime_idle_cycles && heap->t == &Tlist) || heap->t->free == freeheap));
 }
 
 
@@ -1990,6 +1996,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                     }
                     shared_lists++;
                 }
+                else if (dvm_gc_fast_file_eligible(entry->heap))
+                {
+                    dvm_gc_fast_file_finalize(entry->heap);
+                    shared_files++;
+                    shared_files_with_peer += peer;
+                }
                 else if (!record)
                 {
                     free(H2D(String *, entry->heap)->tmp);
@@ -2386,6 +2398,7 @@ int dvm_runtime_rc_finish(int diagnostics)
         printf("NATIVELISTRC shared=%lu\n", shared_lists);
         printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);
         printf("NATIVECHANNELRC shared=%lu\n", shared_channels);
+        printf("NATIVEFDRC shared=%lu with_peer=%lu\n", shared_files, shared_files_with_peer);
         printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
         printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
             shared_arrays, shared_arrays_with_peer, shared_array_graphs);

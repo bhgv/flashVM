@@ -67,21 +67,22 @@ Three actual-source controls omit ready publication, omit cancelled-byte return
 or bypass token generation; exact semantic10 is required before unsafe work.
 
 `python3 disVM/runtime/test_rc_reservation.py RUNTIME LIMBO INCLUDE` uses matching
-GNU Makefiles console build objects for private relinking. An interception refuses
-one actual Heap root setup BEFORE ptradd. The actual hosted waserror path must
-restore ready/reserved/byte metadata and preserve the caller's source count1
-before inline destruction can proceed. Real managed-owner/root/Fast/Cycles probes
-and normal guest execution then continue, with pending0. A private actual-source
-missing-cancel control must fail at semantic10 before inline fallback. C/JIT and
-both polling backends run. This is actual runtime rollback evidence, not proof of
-concurrent managed enqueuing or every allocator failure inside ptradd.
+GNU Makefiles console build objects for private relinking. The positive executes
+actual RC publication and requires a joined collector and fully drained releases.
+A fault variant makes root setup fail throughout one admitted producer call:
+optional lanes may roll back, but mandatory publication must terminate with
+`out of memory rooting mandatory GC release`. It must not return to inline
+mutator destruction. The private wrapper changes only that expected abort into
+status 73 without a core dump; injection marker, production diagnostic and fatal
+marker must all match. Unrelated signals, compiler failures and timeouts fail.
+C/JIT and both polling backends run. CTest name: `disvm_rc_mandatory_publication`.
+The former recoverable-root-refusal/missing-cancel check is obsolete under this
+mandatory publication contract.
 
-Both scripts support `--positive-only` for instrumented positives. Native joined
-metadata and actual RC-refusal positives pass TSan; native positives also pass
-nonrecovering UBSan. ASan/LeakSanitizer was attempted but not accepted here:
-LeakSanitizer cannot inspect /proc/task in this environment and terminates fatally,
-including with requested leak detection disabled. No ASan/LSan success is claimed.
-Constructor ledger checks are bounded rollback evidence, not a global leak scan.
+Both scripts support `--positive-only` for instrumented positives. The native
+queue's earlier TSan/UBSan evidence does not establish sanitizer coverage for this
+new publication-failure check. No ASan/LSan success is claimed. Constructor
+ledger checks are bounded rollback evidence, not a global leak scan.
 
 Installed SDK carries native module/test/ports and this contract; run
 `python3 source/threading/test_retirement_queue.py` inside the package. The actual
