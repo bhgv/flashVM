@@ -24,8 +24,8 @@ produce(done: chan of int)
             values[index] = ref Node(round + index);
             total += values[index].value;
         }
-        # A real native suspension makes replacement executors participate.
-        # The logical parent can migrate; it does not pin the original OS owner.
+        # Native suspension lets peer threads progress while this thread waits.
+        # Each process retains its OS owner and live registers until termination.
         sys->sleep(1);
     }
     values = nil;

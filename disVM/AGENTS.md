@@ -31,5 +31,8 @@
   native return, or the next dispatch. A saved image for GC or diagnostics is
   a publication from the owner, not the source for resuming the thread.
 - Send cross-thread requests and completions through the resident's mailbox.
-  Test this contract with `--native-spawn`. Legacy shared-worker tests cover
-  a separate scheduling model.
+  Test this contract with `--native-spawn`. The shared executor pool is removed;
+  do not revive pool/migration scenarios or assert successful execution with
+  `--managed-workers N` for N > 1, `auto`, or `--managed-workers-limit`.
+  Test those forms only for explicit CLI rejection before VM startup.
+  `--managed-workers 1` is the single-threaded reference, not a worker pool.

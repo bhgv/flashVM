@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Verify native module continuations on permanently assigned process threads.
+# RU: Проверки native-продолжений модулей в закреплённых потоках процессов.
 """Hold a real native pipe read across a second guest's call into the same module."""
 import argparse
 import os
@@ -11,15 +14,18 @@ import time
 from relink_private import relink
 
 
-def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False, workers=2, dedicated=False):
+# EN: Run runtime/image in directory with mode/poll options and feed payload after
+# peer progress. outcome names the expected application marker. shared_channels
+# selects checked channel paths; default_profile tests default dedicated options.
+# Own the child until join; failures raise, output and message bytes are copied.
+# RU: Запустить runtime/image в directory с mode/poll; передать payload после
+# продвижения соседа. outcome задаёт маркер результата, shared_channels — каналы,
+# default_profile — настройки по умолчанию. Процесс принадлежит тесту до join;
+# при ошибке исключение, байты и вывод копируются.
+def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False):
     shared = ["--parallel-channel-buffer", "--parallel-byte-copies"] if shared_channels else []
-    explicit = [] if default_profile else ["--gc-worker", "--managed-workers", "2", "--guarded-copies", *shared]
-    if default_profile and workers != 2:
-        explicit = ["--managed-workers", str(workers)]
-    if dedicated:
-        explicit = ["--native-spawn", "--guarded-copies", *shared]
-    quantum = [] if dedicated else ["--quantum", "65536"]
-    command = [str(runtime), mode, "--stats", *explicit, *quantum, *poll, image]
+    explicit = [] if default_profile else ["--native-spawn", "--guarded-copies", *shared]
+    command = [str(runtime), mode, "--stats", *explicit, *poll, image]
     with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           bufsize=0) as child:
@@ -50,17 +56,15 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
                 child.kill()
                 child.communicate()
     text = output.decode(errors="replace")
-    pool = f"NATIVEPOOL executors={workers} joined=1 failed=0" in text
-    if dedicated or (default_profile and workers == 2):
-        starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", text)
-        retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", text)
-        expected = 2 if image == "kill.dis" else 43
-        concurrent = 2 if image == "kill.dis" else 40
-        # The last forty channel guests all exist before the parent sends to any.
-        pool = (len(starts) == expected and len(set(pid for pid, _ in starts)) == expected
-                and sorted(starts) == sorted(retired)
-                and re.search(r"NATIVEDISPATCH .* active=0 migrated=0\b", text) is not None
-                and len(set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-concurrent:])) == concurrent)
+    starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", text)
+    retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", text)
+    expected = 2 if image == "kill.dis" else 43
+    concurrent = 2 if image == "kill.dis" else 40
+    # The last forty channel guests all exist before the parent sends to any.
+    resident = (len(starts) == expected and len(set(pid for pid, _ in starts)) == expected
+            and sorted(starts) == sorted(retired)
+            and re.search(r"NATIVEDISPATCH .* active=0 migrated=0\b", text) is not None
+            and len(set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-concurrent:])) == concurrent)
     queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", text)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0", text)
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", text)
@@ -72,7 +76,7 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     native = re.search(r"instructions=\d+ native=(\d+)", text)
     # ALT can use the checked transfer path instead of the counted fast path.
     # The guest verifies both selected branches and all transferred owners.
-    if (child.returncode or not pool or outcome not in text
+    if (child.returncode or not resident or outcome not in text
             or (image == "main.dis" and "PASS forty independent channels" not in text) or "PASS Dis application completed" not in text
             or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
             or not dispatch or dispatch[1] != dispatch[2] or not gc or int(gc[1]) == 0
@@ -85,6 +89,12 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
         raise RuntimeError(text)
 
 
+# EN: Compile target fixtures with compiler/include and run through optional runner.
+# runtime is borrowed; temporary images are owned until completion. Raise on
+# output, process, root or resident-identity violations; no returned value.
+# RU: Собрать образы через compiler/include, запустить runtime через runner.
+# Пути заимствованы, образы принадлежат тесту до завершения. Ошибки запуска,
+# корней и закрепления потоков вызывают исключение; результата нет.
 def portable_overlap(runtime, compiler, include, runner):
     """Run the same NC64 guest on a target console without relinking host objects."""
     fixtures = Path(__file__).resolve().parent / "fixtures/module-continuation"
@@ -131,6 +141,11 @@ def portable_overlap(runtime, compiler, include, runner):
         print(output, end="")
 
 
+# EN: Parse explicit product paths and exercise module return/unwind/termination.
+# No parameters or result. Own temporary files and children; failures raise.
+# RU: Прочесть пути CLI и проверить возврат, исключение и завершение модуля.
+# Без параметров и результата. Владеть временными файлами и процессами;
+# при ошибке вызвать исключение.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("runtime", "compiler", "include"):
@@ -205,15 +220,12 @@ def main():
                         or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < minimum_commits
                         or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
                     raise RuntimeError(f"{mode} {options} exited {result.returncode}\n{output}")
-        if not args.dedicated_only:
-            run(runtime, directory, "--jit", [], b"R", "PASS provider return",
-                default_profile=True, workers=24)
         for mode in ("--jit", "--no-jit"):
-            run(runtime, directory, mode, [], b"R", "PASS provider return", dedicated=True)
+            run(runtime, directory, mode, [], b"R", "PASS provider return")
             run(runtime, directory, mode, [], b"E", "PASS provider unwind",
-                shared_channels=True, dedicated=True)
+                shared_channels=True)
             run(runtime, directory, mode, [], b"R", "PASS provider termination and reload",
-                "kill.dis", dedicated=True)
+                "kill.dis")
             if args.dedicated_only:
                 continue
             for poll in ([], ["--gc-locked-poll"]):

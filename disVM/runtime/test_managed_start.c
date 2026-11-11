@@ -1,4 +1,7 @@
-/* Linux-only failure injection for actual runtime pthread creation and joins. */
+/* Copyright (c) 2026 bhgv
+ * EN: Linux-only failure injection for real runtime pthread creation and joins.
+ * RU: Linux-перехватчик настоящих запусков и присоединений потоков VM.
+ */
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <errno.h>
@@ -15,7 +18,10 @@ static unsigned long injected; /* Number of deliberately refused creation attemp
 
 /* Interpose only this test process. Arguments/ownership follow pthread_create.
  * DVM_TEST_THREAD_FAIL selects one creation ordinal; return EAGAIN there without
- * creating a thread. Other calls forward unchanged. No VM/managed state is read. */
+ * creating a thread. Other calls forward unchanged. No VM/managed state is read.
+ * RU: Поток и аргументы соответствуют pthread_create. DVM_TEST_THREAD_FAIL
+ * задаёт номер отказа EAGAIN без создания потока. Остальные вызовы передаются
+ * pthread без изменений; управляемые данные не читаются. */
 int pthread_create(pthread_t *thread, const pthread_attr_t *attributes,
     void *(*entry)(void *), void *argument)
 {
@@ -44,7 +50,9 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attributes,
 
 
 /* Forward the real join and count only successful retirement. thread/result
- * follow pthread_join; counters are native atomics and outlive all helper joins. */
+ * follow pthread_join; counters are native atomics and outlive all helper joins.
+ * RU: Передать thread/result настоящему pthread_join, вернуть его результат.
+ * Считать только успешные join нативными атомарными счётчиками. */
 int pthread_join(pthread_t thread, void **result)
 {
     int (*join)(pthread_t, void **);
@@ -65,7 +73,9 @@ int pthread_join(pthread_t thread, void **result)
 
 
 /* Emit native lifecycle evidence after main/runtime teardown. No arguments or
- * managed references; the driver rejects missing injection or unpaired joins. */
+ * managed references; the driver rejects missing injection or unpaired joins.
+ * RU: После завершения main вывести нативные счётчики. Аргументов и ссылок
+ * на управляемую память нет. Драйвер проверяет отказ и парность join. */
 __attribute__((destructor)) static void report(void)
 {
     fprintf(stderr, "POOL_START_CONTROL started=%lu joined=%lu injected=%lu\n",

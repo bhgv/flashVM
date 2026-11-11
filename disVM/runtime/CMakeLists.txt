@@ -2834,6 +2834,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_module_continuation.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --dedicated-only)
     set_tests_properties(disvm_module_continuation PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_module_continuation_profiles COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_module_continuation.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_module_continuation_profiles PROPERTIES TIMEOUT 120)
     add_test(NAME disvm_channel_guest_wait COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_channel_guest_wait.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --dedicated-waits-only)
@@ -2933,4 +2937,11 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(disvm_owner_messages_test PRIVATE pthread)
     add_test(NAME disvm_owner_messages COMMAND disvm_owner_messages_test)
     set_tests_properties(disvm_owner_messages PROPERTIES TIMEOUT 15)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME disvm_resident_startup COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_startup.py" "$<TARGET_FILE:disvm>"
+        "${CMAKE_CURRENT_BINARY_DIR}/managed-rc-overlap.dis")
+    set_tests_properties(disvm_resident_startup PROPERTIES TIMEOUT 180)
 endif()
