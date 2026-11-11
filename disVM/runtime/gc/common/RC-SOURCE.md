@@ -1,0 +1,33 @@
+# Private RC source composition
+
+`runtime_rc.c` composes the following private fragments in dependency order.
+They remain one C translation unit: callbacks, queue state and static helper
+visibility are unchanged. No public ABI or new global execution mutex is added.
+The initial decomposition preserved the complete ordered original bytes before
+the functional changes; subsequent formatting preserved non-brace tokens and
+preprocessor directives. Compilation and runtime tests remain necessary evidence.
+
+| Responsibility | Fragments |
+| --- | --- |
+| Session state and joined lifecycle | [rc_state.inc](rc_state.inc), [rc_lifecycle.inc](rc_lifecycle.inc) |
+| Leaf and mandatory owner publication | [leaf_publication.inc](../fast/leaf_publication.inc), [owner_publication.inc](../fast/owner_publication.inc) |
+| Mandatory FIFO rescue | [owner_drain.inc](../fast/owner_drain.inc) |
+| Frame and child owner packets | [frame_publication.inc](../fast/frame_publication.inc), [packet_children.inc](../fast/packet_children.inc) |
+| Array and object claims | [array_children.inc](../fast/array_children.inc), [object_children.inc](../fast/object_children.inc) |
+| Closed graph publication and release | [graph_publication.inc](../fast/graph_publication.inc), [graph_release.inc](../fast/graph_release.inc) |
+| Shared Fast reclamation | [shared_release.inc](../fast/shared_release.inc) |
+| Remaining stopped release path | [retained_release.inc](../fast/retained_release.inc) |
+| Cycles publication and queue transfer | [candidate_publication.inc](../cycles/candidate_publication.inc), [candidate_transfer.inc](../cycles/candidate_transfer.inc) |
+| Cycles discovery and entry | [candidate_scan.inc](../cycles/candidate_scan.inc), [rc_passes.inc](../cycles/rc_passes.inc) |
+| Duke rollback and entry | [pin_release.inc](../duke/pin_release.inc), [rc_passes.inc](../duke/rc_passes.inc) |
+
+Each fragment and its coordinator stay within 500 lines. Include the entire
+`gc` source directory when distributing runtime sources. CMake's compiler include
+dependencies rebuild `runtime_rc.c.o` when any fragment changes. No generated source
+step or new build prerequisite is required. `rc_test_source.py` expands only this
+explicit composition for isolated semantic mutation tests; it does not edit the
+production files or replace a runtime allocator/collector.
+
+The size/layout check does not certify every historical comment or every GC
+protocol. Current stop-free scope and outstanding work are described in
+[FAST-FINALIZATION.md](../../FAST-FINALIZATION.md).

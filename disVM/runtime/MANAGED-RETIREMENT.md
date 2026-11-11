@@ -32,8 +32,9 @@ counts only completed handoffs and how many overlapped an admitted guest.
 
 This removes the ticket metadata/root handoff's dependency on stopped-world
 ownership during normal execution. It does **not** convert every managed destructor
-or cyclic graph. A final object may move to the existing RC queue and still require
-its retained fallback. Closed RC admission, exhausted epoch numbering and refused
+or cyclic graph. The [next Fast series](FAST-FINALIZATION.md) adds physical final-string
+reclamation and rescues eligible mandatory FIFO entries. Unsupported final objects
+can still require the retained fallback. Closed RC admission, exhausted epoch numbering and refused
 service admission preserve the existing retained ticket drain. The main runtime
 still uses the mixed collector profile, not the closed concurrent-only backend.
 
@@ -77,3 +78,10 @@ The corresponding fixes and validation are described in
 
 No ARM64/RV64 execution or complete absence of runtime races is claimed by these
 x86-64 tests. The remaining work is the [no-STW plan](MULTITHREADING-ROADMAP.ru.md).
+
+## Physical finalization follow-up
+
+The acceptance fixture now holds a second, later reader epoch and observes the
+actual allocator release before allowing peers to leave. Optional leaf-root OOM
+must recover through the mandatory FIFO. See [FAST-FINALIZATION.md](FAST-FINALIZATION.md)
+for the new contracts, omission controls and remaining acceptance failures.

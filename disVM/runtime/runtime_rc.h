@@ -1,55 +1,107 @@
-/* Deferred RC ownership inside the production stopped-world heap protocol. */
+/* Copyright (c) 2026 bhgv
+ * EN: Rooted RC publication and shared/retained collector interfaces.
+ * RU: Публикация RC с корнями и интерфейсы shared/резервного сборщика.
+ */
 #ifndef DVM_RUNTIME_RC_H
 #define DVM_RUNTIME_RC_H
 #include <stddef.h>
 
-/* [GC:] Enable an empty bounded queue on the current Dis mutator. Called only
- * after collector startup, before any collection request. No ownership transfer. Native metadata
- * allocation failure selects inline RC; previous session must be finished. */
+struct Type;
+struct DVM_NativeContext;
+
+
+/* [GC:] EN: Start empty queues on the bound controller before producers publish.
+ * Mandatory allocation failure or an unfinished previous session aborts.
+ * RU: Создать пустые очереди на контроллере до публикаций производителей.
+ * Отказ обязательного выделения или незавершённый прошлый сеанс вызывает abort. */
 void dvm_runtime_rc_start(void);
 
-/* Set the optional nonblocking wake callback before publishing producers. */
+
+/* [GC:] EN: Borrow optional notify until join; configure before producer startup.
+ * RU: Заимствовать необязательный notify до join; настроить до запуска производителей. */
 void dvm_runtime_rc_set_notifier(void (*notify)(void));
 
-struct Type;
-/* Transfer mapped owners and optional displaced reference under shared admission.
- * Return 1 on success, -1 when draining can make room, or 0 on other refusal.
- * Refusal leaves the frame and module owners untouched. */
-int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type,
-    void *extra);
 
-/* [GC:] Consume a reference from an ACTIVE or SHARED executor in the live
- * owning world. Nonfinal drops may complete atomically. Queued drops retain
- * the original strong reference and publish an external GC root. Return zero
- * outside live mutator admission so collector recursion and shutdown work. */
+/* [GC:] EN: Transfer mapped frame/type owners and optional extra under shared
+ * admission. Return 1 on success, -1 on retryable pressure, 0 otherwise. Refusal
+ * preserves the frame; success requires unpublishing it before polling.
+ * RU: Передать размеченные ссылки frame/type и необязательную extra под shared.
+ * Вернуть 1 при успехе, -1 при временном заполнении, иначе 0. Отказ сохраняет
+ * кадр; при успехе снять его публикацию до polling. */
+int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type, void *extra);
+
+
+/* [GC:] EN: Consume one value reference from ACTIVE/SHARED admission in this
+ * world. Supported final owners enter epoch-gated Fast; optional refusal uses
+ * the mandatory rooted FIFO. Return 0 for invalid/closed admission unchanged.
+ * Mandatory publication failure terminates rather than losing ownership.
+ * RU: Снять ссылку value из ACTIVE/SHARED этого мира. Поддержанные последние
+ * ссылки идут в Fast после эпохи; при необязательном отказе — в FIFO с корнем.
+ * При неверном/закрытом допуске вернуть 0 без изменения. Обязательный отказ
+ * завершает процесс, не теряя владение. */
 int dvm_runtime_rc_defer(void *value);
 
-/* [GC:] Release at most budget queue owners with the retained destroy algorithm.
- * Caller is the collector with the world stopped. Returns remaining owners. */
+
+/* [GC:] EN: Consume at most budget top-level owners on a stopped collector.
+ * Recursive legacy destruction can exceed budget. Return remaining work.
+ * RU: Снять до budget верхних владельцев на остановленном сборщике. Рекурсивное
+ * прежнее разрушение может превысить бюджет. Вернуть оставшуюся работу. */
 unsigned int dvm_runtime_rc_drain(unsigned int budget);
 
-/* [GC:] Query queue size only on the active Dis owner, before releasing the
- * world interval, including helper executors. Returns zero for other roles;
- * may wait for native metadata mutex, never managed admission or allocation.
- * Source access, statistics and caller phase still require world admission. */
+
+/* [GC:] EN: Query native occupancy in ACTIVE admission; other roles return 0.
+ * Queue mutexes may briefly block, but no managed admission is acquired.
+ * RU: Проверить нативную занятость из ACTIVE; иные роли получают 0. Мьютексы
+ * очередей могут ненадолго блокировать, но управляемый допуск не захватывается. */
 unsigned int dvm_runtime_rc_pending(void);
 
-/* Inspect committed native queue entries without admission or heap reads. */
+
+/* [GC:] EN: Query committed Fast metadata without admission; queues stay live.
+ * RU: Проверить опубликованные метаданные Fast без допуска; очереди должны жить. */
 int dvm_runtime_rc_ready(void);
 
-/* [GC:] Stop admission under the active mutator or after sealing with all collectors idle. */
+
+/* [GC:] EN: Close on the active controller or after sealing with idle collectors.
+ * Queued owners keep their roots; storage must survive all joins.
+ * RU: Закрыть на активном контроллере либо после sealing простаивающих сборщиков.
+ * Ссылки сохраняют корни; память очередей должна пережить все join. */
 void dvm_runtime_rc_close(void);
 
-/* [GC:] Report/reset after collector join. Returns zero if owners remain. */
+
+/* [GC:] EN: After all joins, optionally print diagnostics and free empty queues.
+ * Return 0 with owners preserved if work remains; keep mutator TLS through return.
+ * RU: После всех join вывести diagnostics по запросу и удалить пустые очереди.
+ * При оставшейся работе вернуть 0, сохранив ссылки; TLS должен жить до возврата. */
 int dvm_runtime_rc_finish(int diagnostics);
-struct DVM_NativeContext;
-/* Process eligible leaf strings on the Fast lane without stopping guests. */
+
+
+/* [GC:] EN: Query committed Cycles metadata without payload access or admission.
+ * RU: Проверить метаданные Cycles без доступа к данным кучи или допуска. */
 int dvm_runtime_rc_candidates_ready(void);
 
-/* Inspect Duke queue metadata or run one shared pass on its bound context. */
-int dvm_runtime_rc_duke_ready(void);
-unsigned int dvm_runtime_rc_shared_duke(struct DVM_NativeContext *context, size_t budget);
-unsigned int dvm_runtime_rc_shared_candidates(struct DVM_NativeContext *context, size_t budget);
-unsigned int dvm_runtime_rc_shared_leaves(struct DVM_NativeContext *context, size_t budget);
 
+/* [GC:] EN: Query committed Duke metadata without payload access or admission.
+ * RU: Проверить метаданные ДюкGC без доступа к данным кучи или допуска. */
+int dvm_runtime_rc_duke_ready(void);
+
+
+/* [GC:] EN: Run one Duke slice on bound context within budget; return work/retry.
+ * Queues/world remain runtime-owned. Refusal preserves published owners.
+ * RU: Выполнить порцию ДюкGC на context в пределах budget; вернуть работу/повтор.
+ * Очереди/мир принадлежат runtime. Отказ сохраняет опубликованные ссылки. */
+unsigned int dvm_runtime_rc_shared_duke(struct DVM_NativeContext *context, size_t budget);
+
+
+/* [GC:] EN: Run shared Cycles on bound context within budget; return work/retry.
+ * Roots protect candidates; no retained tracing is called by this interface.
+ * RU: Выполнить shared Cycles на context с budget; вернуть работу/повтор. Корни
+ * защищают кандидатов; этот интерфейс не вызывает резервную трассировку. */
+unsigned int dvm_runtime_rc_shared_candidates(struct DVM_NativeContext *context, size_t budget);
+
+
+/* [GC:] EN: Run shared Fast on bound context within budget; return progress or
+ * reader retry. Mandatory owners, leaves and packets retain roots on refusal.
+ * RU: Выполнить shared Fast на context с budget; вернуть работу или повтор
+ * читателей. Обязательные ссылки, листья и пакеты сохраняют корни при отказе. */
+unsigned int dvm_runtime_rc_shared_leaves(struct DVM_NativeContext *context, size_t budget);
 #endif

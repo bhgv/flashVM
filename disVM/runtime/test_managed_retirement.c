@@ -36,15 +36,37 @@ unsigned int __real_dvm_managed_owner_drain_shared(DVM_NativeContext *, size_t);
 
 
 int __real_dvm_runtime_rc_defer(void *);
-static void *target;                  /* Identity kept alive by its managed ticket and then RC FIFO. */
-static void *external;                /* Independently owned and rooted through the test. */
-static DVM_OwnerTransfer transferred; /* Native alias published before observer startup. */
-static int borrow_held;               /* Old explicit reader, under sync. */
-static int borrow_release;            /* Parent permits read_end, under sync. */
-static int borrow_wait_seen;          /* Actual Fast retry observed, under sync. */
-static int final_handoffs;            /* Exact final-reference RC handoff count, under sync. */
-static int external_handoffs;         /* Exact nonfinal-reference RC handoff count, under sync. */
-static int refusal;                   /* Injected RC refusal was ownership-neutral, under sync. */
+
+
+int __real_dvm_runtime_root_add(Heap *);
+
+
+void __real_poolfree(Pool *, void *);
+
+
+unsigned int __real_dvm_runtime_rc_shared_leaves(DVM_NativeContext *, size_t);
+
+
+int __real_dvm_world_try_quiescent(DVM_NativeWorld *, DVM_NativeContext *);
+
+
+int __real_dvm_world_stop_begin(DVM_NativeWorld *, DVM_NativeContext *);
+static void *target;                        /* Identity kept alive by its managed ticket and then RC FIFO. */
+static void *external;                      /* Independently owned and rooted through the test. */
+static DVM_OwnerTransfer transferred;       /* Native alias published before observer startup. */
+static int borrow_held;                     /* Old explicit reader, under sync. */
+static int borrow_release;                  /* Parent permits read_end, under sync. */
+static int borrow_wait_seen;                /* Actual Fast retry observed, under sync. */
+static int final_handoffs;                  /* Exact final-reference RC handoff count, under sync. */
+static int external_handoffs;               /* Exact nonfinal-reference RC handoff count, under sync. */
+static int second_held;                     /* New reader begins after ticket cutoff, before leaf cutoff; under sync. */
+static int second_release;                  /* Parent observed Fast waiting for this later epoch; under sync. */
+static unsigned second_passes;              /* Completed leaf attempts during the later reader; under sync. */
+static int second_wait_seen;                /* Real shared leaf pass requested another epoch retry; under sync. */
+static int physical_frees;                  /* Exact final string allocation release, under sync. */
+static int root_refusal;                    /* One optional leaf root allocation refused, under sync. */
+static _Thread_local int publishing_target; /* Only this Fast defer may inject root OOM. */
+static int refusal;                         /* Injected RC refusal was ownership-neutral, under sync. */
 
 
 /* EN: Report a precise native fixture failure; message is borrowed constant text.
@@ -118,10 +140,10 @@ int __wrap_dvm_runtime_guest_sleep(unsigned long duration)
 
 /* [GC:] EN: Borrow target under a genuine registered reader epoch until parent
  * permits completion. world is borrowed through join; access no pointer after
- * read_end. The original reserve owns the string when this thread starts.
+ * read_end. The ticket owns the string initially; RC owns it across the second reader.
  * RU: Заимствовать target под настоящей зарегистрированной эпохой до разрешения
  * родителя. world живёт до join; после read_end указатель не используется.
- * При запуске строкой владеет первоначальный резерв.
+ * При запуске строкой владеет ticket; вторую эпоху защищает владелец RC.
  */
 static void hold_borrow(void *argument)
 {
@@ -143,6 +165,16 @@ static void hold_borrow(void *argument)
     require(value->len == length, "borrowed string remains readable before read_end");
     require(dvm_world_read_end(reader), "reader epoch ends after final access");
     borrow_held = 0;
+    require(dvm_world_read_begin(reader), "second reader starts after ticket cutoff");
+    second_held = 1;
+    pthread_cond_broadcast(&changed);
+    while (!second_release)
+    {
+        pthread_cond_wait(&changed, &sync);
+    }
+    require(value->len == length, "RC leaf stays readable through its separate reader epoch");
+    require(dvm_world_read_end(reader), "second reader ends after final payload access");
+    second_held = 0;
     pthread_mutex_unlock(&sync);
     require(dvm_world_detach(reader), "borrow observer detaches");
     require(dvm_native_context_unbind(context) && dvm_native_context_destroy(context),
@@ -186,7 +218,9 @@ int __wrap_dvm_runtime_rc_defer(void *value)
     require(dvm_runtime_root_count(D2H(value)) == (unsigned long)(final ? 1 : 2),
             "ticket root is retained before RC publication");
     pthread_mutex_unlock(&sync);
+    publishing_target = final;
     int result = __real_dvm_runtime_rc_defer(value);
+    publishing_target = 0;
     require(result == 1 && dvm_runtime_root_count(D2H(value)) == 2, "RC owns a root before ticket root removal");
     pthread_mutex_lock(&sync);
     if (final)
@@ -199,6 +233,109 @@ int __wrap_dvm_runtime_rc_defer(void *value)
     }
     pthread_mutex_unlock(&sync);
     return result;
+}
+
+
+/* [GC:] EN: Refuse the first optional target root in profiles 5/6. A later
+ * mandatory root must still publish, leaving the original owner intact.
+ * RU: Отказать первому необязательному корню target в профилях 5/6. Следующий
+ * обязательный корень должен опубликоваться, сохранив исходную ссылку.
+ */
+int __wrap_dvm_runtime_root_add(Heap *heap)
+{
+    if ((CONTROL == 5 || CONTROL == 6) && publishing_target)
+    {
+        pthread_mutex_lock(&sync);
+        if (!root_refusal)
+        {
+            require(heap == target && dvm_runtime_root_count(heap) == 1,
+                    "optional leaf root refusal preserves the ticket root");
+            root_refusal = 1;
+            pthread_mutex_unlock(&sync);
+            return 0;
+        }
+        pthread_mutex_unlock(&sync);
+    }
+    return __real_dvm_runtime_root_add(heap);
+}
+
+
+/* [GC:] EN: Observe physical allocation release, not a queue or root counter.
+ * pool/value are borrowed until real poolfree. Refuse early free or remaining
+ * ticket roots. Publish completion only after the actual allocator returns.
+ * RU: Наблюдать физическое освобождение, а не счётчик очереди/корней. pool/value
+ * заимствованы до poolfree. Запретить раннее освобождение и оставшийся корень.
+ * Опубликовать завершение только после возврата настоящего аллокатора.
+ */
+void __wrap_poolfree(Pool *pool, void *value)
+{
+    pthread_mutex_lock(&sync);
+    if (!target || value != target)
+    {
+        pthread_mutex_unlock(&sync);
+        __real_poolfree(pool, value);
+        return;
+    }
+    DVM_WorldState state;
+    require(!borrow_held && !second_held && !physical_frees && !expired &&
+                dvm_world_state(dvm_gc_runtime.world, &state) && !state.stopping && !state.stopped && state.active >= 2,
+            "physical destruction overlaps admitted peers after the reader epoch");
+    require(dvm_runtime_root_count(value) == 0, "managed ticket root did not transfer exactly once");
+    __real_poolfree(pool, value);
+    physical_frees++;
+    pthread_cond_broadcast(&changed);
+    pthread_mutex_unlock(&sync);
+}
+
+
+/* [GC:] EN: Disable real physical Fast reclamation only for control 7.
+ * context/budget otherwise pass unchanged to the production implementation.
+ * RU: Отключить физическое освобождение Fast только для контроля 7.
+ * Иначе передать context/budget неизменёнными настоящей реализации.
+ */
+unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
+{
+    unsigned int work = CONTROL == 7 ? 0 : __real_dvm_runtime_rc_shared_leaves(context, budget);
+    pthread_mutex_lock(&sync);
+    if (second_held && final_handoffs == 1 && dvm_managed_owner_pending() == 0 && work)
+    {
+        second_passes++;
+        if (second_passes >= 3)
+        {
+            second_wait_seen = 1;
+        }
+    }
+    pthread_mutex_unlock(&sync);
+    return work;
+}
+
+
+/* [GC:] EN: Audit attempts to acquire stopped ownership while the RC leaf
+ * reader blocks reclamation. This checks dispatch, not just successful stops.
+ * world/context are borrowed and otherwise forwarded to the real world API.
+ * RU: Проверить попытки остановленного допуска при живом читателе листа RC.
+ * Это проверка маршрута, а не только успешных остановок. Заимствованные
+ * world/context в остальных случаях передаются настоящему API мира.
+ */
+int __wrap_dvm_world_try_quiescent(DVM_NativeWorld *world, DVM_NativeContext *context)
+{
+    pthread_mutex_lock(&sync);
+    require(!(CONTROL != 6 && CONTROL != 7 && second_held && final_handoffs == 1 && dvm_managed_owner_pending() == 0),
+            "RC leaf wait requested stopped admission");
+    pthread_mutex_unlock(&sync);
+    return __real_dvm_world_try_quiescent(world, context);
+}
+
+
+/* [GC:] EN: Apply the same audit to blocking stop acquisition; forward unchanged.
+ * RU: Проверить также блокирующий захват остановки; иначе передать аргументы без изменений. */
+int __wrap_dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *context)
+{
+    pthread_mutex_lock(&sync);
+    require(!(CONTROL != 6 && CONTROL != 7 && second_held && final_handoffs == 1 && dvm_managed_owner_pending() == 0),
+            "RC leaf wait requested stopped admission");
+    pthread_mutex_unlock(&sync);
+    return __real_dvm_world_stop_begin(world, context);
 }
 
 
@@ -287,7 +424,13 @@ void __wrap_Sys_werrstr(void *frame)
             borrow_release = 1;
             pthread_cond_broadcast(&changed);
         }
-        success = final_handoffs == 1 && external_handoffs == 1 && dvm_managed_owner_pending() == 0 && !expired;
+        if (second_held && second_wait_seen)
+        {
+            second_release = 1;
+            pthread_cond_broadcast(&changed);
+        }
+        success = final_handoffs == 1 && external_handoffs == 1 && dvm_managed_owner_pending() == 0 &&
+                  physical_frees == 1 && !expired;
         pthread_mutex_unlock(&sync);
         if (success)
         {
@@ -295,8 +438,12 @@ void __wrap_Sys_werrstr(void *frame)
         }
         fvm_port_thread_sleep_us(1000);
     }
-    require(success, "managed ticket retirement still requires heap quiescence");
-    require(dvm_runtime_root_count(target) == 1 && dvm_runtime_root_count(D2H(shared)) == 1,
+    require(success,
+            (CONTROL == 6 || CONTROL == 7) ? "managed object destruction still requires heap quiescence"
+                                           : "managed ticket retirement still requires heap quiescence");
+    require(second_wait_seen, "Fast did not retry the independent RC leaf epoch");
+    require(CONTROL != 5 || root_refusal, "optional publication refusal was not exercised");
+    require(dvm_runtime_root_count(target) == 0 && dvm_runtime_root_count(D2H(shared)) == 1,
             "managed ticket root did not transfer exactly once");
     require(dvm_managed_owner_guard_entries() == 0, "canonical ticket guards retired");
     require(CONTROL != 4 || refusal, "RC refusal path was not exercised");
@@ -315,5 +462,8 @@ void __wrap_Sys_werrstr(void *frame)
     target = NULL;
     pthread_mutex_unlock(&sync);
     destroy(shared);
-    fprintf(stderr, "PASS shared managed retirement final=1 external=1 admitted=2 reader_wait=1 refusal=%d\n", refusal);
+    fprintf(
+        stderr,
+        "PASS shared managed retirement final=1 external=1 admitted=2 reader_wait=1 physical=1 leaf_epoch=1 refusal=%d\n",
+        refusal);
 }

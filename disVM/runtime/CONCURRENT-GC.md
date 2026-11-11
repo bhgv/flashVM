@@ -118,3 +118,9 @@ retained final-object destruction still remain available; this is not completion
 of the no-STW target. Actual scheduler races exposed by full instrumentation were
 fixed through [owner and ready publication](RUNQUEUE-PUBLICATION.md), without
 introducing an execution gate or rebinding permanent resident registers.
+
+The [physical Fast finalization follow-up](FAST-FINALIZATION.md) now verifies
+actual final-string pool release, separate ticket/leaf reader cutoffs, recovery
+from optional root OOM, and no stopped-admission attempt during the leaf wait.
+It also records the controller fallback TLS race and the remaining acceptance
+limits; the main runtime has not switched to the closed concurrent backend.
