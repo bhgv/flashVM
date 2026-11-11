@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Typed native tables with per-resident leases, FIFO admission and scalar payloads.
+ * RU: Типизированные нативные таблицы с lease потоков, FIFO допуска и скалярным payload.
+ */
 /* Native big-table boundary. Only exact scalar payloads and copied UTF-8 keys enter C storage. */
 #include "disvm/refcount.h"
 #include "lib9.h"
@@ -12,6 +16,7 @@
 #include "table.h"
 #include "table_request.h"
 #include "table_leases.h"
+#include "channel_sync.h"
 #include <stddef.h>
 #include <errno.h>
 #include "relative.h"
@@ -37,14 +42,15 @@ struct TableOwner
 };
 
 
-/* Sole-executor process context owning leases and at most one blocked request. */
+/* EN: One resident process owns leases and at most one blocked request.
+ * RU: Один закреплённый процесс владеет lease и максимум одним ожиданием. */
 struct TableActor
 {
     Prog *process;      /* Borrowed scheduler root; retired before process free. */
     uint64_t token;     /* Trusted local capability shared by one continuation. */
     TableOwner *held;   /* [GC:] Owners pinned through native root registration. */
     TableWait *waiting; /* Borrowed single parked call, if any. */
-    TableActor *next;   /* Owned registry link on the sole VM owner thread. */
+    TableActor *next;   /* Registry link under table_scheduler_lock. */
 };
 
 
@@ -62,6 +68,17 @@ static pthread_mutex_t table_scheduler_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Find/create a context on the bound owner; definition follows checked handle access. */
 static TableActor *table_actor(Prog *process, int create);
+static int table_acquire(void *frame);
+static int finish_table_operation(void *argument);
+
+
+/* EN: Existing retained-lease levels reserved only for one primitive call.
+ * RU: Уровни существующего retained lease, занятые только на один вызов. */
+typedef struct TableOperationOwners
+{
+    TableOwner *owner; /* Borrowed destination, pinned by its implicit lease. */
+    TableOwner *source; /* Borrowed source, same as owner except splice. */
+} TableOperationOwners;
 
 typedef struct
 {
@@ -71,8 +88,8 @@ typedef struct
 
 static Type *table_type;           /* [GC:] Runtime-lifetime exact descriptor for native table owners. */
 static Type *keys_type;            /* [GC:] Runtime-lifetime exact descriptor for immutable snapshot owners. */
-static unsigned long table_owners; /* [GC:] Live native scalar table owners, for explicit runtime statistics. */
-static unsigned long key_owners;   /* [GC:] Live independent key snapshots, not references to table owners. */
+static unsigned long table_owners; /* [GC:] Live native table owners, under registry mutex. */
+static unsigned long key_owners;   /* [GC:] Live key snapshots, under registry mutex. */
 
 /* Release private C storage during RC destruction or cycle sweep. No VM pointers are contained. */
 static void free_table(Heap *heap, int swept)
@@ -85,7 +102,9 @@ static void free_table(Heap *heap, int swept)
         {
             sysfatal("finalizing an active native table owner");
         }
+        fvm_port_registry_lock();
         table_owners--;
+        fvm_port_registry_unlock();
         owner->ready = 0;
     }
 }
@@ -97,7 +116,9 @@ static void free_keys(Heap *heap, int swept)
     USED(swept);
     if (owner->keys)
     {
+        fvm_port_registry_lock();
         key_owners--;
+        fvm_port_registry_unlock();
         fht_keys_destroy(owner->keys);
     }
     owner->keys = nil;
@@ -128,52 +149,34 @@ static void table_schedule(int (*operation)(void *), void *argument)
 }
 
 
-/* Execute a complete scalar request on the VM owner thread. Native cancellation
- * stays disabled while guards are live; runtime errors occur only after release.
- * Requests borrow frame-rooted owners/keys and return scalar/native snapshots. */
+/* EN: Execute under the per-table guards reserved atomically by preflight.
+ * handle/request borrow rooted arguments. The native request only recurses into
+ * already-owned mutexes; it cannot refuse ordinary contention or park the VM.
+ * Release just the implicit levels before reporting any native error.
+ * RU: Выполнить запрос под потабличными guard, атомарно занятыми в preflight.
+ * handle/request заимствуют укоренённые аргументы. Запрос рекурсивно входит
+ * в свои мьютексы, не отказывает конкуренции и не блокирует VM. Снять только
+ * неявные уровни перед обработкой нативной ошибки. */
 static void table_apply(Bigtable_Handle *handle, FvmTableRequest *request)
 {
     FvmTableOwner *owner = table_owner(handle);
     FvmTableOwner *source = request->operation == FVM_TABLE_SPLICE ? request->replacement : owner;
+    TableOperationOwners operation = {
+        (TableOwner *)handle,
+        (TableOwner *)((uchar *)source - offsetof(TableOwner, owned))
+    };
     pthread_mutex_lock(&table_scheduler_lock);
     TableActor *actor = table_actor(currun(), 0);
     uint64_t token = actor && actor->held ? actor->token : 0;
     pthread_mutex_unlock(&table_scheduler_lock);
-    int previous;
-    int entered_owner = 0;
-    int entered_source = 0;
+    int previous = PTHREAD_CANCEL_DISABLE;
     int failure = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &previous);
-    if (failure)
-    {
-        error("native table cancellation state failure");
-    }
-    if (!token)
-    {
-        failure = fvm_owned_token(&token);
-    }
     if (!failure)
     {
-        failure = fvm_owned_try_enter(&owner->guard, token);
-        entered_owner = !failure;
+        failure = token ? fvm_table_request(owner, token, request) : EINVAL;
+        pthread_setcancelstate(previous, NULL);
     }
-    if (!failure && source != owner)
-    {
-        failure = fvm_owned_try_enter(&source->guard, token);
-        entered_source = !failure;
-    }
-    if (!failure)
-    {
-        failure = fvm_table_request(owner, token, request);
-    }
-    if (entered_source && fvm_owned_leave(&source->guard, token))
-    {
-        failure = EINVAL;
-    }
-    if (entered_owner && fvm_owned_leave(&owner->guard, token))
-    {
-        failure = EINVAL;
-    }
-    pthread_setcancelstate(previous, NULL);
+    table_schedule(finish_table_operation, &operation);
     if (failure)
     {
         error("native table guard failure");
@@ -190,7 +193,9 @@ static void initialize_table(TableOwner *owner)
         error(failure == ENOMEM ? exNomem : "native table guard initialization failure");
     }
     owner->ready = 1;
+    fvm_port_registry_lock();
     table_owners++;
+    fvm_port_registry_unlock();
 }
 
 /* Validate a borrowed snapshot reference before reading private metadata. */
@@ -379,8 +384,8 @@ void Bigtable_slicerange(void *frame)
 }
 
 /* Replace a captured absolute range using the native rollback-safe table core.
- * Both owners remain rooted by the builtin frame. This host executes one C
- * instruction at a time; external cross-thread payload access is not admitted. */
+ * Both owners remain rooted and guarded from preflight through the request.
+ * RU: Оба владельца укоренены и защищены от preflight до завершения запроса. */
 void Bigtable_splice(void *frame)
 {
     F_Bigtable_splice *call = frame;
@@ -536,7 +541,9 @@ void Bigtable_keysof(void *frame)
         error(exNomem);
     }
     owner->keys = request.keys;
+    fvm_port_registry_lock();
     key_owners++;
+    fvm_port_registry_unlock();
 }
 
 /* Return the complete key count of a validated immutable owner. */
@@ -762,12 +769,15 @@ void Bigtable_rangecheck(void *frame)
     }
 }
 
-/* Copy owner counts on the sole scheduler thread. Output pointers are borrowed/non-null;
- * no native addresses, keys or application values are exposed, and no allocation occurs. */
+/* EN: Copy owner counts under the registry mutex. Output pointers are borrowed/non-null;
+ * no native addresses, keys or application values are exposed, and no allocation occurs.
+ * RU: Скопировать счётчики под мьютексом реестра в заимствованные ненулевые outputs. */
 void dvm_bigtable_owners(unsigned long *tables, unsigned long *keys)
 {
+    fvm_port_registry_lock();
     *tables = table_owners;
     *keys = key_owners;
+    fvm_port_registry_unlock();
 }
 
 /* Register private scalar-only finalizers and generated typed exports after VM heap initialization.
@@ -1053,15 +1063,26 @@ static int table_call_ready(void (*function)(void *), void *frame)
             return 0;
         }
     }
-    if (function == Bigtable_acquire && !owners[0]->lease_owner)
+    if (function == Bigtable_acquire)
     {
-        /* Keep the FIFO head linked across native call entry. */
-        table_enqueue(owners[0], actor ? actor : table_actor(process, 1));
+        if (!owners[0]->lease_owner)
+        {
+            /* Keep the FIFO head linked across explicit native call entry. */
+            table_enqueue(owners[0], actor ? actor : table_actor(process, 1));
+        }
     }
-    else if (actor && actor->waiting)
+    else
     {
-        table_remove_wait(actor);
-        table_actor_idle(actor);
+        /* Reserve the primitive before releasing scheduler metadata. Another
+         * resident must see this owner while its native MCALL is starting. */
+        F_Bigtable_acquire entry = {0};
+        entry.tab = (Bigtable_Handle *)owners[0];
+        table_acquire(&entry);
+        if (count == 2 && owners[1] != owners[0])
+        {
+            entry.tab = (Bigtable_Handle *)owners[1];
+            table_acquire(&entry);
+        }
     }
     return 1;
 }
@@ -1275,6 +1296,26 @@ static int table_release(void *frame)
     table_lease_drop(owner, actor);
     table_actor_idle(actor);
     return 1;
+}
+
+
+/* EN: Release one implicit level for each distinct operation owner, under the
+ * scheduler mutex. argument borrows TableOperationOwners through this call.
+ * Prior explicit levels remain owned; final release wakes the FIFO successor.
+ * RU: Снять один неявный уровень каждого владельца под мьютексом планирования.
+ * argument заимствует TableOperationOwners до возврата. Явные уровни сохраняются,
+ * последний release будит следующего ожидающего в FIFO. */
+static int finish_table_operation(void *argument)
+{
+    TableOperationOwners *operation = argument;
+    F_Bigtable_release release = {0};
+    if (operation->source != operation->owner)
+    {
+        release.tab = (Bigtable_Handle *)operation->source;
+        table_release(&release);
+    }
+    release.tab = (Bigtable_Handle *)operation->owner;
+    return table_release(&release);
 }
 
 
