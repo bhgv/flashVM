@@ -2332,31 +2332,14 @@ foreach(pool_example main rc-overlap backpressure backpressure-eight shared-file
  list(APPEND pool_images "${CMAKE_CURRENT_BINARY_DIR}/${pool_image}.dis")
 endforeach()
 add_custom_target(disvm_managed_worker_modules ALL DEPENDS ${pool_images})
-if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
- foreach(pool_runner disvm disvm-editor)
-  if(TARGET ${pool_runner})
-   add_test(NAME ${pool_runner}_managed_os_executors COMMAND "${PYTHON_EXECUTABLE}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/test_managed_workers.py" "$<TARGET_FILE:${pool_runner}>"
-    "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis" "${CMAKE_CURRENT_BINARY_DIR}/managed-backpressure.dis"
-    "${CMAKE_CURRENT_BINARY_DIR}/managed-shared-file.dis" "${CMAKE_CURRENT_BINARY_DIR}/managed-ui-rpc.dis"
-    "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
-   set_tests_properties(${pool_runner}_managed_os_executors PROPERTIES TIMEOUT 300)
-  endif()
- endforeach()
-endif()
-
-
-# Bounded 4/8-owner execution and eight simultaneous real native continuations.
+# Removed shared executor CLI must fail before VM or helper startup.
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
  foreach(pool_runtime disvm disvm-editor)
   if(TARGET ${pool_runtime})
-  add_test(NAME ${pool_runtime}_managed_pool_capacity COMMAND "${PYTHON_EXECUTABLE}"
-   "${CMAKE_CURRENT_SOURCE_DIR}/test_managed_pool.py" "$<TARGET_FILE:${pool_runtime}>"
-   "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis"
-   "${CMAKE_CURRENT_BINARY_DIR}/managed-backpressure-eight.dis"
-   "$<TARGET_FILE:limbo-bootstrap>" "${u}/module"
-   "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
-  set_tests_properties(${pool_runtime}_managed_pool_capacity PROPERTIES TIMEOUT 300)
+   add_test(NAME ${pool_runtime}_removed_pool_rejected COMMAND "${PYTHON_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/test_removed_pool.py" "$<TARGET_FILE:${pool_runtime}>"
+    "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis")
+   set_tests_properties(${pool_runtime}_removed_pool_rejected PROPERTIES TIMEOUT 30)
   endif()
  endforeach()
 endif()
@@ -2403,21 +2386,6 @@ int main(void) { return 0; }" DVM_METADATA_GLIBC)
    endif()
   endforeach()
  endif()
-endif()
-
-
-# Actual pressure-driven growth, channel suspension and idle retirement/reaping.
-if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
- foreach(elastic_runner disvm disvm-editor)
-  if(TARGET ${elastic_runner})
-   add_test(NAME ${elastic_runner}_elastic_pool COMMAND "${PYTHON_EXECUTABLE}"
-    "${CMAKE_CURRENT_SOURCE_DIR}/test_elastic_pool.py" "$<TARGET_FILE:${elastic_runner}>"
-    "${CMAKE_CURRENT_BINARY_DIR}/managed-workers.dis"
-    "${CMAKE_CURRENT_BINARY_DIR}/managed-elastic.dis"
-    "${root}/ide/assets/fonts/NotoSansMono-Regular.ttf")
-   set_tests_properties(${elastic_runner}_elastic_pool PROPERTIES TIMEOUT 300)
-  endif()
- endforeach()
 endif()
 
 
@@ -2958,4 +2926,11 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(disvm_host_cancellations_test PRIVATE pthread)
     add_test(NAME disvm_host_cancellations COMMAND disvm_host_cancellations_test)
     set_tests_properties(disvm_host_cancellations PROPERTIES TIMEOUT 10)
+endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_executable(disvm_owner_messages_test test_owner_messages.c owner_messages.c)
+    target_link_libraries(disvm_owner_messages_test PRIVATE pthread)
+    add_test(NAME disvm_owner_messages COMMAND disvm_owner_messages_test)
+    set_tests_properties(disvm_owner_messages PROPERTIES TIMEOUT 15)
 endif()

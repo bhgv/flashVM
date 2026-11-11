@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Real collector roots, reclamation and resident-thread lifecycle checks.
+# RU: Проверки корней, сборки мусора и жизни закреплённых потоков.
 """Run the actual retained collector/heap with native stopped-world ownership."""
 from pathlib import Path
 import os
@@ -9,12 +12,10 @@ import sys
 
 # Execute a complete real VM, retaining output for root/reclamation/lifecycle
 # checks. No replacement heap, simulated collector or Python worker is involved.
-def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=False, event_cycles=False, dedicated_parallel=False, idle_cycles=False):
+def execute(runtime, module, mode, quantum, budget=None, locked=False, event_cycles=False, dedicated_parallel=False, idle_cycles=False):
     command = [str(runtime), "--gc-worker", "--stats", mode]
     if not dedicated_parallel and not event_cycles:
         command += ["--quantum", str(quantum)]
-    if pool:
-        command += ["--managed-workers", "2", "--guarded-copies", "--parallel-movp", "--parallel-slicela", "--parallel-movmp"]
     if dedicated_parallel:
         command += ["--native-spawn", "--guarded-copies", "--parallel-movp",
                     "--parallel-movmp", "--parallel-slicela", "--parallel-channel-buffer",
@@ -79,22 +80,6 @@ def execute(runtime, module, mode, quantum, budget=None, locked=False, pool=Fals
                 or not slices or int(slices[1]) == 0
                 or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
             raise RuntimeError("dedicated guests did not publish shared graph copies:\n" + output[-5000:])
-    if pool:
-        workers = re.search(r"NATIVEPOOL executors=2 joined=1 failed=0 controller_turns=(\d+) worker_turns=(\d+)", output)
-        shared = re.search(r"native_releases=(\d+) native_reentries=(\d+)", output)
-        commits = re.search(r"parallel_movp_commits=(\d+)", output)
-        slices = re.search(r"parallel_slicela_commits=(\d+)", output)
-        if not slices or int(slices[1]) != 66:
-            raise RuntimeError("expected 64 backing and two overlapping view publications:\n" + output[-5000:])
-        records = re.search(r"parallel_movmp_commits=(\d+)", output)
-        if not records or int(records[1]) < 32:
-            raise RuntimeError("expected shared mapped frame records:\n" + output[-5000:])
-        module_copies = re.search(r"parallel_movp_module=(\d+) parallel_movmp_module=(\d+)", output)
-        if not module_copies or min(map(int, module_copies.groups())) < 64:
-            raise RuntimeError("expected shared module-data pointer and record copies:\n" + output[-5000:])
-        if (not commits or int(commits[1]) < 64 or not workers or min(map(int, workers.groups())) == 0 or "serial_heap=1" not in output
-                or not shared or int(shared[1]) < 64 or shared[1] != shared[2]):
-            raise RuntimeError("shared graph did not run with the expected worker pool:\n" + output[-5000:])
     if budget is None and quantum == 65536 and (int(rc[3]) or int(limits[1])):
         raise RuntimeError("growing release queue refused publication:\n" + output[-5000:])
     if budget is not None and ("instruction limit exceeded" not in output or "PASS Dis application completed" in output):
@@ -132,10 +117,8 @@ def main():
         if runtime.name == "disvm" and platform.machine() in ("x86_64", "AMD64"):
             execute(runtime, module, mode, 257, event_cycles=True)
             execute(runtime, module, mode, 257, dedicated_parallel=True)
-            for locked in (False, True):
-                execute(runtime, module, mode, 257, locked=locked, pool=True)
     print("PASS actual native cycle GC: 6 managed root/reclamation runs, 2 growing-queue publication runs, "
-          "4 managed-error joins, interpreter/JIT, shared graph with two-worker hosted runs")
+          "4 managed-error joins, interpreter/JIT, shared graph with permanently assigned native threads")
 
 
 if __name__ == "__main__":
