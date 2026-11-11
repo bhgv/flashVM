@@ -210,8 +210,10 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             int has_children = array && (array->root != H || array->t->np);
             int record = entry->heap->t->free == freeheap;
             int list = entry->heap->t == &Tlist;
+            int module = dvm_gc_fast_module_eligible(entry->heap);
             int retry_leaf = 0;
-            if ((channel && !claim_quiet_channel(entry->heap, &mapped_channel, &retry_leaf)) ||
+            if ((module && !transfer_module_data(entry->heap, &retry_leaf)) ||
+                (channel && !claim_quiet_channel(entry->heap, &mapped_channel, &retry_leaf)) ||
                 (has_children && !transfer_array_children(entry->heap, &retry_leaf)) ||
                 ((record || list) && !transfer_object_fields(entry->heap, &retry_leaf)))
             {
@@ -235,7 +237,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 continue;
             }
             take_shared_leaf(source, entry);
-            DVM_RefcountResult result = has_children || channel || record || list
+            DVM_RefcountResult result = has_children || channel || record || list || module
                                             ? DVM_REFCOUNT_LAST
                                             : dvm_refcount_release_u(&entry->heap->ref);
             if (result == DVM_REFCOUNT_LAST)
@@ -265,6 +267,12 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                         release_owned_descriptor(element);
                     }
                     shared_lists++;
+                }
+                else if (module)
+                {
+                    dvm_gc_fast_module_finalize(entry->heap);
+                    shared_modules++;
+                    shared_modules_with_peer += peer;
                 }
                 else if (dvm_gc_fast_file_eligible(entry->heap))
                 {

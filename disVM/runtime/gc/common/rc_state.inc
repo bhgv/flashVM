@@ -19,6 +19,7 @@
 #include "gc/fast/packet_budget.h"
 #include "gc/fast/file_retirement.h"
 #include "gc/fast/table_retirement.h"
+#include "gc/fast/module_retirement.h"
 #include "bigtable_owner.h"
 #include "runtime_gc.h"
 #include "gc_fields.h"
@@ -96,6 +97,8 @@ static unsigned long shared_arrays;                 /* Final scalar-array releas
 static unsigned long shared_arrays_with_peer;       /* Scalar-array releases with an active guest. */
 static unsigned long shared_channels;               /* Final known channel releases on shared Fast. */
 static unsigned long shared_plain_records;          /* Final ordinary record releases on shared Fast. */
+static unsigned long shared_modules;                /* Final ordinary Modlink releases on shared Fast. */
+static unsigned long shared_modules_with_peer;      /* Modlink finalizations overlapping an active guest. */
 static unsigned long shared_lists;                  /* Final list releases on shared Fast. */
 static unsigned long shared_tables;                 /* Known table heaps finalized on shared Fast. */
 static unsigned long shared_keys;                   /* Known key-snapshot heaps finalized on shared Fast. */
@@ -212,6 +215,8 @@ void dvm_runtime_rc_start(void)
     shared_channels = 0;
     shared_plain_records = 0;
     shared_lists = 0;
+    shared_modules = 0;
+    shared_modules_with_peer = 0;
     shared_strings_with_peer = 0;
     frames_drained = 0;
     shared_children = 0;

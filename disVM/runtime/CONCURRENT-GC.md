@@ -130,3 +130,9 @@ native-ticket producers and sends pending mandatory owners to Cycles without
 withdrawing their root. Actual small cycles and a 2300-node Duke ring are freed
 before admitted peers leave. The main runtime still retains general stopped
 tracing and unsupported finalizer/shutdown paths.
+
+[Ordinary module retirement](MODULE-RETIREMENT.md) adds shared last-link MP
+transfer, rollback and native Module/code cleanup through the existing registry.
+Actual MP/metadata frees and executable-code unmap precede peer release. Dynamic
+native modules, module cycles and closed-admission shutdown remain outside this
+new path.

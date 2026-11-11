@@ -42,7 +42,7 @@ static int leaf_eligible(const Heap *heap)
         const Array *array = H2D(const Array *, heap);
         return array->t && array->t != H;
     }
-    return dvm_gc_fast_file_eligible(heap) || dvm_gc_fast_table_eligible(heap) ||
+    return dvm_gc_fast_file_eligible(heap) || dvm_gc_fast_table_eligible(heap) || dvm_gc_fast_module_eligible(heap) ||
            (heap->t && ((dvm_runtime_idle_cycles && heap->t == &Tlist) || heap->t->free == freeheap));
 }
 

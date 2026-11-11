@@ -66,6 +66,7 @@ def main():
                 str(runtime / "gc/fast/packet_budget.c"),
                 str(runtime / "gc/fast/file_retirement.c"),
                 str(runtime / "gc/fast/table_retirement.c"),
+                str(runtime / "gc/fast/module_retirement.c"),
                 str(path),
             ]
             command += [

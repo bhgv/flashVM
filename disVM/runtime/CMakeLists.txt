@@ -156,6 +156,7 @@ add_executable(disvm
     gc/fast/packet_budget.c
     gc/fast/file_retirement.c
     gc/fast/table_retirement.c
+    gc/fast/module_retirement.c
     gc/common/graph_capture.c
     gc/cycles/cycle_pass.c
     gc/duke/snapshot_growth.c

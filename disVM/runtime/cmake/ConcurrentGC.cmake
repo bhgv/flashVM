@@ -14,4 +14,8 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_cycle_owner_rescue.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_cycle_owner_rescue PROPERTIES TIMEOUT 120)
+    add_test(NAME disvm_module_retirement COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_module_retirement.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_module_retirement PROPERTIES TIMEOUT 120)
 endif()

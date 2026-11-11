@@ -13,6 +13,7 @@ preprocessor directives. Compilation and runtime tests remain necessary evidence
 | Leaf and mandatory owner publication | [leaf_publication.inc](../fast/leaf_publication.inc), [owner_publication.inc](../fast/owner_publication.inc) |
 | Mandatory FIFO rescue | [owner_drain.inc](../fast/owner_drain.inc) |
 | Frame and child owner packets | [frame_publication.inc](../fast/frame_publication.inc), [packet_children.inc](../fast/packet_children.inc) |
+| Ordinary module MP and metadata | [module_data.inc](../fast/module_data.inc), [module_retirement.c](../fast/module_retirement.c) |
 | Array and object claims | [array_children.inc](../fast/array_children.inc), [object_children.inc](../fast/object_children.inc) |
 | Closed graph publication and release | [graph_publication.inc](../fast/graph_publication.inc), [graph_release.inc](../fast/graph_release.inc) |
 | Shared Fast reclamation | [shared_release.inc](../fast/shared_release.inc) |
@@ -35,3 +36,6 @@ protocol. Current stop-free scope and outstanding work are described in
 
 [Cycle-owner rescue](../../CYCLE-OWNER-RESCUE.md) describes shared seed publication,
 root-preserving mandatory handoff and the duplicate-index lifetime boundary.
+
+[Ordinary module retirement](../../MODULE-RETIREMENT.md) describes the MP root
+transaction, registry/metadata release and executable-code reader cutoff.

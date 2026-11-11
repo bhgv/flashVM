@@ -12,6 +12,7 @@
 #include "gc/fast/frame_publication.inc"
 #include "gc/fast/array_children.inc"
 #include "gc/fast/packet_children.inc"
+#include "gc/fast/module_data.inc"
 #include "gc/fast/object_children.inc"
 #include "gc/fast/graph_release.inc"
 #include "gc/cycles/candidate_transfer.inc"

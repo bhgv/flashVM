@@ -145,6 +145,7 @@ int dvm_runtime_rc_finish(int diagnostics)
         printf(
             "NATIVEMANDATORYCYCLE transferred=%lu retries=%lu\n", mandatory_cycle_transfers, mandatory_cycle_retries);
         printf("NATIVEMANDATORYRC shared=%lu\n", shared_mandatory_owners);
+        printf("NATIVEMODULERC shared=%lu with_peer=%lu\n", shared_modules, shared_modules_with_peer);
         printf("NATIVELISTRC shared=%lu\n", shared_lists);
         printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);
         printf("NATIVECHANNELRC shared=%lu\n", shared_channels);

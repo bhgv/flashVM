@@ -39,17 +39,20 @@ int dvm_bigtable_native_quiet(const Heap *heap)
     return 0;
 }
 
-Type *TFD; /* No Sys.FD is initialized in this isolated admission-role unit. */
-Type Tarray;  /* Type identity only. This fixture owns no real arrays. */
-Type Tstring; /* Type identity only. This fixture owns no real strings. */
-Type Tchannel, Tlist, Tmodlink, Tptr;
+Type *TFD;     /* No Sys.FD is initialized in this isolated admission-role unit. */
+Type Tarray;   /* Type identity only. This fixture owns no real arrays. */
+Type Tstring;  /* Type identity only. This fixture owns no real strings. */
+Type Tchannel; /* Channel identity without a live payload in this role-only unit. */
+Type Tlist;    /* List identity without a live payload in this role-only unit. */
+Type Tmodlink; /* Modlink identity; the role gate prevents module access. */
+Type Tptr;     /* Pointer identity without a real managed object. */
 int dvm_runtime_idle_cycles;
 int gchalt;
 void (*heapmonitor)(int, void *, ulong); /* Monitoring stays disabled. */
-Pool *heapmem; /* Never used: rejected roles must not ask the allocator anything. */
-int mutator;  /* Link retained marking declarations; marking is forbidden here. */
-int nprop;    /* Link retained marking declarations; no mark may be published. */
-static void *probe; /* Native-backed sentinel, never admitted as a managed object. */
+Pool *heapmem;                           /* Never used: rejected roles must not ask the allocator anything. */
+int mutator;                             /* Link retained marking declarations; marking is forbidden here. */
+int nprop;                               /* Link retained marking declarations; no mark may be published. */
+static void *probe;                      /* Native-backed sentinel, never admitted as a managed object. */
 
 
 /* EN: No managed-owner tickets exist in this role fixture.
@@ -120,11 +123,13 @@ DVM_CellDomain *dvm_managed_cell_domain(void)
     return NULL;
 }
 
+
 DVM_HeapKey dvm_heap_pool_key(Pool *pool, void *block)
 {
     (void)poolmsize(pool, block);
     return (DVM_HeapKey){0};
 }
+
 
 int dvm_gc_field_mark(int *color, const int *selector, int *pending)
 {
@@ -135,11 +140,13 @@ int dvm_gc_field_mark(int *color, const int *selector, int *pending)
     return 0;
 }
 
+
 void freeheap(Heap *heap, int swept)
 {
     (void)swept;
     ptradd(heap);
 }
+
 
 /* EN: The role fixture has no native buffer transfer for channel.
  * RU: В тесте ролей нет нативной передачи буфера для channel. */
@@ -166,6 +173,7 @@ int dvm_runtime_channel_is_quiet(Channel *channel)
     return 0;
 }
 
+
 int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed)
 {
     (void)buffer;
@@ -175,10 +183,12 @@ int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, in
     return 0;
 }
 
+
 void dvm_runtime_gc_owner_lost(void)
 {
     ptradd(NULL);
 }
+
 
 /* A genuine stopped-world collector has no ACTIVE mutator admission. world is
  * borrowed through parent join; the collector context unregisters before exit. */
@@ -244,4 +254,13 @@ int main(int argc, char **argv)
     free(backing);
     puts("PASS real RC roles: detached/idle/native/pending/collector/foreign/closed refuse payload access");
     return 0;
+}
+
+
+/* [GC:] EN: A role rejection cannot unload any Module; argument is never valid here.
+ * RU: Отказ роли не может освободить Module; аргумент здесь не является модулем. */
+void unload(Module *module)
+{
+    (void)module;
+    ptradd(NULL);
 }
