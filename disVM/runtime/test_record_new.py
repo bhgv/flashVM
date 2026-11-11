@@ -1,4 +1,7 @@
 # Copyright (c) 2026 bhgv
+# EN: Validate real construction, shared owners and channel error recovery.
+# RU: Проверки создания объектов, общих владельцев и восстановления каналов.
+# Copyright (c) 2026 bhgv
 """Exercise guarded record, array and channel construction through native and guest routes."""
 from pathlib import Path
 import subprocess
@@ -281,7 +284,7 @@ def main():
             if mode == "--jit" and "PASS guarded record JIT cache" not in output:
                 raise RuntimeError(output)
             if result.returncode or any(marker not in output for marker in (
-                "PASS detached ALT publication failure", "PASS native channel buffer wait", "PASS rooted channel buffer lifetime", "PASS buffered channel completion", "PASS direct channel mover failure", "PASS two-sided channel finalization", "PASS native Prog hold race", "PASS guarded channel drain", "PASS mapped channel receive ownership", "PASS mapped channel send publication", "PASS guarded mapped channel mover", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
+                "PASS buffered channel recovery on same channel", "PASS detached ALT publication failure", "PASS native channel buffer wait", "PASS rooted channel buffer lifetime", "PASS buffered channel completion", "PASS direct channel mover failure", "PASS two-sided channel finalization", "PASS native Prog hold race", "PASS guarded channel drain", "PASS mapped channel receive ownership", "PASS mapped channel send publication", "PASS guarded mapped channel mover", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
             )) or "ThreadSanitizer:" in output or "runtime error:" in output:
                 raise RuntimeError(output)
         verify_existing_shared_dispatch(runtime, work, image)

@@ -1,4 +1,7 @@
-/* Exercise real record construction, including a writer inside the monitor. */
+/* Copyright (c) 2026 bhgv
+ * EN: Real construction, ownership and channel transfer cleanup regressions.
+ * RU: Регрессии создания объектов, владения и очистки передач по каналам.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -14,6 +17,7 @@
 #include "managed_owner.h"
 #include "root_registry.h"
 #include "runqueue.h"
+#include "channel_match.h"
 #include "disvm/native_owner.h"
 #include "disvm/refcount.h"
 #include <stdio.h>
@@ -677,6 +681,22 @@ static int direct_channel_transfer(void *argument)
 }
 
 
+extern void movw(void);
+extern void dvm_runtime_channel_queue_guard(int (*)(void *), void *);
+
+
+/* EN: Check the borrowed channel under its queue mutex after error cleanup.
+ * A foreign native owner must see no remaining match. Return one, fatal on error.
+ * RU: Проверить заимствованный канал под мьютексом очереди после очистки ошибки.
+ * Чужой нативный владелец не должен видеть match. Вернуть один, ошибка фатальна. */
+static int channel_match_released(void *channel)
+{
+    check(!dvm_channel_match_blocked(channel, NULL),
+        "foreign owner sees channel match released after transfer cleanup");
+    return 1;
+}
+
+
 /* Both direct directions must make a dequeued peer runnable on mover error. */
 static void direct_channel_failure(void)
 {
@@ -705,6 +725,7 @@ static void direct_channel_failure(void)
             strstr(getup()->env->errstr, "fixture channel mover failure"),
             "initiator receives original mover error");
         claimed_waiter = NULL;
+        dvm_runtime_channel_queue_guard(channel_match_released, channel);
         check(waiter_notifications == 1 && !waiter.channel_claimed && !waiter.lifetime_holds && !(*queue)->prog && !waiter.process.ptr && !waiter.process.chan &&
             waiter.process.kill && !strcmp(waiter.process.kill, "channel transfer failed") &&
             dvm_runqueue_pop(Psend) == &waiter.process && !dvm_runqueue_head(),
@@ -814,6 +835,7 @@ static void buffered_channel_completion(void)
         registers->s = &channel;
         registers->d = &received;
         ok = kprotect(direct_channel_transfer, &receive);
+        dvm_runtime_channel_queue_guard(channel_match_released, channel);
         check(ok == (stage == 0) && refill_moves == (stage == 1 ? 1 : 2),
             "buffered transfer reaches selected stage");
         check(!waiter.channel_claimed && dvm_refcount_load_u(&D2H(channel)->ref) == 1 && !channel->send->prog &&
@@ -856,7 +878,31 @@ static void buffered_channel_completion(void)
                 received == buffered && channel->size == 0,
                 "retry receives the preserved buffered word");
         }
+        /* EN: Reuse this exact channel after every success/error stage.
+         * RU: Повторно использовать тот же канал после каждого исхода. */
+        channel->mover = movw;
+        registers->s = &channel;
+        registers->d = &received;
+        if (channel->size)
+        {
+            check(kprotect(direct_channel_transfer, &receive) && !channel->size,
+                "recovered channel drains the preserved or committed slot");
+        }
+        {
+            WORD fresh = 43;
+            int send = 0;
+            received = -1;
+            registers->s = &fresh;
+            registers->d = &channel;
+            check(kprotect(direct_channel_transfer, &send) && channel->size == 1,
+                "recovered channel admits a fresh send");
+            registers->s = &channel;
+            registers->d = &received;
+            check(kprotect(direct_channel_transfer, &receive) && received == fresh && !channel->size,
+                "recovered channel receives fresh payload exactly once");
+        }
     }
+    puts("PASS buffered channel recovery on same channel");
     *registers = saved;
     check(dvm_runqueue_append(prior), "restore startup process");
     destroy(channel);
