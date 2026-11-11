@@ -16,12 +16,16 @@ int dvm_gc_fast_module_eligible(const Heap *heap);
 
 
 /* [GC:] EN: Finalize a claimed zero-count ordinary link after its MP was moved
- * to a rooted packet and its reader epoch elapsed. Caller keeps shared admission and
+ * to a rooted packet or consumed by a closed graph claim, after its reader epoch.
+ * Caller keeps shared admission and
  * RC acceptance until return, so unload queues origmp rather than recursively
  * destroying it. Registry unlinks LAST before freeing metadata outside its lock.
+ * Claimed graphs may also finalize under stopped admission after RC closes.
  * Caller frees the link heap and static Type owner; no link/Module alias escapes.
  * RU: Завершить обычный link с нулевым счётчиком после передачи MP в пакет
- * с корнем и завершения эпохи. Вызывающий сохраняет shared-допуск и приём RC
+ * с корнем либо снятия ребра захватом графа, после завершения эпохи.
+ * Захваченный граф допускает остановленную финализацию при закрытом RC.
+ * Иначе вызывающий сохраняет shared-допуск и приём RC
  * до возврата: unload ставит origmp в очередь вместо рекурсивного разрушения.
  * Реестр удаляет LAST до освобождения метаданных вне mutex. Кучу link и ссылку
  * статического Type снимает вызывающий; алиасы link/Module не выходят наружу. */

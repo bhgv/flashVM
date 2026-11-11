@@ -109,10 +109,11 @@ handwritten source stays below 500 lines.
 
 ## Remaining boundaries
 
-This handles last ordinary Modlink owners and the native Module metadata they
-retain. It does not add `Modlink`/Module ownership edges to shared cycle discovery;
-cycles involving module instances, arbitrary native finalizers, complete root
-publication and shutdown without stopped ownership still require work. Module
+This initial pass handles last ordinary Modlink owners and their native metadata.
+The [module-instance cycle follow-up](MODULE-CYCLE-RETIREMENT.md) now adds ordinary
+`Modlink -> MP` edges and graph finalization. Native Module/original-MP cycle
+closure, arbitrary native finalizers, complete root publication and shutdown
+without stopped ownership still require work. Module
 construction/Loader mutation and every external code-cache borrower are not
 comprehensively audited by these fixtures. The dynamic-module exclusion and
 closed-admission routing remain explicit prerequisites, not complete shutdown or

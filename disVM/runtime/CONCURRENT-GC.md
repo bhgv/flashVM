@@ -141,3 +141,8 @@ new path.
 owners on indexed publication refusal and stages shared ticket owners until
 their old root is withdrawn. Reachable cycles survive an actual scan before
 their independent owner is released. General stopped tracing remains.
+
+[Module-instance cycle retirement](MODULE-CYCLE-RETIREMENT.md) extends shared
+discovery through ordinary Modlink MP fields. Actual graph claims and final
+reader epochs precede native Module finalization; external MP and Module owners
+retain their data. Native Module/original-MP cycle closure is still outside scope.

@@ -15,6 +15,10 @@ static int record_candidate(const Heap *heap)
     {
         return 0;
     }
+    if (heap->t == &Tmodlink)
+    {
+        return dvm_gc_fast_module_eligible(heap);
+    }
     if (heap->t == &Tarray)
     {
         const Array *array = H2D(const Array *, heap);

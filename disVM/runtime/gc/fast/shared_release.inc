@@ -86,6 +86,14 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
             }
             if (entry->records)
             {
+                /* [GC:] EN: Closed RC cannot publish unload's original MP owner.
+                 * Keep even claimed module graphs for stopped finalization.
+                 * RU: Закрытый RC не принимает исходный MP из unload. Даже
+                 * захваченные графы модулей сохранить до остановленной финализации. */
+                if (entry->snapshot->has_modules && !accepting)
+                {
+                    break;
+                }
                 size_t cost = entry->records->count + entry->snapshot->edges_used;
                 unsigned long final_epoch = 0;
                 DVM_CellResult claim;

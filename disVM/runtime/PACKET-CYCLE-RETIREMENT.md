@@ -77,7 +77,10 @@ Linux x86-64; ARM64 and RV64 remain unverified.
 ## Remaining scope
 
 This extends [cycle-owner rescue](CYCLE-OWNER-RESCUE.md), not the complete no-STW
-runtime. General tracing, cycles containing Modlink, unsupported native finalizers
+runtime. General tracing, native Module/original-MP cycles, unsupported native finalizers
 and closed-admission shutdown still require work. The remaining acceptance limits
 in [CONCURRENT-GC.md](CONCURRENT-GC.md), [FAST-FINALIZATION.md](FAST-FINALIZATION.md)
 and [MODULE-RETIREMENT.md](MODULE-RETIREMENT.md) still apply.
+
+[The next module-instance pass](MODULE-CYCLE-RETIREMENT.md) adds ordinary
+Modlink MP edges without claiming native Module/original-MP cycle closure.

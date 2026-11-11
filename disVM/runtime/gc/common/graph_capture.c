@@ -11,19 +11,21 @@
 #include "disvm/refcount.h"
 #include "../../root_registry.h"
 #include "../../gc_fields.h"
+#include "../fast/module_retirement.h"
 #include "../../runtime_gc.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
+
 extern int dvm_runtime_channel_is_quiet(Channel *channel); /* Native channel state check. */
 
 
-extern int mutator; /* Retained GC mark color, stable under shared admission. */
-extern int nprop;   /* Mark propagation counter. */
+extern int mutator;            /* Retained GC mark color, stable under shared admission. */
+extern int nprop;              /* Mark propagation counter. */
 
 #define DUKE_SLICE_FIELDS 1024 /* Fields or source nodes per admitted discovery slice. */
-#define DUKE_CAPTURE_BATCH 64 /* Maximum fields before renewing discovery guards. */
+#define DUKE_CAPTURE_BATCH 64  /* Maximum fields before renewing discovery guards. */
 
 
 /* EN: Retain and root a new target from group while its field is guarded.
@@ -66,8 +68,7 @@ static int renew_duke_guards(RecordGroup *group, DVM_RangeAccess *access)
 
 /* EN: Read field cell of source index under access, or caller-owned exclusive admission. Append it to group.
  * RU: Прочитать поле cell узла index под access или эксклюзивным допуском и добавить ребро в group. */
-static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
-    DVM_RangeAccess *access)
+static int record_group_edge(RecordGroup *group, unsigned int index, void *cell, DVM_RangeAccess *access)
 {
     if (group->growing && group->edges_used && group->edges_used % DUKE_CAPTURE_BATCH == 0 &&
         !renew_duke_guards(group, access))
@@ -114,8 +115,7 @@ static int record_group_edge(RecordGroup *group, unsigned int index, void *cell,
 
 /* EN: Count mapped fields in type for elements repeated values, within available slots. Store the count in mapped.
  * RU: Проверить, помещаются ли ссылочные поля elements элементов типа type в available мест. Число полей вернуть в mapped. */
-static int repeated_record_fields_fit(const Type *type, size_t elements,
-    size_t available, size_t *mapped)
+static int repeated_record_fields_fit(const Type *type, size_t elements, size_t available, size_t *mapped)
 {
     size_t limit = available / elements;
     *mapped = 0;
@@ -133,8 +133,8 @@ static int repeated_record_fields_fit(const Type *type, size_t elements,
 
 /* EN: Capture node index in group. start_roots is the expected seed root count; access guards fields. field_end bounds Duke slices.
  * RU: Прочитать узел index в group. start_roots задаёт ожидаемое число корней начального узла, access защищает поля, field_end ограничивает порцию ДюкGC. */
-static int capture_record_source(RecordGroup *group, unsigned int index,
-    unsigned long start_roots, DVM_RangeAccess *access, size_t field_end)
+static int capture_record_source(
+    RecordGroup *group, unsigned int index, unsigned long start_roots, DVM_RangeAccess *access, size_t field_end)
 {
     void *record = group->nodes[index];
     Heap *heap = D2H(record);
@@ -156,8 +156,7 @@ static int capture_record_source(RecordGroup *group, unsigned int index,
         }
         else
         {
-            if (array->len < 0 ||
-                array->data != (unsigned char *)array + sizeof(*array))
+            if (array->len < 0 || array->data != (unsigned char *)array + sizeof(*array))
             {
                 group->live[index] = 1;
                 return 1;
@@ -166,6 +165,17 @@ static int capture_record_source(RecordGroup *group, unsigned int index,
             elements = type->np ? array->len : 0;
             data = array->data;
         }
+    }
+    if (heap->t == &Tmodlink)
+    {
+        if (!dvm_gc_fast_module_eligible(heap))
+        {
+            group->live[index] = 1;
+            return 1;
+        }
+        group->has_modules = 1;
+        type = &Tptr;
+        data = (unsigned char *)&H2D(Modlink *, heap)->MP;
     }
     if (heap->t == &Tlist)
     {
@@ -197,8 +207,9 @@ static int capture_record_source(RecordGroup *group, unsigned int index,
         type = &Tptr;
         data = (unsigned char *)&channel->buf;
     }
-    if (heap->t != &Tlist && (!type || type->size < (int)sizeof(void *) ||
-        (heap->t != &Tarray && heap->t != &Tchannel && type->free != freeheap)))
+    if (heap->t != &Tlist &&
+        (!type || type->size < (int)sizeof(void *) ||
+         (heap->t != &Tarray && heap->t != &Tchannel && heap->t != &Tmodlink && type->free != freeheap)))
     {
         group->live[index] = 1;
         return 1;
@@ -362,8 +373,7 @@ static int confirm_duke_capture(RecordGroup *group, DVM_RangeAccess *access)
 
 /* EN: Capture from rooted start into group. start_roots gives its expected roots; access is borrowed and remains held.
  * RU: Построить group от удерживаемого start. start_roots задаёт ожидаемое число корней, access остаётся захваченным. */
-int dvm_rc_queued_record_group(void *start, unsigned long start_roots, RecordGroup *group,
-    DVM_RangeAccess *access)
+int dvm_rc_queued_record_group(void *start, unsigned long start_roots, RecordGroup *group, DVM_RangeAccess *access)
 {
     if (!dvm_runtime_idle_cycles || gchalt || heapmonitor)
     {

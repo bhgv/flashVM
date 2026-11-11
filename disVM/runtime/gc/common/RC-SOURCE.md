@@ -42,3 +42,6 @@ transaction, registry/metadata release and executable-code reader cutoff.
 
 [Packet cycle retirement](../../PACKET-CYCLE-RETIREMENT.md) covers failed child
 publication, snapshot replay and rooted ticket staging before discovery.
+
+[Module-instance cycles](../../MODULE-CYCLE-RETIREMENT.md) add ordinary MP edges
+and known native finalization after the graph claim and final reader epoch.
