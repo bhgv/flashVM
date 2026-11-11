@@ -10,16 +10,28 @@ TableScopeKill: module { init: fn(); };
 sys: Sys; # Immutable builtin interface initialized before spawn.
 tables: Bigtable; # Per-table FIFO and implicit primitive guard.
 control: Processctl; # Parent-scoped process requests and exact retirement replies.
+CancelFirst: con 1; # Test driver also preserves the original direct-kill path.
 Rounds: con 32; # Fresh native owner and child pair per round.
 
 
 # EN: Publish PID, attempt one primitive, then report forbidden post-kill execution.
-# tab/key/value/ids/reports remain rooted by this child's permanent frame.
+# key one catches cancellation, acknowledges its PID and retries the same call.
+# tab/key/value/ids/reports/cancelled remain rooted by this child's permanent frame.
 # RU: Сообщить PID, выполнить операцию и сообщить о запрещённом продолжении.
-# tab/key/value/ids/reports укоренены постоянным кадром этого ребёнка.
-write(tab: ref Bigtable->Handle, key, value: big, ids, reports: chan of int)
+# При key один поймать отмену, подтвердить PID и повторить тот же вызов.
+# tab/key/value/ids/reports/cancelled укоренены постоянным кадром этого ребёнка.
+write(tab: ref Bigtable->Handle, key, value: big, ids, reports, cancelled: chan of int)
 {
     ids <-= control->pid();
+    if (CancelFirst && key == big 1) {
+        {
+            tables->requireok(tables->setindex(tab, key, value));
+            raise "cancelled table primitive reached its payload";
+        } exception {
+            "table lease wait cancelled" => {}
+        }
+        cancelled <-= control->pid();
+    }
     tables->requireok(tables->setindex(tab, key, value));
     reports <-= 1;
 }
@@ -35,9 +47,11 @@ permit(input: ref Sys->FD, bytes: array of byte)
 }
 
 
-# EN: Retire the queued peer before releasing the admitted primitive's native call.
+# EN: Cancel the queued primitive, catch on its original resident and requeue it.
+# Retire the queued peer before releasing the admitted primitive's native call.
 # Drop the parent's last table reference, then wait for the admitted child too.
-# RU: Завершить ожидающего соседа до выхода допущенной операции из native.
+# RU: Отменить ожидающую операцию, поймать исключение в том же потоке и повторить.
+# Завершить ожидающего соседа до выхода допущенной операции из native.
 # Снять родительскую ссылку на таблицу и дождаться допущенного ребёнка.
 init()
 {
@@ -50,12 +64,20 @@ init()
         tab := tables->create();
         ids := chan of int;
         reports := chan[2] of int;
-        spawn write(tab, big 0, big 111, ids, reports);
+        cancelled := chan of int;
+        spawn write(tab, big 0, big 111, ids, reports, cancelled);
         head := <-ids;
         permit(input, bytes);
-        spawn write(tab, big 1, big 222, ids, reports);
+        spawn write(tab, big 1, big 222, ids, reports, cancelled);
         queued := <-ids;
         permit(input, bytes);
+        if (CancelFirst) {
+            if (control->cancelwait(queued) != Processctl->Cancelled || <-cancelled != queued) {
+                raise "queued primitive cancellation lost its exception or resident identity";
+            }
+            sys->print("PASS queued table primitive cancelled phase %d\n", round + 1);
+            permit(input, bytes);
+        }
         if (control->killwait(queued) != Processctl->Retired) {
             raise "queued table primitive did not retire while the owner was held";
         }

@@ -20,6 +20,7 @@ static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER; /* Protect observed nat
 static FvmTableOwner *held_owner; /* Borrowed until the real request returns. */
 static Bigtable_Handle *held_table; /* Rooted by the admitted primitive's frame/lease. */
 static int held_pid; /* Numeric identity only, never a foreign Prog pointer. */
+static unsigned queued_attempts; /* FIFO admission observations for the current table. */
 static unsigned phases; /* Numbered head/queued/kill boundary sequence. */
 static _Thread_local Bigtable_Handle *current_table; /* Current setindex argument, owner-local. */
 
@@ -59,7 +60,7 @@ int __wrap_dvm_bigtable_call_ready(void (*function)(void *), void *frame)
         pthread_mutex_lock(&sync);
         if (table == held_table)
         {
-            fprintf(stderr, "TABLE_SCOPE_QUEUED %u\n", phases);
+            fprintf(stderr, "TABLE_SCOPE_QUEUED %u attempt %u\n", phases, ++queued_attempts);
         }
         pthread_mutex_unlock(&sync);
     }
@@ -86,6 +87,7 @@ int __wrap_fvm_table_request(FvmTableOwner *owner, uint64_t token, FvmTableReque
     held_table = current_table;
     held_pid = process->pid;
     unsigned phase = ++phases;
+    queued_attempts = 0;
     pthread_mutex_unlock(&sync);
     int native = dvm_runtime_gc_native_try_leave();
     require(native > 0, "admitted primitive publishes its real frame and roots");
@@ -100,10 +102,12 @@ int __wrap_fvm_table_request(FvmTableOwner *owner, uint64_t token, FvmTableReque
     } while (count < 0 && errno == EINTR);
     require(count == 1 && permit == '1', "release follows accepted owner killwait");
     dvm_runtime_gc_native_enter(native);
+    require(fht_count(owner->payload) == 0,
+        "cancelled and killed queued primitives leave no native writes");
     int result = __real_fvm_table_request(owner, token, request);
     int64_t value = 0;
     require(!result && request->status == FHT_OK &&
-        fht_get(owner->payload, request->key, &value) == FHT_OK && value == 111,
+        fht_get(owner->payload, request->key, &value) == FHT_OK && value == 111 && fht_count(owner->payload) == 1,
         "admitted operation finishes once before owner retirement");
     pthread_mutex_lock(&sync);
     held_owner = NULL;
