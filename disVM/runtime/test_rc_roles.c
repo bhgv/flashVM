@@ -123,7 +123,7 @@ void freeheap(Heap *heap, int swept)
 
 /* EN: The role fixture has no native buffer transfer for channel.
  * RU: В тесте ролей нет нативной передачи буфера для channel. */
-int dvm_runtime_channel_buffer_busy(Channel *channel)
+int dvm_runtime_channel_buffer_busy_snapshot(Channel *channel)
 {
     (void)channel;
     return 0;

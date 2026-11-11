@@ -1030,6 +1030,21 @@ void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument)
 extern int dvm_runtime_channel_buffer_busy(Channel *channel);
 
 
+/* EN: Read a borrowed live channel's reservation state under its queue mutex.
+ * GC callers must not traverse stack reservation records without this lock.
+ * The result is an observation; a later claim must revalidate. No heap access.
+ * RU: Прочитать состояние резервации живого заимствованного канала под мьютексом.
+ * GC не обходит стековые записи без блокировки. Это наблюдение, последующий
+ * захват перепроверяет состояние. Управляемая память здесь не разыменовывается. */
+int dvm_runtime_channel_buffer_busy_snapshot(Channel *channel)
+{
+    fvm_port_sync_lock(channel_queue_mutex);
+    int busy = dvm_runtime_channel_buffer_busy(channel);
+    fvm_port_sync_unlock(channel_queue_mutex);
+    return busy;
+}
+
+
 /* Wait on the native reservation ledger only. The caller keeps the channel
  * identity live and must have no bound VM context. Idle is an observation,
  * so the caller must still revalidate when it later acquires a reservation. */
@@ -1784,7 +1799,10 @@ static int cancel_scheduler_guest_wait(int pid)
 }
 
 
-/* Borrow a direct child while the caller owns the managed turn. */
+/* EN: Borrow a direct child. Dedicated callers hold channel_queue_mutex for
+ * the entire lookup/use; the single-threaded reference owns its managed turn.
+ * RU: Заимствовать прямого ребёнка. Выделенные потоки держат channel_queue_mutex
+ * на всё время поиска/использования; однопоточный эталон владеет своим вызовом. */
 static Prog *find_child(Prog *caller, int pid)
 {
     Prog *child;
@@ -2127,7 +2145,16 @@ int dvm_runtime_killwait_result(Prog *caller, int pid)
         process->exit_ready_pid = 0;
         return Processctl_Retired;
     }
-    return find_child(caller, pid) ? Processctl_NotWaiting : Processctl_Denied;
+    if (native_spawn)
+    {
+        fvm_port_sync_lock(channel_queue_mutex);
+    }
+    int result = find_child(caller, pid) ? Processctl_NotWaiting : Processctl_Denied;
+    if (native_spawn)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+    }
+    return result;
 }
 
 

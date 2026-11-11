@@ -2960,3 +2960,16 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --mapped)
     set_tests_properties(disvm_resident_alt_mapped PROPERTIES TIMEOUT 180)
 endif()
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME disvm_resident_processctl COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    add_test(NAME disvm_parent_reply_exit COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --parent-exit)
+    add_test(NAME disvm_channel_gc_snapshot COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --audit-query)
+    set_tests_properties(disvm_resident_processctl disvm_parent_reply_exit disvm_channel_gc_snapshot PROPERTIES TIMEOUT 180)
+endif()
