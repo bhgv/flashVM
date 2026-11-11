@@ -413,7 +413,7 @@ static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, D
     }
     /* A dedicated exit can arrive after the instruction starts but before
      * its native wait is linked. Observe that request before blocking. */
-    if (native_spawn && process && (process->flags & Pkilled))
+    if (native_spawn && process && (__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled))
     {
         cancel_guest_wait(wait);
     }
@@ -1981,7 +1981,7 @@ static int cancel_child_exit_wait(Prog *process)
             return 0;
         }
     }
-    if ((process->flags & Pkilled) || !detach_child_exit_wait(process))
+    if ((__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled) || !detach_child_exit_wait(process))
     {
         return 0;
     }
@@ -2014,7 +2014,7 @@ static int wake_for_termination(Prog *child)
 static void send_resident_exit(Prog *child)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)child;
-    child->flags |= Pkilled;
+    __atomic_fetch_or(&child->flags, Pkilled, __ATOMIC_RELEASE);
     if (dvm_messages_send_once(guest_messages, (uintptr_t)child->pid, &process->channel_exit) == 1)
     {
         dvm_managed_workers_wake_guest(child);
@@ -2041,13 +2041,13 @@ static int request_child_exit(Prog *child)
     }
     if (child->state == Prelease)
     {
-        child->flags |= Pkilled;
+        __atomic_fetch_or(&child->flags, Pkilled, __ATOMIC_RELEASE);
         dvm_runtime_cancel_guest_wait(child->pid);
         return Processctl_Requested;
     }
     if (child->state == Pready || wake_for_termination(child))
     {
-        child->flags |= Pkilled;
+        __atomic_fetch_or(&child->flags, Pkilled, __ATOMIC_RELEASE);
         return Processctl_Requested;
     }
     return Processctl_NotWaiting;
@@ -2208,7 +2208,7 @@ static void publish_child_exit(int parent_pid, int child_pid)
  * are complete. The process guard then takes the ordinary exit path. */
 void dvm_runtime_termination_checkpoint(Prog *process)
 {
-    if ((process->flags & Pkilled) && (native_spawn ? process->state == Pready : dvm_runqueue_head() == process))
+    if ((__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled) && (native_spawn ? process->state == Pready : dvm_runqueue_head() == process))
     {
         error("");
     }
@@ -3140,7 +3140,7 @@ static int runtime_dispatch_turn(void)
         process->R = DVM_R;
         dvm_native_context_set_process(context, nil);
         dvm_bigtable_abort(process);
-        if ((process->flags & Pkilled) && (native_spawn ? process->state == Pready : dvm_runqueue_head() == process))
+        if ((__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled) && (native_spawn ? process->state == Pready : dvm_runqueue_head() == process))
         {
             owner_error()[0] = 0;
         }
@@ -3241,7 +3241,7 @@ static int runtime_dispatch_turn(void)
     }
     else
     {
-        if (process->flags & Pkilled)
+        if (__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled)
         {
             /* A resident with live registers already owns its unwind state. */
             if (!dvm_native_execution()->resident_registers_valid)
@@ -3266,7 +3266,7 @@ static int runtime_dispatch_turn(void)
         dvm_native_context_set_process(context, nil);
         up->prog = nil;
         poperror();
-        if ((process->flags & Pkilled) && (native_spawn ? process->state != Pready : dvm_runqueue_head() != process))
+        if ((__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled) && (native_spawn ? process->state != Pready : dvm_runqueue_head() != process))
         {
             wake_for_termination(process);
         }

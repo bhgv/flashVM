@@ -20,12 +20,21 @@ def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
     parent_exit = sys.argv[4:] == ['--parent-exit']
     audit_query = sys.argv[4:] == ['--audit-query']
-    if sys.argv[4:] and not parent_exit and not audit_query:
+    stream_kill = sys.argv[4:] == ['--stream-kill']
+    if sys.argv[4:] and not parent_exit and not audit_query and not stream_kill:
         raise RuntimeError('unknown process-control fixture option')
-    source = Path(__file__).parent / 'fixtures/resident-processctl' / ('parent-exit.b' if parent_exit else 'main.b')
-    marker = ('PASS orphan cancellation after parent retirement' if parent_exit
-              else 'PASS resident process control children=128 parents=8')
-    expected = 2 if parent_exit else 136
+    fixture = 'main.b'
+    marker = 'PASS resident process control children=128 parents=8'
+    expected = 136
+    if parent_exit:
+        fixture = 'parent-exit.b'
+        marker = 'PASS orphan cancellation after parent retirement'
+        expected = 2
+    elif stream_kill:
+        fixture = 'stream-kill.b'
+        marker = 'PASS resident stream kill peers=24 victims=24'
+        expected = 56
+    source = Path(__file__).parent / 'fixtures/resident-processctl' / fixture
     modules = Path(__file__).resolve().parents[1] / 'module'
     with tempfile.TemporaryDirectory(prefix='resident process control ') as directory:
         work = Path(directory)
@@ -59,8 +68,12 @@ def main():
                         or not re.search(r'NATIVEGC .*joined=1 failed=0', text)
                         or not re.search(r'NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0', text)):
                     raise RuntimeError(f'{mode} locked={locked} status={result.returncode}\n{text[-10000:]}')
-    print('PASS late reply after parent exit: C/JIT, atomic/locked GC, orphan roots and retirement'
-          if parent_exit else 'PASS resident process control: 512 children, C/JIT, atomic/locked GC, live foreign denial, cancel/retire/duplicate replies')
+    if parent_exit:
+        print('PASS late reply after parent exit: C/JIT, atomic/locked GC, orphan roots and retirement')
+    elif stream_kill:
+        print('PASS mapped stream kill: C/JIT, atomic/locked GC, surviving FIFO and exact victim retirement')
+    else:
+        print('PASS resident process control: 512 children, C/JIT, atomic/locked GC, live foreign denial, cancel/retire/duplicate replies')
 
 
 if __name__ == '__main__':

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Generate native declarations and adapt instruction ownership boundaries.
+# RU: Генерация нативных объявлений и адаптация границ владения инструкций.
 """Generate native-cell Sys declarations; unsupported host calls fail explicitly."""
 
 import argparse
@@ -1088,7 +1091,7 @@ def main():
         "#ifdef DIS_NATIVE64_CALLER_GUARD\n"
         "\t\t\t\twhile(--completed > 0) native64calleradvance(p);\n"
         "#endif\n"
-        "\t\t\t\tif(p->flags & Pkilled) dvm_runtime_termination_checkpoint(p);\n"
+        "\t\t\t\tif(__atomic_load_n(&p->flags, __ATOMIC_ACQUIRE) & Pkilled) dvm_runtime_termination_checkpoint(p);\n"
         "\t\t\t\tif(DVM_R.IC == 0) break;\n"
         "\t\t\t\tcontinue;\n"
         "\t\t\t}\n"
@@ -1118,7 +1121,7 @@ def main():
         "\t\t   p->R.EX != DVM_R.EX || p->R.TS != DVM_R.TS ||\n"
         "\t\t   p->R.M != DVM_R.M || p->R.MP != DVM_R.MP)\n"
         "\t\t\tp->R = DVM_R;\n"
-        "\t\tif(p->flags & Pkilled)\n"
+        "\t\tif(__atomic_load_n(&p->flags, __ATOMIC_ACQUIRE) & Pkilled)\n"
         "\t\t\tdvm_runtime_termination_checkpoint(p);\n"
         "\t\t/* IC <= 1 remains the explicit yield signal. */\n"
         "\t\tif((!dvm_runtime_guest_unbounded || DVM_R.IC <= 1) && !vmyield())", 1)

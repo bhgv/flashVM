@@ -1145,7 +1145,7 @@ static int table_cancel_wait(Prog *process)
 {
     TableActor *actor;
 
-    if ((process->flags & Pkilled) ||
+    if ((__atomic_load_n(&process->flags, __ATOMIC_ACQUIRE) & Pkilled) ||
         (process->state != DVM_TABLE_WAIT && process->state != Pready))
     {
         return 0;

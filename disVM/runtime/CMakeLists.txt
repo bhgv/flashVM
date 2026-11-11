@@ -2972,4 +2972,8 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --audit-query)
     set_tests_properties(disvm_resident_processctl disvm_parent_reply_exit disvm_channel_gc_snapshot PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_resident_stream_kill COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_processctl.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --stream-kill)
+    set_tests_properties(disvm_resident_stream_kill PROPERTIES TIMEOUT 180)
 endif()
