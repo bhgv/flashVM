@@ -37,6 +37,7 @@
 #include "channel_sync.h"
 #include "managed_owner_probe.h"
 #include "managed_workers.h"
+#include "host_cancellations.h"
 #include "process_environment.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
@@ -362,11 +363,8 @@ static void allocator_fault(void *address, char *reason, ulong pc)
 
 void (*poolfault)(void *, char *, ulong) = allocator_fault; /* Production D2B guard hook. */
 
-#define CANCEL_REQUESTS_PER_TURN 8
-#define CANCEL_REQUEST_CAPACITY 64 /* Bounded host requests, containing numeric PIDs only. */
 
-static int cancel_requests[CANCEL_REQUEST_CAPACITY]; /* FIFO under the channel mutex. */
-static size_t cancel_request_count; /* Pending records under the channel mutex. */
+static DVM_HostCancellations cancel_requests; /* Growing PID FIFO under the channel mutex. */
 static int cancel_requests_open; /* NativeWorld scheduler is live, under the channel mutex. */
 
 static FVM_PortSync *channel_queue_mutex; /* Lives for the hosted runtime. */
@@ -391,28 +389,6 @@ static NativeGuestWait *native_guest_waits; /* Protected by the queue mutex. */
 static int cancel_guest_wait(NativeGuestWait *wait);
 
 
-/* Search only while holding the ledger lock. */
-static size_t guest_cancel_request_index(int pid)
-{
-    size_t index;
-
-    for (index = 0; index < cancel_request_count && cancel_requests[index] != pid; index++)
-    {
-    }
-    return index;
-}
-
-
-
-/* Remove a request without changing FIFO order. The ledger is locked. */
-static void remove_guest_cancel_request(size_t index)
-{
-    cancel_request_count--;
-    memmove(cancel_requests + index, cancel_requests + index + 1,
-        (cancel_request_count - index) * sizeof(*cancel_requests));
-}
-
-
 /* Register the current guest before suspension and consume any pending cancellation. */
 static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, DVM_FileTicket *ticket, int wake_fd)
 {
@@ -427,11 +403,11 @@ static void native_guest_wait_begin(NativeGuestWait *wait, DVM_FileGate *gate, D
     fvm_port_sync_lock(channel_queue_mutex);
     wait->next = native_guest_waits;
     native_guest_waits = wait;
-    request = guest_cancel_request_index(wait->pid);
-    if (request < cancel_request_count)
+    request = dvm_host_cancellations_find(&cancel_requests, wait->pid);
+    if (request < cancel_requests.count)
     {
         /* Transfer the queued request to this exact continuation. */
-        remove_guest_cancel_request(request);
+        dvm_host_cancellations_remove(&cancel_requests, request);
         cancel_guest_wait(wait);
     }
     /* A dedicated exit can arrive after the instruction starts but before
@@ -577,17 +553,7 @@ int dvm_runtime_request_guest_cancel(int pid)
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
     }
-    if (guest_cancel_request_index(pid) < cancel_request_count)
-    {
-        fvm_port_sync_unlock(channel_queue_mutex);
-        return 1;
-    }
-    if (cancel_request_count == CANCEL_REQUEST_CAPACITY)
-    {
-        fvm_port_sync_unlock(channel_queue_mutex);
-        return 0;
-    }
-    cancel_requests[cancel_request_count++] = pid;
+    dvm_host_cancellations_post(&cancel_requests, pid);
     dvm_managed_workers_wake();
     fvm_port_sync_unlock(channel_queue_mutex);
     return 1;
@@ -600,7 +566,7 @@ static int guest_cancel_pending(void)
     int pending;
 
     fvm_port_sync_lock(channel_queue_mutex);
-    pending = cancel_request_count != 0;
+    pending = cancel_requests.count != 0;
     fvm_port_sync_unlock(channel_queue_mutex);
     return pending;
 }
@@ -657,7 +623,7 @@ static int guest_cancel_pending_or_close(void)
         fvm_port_sync_unlock(channel_queue_mutex);
         return 1;
     }
-    pending = cancel_request_count != 0;
+    pending = cancel_requests.count != 0;
     if (!pending)
     {
         cancel_requests_open = 0;
@@ -709,12 +675,11 @@ static int dispatch_guest_cancellations(void)
     int worked;
 
     fvm_port_sync_lock(channel_queue_mutex);
-    remaining = cancel_request_count < CANCEL_REQUESTS_PER_TURN ?
-        cancel_request_count : CANCEL_REQUESTS_PER_TURN;
+    remaining = cancel_requests.count;
     worked = remaining != 0;
-    while (remaining-- && cancel_request_count)
+    while (remaining-- && cancel_requests.count)
     {
-        int pid = cancel_requests[0];
+        int pid = cancel_requests.pids[0];
 
         if (native_spawn)
         {
@@ -723,16 +688,16 @@ static int dispatch_guest_cancellations(void)
             if (cancel_registered_guest_wait(pid) < 0)
                 post_host_wait_cancel(pid);
 
-            remove_guest_cancel_request(0);
+            dvm_host_cancellations_remove(&cancel_requests, 0);
             continue;
         }
         fvm_port_sync_unlock(channel_queue_mutex);
         dvm_runtime_cancel_guest_wait(pid);
         fvm_port_sync_lock(channel_queue_mutex);
-        size_t request = guest_cancel_request_index(pid);
-        if (request < cancel_request_count)
+        size_t request = dvm_host_cancellations_find(&cancel_requests, pid);
+        if (request < cancel_requests.count)
         {
-            remove_guest_cancel_request(request);
+            dvm_host_cancellations_remove(&cancel_requests, request);
         }
     }
     fvm_port_sync_unlock(channel_queue_mutex);
@@ -1244,7 +1209,7 @@ void dvm_runtime_cancel_native_waits(void)
         fvm_port_sync_lock(channel_queue_mutex);
         native_waits_stopping = 1;
         cancel_requests_open = 0;
-        cancel_request_count = 0;
+        dvm_host_cancellations_clear(&cancel_requests);
         for (NativeGuestWait *wait = native_guest_waits; wait; wait = wait->next)
         {
             cancel_guest_wait(wait);

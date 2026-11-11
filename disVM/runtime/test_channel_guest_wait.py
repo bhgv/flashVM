@@ -2205,6 +2205,7 @@ def main():
                     starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", native_output)
                     exits = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", native_output)
                     if (dedicated.returncode or dedicated_markers[name] not in native_output
+                            or (name == "host-fixed" and "PASS growing host cancellation batch" not in native_output)
                             or not starts or sorted(starts) != sorted(exits)
                             or not re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=\1 inflight=0", native_output)
                             or not re.search(r"NATIVEDISPATCH claims=(\d+) finishes=\1 active=0 migrated=0", native_output)):

@@ -850,23 +850,31 @@ int __wrap_dvm_runtime_prepare_killwait(Prog *caller, int pid)
 }
 
 
-/* Fill the bounded request queue from an unbound OS thread. A duplicate
- * of the real PID must remain accepted even when the queue is full. */
+/* EN: Queue over a thousand unique requests before the real target and repeat it.
+ * argument borrows a live PID through join. All accepted entries retain FIFO order.
+ * RU: Поставить более тысячи запросов перед реальным PID и повторить его.
+ * argument заимствует живой PID до join. Принятые запросы сохраняют FIFO. */
 static void *submit_host_cancel(void *argument)
 {
     int pid = *(int *)argument;
     int index;
-
-    check(!dvm_runtime_cancel_guest_wait(pid) && dvm_runtime_request_guest_cancel(pid),
-        "unbound host submits rather than touching guest state");
+    check(!dvm_runtime_cancel_guest_wait(pid),
+        "unbound host cannot touch a scheduler guest");
     if (child_exit_host_cancel && getenv("DVM_TEST_DEDICATED_BUFFER"))
-        return NULL;
-    for (index = 0; index < 63; index++)
     {
-        check(dvm_runtime_request_guest_cancel(1000 + index), "bounded host request accepted");
+        check(dvm_runtime_request_guest_cancel(pid), "post child wait cancellation");
+        return NULL;
     }
-    check(dvm_runtime_request_guest_cancel(pid) && !dvm_runtime_request_guest_cancel(2000),
-        "host requests coalesce and enforce their bound");
+    for (index = 0; index < 1024; index++)
+    {
+        check(dvm_runtime_request_guest_cancel(100000 + index),
+            "growing host request accepted");
+    }
+    check(dvm_runtime_request_guest_cancel(pid) &&
+        dvm_runtime_request_guest_cancel(pid) &&
+        dvm_runtime_request_guest_cancel(101023),
+        "growing host requests coalesce without refusing admission");
+    puts("PASS growing host cancellation batch");
     return NULL;
 }
 

@@ -126,6 +126,7 @@ add_executable(disvm
     native_jump.c
     runqueue.c
     owner_messages.c
+    host_cancellations.c
     thread_registrar.c
     queue_probe.c
     managed_workers.c
@@ -2949,4 +2950,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_heap_commit.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_heap_commit PROPERTIES TIMEOUT 360)
+endif()
+
+
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_executable(disvm_host_cancellations_test test_host_cancellations.c host_cancellations.c)
+    target_link_libraries(disvm_host_cancellations_test PRIVATE pthread)
+    add_test(NAME disvm_host_cancellations COMMAND disvm_host_cancellations_test)
+    set_tests_properties(disvm_host_cancellations PROPERTIES TIMEOUT 10)
 endif()
