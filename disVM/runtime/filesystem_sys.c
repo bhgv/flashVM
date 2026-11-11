@@ -182,7 +182,8 @@ void Sys_stat(void *frame)
     result = dvm_metadata_path_info(path, &metadata);
     if (result != FVM_OK)
     {
-        kwerrstr(result == FVM_UNSUPPORTED ? "unsupported filesystem path or metadata" : "file stat failed");
+        /* EN: Preserve the adapter port/admission/allocation diagnostic.
+         * RU: Сохранить диагностику порта/допуска/выделения от адаптера. */
         return;
     }
     build_directory(record, &metadata);
@@ -201,9 +202,15 @@ void Sys_fstat(void *frame)
     dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_fstat, ret), sizeof(DvmStatResult));
     descriptor = filesystem_descriptor(call->fd);
     record = stat_record(call->ret);
-    if (descriptor < 0 || dvm_metadata_fd_info(call->fd, descriptor, &metadata) != FVM_OK)
+    if (descriptor < 0)
     {
         kwerrstr("fstat requires a live ordinary file or directory");
+        return;
+    }
+    if (dvm_metadata_fd_info(call->fd, descriptor, &metadata) != FVM_OK)
+    {
+        /* EN: Preserve cancellation rather than invalid-FD text.
+         * RU: Сохранить отмену вместо сообщения о неверном FD. */
         return;
     }
     build_directory(record, &metadata);
@@ -274,7 +281,8 @@ void Sys_dirread(void *frame)
     poperror();
     if (native_status != FVM_OK)
     {
-        kwerrstr("directory read failed");
+        /* EN: The native wait already recorded its failure in this TLS owner.
+         * RU: Нативное ожидание уже записало ошибку в TLS владельца. */
         return;
     }
     if (!build.count)
