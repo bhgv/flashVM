@@ -1,4 +1,7 @@
-/* Real typed-list preparation: duplicate/H heads, refusal stages and GC roots. */
+/* Copyright (c) 2026 bhgv
+ * EN: Typed-list preparation regression with rooted graphs and fault controls.
+ * RU: Проверка подготовки типизированных списков, корней и обработки отказов.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -13,6 +16,7 @@
 #include "managed_owner.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 

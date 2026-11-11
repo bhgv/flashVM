@@ -1,4 +1,7 @@
-/* Compose capture, preparation, conditional publication and complete retirement. */
+/* Copyright (c) 2026 bhgv
+ * EN: Scalar-list capture, conditional publication and complete cleanup.
+ * RU: Снимок скаляра, условная публикация списка и полная очистка.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -14,7 +17,7 @@
 #include "disvm/native_process.h"
 #include <string.h>
 
-#define DVM_SCALAR_ATTEMPTS 8 /* Bound pathological callback-induced retry work. */
+#define DVM_SCALAR_ATTEMPTS 8 /* Preparation attempts before a contended VM instruction yields. */
 
 
 /* Stable native ledger spans the complete protected body and cleanup errors. */
@@ -111,25 +114,36 @@ static int construct(void *argument)
         problem = dvm_runtime_heap_hold_attempt(state->destination, &Tlist, 1, &state->tail, &claim);
         if (problem)
         {
-            if (!attempt && scalar_replay(claim))
+            if (scalar_replay(claim))
             {
                 return 1;
             }
             error((char *)problem);
         }
         dvm_runtime_value_prepare(state->snapshot, state->extent, &state->tail, &state->candidate);
-        result = dvm_runtime_heap_commit(state->destination, &state->tail,
-            &state->candidate, &state->retired);
+        result = dvm_runtime_heap_commit_attempt(state->destination, &state->tail,
+            &state->candidate, &state->retired, &claim);
         if (result == 1)
         {
             return 1;
         }
         if (result < 0)
         {
+            if (scalar_replay(claim))
+            {
+                return 1;
+            }
             error(exHeap);
         }
         dvm_runtime_heap_finish(&state->candidate, 1);
         dvm_runtime_heap_finish(&state->tail, 1);
+    }
+    /* [GC:] Yield a contended VM instruction after discarding this attempt's
+     * private owners. The outer ledger performs all cleanup before replay.
+     * RU: Повторить инструкцию после очистки временных владельцев. */
+    if (scalar_replay(DVM_CELL_BUSY))
+    {
+        return 1;
     }
     error("scalar constructor destination changed repeatedly");
     return 0;

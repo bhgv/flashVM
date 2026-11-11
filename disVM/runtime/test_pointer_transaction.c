@@ -1,4 +1,7 @@
-/* Real guarded CONSP coordinator: interleaving, aliasing, refusals and unwind. */
+/* Copyright (c) 2026 bhgv
+ * EN: Guarded CONSP regression, contention, ownership and unwind controls.
+ * RU: Проверка CONSP, конфликтов блокировок, владения и очистки при ошибках.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -66,35 +69,75 @@ static void check(int valid,const char *message)
 
 
 DVM_CellResult __real_dvm_managed_cells_begin(const void *, void *, DVM_CellAccess *);
+DVM_CellResult __real_dvm_range_access_begin(DVM_CellDomain *, const void *, size_t,
+    void *, size_t, DVM_RangeAccess *);
 
 
-/* Inject independent source and first-tail contention before any publication. */
-DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access)
+/* EN: Refuse each pre-publication stage 32 times at its original decoded PC.
+ * stage selects source, tail or commit. Return one while access stays busy.
+ * RU: Задержать источник, хвост или публикацию на 32 попытки с прежним PC.
+ * stage выбирает фазу. Вернуть единицу, пока доступ занят. */
+static int scheduled_contention(unsigned int stage)
 {
-    static Inst *pcs[2]; /* Decoded constructor PC for each acquisition. */
-    static int replayed[2]; /* One replay per pre-effect stage. */
-
-    if (CONTROL == 0 && !active && source == destination &&
-        dvm_native_execution()->arithmetic_retry_opcode == ICONSP &&
-        (source == DVM_R.s || source == DVM_R.d))
+    static Inst *pcs[3]; /* Original decoded constructor PC for each stage. */
+    static unsigned int refusals[3]; /* Completed pre-effect refusals. */
+    static int replayed[3]; /* Stage eventually reached its real guard. */
+    static const char *messages[3] = { /* Completion marker for each acquisition. */
+        "PASS scheduled CONSP source replay",
+        "PASS scheduled CONSP tail replay",
+        "PASS scheduled CONSP commit replay"
+    };
+    if (replayed[stage])
     {
-        int stage = source == DVM_R.d;
+        return 0;
+    }
+    if (!pcs[stage])
+    {
+        pcs[stage] = DVM_R.PC;
+    }
+    check(pcs[stage] == DVM_R.PC, "CONSP retries the original PC");
+    if (refusals[stage]++ < 32)
+    {
+        return 1;
+    }
+    replayed[stage] = 1;
+    puts(messages[stage]);
+    return 0;
+}
 
-        if (!replayed[stage])
-        {
-            if (!pcs[stage])
-            {
-                pcs[stage] = DVM_R.PC;
-                return DVM_CELL_BUSY;
-            }
-            check(pcs[stage] == DVM_R.PC, "CONSP retries the original PC");
-            replayed[stage] = 1;
-            puts(stage ? "PASS scheduled CONSP tail replay" : "PASS scheduled CONSP source replay");
-        }
+
+/* EN: Delay actual source/tail capture without acquiring any guard or owner.
+ * All arguments are forwarded unchanged after the scheduled refusals.
+ * RU: Задержать чтение источника и хвоста до захвата блокировок и ссылок. */
+DVM_CellResult __wrap_dvm_range_access_begin(DVM_CellDomain *domain,
+    const void *source, size_t source_size, void *destination, size_t destination_size,
+    DVM_RangeAccess *access)
+{
+    if (CONTROL == 0 && !active && !destination && !destination_size &&
+        source_size == sizeof(void *) &&
+        dvm_native_execution()->arithmetic_retry_opcode == ICONSP &&
+        (source == DVM_R.s || source == DVM_R.d) &&
+        scheduled_contention(source == DVM_R.d))
+    {
+        return DVM_CELL_BUSY;
+    }
+    return __real_dvm_range_access_begin(domain, source, source_size,
+        destination, destination_size, access);
+}
+
+
+/* EN: Delay actual commit before publication. Forward arguments unchanged.
+ * RU: Задержать публикацию до изменения ячейки. Аргументы передаются без изменений. */
+DVM_CellResult __wrap_dvm_managed_cells_begin(const void *source, void *destination,
+    DVM_CellAccess *access)
+{
+    if (CONTROL == 0 && !active && source == destination && destination == DVM_R.d &&
+        dvm_native_execution()->arithmetic_retry_opcode == ICONSP && scheduled_contention(2))
+    {
+        return DVM_CELL_BUSY;
     }
     return __real_dvm_managed_cells_begin(source, destination, access);
 }
-
 
 
 /* Count real dispatches, including C/JIT guest constructor operations. */

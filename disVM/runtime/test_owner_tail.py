@@ -1,3 +1,4 @@
+# Copyright (c) 2026 bhgv
 """Actual x64 owner tail entries, checked C operations and strict cache ABI."""
 from pathlib import Path
 import os
@@ -14,6 +15,7 @@ WRAPPER = r'''
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
+#include "kernel.h"
 #include "owner_fast.h"
 #include "shared_bytes.h"
 #include "managed_owner.h"

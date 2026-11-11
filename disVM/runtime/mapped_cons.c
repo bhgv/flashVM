@@ -1,9 +1,13 @@
-/* Compose capture, preparation, conditional publication and complete retirement. */
+/* Copyright (c) 2026 bhgv
+ * EN: Typed-list capture, conditional publication and complete cleanup.
+ * RU: Снимок значения со ссылками, условная публикация списка и полная очистка.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
 #include "kernel.h"
 #include "interp.h"
+#include "isa.h"
 #include "raise.h"
 #include "mapped_cons.h"
 #include "mapped_prepare.h"
@@ -13,7 +17,7 @@
 #include <string.h>
 #include <stdint.h>
 
-#define DVM_MAPPED_ATTEMPTS 8 /* Bound pathological callback-induced retry work. */
+#define DVM_MAPPED_ATTEMPTS 8 /* Preparation attempts before a contended VM instruction yields. */
 
 
 /* Stable native ledger spans the complete protected body and cleanup errors. */
@@ -78,37 +82,57 @@ static int construct(void *argument)
 {
     MappedTransaction *state = argument;
     const char *problem;
+    DVM_CellResult claim;
     unsigned int attempt;
     int result;
     void *empty = H;
     List *snapshot;
-    problem = dvm_runtime_heap_hold(&empty, NULL, 1, &state->empty);
+    problem = dvm_runtime_heap_hold_attempt(&empty, NULL, 1, &state->empty, &claim);
     if (problem)
     {
+        if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICONSMP))
+        {
+            return 1;
+        }
         error((char *)problem);
     }
     dvm_runtime_mapped_prepare(state->source_cell, state->type, &state->empty, &state->snapshot);
     snapshot = state->snapshot.value;
     for (attempt = 0; attempt < DVM_MAPPED_ATTEMPTS; attempt++)
     {
-        problem = dvm_runtime_heap_hold(state->destination, &Tlist, 1, &state->tail);
+        problem = dvm_runtime_heap_hold_attempt(state->destination, &Tlist, 1, &state->tail, &claim);
         if (problem)
         {
+            if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICONSMP))
+            {
+                return 1;
+            }
             error((char *)problem);
         }
         dvm_runtime_mapped_prepare(snapshot->data, snapshot->t, &state->tail, &state->candidate);
-        result = dvm_runtime_heap_commit(state->destination, &state->tail,
-            &state->candidate, &state->retired);
+        result = dvm_runtime_heap_commit_attempt(state->destination, &state->tail,
+            &state->candidate, &state->retired, &claim);
         if (result == 1)
         {
             return 1;
         }
         if (result < 0)
         {
+            if (claim == DVM_CELL_BUSY && dvm_runtime_scalar_retry(ICONSMP))
+            {
+                return 1;
+            }
             error(exHeap);
         }
         dvm_runtime_heap_finish(&state->candidate, 1);
         dvm_runtime_heap_finish(&state->tail, 1);
+    }
+    /* [GC:] Yield a contended VM instruction after discarding this attempt's
+     * private owners. The outer ledger performs all cleanup before replay.
+     * RU: Повторить инструкцию после очистки временных владельцев. */
+    if (dvm_runtime_scalar_retry(ICONSMP))
+    {
+        return 1;
     }
     error("mapped constructor destination changed repeatedly");
     return 0;
