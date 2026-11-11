@@ -7,6 +7,7 @@ include "sys.m";
 ResidentFiles: module { init: fn(); };
 sys: Sys; # Immutable builtin interface, initialized before spawn.
 ReadMode: con 0; # Driver selects direct write, read or formatted write.
+Rounds: con 1; # Driver also repeats native I/O with exact aggregate counters.
 Workers: con 16; # Simultaneously live owners, below the native slot quota.
 
 
@@ -38,30 +39,35 @@ worker(id: int, ready, go, done: chan of int)
         raise "file owner start message changed";
     }
     if (!(id % 2)) {
-        bytes := array[64] of { * => byte (65 + id) };
-        if (ReadMode == 1) {
-            bytes = array[64] of byte;
-            if (sys->readn(fd, bytes, len bytes) != len bytes) {
-                raise "private file read count changed";
+        for (repeat := 0; repeat < Rounds; repeat++) {
+            if (repeat && sys->seek(fd, big 0, Sys->SEEKSTART) != big 0) {
+                raise "private file rewind changed";
             }
-            for (at := 0; at < len bytes; at++) {
-                if (int bytes[at] != 65 + id) {
-                    raise "private read bytes changed";
+            bytes := array[64] of { * => byte (65 + id) };
+            if (ReadMode == 1) {
+                bytes = array[64] of byte;
+                if (sys->readn(fd, bytes, len bytes) != len bytes) {
+                    raise "private file read count changed";
                 }
-            }
-        } else {
-            if (ReadMode == 2) {
-                if (sys->fprint(fd, "%s", string bytes) != len bytes) {
-                    raise "private formatted file output changed";
+                for (at := 0; at < len bytes; at++) {
+                    if (int bytes[at] != 65 + id) {
+                        raise "private read bytes changed";
+                    }
                 }
             } else {
-                if (sys->write(fd, bytes, len bytes) != len bytes) {
-                    raise "private file output changed";
+                if (ReadMode == 2) {
+                    if (sys->fprint(fd, "%s", string bytes) != len bytes) {
+                        raise "private formatted file output changed";
+                    }
+                } else {
+                    if (sys->write(fd, bytes, len bytes) != len bytes) {
+                        raise "private file output changed";
+                    }
                 }
             }
-        }
-        if (sys->seek(fd, big 0, Sys->SEEKRELA) != big 64) {
-            raise "private file cursor changed";
+            if (sys->seek(fd, big 0, Sys->SEEKRELA) != big 64) {
+                raise "private file cursor changed";
+            }
         }
     }
     (status, info) := sys->fstat(fd);

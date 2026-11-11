@@ -67,7 +67,7 @@ typedef struct ManagedWorkers
     unsigned long retired_reentries; /* Audited reentries accumulated after join. */
     void (*cancel_waits)(void);    /* Native wakeup hook for a fatal worker failure. */
     unsigned long controller;     /* Successful controller turns. */
-    unsigned long files;          /* Descriptor operations admitted through native per-slot FIFO. */
+    unsigned long files;          /* Descriptor-call count under service.sync; no VM execution lock. */
     unsigned long ui_requests;    /* Helper UI role admissions, under heap exclusion. */
     ManagedWorker *wake_slots;      /* Dedicated conditions protected by service.sync. */
     ManagedWorker *helpers;       /* Individually allocated stable slots; never realloc live storage. */
@@ -712,13 +712,17 @@ void dvm_managed_workers_record(void)
 }
 
 
-/* Record one ordinary file call on an ACTIVE heap owner. Per-handle gates
- * serialize the native cursor outside the heap. Controller reads after joins. */
+/* EN: Record one file call under the existing service metadata mutex. Per-handle
+ * gates independently serialize cursors; no file I/O occurs while sync is held.
+ * RU: Учесть файловый вызов под mutex метаданных сервиса. Шлюзы отдельно
+ * сериализуют курсоры; файлового I/O под sync нет. */
 void dvm_managed_workers_file_call(void)
 {
     if (service.sync)
     {
+        fvm_port_sync_lock(service.sync);
         service.files++;
+        fvm_port_sync_unlock(service.sync);
     }
 }
 

@@ -15,6 +15,8 @@ static unsigned arrived; /* Participants in the current generation, under sync. 
 static unsigned generation; /* Completed generations, under sync. */
 
 DVM_FileGate *__real_dvm_file_gate_create(void);
+void __real_dvm_managed_workers_file_call(void);
+static _Thread_local int counted; /* Align only the first real file call per resident. */
 
 
 /* EN: Forward real allocation after all 16 residents reach this boundary.
@@ -43,4 +45,32 @@ DVM_FileGate *__wrap_dvm_file_gate_create(void)
         pthread_mutex_unlock(&sync);
     }
     return __real_dvm_file_gate_create();
+}
+
+
+/* EN: Align the first real file-call counter update on sixteen owned residents.
+ * No VM/counter result is replaced. All callers retain their actual FD/frame.
+ * RU: Совместить первое настоящее обновление счётчика у шестнадцати потоков.
+ * Результат VM/счётчика не меняется; вызывающие держат свои FD/кадры. */
+void __wrap_dvm_managed_workers_file_call(void)
+{
+    Prog *process = dvm_native_context_process(dvm_native_context_current());
+    if (process && process->pid > 1 && !counted)
+    {
+        counted = 1;
+        pthread_mutex_lock(&sync);
+        unsigned current = generation;
+        if (++arrived == 16)
+        {
+            arrived = 0;
+            generation++;
+            pthread_cond_broadcast(&changed);
+        }
+        while (current == generation)
+        {
+            pthread_cond_wait(&changed, &sync);
+        }
+        pthread_mutex_unlock(&sync);
+    }
+    __real_dvm_managed_workers_file_call();
 }

@@ -24,12 +24,13 @@ def main():
         work = Path(temporary)
         image = work / 'files.dis'
         barrier = relink(runtime, work, Path(__file__).with_name('test_file_slot_barrier.c'), 0,
-                         ['dvm_file_gate_create'])
+                         ['dvm_file_gate_create', 'dvm_managed_workers_file_call'])
         for id in range(1, 16, 2):
             (work / f'dir-{id}').mkdir()
-        for profile in range(3):
+        for profile, rounds in ((0, 1), (1, 1), (2, 1), (0, 32), (1, 32), (2, 32)):
             selected = work / 'selected.b'
-            selected.write_text(source.read_text().replace('ReadMode: con 0;', f'ReadMode: con {profile};'))
+            selected.write_text(source.read_text().replace('ReadMode: con 0;', f'ReadMode: con {profile};')
+                                .replace('Rounds: con 1;', f'Rounds: con {rounds};'))
             subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(selected)],
                            check=True, capture_output=True, text=True)
             for binary in (runtime, barrier):
@@ -42,6 +43,8 @@ def main():
                         if result.returncode or 'PASS resident files owners=16 files=8 directories=8 rollback=16' not in text:
                             raise RuntimeError(f'{binary.name} {mode} locked={locked}\n{text[-10000:]}')
                         evidence(text, children=16)
+                        if not re.search(r'NATIVEWORKERS .*serialized_files=' + str(24 * rounds + 8) + r'\b', text):
+                            raise RuntimeError('file-call accounting lost a successful operation\n' + text[-10000:])
                         if not re.search(r'NATIVEFILES created=(\d+) closed=\1 live=0 .*pending=0', text):
                             raise RuntimeError('native gates did not retire\n' + text[-10000:])
                         if not re.search(r'NATIVECLOSE submitted=(\d+) completed=\1 pending=0 .*joined=1', text):
@@ -55,10 +58,10 @@ def main():
                         if not re.search(r'NATIVEMETADATA paths=0 descriptors=16 releases=16 pins=0 staging=0 ', text):
                             raise RuntimeError('metadata accounting lost a completion\n' + text[-10000:])
                         for label, active in [('NATIVEOUTPUT', profile == 0), ('NATIVEINPUT', profile == 1)]:
-                            expected = 'fragments=8 copied=512' if active else 'fragments=0 copied=0'
+                            expected = f'fragments={8 * rounds} copied={512 * rounds}' if active else 'fragments=0 copied=0'
                             if not re.search(label + r' pins=0 staging=0 peak=\d+ ' + expected, text):
                                 raise RuntimeError('I/O accounting lost a fragment\n' + text[-10000:])
-                        expected = 9 if profile == 2 else 1
+                        expected = 8 * rounds + 1 if profile == 2 else 1
                         if not re.search(f'NATIVEFORMATTED pins=0 calls={expected} releases={expected}', text):
                             raise RuntimeError('formatted accounting lost a completion\n' + text[-10000:])
                         if (work / 'quota-must-not-create').exists():
@@ -66,7 +69,7 @@ def main():
                         for id in range(0, 16, 2):
                             if (work / f'file-{id}').read_bytes() != bytes([65 + id]) * 64:
                                 raise RuntimeError(f'private file {id} was overwritten by another resident')
-    print('PASS resident files: C/JIT, both GC polls, normal/aligned opens, 384 owners, files/directories, read/write/format, rollback, quota and retirement')
+    print('PASS resident files: C/JIT, both GC polls, normal/aligned opens, 768 owners, files/directories, repeated I/O, exact file-call totals, read/write/format, rollback, quota and retirement')
 
 
 if __name__ == '__main__':

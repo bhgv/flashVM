@@ -134,7 +134,7 @@ int keepbroken;                           /* No debugger retention is implemente
 Type *TFD;                                /* Descriptor owner for supported module/control input handles. */
 Type *TFileIO;                            /* Unavailable file-to-channel host type. */
 unsigned long dvm_runtime_instructions;   /* Atomic instruction attempts across every Limbo process. */
-static unsigned long native_instructions; /* Successfully executed native leaves, excluding rejected guards. */
+static unsigned long native_instructions; /* Atomic accepted native callbacks, excluding rejected guards. */
 unsigned long dvm_runtime_instruction_limit; /* Explicit total quota; zero retains the legacy slice policy. */
 static int show_stats;                       /* Emit actual instruction counts on explicit request. */
 static int scheduler_quantum = PQUANTA;      /* Instructions per scheduler turn; adjustable for GC/boundary testing. */
@@ -168,7 +168,7 @@ static void runtime_statistics(void)
         fprintf(stderr,
                 "instructions=%lu native=%lu gc_runs=%lu gc_epochs=%lu tables_live=%lu keys_live=%lu\n",
                 __atomic_load_n(&dvm_runtime_instructions, __ATOMIC_RELAXED),
-                native_instructions,
+                __atomic_load_n(&native_instructions, __ATOMIC_RELAXED),
                 gcnruns,
                 gcepochs,
                 tables,

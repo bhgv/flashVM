@@ -38,6 +38,7 @@ option(DVM_RUNTIME_EDITOR "Build the Dis-controlled FlashVM graphical editor" OF
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_EXTENSIONS ON)
 find_package(PythonInterp 3 REQUIRED)
+find_package(Threads REQUIRED)
 get_filename_component(root "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(DVM_FLASHVM_SOURCE_ROOT "${root}/flashVM" CACHE PATH "Shared FlashVM source")
 set(LIMBO_BOOTSTRAP_CELL_BYTES 8 CACHE STRING "Native-cell experimental compiler" FORCE)
@@ -1042,6 +1043,7 @@ endif()
 if(DVM_RUNTIME_TESTS)
   add_executable(disvm_native_leaf_test test_native_leaf.c)
   target_include_directories(disvm_native_leaf_test PRIVATE "${u}/include")
+  target_link_libraries(disvm_native_leaf_test PRIVATE Threads::Threads)
   add_test(NAME disvm_complete_tail_nc64_policy COMMAND disvm_native_leaf_test)
 endif()
 
@@ -3026,6 +3028,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_errors.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_resident_errors PROPERTIES TIMEOUT 180)
+    add_test(NAME disvm_resident_native_count COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_resident_native_count.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_resident_native_count PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_module_registry COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_module_registry.py" "$<TARGET_FILE:disvm>")
     add_test(NAME disvm_load_kill COMMAND "${PYTHON_EXECUTABLE}"
