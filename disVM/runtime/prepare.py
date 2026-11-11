@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from prepare_string_view import adapt as adapt_string_view_cache
 from prepare_type_counts import adapt as adapt_type_counts
 from prepare_heap_counts import adapt as adapt_heap_counts
 from prepare_opcode_counts import adapt as adapt_opcode_counts
@@ -647,31 +648,6 @@ addstring(String *s1, String *s2, int append)
     }""", 1)
 
 
-def adapt_string_view(code):
-    """Share the pinned UTF-8 view body between throwing and guarded callers."""
-    start = code.index('char*\nstring2c(String *s)')
-    end = code.index('\n}', start)+2
-    body = code[start:end]
-    body = relative_replace(body, 'string2c(String *s)', 'dvm_runtime_string_view(String *s, const char **problem)', 1)
-    body, count = re.subn(r'^(\t+)if([^\n]*?)\n\1\terror\((ex\w+)\);',
-                         r'\1if\2 {\n\1\t*problem = \3;\n\1\treturn nil;\n\1}', body, flags=re.M)
-    if count != 8 or 'error(' in body:
-        raise ValueError('UTF-8 view error boundaries changed')
-    wrapper = """
-
-char*
-string2c(String *s)
-{
-    const char *problem = NULL;
-    char *view = dvm_runtime_string_view(s, &problem);
-    if(problem) {
-        error((char *)problem);
-    }
-    return view;
-}"""
-    return code[:start] + body + wrapper + code[end:]
-
-
 def adapt_string_operand_captures(code):
     """Preserve decoded preflight and retry only before string mutation."""
     for opcode, first, second, first_cell, second_cell in (
@@ -1007,7 +983,7 @@ def main():
             code = adapt_numeric_string_publication(code)
             code = adapt_byte_string_publication(code)
             code = '#include <fenv.h>\n' + code
-            code = adapt_string_view(code)
+            code = adapt_string_view_cache(code, relative_replace)
             code = adapt_string_conversion_captures(code, (
                 ('CVTCA', 'ss', True), ('CVTAC', 'a', True),
                 ('CVTWC', 'value', True), ('CVTLC', 'value', True), ('CVTFC', 'value', True),
