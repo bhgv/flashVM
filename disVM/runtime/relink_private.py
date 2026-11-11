@@ -55,6 +55,7 @@ def relink(
     mapped_prepare_source=None,
     string_source=None,
     exception_retirement_source=None,
+    managed_retirement_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -113,6 +114,7 @@ def relink(
         (mapped_cons_source, "mapped_cons.c"),
         (mapped_prepare_source, "mapped_prepare.c"),
         (exception_retirement_source, "gc/fast/exception_retirement.c"),
+        (managed_retirement_source, "gc/fast/managed_retirement.c"),
     ):
         if candidate is None:
             continue

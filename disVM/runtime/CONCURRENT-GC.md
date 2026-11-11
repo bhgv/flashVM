@@ -107,3 +107,14 @@ comparison preserves the build flags and other runtime objects; it is an adapter
 comparison, not a claim of a separately rebuilt pristine checkout. The PC test's
 state needs owner-aware isolation, and file quota/finalizer ordering needs a
 separate runtime audit. Do not hide them by increasing timeouts or deleting checks.
+
+
+## Follow-up: ticket handoff and readiness
+
+The [shared managed-ticket pass](MANAGED-RETIREMENT.md) now preserves the old
+reader cutoff and transfers RC ownership before dropping its ticket root/sidecar.
+A refusal leaves its FIFO resources unchanged. The stopped ticket drain and
+retained final-object destruction still remain available; this is not completion
+of the no-STW target. Actual scheduler races exposed by full instrumentation were
+fixed through [owner and ready publication](RUNQUEUE-PUBLICATION.md), without
+introducing an execution gate or rebinding permanent resident registers.

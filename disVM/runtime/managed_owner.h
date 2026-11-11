@@ -1,4 +1,7 @@
-/* Managed roots retained behind native owner tickets; include interp.h first. */
+/* Copyright (c) 2026 bhgv
+ * EN: Rooted managed tickets and native access/retirement contracts; include interp.h.
+ * RU: Managed tickets с корнями и протоколы доступа/освобождения; нужен interp.h.
+ */
 #ifndef DVM_MANAGED_OWNER_H
 #define DVM_MANAGED_OWNER_H
 #include "disvm/owner_scope.h"
@@ -25,6 +28,15 @@ unsigned long dvm_managed_owner_pending(void);
  * is fatal before managed reads. Removes ptradd then uses retained destroy.
  * Budget counts top-level objects, not recursive destructor work. */
 int dvm_managed_owner_drain(unsigned int budget);
+
+
+/* [GC:] EN: Bound Fast context hands at most budget existing owners to RC after
+ * their reader epochs. Return progress/retry; refusal preserves ticket ownership.
+ * No stopped-world acquisition or arbitrary destructor is performed here.
+ * RU: Привязанный context Fast передаёт до budget владельцев в RC после эпох
+ * читателей. Вернуть работу/повтор; отказ сохраняет ticket. Общая остановка и
+ * произвольные деструкторы этим обработчиком не вызываются. */
+unsigned int dvm_managed_owner_drain_shared(DVM_NativeContext *context, size_t budget);
 
 
 /* Native preflight: return 1 iff no live ticket owners or producer callbacks.
@@ -59,32 +71,47 @@ void dvm_runtime_guard_registry_probe(DVM_GCWorkers *workers);
 /* [GC:] Claim pointer-sized source/destination cells only on exact ACTIVE
  * managed service owner. Ranges are caller-owned/live; no object retain/root
  * is implied. Result and cleanup follow cell_access.h. No VM callbacks. */
+
+
 /* EN: Borrow the same lock domain from a rooted SHARED dispatch.
  * RU: Получить тот же домен блокировок из SHARED при живых корнях. */
 DVM_CellDomain *dvm_managed_dispatch_cell_domain(void);
+
+
 DVM_CellDomain *dvm_managed_cell_domain(void); /* Borrow only with an ACTIVE rooted guest. */
-DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination,
-    DVM_CellAccess *access);
+DVM_CellResult dvm_managed_cells_begin(const void *source, void *destination, DVM_CellAccess *access);
 
 
 /* [GC:] Exact ACTIVE service owner only; mapped spans/lifetimes caller-owned.
  * Native span/range contracts apply; no retain/root or VM callback is implied. */
-DVM_CellResult dvm_managed_spans_begin(const void *source, size_t source_size,
-    void *destination, size_t destination_size, DVM_CellAccess *access);
-DVM_CellResult dvm_managed_ranges_begin(const void *source, size_t source_size,
-    void *destination, size_t destination_size, DVM_RangeAccess *access);
+DVM_CellResult dvm_managed_spans_begin(
+    const void *source, size_t source_size, void *destination, size_t destination_size, DVM_CellAccess *access);
+
+
+DVM_CellResult dvm_managed_ranges_begin(
+    const void *source, size_t source_size, void *destination, size_t destination_size, DVM_RangeAccess *access);
+
 
 /* [GC:] Claim two input spans and output through the canonical shared domain.
  * Exact ACTIVE owner, zero access, caller-owned live storage required. No retain,
  * root, callback or payload read. Return native admission result with rollback. */
-DVM_CellResult dvm_managed_three_begin(const void *first, size_t first_size,
-    const void *second, size_t second_size, void *output, size_t output_size,
-    DVM_RangeAccess *access);
+DVM_CellResult dvm_managed_three_begin(const void *first,
+                                       size_t first_size,
+                                       const void *second,
+                                       size_t second_size,
+                                       void *output,
+                                       size_t output_size,
+                                       DVM_RangeAccess *access);
+
 
 /* [GC:] Same exact ACTIVE owner gate as three-range begin; lengths1..pointer.
  * Caller keeps all three mapped spans alive. No retain/root or allocation.
  * Return native claim result with full partial rollback on refusal/BUSY. */
-DVM_CellResult dvm_managed_small_three_begin(const void *first, size_t first_size,
-    const void *second, size_t second_size, void *output, size_t output_size,
-    DVM_TripleAccess *access);
+DVM_CellResult dvm_managed_small_three_begin(const void *first,
+                                             size_t first_size,
+                                             const void *second,
+                                             size_t second_size,
+                                             void *output,
+                                             size_t output_size,
+                                             DVM_TripleAccess *access);
 #endif

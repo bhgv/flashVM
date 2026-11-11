@@ -20,9 +20,12 @@
 unsigned int dvm_gc_fast_shared(DVM_NativeContext *context, size_t budget, void *user)
 {
     (void)user;
-    size_t reserve_budget = budget / 2 + budget % 2;
+    size_t ticket_budget = budget / 3 + (budget % 3 != 0);
+    unsigned int tickets = dvm_managed_owner_drain_shared(context, ticket_budget);
+    size_t remaining = budget - (tickets ? ticket_budget : 0);
+    size_t reserve_budget = remaining / 2 + remaining % 2;
     unsigned int reserves = dvm_runtime_exception_retire_shared(context, reserve_budget);
-    return reserves + dvm_runtime_rc_shared_leaves(context, budget - (reserves ? reserve_budget : 0));
+    return tickets + reserves + dvm_runtime_rc_shared_leaves(context, remaining - (reserves ? reserve_budget : 0));
 }
 
 

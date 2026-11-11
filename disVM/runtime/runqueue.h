@@ -1,21 +1,26 @@
-/* Internal runnable FIFO and native-continuation ownership; include interp.h first. */
+/* Copyright (c) 2026 bhgv
+ * EN: Native readiness and permanent process/continuation ownership; include interp.h.
+ * RU: Нативная готовность и постоянные владельцы процессов/ожиданий; нужен interp.h.
+ */
 #ifndef DVM_RUNTIME_RUNQUEUE_H
 #define DVM_RUNTIME_RUNQUEUE_H
 #include "disvm/native_context.h"
 #include <fenv.h>
 #include "owner_messages.h"
+#include "channel_sync.h"
 #ifndef DVM_RUNTIME_PROCESS_MAX
 #define DVM_RUNTIME_PROCESS_MAX 2147483647U /* Native signed process/count representation, not a128-task policy. */
 #endif
 
 
-enum {
-    DVM_PROG_MESSAGE_CHANNEL_CLOSE = 1,   /* The channel is retiring. */
-    DVM_PROG_MESSAGE_CHANNEL_EXIT,    /* The guest was asked to exit. */
-    DVM_PROG_MESSAGE_CHANNEL_CANCEL, /* Host requested cancellation of this wait. */
-    DVM_PROG_MESSAGE_CANCEL_WAIT,    /* Parent requests cancellation with a reply. */
-    DVM_PROG_MESSAGE_CANCEL_RESULT,  /* Outcome of a parent cancellation request. */
-    DVM_PROG_MESSAGE_CHILD_RETIRED   /* Child retirement reply to killwait. */
+enum
+{
+    DVM_PROG_MESSAGE_CHANNEL_CLOSE = 1, /* The channel is retiring. */
+    DVM_PROG_MESSAGE_CHANNEL_EXIT,      /* The guest was asked to exit. */
+    DVM_PROG_MESSAGE_CHANNEL_CANCEL,    /* Host requested cancellation of this wait. */
+    DVM_PROG_MESSAGE_CANCEL_WAIT,       /* Parent requests cancellation with a reply. */
+    DVM_PROG_MESSAGE_CANCEL_RESULT,     /* Outcome of a parent cancellation request. */
+    DVM_PROG_MESSAGE_CHILD_RETIRED      /* Child retirement reply to killwait. */
 };
 
 
@@ -23,37 +28,37 @@ enum {
  * passed to this module must come from this wrapper; free its prefix normally. */
 typedef struct DVM_RuntimeProcess
 {
-    Prog process;                     /* Retained interpreter/GC-visible prefix. */
-    int exit_notify_parent;           /* A parent parked until this guest retires. */
-    int exit_wait_pid;                /* Child awaited by a prepared killwait frame. */
-    int exit_ready_pid;               /* Retired child acknowledged by the next MCALL retry. */
-    int parent_pid;                   /* Immutable numeric identity of the spawning guest. */
-    int lifetime_holds;      /* Native borrows acquired under the heap turn. */
-    DVM_MessageEndpoint *messages;    /* Dedicated guest registration, stable until retirement. */
-    DVM_OwnerMessage channel_close;   /* Embedded close request, coalesced until wait completes. */
-    DVM_OwnerMessage channel_exit;    /* Embedded exit request, coalesced until wait completes. */
-    DVM_OwnerMessage channel_cancel; /* Embedded host cancellation for the current wait. */
-    DVM_OwnerMessage cancel_wait;   /* One correlated cancellation request from the parent. */
-    DVM_OwnerMessage cancel_result; /* Reply storage for this guest's parked cancelwait. */
-    int cancel_waiting;             /* This guest is parked for a cancellation reply. */
-    int cancel_ready_pid;           /* Child matched by the prepared cancelwait retry. */
-    int cancel_ready_result;        /* Result delivered to that retry. */
-    int table_retry_pending;        /* Parked Bigtable MCALL, including after wake. */
-    int table_cancel_pc;            /* Pending MCALL successor update for the TLS owner. */
-    int cancel_delivering;          /* Owner is completing a posted cancellation. */
-    DVM_OwnerMessage child_retired;  /* Embedded reply for the one parked killwait. */
-    const void *channel_claimed;              /* Exclusive channel match under NativeWorld. */
-    unsigned int arithmetic_retries;  /* Consecutive pre-effect retries of the current instruction. */
+    Prog process;                      /* Retained interpreter/GC-visible prefix. */
+    int exit_notify_parent;            /* A parent parked until this guest retires. */
+    int exit_wait_pid;                 /* Child awaited by a prepared killwait frame. */
+    int exit_ready_pid;                /* Retired child acknowledged by the next MCALL retry. */
+    int parent_pid;                    /* Immutable numeric identity of the spawning guest. */
+    int lifetime_holds;                /* Native borrows acquired under the heap turn. */
+    DVM_MessageEndpoint *messages;     /* Dedicated guest registration, stable until retirement. */
+    DVM_OwnerMessage channel_close;    /* Embedded close request, coalesced until wait completes. */
+    DVM_OwnerMessage channel_exit;     /* Embedded exit request, coalesced until wait completes. */
+    DVM_OwnerMessage channel_cancel;   /* Embedded host cancellation for the current wait. */
+    DVM_OwnerMessage cancel_wait;      /* One correlated cancellation request from the parent. */
+    DVM_OwnerMessage cancel_result;    /* Reply storage for this guest's parked cancelwait. */
+    int cancel_waiting;                /* This guest is parked for a cancellation reply. */
+    int cancel_ready_pid;              /* Child matched by the prepared cancelwait retry. */
+    int cancel_ready_result;           /* Result delivered to that retry. */
+    int table_retry_pending;           /* Parked Bigtable MCALL, including after wake. */
+    int table_cancel_pc;               /* Pending MCALL successor update for the TLS owner. */
+    int cancel_delivering;             /* Owner is completing a posted cancellation. */
+    DVM_OwnerMessage child_retired;    /* Embedded reply for the one parked killwait. */
+    const void *channel_claimed;       /* Exclusive channel match under NativeWorld. */
+    unsigned int arithmetic_retries;   /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */
-    Prog *ready_previous;             /* Borrowed predecessor while ready. */
+    Prog *ready_previous;              /* Borrowed predecessor while ready. */
     const char *startup_error;         /* Stable registrar failure, read after its reply. */
     int startup_pending;               /* Atomic startup handshake; creator keeps the GC root live. */
-    int queued;                       /* Queue membership; published atomically for the dedicated idle loop. */
+    int queued;                        /* Queue membership; published atomically for the dedicated idle loop. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
-    DVM_NativeContext *dispatch_owner; /* Borrowed owner of the entire managed turn, including native waits. */
-    uintptr last_dispatcher;           /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
-    Osenv environment;                /* Native guest error storage follows this logical Prog across owner migration. */
-    fenv_t floating_environment;       /* Guest FP environment retained across complete turns and OS owners. */
+    DVM_NativeContext *dispatch_owner; /* Atomic identity of the permanent managed turn, including native waits. */
+    uintptr last_dispatcher; /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
+    Osenv environment;       /* Native guest error storage follows this logical Prog across owner migration. */
+    fenv_t floating_environment; /* Guest FP environment retained across complete turns and OS owners. */
 } DVM_RuntimeProcess;
 
 
@@ -77,11 +82,31 @@ int dvm_runqueue_publish_startup(Prog *process);
 int dvm_runqueue_ready(void);
 
 
+/* EN: Configure borrowed channel-publication sync before startup; NULL is the
+ * standalone/reference mode. No caller may change it while native actors run.
+ * RU: До запуска задать заимствованный sync публикации каналов; NULL выбирает
+ * отдельный/эталонный режим. Менять sync при работающих потоках запрещено. */
+void dvm_runqueue_ready_sync(FVM_PortSync *sync);
+
+
+/* EN: Acquire-read the ready flag of independently live process, or zero for NULL.
+ * It grants no process lifetime or mutable-payload access.
+ * RU: С acquire прочитать готовность отдельно живого process; NULL даёт ноль.
+ * Время жизни процесса и доступ к изменяемым данным этим не приобретаются. */
+int dvm_runqueue_is_ready(Prog *process);
+
+
 /* Pin a scheduler-owned Prog under the heap turn. Each successful pin must
  * be released before that Prog can retire. The caller already owns its input. */
 int dvm_runqueue_pin(Prog *process);
+
+
 void dvm_runqueue_unpin(Prog *process);
+
+
 int dvm_runqueue_hold_count(Prog *process);
+
+
 int dvm_runqueue_begin_retire(Prog *process);
 
 
@@ -111,6 +136,7 @@ DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process);
 /* Borrow FIFO head under exclusive heap ownership; NULL means no runnable Prog. */
 Prog *dvm_runqueue_head(void);
 
+
 /* Bring a dedicated thread's ready guest to the retained dispatch head. */
 Prog *dvm_runqueue_select_guest(Prog *process);
 
@@ -128,6 +154,7 @@ int dvm_runqueue_complete_channel_wait(Prog *process, char *cause);
 /* Remove the FIFO head and set its retained state. Return NULL on empty/invalid
  * queues. Caller retains the Prog in the separate GC/process list. */
 Prog *dvm_runqueue_pop(int state);
+
 
 /* Withdraw the expected live guest only while it is the FIFO head. */
 Prog *dvm_runqueue_pop_expected(Prog *expected, int state);
@@ -163,6 +190,8 @@ DVM_NativeContext *dvm_runqueue_owner(Prog *process);
 /* Copy the outstanding native-lease count under exclusive heap ownership.
  * No heap/root changes or implicit scheduling; used after all owners return. */
 unsigned long dvm_runqueue_inflight(void);
+
+
 int dvm_runqueue_dispatch_pending(void);
 
 

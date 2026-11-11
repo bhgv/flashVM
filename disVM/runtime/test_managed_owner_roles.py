@@ -22,9 +22,9 @@ def main():
     runtime = root / "disVM/runtime"
     source = (runtime / "managed_owner.c").read_text()
     controls = {
-        "phase": ("state.phase != DVM_HEAP_ACTIVE || ", ""),
+        "phase": ("state.phase != DVM_HEAP_ACTIVE ||", ""),
         "progress": ("state.pending_progress ||", "0 ||"),
-        "world": ("dvm_native_owner_world(owner) == owners.world", "1"),
+        "world": ("dvm_native_owner_world(owner) == dvm_managed_owners.world", "1"),
     }
     with tempfile.TemporaryDirectory(prefix="managed owner roles ") as directory:
         work = Path(directory)
@@ -55,7 +55,12 @@ def main():
                     "flashVM/ports",
                 )
             ]
-            command += [str(runtime / "test_managed_owner_roles.c"), str(path)]
+            command += [
+                str(runtime / "test_managed_owner_roles.c"),
+                str(path),
+                str(runtime / "managed_owner_service.c"),
+                str(runtime / "managed_access.c"),
+            ]
             command += [
                 str(root / p)
                 for p in (

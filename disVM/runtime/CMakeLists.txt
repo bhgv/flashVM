@@ -128,6 +128,8 @@ add_executable(disvm
     main.c
     native_jump.c
     runqueue.c
+    runqueue_native.c
+    process_lifetime.c
     owner_messages.c
     channel_match.c
     host_cancellations.c
@@ -148,6 +150,7 @@ add_executable(disvm
     gc/common/native_admission.c
     gc/fast/retirement_pass.c
     gc/fast/exception_retirement.c
+    gc/fast/managed_retirement.c
     gc/common/process_roots.c
     gc/fast/graph_confirmation.c
     gc/fast/packet_budget.c
@@ -228,6 +231,8 @@ add_executable(disvm
     heap_snapshot_probe.c
     service_counts_probe.c
     managed_owner.c
+    managed_owner_service.c
+    managed_access.c
     managed_owner_probe.c
     guard_registry_probe.c
     sleep_sys.c

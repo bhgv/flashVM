@@ -6,7 +6,7 @@
 #include "dat.h"
 #include "fns.h"
 #include "interp.h"
-#include "runqueue.h"
+#include "runqueue_private.h"
 #include "disvm/refcount.h"
 #include "managed_workers.h"
 #include "table_leases.h"
@@ -14,23 +14,20 @@
 #include <stdlib.h>
 #include <limits.h>
 
-static int dedicated_dispatch; /* Startup-only direct dispatch mode. */
-static Prog *head;             /* Runnable FIFO, modified only under the exclusive heap turn. */
-static Prog *tail;             /* Last runnable member, never a native waiter. */
+static FVM_PortSync *ready_sync;    /* Borrowed channel-publication mutex, fixed before startup. */
+static int dedicated_dispatch;      /* Startup-only direct dispatch mode. */
+static Prog *head;                  /* Runnable FIFO, modified only under the exclusive heap turn. */
+static Prog *tail;                  /* Last runnable member, never a native waiter. */
 static unsigned int runnable_count; /* Atomic count, including startup publication outside admission. */
-static unsigned long leases;   /* Native withdrawals before audited world leave. */
-static unsigned long returns;  /* Matched same-owner restorations after world enter. */
-static unsigned long inflight; /* Native continuations absent from runnable dispatch. */
-static unsigned long claims;   /* Successful exclusive managed-turn assignments. */
-static unsigned long finishes; /* Matching turn releases, independent of native leases. */
-static unsigned int active;    /* Live turn claims, including suspended C continuations. */
-static unsigned long migrated; /* Turns of the same Prog assigned to another live native context. */
-static unsigned long peak;     /* Maximum simultaneous audited native continuation leases. */
-static int trace_waits;        /* Immutable opt-in diagnostics, enabled before thread launch. */
+static unsigned long claims;        /* Successful exclusive managed-turn assignments. */
+static unsigned long finishes;      /* Matching turn releases, independent of native leases. */
+static unsigned int active;         /* Live turn claims, including suspended C continuations. */
+static unsigned long migrated;      /* Turns of the same Prog assigned to another live native context. */
+
 
 /* EN: Read the number of published ready processes.
  * RU: Прочитать число процессов с опубликованной готовностью. */
-static unsigned int ready_count(void)
+unsigned int dvm_runqueue_ready_count(void)
 {
     return __atomic_load_n(&runnable_count, __ATOMIC_ACQUIRE);
 }
@@ -40,24 +37,26 @@ static unsigned int ready_count(void)
  * RU: Включить прямой запуск перед публикацией первого Prog. */
 void dvm_runqueue_enable_direct(void)
 {
-    if (ready_count() || inflight || active)
+    if (dvm_runqueue_ready_count() || dvm_runqueue_leases.inflight || active)
     {
         abort();
     }
     dedicated_dispatch = 1;
 }
 
+
 /* EN: Report whether any ready Prog exists without selecting an owner.
  * RU: Проверить наличие готовых Prog без выбора владельца. */
 int dvm_runqueue_ready(void)
 {
-    return ready_count() != 0;
+    return dvm_runqueue_ready_count() != 0;
 }
+
 
 /* Check the FIFO endpoints under the caller's exclusive heap turn.
  * A full traversal is reserved for diagnostics. Return zero on inconsistent
  * endpoint/count or continuation accounting before a mutation. */
-static int endpoints_valid(void)
+int dvm_runqueue_endpoints_valid(void)
 {
     /* Dedicated residents do not share FIFO links. Their counters may be
      * sampled between independent updates by different owners. */
@@ -65,12 +64,14 @@ static int endpoints_valid(void)
     {
         return 1;
     }
-    if (ready_count() + inflight > DVM_RUNTIME_PROCESS_MAX || inflight > active ||
-        leases - returns != inflight || claims - finishes != active)
+    if (dvm_runqueue_ready_count() + dvm_runqueue_leases.inflight > DVM_RUNTIME_PROCESS_MAX ||
+        dvm_runqueue_leases.inflight > active ||
+        dvm_runqueue_leases.leases - dvm_runqueue_leases.returns != dvm_runqueue_leases.inflight ||
+        claims - finishes != active)
     {
         return 0;
     }
-    if (!ready_count())
+    if (!dvm_runqueue_ready_count())
     {
         return !head && !tail;
     }
@@ -78,92 +79,36 @@ static int endpoints_valid(void)
     {
         return 0;
     }
-    if (ready_count() == 1)
+    if (dvm_runqueue_ready_count() == 1)
     {
         return head == tail && !head->link;
     }
     return head != tail && head->link && head->link != head;
 }
 
-/* Borrow runtime-only extension metadata from its preserved Prog prefix. The
- * caller guarantees allocation/lifetime; no managed pointer dereference occurs. */
-static DVM_RuntimeProcess *runtime_process(Prog *process)
-{
-    return (DVM_RuntimeProcess *)process;
-}
-
-/* Acquire a borrow from an independently live scheduler or queue reference. */
-int dvm_runqueue_pin(Prog *process)
-{
-    DVM_RuntimeProcess *native = runtime_process(process);
-    int count;
-    if (!native)
-    {
-        return 0;
-    }
-    do
-    {
-        count = dvm_refcount_load_i(&native->lifetime_holds);
-        if (count < 0 || count == INT_MAX)
-        {
-            return 0;
-        }
-    } while (!dvm_refcount_compare_i(&native->lifetime_holds, count, count+1));
-    return 1;
-}
-
-/* Consume one owned borrow. No access to the Prog follows a successful drop. */
-void dvm_runqueue_unpin(Prog *process)
-{
-    DVM_RuntimeProcess *native = runtime_process(process);
-    int count;
-    if (!native)
-    {
-        abort();
-    }
-    do
-    {
-        count = dvm_refcount_load_i(&native->lifetime_holds);
-        if (count <= 0)
-        {
-            abort();
-        }
-    } while (!dvm_refcount_compare_i(&native->lifetime_holds, count, count-1));
-}
-
-/* Observe a live process. A negative count denotes closed admission. */
-int dvm_runqueue_hold_count(Prog *process)
-{
-    return dvm_refcount_load_i(&runtime_process(process)->lifetime_holds);
-}
-
-/* Seal admission exactly once before the scheduler dismantles the Prog. */
-int dvm_runqueue_begin_retire(Prog *process)
-{
-    return process && dvm_refcount_compare_i(&runtime_process(process)->lifetime_holds, 0, -1);
-}
 
 /* Assign one runnable head to an idle bound native owner, under heap exclusion.
  * Publish its TLS identity before exposing the claim; failure mutates nothing.
- * No register restore occurs here: xec still consumes the saved Prog.R. */
+ * Live resident registers are never restored from the diagnostic Prog.R image.
+ * RU: Привязать готовый process к текущему владельцу без восстановления живых
+ * регистров из диагностической копии Prog.R. При отказе состояние не меняется. */
 int dvm_runqueue_claim(Prog *process)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     if (!context || !process || (!dedicated_dispatch && head != process) || process->state != Pready ||
-        !runtime_process(process)->queued || runtime_process(process)->channel_claimed ||
-        runtime_process(process)->native_owner ||
-        runtime_process(process)->dispatch_owner || dvm_native_context_process(context) ||
-        __atomic_load_n(&active, __ATOMIC_RELAXED) == DVM_RUNTIME_PROCESS_MAX || !endpoints_valid())
+        !dvm_runqueue_is_ready(process) || runtime_process(process)->channel_claimed || dvm_runqueue_owner(process) ||
+        dvm_runqueue_dispatch_owner(process) || dvm_native_context_process(context) ||
+        __atomic_load_n(&active, __ATOMIC_RELAXED) == DVM_RUNTIME_PROCESS_MAX || !dvm_runqueue_endpoints_valid())
     {
         return 0;
     }
-    if (!dvm_native_context_acquire_turn(context,process))
+    if (!dvm_native_context_acquire_turn(context, process))
     {
         return 0;
     }
-    if (!dvm_native_context_set_process(context,process))
+    if (!dvm_native_context_set_process(context, process))
     {
-        (void)dvm_native_context_release_turn(context,process);
+        (void)dvm_native_context_release_turn(context, process);
         return 0;
     }
     __atomic_store_n(&runtime_process(process)->dispatch_owner, context, __ATOMIC_RELEASE);
@@ -177,11 +122,6 @@ int dvm_runqueue_claim(Prog *process)
     return 1;
 }
 
-/* Enable prelaunch peak diagnostics without retaining a managed object. */
-void dvm_runqueue_trace_waits(void)
-{
-    trace_waits = 1;
-}
 
 /* Release one complete managed turn on its original owner. Error cleanup may
  * already clear TLS process roots, but cannot clear the native dispatch claim.
@@ -190,20 +130,20 @@ int dvm_runqueue_finish(Prog *process)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     void *current = dvm_native_context_process(context);
-    if (!context || !process || runtime_process(process)->dispatch_owner != context ||
-        runtime_process(process)->native_owner || !__atomic_load_n(&active, __ATOMIC_RELAXED) || (current && current != process))
+    if (!context || !process || dvm_runqueue_dispatch_owner(process) != context || dvm_runqueue_owner(process) ||
+        !__atomic_load_n(&active, __ATOMIC_RELAXED) || (current && current != process))
     {
         return 0;
     }
-    if (current && !dvm_native_context_set_process(context,NULL))
+    if (current && !dvm_native_context_set_process(context, NULL))
     {
         return 0;
     }
-    if (!dvm_native_context_release_turn(context,process))
+    if (!dvm_native_context_release_turn(context, process))
     {
         if (current)
         {
-            (void)dvm_native_context_set_process(context,current);
+            (void)dvm_native_context_set_process(context, current);
         }
         return 0;
     }
@@ -213,12 +153,6 @@ int dvm_runqueue_finish(Prog *process)
     return 1;
 }
 
-/* EN: Acquire the published owner identity after its register snapshot writes.
- * RU: Прочитать владельца после публикации его записи регистров. */
-DVM_NativeContext *dvm_runqueue_dispatch_owner(Prog *process)
-{
-    return process ? __atomic_load_n(&runtime_process(process)->dispatch_owner, __ATOMIC_ACQUIRE) : NULL;
-}
 
 /* Validate the bounded FIFO and inspect one borrowed process. All reads require
  * exclusive heap ownership; -1 reports cycles/count/state/lease corruption. */
@@ -228,18 +162,18 @@ int dvm_runqueue_contains(Prog *process)
     Prog *last = NULL;
     unsigned int seen = 0;
     int found = 0;
-    if (!endpoints_valid())
+    if (!dvm_runqueue_endpoints_valid())
     {
         return -1;
     }
     if (dedicated_dispatch)
     {
-        return process && runtime_process(process)->queued;
+        return process && dvm_runqueue_is_ready(process);
     }
     for (cursor = head; cursor; cursor = cursor->link)
     {
-        if (++seen > ready_count() || cursor->state != Pready || !runtime_process(cursor)->queued ||
-            runtime_process(cursor)->native_owner || runtime_process(cursor)->ready_previous != last)
+        if (++seen > dvm_runqueue_ready_count() || cursor->state != Pready || !dvm_runqueue_is_ready(cursor) ||
+            dvm_runqueue_owner(cursor) || runtime_process(cursor)->ready_previous != last)
         {
             return -1;
         }
@@ -249,9 +183,11 @@ int dvm_runqueue_contains(Prog *process)
         }
         last = cursor;
     }
-    return seen == ready_count() && last == tail &&
-        (!process || runtime_process(process)->queued == found) ? found : -1;
+    return seen == dvm_runqueue_ready_count() && last == tail && (!process || dvm_runqueue_is_ready(process) == found)
+               ? found
+               : -1;
 }
+
 
 /* Return the borrowed head without polling or modifying queue/root storage.
  * The caller already holds the heap turn, including before first scheduler entry. */
@@ -260,10 +196,11 @@ Prog *dvm_runqueue_head(void)
     if (dedicated_dispatch)
     {
         Prog *current = dvm_native_context_process(dvm_native_context_current());
-        return current && runtime_process(current)->queued ? current : NULL;
+        return current && dvm_runqueue_is_ready(current) ? current : NULL;
     }
     return head;
 }
+
 
 /* EN: Select process for its dedicated thread. Direct mode leaves all ready
  * states untouched. Legacy mode reorders the FIFO.
@@ -272,9 +209,9 @@ Prog *dvm_runqueue_head(void)
 Prog *dvm_runqueue_select_guest(Prog *process)
 {
     Prog *previous;
-    if (!process || !runtime_process(process)->queued || process->state != Pready ||
-        runtime_process(process)->channel_claimed || runtime_process(process)->dispatch_owner ||
-        runtime_process(process)->native_owner || !endpoints_valid())
+    if (!process || !dvm_runqueue_is_ready(process) || process->state != Pready ||
+        runtime_process(process)->channel_claimed || dvm_runqueue_dispatch_owner(process) ||
+        dvm_runqueue_owner(process) || !dvm_runqueue_endpoints_valid())
     {
         return NULL;
     }
@@ -306,6 +243,7 @@ Prog *dvm_runqueue_select_guest(Prog *process)
     return process;
 }
 
+
 /* Append one borrowed runtime Prog, refusing native leases and duplicates before
  * mutation. Each withdrawn native continuation reserves one slot for return.
  * No allocation/throw; success gives the FIFO one runnable member. */
@@ -313,15 +251,15 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
 {
     /* Table wake holds the table scheduler lock. A dedicated resident can
      * become ready before it finishes its own parked turn on the same thread. */
-    int table_wake = process && dedicated_dispatch && !complete_wait &&
-        process->state == DVM_TABLE_WAIT;
-    if (!process || runtime_process(process)->native_owner || process->link ||
-        (!table_wake && runtime_process(process)->dispatch_owner &&
-         runtime_process(process)->dispatch_owner != dvm_native_context_current() &&
+    DVM_NativeContext *dispatch = dvm_runqueue_dispatch_owner(process);
+    int table_wake = process && dedicated_dispatch && !complete_wait && process->state == DVM_TABLE_WAIT;
+    if (!process || dvm_runqueue_owner(process) || process->link ||
+        (!table_wake && dispatch && dispatch != dvm_native_context_current() &&
          !(dedicated_dispatch && complete_wait && runtime_process(process)->channel_claimed &&
            process->state != Palt)) ||
-        ready_count() + __atomic_load_n(&inflight, __ATOMIC_RELAXED) >= DVM_RUNTIME_PROCESS_MAX || runtime_process(process)->queued ||
-        !endpoints_valid())
+        dvm_runqueue_ready_count() + __atomic_load_n(&dvm_runqueue_leases.inflight, __ATOMIC_RELAXED) >=
+            DVM_RUNTIME_PROCESS_MAX ||
+        dvm_runqueue_is_ready(process) || !dvm_runqueue_endpoints_valid())
     {
         return 0;
     }
@@ -347,6 +285,10 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
             process->kill = cause;
         }
     }
+    if (complete_wait && ready_sync)
+    {
+        fvm_port_sync_lock(ready_sync);
+    }
     process->state = Pready;
     __atomic_store_n(&runtime_process(process)->queued, 1, __ATOMIC_RELEASE);
     if (!dedicated_dispatch)
@@ -363,12 +305,17 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
         tail = process;
     }
     __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
+    if (complete_wait && ready_sync)
+    {
+        fvm_port_sync_unlock(ready_sync);
+    }
     if (!runtime_process(process)->channel_claimed)
     {
         dvm_managed_workers_wake_guest(process);
     }
     return 1;
 }
+
 
 /* EN: Publish a prepared resident from its dedicated thread before admission.
  * RU: Опубликовать подготовленный процесс из его потока до допуска к куче. */
@@ -394,6 +341,7 @@ int dvm_runqueue_append(Prog *process)
     return append_ready(process, 0, nil);
 }
 
+
 /* Complete a detached channel wait. Preserve an existing kill if cause is nil.
  * Return zero without mutation on admission refusal. NativeWorld is required. */
 int dvm_runqueue_complete_channel_wait(Prog *process, char *cause)
@@ -401,15 +349,15 @@ int dvm_runqueue_complete_channel_wait(Prog *process, char *cause)
     return append_ready(process, 1, cause);
 }
 
+
 /* EN: Withdraw ready process and set state without changing its GC links.
  * RU: Снять готовый process и установить state, сохранив связи с GC. */
 static Prog *withdraw_ready(Prog *process, int state)
 {
-    if (!process || !ready_count() || !runtime_process(process)->queued ||
-        runtime_process(process)->channel_claimed ||
-        (runtime_process(process)->dispatch_owner &&
-         runtime_process(process)->dispatch_owner != dvm_native_context_current()) ||
-        runtime_process(process)->native_owner || process->state != Pready || !endpoints_valid())
+    DVM_NativeContext *dispatch = dvm_runqueue_dispatch_owner(process);
+    if (!process || !dvm_runqueue_ready_count() || !dvm_runqueue_is_ready(process) ||
+        runtime_process(process)->channel_claimed || (dispatch && dispatch != dvm_native_context_current()) ||
+        dvm_runqueue_owner(process) || process->state != Pready || !dvm_runqueue_endpoints_valid())
     {
         return NULL;
     }
@@ -434,12 +382,14 @@ static Prog *withdraw_ready(Prog *process, int state)
     return process;
 }
 
+
 /* EN: Withdraw the legacy head and set its state.
  * RU: Снять голову старой очереди и установить state. */
 Prog *dvm_runqueue_pop(int state)
 {
     return withdraw_ready(head, state);
 }
+
 
 /* EN: Withdraw expected directly, or verify it is the legacy head first.
  * RU: Снять expected напрямую или проверить, что он первый в старой очереди. */
@@ -448,65 +398,38 @@ Prog *dvm_runqueue_pop_expected(Prog *expected, int state)
     return dedicated_dispatch || head == expected ? withdraw_ready(expected, state) : NULL;
 }
 
-/* Respect the existing synchronous Native64Caller lease. process is borrowed
- * under the heap turn; a nonzero native64holds forbids native suspension even
- * with separate TLS state. NULL denotes rootless native work, not a Prog lease. */
-int dvm_runqueue_release_allowed(Prog *process)
+
+/* EN: Report resident dispatches still completing a transition.
+ * RU: Проверить, заканчивает ли какой-либо поток переход состояния. */
+int dvm_runqueue_dispatch_pending(void)
 {
-    return !process || !process->native64holds;
+    return __atomic_load_n(&active, __ATOMIC_ACQUIRE) != 0;
 }
 
-/* [GC:] Withdraw current runtime Prog before world leave. It stays in the host's
- * GC process list; only its runnable link/state and native lease metadata change.
- * Foreign/current-head mismatch returns zero before any mutation/allocation. */
-int dvm_runqueue_suspend(Prog *process)
+
+/* Print native counters after owner/collector joins; no managed/root operations.
+ * A successful managed return or ordinary error unwind must have inflight=0. */
+void dvm_runqueue_statistics(void)
 {
-    DVM_NativeContext *context = dvm_native_context_current();
-    if (!process || !context || !dvm_runqueue_release_allowed(process) ||
-        dvm_native_context_process(context) != process ||
-        runtime_process(process)->dispatch_owner != context ||
-        runtime_process(process)->native_owner || process->state != Pready)
-    {
-        return 0;
-    }
-    if (dvm_runqueue_pop_expected(process, Prelease) != process)
-    {
-        return 0;
-    }
-    runtime_process(process)->native_owner = context;
-    __atomic_fetch_add(&leases, 1, __ATOMIC_RELAXED);
-    unsigned long count = __atomic_add_fetch(&inflight, 1, __ATOMIC_RELAXED);
-    unsigned long previous = __atomic_load_n(&peak, __ATOMIC_RELAXED);
-    while (count > previous)
-    {
-        if (__atomic_compare_exchange_n(&peak, &previous, count, 0,
-                __ATOMIC_RELAXED, __ATOMIC_RELAXED))
-        {
-            if (trace_waits)
-            {
-                fprintf(stderr, "NATIVEWAITERS inflight=%lu\n", count);
-            }
-            break;
-        }
-    }
-    return 1;
+    fprintf(stderr,
+            "NATIVEQUEUE queued=%u leases=%lu returns=%lu inflight=%lu peak=%lu\n",
+            dvm_runqueue_ready_count(),
+            dvm_runqueue_leases.leases,
+            dvm_runqueue_leases.returns,
+            dvm_runqueue_leases.inflight,
+            dvm_runqueue_leases.peak);
+    fprintf(
+        stderr, "NATIVEDISPATCH claims=%lu finishes=%lu active=%u migrated=%lu\n", claims, finishes, active, migrated);
 }
 
-/* Restore a native continuation only on its original TLS context. Current Prog
- * identity and FIFO absence are checked before prepending; caller has reacquired
- * the heap turn. No register/root ownership moves to another OS thread. */
-int dvm_runqueue_resume(Prog *process)
+
+/* EN: Restore process readiness on its validated original owner; legacy FIFO
+ * links and ready publication stay in this coordinator. No register reload.
+ * RU: Восстановить готовность process на проверенном исходном владельце.
+ * Связи старой FIFO и публикация готовности остаются здесь, без загрузки REG. */
+void dvm_runqueue_restore_ready(Prog *process)
 {
-    DVM_NativeContext *context = dvm_native_context_current();
-    if (!process || !context || runtime_process(process)->native_owner != context ||
-        runtime_process(process)->dispatch_owner != context ||
-        dvm_native_context_process(context) != process || process->state != Prelease ||
-        process->link || !__atomic_load_n(&inflight, __ATOMIC_RELAXED) || ready_count() == DVM_RUNTIME_PROCESS_MAX ||
-        runtime_process(process)->queued || !endpoints_valid())
-    {
-        return 0;
-    }
-    runtime_process(process)->native_owner = NULL;
+    __atomic_store_n(&runtime_process(process)->native_owner, NULL, __ATOMIC_RELEASE);
     __atomic_store_n(&runtime_process(process)->queued, 1, __ATOMIC_RELEASE);
     process->state = Pready;
     if (!dedicated_dispatch)
@@ -523,39 +446,18 @@ int dvm_runqueue_resume(Prog *process)
         }
     }
     __atomic_fetch_add(&runnable_count, 1, __ATOMIC_RELEASE);
-    __atomic_fetch_add(&returns, 1, __ATOMIC_RELAXED);
-    __atomic_fetch_sub(&inflight, 1, __ATOMIC_RELEASE);
-    dvm_managed_workers_wake();
-    return 1;
-}
-
-/* Inspect native continuation identity under exclusive heap access. process is
- * a borrowed live runtime allocation; NULL has no owner. No foreign TLS read. */
-DVM_NativeContext *dvm_runqueue_owner(Prog *process)
-{
-    return process ? runtime_process(process)->native_owner : NULL;
-}
-
-/* Copy actual in-flight continuation count; caller has exclusive heap ownership
- * or has joined all actors. No reservation or lifecycle transition occurs. */
-unsigned long dvm_runqueue_inflight(void)
-{
-    return __atomic_load_n(&inflight, __ATOMIC_ACQUIRE);
-}
-
-/* EN: Report resident dispatches still completing a transition.
- * RU: Проверить, заканчивает ли какой-либо поток переход состояния. */
-int dvm_runqueue_dispatch_pending(void)
-{
-    return __atomic_load_n(&active, __ATOMIC_ACQUIRE) != 0;
 }
 
 
-/* Print native counters after owner/collector joins; no managed/root operations.
- * A successful managed return or ordinary error unwind must have inflight=0. */
-void dvm_runqueue_statistics(void)
+/* EN: Configure only before native actors start; caller keeps sync alive.
+ * Message callbacks run before this mutex, which guards only ready publication.
+ * RU: Настроить до запуска нативных потоков; sync остаётся живым у вызывающего.
+ * Обработка сообщений идёт до мьютекса; он защищает лишь публикацию готовности. */
+void dvm_runqueue_ready_sync(FVM_PortSync *sync)
 {
-    fprintf(stderr,"NATIVEQUEUE queued=%u leases=%lu returns=%lu inflight=%lu peak=%lu\n",
-        ready_count(),leases,returns,inflight,peak);
-    fprintf(stderr,"NATIVEDISPATCH claims=%lu finishes=%lu active=%u migrated=%lu\n",claims,finishes,active,migrated);
+    if (__atomic_load_n(&active, __ATOMIC_ACQUIRE) || dvm_runqueue_inflight())
+    {
+        abort();
+    }
+    ready_sync = sync;
 }

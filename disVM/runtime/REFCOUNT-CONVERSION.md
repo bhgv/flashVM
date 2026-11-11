@@ -34,9 +34,9 @@ an assertion of lock-free progress on every compiler/platform.
 
 | Site | Conversion | Remaining exclusion |
 | --- | --- | --- |
-| runtime/main.c inspect_retain | Atomic load/checked retain; failed retain rolls back ptradd | Payload/type-map validation and root table |
-| runtime/main.c newprog | Checked module retain before global process publication | Process list, scheduler and environment |
-| runtime/main.c start_module | Checked nonfinal drop of initial local module owner | Stack/module construction and cleanup |
+| runtime/host_runtime/host_state.inc inspect_retain | Atomic load/checked retain; failed retain rolls back ptradd | Payload/type-map validation and root table |
+| runtime/host_runtime/errors_and_spawn.inc newprog | Checked module retain before global process publication | Process list, scheduler and environment |
+| runtime/host_runtime/modules_and_boot.inc start_module | Checked nonfinal drop of initial local module owner | Stack/module construction and cleanup |
 | runtime/bigtable.c Bigtable_acquire | Atomic checked retain with root rollback | Lease bookkeeping, payload and marking |
 | runtime/runtime_rc.c last-owner eligibility | Atomic count observation | Queue transfer, root table, colors and collector protocol |
 

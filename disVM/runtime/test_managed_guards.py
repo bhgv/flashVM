@@ -1,3 +1,6 @@
+# Copyright (c) 2026 bhgv
+# EN: Actual managed ownership controls with private diagnostic relinking.
+# RU: Проверки настоящего managed-владения с частной диагностической линковкой.
 """Actual managed captures: canonical guards, root-error rollback and retirement."""
 import os
 from pathlib import Path
@@ -6,7 +9,7 @@ import sys
 import tempfile
 from relink_private import relink
 
-WRAPPER = r'''
+WRAPPER = r"""
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -86,7 +89,7 @@ void __wrap_dvm_runtime_guard_registry_probe(DVM_GCWorkers *workers)
     __real_dvm_runtime_guard_registry_probe(workers);
     fprint(1, "PASS actual managed guard root rollback\n");
 }
-'''
+"""
 
 
 def main():
@@ -97,61 +100,90 @@ def main():
     explicit safe boundaries, never compiler/signal/sanitizer/timeout outcomes.
     """
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
-    source = (Path(__file__).resolve().parent / 'managed_owner.c').read_text()
-    key = 'ticket->access = dvm_guard_registry_acquire(owners.guards, value);'
+    source = (Path(__file__).resolve().parent / "managed_owner.c").read_text()
+    key = "ticket->access = dvm_guard_registry_acquire(dvm_managed_owners.guards, value);"
     if source.count(key) != 1:
-        raise RuntimeError('managed canonical-key control drift')
-    separate = source.replace(key, 'ticket->access = dvm_guard_registry_acquire(owners.guards, ticket);')
-    rollback = '''        if (!dvm_guard_registry_release(&ticket->access))
+        raise RuntimeError("managed canonical-key control drift")
+    separate = source.replace(
+        key, "ticket->access = dvm_guard_registry_acquire(dvm_managed_owners.guards, ticket);"
+    )
+    rollback = """        if (!dvm_guard_registry_release(&ticket->access))
         {
-            failure("capture sidecar rollback");
-        }'''
+            dvm_managed_failure("capture sidecar rollback");
+        }"""
     if source.count(rollback) != 2:
-        raise RuntimeError('managed rollback control drift')
+        raise RuntimeError("managed rollback control drift")
     offset = source.rindex(rollback)
-    no_rollback = source[:offset] + source[offset:].replace(rollback, '        ticket->access = NULL;', 1)
-    with tempfile.TemporaryDirectory(prefix='actual managed guards ') as directory:
+    no_rollback = source[:offset] + source[offset:].replace(
+        rollback, "        ticket->access = NULL;", 1
+    )
+    with tempfile.TemporaryDirectory(prefix="actual managed guards ") as directory:
         work = Path(directory)
-        guest = work / 'main.b'
-        image = work / 'main.dis'
-        guest.write_text('implement Probe; include "sys.m"; Probe: module {init: fn();};\n'
-                         'init() {sys := load Sys Sys->PATH; sys->print("PASS normal Dis\\n");}\n')
-        built = subprocess.run([str(compiler), '-I', str(include), '-o', str(image), str(guest)],
-                               capture_output=True, text=True)
+        guest = work / "main.b"
+        image = work / "main.dis"
+        guest.write_text(
+            'implement Probe; include "sys.m"; Probe: module {init: fn();};\n'
+            'init() {sys := load Sys Sys->PATH; sys->print("PASS normal Dis\\n");}\n'
+        )
+        built = subprocess.run(
+            [str(compiler), "-I", str(include), "-o", str(image), str(guest)],
+            capture_output=True,
+            text=True,
+        )
         if built.returncode:
-            raise RuntimeError(built.stdout+built.stderr)
-        wrapper = work / 'wrapper.c'
+            raise RuntimeError(built.stdout + built.stderr)
+        wrapper = work / "wrapper.c"
         wrapper.write_text(WRAPPER)
-        variants = [(0, source, '')]
-        if '--positive-only' not in sys.argv:
-            variants += [(1, separate, 'independent captures share guard'),
-                         (2, source, 'sidecars return to baseline'),
-                         (3, no_rollback, 'root failure leaves no sidecar')]
+        variants = [(0, source, "")]
+        if "--positive-only" not in sys.argv:
+            variants += [
+                (1, separate, "independent captures share guard"),
+                (2, source, "sidecars return to baseline"),
+                (3, no_rollback, "root failure leaves no sidecar"),
+            ]
         for variant, code, marker in variants:
-            private = work / 'managed_owner.c'
+            private = work / "managed_owner.c"
             private.write_text(code)
-            binary = relink(runtime, work, wrapper, variant,
-                            ['ptradd', 'dvm_guard_registry_release', 'dvm_runtime_guard_registry_probe'],
-                            managed_owner_source=private)
-            for mode in ('--jit', '--no-jit'):
+            binary = relink(
+                runtime,
+                work,
+                wrapper,
+                variant,
+                ["ptradd", "dvm_guard_registry_release", "dvm_runtime_guard_registry_probe"],
+                managed_owner_source=private,
+            )
+            for mode in ("--jit", "--no-jit"):
                 for locked in (False, True):
-                    command = [str(binary), mode, '--gc-worker', '--managed-owner-probe']
+                    command = [str(binary), mode, "--gc-worker", "--managed-owner-probe"]
                     if locked:
-                        command += ['--gc-locked-poll']
-                    run = subprocess.run(command+[str(image)], capture_output=True, text=True,
-                                         timeout=45, env=dict(os.environ, TMPDIR=str(work)))
-                    output = run.stdout+run.stderr
-                    if 'WARNING: ThreadSanitizer:' in output or 'runtime error:' in output:
+                        command += ["--gc-locked-poll"]
+                    run = subprocess.run(
+                        command + [str(image)],
+                        capture_output=True,
+                        text=True,
+                        timeout=45,
+                        env=dict(os.environ, TMPDIR=str(work)),
+                    )
+                    output = run.stdout + run.stderr
+                    if "WARNING: ThreadSanitizer:" in output or "runtime error:" in output:
                         raise RuntimeError(output)
                     if variant:
-                        if run.returncode != 10 or 'FAIL ' not in output or marker not in output:
-                            raise RuntimeError('managed guard control missed: '+str(variant)+': '+output)
-                    elif run.returncode or 'PASS actual managed guard root rollback' not in output \
-                            or 'PASS managed guard registry:' not in output or 'PASS normal Dis' not in output:
-                        raise RuntimeError('managed guard positive failed: '+output)
-    print('PASS actual managed guards: canonical captures, root rollback, retirement, C/JIT, both polls'+
-          ('; positives only' if '--positive-only' in sys.argv else '; three semantic controls'))
+                        if run.returncode != 10 or "FAIL " not in output or marker not in output:
+                            raise RuntimeError(
+                                "managed guard control missed: " + str(variant) + ": " + output
+                            )
+                    elif (
+                        run.returncode
+                        or "PASS actual managed guard root rollback" not in output
+                        or "PASS managed guard registry:" not in output
+                        or "PASS normal Dis" not in output
+                    ):
+                        raise RuntimeError("managed guard positive failed: " + output)
+    print(
+        "PASS actual managed guards: canonical captures, root rollback, retirement, C/JIT, both polls"
+        + ("; positives only" if "--positive-only" in sys.argv else "; three semantic controls")
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
