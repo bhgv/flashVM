@@ -54,12 +54,31 @@ typedef struct DVM_RuntimeProcess
     const char *startup_error;         /* Stable registrar failure, read after its reply. */
     int startup_pending;               /* Atomic startup handshake; creator keeps the GC root live. */
     int queued;                        /* Queue membership; published atomically for the dedicated idle loop. */
+    int observed_state;                /* Atomic state value for foreign request admission, never a resume image. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Atomic identity of the permanent managed turn, including native waits. */
     uintptr last_dispatcher; /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
     Osenv environment;       /* Native guest error storage follows this logical Prog across owner migration. */
     fenv_t floating_environment; /* Guest FP environment retained across complete turns and OS owners. */
 } DVM_RuntimeProcess;
+
+
+/* EN: Set a borrowed process's execution state and publish its scalar observation.
+ * Caller owns the transition or initializes unpublished storage; does not lock,
+ * transfer ownership, publish other wait fields or restore registers. No failure.
+ * RU: Установить состояние process и опубликовать отдельное скалярное наблюдение.
+ * Caller владеет переходом либо инициализирует неопубликованную память. Без lock,
+ * передачи владения, публикации иных полей ожидания или загрузки REG. Без ошибок. */
+void dvm_runqueue_set_state(Prog *process, int state);
+
+
+/* EN: Acquire only the scalar observation of a live borrowed process. The caller
+ * keeps its registration/lifetime protected; other mutable fields remain guarded
+ * separately. No blocking, ownership transfer or guarantee a wait still exists.
+ * RU: Прочитать только скалярное наблюдение живого заимствованного process.
+ * Caller защищает регистрацию/lifetime; прочие изменяемые поля защищены отдельно.
+ * Без блокировки, передачи владения и гарантии, что ожидание ещё существует. */
+int dvm_runqueue_observed_state(Prog *process);
 
 
 /* EN: Resolve a correlated request when its wait is removed.

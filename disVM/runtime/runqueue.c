@@ -289,7 +289,7 @@ static int append_ready(Prog *process, int complete_wait, char *cause)
     {
         fvm_port_sync_lock(ready_sync);
     }
-    process->state = Pready;
+    dvm_runqueue_set_state(process, Pready);
     __atomic_store_n(&runtime_process(process)->queued, 1, __ATOMIC_RELEASE);
     if (!dedicated_dispatch)
     {
@@ -377,7 +377,7 @@ static Prog *withdraw_ready(Prog *process, int state)
     __atomic_store_n(&runtime_process(process)->queued, 0, __ATOMIC_RELEASE);
     runtime_process(process)->ready_previous = NULL;
     process->link = NULL;
-    process->state = state;
+    dvm_runqueue_set_state(process, state);
     dvm_managed_workers_wake();
     return process;
 }
@@ -431,7 +431,7 @@ void dvm_runqueue_restore_ready(Prog *process)
 {
     __atomic_store_n(&runtime_process(process)->native_owner, NULL, __ATOMIC_RELEASE);
     __atomic_store_n(&runtime_process(process)->queued, 1, __ATOMIC_RELEASE);
-    process->state = Pready;
+    dvm_runqueue_set_state(process, Pready);
     if (!dedicated_dispatch)
     {
         process->link = head;
@@ -460,4 +460,25 @@ void dvm_runqueue_ready_sync(FVM_PortSync *sync)
         abort();
     }
     ready_sync = sync;
+}
+
+
+/* EN: Publish only the scalar state after the authorized execution transition.
+ * process is live and borrowed, state is its new value; no locks or errors.
+ * RU: Опубликовать скаляр после разрешённого перехода исполнения. process живой
+ * и заимствован, state — новое значение; без блокировок и ошибок. */
+void dvm_runqueue_set_state(Prog *process, int state)
+{
+    process->state = state;
+    __atomic_store_n(&runtime_process(process)->observed_state, state, __ATOMIC_RELEASE);
+}
+
+
+/* EN: Observe a live borrowed process without reading its owner-local state.
+ * Caller protects lifetime; result is a scalar hint, not access to other fields.
+ * RU: Наблюдать живой заимствованный process без чтения локального state владельца.
+ * Caller защищает lifetime; результат — скаляр, не доступ к остальным полям. */
+int dvm_runqueue_observed_state(Prog *process)
+{
+    return __atomic_load_n(&runtime_process(process)->observed_state, __ATOMIC_ACQUIRE);
 }

@@ -302,9 +302,7 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
 
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    if (!child ||
-        (child->state != Psend && child->state != Precv && child->state != Palt &&
-         child->state != DVM_CHILD_EXIT_WAIT && child->state != DVM_TABLE_WAIT && !granted_table_retry(child)))
+    if (!child || !resident_wait_request_supported(child))
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 1;

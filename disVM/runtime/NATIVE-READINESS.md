@@ -115,10 +115,100 @@ serialized reference ACTIVE cannot satisfy the parallel evidence.
 арифметики: сравниваются PID, а не повторно используемые адреса завершённых
 контекстов; ACTIVE считается конкурентным только в мире с запрещёнными stop.
 
+## Broader cancellation audit: three further race causes
+
+TSan stream-kill and receiver-cancel workloads first found unguarded ring-size
+reads in SEND/RECV after peer lookup. A lookup does not reserve the channel:
+another resident may change its buffer before the caller claims that peer.
+Receive preflight and both diagnostics now run inside the existing channel match
+reservation, before dequeue. Movers remain outside the channel registry mutex.
+
+Continuing receiver cancellation then found `prepare_cancelwait` reading the
+child's owner-local `Prog.state` during a ready withdrawal. Runtime transitions
+now additionally publish an atomic scalar `observed_state`. Parent/host request
+admission reads that value and the atomic table-retry flag. This is only an
+eligibility observation: the permanent owner resolves the mailbox request against
+its actual current wait. It grants no access to registers or other wait fields.
+Cancellation and retirement replies instead use correlated `exit_wait_pid` and
+`cancel_waiting`, protected by the registry mutex, without reading foreign state.
+The ordinary reference execution state and live TLS registers keep their roles.
+
+The wider seven-profile TSan run next exposed a concurrent graph-capture read
+against legacy `initmem` clearing a buffered `ref Packet` slot. Built-in `movp`
+pointer rings now use the same guarded mapped-buffer transaction as record rings,
+including source-owner consumption, displaced-owner retirement and commit-based
+geometry publication. A channel reservation alone does not protect cells against
+the concurrent collector. Custom movers are not silently treated as built-ins.
+
+The three streaming process-control profiles additionally require actual guarded
+buffered receive commits. The previous pointer path completes its real workload
+but fails this new evidence check. Source generation was split into constructor,
+match, queue, buffer, ALT-result and ALT-wait modules; extraction preserved Python
+ASTs and embedded C constants before the two reviewed channel semantic changes.
+
+Расширенные TSan-нагрузки выявили ещё три причины гонок: чтение геометрии кольца
+после поиска пары без захвата канала; чтение чужого `Prog.state` при `cancelwait`;
+очистку указателя буфера старым `initmem` одновременно с обходом графа GC.
+Проверки геометрии перенесены под существующий захват передачи. Допуск запросов
+читает отдельный атомарный скаляр, а ответ проверяется по идентификатору ожидания
+под mutex. Pointer-кольцо использует защищённую транзакцию mapped-передачи.
+Регистры остаются живыми в TLS своего владельца, глобальный эксклюзив не добавлен.
+
+Final TSan validation passed all seven process-control profiles: default,
+parent-exit, audit-query, stream-kill, receiver-kill, receiver-cancel and
+table-handoff. Each runs C/JIT with atomic/locked GC polling: 28 VM executions
+with 2568 exact guest starts/retirements in total. The pointer-ring observer
+forwards the real transaction unchanged and reports only a committed Tptr
+consume. The old path completes the receiver workload but fails this observer.
+ALT destinations can use guarded transfers without qualifying for the optional
+shared-channel optimization counter. Acceptance therefore observes the actual
+consume rather than requiring that optimization counter.
+
+The final tree also passed the 12 dedicated module-continuation executions under
+TSan and the standalone runqueue ownership regression in normal and TSan builds.
+The latter now checks foreign observations of runnable/native/table waits and
+their completed transitions. These sanitizer runs instrument C and host code,
+not emitted JIT machine code. No previously reported race remained in these runs.
+
+Финальные TSan-прогоны: семь process-control сценариев, по четыре C/JIT/poll
+профиля, всего 28 запусков VM и 2568 точных стартов/завершений гостей. Ещё 12
+запусков проверили native-продолжения. Runqueue-проверка прошла в обычной и TSan
+сборках. Наблюдатель фиксирует настоящую committed consume Tptr, не счётчик
+необязательной shared-оптимизации; старый путь эту проверку не проходит.
+TSan покрывает C/host, но не машинный код, выпущенный JIT.
+
+The broad final production run passed 78/79; the remaining array-length suite
+exposed shared diagnostic state in its native receive-error fixture. Its 50-site
+PC replay table belongs to the separate reference capture workload and is now
+bypassed only for the native commit-error workload. The dynamic address-publication
+marker is TLS, matching the owner-local call it observes. All 50 reference replay
+checks, omission controls and before/after-commit failures remain enabled in
+their respective profiles. The 1254-line driver was split into immutable guest
+oracles and five private C fragments; the coordinator is below 500 lines.
+Extraction retained the guest strings, driver function AST and native/directive
+tokens except the two scoped instrumentation corrections.
+
+After these fixture corrections, the complete array-length suite passed its
+targeted recheck. Its positive-only matrix also passed under TSan: two native
+commit-error runs and eight reference C/JIT/poll runs. Generation idempotence
+passed separately after adapter extraction. All 79 broad suites are therefore
+covered by passing results on this production tree, with the corrected fixture
+rechecked separately; this is not a single uninterrupted final 79/79 run.
+Every changed handwritten source is at most 484 lines. Vendor snapshots remain
+byte-for-byte unchanged.
+
+Общий прогон production-дерева дал 78/79. Последний отказ оказался оснасткой
+array-length: общая таблица PC использовалась в native-нагрузке ошибок commit,
+а признак публикации адреса был глобальным. Таблица сохранена для всех 50
+reference-проверок и исключена лишь из отдельного native-профиля; признак теперь
+TLS. После этого полный array-length сценарий прошёл отдельно, положительная
+матрица прошла под TSan. Все 79 сценариев покрыты успешными результатами с этой
+целевой перепроверкой; единый непрерывный финальный 79/79 здесь не заявляется.
+
 ## What remains before claiming the entire requested target
 
 - Finish reviewing cross-owner Prog.state/register reads and their publication
-  contracts. Two real races were found by extending TSan after ordinary tests
+  contracts. Further real races were found by extending TSan after ordinary tests
   were green; this pass does not certify every remaining reader. Keep the broad
   application gate stable and test actual ownership paths rather than infer
   completeness from a counter or a handler name.
@@ -137,7 +227,7 @@ serialized reference ACTIVE cannot satisfy the parallel evidence.
 настоящие C/JIT-прогоны на ARM64 и RV64. Их отсутствие нельзя заменить числом
 зелёных x64-тестов. Точную дату общей готовности эти данные не обосновывают.
 
-## Final validation for this change
+## Validation of the previous continuation change
 
 The final production tree passed 78 suites in the broad run; its sole failing
 suite was the unstable arithmetic identity observer. After replacing the stale

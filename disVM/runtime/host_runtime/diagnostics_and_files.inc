@@ -318,13 +318,18 @@ static int guest_cancel_pending_or_close(void)
 
 #define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Hosted scheduler state distinct from Bigtable waits. */
 
-/* EN: Route asynchronous host cancellation to the owner of a supported wait.
- * RU: Передать асинхронную отмену хоста владельцу поддерживаемого ожидания. */
 
-
-/* The channel queue mutex keeps the target rooted during publication. */
-static int granted_table_retry(Prog *process)
+/* EN: Classify a live borrowed resident for a mailbox request. Caller protects
+ * registration under channel_queue_mutex. Read only atomic state/retry values;
+ * a later wait change is resolved by the owner, not by this admission hint.
+ * RU: Проверить живой заимствованный process перед сообщением mailbox. Caller
+ * защищает регистрацию под channel_queue_mutex. Читать лишь атомарные state/retry;
+ * последующую смену ожидания разрешает владелец, а не эта предварительная проверка. */
+static int resident_wait_request_supported(Prog *process)
 {
-    return process->state == Pready &&
-           __atomic_load_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, __ATOMIC_ACQUIRE);
+    int state = dvm_runqueue_observed_state(process);
+    return state == Psend || state == Precv || state == Palt || state == DVM_CHILD_EXIT_WAIT ||
+           state == DVM_TABLE_WAIT ||
+           (state == Pready &&
+            __atomic_load_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, __ATOMIC_ACQUIRE));
 }

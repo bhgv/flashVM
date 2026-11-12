@@ -10,8 +10,7 @@ static void post_host_wait_cancel(int pid)
     for (peer = dvm_runtime_process_roots(); peer && peer->pid != pid; peer = peer->next)
     {
     }
-    if (!peer || (peer->state != Psend && peer->state != Precv && peer->state != Palt &&
-                  peer->state != DVM_CHILD_EXIT_WAIT && peer->state != DVM_TABLE_WAIT && !granted_table_retry(peer)))
+    if (!peer || !resident_wait_request_supported(peer))
     {
         return;
     }

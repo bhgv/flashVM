@@ -18,7 +18,7 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
          parent = parent->next)
     {
     }
-    if (!parent || parent->state != DVM_CHILD_EXIT_WAIT)
+    if (!parent)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return;
@@ -305,7 +305,7 @@ static void publish_child_exit(int parent_pid, int child_pid)
     for (parent = dvm_runtime_process_roots(); parent && parent->pid != parent_pid; parent = parent->next)
     {
     }
-    if (parent && parent->state == DVM_CHILD_EXIT_WAIT && ((DVM_RuntimeProcess *)parent)->exit_wait_pid == child_pid)
+    if (parent && ((DVM_RuntimeProcess *)parent)->exit_wait_pid == child_pid)
     {
         DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
         if (process->messages)

@@ -69,6 +69,7 @@ static void check(int valid, const char *message)
  * runtime allocation until join. Caller does not touch the FIFO concurrently. */
 static void foreign_restore(void *argument)
 {
+    check(dvm_runqueue_observed_state(argument) == Prelease, "foreign native wait observation");
     DVM_NativeContext *context = dvm_native_context_create(sizeof(long), NULL);
     check(context && dvm_native_context_bind(context), "foreign context bind");
     check(dvm_native_context_set_process(context, argument), "foreign process identity");
@@ -95,6 +96,7 @@ static void foreign_restore(void *argument)
  * heap access is implied. Even forged current-process identity grants no claim. */
 static void foreign_dispatch(void *argument)
 {
+    check(dvm_runqueue_observed_state(argument) == Pready, "foreign runnable observation");
     DVM_NativeContext *context = dvm_native_context_create(sizeof(long), NULL);
     check(context && dvm_native_context_bind(context), "dispatch challenger bind");
     check(!dvm_runqueue_claim(argument), "foreign managed dispatch claim accepted");
@@ -126,9 +128,11 @@ static void reassigned_dispatch(void *argument)
 static void early_table_wake(void *argument)
 {
     Prog *process = argument;
+    check(dvm_runqueue_observed_state(process) == DVM_TABLE_WAIT, "foreign table wait observation");
     DVM_NativeContext *context = dvm_native_context_create(sizeof(long), NULL);
     check(context && dvm_native_context_bind(context), "table releaser bind");
     check(dvm_runqueue_append(process), "early table wake refused");
+    check(dvm_runqueue_observed_state(process) == Pready, "foreign completed table observation");
     check(process->state == Pready && !dvm_runqueue_claim(process), "early table wake transferred the parked turn");
     check(dvm_native_context_unbind(context), "table releaser unbind");
     check(dvm_native_context_destroy(context), "table releaser destroy");
@@ -242,6 +246,7 @@ int main(void)
           "corrupt FIFO consumed native return reservation");
     nodes[DVM_RUNTIME_PROCESS_MAX - 1].process.link = NULL;
     check(dvm_runqueue_resume(process), "original owner restore");
+    check(dvm_runqueue_observed_state(process) == Pready, "native return observation");
     check(dvm_runqueue_contains(process) == 1, "native return accounting diverged");
     check(!dvm_runqueue_resume(process), "duplicate native restore accepted");
     check(dvm_runqueue_dispatch_owner(process) == context && dvm_runqueue_finish(process),

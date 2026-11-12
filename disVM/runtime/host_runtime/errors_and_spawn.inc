@@ -245,7 +245,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
     if (native_spawn && parent)
     {
         __atomic_store_n(&resident->startup_pending, 1, __ATOMIC_RELEASE);
-        process->state = Pready;
+        dvm_runqueue_set_state(process, Pready);
         /* Until registrar publication, the caller's frame still owns the arguments. */
         Heap *module_root = D2H(module);
         if (!dvm_runtime_root_add(module_root))
