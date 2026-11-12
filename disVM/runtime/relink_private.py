@@ -24,6 +24,8 @@ import subprocess
 # Optional snapshot_growth_source/graph_storage_source isolate allocation refusal controls.
 # Optional graph_confirmation_source preserves real claim helpers in private refusal controls.
 # Optional runtime_main_source replaces only the host composition for queue-locked channel observations.
+# Optional packet_budget_source isolates alias-sort allocation refusal controls.
+# packet_budget_source — частная проверка отказа памяти учёта повторных ссылок.
 # Optional retirement_pass_source replaces only the shared Fast service coordinator.
 # retirement_pass_source — частная проверка распределения квот служб Fast.
 # Optional concurrent_runtime_source replaces only strict pre-close coordination.
@@ -83,6 +85,7 @@ def relink(
     native_admission_source=None,
     concurrent_runtime_source=None,
     retirement_pass_source=None,
+    packet_budget_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -152,6 +155,7 @@ def relink(
         (native_admission_source, "gc/common/native_admission.c"),
         (concurrent_runtime_source, "gc/common/concurrent_runtime.c"),
         (retirement_pass_source, "gc/fast/retirement_pass.c"),
+        (packet_budget_source, "gc/fast/packet_budget.c"),
     ):
         if candidate is None:
             continue

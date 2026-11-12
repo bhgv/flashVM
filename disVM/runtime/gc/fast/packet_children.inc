@@ -112,7 +112,7 @@ static FrameRetirement *prepare_release_packet(
         return NULL;
     }
     size_t storage = sizeof(FrameRetirement) + count * sizeof(void *);
-    if (!dvm_gc_packet_charge(keys, charged_keys, storage, ULONG_MAX, &charge))
+    if (!dvm_gc_packet_charge(keys, charged_keys, storage, ULONG_MAX, &charge, retry))
     {
         return NULL;
     }

@@ -110,7 +110,7 @@ static int transfer_array_children(Heap *heap, int *retry)
         valid = packet->roots != NULL;
     }
     unsigned long charge = 0;
-    valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, ULONG_MAX, &charge);
+    valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, ULONG_MAX, &charge, retry);
     DVM_RetirementReservation token = {0};
     DVM_RetirementResult reservation = valid ? dvm_retirement_reserve(frames, charge, &token) : DVM_RETIRE_INVALID;
     *retry |= reservation == DVM_RETIRE_FULL || reservation == DVM_RETIRE_BYTES;

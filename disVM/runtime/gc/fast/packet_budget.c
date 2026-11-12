@@ -18,8 +18,8 @@ extern Pool *heapmem; /* Borrowed while packet owners pin the referenced blocks.
  * RU: Сравнить адреса в элементах массива left и right. */
 static int compare_block_keys(const void *left, const void *right)
 {
-    uintptr_t first = (uintptr_t)*(void *const *)left;
-    uintptr_t second = (uintptr_t)*(void *const *)right;
+    uintptr_t first = (uintptr_t) * (void *const *)left;
+    uintptr_t second = (uintptr_t) * (void *const *)right;
     return (first > second) - (first < second);
 }
 
@@ -28,8 +28,7 @@ static int compare_block_keys(const void *left, const void *right)
  * If sorted is set, adjacent duplicate keys describe a single allocation.
  * RU: Добавить размеры count живых объектов keys к total в пределах limit.
  * При sorted соседние одинаковые ключи обозначают один объект. */
-static int charge_blocks(void *const *keys, size_t count, unsigned long limit,
-    int sorted, unsigned long *total)
+static int charge_blocks(void *const *keys, size_t count, unsigned long limit, int sorted, unsigned long *total)
 {
     for (size_t index = 0; index < count; index++)
     {
@@ -48,12 +47,14 @@ static int charge_blocks(void *const *keys, size_t count, unsigned long limit,
 }
 
 
-/* EN: Add storage and payload charges for count keys within limit.
+/* [GC:] EN: Add storage and payload charges for count keys within limit.
  * Keep the caller's key order. Return the total in charge only on success.
+ * Optional retry records native sorting OOM, preserving any prior retry.
  * RU: Учесть storage и память count объектов keys в пределах limit.
- * Порядок ключей сохраняется. Записать итог в charge только при успехе. */
-int dvm_gc_packet_charge(void *const *keys, size_t count, unsigned long storage,
-    unsigned long limit, unsigned long *charge)
+ * Порядок ключей сохраняется. Записать итог в charge только при успехе.
+ * Необязательный retry отмечает нехватку памяти сортировки без сброса прежнего. */
+int dvm_gc_packet_charge(
+    void *const *keys, size_t count, unsigned long storage, unsigned long limit, unsigned long *charge, int *retry)
 {
     if (storage > limit || count > SIZE_MAX / sizeof(void *))
     {
@@ -68,6 +69,10 @@ int dvm_gc_packet_charge(void *const *keys, size_t count, unsigned long storage,
     void **sorted = malloc(count * sizeof(*sorted));
     if (!sorted)
     {
+        if (retry)
+        {
+            *retry = 1;
+        }
         return 0;
     }
     memcpy(sorted, keys, count * sizeof(*sorted));

@@ -1,3 +1,5 @@
+[Alias charge sorting: preserve shared retry on native allocation failure](PACKET-CHARGE-RETRY.md)
+
 [Fast service budgets: independent reader retries without starving RC](FAST-SERVICE-FAIRNESS.md)
 
 [Native shutdown borrow cutoff and public C++98 epoch ABI](SEALED-BORROWS.md)
