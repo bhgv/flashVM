@@ -25,6 +25,7 @@ typedef struct DVM_GCWorker
     DVM_GCKind kind;             /* Stable lane identity. */
     FVM_PortThread *thread;      /* Owned native handle. */
     DVM_NativeContext *context;  /* Worker-owned bound collector context. */
+    size_t attempts;             /* Completed scheduling attempts under service mutex. */
     size_t passes;               /* Completed callbacks under service mutex. */
     int pending;                 /* Coalesced request bits. */
 } DVM_GCWorker;

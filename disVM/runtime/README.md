@@ -1,3 +1,5 @@
+[Frame retry without waiting for unrelated Fast backlog](FAST-RETRY-PROGRESS.md)
+
 [Root index and arena search progress under native concurrency](METADATA-PROGRESS.md)
 
 [Duke queue progress and hard-limit fallback routing](DUKE-QUEUE-PROGRESS.md)

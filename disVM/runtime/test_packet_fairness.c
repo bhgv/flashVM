@@ -94,6 +94,10 @@ int __wrap_dvm_runtime_guest_sleep(unsigned long duration)
         pthread_mutex_lock(&sync);
     }
     expired |= !released;
+    if (CONTROL == 3 || CONTROL == 102)
+    {
+        require(!expired, "shared retry must not wait for unrelated Fast backlog");
+    }
     pthread_mutex_unlock(&sync);
     dvm_runtime_gc_dispatch_finish();
     return __real_dvm_runtime_guest_sleep(duration);
@@ -216,10 +220,12 @@ static void publish_mixed(void **values)
 
 
 /* [GC:] EN: Forward frame, publish mixed and independent owner packets, then require
- * physical independent frees while peers stay admitted. Preserve unknown/suffix roots
+ * physical independent frees while peers stay admitted. Selected profiles retry
+ * shared publication with an unrelated retained backlog. Preserve unknown/suffix roots
  * and counts until real retained cleanup; own descriptor until its heap is gone.
  * RU: Выполнить frame, передать смешанный и независимые пакеты, потребовать реальные
- * free при активных соседях. Корни и ссылки unknown/остатка живут до настоящей
+ * free при активных соседях. Выбранные профили повторяют shared-публикацию при
+ * непустой посторонней резервной очереди. Корни и ссылки unknown/остатка живут до настоящей
  * резервной очистки; владеть дескриптором до удаления его объекта. */
 void __wrap_Sys_werrstr(void *frame)
 {
@@ -244,7 +250,8 @@ void __wrap_Sys_werrstr(void *frame)
         keys[index] = dvm_heap_pool_key(heapmem, objects[index]);
     }
     pthread_mutex_unlock(&sync);
-    require(dvm_runtime_gc_dispatch_share(), "parent shared frame publication");
+    require((CONTROL == 3 || CONTROL == 102) ? dvm_runtime_gc_shared_try_enter() : dvm_runtime_gc_dispatch_share(),
+            "parent shared frame publication");
     void *mixed[] = {H2D(void *, objects[0]), H2D(void *, objects[1]), H2D(void *, objects[2])};
     publish_mixed(mixed);
     memset(mixed, 0, sizeof(mixed));
@@ -253,7 +260,24 @@ void __wrap_Sys_werrstr(void *frame)
         require(dvm_runtime_rc_transfer_frame(NULL, NULL, H2D(void *, objects[index])) == 1,
                 "independent actual owner packet");
     }
-    dvm_runtime_gc_dispatch_finish();
+    if (CONTROL == 3 || CONTROL == 102)
+    {
+        DVM_NativeContext *context = dvm_native_context_current();
+        dvm_runtime_gc_shared_publish();
+        dvm_runtime_gc_shared_drain();
+        DVM_HeapOwnerStats phase;
+        require(dvm_native_context_current() == context &&
+                    dvm_native_owner_statistics(dvm_native_owner_current(), &phase) && phase.phase == DVM_HEAP_SHARED,
+                "shared retry preserves context and admission");
+    }
+    if (CONTROL == 3 || CONTROL == 102)
+    {
+        dvm_runtime_gc_shared_finish();
+    }
+    else
+    {
+        dvm_runtime_gc_dispatch_finish();
+    }
     int native = dvm_runtime_gc_native_try_leave();
     require(native > 0, "parent leaves with real native frame roots");
     unsigned long long deadline = milliseconds() + 7000;

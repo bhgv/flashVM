@@ -21,8 +21,6 @@
 #include <string.h>
 
 
-
-
 /* EN: Publish native roots before relinquishing admission. shared requests shared work.
  * RU: Опубликовать нативные корни перед выходом из допуска. shared запрашивает параллельный режим. */
 static int native_try_leave(int shared)
@@ -34,11 +32,10 @@ static int native_try_leave(int shared)
     {
         return 0;
     }
-    if (dvm_native_owner_world(owner) != dvm_gc_runtime.world ||
-        !dvm_native_owner_statistics(owner,&call) || call.phase != DVM_HEAP_ACTIVE ||
-        call.pending_progress)
+    if (dvm_native_owner_world(owner) != dvm_gc_runtime.world || !dvm_native_owner_statistics(owner, &call) ||
+        call.phase != DVM_HEAP_ACTIVE || call.pending_progress)
     {
-        fprintf(stderr,"disvm: invalid/foreign/nested audited native release\n");
+        fprintf(stderr, "disvm: invalid/foreign/nested audited native release\n");
         exit(1);
     }
     /* Reject before queue withdrawal or root publication.
@@ -54,7 +51,7 @@ static int native_try_leave(int shared)
     process = dvm_native_context_process(dvm_native_context_current());
     if (up->prog != process)
     {
-        fprintf(stderr,"disvm: unpublished native call owner\n");
+        fprintf(stderr, "disvm: unpublished native call owner\n");
         exit(1);
     }
     if (!dvm_runqueue_release_allowed(process))
@@ -66,7 +63,7 @@ static int native_try_leave(int shared)
         process->R = DVM_R;
         if (!dvm_runqueue_suspend(process))
         {
-            fprintf(stderr,"disvm: native continuation withdrawal failed\n");
+            fprintf(stderr, "disvm: native continuation withdrawal failed\n");
             exit(1);
         }
     }
@@ -74,19 +71,18 @@ static int native_try_leave(int shared)
      * bounded shared interval gets its periodic trace request at turn end. */
     if ((!shared || !dvm_runtime_event_cycles) && !dvm_runtime_gc_request())
     {
-        fprintf(stderr,"disvm: native GC request failed\n");
+        fprintf(stderr, "disvm: native GC request failed\n");
         exit(1);
     }
     if (shared && !dvm_queue_probe_requested && dvm_native_owner_try_share(owner, dvm_gc_runtime.passes))
-    {
-        /* NATIVEWORLD: exclusive -> shared, with guest roots published. */
+    { /* NATIVEWORLD: exclusive -> shared, with guest roots published. */
         dvm_native_execution()->world_last_exit = DVM_NW_SITE_SHARED;
         return 1;
     }
     /* NATIVEWORLD: leave exclusive admission before native work. */
-    if (!dvm_native_owner_suspend(owner,dvm_gc_runtime.passes))
+    if (!dvm_native_owner_suspend(owner, dvm_gc_runtime.passes))
     {
-        fprintf(stderr,"disvm: native heap release failed\n");
+        fprintf(stderr, "disvm: native heap release failed\n");
         exit(1);
     }
     dvm_native_execution()->world_last_exit = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
@@ -110,29 +106,28 @@ static void native_enter(int released, int shared)
     DVM_HeapOwnerStats call;
     if (released != 0 && released != 1)
     {
-        fprintf(stderr,"disvm: invalid native heap reentry token\n");
+        fprintf(stderr, "disvm: invalid native heap reentry token\n");
         exit(1);
     }
     if (!dvm_gc_runtime.world)
     {
         if (released)
         {
-            fprintf(stderr,"disvm: native reentry without a live service\n");
+            fprintf(stderr, "disvm: native reentry without a live service\n");
             exit(1);
         }
         return;
     }
-    if (dvm_native_owner_world(owner) != dvm_gc_runtime.world ||
-        !dvm_native_owner_statistics(owner,&call))
+    if (dvm_native_owner_world(owner) != dvm_gc_runtime.world || !dvm_native_owner_statistics(owner, &call))
     {
-        fprintf(stderr,"disvm: foreign native heap reentry\n");
+        fprintf(stderr, "disvm: foreign native heap reentry\n");
         exit(1);
     }
     if (!released)
     {
         if (call.phase != DVM_HEAP_ACTIVE || call.pending_progress)
         {
-            fprintf(stderr,"disvm: missing native heap reentry token\n");
+            fprintf(stderr, "disvm: missing native heap reentry token\n");
             exit(1);
         }
         return;
@@ -140,7 +135,7 @@ static void native_enter(int released, int shared)
     if (call.phase != (shared ? DVM_HEAP_SHARED : DVM_HEAP_NATIVE) || call.pending_progress ||
         dvm_native_context_object_count(dvm_native_context_current()))
     {
-        fprintf(stderr,"disvm: invalid native heap reentry phase\n");
+        fprintf(stderr, "disvm: invalid native heap reentry phase\n");
         exit(1);
     }
     /* NATIVEWORLD: restore GC participation on the same native continuation. */
@@ -148,26 +143,22 @@ static void native_enter(int released, int shared)
     execution->world_entry_site = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
     execution->world_entry_pending = 1;
     if (!(shared ? dvm_native_owner_resume_shared(owner) : dvm_native_owner_resume(owner)) ||
-        !dvm_native_owner_progress(owner,dvm_gc_runtime.passes))
+        !dvm_native_owner_progress(owner, dvm_gc_runtime.passes))
     {
-        fprintf(stderr,"disvm: native heap reentry failed\n");
+        fprintf(stderr, "disvm: native heap reentry failed\n");
         exit(1);
     }
     {
         Prog *process = dvm_native_context_process(dvm_native_context_current());
-        if (up->prog != process || (process &&
-            (DVM_R.FP != process->R.FP || DVM_R.SP != process->R.SP ||
-             DVM_R.EX != process->R.EX || DVM_R.TS != process->R.TS ||
-             DVM_R.PC != process->R.PC || DVM_R.xpc != process->R.xpc ||
-             DVM_R.IC != process->R.IC ||
-             DVM_R.M != process->R.M ||
-             DVM_R.MP != process->R.MP || DVM_R.s != process->R.s ||
-             DVM_R.m != process->R.m || DVM_R.d != process->R.d ||
-             DVM_R.t != process->R.t || DVM_R.st != process->R.st ||
-             DVM_R.dt != process->R.dt ||
-             !dvm_runqueue_resume(process))))
+        if (up->prog != process ||
+            (process && (DVM_R.FP != process->R.FP || DVM_R.SP != process->R.SP || DVM_R.EX != process->R.EX ||
+                         DVM_R.TS != process->R.TS || DVM_R.PC != process->R.PC || DVM_R.xpc != process->R.xpc ||
+                         DVM_R.IC != process->R.IC || DVM_R.M != process->R.M || DVM_R.MP != process->R.MP ||
+                         DVM_R.s != process->R.s || DVM_R.m != process->R.m || DVM_R.d != process->R.d ||
+                         DVM_R.t != process->R.t || DVM_R.st != process->R.st || DVM_R.dt != process->R.dt ||
+                         !dvm_runqueue_resume(process))))
         {
-            fprintf(stderr,"disvm: native continuation restoration failed\n");
+            fprintf(stderr, "disvm: native continuation restoration failed\n");
             exit(1);
         }
     }
@@ -206,9 +197,8 @@ void dvm_runtime_gc_shared_publish(void)
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats owner;
     Prog *guest = dvm_native_context_process(context);
-    if (!guest || guest != up->prog || guest->state != Prelease ||
-        dvm_runqueue_owner(guest) != context || dvm_native_context_object_count(context) ||
-        !dvm_native_owner_statistics(dvm_native_owner_current(), &owner) ||
+    if (!guest || guest != up->prog || guest->state != Prelease || dvm_runqueue_owner(guest) != context ||
+        dvm_native_context_object_count(context) || !dvm_native_owner_statistics(dvm_native_owner_current(), &owner) ||
         owner.phase != DVM_HEAP_SHARED || owner.pending_progress)
     {
         abort();
@@ -236,8 +226,7 @@ int dvm_runtime_gc_dispatch_share(void)
     Prog *resident = dvm_native_context_process(context);
     DVM_HeapOwner *owner = dvm_native_owner_current();
     if (!resident || resident->state != Pready || up->prog != resident ||
-        dvm_runqueue_dispatch_owner(resident) != context ||
-        !dvm_native_owner_try_share(owner, dvm_gc_runtime.passes))
+        dvm_runqueue_dispatch_owner(resident) != context || !dvm_native_owner_try_share(owner, dvm_gc_runtime.passes))
     {
         return 0;
     }
@@ -254,8 +243,7 @@ void dvm_runtime_gc_dispatch_finish(void)
     DVM_NativeExecution *execution = dvm_native_execution();
     execution->world_entry_site = DVM_NW_SITE_DISPATCH;
     execution->world_entry_pending = 1;
-    if (!dvm_native_owner_resume_shared(owner) ||
-        !dvm_native_owner_progress(owner, dvm_gc_runtime.passes))
+    if (!dvm_native_owner_resume_shared(owner) || !dvm_native_owner_progress(owner, dvm_gc_runtime.passes))
     {
         abort();
     }
@@ -272,10 +260,8 @@ int dvm_runtime_gc_dispatch_is_shared(void)
     DVM_HeapOwnerStats state;
     DVM_HeapOwner *owner = dvm_native_owner_current();
     return resident && resident->state == Pready && up->prog == resident &&
-        dvm_runqueue_dispatch_owner(resident) == context &&
-        dvm_native_owner_world(owner) == dvm_gc_runtime.world &&
-        dvm_native_owner_statistics(owner, &state) &&
-        state.phase == DVM_HEAP_SHARED && !state.pending_progress;
+           dvm_runqueue_dispatch_owner(resident) == context && dvm_native_owner_world(owner) == dvm_gc_runtime.world &&
+           dvm_native_owner_statistics(owner, &state) && state.phase == DVM_HEAP_SHARED && !state.pending_progress;
 }
 
 
@@ -288,8 +274,7 @@ void dvm_runtime_gc_dispatch_restore(void)
     if (!dvm_runtime_gc_dispatch_share())
     {
         DVM_HeapOwner *owner = dvm_native_owner_current();
-        if (!dvm_native_owner_suspend(owner, dvm_gc_runtime.passes) ||
-            !dvm_native_owner_enter_shared(owner))
+        if (!dvm_native_owner_suspend(owner, dvm_gc_runtime.passes) || !dvm_native_owner_enter_shared(owner))
         {
             abort();
         }
@@ -298,14 +283,16 @@ void dvm_runtime_gc_dispatch_restore(void)
 }
 
 
-/* EN: Withdraw the current guest while Fast GC drains queued owners.
- * RU: Вывести текущего исполнителя из допуска на время обработки очереди Fast GC. */
+/* [GC:] EN: Withdraw the rooted current guest for one Fast scheduling attempt,
+ * then reenter with its same live registers. Abort on protocol/service failure;
+ * unrelated retained backlog need not empty before frame publication retries.
+ * RU: Вывести текущего исполнителя с опубликованными корнями на одну попытку Fast,
+ * затем вернуть с прежними живыми регистрами. Ошибка протокола/службы фатальна;
+ * повтор публикации кадра не ждёт очистки посторонней резервной очереди. */
 void dvm_runtime_gc_shared_drain(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
-    if (!dvm_native_owner_leave_shared(owner) ||
-        !dvm_gc_workers_request(dvm_gc_runtime.workers, DVM_GC_FAST) ||
-        !dvm_gc_workers_wait_fast_idle(dvm_gc_runtime.workers) ||
+    if (!dvm_native_owner_leave_shared(owner) || !dvm_gc_workers_step_fast(dvm_gc_runtime.workers) ||
         !dvm_native_owner_enter_shared(owner))
     {
         abort();
@@ -326,13 +313,12 @@ void dvm_runtime_gc_shared_finish(void)
 int dvm_runtime_gc_attach(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
-    if (!dvm_gc_runtime.world || !up || up->prog ||
-        dvm_native_context_process(dvm_native_context_current()))
+    if (!dvm_gc_runtime.world || !up || up->prog || dvm_native_context_process(dvm_native_context_current()))
     {
         return 0;
     }
     dvm_gc_collector_environment();
-    if (!dvm_native_owner_attach(owner,dvm_gc_runtime.world))
+    if (!dvm_native_owner_attach(owner, dvm_gc_runtime.world))
     {
         return 0;
     }
@@ -356,15 +342,15 @@ int dvm_runtime_gc_attach(void)
 int dvm_runtime_gc_detach(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
-    if (!dvm_gc_runtime.world || !up || dvm_native_context_current() == dvm_gc_runtime.owner ||
-        up->prog || dvm_native_context_process(dvm_native_context_current()) ||
+    if (!dvm_gc_runtime.world || !up || dvm_native_context_current() == dvm_gc_runtime.owner || up->prog ||
+        dvm_native_context_process(dvm_native_context_current()) ||
         dvm_native_owner_world(owner) != dvm_gc_runtime.world)
     {
         return 0;
     }
     {
         DVM_HeapOwnerStats call;
-        if (!dvm_native_owner_statistics(owner,&call) || call.pending_progress)
+        if (!dvm_native_owner_statistics(owner, &call) || call.pending_progress)
         {
             return 0;
         }
@@ -374,8 +360,7 @@ int dvm_runtime_gc_detach(void)
         }
         dvm_runtime_exception_reserve_stop();
         if (call.phase == DVM_HEAP_ACTIVE)
-        {
-            /* NATIVEWORLD: final exclusive exit before unregistering the executor. */
+        { /* NATIVEWORLD: final exclusive exit before unregistering the executor. */
             if (!dvm_native_owner_leave(owner))
             {
                 return 0;

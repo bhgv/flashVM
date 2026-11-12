@@ -36,9 +36,24 @@ def main():
             capture_output=True,
             text=True,
         )
-        for control in (0, 1, 2) if positive_only else (0, 1, 2, 100, 101):
+        for control in (0, 1, 2, 3) if positive_only else (0, 1, 2, 3, 100, 101, 102):
             replacement = None
-            if control >= 100:
+            admission = None
+            if control == 102:
+                source = (root / "gc/common/native_admission.c").read_text()
+                anchor = "dvm_gc_workers_step_fast(dvm_gc_runtime.workers)"
+                if source.count(anchor) != 1:
+                    raise RuntimeError("shared retry control anchor changed")
+                source = source.replace('"../collector_passes.h"', '"gc/collector_passes.h"')
+                source = source.replace('"runtime_state.h"', '"gc/common/runtime_state.h"')
+                admission = work / "native_admission.c"
+                admission.write_text(
+                    source.replace('"../../', '"').replace(
+                        anchor,
+                        "(dvm_gc_workers_request(dvm_gc_runtime.workers, DVM_GC_FAST) && dvm_gc_workers_wait_fast_idle(dvm_gc_runtime.workers))",
+                    )
+                )
+            if control in (100, 101):
                 source = read_rc_source(root)
                 anchor = "            dvm_retirement_rotate(frames);"
                 if source.count(anchor) != 1:
@@ -62,6 +77,7 @@ def main():
                     "dvm_runtime_rc_shared_leaves",
                 ],
                 runtime_rc_source=replacement,
+                native_admission_source=admission,
             )
             profiles = (
                 [("--no-jit", False)]
@@ -91,7 +107,11 @@ def main():
                     marker = (
                         "independent packets must bypass unsupported head before quiescence"
                         if control == 100
-                        else "blocked rotation must yield without inventing progress"
+                        else (
+                            "blocked rotation must yield without inventing progress"
+                            if control == 101
+                            else "shared retry must not wait for unrelated Fast backlog"
+                        )
                     )
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(
@@ -101,11 +121,13 @@ def main():
                     result.returncode
                     or "PASS packet fairness independent=3 blocked=2 retained=1 peers=2" not in text
                 ):
-                    raise RuntimeError(f"{mode} locked={locked}\n{text[-12000:]}")
+                    raise RuntimeError(
+                        f"control={control} {mode} locked={locked} exit={result.returncode}\n{text[-12000:]}"
+                    )
                 else:
                     evidence(text, children=2)
     print(
-        "PASS real packet fairness: mixed prefix/cursor/suffix, independent physical frees, retained callback; budgets 1/2/default, C/JIT, both polls; two semantic controls"
+        "PASS real packet fairness: mixed prefix/cursor/suffix, independent physical frees, retained callback; budgets 1/2/default, C/JIT, both polls; three semantic controls; bounded shared retry"
         if not positive_only
         else "PASS real packet fairness: positive profiles, budgets 1/2/default, C/JIT, both polls"
     )

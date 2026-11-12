@@ -136,6 +136,15 @@ int dvm_gc_workers_request_candidates(DVM_GCWorkers *workers);
 int dvm_gc_workers_wait_idle(DVM_GCWorkers *workers);
 
 
+/* [GC:] EN: Request and await one subsequent Fast attempt, not an empty queue.
+ * Borrow workers through return; publish roots and leave heap admission first.
+ * Return zero on failure/shutdown, overflow or collector self-wait.
+ * RU: Запросить и дождаться следующей попытки Fast, а не пустой очереди.
+ * workers заимствован; сначала опубликовать корни и выйти из допуска.
+ * Ошибка, остановка, переполнение или самоожидание возвращают ноль. */
+int dvm_gc_workers_step_fast(DVM_GCWorkers *workers);
+
+
 /* Wait for the Fast lane only. Caller must hold no heap admission. */
 int dvm_gc_workers_wait_fast_idle(DVM_GCWorkers *workers);
 

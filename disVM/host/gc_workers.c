@@ -4,6 +4,7 @@
  */
 #include "gc_worker_private.h"
 #include <stdlib.h>
+#include <stdint.h>
 
 
 /* Select one of the explicitly named lane groups.
@@ -89,6 +90,10 @@ static void run_worker(void *argument)
         fvm_port_sync_unlock(workers->sync);
         result = dvm_gc_worker_collect(worker, requested, &executed);
         fvm_port_sync_lock(workers->sync);
+        if (worker->attempts != SIZE_MAX)
+        {
+            worker->attempts++;
+        }
         if (executed)
         {
             worker->passes++;
@@ -262,6 +267,43 @@ static int wait_idle(DVM_GCWorkers *workers, int fast_only)
     while (!workers->failed && !workers->stopping &&
            (workers->Fast.pending || (workers->active & (1U << DVM_GC_FAST)) ||
             (!fast_only && (workers->active || workers->Cycles.pending || workers->Duke.pending))))
+    {
+        fvm_port_sync_wait(workers->sync);
+    }
+    result = !workers->failed && !workers->stopping;
+    fvm_port_sync_unlock(workers->sync);
+    return result;
+}
+
+
+/* [GC:] EN: Request one Fast attempt after this call, without waiting for queue
+ * exhaustion. Borrow workers through return; caller publishes roots and leaves
+ * heap admission first. Reject collector self-waits, failure and counter overflow.
+ * RU: Запросить одну попытку Fast после вызова без ожидания пустой очереди.
+ * workers заимствован до возврата; вызывающий публикует корни и выходит из допуска.
+ * Самоожидание сборщика, ошибка и переполнение счётчика возвращают ноль. */
+int dvm_gc_workers_step_fast(DVM_GCWorkers *workers)
+{
+    size_t target;
+    size_t increment;
+    int result;
+    if (!workers || fvm_port_thread_is_current(workers->Fast.thread) ||
+        fvm_port_thread_is_current(workers->Cycles.thread) ||
+        (workers->Duke.thread && fvm_port_thread_is_current(workers->Duke.thread)))
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(workers->sync);
+    increment = (workers->active & (1U << DVM_GC_FAST)) ? 2 : 1;
+    if (workers->failed || workers->stopping || workers->Fast.attempts > SIZE_MAX - increment)
+    {
+        fvm_port_sync_unlock(workers->sync);
+        return 0;
+    }
+    target = workers->Fast.attempts + increment;
+    workers->Fast.pending |= GC_PASS_REQUEST;
+    fvm_port_sync_signal_all(workers->sync);
+    while (!workers->failed && !workers->stopping && workers->Fast.attempts < target)
     {
         fvm_port_sync_wait(workers->sync);
     }
