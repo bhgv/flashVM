@@ -32,15 +32,13 @@ def main():
     )
     root = Path(__file__).parent
     source = read_rc_source(root)
-    anchor = "                retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;"
-    declaration = "static int retirement_ready(int include_shared_retries);"
+    anchor = "            retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;"
+    declaration = "/* [GC:] EN: Visit source under sole Fast shared admission with an independent"
     if source.count(anchor) != 1 or source.count(declaration) != 1:
         raise RuntimeError("large owner diagnostic boundary drift")
     source = source.replace(
         declaration, "extern void dvm_test_large_leaf_retry(Heap *, int);\n" + declaration
-    ).replace(
-        anchor, anchor + "\n                dvm_test_large_leaf_retry(entry->heap, retry_leaf);"
-    )
+    ).replace(anchor, anchor + "\n            dvm_test_large_leaf_retry(entry->heap, retry_leaf);")
     claim = "    int claimed = dvm_refcount_claim_last_u(&heap->ref);"
     claim_doc = "/* [GC:] EN: Claim heap's independently owned last reference without children."
     if source.count(claim) != 1 or source.count(claim_doc) != 1:

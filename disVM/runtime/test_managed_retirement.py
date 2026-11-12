@@ -82,7 +82,7 @@ def main():
                     )
                 )
                 if control == 9:
-                    gate = "if (entry)\n                {\n                    retry = 1;\n                }"
+                    gate = "if (entry)\n            {\n                retry = 1;\n            }"
                     replacement_gate = gate.replace("retry = 1;", "retry = 0;")
                 if source.count(gate) != 1:
                     raise RuntimeError("mandatory drain/leaf epoch control anchor changed")

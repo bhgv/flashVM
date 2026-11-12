@@ -73,8 +73,10 @@ def main():
                 replacement.write_text(source.replace(gate, changed))
             if control >= 10:
                 source = read_rc_source(root)
-                gate = "                retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;"
-                declaration = "static int retirement_ready(int include_shared_retries);"
+                gate = "            retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;"
+                declaration = (
+                    "/* [GC:] EN: Visit source under sole Fast shared admission with an independent"
+                )
                 sole = "    int sole = dvm_refcount_load_u(&heap->ref) == 1;"
                 sole_doc = (
                     "/* [GC:] EN: Sample independently live heap before child transfer. Return one"
@@ -86,7 +88,7 @@ def main():
                     declaration, "extern void dvm_test_module_retry(Heap *, int);\n" + declaration
                 )
                 source = source.replace(
-                    gate, gate + "\n                dvm_test_module_retry(entry->heap, retry_leaf);"
+                    gate, gate + "\n            dvm_test_module_retry(entry->heap, retry_leaf);"
                 )
                 source = source.replace(
                     sole_doc, "extern int dvm_test_module_sole_owner(Heap *);\n\n" + sole_doc

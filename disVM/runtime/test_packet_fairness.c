@@ -21,18 +21,25 @@
 #include <string.h>
 #include <time.h>
 
-extern Pool *heapmem;                                     /* Real managed arena through all joins. */
-static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;  /* Fixture predicates only. */
-static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Peer readiness. */
-static unsigned admitted;                                 /* Real shared peers, under sync. */
-static unsigned turn;                                     /* Peer permitted to advance an epoch, under sync. */
-static int released;         /* Parent permits original sleep frames to return, under sync. */
-static int expired;          /* Watchdog failure, under sync. */
-static Heap *targets[5];     /* Independent original owners until packet publication. */
-static DVM_HeapKey keys[5];  /* Generations retained after actual physical frees. */
-static unsigned freed[5];    /* Exactly-once physical-free observations, under sync. */
-static unsigned zero_passes; /* Real no-progress shared passes with only blocked suffix, under sync. */
-static unsigned callbacks;   /* Actual unsupported destructor calls, under sync. */
+#define BoundedProbe (CONTROL == 7 || CONTROL == 106) /* Multiple actual refused channels. */
+#define QueueFairness ((CONTROL >= 4 && CONTROL <= 7) || (CONTROL >= 103 && CONTROL <= 106)) /* Mixed queues. */
+#define MandatoryBlock (QueueFairness && CONTROL != 6 && CONTROL != 104) /* Unsupported mandatory owner. */
+
+extern Pool *heapmem;                                                    /* Real managed arena through all joins. */
+static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;                 /* Fixture predicates only. */
+static pthread_cond_t changed = PTHREAD_COND_INITIALIZER;                /* Peer readiness. */
+static unsigned admitted;                                                /* Real shared peers, under sync. */
+static unsigned turn;                       /* Peer permitted to advance an epoch, under sync. */
+static int released;                        /* Parent permits original sleep frames to return, under sync. */
+static int expired;                         /* Watchdog failure, under sync. */
+static Heap *targets[9];                    /* Independent original owners until packet publication. */
+static DVM_HeapKey keys[9];                 /* Generations retained after actual physical frees. */
+static unsigned freed[9];                   /* Exactly-once physical-free observations, under sync. */
+static unsigned zero_passes;                /* Real no-progress shared passes with only blocked suffix, under sync. */
+static _Thread_local unsigned claim_visits; /* Actual observed claims in this Fast callback. */
+static unsigned races;                      /* Actual temporary channel owners, under sync. */
+static unsigned callback_mask;              /* Exactly-once unknown finalizers, under sync. */
+static unsigned callbacks;                  /* Actual unsupported destructor calls, under sync. */
 
 
 int __real_dvm_runtime_guest_sleep(unsigned long);
@@ -112,10 +119,12 @@ static void unknown_destructor(Heap *heap, int swept)
 {
     pthread_mutex_lock(&sync);
     DVM_WorldState state;
-    require(heap == targets[1] && released && !callbacks && dvm_world_state(dvm_gc_runtime.world, &state) &&
-                state.stopped && !state.active,
+    unsigned index = heap == targets[1] ? 1 : 5;
+    require(heap == targets[index] && released && !(callback_mask & (1U << index)) &&
+                dvm_world_state(dvm_gc_runtime.world, &state) && state.stopped && !state.active,
             "unknown callback requires retained admission");
     callbacks++;
+    callback_mask |= 1U << index;
     pthread_mutex_unlock(&sync);
     freeheap(heap, swept);
 }
@@ -131,13 +140,13 @@ void __wrap_poolfree(Pool *pool, void *value)
 {
     pthread_mutex_lock(&sync);
     DVM_HeapKey key = dvm_heap_pool_key(pool, value);
-    for (unsigned index = 0; index < 5; index++)
+    for (unsigned index = 0; index < 9; index++)
     {
         if (value == targets[index] && key.generation == keys[index].generation)
         {
             require(!freed[index] && !dvm_runtime_root_count(value) && !dvm_refcount_load_u(&((Heap *)value)->ref),
                     "physical free withdraws root/count exactly once");
-            if (index == 0 || index >= 3)
+            if (index == 0 || index == 3 || index == 4 || index >= 6)
             {
                 DVM_WorldState state;
                 require(!released && !expired && dvm_world_state(dvm_gc_runtime.world, &state) && !state.stopped &&
@@ -156,6 +165,41 @@ void __wrap_poolfree(Pool *pool, void *value)
 }
 
 
+int __real_dvm_runtime_channel_claim_observed(Heap *, Array *, Type **, int, int *);
+
+
+/* [GC:] EN: Race the actual observed claim with a temporary strong channel
+ * owner/root until other queues progress. Borrow heap/buffer/mapped/retry;
+ * forward the real claim and remove the temporary owner before returning.
+ * No collector result or queue operation is substituted.
+ * RU: Добавлять настоящего временного владельца/корень канала перед захватом,
+ * пока другие очереди не продвинутся. heap/buffer/mapped/retry заимствованы;
+ * вызвать настоящий захват и снять временного владельца до возврата.
+ * Результат сборщика и операции очередей не подменяются. */
+int __wrap_dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **mapped, int claimed, int *retry)
+{
+    pthread_mutex_lock(&sync);
+    int tracked = QueueFairness && (heap == targets[7] || (BoundedProbe && heap == targets[8]));
+    int race =
+        tracked && !released && (!(freed[0] && freed[3] && freed[4] && freed[6]) || (BoundedProbe && races < 16));
+    pthread_mutex_unlock(&sync);
+    claim_visits += tracked;
+    if (!race)
+    {
+        return __real_dvm_runtime_channel_claim_observed(heap, buffer, mapped, claimed, retry);
+    }
+    require(!claimed && dvm_refcount_retain_u(&heap->ref) == DVM_REFCOUNT_LIVE && dvm_runtime_root_add(heap),
+            "actual temporary channel owner");
+    int result = __real_dvm_runtime_channel_claim_observed(heap, buffer, mapped, claimed, retry);
+    require(!result && retry && *retry, "real channel refusal records retry");
+    require(dvm_runtime_root_remove(heap) && dvm_refcount_drop_nonfinal_u(&heap->ref), "temporary owner withdrawn");
+    pthread_mutex_lock(&sync);
+    races++;
+    pthread_mutex_unlock(&sync);
+    return result;
+}
+
+
 /* [GC:] EN: Run the real Fast callback on context with its budget, lowering it
  * to one/two units for selected positive profiles. Observe zero-work returns
  * after independent frees; rotation cannot manufacture shared progress.
@@ -164,13 +208,19 @@ void __wrap_poolfree(Pool *pool, void *value)
  * перемещение пакета не должно создавать видимость выполненной работы. */
 unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
-    if (CONTROL == 1 || CONTROL == 2)
+    if (CONTROL == 1 || CONTROL == 2 || QueueFairness)
     {
-        budget = CONTROL;
+        budget = CONTROL == 2 || CONTROL == 5 ? 2 : 1;
     }
+    claim_visits = 0;
     unsigned int result = __real_dvm_runtime_rc_shared_leaves(context, budget);
+    if (BoundedProbe)
+    {
+        require(claim_visits <= budget, "refused leaf visits must respect Fast budget");
+    }
     pthread_mutex_lock(&sync);
-    if (freed[0] && freed[3] && freed[4] && !released && !result)
+    if (freed[0] && freed[3] && freed[4] && (!QueueFairness || (freed[6] && freed[7] && (!BoundedProbe || freed[8]))) &&
+        !released && !result)
     {
         zero_passes++;
     }
@@ -238,16 +288,32 @@ void __wrap_Sys_werrstr(void *frame)
     pthread_mutex_unlock(&sync);
     Type *unknown_type = dtype(unknown_destructor, sizeof(void *), NULL, 0);
     require(unknown_type != NULL, "unsupported native descriptor");
-    Heap *objects[5];
+    Heap *objects[9] = {0};
     for (unsigned index = 0; index < 5; index++)
     {
         objects[index] = index == 1 ? heapz(unknown_type) : D2H(newstring(16));
     }
+    if (MandatoryBlock)
+    {
+        objects[5] = heapz(unknown_type);
+    }
+    if (BoundedProbe)
+    {
+        objects[8] = D2H(cnewc(&Tptr, movp, 0));
+    }
+    if (QueueFairness)
+    {
+        objects[6] = D2H(newstring(16));
+        objects[7] = D2H(cnewc(&Tptr, movp, 0));
+    }
     pthread_mutex_lock(&sync);
-    for (unsigned index = 0; index < 5; index++)
+    for (unsigned index = 0; index < 9; index++)
     {
         targets[index] = objects[index];
-        keys[index] = dvm_heap_pool_key(heapmem, objects[index]);
+        if (objects[index])
+        {
+            keys[index] = dvm_heap_pool_key(heapmem, objects[index]);
+        }
     }
     pthread_mutex_unlock(&sync);
     require((CONTROL == 3 || CONTROL == 102) ? dvm_runtime_gc_shared_try_enter() : dvm_runtime_gc_dispatch_share(),
@@ -259,6 +325,16 @@ void __wrap_Sys_werrstr(void *frame)
     {
         require(dvm_runtime_rc_transfer_frame(NULL, NULL, H2D(void *, objects[index])) == 1,
                 "independent actual owner packet");
+    }
+    if (QueueFairness)
+    {
+        for (unsigned index = 5; index < 9; index++)
+        {
+            if (objects[index])
+            {
+                require(dvm_runtime_rc_defer(H2D(void *, objects[index])), "publish independent queue owners");
+            }
+        }
     }
     if (CONTROL == 3 || CONTROL == 102)
     {
@@ -285,7 +361,9 @@ void __wrap_Sys_werrstr(void *frame)
     while (milliseconds() < deadline)
     {
         pthread_mutex_lock(&sync);
-        done = freed[0] && freed[3] && freed[4] && zero_passes >= 4 && !expired;
+        done = freed[0] && freed[3] && freed[4] &&
+               (!QueueFairness || (freed[6] && freed[7] && (!BoundedProbe || freed[8]))) && zero_passes >= 4 &&
+               !expired;
         pthread_mutex_unlock(&sync);
         if (done)
         {
@@ -294,6 +372,13 @@ void __wrap_Sys_werrstr(void *frame)
         fvm_port_thread_sleep_us(1000);
     }
     pthread_mutex_lock(&sync);
+    if (QueueFairness)
+    {
+        require(done && races, "independent Fast queues must progress beside blocked owners and retries");
+        require(!freed[5] && (!MandatoryBlock ||
+                              (dvm_runtime_root_count(objects[5]) == 1 && dvm_refcount_load_u(&objects[5]->ref) == 1)),
+                "mandatory unknown owner stays rooted");
+    }
     require(freed[0] && freed[3] && freed[4], "independent packets must bypass unsupported head before quiescence");
     require(done, "blocked rotation must yield without inventing progress");
     require(!callbacks && !freed[1] && !freed[2] && dvm_runtime_root_count(objects[1]) == 1 &&
@@ -308,9 +393,14 @@ void __wrap_Sys_werrstr(void *frame)
             "real retained packet cleanup completes");
     dvm_runtime_gc_native_enter(native);
     pthread_mutex_lock(&sync);
-    require(callbacks == 1 && freed[1] && freed[2], "unknown and suffix free once after peer release");
+    require(callbacks == 1U + MandatoryBlock && freed[1] && freed[2] && (!MandatoryBlock || freed[5]),
+            "unknown and suffix free once after peer release");
     pthread_mutex_unlock(&sync);
     require(dvm_refcount_load_i(&unknown_type->ref) == 1, "descriptor creator retains sole type reference");
     freetype(unknown_type);
-    fprintf(stderr, "PASS packet fairness independent=3 blocked=2 retained=1 peers=2\n");
+    fprintf(stderr,
+            "PASS packet fairness independent=%u blocked=%u retained=%u peers=2\n",
+            3U + (QueueFairness ? 2U + BoundedProbe : 0U),
+            2U + MandatoryBlock,
+            1U + MandatoryBlock);
 }

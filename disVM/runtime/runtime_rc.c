@@ -24,6 +24,8 @@
 #include "gc/duke/rc_passes.inc"
 #include "gc/cycles/owner_rescue.inc"
 #include "gc/fast/owner_drain.inc"
+#include "gc/fast/work_budget.inc"
+#include "gc/fast/leaf_release.inc"
 #include "gc/fast/shared_release.inc"
 #include "gc/fast/retained_release.inc"
 #include "gc/common/rc_lifecycle.inc"

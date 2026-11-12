@@ -1,3 +1,5 @@
+[Independent Fast queue budgets and bounded refusal visits](FAST-QUEUE-FAIRNESS.md)
+
 [Frame retry without waiting for unrelated Fast backlog](FAST-RETRY-PROGRESS.md)
 
 [Root index and arena search progress under native concurrency](METADATA-PROGRESS.md)

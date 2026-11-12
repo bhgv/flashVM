@@ -16,7 +16,7 @@ preprocessor directives. Compilation and runtime tests remain necessary evidence
 | Ordinary module MP and metadata | [module_data.inc](../fast/module_data.inc), [module_retirement.c](../fast/module_retirement.c) |
 | Array and object claims | [array_children.inc](../fast/array_children.inc), [object_children.inc](../fast/object_children.inc) |
 | Closed graph publication and release | [graph_publication.inc](../fast/graph_publication.inc), [graph_release.inc](../fast/graph_release.inc) |
-| Shared Fast reclamation | [shared_release.inc](../fast/shared_release.inc) |
+| Shared Fast scheduling and reclamation | [work_budget.inc](../fast/work_budget.inc), [leaf_release.inc](../fast/leaf_release.inc), [shared_release.inc](../fast/shared_release.inc) |
 | Remaining stopped release path | [retained_release.inc](../fast/retained_release.inc) |
 | Cycles publication and queue transfer | [candidate_publication.inc](../cycles/candidate_publication.inc), [candidate_transfer.inc](../cycles/candidate_transfer.inc) |
 | Mandatory owner rescue to Cycles | [owner_rescue.inc](../cycles/owner_rescue.inc), [packet_rescue.inc](../cycles/packet_rescue.inc) |
@@ -98,3 +98,7 @@ Dedicated admission and joined-thread accounting: [native Cycles without tracing
 Shared frame packet fairness and bounded rotation: [packet fairness](../../PACKET-FAIRNESS.md).
 
 Duke hard refusals, bounded queue progress and retained routing: [Duke queue progress](../../DUKE-QUEUE-PROGRESS.md).
+
+[Independent Fast queue budgets](../../FAST-QUEUE-FAIRNESS.md) prevent mandatory,
+retry and ordinary leaves from consuming the allowances of unrelated queues,
+including frame packets. Failed leaf visits also consume their local allowance.
