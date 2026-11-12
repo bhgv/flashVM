@@ -21,7 +21,7 @@ preprocessor directives. Compilation and runtime tests remain necessary evidence
 | Cycles publication and queue transfer | [candidate_publication.inc](../cycles/candidate_publication.inc), [candidate_transfer.inc](../cycles/candidate_transfer.inc) |
 | Mandatory owner rescue to Cycles | [owner_rescue.inc](../cycles/owner_rescue.inc), [packet_rescue.inc](../cycles/packet_rescue.inc) |
 | Cycles discovery and entry | [candidate_scan.inc](../cycles/candidate_scan.inc), [rc_passes.inc](../cycles/rc_passes.inc) |
-| Duke rollback and entry | [pin_release.inc](../duke/pin_release.inc), [rc_passes.inc](../duke/rc_passes.inc) |
+| Duke rollback, rooted queue owners and entry | [pin_release.inc](../duke/pin_release.inc), [rooted_candidates.inc](../duke/rooted_candidates.inc), [rc_passes.inc](../duke/rc_passes.inc) |
 
 Each fragment and its coordinator stay within 500 lines. Include the entire
 `gc` source directory when distributing runtime sources. CMake's compiler include
@@ -29,6 +29,10 @@ dependencies rebuild `runtime_rc.c.o` when any fragment changes. No generated so
 step or new build prerequisite is required. `rc_test_source.py` expands only this
 explicit composition for isolated semantic mutation tests; it does not edit the
 production files or replace a runtime allocator/collector.
+
+`graph_capture.c` separately composes [graph_classification.inc](graph_classification.inc)
+for complete-capture reachability and fresh Duke owner checks. That fragment has
+no independent state; it does not participate in `runtime_rc.c` expansion.
 
 The size/layout check does not certify every historical comment or every GC
 protocol. Current stop-free scope and outstanding work are described in

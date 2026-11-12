@@ -18,6 +18,7 @@
 #include "gc/fast/graph_release.inc"
 #include "gc/cycles/candidate_transfer.inc"
 #include "gc/duke/pin_release.inc"
+#include "gc/duke/rooted_candidates.inc"
 #include "gc/cycles/candidate_scan.inc"
 #include "gc/cycles/rc_passes.inc"
 #include "gc/duke/rc_passes.inc"

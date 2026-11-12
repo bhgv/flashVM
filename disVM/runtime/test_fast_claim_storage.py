@@ -18,7 +18,7 @@ from test_duke_pin_retirement import private_includes
 # require exact semantic failures, never build errors, signals or timeouts.
 # --positive-only omits intentional violations; --mixed-only selects retained
 # backlog with vector BUSY, FULL/BYTES replay and quiescent resource recovery.
-# --large-replay retains the separate 1040-node two-slot watchdog stress probe.
+# --large-replay selects the default matrix's 1040-node two-slot replay cases.
 # RU: Владеть VM-приложениями/частными подтверждениями по CLI путям сборки.
 # Сценарии используют настоящие Module и владельцев графа; контроли требуют
 # точных семантических ошибок, не ошибок сборки, сигналов или таймаутов.
@@ -53,15 +53,37 @@ def main():
         positive = (
             (17, 18)
             if large_replay
-            else (9, 11, 13, 15) if mixed_only else (0, 1, 2, 3, 4, 9, 11, 13, 15)
+            else (9, 11, 13, 15) if mixed_only else (0, 1, 2, 3, 4, 9, 11, 13, 15, 17, 18)
         )
         controls = (
             positive
             if positive_only or mixed_only or large_replay
-            else (*positive, 5, 6, 7, 8, 10, 12, 14, 16)
+            else (*positive, 5, 6, 7, 8, 10, 12, 14, 16, 19)
         )
         for control in controls:
-            confirmation = rc = None
+            confirmation = rc = capture = None
+            if control == 19:
+                path = root / "gc/common/graph_capture.c"
+                text = path.read_text()
+                gate = "if (group->roots_pruned)"
+                boundary = "    if (!classify_record_group(group, 1))"
+                if text.count(gate) != 1 or text.count(boundary) != 1:
+                    raise RuntimeError("Duke root observation restart anchor changed")
+                # EN: Observe the actual classification boundary, never accept
+                # the missing-seed watchdog as the negative test result.
+                # RU: Проверить настоящую границу классификации; watchdog
+                # потерянного seed не считается успехом отрицательного теста.
+                observer = (
+                    "    if (group->roots_pruned)\n"
+                    "    {\n"
+                    '        fputs("FAIL Fast claim storage: '
+                    'pruned root observations cannot classify the last seed\\n", stderr);\n'
+                    "        exit(12);\n"
+                    "    }\n"
+                )
+                text = text.replace(gate, "if (0)").replace(boundary, observer + boundary)
+                capture = work / "graph_capture.c"
+                capture.write_text("#include <stdio.h>\n" + private_includes(text, path))
             if control in (10, 12, 14, 16):
                 text = read_rc_source(root)
                 gate = "retry |= snapshot_retry && dvm_world_has_active_guest(world);"
@@ -121,6 +143,7 @@ def main():
                 ],
                 graph_confirmation_source=confirmation,
                 runtime_rc_source=rc,
+                graph_capture_source=capture,
             )
             profiles = (
                 [("--no-jit", False)]
@@ -156,6 +179,7 @@ def main():
                         12: "snapshot replay retry survives retained backlog",
                         14: "snapshot replay retry survives retained backlog",
                         16: "quiescent retained work must not starve behind shared retry",
+                        19: "pruned root observations cannot classify the last seed",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(
@@ -203,7 +227,7 @@ def main():
         + (
             "; positive profiles only"
             if positive_only or mixed_only or large_replay
-            else "; eight semantic omission controls"
+            else "; nine semantic omission controls"
         )
     )
 

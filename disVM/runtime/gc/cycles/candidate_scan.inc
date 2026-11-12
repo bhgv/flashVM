@@ -55,9 +55,8 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
         take_cycle_candidate(source, heap);
         return 1;
     }
-    if (!resume && dvm_runtime_root_count(heap) > 1 && dvm_refcount_drop_nonfinal_u(&heap->ref))
+    if (!resume && take_independently_rooted_candidate(source, heap))
     {
-        take_cycle_candidate(source, heap);
         dvm_runtime_gc_owner_lost();
         __atomic_fetch_add(&cycle_candidates_rooted, 1, __ATOMIC_RELAXED);
         __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
@@ -109,6 +108,7 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
             {
                 abort();
             }
+            group.roots_pruned |= prune_rooted_duke_candidates(value) != 0;
             duke_inflight = group;
             duke_resumed_slices++;
             return DVM_CANDIDATE_RESUME;
@@ -120,6 +120,31 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
         duke_publish_pending = 0;
     }
     unsigned int discovery_pins = group.pinned_nodes;
+    if (scanned && group.growing && group.live[0])
+    {
+        __atomic_fetch_add(&shared_record_snapshots_with_peer, dvm_world_has_active_guest(world), __ATOMIC_RELAXED);
+        __atomic_fetch_add(&shared_record_scans, 1, __ATOMIC_RELAXED);
+        fvm_port_sync_lock(candidate_transfer);
+        int consumed =
+            dvm_rc_reclassify_duke_group(&group) && group.live[0] && dvm_refcount_drop_nonfinal_u(&heap->ref);
+        if (consumed)
+        {
+            take_cycle_candidate(source, heap);
+        }
+        fvm_port_sync_unlock(candidate_transfer);
+        if (access.domain && !dvm_range_access_end(&access))
+        {
+            abort();
+        }
+        free(group.owned_scratch);
+        if (consumed)
+        {
+            dvm_runtime_gc_owner_lost();
+            __atomic_fetch_add(&released, 1, __ATOMIC_RELAXED);
+        }
+        *busy = !consumed;
+        return consumed;
+    }
     int retry_promotion = 0;
     int promoted = scanned && !group.live[0] && defer_record_group(&group, 1, &retry_promotion);
     if (source == duke_candidates)
@@ -184,11 +209,14 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
         }
         return moved;
     }
+    fvm_port_sync_lock(candidate_transfer);
     if (!promoted && (!live || !dvm_refcount_drop_nonfinal_u(&D2H(value)->ref)))
     {
+        fvm_port_sync_unlock(candidate_transfer);
         return 0;
     }
     take_cycle_candidate(source, heap);
+    fvm_port_sync_unlock(candidate_transfer);
     if (!promoted)
     {
         dvm_runtime_gc_owner_lost();

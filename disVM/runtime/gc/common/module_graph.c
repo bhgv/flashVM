@@ -110,7 +110,7 @@ int dvm_rc_classify_modules(RecordGroup *group)
         unsigned int target = group->targets[edge];
         if (module && group->cells[edge] == &module->origmp && !group->native_owners[source] && target != UINT_MAX)
         {
-            group->live[target] = 1;
+            group->live[target] |= 1;
         }
     }
     return 1;

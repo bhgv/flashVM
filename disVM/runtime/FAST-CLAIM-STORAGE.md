@@ -103,3 +103,7 @@ ARM64/RV64 execution is not established by these checks.
 [Mixed snapshot retry](MIXED-SNAPSHOT-RETRY.md) subsequently extends this fixture
 to 36 positive applications and eight semantic omission controls, including a
 genuine unsupported owner beside supported graph and packet replay work.
+
+[Duke rooted candidates](DUKE-ROOTED-CANDIDATES.md) then restores both 1,040-node
+two-slot replay cases to the default matrix: 44 positive applications and nine
+semantic omission controls, including invalidation of stale root observations.

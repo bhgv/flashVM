@@ -102,19 +102,20 @@ applications and 36 Duke applications: 864 VM executions without sanitizer
 warnings. These include 1,280 injected FULL/BYTES replay refusals and 320 real
 unknown-callback cleanups after guest release. Changed handwritten sources remain
 at most 352 lines. The separate large-replay probe below is not part of that
-passing set and remains an open watchdog failure.
+passing set. That failure was subsequently addressed by
+[Duke rooted candidate consolidation](DUKE-ROOTED-CANDIDATES.md).
 
 ## Larger replay watchdog / Watchdog большого возврата
 
-The 1,040-node two-slot replay variant exceeded its internal ten-second
+Before the subsequent Duke consolidation, the 1,040-node two-slot replay variant exceeded its internal ten-second
 watchdog under TSan, including the retained manual probe on this version. Observed
 states retained 40 or 200 roots and an active Duke candidate after thousands of
 passes; allocation-root safety did not establish bounded completion. That large replay stress is not fixed by this signal patch.
 The queue protocol cases use 64 nodes to isolate reservation/result behavior.
 Existing 1,040-node ownership graphs remain in the default matrix. The larger
 replay variant is retained explicitly as `--large-replay` on the driver and is
-not included in the passing default acceptance set; a watchdog failure remains
-a failing positive test, never an accepted omission result. For example:
+now also included in the default acceptance set after the Duke fix. A watchdog
+failure remains a failing positive test, never an accepted omission result. For example:
 
 ```sh
 python3 disVM/runtime/test_fast_claim_storage.py \
@@ -123,7 +124,9 @@ python3 disVM/runtime/test_fast_claim_storage.py \
 ```
 
 Начальный двухполейный replay на 1,040 узлах превышал внутренний watchdog под
-TSan при оставшихся живых корнях и кандидате Duke. Этот стресс не исправлен.
+TSan при оставшихся живых корнях и кандидате Duke. Последующее
+[исправление Duke](DUKE-ROOTED-CANDIDATES.md) устраняет эту волну кандидатов
+и возвращает оба больших replay-сценария в основную приёмку.
 Отдельный режим `--large-replay` сохраняет воспроизведение. Протокол очереди
 изолирован на 64 узлах; прежние большие графы владения остаются в основном наборе.
 

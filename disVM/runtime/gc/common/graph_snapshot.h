@@ -14,6 +14,7 @@
 #define RECORD_EDGE_LIMIT 512                        /* Maximum mapped fields in one guarded snapshot. */
 #define RECORD_NODE_CAPACITY (RECORD_EDGE_LIMIT + 1) /* Seed plus one target per field. */
 #define RECORD_INDEX_SLOTS (RECORD_EDGE_LIMIT * 4)   /* Power of two, below half full. */
+#define RECORD_INTRINSIC_LIVE 0x80U                  /* Unsupported source survives derived-live recomputation. */
 
 
 typedef struct RecordGroup
@@ -30,7 +31,7 @@ typedef struct RecordGroup
     void **expected_fields;           /* Published values in field order, including nil. */
     unsigned int *targets;            /* Target node index or nil sentinel. */
     unsigned int *sources;            /* Source indices during discovery; NULL after publication. */
-    unsigned char *live;              /* Nodes reachable from outside the group. */
+    unsigned char *live;              /* Outside reachability; bit 0x80 preserves intrinsic unsupported sources. */
     void *owned_scratch;              /* Duke's allocated discovery storage, or NULL. */
     unsigned int field_limit;         /* Capture capacity of the backing storage. */
     size_t source_element;            /* Element cursor inside a suspended source. */
@@ -38,6 +39,7 @@ typedef struct RecordGroup
     int source_tail_seen;             /* List tail or native origmp edge captured before mapped fields. */
     unsigned int next_source;         /* Next source node in a suspended Duke scan. */
     unsigned int pinned_nodes;        /* Duke holds nodes at indices 1 through this count. */
+    unsigned int roots_pruned;        /* Queue owner removal invalidates this capture's live classification. */
     int growing;                      /* Duke can enlarge discovery storage under guards. */
     unsigned int dead_count;          /* Dead nodes in a published snapshot. */
     unsigned int live_count;          /* Nodes marked reachable. */
@@ -114,6 +116,13 @@ int dvm_rc_queued_record_group(void *start, unsigned long start_roots, RecordGro
 /* EN: Capture a slice from start into group under access. Return 2 to resume.
  * RU: Прочитать порцию графа start в group под access. Вернуть 2 для продолжения. */
 int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *access);
+
+
+/* [GC:] EN: Reclassify complete Duke group under all field guards and candidate
+ * removal exclusion. Reset derived live marks; return zero on invalid counts.
+ * RU: Повторить классификацию полного group под guards всех полей с исключением
+ * снятия кандидатов. Сбросить вычисленные live-метки; ноль — неверные счётчики. */
+int dvm_rc_reclassify_duke_group(RecordGroup *group);
 
 
 /* [GC:] EN: Register native module for source in group; return its first source.

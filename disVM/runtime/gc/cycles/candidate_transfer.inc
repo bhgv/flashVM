@@ -23,6 +23,25 @@ static void take_cycle_candidate(DVM_RetirementQueue *source, Heap *heap)
 }
 
 
+/* [GC:] EN: Under shared admission, consume source's borrowed head only with
+ * an independent registered root and a nonfinal atomic drop. Exclude other
+ * candidate consumers' final live checks. Return one on consumption, zero intact.
+ * RU: Под shared-допуском снять заимствованную голову source лишь при другом
+ * корне и нефинальном атомарном снятии ссылки. Исключить итоговые live-проверки
+ * других читателей кандидатов. Один — потреблён, ноль — сохранён. */
+static int take_independently_rooted_candidate(DVM_RetirementQueue *source, Heap *heap)
+{
+    fvm_port_sync_lock(candidate_transfer);
+    int consumed = dvm_runtime_root_count(heap) > 1 && dvm_refcount_drop_nonfinal_u(&heap->ref);
+    if (consumed)
+    {
+        take_cycle_candidate(source, heap);
+    }
+    fvm_port_sync_unlock(candidate_transfer);
+    return consumed;
+}
+
+
 /* EN: Move candidate and its root from source to destination. Return zero if full.
  * RU: Передать candidate и его корень из source в destination. При отказе вернуть ноль. */
 int dvm_rc_move_candidate(DVM_RetirementQueue *source, DVM_RetirementQueue *destination, void *candidate)

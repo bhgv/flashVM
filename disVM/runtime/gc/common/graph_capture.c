@@ -158,7 +158,7 @@ static int capture_record_source(
         {
             if (array->len < 0 || array->data != (unsigned char *)array + sizeof(*array))
             {
-                group->live[index] = 1;
+                group->live[index] = RECORD_INTRINSIC_LIVE;
                 return 1;
             }
             type = array->t;
@@ -170,7 +170,7 @@ static int capture_record_source(
     {
         if (!dvm_gc_fast_module_eligible(heap))
         {
-            group->live[index] = 1;
+            group->live[index] = RECORD_INTRINSIC_LIVE;
             return 1;
         }
         group->has_modules = 1;
@@ -214,7 +214,7 @@ static int capture_record_source(
         Channel *channel = record;
         if (!dvm_runtime_channel_is_quiet(channel))
         {
-            group->live[index] = 1;
+            group->live[index] = RECORD_INTRINSIC_LIVE;
             return 1;
         }
         type = &Tptr;
@@ -224,11 +224,11 @@ static int capture_record_source(
         (!type || type->size < (int)sizeof(void *) ||
          (heap->t != &Tarray && heap->t != &Tchannel && heap->t != &Tmodlink && type->free != freeheap)))
     {
-        group->live[index] = 1;
+        group->live[index] = RECORD_INTRINSIC_LIVE;
         return 1;
     }
     unsigned long expected_roots = index == 0 ? start_roots : group->growing;
-    if (dvm_runtime_root_count(heap) != expected_roots)
+    if (!group->growing && dvm_runtime_root_count(heap) != expected_roots)
     {
         group->live[index] = 1;
     }
@@ -285,67 +285,7 @@ static int capture_record_source(
     return 1;
 }
 
-
-/* EN: Mark nodes in group reachable from outside. shared permits dropping an unclosed candidate as live.
- * RU: Отметить внешне достижимые узлы group. В режиме shared незамкнутого кандидата можно считать живым. */
-static int classify_record_group(RecordGroup *group, int shared)
-{
-    if (!dvm_rc_classify_modules(group))
-    {
-        return 0;
-    }
-    if (!group->incoming[0])
-    {
-        if (!shared)
-        {
-            return 0;
-        }
-        group->live[0] = 1;
-    }
-    /* Discovery is complete; reuse its index as two dense work arrays. */
-    unsigned int *ready = group->index;
-    unsigned int *starts = ready + group->nodes_used;
-    unsigned int edge = 0;
-    for (unsigned int index = 0; index < group->nodes_used; index++)
-    {
-        Heap *heap = D2H(group->nodes[index]);
-        unsigned long expected = group->incoming[index] + (index == 0 || index <= group->pinned_nodes);
-        unsigned long actual = dvm_refcount_load_u(&heap->ref);
-        if (actual < expected)
-        {
-            return 0;
-        }
-        group->live[index] |= actual > expected;
-        if (group->live[index])
-        {
-            ready[group->live_count++] = index;
-        }
-        starts[index] = edge;
-        while (edge < group->edges_used && group->sources[edge] == index)
-        {
-            edge++;
-        }
-    }
-    starts[group->nodes_used] = edge;
-
-    /* Edges are captured in source order. Visit each live node's outgoing
-     * range once, even when reachability runs against discovery order. */
-    for (unsigned int head = 0; head < group->live_count && !group->live[0]; head++)
-    {
-        unsigned int source = ready[head];
-        dvm_rc_mark_module_live(group, source, starts, ready);
-        for (edge = starts[source]; edge < starts[source + 1]; edge++)
-        {
-            unsigned int target = group->targets[edge];
-            if (target != UINT_MAX && !group->live[target])
-            {
-                group->live[target] = 1;
-                ready[group->live_count++] = target;
-            }
-        }
-    }
-    return 1;
-}
+#include "graph_classification.inc"
 
 
 /* [GC:] EN: Reacquire all captured fields, verify them, and drop discovery pins
@@ -448,6 +388,16 @@ int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *
         {
             return DVM_DUKE_CAPTURE_RESUME;
         }
+    }
+    if (group->roots_pruned)
+    {
+        /* [GC:] EN: Queue owners disappeared after root observations. Preserve
+         * the seed and restart, never consume it using stale live marks.
+         * RU: После чтения корней сняты владельцы очереди. Сохранить seed,
+         * повторить обход; устаревшая live-метка не разрешает снять seed. */
+        (void)confirm_duke_capture(group, access);
+        group->busy = 1;
+        return 0;
     }
     if (!classify_record_group(group, 1))
     {

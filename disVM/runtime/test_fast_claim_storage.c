@@ -26,7 +26,7 @@
 #include <string.h>
 #include <time.h>
 
-#if (CONTROL >= 11 && CONTROL <= 14) || CONTROL == 17 || CONTROL == 18
+#if (CONTROL >= 11 && CONTROL <= 14) || (CONTROL >= 17 && CONTROL <= 19)
 #define SCENARIO 0                  /* Real stale pure graph replay under FULL/BYTES pressure. */
 #elif CONTROL < 5
 #define SCENARIO CONTROL            /* Actual native owner count profile. */
@@ -37,8 +37,8 @@
 #endif
 #define MixedPending (CONTROL >= 9) /* Retain a genuine unknown callback beside supported graph work. */
 #define ReplayPressure                                                                                                 \
-    ((CONTROL >= 11 && CONTROL <= 14) || CONTROL == 17 ||                                                              \
-     CONTROL == 18)                                   /* Refuse actual snapshot-to-packet reservation. */
+    ((CONTROL >= 11 && CONTROL <= 14) ||                                                                               \
+     (CONTROL >= 17 && CONTROL <= 19))                /* Refuse actual snapshot-to-packet reservation. */
 #define ReplayBytes                                                                                                    \
     (CONTROL == 13 || CONTROL == 14 || CONTROL == 18) /* Exercise direct-byte refusal separately from slot refusal. */
 #define QuiescentAssist (CONTROL == 15 || CONTROL == 16) /* Retained cleanup releases persistent shared pressure. */
