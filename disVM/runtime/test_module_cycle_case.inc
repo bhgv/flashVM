@@ -6,12 +6,12 @@
 
 /* [GC:] EN: Construct a Module with independent original MP and cloned instance
  * data. Close the instance cycle using real field owners. The large case inserts
- * ordinary records; two-link case consumes two independent registry owners.
+ * ordinary records; instance cases consume independent registry owners.
  * Keep Type creator until every physical heap and native Module free completes.
  * frame remains production-owned. No fixture reference is silently discarded.
  * RU: Создать Module с отдельным исходным MP и клоном данных экземпляра.
  * Замкнуть цикл настоящими ссылками полей. Большой режим добавляет записи,
- * режим двух link снимает две независимые ссылки реестра. Сохранить создателя Type
+ * режимы нескольких link снимают независимые ссылки реестра. Сохранить создателя Type
  * до всех free кучи/Module. frame принадлежит runtime; ссылки теста не теряются. */
 void __wrap_Sys_werrstr(void *frame)
 {
@@ -32,8 +32,9 @@ void __wrap_Sys_werrstr(void *frame)
     module->type[0] = type;
     module->ntype = 1;
     module->origmp = H2D(uchar *, heapz(type));
-    Module *lookup = (CONTROL == 1 || CONTROL == 12) ? lookmod((char *)ModuleName) : NULL;
-    int shared_mp = CONTROL == 10 || CONTROL == 14 || CONTROL == 15 || CONTROL == 16 || CONTROL == 17;
+    int multiple = (SCENARIO >= 20 && SCENARIO <= 27) || three_members() || SCENARIO == 34;
+    Module *lookup = (SCENARIO == 1 || SCENARIO == 12 || SCENARIO == 23) ? lookmod((char *)ModuleName) : NULL;
+    int shared_mp = SCENARIO == 10 || SCENARIO == 14 || SCENARIO == 15 || SCENARIO == 16 || SCENARIO == 17;
     Import imports[1] = {{0}};
     Modlink *link = linkmod(module, imports, !shared_mp);
     if (shared_mp)
@@ -45,17 +46,20 @@ void __wrap_Sys_werrstr(void *frame)
     }
     require(link != H && link->MP != H && (shared_mp ? link->MP == module->origmp : link->MP != module->origmp),
             "actual original MP sharing or instance clone");
-    unsigned count = (CONTROL == 4 || CONTROL == 17) ? 2300 : (CONTROL == 3 || CONTROL == 16) ? 4 : 2;
+    unsigned count = three_members()                                       ? 6
+                     : (SCENARIO == 4 || SCENARIO == 17 || SCENARIO == 25) ? 2300
+                     : (SCENARIO == 3 || SCENARIO == 16 || multiple)       ? 4
+                                                                           : 2;
     Module *second = NULL;
     void *values[MaxNodes];
     values[0] = link;
     values[1] = link->MP;
     for (unsigned index = 2; index < count; index++)
     {
-        if ((CONTROL == 3 || CONTROL == 16) && index == 2)
+        if (((SCENARIO == 3 || SCENARIO == 16 || multiple) && index == 2) || (three_members() && index == 4))
         {
             Module *another;
-            if (CONTROL == 16)
+            if (SCENARIO == 16)
             {
                 another = builtinmod((char *)OtherName, empty, 0);
                 require(another && dvm_refcount_retain_i(&type->ref) == DVM_REFCOUNT_LIVE,
@@ -72,8 +76,8 @@ void __wrap_Sys_werrstr(void *frame)
                 another = lookmod((char *)ModuleName);
             }
             require(another != NULL, "second actual Module owner");
-            Modlink *other = linkmod(another, imports, CONTROL != 16);
-            if (CONTROL == 16)
+            Modlink *other = linkmod(another, imports, SCENARIO != 16);
+            if (SCENARIO == 16)
             {
                 require(other != H && other->MP == H &&
                             dvm_refcount_retain_u(&D2H(another->origmp)->ref) == DVM_REFCOUNT_LIVE,
@@ -92,33 +96,47 @@ void __wrap_Sys_werrstr(void *frame)
     }
     for (unsigned index = 1; index < count; index++)
     {
-        if ((CONTROL == 3 || CONTROL == 16) && index == 2)
+        if (((SCENARIO == 3 || SCENARIO == 16 || multiple) && index == 2) || (three_members() && index == 4))
         {
             continue;
         }
-        unsigned target = (index + 1) % count;
+        if (((SCENARIO == 27 || SCENARIO == 34) && index == 3) || (SCENARIO == 33 && index == 5))
+        {
+            continue;
+        }
+        unsigned target = (((SCENARIO == 27 || SCENARIO == 34) && index == 1) || (SCENARIO == 33 && index == 3))
+                              ? 0
+                              : (index + 1) % count;
         require(dvm_refcount_retain_u(&D2H(values[target])->ref) == DVM_REFCOUNT_LIVE, "actual cycle field owner");
         memcpy(values[index], &values[target], sizeof(void *));
         Setmark(D2H(values[target]));
     }
+    if (multiple)
+    {
+        void *target = values[SCENARIO == 33 ? 4 : (SCENARIO == 27 || SCENARIO == 34) ? 2 : 0];
+        require(dvm_refcount_retain_u(&D2H(target)->ref) == DVM_REFCOUNT_LIVE, "shared Module original-MP field owner");
+        memcpy(module->origmp, &target, sizeof(target));
+        Setmark(D2H(target));
+    }
     for (unsigned index = 2; index < count; index++)
     {
-        if ((CONTROL == 3 || CONTROL == 16) && index == 3)
+        if (((SCENARIO == 3 || SCENARIO == 16 || multiple) && index == 3) || (three_members() && index == 5))
         {
             continue;
         }
         require(dvm_refcount_drop_nonfinal_u(&D2H(values[index])->ref), "consume private creator owner");
     }
-    if (CONTROL == 11 || CONTROL == 12 || CONTROL == 13)
+    if (SCENARIO == 11 || SCENARIO == 12 || SCENARIO == 13)
     {
         require(dvm_refcount_retain_u(&D2H(link)->ref) == DVM_REFCOUNT_LIVE, "original MP owns cycle back edge");
         memcpy(module->origmp, &link, sizeof(link));
         Setmark(D2H(link));
     }
     DVM_OwnerTransfer outside = {0};
-    if (CONTROL == 2)
+    if (SCENARIO == 2 || SCENARIO == 26 || SCENARIO == 27 || SCENARIO == 33)
     {
-        require(dvm_managed_owner_capture(values[1], &outside), "external native MP owner");
+        void *external = SCENARIO == 26 ? module->origmp : values[SCENARIO == 33 ? 4 : SCENARIO == 27 ? 2 : 1];
+        require(dvm_managed_owner_capture(external, &outside), "external native MP or member owner");
     }
     pthread_mutex_lock(&sync);
     for (unsigned index = 0; index < count; index++)
@@ -138,7 +156,8 @@ void __wrap_Sys_werrstr(void *frame)
     }
     __atomic_store_n(&target_module, module, __ATOMIC_RELEASE);
     __atomic_store_n(&second_module, second, __ATOMIC_RELEASE);
-    live_owner = CONTROL == 2 || CONTROL == 12;
+    live_owner = SCENARIO == 2 || SCENARIO == 12 || SCENARIO == 23 || SCENARIO == 26;
+    member_live = SCENARIO == 27 || SCENARIO == 33;
     pthread_mutex_unlock(&sync);
     DVM_OwnerTransfer ticket = {0};
     require(dvm_managed_owner_capture(link, &ticket) && dvm_refcount_drop_nonfinal_u(&D2H(link)->ref),
@@ -153,8 +172,16 @@ void __wrap_Sys_werrstr(void *frame)
         pthread_mutex_lock(&sync);
         if (epochs_held && held_passes >= 8)
         {
-            require(!freed && !metadata_freed, "old graph reader epochs prevent all target frees");
+            require(freed == held_freed && !metadata_freed, "old graph reader epochs prevent all target frees");
             epochs_held = 0;
+        }
+        DVM_GCWorkersState member_lanes;
+        int drop_member = 0;
+        if (member_live && destroyed[0] && destroyed[1] && (!three_members() || (destroyed[2] && destroyed[3])))
+        {
+            require(dvm_gc_workers_state(dvm_gc_runtime.workers, &member_lanes), "live member worker state");
+            drop_member = !member_lanes.active && !member_lanes.Fast.pending && !dvm_runtime_rc_ready() &&
+                          !dvm_runtime_rc_candidates_ready() && !dvm_runtime_rc_duke_ready();
         }
         int drop_outside = live_owner && (live_seen || lookup_refused);
         Module *late = lookup_refused ? racing_lookup : NULL;
@@ -163,8 +190,8 @@ void __wrap_Sys_werrstr(void *frame)
             racing_lookup = NULL;
         }
         int drop_lookup = lookup && freed == graph_count;
-        success = freed == node_count && metadata_freed == (CONTROL == 16 ? 3 : 1) && !expired;
-        int start_leaf = success && (CONTROL == 18 || CONTROL == 19) && !leaf_started;
+        success = freed == node_count && metadata_freed == (SCENARIO == 16 ? 3 : 1) && !expired;
+        int start_leaf = success && (SCENARIO == 18 || SCENARIO == 19) && !leaf_started;
         if (leaf_gate)
         {
             DVM_GCWorkersState lanes;
@@ -180,15 +207,34 @@ void __wrap_Sys_werrstr(void *frame)
             native = publish_idle_leaf(type, native);
             success = 0;
         }
+        if (drop_member)
+        {
+            dvm_runtime_gc_native_enter(native);
+            unsigned int member_index = three_members() ? 4 : 2;
+            Modlink *other = values[member_index];
+            require(dvm_refcount_load_u(&nodes[count]->ref) == 1,
+                    "live member and original MP cannot be reclaimed with dead subset");
+            require(!metadata_freed && !destroyed[member_index] && !destroyed[member_index + 1] && !destroyed[count] &&
+                        other->MP == values[member_index + 1] && ((void **)module->origmp)[0] == other &&
+                        dvm_refcount_load_i(&module->ref) == 1,
+                    "live member preserves native Module and original MP after dead member free");
+            pthread_mutex_lock(&sync);
+            member_live = 0;
+            member_seen = 1;
+            pthread_mutex_unlock(&sync);
+            require(dvm_owner_transfer_cancel(&outside), "release independently rooted live module member");
+            native = dvm_runtime_gc_native_try_leave();
+            require(native > 0, "parent roots after live member release");
+        }
         if (drop_outside)
         {
             dvm_runtime_gc_native_enter(native);
-            require(!freed && link->MP == values[1] && ((void **)values[1])[0] == link,
+            require(!freed && link->MP == values[1] && ((void **)values[1])[0] == values[multiple ? 2 : 0],
                     "reachable module cycle retains both original edges");
             pthread_mutex_lock(&sync);
             live_owner = 0;
             pthread_mutex_unlock(&sync);
-            if (CONTROL == 2)
+            if (SCENARIO == 2 || SCENARIO == 26)
             {
                 require(dvm_owner_transfer_cancel(&outside), "release external native MP owner");
             }
@@ -267,13 +313,16 @@ void __wrap_Sys_werrstr(void *frame)
     }
     require(success, "module cycle still requires heap quiescence");
     require(confirmed && held_passes >= 8, "real module graph claim and final reader wait observed");
-    require(CONTROL != 2 || live_seen, "external MP kept cycle live through actual scan");
-    require(CONTROL != 5 || (changed_fields && stale_refused), "actual changed-field snapshot refusal observed");
-    require(CONTROL != 12 || live_seen, "native Module lookup owner kept the original-MP cycle live");
-    require(CONTROL != 13 || lookup_refused, "real lookup defeated original-MP graph claim");
-    require((CONTROL != 14 && CONTROL != 16) || (native_refused && rollback_seen),
+    require(SCENARIO != 2 || live_seen, "external MP kept cycle live through actual scan");
+    require(SCENARIO != 5 || (changed_fields && stale_refused), "actual changed-field snapshot refusal observed");
+    require((SCENARIO != 12 && SCENARIO != 23 && SCENARIO != 26) || live_seen,
+            "native Module lookup owner kept the original-MP cycle live");
+    require((SCENARIO != 13 && SCENARIO != 24) || lookup_refused, "real lookup defeated original-MP graph claim");
+    require((SCENARIO != 14 && SCENARIO != 16 && SCENARIO != 21 && SCENARIO != 32) || (native_refused && rollback_seen),
             "native count claim rollback observed");
-    require(CONTROL != 15 || (epoch_refused && rollback_seen), "final epoch refusal rollback observed");
+    require((SCENARIO != 15 && SCENARIO != 22) || (epoch_refused && rollback_seen),
+            "final epoch refusal rollback observed");
+    require((SCENARIO != 27 && SCENARIO != 33) || member_seen, "live native member boundary observed");
     dvm_runtime_gc_native_enter(native);
     require(dvm_refcount_load_i(&type->ref) == 1, "all graph and Module Type owners physically retired");
     freetype(type);
@@ -283,7 +332,7 @@ void __wrap_Sys_werrstr(void *frame)
     pthread_mutex_unlock(&sync);
     fprintf(
         stderr,
-        "PASS module cycle nodes=%u finalizers=%u metadata=%d final_epoch=1 live=%d stale=%d native_refusal=%d epoch_refusal=%d lookup_refusal=%d rollback=%d\n",
+        "PASS module cycle nodes=%u finalizers=%u metadata=%d final_epoch=1 live=%d stale=%d native_refusal=%d epoch_refusal=%d lookup_refusal=%d rollback=%d member=%d\n",
         count,
         finalizers,
         metadata_freed,
@@ -292,5 +341,6 @@ void __wrap_Sys_werrstr(void *frame)
         native_refused,
         epoch_refused,
         lookup_refused,
-        rollback_seen);
+        rollback_seen,
+        member_seen);
 }

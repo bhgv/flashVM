@@ -13,6 +13,7 @@
 #include "heap_pool.h"
 #include "runtime_gc.h"
 #include "runtime_rc.h"
+#include "module_registry.h"
 #include "managed_owner.h"
 #include "root_registry.h"
 #include "gc/common/runtime_state.h"
@@ -27,6 +28,13 @@
 #include <string.h>
 #include <time.h>
 
+#if CONTROL == 28
+#define SCENARIO 20                                       /* Restore sole-owner preflight on a real two-member cycle. */
+#elif CONTROL == 29 || CONTROL == 30
+#define SCENARIO 27                                       /* Omit live-member reachability or native edge filtering. */
+#else
+#define SCENARIO CONTROL                                  /* Ordinary positive and existing omission scenarios. */
+#endif
 #define MaxNodes 2301                                     /* Large graph plus separately retired original MP. */
 #define OtherName "$OtherModuleCycleRetirement"           /* Second native registry identity. */
 #define ModuleName "$ModuleCycleRetirement"               /* Unique registry identity in this app. */
@@ -59,7 +67,10 @@ static int leaf_started;                 /* Standalone record has its real candi
 static _Thread_local int leaf_published; /* Cycles added its actual leaf replacement root. */
 static _Thread_local int leaf_notified;  /* The same publication notified Fast. */
 static int metadata_freed;               /* Actual metadata free completed, under sync. */
-static unsigned finalizers;              /* Actual known Modlink finalizers, under sync. */
+static unsigned finalizers;              /* Ordinary unload or last graph-Module finish callbacks, under sync. */
+static unsigned held_freed;              /* Completed target frees when current epoch hold begins. */
+static int member_live;                  /* A rooted member may outlive another member of its Module. */
+static int member_seen;                  /* Dead subset retired while native/original data stayed live. */
 static int live_owner;                   /* External MP ticket is still independently rooted. */
 static int live_seen;                    /* Cycles withdrew a live seed while MP owner remained. */
 static int changed_fields;               /* Actual count-neutral MP field move completed. */
@@ -93,6 +104,9 @@ int __real_dvm_refcount_compare_i(int *, int, int);
 
 
 unsigned long __real_dvm_world_retire_epoch(DVM_NativeWorld *);
+
+
+int __real_dvm_module_registry_claim_counts(Module **, const unsigned int *, unsigned, int (*)(void *), void *);
 
 
 void __real_poolfree(Pool *, void *);
@@ -145,9 +159,10 @@ int __wrap_dvm_runtime_root_remove(const void *key)
     pthread_mutex_lock(&sync);
     if (result && live_owner && key == nodes[0] && dvm_native_context_current() != fast_context)
     {
-        if (CONTROL == 2)
+        if (SCENARIO == 2 || SCENARIO == 26)
         {
-            require(dvm_runtime_root_count(nodes[1]) == 1, "external MP owner retains its root");
+            require(dvm_runtime_root_count(nodes[SCENARIO == 26 ? node_count - 1 : 1]) == 1,
+                    "external MP owner retains its root");
         }
         else
         {
@@ -172,15 +187,18 @@ DVM_CellResult __wrap_dvm_gc_fast_confirm_graph(
 {
     pthread_mutex_lock(&sync);
     int selected = 0;
-    for (unsigned index = 0; nodes[0] && !destroyed[0] && index < group->nodes_used; index++)
+    unsigned int anchor_index = (SCENARIO == 27 || SCENARIO == 33) && destroyed[0] ? (three_members() ? 4 : 2) : 0;
+    for (unsigned index = 0; nodes[anchor_index] && !destroyed[anchor_index] && index < group->nodes_used; index++)
     {
-        selected |= group->nodes[index] == H2D(void *, nodes[0]);
+        selected |= group->nodes[index] == H2D(void *, nodes[anchor_index]);
     }
-    int mutate = selected && CONTROL == 5 && !changed_fields;
+    int mutate = selected && SCENARIO == 5 && !changed_fields;
     if (selected)
     {
         require(group->has_modules, "snapshot records native module finalization");
         epochs_held = 1;
+        held_passes = 0;
+        held_freed = freed;
     }
     pthread_mutex_unlock(&sync);
     if (mutate)
@@ -197,7 +215,7 @@ DVM_CellResult __wrap_dvm_gc_fast_confirm_graph(
         changed_fields = 1;
         pthread_mutex_unlock(&sync);
     }
-    if (selected && CONTROL == 13 && !lookup_refused)
+    if (selected && (SCENARIO == 13 || SCENARIO == 24) && !lookup_refused)
     {
         Module *lookup = lookmod((char *)ModuleName);
         require(lookup != NULL, "actual lookup wins before graph claim");
@@ -253,7 +271,11 @@ unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, siz
 static void observe_module_finalizer(Heap *heap)
 {
     pthread_mutex_lock(&sync);
-    int selected = heap == nodes[0] || ((CONTROL == 3 || CONTROL == 16) && heap == nodes[2]);
+    int selected =
+        heap == nodes[0] ||
+        ((SCENARIO == 3 || SCENARIO == 16 || (SCENARIO >= 20 && SCENARIO <= 27) || three_members() || SCENARIO == 34) &&
+         heap == nodes[2]) ||
+        (three_members() && heap == nodes[4]);
     if (selected)
     {
         require(H2D(Modlink *, heap)->MP == H, "claimed module MP edge must be detached once");
@@ -293,7 +315,7 @@ void __wrap_dvm_gc_fast_module_graph_finalize(Heap *heap, Module *module)
  * допустимость обычного Fast. Остальные проверки heap проходят без изменения. */
 int __wrap_dvm_gc_fast_module_eligible(const Heap *heap)
 {
-    if (CONTROL == 6 && heap && heap->t == &Tmodlink &&
+    if (SCENARIO == 6 && heap && heap->t == &Tmodlink &&
         dvm_native_context_current() != __atomic_load_n(&fast_context, __ATOMIC_ACQUIRE) &&
         !dvm_native_context_process(dvm_native_context_current()))
     {
@@ -320,12 +342,17 @@ void __wrap_poolfree(Pool *pool, void *value)
     if (index < node_count)
     {
         DVM_WorldState state;
+        require(!(member_live && index >= (three_members() ? 4U : 2U)),
+                "live member and original MP cannot be reclaimed with dead subset");
         require(!destroyed[index] && !live_owner && !epochs_held && !expired &&
                     dvm_world_state(dvm_gc_runtime.world, &state) && !state.stopping && !state.stopped &&
                     state.active >= 2,
                 "module cycle physical release waits for readers with admitted peers");
         require(dvm_runtime_root_count(value) == 0, "module cycle has no root at physical free");
-        require(index != 0 || finalizers, "module cycle must run native Module finalization");
+        if (((Heap *)value)->t == &Tmodlink)
+        {
+            require(H2D(Modlink *, value)->m == NULL, "module cycle must run native Module finalization");
+        }
     }
     if (index < node_count && value == leaf_target)
     {
@@ -356,8 +383,11 @@ void __wrap_free(void *value)
         return;
     }
     pthread_mutex_lock(&sync);
-    require(!(metadata_freed & bit) && !epochs_held && !live_owner &&
-                (CONTROL == 16 ? finalizers >= 1 : finalizers == (CONTROL == 3 ? 2U : 1U)),
+    require(!(metadata_freed & bit) && !epochs_held && !live_owner && !member_live &&
+                (SCENARIO == 16 ? finalizers >= 1
+                                : finalizers == (SCENARIO == 33   ? 3U
+                                                 : SCENARIO == 27 ? 2U
+                                                                  : 1U)),
             "native metadata waits for all claimed links");
     DVM_WorldState state;
     require(dvm_world_state(dvm_gc_runtime.world, &state) && !state.stopping && !state.stopped && state.active >= 2,

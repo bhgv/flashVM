@@ -41,8 +41,8 @@ node. The [original-MP follow-up](ORIGINAL-MP-CYCLES.md) now adds sole-owner
 attribution, lookup-safe native claims and rollback. In particular,
 `Module.origmp` is an independently owned managed reference. When that owner keeps
 an instance cycle reachable, ordinary outside-count classification preserves it;
-the initial change did not consume that native edge. Multi-owner native Module
-closure, arbitrary native plugins and the whole loader/code-cache mutation surface
+the initial change did not consume that native edge. The [multi-owner follow-up](MULTI-OWNER-MODULE-CYCLES.md) now extends native
+closure; arbitrary native plugins and the whole loader/code-cache mutation surface
 remain outside certification. `mkmp == 0` creates an empty MP instance; the later
 fixture explicitly attaches a retained original-MP owner before publication.
 
@@ -60,7 +60,7 @@ implementations for each of six scenarios:
 | One instance | Modlink, cloned MP, original MP and native Module physically freed |
 | Registry lookup owner | Cycle heaps retire first; Module and original MP survive until lookup owner is released |
 | External MP ticket | Actual Cycles live scan preserves both edges; later ticket release collects |
-| Two instances | Two Modlink/MP pairs share one Module; exactly two native finalizers and one metadata free |
+| Two instances | Two Modlink/MP pairs share one Module; both link heaps retire and native metadata is freed once |
 | 2300-node instance ring | Bounded Cycles promotion, resumed Duke capture and every physical node free |
 | Changed MP fields | A real guarded count-neutral field move makes actual confirmation refuse the stale snapshot; replay later collects |
 
@@ -92,8 +92,11 @@ rings. Generated JIT instructions are not C-TSan instrumented. Execution was Lin
 x86-64; ARM64/RV64 remain unverified. The focused native/root/owner/module/resident
 selection passed 84/84 tests. Ten additional longer GC checks passed 10/10.
 
-General stopped tracing, multi-owner native Module cycle closure, unsupported
+General stopped tracing, unsupported
 finalizers, complete root-publication auditing and shutdown still remain. Earlier
 acceptance failures and limitations recorded in [CONCURRENT-GC.md](CONCURRENT-GC.md)
 and [FAST-FINALIZATION.md](FAST-FINALIZATION.md) are not erased by these focused
 passes. This is another supported shared graph class, not complete no-STW GC.
+
+[Aggregated native ownership](MULTI-OWNER-MODULE-CYCLES.md) now follows all
+ordinary instance owners, including original-MP-only membership and live subsets.

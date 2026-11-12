@@ -175,7 +175,7 @@ static int capture_record_source(
         }
         group->has_modules = 1;
         Module *module = H2D(Modlink *, heap)->m;
-        if (access && !group->source_tail_seen && dvm_refcount_load_i(&module->ref) == 1)
+        if (access && dvm_rc_native_module_source(group, index, module) == index && !group->source_tail_seen)
         {
             if (field_end && group->edges_used >= field_end)
             {
@@ -185,7 +185,6 @@ static int capture_record_source(
             {
                 return 0;
             }
-            group->native_modules[index] = module;
             group->source_tail_seen = group->growing;
         }
         type = &Tptr;
@@ -291,6 +290,10 @@ static int capture_record_source(
  * RU: Отметить внешне достижимые узлы group. В режиме shared незамкнутого кандидата можно считать живым. */
 static int classify_record_group(RecordGroup *group, int shared)
 {
+    if (!dvm_rc_classify_modules(group))
+    {
+        return 0;
+    }
     if (!group->incoming[0])
     {
         if (!shared)
@@ -306,11 +309,6 @@ static int classify_record_group(RecordGroup *group, int shared)
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         Heap *heap = D2H(group->nodes[index]);
-        if (group->native_modules[index] && dvm_refcount_load_i(&((Module *)group->native_modules[index])->ref) != 1)
-        {
-            group->busy = 1;
-            return 0;
-        }
         unsigned long expected = group->incoming[index] + (index == 0 || index <= group->pinned_nodes);
         unsigned long actual = dvm_refcount_load_u(&heap->ref);
         if (actual < expected)
@@ -335,6 +333,7 @@ static int classify_record_group(RecordGroup *group, int shared)
     for (unsigned int head = 0; head < group->live_count && !group->live[0]; head++)
     {
         unsigned int source = ready[head];
+        dvm_rc_mark_module_live(group, source, starts, ready);
         for (edge = starts[source]; edge < starts[source + 1]; edge++)
         {
             unsigned int target = group->targets[edge];

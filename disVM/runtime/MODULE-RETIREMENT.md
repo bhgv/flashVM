@@ -139,3 +139,6 @@ investigations remain in the linked reports.
 
 [Original-MP cycle retirement](ORIGINAL-MP-CYCLES.md) extends native ownership
 claims to sole-owner Modules, including rollback and event-driven leaf wakeup.
+
+[Multi-owner Module cycles](MULTI-OWNER-MODULE-CYCLES.md) generalize that claim
+to all captured native owners and preserve original MP through any live instance.

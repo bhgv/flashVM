@@ -56,6 +56,7 @@ def relink(
     string_source=None,
     exception_retirement_source=None,
     managed_retirement_source=None,
+    module_graph_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -115,6 +116,7 @@ def relink(
         (mapped_prepare_source, "mapped_prepare.c"),
         (exception_retirement_source, "gc/fast/exception_retirement.c"),
         (managed_retirement_source, "gc/fast/managed_retirement.c"),
+        (module_graph_source, "gc/common/module_graph.c"),
     ):
         if candidate is None:
             continue

@@ -114,9 +114,10 @@ static void *publisher(void *unused)
  * RU: Native-проверка callback; managed-графы проверяются настоящими приложениями. */
 typedef struct ClaimProbe
 {
-    Module *entries[2]; /* Borrowed stack-backed metadata through this probe. */
-    unsigned calls;     /* Callback invocation count under registry mutex. */
-    int commit;         /* Refuse after restoring the first count unless nonzero. */
+    Module *entries[2];     /* Borrowed stack-backed metadata through this probe. */
+    unsigned int owners[2]; /* Expected native owners per entry. */
+    unsigned calls;         /* Callback invocation count under registry mutex. */
+    int commit;             /* Refuse after restoring the first count unless nonzero. */
 } ClaimProbe;
 
 
@@ -128,13 +129,14 @@ static int claim_pair(void *argument)
 {
     ClaimProbe *probe = argument;
     probe->calls++;
-    require(dvm_refcount_compare_i(&probe->entries[0]->ref, 1, 0), "first native claim");
+    require(dvm_refcount_compare_i(&probe->entries[0]->ref, (int)probe->owners[0], 0), "first native claim");
     if (!probe->commit)
     {
-        require(dvm_refcount_compare_i(&probe->entries[0]->ref, 0, 1), "native rollback before refusal");
+        require(dvm_refcount_compare_i(&probe->entries[0]->ref, 0, (int)probe->owners[0]),
+                "native rollback before refusal");
         return 0;
     }
-    require(dvm_refcount_compare_i(&probe->entries[1]->ref, 1, 0), "second native claim");
+    require(dvm_refcount_compare_i(&probe->entries[1]->ref, (int)probe->owners[1], 0), "second native claim");
     return 1;
 }
 
@@ -151,7 +153,7 @@ static void check_claims(void)
     right.ref = 1;
     left.path = "claim-left";
     right.path = "claim-right";
-    ClaimProbe probe = {{&left, &right}, 0, 0};
+    ClaimProbe probe = {{&left, &right}, {1, 1}, 0, 0};
     dvm_module_registry_publish_set(probe.entries, 2);
     Module *outside = dvm_module_registry_lookup(left.path);
     require(outside == &left && !dvm_module_registry_claim(probe.entries, 2, claim_pair, &probe) && !probe.calls,
@@ -168,6 +170,25 @@ static void check_claims(void)
     require(!dvm_module_registry_lookup(left.path) && !dvm_module_registry_lookup(right.path) && !modules &&
                 !left.link && !right.link && !dvm_refcount_load_i(&left.ref) && !dvm_refcount_load_i(&right.ref),
             "claimed native owners unlink before lookup resumes");
+    left.ref = 2;
+    right.ref = 3;
+    probe.owners[0] = 2;
+    probe.owners[1] = 3;
+    probe.commit = 0;
+    probe.calls = 0;
+    dvm_module_registry_publish_set(probe.entries, 2);
+    outside = dvm_module_registry_lookup(left.path);
+    require(outside == &left && !dvm_module_registry_claim_counts(probe.entries, probe.owners, 2, claim_pair, &probe) &&
+                !probe.calls,
+            "outside owner defeats aggregated preflight");
+    require(!dvm_module_registry_release(outside), "drop only outside aggregated owner");
+    require(!dvm_module_registry_claim_counts(probe.entries, probe.owners, 2, claim_pair, &probe) && probe.calls == 1 &&
+                dvm_refcount_load_i(&left.ref) == 2 && dvm_refcount_load_i(&right.ref) == 3,
+            "aggregated rollback restores original counts");
+    probe.commit = 1;
+    require(dvm_module_registry_claim_counts(probe.entries, probe.owners, 2, claim_pair, &probe) && probe.calls == 2 &&
+                !modules && !dvm_module_registry_lookup(left.path) && !dvm_module_registry_lookup(right.path),
+            "aggregated native owners unlink as one transaction");
 }
 
 

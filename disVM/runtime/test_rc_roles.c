@@ -290,3 +290,15 @@ int dvm_module_registry_claim(Module **entries, unsigned count, int (*claim)(voi
     ptradd(NULL);
     return 0;
 }
+
+
+/* [GC:] EN: Rejected roles cannot enter aggregated native Module claims.
+ * All arguments stay unread; this stub must never run in the role unit.
+ * RU: Отвергнутые роли не входят в объединённый native-захват. Аргументы
+ * не читаются; эта заглушка не должна вызываться в тесте ролей. */
+int dvm_module_registry_claim_counts(
+    Module **entries, const unsigned int *owners, unsigned count, int (*claim)(void *), void *argument)
+{
+    (void)owners;
+    return dvm_module_registry_claim(entries, count, claim, argument);
+}

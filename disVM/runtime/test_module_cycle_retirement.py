@@ -45,9 +45,30 @@ def main():
             capture_output=True,
             text=True,
         )
-        positive = (*range(6), *range(10, 19))
-        for control in positive if positive_only else (*positive, *range(6, 10), 19):
+        positive = (*range(6), *range(10, 19), *range(20, 28), 31, 32, 33, 34)
+        for control in positive if positive_only else (*positive, *range(6, 10), 19, 28, 29, 30):
             replacement = None
+            module_graph = None
+            if control in (29, 30):
+                source = (root / "gc/common/module_graph.c").read_text()
+                function = (
+                    "void dvm_rc_mark_module_live("
+                    if control == 29
+                    else "int dvm_rc_keep_record_edge("
+                )
+                start = source.index(function)
+                body = source.index("{", start) + 1
+                source = (
+                    source[:body]
+                    + ("\n    return;" if control == 29 else "\n    return 1;")
+                    + source[body:]
+                )
+                source = source.replace(
+                    '#include "graph_snapshot.h"',
+                    '#include "' + str(root / "gc/common/graph_snapshot.h") + '"',
+                )
+                module_graph = work / "module_graph.c"
+                module_graph.write_text(source)
             if control in (7, 8, 9, 19):
                 source = read_rc_source(root)
                 gate = "H2D(Modlink *, heap)->MP = H;"
@@ -95,8 +116,10 @@ def main():
                     "dvm_gc_fast_confirm_graph",
                     "dvm_refcount_compare_i",
                     "dvm_world_retire_epoch",
+                    "dvm_module_registry_claim_counts",
                 ],
                 runtime_rc_source=replacement,
+                module_graph_source=module_graph,
             )
             profiles = (
                 [("--no-jit", False)]
@@ -129,13 +152,24 @@ def main():
                         8: "module cycle must run native Module finalization",
                         9: "module finalizer waits for claim and reader epoch",
                         19: "Cycles final-owner publication must notify idle Fast",
+                        28: "module cycle still requires heap quiescence",
+                        29: "live member and original MP cannot be reclaimed with dead subset",
+                        30: "live member and original MP cannot be reclaimed with dead subset",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(
                             f"module cycle control {control} missed\n{text[-12000:]}"
                         )
                     continue
-                nodes = 2300 if control in (4, 17) else 4 if control in (3, 16) else 2
+                nodes = (
+                    6
+                    if control in (31, 32, 33)
+                    else (
+                        2300
+                        if control in (4, 17, 25)
+                        else 4 if control in (3, 16, 20, 21, 22, 23, 24, 26, 27, 34) else 2
+                    )
+                )
                 if result.returncode or f"PASS module cycle nodes={nodes} " not in text:
                     raise RuntimeError(f"control={control} {mode} locked={locked}\n{text[-12000:]}")
                 evidence(text, children=2)
@@ -143,23 +177,25 @@ def main():
                     raise RuntimeError("module cycle queue accounting failed\n" + text[-12000:])
                 if control == 2 and "final_epoch=1 live=1" not in text:
                     raise RuntimeError("external MP survival not observed\n" + text[-12000:])
-                if control in (14, 16) and "native_refusal=1" not in text:
+                if control in (14, 16, 21, 32) and "native_refusal=1" not in text:
                     raise RuntimeError("native claim refusal not observed\n" + text[-12000:])
-                if control == 15 and "epoch_refusal=1" not in text:
+                if control in (15, 22) and "epoch_refusal=1" not in text:
                     raise RuntimeError("epoch rollback not observed\n" + text[-12000:])
-                if control == 13 and "lookup_refusal=1" not in text:
+                if control in (13, 24) and "lookup_refusal=1" not in text:
                     raise RuntimeError("lookup race not observed\n" + text[-12000:])
-                if control in (14, 15, 16) and "rollback=1" not in text:
+                if control in (14, 15, 16, 21, 22, 32) and "rollback=1" not in text:
                     raise RuntimeError("full rollback not observed\n" + text[-12000:])
-                if control == 12 and "live=1" not in text:
+                if control in (12, 23, 26) and "live=1" not in text:
                     raise RuntimeError(
                         "external Module owner survival not observed\n" + text[-12000:]
                     )
+                if control in (27, 33) and "member=1" not in text:
+                    raise RuntimeError("live member preservation not observed\n" + text[-12000:])
                 if control == 5 and "stale=1" not in text:
                     raise RuntimeError(
                         "actual changed-field refusal not observed\n" + text[-12000:]
                     )
-                if control in (4, 17):
+                if control in (4, 17, 25):
                     duke = re.search(
                         r"NATIVEDUKEGC promoted=(\d+) peak_fields=(\d+) resumed=(\d+) adopted_pins=(\d+)",
                         text,
@@ -176,9 +212,10 @@ def main():
                         )
     print(
         "PASS actual module cycle retirement: physical graph/Module frees, external owners, two instances, "
-        "original-MP cycles, lookup races, partial native/epoch rollback, final reader epochs, "
+        "aggregated 1/2/3 native owners, original-MP cycles, lookup races, partial native/epoch rollback, "
+        "final reader epochs, "
         "changed-field replay, 2300-node Duke; C/JIT, both polls"
-        + ("; positive profiles only" if positive_only else "; five semantic omission controls")
+        + ("; positive profiles only" if positive_only else "; eight semantic omission controls")
     )
 
 

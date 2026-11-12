@@ -18,7 +18,10 @@
 
 typedef struct RecordGroup
 {
-    void **native_modules;            /* Sole native Module owner attributed to its Modlink, or NULL. */
+    unsigned int *native_owners;      /* Native count on first Module source; zero excludes its claim. */
+    unsigned int *native_index;       /* Discovery hash from Module address to first source. */
+    unsigned char *native_last;       /* Published last dead link which may finalize native metadata. */
+    void **native_modules;            /* Module belonging to each captured Modlink, or NULL. */
     void **nodes;                     /* Captured object payloads. */
     unsigned int *incoming;           /* Internal incoming edge counts. */
     unsigned int *index;              /* Discovery hash slots, unused after capture. */
@@ -44,21 +47,23 @@ typedef struct RecordGroup
     int has_views;                    /* A detached view needs descriptor-only destruction. */
     unsigned int nodes_used;          /* Indexed object count. */
     unsigned int edges_used;          /* Captured field count. */
-    unsigned int omitted_live_fields; /* Live-source fields omitted from a published snapshot. */
+    unsigned int omitted_live_fields; /* Fields retained by live managed/native owners, omitted from claim. */
 } RecordGroup;
 
 
 /* Scratch storage owned by one guarded discovery call. */
 typedef struct RecordGroupScratch
 {
-    void *native_modules[RECORD_NODE_CAPACITY];  /* Optional sole Module identities. */
-    void *nodes[RECORD_NODE_CAPACITY];           /* Object payloads. */
-    unsigned int incoming[RECORD_NODE_CAPACITY]; /* Internal incoming counts. */
-    unsigned int index[RECORD_INDEX_SLOTS];      /* Node indices plus one. */
-    void *cells[RECORD_EDGE_LIMIT];              /* Captured field addresses. */
-    unsigned int targets[RECORD_EDGE_LIMIT];     /* Target indices. */
-    unsigned int sources[RECORD_EDGE_LIMIT];     /* Source indices. */
-    unsigned char live[RECORD_NODE_CAPACITY];    /* Reachability flags. */
+    unsigned int native_owners[RECORD_NODE_CAPACITY]; /* Aggregated native owners. */
+    unsigned int native_index[RECORD_INDEX_SLOTS];    /* First source per native Module. */
+    void *native_modules[RECORD_NODE_CAPACITY];       /* Optional sole Module identities. */
+    void *nodes[RECORD_NODE_CAPACITY];                /* Object payloads. */
+    unsigned int incoming[RECORD_NODE_CAPACITY];      /* Internal incoming counts. */
+    unsigned int index[RECORD_INDEX_SLOTS];           /* Node indices plus one. */
+    void *cells[RECORD_EDGE_LIMIT];                   /* Captured field addresses. */
+    unsigned int targets[RECORD_EDGE_LIMIT];          /* Target indices. */
+    unsigned int sources[RECORD_EDGE_LIMIT];          /* Source indices. */
+    unsigned char live[RECORD_NODE_CAPACITY];         /* Reachability flags. */
 } RecordGroupScratch;
 
 
@@ -107,4 +112,36 @@ int dvm_rc_queued_record_group(void *start, unsigned long start_roots, RecordGro
  * RU: Прочитать порцию графа start в group под access. Вернуть 2 для продолжения. */
 int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *access);
 
+
+/* [GC:] EN: Register native module for source in group; return its first source.
+ * No ownership changes; all pointers remain independently live during discovery.
+ * RU: Зарегистрировать native module узла source в group; вернуть первый узел.
+ * Владение не меняется; указатели независимо живут во время обхода. */
+unsigned int dvm_rc_native_module_source(RecordGroup *group, unsigned int source, void *module);
+
+
+/* [GC:] EN: Find module's first source in group, or UINT_MAX if absent.
+ * RU: Найти первый узел module в group либо вернуть UINT_MAX при отсутствии. */
+unsigned int dvm_rc_native_module_first(const RecordGroup *group, const void *module);
+
+
+/* [GC:] EN: Count native owners and mark original MP live for outside owners.
+ * Return false on an inconsistent count; group remains caller-owned and rooted.
+ * RU: Подсчитать native-владельцев и пометить origmp живым при внешнем владельце.
+ * При несовпадении счётчиков вернуть ноль; group остаётся у вызывающего с корнями. */
+int dvm_rc_classify_modules(RecordGroup *group);
+
+
+/* [GC:] EN: Propagate live source's native ownership to its original MP using
+ * captured source starts; append newly live nodes to ready. No ownership changes.
+ * RU: Передать живость source его origmp по starts; добавить новые живые узлы
+ * в ready. Владение не меняется. */
+void dvm_rc_mark_module_live(RecordGroup *group, unsigned int source, const unsigned int *starts, unsigned int *ready);
+
+
+/* [GC:] EN: Keep edge only when its actual owner is being consumed by the graph.
+ * Exclude original-MP fields for Modules with live or outside native owners.
+ * RU: Сохранять edge только если граф снимает настоящего владельца. Исключить
+ * поля origmp модулей с живыми или внешними native-владельцами. */
+int dvm_rc_keep_record_edge(const RecordGroup *group, unsigned int edge);
 #endif

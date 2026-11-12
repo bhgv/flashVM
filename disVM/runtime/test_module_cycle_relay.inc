@@ -58,3 +58,11 @@ int __wrap_dvm_runtime_guest_sleep(unsigned long duration)
     dvm_runtime_gc_dispatch_finish();
     return __real_dvm_runtime_guest_sleep(duration);
 }
+
+
+/* [GC:] EN: Select real three-member Module graphs; no ownership changes.
+ * RU: Выбрать настоящие графы Module с тремя экземплярами без изменения владения. */
+static int three_members(void)
+{
+    return SCENARIO >= 31 && SCENARIO <= 33;
+}

@@ -152,3 +152,9 @@ sole-owner ordinary Modules, atomically claims native ownership with the managed
 graph and unlinks before lookup resumes. Nonfinal native releases publish another
 seed. A discovered Cycles-to-idle-Fast wakeup defect is fixed and has a deterministic
 regression. Multi-owner native Module closure and general stopped tracing remain.
+
+[Aggregated Module cycle ownership](MULTI-OWNER-MODULE-CYCLES.md) now counts all
+captured ordinary Modlinks per Module, retains original data through any live
+member and consumes native counts N-to-zero with exact rollback. Dead subsets
+retire independently; original-MP ownership is released only for wholly dead Modules.
+General stopped tracing, unsupported finalizers and shutdown still remain.

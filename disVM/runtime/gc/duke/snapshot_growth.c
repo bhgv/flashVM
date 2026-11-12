@@ -12,8 +12,8 @@
  * RU: Увеличить group до required полей в пределах бюджета. При отказе сохранить старый буфер и индексы. */
 int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
 {
-    const size_t per_node = 2 * sizeof(void *) + sizeof(unsigned int) + sizeof(unsigned char);
-    const size_t per_field = sizeof(void *) + 6 * sizeof(unsigned int);
+    const size_t per_node = 2 * sizeof(void *) + 2 * sizeof(unsigned int) + sizeof(unsigned char);
+    const size_t per_field = sizeof(void *) + 10 * sizeof(unsigned int);
     size_t maximum = (RECORD_SCRATCH_BYTES - per_node) / (per_node + per_field);
     if (required > maximum)
     {
@@ -37,14 +37,20 @@ int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
     expanded.native_modules = storage + nodes;
     expanded.cells = expanded.native_modules + nodes;
     expanded.incoming = (unsigned int *)(expanded.cells + capacity);
-    expanded.targets = expanded.incoming + nodes;
+    expanded.native_owners = expanded.incoming + nodes;
+    expanded.targets = expanded.native_owners + nodes;
     expanded.sources = expanded.targets + capacity;
     expanded.index = expanded.sources + capacity;
-    expanded.live = (unsigned char *)(expanded.index + capacity * 4);
+    expanded.native_index = expanded.index + capacity * 4;
+    expanded.live = (unsigned char *)(expanded.native_index + capacity * 4);
     memcpy(expanded.nodes, group->nodes, group->nodes_used * sizeof(*expanded.nodes));
     if (group->native_modules)
     {
         memcpy(expanded.native_modules, group->native_modules, group->nodes_used * sizeof(void *));
+    }
+    if (group->native_owners)
+    {
+        memcpy(expanded.native_owners, group->native_owners, group->nodes_used * sizeof(unsigned int));
     }
     memcpy(expanded.incoming, group->incoming, group->nodes_used * sizeof(*expanded.incoming));
     memcpy(expanded.live, group->live, group->nodes_used * sizeof(*expanded.live));
@@ -59,6 +65,10 @@ int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
             slot = (slot + 1) % (expanded.field_limit * 4);
         }
         expanded.index[slot] = index + 1;
+        if (expanded.native_modules[index])
+        {
+            dvm_rc_native_module_source(&expanded, index, expanded.native_modules[index]);
+        }
     }
     free(group->owned_scratch);
     *group = expanded;

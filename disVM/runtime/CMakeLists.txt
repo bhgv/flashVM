@@ -145,6 +145,7 @@ add_executable(disvm
     close_worker.c
     runtime_gc.c
     runtime_rc.c
+    gc/common/module_graph.c
     gc/common/graph_storage.c
     gc/common/collector_environment.c
     gc/common/native_admission.c

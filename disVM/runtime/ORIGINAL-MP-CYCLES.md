@@ -24,9 +24,9 @@ expected-edge comparison, roots and discovery pins. A native owner acquired whil
 Duke is discovering forces retry instead of treating a temporary count observation
 as permission to consume the original MP owner.
 
-This attribution is deliberately limited to one native owner per Module. A cycle
-requiring aggregation of multiple Modlinks that own the same Module remains
-outside this new closure rule. Dynamic modules, library handles and native instance
+This initial attribution was limited to one native owner per Module. The
+[aggregated ownership follow-up](MULTI-OWNER-MODULE-CYCLES.md) now accounts for
+multiple instances and preserves data reachable from every live member. Dynamic modules, library handles and native instance
 data remain excluded. Stopped discovery retains its prior ownership algorithm.
 No full concurrent shutdown or complete root-publication audit is claimed.
 
@@ -133,8 +133,7 @@ ten longer GC checks passed 10/10. The final five-control acceptance was repeate
 separately.
 
 Execution is Linux x86-64. Generated JIT instructions are not C-TSan instrumented;
-ARM64/RV64 runtime execution remains unverified. Multi-owner native Module closure,
-unknown native finalizers, general stopped tracing, complete root auditing and
-shutdown remain. Prior broader acceptance limits in [CONCURRENT-GC.md](CONCURRENT-GC.md)
+ARM64/RV64 runtime execution remains unverified. Unknown native finalizers,
+general stopped tracing, complete root auditing and shutdown remain. Prior broader acceptance limits in [CONCURRENT-GC.md](CONCURRENT-GC.md)
 and [FAST-FINALIZATION.md](FAST-FINALIZATION.md) still apply. This extends supported
 shared closure; it does not establish complete no-STW GC or complete race freedom.

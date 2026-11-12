@@ -8,6 +8,7 @@
 #include "module_counts.h"
 #include "disvm/refcount.h"
 #include <stdlib.h>
+#include <limits.h>
 #include <pthread.h>
 #include <string.h>
 
@@ -86,17 +87,22 @@ int dvm_module_registry_release(Module *module)
 
 
 /* [GC:] EN: Serialize the zero-count claim with lookup. Entries are owned and
- * unique; argument belongs to the bounded native claim callback. No native or
+ * unique; owners supplies expected native counts, or NULL for one each.
+ * argument belongs to the bounded native claim callback. No native or
  * managed destructor runs under this mutex. Failure leaves membership intact.
  * RU: Сериализовать захват нуля с lookup. Entries принадлежат вызывающему и
- * уникальны; argument передаётся ограниченному native callback. Под mutex нет
+ * уникальны; owners задаёт числа ссылок либо NULL для одной. argument передаётся
+ * ограниченному native callback. Под mutex нет
  * деструкторов. При отказе состав списка не меняется. */
-int dvm_module_registry_claim(Module **entries, unsigned count, int (*claim)(void *), void *argument)
+int dvm_module_registry_claim_counts(
+    Module **entries, const unsigned int *owners, unsigned count, int (*claim)(void *), void *argument)
 {
     pthread_mutex_lock(&registry_mutex);
     for (unsigned index = 0; index < count; index++)
     {
-        if (!entries[index] || dvm_refcount_load_i(&entries[index]->ref) != 1)
+        unsigned int expected = owners ? owners[index] : 1;
+        if (!entries[index] || !expected || expected > INT_MAX ||
+            dvm_refcount_load_i(&entries[index]->ref) != (int)expected)
         {
             pthread_mutex_unlock(&registry_mutex);
             return 0;
@@ -126,4 +132,14 @@ int dvm_module_registry_claim(Module **entries, unsigned count, int (*claim)(voi
     }
     pthread_mutex_unlock(&registry_mutex);
     return claimed;
+}
+
+
+/* [GC:] EN: Preserve the single-owner claim interface for callers with unique
+ * native owners. entries/count/claim/argument follow the counted claim contract.
+ * RU: Сохранить интерфейс захвата единственных владельцев. entries/count/claim/
+ * argument следуют контракту захвата с заданным числом native-ссылок. */
+int dvm_module_registry_claim(Module **entries, unsigned count, int (*claim)(void *), void *argument)
+{
+    return dvm_module_registry_claim_counts(entries, NULL, count, claim, argument);
 }

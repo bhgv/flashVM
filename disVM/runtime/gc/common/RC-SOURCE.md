@@ -50,3 +50,8 @@ and known native finalization after the graph claim and final reader epoch.
 and [native graph claims](../fast/module_graph_claim.inc) to Fast confirmation.
 That fragment composes into `graph_confirmation.c`, not `runtime_rc.c`; copied
 private confirmation sources must preserve its include directory.
+
+[Multi-owner native closure](../../MULTI-OWNER-MODULE-CYCLES.md) uses
+[module_graph.c](module_graph.c) for private discovery indexing, native counts
+and live-member propagation. Snapshot copying filters ownership edges and marks
+the final graph-owned Modlink for each claimed Module.

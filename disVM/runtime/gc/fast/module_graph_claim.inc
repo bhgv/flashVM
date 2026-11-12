@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Atomically claim managed graphs and their sole native Module owners.
- * RU: Атомарно захватить managed-графы и единственных native-владельцев Module.
+ * EN: Atomically claim managed graphs and their aggregated native Module owners.
+ * RU: Атомарно захватить managed-графы и объединённых native-владельцев Module.
  */
 
 
@@ -9,8 +9,9 @@
 typedef struct ModuleGraphClaim
 {
     const RecordGroup *group; /* Rooted snapshot with reserved field cells. */
-    Module **modules;         /* Unique native owners of dead Modlinks. */
-    unsigned count;           /* Number of native Module owners. */
+    Module **modules;         /* Unique Modules represented by dead Modlinks. */
+    unsigned int *owners;     /* Expected native count for each unique Module. */
+    unsigned count;           /* Number of unique native Modules in this transaction. */
     DVM_NativeWorld *world;   /* Native reader epoch domain, alive through return. */
     unsigned long *epoch;     /* Optional final cutoff destination. */
 } ModuleGraphClaim;
@@ -18,7 +19,7 @@ typedef struct ModuleGraphClaim
 
 /* [GC:] EN: Under the Module registry mutex when count is nonzero, claim heap
  * counts FIRST, preventing valid new direct Module retains through these links.
- * Then reserve sole native owners and create the final reader cutoff. Roll back
+ * Then reserve the aggregated native owners and create the final reader cutoff. Roll back
  * every managed/native count on refusal. No allocation, guest callback or registry
  * reentry; world metadata follows the registry mutex in this bounded native call.
  * argument borrows the snapshot, unique module vector and optional epoch output.
@@ -35,7 +36,8 @@ static int claim_module_graph_counts(void *argument)
         return 0;
     }
     unsigned reserved = 0;
-    while (reserved < claim->count && dvm_refcount_compare_i(&claim->modules[reserved]->ref, 1, 0))
+    while (reserved < claim->count &&
+           dvm_refcount_compare_i(&claim->modules[reserved]->ref, (int)claim->owners[reserved], 0))
     {
         reserved++;
     }
@@ -45,7 +47,8 @@ static int claim_module_graph_counts(void *argument)
     }
     while (reserved)
     {
-        if (!dvm_refcount_compare_i(&claim->modules[--reserved]->ref, 0, 1))
+        reserved--;
+        if (!dvm_refcount_compare_i(&claim->modules[reserved]->ref, 0, (int)claim->owners[reserved]))
         {
             abort();
         }
@@ -68,28 +71,33 @@ static int claim_module_graph_counts(void *argument)
 static int claim_graph_with_modules(const RecordGroup *group, DVM_NativeWorld *world, unsigned long *epoch)
 {
     Module *local[RECORD_NODE_CAPACITY];
+    unsigned int local_owners[RECORD_NODE_CAPACITY];
     Module **modules = local;
+    unsigned int *owners = local_owners;
     if (group->nodes_used > RECORD_NODE_CAPACITY)
     {
-        modules = malloc(group->nodes_used * sizeof(*modules));
+        modules = malloc(group->nodes_used * (sizeof(*modules) + sizeof(*owners)));
         if (!modules)
         {
             return 0;
         }
+        owners = (unsigned int *)(modules + group->nodes_used);
     }
     unsigned count = 0;
     for (unsigned position = 0; group->native_modules && position < group->dead_count; position++)
     {
         unsigned index = dead_node_at(group, position);
         Module *module = group->native_modules[index];
-        if (module)
+        if (module && group->native_owners[index])
         {
+            owners[count] = group->native_owners[index];
             modules[count++] = module;
         }
     }
-    ModuleGraphClaim claim = {group, modules, count, world, epoch};
-    int result = count ? (epoch && dvm_module_registry_claim(modules, count, claim_module_graph_counts, &claim))
-                       : claim_module_graph_counts(&claim);
+    ModuleGraphClaim claim = {group, modules, owners, count, world, epoch};
+    int result =
+        count ? (epoch && dvm_module_registry_claim_counts(modules, owners, count, claim_module_graph_counts, &claim))
+              : claim_module_graph_counts(&claim);
     if (modules != local)
     {
         free(modules);

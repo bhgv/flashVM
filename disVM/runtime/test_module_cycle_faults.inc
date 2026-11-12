@@ -12,13 +12,17 @@
  * counter/expected/replacement передаются настоящему примитиву. */
 int __wrap_dvm_refcount_compare_i(int *counter, int expected, int replacement)
 {
-    Module *module = __atomic_load_n(CONTROL == 16 ? &second_module : &target_module, __ATOMIC_ACQUIRE);
-    if (confirming && (CONTROL == 14 || CONTROL == 16) && !native_refused && module && counter == &module->ref &&
-        expected == 1 && replacement == 0)
+    Module *module = __atomic_load_n(SCENARIO == 16 ? &second_module : &target_module, __ATOMIC_ACQUIRE);
+    if (confirming && (SCENARIO == 14 || SCENARIO == 16 || SCENARIO == 21 || SCENARIO == 32) && !native_refused &&
+        module && counter == &module->ref &&
+        expected == (SCENARIO == 32   ? 3
+                     : SCENARIO == 21 ? 2
+                                      : 1) &&
+        replacement == 0)
     {
         require(dvm_refcount_load_u(&nodes[0]->ref) == 0 && dvm_refcount_load_u(&nodes[1]->ref) == 0,
                 "managed graph is claimed before native Module CAS");
-        if (CONTROL == 16)
+        if (SCENARIO == 16)
         {
             require(dvm_refcount_load_i(&target_module->ref) == 0, "first native Module claimed before second refusal");
         }
@@ -35,7 +39,7 @@ int __wrap_dvm_refcount_compare_i(int *counter, int expected, int replacement)
  * native-счётчиков. world и остальные вызовы эпохи проходят без изменения. */
 unsigned long __wrap_dvm_world_retire_epoch(DVM_NativeWorld *world)
 {
-    if (confirming && CONTROL == 15 && !epoch_refused)
+    if (confirming && (SCENARIO == 15 || SCENARIO == 22) && !epoch_refused)
     {
         require(dvm_refcount_load_i(&target_module->ref) == 0 && dvm_refcount_load_u(&nodes[0]->ref) == 0,
                 "final epoch follows native and managed claims");
@@ -59,17 +63,20 @@ static void observe_claim_rollback(const RecordGroup *group, int selected, DVM_C
         return;
     }
     pthread_mutex_lock(&sync);
-    if (CONTROL == 13 && racing_lookup && !lookup_refused)
+    if ((SCENARIO == 13 || SCENARIO == 24) && racing_lookup && !lookup_refused)
     {
-        require(result == DVM_CELL_REFUSED && dvm_refcount_load_i(&target_module->ref) == 2,
+        require(result == DVM_CELL_REFUSED && dvm_refcount_load_i(&target_module->ref) == (SCENARIO == 24 ? 3 : 2),
                 "outside Module lookup defeats actual graph claim");
         lookup_refused = 1;
     }
     if ((native_refused || epoch_refused) && !rollback_seen)
     {
-        require(result == DVM_CELL_REFUSED && dvm_refcount_load_i(&target_module->ref) == 1,
+        require(result == DVM_CELL_REFUSED &&
+                    dvm_refcount_load_i(&target_module->ref) == ((SCENARIO == 21 || SCENARIO == 22) ? 2
+                                                                 : SCENARIO == 32                   ? 3
+                                                                                                    : 1),
                 "native Module count restored after claim refusal");
-        if (CONTROL == 16)
+        if (SCENARIO == 16)
         {
             require(dvm_refcount_load_i(&second_module->ref) == 1, "all native Module counts restored");
         }
@@ -81,4 +88,17 @@ static void observe_claim_rollback(const RecordGroup *group, int selected, DVM_C
         rollback_seen = 1;
     }
     pthread_mutex_unlock(&sync);
+}
+
+
+/* [GC:] EN: Control 28 restores the old one-owner registry preflight without
+ * changing any count. Forward entries/count/claim/argument; otherwise use the
+ * actual aggregated owners vector. This must not collect a two-owner Module.
+ * RU: Контроль 28 возвращает старую проверку одной ссылки, не меняя счётчики.
+ * Передать entries/count/claim/argument; иначе использовать настоящий owners.
+ * Старое условие не должно собрать Module с двумя native-владельцами. */
+int __wrap_dvm_module_registry_claim_counts(
+    Module **entries, const unsigned int *owners, unsigned count, int (*claim)(void *), void *argument)
+{
+    return __real_dvm_module_registry_claim_counts(entries, CONTROL == 28 ? NULL : owners, count, claim, argument);
 }

@@ -48,4 +48,14 @@ int dvm_module_registry_release(struct Module *module);
  * ограниченные native-операции без выделений, VM, повторного входа и деструкторов.
  * Вызывающий хранит entries до финализации после эпохи. Отказ сохраняет владение. */
 int dvm_module_registry_claim(struct Module **entries, unsigned count, int (*claim)(void *), void *argument);
+
+
+/* [GC:] EN: Claim unique entries whose native counters equal owners[index].
+ * NULL owners means one owner per entry. The same bounded callback, rollback,
+ * locking and post-epoch lifetime contract as dvm_module_registry_claim applies.
+ * RU: Захватить уникальные entries со счётчиками owners[index]. NULL owners
+ * означает одну ссылку на запись. Действуют те же требования callback, отката,
+ * блокировок и жизни после эпохи, что у dvm_module_registry_claim. */
+int dvm_module_registry_claim_counts(
+    struct Module **entries, const unsigned int *owners, unsigned count, int (*claim)(void *), void *argument);
 #endif

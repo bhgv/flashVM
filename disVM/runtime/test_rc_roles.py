@@ -59,6 +59,7 @@ def main():
                 str(runtime / "root_batch.c"),
                 str(runtime / "root_registry.c"),
                 str(runtime / "gc/common/graph_storage.c"),
+                str(runtime / "gc/common/module_graph.c"),
                 str(runtime / "gc/common/graph_capture.c"),
                 str(runtime / "gc/duke/snapshot_growth.c"),
                 str(runtime / "gc/duke/large_graph_pass.c"),

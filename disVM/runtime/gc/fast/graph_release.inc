@@ -65,7 +65,14 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
                 H2D(Modlink *, heap)->MP = H;
                 if (snapshot->native_modules[index])
                 {
-                    dvm_gc_fast_module_graph_finalize(heap, snapshot->native_modules[index]);
+                    if (snapshot->native_last[index])
+                    {
+                        dvm_gc_fast_module_graph_finalize(heap, snapshot->native_modules[index]);
+                    }
+                    else
+                    {
+                        H2D(Modlink *, heap)->m = NULL;
+                    }
                 }
                 else
                 {
