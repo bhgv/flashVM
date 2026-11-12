@@ -75,13 +75,19 @@ static unsigned int drain_shared_children(size_t budget, int *retry)
 
 
 /* EN: Root count owners from keys. Charge payload bytes for the first
- * charged_keys entries. token receives the reservation, retry reports pressure.
+ * charged_keys entries. token receives the reservation; retry reports temporary
+ * memory or queue pressure. Invalid sizes/charges preserve inputs without retry.
  * RU: Удержать count ссылок из keys. Учесть память первых charged_keys объектов.
- * token получает резервацию, retry сообщает о временном заполнении очереди. */
+ * token получает резервацию; retry сообщает о нехватке памяти или места очереди.
+ * Неверные размеры/учёт сохраняют входы без повтора. */
 static FrameRetirement *prepare_release_packet(
     void *const *keys, size_t count, size_t charged_keys, DVM_RetirementReservation *token, int *retry)
 {
     unsigned long charge;
+    if (!count || charged_keys > count || count > (SIZE_MAX - sizeof(FrameRetirement)) / sizeof(void *))
+    {
+        return NULL;
+    }
     size_t storage = sizeof(FrameRetirement) + count * sizeof(void *);
     if (!dvm_gc_packet_charge(keys, charged_keys, storage, ULONG_MAX, &charge))
     {
@@ -100,6 +106,10 @@ static FrameRetirement *prepare_release_packet(
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(count);
     if (!packet || !roots)
     {
+        if (retry)
+        {
+            *retry = 1;
+        }
         if (roots)
         {
             dvm_runtime_root_batch_destroy(&roots);

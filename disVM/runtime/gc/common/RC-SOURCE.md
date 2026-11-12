@@ -30,6 +30,10 @@ step or new build prerequisite is required. `rc_test_source.py` expands only thi
 explicit composition for isolated semantic mutation tests; it does not edit the
 production files or replace a runtime allocator/collector.
 
+[Wide mapped owner retirement](../../LARGE-OWNER-RETIREMENT.md) removes the
+record/list transfer ceiling and preserves temporary packet/leaf retries beside
+retained work. Small-object capture uses one traversal and local key storage.
+
 `graph_capture.c` separately composes [graph_classification.inc](graph_classification.inc)
 for complete-capture reachability and fresh Duke owner checks. That fragment has
 no independent state; it does not participate in `runtime_rc.c` expansion.

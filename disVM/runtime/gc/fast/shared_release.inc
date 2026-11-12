@@ -233,6 +233,11 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 ((record || list) && !transfer_object_fields(entry->heap, &retry_leaf)))
             {
                 retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;
+                /* [GC:] EN: Preserve leaf retry beside retained backlog while
+                 * guests run; quiescent cleanup may release a blocked resource.
+                 * RU: При работающих гостях сохранить повтор листа рядом с
+                 * резервной работой; в покое она может снять нехватку ресурса. */
+                retry |= retry_leaf && dvm_world_has_active_guest(world);
                 if (retry_leaf && source == record_retries)
                 {
                     dvm_retirement_rotate(source);

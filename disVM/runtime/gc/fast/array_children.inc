@@ -6,9 +6,11 @@
 
 
 /* EN: Stage the children of array heap before claiming its last owner.
- * retry reports temporary packet pressure. Refusal preserves the array.
+ * retry reports temporary packet memory/queue pressure or a lost last claim.
+ * Refusal preserves the array and every original child occurrence.
  * RU: Подготовить ссылки массива heap до снятия последнего владельца.
- * retry сообщает о временном заполнении. При отказе массив сохраняется. */
+ * retry сообщает о нехватке памяти/места пакета либо проигранном захвате.
+ * При отказе массив и все исходные дочерние ссылки сохраняются. */
 static int transfer_array_children(Heap *heap, int *retry)
 {
     Array *array = H2D(Array *, heap);
@@ -45,6 +47,7 @@ static int transfer_array_children(Heap *heap, int *retry)
     FrameRetirement *packet = malloc(storage);
     if (!packet)
     {
+        *retry = 1;
         return 0;
     }
     packet->roots = NULL;
@@ -103,13 +106,14 @@ static int transfer_array_children(Heap *heap, int *retry)
     if (valid)
     {
         packet->roots = dvm_runtime_root_batch_create(packet->count);
+        *retry = packet->roots == NULL;
         valid = packet->roots != NULL;
     }
     unsigned long charge = 0;
     valid = valid && dvm_gc_packet_charge(packet->keys, packet->count, storage, ULONG_MAX, &charge);
     DVM_RetirementReservation token = {0};
     DVM_RetirementResult reservation = valid ? dvm_retirement_reserve(frames, charge, &token) : DVM_RETIRE_INVALID;
-    *retry = reservation == DVM_RETIRE_FULL || reservation == DVM_RETIRE_BYTES;
+    *retry |= reservation == DVM_RETIRE_FULL || reservation == DVM_RETIRE_BYTES;
     int reserved = reservation == DVM_RETIRE_OK;
     int rooted = reserved && publish_release_roots(packet->roots, packet->keys, packet->count);
     if (rooted && dvm_refcount_claim_last_u(&heap->ref))
@@ -120,6 +124,7 @@ static int transfer_array_children(Heap *heap, int *retry)
         }
         return 1;
     }
+    *retry |= rooted;
     if (rooted && !dvm_runtime_root_batch_clear(packet->roots))
     {
         abort();
