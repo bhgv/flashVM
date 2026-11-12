@@ -1,4 +1,7 @@
-/* Cooperative GC safepoints for native Dis mutators, independent of either heap. */
+/* Copyright (c) 2026 bhgv
+ * [GC:] EN: Native world admission, stable roots and reader epoch contracts.
+ * RU: Контракты допуска native-мира, стабильных корней и эпох читателей.
+ */
 #ifndef DISVM_NATIVE_WORLD_H
 #define DISVM_NATIVE_WORLD_H
 #include "native_context.h"
@@ -112,9 +115,14 @@ DVM_WorldParticipant *dvm_world_join_service(DVM_NativeWorld *world, DVM_NativeC
 int dvm_world_detach(DVM_WorldParticipant *participant);
 
 
-/* Close new registrations atomically only when participant is the current last
- * serialized owner (active or idle), apart from idle collector services without borrows. Existing
- * root operations remain usable until the remaining threads join. */
+/* [GC:] EN: Borrow current participant; close registration and new raw borrows
+ * only for the last ACTIVE/IDLE mutator, apart from idle services. All explicit
+ * borrows, including the caller's, must have ended. Return zero unchanged on
+ * refusal. Existing roots and matched borrow ends remain usable until joins.
+ * RU: Заимствовать своего participant; закрыть регистрацию и новые borrow
+ * только для последнего ACTIVE/IDLE исполнителя при простаивающих службах.
+ * Все borrow, включая собственные, должны завершиться. Ноль при отказе без
+ * изменения. Корни и парные завершения borrow остаются доступны до join. */
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant);
 
 
@@ -178,13 +186,14 @@ int dvm_world_state(DVM_NativeWorld *world, DVM_WorldState *out);
 int dvm_world_collector_owns(DVM_NativeWorld *world);
 
 
-#ifdef __cplusplus
-}
-#endif
-
-
-/* Announce a bounded raw-pointer borrow before its first load. Owner-only,
- * nestable and independent of ordinary admission. End after the last use. */
+/* [GC:] EN: Borrow current participant; announce a nested raw-pointer borrow
+ * before its first load. Independent of admission. Return zero on a sealed
+ * world, invalid owner or depth overflow without changing depth/epoch. End
+ * every successful begin after the last pointer use; no ownership is granted.
+ * RU: Заимствовать своего participant; объявить вложенный borrow до чтения
+ * указателя независимо от допуска. Закрытый мир, чужой владелец или
+ * переполнение дают ноль без изменения глубины/эпохи. Каждый успешный begin
+ * завершить после последнего доступа; ссылочного владения это не даёт. */
 int dvm_world_read_begin(DVM_WorldParticipant *participant);
 
 
@@ -202,5 +211,9 @@ unsigned long dvm_world_retire_epoch(DVM_NativeWorld *world);
 
 
 int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

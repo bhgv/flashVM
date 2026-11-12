@@ -272,11 +272,14 @@ size_t dvm_world_shared_peak(DVM_NativeWorld *world)
 }
 
 
-/* [GC:] EN: Atomically refuse new registrations only for the last serialized
- * owner. participant is borrowed/current; peers or invalid phase leave the
- * domain open. Existing owner can still finish and detach after success.
- * RU: Закрыть регистрацию world своего participant, только если остальные владельцы ушли и службы
- * неактивны. Ноль сохраняет открытый домен; регистрации остаются живыми до detach. */
+/* [GC:] EN: Close registrations and new borrows only for the last mutator.
+ * participant is borrowed/current; any explicit borrow, including its own,
+ * peers or invalid phase leave the domain open. Return zero on refusal. The
+ * existing owner can finish and detach after success; no managed owner moves.
+ * RU: Закрыть регистрацию и новые borrow только для последнего исполнителя.
+ * participant заимствован/текущий; любой borrow, включая собственный, соседи
+ * или неверная фаза сохраняют домен открытым. Ноль при отказе. После успеха
+ * владелец может завершить работу и detach; управляемое владение не меняется. */
 int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
 {
     DVM_NativeWorld *world;
@@ -291,7 +294,8 @@ int dvm_world_seal_last_owner(DVM_WorldParticipant *participant)
     world = participant->world;
     fvm_port_sync_lock(world->sync);
     if (!world->serial || world->active != (size_t)participant->active || participant->service || participant->parked ||
-        participant->shared || (!participant->active && (world->collector || world->resuming)))
+        participant->shared || participant->read_depth ||
+        (!participant->active && (world->collector || world->resuming)))
     {
         fvm_port_sync_unlock(world->sync);
         return 0;

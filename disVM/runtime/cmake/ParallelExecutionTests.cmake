@@ -219,6 +219,11 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
  add_test(NAME disvm_parallel_gc_admission COMMAND "${PYTHON_EXECUTABLE}"
   "${root}/disVM/tests/native_serial.py" --flashvm-root "${root}/flashVM")
  set_tests_properties(disvm_parallel_gc_admission PROPERTIES TIMEOUT 80 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+ # [GC:] EN: Raw borrow cutoff at native shutdown, including public C++98 linkage.
+ # RU: Завершение raw borrow при native shutdown, включая публичный ABI C++98.
+ add_test(NAME disvm_native_world_seal COMMAND "${PYTHON_EXECUTABLE}"
+  "${root}/disVM/tests/native_seal.py" --flashvm-root "${root}/flashVM")
+ set_tests_properties(disvm_native_world_seal PROPERTIES TIMEOUT 60 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
 endif()
 
 

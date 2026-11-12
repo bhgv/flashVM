@@ -85,9 +85,11 @@ static int enter_world(DVM_WorldParticipant *participant, int shared, int promot
 
 
 /* [GC:] EN: Announce a borrow before reading a published pointer. Nesting keeps the
- * oldest epoch until the last matching end. No heap admission is granted.
+ * oldest epoch until the last matching end. Sealing rejects every new begin
+ * before changing depth/epoch, including nesting. No heap admission is granted.
  * RU: Начать вложенный borrow своего participant до чтения указателя. Вернуть ноль при неверной
- * фазе/переполнении; ссылочное владение не меняется. */
+ * фазе/переполнении либо после sealing до изменения глубины/эпохи; ссылочное
+ * владение не меняется. */
 int dvm_world_read_begin(DVM_WorldParticipant *participant)
 {
     if (!owns(participant))
@@ -96,7 +98,7 @@ int dvm_world_read_begin(DVM_WorldParticipant *participant)
     }
     DVM_NativeWorld *world = participant->world;
     fvm_port_sync_lock(world->sync);
-    int ok = participant->read_depth != ULONG_MAX;
+    int ok = !world->sealed && participant->read_depth != ULONG_MAX;
     if (ok)
     {
         if (!participant->read_depth)
