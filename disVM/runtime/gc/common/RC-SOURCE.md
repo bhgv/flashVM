@@ -67,3 +67,7 @@ remain distinct; private growth/storage replacements preserve include paths.
 [Completed publication retry](../../DUKE-PUBLICATION-RETRY.md) marks temporary
 graph metadata refusal for shared retry. All preparation allocations precede the
 retirement epoch; failure releases native buffers and cancels the reservation.
+
+[Native claim storage](../../FAST-CLAIM-STORAGE.md) sizes private native vectors
+by actual Module entries and propagates allocation BUSY through confirmation.
+Private confirmation copies must retain the `module_graph_claim.inc` include.

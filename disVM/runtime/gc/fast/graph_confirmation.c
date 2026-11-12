@@ -133,10 +133,14 @@ static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDo
 }
 
 
-/* EN: Validate the retained fields of group in cells, then claim in world.
- * final_epoch receives the reader cutoff. reserved reports a successful reservation check.
- * RU: Сверить сохранённые поля group в cells и захватить группу в world.
- * В final_epoch записать эпоху, в reserved сообщить об успешной проверке под резервацией. */
+/* [GC:] EN: Validate retained group fields in cells, then claim in world.
+ * final_epoch receives the reader cutoff; reserved reports successful reserved
+ * claim. Propagate transient native allocation BUSY separately from stale-field
+ * REFUSED, with all field reservations released before returning.
+ * RU: Сверить поля group под cells и захватить группу в world. final_epoch
+ * получает cutoff; reserved сообщает об успешном захвате под резервацией.
+ * Отличать временный BUSY памяти от REFUSED устаревших полей; до возврата
+ * освобождать все резервации полей. */
 DVM_CellResult dvm_gc_fast_confirm_graph(
     const RecordGroup *group, DVM_CellDomain *cells, DVM_NativeWorld *world, unsigned long *final_epoch, int *reserved)
 {
@@ -175,9 +179,9 @@ DVM_CellResult dvm_gc_fast_confirm_graph(
     }
     /* New live-to-dead edges retain before publishing. A successful count
      * claim prevents any later publication into the claimed group. */
-    if (result == DVM_CELL_ACQUIRED && !claim_graph_with_modules(group, world, final_epoch))
+    if (result == DVM_CELL_ACQUIRED)
     {
-        result = DVM_CELL_REFUSED;
+        result = claim_graph_with_modules(group, world, final_epoch);
     }
     *reserved = result == DVM_CELL_ACQUIRED && reservation != NULL;
     if (reservation)

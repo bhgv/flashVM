@@ -36,4 +36,8 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     add_test(NAME disvm_fast_readiness COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_fast_readiness.py" "$<TARGET_FILE:disvm_fast_readiness_test>")
     set_tests_properties(disvm_fast_readiness PROPERTIES TIMEOUT 30)
+    add_test(NAME disvm_fast_claim_storage COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_fast_claim_storage.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_fast_claim_storage PROPERTIES TIMEOUT 120)
 endif()

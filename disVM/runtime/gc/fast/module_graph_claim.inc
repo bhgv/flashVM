@@ -58,40 +58,49 @@ static int claim_module_graph_counts(void *argument)
 }
 
 
-/* [GC:] EN: Collect distinct native owners attributed to dead Modlinks in group.
- * Allocate large native vectors before taking the registry mutex. Claim returns
- * false unchanged on storage failure, outside ownership or atomic count failure.
- * Success unlinks reserved Modules before lookup resumes, but preserves their
- * payload and original MP fields until the final world epoch. epoch is optional
- * only for groups without native owners; world stays live through all reclamation.
- * RU: Собрать разные native-владельцы мёртвых Modlink из group. Большой вектор
- * выделить до mutex реестра. При отказе памяти/внешнем владельце/счётчиках вернуть
- * ноль без изменения. Успех удаляет Module до продолжения lookup, но сохраняет
- * payload и origmp до последней эпохи world. Для native-владельцев epoch обязателен. */
-static int claim_graph_with_modules(const RecordGroup *group, DVM_NativeWorld *world, unsigned long *epoch)
+/* [GC:] EN: Claim native owners attributed to dead Modlinks in private group.
+ * Count actual native entries before choosing local/dynamic storage; sparse
+ * graphs need no heap allocation regardless of managed graph size. Return BUSY
+ * on vector allocation pressure, REFUSED on ownership/count/epoch refusal, or
+ * ACQUIRED after atomic managed/native claim and registry unlink. Allocate
+ * before the registry mutex; preserve every count/root on allocation failure.
+ * epoch is required for native owners, optional otherwise; world stays borrowed.
+ * RU: Захватить native-владельцев мёртвых Modlink личного group. Сначала считать
+ * настоящие native-записи: редкий граф не требует heap-вектора независимо от
+ * числа managed-узлов. Вернуть BUSY при нехватке памяти, REFUSED при отказе
+ * владения/счётчиков/эпохи, ACQUIRED после захвата и снятия из реестра. Выделять
+ * до mutex; отказ памяти сохраняет все счётчики/корни. epoch обязателен для
+ * native-владельцев, иначе необязателен; world заимствован. */
+static DVM_CellResult claim_graph_with_modules(const RecordGroup *group, DVM_NativeWorld *world, unsigned long *epoch)
 {
+    unsigned count = 0;
+    for (unsigned position = 0; group->native_modules && position < group->dead_count; position++)
+    {
+        unsigned index = dead_node_at(group, position);
+        count += group->native_modules[index] && group->native_owners[index];
+    }
     Module *local[RECORD_NODE_CAPACITY];
     unsigned int local_owners[RECORD_NODE_CAPACITY];
     Module **modules = local;
     unsigned int *owners = local_owners;
-    if (group->nodes_used > RECORD_NODE_CAPACITY)
+    if (count > RECORD_NODE_CAPACITY)
     {
-        modules = malloc(group->nodes_used * (sizeof(*modules) + sizeof(*owners)));
+        modules = malloc(count * (sizeof(*modules) + sizeof(*owners)));
         if (!modules)
         {
-            return 0;
+            return DVM_CELL_BUSY;
         }
-        owners = (unsigned int *)(modules + group->nodes_used);
+        owners = (unsigned int *)(modules + count);
     }
-    unsigned count = 0;
+    unsigned next = 0;
     for (unsigned position = 0; group->native_modules && position < group->dead_count; position++)
     {
         unsigned index = dead_node_at(group, position);
         Module *module = group->native_modules[index];
         if (module && group->native_owners[index])
         {
-            owners[count] = group->native_owners[index];
-            modules[count++] = module;
+            owners[next] = group->native_owners[index];
+            modules[next++] = module;
         }
     }
     ModuleGraphClaim claim = {group, modules, owners, count, world, epoch};
@@ -102,5 +111,5 @@ static int claim_graph_with_modules(const RecordGroup *group, DVM_NativeWorld *w
     {
         free(modules);
     }
-    return result;
+    return result ? DVM_CELL_ACQUIRED : DVM_CELL_REFUSED;
 }

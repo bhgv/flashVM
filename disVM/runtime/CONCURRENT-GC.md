@@ -177,3 +177,7 @@ epoch is consumed for a failed preparation. General stopped tracing remains.
 [Fast readiness retry](FAST-READINESS-RETRY.md) avoids a quiescent-only Fast
 attempt while a guest is known active, including new work arriving after an
 empty shared sample. Actual quiescent acquisition remains authoritative.
+
+[Native claim storage](FAST-CLAIM-STORAGE.md) now follows actual native Module
+cardinality. Sparse large graphs need no native heap vector; vector allocation
+pressure retains the original Fast snapshot for shared confirmation retry.

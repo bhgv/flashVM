@@ -22,6 +22,7 @@ import subprocess
 # Optional exception_retirement_source replaces only the shared Fast emergency-string module.
 # Optional module_graph_source/graph_capture_source replace only discovery indexing/capture.
 # Optional snapshot_growth_source/graph_storage_source isolate allocation refusal controls.
+# Optional graph_confirmation_source preserves real claim helpers in private refusal controls.
 # Matching private headers/flags remain mandatory.
 # RU: runtime — исходная сборка, work — личные результаты, source — wrapper,
 # variant — define, symbols — перехваты линкера; вернуть личный бинарник.
@@ -66,6 +67,7 @@ def relink(
     graph_capture_source=None,
     snapshot_growth_source=None,
     graph_storage_source=None,
+    graph_confirmation_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -129,6 +131,7 @@ def relink(
         (graph_capture_source, "gc/common/graph_capture.c"),
         (snapshot_growth_source, "gc/duke/snapshot_growth.c"),
         (graph_storage_source, "gc/common/graph_storage.c"),
+        (graph_confirmation_source, "gc/fast/graph_confirmation.c"),
     ):
         if candidate is None:
             continue
