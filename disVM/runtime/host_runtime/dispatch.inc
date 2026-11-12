@@ -144,8 +144,16 @@ static int runtime_dispatch_turn(void)
             error("cannot finish exiting dispatch");
         }
         dvm_process_environment_release(process);
-        delrun(Pexiting);
+        /* EN: Parent killwait reads state under this queue/registry guard.
+         * Publish Pexiting under the same guard before withdrawing its root.
+         * RU: Родительский killwait читает state под этим шлюзом очереди/реестра.
+         * Опубликовать Pexiting под тем же шлюзом до снятия корня. */
         fvm_port_sync_lock(channel_queue_mutex);
+        if (!dvm_runqueue_pop_expected(process, Pexiting))
+        {
+            fvm_port_sync_unlock(channel_queue_mutex);
+            error("invalid runnable process removal");
+        }
         int removed = dvm_runtime_process_root_remove(process);
         fvm_port_sync_unlock(channel_queue_mutex);
         if (!removed)

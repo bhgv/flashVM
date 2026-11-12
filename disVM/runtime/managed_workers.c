@@ -21,551 +21,25 @@
 #include <string.h>
 
 
-/* One helper slot has one writer while alive; the controller reads after join.
- * Native identity and registry links are published/read under service.sync. */
-typedef struct ManagedWorker
-{
-    struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
-    DVM_OwnerMessage *staged_reply; /* Owner-only reply removed before heap admission. */
-    int reply_in_transit;       /* Published to the controller until the owner applies the reply. */
-    FVM_PortSync *wake;         /* Dedicated readiness condition and generation lock. */
-    int startup_committed;      /* Creator has installed the slot, under wake. */
-    int wake_stopped;           /* Stop/failure latch under wake. */
-    struct ManagedWorker *next; /* Native registry link protected by service.sync. */
-    unsigned long id;           /* Stable lifetime ID; never reused while the service exists. */
-    Prog *guest;                /* Borrowed until retirement on its own thread. */
-    int guest_pid;              /* Dedicated guest identity, or zero for pool execution. */
-    int guest_retired;          /* Set by this guest thread after managed retirement. */
-    int done;                   /* Published under service.sync after TLS destruction. */
-    DVM_ThreadSlot *thread;    /* Registrar handle, joined before this slot is reset. */
-    uintptr identity;          /* Context identity under service.sync; zero before context destruction. */
-    unsigned long turns;       /* Successful bytecode turns executed by this helper. */
-    unsigned long handoffs;    /* Completed rootless scheduler releases, distinct from native I/O. */
-    DVM_HeapOwnerStats owner;   /* Copied counters before the helper detaches. */
-} ManagedWorker;
-
-
-/* Native lifecycle only. Never hold sync while entering/waiting on the heap.
- * All slots and immutable callback data are published before thread creation. */
-typedef struct ManagedWorkers
-{
-    DVM_ThreadRegistrar *registrar; /* Owns OS handles, independent of managed admission. */
-    FVM_PortSync *sync;             /* Protect stop/failure/ready publication. */
-    DVM_NativeWorld *world;         /* Borrowed shared heap domain, immutable through join. */
-    int (*turn)(void);             /* Shared scheduler callback under heap exclusion. */
-    int stopping;                 /* Cooperative stop request, under sync. */
-    int failed;                   /* Latched attach/dispatch/retirement/start error. */
-    int diagnostics;              /* Emit lifecycle evidence only for --stats. */
-    unsigned long live;           /* Live helpers, under heap exclusion. */
-    unsigned long peak;           /* Maximum total live executors including controller. */
-    unsigned long created;        /* Successfully created helpers. */
-    unsigned long next_id;        /* Lifetime IDs allocated by the startup owner. */
-    unsigned long generation;     /* Runnable-work publication under sync; prevents lost wakeups. */
-    unsigned long reaped;         /* Helpers joined during rootless scheduling. */
-    unsigned long retired_turns;  /* Counters accumulated from reaped helper slots. */
-    unsigned long retired_releases; /* Audited releases accumulated after join. */
-    unsigned long retired_reentries; /* Audited reentries accumulated after join. */
-    void (*cancel_waits)(void);    /* Native wakeup hook for a fatal worker failure. */
-    unsigned long controller;     /* Successful controller turns. */
-    unsigned long files;          /* Descriptor-call count under service.sync; no VM execution lock. */
-    unsigned long ui_requests;    /* Helper UI role admissions, under heap exclusion. */
-    ManagedWorker *wake_slots;      /* Dedicated conditions protected by service.sync. */
-    ManagedWorker *helpers;       /* Individually allocated stable slots; never realloc live storage. */
-} ManagedWorkers;
-
-static __thread ManagedWorker *current_guest; /* Dedicated slot bound through native TLS teardown. */
-static ManagedWorkers service; /* One process-wide runtime; lifetime ends after join. */
-
-
-/* Copy the native stop/failure predicate without acquiring any heap state. */
-static int stopping(void)
-{
-    int result;
-    fvm_port_sync_lock(service.sync);
-    result = service.stopping || service.failed;
-    fvm_port_sync_unlock(service.sync);
-    return result;
-}
-
-
-/* Wake every dedicated guest only for stop or fatal failure.
- * Caller owns service.sync, which pins the registered conditions. */
-static void stop_dedicated_waits(void)
-{
-    ManagedWorker *worker;
-    for (worker = service.wake_slots; worker; worker = worker->wake_next)
-    {
-        fvm_port_sync_lock(worker->wake);
-        worker->wake_stopped = 1;
-        fvm_port_sync_signal_all(worker->wake);
-        fvm_port_sync_unlock(worker->wake);
-    }
-}
-
-
-/* Remove a dedicated condition from the stop registry before publishing done. */
-static void unregister_dedicated_wait(ManagedWorker *worker)
-{
-    ManagedWorker **slot = &service.wake_slots;
-    while (*slot && *slot != worker)
-    {
-        slot = &(*slot)->wake_next;
-    }
-    if (*slot)
-    {
-        *slot = worker->wake_next;
-    }
-}
-
-
-/* Latch a native failure. message is a stable diagnostic, never a managed value.
- * Callers retain their heap phase and must still retire the context safely. */
-static void fail(const char *message)
-{
-    fprintf(stderr,"disvm managed worker: %s\n",message);
-    fvm_port_sync_lock(service.sync);
-    service.failed = 1;
-    stop_dedicated_waits();
-    fvm_port_sync_signal_all(service.sync);
-    fvm_port_sync_unlock(service.sync);
-    service.cancel_waits();
-}
-
-
-/* Rootless scheduler suspension differs from an audited native call: the turn
- * token and both current-process slots must be empty and REG already saved.
- * Return one only after leaving the heap; no C-held managed root is admitted. */
-static int leave_empty(DVM_NativeWorldSite site)
-{
-    DVM_NativeContext *context = dvm_native_context_current();
-    if (!context || !up || up->env != &up->defenv || up->prog ||
-        dvm_native_context_process(context) || dvm_native_context_turn(context))
-    {
-        return 0;
-    }
-    /* NATIVEWORLD: release a rootless exclusive turn before sleeping or joining. */
-    if (!dvm_native_owner_leave(dvm_native_owner_current()))
-    {
-        return 0;
-    }
-    dvm_native_execution()->world_last_exit = site;
-    return 1;
-}
-
-
-/* EN: Read only published readiness and FIFO state while outside NativeWorld.
- * RU: Вне NativeWorld читать только опубликованную готовность и состояние FIFO. */
-static int dedicated_work_pending(ManagedWorker *worker)
-{
-    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
-    return __atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) ||
-        dvm_messages_pending(resident->messages, 0, 0) ||
-        dvm_messages_pending(resident->messages, 1, 0);
-}
-
-
-/* EN: Wait for the dedicated resident's first or next work notification.
- * RU: Дождаться первой или следующей работы закреплённого процесса. */
-static void wait_dedicated_work(ManagedWorker *worker)
-{
-    fvm_port_sync_lock(worker->wake);
-    while (!worker->wake_stopped && !dedicated_work_pending(worker))
-    {
-        fvm_port_sync_wait(worker->wake);
-    }
-    fvm_port_sync_unlock(worker->wake);
-}
-
-
-/* EN: Take one native reply after waking, before entering NativeWorld.
- * RU: Извлечь один нативный ответ после пробуждения, до входа в NativeWorld. */
-static void stage_dedicated_reply(ManagedWorker *worker)
-{
-    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
-    __atomic_store_n(&worker->reply_in_transit, 1, __ATOMIC_RELEASE);
-    worker->staged_reply = dvm_messages_take(resident->messages, 1, 0);
-    if (!worker->staged_reply)
-    {
-        __atomic_store_n(&worker->reply_in_transit, 0, __ATOMIC_RELEASE);
-    }
-}
-
-
-/* Release an empty scheduler turn, join already terminated helpers without the
- * heap, then reclaim their native slots after reentry. Any rootless executor
- * can reap, including when the controller is blocked in native I/O. */
-static int yield_empty(int idle, int rendezvous, int (*pending)(void))
-{
-    ManagedWorker **slot = &service.helpers;
-    ManagedWorker *finished = NULL;
-    ManagedWorker *worker;
-    unsigned long generation;
-    int wait_for_work;
-    fvm_port_sync_lock(service.sync);
-    generation = service.generation;
-    fvm_port_sync_unlock(service.sync);
-    if (pending && pending())
-    {
-        return !stopping();
-    }
-    fvm_port_sync_lock(service.sync);
-    wait_for_work = idle && !rendezvous;
-    while (*slot)
-    {
-        worker = *slot;
-        if (worker->done && !worker->guest)
-        {
-            *slot = worker->next;
-            worker->next = finished;
-            finished = worker;
-        }
-        else
-        {
-            slot = &worker->next;
-        }
-    }
-    fvm_port_sync_unlock(service.sync);
-    if (!leave_empty(DVM_NW_SITE_IDLE))
-    {
-        /* The caller still owns the heap. Keep every unjoined slot visible
-         * to shutdown even when rootless admission is refused. */
-        fvm_port_sync_lock(service.sync);
-        while (finished)
-        {
-            worker = finished;
-            finished = worker->next;
-            worker->next = service.helpers;
-            service.helpers = worker;
-        }
-        fvm_port_sync_unlock(service.sync);
-        return 0;
-    }
-    for (worker = finished; worker; worker = worker->next)
-    {
-        if (!dvm_thread_registrar_join(service.registrar, worker->thread))
-        {
-            fprintf(stderr, "disvm: cannot join registered worker\n");
-            abort();
-        }
-    }
-    if (current_guest && idle && !finished)
-    {
-        wait_dedicated_work(current_guest);
-        if (stopping())
-        {
-            return 0;
-        }
-        stage_dedicated_reply(current_guest);
-    }
-    else if (wait_for_work && !finished)
-    {
-        fvm_port_sync_lock(service.sync);
-        while (service.generation == generation && !service.stopping && !service.failed)
-        {
-            fvm_port_sync_wait(service.sync);
-        }
-        fvm_port_sync_unlock(service.sync);
-    }
-    else if (idle)
-    {
-        fvm_port_thread_sleep_us(1000);
-    }
-    /* NATIVEWORLD: return to exclusive admission after the rootless wait. */
-    DVM_NativeExecution *execution = dvm_native_execution();
-    execution->world_entry_site = DVM_NW_SITE_IDLE;
-    execution->world_entry_pending = 1;
-    if (!dvm_native_owner_enter(dvm_native_owner_current()))
-    {
-        /* Returning to a managed error handler requires ACTIVE ownership. */
-        fprintf(stderr, "disvm: cannot reenter after empty scheduler yield\n");
-        exit(1);
-    }
-    execution->world_entry_pending = 0;
-    while (finished)
-    {
-        worker = finished;
-        finished = worker->next;
-        service.reaped++;
-        service.retired_turns += worker->turns;
-        service.retired_releases += worker->owner.releases;
-        service.retired_reentries += worker->owner.reentries;
-        if (service.diagnostics)
-        {
-            fprintf(stderr, "NATIVEWORKERS_REAP id=%lu joined=1 turns=%lu\n", worker->id, worker->turns);
-        }
-        if (worker->wake)
-        {
-            fvm_port_sync_destroy(worker->wake);
-        }
-        free(worker);
-    }
-    return !stopping();
-}
-
-
-/* Run real bytecode turns with independent up/REG/error stacks on this OS thread.
- * argument borrows its stable native helper slot until join. All managed access
- * is inside world admission; no slot contains a managed root.
- * No UI event pump runs here. Managed faults return through the same turn logic. */
-static void execute(void *argument)
-{
-    ManagedWorker *worker = argument;
-    if (worker->guest_pid)
-    {
-        fvm_port_sync_lock(worker->wake);
-        while (!worker->startup_committed)
-        {
-            fvm_port_sync_wait(worker->wake);
-        }
-        fvm_port_sync_unlock(worker->wake);
-    }
-    int cancellation = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    DVM_NativeContext *context = cancellation ? NULL : dvm_native_process_create(NULL);
-    int attached = 0;
-    if (!context || !dvm_native_context_bind(context))
-    {
-        fail(cancellation ? "cannot disable executor thread cancellation" : "cannot bind executor");
-        if (context)
-        {
-            dvm_native_context_destroy(context);
-        }
-        fvm_port_sync_lock(service.sync);
-        unregister_dedicated_wait(worker);
-        worker->done = 1;
-        service.generation++;
-        fvm_port_sync_signal_all(service.sync);
-        fvm_port_sync_unlock(service.sync);
-        return;
-    }
-    if (worker->guest_pid && !dvm_runqueue_publish_startup(worker->guest))
-    {
-        fail("invalid dedicated resident publication");
-    }
-    while (!stopping())
-    {
-        if (dvm_runtime_gc_attach())
-        {
-            attached = 1;
-            break;
-        }
-        fvm_port_thread_sleep_us(50);
-    }
-    if (attached)
-    {
-        if (worker->guest_pid)
-        {
-            current_guest = worker;
-            if (service.diagnostics)
-            {
-                fprintf(stderr, "NATIVEGUEST start pid=%d thread=%lu\n",
-                    worker->guest_pid, (unsigned long)pthread_self());
-            }
-        }
-        fvm_port_sync_lock(service.sync);
-        worker->identity = (uintptr)context;
-        fvm_port_sync_signal_all(service.sync);
-        fvm_port_sync_unlock(service.sync);
-        if (waserror())
-        {
-            DVM_HeapOwnerStats failed_owner;
-            fail(up->env->errstr);
-            /* A turn-protocol fault cannot safely abandon a live C continuation.
-             * Ordinary managed errors retire their claim before returning. */
-            if (dvm_native_context_turn(context) || dvm_native_context_process(context) ||
-                !dvm_native_owner_statistics(dvm_native_owner_current(),&failed_owner) ||
-                failed_owner.phase != DVM_HEAP_ACTIVE)
-            {
-                fprintf(stderr,"disvm: worker retained an unfinished turn\n");
-                exit(1);
-            }
-            up->prog = nil;
-            up->env = &up->defenv;
-        }
-        else
-        {
-            while (!stopping() && !worker->guest_retired)
-            {
-                int progress = service.turn();
-                if (progress < 0)
-                {
-                    fail("managed turn failed");
-                    break;
-                }
-                if (progress == DVM_MANAGED_TURN_GUEST)
-                {
-                    worker->turns++;
-                }
-                /* Stop owns the registry through join. A resumed native call
-                 * may finish its current turn, but must not reap/mutate links. */
-                if (stopping() || worker->guest_retired)
-                {
-                    break;
-                }
-                worker->handoffs++;
-                if (!yield_empty(!progress, 0, NULL))
-                {
-                    if (!stopping())
-                    {
-                        error("cannot yield helper scheduler turn");
-                    }
-                    break;
-                }
-            }
-            poperror();
-        }
-        if (worker->guest_retired && service.diagnostics)
-        {
-            fprintf(stderr, "NATIVEGUEST retired pid=%d thread=%lu\n",
-                worker->guest_pid, (unsigned long)pthread_self());
-        }
-        current_guest = NULL;
-        fvm_port_sync_lock(service.sync);
-        worker->identity = 0;
-        fvm_port_sync_unlock(service.sync);
-        if (!dvm_native_owner_statistics(dvm_native_owner_current(),&worker->owner))
-        {
-            fail("cannot snapshot executor ownership");
-        }
-        else if (worker->owner.phase == DVM_HEAP_ACTIVE)
-        {
-            fvm_port_sync_lock(service.sync);
-            service.live--;
-            fvm_port_sync_unlock(service.sync);
-        }
-        /* A dedicated worker stopped while IDLE leaves its slot for shutdown join. */
-        while (!dvm_runtime_gc_detach())
-        {
-            fvm_port_thread_sleep_us(50);
-        }
-    }
-    if (!dvm_native_context_unbind(context) || !dvm_native_context_destroy(context))
-    {
-        fail("executor retirement failed");
-    }
-    fvm_port_sync_lock(service.sync);
-    unregister_dedicated_wait(worker);
-    worker->done = 1;
-    service.generation++;
-    fvm_port_sync_signal_all(service.sync);
-    fvm_port_sync_unlock(service.sync);
-}
-
-
-/* EN: Link the native slot while the startup command owns the service gate.
- * RU: Добавить нативный слот, пока команда запуска удерживает шлюз сервиса. */
-static void install_worker(ManagedWorker *worker)
-{
-    service.created++;
-    worker->next = service.helpers;
-    service.helpers = worker;
-    service.live++;
-    if (service.live + 1 > service.peak)
-    {
-        service.peak = service.live + 1;
-    }
-}
-
-
-/* EN: Reserve the resident's identity on the native registrar.
- * RU: Зарезервировать идентификатор процесса на нативном регистраторе. */
-static int prepare_resident_slot(void *argument)
-{
-    ManagedWorker *worker = argument;
-    if (service.next_id == ULONG_MAX || !dvm_runtime_prepare_resident(worker->guest))
-    {
-        return 0;
-    }
-    worker->id = ++service.next_id;
-    worker->guest_pid = worker->guest->pid;
-    return 1;
-}
-
-
-/* EN: Install the slot, then publish the fully initialized root before replying.
- * RU: Установить слот и опубликовать готовый корень до отправки ответа. */
-static void publish_resident_slot(void *argument, DVM_ThreadSlot *thread)
-{
-    ManagedWorker *worker = argument;
-    worker->thread = thread;
-    ((DVM_RuntimeProcess *)worker->guest)->dedicated = worker;
-    install_worker(worker);
-    dvm_runtime_process_root_add(worker->guest);
-}
-
-
-/* EN: Allocate a stable worker slot and start it through the registrar.
- * RU: Выделить стабильный слот и запустить поток через регистратор.
- * Dedicated startup releases admission while waiting for the native handle. */
-static int start_helper(Prog *guest)
-{
-    ManagedWorker *worker;
-    if (!guest || stopping())
-    {
-        return 0;
-    }
-    worker = calloc(1, sizeof(*worker));
-    if (!worker)
-    {
-        return 0;
-    }
-    worker->guest = guest;
-    worker->wake = fvm_port_sync_create();
-    if (!worker->wake)
-    {
-        free(worker);
-        return 0;
-    }
-    fvm_port_sync_lock(service.sync);
-    worker->wake_next = service.wake_slots;
-    service.wake_slots = worker;
-    fvm_port_sync_unlock(service.sync);
-
-    int released = dvm_runtime_gc_native_try_leave();
-    if (released > 0)
-    {
-        /* Order creation before shutdown's first join request. The new
-         * resident waits on its private condition until commit. */
-        fvm_port_sync_lock(service.sync);
-        if (!service.stopping && !service.failed)
-        {
-            (void)dvm_thread_registrar_start_prepared(service.registrar, execute, worker,
-                prepare_resident_slot, publish_resident_slot);
-        }
-        fvm_port_sync_unlock(service.sync);
-        dvm_runtime_gc_native_enter(released);
-    }
-    if (!worker->thread)
-    {
-        fvm_port_sync_lock(service.sync);
-        unregister_dedicated_wait(worker);
-        fvm_port_sync_unlock(service.sync);
-        fvm_port_sync_destroy(worker->wake);
-        free(worker);
-        return 0;
-    }
-    fvm_port_sync_lock(worker->wake);
-    worker->startup_committed = 1;
-    fvm_port_sync_signal_all(worker->wake);
-    fvm_port_sync_unlock(worker->wake);
-    return 1;
-}
+#include "resident_threads/worker_state.inc"
+#include "resident_threads/worker_wait.inc"
+#include "resident_threads/worker_execute.inc"
+#include "resident_threads/worker_start.inc"
 
 
 /* EN: Start the resident registry on the bound active controller.
  * diagnostics selects lifecycle output. turn and cancel_waits are borrowed
  * callbacks through stop. Return zero on invalid state or native allocation.
  * RU: Запустить реестр закреплённых потоков на активном контроллере.
- * Обратные вызовы заимствованы до stop. При ошибке вернуть ноль. */
-int dvm_resident_threads_start(int diagnostics,
-    int (*turn)(void), void (*cancel_waits)(void))
+ * Обратные вызовы заимствованы до stop. При ошибке вернуть ноль.
+ */
+int dvm_resident_threads_start(int diagnostics, int (*turn)(void), void (*cancel_waits)(void))
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
-    if (!turn || !cancel_waits || service.sync || !context || !up || up->prog ||
-        dvm_native_context_process(context) || dvm_native_context_turn(context) ||
-        !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
-        state.phase != DVM_HEAP_ACTIVE || state.pending_progress ||
-        !dvm_native_owner_world(dvm_native_owner_current()))
+    if (!turn || !cancel_waits || service.sync || !context || !up || up->prog || dvm_native_context_process(context) ||
+        dvm_native_context_turn(context) || !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
+        state.phase != DVM_HEAP_ACTIVE || state.pending_progress || !dvm_native_owner_world(dvm_native_owner_current()))
     {
         return 0;
     }
@@ -591,24 +65,34 @@ int dvm_resident_threads_start(int diagnostics,
 }
 
 
-/* EN: Start a rooted resident, waiting for the registrar outside admission.
- * RU: Запустить укоренённый процесс, ожидая регистратора вне допуска. */
+/* EN: Start borrowed rooted guest through the live service. Caller owns resident startup roots;
+ * return zero on missing service/guest, stop or startup refusal. Wait outside admission.
+ * RU: Запустить заимствованный укоренённый guest через сервис. Вызывающий владеет стартовыми
+ * корнями; вернуть ноль при отсутствии сервиса/guest, остановке или отказе старта. Ожидать вне
+ * допуска.
+ */
 int dvm_managed_workers_start_guest(Prog *guest)
 {
     return service.sync && guest && !stopping() && start_helper(guest);
 }
 
 
-/* Return the PID permanently associated with this dedicated TLS slot.
- * The initial guest uses the controller and supplies its PID at dispatch. */
+/* EN: Return this thread's borrowed permanent Prog or NULL for controller. No arguments, mutation
+ * or ownership transfer; never choose another resident.
+ * RU: Вернуть заимствованный постоянный Prog потока либо NULL для контроллера. Нет аргументов,
+ * мутации и передачи владения; другой процесс не выбирается.
+ */
 Prog *dvm_managed_workers_guest(void)
 {
     return current_guest ? current_guest->guest : NULL;
 }
 
 
-/* EN: Tell the controller about an extracted reply, after checking the FIFO.
- * RU: Сообщить контроллеру об извлечённом ответе после проверки FIFO. */
+/* EN: Read atomic transit marker for borrowed live guest after FIFO checks. Caller pins guest and
+ * dedicated slot; return zero when absent, without consuming a reply.
+ * RU: Прочитать атомарную отметку transit живого guest после проверки FIFO. Вызывающий удерживает
+ * guest и слот; вернуть ноль при отсутствии, ответ не извлекать.
+ */
 int dvm_managed_workers_reply_in_transit(Prog *guest)
 {
     ManagedWorker *worker = ((DVM_RuntimeProcess *)guest)->dedicated;
@@ -616,8 +100,13 @@ int dvm_managed_workers_reply_in_transit(Prog *guest)
 }
 
 
-/* EN: Consume this executor's staged reply, if it belongs to guest.
- * RU: Забрать извлечённый ответ текущего исполнителя для guest. */
+/* EN: Take the current resident's staged native message only for borrowed matching guest. Transfer
+ * message to caller, keep transit until applied; return NULL if no matching reply. Owner thread
+ * only.
+ * RU: Забрать извлечённое нативное сообщение текущего процесса для совпадающего guest. Передать
+ * сообщение вызывающему, сохранить transit до применения; вернуть NULL при отсутствии. Только
+ * поток владельца.
+ */
 DVM_OwnerMessage *dvm_managed_workers_take_reply(Prog *guest)
 {
     if (!current_guest || current_guest->guest != guest || !current_guest->staged_reply)
@@ -630,8 +119,11 @@ DVM_OwnerMessage *dvm_managed_workers_take_reply(Prog *guest)
 }
 
 
-/* EN: Clear the reply marker only after the owner has applied the reply.
- * RU: Снять отметку ответа только после его обработки владельцем. */
+/* EN: Clear transit after applying the reply for borrowed matching guest. Owner thread only;
+ * mismatches do nothing, no result or slot lifetime extension.
+ * RU: Снять transit после применения ответа для совпадающего guest. Только поток владельца;
+ * несовпадение ничего не меняет, результата и продления жизни слота нет.
+ */
 void dvm_managed_workers_finish_reply(Prog *guest)
 {
     if (current_guest && current_guest->guest == guest)
@@ -641,7 +133,11 @@ void dvm_managed_workers_finish_reply(Prog *guest)
 }
 
 
-/* Latch retirement on the dedicated thread after its Prog has been freed. */
+/* EN: Owner thread clears its guest pointer after Prog destruction and records retirement. pid
+ * must equal the permanent ID or abort; controller has no slot and does nothing.
+ * RU: Поток владельца снимает guest после удаления Prog и отмечает завершение. pid обязан
+ * совпадать с постоянным ID, иначе abort; контроллер без слота ничего не делает.
+ */
 void dvm_managed_workers_guest_retired(int pid)
 {
     if (current_guest)
@@ -656,8 +152,12 @@ void dvm_managed_workers_guest_retired(int pid)
 }
 
 
-/* Advance the wake generation. The caller guarantees the service stays
- * live through this signal; no managed pointer crosses it. */
+/* EN: Advance readiness generation and signal under service.sync when live. No arguments/result or
+ * managed pointer transfer; caller guarantees service lifetime through signal.
+ * RU: Увеличить поколение готовности и подать сигнал под service.sync живого сервиса. Нет
+ * аргументов, результата и передачи управляемого указателя; вызывающий гарантирует жизнь сервиса
+ * до сигнала.
+ */
 void dvm_managed_workers_wake(void)
 {
     if (service.sync)
@@ -670,8 +170,11 @@ void dvm_managed_workers_wake(void)
 }
 
 
-/* Publish readiness to the guest's native condition. The caller holds the
- * heap turn, so guest and its dedicated slot remain live through the signal. */
+/* EN: Signal borrowed live guest's dedicated condition and service generation. Caller pins
+ * guest/slot through publication; no execution, ownership transfer or result.
+ * RU: Подать сигнал условию живого guest и поколению сервиса. Вызывающий удерживает guest/слот до
+ * публикации; исполнения, передачи владения и результата нет.
+ */
 void dvm_managed_workers_wake_guest(Prog *guest)
 {
     ManagedWorker *worker = ((DVM_RuntimeProcess *)guest)->dedicated;
@@ -685,22 +188,33 @@ void dvm_managed_workers_wake_guest(Prog *guest)
 }
 
 
-/* Yield an empty controller interval; ready tasks stay in the shared FIFO. */
+/* EN: Yield a rootless controller interval; idle permits pacing. Return one without a service,
+ * otherwise the reaping/wait result. No Prog migration; join waits occur outside admission.
+ * RU: Уступить интервал контроллера без корней; idle разрешает паузу. Вернуть единицу без сервиса,
+ * иначе результат сборки/ожидания. Prog не переносится; join ожидается вне допуска.
+ */
 int dvm_managed_workers_yield(int idle)
 {
     return !service.sync || yield_empty(idle, 1, NULL);
 }
 
 
-/* Park a rootless non-UI controller when only logical channel waiters remain.
- * Work/retirement generations and stop signals wake it without polling frames. */
+/* EN: Park rootless controller while optional borrowed pending reports no work. Return one without
+ * service, otherwise yield result; callback and service outlive wait.
+ * RU: Усыпить контроллер без корней, пока заимствованный pending не сообщает работу. Вернуть
+ * единицу без сервиса, иначе результат yield; callback и сервис живут до конца ожидания.
+ */
 int dvm_managed_workers_park(int (*pending)(void))
 {
     return !service.sync || yield_empty(1, 0, pending);
 }
 
 
-/* Controller-only progress accounting; no heap or lifecycle transition. */
+/* EN: Record one controller turn under service.sync if live. Controller-only, no arguments/result,
+ * heap access or lifecycle change.
+ * RU: Учесть ход контроллера под service.sync живого сервиса. Только контроллер; нет аргументов,
+ * результата, доступа к куче и смены жизненного цикла.
+ */
 void dvm_managed_workers_record(void)
 {
     if (service.sync)
@@ -712,10 +226,11 @@ void dvm_managed_workers_record(void)
 }
 
 
-/* EN: Record one file call under the existing service metadata mutex. Per-handle
- * gates independently serialize cursors; no file I/O occurs while sync is held.
- * RU: Учесть файловый вызов под mutex метаданных сервиса. Шлюзы отдельно
- * сериализуют курсоры; файлового I/O под sync нет. */
+/* EN: Count one file call under service.sync if live. No arguments/result; no file I/O or heap
+ * admission while holding the metadata mutex.
+ * RU: Учесть файловый вызов под service.sync живого сервиса. Нет аргументов и результата; файловый
+ * I/O и допуск к куче под мьютексом не выполняются.
+ */
 void dvm_managed_workers_file_call(void)
 {
     if (service.sync)
@@ -727,17 +242,20 @@ void dvm_managed_workers_file_call(void)
 }
 
 
-/* The helper never waits on UI while outside its heap turn. Its copied RPC
- * therefore shares the controller's existing single-operation serialization.
- * Check TLS phase before observing the identity protected by that heap gate. */
+/* EN: Return whether current active turn belongs to a registered helper, counting its UI request
+ * under service.sync. No arguments; borrow TLS/slots, reject inactive or foreign owners before
+ * scanning, never wait on UI here.
+ * RU: Вернуть принадлежность текущего активного хода зарегистрированному потоку, учитывая
+ * UI-запрос под service.sync. Без аргументов; заимствовать TLS/слоты, отвергать неактивного/чужого
+ * владельца до поиска; UI здесь не ожидать.
+ */
 int dvm_managed_workers_current(void)
 {
     DVM_NativeContext *context = dvm_native_context_current();
     DVM_HeapOwnerStats state;
     ManagedWorker *worker;
     if (!context || !dvm_native_context_turn(context) ||
-        !dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
-        state.phase != DVM_HEAP_ACTIVE ||
+        !dvm_native_owner_statistics(dvm_native_owner_current(), &state) || state.phase != DVM_HEAP_ACTIVE ||
         dvm_native_owner_world(dvm_native_owner_current()) != service.world)
     {
         return 0;
@@ -758,8 +276,13 @@ int dvm_managed_workers_current(void)
 }
 
 
-/* EN: Stop and join helpers. Native slot cleanup runs with controller IDLE.
- * RU: Остановить и присоединить исполнителей. Нативные слоты очищаются в IDLE. */
+/* EN: Controller closes startup, wakes and joins all remaining slots outside admission, then frees
+ * the service. diagnostics selects output. Return one without service or on clean join, zero after
+ * latched failure; invalid release/join is fatal. Other service callers must finish before return.
+ * RU: Контроллер закрывает запуск, будит и присоединяет слоты вне допуска, затем удаляет сервис.
+ * diagnostics задаёт вывод. Вернуть единицу без сервиса/при чистом join, ноль при записанной
+ * ошибке; отказ выхода/join фатален. Прочие пользователи сервиса обязаны завершиться до возврата.
+ */
 int dvm_managed_workers_stop(int diagnostics)
 {
     int ok;
@@ -779,7 +302,7 @@ int dvm_managed_workers_stop(int diagnostics)
     fvm_port_sync_unlock(service.sync);
     if (!leave_empty(DVM_NW_SITE_JOIN))
     {
-        fprintf(stderr,"disvm: cannot release controller for managed worker join\n");
+        fprintf(stderr, "disvm: cannot release controller for managed worker join\n");
         exit(1);
     }
     for (worker = service.helpers; worker; worker = worker->next)
@@ -796,15 +319,29 @@ int dvm_managed_workers_stop(int diagnostics)
     ok = !service.failed;
     if (diagnostics)
     {
-        fprintf(stderr,"NATIVEWORKERS threads=%lu joined=1 failed=%d controller_turns=%lu worker_turns=%lu worker_releases=%lu worker_reentries=%lu serialized_files=%lu ui_requests=%lu\n",
-            service.peak,service.failed,service.controller,turns + service.retired_turns,releases + service.retired_releases,reentries + service.retired_reentries,service.files,service.ui_requests);
+        fprintf(
+            stderr,
+            "NATIVEWORKERS threads=%lu joined=1 failed=%d controller_turns=%lu worker_turns=%lu worker_releases=%lu worker_reentries=%lu serialized_files=%lu ui_requests=%lu\n",
+            service.peak,
+            service.failed,
+            service.controller,
+            turns + service.retired_turns,
+            releases + service.retired_releases,
+            reentries + service.retired_reentries,
+            service.files,
+            service.ui_requests);
     }
     if (diagnostics)
     {
         for (worker = service.helpers; worker; worker = worker->next)
         {
-            fprintf(stderr, "NATIVEWORKERS_THREAD id=%lu joined=1 turns=%lu releases=%lu reentries=%lu handoffs=%lu\n",
-                worker->id, worker->turns, worker->owner.releases, worker->owner.reentries, worker->handoffs);
+            fprintf(stderr,
+                    "NATIVEWORKERS_THREAD id=%lu joined=1 turns=%lu releases=%lu reentries=%lu handoffs=%lu\n",
+                    worker->id,
+                    worker->turns,
+                    worker->owner.releases,
+                    worker->owner.reentries,
+                    worker->handoffs);
         }
     }
     for (worker = service.helpers; worker; worker = next)

@@ -4,7 +4,12 @@
  */
 
 
-/* Parse options on main before publishing immutable launch arguments to an OS worker. */
+/* EN: Parse borrowed argc/argv on the launch thread and validate immutable
+ * execution/GC settings before creating workers. Return the VM status or a
+ * nonzero diagnostic on invalid options/startup; never mutate a running profile.
+ * RU: Разобрать заимствованные argc/argv в стартовом потоке и проверить настройки
+ * исполнения/GC до создания потоков. Вернуть код VM либо ненулевую диагностику
+ * ошибки параметров/старта; профиль работающей VM не изменяется. */
 int main(int argc, char **argv)
 {
     struct sigaction pipe_action = {0};
@@ -341,12 +346,22 @@ int main(int argc, char **argv)
         fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
         return 2;
     }
-    /* The implicit native profile never asks active guests to park for Cycles.
-     * Explicit --gc-worker retains the stopped reference path for diagnostics. */
-    if (gc_worker && !gc_selected && !dvm_runtime_disable_cycles)
+    /* [GC:] EN: Dedicated guests never accept tracing park requests, including
+     * explicit --gc-worker. Keep the stopped diagnostic path only for the
+     * single-thread reference. Disabled Cycles must not acquire idle policy.
+     * RU: Закреплённые гости не паркуются ради трассировки даже с --gc-worker.
+     * Остановочный диагностический путь остаётся у однопоточного эталона.
+     * Отключённому Cycles не назначать политику idle. */
+    if (gc_worker && !dvm_runtime_disable_cycles)
     {
-        dvm_runtime_idle_cycles = 1;
-        dvm_runtime_event_cycles = 1;
+        if (native_spawn || !gc_selected)
+        {
+            dvm_runtime_idle_cycles = 1;
+        }
+        if (!gc_selected)
+        {
+            dvm_runtime_event_cycles = 1;
+        }
     }
     if (dvm_runtime_idle_cycles && (!gc_worker || dvm_runtime_disable_cycles))
     {

@@ -92,3 +92,5 @@ Private confirmation copies must retain the `module_graph_claim.inc` include.
 
 [Mixed snapshot retry](../../MIXED-SNAPSHOT-RETRY.md) keeps the graph retry
 decision in the shared pass result independently of retained queue readiness.
+
+Dedicated admission and joined-thread accounting: [native Cycles without tracing park requests](../../NATIVE-CYCLES-NO-PARK.md).
