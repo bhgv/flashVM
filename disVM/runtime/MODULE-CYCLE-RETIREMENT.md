@@ -36,12 +36,15 @@ queue, including already claimed graphs. Stopped draining can finish them withou
 trying to publish `unload`'s managed owners into closed queues. This preserves the
 existing shutdown boundary; it does not implement concurrent shutdown.
 
-Native Module ownership is not itself a traced graph node. In particular,
+In this initial instance pass, native Module ownership was not a traced graph
+node. The [original-MP follow-up](ORIGINAL-MP-CYCLES.md) now adds sole-owner
+attribution, lookup-safe native claims and rollback. In particular,
 `Module.origmp` is an independently owned managed reference. When that owner keeps
 an instance cycle reachable, ordinary outside-count classification preserves it;
-this change does not collect cycles whose closure requires consuming that native
-edge. Shared original data (`mkmp == 0`), arbitrary native plugins and the whole
-loader/code-cache mutation surface are not certified by these tests.
+the initial change did not consume that native edge. Multi-owner native Module
+closure, arbitrary native plugins and the whole loader/code-cache mutation surface
+remain outside certification. `mkmp == 0` creates an empty MP instance; the later
+fixture explicitly attaches a retained original-MP owner before publication.
 
 ## Real allocator and epoch acceptance
 
@@ -89,7 +92,7 @@ rings. Generated JIT instructions are not C-TSan instrumented. Execution was Lin
 x86-64; ARM64/RV64 remain unverified. The focused native/root/owner/module/resident
 selection passed 84/84 tests. Ten additional longer GC checks passed 10/10.
 
-General stopped tracing, native Module/original-MP cycle closure, unsupported
+General stopped tracing, multi-owner native Module cycle closure, unsupported
 finalizers, complete root-publication auditing and shutdown still remain. Earlier
 acceptance failures and limitations recorded in [CONCURRENT-GC.md](CONCURRENT-GC.md)
 and [FAST-FINALIZATION.md](FAST-FINALIZATION.md) are not erased by these focused

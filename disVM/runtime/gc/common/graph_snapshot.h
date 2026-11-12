@@ -18,6 +18,7 @@
 
 typedef struct RecordGroup
 {
+    void **native_modules;            /* Sole native Module owner attributed to its Modlink, or NULL. */
     void **nodes;                     /* Captured object payloads. */
     unsigned int *incoming;           /* Internal incoming edge counts. */
     unsigned int *index;              /* Discovery hash slots, unused after capture. */
@@ -31,7 +32,7 @@ typedef struct RecordGroup
     unsigned int field_limit;         /* Capture capacity of the backing storage. */
     size_t source_element;            /* Element cursor inside a suspended source. */
     size_t source_bit;                /* Next mapped bit within the current element. */
-    int source_tail_seen;             /* List tail captured before its element fields. */
+    int source_tail_seen;             /* List tail or native origmp edge captured before mapped fields. */
     unsigned int next_source;         /* Next source node in a suspended Duke scan. */
     unsigned int pinned_nodes;        /* Duke holds nodes at indices 1 through this count. */
     int growing;                      /* Duke can enlarge discovery storage under guards. */
@@ -50,6 +51,7 @@ typedef struct RecordGroup
 /* Scratch storage owned by one guarded discovery call. */
 typedef struct RecordGroupScratch
 {
+    void *native_modules[RECORD_NODE_CAPACITY];  /* Optional sole Module identities. */
     void *nodes[RECORD_NODE_CAPACITY];           /* Object payloads. */
     unsigned int incoming[RECORD_NODE_CAPACITY]; /* Internal incoming counts. */
     unsigned int index[RECORD_INDEX_SLOTS];      /* Node indices plus one. */

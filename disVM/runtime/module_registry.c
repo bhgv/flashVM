@@ -6,6 +6,8 @@
 #include "interp.h"
 #include "module_registry.h"
 #include "module_counts.h"
+#include "disvm/refcount.h"
+#include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
 
@@ -80,4 +82,48 @@ int dvm_module_registry_release(Module *module)
     }
     pthread_mutex_unlock(&registry_mutex);
     return last;
+}
+
+
+/* [GC:] EN: Serialize the zero-count claim with lookup. Entries are owned and
+ * unique; argument belongs to the bounded native claim callback. No native or
+ * managed destructor runs under this mutex. Failure leaves membership intact.
+ * RU: Сериализовать захват нуля с lookup. Entries принадлежат вызывающему и
+ * уникальны; argument передаётся ограниченному native callback. Под mutex нет
+ * деструкторов. При отказе состав списка не меняется. */
+int dvm_module_registry_claim(Module **entries, unsigned count, int (*claim)(void *), void *argument)
+{
+    pthread_mutex_lock(&registry_mutex);
+    for (unsigned index = 0; index < count; index++)
+    {
+        if (!entries[index] || dvm_refcount_load_i(&entries[index]->ref) != 1)
+        {
+            pthread_mutex_unlock(&registry_mutex);
+            return 0;
+        }
+    }
+    int claimed = claim(argument);
+    if (claimed)
+    {
+        for (unsigned index = 0; index < count; index++)
+        {
+            Module *module = entries[index];
+            if (dvm_refcount_load_i(&module->ref) != 0)
+            {
+                abort();
+            }
+            Module **slot = &modules;
+            while (*slot && *slot != module)
+            {
+                slot = &(*slot)->link;
+            }
+            if (*slot)
+            {
+                *slot = module->link;
+            }
+            module->link = NULL;
+        }
+    }
+    pthread_mutex_unlock(&registry_mutex);
+    return claimed;
 }

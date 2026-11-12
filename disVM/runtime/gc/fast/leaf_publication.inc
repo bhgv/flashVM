@@ -113,7 +113,11 @@ static int defer_leaf(Heap *heap, unsigned long bytes, int exclusive)
     {
         abort();
     }
-    if (exclusive && became_ready && notify_ready)
+    /* [GC:] EN: Cycles also publishes sole owners here; shared admission does
+     * not mean Fast is already running. Wake its lane on every ready transition.
+     * RU: Cycles тоже передаёт сюда последних владельцев. Shared-допуск не
+     * означает работу Fast; каждое появление готовой головы будит его поток. */
+    if (became_ready && notify_ready)
     {
         notify_ready();
     }

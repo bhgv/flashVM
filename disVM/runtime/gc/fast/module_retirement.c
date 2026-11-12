@@ -9,6 +9,8 @@
 #include "interp.h"
 #include "disvm/refcount.h"
 #include "module_retirement.h"
+#include "../../gc_fields.h"
+#include "../../runtime_gc.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -46,4 +48,52 @@ void dvm_gc_fast_module_finalize(Heap *heap)
     Module *module = H2D(Modlink *, heap)->m;
     H2D(Modlink *, heap)->m = NULL;
     unload(module);
+}
+
+
+/* [GC:] EN: Keep an extra original MP owner before a possibly nonfinal Module
+ * release. module stays independently owned; immutable origmp is borrowed only
+ * before that release. Extra ownership prevents concurrent graph claims. Marking
+ * must succeed before the nonfallible retain. Caller publishes with destroy.
+ * RU: Удержать origmp перед возможным непоследним release Module. module ещё
+ * независимо принадлежит вызывающему; origmp читается только до release.
+ * Дополнительная ссылка исключает захват графа. Пометка предшествует retain;
+ * вызывающий публикует владельца через destroy. */
+void *dvm_gc_module_retry_mp(Module *module)
+{
+    if (!dvm_runtime_idle_cycles || !module || (module->rt & DYNMOD) || module->dlm ||
+        dvm_refcount_load_i(&module->ref) <= 1 || !module->origmp || module->origmp == H)
+    {
+        return H;
+    }
+    Heap *heap = D2H(module->origmp);
+    Setmark(heap);
+    if (dvm_refcount_retain_u(&heap->ref) != DVM_REFCOUNT_LIVE)
+    {
+        fputs("disvm: original MP retry lost its independently owned reference\n", stderr);
+        abort();
+    }
+    return module->origmp;
+}
+
+
+/* [GC:] EN: Consume graph-owned native module after its final reader cutoff.
+ * Do not release its already-consumed origmp or zero native count again. Native
+ * imports/types/code still follow the reviewed loader finish outside registry lock.
+ * heap/module remain allocated through this call; no alias may escape.
+ * RU: Снять native-модуль графа после последней эпохи. Не снимать повторно
+ * origmp или native-счётчик ноль. Импорты/типы/код завершает loader вне mutex
+ * реестра. heap/module ещё выделены; алиасы не выходят наружу. */
+void dvm_gc_fast_module_graph_finalize(Heap *heap, Module *module)
+{
+    if (!heap || heap->t != &Tmodlink || H2D(Modlink *, heap)->m != module || H2D(Modlink *, heap)->MP != H ||
+        dvm_refcount_load_u(&heap->ref) != 0 || !module || dvm_refcount_load_i(&module->ref) != 0 ||
+        (module->rt & DYNMOD) || module->dlm)
+    {
+        fputs("disvm: invalid graph-owned native Module finalization\n", stderr);
+        abort();
+    }
+    H2D(Modlink *, heap)->m = NULL;
+    module->origmp = H;
+    dvm_runtime_module_finish(module);
 }

@@ -136,3 +136,6 @@ unmaps and their successful returns to C after unmap. No sanitizer warnings
 appeared. These are local observations of the exercised paths, not a claim of
 complete race-freedom or complete concurrent collection. Earlier acceptance
 investigations remain in the linked reports.
+
+[Original-MP cycle retirement](ORIGINAL-MP-CYCLES.md) extends native ownership
+claims to sole-owner Modules, including rollback and event-driven leaf wakeup.

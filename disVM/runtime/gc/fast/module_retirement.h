@@ -30,4 +30,32 @@ int dvm_gc_fast_module_eligible(const Heap *heap);
  * Реестр удаляет LAST до освобождения метаданных вне mutex. Кучу link и ссылку
  * статического Type снимает вызывающий; алиасы link/Module не выходят наружу. */
 void dvm_gc_fast_module_finalize(Heap *heap);
+
+
+/* [GC:] EN: Borrow module while independently owned; retain an extra original MP
+ * owner when a nonfinal native release may unblock a cycle. Return owned MP or H.
+ * Caller passes the extra owner to destroy after registry release; no VM safepoint
+ * occurs between this retain and publication. No original field is changed.
+ * RU: При независимом владении module удержать дополнительный origmp, если
+ * непоследний native-release может открыть цикл. Вернуть владение MP либо H.
+ * После release вызывающий передаёт его destroy без промежуточной точки VM. */
+void *dvm_gc_module_retry_mp(Module *module);
+
+
+/* [GC:] EN: After the final reader epoch, finalize the graph-owned zero-count
+ * native module referenced by claimed heap. Both managed MP edges were consumed
+ * by the graph claim. Caller clears the link MP and frees heap afterwards.
+ * RU: После последней эпохи завершить native Module с нулём ссылок из heap.
+ * Оба managed-ребра MP уже сняты захватом графа. Вызывающий очищает MP link и
+ * затем освобождает heap. */
+void dvm_gc_fast_module_graph_finalize(Heap *heap, Module *module);
+
+
+/* [GC:] EN: Native loader metadata cleanup after its registry owner was consumed.
+ * Caller owns module and has either stopped admission or a valid final epoch.
+ * origmp must be H when its strong owner was consumed by a graph claim.
+ * RU: Очистить native-метаданные loader после снятия ссылки реестра. module
+ * принадлежит вызывающему под остановкой либо после последней эпохи. origmp
+ * равен H, если его ссылку снял захват графа. */
+void dvm_runtime_module_finish(Module *module);
 #endif

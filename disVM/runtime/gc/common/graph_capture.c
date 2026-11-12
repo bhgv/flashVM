@@ -174,6 +174,20 @@ static int capture_record_source(
             return 1;
         }
         group->has_modules = 1;
+        Module *module = H2D(Modlink *, heap)->m;
+        if (access && !group->source_tail_seen && dvm_refcount_load_i(&module->ref) == 1)
+        {
+            if (field_end && group->edges_used >= field_end)
+            {
+                return DVM_DUKE_CAPTURE_RESUME;
+            }
+            if (!record_group_edge(group, index, &module->origmp, access))
+            {
+                return 0;
+            }
+            group->native_modules[index] = module;
+            group->source_tail_seen = group->growing;
+        }
         type = &Tptr;
         data = (unsigned char *)&H2D(Modlink *, heap)->MP;
     }
@@ -292,6 +306,11 @@ static int classify_record_group(RecordGroup *group, int shared)
     for (unsigned int index = 0; index < group->nodes_used; index++)
     {
         Heap *heap = D2H(group->nodes[index]);
+        if (group->native_modules[index] && dvm_refcount_load_i(&((Module *)group->native_modules[index])->ref) != 1)
+        {
+            group->busy = 1;
+            return 0;
+        }
         unsigned long expected = group->incoming[index] + (index == 0 || index <= group->pinned_nodes);
         unsigned long actual = dvm_refcount_load_u(&heap->ref);
         if (actual < expected)

@@ -45,21 +45,34 @@ def main():
             capture_output=True,
             text=True,
         )
-        for control in range(6 if positive_only else 10):
+        positive = (*range(6), *range(10, 19))
+        for control in positive if positive_only else (*positive, *range(6, 10), 19):
             replacement = None
-            if control >= 7:
+            if control in (7, 8, 9, 19):
                 source = read_rc_source(root)
-                gate = "H2D(Modlink *, heap)->MP = H;\n                dvm_gc_fast_module_finalize(heap);"
+                gate = "H2D(Modlink *, heap)->MP = H;"
                 gates = {
-                    7: (gate, "((void)0);\n                dvm_gc_fast_module_finalize(heap);"),
-                    8: (gate, "H2D(Modlink *, heap)->MP = H;\n                ((void)0);"),
+                    7: (gate, "((void)0);"),
+                    8: (
+                        "dvm_gc_fast_module_graph_finalize(heap, snapshot->native_modules[index]);",
+                        "((void)0);",
+                    ),
                     9: ("if (final_epoch)", "if (0)"),
+                    19: (
+                        "if (became_ready && notify_ready)",
+                        "if (exclusive && became_ready && notify_ready)",
+                    ),
                 }
                 gate, changed = gates[control]
+                prefix = suffix = ""
+                if control == 19:
+                    first = source.index("static int defer_leaf(")
+                    end = source.index("static void unlink_record_group", first)
+                    prefix, source, suffix = source[:first], source[first:end], source[end:]
                 if source.count(gate) != 1:
                     raise RuntimeError("module cycle control anchor changed: " + str(control))
                 replacement = work / "runtime_rc.c"
-                replacement.write_text(source.replace(gate, changed))
+                replacement.write_text(prefix + source.replace(gate, changed) + suffix)
             binary = relink(
                 runtime,
                 work,
@@ -70,18 +83,24 @@ def main():
                     "dvm_runtime_guest_sleep",
                     "dvm_runtime_rc_defer",
                     "dvm_runtime_root_remove",
+                    "dvm_runtime_root_add",
+                    "dvm_gc_workers_request",
+                    "dvm_runtime_rc_shared_candidates",
                     "poolfree",
                     "free",
                     "dvm_gc_fast_module_finalize",
+                    "dvm_gc_fast_module_graph_finalize",
                     "dvm_gc_fast_module_eligible",
                     "dvm_runtime_rc_shared_leaves",
                     "dvm_gc_fast_confirm_graph",
+                    "dvm_refcount_compare_i",
+                    "dvm_world_retire_epoch",
                 ],
                 runtime_rc_source=replacement,
             )
             profiles = (
                 [("--no-jit", False)]
-                if control >= 6
+                if control not in positive
                 else [(mode, locked) for mode in ("--no-jit", "--jit") for locked in (False, True)]
             )
             for mode, locked in profiles:
@@ -103,19 +122,20 @@ def main():
                 text = result.stdout + result.stderr
                 if "WARNING: ThreadSanitizer:" in text or "runtime error:" in text:
                     raise RuntimeError("module cycle sanitizer failure\n" + text[-12000:])
-                if control >= 6:
+                if control not in positive:
                     marker = {
                         6: "module cycle still requires heap quiescence",
                         7: "claimed module MP edge must be detached once",
                         8: "module cycle must run native Module finalization",
                         9: "module finalizer waits for claim and reader epoch",
+                        19: "Cycles final-owner publication must notify idle Fast",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(
                             f"module cycle control {control} missed\n{text[-12000:]}"
                         )
                     continue
-                nodes = 2300 if control == 4 else 4 if control == 3 else 2
+                nodes = 2300 if control in (4, 17) else 4 if control in (3, 16) else 2
                 if result.returncode or f"PASS module cycle nodes={nodes} " not in text:
                     raise RuntimeError(f"control={control} {mode} locked={locked}\n{text[-12000:]}")
                 evidence(text, children=2)
@@ -123,11 +143,23 @@ def main():
                     raise RuntimeError("module cycle queue accounting failed\n" + text[-12000:])
                 if control == 2 and "final_epoch=1 live=1" not in text:
                     raise RuntimeError("external MP survival not observed\n" + text[-12000:])
+                if control in (14, 16) and "native_refusal=1" not in text:
+                    raise RuntimeError("native claim refusal not observed\n" + text[-12000:])
+                if control == 15 and "epoch_refusal=1" not in text:
+                    raise RuntimeError("epoch rollback not observed\n" + text[-12000:])
+                if control == 13 and "lookup_refusal=1" not in text:
+                    raise RuntimeError("lookup race not observed\n" + text[-12000:])
+                if control in (14, 15, 16) and "rollback=1" not in text:
+                    raise RuntimeError("full rollback not observed\n" + text[-12000:])
+                if control == 12 and "live=1" not in text:
+                    raise RuntimeError(
+                        "external Module owner survival not observed\n" + text[-12000:]
+                    )
                 if control == 5 and "stale=1" not in text:
                     raise RuntimeError(
                         "actual changed-field refusal not observed\n" + text[-12000:]
                     )
-                if control == 4:
+                if control in (4, 17):
                     duke = re.search(
                         r"NATIVEDUKEGC promoted=(\d+) peak_fields=(\d+) resumed=(\d+) adopted_pins=(\d+)",
                         text,
@@ -144,8 +176,9 @@ def main():
                         )
     print(
         "PASS actual module cycle retirement: physical graph/Module frees, external owners, two instances, "
-        "final reader epochs, changed-field replay, 2300-node Duke; C/JIT, both polls"
-        + ("; positive profiles only" if positive_only else "; four semantic omission controls")
+        "original-MP cycles, lookup races, partial native/epoch rollback, final reader epochs, "
+        "changed-field replay, 2300-node Duke; C/JIT, both polls"
+        + ("; positive profiles only" if positive_only else "; five semantic omission controls")
     )
 
 

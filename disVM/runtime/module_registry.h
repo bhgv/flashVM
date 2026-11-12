@@ -34,4 +34,18 @@ struct Module *dvm_module_registry_lookup(const char *path);
  * Вернуть 1 для финализации вызывающим вне mutex, 0 при оставшихся ссылках.
  * Допускаются личные ещё не опубликованные модули. */
 int dvm_module_registry_release(struct Module *module);
+
+
+/* [GC:] EN: Under the registry mutex, validate count unique owned modules have
+ * one native owner, run claim(argument), then unlink only on success. claim must
+ * atomically consume managed counts and native counts to zero, restoring all on
+ * refusal. It may use bounded native metadata locks but never allocate, call VM,
+ * reenter registry or run destructors. Entries remain independently live until
+ * caller's post-epoch finalization. Return zero unchanged on outside ownership.
+ * RU: Под mutex проверить count уникальных modules с одной native-ссылкой,
+ * выполнить claim(argument), при успехе удалить из списка. claim захватывает
+ * managed/native счётчики в ноль и полностью откатывает отказ. Допустимы только
+ * ограниченные native-операции без выделений, VM, повторного входа и деструкторов.
+ * Вызывающий хранит entries до финализации после эпохи. Отказ сохраняет владение. */
+int dvm_module_registry_claim(struct Module **entries, unsigned count, int (*claim)(void *), void *argument);
 #endif

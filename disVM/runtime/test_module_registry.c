@@ -5,17 +5,18 @@
 #include "lib9.h"
 #include "interp.h"
 #include "module_registry.h"
+#include "disvm/refcount.h"
 #include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-Module *modules; /* This isolated executable owns its entire native registry. */
+Module *modules;         /* This isolated executable owns its entire native registry. */
 static unsigned created; /* Atomic constructed-owner count, observed after all joins. */
-static unsigned freed; /* Atomic count of unique last-owner destructions. */
-static unsigned reads; /* Atomic successful protected lookups. */
-static int stopping; /* Atomic publisher completion flag. */
+static unsigned freed;   /* Atomic count of unique last-owner destructions. */
+static unsigned reads;   /* Atomic successful protected lookups. */
+static int stopping;     /* Atomic publisher completion flag. */
 
 
 /* EN: Require condition or terminate with borrowed diagnostic message.
@@ -77,7 +78,7 @@ static void *reader(void *unused)
         if (module)
         {
             require(module->nprog == 42 && !strcmp(module->path, "shared-native-module"),
-                "lookup retains live immutable metadata");
+                    "lookup retains live immutable metadata");
             __atomic_fetch_add(&reads, 1, __ATOMIC_RELAXED);
             drop(module);
         }
@@ -109,12 +110,74 @@ static void *publisher(void *unused)
 }
 
 
+/* [GC:] EN: Native-only callback probe; managed graphs are tested in real apps.
+ * RU: Native-проверка callback; managed-графы проверяются настоящими приложениями. */
+typedef struct ClaimProbe
+{
+    Module *entries[2]; /* Borrowed stack-backed metadata through this probe. */
+    unsigned calls;     /* Callback invocation count under registry mutex. */
+    int commit;         /* Refuse after restoring the first count unless nonzero. */
+} ClaimProbe;
+
+
+/* [GC:] EN: Reserve first native count and either restore/refuse or reserve the
+ * second. argument is private probe storage. No allocation or registry reentry.
+ * RU: Захватить первый native-счётчик, затем откатить/отказать либо захватить
+ * второй. argument — личное состояние. Без выделений и повторного входа в реестр. */
+static int claim_pair(void *argument)
+{
+    ClaimProbe *probe = argument;
+    probe->calls++;
+    require(dvm_refcount_compare_i(&probe->entries[0]->ref, 1, 0), "first native claim");
+    if (!probe->commit)
+    {
+        require(dvm_refcount_compare_i(&probe->entries[0]->ref, 0, 1), "native rollback before refusal");
+        return 0;
+    }
+    require(dvm_refcount_compare_i(&probe->entries[1]->ref, 1, 0), "second native claim");
+    return 1;
+}
+
+
+/* [GC:] EN: Check outside-owner refusal, callback rollback and batch unlink
+ * using actual native counts/registry. Stack entries live until both are unlinked.
+ * RU: Проверить отказ внешнему владельцу, откат callback и удаление пакета
+ * настоящими счётчиками/реестром. Стековые записи живут до удаления обеих. */
+static void check_claims(void)
+{
+    Module left = {0};
+    Module right = {0};
+    left.ref = 1;
+    right.ref = 1;
+    left.path = "claim-left";
+    right.path = "claim-right";
+    ClaimProbe probe = {{&left, &right}, 0, 0};
+    dvm_module_registry_publish_set(probe.entries, 2);
+    Module *outside = dvm_module_registry_lookup(left.path);
+    require(outside == &left && !dvm_module_registry_claim(probe.entries, 2, claim_pair, &probe) && !probe.calls,
+            "outside owner refuses before invoking count claim");
+    require(!dvm_module_registry_release(outside), "drop only outside native owner");
+    require(!dvm_module_registry_claim(probe.entries, 2, claim_pair, &probe) && probe.calls == 1 &&
+                dvm_refcount_load_i(&left.ref) == 1 && dvm_refcount_load_i(&right.ref) == 1,
+            "refused callback preserves native owners and membership");
+    outside = dvm_module_registry_lookup(right.path);
+    require(outside == &right && !dvm_module_registry_release(outside), "refused pair stays discoverable");
+    probe.commit = 1;
+    require(dvm_module_registry_claim(probe.entries, 2, claim_pair, &probe) && probe.calls == 2,
+            "successful pair claim");
+    require(!dvm_module_registry_lookup(left.path) && !dvm_module_registry_lookup(right.path) && !modules &&
+                !left.link && !right.link && !dvm_refcount_load_i(&left.ref) && !dvm_refcount_load_i(&right.ref),
+            "claimed native owners unlink before lookup resumes");
+}
+
+
 /* EN: Check batch publication, then race eight readers/four publishers with 10000 owners.
  * No VM/GC is mocked: this isolated test exercises metadata transactions only.
  * RU: Проверить пакетную публикацию и гонять восемь читателей/четыре писателя с 10000 владельцами.
  * VM/GC не подменяются: изолированный тест проверяет только native-метаданные. */
 int main(void)
 {
+    check_claims();
     Module *batch[2];
     batch[0] = make("batch-left");
     batch[1] = make("batch-right");
@@ -147,7 +210,7 @@ int main(void)
         require(!pthread_join(threads[index], NULL), "reader join");
     }
     require(modules == NULL && freed == created && reads > 0,
-        "every published Module is unlinked/freed once after all readers finish");
+            "every published Module is unlinked/freed once after all readers finish");
     printf("PASS module registry owners=%u freed=%u readers=8 publishers=4 lookups=%u\n", created, freed, reads);
     return 0;
 }

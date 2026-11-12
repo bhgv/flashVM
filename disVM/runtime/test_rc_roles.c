@@ -264,3 +264,29 @@ void unload(Module *module)
     (void)module;
     ptradd(NULL);
 }
+
+
+/* [GC:] EN: Invalid-role calls cannot reach native Module graph destruction.
+ * module is deliberately unavailable in this role-only unit.
+ * RU: Недопустимая роль не достигает разрушения native Module графа.
+ * module намеренно отсутствует в этом тесте ролей. */
+void dvm_runtime_module_finish(Module *module)
+{
+    (void)module;
+    ptradd(NULL);
+}
+
+
+/* [GC:] EN: No rejected role may begin a native Module claim or callback.
+ * All arguments remain unread; reaching this stub is an explicit unit failure.
+ * RU: Отвергнутая роль не может начать захват Module/callback. Аргументы не
+ * читаются; достижение заглушки — явный провал проверки. */
+int dvm_module_registry_claim(Module **entries, unsigned count, int (*claim)(void *), void *argument)
+{
+    (void)entries;
+    (void)count;
+    (void)claim;
+    (void)argument;
+    ptradd(NULL);
+    return 0;
+}

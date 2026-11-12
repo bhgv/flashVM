@@ -12,6 +12,7 @@
 #include "pool.h"
 #include "heap_pool.h"
 #include "runtime_gc.h"
+#include "runtime_rc.h"
 #include "managed_owner.h"
 #include "root_registry.h"
 #include "gc/common/runtime_state.h"
@@ -27,6 +28,7 @@
 #include <time.h>
 
 #define MaxNodes 2301                                     /* Large graph plus separately retired original MP. */
+#define OtherName "$OtherModuleCycleRetirement"           /* Second native registry identity. */
 #define ModuleName "$ModuleCycleRetirement"               /* Unique registry identity in this app. */
 extern Pool *heapmem;                                     /* Production allocator, alive until runtime joins. */
 static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;  /* Fixture metadata only. */
@@ -44,14 +46,26 @@ static unsigned node_count;                               /* Cycle nodes plus in
 static unsigned graph_count;                              /* Nodes that belong to the claimed cycle. */
 static unsigned freed;                                    /* Real target poolfree returns, under sync. */
 static Module *target_module;                             /* Atomic native identity; withdrawn before free. */
-static int metadata_freed;                                /* Actual metadata free completed, under sync. */
-static unsigned finalizers;                               /* Actual known Modlink finalizers, under sync. */
-static int live_owner;                                    /* External MP ticket is still independently rooted. */
-static int live_seen;                                     /* Cycles withdrew a live seed while MP owner remained. */
-static int changed_fields;                                /* Actual count-neutral MP field move completed. */
-static int stale_refused;                                 /* Real confirmation rejected the changed snapshot. */
-static int confirmed;                                     /* Actual count claim succeeded before final reader wait. */
-static DVM_NativeContext *fast_context;                   /* Atomic Fast identity through collector join. */
+static Module *second_module;                             /* Atomic second native identity for partial rollback. */
+static Module *racing_lookup;            /* Module owner acquired on Fast and transferred under sync. */
+static int lookup_refused;               /* Real outside lookup defeated graph claim. */
+static int native_refused;               /* One native CAS refusal injected unchanged. */
+static int epoch_refused;                /* One final epoch failure injected after all claims. */
+static int rollback_seen;                /* Managed and native counts restored before retry. */
+static _Thread_local int confirming;     /* Inside real target confirmation only. */
+static Heap *leaf_target;                /* Standalone queued record for cross-lane leaf handoff. */
+static int leaf_gate;                    /* Hold Cycles until Fast is demonstrably idle. */
+static int leaf_started;                 /* Standalone record has its real candidate owner. */
+static _Thread_local int leaf_published; /* Cycles added its actual leaf replacement root. */
+static _Thread_local int leaf_notified;  /* The same publication notified Fast. */
+static int metadata_freed;               /* Actual metadata free completed, under sync. */
+static unsigned finalizers;              /* Actual known Modlink finalizers, under sync. */
+static int live_owner;                   /* External MP ticket is still independently rooted. */
+static int live_seen;                    /* Cycles withdrew a live seed while MP owner remained. */
+static int changed_fields;               /* Actual count-neutral MP field move completed. */
+static int stale_refused;                /* Real confirmation rejected the changed snapshot. */
+static int confirmed;                    /* Actual count claim succeeded before final reader wait. */
+static DVM_NativeContext *fast_context;  /* Atomic Fast identity through collector join. */
 
 
 int __real_dvm_runtime_guest_sleep(unsigned long);
@@ -66,6 +80,21 @@ int __real_dvm_runtime_rc_defer(void *);
 int __real_dvm_runtime_root_remove(const void *);
 
 
+int __real_dvm_runtime_root_add(void *);
+
+
+int __real_dvm_gc_workers_request(DVM_GCWorkers *, DVM_GCKind);
+
+
+unsigned int __real_dvm_runtime_rc_shared_candidates(DVM_NativeContext *, size_t);
+
+
+int __real_dvm_refcount_compare_i(int *, int, int);
+
+
+unsigned long __real_dvm_world_retire_epoch(DVM_NativeWorld *);
+
+
 void __real_poolfree(Pool *, void *);
 
 
@@ -73,6 +102,9 @@ void __real_free(void *);
 
 
 void __real_dvm_gc_fast_module_finalize(Heap *);
+
+
+void __real_dvm_gc_fast_module_graph_finalize(Heap *, Module *);
 
 
 int __real_dvm_gc_fast_module_eligible(const Heap *);
@@ -83,6 +115,8 @@ DVM_CellResult
 __real_dvm_gc_fast_confirm_graph(const RecordGroup *, DVM_CellDomain *, DVM_NativeWorld *, unsigned long *, int *);
 
 #include "test_module_cycle_relay.inc"
+#include "test_module_cycle_faults.inc"
+#include "test_module_cycle_leaf.inc"
 
 
 /* [GC:] EN: Record actual Fast identity at seed ticket handoff. value stays
@@ -111,7 +145,14 @@ int __wrap_dvm_runtime_root_remove(const void *key)
     pthread_mutex_lock(&sync);
     if (result && live_owner && key == nodes[0] && dvm_native_context_current() != fast_context)
     {
-        require(dvm_runtime_root_count(nodes[1]) == 1, "external MP owner retains its root");
+        if (CONTROL == 2)
+        {
+            require(dvm_runtime_root_count(nodes[1]) == 1, "external MP owner retains its root");
+        }
+        else
+        {
+            require(dvm_refcount_load_i(&target_module->ref) >= 2, "outside Module lookup owner remains live");
+        }
         live_seen = 1;
     }
     pthread_mutex_unlock(&sync);
@@ -156,7 +197,19 @@ DVM_CellResult __wrap_dvm_gc_fast_confirm_graph(
         changed_fields = 1;
         pthread_mutex_unlock(&sync);
     }
+    if (selected && CONTROL == 13 && !lookup_refused)
+    {
+        Module *lookup = lookmod((char *)ModuleName);
+        require(lookup != NULL, "actual lookup wins before graph claim");
+        pthread_mutex_lock(&sync);
+        racing_lookup = lookup;
+        live_owner = 1;
+        pthread_mutex_unlock(&sync);
+    }
+    confirming = selected;
     DVM_CellResult result = __real_dvm_gc_fast_confirm_graph(group, cells, world, epoch, reserved);
+    confirming = 0;
+    observe_claim_rollback(group, selected, result);
     if (selected)
     {
         pthread_mutex_lock(&sync);
@@ -197,10 +250,10 @@ unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, siz
  * claimed and still allocated. Reject double destruction or missing detachment.
  * RU: Наблюдать native-финализацию после снятия ребра MP. heap захвачен и ещё
  * выделен. Отвергнуть двойное разрушение и отсутствие отсоединения MP. */
-void __wrap_dvm_gc_fast_module_finalize(Heap *heap)
+static void observe_module_finalizer(Heap *heap)
 {
     pthread_mutex_lock(&sync);
-    int selected = heap == nodes[0] || (CONTROL == 3 && heap == nodes[2]);
+    int selected = heap == nodes[0] || ((CONTROL == 3 || CONTROL == 16) && heap == nodes[2]);
     if (selected)
     {
         require(H2D(Modlink *, heap)->MP == H, "claimed module MP edge must be detached once");
@@ -209,7 +262,28 @@ void __wrap_dvm_gc_fast_module_finalize(Heap *heap)
         finalizers++;
     }
     pthread_mutex_unlock(&sync);
+}
+
+
+/* [GC:] EN: Observe ordinary unload after consumed MP. heap remains claimed.
+ * RU: Наблюдать обычный unload после снятия MP. heap остаётся захваченным. */
+void __wrap_dvm_gc_fast_module_finalize(Heap *heap)
+{
+    observe_module_finalizer(heap);
     __real_dvm_gc_fast_module_finalize(heap);
+}
+
+
+/* [GC:] EN: Observe finalization of heap's atomically claimed native module.
+ * heap/module remain allocated until the production finalizer consumes them.
+ * RU: Наблюдать финализацию атомарно захваченного native-модуля heap.
+ * heap/module ещё выделены до передачи настоящему финализатору. */
+void __wrap_dvm_gc_fast_module_graph_finalize(Heap *heap, Module *module)
+{
+    observe_module_finalizer(heap);
+    require(dvm_refcount_load_i(&module->ref) == 0 && module->link == NULL,
+            "graph owns an unlinked zero-count native Module");
+    __real_dvm_gc_fast_module_graph_finalize(heap, module);
 }
 
 
@@ -253,6 +327,10 @@ void __wrap_poolfree(Pool *pool, void *value)
         require(dvm_runtime_root_count(value) == 0, "module cycle has no root at physical free");
         require(index != 0 || finalizers, "module cycle must run native Module finalization");
     }
+    if (index < node_count && value == leaf_target)
+    {
+        leaf_target = NULL;
+    }
     __real_poolfree(pool, value);
     if (index < node_count)
     {
@@ -270,23 +348,34 @@ void __wrap_poolfree(Pool *pool, void *value)
 void __wrap_free(void *value)
 {
     Module *identity = __atomic_load_n(&target_module, __ATOMIC_ACQUIRE);
-    if (!identity || value != identity)
+    Module *other = __atomic_load_n(&second_module, __ATOMIC_ACQUIRE);
+    unsigned bit = value == identity && identity ? 1 : value == other && other ? 2 : 0;
+    if (!bit)
     {
         __real_free(value);
         return;
     }
     pthread_mutex_lock(&sync);
-    require(!metadata_freed && !epochs_held && !live_owner && finalizers == (CONTROL == 3 ? 2U : 1U),
+    require(!(metadata_freed & bit) && !epochs_held && !live_owner &&
+                (CONTROL == 16 ? finalizers >= 1 : finalizers == (CONTROL == 3 ? 2U : 1U)),
             "native metadata waits for all claimed links");
     DVM_WorldState state;
     require(dvm_world_state(dvm_gc_runtime.world, &state) && !state.stopping && !state.stopped && state.active >= 2,
             "native Module metadata release overlaps admitted peers");
-    require(lookmod((char *)ModuleName) == NULL, "Module registry unlinks before metadata free");
-    __atomic_store_n(&target_module, NULL, __ATOMIC_RELEASE);
+    require(lookmod((char *)(bit == 1 ? ModuleName : OtherName)) == NULL,
+            "Module registry unlinks before metadata free");
+    if (bit == 1)
+    {
+        __atomic_store_n(&target_module, NULL, __ATOMIC_RELEASE);
+    }
+    else
+    {
+        __atomic_store_n(&second_module, NULL, __ATOMIC_RELEASE);
+    }
     pthread_mutex_unlock(&sync);
     __real_free(value);
     pthread_mutex_lock(&sync);
-    metadata_freed = 1;
+    metadata_freed |= bit;
     pthread_mutex_unlock(&sync);
 }
 

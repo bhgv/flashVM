@@ -12,7 +12,7 @@
  * RU: Увеличить group до required полей в пределах бюджета. При отказе сохранить старый буфер и индексы. */
 int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
 {
-    const size_t per_node = sizeof(void *) + sizeof(unsigned int) + sizeof(unsigned char);
+    const size_t per_node = 2 * sizeof(void *) + sizeof(unsigned int) + sizeof(unsigned char);
     const size_t per_field = sizeof(void *) + 6 * sizeof(unsigned int);
     size_t maximum = (RECORD_SCRATCH_BYTES - per_node) / (per_node + per_field);
     if (required > maximum)
@@ -34,13 +34,18 @@ int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
     expanded.owned_scratch = storage;
     expanded.field_limit = capacity;
     expanded.nodes = storage;
-    expanded.cells = storage + nodes;
+    expanded.native_modules = storage + nodes;
+    expanded.cells = expanded.native_modules + nodes;
     expanded.incoming = (unsigned int *)(expanded.cells + capacity);
     expanded.targets = expanded.incoming + nodes;
     expanded.sources = expanded.targets + capacity;
     expanded.index = expanded.sources + capacity;
     expanded.live = (unsigned char *)(expanded.index + capacity * 4);
     memcpy(expanded.nodes, group->nodes, group->nodes_used * sizeof(*expanded.nodes));
+    if (group->native_modules)
+    {
+        memcpy(expanded.native_modules, group->native_modules, group->nodes_used * sizeof(void *));
+    }
     memcpy(expanded.incoming, group->incoming, group->nodes_used * sizeof(*expanded.incoming));
     memcpy(expanded.live, group->live, group->nodes_used * sizeof(*expanded.live));
     memcpy(expanded.cells, group->cells, group->edges_used * sizeof(*expanded.cells));

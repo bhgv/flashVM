@@ -146,3 +146,9 @@ their independent owner is released. General stopped tracing remains.
 discovery through ordinary Modlink MP fields. Actual graph claims and final
 reader epochs precede native Module finalization; external MP and Module owners
 retain their data. Native Module/original-MP cycle closure is still outside scope.
+
+[Original-MP cycle closure](ORIGINAL-MP-CYCLES.md) now attributes original data to
+sole-owner ordinary Modules, atomically claims native ownership with the managed
+graph and unlinks before lookup resumes. Nonfinal native releases publish another
+seed. A discovered Cycles-to-idle-Fast wakeup defect is fixed and has a deterministic
+regression. Multi-owner native Module closure and general stopped tracing remain.

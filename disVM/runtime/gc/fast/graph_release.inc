@@ -63,7 +63,14 @@ static void reclaim_detached_records(LeafRetirement *entry, int shared)
                  * RU: Захват графа уже снял внутренние рёбра MP. Освободить только
                  * native-владельца Module, не снимать ребро второй раз. */
                 H2D(Modlink *, heap)->MP = H;
-                dvm_gc_fast_module_finalize(heap);
+                if (snapshot->native_modules[index])
+                {
+                    dvm_gc_fast_module_graph_finalize(heap, snapshot->native_modules[index]);
+                }
+                else
+                {
+                    dvm_gc_fast_module_finalize(heap);
+                }
                 shared_modules += shared;
                 shared_modules_with_peer += shared && dvm_world_has_active_guest(world);
             }

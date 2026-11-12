@@ -45,3 +45,8 @@ publication, snapshot replay and rooted ticket staging before discovery.
 
 [Module-instance cycles](../../MODULE-CYCLE-RETIREMENT.md) add ordinary MP edges
 and known native finalization after the graph claim and final reader epoch.
+
+[Original-MP closure](../../ORIGINAL-MP-CYCLES.md) adds sparse native attribution
+and [native graph claims](../fast/module_graph_claim.inc) to Fast confirmation.
+That fragment composes into `graph_confirmation.c`, not `runtime_rc.c`; copied
+private confirmation sources must preserve its include directory.

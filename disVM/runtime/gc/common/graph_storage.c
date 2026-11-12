@@ -14,9 +14,15 @@
  * RU: Связать пустой снимок с обнулённым буфером scratch вызывающей стороны. */
 RecordGroup dvm_rc_empty_record_group(RecordGroupScratch *scratch)
 {
-    return (RecordGroup){.nodes = scratch->nodes, .incoming = scratch->incoming,
-        .index = scratch->index, .cells = scratch->cells, .targets = scratch->targets,
-        .sources = scratch->sources, .live = scratch->live, .field_limit = RECORD_EDGE_LIMIT};
+    return (RecordGroup){.native_modules = scratch->native_modules,
+                         .nodes = scratch->nodes,
+                         .incoming = scratch->incoming,
+                         .index = scratch->index,
+                         .cells = scratch->cells,
+                         .targets = scratch->targets,
+                         .sources = scratch->sources,
+                         .live = scratch->live,
+                         .field_limit = RECORD_EDGE_LIMIT};
 }
 
 
@@ -54,8 +60,8 @@ size_t dvm_rc_record_group_bytes(const RecordGroup *group, unsigned int edges)
 {
     size_t nodes = group->nodes_used;
     size_t dead_index = group->live_count ? nodes - group->live_count : 0;
-    return sizeof(*group) + (nodes + 2 * edges) * sizeof(void *) +
-        (nodes + edges + dead_index) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
+    return sizeof(*group) + (2 * nodes + 2 * edges) * sizeof(void *) +
+           (nodes + edges + dead_index) * sizeof(unsigned int) + nodes * sizeof(unsigned char);
 }
 
 
@@ -73,21 +79,29 @@ RecordGroup *dvm_rc_copy_record_group(const RecordGroup *group, unsigned int edg
     }
     *copy = *group;
     copy->nodes = (void **)(copy + 1);
-    copy->cells = copy->nodes + nodes;
+    copy->native_modules = copy->nodes + nodes;
+    copy->cells = copy->native_modules + nodes;
     copy->expected_fields = copy->cells + edges;
     copy->incoming = (unsigned int *)(copy->expected_fields + edges);
     copy->targets = copy->incoming + nodes;
     copy->sources = NULL;
     copy->dead_count = group->nodes_used - group->live_count;
     copy->dead_nodes = group->live_count ? copy->targets + edges : NULL;
-    copy->live = (unsigned char *)(copy->targets + edges +
-        (copy->dead_nodes ? copy->dead_count : 0));
+    copy->live = (unsigned char *)(copy->targets + edges + (copy->dead_nodes ? copy->dead_count : 0));
     copy->index = NULL;
     copy->owned_scratch = NULL;
     copy->pinned_nodes = 0;
     copy->edges_used = edges;
     copy->omitted_live_fields = group->edges_used - edges;
     memcpy(copy->nodes, group->nodes, nodes * sizeof(*copy->nodes));
+    if (group->native_modules)
+    {
+        memcpy(copy->native_modules, group->native_modules, nodes * sizeof(void *));
+    }
+    else
+    {
+        memset(copy->native_modules, 0, nodes * sizeof(void *));
+    }
     memcpy(copy->incoming, group->incoming, nodes * sizeof(*copy->incoming));
     unsigned int next_edge = 0;
     for (unsigned int index = 0; index < group->edges_used; index++)

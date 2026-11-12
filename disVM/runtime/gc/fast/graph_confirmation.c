@@ -10,9 +10,11 @@
 #include "graph_confirmation.h"
 #include "disvm/refcount.h"
 #include "../../root_registry.h"
+#include "../../module_registry.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 extern int dvm_runtime_channel_is_quiet(Channel *channel); /* Native channel state check. */
 
@@ -81,6 +83,8 @@ static int claim_record_group(const RecordGroup *group)
     return 1;
 }
 
+#include "module_graph_claim.inc"
+
 
 #define FAST_RESERVE_BATCH 64 /* Maximum fields per preliminary guard set. */
 
@@ -133,8 +137,8 @@ static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDo
  * final_epoch receives the reader cutoff. reserved reports a successful reservation check.
  * RU: Сверить сохранённые поля group в cells и захватить группу в world.
  * В final_epoch записать эпоху, в reserved сообщить об успешной проверке под резервацией. */
-DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomain *cells,
-    DVM_NativeWorld *world, unsigned long *final_epoch, int *reserved)
+DVM_CellResult dvm_gc_fast_confirm_graph(
+    const RecordGroup *group, DVM_CellDomain *cells, DVM_NativeWorld *world, unsigned long *final_epoch, int *reserved)
 {
     *reserved = 0;
     if (!counts_still_match(group))
@@ -171,15 +175,8 @@ DVM_CellResult dvm_gc_fast_confirm_graph(const RecordGroup *group, DVM_CellDomai
     }
     /* New live-to-dead edges retain before publishing. A successful count
      * claim prevents any later publication into the claimed group. */
-    if (result == DVM_CELL_ACQUIRED && !claim_record_group(group))
+    if (result == DVM_CELL_ACQUIRED && !claim_graph_with_modules(group, world, final_epoch))
     {
-        result = DVM_CELL_REFUSED;
-    }
-    /* Cover readers of a transient live edge that disappeared during claim. */
-    if (result == DVM_CELL_ACQUIRED && final_epoch &&
-        !(*final_epoch = dvm_world_retire_epoch(world)))
-    {
-        restore_claimed_counts(group, group->dead_count);
         result = DVM_CELL_REFUSED;
     }
     *reserved = result == DVM_CELL_ACQUIRED && reservation != NULL;
