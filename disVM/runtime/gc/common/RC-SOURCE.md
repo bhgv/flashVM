@@ -96,3 +96,5 @@ decision in the shared pass result independently of retained queue readiness.
 Dedicated admission and joined-thread accounting: [native Cycles without tracing park requests](../../NATIVE-CYCLES-NO-PARK.md).
 
 Shared frame packet fairness and bounded rotation: [packet fairness](../../PACKET-FAIRNESS.md).
+
+Duke hard refusals, bounded queue progress and retained routing: [Duke queue progress](../../DUKE-QUEUE-PROGRESS.md).

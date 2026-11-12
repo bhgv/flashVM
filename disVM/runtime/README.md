@@ -1,3 +1,5 @@
+[Duke queue progress and hard-limit fallback routing](DUKE-QUEUE-PROGRESS.md)
+
 [Shared frame packet fairness beside unsupported finalizers](PACKET-FAIRNESS.md)
 
 [Dedicated Cycles without tracing park requests; joined-thread accounting](NATIVE-CYCLES-NO-PARK.md)

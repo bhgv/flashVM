@@ -193,6 +193,16 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
     }
     if (group.oversized)
     {
+        /* [GC:] EN: Duke already exhausted growing discovery. Report a hard
+         * refusal to its dispatcher, which owns fallback routing. Sending this
+         * seed to the mandatory FIFO would rescue it into Cycles indefinitely.
+         * RU: Duke уже исчерпал растущий снимок. Вернуть жёсткий отказ своему
+         * диспетчеру, выбирающему резерв. Общий FIFO снова спасал бы этот seed
+         * в Cycles, создавая бесконечный круг. */
+        if (source == duke_candidates)
+        {
+            return 0;
+        }
         DVM_RetirementQueue *destination =
             source == cycle_candidates && duke_candidates &&
                     !dvm_retirement_contains_key(duke_candidates, dvm_heap_pool_key(heapmem, heap))

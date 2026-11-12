@@ -10,8 +10,10 @@
 #include "../../runtime_rc.h"
 
 
-/* EN: Advance a large candidate on context within budget. user is unused.
- * RU: Обработать большого кандидата на context в пределах budget. user не используется. */
+/* [GC:] EN: Adapt bound context/budget to the runtime-owned Duke queues.
+ * user is unused. Return pending work/retry; no world stop or owner transfer here.
+ * RU: Передать привязанный context/budget очередям Duke рантайма. user не нужен.
+ * Вернуть наличие работы/повтора; остановки мира и передачи владельцев здесь нет. */
 unsigned int dvm_gc_duke_shared(DVM_NativeContext *context, size_t budget, void *user)
 {
     (void)user;
@@ -19,12 +21,22 @@ unsigned int dvm_gc_duke_shared(DVM_NativeContext *context, size_t budget, void 
 }
 
 
-/* EN: Process one queued graph on context. world and both queues are borrowed.
- * budget enables the pass; return nonzero while queue work remains.
- * RU: Обработать один граф на context. world и очереди заимствованы.
- * budget разрешает проход. Ненулевой результат означает, что в queue есть работа. */
-unsigned int dvm_gc_duke_run(DVM_NativeContext *context, size_t budget,
-    DVM_NativeWorld *world, DVM_RetirementQueue *queue, DVM_RetirementQueue *fallback)
+/* [GC:] EN: Process one candidate/suspended slice on bound context when budget
+ * is positive. world, queue and fallback survive worker joins. Try shared admission
+ * without parking guests; preserve owner/root on refusal and rotate failed fallback
+ * moves. Successful suspended discovery keeps its head. Return pending/retry, or
+ * zero for empty/closed work, zero budget or foreign context; protocol faults abort.
+ * RU: Обработать одного кандидата/порцию на привязанном context при budget > 0.
+ * world, queue и fallback живут до join. Пробовать shared без парковки гостей;
+ * сохранять ссылку/корень при отказе и перемещать голову после отказа передачи
+ * в резерв. Приостановленный обход удерживает голову. Вернуть работу/повтор либо
+ * ноль при пустой/закрытой очереди, нулевом бюджете или чужом контексте; сбой
+ * протокола вызывает abort. */
+unsigned int dvm_gc_duke_run(DVM_NativeContext *context,
+                             size_t budget,
+                             DVM_NativeWorld *world,
+                             DVM_RetirementQueue *queue,
+                             DVM_RetirementQueue *fallback)
 {
     DVM_RetirementStats queued = {0};
     (void)dvm_retirement_statistics(queue, &queued);
@@ -52,7 +64,16 @@ unsigned int dvm_gc_duke_run(DVM_NativeContext *context, size_t budget,
                 void *value = dvm_retirement_peek(queue);
                 if (value)
                 {
-                    (void)dvm_rc_move_candidate(queue, fallback, value);
+                    if (!dvm_rc_move_candidate(queue, fallback, value))
+                    {
+                        /* [GC:] EN: A failed reservation preserves this head's
+                         * owner/root. Let an independent graph run next; only
+                         * a suspended discovery slice may pin the queue head.
+                         * RU: Отказ резерва сохраняет владельца/корень головы.
+                         * Пропустить независимый граф; удерживать голову может
+                         * только незавершённая порция обхода. */
+                        dvm_retirement_rotate(queue);
+                    }
                 }
             }
         }

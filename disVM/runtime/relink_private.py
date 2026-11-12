@@ -24,10 +24,12 @@ import subprocess
 # Optional snapshot_growth_source/graph_storage_source isolate allocation refusal controls.
 # Optional graph_confirmation_source preserves real claim helpers in private refusal controls.
 # Optional runtime_main_source replaces only the host composition for queue-locked channel observations.
+# Optional duke_pass_source replaces only the native Duke dispatcher for queue-routing controls.
 # Matching private headers/flags remain mandatory.
 # RU: runtime — исходная сборка, work — личные результаты, source — wrapper,
 # variant — define, symbols — перехваты линкера; вернуть личный бинарник.
 # runtime_main_source — необязательная частная композиция host с теми же CMake-флагами.
+# duke_pass_source — необязательный частный диспетчер очереди Duke.
 # Необязательные *_source заменяют только соответствующий объект личной сборки;
 # executor выбирает её режим. Ошибки сборки не считаются семантической проверкой.
 def relink(
@@ -71,6 +73,7 @@ def relink(
     graph_storage_source=None,
     graph_confirmation_source=None,
     runtime_main_source=None,
+    duke_pass_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -136,6 +139,7 @@ def relink(
         (graph_storage_source, "gc/common/graph_storage.c"),
         (graph_confirmation_source, "gc/fast/graph_confirmation.c"),
         (runtime_main_source, "main.c"),
+        (duke_pass_source, "gc/duke/large_graph_pass.c"),
     ):
         if candidate is None:
             continue
