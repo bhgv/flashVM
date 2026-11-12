@@ -32,10 +32,10 @@ typedef struct DVM_WorldState
 /* Mutex-protected admission observation, never permission to mutate. */
 typedef struct DVM_WorldAdmission
 {
-    int serial;          /* Nonzero selects coordinated hosted GC admission. */
-    size_t waiting;      /* Legacy exclusive-queue counter, always zero. */
-    size_t admissions;   /* Successful entries and promotions; counter may wrap. */
-    size_t contentions;  /* Legacy exclusive-queue counter, always zero. */
+    int serial;         /* Nonzero selects coordinated hosted GC admission. */
+    size_t waiting;     /* Legacy exclusive-queue counter, always zero. */
+    size_t admissions;  /* Successful entries and promotions; counter may wrap. */
+    size_t contentions; /* Legacy exclusive-queue counter, always zero. */
 } DVM_WorldAdmission;
 
 
@@ -47,9 +47,26 @@ typedef struct DVM_WorldAdmission
 DVM_NativeWorld *dvm_world_create_serial(int locked_poll);
 
 
+/* [GC:] EN: Create a hosted domain forbidding all collector stops, including
+ * quiescent exclusion. locked_poll selects polling; return owned world or NULL.
+ * An attempted stop prints a concurrency violation and terminates with code 70.
+ * RU: Создать hosted-домен с запретом всех остановок, включая quiescent-допуск.
+ * locked_poll выбирает polling; вернуть свой мир либо NULL. Попытка остановки
+ * печатает нарушение конкурентности и завершает процесс с кодом 70. */
+DVM_NativeWorld *dvm_world_create_concurrent(int locked_poll);
+
+
+/* [GC:] EN: Return immutable stop prohibition for borrowed live world, or zero
+ * for NULL; no admission, lock or ownership transfer.
+ * RU: Вернуть неизменный запрет остановок живого world либо ноль для NULL;
+ * допуска, блокировки и передачи владения нет. */
+int dvm_world_stops_forbidden(DVM_NativeWorld *world);
+
+
 /* Copy live native admission counters under the mutex; invalid arguments fail.
  * out is caller-owned. This snapshot does not reserve an admission or root scan. */
 int dvm_world_admission(DVM_NativeWorld *world, DVM_WorldAdmission *out);
+
 
 /* Observe any admitted guest, excluding shared collector participants. */
 int dvm_world_has_active_guest(DVM_NativeWorld *world);
@@ -57,6 +74,7 @@ int dvm_world_has_active_guest(DVM_NativeWorld *world);
 
 /* Legacy exclusive waiter query. Always returns zero. */
 size_t dvm_world_exclusive_waiting(DVM_NativeWorld *world);
+
 
 /* Return peak SHARED occupancy of a borrowed live world, or zero for NULL. */
 size_t dvm_world_shared_peak(DVM_NativeWorld *world);
@@ -85,6 +103,7 @@ int dvm_world_destroy(DVM_NativeWorld *world);
  * Fails during collection or if another poll owner already uses the context. */
 DVM_WorldParticipant *dvm_world_join(DVM_NativeWorld *world, DVM_NativeContext *context);
 
+
 /* Collector registration for nonblocking shared turns only. */
 DVM_WorldParticipant *dvm_world_join_service(DVM_NativeWorld *world, DVM_NativeContext *context);
 
@@ -108,11 +127,14 @@ int dvm_world_enter(DVM_WorldParticipant *participant);
  * and finishes or polls before collection. Use the same poll and leave API. */
 int dvm_world_enter_shared(DVM_WorldParticipant *participant);
 
+
 /* Attempt shared admission without waiting for a pending GC barrier. */
 int dvm_world_try_enter_shared(DVM_WorldParticipant *participant);
 
+
 /* Convert an active mutator to SHARED if the GC barrier is open. */
 int dvm_world_try_share(DVM_WorldParticipant *participant);
+
 
 /* Return to ordinary mutation. Publish roots before waiting for pending GC. */
 int dvm_world_promote_shared(DVM_WorldParticipant *participant);
@@ -128,8 +150,10 @@ int dvm_world_leave(DVM_WorldParticipant *participant);
  * Competing/nested collectors fail. Host must pair a successful begin with end. */
 int dvm_world_stop_begin(DVM_NativeWorld *world, DVM_NativeContext *collector);
 
+
 /* Claim only an already idle world. Pair success with stop_end. */
 int dvm_world_try_quiescent(DVM_NativeWorld *world, DVM_NativeContext *collector);
+
 
 /* Wait for a heap transition or a short timeout when admission is busy. */
 void dvm_world_wait_quiescent_retry(DVM_NativeWorld *world);
@@ -157,18 +181,26 @@ int dvm_world_collector_owns(DVM_NativeWorld *world);
 #ifdef __cplusplus
 }
 #endif
+
+
 /* Announce a bounded raw-pointer borrow before its first load. Owner-only,
  * nestable and independent of ordinary admission. End after the last use. */
 int dvm_world_read_begin(DVM_WorldParticipant *participant);
+
+
 int dvm_world_read_end(DVM_WorldParticipant *participant);
+
 
 /* Observe announced pointer borrows under the world mutex. */
 int dvm_world_has_borrowers(DVM_NativeWorld *world);
+
 
 /* After unlinking a retired object, issue its epoch. Zero disables early
  * reclamation. A positive observation covers old admission intervals and explicit borrows.
  * Pointers retained outside admission require an explicit borrow. */
 unsigned long dvm_world_retire_epoch(DVM_NativeWorld *world);
+
+
 int dvm_world_epoch_elapsed(DVM_NativeWorld *world, unsigned long epoch);
 
 #endif

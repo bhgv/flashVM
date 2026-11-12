@@ -73,10 +73,19 @@ void __wrap_Sys_werrstr(void *frame)
         {
             fvm_port_registry_lock();
             extern ulong gcepochs;
-            require(gcepochs - dvm_gc_runtime.cycle_epoch >= 3 && dvm_gc_runtime.clean_requests < 256,
-                    "real idle tracing completes color rotations before event burst");
-            before_cycle_skips = dvm_gc_runtime.cycle_skips;
-            expected_cycle_skips = 255 - dvm_gc_runtime.clean_requests;
+            if (dvm_world_stops_forbidden(dvm_gc_runtime.world))
+            {
+                require(!dvm_gc_runtime.passes && !dvm_gc_runtime.snapshots, "strict GC never traces or parks");
+                before_cycle_skips = dvm_gc_runtime.cycle_skips;
+                expected_cycle_skips = 32000;
+            }
+            else
+            {
+                require(gcepochs - dvm_gc_runtime.cycle_epoch >= 3 && dvm_gc_runtime.clean_requests < 256,
+                        "real idle tracing completes color rotations before event burst");
+                before_cycle_skips = dvm_gc_runtime.cycle_skips;
+                expected_cycle_skips = 255 - dvm_gc_runtime.clean_requests;
+            }
             fvm_port_registry_unlock();
         }
         before = __atomic_load_n(&dvm_gc_runtime.fast_empty_skips, __ATOMIC_RELAXED);

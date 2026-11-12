@@ -50,6 +50,7 @@ static unsigned int drain_shared_children(size_t budget, int *retry)
                 }
                 else
                 {
+                    require_shared_finalizer(heap);
                     if (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0))
                     {
                         blocked = 1;

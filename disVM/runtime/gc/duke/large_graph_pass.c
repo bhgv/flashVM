@@ -17,7 +17,9 @@
 unsigned int dvm_gc_duke_shared(DVM_NativeContext *context, size_t budget, void *user)
 {
     (void)user;
-    return dvm_runtime_rc_shared_duke(context, budget);
+    unsigned int work = dvm_runtime_rc_shared_duke(context, budget);
+    dvm_runtime_rc_check_concurrent();
+    return work;
 }
 
 

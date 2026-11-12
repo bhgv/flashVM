@@ -130,6 +130,12 @@ static int retry_retired_candidate(void *value, unsigned long bytes)
  * bounds top-level owners, not the size of a recursively destroyed graph. */
 unsigned int dvm_runtime_rc_drain(unsigned int budget)
 {
+    if (concurrent_only)
+    {
+        fputs("NATIVE_CONCURRENCY_ERROR component=Fast reason=retained-drain-forbidden\n", stderr);
+        fflush(stderr);
+        _Exit(70);
+    }
     DVM_RetirementStats stats = {0};
     void *value;
     unsigned long bytes;

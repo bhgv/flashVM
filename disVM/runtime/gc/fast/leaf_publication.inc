@@ -43,7 +43,26 @@ static int leaf_eligible(const Heap *heap)
         return array->t && array->t != H;
     }
     return dvm_gc_fast_file_eligible(heap) || dvm_gc_fast_table_eligible(heap) || dvm_gc_fast_module_eligible(heap) ||
-           (heap->t && ((dvm_runtime_idle_cycles && heap->t == &Tlist) || heap->t->free == freeheap));
+           (heap->t &&
+            (((dvm_runtime_idle_cycles || concurrent_only) && heap->t == &Tlist) || heap->t->free == freeheap));
+}
+
+
+/* [GC:] EN: Check independently owned heap before a final callback. In strict
+ * mode unsupported callbacks terminate with roots/counts intact; no silent leak.
+ * RU: Проверить собственный heap перед финальным callback. В строгом режиме
+ * неподдержанный callback завершает процесс, сохраняя корни/ссылки без скрытой утечки. */
+static void require_shared_finalizer(const Heap *heap)
+{
+    if (concurrent_only && !leaf_eligible(heap))
+    {
+        fprintf(stderr,
+                "NATIVE_CONCURRENCY_ERROR component=Fast reason=unsupported-finalizer heap=%p type=%p\n",
+                (const void *)heap,
+                (const void *)heap->t);
+        fflush(stderr);
+        _Exit(70);
+    }
 }
 
 

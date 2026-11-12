@@ -158,6 +158,8 @@ def relink(
             "-o",
             str(replacement),
         ]
+        if filename == "gc.c":
+            command.insert(1, "-Drungc=dvm_retained_rungc")
         built = subprocess.run(command, capture_output=True, text=True)
         if built.returncode:
             raise RuntimeError("private replacement compile failed: " + built.stdout + built.stderr)

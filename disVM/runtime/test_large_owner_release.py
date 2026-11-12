@@ -23,12 +23,13 @@ from test_duke_pin_retirement import private_includes
 # новые ссылки в C/JIT с обоими poll. Отрицательные сборки требуют конкретных
 # семантических ошибок; ошибки сборки/санитайзера/таймауты процесса не принимаются.
 def main():
+    concurrent = "--concurrent" in sys.argv[1:]
     positive_only = "--positive-only" in sys.argv[1:]
     channel_only = "--channel-only" in sys.argv[1:]
     runtime, compiler, include = (
         Path(value).resolve()
         for value in sys.argv[1:]
-        if value not in ("--positive-only", "--channel-only")
+        if value not in ("--positive-only", "--channel-only", "--concurrent")
     )
     root = Path(__file__).parent
     source = read_rc_source(root)
@@ -133,8 +134,17 @@ def main():
             text=True,
         )
         positive = tuple(range(31, 39)) if channel_only else tuple(range(39))
+        if concurrent:
+            positive = tuple(case for case in positive if case != 16)
         host_controls = (121, 122, 123, 124, 127, 128, 129, 130, 131)
         negatives = (125, 126, *host_controls) if channel_only else (*mutations, *host_controls)
+        if concurrent:
+            negatives = tuple(case for case in negatives if case not in (106, 110))
+        fixture = root / "test_large_owner_release.c"
+        if concurrent:
+            from concurrent_owner_fixture import prepare_fixture
+
+            fixture = prepare_fixture(root, work)
         for control in positive if positive_only else (*positive, *negatives):
             text = source
             host = None
@@ -188,7 +198,7 @@ def main():
             binary = relink(
                 runtime,
                 work,
-                Path(__file__).with_suffix(".c"),
+                fixture,
                 control,
                 [
                     "Sys_werrstr",
@@ -265,7 +275,7 @@ def main():
                     raise RuntimeError("large owner queue accounting failed\n" + output[-14000:])
     print(
         "PASS large owner release: "
-        + ("32 channel" if channel_only else "156")
+        + ("32 channel" if channel_only else "152" if concurrent else "156")
         + " C/JIT/poll profiles, sparse/boundary/2300/alias/list/array/channel, "
         "memory/FULL/BYTES retries, actual claim races, epochs and physical frees"
         + (

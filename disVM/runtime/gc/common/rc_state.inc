@@ -90,6 +90,7 @@ static struct
 } fallback;
 
 static unsigned long difficult_moved;               /* Entries transferred to the retained fallback queue. */
+static int concurrent_only;                         /* Immutable strict native policy through collector joins. */
 static DVM_RetirementQueue *leaves;                 /* Plain leaves eligible for shared release. */
 static unsigned long shared_strings_with_peer;      /* Final releases with another active owner. */
 static unsigned long shared_array_graphs;           /* Shared releases that transfer array children. */
@@ -177,6 +178,7 @@ static int admitted(int allow_shared)
  * меняются. */
 void dvm_runtime_rc_start(void)
 {
+    concurrent_only = 0;
     owner = dvm_native_context_current();
     record_cells = dvm_managed_cell_domain();
     world = dvm_native_owner_world(dvm_native_owner_current());

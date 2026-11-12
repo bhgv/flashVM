@@ -247,8 +247,9 @@ int main(int argc, char **argv)
 #endif
             puts("Explicit GC and guarded/parallel switches select a custom profile.");
             puts(
-                "--native-spawn starts one dedicated OS thread per spawned guest with a guarded parallel profile where supported.");
-            puts("--gc-idle-cycles runs cycle collection only when no Dis heap owners are active.");
+                "--native-spawn binds one OS thread per guest and forbids all collector exclusion; unsupported legacy work exits 70.");
+            puts(
+                "--gc-idle-cycles selects idle tracing in the reference; native-spawn always uses concurrent candidate collection.");
             puts(
                 "--gc-no-cycles keeps Fast GC active and disables cycle collection. Unreachable cycles can accumulate.");
             puts("--gc-event-cycles coalesces cycle scans after managed owner loss.");

@@ -57,6 +57,10 @@ static unsigned int drain_shared_owners(size_t budget, int *retry)
             continue;
         }
         int nonfinal = !candidate && dvm_refcount_drop_nonfinal_u(&heap->ref);
+        if (!nonfinal)
+        {
+            require_shared_finalizer(heap);
+        }
         if (!nonfinal && (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0)))
         {
             dvm_retirement_rotate(retirement);

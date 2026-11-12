@@ -9,7 +9,7 @@ preprocessor directives. Compilation and runtime tests remain necessary evidence
 
 | Responsibility | Fragments |
 | --- | --- |
-| Session state and joined lifecycle | [rc_state.inc](rc_state.inc), [rc_lifecycle.inc](rc_lifecycle.inc) |
+| Session state, concurrent policy and joined lifecycle | [rc_state.inc](rc_state.inc), [concurrent_policy.inc](concurrent_policy.inc), [rc_lifecycle.inc](rc_lifecycle.inc) |
 | Leaf and mandatory owner publication | [leaf_publication.inc](../fast/leaf_publication.inc), [owner_publication.inc](../fast/owner_publication.inc) |
 | Mandatory FIFO rescue | [owner_drain.inc](../fast/owner_drain.inc) |
 | Frame and child owner packets | [frame_publication.inc](../fast/frame_publication.inc), [packet_children.inc](../fast/packet_children.inc) |
@@ -102,3 +102,7 @@ Duke hard refusals, bounded queue progress and retained routing: [Duke queue pro
 [Independent Fast queue budgets](../../FAST-QUEUE-FAIRNESS.md) prevent mandatory,
 retry and ordinary leaves from consuming the allowances of unrelated queues,
 including frame packets. Failed leaf visits also consume their local allowance.
+
+[Strict native concurrency](../../STRICT-NATIVE-CONCURRENCY.md) now forbids all
+retained collector admission in native-spawn. Old fallback fragments remain for
+the single-worker reference; strict RC rejects their work with explicit diagnostics.

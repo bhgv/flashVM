@@ -1,8 +1,13 @@
+# Copyright (c) 2026 bhgv
+# [GC:] EN: Validate native ownership and exclusion predicates on real sources.
+# RU: Проверить нативное владение и условия эксклюзива на настоящих исходниках.
 #!/usr/bin/env python3
 """Run parallel GC admission with actual retained addw and OS owners."""
+
 import argparse
 import os
 from pathlib import Path
+from world_source import read_world_source
 import shlex
 import subprocess
 import tempfile
@@ -62,18 +67,21 @@ def main():
         # Reject overlapping ordinary entry in a private copy. The test must
         # detect this directly, without relying on a timeout.
         world = root / "host/native_world.c"
-        original = world.read_text()
+        original = read_world_source(world.parent)
         anchor = "    if (try_only && (world->collector || world->resuming))"
         if original.count(anchor) != 1:
             raise RuntimeError("parallel admission control anchor changed")
         control = output / "world-control.c"
-        overlap_refused = original.replace(anchor, """
+        overlap_refused = original.replace(
+            anchor,
+            """
     if (!shared && world->active)
     {
         fvm_port_sync_unlock(world->sync);
         return 0;
     }
-""" + anchor)
+""" + anchor,
+        )
         wait = "    while (world->collector || world->resuming)"
         if original.count(wait) != 1:
             raise RuntimeError("collector barrier control anchor changed")
@@ -83,25 +91,33 @@ def main():
         promote = "        if (!world->collector && !world->resuming)"
         if original.count(promote) != 1:
             raise RuntimeError("promotion control anchor changed")
-        promotion_refused = original.replace(promote, """
+        promotion_refused = original.replace(
+            promote,
+            """
         if (world->active > 1)
         {
             fvm_port_sync_unlock(world->sync);
             return 0;
         }
-""" + promote)
+""" + promote,
+        )
         control_command = [str(control) if item == str(world) else item for item in command]
         control_command.insert(1, "-I" + str(world.parent))
         for source_text, entry, marker in (
             (overlap_refused, "ordinary", "enter while peer is active"),
             (bypass_gc, "ordinary", "SHARED entered during GC barrier"),
             (promotion_refused, "mixed", "promote SHARED while peer is active"),
-            (original.replace(promote, "        if (1)"), "ordinary", "promotion bypassed pending GC"),
+            (
+                original.replace(promote, "        if (1)"),
+                "ordinary",
+                "promotion bypassed pending GC",
+            ),
         ):
             control.write_text(source_text)
             subprocess.run(control_command, check=True)
-            result = subprocess.run([str(output / "test"), "atomic", entry], capture_output=True,
-                                    text=True, timeout=30)
+            result = subprocess.run(
+                [str(output / "test"), "atomic", entry], capture_output=True, text=True, timeout=30
+            )
             if result.returncode == 0 or marker not in result.stderr:
                 raise RuntimeError("inactive admission control: " + result.stdout + result.stderr)
     print("PASS parallel GC admission with atomic and locked polling")

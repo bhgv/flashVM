@@ -5,6 +5,7 @@
  * трансляции сохраняет закрытые состояние и callbacks. См. gc/common/RC-SOURCE.md.
  */
 #include "gc/common/rc_state.inc"
+#include "gc/common/concurrent_policy.inc"
 #include "gc/fast/leaf_publication.inc"
 #include "gc/fast/graph_publication.inc"
 #include "gc/cycles/candidate_publication.inc"

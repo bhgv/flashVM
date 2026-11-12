@@ -17,6 +17,18 @@ struct DVM_NativeContext;
 void dvm_runtime_rc_start(void);
 
 
+/* [GC:] EN: Enable shared-only RC before producer startup; no ownership moves.
+ * RU: До запуска производителей включить RC без эксклюзива; владение не меняется. */
+void dvm_runtime_rc_set_concurrent(void);
+
+
+/* [GC:] EN: Validate native fallback metadata under strict policy; forbidden
+ * queued work prints its reason and exits 70 with owners/roots still retained.
+ * RU: Проверить резервные native-очереди строгого режима; запрещённая работа
+ * печатает причину и завершает процесс кодом 70 при сохранённых корнях/владельцах. */
+void dvm_runtime_rc_check_concurrent(void);
+
+
 /* [GC:] EN: Borrow optional notify until join; configure before producer startup.
  * RU: Заимствовать необязательный notify до join; настроить до запуска производителей. */
 void dvm_runtime_rc_set_notifier(void (*notify)(void));

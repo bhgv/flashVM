@@ -176,6 +176,7 @@ static unsigned int drain_shared_leaf_queue(DVM_RetirementQueue *source, size_t 
             completed++;
             continue;
         }
+        require_shared_finalizer(entry->heap);
         if (!leaf_eligible(entry->heap))
         {
             break;

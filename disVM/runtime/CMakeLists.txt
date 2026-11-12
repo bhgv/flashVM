@@ -116,6 +116,7 @@ foreach(unit IN LISTS core)
  list(APPEND sources "${view}/${unit}.c")
 endforeach()
 add_custom_target(disvm_runtime_sources DEPENDS "${view}/prepare.stamp")
+set_property(SOURCE "${view}/gc.c" APPEND PROPERTY COMPILE_DEFINITIONS rungc=dvm_retained_rungc)
 add_executable(disvm
     "${root}/disVM/host/refcount.c"
     "${root}/disVM/host/object_guard.c"
@@ -147,6 +148,8 @@ add_executable(disvm
     runtime_rc.c
     gc/common/module_graph.c
     gc/common/graph_storage.c
+    gc/common/concurrent_trace_guard.c
+    gc/common/concurrent_runtime.c
     gc/common/collector_environment.c
     gc/common/native_admission.c
     gc/fast/retirement_pass.c

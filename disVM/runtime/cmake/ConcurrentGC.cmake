@@ -2,6 +2,10 @@
 # EN: Concurrent collector acceptance on real native resident processes.
 # RU: Приёмка конкурентной сборки на настоящих закреплённых процессах ОС.
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME disvm_concurrent_guards COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_concurrent_guards.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_concurrent_guards PROPERTIES TIMEOUT 60)
     add_test(NAME disvm_duke_queue_progress COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_duke_queue_progress.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
@@ -50,6 +54,6 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     set_tests_properties(disvm_fast_claim_storage PROPERTIES TIMEOUT 120)
     add_test(NAME disvm_large_owner_release COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_large_owner_release.py" "$<TARGET_FILE:disvm>"
-        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --concurrent)
     set_tests_properties(disvm_large_owner_release PROPERTIES TIMEOUT 180 PROCESSORS 4)
 endif()

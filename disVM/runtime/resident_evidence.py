@@ -13,6 +13,12 @@ def evidence(output, children):
     RU: Проверить вывод для children дочерних потоков, постоянство владельцев,
     завершение потоков, native и GC. При нарушении вызвать RuntimeError.
     """
+    if "NATIVEGC_POLICY exclusive=0 trace=0 stop_forbidden=1" not in output:
+        raise RuntimeError(
+            "native execution did not prohibit collector exclusion:\n" + output[-6000:]
+        )
+    if not re.search(r"NATIVEGC .*passes=0 snapshots=0\b", output):
+        raise RuntimeError("native execution entered retained tracing:\n" + output[-6000:])
     retirement_evidence(output, children)
     starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
     retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)

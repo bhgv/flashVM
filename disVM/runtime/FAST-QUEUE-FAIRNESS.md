@@ -2,6 +2,10 @@
 
 Copyright (c) 2026 bhgv
 
+Native execution now follows [strict concurrent policy](STRICT-NATIVE-CONCURRENCY.md).
+Retained-backlog behavior below records the earlier implementation and its tests.
+
+
 ## English
 
 Fast previously reserved a rounded-up third of its budget for mandatory owners,

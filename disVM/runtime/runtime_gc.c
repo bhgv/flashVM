@@ -106,7 +106,8 @@ int dvm_runtime_gc_start(int locked_poll)
     memset(&dvm_gc_runtime, 0, sizeof(dvm_gc_runtime));
     memset(&config, 0, sizeof(config));
     dvm_gc_runtime.owner = dvm_native_context_current();
-    dvm_gc_runtime.world = dvm_world_create_serial(locked_poll);
+    dvm_gc_runtime.world =
+        dvm_runtime_guest_unbounded ? dvm_world_create_concurrent(locked_poll) : dvm_world_create_serial(locked_poll);
     if (dvm_gc_runtime.world)
     {
         attached = dvm_native_owner_attach(owner, dvm_gc_runtime.world);
@@ -129,6 +130,15 @@ int dvm_runtime_gc_start(int locked_poll)
     config.Cycles.pause_us = dvm_runtime_idle_cycles ? 1000 : 0;
     config.Cycles.run = cycle_pass;
     config.Cycles.budget = 256;
+    if (dvm_runtime_guest_unbounded)
+    {
+        config.concurrent_fast = dvm_gc_fast_concurrent;
+        config.concurrent_cycles = dvm_gc_cycles_concurrent;
+        config.Fast.run = NULL;
+        config.Cycles.run = NULL;
+        config.roots = NULL;
+        config.Cycles.pause_us = 1000;
+    }
     config.user = &dvm_gc_runtime;
     if (attached)
     {
@@ -150,6 +160,10 @@ int dvm_runtime_gc_start(int locked_poll)
                 dvm_cell_domain_enable_blocking(dvm_managed_cell_domain());
             }
             dvm_runtime_rc_start();
+            if (dvm_runtime_guest_unbounded)
+            {
+                dvm_runtime_rc_set_concurrent();
+            }
             dvm_runtime_rc_set_notifier(dvm_runtime_gc_notify_fast);
             dvm_runtime_exception_reserve_start();
             if (dvm_managed_owner_probe_requested)
@@ -219,6 +233,17 @@ int dvm_runtime_gc_request(void)
     {
         return 1;
     }
+    if (dvm_runtime_guest_unbounded)
+    {
+        if (!dvm_runtime_rc_candidates_ready())
+        {
+            fvm_port_registry_lock();
+            dvm_gc_runtime.cycle_skips++;
+            fvm_port_registry_unlock();
+            return 1;
+        }
+        return dvm_gc_workers_request(dvm_gc_runtime.workers, DVM_GC_CYCLES);
+    }
     if (dvm_runtime_event_cycles)
     {
         fvm_port_registry_lock();
@@ -264,6 +289,10 @@ int dvm_runtime_gc_stop(int diagnostics)
         return 0;
     }
     dvm_runtime_exception_reserve_stop();
+    if (dvm_runtime_guest_unbounded && !dvm_runtime_gc_concurrent_drain())
+    {
+        return 0;
+    }
     /* An IDLE controller closes native queues only between collector passes. */
     if (call.phase == DVM_HEAP_IDLE && !dvm_gc_workers_wait_idle(dvm_gc_runtime.workers))
     { /* Preserve the admitted error cleanup if a collector failed. */
@@ -365,6 +394,10 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
+        printf("NATIVEGC_POLICY exclusive=%d trace=%d stop_forbidden=%d\n",
+               !dvm_runtime_guest_unbounded,
+               !dvm_runtime_guest_unbounded,
+               dvm_world_stops_forbidden(dvm_gc_runtime.world));
         printf("NATIVEGCLANES shared_peak=%u duke_passes=%zu\n", workers.shared_peak, workers.Duke.passes);
         printf(
             "NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=3 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu cycle_losses=%lu cycle_skips=%lu shared_peak=%lu shared_integer_commits=%lu shared_integer_batches=%lu shared_integer_branches=%lu shared_byte_steps=%lu shared_long_steps=%lu shared_calls=%lu shared_returns=%lu shared_module_calls=%lu shared_module_returns=%lu shared_extended_steps=%lu\n",
