@@ -13,19 +13,33 @@
 #include "../../exception_host.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "service_budget.inc"
 
 
-/* [GC:] EN: Run shared Fast work on context within budget. user is unused.
- * RU: Выполнить параллельный проход Fast на context с бюджетом budget. user не используется. */
+/* [GC:] EN: Run shared Fast on bound context within budget; user is unused.
+ * Nonempty ticket/reserve/RC services receive independent allowances with a
+ * rotating remainder. Return progress/retry; never spend another service's
+ * allowance on a blocked reader. Zero budget/unbound/foreign context returns
+ * zero before scheduling. Ownership stays with each service on refusal.
+ * RU: Выполнить shared Fast на привязанном context с budget; user не нужен.
+ * Непустые ticket/reserve/RC получают независимые квоты с круговым остатком.
+ * Вернуть работу/повтор; ожидание читателя не расходует чужую квоту. При отказе
+ * владельцы остаются в своих службах. Нулевой budget/чужой или непривязанный
+ * context дают ноль до планирования. */
 unsigned int dvm_gc_fast_shared(DVM_NativeContext *context, size_t budget, void *user)
 {
     (void)user;
-    size_t ticket_budget = budget / 3 + (budget % 3 != 0);
-    unsigned int tickets = dvm_managed_owner_drain_shared(context, ticket_budget);
-    size_t remaining = budget - (tickets ? ticket_budget : 0);
-    size_t reserve_budget = remaining / 2 + remaining % 2;
-    unsigned int reserves = dvm_runtime_exception_retire_shared(context, reserve_budget);
-    return tickets + reserves + dvm_runtime_rc_shared_leaves(context, remaining - (reserves ? reserve_budget : 0));
+    if (!budget || !context || context != dvm_native_context_current())
+    {
+        return 0;
+    }
+    size_t shares[FastServiceCount];
+    fast_service_budget(budget, shares);
+    unsigned int tickets = shares[FastTickets] ? dvm_managed_owner_drain_shared(context, shares[FastTickets]) : 0;
+    unsigned int reserves =
+        shares[FastReserves] ? dvm_runtime_exception_retire_shared(context, shares[FastReserves]) : 0;
+    unsigned int owners = shares[FastRC] ? dvm_runtime_rc_shared_leaves(context, shares[FastRC]) : 0;
+    return tickets + reserves + owners;
 }
 
 

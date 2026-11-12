@@ -6,6 +6,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_concurrent_guards.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_concurrent_guards PROPERTIES TIMEOUT 60)
+    add_test(NAME disvm_fast_services COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_fast_services.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_fast_services PROPERTIES TIMEOUT 90)
     add_test(NAME disvm_duke_queue_progress COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_duke_queue_progress.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

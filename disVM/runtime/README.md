@@ -1,3 +1,5 @@
+[Fast service budgets: independent reader retries without starving RC](FAST-SERVICE-FAIRNESS.md)
+
 [Native shutdown borrow cutoff and public C++98 epoch ABI](SEALED-BORROWS.md)
 
 [Strict retirement and drain admission: no legacy destruction after RC refusal](STRICT-RETIREMENT-ADMISSION.md)
