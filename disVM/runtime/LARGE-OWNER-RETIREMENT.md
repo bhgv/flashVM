@@ -99,6 +99,11 @@ without sanitizer warnings. All eleven new semantic omission controls passed.
 Changed handwritten sources remain at most 357 lines; upstream is unchanged.
 These are scoped results, not a claim that the entire repository suite passes.
 
+[Childless leaf claims](CHILDLESS-LEAF-CLAIMS.md) subsequently closes the three
+empty-owner claim returns and preliminary count sampling. The current matrix
+includes 124 positive applications and 21 semantic omissions, including ten
+actual short-lived retain races.
+
 ## Remaining scope / Оставшиеся ограничения
 
 This removes one concrete stopped fallback for supported last-owner objects.

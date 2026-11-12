@@ -15,7 +15,7 @@ static int transfer_array_children(Heap *heap, int *retry)
 {
     Array *array = H2D(Array *, heap);
     Type *type = array->t;
-    if (!frames || dvm_refcount_load_u(&heap->ref) != 1)
+    if (!frames || !leaf_has_sole_owner(heap, retry))
     {
         return 0;
     }
@@ -41,7 +41,7 @@ static int transfer_array_children(Heap *heap, int *retry)
     }
     if (!capacity)
     {
-        return dvm_refcount_claim_last_u(&heap->ref);
+        return claim_childless_leaf(heap, retry);
     }
     size_t storage = sizeof(FrameRetirement) + capacity * sizeof(void *);
     FrameRetirement *packet = malloc(storage);
@@ -101,7 +101,7 @@ static int transfer_array_children(Heap *heap, int *retry)
     if (valid && !packet->count)
     {
         free(packet);
-        return dvm_refcount_claim_last_u(&heap->ref);
+        return claim_childless_leaf(heap, retry);
     }
     if (valid)
     {

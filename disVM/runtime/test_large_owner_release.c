@@ -26,38 +26,46 @@
 #include <time.h>
 
 #if CONTROL < 100
-#define Case CONTROL /* Positive scenario selected by the driver. */
+#define Case CONTROL        /* Positive scenario selected by the driver. */
 #elif CONTROL == 100
-#define Case 4       /* Real scenario for private semantic omission 100. */
+#define Case 4              /* Real scenario for private semantic omission 100. */
 #elif CONTROL == 101
-#define Case 7       /* Real scenario for private semantic omission 101. */
+#define Case 7              /* Real scenario for private semantic omission 101. */
 #elif CONTROL == 102
-#define Case 8       /* Real scenario for private semantic omission 102. */
+#define Case 8              /* Real scenario for private semantic omission 102. */
 #elif CONTROL == 103
-#define Case 9       /* Real scenario for private semantic omission 103. */
+#define Case 9              /* Real scenario for private semantic omission 103. */
 #elif CONTROL == 104
-#define Case 12      /* Real scenario for private semantic omission 104. */
+#define Case 12             /* Real scenario for private semantic omission 104. */
 #elif CONTROL == 105
-#define Case 13      /* Real scenario for private semantic omission 105. */
+#define Case 13             /* Real scenario for private semantic omission 105. */
 #elif CONTROL == 106
-#define Case 10      /* Real scenario for private semantic omission 106. */
+#define Case 10             /* Real scenario for private semantic omission 106. */
 #elif CONTROL == 107
-#define Case 18      /* Real scenario for private semantic omission 107. */
+#define Case 18             /* Real scenario for private semantic omission 107. */
 #elif CONTROL == 108
-#define Case 19      /* Real scenario for private semantic omission 108. */
+#define Case 19             /* Real scenario for private semantic omission 108. */
 #elif CONTROL == 109
-#define Case 18      /* Real scenario for private semantic omission 109. */
+#define Case 18             /* Real scenario for private semantic omission 109. */
 #elif CONTROL == 110
-#define Case 16      /* Real scenario for private semantic omission 110. */
+#define Case 16             /* Real scenario for private semantic omission 110. */
+#elif CONTROL >= 111 && CONTROL <= 120
+#define Case (CONTROL - 90) /* Real childless claim scenario for each omission. */
 #else
 #error Unknown large owner omission control
 #endif
 
-#define IsList (Case == 5 || Case == 17 || Case == 20)             /* Tail is another actual strong owner. */
-#define IsArray ((Case >= 12 && Case <= 15) || Case == 19)         /* Actual Tarray and mapped element descriptor. */
+#define IsList                                                                                                         \
+    (Case == 5 || Case == 17 || Case == 20 || Case == 24 || Case == 25 || Case == 30) /* Actual list tail/data shape. */
+#define IsArray                                                                                                        \
+    ((Case >= 12 && Case <= 15) || Case == 19 || Case == 22 || Case == 23 || Case == 28 ||                             \
+     Case == 29)                                                   /* Actual Tarray. */
 #define Slots (Case == 2 || IsList ? 512 : Case == 3 ? 513 : 2300) /* Mapped data slots, including nil. */
-#define Owners (Case == 0 ? 0 : Case == 1 ? 1 : Slots + IsList)    /* Strong occurrences, including aliases. */
-#define Children (Case == 6 ? 1 : Owners)                          /* Distinct allocations that must physically free. */
+#define EmptyRace (Case >= 21 && Case <= 26)       /* Actual temporary retain at a childless atomic claim. */
+#define EligibilityRace (Case >= 27 && Case <= 30) /* Actual temporary retain at the preliminary count read. */
+#define NoChildren (Case == 0 || EmptyRace || EligibilityRace)   /* Nil maps or no mapped storage/descriptor. */
+#define Owners (NoChildren ? 0 : Case == 1 ? 1 : Slots + IsList) /* Strong occurrences, including aliases. */
+#define Children (Case == 6 ? 1 : Owners)                        /* Distinct allocations that must physically free. */
 #define Assist (Case == 16)             /* Unknown retained callback releases persistent packet malloc pressure. */
 #define Race (Case >= 18 && Case <= 20) /* Real retain between child-root publication and last claim. */
 
@@ -169,5 +177,6 @@ int __real_dvm_runtime_rc_defer(void *);
 
 #include "test_large_owner_relay.inc"
 #include "test_large_owner_faults.inc"
+#include "test_empty_leaf_claim.inc"
 #include "test_large_owner_observers.inc"
 #include "test_large_owner_case.inc"

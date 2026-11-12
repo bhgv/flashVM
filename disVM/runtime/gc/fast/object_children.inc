@@ -103,13 +103,13 @@ static int transfer_object_fields(Heap *heap, int *retry)
 {
     void *local_keys[RECORD_EDGE_LIMIT];
     size_t count;
-    if (dvm_refcount_load_u(&heap->ref) != 1 || !collect_object_owners(heap, local_keys, RECORD_EDGE_LIMIT, &count))
+    if (!leaf_has_sole_owner(heap, retry) || !collect_object_owners(heap, local_keys, RECORD_EDGE_LIMIT, &count))
     {
         return 0;
     }
     if (!count)
     {
-        return dvm_refcount_claim_last_u(&heap->ref);
+        return claim_childless_leaf(heap, retry);
     }
     if (count > (SIZE_MAX - sizeof(FrameRetirement)) / sizeof(void *))
     {

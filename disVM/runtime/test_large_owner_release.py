@@ -37,6 +37,20 @@ def main():
     ).replace(
         anchor, anchor + "\n                dvm_test_large_leaf_retry(entry->heap, retry_leaf);"
     )
+    claim = "    int claimed = dvm_refcount_claim_last_u(&heap->ref);"
+    claim_doc = "/* [GC:] EN: Claim heap's independently owned last reference without children."
+    if source.count(claim) != 1 or source.count(claim_doc) != 1:
+        raise RuntimeError("childless atomic claim boundary drift")
+    source = source.replace(
+        claim_doc, "extern int dvm_test_empty_leaf_claim(Heap *);\n\n" + claim_doc
+    ).replace(claim, "    int claimed = dvm_test_empty_leaf_claim(heap);")
+    sole = "    int sole = dvm_refcount_load_u(&heap->ref) == 1;"
+    sole_doc = "/* [GC:] EN: Sample independently live heap before child transfer. Return one"
+    if source.count(sole) != 1 or source.count(sole_doc) != 1:
+        raise RuntimeError("preliminary leaf count boundary drift")
+    source = source.replace(
+        sole_doc, "extern int dvm_test_leaf_sole_owner(Heap *);\n\n" + sole_doc
+    ).replace(sole, "    int sole = dvm_test_leaf_sole_owner(heap);")
     mutations = {
         100: (
             "    if (count > RECORD_EDGE_LIMIT)\n    {",
@@ -71,6 +85,12 @@ def main():
         ),
         110: ("retry |= retry_leaf && dvm_world_has_active_guest(world);", "retry |= retry_leaf;"),
     }
+    mutations.update(
+        {control: ("    *retry |= !claimed;", "    (void)retry;") for control in range(111, 117)}
+    )
+    mutations.update(
+        {control: ("    *retry |= !sole;", "    (void)retry;") for control in range(117, 121)}
+    )
     with tempfile.TemporaryDirectory(prefix="large owner release ") as temporary:
         work = Path(temporary)
         image = work / "wide.dis"
@@ -89,7 +109,7 @@ def main():
             capture_output=True,
             text=True,
         )
-        positive = tuple(range(21))
+        positive = tuple(range(31))
         for control in positive if positive_only else (*positive, *mutations):
             text = source
             if control in mutations:
@@ -166,9 +186,9 @@ def main():
                 if not re.search(r"NATIVERC enqueued=(\d+) released=\1 pending=0", output):
                     raise RuntimeError("large owner queue accounting failed\n" + output[-14000:])
     print(
-        "PASS large owner release: 84 C/JIT/poll profiles, sparse/boundary/2300/alias/list/array, "
+        "PASS large owner release: 124 C/JIT/poll profiles, sparse/boundary/2300/alias/list/array, "
         "memory/FULL/BYTES retries, actual claim races, epochs and physical frees"
-        + ("; positive only" if positive_only else "; eleven semantic omission controls")
+        + ("; positive only" if positive_only else "; twenty-one semantic omission controls")
     )
 
 

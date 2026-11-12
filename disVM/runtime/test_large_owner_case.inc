@@ -34,8 +34,9 @@ void __wrap_Sys_werrstr(void *frame)
         map[index / 8] |= 0x80U >> (index % 8);
     }
     uchar pointer_map = 0x80;
-    Type *type = IsArray ? dtype(freeheap, sizeof(void *), &pointer_map, 1)
-                         : dtype(freeheap, Slots * sizeof(void *), map, sizeof(map));
+    Type *type = IsArray
+                     ? dtype(freeheap, sizeof(void *), &pointer_map, 1)
+                     : dtype(freeheap, Slots * sizeof(void *), Case == 26 ? NULL : map, Case == 26 ? 0 : sizeof(map));
     require(type != NULL, "actual wide mapped descriptor");
     Heap *container;
     void **fields;
@@ -46,21 +47,25 @@ void __wrap_Sys_werrstr(void *frame)
     {
         container = nheap(offsetof(List, data) + Slots * sizeof(void *));
         require(dvm_refcount_retain_i(&Tlist.ref) == DVM_REFCOUNT_LIVE &&
-                    dvm_refcount_retain_i(&type->ref) == DVM_REFCOUNT_LIVE,
+                    (Case == 24 || dvm_refcount_retain_i(&type->ref) == DVM_REFCOUNT_LIVE),
                 "actual parent list descriptor owners");
         container->t = &Tlist;
         List *list = H2D(List *, container);
-        list->t = type;
-        Heap *tail_heap = nheap(sizeof(List));
-        require(dvm_refcount_retain_i(&Tlist.ref) == DVM_REFCOUNT_LIVE, "actual tail descriptor owner");
-        tail_heap->t = &Tlist;
-        List *tail = H2D(List *, tail_heap);
-        tail->tail = H;
-        tail->t = NULL;
-        list->tail = tail;
-        Setmark(tail_heap);
-        local_children[used] = tail_heap;
-        local_occurrences[used++] = 1;
+        list->t = Case == 24 ? NULL : type;
+        list->tail = H;
+        if (!NoChildren)
+        {
+            Heap *tail_heap = nheap(sizeof(List));
+            require(dvm_refcount_retain_i(&Tlist.ref) == DVM_REFCOUNT_LIVE, "actual tail descriptor owner");
+            tail_heap->t = &Tlist;
+            List *tail = H2D(List *, tail_heap);
+            tail->tail = H;
+            tail->t = NULL;
+            list->tail = tail;
+            Setmark(tail_heap);
+            local_children[used] = tail_heap;
+            local_occurrences[used++] = 1;
+        }
         fields = (void **)list->data;
     }
     else if (IsArray)
@@ -72,7 +77,7 @@ void __wrap_Sys_werrstr(void *frame)
         container->t = &Tarray;
         Array *array = H2D(Array *, container);
         array->root = H;
-        array->len = Slots;
+        array->len = Case == 22 || Case == 28 ? 0 : Slots;
         array->t = type;
         array->data = (uchar *)(array + 1);
         fields = (void **)array->data;
@@ -85,7 +90,7 @@ void __wrap_Sys_werrstr(void *frame)
     for (unsigned index = 0; index < Slots; index++)
     {
         fields[index] = H;
-        if (Case == 0 || (Case == 1 && index != Slots - 1))
+        if (NoChildren || (Case == 1 && index != Slots - 1))
         {
             continue;
         }
@@ -149,7 +154,8 @@ void __wrap_Sys_werrstr(void *frame)
     require(dvm_refcount_load_i(&type->ref) == 1, "all parent element/type descriptor owners released");
     freetype(type);
     pthread_mutex_lock(&sync);
-    require((Fault ? refusals >= 8 && failure_passes >= 8 : !refusals) && races == Race,
+    require((Fault ? refusals >= 8 && failure_passes >= 8 : !refusals) &&
+                races == (Race || EmptyRace || EligibilityRace),
             "actual pressure responses and competing last-claim evidence");
     require(!vector && vectors == vector_frees && (IsArray || Owners <= 512 ? !vectors : vectors != 0),
             "temporary vector cardinality and balanced frees");

@@ -34,6 +34,9 @@ production files or replace a runtime allocator/collector.
 record/list transfer ceiling and preserves temporary packet/leaf retries beside
 retained work. Small-object capture uses one traversal and local key storage.
 
+[Childless last claims](../../CHILDLESS-LEAF-CLAIMS.md) share a leaf-local helper
+that preserves failed atomic claims independently of a later reference sample.
+
 `graph_capture.c` separately composes [graph_classification.inc](graph_classification.inc)
 for complete-capture reachability and fresh Duke owner checks. That fragment has
 no independent state; it does not participate in `runtime_rc.c` expansion.

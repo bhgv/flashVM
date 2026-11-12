@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Rooted leaf publication and descriptor owners.
- * RU: Публикация листьев с корнями и владение дескрипторами.
+ * EN: Rooted leaf publication, childless claims and descriptor owners.
+ * RU: Публикация листьев с корнями, захват без детей и владение дескрипторами.
  * Private composition fragment; see ../common/RC-SOURCE.md.
  */
 
@@ -63,6 +63,34 @@ static void release_owned_descriptor(Type *type)
     {
         abort();
     }
+}
+
+
+/* [GC:] EN: Sample independently live heap before child transfer. Return one
+ * only for a sole owner; preserve a competing-count refusal in retry without
+ * changing references, roots or fields. Caller has passed its reader cutoff.
+ * RU: Проверить живой heap перед передачей детей после эпохи читателей. Один —
+ * единственный владелец; другой счётчик сохраняет отказ в retry без изменения
+ * ссылок, корней или полей. */
+static int leaf_has_sole_owner(Heap *heap, int *retry)
+{
+    int sole = dvm_refcount_load_u(&heap->ref) == 1;
+    *retry |= !sole;
+    return sole;
+}
+
+
+/* [GC:] EN: Claim heap's independently owned last reference without children.
+ * Caller has passed its reader cutoff. Return one on claim; on failure preserve
+ * ownership and set retry even if the competing owner disappears immediately.
+ * RU: Захватить последнюю собственную ссылку heap без дочернего пакета после
+ * эпохи читателей. Один — успех; отказ сохраняет владение и выставляет retry,
+ * даже если конкурирующий владелец немедленно исчезает. */
+static int claim_childless_leaf(Heap *heap, int *retry)
+{
+    int claimed = dvm_refcount_claim_last_u(&heap->ref);
+    *retry |= !claimed;
+    return claimed;
 }
 
 
