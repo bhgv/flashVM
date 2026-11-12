@@ -5,21 +5,30 @@
  */
 
 
-/* [GC:] EN: Consume at most budget children of the oldest frame packet on the sole shared Fast consumer.
- * Unconsumed suffix retains its roots. Return completed child count; refusal preserves the next child
- * for retry. retry receives a pending cycle-publication retry.
- * RU: Снять до budget дочерних ссылок старейшего пакета на единственном shared Fast. Остаток сохраняет корни.
- * Вернуть число снятых ссылок; при отказе следующая ссылка остаётся для повтора. */
+/* [GC:] EN: Consume at most budget children from queued frame packets on the sole shared Fast consumer.
+ * Unconsumed suffix retains its roots. Visit at most the initial packet count;
+ * charge refused children and rotate their unchanged packet. Return completed
+ * child count; rotation alone never forces another shared pass. retry reports
+ * a pending cycle-publication retry.
+ * RU: Снять до budget детей на единственном shared Fast, проверив не больше
+ * исходного числа пакетов. Отказы расходуют бюджет и перемещают неизменённый
+ * пакет; остаток сохраняет корни. Вернуть число снятых ссылок без учёта
+ * перемещений; retry сообщает о повторе публикации Cycles. */
 static unsigned int drain_shared_children(size_t budget, int *retry)
 {
     unsigned int completed = 0;
-    while (budget)
+    DVM_RetirementStats pending = {0};
+    (void)dvm_retirement_statistics(frames, &pending);
+    size_t packets = pending.ready;
+    while (budget && packets)
     {
+        packets--;
         FrameRetirement *packet = dvm_retirement_peek(frames);
         if (!packet)
         {
             break;
         }
+        int blocked = 0;
         while (budget && packet->next < packet->count)
         {
             Heap *heap = packet->keys[packet->next];
@@ -28,7 +37,8 @@ static unsigned int drain_shared_children(size_t budget, int *retry)
             {
                 if (!preserve_packet_candidate(heap, packet, packet->next, retry))
                 {
-                    return completed;
+                    blocked = 1;
+                    break;
                 }
                 transferred = 1;
             }
@@ -42,7 +52,8 @@ static unsigned int drain_shared_children(size_t budget, int *retry)
                 {
                     if (!leaf_eligible(heap) || !defer_leaf(heap, poolmsize(heapmem, heap), 0))
                     {
-                        return completed;
+                        blocked = 1;
+                        break;
                     }
                     __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
                     __atomic_fetch_add(&helper_enqueued, 1, __ATOMIC_RELAXED);
@@ -56,6 +67,17 @@ static unsigned int drain_shared_children(size_t budget, int *retry)
             shared_children++;
             completed++;
             budget--;
+        }
+        /* [GC:] EN: A refused child keeps its cursor, references and roots.
+         * Charge the failed visit and try the next packet once this pass;
+         * rotation alone is not progress and must not starve retained cleanup.
+         * RU: Отклонённый ребёнок сохраняет курсор, ссылки и корни. Учесть
+         * неудачный просмотр и проверить следующий пакет один раз за проход;
+         * само перемещение не считается работой и не вытесняет резервный путь. */
+        if (blocked)
+        {
+            budget--;
+            dvm_retirement_rotate(frames);
         }
         if (packet->next == packet->count)
         {
@@ -74,7 +96,7 @@ static unsigned int drain_shared_children(size_t budget, int *retry)
 }
 
 
-/* EN: Root count owners from keys. Charge payload bytes for the first
+/* [GC:] EN: Root count owners from keys. Charge payload bytes for the first
  * charged_keys entries. token receives the reservation; retry reports temporary
  * memory or queue pressure. Invalid sizes/charges preserve inputs without retry.
  * RU: Удержать count ссылок из keys. Учесть память первых charged_keys объектов.
@@ -133,7 +155,7 @@ static FrameRetirement *prepare_release_packet(
 }
 
 
-/* EN: Transfer one hold per live node and every dead-to-live edge in group.
+/* [GC:] EN: Transfer one hold per live node and every dead-to-live edge in group.
  * Refusal preserves existing roots. Charge each live allocation only once.
  * RU: Передать удержания живых узлов и каждую ссылку на них из мёртвых узлов group.
  * При отказе корни сохраняются. Память каждого живого объекта учитывается один раз. */

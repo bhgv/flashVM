@@ -1,3 +1,5 @@
+[Shared frame packet fairness beside unsupported finalizers](PACKET-FAIRNESS.md)
+
 [Dedicated Cycles without tracing park requests; joined-thread accounting](NATIVE-CYCLES-NO-PARK.md)
 
 [Guarded scalar/raw copies and SELF — runtime0.89](SHARED-BYTES.md)

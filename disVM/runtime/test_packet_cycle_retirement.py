@@ -70,7 +70,7 @@ def main():
                         "*retry |= 0;",
                     ),
                     10: (
-                        "if (!preserve_packet_candidate(heap, packet, packet->next, retry))\n                {\n                    return completed;",
+                        "if (!preserve_packet_candidate(heap, packet, packet->next, retry))\n                {\n                    blocked = 1;\n                    break;",
                         "if (!preserve_packet_candidate(heap, packet, packet->next, retry))\n                {\n                    packet->next++;\n                    return completed;",
                     ),
                 }

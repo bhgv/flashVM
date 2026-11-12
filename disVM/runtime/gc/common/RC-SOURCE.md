@@ -94,3 +94,5 @@ Private confirmation copies must retain the `module_graph_claim.inc` include.
 decision in the shared pass result independently of retained queue readiness.
 
 Dedicated admission and joined-thread accounting: [native Cycles without tracing park requests](../../NATIVE-CYCLES-NO-PARK.md).
+
+Shared frame packet fairness and bounded rotation: [packet fairness](../../PACKET-FAIRNESS.md).
