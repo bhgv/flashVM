@@ -1,3 +1,5 @@
+[Root index and arena search progress under native concurrency](METADATA-PROGRESS.md)
+
 [Duke queue progress and hard-limit fallback routing](DUKE-QUEUE-PROGRESS.md)
 
 [Shared frame packet fairness beside unsupported finalizers](PACKET-FAIRNESS.md)

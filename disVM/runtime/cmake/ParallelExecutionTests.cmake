@@ -58,18 +58,18 @@ add_custom_target(disvm_gc_worker_module ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR
 add_test(NAME disvm_native_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
  "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
  "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis")
-set_tests_properties(disvm_native_cycle_gc PROPERTIES TIMEOUT 180)
+set_tests_properties(disvm_native_cycle_gc PROPERTIES TIMEOUT 180 PROCESSORS 4)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
  add_test(NAME disvm_dedicated_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
   "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis" --dedicated-only)
- set_tests_properties(disvm_dedicated_cycle_gc PROPERTIES TIMEOUT 180)
+ set_tests_properties(disvm_dedicated_cycle_gc PROPERTIES TIMEOUT 180 PROCESSORS 4)
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
  add_test(NAME disvm_idle_cycle_gc COMMAND "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_runtime_gc.py" "$<TARGET_FILE:disvm>"
   "${CMAKE_CURRENT_BINARY_DIR}/gc-worker.dis" --idle-cycles)
- set_tests_properties(disvm_idle_cycle_gc PROPERTIES TIMEOUT 130)
+ set_tests_properties(disvm_idle_cycle_gc PROPERTIES TIMEOUT 130 PROCESSORS 4)
  set(record_cycle_overlap_module "${CMAKE_CURRENT_BINARY_DIR}/record-cycle-overlap.dis")
  add_custom_command(OUTPUT "${record_cycle_overlap_module}"
   COMMAND "$<TARGET_FILE:limbo-bootstrap>" -I "${u}/module"

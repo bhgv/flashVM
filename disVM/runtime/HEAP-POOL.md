@@ -1,3 +1,5 @@
+[Current cursor-based allocator and root metadata progress](METADATA-PROGRESS.md)
+
 # Hosted allocator metadata — runtime0.79
 
 The hosted runtime's fixed 64 MiB first-fit arena now lives in `heap_pool.c`,

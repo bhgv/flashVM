@@ -112,6 +112,14 @@ endif()
 
 # Actual opaque native registry and allocation-outside-lock semantic controls.
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+ add_test(NAME disvm_native_pool_search COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_pool_search.py")
+ set_tests_properties(disvm_native_pool_search PROPERTIES TIMEOUT 90)
+ add_test(NAME disvm_native_root_distribution COMMAND "${CMAKE_COMMAND}" -E env
+  "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/test_root_distribution.py")
+ set_tests_properties(disvm_native_root_distribution PROPERTIES TIMEOUT 90)
  add_test(NAME disvm_native_root_registry COMMAND "${CMAKE_COMMAND}" -E env
   "CC=${CMAKE_C_COMPILER}" "${PYTHON_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/test_root_registry.py")
