@@ -1,0 +1,72 @@
+# Copyright (c) 2026 bhgv
+# EN: Execute real native DisVM/Limbo ownership workloads on Linux64 targets.
+# RU: Выполнять настоящие native-нагрузки владельцев DisVM/Limbo на Linux64.
+name: Native DisVM Linux64
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [experiment/no-nativeworld-exclusive]
+        paths:
+            - '.github/workflows/native-disvm.yml'
+            - 'disVM/**'
+            - 'flashVM/ports/**'
+            - 'flashVM/include/**'
+            - 'common/**'
+            - 'tools/limbo-bootstrap/**'
+
+permissions:
+    contents: read
+
+concurrency:
+    group: native-disvm-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    native:
+        name: Native ${{ matrix.backend }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - backend: amd64
+                      runner: ubuntu-24.04
+                    - backend: arm64
+                      runner: ubuntu-24.04-arm
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 35
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+              with:
+                  persist-credentials: false
+            - name: Install build tools
+              run: sudo apt-get update && sudo apt-get install -y build-essential cmake python3
+            - name: Build the selected native backend
+              run: >-
+                  cmake -S disVM/runtime -B build/native -DDVM_RUNTIME_TESTS=ON
+                  -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build/native --parallel 4
+            - name: Execute native C and JIT workloads
+              run: python3 disVM/runtime/native_arch_suite.py build/native --expected ${{ matrix.backend }}
+
+    rv64:
+        name: RV64 userspace under QEMU
+        runs-on: ubuntu-24.04
+        timeout-minutes: 45
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+              with:
+                  persist-credentials: false
+            - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+              with:
+                  platforms: riscv64
+            - name: Build and execute RV64 C and JIT workloads
+              run: |
+                  docker run --rm --platform linux/riscv64 \
+                    -v "$GITHUB_WORKSPACE:/source" -w /source debian:trixie-20261104-slim \
+                    sh -eu -c '
+                      apt-get update
+                      apt-get install -y --no-install-recommends build-essential cmake python3
+                      cmake -S disVM/runtime -B build/native-rv64 -DDVM_RUNTIME_TESTS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+                      cmake --build build/native-rv64 --parallel 4
+                      python3 disVM/runtime/native_arch_suite.py build/native-rv64 --expected riscv64 --emulated --jobs 1
+                    '
