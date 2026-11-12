@@ -83,6 +83,10 @@ positive executions without warnings. All 28 semantic omission controls passed.
 Changed handwritten sources are at most 433 lines; upstream remains unchanged.
 This is scoped validation, not a claim that the entire repository suite passes.
 
+[Reservation and buffer-change observations](CHANNEL-TRANSIENT-OBSERVATIONS.md)
+subsequently extend the matrix to 156 positive applications and 32 omissions.
+The additional probes use real match ledgers and guarded field-owner transfers.
+
 General stopped tracing, unsupported native finalizers, hard graph limits and
 stopped shutdown remain. Execution is Linux x86-64; C TSan does not instrument
 emitted JIT instructions. ARM64/RV64 execution is not established here.

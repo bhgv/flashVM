@@ -134,26 +134,43 @@ def main():
             capture_output=True,
             text=True,
         )
-        positive = tuple(range(31, 35)) if channel_only else tuple(range(35))
-        host_controls = (121, 122, 123, 124, 127)
+        positive = tuple(range(31, 39)) if channel_only else tuple(range(39))
+        host_controls = (121, 122, 123, 124, 127, 128, 129, 130, 131)
         negatives = (125, 126, *host_controls) if channel_only else (*mutations, *host_controls)
         for control in positive if positive_only else (*positive, *negatives):
             text = source
             host = None
-            channel_case = control in range(31, 35) or control >= 121
+            channel_case = control in range(31, 39) or control >= 121
             if control in host_controls:
                 path = root / "host_runtime/channel_retirement.inc"
                 body = path.read_text()
                 gate = "if (!claimed && retry && !channel->aux)"
                 if body.count(gate) != 1:
                     raise RuntimeError("channel observed refusal anchor drift")
-                body = body.replace(gate, "if (!claimed && retry)" if control == 127 else "if (0)")
+                body = body.replace(
+                    gate,
+                    (
+                        "if (!claimed && retry)"
+                        if control == 127
+                        else (gate if control >= 128 else "if (0)")
+                    ),
+                )
                 if control == 127:
                     body, count = re.subn(
                         r"\*retry \|= channel->buf != buffer.*?;", "*retry = 1;", body, flags=re.S
                     )
                     if count != 1:
                         raise RuntimeError("channel unsupported observation anchor drift")
+                if control in (128, 129):
+                    gate = "dvm_runtime_channel_buffer_busy(channel) ||"
+                    if body.count(gate) != 1:
+                        raise RuntimeError("channel busy refusal anchor drift")
+                    body = body.replace(gate, "")
+                if control in (130, 131):
+                    gate = "channel->buf == buffer && quiet &&"
+                    if body.count(gate) != 1:
+                        raise RuntimeError("channel buffer identity anchor drift")
+                    body = body.replace(gate, "quiet &&")
                 fragment = work / "channel_retirement.inc"
                 fragment.write_text(body)
                 path = root / "main.c"
@@ -231,6 +248,10 @@ def main():
                         123: "channel claim captures temporary refusal under queue mutex",
                         124: "channel claim captures temporary refusal under queue mutex",
                         127: "unsupported transport channel remains a hard refusal",
+                        128: "channel reservation refusal captured before the cause disappears",
+                        129: "channel reservation refusal captured before the cause disappears",
+                        130: "changed channel buffer must refuse the original snapshot",
+                        131: "changed channel buffer must refuse the original snapshot",
                     }.get(control, "temporary leaf failure must preserve shared retry")
                     if result.returncode != 12 or marker not in output:
                         raise RuntimeError(
@@ -246,16 +267,16 @@ def main():
                     raise RuntimeError("large owner queue accounting failed\n" + output[-14000:])
     print(
         "PASS large owner release: "
-        + ("16 channel" if channel_only else "140")
+        + ("32 channel" if channel_only else "156")
         + " C/JIT/poll profiles, sparse/boundary/2300/alias/list/array/channel, "
         "memory/FULL/BYTES retries, actual claim races, epochs and physical frees"
         + (
             "; positive only"
             if positive_only
             else (
-                "; seven channel semantic controls"
+                "; eleven channel semantic controls"
                 if channel_only
-                else "; twenty-eight semantic omission controls"
+                else "; thirty-two semantic omission controls"
             )
         )
     )

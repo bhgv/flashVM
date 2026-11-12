@@ -75,11 +75,12 @@ static void retire_fixture(Modlink *link, Module *lookup_owner, Type *type)
     pthread_mutex_unlock(&sync);
     fprintf(
         stderr,
-        "PASS shared module retirement heaps=%u metadata=1 reader_epochs=2 lookup=%d root_refusal=%d claim_refusal=%d code=%d\n",
-        CONTROL == 8 ? 1U : 4U,
+        "PASS shared module retirement heaps=%u metadata=1 reader_epochs=2 lookup=%d root_refusal=%d claim_refusal=%d entry_refusal=%d code=%d\n",
+        EmptyModule ? 1U : 4U,
         CONTROL == 1,
         root_refused,
         claim_refused,
+        entry_refused,
         code_unmapped);
 }
 
@@ -136,7 +137,7 @@ void __wrap_Sys_werrstr(void *frame)
     require(module != NULL, "actual builtin Module");
     Type *type = NULL;
     String *child = H;
-    if (CONTROL != 8)
+    if (!EmptyModule)
     {
         uchar map = 0x80;
         type = dtype(freeheap, 2 * sizeof(void *), &map, 1);
@@ -166,13 +167,13 @@ void __wrap_Sys_werrstr(void *frame)
     Module *lookup_owner = CONTROL == 1 ? lookmod((char *)ModuleName) : NULL;
     Import imports[1] = {{0}};
     Modlink *link = linkmod(module, imports, 1);
-    require(link != H && (CONTROL == 8 ? link->MP == H : link->MP != H && link->MP != module->origmp),
+    require(link != H && (EmptyModule ? link->MP == H : link->MP != H && link->MP != module->origmp),
             "actual MP clone or genuinely empty module");
     pthread_mutex_lock(&sync);
     __atomic_store_n(&target_module, module, __ATOMIC_RELEASE);
     targets[0] = D2H(link);
-    expected_mask = CONTROL == 8 ? 1 : 15;
-    if (CONTROL != 8)
+    expected_mask = EmptyModule ? 1 : 15;
+    if (!EmptyModule)
     {
         targets[1] = D2H(link->MP);
         targets[2] = D2H(module->origmp);

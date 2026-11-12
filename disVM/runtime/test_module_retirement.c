@@ -26,6 +26,11 @@
 #include <string.h>
 #include <time.h>
 
+#define EmptyModule                                                                                                    \
+    (CONTROL == 8 || CONTROL == 10 || CONTROL == 11 || CONTROL == 13 || CONTROL == 14) /* Actual MP==H shape. */
+
+static int entry_refused;                                             /* Actual preliminary count loss, under sync. */
+
 static const char ModuleName[] = "$FlashVM-shared-module-retirement"; /* Unique fixture registry path. */
 extern Pool *heapmem;                                                 /* Real heap arena, alive through runtime join. */
 static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;              /* Protect fixture state, not VM fields. */
@@ -98,6 +103,7 @@ int __real_munmap(void *, size_t);
 int __real_cjitexec(REG *, int, int (*)(REG *));
 
 #include "test_module_retirement_relay.inc"
+#include "test_module_retry_observation.inc"
 
 
 /* [GC:] EN: Observe queued RC ownership before the ticket withdraws its root.
@@ -139,7 +145,7 @@ int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *val
     if (selected)
     {
         require(dvm_runtime_root_count(targets[1]) == 0, "module retry leaked staged data roots");
-        require(H2D(Modlink *, targets[0])->MP == H2D(uchar *, targets[1]) &&
+        require(H2D(Modlink *, targets[0])->MP == (EmptyModule ? H : H2D(uchar *, targets[1])) &&
                     dvm_refcount_load_u(&targets[0]->ref) == 1,
                 "MP refusal must preserve source link and reference");
         if (CONTROL == 2 && !root_refused)
@@ -163,7 +169,8 @@ int __wrap_dvm_runtime_root_batch_publish(DVM_RootBatch *batch, void *const *val
 int __wrap_dvm_refcount_claim_last_u(unsigned long *reference)
 {
     pthread_mutex_lock(&sync);
-    int selected = (CONTROL == 3 || CONTROL == 7) && targets[0] && reference == &targets[0]->ref && !claim_refused;
+    int selected = (CONTROL == 3 || CONTROL == 7 || CONTROL == 10 || CONTROL == 13) && targets[0] &&
+                   reference == &targets[0]->ref && !claim_refused;
     if (!selected)
     {
         pthread_mutex_unlock(&sync);
@@ -172,7 +179,8 @@ int __wrap_dvm_refcount_claim_last_u(unsigned long *reference)
     require(dvm_runtime_root_add(targets[0]) && dvm_refcount_retain_u(reference) == DVM_REFCOUNT_LIVE,
             "independent competing alias acquires root and reference");
     require(!__real_dvm_refcount_claim_last_u(reference), "actual last-count claim observes competing owner");
-    require(H2D(Modlink *, targets[0])->MP == H2D(uchar *, targets[1]), "failed claim cannot detach MP");
+    require(H2D(Modlink *, targets[0])->MP == (EmptyModule ? H : H2D(uchar *, targets[1])),
+            "failed claim cannot detach MP");
     require(dvm_runtime_root_remove(targets[0]) && dvm_refcount_drop_nonfinal_u(reference),
             "competing alias releases its own owner");
     claim_refused = 1;

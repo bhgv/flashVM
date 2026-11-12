@@ -39,6 +39,10 @@ int __wrap_dvm_runtime_guest_sleep(unsigned long duration)
     unsigned long long deadline = milliseconds() + 15000;
     pthread_mutex_lock(&sync);
     unsigned id = admitted++;
+    if (IsChannel && !id)
+    {
+        channel_contender = dvm_native_context_current();
+    }
     require(id < 2, "exactly two peer residents");
     pthread_cond_broadcast(&changed);
     while (!released && milliseconds() < deadline)

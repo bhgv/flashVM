@@ -164,6 +164,8 @@ static int set_channel_probe_aux(void *argument)
     return 1;
 }
 
+#include "test_channel_transient_probe.inc"
+
 
 /* [GC:] EN: Observe real quiet-channel claim loss with an independent short
  * owner. First verify that an unsupported transport tag stays a hard refusal.
@@ -179,6 +181,10 @@ int __wrap_dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **
     if (!IsChannel || !selected || heap != target || races)
     {
         return __real_dvm_runtime_channel_claim_observed(heap, buffer, mapped, claimed, retry);
+    }
+    if (Case >= 35)
+    {
+        return probe_channel_transient(heap, buffer, mapped, claimed, retry);
     }
     ChannelAuxProbe probe = {H2D(Channel *, heap), &probe};
     dvm_runtime_channel_queue_guard(set_channel_probe_aux, &probe);

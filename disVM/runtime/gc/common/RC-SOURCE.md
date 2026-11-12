@@ -41,6 +41,9 @@ that preserves failed atomic claims independently of a later reference sample.
 host queue mutex; Fast preserves that result through later samples and packet
 rollback. The legacy graph-finalization boolean entry remains available.
 
+[Module claim retry](../../MODULE-CLAIM-RETRY.md) completes the preliminary and
+empty-MP helper routing for ordinary modules and records the supported-leaf audit.
+
 `graph_capture.c` separately composes [graph_classification.inc](graph_classification.inc)
 for complete-capture reachability and fresh Duke owner checks. That fragment has
 no independent state; it does not participate in `runtime_rc.c` expansion.

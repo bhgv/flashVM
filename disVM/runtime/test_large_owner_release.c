@@ -14,6 +14,7 @@
 #include "root_batch.h"
 #include "root_registry.h"
 #include "retirement_queue.h"
+#include "channel_match.h"
 #include "gc/common/runtime_state.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
@@ -57,6 +58,8 @@
 #define Case 32             /* Buffered rollback must preserve the observed reason. */
 #elif CONTROL == 126 || CONTROL == 127
 #define Case 31             /* Unbuffered refusal and unsupported transport boundary. */
+#elif CONTROL >= 128 && CONTROL <= 131
+#define Case (CONTROL - 93) /* Real reservation or changed-buffer refusal. */
 #else
 #error Unknown large owner omission control
 #endif
@@ -65,12 +68,13 @@
     (Case == 5 || Case == 17 || Case == 20 || Case == 24 || Case == 25 || Case == 30) /* Actual list tail/data shape. */
 #define IsArray                                                                                                        \
     ((Case >= 12 && Case <= 15) || Case == 19 || Case == 22 || Case == 23 || Case == 28 ||                             \
-     Case == 29)                                                         /* Actual Tarray. */
-#define IsChannel (Case >= 31 && Case <= 34)                             /* Actual cnewc channel. */
-#define BufferedChannel (Case == 32 || Case == 34)                       /* Real owned array buffer. */
-#define MappedChannel (Case == 33 || Case == 34)                         /* Real movtmp descriptor owner. */
+     Case == 29)                                                             /* Actual Tarray. */
+#define IsChannel (Case >= 31 && Case <= 38)                                 /* Actual cnewc channel. */
+#define BufferedChannel                                                                                                \
+    (Case == 32 || Case == 34 || Case == 36 || Case == 37 || Case == 38)     /* Real owned array buffer. */
+#define MappedChannel (Case == 33 || Case == 34 || Case == 36 || Case == 38) /* Real movtmp descriptor owner. */
 #define Slots                                                                                                          \
-    (IsChannel ? 1 : Case == 2 || IsList ? 512 : Case == 3 ? 513 : 2300) /* Mapped data slots, including nil. */
+    (IsChannel ? 1 : Case == 2 || IsList ? 512 : Case == 3 ? 513 : 2300)     /* Mapped data slots, including nil. */
 #define EmptyRace (Case >= 21 && Case <= 26)       /* Actual temporary retain at a childless atomic claim. */
 #define EligibilityRace (Case >= 27 && Case <= 30) /* Actual temporary retain at the preliminary count read. */
 #define NoChildren (Case == 0 || EmptyRace || EligibilityRace) /* Nil maps or no mapped storage/descriptor. */
@@ -110,7 +114,9 @@ enum FaultKind
 #define Fault NoFault      /* Baseline cardinality or a real competing retain. */
 #endif
 
-extern Pool *heapmem;                                     /* Actual managed arena through worker joins. */
+static DVM_NativeContext *channel_contender; /* Real peer identity, borrowed through peer join under sync. */
+
+extern Pool *heapmem;                        /* Actual managed arena through worker joins. */
 static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;  /* Fixture metadata only. */
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Real peer readiness. */
 static unsigned admitted;                                 /* Number of permanently bound peers, under sync. */

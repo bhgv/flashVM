@@ -47,8 +47,10 @@ def main():
             capture_output=True,
             text=True,
         )
-        positive_controls = (0, 1, 2, 3, 8, 9)
-        for control in positive_controls if positive_only else (*positive_controls, 4, 5, 6, 7):
+        positive_controls = (0, 1, 2, 3, 8, 9, 10, 11, 12)
+        for control in (
+            positive_controls if positive_only else (*positive_controls, 4, 5, 6, 7, 13, 14, 15)
+        ):
             replacement = None
             if control in (5, 6, 7):
                 source = read_rc_source(root)
@@ -69,6 +71,34 @@ def main():
                     raise RuntimeError("module retirement control anchor changed: " + str(control))
                 replacement = work / "runtime_rc.c"
                 replacement.write_text(source.replace(gate, changed))
+            if control >= 10:
+                source = read_rc_source(root)
+                gate = "                retry_leaf |= dvm_refcount_load_u(&entry->heap->ref) > 1;"
+                declaration = "static int retirement_ready(int include_shared_retries);"
+                sole = "    int sole = dvm_refcount_load_u(&heap->ref) == 1;"
+                sole_doc = (
+                    "/* [GC:] EN: Sample independently live heap before child transfer. Return one"
+                )
+                for anchor in (gate, declaration, sole, sole_doc):
+                    if source.count(anchor) != 1:
+                        raise RuntimeError("module retry observation anchor drift")
+                source = source.replace(
+                    declaration, "extern void dvm_test_module_retry(Heap *, int);\n" + declaration
+                )
+                source = source.replace(
+                    gate, gate + "\n                dvm_test_module_retry(entry->heap, retry_leaf);"
+                )
+                source = source.replace(
+                    sole_doc, "extern int dvm_test_module_sole_owner(Heap *);\n\n" + sole_doc
+                )
+                source = source.replace(sole, "    int sole = dvm_test_module_sole_owner(heap);")
+                if control >= 13:
+                    gate = "    *retry |= !claimed;" if control == 13 else "    *retry |= !sole;"
+                    if source.count(gate) != 1:
+                        raise RuntimeError("module captured refusal omission anchor drift")
+                    source = source.replace(gate, "    (void)retry;")
+                replacement = work / "runtime_rc.c"
+                replacement.write_text(source)
             binary = relink(
                 runtime,
                 work,
@@ -122,11 +152,14 @@ def main():
                         5: "module data lacks its transferred root",
                         6: "module finalized before reader epoch elapsed",
                         7: "module retry leaked staged data roots",
+                        13: "captured module owner refusal must request shared retry",
+                        14: "captured module owner refusal must request shared retry",
+                        15: "captured module owner refusal must request shared retry",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(f"module control {control} missed\n{text[-12000:]}")
                     continue
-                heaps = 1 if control == 8 else 4
+                heaps = 1 if control in (8, 10, 11) else 4
                 if (
                     result.returncode
                     or f"PASS shared module retirement heaps={heaps} metadata=1 reader_epochs=2"
@@ -141,6 +174,12 @@ def main():
                         "actual target JIT mapping was not unmapped\n" + text[-12000:]
                     )
                 evidence(text, children=2)
+                if control == 10 and "claim_refusal=1 entry_refusal=0" not in text:
+                    raise RuntimeError("actual empty module claim loss missing\n" + text[-12000:])
+                if control in (11, 12) and "entry_refusal=1" not in text:
+                    raise RuntimeError(
+                        "actual preliminary module count loss missing\n" + text[-12000:]
+                    )
                 modules = re.search(r"NATIVEMODULERC shared=(\d+) with_peer=(\d+)", text)
                 if not modules or int(modules[1]) < 1 or int(modules[2]) < 1:
                     raise RuntimeError(
@@ -155,7 +194,7 @@ def main():
     print(
         "PASS actual ordinary module retirement: mapped/empty modules and metadata, two reader epochs, "
         "lookup owner, MP root refusal, competing retain, actual JIT unmap; C/JIT, both polls"
-        + ("; positive profiles only" if positive_only else "; four semantic omission controls")
+        + ("; positive profiles only" if positive_only else "; seven semantic omission controls")
     )
 
 
