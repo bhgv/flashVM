@@ -10,7 +10,6 @@
 #include <stddef.h>
 
 #define DUKE_INITIAL_FIELDS 2048                     /* Initial shared snapshot capacity on the Duke lane. */
-#define RECORD_SCRATCH_BYTES (4UL * 1024UL * 1024UL) /* Maximum Duke discovery storage. */
 #define RECORD_EDGE_LIMIT 512                        /* Maximum mapped fields in one guarded snapshot. */
 #define RECORD_NODE_CAPACITY (RECORD_EDGE_LIMIT + 1) /* Seed plus one target per field. */
 #define RECORD_INDEX_SLOTS (RECORD_EDGE_LIMIT * 4)   /* Power of two, below half full. */
@@ -95,8 +94,15 @@ unsigned int dvm_rc_record_index_slot(const RecordGroup *group, void *value);
 unsigned int dvm_rc_record_group_index(RecordGroup *group, void *value);
 
 
+/* [GC:] EN: Return the native field bound imposed by addressable storage and
+ * unsigned discovery hash indices. No allocation or ownership changes occur.
+ * RU: Вернуть предел полей по адресуемой памяти и unsigned-индексам обхода.
+ * Выделения памяти и изменения владения нет. */
+size_t dvm_rc_record_group_limit(void);
+
+
 /* [GC:] EN: Grow private group for required fields; preserve storage on failure.
- * Return 1 on success, 0 with busy=1 for allocation retry or busy=0 at the limit.
+ * Return 1 on success, 0 with busy=1 for allocation retry or busy=0 at the representation limit.
  * RU: Увеличить личный group до required полей; при отказе сохранить буфер.
  * Вернуть 1 при успехе, 0 с busy=1 для повтора выделения или busy=0 при пределе. */
 int dvm_rc_grow_record_group(RecordGroup *group, size_t required);

@@ -106,3 +106,7 @@ including frame packets. Failed leaf visits also consume their local allowance.
 [Strict native concurrency](../../STRICT-NATIVE-CONCURRENCY.md) now forbids all
 retained collector admission in native-spawn. Old fallback fragments remain for
 the single-worker reference; strict RC rejects their work with explicit diagnostics.
+
+[Concurrent large graphs](../../CONCURRENT-LARGE-GRAPHS.md) replaces the Duke policy
+byte ceiling with checked native storage/index bounds and validates field extents
+before subtraction or addition. Strict collector exclusion remains forbidden.

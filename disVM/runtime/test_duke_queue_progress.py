@@ -1,27 +1,29 @@
 # Copyright (c) 2026 bhgv
-# EN: Actual oversized Duke graph and independent shared progress under queue pressure.
-# RU: Настоящий слишком большой граф Duke и независимый shared-прогресс при давлении очередей.
+# [GC:] EN: Real large Duke graphs without exclusion or a fixed snapshot ceiling.
+# RU: Настоящие большие графы Duke без эксклюзива и фиксированного потолка снимка.
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
 from relink_private import relink
 from resident_evidence import evidence
-from rc_test_source import read_rc_source
 
 
-# [GC:] EN: Borrow CLI build/compiler/include paths and own private binaries and
-# real VM children. Check FULL/BYTES with C/JIT and both polls. Failure must carry
-# an exact semantic diagnostic, never a compiler error, signal or sanitizer report.
-# RU: Заимствовать CLI-пути сборки/компилятора/include; владеть личными бинарниками
-# и настоящими VM. Проверить FULL/BYTES, C/JIT и оба polling. Отказ требует точной
-# семантической диагностики, не ошибки сборки, сигнала или санитайзера.
+# [GC:] EN: Borrow runtime/compiler/include paths; own private binaries and real
+# bytecode through exit. Refuse actual initial/growth allocations until a smaller
+# graph frees. Both graphs must free beside admitted guests. Negative controls
+# restore the old byte ceiling or permit invalid extents; require exact diagnostics,
+# never compilation failure, signal, timeout or sanitizer output.
+# RU: Заимствовать runtime/compiler/include; владеть личными бинарниками и
+# байткодом до выхода. Отклонять начальное выделение/рост до free меньшего графа.
+# Оба графа обязаны освободиться при активных гостях. Контроли возвращают старый
+# лимит либо допускают неверные размеры; требовать точную диагностику, а не
+# ошибку сборки, сигнал, таймаут или сообщение санитайзера.
 def main():
     positive_only = "--positive-only" in sys.argv[1:]
     runtime, compiler, include = (Path(v).resolve() for v in sys.argv[1:] if v != "--positive-only")
     root = Path(__file__).parent
-    with tempfile.TemporaryDirectory(prefix="actual Duke queue progress ") as folder:
+    with tempfile.TemporaryDirectory(prefix="concurrent large Duke graphs ") as folder:
         work = Path(folder)
         image = work / "peers.dis"
         subprocess.run(
@@ -37,37 +39,32 @@ def main():
             capture_output=True,
             text=True,
         )
-        for control in (0, 1) if positive_only else (0, 1, 100, 101):
-            duke = rc = None
+        for control in (0, 1, 2) if positive_only else (0, 1, 2, 100, 101):
+            growth = storage = None
             if control == 100:
-                path = root / "gc/duke/large_graph_pass.c"
-                source = path.read_text()
-                anchor = "if (!dvm_rc_move_candidate(queue, fallback, value))"
+                source = (root / "gc/duke/snapshot_growth.c").read_text()
+                anchor = "size_t maximum = dvm_rc_record_group_limit();"
                 if source.count(anchor) != 1:
-                    raise RuntimeError("Duke failed-transfer control anchor changed")
-                offset = source.index(anchor)
-                source = source[:offset] + source[offset:].replace(
-                    "dvm_retirement_rotate(queue);", "(void)0;", 1
+                    raise RuntimeError("Duke native limit anchor changed")
+                source = source.replace(
+                    anchor,
+                    "size_t maximum = (4UL * 1024UL * 1024UL - per_node) / (per_node + per_field);",
                 )
-                source = re.sub(
-                    r'^#include "([^"\n]+)"$',
-                    lambda m: (
-                        '#include "' + str((path.parent / m[1]).resolve()) + '"'
-                        if (path.parent / m[1]).is_file()
-                        else m[0]
-                    ),
-                    source,
-                    flags=re.M,
+                growth = work / "snapshot_growth.c"
+                growth.write_text(
+                    source.replace('"../common/graph_snapshot.h"', '"gc/common/graph_snapshot.h"')
                 )
-                duke = work / "large_graph_pass.c"
-                duke.write_text(source)
             if control == 101:
-                source = read_rc_source(root)
-                anchor = "        if (source == duke_candidates)\n        {\n            return 0;\n        }"
+                source = (root / "gc/common/graph_storage.c").read_text()
+                anchor = "group->edges_used > group->field_limit ||"
                 if source.count(anchor) != 1:
-                    raise RuntimeError("Duke hard-limit routing control anchor changed")
-                rc = work / "runtime_rc.c"
-                rc.write_text(source.replace(anchor, ""))
+                    raise RuntimeError("snapshot extent guard anchor changed")
+                storage = work / "graph_storage.c"
+                storage.write_text(
+                    source.replace(anchor, "0 ||").replace(
+                        '"graph_snapshot.h"', '"gc/common/graph_snapshot.h"'
+                    )
+                )
             binary = relink(
                 runtime,
                 work,
@@ -78,10 +75,11 @@ def main():
                     "Sys_werrstr",
                     "poolfree",
                     "dvm_gc_duke_run",
-                    "dvm_retirement_reserve",
+                    "dvm_rc_grow_record_group",
+                    "calloc",
                 ],
-                runtime_rc_source=rc,
-                duke_pass_source=duke,
+                snapshot_growth_source=growth,
+                graph_storage_source=storage,
             )
             profiles = (
                 [("--no-jit", False)]
@@ -93,7 +91,6 @@ def main():
                     [
                         str(binary),
                         "--native-spawn",
-                        "--gc-idle-cycles",
                         "--stats",
                         mode,
                         *(["--gc-locked-poll"] if locked else []),
@@ -104,30 +101,38 @@ def main():
                     text=True,
                     timeout=25,
                 )
-                text = result.stdout + result.stderr
-                if "WARNING: ThreadSanitizer" in text or "runtime error:" in text:
-                    raise RuntimeError("Duke progress sanitizer failure\n" + text[-12000:])
+                output = result.stdout + result.stderr
+                if "Sanitizer" in output or "runtime error:" in output:
+                    raise RuntimeError("large Duke sanitizer failure\n" + output[-12000:])
                 if control >= 100:
-                    marker = (
-                        "independent Duke graph must bypass hard-refused head"
+                    status, marker = (
+                        (70, "reason=refused-cycle-graph")
                         if control == 100
-                        else "hard-limit graph must leave the shared rescue loop"
+                        else (12, "invalid snapshot extents must not bypass bounds")
                     )
-                    if result.returncode != 12 or marker not in text:
+                    if result.returncode != status or marker not in output:
                         raise RuntimeError(
-                            "Duke semantic omission was not detected\n" + text[-12000:]
+                            f"large Duke control missed {control}\n{output[-12000:]}"
+                        )
+                    if (
+                        control == 100
+                        and "DUKE_QUEUE_SHARED head_owned=1 follower_freed=1" not in output
+                    ):
+                        raise RuntimeError(
+                            "old ceiling control lost independent progress\n" + output[-12000:]
                         )
                 else:
                     if (
                         result.returncode
-                        or "PASS Duke queue progress hard=70000 independent=2300" not in text
+                        or "PASS Duke queue progress large=70000 independent=2300" not in output
                     ):
                         raise RuntimeError(
-                            f"control={control} {mode} locked={locked}\n{text[-12000:]}"
+                            f"{control} {mode} locked={locked} exit={result.returncode}\n{output[-12000:]}"
                         )
-                    evidence(text, children=2)
+                    evidence(output, children=2)
     print(
-        "PASS actual Duke queue progress: 70000/2300 mapped cycles, FULL/BYTES, roots, physical frees; C/JIT, both polls"
+        "PASS concurrent Duke: 70000/2300 fields, initial/growth allocation retries, 70000 actual alias edges, native extent bounds, C/JIT and both polls"
+        + ("; positive only" if positive_only else "; two semantic controls")
     )
 
 

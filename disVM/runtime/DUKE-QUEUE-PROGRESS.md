@@ -1,3 +1,6 @@
+Current native behavior is documented in [Concurrent large graphs](CONCURRENT-LARGE-GRAPHS.md).
+The hard-limit/retained routing described below is historical.
+
 # Duke hard refusals preserve progress and eventually leave shared rescue
 
 Two different cases need different handling:

@@ -235,7 +235,8 @@ static int capture_record_source(
     if (elements > 1 && !group->source_element && !group->source_bit)
     {
         size_t mapped;
-        size_t available = group->growing ? RECORD_SCRATCH_BYTES : group->field_limit - group->edges_used;
+        size_t available =
+            group->growing ? dvm_rc_record_group_limit() - group->edges_used : group->field_limit - group->edges_used;
         if (!repeated_record_fields_fit(type, elements, available, &mapped))
         {
             group->oversized = 1;

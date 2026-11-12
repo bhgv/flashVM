@@ -4,15 +4,34 @@
  * RU: Рост снимка графа ДюкGC в куче и перестройка индекса обхода.
  */
 #include "../common/graph_snapshot.h"
+#include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-/* [GC:] EN: Grow private group to required fields within the byte budget.
+/* [GC:] EN: Bound discovery fields by signed pointer span and four-slot
+ * unsigned hash indexing, without a policy byte ceiling. No allocation occurs.
+ * RU: Ограничить поля адресуемым диапазоном указателя и четырёхкратным
+ * unsigned-индексом hash без заданного потолка памяти. Выделения нет. */
+size_t dvm_rc_record_group_limit(void)
+{
+    const size_t per_node = 2 * sizeof(void *) + 2 * sizeof(unsigned int) + sizeof(unsigned char);
+    const size_t per_field = sizeof(void *) + 10 * sizeof(unsigned int);
+    size_t maximum = ((size_t)PTRDIFF_MAX - per_node) / (per_node + per_field);
+    if (maximum > UINT_MAX / 4)
+    {
+        maximum = UINT_MAX / 4;
+    }
+    return maximum;
+}
+
+
+/* [GC:] EN: Grow private group to required fields within native representation bounds.
  * Return 1 on success, 0 with busy=1 on allocation failure or busy=0 at the
  * hard limit. Preserve indices, pins and old storage on failure. No managed
  * ownership moves; the shared collector decides retry versus hard refusal.
- * RU: Увеличить личный group до required полей в пределах бюджета. Вернуть 1
+ * RU: Увеличить личный group до required полей в пределах native-представления. Вернуть 1
  * при успехе, 0 с busy=1 при нехватке памяти или busy=0 при жёстком пределе.
  * Отказ сохраняет индексы, pin и буфер; shared-сборщик выбирает повтор/отказ. */
 int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
@@ -20,10 +39,15 @@ int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
     group->busy = 0;
     const size_t per_node = 2 * sizeof(void *) + 2 * sizeof(unsigned int) + sizeof(unsigned char);
     const size_t per_field = sizeof(void *) + 10 * sizeof(unsigned int);
-    size_t maximum = (RECORD_SCRATCH_BYTES - per_node) / (per_node + per_field);
-    if (required > maximum)
+    size_t maximum = dvm_rc_record_group_limit();
+    if (!group->field_limit || group->field_limit > maximum || group->edges_used > group->field_limit ||
+        group->nodes_used > group->field_limit + 1 || required > maximum)
     {
         return 0;
+    }
+    if (required <= group->field_limit)
+    {
+        return 1;
     }
     size_t capacity = group->field_limit;
     while (capacity < required)

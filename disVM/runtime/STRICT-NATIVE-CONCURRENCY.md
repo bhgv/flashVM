@@ -62,6 +62,13 @@ This intentionally exposes incomplete support. It does not turn arbitrary C
 callbacks into thread-safe finalizers and does not remove Duke's graph-storage
 limit. VM errors unrelated to this policy retain their normal handling.
 
+## Follow-up
+
+[Concurrent large graphs](CONCURRENT-LARGE-GRAPHS.md) removes the artificial Duke
+byte ceiling, fixes invalid extent subtraction and rebases packet/claim probes on
+supported transient pressure. The audit below records this policy's initial
+commit, before those follow-up changes; it is not the current test result.
+
 ## Validation and visible audit failures
 
 Linux x64 normal build, selected native audit: **25 passed, 4 failed out of 29**.

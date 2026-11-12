@@ -148,6 +148,12 @@ def main():
                 text = result.stdout + result.stderr
                 if "WARNING: ThreadSanitizer:" in text or "runtime error:" in text:
                     raise RuntimeError("module retirement sanitizer failure\n" + text[-12000:])
+                if control == 4:
+                    if result.returncode != 70 or "reason=unsupported-finalizer" not in text:
+                        raise RuntimeError(
+                            "unreviewed module finalizer must be rejected\n" + text[-12000:]
+                        )
+                    continue
                 if control not in positive_controls:
                     marker = {
                         4: "ordinary module retirement still requires heap quiescence",

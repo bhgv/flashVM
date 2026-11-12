@@ -10,14 +10,16 @@ import tempfile
 from relink_private import relink
 from rc_test_source import read_rc_source
 from resident_evidence import evidence
+from concurrent_claim_fixture import prepare_claim_fixture
 from test_duke_pin_retirement import private_includes
 
 
 # EN: Own real VM applications/private confirmation relinks from CLI build paths.
 # Positive cases use actual Modules and managed graph owners; omission controls
 # require exact semantic failures, never build errors, signals or timeouts.
-# --positive-only omits intentional violations; --mixed-only selects retained
-# backlog with vector BUSY, FULL/BYTES replay and quiescent resource recovery.
+# --positive-only omits intentional violations; --mixed-only selects vector BUSY
+# and FULL/BYTES replay without an unknown callback. Retained-assist profiles and
+# return-work controls dependent on retained admission stay outside native mode.
 # --large-replay selects the default matrix's 1040-node two-slot replay cases.
 # RU: Владеть VM-приложениями/частными подтверждениями по CLI путям сборки.
 # Сценарии используют настоящие Module и владельцев графа; контроли требуют
@@ -53,13 +55,12 @@ def main():
         positive = (
             (17, 18)
             if large_replay
-            else (9, 11, 13, 15) if mixed_only else (0, 1, 2, 3, 4, 9, 11, 13, 15, 17, 18)
+            else (9, 11, 13) if mixed_only else (0, 1, 2, 3, 4, 9, 11, 13, 17, 18, 20)
         )
         controls = (
-            positive
-            if positive_only or mixed_only or large_replay
-            else (*positive, 5, 6, 7, 8, 10, 12, 14, 16, 19)
+            positive if positive_only or mixed_only or large_replay else (*positive, 5, 6, 7, 8, 19)
         )
+        fixture = prepare_claim_fixture(root, work)
         for control in controls:
             confirmation = rc = capture = None
             if control == 19:
@@ -84,6 +85,28 @@ def main():
                 text = text.replace(gate, "if (0)").replace(boundary, observer + boundary)
                 capture = work / "graph_capture.c"
                 capture.write_text("#include <stdio.h>\n" + private_includes(text, path))
+            if control in (19, 20):
+                text = read_rc_source(root)
+                begin = text.index("static unsigned int prune_rooted_duke_candidates(void *seed)")
+                end = text.index("\n}\n", begin) + 3
+                part = text[begin:end]
+                lock = "    fvm_port_sync_lock(candidate_transfer);"
+                if part.count(lock) != 1:
+                    raise RuntimeError("actual prune publication boundary changed")
+                part = part.replace(
+                    lock,
+                    lock + "\n    if (dvm_test_add_prune_owner(duke_candidates, seed))\n    {\n"
+                    "        __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);\n"
+                    "        __atomic_fetch_add(&helper_enqueued, 1, __ATOMIC_RELAXED);\n    }",
+                )
+                text = (
+                    text[:begin]
+                    + "extern int dvm_test_add_prune_owner(DVM_RetirementQueue *, void *);\n\n"
+                    + part
+                    + text[end:]
+                )
+                rc = work / "runtime_rc.c"
+                rc.write_text(text)
             if control in (10, 12, 14, 16):
                 text = read_rc_source(root)
                 gate = "retry |= snapshot_retry && dvm_world_has_active_guest(world);"
@@ -127,7 +150,7 @@ def main():
             binary = relink(
                 runtime,
                 work,
-                Path(__file__).with_suffix(".c"),
+                fixture,
                 control,
                 [
                     "dvm_retirement_reserve",
@@ -185,6 +208,11 @@ def main():
                         raise RuntimeError(
                             "native vector omission missed " + str(control) + "\n" + text[-12000:]
                         )
+                    if control == 19 and "PRUNE_OWNER_PUBLISHED actual=1" not in text:
+                        raise RuntimeError(
+                            "pruning control lacked a real queue-owner publication\n"
+                            + text[-12000:]
+                        )
                     continue
                 count = {
                     0: 0,
@@ -198,22 +226,27 @@ def main():
                     15: 514,
                     17: 0,
                     18: 0,
+                    20: 0,
                 }[control]
                 nodes = 64 if control in (11, 13) else 1040
                 marker = f"PASS Fast claim storage nodes={nodes} modules={count}"
                 if result.returncode or marker not in text:
                     raise RuntimeError(f"control={control} {mode} locked={locked}\n{text[-12000:]}")
                 evidence(text, children=2)
+                if control == 20 and "PRUNE_OWNER_PUBLISHED actual=1" not in text:
+                    raise RuntimeError(
+                        "positive restart lacked a real queue-owner publication\n" + text[-12000:]
+                    )
                 if (
                     control in (9, 15)
-                    and "MIXEDRETRY retained=1 replayed=0 refusals=0 passes=0" not in text
+                    and "MIXEDRETRY retained=0 replayed=0 refusals=0 passes=0" not in text
                 ):
                     raise RuntimeError(
                         "mixed native retry and actual retained cleanup missing\n" + text[-12000:]
                     )
-                if control in (11, 13, 17, 18):
+                if control in (11, 13, 17, 18, 20):
                     if (
-                        "MIXEDRETRY retained=1 replayed=1 refusals=8 passes=8" not in text
+                        "MIXEDRETRY retained=0 replayed=1 refusals=8 passes=8" not in text
                         or not re.search(r"NATIVEPACKETCYCLE .*?replayed=[1-9]", text)
                     ):
                         raise RuntimeError(
@@ -223,11 +256,11 @@ def main():
                     raise RuntimeError("native vector queue accounting failed\n" + text[-12000:])
     print(
         "PASS Fast claim storage: actual 0/1/513/514/520 Modules, native cardinality, "
-        "vector/replay retries, mixed retained backlog, physical frees and final epochs; C/JIT, both polls"
+        "vector/replay retries without retained callbacks, physical frees and final epochs; C/JIT, both polls"
         + (
             "; positive profiles only"
             if positive_only or mixed_only or large_replay
-            else "; nine semantic omission controls"
+            else "; five semantic omission controls"
         )
     )
 

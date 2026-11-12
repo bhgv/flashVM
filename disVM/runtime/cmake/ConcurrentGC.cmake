@@ -11,7 +11,7 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_duke_queue_progress PROPERTIES TIMEOUT 90)
     add_test(NAME disvm_packet_fairness COMMAND "${PYTHON_EXECUTABLE}"
-        "${CMAKE_CURRENT_SOURCE_DIR}/test_packet_fairness.py" "$<TARGET_FILE:disvm>"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_concurrent_packet.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_packet_fairness PROPERTIES TIMEOUT 90)
     add_test(NAME disvm_exception_retirement COMMAND "${PYTHON_EXECUTABLE}"
