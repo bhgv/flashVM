@@ -10,6 +10,7 @@
 #include "runtime_state.h"
 #include "../../runtime_rc.h"
 #include "../../runtime_gc.h"
+#include "../../runqueue.h"
 #include "disvm/native_owner.h"
 
 
@@ -40,16 +41,24 @@ DVM_GCWorkResult dvm_gc_cycles_concurrent(DVM_NativeContext *context, size_t bud
 /* [GC:] EN: With all guests joined, leave an ACTIVE controller temporarily so
  * its last reader epoch can finish. Wake all lanes, wait for shared work, then
  * restore its original phase. Keep queues accepting through the whole drain.
- * Return zero on failure; never reload registers from Prog.R or discard owners.
+ * Reject wrong controller/world/phase, live guards/progress or in-flight guests
+ * before any request or phase mutation. Return zero on failure; never reload
+ * registers from Prog.R or discard owners.
  * RU: После join гостей временно вывести ACTIVE-контроллер для завершения
  * последней эпохи. Разбудить все службы, дождаться shared-работы и вернуть фазу.
- * Очереди остаются принимающими. Ноль при ошибке; Prog.R не восстанавливается,
+ * Очереди остаются принимающими. Чужой контроллер/мир/фаза, живые guards/progress
+ * либо выполняющиеся гости отвергаются до запросов и изменения фазы. Ноль
+ * при ошибке; Prog.R не восстанавливается,
  * владельцы не отбрасываются. */
 int dvm_runtime_gc_concurrent_drain(void)
 {
     DVM_HeapOwner *owner = dvm_native_owner_current();
     DVM_HeapOwnerStats state;
-    if (!dvm_native_owner_statistics(owner, &state))
+    DVM_NativeContext *context = dvm_native_context_current();
+    if (!dvm_gc_runtime.world || context != dvm_gc_runtime.owner ||
+        dvm_native_owner_world(owner) != dvm_gc_runtime.world || !dvm_native_owner_statistics(owner, &state) ||
+        (state.phase != DVM_HEAP_ACTIVE && state.phase != DVM_HEAP_IDLE) || state.pending_progress ||
+        dvm_native_context_object_count(context) || dvm_runqueue_inflight())
     {
         return 0;
     }

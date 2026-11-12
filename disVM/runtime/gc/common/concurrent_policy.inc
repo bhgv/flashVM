@@ -12,6 +12,27 @@ void dvm_runtime_rc_set_concurrent(void)
 }
 
 
+/* [GC:] EN: A declined transfer must not reach destroy's legacy callback in
+ * a live strict session. admitted_role distinguishes closed queues from invalid
+ * phase/world. Reject before touching the value, its root or reference count.
+ * The reference and fully joined post-session cleanup keep their old return path.
+ * RU: При живом строгом сеансе отказ передачи не должен вести к старому callback
+ * destroy. admitted_role различает закрытую очередь и неверную фазу/мир.
+ * Отказать до доступа к объекту, корню и счётчику. Эталон и очистка уже завершённого
+ * сеанса сохраняют прежний возврат. */
+static void concurrent_retirement_refused(int admitted_role)
+{
+    if (concurrent_only && world)
+    {
+        fprintf(stderr,
+                "NATIVE_CONCURRENCY_ERROR component=RC reason=%s\n",
+                admitted_role ? "retirement-admission-closed" : "retirement-not-admitted");
+        fflush(stderr);
+        _Exit(70);
+    }
+}
+
+
 /* [GC:] EN: Inspect only synchronized native queue metadata; runtime storage
  * survives all worker joins. Forbidden work terminates with explicit reason;
  * queue owners and roots remain intact until process exit.

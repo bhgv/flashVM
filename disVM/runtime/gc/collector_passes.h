@@ -23,10 +23,13 @@ DVM_GCWorkResult dvm_gc_cycles_concurrent(DVM_NativeContext *context, size_t bud
 
 /* [GC:] EN: Drain before closing queues after guest joins; temporarily leave
  * the current ACTIVE controller, then restore its same native context/registers.
- * Return zero on protocol/service failure. No roots/owners are discarded.
+ * Return zero before requests for wrong controller/world/phase, live object
+ * guards/progress or in-flight guests; also zero on protocol/service failure.
+ * No roots/owners are discarded.
  * RU: После join гостей обработать очереди до закрытия; временно вывести
  * ACTIVE-контроллер и вернуть тот же контекст/регистры. Ноль при ошибке службы
- * или протокола; корни и владельцы не отбрасываются. */
+ * или протокола; корни и владельцы не отбрасываются. Чужой контроллер/мир/фаза,
+ * guards/progress или выполняющиеся гости отвергаются до запросов. */
 int dvm_runtime_gc_concurrent_drain(void);
 
 

@@ -46,11 +46,14 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type, vo
 /* [GC:] EN: Consume one value reference from ACTIVE/SHARED admission in this
  * world. Supported final owners enter epoch-gated Fast; optional refusal uses
  * the mandatory rooted FIFO. Return 0 for invalid/closed admission unchanged.
+ * During a live strict session invalid/closed admission terminates with status
+ * 70 before accessing value; destroy cannot fall through to a legacy callback.
  * Mandatory publication failure terminates rather than losing ownership.
  * RU: Снять ссылку value из ACTIVE/SHARED этого мира. Поддержанные последние
  * ссылки идут в Fast после эпохи; при необязательном отказе — в FIFO с корнем.
  * При неверном/закрытом допуске вернуть 0 без изменения. Обязательный отказ
- * завершает процесс, не теряя владение. */
+ * завершает процесс, не теряя владение. В живом строгом сеансе неверный/закрытый
+ * допуск даёт код 70 до доступа к value, запрещая старый callback destroy. */
 int dvm_runtime_rc_defer(void *value);
 
 

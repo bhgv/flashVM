@@ -11,8 +11,10 @@
  * отказаться, но действующий исполнитель всегда публикует её в FIFO. */
 int dvm_runtime_rc_defer(void *value)
 {
-    if (!admitted(1) || !accepting)
+    int admitted_role = admitted(1);
+    if (!admitted_role || !accepting)
     {
+        concurrent_retirement_refused(admitted_role);
         return 0;
     }
     int active = admitted(0);

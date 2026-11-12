@@ -1,3 +1,5 @@
+[Strict retirement and drain admission: no legacy destruction after RC refusal](STRICT-RETIREMENT-ADMISSION.md)
+
 [Concurrent large graphs: native bounds, overflow fix and strict packet/claim probes](CONCURRENT-LARGE-GRAPHS.md)
 
 [Strict native concurrency: collector exclusion disabled, audit and remaining failures](STRICT-NATIVE-CONCURRENCY.md)
