@@ -118,6 +118,8 @@ static unsigned int duke_peak_fields;               /* Largest successfully publ
 static unsigned long duke_publish_retries;          /* Complete snapshots retained under pressure. */
 static unsigned long duke_adopted_pins;             /* Discovery holds transferred to Fast. */
 static unsigned long duke_resumed_slices;           /* Partial scans saved for another admitted turn. */
+static unsigned long duke_pin_seeds;                /* Abandoned discovery pins preserved as cycle seeds by Duke. */
+static unsigned long duke_pin_retries;              /* Mandatory FIFO refusals preserving the journal/root. */
 static unsigned long duke_promoted;                 /* Large snapshots handed to Fast GC. */
 static unsigned long cycle_candidates_oversized;    /* Candidate graphs exceeding bounded discovery. */
 static unsigned long shared_record_confirmations;   /* Pinned snapshots confirmed for reclamation. */
@@ -236,6 +238,8 @@ void dvm_runtime_rc_start(void)
     cycle_candidates_coalesced = 0;
     cycle_candidates_full = 0;
     cycle_candidates_rooted = 0;
+    duke_pin_seeds = 0;
+    duke_pin_retries = 0;
     duke_promoted = 0;
     duke_resumed_slices = 0;
     duke_adopted_pins = 0;

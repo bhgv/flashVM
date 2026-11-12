@@ -55,3 +55,7 @@ private confirmation sources must preserve its include directory.
 [module_graph.c](module_graph.c) for private discovery indexing, native counts
 and live-member propagation. Snapshot copying filters ownership edges and marks
 the final graph-owned Modlink for each claimed Module.
+
+[Duke pin retirement](../../DUKE-PIN-RETIREMENT.md) preserves abandoned nonfinal
+candidate pins as rooted mandatory seeds. FIFO refusal leaves the journal cursor
+unchanged and retries under shared admission.

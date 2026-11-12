@@ -348,10 +348,13 @@ static int classify_record_group(RecordGroup *group, int shared)
 }
 
 
-/* EN: Reacquire all captured fields, verify them, and drop discovery pins
+/* [GC:] EN: Reacquire all captured fields, verify them, and drop discovery pins
  * while each target still has its guarded incoming reference in group.
+ * Return 1 after release or 0 with pins intact on changed fields or contention.
+ * No ownership escapes this shared call; access returns held only on acquisition.
  * RU: Захватить все прочитанные поля, сверить их и снять удержания узлов group
- * под защитой входящих ссылок. */
+ * под защитой входящих ссылок. Результат 1 — pin сняты, 0 — отказ с сохранением
+ * pin; access удержан лишь после захвата. */
 static int confirm_duke_capture(RecordGroup *group, DVM_RangeAccess *access)
 {
     DVM_CellDomain *domain = access->domain;
@@ -430,6 +433,10 @@ int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *
         int result = capture_record_source(group, group->next_source, 1, access, field_end);
         if (result != 1)
         {
+            if (!result && group->pinned_nodes && access->domain)
+            {
+                (void)confirm_duke_capture(group, access);
+            }
             return result;
         }
         group->source_element = 0;
@@ -444,6 +451,10 @@ int dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *
     }
     if (!classify_record_group(group, 1))
     {
+        /* Unchanged guarded edges still connect every pin to the queued seed.
+         * Release those pins directly; only detached pins need new candidates.
+         * RU: Неизменные защищённые рёбра связывают pin с исходным seed. */
+        (void)confirm_duke_capture(group, access);
         group->busy = 1;
         return 0;
     }

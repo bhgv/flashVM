@@ -1,11 +1,11 @@
 /* Copyright (c) 2026 bhgv
- * EN: Rollback of rooted Duke discovery pins.
+ * [GC:] EN: Rollback of rooted Duke discovery pins.
  * RU: Откат удержаний обхода ДюкGC с корнями.
  * Private composition fragment; see ../common/RC-SOURCE.md.
  */
 
 
-/* EN: Drop a nonfinal pin through the borrowed refcount argument.
+/* [GC:] EN: Drop a nonfinal pin through the borrowed refcount argument.
  * RU: Снять непоследнее удержание через заимствованный счётчик argument. */
 static int drop_duke_pin_nonfinal(void *argument)
 {
@@ -13,10 +13,45 @@ static int drop_duke_pin_nonfinal(void *argument)
 }
 
 
-/* EN: Release up to budget abandoned Duke pins. stopped permits retained
- * destruction. Return nonzero when the journal is empty.
+/* [GC:] EN: Preserve heap's existing discovery pin/root as a mandatory cycle
+ * seed. Only Duke calls this under shared admission. Refusal leaves the journal
+ * entry unchanged and asks another shared pass; publication consumes no new RC
+ * reference or root. After commit only native counters/journal cursor may change.
+ * RU: Сохранить существующее удержание/корень heap как обязательный seed цикла.
+ * Вызывает только Duke под shared-допуском. Отказ сохраняет запись журнала для
+ * повтора. Новые ссылки/корни не создаются; после commit меняются лишь native-
+ * счётчики и курсор журнала. */
+static int preserve_duke_pin(Heap *heap)
+{
+    DVM_RetirementReservation token = {0};
+    unsigned long bytes = poolmsize(heapmem, heap);
+    if (dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+    {
+        duke_pin_retries++;
+        return 0;
+    }
+    int ready;
+    if (!dvm_retirement_commit_ready(retirement, &token, H2D(void *, heap), &ready))
+    {
+        abort();
+    }
+    duke_pin_seeds++;
+    __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&helper_enqueued, 1, __ATOMIC_RELAXED);
+    if (ready && notify_ready)
+    {
+        notify_ready();
+    }
+    return 1;
+}
+
+
+/* [GC:] EN: Release up to budget abandoned Duke pins. stopped permits retained
+ * destruction. Preserve nonfinal candidate seeds in the mandatory queue.
+ * Return nonzero when the journal is empty.
  * RU: Снять до budget удержаний отменённого обхода. stopped разрешает
- * резервное освобождение. Ненулевой результат означает пустой журнал. */
+ * резервное освобождение. Непоследние seed сохраняются в обязательной очереди.
+ * Ненулевой результат означает пустой журнал. */
 static int release_duke_pins(size_t budget, int stopped)
 {
     while (duke_abandoned.pinned_nodes && budget)
@@ -25,7 +60,15 @@ static int release_duke_pins(size_t budget, int stopped)
         Heap *heap = D2H(value);
         int transferred = 0;
         int fast_queued = 0;
-        if (!stopped && dvm_runtime_root_remove_if(heap, drop_duke_pin_nonfinal, &heap->ref))
+        if (!stopped && accepting && record_candidate(heap) && dvm_refcount_load_u(&heap->ref) > 1)
+        {
+            if (!preserve_duke_pin(heap))
+            {
+                return 0;
+            }
+            transferred = 1;
+        }
+        else if (!stopped && dvm_runtime_root_remove_if(heap, drop_duke_pin_nonfinal, &heap->ref))
         {
             transferred = 1;
         }

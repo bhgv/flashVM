@@ -20,7 +20,12 @@ import subprocess
 # Optional bytes_fast_source changes only the private C dispatcher for exact
 # decline/false-completion/duplicate-execution controls.
 # Optional exception_retirement_source replaces only the shared Fast emergency-string module.
+# Optional module_graph_source/graph_capture_source replace only discovery indexing/capture.
 # Matching private headers/flags remain mandatory.
+# RU: runtime — исходная сборка, work — личные результаты, source — wrapper,
+# variant — define, symbols — перехваты линкера; вернуть личный бинарник.
+# Необязательные *_source заменяют только соответствующий объект личной сборки;
+# executor выбирает её режим. Ошибки сборки не считаются семантической проверкой.
 def relink(
     runtime,
     work,
@@ -57,6 +62,7 @@ def relink(
     exception_retirement_source=None,
     managed_retirement_source=None,
     module_graph_source=None,
+    graph_capture_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -117,6 +123,7 @@ def relink(
         (exception_retirement_source, "gc/fast/exception_retirement.c"),
         (managed_retirement_source, "gc/fast/managed_retirement.c"),
         (module_graph_source, "gc/common/module_graph.c"),
+        (graph_capture_source, "gc/common/graph_capture.c"),
     ):
         if candidate is None:
             continue

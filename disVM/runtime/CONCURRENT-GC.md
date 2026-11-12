@@ -158,3 +158,8 @@ captured ordinary Modlinks per Module, retains original data through any live
 member and consumes native counts N-to-zero with exact rollback. Dead subsets
 retire independently; original-MP ownership is released only for wholly dead Modules.
 General stopped tracing, unsupported finalizers and shutdown still remain.
+
+[Duke abandonment](DUKE-PIN-RETIREMENT.md) now preserves nonfinal candidate pins
+in the mandatory queue. A real detached cycle retires after its original seed
+was consumed while discovery still rooted it. Queue pressure preserves both
+the root and journal cursor for shared retry. General stopped tracing remains.

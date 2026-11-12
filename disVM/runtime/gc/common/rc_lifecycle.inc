@@ -114,6 +114,7 @@ int dvm_runtime_rc_finish(int diagnostics)
                candidates.reserved,
                candidates.capacity,
                candidates.peak_capacity);
+        printf("NATIVEDUKEPINS seeds=%lu retries=%lu\n", duke_pin_seeds, duke_pin_retries);
         printf("NATIVEFASTGC ignored_live_fields=%zu reserved_confirmations=%zu\n",
                fast_ignored_live_fields,
                fast_reserved_confirmations);
