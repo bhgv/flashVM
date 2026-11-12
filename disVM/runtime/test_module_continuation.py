@@ -2,6 +2,7 @@
 # EN: Verify native module continuations on permanently assigned process threads.
 # RU: Проверки native-продолжений модулей в закреплённых потоках процессов.
 """Hold a real native pipe read across a second guest's call into the same module."""
+
 import argparse
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import tempfile
 import time
 
 from relink_private import relink
+from native_gc_evidence import require_concurrent_gc
 
 
 # EN: Run runtime/image in directory with mode/poll options and feed payload after
@@ -22,13 +24,28 @@ from relink_private import relink
 # продвижения соседа. outcome задаёт маркер результата, shared_channels — каналы,
 # default_profile — настройки по умолчанию. Процесс принадлежит тесту до join;
 # при ошибке исключение, байты и вывод копируются.
-def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shared_channels=False, default_profile=False):
+def run(
+    runtime,
+    directory,
+    mode,
+    poll,
+    payload,
+    outcome,
+    image="main.dis",
+    shared_channels=False,
+    default_profile=False,
+):
     shared = ["--parallel-channel-buffer", "--parallel-byte-copies"] if shared_channels else []
     explicit = [] if default_profile else ["--native-spawn", "--guarded-copies", *shared]
     command = [str(runtime), mode, "--stats", *explicit, *poll, image]
-    with subprocess.Popen(command, cwd=directory, stdin=subprocess.PIPE,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                          bufsize=0) as child:
+    with subprocess.Popen(
+        command,
+        cwd=directory,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        bufsize=0,
+    ) as child:
         try:
             output = bytearray()
             peer = b"PEER released provider\n"
@@ -49,23 +66,32 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
             try:
                 rest, _ = child.communicate(payload, timeout=15)
             except subprocess.TimeoutExpired as failure:
-                raise RuntimeError(f"{mode} {image} did not finish after input: "
-                                   f"{bytes(output) + (failure.output or b'')!r}") from failure
+                raise RuntimeError(
+                    f"{mode} {image} did not finish after input: "
+                    f"{bytes(output) + (failure.output or b'')!r}"
+                ) from failure
             output.extend(rest)
         finally:
             if child.poll() is None:
                 child.kill()
                 child.communicate()
     text = output.decode(errors="replace")
+    require_concurrent_gc(text)
     starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", text)
     retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", text)
     expected = 2 if image == "kill.dis" else 43
     concurrent = 2 if image == "kill.dis" else 40
     # The last forty channel guests all exist before the parent sends to any.
-    resident = (len(starts) == expected and len(set(pid for pid, _ in starts)) == expected
-            and sorted(starts) == sorted(retired)
-            and re.search(r"NATIVEDISPATCH .* active=0 migrated=0\b", text) is not None
-            and len(set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-concurrent:])) == concurrent)
+    resident = (
+        len(starts) == expected
+        and len(set(pid for pid, _ in starts)) == expected
+        and sorted(starts) == sorted(retired)
+        and re.search(r"NATIVEDISPATCH .* active=0 migrated=0\b", text) is not None
+        and len(
+            set(thread for _, thread in sorted(starts, key=lambda pair: int(pair[0]))[-concurrent:])
+        )
+        == concurrent
+    )
     queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", text)
     dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0", text)
     gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", text)
@@ -77,16 +103,37 @@ def run(runtime, directory, mode, poll, payload, outcome, image="main.dis", shar
     native = re.search(r"instructions=\d+ native=(\d+)", text)
     # ALT can use the checked transfer path instead of the counted fast path.
     # The guest verifies both selected branches and all transferred owners.
-    if (child.returncode or not resident or outcome not in text
-            or (image == "main.dis" and "PASS forty independent channels" not in text) or "PASS Dis application completed" not in text
-            or not queue or int(queue[1]) == 0 or queue[1] != queue[2]
-            or not dispatch or dispatch[1] != dispatch[2] or not gc or int(gc[1]) == 0
-            or ((shared_channels or default_profile) and (not channel or min(map(int, channel.groups())) == 0
-                                         or not alts or int(alts[1]) > 2
-                                         or not rendezvous or int(rendezvous[1]) != 2
-                                         or not raw or int(raw[1]) < 2
-                                         or not byte_moves or int(byte_moves[1]) < 2))
-            or not native or (int(native[1]) > 0) != (mode == "--jit")):
+    if (
+        child.returncode
+        or not resident
+        or outcome not in text
+        or (image == "main.dis" and "PASS forty independent channels" not in text)
+        or "PASS Dis application completed" not in text
+        or not queue
+        or int(queue[1]) == 0
+        or queue[1] != queue[2]
+        or not dispatch
+        or dispatch[1] != dispatch[2]
+        or not gc
+        or int(gc[1]) != 0
+        or (
+            (shared_channels or default_profile)
+            and (
+                not channel
+                or min(map(int, channel.groups())) == 0
+                or not alts
+                or int(alts[1]) > 2
+                or not rendezvous
+                or int(rendezvous[1]) != 2
+                or not raw
+                or int(raw[1]) < 2
+                or not byte_moves
+                or int(byte_moves[1]) < 2
+            )
+        )
+        or not native
+        or (int(native[1]) > 0) != (mode == "--jit")
+    ):
         raise RuntimeError(text)
 
 
@@ -102,14 +149,29 @@ def portable_overlap(runtime, compiler, include, runner):
     with tempfile.TemporaryDirectory(prefix="module-continuation-target-") as temporary:
         image = Path(temporary) / "overlap.dis"
         for name in ("provider", "overlap"):
-            subprocess.run([str(compiler), "-F", "-I", str(include), "-I", str(fixtures),
-                            "-o", str(Path(temporary) / (name + ".dis")),
-                            str(fixtures / (name + ".b"))], check=True)
+            subprocess.run(
+                [
+                    str(compiler),
+                    "-F",
+                    "-I",
+                    str(include),
+                    "-I",
+                    str(fixtures),
+                    "-o",
+                    str(Path(temporary) / (name + ".dis")),
+                    str(fixtures / (name + ".b")),
+                ],
+                check=True,
+            )
         result = subprocess.run(
             [*runner, str(runtime), "--no-jit", "--native-spawn", "--stats", str(image)],
-            cwd=temporary, capture_output=True, text=True, timeout=120,
+            cwd=temporary,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
         output = result.stdout + result.stderr
+        require_concurrent_gc(output)
         batches = re.search(r"shared_integer_batches=(\d+)", output)
         widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
         pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
@@ -117,27 +179,46 @@ def portable_overlap(runtime, compiler, include, runner):
         module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
         starts = re.findall(r"NATIVEGUEST start pid=(\d+) thread=(\d+)", output)
         retired = re.findall(r"NATIVEGUEST retired pid=(\d+) thread=(\d+)", output)
-        dispatch = re.search(r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output)
+        dispatch = re.search(
+            r"NATIVEDISPATCH claims=(\d+) finishes=(\d+) active=0 migrated=0", output
+        )
         gc = re.search(r"NATIVEGC collector=worker passes=(\d+).*?joined=1 failed=0", output)
         queue = re.search(r"NATIVEQUEUE queued=0 leases=(\d+) returns=(\d+) inflight=0", output)
         frame_retirement = re.search(r"NATIVEFRAMERC drained=(\d+) pending=0", output)
         retirement = re.search(r"NATIVERC enqueued=(\d+) released=(\d+) pending=0", output)
         # A GC barrier can route individual module returns through the checked path.
-        if (result.returncode or "PASS forty dedicated shared copies" not in output
-                or "PASS Dis application completed" not in output
-                or len(starts) != 40 or len({pid for pid, _ in starts}) != 40
-                or len({thread for _, thread in starts}) != 40 or sorted(starts) != sorted(retired)
-                or not pointer_copies or int(pointer_copies[1]) == 0
-                or not frames or min(map(int, frames.groups())) < 40
-                or not module_frames or min(map(int, module_frames.groups())) == 0
-                or not batches or int(batches[1]) < 40
-                or not widths or min(map(int, widths.groups())) < 40
-                or not dispatch or dispatch[1] != dispatch[2]
-                or not gc or int(gc[1]) == 0
-                or not re.search(r"NATIVEGC .* contentions=0 waiters=0\b", output)
-                or not queue or queue[1] == "0" or queue[1] != queue[2]
-                or not retirement or retirement[1] == "0" or retirement[1] != retirement[2]
-                or not frame_retirement or int(frame_retirement[1]) < 40):
+        if (
+            result.returncode
+            or "PASS forty dedicated shared copies" not in output
+            or "PASS Dis application completed" not in output
+            or len(starts) != 40
+            or len({pid for pid, _ in starts}) != 40
+            or len({thread for _, thread in starts}) != 40
+            or sorted(starts) != sorted(retired)
+            or not pointer_copies
+            or int(pointer_copies[1]) == 0
+            or not frames
+            or min(map(int, frames.groups())) < 40
+            or not module_frames
+            or min(map(int, module_frames.groups())) == 0
+            or not batches
+            or int(batches[1]) < 40
+            or not widths
+            or min(map(int, widths.groups())) < 40
+            or not dispatch
+            or dispatch[1] != dispatch[2]
+            or not gc
+            or int(gc[1]) != 0
+            or not re.search(r"NATIVEGC .* contentions=0 waiters=0\b", output)
+            or not queue
+            or queue[1] == "0"
+            or queue[1] != queue[2]
+            or not retirement
+            or retirement[1] == "0"
+            or retirement[1] != retirement[2]
+            or not frame_retirement
+            or int(frame_retirement[1]) < 40
+        ):
             raise RuntimeError(output)
         print(output, end="")
 
@@ -165,41 +246,90 @@ def main():
     with tempfile.TemporaryDirectory(prefix="module-continuation-") as temporary:
         directory = Path(temporary)
         for name in ("provider", "main", "kill", "overlap"):
-            subprocess.run([str(compiler), "-F", "-I", str(include), "-I", str(fixtures),
-                            "-I", str(fixtures.parents[2] / "module"),
-                            "-o", str(directory / (name + ".dis")),
-                            str(fixtures / (name + ".b"))], check=True)
-        overlap = relink(runtime, directory, fixtures / "overlap.c", 0,
-                         ["dvm_native_owner_enter_shared", "dvm_native_owner_try_share",
-                          "dvm_gc_workers_request", "dvm_runtime_rc_transfer_frame",
-                          "dvm_runtime_exception_pop", "dvm_runtime_exception_install",
-                          "dvm_runtime_exception_search_enter", "xec", "dvm_runtime_exception_pending",
-                          "dvm_runtime_exception_convert", "dvm_runtime_exception_message",
-                          "dvm_heap_pool_try_alloc"])
+            subprocess.run(
+                [
+                    str(compiler),
+                    "-F",
+                    "-I",
+                    str(include),
+                    "-I",
+                    str(fixtures),
+                    "-I",
+                    str(fixtures.parents[2] / "module"),
+                    "-o",
+                    str(directory / (name + ".dis")),
+                    str(fixtures / (name + ".b")),
+                ],
+                check=True,
+            )
+        overlap = relink(
+            runtime,
+            directory,
+            fixtures / "overlap.c",
+            0,
+            [
+                "dvm_native_owner_enter_shared",
+                "dvm_native_owner_try_share",
+                "dvm_gc_workers_request",
+                "dvm_runtime_rc_transfer_frame",
+                "dvm_runtime_exception_pop",
+                "dvm_runtime_exception_install",
+                "dvm_runtime_exception_search_enter",
+                "xec",
+                "dvm_runtime_exception_pending",
+                "dvm_runtime_exception_convert",
+                "dvm_runtime_exception_message",
+                "dvm_heap_pool_try_alloc",
+            ],
+        )
         for mode in ("--jit", "--no-jit"):
-            for options, counter in ((["--guarded-copies", "--parallel-movp", "--parallel-slicela"], "parallel_slicela_commits"),
-                                     ([], "shared_integer_commits")):
+            for options, counter in (
+                (
+                    ["--guarded-copies", "--parallel-movp", "--parallel-slicela"],
+                    "parallel_slicela_commits",
+                ),
+                ([], "shared_integer_commits"),
+            ):
                 result = subprocess.run(
-                    [str(overlap), mode, "--native-spawn", *options,
-                     "--stats", str(directory / "overlap.dis")],
-                    cwd=directory, capture_output=True, text=True, timeout=30,
+                    [
+                        str(overlap),
+                        mode,
+                        "--native-spawn",
+                        *options,
+                        "--stats",
+                        str(directory / "overlap.dis"),
+                    ],
+                    cwd=directory,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 output = result.stdout + result.stderr
                 commits = re.search(rf"{counter}=(\d+)", output)
-                peak = re.search(r"^NATIVEGC collector=.*?\bshared_peak=(\d+)", output, re.MULTILINE)
+                peak = re.search(
+                    r"^NATIVEGC collector=.*?\bshared_peak=(\d+)", output, re.MULTILINE
+                )
                 branches = re.search(r"shared_integer_branches=(\d+)", output)
                 widths = re.search(r"shared_byte_steps=(\d+) shared_long_steps=(\d+)", output)
                 batches = re.search(r"shared_integer_batches=(\d+)", output)
                 pointer_copies = re.search(r"parallel_movp_module=(\d+)", output)
                 frames = re.search(r"shared_calls=(\d+) shared_returns=(\d+)", output)
                 frame_retirement = re.search(r"NATIVEFRAMERC drained=(\d+) pending=0", output)
-                module_frames = re.search(r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output)
+                module_frames = re.search(
+                    r"shared_module_calls=(\d+) shared_module_returns=(\d+)", output
+                )
                 # Every guest must finish. A collector can force individual
                 # transfers to use the checked fallback instead of SHARED.
                 minimum_commits = 1 if counter == "parallel_slicela_commits" else 40
-                if (result.returncode or "PASS forty dedicated shared copies" not in output
-                        or not pointer_copies or int(pointer_copies[1]) == 0
-                        or (not options and (output.count("FRAME exception popped in shared mode") < 40
+                if (
+                    result.returncode
+                    or "PASS forty dedicated shared copies" not in output
+                    or not pointer_copies
+                    or int(pointer_copies[1]) == 0
+                    or (
+                        not options
+                        and (
+                            output.count("FRAME exception popped in shared mode") < 40
                             or "FRAME exception crossed a stack extent" not in output
                             or output.count("FRAME handler installed in shared mode") < 40
                             or output.count("FRAME handler search entered shared mode") < 40
@@ -210,37 +340,106 @@ def main():
                             or "FRAME shared message allocation refused" not in output
                             or output.count("FRAME TLS emergency message verified") != 2
                             or "FRAME Unicode exception message verified" not in output
-                            or output.count("FRAME rooted message observed by heap monitor") < 38
+                            or output.count("FRAME rooted message observed after native return")
+                            < 38
                             or "FRAME retirement retry injected" not in output
-                            or not frame_retirement or int(frame_retirement[1]) < 40
-                            or not frames or min(map(int, frames.groups())) < 40
-                            or not module_frames or min(map(int, module_frames.groups())) == 0
-                            or not batches or int(batches[1]) < 40
-                            or not branches or int(branches[1]) < 5120
-                            or not widths or min(map(int, widths.groups())) < 40))
-                        or not peak or int(peak[1]) < 2 or not commits or int(commits[1]) < minimum_commits
-                        or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)):
+                            or not frame_retirement
+                            or int(frame_retirement[1]) < 40
+                            or not frames
+                            or min(map(int, frames.groups())) < 40
+                            or not module_frames
+                            or min(map(int, module_frames.groups())) == 0
+                            or not batches
+                            or int(batches[1]) < 40
+                            or not branches
+                            or int(branches[1]) < 5120
+                            or not widths
+                            or min(map(int, widths.groups())) < 40
+                        )
+                    )
+                    or not peak
+                    or int(peak[1]) < 2
+                    or not commits
+                    or int(commits[1]) < minimum_commits
+                    or not re.search(r"NATIVEDISPATCH .* active=0 migrated=0", output)
+                ):
                     raise RuntimeError(f"{mode} {options} exited {result.returncode}\n{output}")
-        killer = relink(runtime, directory, Path(__file__).with_name("test_module_kill.c"), 0,
-                        ["dvm_runtime_prepare_killwait"])
-        delayed_killer = relink(runtime, directory, Path(__file__).with_name("test_module_kill.c"), 1,
-                                ["dvm_runtime_prepare_killwait"])
+        killer = relink(
+            runtime,
+            directory,
+            Path(__file__).with_name("test_module_kill.c"),
+            0,
+            ["dvm_runtime_prepare_killwait"],
+        )
+        delayed_killer = relink(
+            runtime,
+            directory,
+            Path(__file__).with_name("test_module_kill.c"),
+            1,
+            ["dvm_runtime_prepare_killwait"],
+        )
         for mode in ("--jit", "--no-jit"):
-            run(delayed_killer, directory, mode, [], b"R", "PASS provider termination and reload", "kill.dis")
+            run(
+                delayed_killer,
+                directory,
+                mode,
+                [],
+                b"R",
+                "PASS provider termination and reload",
+                "kill.dis",
+            )
             run(runtime, directory, mode, [], b"R", "PASS provider return")
-            run(runtime, directory, mode, [], b"E", "PASS provider unwind",
-                shared_channels=True)
-            run(killer, directory, mode, [], b"R", "PASS provider termination and reload",
-                "kill.dis")
+            run(runtime, directory, mode, [], b"E", "PASS provider unwind", shared_channels=True)
+            run(
+                killer,
+                directory,
+                mode,
+                [],
+                b"R",
+                "PASS provider termination and reload",
+                "kill.dis",
+            )
             if args.dedicated_only:
                 continue
             for poll in ([], ["--gc-locked-poll"]):
                 run(runtime, directory, mode, poll, b"R", "PASS provider return")
                 run(runtime, directory, mode, poll, b"E", "PASS provider unwind")
-                run(runtime, directory, mode, poll, b"R", "PASS provider return", shared_channels=True)
-                run(runtime, directory, mode, poll, b"E", "PASS provider unwind", shared_channels=True)
-                run(runtime, directory, mode, poll, b"R", "PASS provider return", default_profile=True)
-                run(killer, directory, mode, poll, b"R", "PASS provider termination and reload", "kill.dis")
+                run(
+                    runtime,
+                    directory,
+                    mode,
+                    poll,
+                    b"R",
+                    "PASS provider return",
+                    shared_channels=True,
+                )
+                run(
+                    runtime,
+                    directory,
+                    mode,
+                    poll,
+                    b"E",
+                    "PASS provider unwind",
+                    shared_channels=True,
+                )
+                run(
+                    runtime,
+                    directory,
+                    mode,
+                    poll,
+                    b"R",
+                    "PASS provider return",
+                    default_profile=True,
+                )
+                run(
+                    killer,
+                    directory,
+                    mode,
+                    poll,
+                    b"R",
+                    "PASS provider termination and reload",
+                    "kill.dis",
+                )
 
 
 if __name__ == "__main__":

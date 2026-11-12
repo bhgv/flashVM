@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Real module-continuation overlap, exception ownership and allocation probes.
+ * RU: Настоящее перекрытие продолжений модулей, владение исключениями и отказы памяти.
+ */
 /* Private test gates make simultaneous admission independent of host timing. */
 #include "lib9.h"
 #include "interp.h"
@@ -10,14 +14,17 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define GUEST_COUNT 40 /* Independent guest threads reaching one copy each. */
+#define GUEST_COUNT 40                                    /* Independent guest threads reaching one copy each. */
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; /* Gate state. */
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Both test barriers. */
-static unsigned arriving; /* Guests with published roots outside NativeWorld. */
-static unsigned admitted; /* Guests that have acquired actual SHARED admission. */
+static unsigned arriving;                                 /* Guests with published roots outside NativeWorld. */
+static unsigned admitted;                                 /* Guests that have acquired actual SHARED admission. */
+
 
 int __real_dvm_native_owner_enter_shared(DVM_HeapOwner *owner);
+
+
 int __real_dvm_gc_workers_request(DVM_GCWorkers *workers, DVM_GCKind kind);
 
 
@@ -32,6 +39,8 @@ int __wrap_dvm_native_owner_try_share(DVM_HeapOwner *owner, unsigned long epoch)
 
 /* Inject one reservation refusal before touching frame ownership. */
 int __real_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *extra);
+
+
 int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, void *extra)
 {
     static int refused; /* Protected by the test mutex. */
@@ -51,6 +60,8 @@ int __wrap_dvm_runtime_rc_transfer_frame(const void *frame, const Type *type, vo
 
 /* Observe only successful shared pops of actual exception frames. */
 int __real_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame);
+
+
 int __wrap_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 {
     const uchar *extent = DVM_R.EX;
@@ -69,6 +80,8 @@ int __wrap_dvm_runtime_exception_pop(Prog *process, const uchar *handler_frame)
 
 /* Count only successful installations on the shared path. */
 int __real_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target);
+
+
 int __wrap_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slot, Inst *target)
 {
     int installed = __real_dvm_runtime_exception_install(process, cleanup, slot, target);
@@ -82,6 +95,8 @@ int __wrap_dvm_runtime_exception_install(Prog *process, Type *cleanup, void *slo
 
 /* Record real shared handler lookup admission. */
 int __real_dvm_runtime_exception_search_enter(Prog *process);
+
+
 int __wrap_dvm_runtime_exception_search_enter(Prog *process)
 {
     int typed = process->exval != H && D2H(process->exval)->t != &Tstring;
@@ -101,13 +116,14 @@ int __wrap_dvm_runtime_exception_search_enter(Prog *process)
 /* Move the outer frame and its array argument ahead of the inner call.
  * The exception table range and all instruction addresses stay unchanged. */
 void __real_xec(Prog *process);
+
+
 void __wrap_xec(Prog *process)
 {
     static int patched;
     if (!patched)
     {
-        static const int pattern[] = {IMFRAME, ILEA, IMCALL, IMFRAME, INEWA,
-            IINDL, IMOVW, IMOVP, IMOVP};
+        static const int pattern[] = {IMFRAME, ILEA, IMCALL, IMFRAME, INEWA, IINDL, IMOVW, IMOVP, IMOVP};
         Module *module = process->R.M->m;
         int matches = 0;
         for (int index = 0; index <= module->nprog - 9; index++)
@@ -139,6 +155,8 @@ void __wrap_xec(Prog *process)
 
 /* Confirm that the altered program reaches the shared pending-frame path. */
 uchar *__real_dvm_runtime_exception_pending(Prog *process, uchar *last);
+
+
 uchar *__wrap_dvm_runtime_exception_pending(Prog *process, uchar *last)
 {
     uchar *remaining = __real_dvm_runtime_exception_pending(process, last);
@@ -152,6 +170,8 @@ uchar *__wrap_dvm_runtime_exception_pending(Prog *process, uchar *last)
 
 /* Record transfer of the typed owner while search remains shared. */
 int __real_dvm_runtime_exception_convert(Prog *process);
+
+
 int __wrap_dvm_runtime_exception_convert(Prog *process)
 {
     int converted = __real_dvm_runtime_exception_convert(process);
@@ -162,15 +182,16 @@ int __wrap_dvm_runtime_exception_convert(Prog *process)
     return converted;
 }
 
-
-static __thread int unicode_message; /* Keep Unicode verification separate from the fault. */
+static __thread int unicode_message;       /* Keep Unicode verification separate from the fault. */
 static __thread int use_emergency_message; /* A forced failure on this guest. */
 
-static __thread Prog *monitored_guest; /* Borrowed only during this guest's message call. */
+static __thread Prog *monitored_guest;     /* Borrowed only during this guest's message call. */
 
 
 /* Refuse two shared message allocations to exercise the retained fallback. */
 void *__real_dvm_heap_pool_try_alloc(Pool *pool, ulong size);
+
+
 void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 {
     static int refused; /* Protected by the test mutex. */
@@ -188,37 +209,33 @@ void *__wrap_dvm_heap_pool_try_alloc(Pool *pool, ulong size)
 }
 
 
-static __thread Prog *monitored_guest; /* Borrowed only during this guest's message call. */
-
-/* Confirm that profiling sees the initialized, rooted message after reentry. */
-static void monitor_message(int event, void *heap, ulong bytes)
+/* EN: Observe the actual returned message while the same process owns ACTIVE
+ * admission. process is borrowed; its exval is the real process-root field.
+ * No profiling hook or global GC policy is installed by this fixture.
+ * RU: Проверить настоящий результат сообщения под ACTIVE того же процесса.
+ * process заимствован; exval — настоящее поле корня процесса. Тест не включает
+ * профилирующий hook и не меняет глобальную политику GC. */
+static void observe_message(Prog *process)
 {
     DVM_HeapOwnerStats state;
-    (void)bytes;
-    if (event || !monitored_guest || monitored_guest->exval == H ||
-        D2H(monitored_guest->exval) != heap)
-    {
-        return;
-    }
-    if (!dvm_native_owner_statistics(dvm_native_owner_current(), &state) ||
-        state.phase != DVM_HEAP_ACTIVE || ((Heap *)heap)->t != &Tstring)
+    if (dvm_native_context_process(dvm_native_context_current()) != process || process->exval == H ||
+        !dvm_native_owner_statistics(dvm_native_owner_current(), &state) || state.phase != DVM_HEAP_ACTIVE ||
+        D2H(process->exval)->t != &Tstring)
     {
         abort();
     }
-    fprint(2, "FRAME rooted message observed by heap monitor\n");
+    fprint(2, "FRAME rooted message observed after native return\n");
 }
 
 
 /* Count successful shared allocations through the exception entry point. */
 int __real_dvm_runtime_exception_message(Prog *process, const char *message);
+
+
 int __wrap_dvm_runtime_exception_message(Prog *process, const char *message)
 {
     static unsigned calls; /* Protected by the test mutex. */
     pthread_mutex_lock(&mutex);
-    if (!calls)
-    {
-        heapmonitor = monitor_message;
-    }
     int unicode = ++calls == 2;
     pthread_mutex_unlock(&mutex);
     monitored_guest = process;
@@ -256,6 +273,7 @@ int __wrap_dvm_runtime_exception_message(Prog *process, const char *message)
     }
     if (allocated)
     {
+        observe_message(process);
         fprint(2, "FRAME exception message allocated in shared mode\n");
     }
     return allocated;

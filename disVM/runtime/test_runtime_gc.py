@@ -1,7 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Real collector roots, reclamation and resident-thread lifecycle checks.
 # RU: Проверки корней, сборки мусора и жизни закреплённых потоков.
-"""Check retained roots and native guests without tracing park requests."""
+"""Check reference tracing and strict native collection on real cyclic workloads."""
 
 from pathlib import Path
 import os
@@ -9,6 +9,7 @@ import platform
 import re
 import subprocess
 import sys
+from native_gc_evidence import require_concurrent_gc
 
 
 # [GC:] EN: Borrow runtime/module paths and run the selected mode/quantum with
@@ -82,13 +83,21 @@ def execute(
         or (not locked and int(polls[1]) == 0)
     ):
         raise RuntimeError("poll path evidence mismatch:\n" + output[-5000:])
-    if not gc or int(gc[1]) == 0:
+    native = dedicated_parallel or event_cycles
+    if not gc or (not native and int(gc[1]) == 0):
         raise RuntimeError("collector did not run/join:\n" + output[-5000:])
     counters = re.search(r"instructions=(\d+) native=(\d+) gc_runs=(\d+) gc_epochs=(\d+)", output)
     if not counters or int(counters[3]) != int(gc[1]):
         raise RuntimeError("actual collector accounting mismatch:\n" + output[-5000:])
     groups = re.search(r"NATIVEFRAMERC .*? record_groups=(\d+)", output)
     shared_reclaimed = int(groups[1]) if groups else 0
+    if native:
+        require_concurrent_gc(output)
+        shared_groups = re.search(r"shared_record_groups=(\d+)", output)
+        if budget is None and (not shared_groups or not int(shared_groups[1])):
+            raise RuntimeError(
+                "native cyclic garbage lacks actual shared reclamation:\n" + output[-5000:]
+            )
     if (idle_cycles or dedicated_parallel or event_cycles) and (
         int(gc[2]) != 0 or int(gc[3]) + shared_reclaimed == 0
     ):

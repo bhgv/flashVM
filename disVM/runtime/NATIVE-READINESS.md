@@ -1,0 +1,163 @@
+# Native concurrency acceptance / Приёмка native-многопоточности
+
+Copyright (c) 2026 bhgv
+
+## What works now
+
+The supported DisVM/Limbo runtime already executes guests concurrently on native
+OS threads. A resident keeps its Prog and live register storage. ACTIVE is an
+admission/lifetime phase, not a mutex excluding other guests. Returning to an
+ordinary C opcode handler therefore does not by itself imply serialization.
+
+Native worlds reject both stopped collector acquisition APIs. Fast, Cycles and
+Duke operate concurrently; retained tracing and RC fallback are forbidden.
+The application regressions verify real owner/reference transfers, channel and
+I/O waits, module continuation, cancellation, child exit, cyclic graphs and
+collector/thread joins. This describes tested runtime behavior, not lock-free
+implementation or absence of local metadata/channel/allocator mutexes.
+
+DisVM/Limbo уже исполняет гостей параллельно на системных потоках. Prog и живые
+регистры закреплены за своим потоком. ACTIVE не исключает других гостей; старое
+имя обработчика C само по себе не означает однопоточность. Остановленные проходы
+GC запрещены. При этом локальные mutex метаданных, каналов и аллокатора остаются.
+
+## Broader acceptance, rather than another isolated edge case
+
+The earlier selected collector/resident audit covered 33 CTest suites. The
+broader gate selects every registered Python driver containing `--native-spawn`:
+79 suites in the configured Linux x86-64 console build. This is a mechanical
+selection of suites, not a claim that every subprocess in them uses native mode.
+Some suites retain reference profiles and deliberate rejection controls.
+
+Reproduce after configuring/building the console:
+
+```sh
+python3 disVM/runtime/native_suite.py build/disvm --list
+python3 disVM/runtime/native_suite.py build/disvm --jobs 4
+```
+
+The initial broader run passed 73/79. All six failures were traced to outdated
+acceptance instrumentation; the actual applications were not repaired or replaced:
+
+| Suites | Cause | Updated acceptance |
+| --- | --- | --- |
+| native_cycle_gc, dedicated_cycle_gc | Required nonzero stopped tracing passes | Require strict policy, zero retained passes/snapshots/epochs and real shared graph reclamation; preserve reference-mode tracing checks |
+| dedicated_spawn_portable | Required stopped GC after forty successful native guests | Require strict concurrent GC and retain exact thread identities, joins, payload/copy/frame and queue accounting |
+| module_continuation, module_continuation_profiles | Fixture installed a global heap profiling callback, inhibiting shared reclamation and hanging its final drain | Observe the actual process-rooted returned message in ACTIVE on its own thread; preserve allocation faults, TLS emergency strings, Unicode, exception and frame checks; no global profiling hook |
+| dedicated_channel_buffer | Suspended-root probe depended on a stopped root visitor, which strict workers never install | Execute a real bounded Fast attempt during native suspension, perturb/restore only this thread's decoded destination and verify saved continuation stays byte-identical; preserve separate reference visitor probe |
+
+The channel C fixture was split by admission, movers, I/O, cancellation, native
+waits and ALT. Before the probe change, expansion preserved native tokens and
+preprocessor directive tokens exactly. Every changed handwritten source stays
+below 500 lines. Those six changes adjust acceptance instrumentation. A separate broader TSan
+run subsequently found a real production process-control race, described below.
+
+The cycle workload completes 12000 unreachable-cycle iterations, guarded graph
+publication and deep frame return/unwind, with real shared reclamation and zero
+retained tracing. The portable module workload starts and joins forty distinct
+guest OS threads. Its C path also completes under ThreadSanitizer; that run does
+not instrument emitted JIT machine code.
+
+Расширенный набор нашёл шесть устаревших проверок: ожидания остановленного GC,
+недостижимого root visitor и включение старого глобального profiling-hook внутри
+конкурентного теста. Нагрузки сохранены. Новые проверки требуют конкурентной
+сборки, точной передачи владельцев, неизменности продолжений и настоящего join.
+Это исправление приёмки, а не заявление о шести исправленных ошибках production.
+
+## A production race found by broadening TSan
+
+The portable forty-guest run completed cleanly under TSan. Extending the run to
+module killwait found a race: the parent read `child->state` while that child
+withdrew itself from Pready to native I/O. The parent's channel registry mutex
+did not synchronize with the child's owner-local state write. Sleeping in the
+fixture made the schedule reproducible but provided no happens-before edge.
+
+Dedicated kill/killwait now read the existing atomic lifetime seal instead of
+foreign `Prog.state`. Registration/lifetime is protected by the channel registry
+mutex; a live child's exit is posted to its mailbox in any execution/wait phase.
+The child handles it on its own OS thread. Sealing precedes Pexiting, so an
+already retiring child requires only its existing exit notification. No global
+exclusion, register reload or execution of the child by its parent is added.
+
+Расширение TSan с обычного возврата на killwait выявило настоящую гонку:
+родитель читал чужой Prog.state одновременно с уходом ребёнка в native I/O.
+Mutex реестра не защищал запись владельца. Теперь kill/killwait читают атомарный
+lifetime seal; выход передаётся через mailbox и обрабатывается самим ребёнком.
+Уже закрытый retirement требует только уведомления родителя. Глобальный
+эксклюзив и чужое исполнение при исправлении не вводятся.
+
+## Concurrent channel continuation publication
+
+Continuing the same TSan regression then found four reports with one cause:
+foreign mapped-channel validation read the parked peer's FP/SP/EX/TS from Prog.R
+while the owner still copied its live registers at dispatch end. A process
+lifetime pin keeps the peer alive; it does not make register publication atomic.
+
+Dedicated channel/ALT delrun now publishes the complete owner image while the
+channel registry mutex still hides the parked waiter. Dispatch-end publication
+uses acquire readiness and skips an off-queue guest. A completion publishes
+readiness after its foreign frame readers have finished, permitting the owner
+to publish again. Both generated dispatch publication sites use the common
+helper; the single-threaded reference keeps its normal copy. Live TLS registers
+are never restored from Prog.R. Generator idempotence is checked as well.
+
+A repeated ordinary audit also exposed an arithmetic observer comparing native
+context addresses after their owners could terminate. Sequential context storage
+reuse made two genuine residents look identical. It now compares immutable
+resident PIDs. ACTIVE is accepted only in a world that forbids stops; ordinary
+serialized reference ACTIVE cannot satisfy the parallel evidence.
+
+Следующий TSan-прогон выявил гонку чтения геометрии Prog.R партнёром с её поздней
+записью владельцем. Lifetime pin не защищает сам снимок регистров. Теперь снимок
+публикуется под mutex до видимости канального ожидания; завершение диспетчера не
+перезаписывает его, пока готовность не опубликована после чтений партнёром.
+Живые TLS-регистры из Prog.R не восстанавливаются. Отдельно исправлен наблюдатель
+арифметики: сравниваются PID, а не повторно используемые адреса завершённых
+контекстов; ACTIVE считается конкурентным только в мире с запрещёнными stop.
+
+## What remains before claiming the entire requested target
+
+- Finish reviewing cross-owner Prog.state/register reads and their publication
+  contracts. Two real races were found by extending TSan after ordinary tests
+  were green; this pass does not certify every remaining reader. Keep the broad
+  application gate stable and test actual ownership paths rather than infer
+  completeness from a counter or a handler name.
+- ARM64 and RV64 are selected by the 64-bit runtime configuration, but this
+  workspace has no target runner/cross toolchain. Full native C/JIT execution of
+  the acceptance workloads on each architecture remains unverified here. Source
+  selection or compiling isolated leaves is not equivalent to these runs.
+- Arbitrary C finalizers do not become thread-safe by declaring the VM complete.
+  Unknown callbacks remain explicit unsupported work. Supported runtime-built
+  FD/table/key finalizers and normal managed types have dedicated concurrent
+  paths; extension callback support needs an explicit ownership/thread contract.
+- FlashVM is a separate later target, as requested; these results are DisVM/Limbo.
+
+На Linux x64 рабочая параллельность уже есть. До заявления обо всей цели нужно
+закрыть приёмку и непроверенные пути для поддержанного набора, затем выполнить
+настоящие C/JIT-прогоны на ARM64 и RV64. Их отсутствие нельзя заменить числом
+зелёных x64-тестов. Точную дату общей готовности эти данные не обосновывают.
+
+## Final validation for this change
+
+The final production tree passed 78 suites in the broad run; its sole failing
+suite was the unstable arithmetic identity observer. After replacing the stale
+context-address comparison, that suite passed separately and its actual parallel
+workload passed ten repetitions (40 C/JIT/poll profiles). Thus all 79 registered
+suites are covered by passing results, including targeted revalidation of that
+observer; this is not presented as a single uninterrupted 79/79 final run.
+
+Final TSan validation passed 12 dedicated module-continuation VM executions
+(including four forty-guest workloads) and all four C/JIT/poll process-control
+profiles with 128 children/eight parents. No previous race diagnostics remained.
+The initial unwrapped forty-guest portable workload also completed under TSan.
+A final post-build targeted run passed 6/6 (arithmetic, process control, both
+module continuation suites, native channel buffer and generation idempotence).
+The native suspended-publication regression also verifies that an attempted
+publication cannot change a parked image or reload live registers. Production snapshots upstream remain unchanged. All changed
+handwritten source files are at most 446 lines.
+
+Финальный общий прогон дал 78 успешных сценариев и отказ нестабильного
+наблюдателя арифметики. После исправления он отдельно прошёл, включая 40
+реальных повторных профилей. Все 79 сценариев имеют успешные результаты с
+этой целевой перепроверкой; это не выдается за один непрерывный финальный
+прогон 79/79. Финальные TSan-проверки продолжений и process-control прошли.

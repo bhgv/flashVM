@@ -1,3 +1,5 @@
+[Native concurrency readiness: broader acceptance and remaining scope](NATIVE-READINESS.md)
+
 [Alias charge sorting: preserve shared retry on native allocation failure](PACKET-CHARGE-RETRY.md)
 
 [Fast service budgets: independent reader retries without starving RC](FAST-SERVICE-FAIRNESS.md)

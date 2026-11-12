@@ -136,15 +136,17 @@ static void send_resident_exit(Prog *child)
 }
 
 
+/* EN: Borrow child while channel_queue_mutex protects its registration. A live
+ * dedicated owner receives exit through its mailbox in any execution/wait phase.
+ * Read only the atomic lifetime seal; never inspect its owner-written Prog.state.
+ * Return zero for NULL or already sealed retirement, without changing ownership.
+ * RU: Заимствовать child под channel_queue_mutex, защищающим регистрацию. Живой
+ * выделенный владелец получает выход через mailbox в любой фазе исполнения или
+ * ожидания. Читать лишь атомарный lifetime seal, не чужой Prog.state. Ноль для
+ * NULL или уже закрытого retirement без изменения владения. */
 static int resident_can_exit(Prog *child)
 {
-    if (!child)
-    {
-        return 0;
-    }
-    int state = child->state;
-    return state == Prelease || state == Psend || state == Precv || state == Palt || state == Pready ||
-           state == DVM_TABLE_WAIT || state == DVM_CHILD_EXIT_WAIT;
+    return child && dvm_runqueue_hold_count(child) >= 0;
 }
 
 
@@ -198,14 +200,16 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
 
 
 /* EN: Publish the parent wait for a live or already retiring registered child.
- * A sealed/Pexiting child needs only retirement notification, not another exit.
+ * The atomic lifetime seal precedes Pexiting. A sealed child needs only
+ * retirement notification, not another exit; never read foreign owner state.
  * RU: Опубликовать ожидание живого или уже завершающегося ребёнка из реестра.
- * Для sealed/Pexiting нужна только квитанция завершения, а не новый запрос. */
+ * Атомарный lifetime seal предшествует Pexiting. Для sealed нужна только
+ * квитанция завершения, а не новый запрос; чужое состояние владельца не читать. */
 static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    int retiring = child && (child->state == Pexiting || dvm_runqueue_hold_count(child) < 0);
+    int retiring = child && dvm_runqueue_hold_count(child) < 0;
     if (!retiring && !resident_can_exit(child))
     {
         fvm_port_sync_unlock(channel_queue_mutex);

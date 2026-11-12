@@ -331,30 +331,36 @@ def parallel_guest():
 
 
 def parallel_wrapper():
-    """Observe real arithmetic on distinct resident contexts without a guard-held barrier."""
+    """Observe distinct residents; strict ACTIVE also permits concurrent arithmetic.
+    RU: Проверить разные потоки; ACTIVE строгого мира также конкурентен.
+    """
     source = '#include "disvm/native_owner.h"\n#include <pthread.h>\n'+wrapper()
     signature = 'void __wrap_dvm_runtime_arithmetic_value(int op, const void *s, const void *b, void *d)'
     instrumented = source.replace(signature+'\n{', '''static pthread_mutex_t parallel_lock = PTHREAD_MUTEX_INITIALIZER; /* Protect observations. */
-static DVM_NativeContext *parallel_first; /* Identity recorded at the start of an overlap window. */
+static int parallel_first_pid; /* Immutable resident ID; context storage may be reused after exit. */
 static int parallel_observed; /* Two different residents executed actual arithmetic. */
 
 '''+signature+r'''
 {
     DVM_HeapOwnerStats owner;
     if (dvm_native_owner_statistics(dvm_native_owner_current(), &owner) &&
-        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED))
+        (owner.phase == DVM_HEAP_NATIVE || owner.phase == DVM_HEAP_SHARED ||
+         (owner.phase == DVM_HEAP_ACTIVE &&
+          dvm_world_stops_forbidden(dvm_native_owner_world(dvm_native_owner_current())))))
     {
         DVM_NativeContext *context = dvm_native_context_current();
+        Prog *resident = dvm_native_context_process(context);
+        int pid = resident ? resident->pid : 0;
         pthread_mutex_lock(&parallel_lock);
         switch (op)
         {
 LEASED_OPCODE_NAMES
         }
-        if (!parallel_first)
+        if (!parallel_first_pid && pid > 1)
         {
-            parallel_first = context;
+            parallel_first_pid = pid;
         }
-        else if (!parallel_observed && parallel_first != context)
+        else if (!parallel_observed && pid > 1 && parallel_first_pid && parallel_first_pid != pid)
         {
             parallel_observed = 1;
             print("PASS independent frame evaluators\n");

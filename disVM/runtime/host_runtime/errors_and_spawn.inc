@@ -118,7 +118,32 @@ Prog *delrun(int state)
     {
         error("invalid runnable process removal");
     }
+    if (native_spawn && (state == Psend || state == Precv || state == Palt))
+    {
+        /* [GC:] EN: Caller still owns the channel registry mutex. Publish all
+         * geometry before a peer can claim this waiter; dispatch must not
+         * rewrite it until readiness is acquired after completion.
+         * RU: Вызывающий ещё держит mutex каналов. Опубликовать геометрию до
+         * захвата waiter партнёром; не переписывать её до acquire готовности. */
+        process->R = DVM_R;
+    }
     return process;
+}
+
+
+/* [GC:] EN: Publish this process's live register image at a dispatch boundary.
+ * An acquire-ready sample excludes channel completion readers before writing;
+ * a parked owner's image was already published by delrun under the queue mutex.
+ * process remains owned by the current native thread; no state is restored.
+ * RU: Опубликовать живой снимок process на границе назначения. Acquire готовности
+ * исключает чтения завершения канала до записи; parked-снимок уже опубликован
+ * delrun под mutex очереди. process принадлежит текущему потоку; без восстановления. */
+void dvm_runtime_publish_dispatch_roots(Prog *process)
+{
+    if (!native_spawn || dvm_runqueue_is_ready(process))
+    {
+        process->R = DVM_R;
+    }
 }
 
 
