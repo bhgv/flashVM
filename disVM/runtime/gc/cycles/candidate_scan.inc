@@ -23,8 +23,12 @@ static int route_refused_cycle(void)
 }
 
 
-/* EN: Try the source head under shared admission. cost counts work, busy signals retry.
- * RU: Проверить первый элемент source под параллельным допуском. cost учитывает работу, busy означает повтор. */
+/* [GC:] EN: Try the borrowed source head under shared admission. cost counts
+ * work; busy requests retry for transient guards/allocation without withdrawal.
+ * Return 1 after consumption, 2 for preserved Duke continuation or 0 on refusal.
+ * RU: Проверить заимствованную голову source под shared-допуском. cost считает
+ * работу; busy требует повтора при занятых guards/нехватке памяти без снятия.
+ * Вернуть 1 после потребления, 2 для продолжения Duke или 0 при отказе. */
 int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
 {
     *cost = 1;
@@ -73,6 +77,7 @@ int dvm_rc_scan_candidate(DVM_RetirementQueue *source, size_t *cost, int *busy)
     }
     else if (group.growing && !dvm_rc_grow_record_group(&group, DUKE_INITIAL_FIELDS))
     {
+        *busy = group.busy;
         return 0;
     }
     DVM_RangeAccess access = {0};

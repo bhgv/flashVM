@@ -91,3 +91,6 @@ does not remove general stopped tracing, unsupported native finalizers or stoppe
 shutdown. Runtime validation is Linux x86-64; generated JIT instructions are not
 instrumented by C ThreadSanitizer. ARM64 and RV64 execution are not established
 by these checks.
+
+[Snapshot allocation retry](DUKE-ALLOCATION-RETRY.md) subsequently extends this
+fixture to 16 positive applications and eight semantic omission controls.

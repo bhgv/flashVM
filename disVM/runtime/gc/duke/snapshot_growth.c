@@ -8,10 +8,16 @@
 #include <string.h>
 
 
-/* EN: Grow group to required fields within the byte budget. Preserve indices and old storage on failure.
- * RU: Увеличить group до required полей в пределах бюджета. При отказе сохранить старый буфер и индексы. */
+/* [GC:] EN: Grow private group to required fields within the byte budget.
+ * Return 1 on success, 0 with busy=1 on allocation failure or busy=0 at the
+ * hard limit. Preserve indices, pins and old storage on failure. No managed
+ * ownership moves; the shared collector decides retry versus hard refusal.
+ * RU: Увеличить личный group до required полей в пределах бюджета. Вернуть 1
+ * при успехе, 0 с busy=1 при нехватке памяти или busy=0 при жёстком пределе.
+ * Отказ сохраняет индексы, pin и буфер; shared-сборщик выбирает повтор/отказ. */
 int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
 {
+    group->busy = 0;
     const size_t per_node = 2 * sizeof(void *) + 2 * sizeof(unsigned int) + sizeof(unsigned char);
     const size_t per_field = sizeof(void *) + 10 * sizeof(unsigned int);
     size_t maximum = (RECORD_SCRATCH_BYTES - per_node) / (per_node + per_field);
@@ -28,6 +34,7 @@ int dvm_rc_grow_record_group(RecordGroup *group, size_t required)
     void **storage = calloc(1, nodes * per_node + capacity * per_field);
     if (!storage)
     {
+        group->busy = 1;
         return 0;
     }
     RecordGroup expanded = *group;

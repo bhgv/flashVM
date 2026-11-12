@@ -59,3 +59,7 @@ the final graph-owned Modlink for each claimed Module.
 [Duke pin retirement](../../DUKE-PIN-RETIREMENT.md) preserves abandoned nonfinal
 candidate pins as rooted mandatory seeds. FIFO refusal leaves the journal cursor
 unchanged and retries under shared admission.
+
+[Duke allocation retry](../../DUKE-ALLOCATION-RETRY.md) propagates temporary
+snapshot allocation pressure through candidate busy state. Hard byte limits
+remain distinct; private growth/storage replacements preserve include paths.

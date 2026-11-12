@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * [GC:] EN: Actual abandoned Duke pins preserve a detached cycle and retry FIFO pressure.
- * RU: Удержания отменённого Duke сохраняют отделённый цикл и повторяют отказ FIFO.
+ * [GC:] EN: Actual Duke pin retirement and shared snapshot allocation retries.
+ * RU: Очистка удержаний Duke и shared-повторы выделения памяти снимка.
  */
 #include "lib9.h"
 #include "dat.h"
@@ -24,7 +24,11 @@
 #include <string.h>
 #include <time.h>
 
-#if CONTROL == 5
+#if CONTROL == 6 || CONTROL == 8 || CONTROL == 9 || CONTROL == 11
+#define SCENARIO 2                              /* Initial Duke allocation refusal. */
+#elif CONTROL == 7 || CONTROL == 10
+#define SCENARIO 3                              /* Growing Duke allocation refusal. */
+#elif CONTROL == 5
 #define SCENARIO 1                              /* Cursor omission must encounter actual mandatory pressure. */
 #elif CONTROL < 2
 #define SCENARIO CONTROL                        /* Positive normal and pressure cases. */
@@ -97,6 +101,7 @@ int __real_dvm_world_try_quiescent(DVM_NativeWorld *, DVM_NativeContext *);
 
 #include "test_duke_pin_relay.inc"
 #include "test_duke_pin_mutation.inc"
+#include "test_duke_allocation_retry.inc"
 
 
 /* [GC:] EN: Observe source ticket transfer on real Fast before Duke starts.
@@ -191,6 +196,10 @@ unsigned int __wrap_dvm_gc_duke_run(DVM_NativeContext *context,
 {
     unsigned int work = __real_dvm_gc_duke_run(context, budget, world, queue, fallback);
     pthread_mutex_lock(&sync);
+    if (work && allocation_refusals > allocation_passes && allocation_passes < 8)
+    {
+        allocation_passes++;
+    }
     if (work && slot_refused && slot_passes < 8)
     {
         slot_passes++;

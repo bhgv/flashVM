@@ -41,7 +41,7 @@ typedef struct RecordGroup
     int growing;                      /* Duke can enlarge discovery storage under guards. */
     unsigned int dead_count;          /* Dead nodes in a published snapshot. */
     unsigned int live_count;          /* Nodes marked reachable. */
-    int busy;                         /* A field stripe was temporarily owned elsewhere. */
+    int busy;                         /* Transient field contention or snapshot allocation failure. */
     int oversized;                    /* Bounded discovery could not fit another field. */
     int has_modules;                  /* Ordinary Modlinks need native metadata finalization. */
     int has_views;                    /* A detached view needs descriptor-only destruction. */
@@ -93,7 +93,10 @@ unsigned int dvm_rc_record_index_slot(const RecordGroup *group, void *value);
 unsigned int dvm_rc_record_group_index(RecordGroup *group, void *value);
 
 
-/* EN: Grow group for required fields. RU: Увеличить ёмкость group до required полей. */
+/* [GC:] EN: Grow private group for required fields; preserve storage on failure.
+ * Return 1 on success, 0 with busy=1 for allocation retry or busy=0 at the limit.
+ * RU: Увеличить личный group до required полей; при отказе сохранить буфер.
+ * Вернуть 1 при успехе, 0 с busy=1 для повтора выделения или busy=0 при пределе. */
 int dvm_rc_grow_record_group(RecordGroup *group, size_t required);
 
 

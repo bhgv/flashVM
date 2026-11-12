@@ -35,15 +35,19 @@ def private_includes(source, path):
 # detached cycle frees before outside source release, then all real allocations
 # retire with admitted peers. Controls require exact semantic failures, never
 # build errors, signal, process timeout or sanitizer warning. --positive-only
-# omits intentional violations.
+# omits intentional violations; --allocation-only selects just the two positive
+# snapshot allocation scenarios.
 # RU: Владеть C/JIT приложениями и частными бинарниками по CLI путям. Требовать
 # снятия настоящего seed старого ребра до отмены pin Duke. Отдельный цикл
 # освобождается до снятия внешнего source, затем все объекты при допущенных
 # соседях. Контроли требуют точной семантической ошибки, не таймаута/санитайзера.
 def main():
     positive_only = "--positive-only" in sys.argv[1:]
+    allocation_only = "--allocation-only" in sys.argv[1:]
     runtime, compiler, include = (
-        Path(value).resolve() for value in sys.argv[1:] if value != "--positive-only"
+        Path(value).resolve()
+        for value in sys.argv[1:]
+        if value not in ("--positive-only", "--allocation-only")
     )
     root = Path(__file__).parent
     with tempfile.TemporaryDirectory(prefix="Duke pin retirement ") as temporary:
@@ -64,8 +68,12 @@ def main():
             capture_output=True,
             text=True,
         )
-        for control in range(2 if positive_only else 6):
-            rc = capture = None
+        positive = (6, 7) if allocation_only else (0, 1, 6, 7)
+        controls = (
+            positive if positive_only or allocation_only else (*positive, 2, 3, 4, 5, 8, 9, 10, 11)
+        )
+        for control in controls:
+            rc = capture = growth = storage = None
             if control in (2, 3, 5):
                 source = read_rc_source(root)
                 gates = {
@@ -95,12 +103,38 @@ def main():
                     raise RuntimeError("Duke guarded-field control anchor changed")
                 capture = work / "graph_capture.c"
                 capture.write_text(private_includes(source.replace(gate, "if (0)"), path))
+            if control in (8, 11):
+                path = root / "gc/duke/snapshot_growth.c"
+                source = path.read_text()
+                gate = "        group->busy = 1;" if control == 8 else "    group->busy = 0;"
+                if source.count(gate) != 1:
+                    raise RuntimeError("Duke allocation retry anchor changed")
+                growth = work / "snapshot_growth.c"
+                growth.write_text(private_includes(source.replace(gate, ""), path))
+            if control == 9:
+                source = read_rc_source(root)
+                gate = "        *busy = group.busy;"
+                if source.count(gate) != 1:
+                    raise RuntimeError("Duke initial allocation anchor changed")
+                rc = work / "runtime_rc.c"
+                rc.write_text(source.replace(gate, ""))
+            if control == 10:
+                path = root / "gc/common/graph_storage.c"
+                source = path.read_text()
+                gate = "if (group->busy)"
+                if source.count(gate) != 1:
+                    raise RuntimeError("Duke growing allocation anchor changed")
+                storage = work / "graph_storage.c"
+                storage.write_text(private_includes(source.replace(gate, "if (0)"), path))
             binary = relink(
                 runtime,
                 work,
                 Path(__file__).with_suffix(".c"),
                 control,
                 [
+                    "calloc",
+                    "dvm_rc_grow_record_group",
+                    "dvm_rc_scan_candidate",
                     "Sys_werrstr",
                     "dvm_runtime_guest_sleep",
                     "dvm_runtime_rc_defer",
@@ -115,10 +149,12 @@ def main():
                 ],
                 runtime_rc_source=rc,
                 graph_capture_source=capture,
+                snapshot_growth_source=growth,
+                graph_storage_source=storage,
             )
             profiles = (
                 [("--no-jit", False)]
-                if control >= 2
+                if control not in positive
                 else [(mode, locked) for mode in ("--no-jit", "--jit") for locked in (False, True)]
             )
             for mode, locked in profiles:
@@ -140,12 +176,16 @@ def main():
                 text = result.stdout + result.stderr
                 if "WARNING: ThreadSanitizer:" in text or "runtime error:" in text:
                     raise RuntimeError("Duke pin sanitizer failure\n" + text[-12000:])
-                if control >= 2:
+                if control not in positive:
                     marker = {
                         2: "detached cycle lost its Duke candidate pin",
                         3: "Duke pin root disappeared before mandatory commit",
                         4: "detached cycle lost its Duke candidate pin",
                         5: "refused Duke pin advanced journal cursor",
+                        8: "transient snapshot allocation must request retry",
+                        9: "initial Duke allocation must remain shared",
+                        10: "transient Duke growth escaped to fallback",
+                        11: "hard Duke limit must remain distinct from allocation retry",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(f"Duke pin control {control} missed\n{text[-12000:]}")
@@ -156,6 +196,8 @@ def main():
                 ):
                     raise RuntimeError(f"control={control} {mode} locked={locked}\n{text[-12000:]}")
                 evidence(text, children=2)
+                if control in (6, 7) and not re.search(r"DUKEALLOCATION refused=8 passes=8", text):
+                    raise RuntimeError("actual Duke allocation retries missing\n" + text[-12000:])
                 pins = re.search(r"NATIVEDUKEPINS seeds=(\d+) retries=(\d+)", text)
                 if not pins or int(pins[1]) < 65 or (control == 1 and int(pins[2]) < 8):
                     raise RuntimeError("real Duke pin handoffs/retries missing\n" + text[-12000:])
@@ -163,8 +205,8 @@ def main():
                     raise RuntimeError("Duke pin accepted accounting failed\n" + text[-12000:])
     print(
         "PASS actual Duke pin retirement: real detached-cycle mutation, old seed consumption, "
-        "pin rescue, FIFO retry, physical source/array/string frees; C/JIT, both polls"
-        + ("; positive profiles only" if positive_only else "; four semantic omission controls")
+        "pin rescue, FIFO/snapshot allocation retries, physical source/array/string frees; C/JIT, both polls"
+        + ("; positive profiles only" if positive_only else "; eight semantic omission controls")
     )
 
 

@@ -183,16 +183,30 @@ unsigned int dvm_rc_record_group_index(RecordGroup *group, void *value)
 }
 
 
-/* EN: Reserve fields additional slots in group. Mark an oversized capture on refusal.
- * RU: Зарезервировать fields дополнительных мест в group. При отказе отметить превышение размера. */
+/* [GC:] EN: Reserve fields additional private slots in group. Return 1 on
+ * success. A growing allocation refusal preserves busy for shared retry;
+ * only capacity/byte-limit refusal marks oversized. Existing owners stay put.
+ * RU: Зарезервировать fields дополнительных мест личного group. Вернуть 1
+ * при успехе. Нехватка памяти растущего снимка сохраняет busy для shared-повтора;
+ * лишь превышение ёмкости/лимита ставит oversized. Владение не передаётся. */
 int dvm_rc_reserve_record_fields(RecordGroup *group, size_t fields)
 {
-    if (fields <= group->field_limit - group->edges_used ||
-        (group->growing && fields <= RECORD_SCRATCH_BYTES &&
-         dvm_rc_grow_record_group(group, group->edges_used + fields)))
+    if (fields <= group->field_limit - group->edges_used)
     {
         return 1;
     }
+    if (group->growing && fields <= RECORD_SCRATCH_BYTES)
+    {
+        if (dvm_rc_grow_record_group(group, group->edges_used + fields))
+        {
+            return 1;
+        }
+        if (group->busy)
+        {
+            return 0;
+        }
+    }
+    group->busy = 0;
     group->oversized = 1;
     return 0;
 }

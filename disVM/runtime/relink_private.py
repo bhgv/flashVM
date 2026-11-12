@@ -21,6 +21,7 @@ import subprocess
 # decline/false-completion/duplicate-execution controls.
 # Optional exception_retirement_source replaces only the shared Fast emergency-string module.
 # Optional module_graph_source/graph_capture_source replace only discovery indexing/capture.
+# Optional snapshot_growth_source/graph_storage_source isolate allocation refusal controls.
 # Matching private headers/flags remain mandatory.
 # RU: runtime — исходная сборка, work — личные результаты, source — wrapper,
 # variant — define, symbols — перехваты линкера; вернуть личный бинарник.
@@ -63,6 +64,8 @@ def relink(
     managed_retirement_source=None,
     module_graph_source=None,
     graph_capture_source=None,
+    snapshot_growth_source=None,
+    graph_storage_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -124,6 +127,8 @@ def relink(
         (managed_retirement_source, "gc/fast/managed_retirement.c"),
         (module_graph_source, "gc/common/module_graph.c"),
         (graph_capture_source, "gc/common/graph_capture.c"),
+        (snapshot_growth_source, "gc/duke/snapshot_growth.c"),
+        (graph_storage_source, "gc/common/graph_storage.c"),
     ):
         if candidate is None:
             continue

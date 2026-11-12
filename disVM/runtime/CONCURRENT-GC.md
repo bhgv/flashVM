@@ -163,3 +163,8 @@ General stopped tracing, unsupported finalizers and shutdown still remain.
 in the mandatory queue. A real detached cycle retires after its original seed
 was consumed while discovery still rooted it. Queue pressure preserves both
 the root and journal cursor for shared retry. General stopped tracing remains.
+
+[Duke allocation retry](DUKE-ALLOCATION-RETRY.md) distinguishes temporary native
+snapshot allocation failure from the hard byte limit. Initial and growing
+allocation refusal retain shared processing; supported candidates no longer
+route to retained cleanup solely because snapshot allocation failed.
