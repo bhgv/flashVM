@@ -124,7 +124,7 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                 if (claim != DVM_CELL_ACQUIRED)
                 {
                     entry->claim_refused = claim != DVM_CELL_BUSY;
-                    int retry = claim == DVM_CELL_BUSY;
+                    int snapshot_retry = claim == DVM_CELL_BUSY;
                     if (entry->claim_refused)
                     {
                         DVM_RetirementResult release = release_refused_snapshot(source, entry);
@@ -134,14 +134,21 @@ unsigned int dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t bud
                             completed++;
                             continue;
                         }
-                        retry = release == DVM_RETIRE_FULL || release == DVM_RETIRE_BYTES;
+                        snapshot_retry = release == DVM_RETIRE_FULL || release == DVM_RETIRE_BYTES;
                     }
-                    if (retry && source == record_retries)
+                    /* [GC:] EN: Preserve shared continuation beside retained work
+                     * while guests are active. At quiescence retained cleanup may
+                     * release resources needed by a blocked shared retry.
+                     * RU: При активных гостях сохранять shared-повтор рядом с
+                     * резервной работой. В покое резервная очистка может снять
+                     * нехватку ресурсов, удерживающую shared-повтор. */
+                    retry |= snapshot_retry && dvm_world_has_active_guest(world);
+                    if (snapshot_retry && source == record_retries)
                     {
                         dvm_retirement_rotate(source);
                         continue;
                     }
-                    DVM_RetirementQueue *destination = retry ? record_retries : difficult;
+                    DVM_RetirementQueue *destination = snapshot_retry ? record_retries : difficult;
                     if (!move_leaf(source, destination, entry))
                     {
                         if (source == record_retries)

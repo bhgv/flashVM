@@ -99,3 +99,7 @@ The peers prove admitted execution during reclamation, not per-operation latency
 for conflicting field accesses. Runtime execution here targets Linux x86-64;
 generated JIT instructions are outside C ThreadSanitizer instrumentation.
 ARM64/RV64 execution is not established by these checks.
+
+[Mixed snapshot retry](MIXED-SNAPSHOT-RETRY.md) subsequently extends this fixture
+to 36 positive applications and eight semantic omission controls, including a
+genuine unsupported owner beside supported graph and packet replay work.

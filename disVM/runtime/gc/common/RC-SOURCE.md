@@ -71,3 +71,6 @@ retirement epoch; failure releases native buffers and cancels the reservation.
 [Native claim storage](../../FAST-CLAIM-STORAGE.md) sizes private native vectors
 by actual Module entries and propagates allocation BUSY through confirmation.
 Private confirmation copies must retain the `module_graph_claim.inc` include.
+
+[Mixed snapshot retry](../../MIXED-SNAPSHOT-RETRY.md) keeps the graph retry
+decision in the shared pass result independently of retained queue readiness.

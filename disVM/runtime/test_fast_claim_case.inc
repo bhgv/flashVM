@@ -21,9 +21,22 @@ void __wrap_Sys_werrstr(void *frame)
         pthread_cond_wait(&changed, &sync);
     }
     pthread_mutex_unlock(&sync);
+    Type *retained_type = NULL;
+    if (MixedPending)
+    {
+        retained_type = dtype(retained_destructor, sizeof(void *), NULL, 0);
+        require(retained_type != NULL, "actual unsupported Type creator");
+        Heap *heap = heapz(retained_type);
+        pthread_mutex_lock(&sync);
+        retained_target = heap;
+        retained_key = dvm_heap_pool_key(heapmem, heap);
+        pthread_mutex_unlock(&sync);
+        require(dvm_runtime_rc_defer(H2D(void *, heap)), "publish actual unsupported owner to mandatory FIFO");
+        require(dvm_runtime_root_count(heap) == 1, "actual retained backlog is rooted");
+    }
     unsigned count = SCENARIO == 0 ? 0 : SCENARIO == 1 ? 1 : SCENARIO == 2 ? 513 : SCENARIO == 3 ? 514 : 520;
-    uchar map = 0x80;
-    Type *type = dtype(freeheap, sizeof(void *), &map, 1);
+    uchar map = ReplayPressure ? 0xc0 : 0x80;
+    Type *type = dtype(freeheap, (ReplayPressure ? 2 : 1) * sizeof(void *), &map, 1);
     require(type != NULL, "actual graph Type creator");
     void *values[NodeCount];
     Runtab empty[1] = {{0}};
@@ -92,6 +105,12 @@ void __wrap_Sys_werrstr(void *frame)
     while (milliseconds() < deadline)
     {
         pthread_mutex_lock(&sync);
+        if (QuiescentAssist && !released && refusals >= 8)
+        {
+            epochs_held = 0;
+            released = 1;
+            pthread_cond_broadcast(&changed);
+        }
         if (confirmed && epochs_held && held_passes >= 8)
         {
             require(!freed && !native_freed, "all physical frees wait for final reader epoch");
@@ -105,17 +124,95 @@ void __wrap_Sys_werrstr(void *frame)
         }
         fvm_port_thread_sleep_us(1000);
     }
+    if (!success)
+    {
+        pthread_mutex_lock(&sync);
+        DVM_GCWorkersState lanes;
+        require(dvm_gc_workers_state(dvm_gc_runtime.workers, &lanes), "worker diagnostics available");
+        unsigned long roots = 0;
+        unsigned long refs = 0;
+        for (unsigned index = 0; index < NodeCount; index++)
+        {
+            if (!destroyed[index])
+            {
+                roots += dvm_runtime_root_count(nodes[index]);
+                refs += dvm_refcount_load_u(&nodes[index]->ref);
+            }
+        }
+        fprintf(
+            stderr,
+            "mixed state freed=%u native=%u confirmed=%d held=%d/%u replay=%d/%d refusals=%u passes=%u refs=%lu roots=%lu lanes=%zu/%zu/%zu ready=%d/%d/%d\n",
+            freed,
+            native_freed,
+            confirmed,
+            epochs_held,
+            held_passes,
+            replay_stale,
+            replay_done,
+            replay_refusals,
+            replay_passes,
+            refs,
+            roots,
+            lanes.Fast.passes,
+            lanes.Cycles.passes,
+            lanes.Duke.passes,
+            dvm_runtime_rc_ready(),
+            dvm_runtime_rc_candidates_ready(),
+            dvm_runtime_rc_duke_ready());
+        pthread_mutex_unlock(&sync);
+    }
+    require(!QuiescentAssist || retained_calls, "quiescent retained work must not starve behind shared retry");
     require(success, "native claim storage still requires heap quiescence");
     require(count <= RECORD_NODE_CAPACITY ? !allocations && !refusals && !vector_frees
-                                          : allocations == 9 && refusals == 8 && vector_frees == 1,
+                                          : (QuiescentAssist ? refusals >= 8 && allocations == refusals + 1
+                                                             : allocations == 9 && refusals == 8) &&
+                                                vector_frees == 1,
             "actual vector allocation and recovery evidence");
     dvm_runtime_gc_native_enter(native);
     require(dvm_refcount_load_i(&type->ref) == 1, "all managed and native Type owners released");
     freetype(type);
+    if (MixedPending && !QuiescentAssist)
+    {
+        pthread_mutex_lock(&sync);
+        require(!retained_calls && !retained_freed && retained_target && dvm_runtime_root_count(retained_target) == 1 &&
+                    dvm_refcount_load_u(&retained_target->ref) == 1,
+                "unsupported owner stays queued while supported graph physically frees");
+        pthread_mutex_unlock(&sync);
+    }
+    require(!ReplayPressure || (replay_stale && replay_done && replay_refusals == 8 && replay_passes == 8),
+            "actual refused snapshot replay pressure and recovery observed");
     pthread_mutex_lock(&sync);
     released = 1;
     pthread_cond_broadcast(&changed);
     pthread_mutex_unlock(&sync);
+    if (MixedPending)
+    {
+        native = dvm_runtime_gc_native_try_leave();
+        require(native > 0, "parent inactive while unknown callback waits for retained admission");
+        deadline = milliseconds() + 5000;
+        int done = 0;
+        while (milliseconds() < deadline)
+        {
+            pthread_mutex_lock(&sync);
+            done = retained_freed == 1 && retained_calls == 1;
+            pthread_mutex_unlock(&sync);
+            if (done)
+            {
+                break;
+            }
+            fvm_port_thread_sleep_us(1000);
+        }
+        require(done, "unknown callback remains reachable after shared peers leave");
+        dvm_runtime_gc_native_enter(native);
+        require(dvm_refcount_load_i(&retained_type->ref) == 1, "unknown heap descriptor owner retired");
+        freetype(retained_type);
+    }
+    fprintf(stderr,
+            "MIXEDRETRY retained=%u replayed=%d refusals=%u passes=%u\n",
+            retained_freed,
+            replay_done,
+            replay_refusals,
+            replay_passes);
     fprintf(stderr,
             "PASS Fast claim storage nodes=%u modules=%u attempts=%u refused=%u freed=%u native=%u\n",
             NodeCount,

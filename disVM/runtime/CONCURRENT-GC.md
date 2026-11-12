@@ -181,3 +181,8 @@ empty shared sample. Actual quiescent acquisition remains authoritative.
 [Native claim storage](FAST-CLAIM-STORAGE.md) now follows actual native Module
 cardinality. Sparse large graphs need no native heap vector; vector allocation
 pressure retains the original Fast snapshot for shared confirmation retry.
+
+[Mixed snapshot retry](MIXED-SNAPSHOT-RETRY.md) now propagates actual graph BUSY
+and packet replay pressure into the shared pass result even when retained work
+is ready and guests remain active. Quiescent retained cleanup stays eligible
+for resource recovery. Unknown callbacks keep their existing stopped path.

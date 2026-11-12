@@ -11,8 +11,10 @@
 #include "pool.h"
 #include "heap_pool.h"
 #include "runtime_gc.h"
+#include "runtime_rc.h"
 #include "managed_owner.h"
 #include "root_registry.h"
+#include "retirement_queue.h"
 #include "gc/common/runtime_state.h"
 #include "gc/fast/graph_confirmation.h"
 #include "disvm/refcount.h"
@@ -24,17 +26,27 @@
 #include <string.h>
 #include <time.h>
 
-#if CONTROL < 5
-#define SCENARIO CONTROL                                  /* Actual native owner count profile. */
+#if (CONTROL >= 11 && CONTROL <= 14) || CONTROL == 17 || CONTROL == 18
+#define SCENARIO 0                  /* Real stale pure graph replay under FULL/BYTES pressure. */
+#elif CONTROL < 5
+#define SCENARIO CONTROL            /* Actual native owner count profile. */
 #elif CONTROL == 5
-#define SCENARIO 0                                        /* Node-count allocation omission must reject a pure graph. */
+#define SCENARIO 0                  /* Node-count allocation omission must reject a pure graph. */
 #else
-#define SCENARIO 3                                        /* Dynamic allocation omission uses 514 actual Modules. */
+#define SCENARIO 3                  /* Dynamic allocation omission uses 514 actual Modules. */
 #endif
-#define NodeCount 1040                                    /* Every graph exceeds bounded Cycles discovery. */
-#define MaxModules 520                                    /* Covers both sides of the 513-owner local capacity. */
+#define MixedPending (CONTROL >= 9) /* Retain a genuine unknown callback beside supported graph work. */
+#define ReplayPressure                                                                                                 \
+    ((CONTROL >= 11 && CONTROL <= 14) || CONTROL == 17 ||                                                              \
+     CONTROL == 18)                                   /* Refuse actual snapshot-to-packet reservation. */
+#define ReplayBytes                                                                                                    \
+    (CONTROL == 13 || CONTROL == 14 || CONTROL == 18) /* Exercise direct-byte refusal separately from slot refusal. */
+#define QuiescentAssist (CONTROL == 15 || CONTROL == 16) /* Retained cleanup releases persistent shared pressure. */
+#define NodeCount                                                                                                      \
+    ((ReplayPressure && CONTROL < 17) ? 64 : 1040) /* Large ownership graphs; bounded replay isolates queue protocol. */
+#define MaxModules 520                             /* Covers both sides of the 513-owner local capacity. */
 
-extern Pool *heapmem;                                     /* Actual allocator through all collector joins. */
+extern Pool *heapmem;                              /* Actual allocator through all collector joins. */
 static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;  /* Observation metadata only. */
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Peer admission handshakes. */
 static unsigned admitted;                                 /* Actual resident peers, under sync. */
@@ -52,14 +64,14 @@ static unsigned node_count;                               /* Zero during private
 static unsigned freed;                                    /* Managed poolfree completions, under sync. */
 static unsigned native_freed;                             /* Actual Module free completions, under sync. */
 static const RecordGroup *identity;                       /* Same rooted snapshot through every allocation refusal. */
-static unsigned refusals;                                 /* Actual vector malloc refusals; sole Fast producer. */
-static unsigned allocations;                              /* Actual vector allocation attempts. */
-static unsigned vector_frees;                             /* Actual successful vector free completions. */
-static int confirmed;                                     /* Real successful graph claim, under sync. */
-static _Thread_local int confirming;                      /* Current real confirmation selects this graph. */
-static _Thread_local int vector_phase;                    /* Actual reservation closed foreign field readers. */
-static _Thread_local int injected;                        /* A native vector allocation failed in this call. */
-static _Thread_local void *vector;                        /* Actual native scratch until original free. */
+static unsigned refusals;              /* Actual vector malloc refusals, under sync for peer release. */
+static unsigned allocations;           /* Actual vector allocation attempts, under sync. */
+static unsigned vector_frees;          /* Actual successful vector free completions. */
+static int confirmed;                  /* Real successful graph claim, under sync. */
+static _Thread_local int confirming;   /* Current real confirmation selects this graph. */
+static _Thread_local int vector_phase; /* Actual reservation closed foreign field readers. */
+static _Thread_local int injected;     /* A native vector allocation failed in this call. */
+static _Thread_local void *vector;     /* Actual native scratch until original free. */
 
 
 int __real_dvm_runtime_guest_sleep(unsigned long);
@@ -87,6 +99,7 @@ __real_dvm_gc_fast_confirm_graph(const RecordGroup *, DVM_CellDomain *, DVM_Nati
 unsigned int __real_dvm_runtime_rc_shared_leaves(DVM_NativeContext *, size_t);
 
 #include "test_claim_storage_relay.inc"
+#include "test_fast_claim_replay.inc"
 
 
 /* [GC:] EN: Forward domain/token and observe the actual reservation boundary.
@@ -101,9 +114,12 @@ void __wrap_dvm_cell_reservation_claim(DVM_CellDomain *domain, const void *token
 
 
 /* [GC:] EN: Refuse eight actual vector allocations, requiring exact native
- * cardinality. bytes is forwarded otherwise; no managed buffer is invented.
+ * cardinality. The quiescent-assistance case keeps refusal until the real
+ * retained callback releases its dependency. bytes otherwise passes unchanged;
+ * no managed buffer is invented.
  * RU: Отказать восьми настоящим выделениям вектора, требуя размера по native-
- * владельцам. Иначе bytes передаётся; управляемые буферы не выдумываются. */
+ * владельцам. Проверка покоя удерживает отказ до настоящего retained-callback.
+ * Иначе bytes передаётся; управляемые буферы не выдумываются. */
 void *__wrap_malloc(size_t bytes)
 {
     if (confirming && vector_phase)
@@ -111,11 +127,17 @@ void *__wrap_malloc(size_t bytes)
         require(module_count > RECORD_NODE_CAPACITY, "claim vector allocation requires native owners");
         require(bytes == module_count * (sizeof(Module *) + sizeof(unsigned int)),
                 "native claim vector matches native owner count");
+        pthread_mutex_lock(&sync);
         allocations++;
-        if (refusals < 8)
+        int refuse = refusals < 8 || (QuiescentAssist && !retained_calls);
+        if (refuse)
         {
             refusals++;
             injected = 1;
+        }
+        pthread_mutex_unlock(&sync);
+        if (refuse)
+        {
             return NULL;
         }
         vector = __real_malloc(bytes);
@@ -144,7 +166,8 @@ void __wrap_free(void *value)
         pthread_mutex_lock(&sync);
         require(!epochs_held && confirmed, "Module metadata waits for actual final reader epoch");
         DVM_WorldState state;
-        require(dvm_world_state(dvm_gc_runtime.world, &state) && state.active >= 2 && !state.stopping && !state.stopped,
+        require(dvm_world_state(dvm_gc_runtime.world, &state) && (state.active >= 2 || (QuiescentAssist && released)) &&
+                    !state.stopping && !state.stopped,
                 "native Module metadata frees with admitted peers");
         char name[96];
         snprintf(name, sizeof(name), "$FlashVM-native-claim-storage-%u", index);
@@ -176,20 +199,38 @@ DVM_CellResult __wrap_dvm_gc_fast_confirm_graph(
     const RecordGroup *group, DVM_CellDomain *cells, DVM_NativeWorld *world, unsigned long *epoch, int *reserved)
 {
     pthread_mutex_lock(&sync);
-    int selected = node_count && !destroyed[0] && group->nodes[0] == H2D(void *, nodes[0]);
+    int selected = 0;
+    for (unsigned index = 0; node_count && !destroyed[0] && index < group->nodes_used; index++)
+    {
+        selected |= group->nodes[index] == H2D(void *, nodes[0]);
+    }
     if (selected)
     {
         require(group->nodes_used == NodeCount && group->dead_count == NodeCount, "actual full dead graph");
-        require(!identity || identity == group, "allocation retry retains the original Fast snapshot");
+        require((ReplayPressure && replay_done) || !identity || identity == group,
+                "allocation retry retains the original Fast snapshot");
         identity = group;
-        epochs_held = 1;
+        epochs_held = !(QuiescentAssist && released);
     }
     pthread_mutex_unlock(&sync);
+    int changed = change_replay_fields(group, cells, selected);
     confirming = selected;
     vector_phase = 0;
     injected = 0;
     DVM_CellResult result = __real_dvm_gc_fast_confirm_graph(group, cells, world, epoch, reserved);
     require(!vector, "native claim vector must be freed before confirmation returns");
+    if (selected && result == DVM_CELL_BUSY)
+    {
+        graph_retry_seen = 1;
+    }
+    if (changed)
+    {
+        require(result == DVM_CELL_REFUSED, "real changed fields refuse actual old snapshot");
+        pthread_mutex_lock(&sync);
+        replay_stale = 1;
+        epochs_held = 0;
+        pthread_mutex_unlock(&sync);
+    }
     if (injected)
     {
         require(result == DVM_CELL_BUSY && !*epoch, "native vector allocation must retry original snapshot");
@@ -207,6 +248,10 @@ DVM_CellResult __wrap_dvm_gc_fast_confirm_graph(
         }
     }
     pthread_mutex_lock(&sync);
+    if (selected && result == DVM_CELL_REFUSED)
+    {
+        epochs_held = 0;
+    }
     if (selected && result == DVM_CELL_ACQUIRED)
     {
         for (unsigned index = 0; index < module_count; index++)
@@ -228,8 +273,19 @@ DVM_CellResult __wrap_dvm_gc_fast_confirm_graph(
  * context/budget и настоящий результат передаются без изменения. */
 unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
+    fast_shared_call = 1;
+    graph_retry_seen = 0;
+    replay_retry_seen = 0;
     unsigned int work = __real_dvm_runtime_rc_shared_leaves(context, budget);
+    fast_shared_call = 0;
+    require(!graph_retry_seen || work || !dvm_world_has_active_guest(dvm_gc_runtime.world),
+            "shared graph retry survives retained backlog");
+    require(!replay_retry_seen || work, "snapshot replay retry survives retained backlog");
     pthread_mutex_lock(&sync);
+    if (work && replay_retry_seen)
+    {
+        replay_passes++;
+    }
     if (work && confirmed && epochs_held)
     {
         held_passes++;
@@ -255,13 +311,26 @@ void __wrap_poolfree(Pool *pool, void *value)
     {
         DVM_WorldState state;
         require(!destroyed[index] && !epochs_held && confirmed && !expired && !dvm_runtime_root_count(value) &&
-                    dvm_world_state(dvm_gc_runtime.world, &state) && state.active >= 2 && !state.stopping &&
-                    !state.stopped,
+                    dvm_world_state(dvm_gc_runtime.world, &state) &&
+                    (state.active >= 2 || (QuiescentAssist && released)) && !state.stopping && !state.stopped,
                 "actual graph frees after final epoch with admitted peers");
         destroyed[index] = 1;
         freed++;
     }
+    int retained = value == retained_target && retained_target && dvm_heap_pool_key_matches(pool, value, retained_key);
+    if (retained)
+    {
+        DVM_WorldState state;
+        require(released && retained_calls == 1 && !retained_freed && !dvm_runtime_root_count(value) &&
+                    dvm_world_state(dvm_gc_runtime.world, &state) && state.stopped,
+                "unknown owner physically frees only on retained path after peers leave");
+    }
     __real_poolfree(pool, value);
+    if (retained)
+    {
+        retained_freed++;
+        retained_target = NULL;
+    }
     pthread_mutex_unlock(&sync);
 }
 
