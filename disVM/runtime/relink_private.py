@@ -8,7 +8,7 @@ import shlex
 import subprocess
 
 
-# runtime identifies the matching native console build, work owns temporary
+# runtime identifies the matching native console/editor build, work owns temporary
 # outputs, source is its C wrapper, variant copied define and symbols are exact
 # linker interceptions. Return private binary. No production object is changed.
 # Makefiles/GNU-style native linker only; compile/link failures never count as
@@ -87,7 +87,8 @@ def relink(
     retirement_pass_source=None,
     packet_budget_source=None,
 ):
-    metadata = runtime.parent / "CMakeFiles/disvm.dir"
+    target = "disvm-editor" if runtime.name == "disvm-editor" else "disvm"
+    metadata = runtime.parent / ("CMakeFiles/" + target + ".dir")
     flags = {}
     for line in (metadata / "flags.make").read_text().splitlines():
         if " = " in line:

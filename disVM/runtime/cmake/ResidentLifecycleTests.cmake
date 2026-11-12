@@ -2,6 +2,21 @@
 # EN: Ordered ResidentLifecycleTests registrations; include from the runtime source directory.
 # RU: Регистрация ResidentLifecycleTests; подключать из каталога исходников runtime.
 
+# EN: Whole-VM stale-reply ownership probe; no x64-only opcode instrumentation.
+# RU: Проверка владельцев старого ответа в настоящей VM, без x64-specific hook.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME disvm_live_parent_late_reply COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_late_reply.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_live_parent_late_reply PROPERTIES TIMEOUT 180)
+    if(CMAKE_C_FLAGS MATCHES "-fsanitize=thread")
+        add_test(NAME disvm_live_parent_late_reply_race_control COMMAND "${PYTHON_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/test_late_reply.py" "$<TARGET_FILE:disvm>"
+            "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --race-control)
+        set_tests_properties(disvm_live_parent_late_reply_race_control PROPERTIES TIMEOUT 180)
+    endif()
+endif()
+
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING AND runtime_backend STREQUAL "amd64")
  add_test(NAME disvm_shared_string_branches COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_shared_string_branch.py" "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
  add_test(NAME disvm_string_branch_tails COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/test_string_branch_tail.py" "$<TARGET_FILE:disvm>" "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

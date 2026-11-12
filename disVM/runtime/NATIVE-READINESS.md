@@ -205,6 +205,102 @@ TLS. После этого полный array-length сценарий прошё
 матрица прошла под TSan. Все 79 сценариев покрыты успешными результатами с этой
 целевой перепроверкой; единый непрерывный финальный 79/79 здесь не заявляется.
 
+## Live parent after cancellation of a reply wait
+
+The next lifetime audit expanded TSan to late parent retirement, queued/admitted
+table termination, SEND/RECV/ALT close, native kill/cancel, two-table transfer,
+FIFO edits and repeated file-slot I/O. These existing workloads passed; this
+audit did not find another production defect in those paths.
+
+A new whole-VM regression covers a different lifetime: the parent abandons its
+prepared cancelwait but remains registered and starts new native work before the
+child's old reply finishes. A private observer holds that actual child callback,
+lets the grandparent cancel the parent's wait, then releases the callback against
+256 real native leave/reentry pairs on the still-live parent's permanent thread.
+It verifies unchanged Prog identity, REG storage and register values, retained
+parent/child graphs, both exact completions and full guest/collector retirement.
+
+The observer repeats the same still-owned stale lookup 4096 times to expose the
+read/write overlap. These are repeated observations of one request, not 4096
+independently delivered messages. The callback must remain a no-op after its
+correlation is withdrawn. Restoring only the former foreign `parent->state` read
+in a private main composition produces an actual TSan race against runqueue state
+publication. The control checks the specific read/write diagnostic and rejects
+unrelated sanitizer warnings; compiler/link failures never count as detection.
+Production sources and objects are not replaced by the omission control.
+
+`resident_evidence` now delegates to the common strict-GC evidence checker. All
+of its application callers additionally require zero retained reclamation,
+`gc_runs`, `gc_epochs`, idle retained RC passes and RC fallback, with joined
+collectors. The earlier partial policy/snapshot checks did not cover all of these
+counters. The new case is registered for native Linux64 without an x64-only hook;
+TSan builds additionally register its old-reader control.
+
+Повторный аудит позднего завершения, таблиц, каналов и I/O не обнаружил новой
+production-ошибки в проверенных путях. Добавлена отдельная проверка живого
+родителя: ожидание отменено, начались 256 новых native-переходов, а старый ответ
+ребёнка ещё задержан. Проверяются тот же Prog, та же память REG и значения,
+сохранённые графы, точные ответы и полное завершение потоков/GC. Повторяются
+наблюдения одного старого запроса, а не доставка тысяч новых сообщений.
+Частный возврат прежнего чтения `parent->state` воспроизводит настоящую гонку
+TSan; production-код этот возврат не получает. Общая приёмка дополнительно
+требует нулевых retained-GC эпох, проходов и RC fallback. Регистрация теста
+не ограничена x64, но фактические прогоны здесь выполнены на Linux x64.
+
+Reproduce the ownership case and its sanitizer control after matching builds:
+
+```sh
+ctest --test-dir build/disvm -R '^disvm_live_parent_late_reply$' --output-on-failure
+ctest --test-dir build/disvm-tsan -R '^disvm_live_parent_late_reply' --output-on-failure
+```
+
+The registered normal and old-reader TSan tests passed three repetitions each:
+24 positive C/JIT/poll VM executions and six expected race controls. A final
+stricter diagnostic check also passed four positives and two controls. Generated
+JIT instructions remain outside TSan instrumentation; host C and metadata are
+instrumented. This adds a regression for the earlier fix, not another claimed
+production race fix or complete certification of all architectures.
+
+The stronger common gate initially passed 39/40 registered callers. Its remaining
+file-overlap fixture waited for a transient global peak of exactly three native
+leases. Both file writers could already be outside the heap while the unrelated
+parent had finished formatted output; then the valid peak was only two. The
+application had made the required independent progress, but the harness timed out.
+
+The file observer now holds the first genuine native port write and observes the
+real condition-wait inside `dvm_file_gate_enter` on that same gate before releasing
+the head. It forwards every real admission/wait/write, preserves the unrelated
+actor marker, exact two bytes, gate contention and complete-retirement checks,
+and does not use global lease peaks as per-FD evidence. The private relinker
+selects the matching console/editor target metadata; no LD_PRELOAD library is
+needed. The changed console probe passed ten TSan repetitions (40 C/JIT/poll
+executions). Editor execution was not run in this console workspace.
+
+Seven lifecycle suites were also rerun successfully under TSan after the common
+strict-GC check was strengthened: parent exit, table-scope kill, native kill,
+native cancel, two-table transfer, FIFO edit and resident files. Together these
+execute 128 positive VM profiles. These runs plus 28 late-reply positives and
+40 file-overlap positives provide 196 positive TSan VM executions, with eight
+separate expected old-reader controls; emitted JIT code is still not instrumented.
+
+Усиленная общая проверка сначала дала 39/40: файловый тест требовал случайного
+пика трёх native lease, хотя два писателя уже ожидали вне кучи, а независимый
+родитель успел закончить вывод. Вместо пика теперь наблюдается настоящий
+condition-wait FIFO того же FD при задержанной голове. Настоящие вызовы не
+подменяются, проверки прогресса, байтов и очистки сохранены. Эта матрица прошла
+40 TSan-запусков; ещё семь lifecycle-наборов — 128 запусков. Вместе с новым
+поздним ответом проверены 196 положительных TSan-профилей и восемь ожидаемых
+контролей старого чтения. GUI/editor в этом console-окружении не запускался.
+
+The final post-correction common gate passed 40/40 registered suites in one run,
+including the new late-reply case, file overlap, ownership/retirement and large
+graphs. Changed handwritten sources are at most 341 lines; upstream snapshots
+and production execution code are unchanged by this acceptance-only commit.
+
+Финальный общий прогон после исправления оснастки: 40/40 за один запуск.
+Изменённые исходники — максимум 341 строка; upstream и production-исполнение
+этим коммитом приёмки не изменяются.
+
 ## What remains before claiming the entire requested target
 
 - Finish reviewing cross-owner Prog.state/register reads and their publication
