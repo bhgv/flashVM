@@ -23,9 +23,11 @@ import subprocess
 # Optional module_graph_source/graph_capture_source replace only discovery indexing/capture.
 # Optional snapshot_growth_source/graph_storage_source isolate allocation refusal controls.
 # Optional graph_confirmation_source preserves real claim helpers in private refusal controls.
+# Optional runtime_main_source replaces only the host composition for queue-locked channel observations.
 # Matching private headers/flags remain mandatory.
 # RU: runtime — исходная сборка, work — личные результаты, source — wrapper,
 # variant — define, symbols — перехваты линкера; вернуть личный бинарник.
+# runtime_main_source — необязательная частная композиция host с теми же CMake-флагами.
 # Необязательные *_source заменяют только соответствующий объект личной сборки;
 # executor выбирает её режим. Ошибки сборки не считаются семантической проверкой.
 def relink(
@@ -68,6 +70,7 @@ def relink(
     snapshot_growth_source=None,
     graph_storage_source=None,
     graph_confirmation_source=None,
+    runtime_main_source=None,
 ):
     metadata = runtime.parent / "CMakeFiles/disvm.dir"
     flags = {}
@@ -132,6 +135,7 @@ def relink(
         (snapshot_growth_source, "gc/duke/snapshot_growth.c"),
         (graph_storage_source, "gc/common/graph_storage.c"),
         (graph_confirmation_source, "gc/fast/graph_confirmation.c"),
+        (runtime_main_source, "main.c"),
     ):
         if candidate is None:
             continue
@@ -154,6 +158,7 @@ def relink(
             if "/" in filename
             or filename
             in (
+                "main.c",
                 "runtime_rc.c",
                 "managed_owner.c",
                 "shared_pointer.c",

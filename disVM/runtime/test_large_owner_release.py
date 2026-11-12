@@ -10,6 +10,7 @@ import tempfile
 from rc_test_source import read_rc_source
 from relink_private import relink
 from resident_evidence import evidence
+from test_duke_pin_retirement import private_includes
 
 
 # EN: Own private real-runtime relinks using CLI runtime/compiler/include paths.
@@ -23,8 +24,11 @@ from resident_evidence import evidence
 # семантических ошибок; ошибки сборки/санитайзера/таймауты процесса не принимаются.
 def main():
     positive_only = "--positive-only" in sys.argv[1:]
+    channel_only = "--channel-only" in sys.argv[1:]
     runtime, compiler, include = (
-        Path(value).resolve() for value in sys.argv[1:] if value != "--positive-only"
+        Path(value).resolve()
+        for value in sys.argv[1:]
+        if value not in ("--positive-only", "--channel-only")
     )
     root = Path(__file__).parent
     source = read_rc_source(root)
@@ -84,6 +88,11 @@ def main():
             "    *retry = 1;\n    if (0 || !dvm_runtime_root_batch_destroy(&packet->roots) ||",
         ),
         110: ("retry |= retry_leaf && dvm_world_has_active_guest(world);", "retry |= retry_leaf;"),
+        125: (
+            "*retry |= dvm_runtime_channel_buffer_busy_snapshot(channel) ||",
+            "*retry = dvm_runtime_channel_buffer_busy_snapshot(channel) ||",
+        ),
+        126: ("*retry |= !claimed &&", "*retry = !claimed &&"),
     }
     mutations.update(
         {control: ("    *retry |= !claimed;", "    (void)retry;") for control in range(111, 117)}
@@ -109,9 +118,51 @@ def main():
             capture_output=True,
             text=True,
         )
-        positive = tuple(range(31))
-        for control in positive if positive_only else (*positive, *mutations):
+        channel_image = work / "channel.dis"
+        subprocess.run(
+            [
+                str(compiler),
+                "-I",
+                str(include),
+                "-I",
+                str(root.parent / "module"),
+                "-o",
+                str(channel_image),
+                str(root / "fixtures/resident-channel-claim/main.b"),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        positive = tuple(range(31, 35)) if channel_only else tuple(range(35))
+        host_controls = (121, 122, 123, 124, 127)
+        negatives = (125, 126, *host_controls) if channel_only else (*mutations, *host_controls)
+        for control in positive if positive_only else (*positive, *negatives):
             text = source
+            host = None
+            channel_case = control in range(31, 35) or control >= 121
+            if control in host_controls:
+                path = root / "host_runtime/channel_retirement.inc"
+                body = path.read_text()
+                gate = "if (!claimed && retry && !channel->aux)"
+                if body.count(gate) != 1:
+                    raise RuntimeError("channel observed refusal anchor drift")
+                body = body.replace(gate, "if (!claimed && retry)" if control == 127 else "if (0)")
+                if control == 127:
+                    body, count = re.subn(
+                        r"\*retry \|= channel->buf != buffer.*?;", "*retry = 1;", body, flags=re.S
+                    )
+                    if count != 1:
+                        raise RuntimeError("channel unsupported observation anchor drift")
+                fragment = work / "channel_retirement.inc"
+                fragment.write_text(body)
+                path = root / "main.c"
+                main = path.read_text().replace(
+                    '#include "host_runtime/channel_retirement.inc"',
+                    '#include "' + str(fragment) + '"',
+                )
+                host = work / "main.c"
+                host.write_text(private_includes(main, path))
             if control in mutations:
                 before, after = mutations[control]
                 if text.count(before) != 1:
@@ -139,8 +190,11 @@ def main():
                     "dvm_runtime_root_batch_clear",
                     "dvm_runtime_root_batch_destroy",
                     "dvm_runtime_rc_shared_leaves",
+                    "dvm_runtime_channel_claim_observed",
+                    "dvm_runtime_channel_waiter_published",
                 ],
                 runtime_rc_source=rc,
+                runtime_main_source=host,
             )
             profiles = (
                 [(mode, locked) for mode in ("--no-jit", "--jit") for locked in (False, True)]
@@ -156,7 +210,7 @@ def main():
                         "--stats",
                         mode,
                         *(["--gc-locked-poll"] if locked else []),
-                        str(image),
+                        str(channel_image if channel_case else image),
                     ],
                     cwd=work,
                     capture_output=True,
@@ -166,12 +220,17 @@ def main():
                 output = result.stdout + result.stderr
                 if "WARNING: ThreadSanitizer:" in output or "runtime error:" in output:
                     raise RuntimeError("large owner sanitizer failure\n" + output[-14000:])
-                if control in mutations:
+                if control not in positive:
                     marker = {
                         100: "supported mapped owner must not require retained fallback",
                         106: "shared leaf retry survives retained backlog",
                         109: "failed last claim must withdraw child roots before destruction",
                         110: "quiescent cleanup must release shared packet pressure",
+                        121: "channel claim captures temporary refusal under queue mutex",
+                        122: "channel claim captures temporary refusal under queue mutex",
+                        123: "channel claim captures temporary refusal under queue mutex",
+                        124: "channel claim captures temporary refusal under queue mutex",
+                        127: "unsupported transport channel remains a hard refusal",
                     }.get(control, "temporary leaf failure must preserve shared retry")
                     if result.returncode != 12 or marker not in output:
                         raise RuntimeError(
@@ -182,13 +241,23 @@ def main():
                     raise RuntimeError(
                         f"large owner {control} {mode} locked={locked}\n{output[-14000:]}"
                     )
-                evidence(output, children=2)
+                evidence(output, children=3 if channel_case else 2)
                 if not re.search(r"NATIVERC enqueued=(\d+) released=\1 pending=0", output):
                     raise RuntimeError("large owner queue accounting failed\n" + output[-14000:])
     print(
-        "PASS large owner release: 124 C/JIT/poll profiles, sparse/boundary/2300/alias/list/array, "
+        "PASS large owner release: "
+        + ("16 channel" if channel_only else "140")
+        + " C/JIT/poll profiles, sparse/boundary/2300/alias/list/array/channel, "
         "memory/FULL/BYTES retries, actual claim races, epochs and physical frees"
-        + ("; positive only" if positive_only else "; twenty-one semantic omission controls")
+        + (
+            "; positive only"
+            if positive_only
+            else (
+                "; seven channel semantic controls"
+                if channel_only
+                else "; twenty-eight semantic omission controls"
+            )
+        )
     )
 
 

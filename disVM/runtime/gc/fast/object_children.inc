@@ -163,10 +163,14 @@ extern int dvm_runtime_channel_buffer_busy_snapshot(Channel *channel);
 extern int dvm_runtime_channel_post_close(Channel *channel);
 
 
-/* EN: Claim the last owner of heap and return mapped descriptor on success.
- * retry reports packet pressure, an active buffer transfer or a competing retain.
- * RU: Захватить последнюю ссылку heap и вернуть дескриптор mapped при успехе.
- * retry сообщает о заполнении очереди, передаче буфера или новой ссылке. */
+/* [GC:] EN: Claim independently live heap after its reader cutoff; mapped
+ * receives an owned mover descriptor only on success. Preserve the queue-locked
+ * refusal reason in retry through later snapshots and buffered packet rollback.
+ * Request hosted waiter closure through owner mailboxes; do not execute peers.
+ * RU: После эпохи захватить живой heap; mapped получает дескриптор лишь при
+ * успехе. Сохранить причину отказа под мьютексом в retry через поздние снимки
+ * и откат пакета буфера. Закрытие hosted-ожиданий передаётся владельцам через
+ * почтовые ящики, без исполнения чужого Prog. */
 static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
 {
     Channel *channel = H2D(Channel *, heap);
@@ -178,9 +182,9 @@ static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
     Array *buffer = channel->buf;
     if (buffer == H)
     {
-        int claimed = dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0);
-        *retry = !claimed && (dvm_runtime_channel_buffer_busy_snapshot(channel) ||
-                              dvm_refcount_load_u(&heap->ref) > 1 || dvm_runtime_channel_post_close(channel));
+        int claimed = dvm_runtime_channel_claim_observed(heap, buffer, mapped, 0, retry);
+        *retry |= !claimed && (dvm_runtime_channel_buffer_busy_snapshot(channel) ||
+                               dvm_refcount_load_u(&heap->ref) > 1 || dvm_runtime_channel_post_close(channel));
         return claimed;
     }
     if (!buffer)
@@ -194,7 +198,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
     {
         return 0;
     }
-    if (dvm_runtime_channel_claim_quiet(heap, buffer, mapped, 0))
+    if (dvm_runtime_channel_claim_observed(heap, buffer, mapped, 0, retry))
     {
         if (!dvm_retirement_commit(frames, &token, packet))
         {
@@ -208,7 +212,7 @@ static int claim_quiet_channel(Heap *heap, Type **mapped, int *retry)
         abort();
     }
     free(packet);
-    *retry = dvm_runtime_channel_buffer_busy_snapshot(channel) || dvm_refcount_load_u(&heap->ref) > 1 ||
-             dvm_runtime_channel_post_close(channel);
+    *retry |= dvm_runtime_channel_buffer_busy_snapshot(channel) || dvm_refcount_load_u(&heap->ref) > 1 ||
+              dvm_runtime_channel_post_close(channel);
     return 0;
 }

@@ -271,3 +271,7 @@ void dvm_runtime_rc_set_notifier(void (*notify)(void))
 
 
 extern int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed);
+
+
+extern int dvm_runtime_channel_claim_observed(
+    Heap *heap, Array *buffer, Type **mapped, int already_claimed, int *retry); /* Queue-locked refusal reason. */

@@ -4,9 +4,12 @@
  */
 
 
-/* Finish a buffered rendezvous under NativeWorld after ALT cancellation.
- * A refill error is primary. A later release error still reaches the receiver
- * but the sender succeeds once its payload is published. */
+/* [GC:] EN: Finish channel refill after ALT cancellation. peer/channel remain
+ * independently live; refill/request and committed describe the staged transfer.
+ * Preserve the first VM error; wake peer after attempting channel-owner release.
+ * RU: Завершить refill channel после отмены ALT. peer/channel живы независимо;
+ * refill/request и committed описывают передачу. Сохранить первую VM-ошибку,
+ * разбудить peer после попытки снятия владельца канала. */
 void dvm_runtime_channel_finish_refill(
     Channel *channel, Prog *peer, int (*refill)(void *), void *request, const int *committed)
 {
@@ -33,7 +36,12 @@ void dvm_runtime_channel_finish_refill(
 extern void dvm_runtime_altgone_claimed(Prog *peer);
 
 
-/* Wake one detached waiter while the scheduler still owns its Prog. */
+/* [GC:] EN: Wake borrowed argument's detached Prog while its scheduler pins
+ * remain. Return one or raise a VM error for foreign C waits; caller catches it.
+ * No foreign Prog is executed by this thread.
+ * RU: Разбудить отсоединённый Prog argument при живых scheduler-pin. Вернуть
+ * один либо VM-ошибку для чужого C-ожидания; вызывающий её перехватывает.
+ * Чужой Prog этим потоком не исполняется. */
 static int wake_closed_channel(void *argument)
 {
     Prog *process = argument;
@@ -60,14 +68,20 @@ static int wake_closed_channel(void *argument)
 extern Progq *dvm_runtime_channel_close_preflight(Progq **queue);
 
 
-/* Test whether this queue entry participates in hosted channel completion. */
+/* [GC:] EN: Classify borrowed peer under the queue mutex; queue ownership
+ * protects its lifetime. Return whether its state uses hosted completion.
+ * RU: Под мьютексом классифицировать peer; очередь защищает его жизнь.
+ * Вернуть признак состояния с hosted-завершением. */
 static int hosted_channel_waiter(Prog *peer)
 {
     return peer && (peer->state == Psend || peer->state == Precv || peer->state == Palt);
 }
 
 
-/* Refuse another owner's claim before changing either queue. */
+/* [GC:] EN: Validate borrowed entry chain under the queue mutex before any
+ * mutation. Raise a VM error for conflicting claims or invalid pin capacity.
+ * RU: Под мьютексом проверить цепочку entry до изменений. Конфликт захвата
+ * или неверная ёмкость pin вызывает VM-ошибку. */
 static void check_close_claims(Progq *entry)
 {
     for (; entry; entry = entry->next)
@@ -83,7 +97,10 @@ static void check_close_claims(Progq *entry)
 }
 
 
-/* Reserve all eligible peers with one identity, including duplicate ALT nodes. */
+/* [GC:] EN: Pin eligible entry peers for owner under the queue mutex after
+ * complete preflight; duplicate ALT nodes share one claim. Corruption aborts.
+ * RU: После полной проверки удержать процессы entry для owner под мьютексом;
+ * повторные ALT-записи имеют один захват. Повреждение вызывает abort. */
 static void claim_close_waiters(Progq *entry, const void *owner)
 {
     for (; entry; entry = entry->next)
@@ -101,8 +118,12 @@ static void claim_close_waiters(Progq *entry, const void *owner)
 }
 
 
-/* Drain an exclusively detached chain, recording the first wake failure.
- * Only the first registration consumes the claim, even on a wake error. */
+/* [GC:] EN: Consume detached entry nodes and owner claims outside the queue
+ * mutex. Release every scheduler pin; first_error/failed retain the first caught
+ * wake error. Duplicate ALT registrations consume a claim only once.
+ * RU: Вне мьютекса снять узлы entry и захваты owner, освободить все scheduler-pin.
+ * first_error/failed сохраняют первую ошибку пробуждения. Повторные регистрации
+ * ALT потребляют захват лишь один раз. */
 static void drain_closed_queue(Progq *entry, const void *owner, char *first_error, int *failed)
 {
     while (entry)
@@ -134,20 +155,28 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
 }
 
 
+/* [GC:] EN: Borrow queue owners until guarded detach transfers their chains,
+ * buffer and mapped descriptor. Caller consumes detached outputs after unlocking.
+ * RU: Заимствовать владельцев очередей до передачи цепочек, буфера и дескриптора
+ * под guard. После unlock вызывающий потребляет отсоединённые выходы. */
 typedef struct ClosedQueues
 {
     Channel *channel;   /* Whole-channel finalization only. */
-    Progq **send_owner;
+    Progq **send_owner; /* Borrowed first queue owner until detach. */
     Progq **recv_owner; /* NULL for the single-queue entry point. */
-    Progq *send;
-    Progq *recv;
-    Array *buffer; /* Transferred buffer owner after successful detach. */
-    Type *mapped;  /* Transferred mover descriptor owner, if present. */
+    Progq *send;        /* Detached first chain owned by this operation. */
+    Progq *recv;        /* Detached second chain, if present. */
+    Array *buffer;      /* Transferred buffer owner after successful detach. */
+    Type *mapped;       /* Transferred mover descriptor owner, if present. */
 } ClosedQueues;
 
 
-/* Validate and detach both owners while the queue mutex is held.
- * Wakeups run later and may themselves remove sibling registrations. */
+/* [GC:] EN: Validate borrowed ClosedQueues argument under the queue mutex,
+ * then transfer both queue owners and optional channel resources. Return one;
+ * VM refusal precedes mutation. Later wakeups may remove sibling registrations.
+ * RU: Под мьютексом проверить ClosedQueues argument, затем передать очереди
+ * и ресурсы канала. Вернуть один; VM-отказ предшествует изменениям. Позднее
+ * пробуждение может снимать соседние регистрации. */
 static int detach_closed_queues(void *argument)
 {
     ClosedQueues *queues = argument;
@@ -186,7 +215,11 @@ static int detach_closed_queues(void *argument)
 }
 
 
-/* Detach under the queue mutex and wake after unlocking. */
+/* [GC:] EN: Detach the borrowed queue owner under its mutex, then consume
+ * nodes/pins and wake outside it. Propagate the first VM error after cleanup.
+ * Caller keeps queue storage live and supplies destructor admission.
+ * RU: Под мьютексом отсоединить queue, затем снять узлы/pin и разбудить снаружи.
+ * После очистки передать первую VM-ошибку. Вызывающий удерживает память очереди и допуск. */
 void killcomm(Progq **queue)
 {
     ClosedQueues queues = {nil, queue, nil, nil, nil, H, nil};
@@ -201,7 +234,10 @@ void killcomm(Progq **queue)
 }
 
 
-/* Caller holds the channel queue mutex. Empty queues may own sentinels. */
+/* [GC:] EN: Snapshot borrowed channel quietness under the queue mutex.
+ * Empty queues may own distinct sentinels. Return boolean without mutation.
+ * RU: Под мьютексом проверить спокойное состояние channel. Пустые очереди
+ * могут владеть разными sentinel. Вернуть bool без изменений. */
 static int channel_quiet(Channel *channel)
 {
     Progq *send = channel->send;
@@ -211,6 +247,10 @@ static int channel_quiet(Channel *channel)
 }
 
 
+/* [GC:] EN: Query independently live channel with the queue mutex. Return
+ * only an observation, never a reservation, root or last-owner claim.
+ * RU: Под мьютексом проверить живой channel. Вернуть лишь наблюдение,
+ * не резервацию, корень или захват последнего владельца. */
 int dvm_runtime_channel_is_quiet(Channel *channel)
 {
     fvm_port_sync_lock(channel_queue_mutex);
@@ -220,31 +260,52 @@ int dvm_runtime_channel_is_quiet(Channel *channel)
 }
 
 
-/* EN: Post a close message to owners of the waits registered on channel.
- * Return zero for waiters outside dedicated mode or transport-owned channels.
- * RU: Передать закрытие владельцам ожиданий на channel. Вернуть ноль для
- * ожиданий вне выделенного режима или каналов под управлением транспорта. */
+/* [GC:] EN: Classify committed waits on borrowed channel under the queue mutex.
+ * Return one for hosted waiters, zero when none exist, minus one for unsupported
+ * transport/native waiters. No queue mutation, retain or message occurs.
+ * RU: Классифицировать ожидания заимствованного channel под мьютексом очереди.
+ * Один — hosted-ожидания, ноль — пусто, минус один — транспорт/чужие native-
+ * ожидания. Очереди, ссылки и почтовые ящики не меняются. */
+static int channel_waiter_kind(Channel *channel)
+{
+    if (!native_spawn || channel->aux)
+    {
+        return -1;
+    }
+    Progq *queues[] = {channel->send, channel->recv};
+    int found = 0;
+    for (size_t index = 0; index < sizeof(queues) / sizeof(*queues); index++)
+    {
+        for (Progq *entry = queues[index]; entry; entry = entry->next)
+        {
+            if (entry->prog)
+            {
+                if (!hosted_channel_waiter(entry->prog))
+                {
+                    return -1;
+                }
+                found = 1;
+            }
+        }
+    }
+    return found;
+}
+
+
+/* [GC:] EN: Post close messages to hosted owners waiting on borrowed channel.
+ * Unsupported/empty queues return zero unchanged. The queue mutex protects
+ * process identities through send/wake; no foreign Prog executes on this thread.
+ * RU: Передать закрытие hosted-владельцам, ожидающим заимствованный channel.
+ * Чужие/пустые очереди возвращают ноль без изменений. Мьютекс защищает личности
+ * процессов до send/wake; чужой Prog не исполняется этим потоком. */
 int dvm_runtime_channel_post_close(Channel *channel)
 {
     int posted = 0;
     fvm_port_sync_lock(channel_queue_mutex);
-    if (native_spawn && !channel->aux)
+    if (channel_waiter_kind(channel) > 0)
     {
         Progq *queues[] = {channel->send, channel->recv};
-        int supported = 1;
-        for (size_t index = 0; supported && index < sizeof(queues) / sizeof(*queues); index++)
-        {
-            for (Progq *entry = queues[index]; entry; entry = entry->next)
-            {
-                Prog *peer = entry->prog;
-                if (peer && !hosted_channel_waiter(peer))
-                {
-                    supported = 0;
-                    break;
-                }
-            }
-        }
-        for (size_t index = 0; supported && index < sizeof(queues) / sizeof(*queues); index++)
+        for (size_t index = 0; index < sizeof(queues) / sizeof(*queues); index++)
         {
             for (Progq *entry = queues[index]; entry; entry = entry->next)
             {
@@ -266,15 +327,34 @@ int dvm_runtime_channel_post_close(Channel *channel)
 }
 
 
-/* Try the callback-free last-owner path after the reader epoch. */
-int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed)
+/* [GC:] EN: Try the callback-free claim after the reader cutoff. heap remains
+ * live; buffer is a captured H/array identity and is not dereferenced here.
+ * mapped receives an owned mover descriptor only on
+ * success. already_claimed selects graph count zero versus a last-count CAS.
+ * Under the same queue mutex preserve transient refusal in optional retry:
+ * changed buffer, active transfer, hosted waits or a lost quiet claim. Transport
+ * and foreign-waiter refusal remain hard. Failed calls do not detach ownership.
+ * RU: После эпохи читателей попробовать захват без callbacks. heap жив;
+ * buffer — сохранённая H/array-идентичность, здесь не разыменовывается.
+ * mapped получает дескриптор лишь при успехе. already_claimed выбирает нулевой
+ * счётчик графа либо последний CAS. Под тем же мьютексом сохранить в retry
+ * временную причину отказа: смену буфера, передачу, hosted-ожидания или отказ
+ * спокойного захвата. Транспорт/чужие ожидания остаются жёстким отказом.
+ * Неудача не отсоединяет владение. */
+int dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **mapped, int already_claimed, int *retry)
 {
     Channel *channel = H2D(Channel *, heap);
     fvm_port_sync_lock(channel_queue_mutex);
     Progq *send = channel->send;
     Progq *recv = channel->recv;
-    int claimed = channel->buf == buffer && channel_quiet(channel) &&
+    int quiet = channel_quiet(channel);
+    int claimed = channel->buf == buffer && quiet &&
                   (already_claimed ? dvm_refcount_load_u(&heap->ref) == 0 : dvm_refcount_claim_last_u(&heap->ref));
+    if (!claimed && retry && !channel->aux)
+    {
+        *retry |= channel->buf != buffer || quiet || dvm_runtime_channel_buffer_busy(channel) ||
+                  channel_waiter_kind(channel) > 0;
+    }
     if (claimed)
     {
         *mapped = channel->mover == movtmp ? channel->mid.t : nil;
@@ -292,8 +372,26 @@ int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, in
 }
 
 
-/* Finalize both queue owners together. NativeWorld keeps the channel and
- * registered processes live through resource release. */
+/* [GC:] EN: Compatibility claim for graph finalization and existing callers.
+ * Forward borrowed heap/buffer and owned mapped output unchanged; no retry
+ * output is requested. already_claimed keeps its original count-zero meaning.
+ * RU: Совместимый захват для графов и прежних вызовов. Передать heap/buffer и
+ * выход mapped без изменения, без выхода retry. already_claimed сохраняет
+ * прежний смысл нулевого счётчика. */
+int dvm_runtime_channel_claim_quiet(Heap *heap, Array *buffer, Type **mapped, int already_claimed)
+{
+    return dvm_runtime_channel_claim_observed(heap, buffer, mapped, already_claimed, NULL);
+}
+
+
+/* [GC:] EN: Finalize borrowed channel under caller-supplied destructor
+ * admission. Guarded detach transfers queues/buffer/mover ownership; wake and
+ * release after unlocking. swept suppresses ordinary buffer destruction. Retain
+ * the first VM error until cleanup finishes; no arbitrary shared callback is authorized.
+ * RU: Завершить channel под допуском деструктора вызывающего. Guard передаёт
+ * очереди/буфер/mover; пробуждение и снятие ссылок идут после unlock. swept
+ * подавляет обычное разрушение буфера. Первую VM-ошибку передать после очистки;
+ * произвольный shared-callback не разрешается. */
 void dvm_runtime_channel_finalize(Channel *channel, int swept)
 {
     ClosedQueues queues = {channel, &channel->send, &channel->recv, nil, nil, H, nil};
@@ -318,7 +416,12 @@ void dvm_runtime_channel_finalize(Channel *channel, int swept)
 }
 
 
-/* Retained runt.c provides string services; hosted FD services use platform ports. */
+/* [GC:] EN: Legacy Sys.FD callback for independently live heap; swept is unused.
+ * Close only hosted descriptors 3..31 through platform ports. This is not a
+ * declaration of arbitrary-callback safety under shared admission.
+ * RU: Старый callback Sys.FD живого heap; swept не используется. Закрыть лишь
+ * hosted-дескрипторы 3..31 через порты. Безопасность произвольных shared-callback
+ * этим не объявляется. */
 static void free_fd(Heap *heap, int swept)
 {
     Sys_FD *fd = H2D(Sys_FD *, heap);

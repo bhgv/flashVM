@@ -19,6 +19,10 @@ void __wrap_Sys_werrstr(void *frame)
         pthread_cond_wait(&changed, &sync);
     }
     pthread_mutex_unlock(&sync);
+    if (IsChannel)
+    {
+        probe_real_channel_waiter();
+    }
     Type *unknown_type = dtype(unknown_destructor, sizeof(void *), NULL, 0);
     require(unknown_type != NULL, "actual unsupported descriptor");
     Heap *retained = heapz(unknown_type);
@@ -34,7 +38,7 @@ void __wrap_Sys_werrstr(void *frame)
         map[index / 8] |= 0x80U >> (index % 8);
     }
     uchar pointer_map = 0x80;
-    Type *type = IsArray
+    Type *type = IsArray || IsChannel
                      ? dtype(freeheap, sizeof(void *), &pointer_map, 1)
                      : dtype(freeheap, Slots * sizeof(void *), Case == 26 ? NULL : map, Case == 26 ? 0 : sizeof(map));
     require(type != NULL, "actual wide mapped descriptor");
@@ -43,7 +47,19 @@ void __wrap_Sys_werrstr(void *frame)
     Heap *local_children[Children + 1];
     unsigned local_occurrences[Children + 1] = {0};
     unsigned used = 0;
-    if (IsList)
+    if (IsChannel)
+    {
+        Channel *channel = cnewc(type, MappedChannel ? movtmp : movp, BufferedChannel ? 1 : 0);
+        container = D2H(channel);
+        fields = NULL;
+        if (BufferedChannel)
+        {
+            require(channel->buf && channel->buf != H, "actual buffered channel allocation");
+            local_children[used] = D2H(channel->buf);
+            local_occurrences[used++] = 1;
+        }
+    }
+    else if (IsList)
     {
         container = nheap(offsetof(List, data) + Slots * sizeof(void *));
         require(dvm_refcount_retain_i(&Tlist.ref) == DVM_REFCOUNT_LIVE &&
@@ -87,7 +103,7 @@ void __wrap_Sys_werrstr(void *frame)
         container = heapz(type);
         fields = H2D(void **, container);
     }
-    for (unsigned index = 0; index < Slots; index++)
+    for (unsigned index = 0; !IsChannel && index < Slots; index++)
     {
         fields[index] = H;
         if (NoChildren || (Case == 1 && index != Slots - 1))
@@ -155,7 +171,7 @@ void __wrap_Sys_werrstr(void *frame)
     freetype(type);
     pthread_mutex_lock(&sync);
     require((Fault ? refusals >= 8 && failure_passes >= 8 : !refusals) &&
-                races == (Race || EmptyRace || EligibilityRace),
+                races == (Race || EmptyRace || EligibilityRace || IsChannel),
             "actual pressure responses and competing last-claim evidence");
     require(!vector && vectors == vector_frees && (IsArray || Owners <= 512 ? !vectors : vectors != 0),
             "temporary vector cardinality and balanced frees");

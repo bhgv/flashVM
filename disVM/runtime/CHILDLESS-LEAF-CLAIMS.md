@@ -74,6 +74,10 @@ sanitizer warnings. All 21 omission controls produced their required semantic
 errors. Changed handwritten sources are at most 214 lines; upstream is unchanged.
 This is scoped validation, not a passing claim for the entire repository suite.
 
+[Channel claim retry](CHANNEL-CLAIM-RETRY.md) subsequently adds queue-locked
+refusal capture, four channel shapes and real hosted close delivery. The current
+default matrix contains 140 positive applications and 28 semantic omissions.
+
 General stopped tracing, unknown callbacks, specialized native claims, hard graph
 limits and stopped shutdown remain. Execution coverage is Linux x86-64; emitted
 JIT instructions are outside C TSan instrumentation. ARM64/RV64 execution is not

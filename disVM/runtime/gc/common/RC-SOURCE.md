@@ -37,6 +37,10 @@ retained work. Small-object capture uses one traversal and local key storage.
 [Childless last claims](../../CHILDLESS-LEAF-CLAIMS.md) share a leaf-local helper
 that preserves failed atomic claims independently of a later reference sample.
 
+[Observed channel claims](../../CHANNEL-CLAIM-RETRY.md) capture refusal under the
+host queue mutex; Fast preserves that result through later samples and packet
+rollback. The legacy graph-finalization boolean entry remains available.
+
 `graph_capture.c` separately composes [graph_classification.inc](graph_classification.inc)
 for complete-capture reachability and fresh Duke owner checks. That fragment has
 no independent state; it does not participate in `runtime_rc.c` expansion.

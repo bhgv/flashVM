@@ -190,6 +190,17 @@ void dvm_runtime_gc_owner_lost(void)
 }
 
 
+/* [GC:] EN: Wrong-role contexts must never reach observed channel claims.
+ * Forward all arguments to the same fatal role boundary; retry is not changed.
+ * RU: Неверная роль не должна дойти до захвата канала с причиной отказа.
+ * Передать аргументы той же фатальной границе ролей; retry не меняется. */
+int dvm_runtime_channel_claim_observed(Heap *heap, Array *buffer, Type **mapped, int already_claimed, int *retry)
+{
+    (void)retry;
+    return dvm_runtime_channel_claim_quiet(heap, buffer, mapped, already_claimed);
+}
+
+
 /* A genuine stopped-world collector has no ACTIVE mutator admission. world is
  * borrowed through parent join; the collector context unregisters before exit. */
 static void collector(void *argument)

@@ -51,6 +51,12 @@
 #define Case 16             /* Real scenario for private semantic omission 110. */
 #elif CONTROL >= 111 && CONTROL <= 120
 #define Case (CONTROL - 90) /* Real childless claim scenario for each omission. */
+#elif CONTROL >= 121 && CONTROL <= 124
+#define Case (CONTROL - 90) /* Channel observation omission, one per native shape. */
+#elif CONTROL == 125
+#define Case 32             /* Buffered rollback must preserve the observed reason. */
+#elif CONTROL == 126 || CONTROL == 127
+#define Case 31             /* Unbuffered refusal and unsupported transport boundary. */
 #else
 #error Unknown large owner omission control
 #endif
@@ -59,15 +65,23 @@
     (Case == 5 || Case == 17 || Case == 20 || Case == 24 || Case == 25 || Case == 30) /* Actual list tail/data shape. */
 #define IsArray                                                                                                        \
     ((Case >= 12 && Case <= 15) || Case == 19 || Case == 22 || Case == 23 || Case == 28 ||                             \
-     Case == 29)                                                   /* Actual Tarray. */
-#define Slots (Case == 2 || IsList ? 512 : Case == 3 ? 513 : 2300) /* Mapped data slots, including nil. */
+     Case == 29)                                                         /* Actual Tarray. */
+#define IsChannel (Case >= 31 && Case <= 34)                             /* Actual cnewc channel. */
+#define BufferedChannel (Case == 32 || Case == 34)                       /* Real owned array buffer. */
+#define MappedChannel (Case == 33 || Case == 34)                         /* Real movtmp descriptor owner. */
+#define Slots                                                                                                          \
+    (IsChannel ? 1 : Case == 2 || IsList ? 512 : Case == 3 ? 513 : 2300) /* Mapped data slots, including nil. */
 #define EmptyRace (Case >= 21 && Case <= 26)       /* Actual temporary retain at a childless atomic claim. */
 #define EligibilityRace (Case >= 27 && Case <= 30) /* Actual temporary retain at the preliminary count read. */
-#define NoChildren (Case == 0 || EmptyRace || EligibilityRace)   /* Nil maps or no mapped storage/descriptor. */
-#define Owners (NoChildren ? 0 : Case == 1 ? 1 : Slots + IsList) /* Strong occurrences, including aliases. */
-#define Children (Case == 6 ? 1 : Owners)                        /* Distinct allocations that must physically free. */
-#define Assist (Case == 16)             /* Unknown retained callback releases persistent packet malloc pressure. */
-#define Race (Case >= 18 && Case <= 20) /* Real retain between child-root publication and last claim. */
+#define NoChildren (Case == 0 || EmptyRace || EligibilityRace) /* Nil maps or no mapped storage/descriptor. */
+#define Owners                                                                                                         \
+    (IsChannel    ? BufferedChannel                                                                                    \
+     : NoChildren ? 0                                                                                                  \
+     : Case == 1  ? 1                                                                                                  \
+                  : Slots + IsList)        /* Strong occurrences, including aliases. */
+#define Children (Case == 6 ? 1 : Owners) /* Distinct allocations that must physically free. */
+#define Assist (Case == 16)               /* Unknown retained callback releases persistent packet malloc pressure. */
+#define Race (Case >= 18 && Case <= 20)   /* Real retain between child-root publication and last claim. */
 
 
 /* [GC:] EN: Native fault identity; no managed ownership is simulated.
@@ -179,4 +193,5 @@ int __real_dvm_runtime_rc_defer(void *);
 #include "test_large_owner_faults.inc"
 #include "test_empty_leaf_claim.inc"
 #include "test_large_owner_observers.inc"
+#include "test_channel_claim_probe.inc"
 #include "test_large_owner_case.inc"
