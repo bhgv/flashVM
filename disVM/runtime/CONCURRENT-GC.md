@@ -168,3 +168,12 @@ the root and journal cursor for shared retry. General stopped tracing remains.
 snapshot allocation failure from the hard byte limit. Initial and growing
 allocation refusal retain shared processing; supported candidates no longer
 route to retained cleanup solely because snapshot allocation failed.
+
+[Completed graph publication](DUKE-PUBLICATION-RETRY.md) now retries temporary
+metadata refusal while Duke retains its complete discovery. Prepared native
+buffers are freed and the leaf reservation cancelled before retry; no retirement
+epoch is consumed for a failed preparation. General stopped tracing remains.
+
+[Fast readiness retry](FAST-READINESS-RETRY.md) avoids a quiescent-only Fast
+attempt while a guest is known active, including new work arriving after an
+empty shared sample. Actual quiescent acquisition remains authoritative.

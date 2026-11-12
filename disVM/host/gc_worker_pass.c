@@ -101,6 +101,16 @@ DVM_GCWorkResult dvm_gc_worker_collect(DVM_GCWorker *worker, int requested, int 
     }
     if (worker->kind == DVM_GC_FAST ? workers->config.fast_quiescent_only : workers->config.cycles_quiescent_only)
     {
+        /* [GC:] EN: Work may arrive after an empty shared sample. An admitted
+         * guest rules out this quiescent pass; leave new work for shared retry.
+         * This is only a hint: the actual acquisition still rechecks admission.
+         * RU: После пустого shared-замера может прийти работа. Активный гость
+         * исключает quiescent-проход; повторить shared. Захват всё равно
+         * проверяет допуск повторно, наблюдение ничего не резервирует. */
+        if (worker->kind == DVM_GC_FAST && dvm_world_has_active_guest(workers->config.world))
+        {
+            return DVM_GC_MORE;
+        }
         if (!dvm_world_try_quiescent(workers->config.world, worker->context))
         {
             return DVM_GC_MORE;

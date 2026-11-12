@@ -30,4 +30,10 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_duke_pin_retirement.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_duke_pin_retirement PROPERTIES TIMEOUT 120)
+    add_executable(disvm_fast_readiness_test test_fast_readiness.c)
+    target_link_libraries(disvm_fast_readiness_test PRIVATE disvm_flashvm_host)
+    set_target_properties(disvm_fast_readiness_test PROPERTIES LINK_FLAGS "-Wl,--wrap=dvm_world_try_quiescent")
+    add_test(NAME disvm_fast_readiness COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_fast_readiness.py" "$<TARGET_FILE:disvm_fast_readiness_test>")
+    set_tests_properties(disvm_fast_readiness PROPERTIES TIMEOUT 30)
 endif()

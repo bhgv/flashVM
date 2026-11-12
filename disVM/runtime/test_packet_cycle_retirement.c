@@ -63,10 +63,12 @@ static int snapshot_refused;                 /* A genuine published snapshot was
 static int outside_live; /* Independently rooted native owner keeps the cycle reachable, under sync. */
 static int live_seen;    /* Actual Cycles release observed with that outside owner, under sync. */
 static int cycles_open;  /* Allow actual Cycles work after intended overlap. */
-static _Thread_local int ticket_candidate; /* Outside ticket source-root interval, on Fast only. */
-static _Thread_local Heap *key_target;     /* Current Fast candidate-key observation. */
-static _Thread_local int declined;         /* Next different queue reserve is the preserving handoff. */
-static _Thread_local int staging;          /* Replacement-root attempt following that reservation. */
+static _Thread_local int ticket_candidate;      /* Outside ticket source-root interval, on Fast only. */
+static _Thread_local Heap *key_target;          /* Current Fast candidate-key observation. */
+static _Thread_local int declined;              /* Next different queue reserve is the preserving handoff. */
+static _Thread_local int staging;               /* Replacement-root attempt following that reservation. */
+
+static _Thread_local int packet_retry_observed; /* Actual mandatory FULL inside the current Fast callback. */
 
 
 int __real_dvm_runtime_guest_sleep(unsigned long);
@@ -221,6 +223,7 @@ __wrap_dvm_retirement_reserve(DVM_RetirementQueue *queue, unsigned long bytes, D
         if (profile() == 3 && slot_passes < 8)
         {
             slot_refused = 1;
+            packet_retry_observed = 1;
             pthread_mutex_unlock(&sync);
             return DVM_RETIRE_FULL;
         }

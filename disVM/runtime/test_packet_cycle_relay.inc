@@ -99,7 +99,9 @@ unsigned int __wrap_dvm_runtime_rc_shared_candidates(DVM_NativeContext *context,
  * выдумывать; передать настоящий результат context/budget. */
 unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
+    packet_retry_observed = 0;
     unsigned int work = __real_dvm_runtime_rc_shared_leaves(context, budget);
+    require(!packet_retry_observed || work, "packet slot refusal failed to report shared retry");
     pthread_mutex_lock(&sync);
     if (work && slot_refused && !spills)
     {

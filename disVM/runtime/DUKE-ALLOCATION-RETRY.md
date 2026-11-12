@@ -88,3 +88,6 @@ The 4 MiB snapshot bound remains, as do general stopped tracing, unsupported
 native finalizers and stopped shutdown. Validation here targets Linux x86-64;
 generated JIT instructions are outside C ThreadSanitizer instrumentation.
 ARM64/RV64 execution is not established by these tests.
+
+[Completed publication retry](DUKE-PUBLICATION-RETRY.md) subsequently extends the
+fixture to 36 positive applications and thirteen semantic omission controls.

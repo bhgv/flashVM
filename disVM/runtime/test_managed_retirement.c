@@ -80,6 +80,8 @@ static void require(int condition, const char *message)
     }
 }
 
+#include "test_managed_epoch_retry.inc"
+
 
 /* EN: Return monotonic milliseconds for a bounded diagnostic, never a success oracle.
  * RU: Вернуть монотонное время для ограничения диагностики, не критерия успеха. */
@@ -295,7 +297,11 @@ void __wrap_poolfree(Pool *pool, void *value)
  */
 unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
+    leaf_scan_active = 1;
+    leaf_retry_observed = 0;
     unsigned int work = CONTROL == 7 ? 0 : __real_dvm_runtime_rc_shared_leaves(context, budget);
+    leaf_scan_active = 0;
+    require(!leaf_retry_observed || work, "RC leaf wait failed to report shared retry");
     pthread_mutex_lock(&sync);
     if (second_held && final_handoffs == 1 && dvm_managed_owner_pending() == 0 && work)
     {

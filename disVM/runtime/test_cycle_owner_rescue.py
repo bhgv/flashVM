@@ -123,7 +123,7 @@ def main():
                         3: "shared cycle owner was dropped before publication",
                         4: "cycle owner rescue still requires heap quiescence",
                         5: "mandatory cycle root disappeared before destination commit",
-                        6: "pending cycle owner requested stopped Fast admission",
+                        6: "pending cycle owner failed to report shared retry",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(

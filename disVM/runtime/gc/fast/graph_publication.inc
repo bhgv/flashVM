@@ -41,10 +41,16 @@ static void unlink_record_group(const RecordGroup *group)
 }
 
 
-/* EN: Publish group for Fast using guarded fields or existing Duke pins.
- * shared selects the parallel path. retry reports transient pressure.
- * RU: Передать group в Fast под защитой полей или с удержаниями ДюкGC.
- * shared выбирает параллельный путь. retry сообщает о временном отказе. */
+/* [GC:] EN: Publish caller-owned group for Fast under guarded fields or existing
+ * Duke pins. shared selects parallel admission. Return 1 after transfer; retry
+ * reports transient queue/metadata pressure with ownership unchanged. Prepare
+ * all native allocations before advancing the reader epoch. Epoch exhaustion
+ * remains a hard refusal. The caller retains discovery on a shared retry.
+ * RU: Передать собственный group в Fast под guards или удержаниями Duke.
+ * shared выбирает параллельный допуск. Вернуть 1 после передачи; retry сообщает
+ * временный отказ очереди/метаданных без смены владения. Все native-выделения
+ * предшествуют продвижению эпохи. Исчерпание эпох — жёсткий отказ; при shared-
+ * повторе вызывающий сохраняет обход. */
 static int defer_record_group(RecordGroup *group, int shared, int *retry)
 {
     *retry = 0;
@@ -86,9 +92,10 @@ static int defer_record_group(RecordGroup *group, int shared, int *retry)
     FrameRetirement *records = malloc(packet_bytes);
     RecordGroup *snapshot = dvm_rc_copy_record_group(group, edges, H);
     DVM_RootBatch *roots = dvm_runtime_root_batch_create(group->nodes_used);
-    unsigned long epoch = dvm_world_retire_epoch(world);
+    unsigned long epoch = entry && records && snapshot && roots ? dvm_world_retire_epoch(world) : 0;
     if (!entry || !records || !snapshot || !roots || !epoch)
     {
+        *retry = !entry || !records || !snapshot || !roots;
         if (roots)
         {
             dvm_runtime_root_batch_destroy(&roots);

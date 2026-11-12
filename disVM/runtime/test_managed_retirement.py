@@ -101,6 +101,7 @@ def main():
                     "dvm_runtime_rc_shared_leaves",
                     "poolfree",
                     "dvm_world_try_quiescent",
+                    "dvm_world_epoch_elapsed",
                     "dvm_world_stop_begin",
                 ],
                 managed_retirement_source=replacement,
@@ -138,7 +139,7 @@ def main():
                         6: "managed object destruction still requires heap quiescence",
                         7: "managed object destruction still requires heap quiescence",
                         8: "physical destruction overlaps admitted peers after the reader epoch",
-                        9: "RC leaf wait requested stopped admission",
+                        9: "RC leaf wait failed to report shared retry",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(f"control {control} was not detected\n" + text[-12000:])

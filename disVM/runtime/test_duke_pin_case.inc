@@ -141,8 +141,11 @@ void __wrap_Sys_werrstr(void *frame)
     require(success, "Duke pin retirement still requires heap quiescence");
     require(refused && mutated && seed_drained && commits, "actual stale discovery and preserved pins observed");
     require(SCENARIO != 1 || (slot_refused && slot_passes >= 8), "mandatory pressure retry observed");
-    require(SCENARIO < 2 || (allocation_refusals >= 8 && allocation_passes >= 8),
+    require((SCENARIO != 2 && SCENARIO != 3) || (allocation_refusals >= 8 && allocation_passes >= 8),
             "eight real shared Duke allocation retries observed");
+    require(SCENARIO < 4 || (publication_refusals == 8 && publication_passes == 8 && publication_captures == 1 &&
+                             publication_success),
+            "publication retries preserve one actual complete discovery");
     dvm_runtime_gc_native_enter(native);
     require(dvm_refcount_load_i(&source_type->ref) == 1 && dvm_refcount_load_i(&ring_type->ref) == 1,
             "all physical source/ring Type owners retired");
@@ -152,6 +155,12 @@ void __wrap_Sys_werrstr(void *frame)
     released = 1;
     pthread_cond_broadcast(&changed);
     pthread_mutex_unlock(&sync);
+    fprintf(stderr,
+            "DUKEPUBLICATION refused=%u passes=%u captures=%u committed=%u\n",
+            publication_refusals,
+            publication_passes,
+            publication_captures,
+            publication_success);
     fprintf(stderr, "DUKEALLOCATION refused=%u passes=%u\n", allocation_refusals, allocation_passes);
     fprintf(stderr,
             "PASS Duke pin retirement detached=%u targets=%u commits=%u pressure=%d passes=%u\n",

@@ -140,7 +140,7 @@ def main():
                     marker = {
                         7: "packet cycle owner lost its replacement root",
                         8: "packet cycle owner lost its replacement root",
-                        9: "packet cycle requested stopped Fast admission",
+                        9: "packet slot refusal failed to report shared retry",
                         10: "packet cursor advanced past an untransferred owner",
                         12: "ticket cycle published before source-root withdrawal",
                     }[control]

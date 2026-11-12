@@ -118,7 +118,7 @@ def main():
                     raise RuntimeError("module retirement sanitizer failure\n" + text[-12000:])
                 if control not in positive_controls:
                     marker = {
-                        4: "module retirement requested stopped Fast admission",
+                        4: "ordinary module retirement still requires heap quiescence",
                         5: "module data lacks its transferred root",
                         6: "module finalized before reader epoch elapsed",
                         7: "module retry leaked staged data roots",

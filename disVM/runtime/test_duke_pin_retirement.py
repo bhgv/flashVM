@@ -36,7 +36,8 @@ def private_includes(source, path):
 # retire with admitted peers. Controls require exact semantic failures, never
 # build errors, signal, process timeout or sanitizer warning. --positive-only
 # omits intentional violations; --allocation-only selects just the two positive
-# snapshot allocation scenarios.
+# snapshot allocation scenarios; --publication-only selects the five actual
+# publication metadata allocation positions.
 # RU: Владеть C/JIT приложениями и частными бинарниками по CLI путям. Требовать
 # снятия настоящего seed старого ребра до отмены pin Duke. Отдельный цикл
 # освобождается до снятия внешнего source, затем все объекты при допущенных
@@ -44,10 +45,11 @@ def private_includes(source, path):
 def main():
     positive_only = "--positive-only" in sys.argv[1:]
     allocation_only = "--allocation-only" in sys.argv[1:]
+    publication_only = "--publication-only" in sys.argv[1:]
     runtime, compiler, include = (
         Path(value).resolve()
         for value in sys.argv[1:]
-        if value not in ("--positive-only", "--allocation-only")
+        if value not in ("--positive-only", "--allocation-only", "--publication-only")
     )
     root = Path(__file__).parent
     with tempfile.TemporaryDirectory(prefix="Duke pin retirement ") as temporary:
@@ -68,9 +70,15 @@ def main():
             capture_output=True,
             text=True,
         )
-        positive = (6, 7) if allocation_only else (0, 1, 6, 7)
+        positive = (
+            (12, 13, 14, 15, 16)
+            if publication_only
+            else ((6, 7) if allocation_only else (0, 1, 6, 7, 12, 13, 14, 15, 16))
+        )
         controls = (
-            positive if positive_only or allocation_only else (*positive, 2, 3, 4, 5, 8, 9, 10, 11)
+            positive
+            if positive_only or allocation_only or publication_only
+            else (*positive, 2, 3, 4, 5, 8, 9, 10, 11, 17, 18, 19, 20, 21)
         )
         for control in controls:
             rc = capture = growth = storage = None
@@ -93,6 +101,27 @@ def main():
                 gate, changed = gates[control]
                 if source.count(gate) != 1:
                     raise RuntimeError("Duke pin control anchor changed: " + str(control))
+                rc = work / "runtime_rc.c"
+                rc.write_text(source.replace(gate, changed))
+            if control >= 17:
+                source = read_rc_source(root)
+                cleanup = "free(snapshot);\n        free(records);\n        free(entry);\n        dvm_retirement_cancel(leaves, &token);\n        return 0;"
+                gates = {
+                    17: ("*retry = !entry || !records || !snapshot || !roots;", "*retry = 0;"),
+                    18: ("        duke_publish_pending = 1;", ""),
+                    19: (
+                        cleanup,
+                        cleanup.replace("        dvm_retirement_cancel(leaves, &token);\n", ""),
+                    ),
+                    20: (cleanup, cleanup.replace("        free(records);\n", "")),
+                    21: (
+                        "entry && records && snapshot && roots ? dvm_world_retire_epoch(world) : 0",
+                        "dvm_world_retire_epoch(world)",
+                    ),
+                }
+                gate, changed = gates[control]
+                if source.count(gate) != 1:
+                    raise RuntimeError("Duke publication control anchor changed: " + str(control))
                 rc = work / "runtime_rc.c"
                 rc.write_text(source.replace(gate, changed))
             if control == 4:
@@ -132,6 +161,10 @@ def main():
                 Path(__file__).with_suffix(".c"),
                 control,
                 [
+                    "malloc",
+                    "free",
+                    "dvm_retirement_cancel",
+                    "dvm_world_retire_epoch",
                     "calloc",
                     "dvm_rc_grow_record_group",
                     "dvm_rc_scan_candidate",
@@ -186,6 +219,11 @@ def main():
                         9: "initial Duke allocation must remain shared",
                         10: "transient Duke growth escaped to fallback",
                         11: "hard Duke limit must remain distinct from allocation retry",
+                        17: "metadata refusal must retain complete Duke publication",
+                        18: "metadata retry repeated Duke discovery",
+                        19: "failed metadata reservation must be cancelled",
+                        20: "failed publication metadata must be freed",
+                        21: "failed metadata must not consume retirement epoch",
                     }[control]
                     if result.returncode != 12 or marker not in text:
                         raise RuntimeError(f"Duke pin control {control} missed\n{text[-12000:]}")
@@ -198,6 +236,16 @@ def main():
                 evidence(text, children=2)
                 if control in (6, 7) and not re.search(r"DUKEALLOCATION refused=8 passes=8", text):
                     raise RuntimeError("actual Duke allocation retries missing\n" + text[-12000:])
+                if control in (12, 13, 14, 15, 16) and not re.search(
+                    r"DUKEPUBLICATION refused=8 passes=8 captures=1 committed=1", text
+                ):
+                    raise RuntimeError("actual Duke publication retries missing\n" + text[-12000:])
+                if control in (12, 13, 14, 15, 16):
+                    retries = re.search(r"NATIVEDUKEGC .*?publish_retries=(\d+)", text)
+                    if not retries or int(retries[1]) < 8:
+                        raise RuntimeError(
+                            "Duke publication continuation accounting missing\n" + text[-12000:]
+                        )
                 pins = re.search(r"NATIVEDUKEPINS seeds=(\d+) retries=(\d+)", text)
                 if not pins or int(pins[1]) < 65 or (control == 1 and int(pins[2]) < 8):
                     raise RuntimeError("real Duke pin handoffs/retries missing\n" + text[-12000:])
@@ -205,8 +253,12 @@ def main():
                     raise RuntimeError("Duke pin accepted accounting failed\n" + text[-12000:])
     print(
         "PASS actual Duke pin retirement: real detached-cycle mutation, old seed consumption, "
-        "pin rescue, FIFO/snapshot allocation retries, physical source/array/string frees; C/JIT, both polls"
-        + ("; positive profiles only" if positive_only else "; eight semantic omission controls")
+        "pin rescue, FIFO/snapshot/publication retries, physical source/array/string frees; C/JIT, both polls"
+        + (
+            "; positive profiles only"
+            if positive_only or allocation_only or publication_only
+            else "; thirteen semantic omission controls"
+        )
     )
 
 

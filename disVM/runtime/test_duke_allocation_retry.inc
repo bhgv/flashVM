@@ -24,6 +24,10 @@ int __real_dvm_rc_scan_candidate(DVM_RetirementQueue *, size_t *, int *);
  * Иначе count/bytes передаются без изменения; фиктивных буферов и ссылок нет. */
 void *__wrap_calloc(size_t count, size_t bytes)
 {
+    if (metadata_active)
+    {
+        return publication_allocate(count, bytes, 1);
+    }
     if (fail_allocation)
     {
         pthread_mutex_lock(&sync);
@@ -85,9 +89,11 @@ int __wrap_dvm_rc_scan_candidate(DVM_RetirementQueue *queue, size_t *cost, int *
     selected_scan = node_count && dvm_retirement_peek(queue) == H2D(void *, nodes[0]);
     pthread_mutex_unlock(&sync);
     failed_scan = 0;
+    publication_begin(selected_scan);
     int result = __real_dvm_rc_scan_candidate(queue, cost, busy);
     require(!failed_scan || (!result && *busy),
             SCENARIO == 2 ? "initial Duke allocation must remain shared" : "transient Duke growth escaped to fallback");
+    publication_end(result);
     selected_scan = 0;
     failed_scan = 0;
     return result;

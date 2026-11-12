@@ -12,9 +12,11 @@
  * управляемые данные не читаются. */
 int __wrap_dvm_rc_duke_capture_slice(void *start, RecordGroup *group, DVM_RangeAccess *access)
 {
+    publication_before_capture(start);
     int result = __real_dvm_rc_duke_capture_slice(start, group, access);
     pthread_mutex_lock(&sync);
     int selected = node_count && start == H2D(void *, nodes[0]);
+    publication_captured(result, group);
     if (selected && result == DVM_DUKE_CAPTURE_RESUME && !mutated)
     {
         require(group->pinned_nodes > 0 && group->nodes[1] == H2D(void *, nodes[1]),

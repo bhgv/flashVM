@@ -15,6 +15,7 @@
 #include "retirement_queue.h"
 #include "gc/common/runtime_state.h"
 #include "gc/common/graph_snapshot.h"
+#include "gc/common/candidate_pass.h"
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include "thread_port.h"
@@ -24,7 +25,11 @@
 #include <string.h>
 #include <time.h>
 
-#if CONTROL == 6 || CONTROL == 8 || CONTROL == 9 || CONTROL == 11
+#if CONTROL >= 12 && CONTROL <= 16
+#define SCENARIO (CONTROL - 8)                  /* Five publication allocation positions. */
+#elif CONTROL >= 17 && CONTROL <= 21
+#define SCENARIO 4                              /* Publication omission controls refuse entry allocation. */
+#elif CONTROL == 6 || CONTROL == 8 || CONTROL == 9 || CONTROL == 11
 #define SCENARIO 2                              /* Initial Duke allocation refusal. */
 #elif CONTROL == 7 || CONTROL == 10
 #define SCENARIO 3                              /* Growing Duke allocation refusal. */
@@ -100,6 +105,7 @@ void __real_poolfree(Pool *, void *);
 int __real_dvm_world_try_quiescent(DVM_NativeWorld *, DVM_NativeContext *);
 
 #include "test_duke_pin_relay.inc"
+#include "test_duke_publication_retry.inc"
 #include "test_duke_pin_mutation.inc"
 #include "test_duke_allocation_retry.inc"
 
@@ -151,7 +157,9 @@ __wrap_dvm_retirement_reserve(DVM_RetirementQueue *queue, unsigned long bytes, D
         slot_refused = 1;
     }
     pthread_mutex_unlock(&sync);
-    return pressure ? DVM_RETIRE_FULL : __real_dvm_retirement_reserve(queue, bytes, token);
+    DVM_RetirementResult result = pressure ? DVM_RETIRE_FULL : __real_dvm_retirement_reserve(queue, bytes, token);
+    publication_reserved(result);
+    return result;
 }
 
 
@@ -171,6 +179,11 @@ int __wrap_dvm_retirement_commit_ready(DVM_RetirementQueue *queue,
         require(dvm_runtime_root_count(D2H(value)) >= 1, "Duke pin root disappeared before mandatory commit");
         require(CONTROL != 5 || commits || value == H2D(void *, nodes[BranchNodes]),
                 "refused Duke pin advanced journal cursor");
+    }
+    if (publication_scan && publication_ready && metadata_reserved && !metadata_fault)
+    {
+        require(!metadata_active && metadata_ordinal == 5, "all metadata ready before leaf commit");
+        publication_success = 1;
     }
     pthread_mutex_unlock(&sync);
     int result = __real_dvm_retirement_commit_ready(queue, token, value, ready);
@@ -196,6 +209,10 @@ unsigned int __wrap_dvm_gc_duke_run(DVM_NativeContext *context,
 {
     unsigned int work = __real_dvm_gc_duke_run(context, budget, world, queue, fallback);
     pthread_mutex_lock(&sync);
+    if (work && publication_refusals > publication_passes && publication_passes < 8)
+    {
+        publication_passes++;
+    }
     if (work && allocation_refusals > allocation_passes && allocation_passes < 8)
     {
         allocation_passes++;

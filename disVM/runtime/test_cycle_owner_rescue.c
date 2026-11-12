@@ -37,21 +37,23 @@ enum
     MaxNodes = 2300
 }; /* Exceeds the initial Duke capture and bounded Cycles capacities. */
 
-static unsigned node_count;                  /* Published target count, under sync. */
-static unsigned char deallocated[MaxNodes];  /* Exact physical-release identity, under sync. */
-static unsigned duplicate_passes;            /* Actual Fast responses before opening the duplicate barrier. */
-static DVM_HeapKey generations[MaxNodes];    /* Distinguish target allocation from a later address reuse. */
-static void *nodes[MaxNodes];                /* Heap identities only after physical free, under sync. */
-static unsigned freed;                       /* Exact physically released record count, under sync. */
-static unsigned handoffs;                    /* Real Fast RC publications completed, under sync. */
-static unsigned rescued;                     /* Real root-preserving Fast-to-Cycles commits, under sync. */
-static int duplicate_wait;                   /* Fast observed the still-indexed prior candidate, under sync. */
-static int injected;                         /* One candidate reservation refusal, under sync. */
-static int cycles_open;                      /* Permit actual Cycles consumption, under sync. */
-static DVM_NativeContext *fast_context;      /* Service identity borrowed through runtime join. */
-static DVM_RetirementQueue *candidate_queue; /* Candidate identity captured at reserve, under sync. */
-static DVM_RetirementQueue *mandatory_queue; /* Ticket staging FIFO, under sync. */
-static _Thread_local int publishing;         /* Only this actual Fast RC publication may inject refusal. */
+static unsigned node_count;                    /* Published target count, under sync. */
+static unsigned char deallocated[MaxNodes];    /* Exact physical-release identity, under sync. */
+static unsigned duplicate_passes;              /* Actual Fast responses before opening the duplicate barrier. */
+static DVM_HeapKey generations[MaxNodes];      /* Distinguish target allocation from a later address reuse. */
+static void *nodes[MaxNodes];                  /* Heap identities only after physical free, under sync. */
+static unsigned freed;                         /* Exact physically released record count, under sync. */
+static unsigned handoffs;                      /* Real Fast RC publications completed, under sync. */
+static unsigned rescued;                       /* Real root-preserving Fast-to-Cycles commits, under sync. */
+static int duplicate_wait;                     /* Fast observed the still-indexed prior candidate, under sync. */
+static int injected;                           /* One candidate reservation refusal, under sync. */
+static int cycles_open;                        /* Permit actual Cycles consumption, under sync. */
+static DVM_NativeContext *fast_context;        /* Service identity borrowed through runtime join. */
+static DVM_RetirementQueue *candidate_queue;   /* Candidate identity captured at reserve, under sync. */
+static DVM_RetirementQueue *mandatory_queue;   /* Ticket staging FIFO, under sync. */
+static _Thread_local int publishing;           /* Only this actual Fast RC publication may inject refusal. */
+
+static _Thread_local int cycle_retry_observed; /* Real duplicate lookup during this Fast callback. */
 
 
 int __real_dvm_runtime_guest_sleep(unsigned long);
@@ -212,6 +214,7 @@ int __wrap_dvm_retirement_contains_key(DVM_RetirementQueue *queue, DVM_HeapKey k
     if (found && !publishing && queue == candidate_queue && dvm_native_context_current() == fast_context)
     {
         duplicate_wait = 1;
+        cycle_retry_observed = 1;
     }
     pthread_mutex_unlock(&sync);
     return found;
@@ -294,7 +297,9 @@ void __wrap_poolfree(Pool *pool, void *value)
  */
 unsigned int __wrap_dvm_runtime_rc_shared_leaves(DVM_NativeContext *context, size_t budget)
 {
+    cycle_retry_observed = 0;
     unsigned int work = __real_dvm_runtime_rc_shared_leaves(context, budget);
+    require(!cycle_retry_observed || work, "pending cycle owner failed to report shared retry");
     pthread_mutex_lock(&sync);
     if (work && duplicate_wait && !cycles_open && !dvm_managed_owner_pending())
     {

@@ -63,3 +63,7 @@ unchanged and retries under shared admission.
 [Duke allocation retry](../../DUKE-ALLOCATION-RETRY.md) propagates temporary
 snapshot allocation pressure through candidate busy state. Hard byte limits
 remain distinct; private growth/storage replacements preserve include paths.
+
+[Completed publication retry](../../DUKE-PUBLICATION-RETRY.md) marks temporary
+graph metadata refusal for shared retry. All preparation allocations precede the
+retirement epoch; failure releases native buffers and cancels the reservation.
