@@ -40,7 +40,7 @@ def frame(
     low=LOW,
 ):
     values = (SIZE, HIGH, low, identity, operation, refs, value, *target, *left, *right, 0, 0)
-    return struct.pack(">4sBBH18Q", b"DVP1", 1, kind, 0, *(v & ((1 << 64) - 1) for v in values))
+    return struct.pack(">4sBBH18Q", b"DVP2", 2, kind, 0, *(v & ((1 << 64) - 1) for v in values))
 
 
 # EN/RU: Decode one signed scalar at an exact canonical byte offset.
@@ -52,7 +52,7 @@ def scalar(data, offset):
 # EN/RU: Borrow greeting's variable/function handle values; no native addresses exist.
 # Заимствовать handle values variable/function из greeting; native addresses отсутствуют.
 def handles(greeting):
-    if greeting[:8] != b"DVP1\1\1\0\0" or scalar(greeting, 8) != SIZE:
+    if greeting[:8] != b"DVP2\2\1\0\0" or scalar(greeting, 8) != SIZE:
         raise RuntimeError("bad real VM greeting")
     return struct.unpack_from(">3Q", greeting, 64), struct.unpack_from(">3Q", greeting, 88)
 
@@ -116,6 +116,31 @@ def release_replay(runtime, work, mode, locked, tag):
             raise RuntimeError("released remote variable still resolves")
         exchange(peer, frame(2, 3, 5))
         guest.finish("result=0 value=10")
+
+
+# EN/RU: Retain replies replay once; each distinct final Release removes one peer owner.
+# Retain replies повторяются без нового effect; каждый final Release снимает один owner.
+def retain_replay(runtime, work, mode, locked, tag):
+    with server(runtime, work, mode, locked, tag) as (peer, guest, hello):
+        variable, function = handles(hello)
+        for identity, target in ((1, variable), (2, function)):
+            retain = frame(2, identity, 6, target=target)
+            if exchange(peer, retain)[0] != 0 or exchange(peer, retain)[0] != 0:
+                raise RuntimeError("Retain replay did not preserve cached outcome")
+        if exchange(peer, frame(2, 3, 4, target=variable))[0] != 0:
+            raise RuntimeError("original variable image Release")
+        if exchange(peer, frame(2, 4, 4, target=function))[0] != 0:
+            raise RuntimeError("original function image Release")
+        if exchange(peer, frame(2, 5, 3, 2, 2, function, variable, variable)) != (0, 14):
+            raise RuntimeError("distinct retained function/ref owner was revoked")
+        exchange(peer, frame(2, 6, 4, target=variable))
+        exchange(peer, frame(2, 7, 4, target=function))
+        if exchange(peer, frame(2, 8, 1, target=variable))[0] != 5:
+            raise RuntimeError("duplicate Retain leaked variable ownership")
+        if exchange(peer, frame(2, 9, 3, 2, 1, function, variable, variable))[0] != 5:
+            raise RuntimeError("duplicate Retain leaked function ownership")
+        exchange(peer, frame(2, 10, 5))
+        guest.finish("result=0 value=14")
 
 
 # EN/RU: Malformed/incomplete/reopened authority never enters the original callback.

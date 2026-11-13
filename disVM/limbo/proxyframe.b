@@ -54,8 +54,8 @@ make(kind: int, high, low: big): array of byte
     bytes[0] = byte 'D';
     bytes[1] = byte 'V';
     bytes[2] = byte 'P';
-    bytes[3] = byte '1';
-    bytes[4] = byte 1;
+    bytes[3] = byte '2';
+    bytes[4] = byte 2;
     bytes[5] = byte kind;
     put(bytes, 8, big Size);
     put(bytes, EpochHi, high);
@@ -93,7 +93,7 @@ sethandle(bytes: array of byte, offset: int, handle: Proxyowner->Handle)
 valid(bytes: array of byte, kind: int, high, low: big): int
 {
     return len bytes == Size && bytes[0] == byte 'D' && bytes[1] == byte 'V' &&
-        bytes[2] == byte 'P' && bytes[3] == byte '1' && bytes[4] == byte 1 &&
+        bytes[2] == byte 'P' && bytes[3] == byte '2' && bytes[4] == byte 2 &&
         bytes[5] == byte kind && bytes[6] == byte 0 && bytes[7] == byte 0 &&
         get(bytes, 8) == big Size && get(bytes, EpochHi) == high && get(bytes, EpochLo) == low;
 }

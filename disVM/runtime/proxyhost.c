@@ -180,6 +180,25 @@ void Proxyhost_drop(void *frame)
 }
 
 
+/* [GC:] EN: Retain one checked peer occurrence; native metadata only, no new root.
+ * RU: Удержать peer occurrence по exact handle; лишь metadata, без нового root. */
+void Proxyhost_retain(void *frame)
+{
+    F_Proxyhost_retain call;
+    WORD status = DVM_REMOTE_INVALID;
+    DvmRemoteHandle handle = {dvm_proxyhost_state.identity, 0, 0};
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxyhost_retain, ret), sizeof(*call.ret));
+    if (dvm_proxyhost_state.adapter && (uint64_t)call.session == dvm_proxyhost_state.identity && call.slot >= 0 &&
+        call.generation > 0)
+    {
+        handle.slot = call.slot;
+        handle.generation = call.generation;
+        status = dvm_remote_managed_retain(dvm_proxyhost_state.adapter, handle);
+    }
+    dvm_sys_scalar_result(&status, call.ret, sizeof(status));
+}
+
+
 /* [GC:] EN: Close only after the active callback ends; capacity keeps TLS state
  * and roots intact for retry. Successful destroy clears every native identity.
  * RU: Закрыть после callback; capacity сохраняет TLS/roots для retry. Успех

@@ -117,6 +117,11 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
             request.reply <-= (status, 0);
             return;
         }
+        if (request.operation == Retain) {
+            status = host->retain(request.target.session, request.target.slot, request.target.generation);
+            request.reply <-= (status, 0);
+            continue;
+        }
         if (request.operation == Drop) {
             status = host->drop(request.target.session, request.target.slot, request.target.generation);
             request.reply <-= (status, 0);

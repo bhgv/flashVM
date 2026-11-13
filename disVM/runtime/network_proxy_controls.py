@@ -2,6 +2,7 @@
 # EN: Private compiled omissions must fail the actual network owner semantics.
 # RU: Приватные compiled omissions обязаны нарушать настоящую network owner semantics.
 
+from network_proxy_gc_controls import controls as gc_controls
 from relink_private import relink
 import subprocess
 
@@ -57,11 +58,18 @@ def stale_image(runtime, work):
 def controls(runtime, root, work, compiler, include):
     path = root.parent / "limbo/proxynet.b"
     source = path.read_text()
-    anchor = "return image.high == endpoint.high && image.low == endpoint.low;"
+    anchor = "return image.high == endpoint.high && image.low == endpoint.low && gc->active(image.lease);"
     if source.count(anchor) != 1:
         raise RuntimeError("client epoch control anchor moved")
     try:
-        replacement(root, work, compiler, include, "proxynet", source.replace(anchor, "return 1;"))
+        replacement(
+            root,
+            work,
+            compiler,
+            include,
+            "proxynet",
+            source.replace(anchor, "return gc->active(image.lease);"),
+        )
         stale_image(runtime, work)
     finally:
         compile_one(root, work, compiler, include, path, "proxynet")
@@ -83,6 +91,8 @@ def controls(runtime, root, work, compiler, include):
     finally:
         compile_one(root, work, compiler, include, path, "proxyserver")
     print("PASS network omissions: stale image epoch and repeated owner effect rejected")
+
+    gc_controls(runtime, root, work)
 
     flags = runtime.parent / "CMakeFiles/disvm.dir/flags.make"
     if "-fsanitize=thread" in flags.read_text():

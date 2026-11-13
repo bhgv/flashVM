@@ -50,7 +50,7 @@ canonical(bytes: array of byte): int
 {
     operation := codec->get(bytes, Proxyframe->Operation);
     refs := codec->get(bytes, Proxyframe->Refs);
-    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 5 &&
+    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 6 &&
         refs >= big 0 && refs <= big 2 && codec->get(bytes, Proxyframe->Status) == big 0 &&
         codec->get(bytes, Proxyframe->Result) == big 0;
 }

@@ -4,6 +4,7 @@
 from pathlib import Path
 import struct
 import sys
+import re
 import tempfile
 
 from network_proxy_controls import controls
@@ -13,6 +14,7 @@ from network_proxy_faults import (
     client_refusal,
     refusal,
     release_replay,
+    retain_replay,
     replay,
     trickle,
     orphan,
@@ -24,18 +26,29 @@ from network_proxy_faults import (
 
 # EN/RU: Run both actual VMs through a trusted inherited TCP stream and join them on every path.
 # Запустить обе VM через trusted inherited TCP stream и join на любом пути.
-def two_vms(runtime, work, mode, locked, tag):
+def two_vms(runtime, work, mode, locked, tag, client_name="client"):
     left, right = connected_tcp()
     guests = []
     try:
         guests.append(Guest(runtime, work, "server", mode, locked, left, tag + "-server"))
-        guests.append(Guest(runtime, work, "client", mode, locked, right, tag + "-client"))
+        guests.append(Guest(runtime, work, client_name, mode, locked, right, tag + "-client"))
         left.close()
         right.close()
-        guests[1].finish(
-            "PASS network client: 8 clients actual ref aliases epochs callbacks drop join"
-        )
-        guests[0].finish("result=0 value=99")
+        if client_name == "gc-client":
+            output = guests[1].finish(
+                "PASS network image GC: original variable/function and last clone released"
+            )
+            match = re.search(
+                r"PROXYGC queues=0 tokens=0 pending=0 enqueued=(\d+) drained=(\d+)", output
+            )
+            if not match or int(match[1]) < 3 or int(match[2]) < 3:
+                raise RuntimeError("actual image finalizers did not reach the broker\n" + output)
+            guests[0].finish("result=0 value=10")
+        else:
+            guests[1].finish(
+                "PASS network client: 8 clients actual ref aliases epochs callbacks drop join"
+            )
+            guests[0].finish("result=0 value=99")
     finally:
         left.close()
         right.close()
@@ -83,11 +96,29 @@ def main():
                             scalar.finish("PASS guarded native scalar results")
                         finally:
                             scalar.abort()
+                    with open(work / "scalar-input", "rb") as empty_input:
+                        native = Guest(
+                            runtime,
+                            work,
+                            "lease-native",
+                            mode,
+                            locked,
+                            empty_input,
+                            tag + "-native-lease",
+                        )
+                        try:
+                            native.finish(
+                                "PASS native leases: aliases quota staging foreign refusal GC reuse close"
+                            )
+                        finally:
+                            native.abort()
                     two_vms(runtime, work, mode, locked, tag)
+                    two_vms(runtime, work, mode, locked, tag + "-gc", "gc-client")
                     output_disconnect(runtime, work, mode, locked, tag + "-output-loss")
                     idle_client(runtime, work, mode, locked, tag + "-idle-client")
                     replay(runtime, work, mode, locked, tag + "-replay")
                     release_replay(runtime, work, mode, locked, tag + "-release")
+                    retain_replay(runtime, work, mode, locked, tag + "-retain-replay")
                     admitted_disconnect(runtime, work, mode, locked, tag + "-admitted")
                     for name in ("orphan-io", "orphan-server"):
                         orphan(runtime, work, mode, locked, tag + name, name)
@@ -104,7 +135,7 @@ def main():
                             field(48, 3),
                             field(72, 256),
                             field(136, 1),
-                            lambda data: data.__setitem__(4, 2),
+                            lambda data: data.__setitem__(4, 1),
                             lambda data: data.__setitem__(6, 1),
                             lambda data: data.__delitem__(slice(70, None)),
                         )

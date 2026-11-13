@@ -28,6 +28,9 @@ def compile_fixture(root, work, compiler, include):
             "socket-output",
             "idle-client",
             "scalar-results",
+            "gc-client",
+            "lease-native",
+            "lease-refusal",
         )
     ]
     for source, name in sources:
@@ -88,9 +91,12 @@ class Guest:
 
     # EN/RU: Join real VM, require clean status, resident lifetimes and concurrent GC evidence.
     # Join настоящей VM, проверить status, resident lifetimes и concurrent GC.
+    # EN/RU: 90s join budget covers instrumented clone/call/drop resident lifetimes;
+    # wire deadlines stay unchanged. 90s budget учитывает instrumented lifetimes,
+    # не меняя wire deadlines.
     def finish(self, expected=None):
         try:
-            status = self.process.wait(timeout=25)
+            status = self.process.wait(timeout=90)
         except subprocess.TimeoutExpired:
             self.abort()
             raise RuntimeError("network VM hung\n" + self.path.read_text())
@@ -107,6 +113,13 @@ class Guest:
             output,
         ):
             raise RuntimeError("network owner roots were not drained\n" + output[-12000:])
+        if "PROXYGC" in output:
+            count = re.search(
+                r"PROXYGC queues=0 tokens=0 pending=0 enqueued=(\d+) drained=(\d+) discarded=(\d+)",
+                output,
+            )
+            if not count or int(count[1]) != int(count[2]) + int(count[3]):
+                raise RuntimeError("native image ownership was not drained\n" + output[-12000:])
         if "PROXYHOST" in output and "PROXYHOST opened=1 closed=1 exports=0 active=0" not in output:
             raise RuntimeError("network exports or admitted calls leaked\n" + output[-12000:])
         return output

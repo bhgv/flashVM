@@ -35,7 +35,7 @@ init()
     if (connected != 0) {
         raise "network fixture greeting refused";
     }
-    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0));
+    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     (status, unused) := net->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 10000);
     if (status != Proxyowner->Unknown) {
         raise "corrupt or missing network reply was trusted";

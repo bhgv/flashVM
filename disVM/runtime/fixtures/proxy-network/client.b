@@ -29,9 +29,22 @@ connect(input, output: ref Sys->FD, started, stopped: chan of int,
 client(endpoint: ref Proxynet->Endpoint, variable, function: Proxynet->Image, done: chan of int)
 {
     for (round := 0; round < 2; round++) {
-        (status, value) := net->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, 1, 10000);
+        (clone_status, copy) := net->clone(endpoint, variable, 10000);
+        if (clone_status != 0) {
+            raise "concurrent network image clone";
+        }
+        (status, value) := net->call(endpoint, Proxyowner->Invoke, function, copy, copy, 2, 1, 10000);
         if (status != 0 || value < 12) {
             raise "network concurrent original ref invocation";
+        }
+        alias := copy;
+        (status, value) = net->call(endpoint, Proxyowner->Drop, copy, copy, copy, 0, 0, 10000);
+        if (status != 0) {
+            raise "concurrent network image release";
+        }
+        (status, value) = net->call(endpoint, Proxyowner->Read, alias, alias, alias, 0, 0, 10000);
+        if (status != Proxynet->Stale) {
+            raise "same-image alias released remote ownership twice";
         }
     }
     done <-= 1;
@@ -58,7 +71,7 @@ init()
     if (connected != 0) {
         raise "network fixture greeting refused";
     }
-    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0));
+    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     (status, value) := net->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 10000);
     if (status != 0 || value != 10) {
         raise "network original variable read";
@@ -73,6 +86,39 @@ init()
     (status, value) = net->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 10000);
     if (status != 0 || value != 42) {
         raise "network ref aliases lost updates";
+    }
+    (clone_status, retained) := net->clone(endpoint, variable, 10000);
+    if (clone_status != 0 || retained.lease == variable.lease) {
+        raise "network clone did not create distinct owner";
+    }
+    old := variable;
+    (status, value) = net->call(endpoint, Proxyowner->Drop, old, empty, empty, 0, 0, 10000);
+    if (status != 0) {
+        raise "network original image release";
+    }
+    (status, value) = net->call(endpoint, Proxyowner->Read, old, empty, empty, 0, 0, 10000);
+    if (status != Proxynet->Stale) {
+        raise "network released image was reused";
+    }
+    variable = retained;
+    retained = empty;
+    (status, value) = net->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 10000);
+    if (status != 0 || value != 42) {
+        raise "network retained clone lost remote owner";
+    }
+    garbage: Proxynet->Image;
+    (clone_status, garbage) = net->clone(endpoint, variable, 10000);
+    if (clone_status != 0) {
+        raise "network GC clone failed";
+    }
+    garbage = empty;
+    collected := 0;
+    for (attempt := 0; collected < 1 && attempt < 1000; attempt++) {
+        (status, collected) = net->collected(endpoint, 10000);
+        sys->sleep(1);
+    }
+    if (collected < 1) {
+        raise "network image GC did not release remote ownership";
     }
     stale := variable;
     stale.low++;

@@ -54,6 +54,11 @@ Proxyhost: module
     drop: fn(session: big, slot: int, generation: big): int;
 
 
+    # EN/RU: Add one peer owner without another managed root; exact session/generation.
+    # Добавить peer owner без второго managed root; exact session/generation.
+    retain: fn(session: big, slot: int, generation: big): int;
+
+
     # EN/RU: Close and collect after finish; Capacity preserves pending roots for retry.
     # Закрыть и собрать после finish; Capacity сохраняет pending roots для retry.
     close: fn(): int;

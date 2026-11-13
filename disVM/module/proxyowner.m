@@ -4,7 +4,7 @@
 Proxyowner: module
 {
     PATH: con "proxyowner.dis"; # Bytecode library built by the matching NC64 producer.
-    Read, Write, Invoke, Drop, Stop: con iota; # Local channel protocol, not network wire IDs.
+    Read, Write, Invoke, Drop, Stop, Retain: con iota; # Local channel protocol, not network wire IDs.
     OK: con 0; # Completed effect, or successful explicit lifecycle action.
     OwnerError: con -1; # Callback raised; partial side effects remain possible.
     NotSent: con -2; # Timed out before this channel offer was delivered.

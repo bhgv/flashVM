@@ -35,7 +35,7 @@ init()
     if (connected != 0 || <-stopped != 1) {
         raise "idle network broker did not retire";
     }
-    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0));
+    empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     (status, unused) := net->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 10000);
     if (status != Proxynet->Disconnected) {
         raise "idle image attempted a fresh wire call";
