@@ -9,6 +9,7 @@ import tempfile
 
 from network_proxy_results import result_replay, result_disconnect, orphan_result
 from network_proxy_routing import routed_pair, add_replay
+from network_proxy_forwarding import three_vms, forwarding_oracle, forwarding_loss, orphan_import
 from network_proxy_controls import controls
 from network_proxy_fixture import Guest, compile_fixture, connected_tcp
 from network_proxy_faults import (
@@ -138,6 +139,11 @@ def main():
                     two_vms(runtime, work, mode, locked, tag + "-gc", "gc-client")
                     two_vms(runtime, work, mode, locked, tag + "-result", "result-client")
                     routed_pair(runtime, work, mode, locked, tag + "-routed")
+                    three_vms(runtime, work, mode, locked, tag + "-three-vms")
+                    orphan_import(runtime, work, mode, locked, tag + "-orphan-import")
+                    forwarding_oracle(runtime, work, mode, locked, tag + "-forward-oracle")
+                    for hop in ("source", "caller"):
+                        forwarding_loss(runtime, work, mode, locked, tag + "-loss-" + hop, hop)
                     routed_pair(runtime, work, mode, locked, tag + "-routed-loss", True)
                     add_replay(runtime, work, mode, locked, tag + "-add-replay")
                     two_vms(

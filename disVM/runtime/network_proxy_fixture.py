@@ -18,7 +18,9 @@ def compile_fixture(root, work, compiler, include):
             "proxyowner",
             "proxyframe",
             "proxystream",
+            "proxynetio",
             "proxynet",
+            "proxyregistry",
             "proxyserver",
             "proxyroute",
         )
@@ -39,6 +41,13 @@ def compile_fixture(root, work, compiler, include):
             "gc-client",
             "result-client",
             "routed-client",
+            "relay-server",
+            "relay-client",
+            "relay-orphan-client",
+            "relay-capacity-client",
+            "relay-deadline-client",
+            "relay-source-loss-client",
+            "relay-caller-loss-client",
             "routed-failure-client",
             "result-quota-client",
             "result-failure-client",
@@ -90,7 +99,7 @@ class Guest:
     # work owns files, tag selects an independent diagnostic log. Own process/log.
     # RU: Запустить runtime/name с mode/locked и borrowed endpoint; work владеет
     # файлами, tag выбирает отдельный diagnostic log. Владеть process/log.
-    def __init__(self, runtime, work, name, mode, locked, endpoint, tag):
+    def __init__(self, runtime, work, name, mode, locked, endpoint, tag, output=None):
         self.path = work / (tag + ".log")
         self.log = self.path.open("wb")
         self.process = subprocess.Popen(
@@ -103,7 +112,7 @@ class Guest:
             ],
             cwd=work,
             stdin=endpoint,
-            stdout=endpoint,
+            stdout=endpoint if output is None else output,
             stderr=self.log,
         )
 

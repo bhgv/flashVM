@@ -4,6 +4,7 @@
 
 from network_proxy_gc_controls import controls as gc_controls
 from network_proxy_route_controls import controls as route_controls
+from network_proxy_forward_controls import controls as forward_controls
 from relink_private import relink
 import subprocess
 
@@ -93,6 +94,8 @@ def controls(runtime, root, work, compiler, include):
         stale_image(runtime, work, "network image owner did not match its native lease", "value=42")
     finally:
         compile_one(root, work, compiler, include, path, "proxynet")
+    path = root.parent / "limbo/proxynetio.b"
+    source = path.read_text()
     anchor = "return (valid, returned);"
     if source.count(anchor) != 1:
         raise RuntimeError("result reply validation control anchor moved")
@@ -102,7 +105,7 @@ def controls(runtime, root, work, compiler, include):
             work,
             compiler,
             include,
-            "proxynet",
+            "proxynetio",
             source.replace(anchor, "return (1, returned);"),
         )
         rejected(
@@ -118,7 +121,7 @@ def controls(runtime, root, work, compiler, include):
             "corrupt or missing network reply was trusted",
         )
     finally:
-        compile_one(root, work, compiler, include, path, "proxynet")
+        compile_one(root, work, compiler, include, path, "proxynetio")
     path = root.parent / "limbo/proxyserver.b"
     source = path.read_text()
     anchor = "        if (id == last) {"
@@ -140,6 +143,7 @@ def controls(runtime, root, work, compiler, include):
 
     gc_controls(runtime, root, work)
     route_controls(runtime, root, work, compiler, include)
+    forward_controls(runtime, root, work, compiler, include)
 
     flags = runtime.parent / "CMakeFiles/disvm.dir/flags.make"
     if "-fsanitize=thread" in flags.read_text():
