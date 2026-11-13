@@ -56,3 +56,19 @@ retirement. При sealing после живого снимка реестр с�
 контроль со старым чтением обязан вернуть именно NotWaiting и код 12. Ошибки
 сборки/санитайзера, таймаут, сигнал и Denied не засчитываются. Wide включает
 42-ю нагрузку; архитектурный результат фиксируется только после исполнения.
+
+
+## Verified regression / Проверенная регрессия
+
+The final [workflow 43355415904](https://github.com/bhgv/flashVM/actions/runs/43355415904)
+on `1c8c7ead36370c5927490c02744d3ec0475d9ecd` passed all 42 workloads in native
+AMD64, native ARM64, AMD64 TSan and emulated RV64 jobs. Both the forced sealing
+probe and the original resident-errors workload passed on every target. Local
+normal/TSan runs additionally restored the old admission: all four C/JIT/poll
+controls returned the actual NotWaiting result and the exact exit-12 diagnostic;
+all four corrected profiles parked and returned Retired.
+
+Финальный workflow указанного коммита прошёл 42/42 на четырёх профилях.
+Принудительный sealing и исходный resident-errors прошли на каждой цели.
+Локальные обычная/TSan-сборки также выполнили все четыре старых контроля с
+настоящим NotWaiting/кодом 12 и четыре corrected-профиля с ожиданием/Retired.

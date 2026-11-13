@@ -70,3 +70,50 @@ TLS-декларация создаётся CMake, matching definition — от�
 Монитор расширил wide до 41 нагрузки; регрессия KILLWAIT-SEAL.md — до 42.
 x64 constructor-oracle включён
 также в TSan CI. Результат новых архитектур фиксируется только после исполнения.
+
+
+## Verified execution / Проверенное исполнение — 2026-11-13
+
+[Workflow 43355415904](https://github.com/bhgv/flashVM/actions/runs/43355415904)
+completed successfully on `1c8c7ead36370c5927490c02744d3ec0475d9ecd`:
+
+| Target/profile | Execution | Wide workloads |
+| --- | --- | --- |
+| AMD64 plain | Native Ubuntu x64 | 42/42 |
+| ARM64 plain | Native Ubuntu ARM64 | 42/42 |
+| AMD64 TSan | Native Ubuntu x64, instrumented C runtime/probes | 42/42 |
+| RV64 | Actual RV64 executables/JIT under QEMU/binfmt | 42/42 |
+
+The owner-monitor and forced killwait-seal probes passed in every job. The
+previously failing resident-errors workload also passed on RV64. The independent
+x64 constructor oracle passed in both plain and TSan jobs, closing its previously
+recorded global-monitor race rather than retaining a sanitizer exclusion.
+All four jobs uploaded full driver logs and JSON reports with fourteen-day
+retention. No timeout or diagnostic failure was accepted as a positive profile.
+
+Local x64 validation passed 42/42 in the wide TSan matrix and 83/83 in the broad
+CTest gate: eighty earlier native-spawn suites, owner monitors, killwait sealing
+and source-generation idempotence. The new tests' semantic omission controls
+also passed locally in normal and TSan builds: a shared callback selector gave
+the exact foreign-owner failure, and the restored old killwait admission gave
+real NotWaiting while its sealed child remained registered. `readelf` confirmed
+the runtime's heapmonitor symbol is TLS storage of one pointer, not a global
+OBJECT. Every changed handwritten source is at most 437 lines; upstream is
+unchanged. This final result update changes documentation only.
+
+TSan covers compiled C runtime/probes, not emitted JIT instructions. The ARM64
+job is native hardware; the RV64 QEMU job remains ABI/functional execution,
+not certification of RV64 hardware memory ordering or parallel throughput.
+
+Указанный workflow завершился успешно на указанном коммите: native x64 и ARM64,
+x64 TSan и настоящий RV64 userspace/JIT под QEMU — по 42/42. Обе новые регрессии
+прошли на каждой цели; resident-errors на RV64 теперь тоже прошёл. Старый
+constructor-oracle прошёл в plain и TSan CI, без прежнего исключения санитайзера.
+Полные журналы/JSON сохранены для четырёх job на 14 дней.
+
+Локально wide TSan прошёл 42/42; широкий CTest — 83/83, включая генерацию и обе
+новые регрессии. Контроли в обычной/TSan-сборке подтвердили настоящие отказы:
+чужой callback при общем selector и NotWaiting старого killwait для sealed-child
+в реестре. В ELF heapmonitor является TLS-указателем. Изменённые исходники не
+длиннее 437 строк; upstream сохранён. Итоговый commit меняет лишь документацию.
+TSan не инструментирует JIT-инструкции; QEMU не заменяет проверку RV64-железа.

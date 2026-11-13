@@ -296,3 +296,25 @@ CI отдельным полным table-драйвером в обычной и
 инструментирует выпущенные JIT-инструкции, QEMU не заменяет RV64-железо.
 Гонка heapmonitor была открыта на этом checkpoint из 40 нагрузок; последующее
 исправление owner-local hooks и 41-я нагрузка описаны в OWNER-MONITORS.md.
+
+
+## Current 42-workload result / Текущий набор из 42 нагрузок
+
+The owner-local monitor and registered-child seal changes are verified by
+[workflow 43355415904](https://github.com/bhgv/flashVM/actions/runs/43355415904),
+commit `1c8c7ead36370c5927490c02744d3ec0475d9ecd`: native AMD64, native ARM64,
+AMD64 TSan and actual RV64 executables/JIT under QEMU each passed 42/42.
+The constructor oracle also passed both x64 CI profiles. Local wide TSan passed
+42/42; the broad native CTest gate passed 83/83 including both new regressions
+and generation idempotence. Full results and observer semantics are in
+[OWNER-MONITORS.md](OWNER-MONITORS.md); the deterministic old-result control is
+in [KILLWAIT-SEAL.md](KILLWAIT-SEAL.md). The previously open hook race is fixed.
+The source ceiling remains 437 lines and vendor snapshots remain unchanged.
+RV64 hardware ordering/throughput and JIT machine-code instrumentation are not
+claimed by these results.
+
+Текущий итог: по 42/42 на native x64/ARM64, x64 TSan и RV64 под QEMU. Локально
+42/42 TSan и 83/83 native CTest. Обе новые регрессии и генерация входят в проверку;
+бывший отказ constructor-oracle закрыт и проверяется TSan CI. Полные данные и
+контроли указаны в двух документах выше. Исходники ограничены 437 строками,
+upstream не изменяется; QEMU не является проверкой настоящего RV64-железа.
