@@ -1,0 +1,20 @@
+# Copyright (c) 2026 bhgv
+# EN: Bounded native proxy state library; independent of VM/reference execution.
+# RU: Ограниченное native-состояние proxy; без зависимости от VM/reference execution.
+cmake_minimum_required(VERSION 3.10)
+project(disvm_remote LANGUAGES C)
+find_package(Threads REQUIRED)
+add_library(disvm_remote_session STATIC session.c admission.c stream.c)
+target_include_directories(disvm_remote_session PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(disvm_remote_session PUBLIC Threads::Threads)
+set_target_properties(disvm_remote_session PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)
+option(DVM_REMOTE_TESTS "Build private native proxy lifecycle checks" ON)
+if(DVM_REMOTE_TESTS)
+    enable_testing()
+    foreach(case session concurrent stream limits)
+        add_executable(disvm_remote_${case}_test test_${case}.c)
+        target_link_libraries(disvm_remote_${case}_test PRIVATE disvm_remote_session)
+        add_test(NAME disvm_remote_${case} COMMAND disvm_remote_${case}_test)
+        set_tests_properties(disvm_remote_${case} PROPERTIES TIMEOUT 30 LABELS "host-unit;remote")
+    endforeach()
+endif()

@@ -399,6 +399,8 @@ foreach(index RANGE ${module_last})
 endforeach()
 add_custom_target(disvm_native_modules ALL DEPENDS ${products} ${syntax_products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
+set(DVM_REMOTE_TESTS ${DVM_RUNTIME_TESTS} CACHE BOOL "Native proxy lifecycle checks" FORCE)
+add_subdirectory("${root}/disVM/remote" remote)
 
 # EN/RU: Production host targets stay active; historical reference registrations
 # are archived. Native-only acceptance is the sole default test profile.

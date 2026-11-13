@@ -2,7 +2,8 @@
 
 Copyright (c) 2026 bhgv
 
-Это следующий блок разработки в `master`, не заявление о готовом network RPC.
+Здесь развивается proxy-блок в `master`. Native session/transport foundation уже
+реализован; подключение живых managed variables/functions DisVM ещё впереди.
 Основание — ранее выбранная архитектура
 [канальных proxy к владельцу](../../fir/v1/doc/DYNAMIC_VALUES.md),
 [проекции](../../ide/dis/LIVE-PROJECTIONS.md) и
@@ -48,9 +49,60 @@ Copyright (c) 2026 bhgv
 4. Fault/GC/concurrency acceptance на двух реальных процессах и независимых
    native владельцах. Лишь затем compiler-transparent lowering.
 
-Формат request/lease table, точные dedup/replay-window и cancellation policies,
-transport authentication и typed wire records ещё требуют реализации/проверки.
+Private request/lease tables и bounded admission replay-window реализованы ниже.
+Result cache/ack policy, transport authentication, typed wire records и связь с
+managed owner ещё требуют реализации/проверки.
 Ни общий документ, ни trial tags Inferno не назначают публичные IDs за другую сторону.
+
+## Реализованная native-основа
+
+`session.h` / `session.c` / `admission.c` содержат ограниченные таблицы owners и
+запросов. У каждой сессии свой mutex; внутри нет GC callbacks, исполнения VM,
+сетевого ожидания или world lock. Успешный publish принимает уже зарегистрированный
+owner root token. Collect возвращает его owner-потоку после последнего peer ref и
+admitted pin. Сам этот код не регистрирует managed roots и не выполняет Dis calls.
+
+Admission одной транзакцией проверяет target, все variable refs и overflow,
+копирует request и удерживает каждое вхождение ref, включая aliases. Отказ не меняет
+pins/ID window/output. Только `OK` разрешает исполнение; точный повтор сообщает
+active/completed, другой payload/operation/порядок refs даёт conflict. Window имеет
+заданное при создании число slots; ID вне окна получает stale, активная запись
+никогда не вытесняется. Это окно admission, а не result cache: транспортный adapter
+должен сохранять результат/подтверждения отдельно и не вызывать effect при duplicate.
+Закрытие снимает peer refs, но принятые calls сохраняют pins до finish.
+
+Идентификаторы и layout здесь приватные, process-local. Они не являются wire ABI,
+сетевой authentication или DIS64 IDs. Session tick требует monotonic driver;
+истёкшая сессия не возобновляется. Reconnect создаёт новую identity. Межсессионные
+и межузловые refs должны маршрутизироваться adapter-ом; текущая pin transaction
+проверяет только roots этой сессии. Result proxy сначала должен получить отдельный
+root/peer owner; failure publish сохраняет token у caller для rollback.
+
+`stream.h` / `stream.c` передают bounded native bytes через уже connected socket:
+partial read/write, EOF, errno и один absolute monotonic deadline. Нет hidden
+allocation, изменения fd flags, SIGPIPE или replay. FD остаётся у caller до конца
+операции; для cancellation допустим shutdown, close/reuse ждёт завершения I/O.
+Один read и write могут идти одновременно; same-direction frames сериализует
+будущий connection adapter. Даже успешная отправка всех bytes не означает RPC
+completion. Framing, authentication, response cache и network FD/GC adapter пока
+не реализованы.
+
+Четыре native host-unit проверки собираются также из runtime CMake и запускаются
+CI на AMD64/ARM64, включая AMD64 TSan. Есть 8000 эффектов из восьми pthreads,
+disconnect при восьми удерживаемых calls с прогрессом независимой сессии, replay
+после потерянного ответа, stale generations, counter/generation overflow, rollback,
+lease expiry, два OS-процесса, fragmentation, truncation, trickle deadline и partial
+blocked write. Это native foundation tests, не доказательство managed GC или двух
+реальных DisVM peers. Локальные ASan/UBSan и TSan прошли; LeakSanitizer отключён
+из-за ограничения ptrace среды, поэтому leak-sanitizer coverage не заявляется.
+
+Повторение без VM:
+
+```sh
+cmake -S disVM/remote -B build/remote
+cmake --build build/remote --parallel 4
+ctest --test-dir build/remote --output-on-failure
+```
 
 ## Обязательные регрессии
 
