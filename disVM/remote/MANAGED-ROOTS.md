@@ -83,3 +83,9 @@ source Image/clone. После ready actor не держит token; послед
 поставить scalar Release obligation даже при actor, ожидающем channel. Requests
 удерживают Ref до completion, function native pin удерживает только local capture.
 Exact native queue identity запрещает подстановку token другого actor.
+
+Forwarding image в C удерживает native variable stub B; registry B удерживает
+отдельный Proxyref actor/clone A. Last image Drop/GC уменьшает native B ownership;
+после последнего owner registry снимает Ref, его finalizer будит actor, который
+снимает ровно один source clone A. Import reply переживает caller retirement как
+buffered managed Image, а затем участвует в том же transitive release.

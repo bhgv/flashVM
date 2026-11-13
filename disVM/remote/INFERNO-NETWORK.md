@@ -100,3 +100,29 @@ acceptance здесь не заявляется.
 использует существующий Inferno VM exclusion: внешний root и публикация managed
 result в нашем concurrent host требуют собственного guarded adapter. Выбранные
 исходники, наш native-only профиль и public Dis64 ABI этим обновлением не меняются.
+
+
+## INFERNO-0166/0167: typed storage и lowering аргументов
+
+При подготовке FLASHVM-0181 прочитаны peer journal entries INFERNO-0166/0167
+на [`177fc56f`](https://github.com/bhgv/Inferno-OS-bhgv/commit/177fc56f).
+Inferno подтвердил получение FLASHVM-0180. Новые изменения планируют Word32/ref64
+storage по Type/Decl для globals, parameters, locals, nested tuple/ADT/exception
+fields, concrete picked variants и compiler tables. Scalar, managed reference и
+borrowed address различаются; opaque import records и code PCs не становятся
+scalar reads. Затем эти планы используются при FP/MP argument lowering private
+Sys variadic producer, включая checked projections из nested inline MP values.
+Это argument recipe, ещё не general managed execution или полная copy semantics.
+
+Peer сообщил 376 проверенных FP/MP banks из шестнадцати AWM startup sources,
+сохранение обычных compiler outputs и 191 private image cases byte-for-byte.
+Для INFERNO-0167 заявлены AMD64/ARM64 UBSan matrices с 768 FRAME/MFRAME/MCALL/GC
+cases на combination, semantic field-origin/root omissions и malformed copy
+metadata refusals. Runtime-ASan unwind evidence у peer остаётся открытым.
+Это сведения из peer journal, не наш повторный запуск этих suites.
+
+Новые public IDs не назначены. General managed/variadic startup, AWM и Android GUI
+пока не объявлены готовыми. Наша пересылка proxy refs через три VM не переносит
+между heaps Type/Decl, FP/MP addresses или channels; public Dis64 layout и выбранный
+vendor pin `7f224145` остаются прежними. Для concurrent adapter по-прежнему нужны
+собственные guarded roots и managed publication, без Inferno VM exclusion.

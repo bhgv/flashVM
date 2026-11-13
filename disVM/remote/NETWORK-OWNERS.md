@@ -104,7 +104,7 @@ Record имеет ровно 184 bytes, magic `DVP3`, version 3. Managed pointer
 | 8 | Exact record size 184 |
 | 16, 24 | Connection epoch high/low |
 | 32 | ID; Hello=0, request/reply positive, максимум signed 63 bits |
-| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6, ReturnVariable=7, ReturnFunction=8, Add=9), ref count 0..2, copied scalar value |
+| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6, ReturnVariable=7, ReturnFunction=8, Add=9, RoutedInvoke=10, ImportRoute=11), ref count 0..2, copied scalar value |
 | 64, 88, 112 | Target/left/right: session, slot, generation по 8 bytes |
 | 136, 144 | Status/copied scalar result; в request нули |
 | 152 | Result kind: 0 absent, 1 variable, 2 function |
@@ -178,12 +178,13 @@ Prog в callbacks: правильная сумма при последовате
 Private omissions native actor identity и actual GC Release обязаны обнаруживаться
 явным semantic failure; crash/compile failure/timeout не являются доказательством.
 
-Текущий routed entry — local typed channel в function VM. Source variable уже
-может принадлежать другой VM; source channel/Ref не сериализуются. Передача такого
-маршрута от третьего network caller к удалённому function server, регистрация
-route authority и forward/reverse wire protocol остаются отдельной границей.
-Обычные wire ref-поля `Proxynet.call/fetch` по-прежнему требуют same-owner handles
-и не превращают foreign Image в local Cell.
+`Proxyowner.routed` остаётся typed entry внутри function VM. Теперь внешний
+caller третьей VM получает forwarding images через `Proxynet.importref`, а
+`Proxynet.routed` передаёт их серверу функций. Его connection-scoped registry
+проверяет exact handles и подставляет удерживаемые live Proxyrefs. Старый plain
+Invoke/fetch с forwarding arguments отвергается до user callback: native stub
+не выдаётся за actual foreign Cell. [Полный контракт трёх VM](FORWARDED-REFS.md).
+Обычные wire ref-поля `Proxynet.call/fetch` по-прежнему требуют same-owner handles.
 
 ## Результаты-прокси из callback
 
@@ -305,9 +306,9 @@ private refusal ограничивает только RESERVED allocation и п�
 remote callback effect, сохранение output и чистое завершение session.
 
 Доступны int Cell, copied scalar result, typed variable/function result images
-и до двух same-owner variable refs в plain wire calls; routed callback принимает
-до двух Proxyref других owners через local typed entry. Нет arbitrary closure/value types,
-String snapshots, third-VM wire ref routing и transparent compiler lowering.
+и до двух same-owner variable refs в plain wire calls; registered routed callback
+принимает до двух forwarding images от третьей VM и работает с live refs их owners. Нет arbitrary closure/value types,
+String snapshots, arbitrary route discovery и transparent compiler lowering.
 Обычные Image copies разделяют lease; отдельный owner создаёт explicit clone.
 Это ещё не cross-node distributed tracing GC. TLS/peer authentication, automatic unique epoch
 provisioning, owning dial/listen/FD adoption и полноценная cross-node lease/ACK

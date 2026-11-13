@@ -163,5 +163,9 @@ function owner остаётся на своём Prog, а Read/Write/Add выпо
 переменной в другой VM. Ref actor владеет отдельным remote clone и освобождает
 его при Close/GC/idle/disconnect. Проверены два одновременных function owners,
 восемь callers, original aliases, exact Add replay и потеря ответа после эффекта.
-Сам routed entry пока local typed channel в function VM; third-VM wire forwarding
-маршрутов остаётся работой. [Контракт](NETWORK-OWNERS.md#ref-переменной-другой-vm-внутри-исходного-callback).
+Теперь `Proxynet.importref/routed` связывают этот entry с третьей VM через
+connection-scoped registry; wire содержит только native handles opaque views. [Контракт](NETWORK-OWNERS.md#ref-переменной-другой-vm-внутри-исходного-callback).
+
+[Три настоящие VM и forwarding images](FORWARDED-REFS.md): C владеет image,
+B исполняет original callback, A хранит actual variable. Проверены оба обрыва
+после эффекта, exact replay, transitive GC и late import reply после caller retirement.
