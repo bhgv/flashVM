@@ -56,60 +56,88 @@ def field(offset, value):
 def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
     positive = sys.argv[4:] == ["--positive-only"]
-    if sys.argv[4:] and not positive:
+    only_controls = sys.argv[4:] == ["--controls-only"]
+    if sys.argv[4:] and not positive and not only_controls:
         raise RuntimeError("unsupported network proxy test arguments")
     root = Path(__file__).resolve().parent
     with tempfile.TemporaryDirectory(prefix="network owner proxy ") as temporary:
         work = Path(temporary)
         compile_fixture(root, work, compiler, include)
-        for mode in ("--no-jit", "--jit"):
-            for locked in (False, True):
-                tag = mode[2:] + ("-locked" if locked else "-fast")
-                two_vms(runtime, work, mode, locked, tag)
-                output_disconnect(runtime, work, mode, locked, tag + "-output-loss")
-                idle_client(runtime, work, mode, locked, tag + "-idle-client")
-                replay(runtime, work, mode, locked, tag + "-replay")
-                release_replay(runtime, work, mode, locked, tag + "-release")
-                admitted_disconnect(runtime, work, mode, locked, tag + "-admitted")
-                for name in ("orphan-io", "orphan-server"):
-                    orphan(runtime, work, mode, locked, tag + name, name)
-                for index, mutation in enumerate((field(24, 67891), field(64, 0), field(136, 7))):
-                    greeting_refusal(
-                        runtime, work, mode, locked, tag + f"-greeting-{index}", mutation
+        if not only_controls:
+            for mode in ("--no-jit", "--jit"):
+                for locked in (False, True):
+                    tag = mode[2:] + ("-locked" if locked else "-fast")
+                    with open(work / "scalar-input", "wb") as empty_input:
+                        empty_input.write(b"")
+                    with open(work / "scalar-input", "rb") as empty_input:
+                        scalar = Guest(
+                            runtime,
+                            work,
+                            "scalar-results",
+                            mode,
+                            locked,
+                            empty_input,
+                            tag + "-scalars",
+                        )
+                        try:
+                            scalar.finish("PASS guarded native scalar results")
+                        finally:
+                            scalar.abort()
+                    two_vms(runtime, work, mode, locked, tag)
+                    output_disconnect(runtime, work, mode, locked, tag + "-output-loss")
+                    idle_client(runtime, work, mode, locked, tag + "-idle-client")
+                    replay(runtime, work, mode, locked, tag + "-replay")
+                    release_replay(runtime, work, mode, locked, tag + "-release")
+                    admitted_disconnect(runtime, work, mode, locked, tag + "-admitted")
+                    for name in ("orphan-io", "orphan-server"):
+                        orphan(runtime, work, mode, locked, tag + name, name)
+                    for index, mutation in enumerate(
+                        (field(24, 67891), field(64, 0), field(136, 7))
+                    ):
+                        greeting_refusal(
+                            runtime, work, mode, locked, tag + f"-greeting-{index}", mutation
+                        )
+                    for index, mutation in enumerate(
+                        (
+                            field(8, 153),
+                            field(32, 0),
+                            field(48, 3),
+                            field(72, 256),
+                            field(136, 1),
+                            lambda data: data.__setitem__(4, 2),
+                            lambda data: data.__setitem__(6, 1),
+                            lambda data: data.__delitem__(slice(70, None)),
+                        )
+                    ):
+                        refusal(runtime, work, mode, locked, tag + f"-malformed-{index}", mutation)
+                    refusal(
+                        runtime,
+                        work,
+                        mode,
+                        locked,
+                        tag + "-old-epoch",
+                        lambda data: None,
+                        name="new-incarnation",
                     )
-                for index, mutation in enumerate(
-                    (
-                        field(8, 153),
-                        field(32, 0),
-                        field(48, 3),
-                        field(72, 256),
-                        field(136, 1),
-                        lambda data: data.__setitem__(4, 2),
-                        lambda data: data.__setitem__(6, 1),
-                        lambda data: data.__delitem__(slice(70, None)),
-                    )
-                ):
-                    refusal(runtime, work, mode, locked, tag + f"-malformed-{index}", mutation)
-                refusal(
-                    runtime,
-                    work,
-                    mode,
-                    locked,
-                    tag + "-old-epoch",
-                    lambda data: None,
-                    name="new-incarnation",
-                )
-                for index, mutation in enumerate(
-                    (field(32, 99), field(24, 67891), field(136, 999), lambda data: data.clear())
-                ):
-                    client_refusal(runtime, work, mode, locked, tag + f"-reply-{index}", mutation)
-        trickle(runtime, work, "--no-jit", False, "trickle")
+                    for index, mutation in enumerate(
+                        (
+                            field(32, 99),
+                            field(24, 67891),
+                            field(136, 999),
+                            lambda data: data.clear(),
+                        )
+                    ):
+                        client_refusal(
+                            runtime, work, mode, locked, tag + f"-reply-{index}", mutation
+                        )
+            trickle(runtime, work, "--no-jit", False, "trickle")
         if not positive:
             controls(runtime, root, work, compiler, include)
-    print(
-        "PASS network proxies: two real VMs over TCP; 8 clients, original ref aliases, "
-        "bounded replay/release, stale epochs, framing/reply faults and admitted disconnect; C/JIT both polls"
-    )
+    if not only_controls:
+        print(
+            "PASS network proxies: two real VMs over TCP; 8 clients, original ref aliases, "
+            "bounded replay/release, stale epochs, framing/reply faults and admitted disconnect; C/JIT both polls"
+        )
 
 
 if __name__ == "__main__":

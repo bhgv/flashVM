@@ -1,9 +1,16 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Captured builtin ownership boundaries and guarded scalar result publication.
+ * RU: Captured builtin ownership boundaries и guarded scalar result publication.
+ */
+
+
 /* Internal captured Sys frame/result boundaries; no OS types or I/O here. */
 #ifndef DVM_SYS_CAPTURE_H
 #define DVM_SYS_CAPTURE_H
 #include <stddef.h>
 
-#define DVM_SYS_MAX_OWNERS 4U /* Maximum jointly validated owners in current Sys results. */
+#define DVM_SYS_SCALAR_LIMIT 64U /* Bound pure-scalar result snapshots; no pointer ownership. */
+#define DVM_SYS_MAX_OWNERS 4U    /* Maximum jointly validated owners in current Sys results. */
 
 
 /* Copy a complete builtin frame into aligned caller storage before callbacks.
@@ -25,4 +32,13 @@ void *dvm_sys_owner(const void *slot);
  * passed dvm_sys_owner. Raise exHeap before clearing any result if aliases would
  * consume more references than exist. No mutation, allocation or I/O. */
 void dvm_sys_owners(void *const *owners, size_t count);
+
+
+/* [GC:] EN: Publish a private pure-scalar snapshot into a captured live mapped
+ * result, preserving shared-cell exclusion. Retry publication only on BUSY;
+ * native effects must already be staged, never replayed. No pointer ownership.
+ * RU: Публиковать private pure-scalar snapshot в captured live mapped result
+ * под cell guards. После BUSY повторяется только publication, не native effect.
+ * Pointer ownership этим API не передаётся. */
+void dvm_sys_scalar_result(const void *snapshot, void *destination, size_t size);
 #endif

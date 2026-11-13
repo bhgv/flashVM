@@ -24,9 +24,13 @@ if(DVM_RUNTIME_TESTS)
         # EN/RU: Keep intentional broken-code controls native; no reference execution.
         # Намеренные broken-code контроли остаются native, без reference-исполнения.
         foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy)
+            set(control_flags)
+            if(control STREQUAL "network_proxy")
+                list(APPEND control_flags --controls-only)
+            endif()
             add_test(NAME disvm_control_${control} COMMAND "${PYTHON_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/test_${control}.py" "$<TARGET_FILE:disvm>"
-                "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+                "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" ${control_flags})
             set_tests_properties(disvm_control_${control} PROPERTIES TIMEOUT 180 LABELS "native")
         endforeach()
         if(CMAKE_C_FLAGS MATCHES "-fsanitize=thread")

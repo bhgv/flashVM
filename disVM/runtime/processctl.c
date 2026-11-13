@@ -1,3 +1,9 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Captured native scalar operations with guarded shared result publication.
+ * RU: Captured native scalar operations с guarded shared result publication.
+ */
+
+
 /* Hosted scalar process control through generated NC64 frames. */
 #include "lib9.h"
 #include "dat.h"
@@ -19,8 +25,10 @@ extern int dvm_runtime_prepare_killwait(Prog *caller, int pid);
 extern int dvm_runtime_killwait_result(Prog *caller, int pid);
 
 
-/* Return the current managed process ID through the validated result cell.
- * The caller owns the active VM turn. No allocation or native wait occurs. */
+/* EN: Stage current Prog identity, then publish through result cell guards.
+ * frame is a rooted generated call; BUSY retries only publication, not the PID query.
+ * RU: Сохранить identity текущего Prog и опубликовать под result cell guards.
+ * frame — rooted generated call; BUSY повторяет только publication, не запрос PID. */
 void Processctl_pid(void *frame)
 {
     F_Processctl_pid call;
@@ -28,12 +36,14 @@ void Processctl_pid(void *frame)
 
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_pid, ret), sizeof(*call.ret));
     result = currun()->pid;
-    memmove(call.ret, &result, sizeof(result));
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 
-/* Cancel only a current wait of the caller's direct child. frame and its
- * result cell remain rooted for this synchronous, nonblocking operation. */
+/* EN: Cancel a direct child's wait once; frame/result remain rooted while
+ * publishing the staged outcome under cell guards. Invalid PID yields Denied.
+ * RU: Один раз отменить ожидание прямого child; frame/result rooted во время
+ * guarded publication сохранённого outcome. Неверный PID даёт Denied. */
 void Processctl_cancelwait(void *frame)
 {
     F_Processctl_cancelwait call;
@@ -44,7 +54,7 @@ void Processctl_cancelwait(void *frame)
     {
         result = dvm_runtime_cancel_child_wait(currun(), (int)call.pid);
     }
-    memmove(call.ret, &result, sizeof(result));
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 
@@ -55,19 +65,19 @@ int dvm_processctl_cancel_ready(void *frame)
     F_Processctl_cancelwait call;
     uintptr start = (uintptr)frame;
     uintptr top = (uintptr)DVM_R.SP;
-    if (start < (uintptr)DVM_R.EX || top > (uintptr)DVM_R.TS ||
-        start > top || top - start != sizeof(call))
+    if (start < (uintptr)DVM_R.EX || top > (uintptr)DVM_R.TS || start > top || top - start != sizeof(call))
     {
         error(exBounds);
     }
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_cancelwait, ret), sizeof(*call.ret));
-    return call.pid <= 0 || call.pid > INT_MAX ||
-        dvm_runtime_prepare_cancelwait(currun(), (int)call.pid);
+    return call.pid <= 0 || call.pid > INT_MAX || dvm_runtime_prepare_cancelwait(currun(), (int)call.pid);
 }
 
 
-/* Request direct-child termination. A native continuation keeps ownership
- * until its normal cleanup restores the managed turn. */
+/* EN: Request direct-child termination once from rooted frame. A native
+ * continuation keeps ownership through cleanup; publish staged status with guards.
+ * RU: Один раз запросить termination прямого child из rooted frame. Native
+ * continuation держит ownership до cleanup; status публикуется под guards. */
 void Processctl_kill(void *frame)
 {
     F_Processctl_kill call;
@@ -78,12 +88,14 @@ void Processctl_kill(void *frame)
     {
         result = dvm_runtime_kill_child(currun(), (int)call.pid);
     }
-    memmove(call.ret, &result, sizeof(result));
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 
-/* Before publishing a killwait MCALL frame, validate the scalar operands
- * and let the scheduler park its caller. */
+/* EN: Validate borrowed killwait frame/scalars before MCALL publication.
+ * Return ready or let the original caller park without consuming its result.
+ * RU: Проверить borrowed killwait frame/scalars до MCALL publication. Вернуть
+ * готовность либо припарковать исходного caller, не потребляя его result. */
 int dvm_processctl_call_ready(void *frame)
 {
     F_Processctl_killwait call;
@@ -97,12 +109,14 @@ int dvm_processctl_call_ready(void *frame)
         error(exBounds);
     }
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_killwait, ret), sizeof(*call.ret));
-    return call.pid <= 0 || call.pid > INT_MAX ||
-        dvm_runtime_prepare_killwait(currun(), (int)call.pid);
+    return call.pid <= 0 || call.pid > INT_MAX || dvm_runtime_prepare_killwait(currun(), (int)call.pid);
 }
 
 
-/* Consume only the completion belonging to this prepared call. */
+/* EN: Consume this prepared call's exact completion once, then publish its
+ * staged scalar under guards. BUSY must not consume the completion a second time.
+ * RU: Один раз потребить точный completion prepared call и опубликовать scalar
+ * под guards. BUSY не должен потреблять completion повторно. */
 void Processctl_killwait(void *frame)
 {
     F_Processctl_killwait call;
@@ -113,11 +127,12 @@ void Processctl_killwait(void *frame)
     {
         result = dvm_runtime_killwait_result(currun(), (int)call.pid);
     }
-    memmove(call.ret, &result, sizeof(result));
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 
-/* Register the hosted-only module once during runtime initialization. */
+/* EN/RU: Register generated hosted module once before any guest/owner starts.
+ * Зарегистрировать generated hosted module один раз до старта guest/owner. */
 void dvm_processctl_initialize(void)
 {
     builtinmod("$Processctl", Processctlmodtab, Processctlmodlen);

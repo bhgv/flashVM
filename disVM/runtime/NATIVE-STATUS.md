@@ -15,6 +15,9 @@ Authentication и уникальный 128-bit connection epoch предоста
 launcher. Текущий manifest содержит 49 native workloads, 7 omission controls и
 26 host-unit tests; под TSan добавляется контроль старой late-reply гонки.
 Сетевой набор отдельно прошёл в C/JIT и обоих poll paths обычно и под TSan.
+Расширенный полный TSan выявил raw scalar return race в Processctl.pid; она
+исправлена guarded publication, с отдельными четырьмя writers/branch readers и
+actual-race omission control. См. [точную границу builtin helper](BUILTIN-SCALARS.md).
 
 Предшествующая матрица [6aedab6a](https://github.com/bhgv/flashVM/actions/runs/43439432556)
 завершилась success во всех шести jobs: AMD64 plain/TSan, ARM64, RV64/QEMU и

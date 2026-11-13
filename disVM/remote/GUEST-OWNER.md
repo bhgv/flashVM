@@ -83,7 +83,7 @@ Capture сохраняет busy и candidate для повтора, confirmation
 `PROXYHOST opened=closed exports=0 active=0`, matched native resident joins и
 полностью опустошённые native RC очереди проверяются после completion. Generated
 module declarations/table воспроизводятся matching NC64 producer и входят в
-generation freshness test. Wide native manifest теперь включает 48 workloads.
+generation freshness test. Wide native manifest включает 49 workloads, включая отдельный network path.
 
 ## Следующая незакрытая граница
 

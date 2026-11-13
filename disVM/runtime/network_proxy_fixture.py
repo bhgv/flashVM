@@ -27,6 +27,7 @@ def compile_fixture(root, work, compiler, include):
             "greeting-client",
             "socket-output",
             "idle-client",
+            "scalar-results",
         )
     ]
     for source, name in sources:

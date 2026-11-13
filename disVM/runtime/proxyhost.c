@@ -91,7 +91,7 @@ void Proxyhost_open(void *frame)
             status = DVM_REMOTE_CAPACITY;
         }
     }
-    memmove(call.ret, &status, sizeof(status));
+    dvm_sys_scalar_result(&status, call.ret, sizeof(status));
 }
 
 
@@ -102,7 +102,7 @@ void Proxyhost_canwait(void *frame)
     F_Proxyhost_canwait call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxyhost_canwait, ret), sizeof(*call.ret));
     WORD permitted = dvm_proxyhost_state.active == 0;
-    memmove(call.ret, &permitted, sizeof(permitted));
+    dvm_sys_scalar_result(&permitted, call.ret, sizeof(permitted));
 }
 
 
@@ -134,7 +134,7 @@ void Proxyhost_publish(void *frame)
             __atomic_fetch_add(&exports, 1, __ATOMIC_RELAXED);
         }
     }
-    memmove(call.ret, &result, sizeof(result));
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
 }
 
 
@@ -155,7 +155,7 @@ void Proxyhost_finish(void *frame)
             (void)collect_roots();
         }
     }
-    memmove(call.ret, &status, sizeof(status));
+    dvm_sys_scalar_result(&status, call.ret, sizeof(status));
 }
 
 
@@ -176,7 +176,7 @@ void Proxyhost_drop(void *frame)
         status = dvm_remote_managed_release(dvm_proxyhost_state.adapter, handle);
         (void)collect_roots();
     }
-    memmove(call.ret, &status, sizeof(status));
+    dvm_sys_scalar_result(&status, call.ret, sizeof(status));
 }
 
 
@@ -216,7 +216,7 @@ void Proxyhost_close(void *frame)
     F_Proxyhost_close call;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxyhost_close, ret), sizeof(*call.ret));
     WORD status = close_session();
-    memmove(call.ret, &status, sizeof(status));
+    dvm_sys_scalar_result(&status, call.ret, sizeof(status));
 }
 
 

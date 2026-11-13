@@ -290,6 +290,7 @@ add_executable(disvm
     io_buffer.c
     clock_sys.c
     sys_capture.c
+    sys_scalar_result.c
     remote_managed.c
     proxyhost.c
     proxyhost_call.c

@@ -12,7 +12,8 @@ Limbo; функция исполняется исходным постоянны
 Порядок declarations: `sys.m`, `proxyhost.m`, `proxyhandler.m`, `proxyowner.m`,
 затем `proxynet.m` для клиента либо `proxyserver.m` для сервера.
 Собрать matching NC64 producer библиотеки `proxyowner`, `proxyframe`,
-`proxystream`, `proxynet`, `proxyserver`. `init()` предшествует sharing/spawn.
+`proxystream`, `proxynet`, `proxyserver`: обычная native CMake-сборка уже включает
+эти `.dis` в build. `init()` предшествует sharing/spawn.
 
 `Proxyserver.serve(input, output, high, low, timeout, handler, cell, capture)`
 создаёт отдельную session и исходного owner для пары exports. Клиентский
@@ -120,6 +121,11 @@ response, conflict, stale window и новый epoch при повторивши
 correlation/epoch/status ответа, отсутствие ответа, bad greeting без capability,
 trickle deadline, обрыв после **actual callback entry**, native output backpressure,
 неизменность FD flags, retirement public IO/serve callers и idle images.
+Shared native scalar results дополнительно проверяются четырьмя writers и
+branch readers: [builtin publication contract](../runtime/BUILTIN-SCALARS.md).
+Network test обнаружил raw Processctl.pid return store; исправленная публикация
+не повторяет native side effect после BUSY. TSan control возвращает raw store и
+обязан показать actual race.
 Каждая positive VM проверяет matched native resident joins, отсутствие миграции,
 concurrent GC policy, пустые RC queues, exports=0/active=0 и native staging=0.
 Private compiled omissions epoch guard / duplicate cache обязаны дать конкретный

@@ -2,6 +2,9 @@
 # EN: Private compiled omissions must fail the actual network owner semantics.
 # RU: Приватные compiled omissions обязаны нарушать настоящую network owner semantics.
 
+from relink_private import relink
+import subprocess
+
 from network_proxy_fixture import Guest, compile_one, connected_tcp
 from network_proxy_faults import replay
 
@@ -80,3 +83,28 @@ def controls(runtime, root, work, compiler, include):
     finally:
         compile_one(root, work, compiler, include, path, "proxyserver")
     print("PASS network omissions: stale image epoch and repeated owner effect rejected")
+
+    flags = runtime.parent / "CMakeFiles/disvm.dir/flags.make"
+    if "-fsanitize=thread" in flags.read_text():
+        broken = relink(
+            runtime, work, root / "test_sys_scalar_result.c", 0, ["dvm_sys_scalar_result"]
+        )
+        output = subprocess.run(
+            [str(broken), "--stats", "--no-jit", str(work / "scalar-results.dis")],
+            cwd=work,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        text = output.stdout + output.stderr
+        if (
+            output.returncode not in (0, 66)
+            or "PASS guarded native scalar results" not in text
+            or "PASS Dis application completed" not in text
+            or "WARNING: ThreadSanitizer: data race" not in text
+            or "__wrap_dvm_sys_scalar_result" not in text
+        ):
+            raise RuntimeError(
+                "raw builtin result omission did not expose actual race\n" + text[-18000:]
+            )
+        print("PASS raw native scalar result stores expose actual TSan race")
