@@ -5,7 +5,9 @@ Copyright (c) 2026 bhgv
 Здесь развивается proxy-блок в `master`. Native session/transport foundation уже
 реализован; runtime теперь содержит и owner-local adapter настоящих managed roots.
 Первый [гостевой API](GUEST-OWNER.md) уже выполняет typed variable/function calls
-на постоянном владельце через process-local channels. Две сетевые VM ещё не связаны.
+на постоянном владельце через process-local channels. Новый [network adapter](NETWORK-OWNERS.md)
+соединяет две настоящие DisVM через доверенный заранее открытый поток, включая
+loopback TCP. Публичного authenticated dial/listen и distributed GC пока нет.
 Основание — ранее выбранная архитектура
 [канальных proxy к владельцу](../../fir/v1/doc/DYNAMIC_VALUES.md),
 [проекции](../../ide/dis/LIVE-PROJECTIONS.md) и
@@ -52,8 +54,9 @@ Copyright (c) 2026 bhgv
    native владельцах. Лишь затем compiler-transparent lowering.
 
 Private request/lease tables и bounded admission replay-window реализованы ниже.
-Result cache/ack policy, transport authentication, typed wire records и связь с
-managed owner ещё требуют реализации/проверки.
+Private typed wire records, managed owner bridge и bounded last-response cache
+теперь проверены в [network path](NETWORK-OWNERS.md). Transport authentication,
+full ACK/lease policy и cross-owner routing остаются открытыми.
 Retain/Release эффекты используют тот же admission gate; direct C API разрешён
 только trusted adapter. Replay после collect/reuse проверен отдельно.
 Ни общий документ, ни trial tags Inferno не назначают публичные IDs за другую сторону.
@@ -94,8 +97,8 @@ allocation, изменения fd flags, SIGPIPE или replay. FD остаёт�
 операции; для cancellation допустим shutdown, close/reuse ждёт завершения I/O.
 Один read и write могут идти одновременно; same-direction frames сериализует
 будущий connection adapter. Даже успешная отправка всех bytes не означает RPC
-completion. Framing, authentication, response cache и network FD/GC adapter пока
-не реализованы.
+completion. Для typed network path framing, bounded response cache и original-owner cleanup
+реализованы в Limbo. Authentication/FD establishment остаются внешней границей.
 
 Четыре native host-unit проверки собираются также из runtime CMake и запускаются
 CI на AMD64/ARM64, включая AMD64 TSan. Есть 8000 эффектов из восьми pthreads,

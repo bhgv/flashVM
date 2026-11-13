@@ -66,6 +66,7 @@ Function-kind String в probe проверяет только GC lifetime opaque
 это не вызов функции или проверка closure captures. Native peers в этом probe не
 исполняют Dis bytecode. Отдельный [guest path](GUEST-OWNER.md) теперь выполняет
 настоящие typed Read/Write/Invoke через owner channel loop. Общий typed ReadAs,
-cross-node ref routing, managed result cache/ack, network authentication и два
-DisVM peers ещё не реализованы. Distributed GC или полный network proxy не
+cross-node ref routing, managed result cache/ack и network authentication остаются
+отдельной работой. [Trusted network path](NETWORK-OWNERS.md) проверяет два реальных
+DisVM peers, refs и terminal owner cleanup. Distributed GC или полный network proxy не
 объявляются готовыми. Shared DIS64 kinds/opcodes не изменены.

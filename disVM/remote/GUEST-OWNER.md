@@ -91,6 +91,7 @@ Handle copies не создают автоматические remote Retain: Dr
 а не реализует GC каждой proxy-копии. Нет distributed GC, arbitrary closure/value
 types, proxy/function results, String snapshots, cross-owner ref routing, response
 cache/ack или wire authentication. Local request IDs считаются serving loop и
-не являются network replay protocol. Native `stream.c` ещё не соединён с этим
-endpoint: network framing, authenticated sessions и два реальных DisVM peers
-остаются отдельной работой. Новые shared DIS64 IDs здесь не назначаются.
+не являются network replay protocol. Отдельный [network adapter](NETWORK-OWNERS.md)
+связывает typed endpoint с двумя реальными DisVM через trusted preconnected Sys.FD.
+Framing/cache и cleanup проверены; authentication/установка соединения ещё требуют
+owning transport. Новые shared DIS64 IDs здесь не назначаются.

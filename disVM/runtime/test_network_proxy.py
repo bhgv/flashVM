@@ -1,0 +1,116 @@
+# Copyright (c) 2026 bhgv
+# EN: Two actual DisVMs, concurrent remote refs, replay and transport-fault acceptance.
+# RU: Две настоящие DisVM, concurrent remote refs, replay и transport-fault acceptance.
+from pathlib import Path
+import struct
+import sys
+import tempfile
+
+from network_proxy_controls import controls
+from network_proxy_fixture import Guest, compile_fixture, connected_tcp
+from network_proxy_faults import (
+    admitted_disconnect,
+    client_refusal,
+    refusal,
+    release_replay,
+    replay,
+    trickle,
+    orphan,
+    idle_client,
+    output_disconnect,
+    greeting_refusal,
+)
+
+
+# EN/RU: Run both actual VMs through a trusted inherited TCP stream and join them on every path.
+# Запустить обе VM через trusted inherited TCP stream и join на любом пути.
+def two_vms(runtime, work, mode, locked, tag):
+    left, right = connected_tcp()
+    guests = []
+    try:
+        guests.append(Guest(runtime, work, "server", mode, locked, left, tag + "-server"))
+        guests.append(Guest(runtime, work, "client", mode, locked, right, tag + "-client"))
+        left.close()
+        right.close()
+        guests[1].finish(
+            "PASS network client: 8 clients actual ref aliases epochs callbacks drop join"
+        )
+        guests[0].finish("result=0 value=99")
+    finally:
+        left.close()
+        right.close()
+        for guest in guests:
+            guest.abort()
+
+
+# EN/RU: Replace one aligned unsigned scalar in independent-oracle request bytes.
+# Заменить один aligned unsigned scalar в independent-oracle request bytes.
+def field(offset, value):
+    return lambda data: struct.pack_into(">Q", data, offset, value)
+
+
+# EN: Compile matching production libraries, then test C/JIT and both polling
+# paths. Faults include real callback entry before disconnect, not synthetic pins.
+# RU: Собрать matching production libraries; проверить C/JIT и оба poll paths.
+# Faults включают настоящий callback entry до disconnect, не synthetic pins.
+def main():
+    runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
+    positive = sys.argv[4:] == ["--positive-only"]
+    if sys.argv[4:] and not positive:
+        raise RuntimeError("unsupported network proxy test arguments")
+    root = Path(__file__).resolve().parent
+    with tempfile.TemporaryDirectory(prefix="network owner proxy ") as temporary:
+        work = Path(temporary)
+        compile_fixture(root, work, compiler, include)
+        for mode in ("--no-jit", "--jit"):
+            for locked in (False, True):
+                tag = mode[2:] + ("-locked" if locked else "-fast")
+                two_vms(runtime, work, mode, locked, tag)
+                output_disconnect(runtime, work, mode, locked, tag + "-output-loss")
+                idle_client(runtime, work, mode, locked, tag + "-idle-client")
+                replay(runtime, work, mode, locked, tag + "-replay")
+                release_replay(runtime, work, mode, locked, tag + "-release")
+                admitted_disconnect(runtime, work, mode, locked, tag + "-admitted")
+                for name in ("orphan-io", "orphan-server"):
+                    orphan(runtime, work, mode, locked, tag + name, name)
+                for index, mutation in enumerate((field(24, 67891), field(64, 0), field(136, 7))):
+                    greeting_refusal(
+                        runtime, work, mode, locked, tag + f"-greeting-{index}", mutation
+                    )
+                for index, mutation in enumerate(
+                    (
+                        field(8, 153),
+                        field(32, 0),
+                        field(48, 3),
+                        field(72, 256),
+                        field(136, 1),
+                        lambda data: data.__setitem__(4, 2),
+                        lambda data: data.__setitem__(6, 1),
+                        lambda data: data.__delitem__(slice(70, None)),
+                    )
+                ):
+                    refusal(runtime, work, mode, locked, tag + f"-malformed-{index}", mutation)
+                refusal(
+                    runtime,
+                    work,
+                    mode,
+                    locked,
+                    tag + "-old-epoch",
+                    lambda data: None,
+                    name="new-incarnation",
+                )
+                for index, mutation in enumerate(
+                    (field(32, 99), field(24, 67891), field(136, 999), lambda data: data.clear())
+                ):
+                    client_refusal(runtime, work, mode, locked, tag + f"-reply-{index}", mutation)
+        trickle(runtime, work, "--no-jit", False, "trickle")
+        if not positive:
+            controls(runtime, root, work, compiler, include)
+    print(
+        "PASS network proxies: two real VMs over TCP; 8 clients, original ref aliases, "
+        "bounded replay/release, stale epochs, framing/reply faults and admitted disconnect; C/JIT both polls"
+    )
+
+
+if __name__ == "__main__":
+    main()

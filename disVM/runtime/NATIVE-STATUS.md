@@ -2,6 +2,25 @@
 
 Copyright (c) 2026 bhgv
 
+## Текущий checkpoint: typed network proxies
+
+[Trusted network owners](../remote/NETWORK-OWNERS.md) соединяют две реальные VM
+через заранее установленный доверенный поток, включая loopback TCP. Проверяются
+восемь клиентов, исходные variable/function owners, actual ref aliases, epoch,
+cache/replay, разрыв после callback admission, malformed/truncated frames,
+retirement callers, idle broker expiry и полный terminal root/IO cleanup.
+
+Это не новый Dis64 loader/ABI, не owning dial/listen и не distributed GC.
+Authentication и уникальный 128-bit connection epoch предоставляет transport/
+launcher. Текущий manifest содержит 49 native workloads, 7 omission controls и
+26 host-unit tests; под TSan добавляется контроль старой late-reply гонки.
+Сетевой набор отдельно прошёл в C/JIT и обоих poll paths обычно и под TSan.
+
+Предшествующая матрица [6aedab6a](https://github.com/bhgv/flashVM/actions/runs/43439432556)
+завершилась success во всех шести jobs: AMD64 plain/TSan, ARM64, RV64/QEMU и
+два Dis64 Sys jobs. Она подтверждает прежние 48 workloads, не новые network cases.
+QEMU не заменяет physical RV64 ordering/performance acceptance.
+
 ## Политика master
 
 Активная разработка перенесена в `master`. Native-многопоточность без глобального
@@ -15,7 +34,7 @@ Copyright (c) 2026 bhgv
 Перенос не означает удаление всех исторических реализаций из upstream snapshots;
 их запрещено реактивировать как режим исполнения или проверки.
 
-## Приёмка режима master
+## Приёмка первоначального переноса master
 
 Перенос выполнен коммитом [`93a5154`](https://github.com/bhgv/flashVM/commit/93a5154a496c1f82de2f880ec999b4fa26097c15)
 с сохранением истории проверенной ветки. До переноса `master` был её предком;

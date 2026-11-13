@@ -1,0 +1,133 @@
+# Copyright (c) 2026 bhgv
+# EN: Matched producer and isolated real-VM lifecycle for network owner acceptance.
+# RU: Matching producer и isolated real-VM lifecycle для network owner acceptance.
+import re
+import socket
+import subprocess
+
+from resident_evidence import evidence
+
+
+# EN/RU: Compile production libraries and fixture variants with the exact native producer.
+# Собрать production libraries и fixture variants точным native producer.
+def compile_fixture(root, work, compiler, include):
+    sources = [
+        (root.parent / "limbo" / (name + ".b"), name)
+        for name in ("proxyowner", "proxyframe", "proxystream", "proxynet", "proxyserver")
+    ]
+    sources += [
+        (root / "fixtures/proxy-network" / (name + ".b"), name)
+        for name in (
+            "handler",
+            "server",
+            "client",
+            "failure-client",
+            "orphan-io",
+            "orphan-server",
+            "greeting-client",
+            "socket-output",
+            "idle-client",
+        )
+    ]
+    for source, name in sources:
+        compile_one(root, work, compiler, include, source, name)
+    old = (root / "fixtures/proxy-network/server.b").read_text()
+    alternate = work / "new-incarnation.b"
+    alternate.write_text(old.replace("big 67890", "big 67891"))
+    compile_one(root, work, compiler, include, alternate, "new-incarnation")
+
+
+# EN/RU: Compile one source into work; diagnostics are failures, never semantic controls.
+# Собрать source в work; diagnostics — отказ, не semantic control.
+def compile_one(root, work, compiler, include, source, name):
+    result = subprocess.run(
+        [
+            str(compiler),
+            "-I",
+            str(include),
+            "-I",
+            str(root.parent / "module"),
+            "-o",
+            str(work / (name + ".dis")),
+            str(source),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode or result.stderr:
+        raise RuntimeError("network fixture compile failed\n" + result.stdout + result.stderr)
+
+
+# EN: Own subprocess and diagnostic log; socket is independently retained by the
+# child on stdin/stdout. Join/kill before reading logs or releasing fixture files.
+# RU: Владеть subprocess/log; child удерживает socket в stdin/stdout. Join/kill
+# предшествует чтению log и удалению fixture files.
+class Guest:
+
+    # EN: Start runtime/fixture name on mode/locked polling with borrowed endpoint;
+    # work owns files, tag selects an independent diagnostic log. Own process/log.
+    # RU: Запустить runtime/name с mode/locked и borrowed endpoint; work владеет
+    # файлами, tag выбирает отдельный diagnostic log. Владеть process/log.
+    def __init__(self, runtime, work, name, mode, locked, endpoint, tag):
+        self.path = work / (tag + ".log")
+        self.log = self.path.open("wb")
+        self.process = subprocess.Popen(
+            [
+                str(runtime),
+                "--stats",
+                mode,
+                *(["--gc-locked-poll"] if locked else []),
+                str(work / (name + ".dis")),
+            ],
+            cwd=work,
+            stdin=endpoint,
+            stdout=endpoint,
+            stderr=self.log,
+        )
+
+    # EN/RU: Join real VM, require clean status, resident lifetimes and concurrent GC evidence.
+    # Join настоящей VM, проверить status, resident lifetimes и concurrent GC.
+    def finish(self, expected=None):
+        try:
+            status = self.process.wait(timeout=25)
+        except subprocess.TimeoutExpired:
+            self.abort()
+            raise RuntimeError("network VM hung\n" + self.path.read_text())
+        self.log.close()
+        output = self.path.read_text()
+        if status or "ThreadSanitizer:" in output or "runtime error:" in output:
+            raise RuntimeError("network VM failed\n" + output[-18000:])
+        if expected and expected not in output:
+            raise RuntimeError("missing network result " + expected + "\n" + output[-16000:])
+        children = len(re.findall(r"NATIVEGUEST start pid=", output))
+        evidence(output, children=children)
+        if not re.search(
+            r"NATIVERC enqueued=(\d+) released=\1 pending=0 saturated=0 bytes=0 byte_limited=0",
+            output,
+        ):
+            raise RuntimeError("network owner roots were not drained\n" + output[-12000:])
+        if "PROXYHOST" in output and "PROXYHOST opened=1 closed=1 exports=0 active=0" not in output:
+            raise RuntimeError("network exports or admitted calls leaked\n" + output[-12000:])
+        return output
+
+    # EN/RU: Dispose unfinished child and log on every exception path; idempotent.
+    # Удалить unfinished child и log на любом exception path; идемпотентно.
+    def abort(self):
+        if self.process.poll() is None:
+            self.process.kill()
+        self.process.wait()
+        self.log.close()
+
+
+# EN/RU: Establish actual trusted loopback TCP endpoints; caller owns both sockets.
+# Создать настоящие trusted loopback TCP endpoints; caller владеет обоими socket.
+def connected_tcp():
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        left = socket.create_connection(listener.getsockname(), timeout=10)
+        right, _ = listener.accept()
+    for endpoint in (left, right):
+        endpoint.settimeout(None)
+        endpoint.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    return left, right
