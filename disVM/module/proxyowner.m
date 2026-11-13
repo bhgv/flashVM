@@ -4,7 +4,7 @@
 Proxyowner: module
 {
     PATH: con "proxyowner.dis"; # Bytecode library built by the matching NC64 producer.
-    Read, Write, Invoke, Drop, Stop, Retain: con iota; # Local channel protocol, not network wire IDs.
+    Read, Write, Invoke, Drop, Stop, Retain, ReturnVariable, ReturnFunction: con iota; # Local channel protocol, not network wire IDs.
     OK: con 0; # Completed effect, or successful explicit lifecycle action.
     OwnerError: con -1; # Callback raised; partial side effects remain possible.
     NotSent: con -2; # Timed out before this channel offer was delivered.
@@ -31,7 +31,7 @@ Proxyowner: module
         right: Handle; # Second live ref argument when refs == 2.
         refs: int; # Number of same-owner ref arguments, zero to two.
         value: int; # Copied scalar input.
-        reply: chan of (int, int); # Buffered completion status and scalar result.
+        reply: chan of (int, int, Handle); # Buffered status/scalar/new export identity.
     };
 
 
@@ -64,4 +64,12 @@ Proxyowner: module
     # Active owner callback не ждёт другой proxy call: возвращает OwnerError.
     call: fn(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
              refs, value, timeout: int): (int, int);
+
+
+    # EN: Invoke original function, export its returned actual Cell with kind
+    # Variable/Function and return status/handle. Unknown must never be replayed.
+    # RU: Вызвать original function, export returned actual Cell с kind
+    # Variable/Function; вернуть status/handle. Unknown не повторяется.
+    fetch: fn(endpoint: ref Endpoint, target, left, right: Handle,
+              refs, value, kind, timeout: int): (int, Handle);
 };

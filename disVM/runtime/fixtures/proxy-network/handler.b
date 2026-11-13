@@ -41,3 +41,41 @@ invoke(capture, left, right: ref Proxyhost->Cell, value: int): int
     right.value += value;
     return left.value;
 }
+
+
+# EN: Return a real new variable/capture on this owner; -888 returns original
+# left alias, -1 raises after mutation, -999 exposes actual callback admission.
+# RU: Вернуть real new variable/capture на owner; -888 возвращает original left,
+# -1 бросает после mutation, -999 наблюдаемо входит в actual callback.
+result(capture, left, right: ref Proxyhost->Cell, value, kind: int): ref Proxyhost->Cell
+{
+    control := load Processctl Processctl->PATH;
+    sys := load Sys Sys->PATH;
+    if (capture.value != control->pid() || left == nil || left != right) {
+        raise "result callback lost original capture/ref owner";
+    }
+    if (value == -999) {
+        left.value = 777;
+        sys->fprint(sys->fildes(2), "NETWORK result callback admitted and blocked\n");
+        sys->sleep(60000);
+        raise "abandoned result callback resumed";
+    }
+    if (value == -1) {
+        left.value++;
+        raise "result callback partial effect";
+    }
+    if (value == -889) {
+        left.value++;
+        return left;
+    }
+    if (value == -888) {
+        return left;
+    }
+    if (value == -2) {
+        return nil;
+    }
+    if (kind == Proxyhost->Function) {
+        return ref Proxyhost->Cell(capture.value);
+    }
+    return ref Proxyhost->Cell(value);
+}

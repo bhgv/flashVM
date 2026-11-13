@@ -43,24 +43,25 @@ alarm(signal, started: chan of int, deadline: int)
 
 # EN/RU: One absolute alarm spans offer and reply; accepted work is never replayed.
 # Один alarm охватывает offer и reply; принятое work никогда не повторяется.
-call(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
-     refs, value, timeout: int): (int, int)
+offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
+      refs, value, timeout: int): (int, int, Handle)
 {
+    absent := Handle(big 0, 0, big 0);
     if (endpoint == nil || timeout < 1 || timeout > 60000) {
-        return (NotSent, 0);
+        return (NotSent, 0, absent);
     }
     if (host->canwait() == 0) {
-        return (OwnerError, 0);
+        return (OwnerError, 0, absent);
     }
     signal := chan[1] of int;
-    response := chan[1] of (int, int);
+    response := chan[1] of (int, int, Handle);
     started := chan[1] of int;
     request := ref Request(operation, target, left, right, refs, value, response);
     deadline := sys->millisec() + timeout;
     spawn alarm(signal, started, deadline);
     timer := <-started;
     delivered := 0;
-    result := (NotSent, 0);
+    result := (NotSent, 0, absent);
     if (sys->millisec() < deadline) {
         alt {
             endpoint.requests <-= request => delivered = 1;
@@ -70,13 +71,40 @@ call(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
     if (delivered) {
         alt {
             result = <-response => {}
-            <-signal => result = (Unknown, 0);
+            <-signal => result = (Unknown, 0, absent);
         }
     }
     # EN/RU: One timer per active caller; fast calls never leave sleeping children.
     # Один timer на active caller; быстрые calls не оставляют спящих детей.
     control->killwait(timer);
     return result;
+}
+
+
+# EN/RU: Ordinary scalar/lifecycle call; new export results require fetch instead.
+# Обычный scalar/lifecycle call; new export results требуют fetch.
+call(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
+     refs, value, timeout: int): (int, int)
+{
+    if (operation < Read || operation > Retain) {
+        return (NotSent, 0);
+    }
+    (status, result, unused) := offer(endpoint, operation, target, left, right, refs, value, timeout);
+    return (status, result);
+}
+
+
+# EN/RU: Typed result callback; only Variable/Function kinds authorize export.
+# Typed result callback; лишь Variable/Function kinds разрешают export.
+fetch(endpoint: ref Endpoint, target, left, right: Handle,
+      refs, value, kind, timeout: int): (int, Handle)
+{
+    if (kind != Proxyhost->Variable && kind != Proxyhost->Function) {
+        return (NotSent, Handle(big 0, 0, big 0));
+    }
+    (status, unused, returned) := offer(endpoint, ReturnVariable + kind,
+        target, left, right, refs, value, timeout);
+    return (status, returned);
 }
 
 
@@ -106,6 +134,7 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
     endpoint := ref Endpoint(chan[16] of ref Request);
     ready <-= (endpoint, variable, function);
     id := big 0;
+    absent := Handle(big 0, 0, big 0);
     for (;;) {
         request := <-endpoint.requests;
         if (request.operation == Stop) {
@@ -114,24 +143,29 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
                 sys->sleep(1);
                 status = host->close();
             }
-            request.reply <-= (status, 0);
+            request.reply <-= (status, 0, absent);
             return;
         }
         if (request.operation == Retain) {
             status = host->retain(request.target.session, request.target.slot, request.target.generation);
-            request.reply <-= (status, 0);
+            request.reply <-= (status, 0, absent);
             continue;
         }
         if (request.operation == Drop) {
             status = host->drop(request.target.session, request.target.slot, request.target.generation);
-            request.reply <-= (status, 0);
+            request.reply <-= (status, 0, absent);
             continue;
         }
         if (id == big 16r7fffffffffffffff) {
             raise "proxy request identity exhausted";
         }
         id++;
-        (admitted, target, left, right) := host->begin(id, request.operation,
+        nativeop := request.operation;
+        if (nativeop == ReturnVariable || nativeop == ReturnFunction) {
+            nativeop = Invoke;
+        }
+        returned := absent;
+        (admitted, target, left, right) := host->begin(id, nativeop,
             request.target.session, request.target.slot, request.target.generation,
             request.left.session, request.left.slot, request.left.generation,
             request.right.session, request.right.slot, request.right.generation, request.refs, request.value);
@@ -144,6 +178,15 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
                         target.value = request.value;
                         value = target.value;
                     Invoke => value = handler->invoke(target, left, right, request.value);
+                    ReturnVariable or ReturnFunction =>
+                        kind := request.operation - ReturnVariable;
+                        result := handler->result(target, left, right, request.value, kind);
+                        (published, session, slot, generation) := host->publish(result, kind);
+                        admitted = published;
+                        if (published == 0) {
+                            returned = Handle(session, slot, generation);
+                        }
+                        result = nil;
                 }
             } exception {
                 "*" => admitted = OwnerError;
@@ -152,6 +195,6 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
                 raise "proxy owner finish";
             }
         }
-        request.reply <-= (admitted, value);
+        request.reply <-= (admitted, value, returned);
     }
 }
