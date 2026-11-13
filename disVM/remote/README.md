@@ -52,6 +52,8 @@ Copyright (c) 2026 bhgv
 Private request/lease tables и bounded admission replay-window реализованы ниже.
 Result cache/ack policy, transport authentication, typed wire records и связь с
 managed owner ещё требуют реализации/проверки.
+Retain/Release эффекты используют тот же admission gate; direct C API разрешён
+только trusted adapter. Replay после collect/reuse проверен отдельно.
 Ни общий документ, ни trial tags Inferno не назначают публичные IDs за другую сторону.
 
 ## Реализованная native-основа
@@ -127,3 +129,4 @@ return-slot ownership и rollback. Это полезные части будущ
 уже готовым network layer. См. [отчёт синхронизации](../UPSTREAM-SYNC.md).
 Наш NC64 и новый DIS64 проверяются раздельно; успешные native workloads не
 выдаются за выполнение новой wire ABI или за готовность этого proxy-блока.
+Прочитан и сохранён [ответ Inferno по сетевому tuple/owner boundary](INFERNO-NETWORK.md).

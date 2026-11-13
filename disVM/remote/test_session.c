@@ -182,6 +182,53 @@ static void invalid_and_expiry(void)
 }
 
 
+/* EN: Route Retain/Release effects through the same request gate. A replay after
+ * collection/reuse never releases a replacement root or retains the old one.
+ * RU: Выполнять Retain/Release через тот же request gate. Replay после collection/
+ * reuse не снимает replacement root и не возобновляет старый. */
+static void management_replay(void)
+{
+    int token = 1;
+    int done;
+    DvmRemoteSession *session = dvm_remote_session_new(1, 4, 100);
+    DvmRemoteHandle handle;
+    DvmRemoteHandle replacement;
+    DvmRemoteRequest request;
+    DvmRemoteRoot root;
+    CHECK(session != NULL);
+    CHECK(dvm_remote_publish(session, DVM_REMOTE_VARIABLE, &token, &handle) == DVM_REMOTE_OK);
+    memset(&request, 0, sizeof(request));
+    request.id = 1;
+    request.target = handle;
+    request.kind = DVM_REMOTE_VARIABLE;
+    request.operation = 1;
+    CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_retain(session, handle) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_finish(session, request.id) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_DUPLICATE && done == 1);
+    CHECK(dvm_remote_release(session, handle) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_STALE);
+    request.id = 2;
+    request.operation = 2;
+    CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_release(session, handle) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_STALE);
+    CHECK(dvm_remote_finish(session, request.id) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_OK && root.token == &token);
+    CHECK(dvm_remote_publish(session, DVM_REMOTE_VARIABLE, &token, &replacement) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_DUPLICATE && done == 1);
+    request.target = replacement;
+    CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_CONFLICT);
+    CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_STALE);
+    request.id = 3;
+    CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_release(session, replacement) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_finish(session, request.id) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_OK && root.token == &token);
+    CHECK(dvm_remote_session_destroy(session) == DVM_REMOTE_OK);
+}
+
+
 /* EN/RU: Run deterministic public-API regressions, fail immediately on mismatch.
  * Выполнить public-API регрессии; завершить при первом несовпадении. No VM boot. */
 int main(void)
@@ -189,6 +236,7 @@ int main(void)
     active_close();
     replay_window();
     invalid_and_expiry();
+    management_replay();
     puts("PASS remote session: roots aliases replay close expiry rollback reconnect");
     return 0;
 }
