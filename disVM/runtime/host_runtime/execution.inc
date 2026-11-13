@@ -47,6 +47,7 @@ static int runtime_execute_inner(void *argument)
     dvm_bigtable_initialize();
     dvm_processctl_initialize();
     dvm_proxyhost_initialize();
+    dvm_proxy_gc_initialize();
 #ifdef DVM_RUNTIME_COMPILER
     dvm_compiler_initialize();
 #endif

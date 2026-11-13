@@ -57,17 +57,26 @@ def main():
             temporary,
         ]
         subprocess.run(proxy, check=True)
+        proxygc = proxy.copy()
+        proxygc[proxygc.index("--interface") + 1] = str(
+            Path(__file__).resolve().parent.parent / "module/proxygc.m"
+        )
+        proxygc += ["--module", "Proxygc"]
+        subprocess.run(proxygc, check=True)
         first = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
         subprocess.run(command, check=True)
         subprocess.run(guarded, check=True)
         subprocess.run(monitor, check=True)
         subprocess.run(proxy, check=True)
+        subprocess.run(proxygc, check=True)
         second = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
         if first != second:
             raise RuntimeError("native source generation compounded a prior adaptation")
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
         critical = (
+            "proxygc_decl.h",
+            "proxygc_table.h",
             "proxyhost_decl.h",
             "proxyhost_table.h",
             "heap.c",

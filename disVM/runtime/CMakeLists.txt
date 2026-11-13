@@ -92,7 +92,8 @@ set(channel_prepare_inputs
   prepare_channel_constructors.py prepare_channel_matches.py
   prepare_alt_results.py prepare_alt_waits.py prepare_channel_queues.py
   prepare_channel_buffer.py)
-set(host_prepare_products "${view}/proxyhost_decl.h" "${view}/proxyhost_table.h")
+set(host_prepare_products "${view}/proxyhost_decl.h" "${view}/proxyhost_table.h"
+  "${view}/proxygc_decl.h" "${view}/proxygc_table.h")
 if(DVM_RUNTIME_COMPILER)
   add_subdirectory("${root}/disVM/compiler" compiler)
   list(APPEND host_prepare_args --fircompiler "${root}/disVM/module/fircompiler.m")
@@ -122,9 +123,11 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_owner_monitor.py" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_proxyhost.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --interface "${root}/disVM/module/proxyhost.m" --output "${view}"
+ COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_proxyhost.py"
+   --module Proxygc --compiler "$<TARGET_FILE:limbo-bootstrap>" --interface "${root}/disVM/module/proxygc.m" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
     DEPENDS prepare_owner_monitor.py prepare_guarded_leaves.py prepare_proxyhost.py
-    "${root}/disVM/module/proxyhost.m" ${channel_prepare_inputs} limbo-bootstrap
+    "${root}/disVM/module/proxyhost.m" "${root}/disVM/module/proxygc.m" ${channel_prepare_inputs} limbo-bootstrap
     prepare.py prepare_jit_publication.py jit_publication.h prepare_string_view.py
     string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h
     prepare_mapped_cons.py mapped_cons.h prepare_raw_cons.py raw_cons.h
@@ -293,6 +296,8 @@ add_executable(disvm
     sys_scalar_result.c
     remote_managed.c
     proxyhost.c
+    proxy_gc.c
+    proxy_gc_queue.c
     proxyhost_call.c
     remote_managed_probe.c
     filesystem_sys.c

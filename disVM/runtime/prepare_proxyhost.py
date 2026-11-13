@@ -15,17 +15,22 @@ def main():
     parser.add_argument("--compiler", required=True)
     parser.add_argument("--interface", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--module", default="Proxyhost", choices=("Proxyhost", "Proxygc"))
     args = parser.parse_args()
     text = subprocess.check_output(
-        [args.compiler, "-a", "-t", "Proxyhost", args.interface], text=True
+        [args.compiler, "-a", "-t", args.module, args.interface], text=True
     )
     marker = "typedef struct{char *name; long sig;"
-    if text.count(marker) != 1 or "Proxyhostmodtab" not in text:
-        raise RuntimeError("unexpected generated Proxyhost table")
+    if text.count(marker) != 1 or args.module + "modtab" not in text:
+        raise RuntimeError("unexpected generated " + args.module + " table")
     at = text.index(marker)
-    notice = "/* Copyright (c) 2026 bhgv; generated from proxyhost.m, do not edit. */\n"
-    (args.output / "proxyhost_decl.h").write_text(notice + text[:at])
-    (args.output / "proxyhost_table.h").write_text(notice + text[at:])
+    notice = (
+        "/* Copyright (c) 2026 bhgv; generated from "
+        + Path(args.interface).name
+        + ", do not edit. */\n"
+    )
+    (args.output / (args.module.lower() + "_decl.h")).write_text(notice + text[:at])
+    (args.output / (args.module.lower() + "_table.h")).write_text(notice + text[at:])
 
 
 if __name__ == "__main__":

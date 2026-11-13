@@ -264,6 +264,10 @@ static unsigned int drain_shared_leaf_queue(DVM_RetirementQueue *source, size_t 
                 shared_modules++;
                 shared_modules_with_peer += peer;
             }
+            else if (dvm_proxy_gc_eligible(entry->heap))
+            {
+                dvm_proxy_gc_finalize(entry->heap);
+            }
             else if (dvm_gc_fast_file_eligible(entry->heap))
             {
                 dvm_gc_fast_file_finalize(entry->heap);

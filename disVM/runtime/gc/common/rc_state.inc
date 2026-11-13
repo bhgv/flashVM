@@ -19,6 +19,7 @@
 #include "gc/fast/packet_budget.h"
 #include "gc/fast/file_retirement.h"
 #include "gc/fast/table_retirement.h"
+#include "proxy_gc.h"
 #include "gc/fast/module_retirement.h"
 #include "bigtable_owner.h"
 #include "runtime_gc.h"
