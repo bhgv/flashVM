@@ -238,5 +238,3 @@ static void buffer_wait_case(void)
     *registers = saved;
     puts("PASS native channel buffer wait");
 }
-
-

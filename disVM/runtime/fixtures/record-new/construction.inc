@@ -340,5 +340,3 @@ static void array_case(DVM_GCWorkers *workers)
     previous_owner = NULL;
     puts("PASS guarded arrays");
 }
-
-

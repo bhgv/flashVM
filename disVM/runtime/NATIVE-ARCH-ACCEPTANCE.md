@@ -60,17 +60,18 @@ x64-specific регистрации CTest. До запуска проверяю�
 ## Wide workload profile / Расширенный набор
 
 The default `core` profile retains these eleven workloads. `--profile wide`
-selects forty explicit portable drivers, adding table edit/retirement and kill
+selects forty-one explicit portable drivers, adding table edit/retirement and kill
 paths, native services, shared JIT publication, mapped strings/accounting,
 collector requests, service budgets, module cycles and exception retirement.
 Architecture-specific inline-emitter oracles retain their existing CTest gates.
 CI selects `wide` on all three targets and retains full per-driver logs and JSON
 reports as artifacts for fourteen days, including failures. Local AMD64 passed
-40/40; the verified wider ARM64/RV64 results are recorded below.
+40/40 in the predecessor matrix; those results are recorded below. The owner-local
+observer extension and its 41-workload gate are documented in [OWNER-MONITORS.md](OWNER-MONITORS.md).
 The exception driver keeps its omission controls by default; its explicit
 positive-only mode runs all four real C/JIT/poll release profiles.
 
-Профиль `core` сохраняет 11 нагрузок; `--profile wide` выбирает 40 переносимых
+Профиль `core` сохраняет 11 нагрузок; `--profile wide` выбирает 41 переносимый
 драйверов, включая общую публикацию JIT, жизненный цикл таблиц, отмену, бюджеты
 GC и освобождение исключений. CI запускает wide на трёх целях и сохраняет полные
 журналы/JSON на 14 дней, также при отказе. Локально x64 прошёл 40/40; результаты
@@ -275,7 +276,8 @@ largest fragment is 344 lines and its coordinator is 96. Vendor snapshots are
 unchanged. TSan does not instrument emitted machine instructions. RV64 QEMU
 success remains functional/ABI evidence, not RV64 hardware ordering/throughput
 certification. The legacy reference oracle's dynamic heapmonitor race described
-above remains open and is not included in the successful strict-native count.
+above was open at this forty-workload checkpoint. Its subsequent owner-local
+fix and the forty-first workload are documented in OWNER-MONITORS.md.
 
 Финальный workflow указанного коммита завершился успешно: native x64 и ARM64,
 x64 TSan и настоящий RV64 userspace/JIT под QEMU — по 40/40. Отдельный x64
@@ -289,4 +291,5 @@ constructor/channel oracle также прошёл CI. Во всех четыр�
 CI отдельным полным table-драйвером в обычной и TSan-сборке; production-код
 не меняется. Исходники ограничены 437 строками, upstream не изменён. TSan не
 инструментирует выпущенные JIT-инструкции, QEMU не заменяет RV64-железо.
-Гонка динамического heapmonitor в старом reference-oracle остаётся открытой.
+Гонка heapmonitor была открыта на этом checkpoint из 40 нагрузок; последующее
+исправление owner-local hooks и 41-я нагрузка описаны в OWNER-MONITORS.md.

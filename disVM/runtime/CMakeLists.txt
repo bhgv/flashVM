@@ -71,6 +71,14 @@ string(REPLACE "XMAGIC\t= 819248" "XMAGIC\t= 819264" isa "${isa}")
 string(REPLACE "SMAGIC\t= 923426" "SMAGIC\t= 923442" isa "${isa}")
 file(WRITE "${view}/isa.h" "${isa}")
 file(READ "${u}/include/interp.h" native_interp)
+# EN/RU: A hook belongs to its OS-thread owner; collectors never inherit it.
+# Callback принадлежит владельцу OS-потока; сборщики его не наследуют.
+set(monitor_declaration "extern\tvoid\t\t(*heapmonitor)(int, void*, ulong);")
+string(FIND "${native_interp}" "${monitor_declaration}" monitor_position)
+if(monitor_position LESS 0)
+    message(FATAL_ERROR "Heap monitor header declaration changed")
+endif()
+string(REPLACE "${monitor_declaration}" "extern __thread void (*heapmonitor)(int, void *, ulong);" native_interp "${native_interp}")
 string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}")
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
 # Route hosted C write barriers through the same scalar fields as the collector.
@@ -111,8 +119,9 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py" --output "${view}"
+ COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_owner_monitor.py" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
-    DEPENDS prepare_guarded_leaves.py ${channel_prepare_inputs} limbo-bootstrap
+    DEPENDS prepare_owner_monitor.py prepare_guarded_leaves.py ${channel_prepare_inputs} limbo-bootstrap
     prepare.py prepare_jit_publication.py jit_publication.h prepare_string_view.py
     string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h
     prepare_mapped_cons.py mapped_cons.h prepare_raw_cons.py raw_cons.h
@@ -139,7 +148,8 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
     "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
   "${root}/disVM/host/prepare_native_registers.py"
-  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py")
+  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py"
+  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_owner_monitor.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-${runtime_backend})
 set(sources)
 foreach(unit IN LISTS core)

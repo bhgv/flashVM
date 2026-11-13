@@ -3,6 +3,7 @@
 # RU: Проверить полную генерацию native, guarded-хвосты и повтор без изменений.
 
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -11,7 +12,7 @@ import tempfile
 # EN: Prepare twice using the real compiler and pinned source; require byte-identical output.
 # Arguments are native compiler, pinned libinterp source and actual compiled-source directory.
 # Returns only after idempotency and current-view freshness both match.
-# RU: CLI compiler/source/view задают настоящие входы. Дважды сгенерировать обе
+# RU: CLI compiler/source/view задают настоящие входы. Дважды сгенерировать все
 # стадии и сверить байты со сборкой; временные файлы принадлежат проверке.
 # Дрейф и ошибки сборки дают отказ, исходники upstream не меняются.
 def main():
@@ -38,15 +39,24 @@ def main():
             temporary,
         ]
         subprocess.run(guarded, check=True)
+        monitor = [
+            sys.executable,
+            str(Path(__file__).with_name("prepare_owner_monitor.py")),
+            "--output",
+            temporary,
+        ]
+        subprocess.run(monitor, check=True)
         first = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
         subprocess.run(command, check=True)
         subprocess.run(guarded, check=True)
+        subprocess.run(monitor, check=True)
         second = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
         if first != second:
             raise RuntimeError("native source generation compounded a prior adaptation")
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
         critical = (
+            "heap.c",
             "string.c",
             "xec.c",
             "stack.c",
@@ -68,6 +78,16 @@ def main():
             for name in critical
             if not (actual / name).is_file() or (actual / name).read_bytes() != second[name]
         ]
+        if (
+            len(
+                re.findall(
+                    r"extern\s+__thread\s+void\s+\(\*heapmonitor\)",
+                    (actual / "interp.h").read_text(),
+                )
+            )
+            != 1
+        ):
+            raise RuntimeError("compiled heap monitor declaration is not owner-local")
         if stale:
             raise RuntimeError(
                 "compiled native view is stale relative to pinned source: " + ", ".join(stale)

@@ -16,6 +16,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
     ("packet-cycles", "test_packet_cycle_retirement.py", ("--positive-only",)),
 )
 WIDE_CASES = CORE_CASES + (  # Additional whole-VM tests; excludes x64 inline-emitter oracles.
+    ("owner-monitors", "test_owner_monitor.py", ("--positive-only",)),
     ("table-retirement", "test_table_retirement.py", ()),
     ("table-scope-kill", "test_table_scope_kill.py", ()),
     ("table-fifo-edit", "test_table_fifo_edit.py", ()),

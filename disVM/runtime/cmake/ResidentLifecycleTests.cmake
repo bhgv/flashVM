@@ -5,6 +5,12 @@
 # EN: Whole-VM stale-reply ownership probe; no x64-only opcode instrumentation.
 # RU: Проверка владельцев старого ответа в настоящей VM, без x64-specific hook.
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    # EN/RU: Real owner callbacks, concurrent Fast and semantic omission controls.
+    # Настоящие owner-callbacks, параллельный Fast и семантические omission controls.
+    add_test(NAME disvm_owner_local_monitors COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_owner_monitor.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_owner_local_monitors PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_live_parent_late_reply COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_late_reply.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

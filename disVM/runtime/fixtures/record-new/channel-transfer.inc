@@ -300,5 +300,3 @@ static void buffered_channel_completion(void)
     refill_observed_channel = NULL;
     puts("PASS buffered channel completion");
 }
-
-

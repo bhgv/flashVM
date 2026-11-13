@@ -250,5 +250,3 @@ static void channel_finalize_case(DVM_GCWorkers *workers)
     check(dvm_refcount_load_i(&Tword.ref) == refs, "finalized buffer releases its element descriptor");
     puts("PASS two-sided channel finalization");
 }
-
-

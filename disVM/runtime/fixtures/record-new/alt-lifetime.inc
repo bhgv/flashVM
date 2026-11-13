@@ -178,5 +178,3 @@ static void prog_hold_race(void)
     pthread_barrier_destroy(&race.start);
     puts("PASS native Prog hold race");
 }
-
-
