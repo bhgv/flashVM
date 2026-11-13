@@ -22,6 +22,7 @@ def replace(source, changes):
 # адаптацию, не меняя выделения или создание личного link.
 def adapt_link(source):
     changes = (
+        ("D2H(m->origmp)->ref == 0", "dvm_refcount_load_u(&D2H(m->origmp)->ref) == 0", 1),
         ("Tmodlink.ref++;", "dvm_runtime_type_retain(&Tmodlink.ref);", 1),
         ("t->ref++;", "dvm_runtime_type_retain(&t->ref);", 1),
         ("Tmodlink.ref <= 0", "dvm_refcount_load_i(&Tmodlink.ref) <= 0", 1),

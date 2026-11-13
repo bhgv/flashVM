@@ -4,6 +4,13 @@
 #include "interp.h"
 #include "isa.h"
 #include "native64-scalar-boot.h"
+#ifdef DIS_NATIVE64_GUI_SYS_FIXED
+#if DIS_NATIVE64_GUI_SYS_FIXED != 1 || defined(DIS_NATIVE64_SYS_HEADER) || defined(DIS_NATIVE64_BOOT_SYS_IO) || defined(DIS_NATIVE64_SCALAR_BOOT)
+#error native64 GUI Sys selection owns its generated declarations
+#endif
+#define DIS_NATIVE64_SYS_HEADER "sys-native64.h"
+#include "native64-sys-fixed.h"
+#endif
 #ifdef DIS_NATIVE64_BOOT_SYS_IO
 #ifdef DIS_NATIVE64_SYS_HEADER
 #error native64 Sys startup owns its generated metadata selection
@@ -60,6 +67,9 @@ sysinit(void)
 	uchar readmap[sizeof(rmap)], writemap[sizeof(wmap)];
 	ulong readslot, dataslot, replyslot;
 	int i;
+#ifdef DIS_NATIVE64_GUI_SYS_FIXED
+	char reason[ERRMAX], *failure = exNomem;
+#endif
 
 	if(TFD != nil || TFileIO != nil || FioTread != nil || FioTwrite != nil || Tdir != nil){
 		if(TFD != nil && TFileIO != nil && FioTread != nil && FioTwrite != nil && Tdir != nil)
@@ -102,6 +112,15 @@ sysinit(void)
 	if(types[4] == nil)
 		goto failed;
 
+#ifdef DIS_NATIVE64_GUI_SYS_FIXED
+	if(!sysnative64registerfixed()){
+		reason[0] = 0;
+		kgerrstr(reason, sizeof(reason));
+		reason[sizeof(reason)-1] = 0;
+		failure = reason[0] != 0 ? reason : "native64 Sys registration failed";
+		goto failed;
+	}
+#endif
 	memmove(rmap, readmap, sizeof(rmap));
 	memmove(wmap, writemap, sizeof(wmap));
 	TFD = types[0];
@@ -113,8 +132,33 @@ sysinit(void)
 failed:
 	for(i=0; i<5; i++)
 		freetype(types[i]);
+#ifdef DIS_NATIVE64_GUI_SYS_FIXED
+	error(failure);
+#else
 	error(exNomem);
+#endif
 }
+
+
+#ifdef DIS_NATIVE64_GUI_SYS_FIXED
+/* Verify the complete native descriptor set before accepting an idempotent module startup. */
+int
+sysnative64typesready(void)
+{
+	Type *types[] = {TFD, TFileIO, FioTread, FioTwrite, Tdir};
+	uchar *maps[] = {FDmap, FileIOmap, rmap, wmap, dmap};
+	unsigned int sizes[] = {sizeof(FD), sizeof(Sys_FileIO), sizeof(Sys_FileIO_read), sizeof(Sys_FileIO_write), sizeof(Sys_Dir)};
+	unsigned int bytes[] = {sizeof(FDmap), sizeof(FileIOmap), sizeof(rmap), sizeof(wmap), sizeof(dmap)};
+	unsigned int i;
+
+	for(i=0; i<nelem(types); i++)
+		if(types[i] == nil || types[i]->size != sizes[i] || types[i]->np != bytes[i] ||
+		   memcmp(types[i]->map, maps[i], bytes[i]) != 0)
+			return 0;
+	return TFD->free == freeFD && TFileIO->free == freeFileIO &&
+		FioTread->free == freeheap && FioTwrite->free == freeheap && Tdir->free == freeheap;
+}
+#endif
 
 
 void
@@ -447,6 +491,7 @@ void
 Sys_open(void *fp)
 {
 	int fd;
+	char *path;
 	F_Sys_open local, *f;
 	Sys_FD *old, *result;
 
@@ -460,8 +505,9 @@ Sys_open(void *fp)
 		seterror(Ebadarg);
 		return;
 	}
+	path = string2c(f->s);
 	release();
-	fd = kopen(string2c(f->s), f->mode);
+	fd = kopen(path, f->mode);
 	acquire();
 	if(fd == -1)
 		return;
@@ -591,6 +637,7 @@ void
 Sys_create(void *fp)
 {
 	int fd;
+	char *path;
 	F_Sys_create local, *f;
 	Sys_FD *old, *result;
 
@@ -604,8 +651,9 @@ Sys_create(void *fp)
 		seterror(Ebadarg);
 		return;
 	}
+	path = string2c(f->s);
 	release();
-	fd = kcreate(string2c(f->s), f->mode, f->perm);
+	fd = kcreate(path, f->mode, (UWORD)f->perm);
 	acquire();
 	if(fd == -1)
 		return;
@@ -621,11 +669,14 @@ Sys_remove(void *fp)
 {
 	F_Sys_remove local, *f;
 	WORD result;
+	char *path;
 
 	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_remove, ret), sizeof(*local.ret));
 	f = &local;
+	/* Allocation failure must unwind while the VM is still held. */
+	path = string2c(f->s);
 	release();
-	result = kremove(string2c(f->s));
+	result = kremove(path);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
@@ -665,11 +716,14 @@ Sys_unmount(void *fp)
 {
 	F_Sys_unmount local, *f;
 	WORD result;
+	char *first, *second;
 
 	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_unmount, ret), sizeof(*local.ret));
 	f = &local;
+	first = string2c(f->s1);
+	second = string2c(f->s2);
 	release();
-	result = kunmount(string2c(f->s1), string2c(f->s2));
+	result = kunmount(first, second);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
@@ -831,11 +885,14 @@ Sys_chdir(void *fp)
 {
 	F_Sys_chdir local, *f;
 	WORD result;
+	char *path;
 
 	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_chdir, ret), sizeof(*local.ret));
 	f = &local;
+	/* Allocation failure must unwind while the VM is still held. */
+	path = string2c(f->path);
 	release();
-	result = kchdir(string2c(f->path));
+	result = kchdir(path);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
@@ -1118,6 +1175,7 @@ Sys_bind(void *fp)
 {
 	F_Sys_bind local, *f;
 	WORD result;
+	char *first, *second;
 
 	sysstatusframe(fp, &local, sizeof(local), O(F_Sys_bind, ret), sizeof(*local.ret));
 	f = &local;
@@ -1127,8 +1185,10 @@ Sys_bind(void *fp)
 		memmove(f->ret, &result, sizeof(result));
 		return;
 	}
+	first = string2c(f->s);
+	second = string2c(f->on);
 	release();
-	result = kbind(string2c(f->s), string2c(f->on), f->flags);
+	result = kbind(first, second, f->flags);
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }
@@ -1918,7 +1978,12 @@ Sys_iounit(void *fp)
 		return;
 	}
 	release();
+	if(waserror()){
+		acquire();
+		nexterror();
+	}
 	result = kiounit(fd);
+	poperror();
 	memmove(f->ret, &result, sizeof(result));
 	acquire();
 }

@@ -110,3 +110,46 @@ C/RX positive/refusal goldens on the three target architectures. See
 [control preflight](dis64-local-flow.md) and
 [accepted initial design](dis64-local-call-proposal.md). This is a Linux console
 checkpoint; it does not produce or validate an Android APK or GUI.
+
+Checkpoint0075 adds private executable preparation/result state transitions and
+strict live-state joins, with98032 independent oracle records and13 semantic
+removal controls. It consumes trusted abstract facts: decoded operand roles,
+source-value/span proofs, entry-seeded CFG propagation and composed callee return
+guarantees remain before file calls. This changes no fast-path or admission
+count. See [state scope](dis64-local-state.md) and
+[series0075](native64-series0075.md).
+
+Checkpoint0076 composes the private state model with entry-seeded semantic CFG
+propagation:4005 graphs and eight active semantic controls. Scratch is reset;
+exact joins, setup ownership, all-node static preflight and work/capacity limits
+are checked. This advances abstract history proof but still does not derive
+actual decoded operand/source/span facts or enable file calls. Fast paths and
+43-op file admission are unchanged. See [CFG scope](dis64-local-cfg.md) and
+[series0076](native64-series0076.md).
+
+Checkpoint0077 repairs scalar helper width validation and pre-narrowing memory
+bounds, and derives typed numeric read/write facts from real compact code bytes.
+The17544-case byte/layout oracle and12 controls remain private fact-extraction
+evidence under trusted declarations. Numeric initialization and callable/CFG
+composition still precede new file calls. No fast-path or43-op admission count
+changes. See [operand scope](dis64-local-operands.md) and
+[series0077](native64-series0077.md).
+
+Checkpoint0078 adds actual scalar-code numeric definite initialization: canonical
+argument entry seeds, read-before-write checks, intersecting CFG joins and bounded
+requeue convergence. The2029-case synchronous oracle/13 controls compare every
+reached set. Context provenance/callable return composition remains before new
+file calls; no native fast-path or43-op admission count changes. See
+[numeric scope](dis64-local-initialized.md) and [series0078](native64-series0078.md).
+
+## Explicit scalar-call startup (series0105)
+
+The ordinary/default43-op admission remains unchanged. A distinct startup-only
+`-X dis64-calls -d module.dis64` now selects full raw-image proof and owned scalar
+root-to-leaf Int32/Big/Real lowering through actual file loading; it never falls
+back to ordinary/pilot/dynamic/builtin loading or switches a cached module's mode.
+This is the staged Inferno policy explicitly agreed in FLASHVM-0102/0103, not
+FlashVM executor acceptance or full managed bytecode admission. Native fast and
+complete JIT+C populations above do not change. See [series0105](native64-series0105.md)
+for matching-Qid cache isolation, exact scheduled C/RX results, complete classic-mk
+emulator evidence and separate pending native target acceptance.

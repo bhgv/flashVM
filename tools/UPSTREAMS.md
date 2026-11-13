@@ -12,8 +12,8 @@ The workspace MIT licence does not replace upstream component licences.
 | --- | --- | --- | --- |
 | [coco-r-C](coco-r-C/README.md) | https://github.com/bhgv/coco-r-C | master / 9eb70dbf3839d69a0cdcf9e20e3eaafaa87da89d | C generator and C frames actually used by our compiler grammars |
 | [coco-r-limbo](coco-r-limbo/README.md) | https://github.com/bhgv/coco-r-limbo | main / f76ae3d40cd00c4829ea1b36f34456898cec98db | C-to-Limbo generator and source Limbo generator, runtime fragments |
-| [limbo-bootstrap](limbo-bootstrap/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / 34d019f22b80d01385db737e13b20c0ff443aa8b | Temporary native compiler, mature debug/native-stub reference, C and Limbo source versions |
-| [../disVM](../disVM/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / 34d019f22b80d01385db737e13b20c0ff443aa8b | Interpreter core, 64-bit leaf JITs and selected regressions |
+| [limbo-bootstrap](limbo-bootstrap/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / 7f2241455734e1142a3254fad9d1ec4f94032ac7 | Temporary native compiler, mature debug/native-stub reference, C and Limbo source versions |
+| [../disVM](../disVM/README.md) | https://github.com/bhgv/Inferno-OS-bhgv | experiment / 7f2241455734e1142a3254fad9d1ec4f94032ac7 | Interpreter core, 64-bit leaf JITs and selected regressions |
 
 Each folder's `UPSTREAM.json` is authoritative for repository, branch, resolved
 commit, selection rules and SHA-256 of every imported file. No `.git` directory,
@@ -60,8 +60,8 @@ Confirmed defects belong in the owning repository, not as hidden vendored edits.
 Make a local work branch there, fix and test the original C or Limbo source,
 commit with the user's identity and export a separate format-patch. Refresh this
 workspace from that exact local commit. Give the owner both upstream and FlashVM
-patches when both repositories change. Publication remains manual; no automatic
-push is part of this workflow. This import required host/build adapters, not a
+patches when both repositories change. The updater itself never publishes; the user-authorized publication workflow
+checks destination, expected head, authorship and tested trees. This import required host/build adapters, not a
 confirmed upstream defect fix; upstream blobs remain unchanged.
 
 ## Primary compiler priority
@@ -73,4 +73,4 @@ Priorities for our compiler are source/debug information, semantic lowering,
 Dis/SWF emission and `.m`-driven C/AS/other-language external module support.
 See [the own compiler contract](../compiler/limbo/OWN_COMPILER.md).
 
-[Inferno mk](mk/README.md) · [Inferno iyacc](iyacc/README.md): selected experiment f948343b711c8300dbf76417254c18a7a8d2f5ff, 82 / 17 upstream files, explicit dependencies and bootstrap scripts.
+[Inferno mk](mk/README.md) · [Inferno iyacc](iyacc/README.md): selected experiment 7f2241455734e1142a3254fad9d1ec4f94032ac7, 83 / 17 upstream files, explicit dependencies and bootstrap scripts.

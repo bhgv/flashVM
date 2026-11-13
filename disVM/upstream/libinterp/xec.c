@@ -139,6 +139,146 @@ OP(lea)
 }
 
 
+/* Bind a complete result address only for an explicitly trusted Module.cstep owner.
+ * xec invokes this before ordinary JIT entries, so cached WORD-sized LEA stays ordinary.
+ * Only a checked constructor or trusted native owner may select this callback.
+ */
+static int
+native64bindresult(int managed)
+{
+	VmFetch fetched;
+	Inst instruction;
+	Type *type;
+	void *address, *destination;
+	Frame *pending;
+	Stkext *active;
+	int (*step)(void);
+	int size, mapbytes, i, resultbyte, resultbit;
+	void *previous;
+	uintptr base, extent, start, top, target;
+
+	if(!vmfetch(&fetched) || fetched.op != ILEA)
+		return 0;
+	memmove(&step, (uchar*)fetched.module+O(Module, cstep), sizeof(step));
+	if(step != (managed == 2 ? native64stringlea8step : managed ? native64managedlea8step : native64lea8step))
+		return 0;
+	memmove(&instruction, fetched.pc, sizeof(instruction));
+	if(sizeof(void*) != 8 || instruction.add != (SRC(AFP)|DST(AFP|AIND)) ||
+	   (instruction.d.i.f != 40 && instruction.d.i.f != 48 && instruction.d.i.f != 56) ||
+	   instruction.d.i.s != 32 || R.FP == nil || R.FP == H ||
+	   (uintptr)R.FP > (uintptr)-1-sizeof(Frame))
+		error(exBounds);
+	base = (uintptr)R.FP;
+	memmove(&type, (uchar*)R.FP+O(Frame, t), sizeof(type));
+	if(type == nil){
+		if(base < OA(Stkext, reg.tos.fu))
+			error(exBounds);
+		extent = base-OA(Stkext, reg.tos.fu);
+		if(extent > (uintptr)-1-(O(Stkext, reg.TR)+sizeof(type)))
+			error(exBounds);
+		memmove(&type, (void*)(extent+O(Stkext, reg.TR)), sizeof(type));
+	}
+	if(type == nil || type == H || (uintptr)type > (uintptr)-1-sizeof(Type))
+		error(exBounds);
+	memmove(&size, (uchar*)type+O(Type, size), sizeof(size));
+	memmove(&mapbytes, (uchar*)type+O(Type, np), sizeof(mapbytes));
+	if(size < 72 || (size&7) != 0 || mapbytes < 0 ||
+	   mapbytes > size/64+(size%64 != 0) ||
+	   (uintptr)type > (uintptr)-1-O(Type, map)-(uintptr)mapbytes ||
+	   base > (uintptr)-1-(uintptr)size || (instruction.s.ind != size-8 && !(managed == 2 && ((size == 112 && instruction.s.ind == 96) || (size == 128 && (instruction.s.ind == 96 || instruction.s.ind == 104))))))
+		error(exBounds);
+	if(managed == 2 && (mapbytes != 2 || type->map[0] != 0 ||
+       (size == 80 ? type->map[1] != 0x80 :
+        size == 112 ? (type->map[1] != 0x80 && type->map[1] != 0xc0 && type->map[1] != 0x88 && type->map[1] != 0xc8) :
+        size == 128 ? (type->map[1] != 0x83 && type->map[1] != 0x8b && type->map[1] != 0xc3 && type->map[1] != 0xcb) : 1)))
+        error(exBounds);
+	if(managed == 2 && size == 128 && instruction.s.ind != 96 && instruction.s.ind != 104) error(exBounds);
+	if(managed == 2 && instruction.s.ind == 96 && (type->map[1]&8) == 0) error(exBounds);
+	resultbyte = (size-8)/64;
+	resultbit = 0x80 >> ((size-8)/8%8);
+	if(managed == 1 && resultbyte >= mapbytes)
+		error(exBounds);
+	for(i=0; i<mapbytes; i++){
+		int map = type->map[i];
+
+		/* Checked callers own String roots at 64/72, optional FD at 96, and array/String at 112/120. */
+		if(managed && (size == 80 || (managed == 2 && (size == 112 || size == 128))) && i == 1)
+			map &= managed == 2 && size == 128 ? ~0xcb : managed == 2 && size == 112 ? ~0xc8 : ~0x80;
+		if(map != (managed == 1 && i == resultbyte ? resultbit : 0))
+			error(exBounds);
+	}
+	/* The checked sequence prepares exactly one frame at the top of the stack. */
+	active = (Stkext*)R.EX;
+	top = (uintptr)R.SP;
+	extent = (uintptr)active;
+	if(active == nil || active == H || extent%sizeof(void*) != 0 ||
+	   extent > (uintptr)-1-OA(Stkext, reg.tos.fu) ||
+	   R.TS == nil || R.TS == H || top > (uintptr)R.TS)
+		error(exBounds);
+	start = extent+OA(Stkext, reg.tos.fu);
+	memmove(&pending, (uchar*)R.FP+instruction.d.i.f, sizeof(pending));
+	target = (uintptr)pending;
+	if(target < start || target > top || top-target < 32+sizeof(address))
+		error(exBounds);
+	if(base >= start && base < top){
+		if(target != base+(uintptr)size)
+			error(exBounds);
+	}else if(target != start || (uintptr)active->reg.SP != base+(uintptr)size)
+		error(exBounds);
+	address = (void*)(base+(uintptr)instruction.s.ind);
+	destination = (void*)(target+32);
+	if(managed){
+		Modlink *entered;
+
+		if(managed == 1){
+			memmove(&previous, address, sizeof(previous));
+			if(previous != H) error(exBounds);
+		}
+		/* Managed results use a mapped argument; fixed Sys also admits scalar-only frames. */
+		if(managed == 2 ? (top-target != 64 && top-target != 72 && top-target != 80 && top-target != 88) : top-target != 72)
+			error(exBounds);
+		memmove(&entered, (uchar*)pending+O(Frame, mr), sizeof(entered));
+		memmove(&type, (uchar*)pending+O(Frame, t), sizeof(type));
+		if(entered != nil)
+			error(exBounds);
+		if(type == nil && target == start && (base < start || base >= top))
+			type = active->reg.TR;
+		if(type == nil || type == H || (uintptr)type%sizeof(void*) != 0 ||
+		   (uintptr)type > (uintptr)-1-O(Type, map)-2 ||
+		   type->size != (int)(top-target) || type->map[0] != 0 ||
+           (managed == 2 ? (type->size == 64 ? type->np != 1 :
+            (type->np != 2 || (type->size == 72 ?
+             (type->map[1] != 0 && type->map[1] != 0x80) : (type->map[1] != 0xc0 && (type->size != 80 || type->map[1] != 0x80))))) :
+            (type->size != 72 || type->np != 2 || type->map[1] != 0x80)))
+			error(exBounds);
+	}
+	vmdecode(&fetched);
+	if(R.s != address || R.d != destination)
+		error(exBounds);
+	memmove(destination, &address, sizeof(address));
+	return 1;
+}
+
+int
+native64lea8step(void)
+{
+	return native64bindresult(0);
+}
+
+int
+native64managedlea8step(void)
+{
+	return native64bindresult(1);
+}
+
+
+/* Checked Sys calls bind either an unmapped Word or the separate mapped FD result. */
+int
+native64stringlea8step(void)
+{
+    return native64bindresult(2);
+}
+
 /* Preserve overlapping scalar slots without requiring host alignment. */
 OP(movb)
 {
@@ -3186,6 +3326,24 @@ OP(iload)
 			}
 		}
 	}
+#ifdef DIS_NATIVE64_BOOT_SYS_IO
+	else if((m->cstep == native64lea8step || m->cstep == native64stringlea8step) && strcmp(n, "$Sys") == 0){
+		const Link *entry;
+		Module *sys;
+		Import *requested;
+
+		sys = nil;
+		for(requested = ldt; requested->name != nil; requested++){
+			entry = native64sysexport(requested->name, &sys);
+			if(entry == nil || requested->sig != entry->sig)
+				error(exModule);
+		}
+		if(sys == nil || sys->ref <= 0 || sys->ref == 0x7fffffff)
+			error(exModule);
+		sys->ref++;
+		ml = linkmod(sys, ldt, 0);
+	}
+#endif
 	else {
 		m = readmod(n, lookmod(n), 1);
 		ml = linkmod(m, ldt, 1);
@@ -5433,10 +5591,32 @@ int
 cjitexec(REG *r, int op, int (*fast)(REG*))
 {
 	void (*handler)(void);
+	Modlink *link;
+	Module *module;
+	int (*step)(void);
+	int compiled;
 
 	if(r != &R || op <= INOP || op >= MAXDIS || op == IECLR ||
 	   (uintptr)fast == (uintptr)-1)
 		return 0;
+	/* A decoded LEA cannot reconstruct a trusted predecode binding. Refuse any
+	 * translated mode before either ordinary native code or its C fallback writes. */
+	if(op == ILEA){
+		link = R.M;
+		if(link == nil || link == H || (uintptr)link%sizeof(void*) != 0 ||
+		   (uintptr)link > (uintptr)-1-sizeof(*link))
+			error(exCompile);
+		memmove(&module, (uchar*)link+O(Modlink, m), sizeof(module));
+		memmove(&compiled, (uchar*)link+O(Modlink, compiled), sizeof(compiled));
+		if(compiled)
+			error(exCompile);
+		if(module == nil || module == H || (uintptr)module%sizeof(void*) != 0 ||
+		   (uintptr)module > (uintptr)-1-sizeof(*module))
+			error(exCompile);
+		memmove(&step, (uchar*)module+O(Module, cstep), sizeof(step));
+		if(step != nil)
+			error(exCompile);
+	}
 	if(fast != nil && fast(r))
 		return 1;
 	handler = optab[op];

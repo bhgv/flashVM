@@ -2,7 +2,7 @@
 
 [Русский](README.ru.md) · [Manifest](UPSTREAM.json) · [mk support](../mk/README.md)
 
-Source: bhgv/Inferno-OS-bhgv experiment, 3e3536578b969cf1a460210d8ec667713869ccfc.
+Source: bhgv/Inferno-OS-bhgv experiment, 7f2241455734e1142a3254fad9d1ec4f94032ac7.
 17 selected upstream files include utils/iyacc/yacc.c, yaccpar, original mkfile,
 three extra lib9/BIO translation units and notices/licenses. Upstream utils/iyacc
 contains a C generator and skeleton; the Limbo grammar is limbo/limbo.y in the

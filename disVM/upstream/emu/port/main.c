@@ -11,6 +11,13 @@
 int		rebootargc = 0;
 char**		rebootargv;
 static	char	*imod = "/dis/emuinit.dis";
+#if defined(DIS_NATIVE64_SCALAR_BOOT) && defined(DIS64_PILOT_LOADER)
+int dis64bootauto; // Resolve the sole import beside the consumer.
+char *dis64bootmanagedinput;
+int dis64bootmanaged; // Select the explicit managed file-pair trial.
+char *dis64bootprovider; // Explicit provider namespace path for paired startup.
+#endif
+static int imodexplicit; // A selected call profile requires an explicit initial module.
 extern	char*	hosttype;
 char*	tkfont;	/* for libtk/utils.c */
 int	tkstylus;	/* libinterp/tk.c */
@@ -36,6 +43,13 @@ usage(void)
 		"\t-gXxY\n"
 		"\t-c[0-9]\n"
 		"\t-d file.dis\n"
+		"\t-X dis64-calls (experimental; requires -d module.dis64)\n"
+#if defined(DIS_NATIVE64_SCALAR_BOOT) && defined(DIS64_PILOT_LOADER)
+		"\t-P provider.dis64 (experimental pair; requires -d consumer.dis64)\n"
+		"\t-X dis64-pair (find the provider beside the -d consumer.dis64 file)\n"
+		"\t-X dis64-managed-trial (requires -d consumer.dis64 and -P provider.dis64 or $Sys)\n"
+		"\t-A text (managed trial input, up to 4096 UTF-8 bytes)\n"
+#endif
 		"\t-s\n"
 		"\t-v\n"
 		"\t-p<poolname>=maxsize\n"
@@ -119,6 +133,8 @@ poolopt(char *str)
 		usage();
 }
 
+
+/* Apply explicit command-line or EMU startup options before namespace initialization. */
 static void
 option(int argc, char *argv[], void (*badusage)(void))
 {
@@ -147,9 +163,41 @@ option(int argc, char *argv[], void (*badusage)(void))
 	case 'I':	/* (temporary option) run without cons */
 		dflag++;
 		break;
+	case 'X':		/* Explicit startup-only experimental file profile. */
+#ifdef DIS64_PILOT_LOADER
+		cp = EARGF(badusage());
+#ifdef DIS_NATIVE64_SCALAR_BOOT
+		if(strcmp(cp, "dis64-pair") == 0){
+			dis64bootauto = 1;
+			break;
+		}
+		if(strcmp(cp, "dis64-managed-trial") == 0){
+			dis64bootmanaged = 1;
+			break;
+		}
+#endif
+		if(!dis64selectlaunch(cp))
+			badusage();
+#else
+		badusage();
+#endif
+		break;
+#if defined(DIS_NATIVE64_SCALAR_BOOT) && defined(DIS64_PILOT_LOADER)
+	case 'A':
+		dis64bootmanagedinput = EARGF(badusage());
+		break;
+#endif
+	case 'P':
+#if defined(DIS_NATIVE64_SCALAR_BOOT) && defined(DIS64_PILOT_LOADER)
+		dis64bootprovider = EARGF(badusage());
+#else
+		badusage();
+#endif
+		break;
 	case 'd':		/* run as a daemon */
 		dflag++;
 		imod = EARGF(badusage());
+		imodexplicit = 1;
 		break;
 	case 's':		/* No trap handling */
 		sflag++;
@@ -191,6 +239,32 @@ option(int argc, char *argv[], void (*badusage)(void))
 		vflag = 1;	/* print startup messages */
 		break;
 	} ARGEND
+}
+
+
+/* Finish profile selection after all EMU/argv options and before initializing the VM. */
+static int
+launchoptions(void)
+{
+#ifdef DIS64_PILOT_LOADER
+#if defined(DIS_NATIVE64_SCALAR_BOOT)
+	if(dis64bootmanaged)
+		return imodexplicit && dis64bootprovider != nil && !dis64bootauto && !dis64launchmode() &&
+			(dis64bootprovider[0] != '$'
+#if defined(DIS_NATIVE64_BOOT_SYS_IO) && defined(DIS_NATIVE64_MANAGED_FILES)
+			 || strcmp(dis64bootprovider, "$Sys") == 0
+#endif
+			) &&
+			(dis64bootmanagedinput == nil || strlen(dis64bootmanagedinput) <= 4096);
+	if(dis64bootmanagedinput != nil)
+		return 0;
+	if(dis64bootprovider != nil || dis64bootauto)
+		return imodexplicit && !dis64launchmode() && !(dis64bootprovider != nil && dis64bootauto);
+#endif
+	return !dis64launchmode() || imodexplicit;
+#else
+	return 1;
+#endif
 }
 
 static void
@@ -266,6 +340,10 @@ main(int argc, char *argv[])
 		option(envc, enva, envusage);
 	}
 	option(argc, argv, usage);
+	if(!launchoptions()){
+		fprint(2, "emu: select one experimental profile and specify -d module.dis64\n");
+		usage();
+	}
 #ifdef DIS_NATIVE64_SCALAR_BOOT
 	if(!native64model()){
 		fprint(2, "emu: incompatible native64 scalar layout\n");

@@ -1,7 +1,7 @@
 {
   "repository": "https://github.com/bhgv/Inferno-OS-bhgv",
   "branch": "experiment",
-  "revision": "1bc495ad6058841da3e3b60c5fd72aef1dcbe4e2",
+  "revision": "7f2241455734e1142a3254fad9d1ec4f94032ac7",
   "destination": "upstream",
   "include": [
     "NOTICE",
@@ -120,7 +120,7 @@
     "upstream/lib9/utflen.c": "ddf00bc637b870ed8bd5a60bd729e14da666d66abae2803758dd926772123161",
     "upstream/lib9/utfnlen.c": "36865f476214c47be2a7d963c32c2cae223d730c0b728d636c7b9e1736c0e6b3",
     "upstream/lib9/utfrune.c": "3a23b4dc45270c158c1447c2c16b19a1c82cf16c9a81861e1e7e30545ec539db",
-    "upstream/lib9/vfprint.c": "e414683e7df5bbdbe9fe0297ac793cc1677ed25dc0df3a6745317010b419c56f",
+    "upstream/lib9/vfprint.c": "179ed1b8a2adc8b7c7e5b805cce65ef21e40ed5840ad727f36ede7e500dd6390",
     "upstream/lib9/vseprint.c": "2204ac840b4e9bf6a2f21c02048071fca84341edfd01753bea9112c4e384438b",
     "upstream/lib9/vsnprint.c": "bfbdb5a641f5b54eecd02f673a0c59d3ca1006e4c2e2d97d4b663ec1379894d1",
     "upstream/libbio/NOTICE": "8116a2d1c0737f268e8ce3a36b2a87e1e91fe6ea3b37b32815e44866a9c0bade",

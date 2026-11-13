@@ -107,3 +107,45 @@ jobs:
                   path: build/native-rv64/native-acceptance/wide
                   if-no-files-found: ignore
                   retention-days: 14
+
+    dis64-sys:
+        name: DIS64 Sys producer and owner guards (${{ matrix.backend }})
+        runs-on: ${{ matrix.runner }}
+        timeout-minutes: 20
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - backend: amd64
+                      runner: ubuntu-24.04
+                    - backend: arm64
+                      runner: ubuntu-24.04-arm
+        env:
+            NATIVE64_ARCH: ${{ matrix.backend }}
+        steps:
+            - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+              with:
+                  persist-credentials: false
+            - name: Install producer build tools
+              run: sudo apt-get update && sudo apt-get install -y cmake gcc python3
+            - name: Build current committed parser as a DIS64 producer
+              run: >-
+                  cmake -S tools/limbo-bootstrap -B build/dis64-compiler
+                  -DLIMBO_BOOTSTRAP_CELL_BYTES=4 -DBUILD_TESTING=OFF
+                  && cmake --build build/dis64-compiler --parallel 4
+            - name: Compare committed parser with current grammar producer
+              if: matrix.backend == 'amd64'
+              run: |
+                  bash tools/mk/bootstrap.sh build/native-mk
+                  MK_SUPPORT_ROOT="$PWD/build/native-mk" bash tools/iyacc/bootstrap.sh build/native-iyacc
+                  cmake -S tools/limbo-bootstrap -B build/dis64-fresh-parser -DLIMBO_BOOTSTRAP_CELL_BYTES=4 -DBUILD_TESTING=OFF -DIYACC_EXECUTABLE="$PWD/build/native-iyacc/iyacc" -DIYACC_ROOT="$PWD/build/native-iyacc"
+                  cmake --build build/dis64-fresh-parser --parallel 4
+                  python3 tools/limbo-bootstrap/tests/dis64_peer_compat.py --reference "$PWD/build/dis64-fresh-parser/limbo-bootstrap" --compiler "$PWD/build/dis64-compiler/limbo-bootstrap" --catalog disVM/upstream/utils/tests/dis64-cases.py
+                  python3 tools/limbo-bootstrap/tests/dis64_peer_compat.py --reference "$PWD/build/dis64-fresh-parser/limbo-bootstrap" --compiler "$PWD/build/dis64-compiler/limbo-bootstrap" --catalog disVM/upstream/utils/tests/dis64-inline.py
+            - name: Replay vendored DIS64 and Sys ownership gates
+              run: |
+                  mkdir -p build/dis64-replay
+                  export NATIVE64_TMPDIR="$PWD/build/dis64-replay"
+                  python3 disVM/upstream/utils/tests/dis64-cases.py --limbo "$PWD/build/dis64-compiler/limbo-bootstrap" --root "$PWD/build/dis64-replay"
+                  python3 disVM/upstream/utils/tests/dis64-inline.py --limbo "$PWD/build/dis64-compiler/limbo-bootstrap" --root "$PWD/build/dis64-replay"
+                  python3 disVM/upstream/utils/tests/dis64-sys-fixed-gc.py --limbo "$PWD/build/dis64-compiler/limbo-bootstrap"

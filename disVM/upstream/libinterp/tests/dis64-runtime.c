@@ -80,6 +80,15 @@ __wrap_free(void *pointer)
 	trackedfree(pointer);
 }
 
+#ifdef __BIONIC__
+/* Android runtime headers keep Inferno's allocator namespace separate from libc. */
+void
+free_(void *pointer)
+{
+	trackedfree(pointer);
+}
+#endif
+
 #define TEST_LEAF_DISPATCH_RUNTIME // Link the authoritative complete-entry executor.
 #if defined(DIS64_TEST_ARM64) && !defined(__aarch64__)
 #error the ARM64 runtime gate requires an AArch64 compiler
@@ -96,6 +105,7 @@ __wrap_free(void *pointer)
 #include "fns.h"
 #include "pool.h"
 #include "dis64-pilot.h"
+#include "dis64-call-infer.h"
 #include "vmfetch.h"
 
 static Proc worker; // Actual emulator error-stack storage.
@@ -224,12 +234,14 @@ void (*poolfault)(void*, char*, ulong) = badpool;
 
 
 /* Supply only the host diagnostic return-address boundary. */
+#ifndef __BIONIC__ // Android headers provide their inline return-address helper.
 uintptr
 getcallerpc(void *argument)
 {
 	(void)argument;
 	return 0;
 }
+#endif
 
 
 /* This constructor creates no exports, so dynamic-link teardown must stay empty. */
@@ -356,6 +368,7 @@ main(int argc, char **argv)
 		require(!ferror(file) && feof(file) && fclose(file) == 0);
 		require(dis64pilotcheck(image, bytes, 4096, 64, &semantic));
 		require(prepare64pilot("fixture", image, bytes, 0) == nil && allocations == 0);
+		require(prepare64calls("fixture", image, bytes, 0) == nil && allocations == 0);
 		printf("PASS unchanged legacy model rejects Dis64 construction before allocation\n");
 		return 0;
 	}

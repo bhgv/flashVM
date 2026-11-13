@@ -6,9 +6,10 @@
 Status: **native Bigtable primitives now implement per-object guards**.
 [Implementation and remaining limits](PAYLOAD_GUARDS.md). Arrays, mutable String
 slots and leases spanning source RHS/network waits remain design work.
-The current Dis host has one VM owner thread and no application process switch
-inside a C array/table copy. The C99 table API explicitly requires serialized
-owner access. Broker locks protect diagnostic metadata only.
+The current Dis host binds each Prog to its own permanent native OS thread.
+No global exclusive execution is available. Per-object guards protect mutable
+payloads; broker locks protect diagnostic metadata only. Historical single-owner
+notes do not authorize a reference profile. See [proxy contract](remote/README.md).
 
 For shared multi-threaded payloads, a long mutation receives a stable operation
 token. The write lock records that token and recursion depth. Nested reads/writes

@@ -67,6 +67,7 @@ typedef struct Inst	Inst;
 typedef struct Jit	Jit;
 typedef struct DisC	DisC;
 typedef struct Module	Module;
+typedef struct Dis64StorageOwner Dis64StorageOwner; // Opaque unpublished storage lease, never an executable Module.
 typedef struct Modlink	Modlink;
 typedef struct Modl	Modl;
 typedef struct Type	Type;
@@ -290,11 +291,11 @@ struct Prog
 /* Static Dis-to-C images keep original module data, frames and Dis PCs. */
 struct DisC
 {
-	const uchar *image;
-	ulong length;
-	int nprog;
-	int (*step)(void);
-	DisC *next;
+	const uchar *image; // Borrowed immutable source image; never a serialized callback pointer.
+	ulong length; // Complete source byte count, bounded before comparison.
+	int nprog; // Decoded instruction count associated with the exact source bytes.
+	int (*step)(void); // Trusted static C implementation, owned by the native host.
+	DisC *next; // Registry link; callers leave registered records unchanged.
 };
 
 /* Guarded fast entries and complete decoded dispatch retain original Dis PCs. */
@@ -336,6 +337,9 @@ struct Module
 	void*	dlm;		/* dynamic C module */
 	Jit*	jit;		/* optional leaf JIT, separate from native-PC compiled */
 	int	(*cstep)(void);	/* static Dis-to-C step; retains original Inst PCs */
+	int	mptype;		// Native MP descriptor ordinal; zero preserves ordinary Dis layout.
+	void* native64sysframes; // Private owned call-site table; never decoded from file flags.
+	void (*native64sysframesfree)(Module*); // Trusted nonthrowing teardown before Type retirement.
 };
 
 struct Modl
@@ -423,6 +427,7 @@ extern	void	(*optab[256])(void);
 extern	void	(*comvec)(void);
 extern	void	(*dec[])(void);
 extern	int	disc_register(DisC*);
+extern	int	disc_tryattach(Module*, const uchar*, ulong); // Caller owns unpublished Module under VM lock; no AOT/JIT composition.
 extern	void	disc_attach(Module*, const uchar*, ulong);
 extern	Module*	modules;
 extern	int	mutator;
@@ -466,6 +471,9 @@ extern	Channel*	cnewcraw(int, int);
 extern	Channel*	cnewcmapped(Modlink*, WORD, int);
 /* Complete one decoded operation; never retain a Module/Jit pointer across its C handler. */
 extern	int		cjitexec(REG*, int, int (*)(REG*));
+extern	int		native64lea8step(void); // Trusted Module.cstep binding; never selected from a file flag.
+extern	int		native64managedlea8step(void); // Trusted mapped, nil result cell binding.
+extern	int		native64stringlea8step(void); // Mapped String argument with an unmapped Word result.
 
 
 extern	int		compile(Module*, int, Modlink*);
@@ -556,8 +564,19 @@ extern	void		noptrs(Type*, void*);
 extern	int		nprog(void);
 extern	void		opinit(void);
 extern	Module*		parsemod(char*, uchar*, ulong, Dir*);
-/* Experimental scalar construction returns an unpublished owner; no readmod routing. */
+/* Scalar constructors return unpublished owners; file admission belongs to the selected loader. */
+extern Dis64StorageOwner* prepare64storage(uchar*, ulong); // Serialized VM preparation only; no code/import admission.
+extern Module* prepare64numeric(char*, uchar*, ulong, int, Dis64StorageOwner**); // Private MP-only numeric builder. Keep lease until rooted and initmem the entry frame.
+extern Modlink* prepare64providerlink(char*, uchar*, ulong, int, const uchar*, ulong, unsigned int); // Own one Modlink and one external root.
+extern Modlink* prepare64consumerlink(char*, uchar*, ulong, char*, uchar*, ulong, int); // Own one rooted linked consumer.
+extern int attach64storage(Module*, Dis64StorageOwner*); // Retain storage in an empty unpublished Module; caller keeps lease rooted until publication.
+extern Dis64StorageOwner* clone64storage(Dis64StorageOwner*); // Independent rooted data; source lease stays live under VM exclusion.
+extern void free64storage(Dis64StorageOwner*); // Consume the native lease and its private data root.
 extern	Module*		prepare64pilot(char*, uchar*, ulong, int);
+extern	Module*		prepare64calls(char*, uchar*, ulong, int); // Unpublished checked owner; caller supplies file policy.
+extern	int		dis64selectlaunch(char*); // Startup-only named Inferno experimental selection.
+extern	int		dis64launchmode(void); // Freeze and read host startup policy, not wire admission.
+extern	int		dis64launchcompatible(Module*); // Cache profile compatibility, never proof authority.
 extern	Module*		parsedmod(char*, int, ulong, Qid);
 extern	void		prefabmodinit(void);
 extern	Prog*		progn(int);
@@ -566,6 +585,22 @@ extern	void		ptradd(Heap*);
 extern	void		ptrdel(Heap*);
 extern	void		pushrun(Prog*);
 extern	Module*		readmod(char*, Module*, int);
+#if defined(DIS_NATIVE64_SCALAR_BOOT) && defined(DIS64_PILOT_LOADER)
+extern Modlink* read64pair(char*, char*); // Read and root the explicitly linked startup module.
+#ifdef DIS_NATIVE64_MANAGED_FILES
+extern Module* prepare64managedfile(char*, uchar*, ulong, int); // Unpublished checked file provider.
+#endif
+extern	int		managed64inputlist(Module*, int); // Checked private startup argument class; -1 invalid.
+extern Modlink* prepare64sysstring(char*, const uchar*, ulong, int);
+extern Modlink* prepare64managedtrial(char*, const uchar*, ulong, char*, const uchar*, ulong, int);
+extern char *dis64bootmanagedinput;
+extern int dis64bootmanaged; // Explicit trial schema, with an explicit provider file.
+extern int dis64bootauto; // Select sibling dependency resolution for paired startup.
+extern int dis64siblingdependency(const uchar*, ulong, unsigned int, char*, unsigned int); // Checked per-import sibling and total count.
+extern Modlink* prepare64siblings(char*, uchar*, ulong, int); // Own one rooted sibling consumer.
+extern int dis64pairdependency(const uchar*, ulong, char*, unsigned int); // Checked import name for sibling lookup.
+extern char *dis64bootprovider; // Provider path supplied by the scalar-console option.
+#endif
 extern	void		irecv(void);
 extern	void		release(void);
 extern	void		releasex(void);
@@ -588,6 +623,13 @@ extern	String*		stringdup(String*);
 extern	String*		stringheap(int, int, int, int);
 extern	char*		syserr(char*, char*, Prog*);
 extern	void		sysinit(void);
+#ifdef DIS_NATIVE64_BOOT_SYS_IO
+extern const Link* native64sysclock(Module**); // Borrowed generated export under VM exclusion.
+extern const Link* native64sysexport(const char*, Module**); // Exact name in the selected trusted Sys profile.
+extern const Link* dis64sysclockimport(const uchar*, ulong, unsigned int, Module**); // Private borrowed scalar import and module.
+extern Modlink* prepare64sysclocklink(const uchar*, ulong, unsigned int); // Own one Modlink and one external root.
+extern Modlink* prepare64sysclockconsumer(char*, const uchar*, ulong, int); // Own one rooted private clock consumer.
+#endif
 extern	void		sysmodinit(void);
 extern	void		tellsomeone(Prog*, char*);
 extern	void		tkmodinit(void);
