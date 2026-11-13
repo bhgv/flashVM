@@ -5,7 +5,7 @@ Proxynet: module
 {
     PATH: con "proxynet.dis"; # Client broker, one permanent Prog per connection.
     Disconnected: con -4; # Terminal byte/framing failure; sent effects may be unknown.
-    GCProgress: con 9; # Local broker maintenance, never a wire operation.
+    GCProgress: con 12; # Local broker maintenance, never a wire operation.
     Stale: con 5; # Image belongs to another connection incarnation.
 
 
@@ -107,4 +107,18 @@ Proxynet: module
     # резервируется до callback; kind — Proxyhost Variable/Function. Без replay.
     fetch: fn(endpoint: ref Endpoint, target, left, right: Image,
               refs, value, kind, timeout: int): (int, Image);
+
+    # EN: Import one server-authorized forwarding slot as a GC-owned variable image.
+    # Authority remains connection-scoped; arbitrary remote destinations are refused.
+    # RU: Импортировать server-authorized slot как GC-owned variable image.
+    # Authority ограничена connection; arbitrary remote destinations не допускаются.
+    importref: fn(endpoint: ref Endpoint, function: Image, slot, timeout: int): (int, Image);
+
+
+    # EN: Invoke a remote function with forwarding images issued by that server.
+    # The server resolves them to live owner-backed refs; no copied foreign cells.
+    # RU: Вызвать remote function с forwarding images этого server. Server получает
+    # live owner-backed refs; foreign cells не копируются.
+    routed: fn(endpoint: ref Endpoint, function, left, right: Image,
+               refs, value, timeout: int): (int, int);
 };

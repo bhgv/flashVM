@@ -8,6 +8,8 @@ include "proxyhost.m";
 include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
+include "proxynet.m";
+include "proxyregistry.m";
 include "proxyserver.m";
 ProxyOrphanServer: module { init: fn(); };
 server: Proxyserver; # Immutable initialized connection supervisor module.

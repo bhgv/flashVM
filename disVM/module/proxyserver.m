@@ -21,4 +21,10 @@ Proxyserver: module
     # killwait исходного child owner. Return status describes connection termination.
     serve: fn(input, output: ref Sys->FD, high, low: big, timeout: int,
               handler: Proxyhandler, cell, capture: ref Proxyhost->Cell): int;
+
+    # EN/RU: Serve with snapshotted authorized sources; connection cleanup revokes every view.
+    # Обслуживать snapshot authorized sources; cleanup connection отзывает все views.
+    registered: fn(input, output: ref Sys->FD, high, low: big, timeout: int,
+                   handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
+                   sources: array of ref Proxyregistry->Source): int;
 };

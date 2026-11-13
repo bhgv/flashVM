@@ -11,11 +11,13 @@ include "proxyowner.m";
 include "proxyframe.m";
 include "proxystream.m";
 include "proxynet.m";
+include "proxynetio.m";
 control: Processctl; # Immutable child lifecycle interface.
 sys: Sys; # Immutable clock interface.
 host: Proxyhost; # Exact native callback wait policy.
 gc: Proxygc; # Native metadata/token ownership, no network work in finalizers.
 codec: Proxyframe; # Canonical private wire codec.
+io: Proxynetio; # Immutable wire exchange implementation.
 stream: Proxystream; # Finite supervised byte IO.
 
 
@@ -29,10 +31,12 @@ init()
     gc = load Proxygc Proxygc->PATH;
     codec = load Proxyframe Proxyframe->PATH;
     stream = load Proxystream Proxystream->PATH;
-    if (sys == nil || control == nil || host == nil || gc == nil || codec == nil || stream == nil) {
+    io = load Proxynetio Proxynetio->PATH;
+    if (sys == nil || control == nil || host == nil || gc == nil || codec == nil || stream == nil || io == nil) {
         raise "proxy network modules unavailable";
     }
     stream->init();
+    io->init();
 }
 
 
@@ -148,6 +152,26 @@ fetch(endpoint: ref Endpoint, target, left, right: Image,
 }
 
 
+# EN/RU: Reserve result ownership before importing an authorized server forwarding slot.
+# Резервировать result ownership до import authorized server forwarding slot.
+importref(endpoint: ref Endpoint, function: Image, slot, timeout: int): (int, Image)
+{
+    absent := empty();
+    result := offer(endpoint, Proxyowner->ImportRoute, function, absent, absent, 0, slot, timeout);
+    return (result.status, result.image);
+}
+
+
+# EN/RU: Only the remote registry may interpret forwarded ref handles for callbacks.
+# Лишь remote registry интерпретирует forwarded ref handles для callbacks.
+routed(endpoint: ref Endpoint, function, left, right: Image,
+       refs, value, timeout: int): (int, int)
+{
+    result := offer(endpoint, Proxyowner->RoutedInvoke, function, left, right, refs, value, timeout);
+    return (result.status, result.value);
+}
+
+
 # EN/RU: Read broker's cumulative acknowledged GC Release count; no forced collection.
 # Читать cumulative acknowledged GC Release count broker; без forced collection.
 collected(endpoint: ref Endpoint, timeout: int): (int, int)
@@ -155,74 +179,6 @@ collected(endpoint: ref Endpoint, timeout: int): (int, int)
     absent := empty();
     result := offer(endpoint, GCProgress, absent, absent, absent, 0, 0, timeout);
     return (result.status, result.value);
-}
-
-
-# EN/RU: Encode exact scalar identities; no GC token or managed pointer enters wire.
-# Кодировать точные scalar identities; GC token/managed pointer не попадают в wire.
-requestbytes(request: ref Request, high, low, id: big): array of byte
-{
-    bytes := codec->make(Proxyframe->Call, high, low);
-    codec->put(bytes, Proxyframe->Id, id);
-    codec->put(bytes, Proxyframe->Operation, big (request.operation + 1));
-    codec->put(bytes, Proxyframe->Refs, big request.refs);
-    codec->put(bytes, Proxyframe->Value, big request.value);
-    codec->sethandle(bytes, Proxyframe->Target, request.target.owner);
-    codec->sethandle(bytes, Proxyframe->Left, request.left.owner);
-    codec->sethandle(bytes, Proxyframe->Right, request.right.owner);
-    return bytes;
-}
-
-
-# EN: Validate reply ownership extension independently of correlation. Malformed
-# or unexpected handles are never adopted; failed/scalar replies require zero tail.
-# RU: Проверить reply ownership extension отдельно от correlation. Malformed либо
-# неожиданные handles не принимаются; failed/scalar replies требуют zero tail.
-outcome(response: array of byte, request: ref Request): (int, Proxyowner->Handle)
-{
-    absent := Proxyowner->Handle(big 0, 0, big 0);
-    kind := codec->get(response, Proxyframe->ResultKind);
-    returned := absent;
-    valid := 0;
-    {
-        returned = codec->handle(response, Proxyframe->Returned);
-        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction;
-        if (resultcall && codec->get(response, Proxyframe->Status) == big 0) {
-            valid = kind == big (request.operation - Proxyowner->ReturnVariable + 1) &&
-                returned.session == request.target.owner.session && returned.session > big 0 &&
-                returned.generation > big 0 && codec->get(response, Proxyframe->Result) == big 0;
-        } else {
-            valid = kind == big 0 && returned.session == big 0 && returned.slot == 0 && returned.generation == big 0;
-        }
-    } exception {
-        "*" => valid = 0;
-    }
-    return (valid, returned);
-}
-
-
-# EN/RU: One absolute wire deadline; any incomplete/corrupt reply is terminal Unknown.
-# Один absolute wire deadline; incomplete/corrupt reply означает terminal Unknown.
-exchange(input, output: ref Sys->FD, request: ref Request, high, low, id: big, timeout: int): (int, int, int, Proxyowner->Handle)
-{
-    bytes := requestbytes(request, high, low, id);
-    deadline := sys->millisec() + timeout;
-    (status, unused) := stream->transfer(output, bytes, 1, deadline);
-    if (status == Proxystream->OK) {
-        response := array[Proxyframe->Size] of byte;
-        (status, unused) = stream->transfer(input, response, 0, deadline);
-        if (status == Proxystream->OK && codec->valid(response, Proxyframe->Reply, high, low) &&
-            codec->same(bytes, response, 1) && codec->get(response, Proxyframe->Status) >= big Proxyowner->Unknown &&
-            codec->get(response, Proxyframe->Status) <= big 7) {
-            (valid, handle) := outcome(response, request);
-            if (valid) {
-                returned := int codec->get(response, Proxyframe->Status);
-                return (returned, int codec->get(response, Proxyframe->Result),
-                    returned == Proxyowner->Unknown || returned == Proxyowner->NotSent, handle);
-            }
-        }
-    }
-    return (Proxyowner->Unknown, 0, 1, Proxyowner->Handle(big 0, 0, big 0));
 }
 
 
@@ -247,7 +203,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
             target := Image(endpoint.high, endpoint.low, Proxyowner->Handle(session, slot, generation), nil);
             release := ref Request(Proxyowner->Drop, target, absent, absent, 0, 0, nil);
             id++;
-            (status, unused, terminal, ignored) := exchange(input, output, release, endpoint.high, endpoint.low, id, remaining);
+            (status, unused, terminal, ignored) := io->exchange(input, output, release, endpoint.high, endpoint.low, id, remaining);
             release = nil;
             if (terminal || (status != 0 && status != Stale) || id == big 16r7fffffffffffffff) {
                 break;
@@ -285,7 +241,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
                 result.status = Proxyhost->Capacity;
             }
         }
-        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction;
+        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction || request.operation == Proxyowner->ImportRoute;
         if (admitted && resultcall) {
             staged = gc->reserve(connection);
             if (staged == nil) {
@@ -301,7 +257,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
         } else if (admitted) {
             id++;
             returned := Proxyowner->Handle(big 0, 0, big 0);
-            (result.status, result.value, closed, returned) = exchange(input, output, request,
+            (result.status, result.value, closed, returned) = io->exchange(input, output, request,
                 endpoint.high, endpoint.low, id, timeout);
             if (!closed && result.status == 0 && request.operation == Proxyowner->Retain) {
                 if (!gc->activate(staged)) {

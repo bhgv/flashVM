@@ -7,6 +7,8 @@ include "proxyhost.m";
 include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
+include "proxynet.m";
+include "proxyregistry.m";
 include "proxyserver.m";
 ProxyNetworkServer: module { init: fn(); };
 

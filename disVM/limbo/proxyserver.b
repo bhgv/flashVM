@@ -10,11 +10,14 @@ include "proxyhandler.m";
 include "proxyowner.m";
 include "proxyframe.m";
 include "proxystream.m";
+include "proxynet.m";
+include "proxyregistry.m";
 include "proxyserver.m";
 sys: Sys; # Immutable system interface.
 control: Processctl; # Immutable child lifecycle interface.
 proxy: Proxyowner; # Immutable managed owner adapter.
 codec: Proxyframe; # Immutable private wire codec.
+registry: Proxyregistry; # Connection-scoped forwarding authority.
 stream: Proxystream; # Immutable bounded IO adapter.
 
 
@@ -27,11 +30,13 @@ init()
     proxy = load Proxyowner Proxyowner->PATH;
     codec = load Proxyframe Proxyframe->PATH;
     stream = load Proxystream Proxystream->PATH;
-    if (sys == nil || control == nil || proxy == nil || codec == nil || stream == nil) {
+    registry = load Proxyregistry Proxyregistry->PATH;
+    if (sys == nil || control == nil || proxy == nil || codec == nil || stream == nil || registry == nil) {
         raise "proxy server modules unavailable";
     }
     proxy->init();
     stream->init();
+    registry->init();
 }
 
 
@@ -51,7 +56,7 @@ canonical(bytes: array of byte): int
 {
     operation := codec->get(bytes, Proxyframe->Operation);
     refs := codec->get(bytes, Proxyframe->Refs);
-    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 9 &&
+    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 11 &&
         refs >= big 0 && refs <= big 2 && codec->get(bytes, Proxyframe->Status) == big 0 &&
         codec->get(bytes, Proxyframe->Result) == big 0 &&
         codec->get(bytes, Proxyframe->ResultKind) == big 0 &&
@@ -68,7 +73,7 @@ canonical(bytes: array of byte): int
 # новый effect. Точный last request получает cached result, changed reuse —
 # conflict, старые IDs — stale. Смена cache не разрешает старый effect вновь.
 run(input, output: ref Sys->FD, high, low: big, timeout: int,
-    endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Handle): int
+    endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Handle, context: ref Proxyregistry->Context): int
 {
     hello := codec->make(Proxyframe->Hello, high, low);
     codec->sethandle(hello, Proxyframe->Target, variable);
@@ -108,7 +113,16 @@ run(input, output: ref Sys->FD, high, low: big, timeout: int,
             }
             returned := Proxyowner->Handle(big 0, 0, big 0);
             resultkind := 0;
-            if (operation == Proxyowner->ReturnVariable || operation == Proxyowner->ReturnFunction) {
+            handled: int;
+            (handled, status, value, returned, resultkind) = registry->dispatch(context, operation,
+                codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
+                codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
+                int codec->get(bytes, Proxyframe->Value), deadline);
+            remaining = deadline - sys->millisec();
+            if (!handled && remaining < 1) {
+                return Proxystream->Timeout;
+            }
+            if (!handled && (operation == Proxyowner->ReturnVariable || operation == Proxyowner->ReturnFunction)) {
                 kind := operation - Proxyowner->ReturnVariable;
                 (status, returned) = proxy->fetch(endpoint,
                     codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
@@ -117,7 +131,7 @@ run(input, output: ref Sys->FD, high, low: big, timeout: int,
                 if (status == 0) {
                     resultkind = kind + 1;
                 }
-            } else {
+            } else if (!handled) {
                 (status, value) = proxy->call(endpoint, operation,
                     codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
                     codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
@@ -147,7 +161,7 @@ run(input, output: ref Sys->FD, high, low: big, timeout: int,
 # public caller. На каждом terminal path join исходного rooted owner.
 session(input, output: ref Sys->FD, high, low: big, timeout: int,
         handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
-        published: chan of int, completed: chan of int)
+        sources: array of ref Proxyregistry->Source, published: chan of int, completed: chan of int)
 {
     published <-= control->pid();
     started := chan[1] of int;
@@ -155,30 +169,47 @@ session(input, output: ref Sys->FD, high, low: big, timeout: int,
     spawn own(handler, cell, capture, started, ready);
     owner := <-started;
     (endpoint, variable, function) := <-ready;
+    context := registry->create(sources, endpoint, timeout);
+    if (sources != nil && context == nil) {
+        control->killwait(owner);
+        completed <-= Proxystream->Failure;
+        return;
+    }
     result := Proxystream->Failure;
     {
-        result = run(input, output, high, low, timeout, endpoint, variable, function);
+        result = run(input, output, high, low, timeout, endpoint, variable, function, context);
     } exception {
         "*" => result = Proxystream->Failure;
     }
     control->killwait(owner);
+    registry->close(context);
     completed <-= result;
 }
 
 
 # EN/RU: Wait for independently supervised connection; borrow FD/roots until completion.
 # Ждать независимо supervised connection; заимствовать FD/roots до completion.
-serve(input, output: ref Sys->FD, high, low: big, timeout: int,
-      handler: Proxyhandler, cell, capture: ref Proxyhost->Cell): int
+registered(input, output: ref Sys->FD, high, low: big, timeout: int,
+           handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
+           sources: array of ref Proxyregistry->Source): int
 {
     if ((high == big 0 && low == big 0) || timeout < 1 || timeout > 60000 || handler == nil) {
         return Proxystream->Failure;
     }
     published := chan[1] of int;
     completed := chan[1] of int;
-    spawn session(input, output, high, low, timeout, handler, cell, capture, published, completed);
+    spawn session(input, output, high, low, timeout, handler, cell, capture, sources, published, completed);
     supervisor := <-published;
     result := <-completed;
     control->killwait(supervisor);
     return result;
+}
+
+
+# EN/RU: Ordinary server has no forwarding authority; preserve its existing API.
+# Ordinary server не имеет forwarding authority; сохранить существующий API.
+serve(input, output: ref Sys->FD, high, low: big, timeout: int,
+      handler: Proxyhandler, cell, capture: ref Proxyhost->Cell): int
+{
+    return registered(input, output, high, low, timeout, handler, cell, capture, nil);
 }
