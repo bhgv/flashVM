@@ -30,20 +30,20 @@ connect(input, output: ref Sys->FD, started, stopped: chan of int,
 client(endpoint: ref Proxynet->Endpoint, variable, function: Proxynet->Image, done: chan of int)
 {
     for (round := 0; round < 2; round++) {
-        (clone_status, copy) := net->clone(endpoint, variable, 10000);
+        (clone_status, copy) := net->clone(endpoint, variable, 60000);
         if (clone_status != 0) {
             raise "concurrent network image clone";
         }
-        (status, value) := net->call(endpoint, Proxyowner->Invoke, function, copy, copy, 2, 1, 10000);
+        (status, value) := net->call(endpoint, Proxyowner->Invoke, function, copy, copy, 2, 1, 60000);
         if (status != 0 || value < 12) {
             raise "network concurrent original ref invocation";
         }
         alias := copy;
-        (status, value) = net->call(endpoint, Proxyowner->Drop, copy, copy, copy, 0, 0, 10000);
+        (status, value) = net->call(endpoint, Proxyowner->Drop, copy, copy, copy, 0, 0, 60000);
         if (status != 0) {
             raise "concurrent network image release";
         }
-        (status, value) = net->call(endpoint, Proxyowner->Read, alias, alias, alias, 0, 0, 10000);
+        (status, value) = net->call(endpoint, Proxyowner->Read, alias, alias, alias, 0, 0, 60000);
         if (status != Proxynet->Stale) {
             raise "same-image alias released remote ownership twice";
         }

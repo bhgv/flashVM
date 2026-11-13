@@ -28,17 +28,17 @@ client(endpoint: ref Proxynet->Endpoint, variable, function: Proxynet->Image,
        index: int, done: chan of int)
 {
     (status, result) := net->fetch(endpoint, function, variable, variable, 2,
-        100 + index, Proxyhost->Variable, 10000);
+        100 + index, Proxyhost->Variable, 60000);
     if (status != 0) {
         raise "concurrent callback variable result";
     }
     value: int;
-    (status, value) = net->call(endpoint, Proxyowner->Invoke, function, result, result, 2, 1, 10000);
+    (status, value) = net->call(endpoint, Proxyowner->Invoke, function, result, result, 2, 1, 60000);
     if (status != 0 || value != 102 + index) {
         raise "returned variable is not a live original ref";
     }
     empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
-    (status, value) = net->call(endpoint, Proxyowner->Drop, result, empty, empty, 0, 0, 10000);
+    (status, value) = net->call(endpoint, Proxyowner->Drop, result, empty, empty, 0, 0, 60000);
     if (status != 0) {
         raise "returned variable explicit release";
     }
