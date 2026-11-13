@@ -60,11 +60,13 @@ buffer и снять свои local copies; GC затем выполняет т�
 Native B stubs освобождаются его retirement hook. Исчезновение public serve caller
 не уничтожает private session, владеющую этим cleanup.
 
-Контекст ограничен 16 configured sources, 16 view slots, 256 issued actors и
-256 peer owners на view. Native owner имеет собственный object quota, поэтому с
+Контекст ограничен 16 configured sources, 16 view slots, 16 outstanding actors и
+256 peer owners на view. Completion channels завершённых actors снимаются после
+managed retirement fence; их slots используются повторно. Пожизненного лимита
+числа imports теперь нет. Native resident threads отдельно reap/join runtime. Native owner имеет собственный object quota, поэтому с
 двумя initial exports обычно одновременно проходят 14 новых stubs. Отказ native
 publication после source clone не возвращает usable view: actor остаётся учтённым
-для GC/join. Local C result quota отказывает до wire request. Это counted ownership
+для GC/retirement. Local C result quota отказывает до wire request. Это counted ownership
 с локальной RC/cycle collection, не tracing циклов между несколькими VM.
 
 ## Дедлайны и плохая связь
@@ -119,8 +121,12 @@ arguments и distributed cycle tracing остаются отдельными з�
 покрывает explicit server-authorized variable views и routed scalar callbacks.
 
 
-Проверенный локальный результат этой серии: optimized CTest 82/82, полный TSan
+Проверенный локальный результат исходной three-VM серии: optimized CTest 82/82, полный TSan
 CTest 83/83. Отдельный TSan запуск omission controls включает transitive B GC и
 expired startup/no-Retain. Предыдущая опубликованная серия `b3bf5035` имеет шесть
 успешных CI jobs (run 43487651642); новая публикация запускает собственную matrix.
 ARM64/RV64 результаты предыдущей серии не заменяют проверку новой ревизии.
+
+
+Подробности обновления client queue deadline и sustained import/drop:
+[очереди, дедлайны и повторное использование actors](QUEUED-DEADLINES.md).

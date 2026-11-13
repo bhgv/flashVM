@@ -314,3 +314,9 @@ String snapshots, arbitrary route discovery и transparent compiler lowering.
 provisioning, owning dial/listen/FD adoption и полноценная cross-node lease/ACK
 политика остаются отдельными границами. ARM64/RV64 выполняют ту же CI-приёмку;
 QEMU не доказывает physical memory ordering или performance.
+
+
+Client broker теперь сохраняет original absolute deadline в local Request,
+включая время ожидания в mailbox. Просроченные queued operations отказывают до
+lease consumption/result reservation/wire ID. Подробности, реальные late-effect
+контроли и повторное использование forwarding actors: [QUEUED-DEADLINES.md](QUEUED-DEADLINES.md).
