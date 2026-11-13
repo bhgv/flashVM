@@ -2,6 +2,9 @@
 
 Copyright (c) 2026 bhgv
 
+**Current result:** [44/44 in all four completed configurations](NATIVE-STATUS.md).
+The detailed sections below retain earlier architecture acceptance history.
+
 `native_arch_suite.py` runs the same eleven whole-VM workloads directly, without
 depending on x64-only CTest registration. It checks Linux, pointer width, running
 userspace and the configured CMake CPU before starting guests. A CPU mismatch is

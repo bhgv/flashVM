@@ -2,6 +2,10 @@
 
 Copyright (c) 2026 bhgv
 
+**Current checkpoint / Текущий итог:** [NATIVE-STATUS.md](NATIVE-STATUS.md).
+Все четыре Linux64 CI jobs завершены с 44/44; ниже сохранена история аудита.
+The sections below retain the audit history; use the checkpoint for current scope.
+
 Actual three-target C/JIT results: [Linux64 architecture acceptance](NATIVE-ARCH-ACCEPTANCE.md).
 Фактические C/JIT-прогоны трёх целей: [архитектурная приёмка](NATIVE-ARCH-ACCEPTANCE.md).
 
@@ -304,28 +308,25 @@ and production execution code are unchanged by this acceptance-only commit.
 Изменённые исходники — максимум 341 строка; upstream и production-исполнение
 этим коммитом приёмки не изменяются.
 
-## What remains before claiming the entire requested target
+## Scope beyond the current console checkpoint
 
-- Finish reviewing cross-owner Prog.state/register reads and their publication
-  contracts. Further real races were found by extending TSan after ordinary tests
-  were green; this pass does not certify every remaining reader. Keep the broad
-  application gate stable and test actual ownership paths rather than infer
-  completeness from a counter or a handler name.
-- The common eleven-workload C/JIT suite now passes on native AMD64 and ARM64
-  runners, and on actual RV64 executables under QEMU. This is whole-VM execution,
-  not isolated emission checks. RV64 hardware memory ordering/performance remains
-  unverified, and the broader 80-suite gate has so far run on x64. See the linked
-  architecture report for exact coverage and guarded C-tail JIT limitations.
-- Arbitrary C finalizers do not become thread-safe by declaring the VM complete.
-  Unknown callbacks remain explicit unsupported work. Supported runtime-built
-  FD/table/key finalizers and normal managed types have dedicated concurrent
-  paths; extension callback support needs an explicit ownership/thread contract.
-- FlashVM is a separate later target, as requested; these results are DisVM/Limbo.
+The current [checkpoint](NATIVE-STATUS.md) records completed 44/44 acceptance on
+native AMD64/ARM64, AMD64 TSan and actual RV64 ELF/JIT under QEMU. The local broad
+gate passed 100/100. Cross-owner publication and mailbox regressions remain in
+that gate; further concrete defects are maintenance work, not a promise that
+all source paths have been certified or a reason to defer every application task.
 
-На Linux x64 и ARM64 есть успешные native C/JIT-прогоны общей матрицы; целевой
-RV64-код прошёл её под QEMU. Остаются непроверенные пути поддержанного набора,
-широкая приёмка вне x64 и RV64-железо. Число зелёных тестов не заменяет эту
-проверку; точную дату общей готовности эти данные не обосновывают.
+Separate acceptance remains for RV64 hardware ordering/performance, arbitrary
+extension callbacks/finalizers and GUI/editor hosts outside this console matrix.
+ARM64/RV64 guarded native JIT tails execute checked C handlers; full optimized
+inline opcode coverage and speedup are separate work. FlashVM remains a later
+project as requested. These limits do not change the active native-thread model
+or permit a global stopped fallback.
+
+Поддержанный консольный профиль имеет рабочую многопоточную базу и завершённую
+приёмку. Следующие прикладные задачи можно выполнять на ней. Новые ошибки
+исправляются по воспроизводимым сценариям; RV64-железо, расширения, GUI/editor,
+оптимизация и FlashVM имеют отдельные границы проверки.
 
 ## Validation of the previous continuation change
 

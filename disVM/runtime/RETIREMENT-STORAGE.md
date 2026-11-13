@@ -58,8 +58,8 @@ The new probe's positive allocation-refusal/retry and shared-slot negative
 control passed under TSan, as did the preceding cancellation/old-reader controls.
 
 [CI for this production change](https://github.com/bhgv/flashVM/actions/runs/43384574676)
-has completed native AMD64 and ARM64 with 44/44 each, plus the AMD64 constructor
-oracle. AMD64 TSan and RV64 QEMU are still running at this checkpoint; no result
-is claimed for those unfinished jobs. RV64 remains emulated functional coverage,
+completed all four jobs: native AMD64, native ARM64, AMD64 TSan and RV64 QEMU
+with 44/44 each. The additional AMD64 constructor oracle passed both normally
+and under TSan. RV64 remains emulated functional coverage,
 not certification of hardware memory ordering or throughput. Changed handwritten
 source is at most 397 lines per file; upstream snapshots are unchanged.
