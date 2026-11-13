@@ -223,7 +223,7 @@ static int runtime_execute(void *argument)
     dvm_queue_probe_finish();
     if (!result)
     {
-        puts("PASS Dis application completed");
+        fprintf(stderr, "PASS Dis application completed\n");
     }
     return result;
 }

@@ -272,10 +272,11 @@ void dvm_proxyhost_statistics(void)
     unsigned long total = __atomic_load_n(&opened, __ATOMIC_ACQUIRE);
     if (total)
     {
-        printf("PROXYHOST opened=%lu closed=%lu exports=%lu active=%lu\n",
-               total,
-               __atomic_load_n(&closed, __ATOMIC_ACQUIRE),
-               __atomic_load_n(&exports, __ATOMIC_ACQUIRE),
-               __atomic_load_n(&active, __ATOMIC_ACQUIRE));
+        fprintf(stderr,
+                "PROXYHOST opened=%lu closed=%lu exports=%lu active=%lu\n",
+                total,
+                __atomic_load_n(&closed, __ATOMIC_ACQUIRE),
+                __atomic_load_n(&exports, __ATOMIC_ACQUIRE),
+                __atomic_load_n(&active, __ATOMIC_ACQUIRE));
     }
 }

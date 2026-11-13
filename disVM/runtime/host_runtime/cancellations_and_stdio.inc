@@ -98,7 +98,10 @@ int dvm_file_gate_try_release(DVM_FileGate *gate, DVM_FileTicket *ticket)
 }
 
 
-/* Wait for the requested pipe readiness or its eventfd cancellation. */
+/* EN: Poll borrowed FIFO/socket readiness or its eventfd cancellation. Never
+ * hold the queue mutex while polling; wait remains registered through return.
+ * RU: Ожидать FIFO/socket readiness либо eventfd отмены. Poll не держит мьютекс
+ * очереди; wait зарегистрирован до возврата. */
 static int wait_stdio_pipe(NativeGuestWait *wait, int wake_fd, int descriptor, short events, int timeout)
 {
     struct pollfd descriptors[2] = {{descriptor, events, 0}, {wake_fd, POLLIN, 0}};
@@ -256,14 +259,18 @@ static FVM_Result write_stdio_pipe(NativeGuestWait *wait,
 }
 
 
-/* Borrow one gate for each pipe direction. stdout and stderr may refer to
- * the same pipe, so share their gate when the native identities match. */
+/* EN: Borrow a gate per standard IO direction. metadata describes descriptor;
+ * share stdout/stderr gates for identical FIFO/socket identities. Input keeps
+ * its independent direction, including a full-duplex socket shared with output.
+ * RU: Заимствовать gate направления stdio. metadata описывает descriptor;
+ * stdout/stderr делят gate одной FIFO/socket identity. Input имеет отдельное
+ * направление, включая full-duplex socket, общий с output. */
 static DVM_FileGate *stdio_pipe_gate(int descriptor, const struct stat *metadata)
 {
     DVM_FileGate *gate;
     struct stat other_metadata;
     int other = 3 - descriptor;
-    int shared = descriptor != 0 && !fstat(other, &other_metadata) && S_ISFIFO(other_metadata.st_mode) &&
+    int shared = descriptor != 0 && !fstat(other, &other_metadata) && (S_ISFIFO(other_metadata.st_mode) || S_ISSOCK(other_metadata.st_mode)) &&
                  metadata->st_dev == other_metadata.st_dev && metadata->st_ino == other_metadata.st_ino;
 
 

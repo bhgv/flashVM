@@ -4,8 +4,10 @@
  */
 
 
-/* A pipe has a cancellable readiness phase. The borrowed descriptor is never
- * reconfigured. Return to the original heap owner on every path. */
+/* [GC:] EN: FIFO/socket readiness is cancellable; descriptor flags stay unchanged.
+ * Borrow native buffers through transfer, then return to the original heap owner.
+ * RU: FIFO/socket readiness отменяема; fd flags неизменны. Заимствовать native
+ * buffers до transfer и вернуться к исходному heap owner на каждом пути. */
 static FVM_Result runtime_stdio_transfer(
     int descriptor, void *input, const void *output, size_t capacity, size_t *transferred, int *released_out)
 {
@@ -18,7 +20,7 @@ static FVM_Result runtime_stdio_transfer(
 
     *released_out = 0;
     *transferred = 0;
-    if (!capacity || fstat(descriptor, &metadata) || !S_ISFIFO(metadata.st_mode))
+    if (!capacity || fstat(descriptor, &metadata) || (!S_ISFIFO(metadata.st_mode) && !S_ISSOCK(metadata.st_mode)))
     {
         released = dvm_runtime_gc_native_try_leave();
         if (released < 0)
@@ -56,7 +58,11 @@ static FVM_Result runtime_stdio_transfer(
 
         if (admitted)
         {
-            if (input)
+            if (S_ISSOCK(metadata.st_mode))
+            {
+                status = transfer_stdio_socket(&wait, wake_fd, descriptor, input, output, capacity, transferred, timeout);
+            }
+            else if (input)
             {
                 status = read_stdio_pipe(&wait, wake_fd, descriptor, input, capacity, transferred, timeout);
             }

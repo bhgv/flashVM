@@ -131,10 +131,12 @@ int dvm_managed_owner_finish(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("MANAGEDSHARED transferred=%lu with_peer=%lu\n",
-               dvm_managed_owners.shared_released,
-               dvm_managed_owners.shared_with_peer);
-        printf(
+        fprintf(stderr,
+                "MANAGEDSHARED transferred=%lu with_peer=%lu\n",
+                dvm_managed_owners.shared_released,
+                dvm_managed_owners.shared_with_peer);
+        fprintf(
+            stderr,
             "MANAGEDOWNERS captured=%lu released=%lu live=%lu pending=%lu tickets=%lu producers=%lu failed=%d rooted_until_fast=1\n",
             dvm_managed_owners.captured,
             dvm_managed_owners.released,

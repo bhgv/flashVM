@@ -91,7 +91,8 @@ int dvm_runtime_rc_finish(int diagnostics)
     (void)dvm_retirement_statistics(retirement, &stats);
     if (diagnostics)
     {
-        printf(
+        fprintf(
+            stderr,
             "NATIVERC enqueued=%lu released=%lu pending=%u saturated=%lu bytes=%lu byte_limited=%lu helper_enqueued=%lu helper_saturated=%lu helper_byte_limited=%lu\n",
             enqueued,
             released,
@@ -109,22 +110,26 @@ int dvm_runtime_rc_finish(int diagnostics)
     {
         DVM_RetirementStats candidates = {0};
         (void)dvm_retirement_statistics(cycle_candidates, &candidates);
-        printf("NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
-               candidates.ready,
-               candidates.reserved,
-               candidates.capacity,
-               candidates.peak_capacity);
-        printf("NATIVEDUKEPINS seeds=%lu retries=%lu\n", duke_pin_seeds, duke_pin_retries);
-        printf("NATIVEFASTGC ignored_live_fields=%zu reserved_confirmations=%zu\n",
-               fast_ignored_live_fields,
-               fast_reserved_confirmations);
-        printf("NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu publish_retries=%lu\n",
-               duke_promoted,
-               duke_peak_fields,
-               duke_resumed_slices,
-               duke_adopted_pins,
-               duke_publish_retries);
-        printf(
+        fprintf(stderr,
+                "NATIVECYCLEQUEUE ready=%u reserved=%u capacity=%u peak_capacity=%u\n",
+                candidates.ready,
+                candidates.reserved,
+                candidates.capacity,
+                candidates.peak_capacity);
+        fprintf(stderr, "NATIVEDUKEPINS seeds=%lu retries=%lu\n", duke_pin_seeds, duke_pin_retries);
+        fprintf(stderr,
+                "NATIVEFASTGC ignored_live_fields=%zu reserved_confirmations=%zu\n",
+                fast_ignored_live_fields,
+                fast_reserved_confirmations);
+        fprintf(stderr,
+                "NATIVEDUKEGC promoted=%lu peak_fields=%u resumed=%lu adopted_pins=%lu publish_retries=%lu\n",
+                duke_promoted,
+                duke_peak_fields,
+                duke_resumed_slices,
+                duke_adopted_pins,
+                duke_publish_retries);
+        fprintf(
+            stderr,
             "NATIVEFRAMERC drained=%lu pending=%u shared_children=%lu record_groups=%lu shared_record_groups=%lu shared_record_groups_with_peer=%lu shared_record_scans=%lu shared_record_snapshots_with_peer=%lu shared_record_confirmations=%lu cycle_candidates_rotated=%lu cycle_candidates_coalesced=%lu cycle_candidates_rooted=%lu cycle_candidates_oversized=%lu cycle_candidates_full=%lu\n",
             frames_drained,
             frame_stats.ready + frame_stats.reserved,
@@ -143,31 +148,37 @@ int dvm_runtime_rc_finish(int diagnostics)
     }
     if (diagnostics)
     {
-        printf(
-            "NATIVEMANDATORYCYCLE transferred=%lu retries=%lu\n", mandatory_cycle_transfers, mandatory_cycle_retries);
-        printf("NATIVEPACKETCYCLE preserved=%lu retries=%lu replayed=%lu\n",
-               packet_candidates_preserved,
-               packet_candidate_retries,
-               snapshots_replayed);
-        printf("NATIVEMANDATORYRC shared=%lu\n", shared_mandatory_owners);
-        printf("NATIVEMODULERC shared=%lu with_peer=%lu\n", shared_modules, shared_modules_with_peer);
-        printf("NATIVELISTRC shared=%lu\n", shared_lists);
-        printf("NATIVERECORDRC shared=%lu\n", shared_plain_records);
-        printf("NATIVECHANNELRC shared=%lu\n", shared_channels);
-        printf("NATIVETABLERC tables=%lu keys=%lu with_peer=%lu\n",
-               shared_tables,
-               shared_keys,
-               shared_table_owners_with_peer);
-        printf("NATIVEFDRC shared=%lu with_peer=%lu\n", shared_files, shared_files_with_peer);
-        printf("NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
-        printf("NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
-               shared_arrays,
-               shared_arrays_with_peer,
-               shared_array_graphs);
+        fprintf(stderr,
+                "NATIVEMANDATORYCYCLE transferred=%lu retries=%lu\n",
+                mandatory_cycle_transfers,
+                mandatory_cycle_retries);
+        fprintf(stderr,
+                "NATIVEPACKETCYCLE preserved=%lu retries=%lu replayed=%lu\n",
+                packet_candidates_preserved,
+                packet_candidate_retries,
+                snapshots_replayed);
+        fprintf(stderr, "NATIVEMANDATORYRC shared=%lu\n", shared_mandatory_owners);
+        fprintf(stderr, "NATIVEMODULERC shared=%lu with_peer=%lu\n", shared_modules, shared_modules_with_peer);
+        fprintf(stderr, "NATIVELISTRC shared=%lu\n", shared_lists);
+        fprintf(stderr, "NATIVERECORDRC shared=%lu\n", shared_plain_records);
+        fprintf(stderr, "NATIVECHANNELRC shared=%lu\n", shared_channels);
+        fprintf(stderr,
+                "NATIVETABLERC tables=%lu keys=%lu with_peer=%lu\n",
+                shared_tables,
+                shared_keys,
+                shared_table_owners_with_peer);
+        fprintf(stderr, "NATIVEFDRC shared=%lu with_peer=%lu\n", shared_files, shared_files_with_peer);
+        fprintf(stderr, "NATIVESTRINGRC shared=%lu with_peer=%lu\n", shared_strings, shared_strings_with_peer);
+        fprintf(stderr,
+                "NATIVEARRAYRC shared=%lu with_peer=%lu graphs=%lu\n",
+                shared_arrays,
+                shared_arrays_with_peer,
+                shared_array_graphs);
     }
     if (diagnostics)
     {
-        printf(
+        fprintf(
+            stderr,
             "NATIVERCPASSES idle=%lu promoted=%lu packet_promoted=%lu groups=%lu nonfinal=%lu records=%lu arrays=%lu lists=%lu channels=%lu strings=%lu modules=%lu other=%lu\n",
             fallback.passes,
             fallback.promoted,
@@ -183,9 +194,10 @@ int dvm_runtime_rc_finish(int diagnostics)
             fallback.other);
         DVM_RetirementStats difficult_stats = {0};
         (void)dvm_retirement_statistics(difficult, &difficult_stats);
-        printf("NATIVERCFALLBACK moved=%lu pending=%u\n",
-               difficult_moved,
-               difficult_stats.ready + difficult_stats.reserved);
+        fprintf(stderr,
+                "NATIVERCFALLBACK moved=%lu pending=%u\n",
+                difficult_moved,
+                difficult_stats.ready + difficult_stats.reserved);
     }
     result = !duke_inflight.owned_scratch && !duke_abandoned.pinned_nodes &&
              (duke_candidates == NULL || dvm_retirement_destroy(&duke_candidates)) &&

@@ -394,12 +394,14 @@ int dvm_runtime_gc_stop(int diagnostics)
     }
     if (diagnostics)
     {
-        printf("NATIVEGC_POLICY exclusive=%d trace=%d stop_forbidden=%d\n",
-               !dvm_runtime_guest_unbounded,
-               !dvm_runtime_guest_unbounded,
-               dvm_world_stops_forbidden(dvm_gc_runtime.world));
-        printf("NATIVEGCLANES shared_peak=%u duke_passes=%zu\n", workers.shared_peak, workers.Duke.passes);
-        printf(
+        fprintf(stderr,
+                "NATIVEGC_POLICY exclusive=%d trace=%d stop_forbidden=%d\n",
+                !dvm_runtime_guest_unbounded,
+                !dvm_runtime_guest_unbounded,
+                dvm_world_stops_forbidden(dvm_gc_runtime.world));
+        fprintf(stderr, "NATIVEGCLANES shared_peak=%u duke_passes=%zu\n", workers.shared_peak, workers.Duke.passes);
+        fprintf(
+            stderr,
             "NATIVEGC collector=worker passes=%lu snapshots=%lu reclaimed=%llu joined=1 failed=%d fast_passes=%lu workers=3 fast_polls=%lu locked_polls=%lu empty_fast_skips=%lu native_releases=%lu native_reentries=%lu native_gc_progress=%lu serial_heap=1 admissions=%lu contentions=%lu waiters=%lu owner_state=tls parallel_movp_commits=%lu parallel_slicela_commits=%lu parallel_movmp_commits=%lu parallel_channel_sends=%lu parallel_channel_receives=%lu parallel_channel_refills=%lu parallel_channel_alts=%lu parallel_rendezvous=%lu parallel_movp_module=%lu parallel_movmp_module=%lu parallel_channel_raw=%lu parallel_byte_commits=%lu cycle_losses=%lu cycle_skips=%lu shared_peak=%lu shared_integer_commits=%lu shared_integer_batches=%lu shared_integer_branches=%lu shared_byte_steps=%lu shared_long_steps=%lu shared_calls=%lu shared_returns=%lu shared_module_calls=%lu shared_module_returns=%lu shared_extended_steps=%lu\n",
             dvm_gc_runtime.passes,
             dvm_gc_runtime.snapshots,

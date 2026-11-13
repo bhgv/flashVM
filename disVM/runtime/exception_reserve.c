@@ -145,11 +145,12 @@ void dvm_runtime_exception_retirement_report(int diagnostics)
 {
     if (diagnostics)
     {
-        printf("NATIVEEXCEPTION shared=%lu with_peer=%lu retained=%lu pending=%d\n",
-               shared_releases,
-               shared_with_peer,
-               retained_releases,
-               dvm_runtime_exception_retirement_ready());
+        fprintf(stderr,
+                "NATIVEEXCEPTION shared=%lu with_peer=%lu retained=%lu pending=%d\n",
+                shared_releases,
+                shared_with_peer,
+                retained_releases,
+                dvm_runtime_exception_retirement_ready());
     }
 }
 
