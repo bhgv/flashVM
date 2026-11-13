@@ -3,6 +3,7 @@
 # RU: Проверки создания объектов, общих владельцев и восстановления каналов.
 # Copyright (c) 2026 bhgv
 """Exercise guarded record, array and channel construction through native and guest routes."""
+
 from pathlib import Path
 import subprocess
 import sys
@@ -11,8 +12,7 @@ import tempfile
 from relink_private import relink
 from resident_evidence import evidence
 
-
-GUEST = r'''implement Records;
+GUEST = r"""implement Records;
 include "sys.m";
 Records: module { init: fn(); };
 Pair: adt { name: string; value: int; };
@@ -46,15 +46,16 @@ init() {
     if (first != 10 || second != 20) { raise "raw channel"; }
     sys->print("PASS record guest\n");
 }
-'''
-
+"""
 
 
 # EN: Reuse checked record/array/channel operations in forty independent owners.
 # RU: Повторить проверенные операции над записями, массивами и каналами на 40 потоках.
-CONCURRENT_GUEST = GUEST.replace("init() {", "worker(done: chan of int) {", 1).replace(
-    r'sys->print("PASS record guest\n");', 'done <-= 1;', 1
-) + r'''
+CONCURRENT_GUEST = (
+    GUEST.replace("init() {", "worker(done: chan of int) {", 1).replace(
+        r'sys->print("PASS record guest\n");', "done <-= 1;", 1
+    )
+    + r"""
 # EN: Start forty residents and collect one validated result from each.
 # RU: Запустить сорок потоков и собрать проверенные результаты.
 init()
@@ -68,7 +69,8 @@ init()
             raise "allocation worker failed";
     sys->print("PASS forty allocation workers\n");
 }
-'''
+"""
+)
 
 
 def verify_existing_shared_dispatch(runtime, work, image):
@@ -79,16 +81,27 @@ def verify_existing_shared_dispatch(runtime, work, image):
     if source.count(boundary) != 1 or source.count("executed:\n") != 1:
         raise RuntimeError("record handler dispatch boundary drift")
     batch = "if(!dvm_runtime_instruction_limit && dvm_runtime_shared_integer)"
-    source = source.replace(batch,
-        "if(op != IADDW && op != ISUBW && op != IBNEW && op != IBGEW && !dvm_runtime_instruction_limit && dvm_runtime_shared_integer)", 1)
-    source = source.replace(boundary, """
+    source = source.replace(
+        batch,
+        "if(op != IADDW && op != ISUBW && op != IBNEW && op != IBGEW && !dvm_runtime_instruction_limit && dvm_runtime_shared_integer)",
+        1,
+    )
+    source = source.replace(
+        boundary,
+        """
         int shared_record = (op == INEW || op == INEWZ || op == INEWA || op == INEWAZ || op == IMOVP || op == IMOVW || op == IINDL || op == ILENA || op == IADDW || op == ISUBW || op == IBNEW || op == IBGEW || op == ILEA || op == IBNEC || op == INEWCW) && dvm_runtime_gc_dispatch_share();
-""" + boundary)
-    executor.write_text(source.replace("executed:\n", """
+""" + boundary,
+    )
+    executor.write_text(
+        source.replace(
+            "executed:\n",
+            """
 executed:
         if (shared_record)
             dvm_runtime_gc_dispatch_finish();
-"""))
+""",
+        )
+    )
     wrapper = work / "shared-record-check.c"
     wrapper.write_text(r"""
 #include "lib9.h"
@@ -230,30 +243,75 @@ const char *__wrap_dvm_runtime_string_branch(int condition, const void *source, 
 }
 
 """)
-    binary = relink(runtime, work, wrapper, 1, ["dvm_runtime_record_try_shared", "dvm_runtime_movp_opcode",
-                            "dvm_runtime_bytes_copy_opcode", "dvm_runtime_array_try_shared",
-                            "dvm_runtime_array_index_publish_shared", "dvm_runtime_array_length",
-                            "dvm_runtime_arithmetic", "dvm_runtime_integer_branch",
-                            "dvm_runtime_bytes_publish_opcode", "dvm_runtime_string_branch",
-                            "dvm_runtime_channel_try_shared"], executor=executor)
+    binary = relink(
+        runtime,
+        work,
+        wrapper,
+        1,
+        [
+            "dvm_runtime_record_try_shared",
+            "dvm_runtime_movp_opcode",
+            "dvm_runtime_bytes_copy_opcode",
+            "dvm_runtime_array_try_shared",
+            "dvm_runtime_array_index_publish_shared",
+            "dvm_runtime_array_length",
+            "dvm_runtime_arithmetic",
+            "dvm_runtime_integer_branch",
+            "dvm_runtime_bytes_publish_opcode",
+            "dvm_runtime_string_branch",
+            "dvm_runtime_channel_try_shared",
+        ],
+        executor=executor,
+    )
     for mode in ("--no-jit", "--jit"):
-        result = subprocess.run([binary, mode, "--native-spawn", image], cwd=work,
-                                capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            [binary, mode, "--native-spawn", image],
+            cwd=work,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
         output = result.stdout + result.stderr
-        if (result.returncode or "PASS record published directly in SHARED" not in output
-                or "PASS pointer published directly in SHARED" not in output
-                or "PASS word copied directly in SHARED" not in output
-                or "PASS array published directly in SHARED" not in output
-                or "PASS array address published directly in SHARED" not in output
-                or "PASS array length read directly in SHARED" not in output
-                or "PASS integer arithmetic directly in SHARED" not in output
-                or "PASS integer branch directly in SHARED" not in output
-                or "PASS address copied directly in SHARED" not in output
-                or "PASS string branch directly in SHARED" not in output
-                or "PASS buffered channel in SHARED" not in output
-                or "PASS unbuffered channel in SHARED" not in output
-                or "PASS record guest" not in output):
+        if (
+            result.returncode
+            or "PASS record published directly in SHARED" not in output
+            or "PASS pointer published directly in SHARED" not in output
+            or "PASS word copied directly in SHARED" not in output
+            or "PASS array published directly in SHARED" not in output
+            or "PASS array address published directly in SHARED" not in output
+            or "PASS array length read directly in SHARED" not in output
+            or "PASS integer arithmetic directly in SHARED" not in output
+            or "PASS integer branch directly in SHARED" not in output
+            or "PASS address copied directly in SHARED" not in output
+            or "PASS string branch directly in SHARED" not in output
+            or "PASS buffered channel in SHARED" not in output
+            or "PASS unbuffered channel in SHARED" not in output
+            or "PASS record guest" not in output
+        ):
             raise RuntimeError(output)
+
+
+# EN: Expand fixture's five ordered probe modules into an owned source string.
+# fixture is the borrowed coordinator path; validate every include exactly once.
+# Read errors/changed layout raise; no source files or runtime state are modified.
+# RU: Развернуть пять модулей fixture по порядку в личную строку исходника.
+# fixture — путь координатора; каждый include обязан встретиться один раз.
+# Ошибки чтения/структуры дают отказ; исходники и runtime не изменяются.
+def record_probe_source(fixture):
+    source = fixture.read_text()
+    for name in (
+        "construction.inc",
+        "channel-lifecycle.inc",
+        "channel-transfer.inc",
+        "alt-lifetime.inc",
+        "mapped-buffer.inc",
+    ):
+        relative = "fixtures/record-new/" + name
+        include = '#include "' + relative + '"'
+        if source.count(include) != 1:
+            raise RuntimeError("record probe module include changed: " + relative)
+        source = source.replace(include, (fixture.parent / relative).read_text(), 1)
+    return source
 
 
 def main():
@@ -264,47 +322,110 @@ def main():
         work = Path(directory)
         guest, image = work / "main.b", work / "main.dis"
         guest.write_text(GUEST)
-        subprocess.run([str(compiler), "-I", str(include), "-o", str(image), str(guest)], check=True)
+        subprocess.run(
+            [str(compiler), "-I", str(include), "-o", str(image), str(guest)], check=True
+        )
         delayed_fixture = work / "record-new.c"
-        fixture_source = fixture.read_text()
+        fixture_source = record_probe_source(fixture)
         if fixture_source.count("busy_publication = 1;") != 1:
             raise RuntimeError("allocation contention fixture anchor drift")
-        delayed_fixture.write_text(fixture_source.replace(
-            "busy_publication = 1;", "busy_publication = 130;", 1))
-        binary = relink(runtime, work, delayed_fixture, 0, [
-            "dvm_runtime_root_registry_probe", "dvm_runtime_record_new", "dvm_runtime_heap_commit_attempt",
-            "dvm_runtime_array_new", "dvm_runtime_root_batch_publish", "destroy", "fvm_port_sync_wait", "dvm_managed_workers_wake_guest", "dvm_managed_ranges_begin"
-        ])
+        delayed_fixture.write_text(
+            fixture_source.replace("busy_publication = 1;", "busy_publication = 130;", 1)
+        )
+        binary = relink(
+            runtime,
+            work,
+            delayed_fixture,
+            0,
+            [
+                "dvm_runtime_root_registry_probe",
+                "dvm_runtime_record_new",
+                "dvm_runtime_heap_commit_attempt",
+                "dvm_runtime_array_new",
+                "dvm_runtime_root_batch_publish",
+                "destroy",
+                "fvm_port_sync_wait",
+                "dvm_managed_workers_wake_guest",
+                "dvm_managed_ranges_begin",
+            ],
+        )
         for mode in ("--no-jit", "--jit"):
-            result = subprocess.run([
-                str(binary), mode, "--guarded-copies", "--gc-worker",
-                "--managed-owner-probe", str(image)
-            ], capture_output=True, text=True, timeout=90)
+            result = subprocess.run(
+                [
+                    str(binary),
+                    mode,
+                    "--guarded-copies",
+                    "--gc-worker",
+                    "--managed-owner-probe",
+                    str(image),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
             output = result.stdout + result.stderr
             if mode == "--jit" and "PASS guarded record JIT cache" not in output:
                 raise RuntimeError(output)
-            if result.returncode or any(marker not in output for marker in (
-                "PASS buffered channel recovery on same channel", "PASS detached ALT publication failure", "PASS native channel buffer wait", "PASS rooted channel buffer lifetime", "PASS buffered channel completion", "PASS direct channel mover failure", "PASS two-sided channel finalization", "PASS native Prog hold race", "PASS guarded channel drain", "PASS mapped channel receive ownership", "PASS mapped channel send publication", "PASS guarded mapped channel mover", "PASS guarded channels", "PASS guarded arrays", "PASS array opcode route", "PASS rooted record construction", "PASS imported record lease", "PASS record opcode route", "PASS record guest"
-            )) or "ThreadSanitizer:" in output or "runtime error:" in output:
+            if (
+                result.returncode
+                or any(
+                    marker not in output
+                    for marker in (
+                        "PASS buffered channel recovery on same channel",
+                        "PASS detached ALT publication failure",
+                        "PASS native channel buffer wait",
+                        "PASS rooted channel buffer lifetime",
+                        "PASS buffered channel completion",
+                        "PASS direct channel mover failure",
+                        "PASS two-sided channel finalization",
+                        "PASS native Prog hold race",
+                        "PASS guarded channel drain",
+                        "PASS mapped channel receive ownership",
+                        "PASS mapped channel send publication",
+                        "PASS guarded mapped channel mover",
+                        "PASS guarded channels",
+                        "PASS guarded arrays",
+                        "PASS array opcode route",
+                        "PASS rooted record construction",
+                        "PASS imported record lease",
+                        "PASS record opcode route",
+                        "PASS record guest",
+                    )
+                )
+                or "ThreadSanitizer:" in output
+                or "runtime error:" in output
+            ):
                 raise RuntimeError(output)
         verify_existing_shared_dispatch(runtime, work, image)
         concurrent_source, concurrent_image = work / "concurrent.b", work / "concurrent.dis"
         concurrent_source.write_text(CONCURRENT_GUEST)
-        subprocess.run([str(compiler), "-I", str(include), "-o", str(concurrent_image),
-                        str(concurrent_source)], check=True)
+        subprocess.run(
+            [
+                str(compiler),
+                "-I",
+                str(include),
+                "-o",
+                str(concurrent_image),
+                str(concurrent_source),
+            ],
+            check=True,
+        )
         for mode in ("--no-jit", "--jit"):
             for locked in (False, True):
                 command = [str(runtime), mode, "--native-spawn", "--stats"]
                 if locked:
                     command.append("--gc-locked-poll")
-                run = subprocess.run(command + [str(concurrent_image)], capture_output=True,
-                                     text=True, timeout=60)
+                run = subprocess.run(
+                    command + [str(concurrent_image)], capture_output=True, text=True, timeout=60
+                )
                 output = run.stdout + run.stderr
                 if run.returncode or "PASS forty allocation workers" not in output:
                     raise RuntimeError(output)
                 evidence(output, children=40)
 
-    print("PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest")
+    print(
+        "PASS guarded records, arrays and channels, stale writer, refusal, monitor error and C/JIT guest"
+    )
 
 
 if __name__ == "__main__":

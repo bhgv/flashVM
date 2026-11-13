@@ -16,23 +16,35 @@
 #include <time.h>
 
 static pthread_mutex_t ledger = PTHREAD_MUTEX_INITIALIZER; /* Observer metadata only. */
-static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Bounded first-allocation rendezvous. */
-static _Thread_local int observing; /* Only the real shared-string Sys call. */
-static _Thread_local size_t expected_size; /* Raw UTF-8 cache allocation extent. */
-static String *shared; /* Borrowed shared identity, protected by actual VM owners. */
-static void *buffers[8]; /* Actual cache allocations, retained in the ledger through free. */
-static unsigned allocated; /* Number of real cache allocations, under ledger. */
-static unsigned released; /* Number of actual frees of tracked buffers. */
-static unsigned arrived; /* First allocation contenders, under ledger. */
+static pthread_cond_t changed = PTHREAD_COND_INITIALIZER;  /* Bounded first-allocation rendezvous. */
+static _Thread_local int observing;                        /* Only the real shared-string Sys call. */
+static _Thread_local size_t expected_size;                 /* Raw UTF-8 cache allocation extent. */
+static String *shared;         /* Borrowed shared identity, protected by actual VM owners. */
+static void *buffers[8];       /* Actual cache allocations, retained in the ledger through free. */
+static unsigned allocated;     /* Number of real cache allocations, under ledger. */
+static unsigned released;      /* Number of actual frees of tracked buffers. */
+static unsigned arrived;       /* First allocation contenders, under ledger. */
 static unsigned private_grows; /* Genuine replacement of an existing private cache. */
-static unsigned writes; /* Actual runetochar destinations in already published cache. */
-static int published; /* A caller has already received a view of this cache. */
-static size_t capacity; /* Valid native extent for tracked buffers. */
+static unsigned writes;        /* Actual runetochar destinations in already published cache. */
+static int published;          /* A caller has already received a view of this cache. */
+static size_t capacity;        /* Valid native extent for tracked buffers. */
+
 
 void __real_Sys_werrstr(void *);
+
+
 void *__real_malloc(size_t);
+
+
+void *__real_calloc(size_t, size_t);
+
+
 void __real_free(void *);
+
+
 int __real_runetochar(char *, Rune *);
+
+
 void __real_dvm_close_worker_stop(void);
 
 
@@ -75,11 +87,13 @@ void __wrap_Sys_werrstr(void *frame)
 }
 
 
-/* EN: Forward native allocation. Briefly align cache contenders, with a bounded
- * timeout so an ordinary cache mutex may correctly admit just one allocator.
- * RU: Выполнить нативное выделение. Ненадолго совместить запросы кэша; таймаут
- * позволяет обычному mutex корректно пропустить лишь одного выделяющего. */
-void *__wrap_malloc(size_t bytes)
+/* EN: Classify bytes for the current thread's observed cache and return tracking
+ * eligibility. Align contenders with a bounded wait; no allocation or transfer.
+ * An ordinary cache mutex may correctly admit just one allocator.
+ * RU: По bytes определить отслеживаемый кэш текущего потока и вернуть признак.
+ * Совместить запросы ограниченным ожиданием, без выделения и передачи владения.
+ * Обычный mutex кэша может корректно пропустить лишь одного выделяющего. */
+static int observe_allocation(size_t bytes)
 {
     int track = observing && bytes == expected_size;
     if (track)
@@ -104,7 +118,16 @@ void *__wrap_malloc(size_t bytes)
         }
         pthread_mutex_unlock(&ledger);
     }
-    void *result = __real_malloc(bytes);
+    return track;
+}
+
+
+/* EN: Record the borrowed allocation result when track selected a real cache.
+ * No ownership transfer; ledger protects counters through actual free.
+ * RU: Учесть заимствованный result при track настоящего кэша. Владение не
+ * меняется; ledger защищает счётчики до настоящего free. */
+static void record_allocation(void *result, int track)
+{
     if (track && result)
     {
         pthread_mutex_lock(&ledger);
@@ -116,6 +139,31 @@ void *__wrap_malloc(size_t bytes)
         buffers[allocated++] = result;
         pthread_mutex_unlock(&ledger);
     }
+}
+
+
+/* EN: Forward bytes to real malloc and observe the exact cache result.
+ * The native caller owns the allocation; failure remains NULL.
+ * RU: Передать bytes настоящему malloc и учесть результат кэша.
+ * Выделением владеет вызывающий; ошибка остаётся NULL. */
+void *__wrap_malloc(size_t bytes)
+{
+    int track = observe_allocation(bytes);
+    void *result = __real_malloc(bytes);
+    record_allocation(result, track);
+    return result;
+}
+
+
+/* EN: Observe optimized malloc-plus-zeroing lowered to calloc(count, bytes).
+ * Preserve overflow/failure behavior by always calling the real allocator.
+ * RU: Учесть malloc с обнулением, оптимизированный в calloc(count, bytes).
+ * Настоящий allocator сохраняет отказ при переполнении и нехватке памяти. */
+void *__wrap_calloc(size_t count, size_t bytes)
+{
+    int track = (!bytes || count <= SIZE_MAX / bytes) ? observe_allocation(count * bytes) : 0;
+    void *result = __real_calloc(count, bytes);
+    record_allocation(result, track);
     return result;
 }
 

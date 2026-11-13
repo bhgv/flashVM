@@ -61,6 +61,9 @@ jobs:
               run: >-
                   python3 disVM/runtime/native_arch_suite.py build/native
                   --expected ${{ matrix.backend }} --profile wide
+            - name: Verify x64 constructor and channel oracle
+              if: matrix.backend == 'amd64' && matrix.instrumentation == 'plain'
+              run: ctest --test-dir build/native -R '^disvm_record_new$' --output-on-failure
             - name: Preserve complete workload logs and report
               if: always()
               uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6

@@ -14,17 +14,23 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER; /* Protect one controlled native overlap. */
+static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER;  /* Protect one controlled native overlap. */
 static pthread_cond_t changed = PTHREAD_COND_INITIALIZER; /* Peer finished admission inspection. */
-static Bigtable_Handle *held_table; /* Borrowed while the head's frame owns the table. */
-static FvmOwned *held_guard; /* Borrowed actual native payload guard. */
-static int selected; /* Atomic one-shot head selection. */
-static int released; /* Peer parked or exposed the old busy error. */
+static Bigtable_Handle *parked_table;                /* Observed early waiter; fixture's shared table remains rooted. */
+static FvmOwned *held_guard;                         /* Borrowed actual native payload guard. */
+static int selected;                                 /* Atomic one-shot head selection. */
+static int released;                                 /* Peer parked or exposed the old busy error. */
 static _Thread_local Bigtable_Handle *current_table; /* Captured table for the selected scalar call. */
 
+
 int __real_dvm_bigtable_call_ready(void (*)(void *), void *);
+
+
 int __real_fvm_table_request(FvmTableOwner *, uint64_t, FvmTableRequest *);
+
+
 int __real_fvm_owned_try_enter(FvmOwned *, uint64_t);
 
 
@@ -56,11 +62,12 @@ int __wrap_dvm_bigtable_call_ready(void (*function)(void *), void *frame)
     if (table && !ready)
     {
         pthread_mutex_lock(&sync);
-        if (held_table == table)
-        {
-            released = 1;
-            pthread_cond_broadcast(&changed);
-        }
+        /* EN: A peer may park before the admitted head reaches its payload
+         * wrapper. Retain that observation, not just a condition notification.
+         * RU: Партнёр может припарковаться до входа головы в payload-wrapper.
+         * Сохранить наблюдение, а не только уведомление condvar. */
+        parked_table = table;
+        pthread_cond_broadcast(&changed);
         pthread_mutex_unlock(&sync);
     }
     return ready;
@@ -101,17 +108,29 @@ int __wrap_fvm_table_request(FvmTableOwner *owner, uint64_t token, FvmTableReque
         !__atomic_exchange_n(&selected, 1, __ATOMIC_ACQ_REL))
     {
         pthread_mutex_lock(&sync);
-        held_table = current_table;
         held_guard = &owner->guard;
         pthread_mutex_unlock(&sync);
         int native = dvm_runtime_gc_native_try_leave();
         require(native > 0, "paused payload publishes its native roots");
+        struct timespec deadline;
+        require(!clock_gettime(CLOCK_REALTIME, &deadline), "native barrier clock");
+        deadline.tv_sec += 30;
         pthread_mutex_lock(&sync);
-        while (!released)
+        /* EN: Wait on durable state, even if every peer parked before this
+         * wrapper published its guard. No notification itself is the proof.
+         * RU: Ждать сохранённый факт, даже если все партнёры припарковались
+         * до публикации guard. Само уведомление не является подтверждением. */
+        while (!released && parked_table != current_table)
         {
-            pthread_cond_wait(&changed, &sync);
+            int result = pthread_cond_timedwait(&changed, &sync, &deadline);
+            require(result == 0 || result == ETIMEDOUT, "native barrier wait");
+            if (result == ETIMEDOUT)
+            {
+                require(released || parked_table == current_table,
+                        "no competing preflight observed before bounded deadline");
+            }
         }
-        held_table = NULL;
+        fprintf(stderr, "TABLE_PREFLIGHT parked_history=%d\n", parked_table == current_table);
         held_guard = NULL;
         pthread_mutex_unlock(&sync);
         dvm_runtime_gc_native_enter(native);

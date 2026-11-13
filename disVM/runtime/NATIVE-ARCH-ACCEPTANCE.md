@@ -108,6 +108,56 @@ channel fields or a permission to execute a foreign process.
 прямых чтений Prog.state больше нет. Очереди/pin по-прежнему защищают lifetime;
 скаляр не даёт доступа к чужим полям канала или права исполнять чужой процесс.
 
+The wider local optimized GCC 14 gate additionally exposed two observer defects.
+The old constructor oracle initialized ten synthetic wait states directly;
+those now use `dvm_runqueue_set_state`, like real transitions. Its 1385-line C
+fixture was split into five ordered probe modules and a coordinator; token
+comparison verified the split before the ten publication changes. The UTF-8
+observer now tracks real `calloc` as well as `malloc`: GCC can lower allocation
+followed by zeroing to `calloc`. It still requires exactly one allocation/free,
+zero writes to a published cache and eight private cache grows. Both failing
+suites passed targeted reruns on the unchanged optimized runtime.
+
+The legacy constructor fault-injection oracle is an unsanitized x64 check.
+An additional local TSan experiment on its reference profiles detected its
+dynamic global `heapmonitor` replacement racing a collector's hook-presence
+query. That experiment is not a successful TSan result and is outside the forty
+strict-native acceptance drivers. The production runtime change does not make
+concurrent mutation of that legacy debug hook safe; its lifecycle needs a
+separate fix. The added x64 oracle CI step therefore targets the plain build;
+the independent strict-native TSan matrix remains mandatory.
+
+Оптимизированный GCC 14 выявил два дефекта оснастки: десять искусственных wait
+состояний старого constructor-oracle теперь публикуются штатным setter, а UTF-8
+наблюдатель учитывает настоящий calloc после оптимизации malloc с обнулением.
+Требования «одно выделение/освобождение, ноль записей опубликованного кэша,
+восемь private grow» сохранены. Файл из 1385 строк разбит на пять модулей и
+координатор с проверкой токенов до изменений публикации. Оба отказа исправлены
+и проверены отдельно на той же оптимизированной VM.
+
+Дополнительный TSan-эксперимент со старым reference/fault-injection oracle
+обнаружил гонку переключения глобального heapmonitor с запросом сборщика.
+Это не успешный TSan-результат; переключение этого debug-hook требует отдельного
+исправления. Oracle проверяется в plain x64, а обязательная TSan-матрица из 40
+strict-native драйверов остаётся отдельной и не допускает sanitizer-отказов.
+
+The first wide RV64 run passed 39/40. Its controlled table preflight observer
+could lose an earlier park notification: all competing owners could park before
+the paused head published its observer identity. The barrier now records the
+actual parked table and tests that durable predicate under the fixture mutex,
+including arrivals before the head. Every controlled C/JIT/poll run must report
+`TABLE_PREFLIGHT parked_history=1`. A bounded thirty-second internal wait fails
+with a specific diagnostic; expiration is never success. The outer sixty-second
+VM timeout is unchanged. No production table/guard code was changed for this
+observer fix. The updated architecture results are recorded after execution.
+
+Первый широкий RV64 дал 39/40: барьер контролируемого preflight терял раннее
+уведомление, если все партнёры успевали припарковаться до регистрации головы.
+Теперь сохраняется факт настоящего ожидания таблицы и проверяется под mutex,
+включая ранний приход. Каждый controlled C/JIT/poll обязан дать parked_history=1.
+Внутренний предел 30 секунд приводит к точному отказу, а не к успеху; внешний
+таймаут VM 60 секунд не увеличен. Production-код таблиц/guard не менялся.
+
 ## Guarded JIT profile on ARM64/RV64
 
 The first native ARM64 CI run built successfully but passed only 1/11 workloads.
