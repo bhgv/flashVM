@@ -74,6 +74,16 @@ typedef struct
 } DvmRemoteRoot;
 
 
+/* EN/RU: Native executor snapshot; opaque root tokens never become wire values.
+ * Native executor snapshot; opaque root tokens не становятся wire values. */
+typedef struct
+{
+    DvmRemoteRequest request;            /* Copied admitted operation and ordered handles. */
+    DvmRemoteRoot target;                /* Borrowed target registration token. */
+    DvmRemoteRoot refs[DVM_REMOTE_REFS]; /* Borrowed variable tokens, preserving aliases. */
+} DvmRemoteBorrow;
+
+
 /* EN: Allocate bounded native storage; limits must be nonzero, expiry is absolute
  * monotonic time in caller units. Return NULL on allocation/identity exhaustion.
  * RU: Выделить ограниченную память; limits ненулевые, expiry — абсолютное monotonic
@@ -133,6 +143,17 @@ DvmRemoteStatus dvm_remote_admit(DvmRemoteSession *session, const DvmRemoteReque
  * RU: Завершить принятый id один раз, снять pins даже после close. Публикации
  * managed result/root здесь нет. Неизвестный/повторный finish — STALE. Thread safe. */
 DvmRemoteStatus dvm_remote_finish(DvmRemoteSession *session, uint64_t id);
+
+
+/* EN: Borrow active request tokens, even after close, into caller-native output.
+ * No retain/effect/heap access. Executor must keep admission unfinished and
+ * serialize collection until tokens are no longer used. Output stays untouched
+ * on INVALID/STALE; native IDs/tokens are trusted-host-only.
+ * RU: Заимствовать tokens active request, даже после close, в native output.
+ * Без retain/effect/heap access. Executor сохраняет admission незавершённым и
+ * сериализует collection до конца использования tokens. INVALID/STALE не меняют
+ * output; IDs/tokens доступны только trusted host. */
+DvmRemoteStatus dvm_remote_borrow(DvmRemoteSession *session, uint64_t id, DvmRemoteBorrow *output);
 
 
 /* EN: Owner thread claims one root with zero peer refs and pins. OK transfers

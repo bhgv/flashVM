@@ -51,12 +51,19 @@ static void active_close(void)
     DvmRemoteHandle variable;
     DvmRemoteRoot root;
     DvmRemoteRequest request;
+    DvmRemoteBorrow borrowed;
     DvmRemoteSession *session = dvm_remote_session_new(2, 4, 100);
     CHECK(session != NULL);
     CHECK(dvm_remote_publish(session, DVM_REMOTE_FUNCTION, &function_root, &function) == DVM_REMOTE_OK);
     CHECK(dvm_remote_publish(session, DVM_REMOTE_VARIABLE, &variable_root, &variable) == DVM_REMOTE_OK);
     request = call(1, function, variable);
     CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_OK && done == 0);
+    CHECK(dvm_remote_borrow(session, 0, &borrowed) == DVM_REMOTE_INVALID);
+    CHECK(dvm_remote_borrow(session, 1, NULL) == DVM_REMOTE_INVALID);
+    CHECK(dvm_remote_borrow(session, 2, &borrowed) == DVM_REMOTE_STALE);
+    CHECK(dvm_remote_borrow(session, 1, &borrowed) == DVM_REMOTE_OK);
+    CHECK(borrowed.target.token == &function_root && borrowed.refs[0].token == &variable_root &&
+          borrowed.refs[1].token == borrowed.refs[0].token && borrowed.request.ref_count == 2);
     CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_DUPLICATE && done == 0);
     CHECK(dvm_remote_release(session, variable) == DVM_REMOTE_OK);
     CHECK(dvm_remote_release(session, variable) == DVM_REMOTE_STALE);
@@ -64,11 +71,13 @@ static void active_close(void)
     CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_STALE);
     dvm_remote_session_close(session);
     dvm_remote_session_close(session);
+    CHECK(dvm_remote_borrow(session, 1, &borrowed) == DVM_REMOTE_OK);
     CHECK(dvm_remote_admit(session, &request, &done) == DVM_REMOTE_CLOSED);
     CHECK(dvm_remote_session_tick(session, 1, 200) == DVM_REMOTE_CLOSED);
     CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_STALE);
     CHECK(dvm_remote_session_destroy(session) == DVM_REMOTE_BUSY);
     CHECK(dvm_remote_finish(session, 1) == DVM_REMOTE_OK);
+    CHECK(dvm_remote_borrow(session, 1, &borrowed) == DVM_REMOTE_STALE);
     CHECK(dvm_remote_finish(session, 1) == DVM_REMOTE_STALE);
     CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_OK && root.token == &function_root);
     CHECK(dvm_remote_collect(session, &root) == DVM_REMOTE_OK && root.token == &variable_root);

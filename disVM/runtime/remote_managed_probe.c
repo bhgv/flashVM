@@ -76,6 +76,7 @@ static void *native_peer(void *argument)
     request.refs[1] = probe->argument;
     int valid =
         dvm_remote_managed_publish(probe->adapter, DVM_REMOTE_VARIABLE, (void *)1, &invalid) == DVM_REMOTE_INVALID &&
+        dvm_remote_managed_resolve(probe->adapter, peer->id, (void *)1) == DVM_REMOTE_INVALID &&
         dvm_remote_managed_collect(probe->adapter, 1, &released) == DVM_REMOTE_INVALID && released == 99 &&
         dvm_remote_managed_destroy(probe->adapter) == DVM_REMOTE_INVALID &&
         dvm_remote_managed_retain(probe->adapter, probe->argument) == DVM_REMOTE_OK &&
@@ -108,6 +109,7 @@ void dvm_remote_managed_probe(void)
     String *argument;
     DvmRemoteManaged *closed;
     DvmRemoteHandle untouched = {11, 22, 33};
+    DvmRemoteManagedCall resolved;
     size_t released;
     unsigned int index;
     unsigned int pressure = 0;
@@ -154,6 +156,9 @@ void dvm_remote_managed_probe(void)
     check(dvm_remote_managed_tick(probe.adapter, 100, 200) == DVM_REMOTE_CLOSED,
           "expired lease cannot renew while calls retain roots");
     dvm_remote_managed_close(probe.adapter);
+    check(dvm_remote_managed_resolve(probe.adapter, 1, &resolved) == DVM_REMOTE_OK && resolved.request.id == 1 &&
+              resolved.target == target && resolved.refs[0] == argument && resolved.refs[0] == resolved.refs[1],
+          "owner resolves actual target and aliased refs after expiry");
     check(dvm_remote_managed_collect(probe.adapter, 2, &released) == DVM_REMOTE_OK && released == 0,
           "close preserves admitted roots");
     for (index = 0; index < 8; index++)
@@ -170,6 +175,8 @@ void dvm_remote_managed_probe(void)
         check(pthread_join(threads[index], NULL) == 0, "native peer join");
     }
     check(!probe.failures, "native peer completion");
+    check(dvm_remote_managed_resolve(probe.adapter, 1, &resolved) == DVM_REMOTE_STALE && resolved.target == target,
+          "completed request cannot resolve or change output");
     DvmRemoteStatus status = dvm_remote_managed_collect(probe.adapter, 1, &released);
     while (status == DVM_REMOTE_CAPACITY && pressure < 32)
     {

@@ -169,3 +169,36 @@ DvmRemoteStatus dvm_remote_finish(DvmRemoteSession *session, uint64_t id)
     pthread_mutex_unlock(&session->mutex);
     return DVM_REMOTE_OK;
 }
+
+
+/* EN: Capture native tokens while active pins prevent session collect. Borrower
+ * coordinates finish/collection; this creates no authority to execute again.
+ * RU: Скопировать native tokens, пока active pins не дают session collect.
+ * Borrower координирует finish/collection; права исполнить повторно это не даёт. */
+DvmRemoteStatus dvm_remote_borrow(DvmRemoteSession *session, uint64_t id, DvmRemoteBorrow *output)
+{
+    DvmRemoteAdmission *entry;
+    DvmRemoteBorrow result;
+    size_t index;
+    if (session == NULL || id == 0 || output == NULL)
+    {
+        return DVM_REMOTE_INVALID;
+    }
+    pthread_mutex_lock(&session->mutex);
+    entry = &session->requests[id % session->request_count];
+    if (entry->request.id != id || !entry->active)
+    {
+        pthread_mutex_unlock(&session->mutex);
+        return DVM_REMOTE_STALE;
+    }
+    memset(&result, 0, sizeof(result));
+    result.request = entry->request;
+    result.target = dvm_remote_object_locked(session, result.request.target)->root;
+    for (index = 0; index < result.request.ref_count; index++)
+    {
+        result.refs[index] = dvm_remote_object_locked(session, result.request.refs[index])->root;
+    }
+    *output = result;
+    pthread_mutex_unlock(&session->mutex);
+    return DVM_REMOTE_OK;
+}

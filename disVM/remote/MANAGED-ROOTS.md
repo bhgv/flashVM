@@ -15,6 +15,7 @@ Copyright (c) 2026 bhgv
 | Publish failure | Добавленные ref/root откатываются; caller и output handle не меняются |
 | Native peer | Видит handles и native request metadata; не получает Heap/payload pointers |
 | Admission | Target и каждое вхождение variable ref получают pins, aliases сохраняются |
+| Resolve | Только exact ACTIVE owner получает actual values конкретного active request; после finish — STALE без изменения output |
 | Close/expiry | Новые admissions и peer refs отзываются; pins принятого запроса живут до finish |
 | Collect | Только точный creating ACTIVE owner; до budget eligible roots передаются Fast |
 | Queue refusal | Непереданный export остаётся rooted/owned в adapter и учитывается в общей quota, даже если session slot уже освобождён |
@@ -33,6 +34,13 @@ Adapter ограничивает также detached roots, ожидающие r
 Wrong-context и non-ACTIVE вызовы heap API отвергаются до dereference source.
 Admission/finish/retain/release/tick/close работают с native metadata из других
 потоков при независимой гарантии lifetime adapter до join.
+
+`dvm_remote_managed_resolve` копирует request metadata и возвращает owner-local
+borrowed values. Это не второй admission или invocation, не новый strong owner
+и не разрешение читать shared payload без guards. Executor не завершает request
+и не собирает exports до конца использования. Native peers не получают эту view;
+wrong-context отказывает до доступа даже к output. Actual ref aliases проверены
+на pointer identity после expiry; после finish новое resolve запрещено.
 
 ## Проверки
 

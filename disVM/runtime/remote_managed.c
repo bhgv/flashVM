@@ -12,6 +12,7 @@
 #include "disvm/refcount.h"
 #include "disvm/native_owner.h"
 #include <stdlib.h>
+#include <string.h>
 
 
 /* [GC:] EN/RU: One separately owned root, never accessed by native request peers.
@@ -193,6 +194,37 @@ void dvm_remote_managed_close(DvmRemoteManaged *adapter)
     {
         dvm_remote_session_close(adapter->session);
     }
+}
+
+
+/* [GC:] EN: Return values only to exact owner; admission pins and owner-local
+ * collection preserve roots. No managed payload is read or changed here.
+ * RU: Вернуть values только точному owner; pins и owner-local collection
+ * сохраняют roots. Managed payload здесь не читается и не меняется. */
+DvmRemoteStatus dvm_remote_managed_resolve(DvmRemoteManaged *adapter, uint64_t id, DvmRemoteManagedCall *output)
+{
+    DvmRemoteBorrow borrowed;
+    DvmRemoteManagedCall result;
+    size_t index;
+    DvmRemoteStatus status;
+    if (!owner_active(adapter) || output == NULL)
+    {
+        return DVM_REMOTE_INVALID;
+    }
+    status = dvm_remote_borrow(adapter->session, id, &borrowed);
+    if (status != DVM_REMOTE_OK)
+    {
+        return status;
+    }
+    memset(&result, 0, sizeof(result));
+    result.request = borrowed.request;
+    result.target = ((ManagedExport *)borrowed.target.token)->value;
+    for (index = 0; index < result.request.ref_count; index++)
+    {
+        result.refs[index] = ((ManagedExport *)borrowed.refs[index].token)->value;
+    }
+    *output = result;
+    return DVM_REMOTE_OK;
 }
 
 

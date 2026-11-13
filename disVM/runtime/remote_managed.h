@@ -12,6 +12,16 @@
 typedef struct DvmRemoteManaged DvmRemoteManaged;
 
 
+/* [GC:] EN/RU: Owner-local borrowed view of active invocation's real values.
+ * Owner-local borrowed view реальных values active invocation. */
+typedef struct
+{
+    DvmRemoteRequest request;    /* Copied admission metadata, not new execution authority. */
+    void *target;                /* Borrowed actual managed owner value. */
+    void *refs[DVM_REMOTE_REFS]; /* Borrowed actual values, preserving alias identity. */
+} DvmRemoteManagedCall;
+
+
 /* [GC:] EN: Create on the current ACTIVE registered native owner, which must
  * outlive the adapter. Native allocation only; NULL on wrong role/OOM.
  * RU: Создать на текущем ACTIVE registered owner, живущем дольше adapter.
@@ -43,6 +53,17 @@ DvmRemoteStatus dvm_remote_managed_release(DvmRemoteManaged *adapter, DvmRemoteH
 DvmRemoteStatus dvm_remote_managed_retain(DvmRemoteManaged *adapter, DvmRemoteHandle handle);
 DvmRemoteStatus dvm_remote_managed_tick(DvmRemoteManaged *adapter, uint64_t now, uint64_t expiry);
 void dvm_remote_managed_close(DvmRemoteManaged *adapter);
+
+
+/* [GC:] EN: Creating ACTIVE owner resolves the exact active request to local
+ * managed values. Executor keeps its call unfinished and never collects these
+ * exports until use ends. No invocation, value copy, payload guards or authority
+ * to execute again is granted. INVALID/STALE leave output untouched.
+ * RU: Creating ACTIVE owner получает local managed values active request.
+ * Executor сохраняет call незавершённым и не собирает exports до конца работы.
+ * Нет invocation, копирования values, payload guards или права исполнить снова.
+ * INVALID/STALE не меняют output; wrong context отвергается до доступа. */
+DvmRemoteStatus dvm_remote_managed_resolve(DvmRemoteManaged *adapter, uint64_t id, DvmRemoteManagedCall *output);
 
 
 /* [GC:] EN: Creating ACTIVE owner moves up to budget eligible roots to concurrent
