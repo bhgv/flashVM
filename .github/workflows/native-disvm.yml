@@ -46,7 +46,17 @@ jobs:
                   cmake -S disVM/runtime -B build/native -DDVM_RUNTIME_TESTS=ON
                   -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build/native --parallel 4
             - name: Execute native C and JIT workloads
-              run: python3 disVM/runtime/native_arch_suite.py build/native --expected ${{ matrix.backend }}
+              run: >-
+                  python3 disVM/runtime/native_arch_suite.py build/native
+                  --expected ${{ matrix.backend }} --profile wide
+            - name: Preserve complete workload logs and report
+              if: always()
+              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+              with:
+                  name: native-${{ matrix.backend }}-wide
+                  path: build/native/native-acceptance/wide
+                  if-no-files-found: ignore
+                  retention-days: 14
 
     rv64:
         name: RV64 userspace under QEMU
@@ -74,4 +84,12 @@ jobs:
             - name: Execute RV64 C and JIT workloads under QEMU
               run: >-
                   python3 disVM/runtime/native_arch_suite.py build/native-rv64
-                  --expected riscv64 --emulated --jobs 1
+                  --expected riscv64 --emulated --jobs 1 --profile wide
+            - name: Preserve complete RV64 workload logs and report
+              if: always()
+              uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+              with:
+                  name: native-riscv64-qemu-wide
+                  path: build/native-rv64/native-acceptance/wide
+                  if-no-files-found: ignore
+                  retention-days: 14

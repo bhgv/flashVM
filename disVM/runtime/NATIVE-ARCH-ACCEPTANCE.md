@@ -24,7 +24,7 @@ python3 disVM/runtime/native_arch_suite.py build/native --expected amd64
 Use `--expected arm64` or `--expected riscv64` on the corresponding userspace.
 `--emulated` labels an emulated run; it changes neither tests nor runtime policy.
 `--list` lists workloads without claiming any architectural execution.
-Per-case logs and `report.json` are written under `build/native/native-acceptance`.
+Per-case logs and `report.json` are written under `build/native/native-acceptance/<profile>`.
 Cases run with bounded concurrency and every failed driver makes the suite fail.
 
 The workflow `.github/workflows/native-disvm.yml` builds on native AMD64 and ARM64
@@ -58,6 +58,23 @@ x64-specific регистрации CTest. До запуска проверяю�
 следует фиксировать после настоящего workflow-run, не по наличию YAML.
 
 ## Guarded JIT profile on ARM64/RV64
+
+The default `core` profile retains these eleven workloads. `--profile wide`
+selects forty explicit portable drivers, adding table edit/retirement and kill
+paths, native services, shared JIT publication, mapped strings/accounting,
+collector requests, service budgets, module cycles and exception retirement.
+Architecture-specific inline-emitter oracles retain their existing CTest gates.
+CI selects `wide` on all three targets and retains full per-driver logs and JSON
+reports as artifacts for fourteen days, including failures. Local AMD64 passed
+40/40; wider ARM64/RV64 acceptance awaits the corresponding workflow result.
+The exception driver keeps its omission controls by default; its explicit
+positive-only mode runs all four real C/JIT/poll release profiles.
+
+Профиль `core` сохраняет 11 нагрузок; `--profile wide` выбирает 40 переносимых
+драйверов, включая общую публикацию JIT, жизненный цикл таблиц, отмену, бюджеты
+GC и освобождение исключений. CI запускает wide на трёх целях и сохраняет полные
+журналы/JSON на 14 дней, также при отказе. Локально x64 прошёл 40/40; результаты
+расширенного ARM64/RV64 набора фиксируются только после исполнения.
 
 The first native ARM64 CI run built successfully but passed only 1/11 workloads.
 The native JIT startup path skipped guarded-operation defaults on non-x64 CPUs;

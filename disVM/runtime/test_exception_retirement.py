@@ -17,8 +17,13 @@ from resident_evidence import evidence
 # RU: Собрать эстафету с настоящими объектами runtime, проверить C/JIT, оба режима
 # опроса и контроль с отключённым shared-путём. CLI задаёт пути сборки. Владеть
 # файлами/процессами; ошибки компиляции и таймаут не считать успехом контроля.
+# EN: --positive-only keeps the four real release profiles without broken variants.
+# RU: --positive-only оставляет четыре настоящих release-профиля без сломанных вариантов.
 def main():
-    runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:])
+    positive_only = "--positive-only" in sys.argv[1:]
+    runtime, compiler, include = (
+        Path(value).resolve() for value in sys.argv[1:] if value != "--positive-only"
+    )
     root = Path(__file__).parent
     with tempfile.TemporaryDirectory(prefix="shared exception retirement ") as temporary:
         work = Path(temporary)
@@ -38,7 +43,7 @@ def main():
             capture_output=True,
             text=True,
         )
-        for control in (0, 1, 2):
+        for control in (0,) if positive_only else (0, 1, 2):
             replacement = None
             if control == 2:
                 source = root / "gc/fast/exception_retirement.c"
@@ -120,7 +125,12 @@ def main():
                     raise RuntimeError("resident continuations did not finish\n" + text[-12000:])
     print(
         "PASS shared emergency retirement: final and externally rooted strings, "
-        "held reader epoch, admitted peers, C/JIT, both polls, disabled-path and early-free controls"
+        "held reader epoch, admitted peers, C/JIT, both polls"
+        + (
+            "; positive profiles only"
+            if positive_only
+            else "; disabled-path and early-free controls"
+        )
     )
 
 

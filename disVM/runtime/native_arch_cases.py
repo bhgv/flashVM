@@ -1,0 +1,52 @@
+# Copyright (c) 2026 bhgv
+# EN: Explicit portable workload selection, preserving each driver's assertions.
+# RU: Явный выбор переносимых нагрузок с сохранением проверок каждого драйвера.
+
+CORE_CASES = (  # Previously verified baseline; names are unique log/report identities.
+    ("continuation", "test_module_continuation.py", ("--portable-overlap",)),
+    ("process-control", "test_resident_processctl.py", ()),
+    ("receiver-cancel", "test_resident_processctl.py", ("--receiver-cancel",)),
+    ("live-parent-reply", "test_late_reply.py", ()),
+    ("native-cancel", "test_native_cancel.py", ()),
+    ("table-transfer", "test_table_transfer.py", ()),
+    ("managed-retirement", "test_managed_retirement.py", ("--positive-only",)),
+    ("module-retirement", "test_module_retirement.py", ("--positive-only",)),
+    ("cycle-rescue", "test_cycle_owner_rescue.py", ("--positive-only",)),
+    ("duke-pins", "test_duke_pin_retirement.py", ("--positive-only",)),
+    ("packet-cycles", "test_packet_cycle_retirement.py", ("--positive-only",)),
+)
+WIDE_CASES = CORE_CASES + (  # Additional whole-VM tests; excludes x64 inline-emitter oracles.
+    ("table-retirement", "test_table_retirement.py", ()),
+    ("table-scope-kill", "test_table_scope_kill.py", ()),
+    ("table-fifo-edit", "test_table_fifo_edit.py", ()),
+    ("table-parent-exit", "test_table_parent_exit.py", ()),
+    ("native-kill", "test_native_kill.py", ()),
+    ("stream-kill", "test_resident_processctl.py", ("--stream-kill",)),
+    ("parent-exit", "test_resident_processctl.py", ("--parent-exit",)),
+    ("channel-snapshot", "test_resident_processctl.py", ("--audit-query",)),
+    ("decimal", "test_resident_decimal.py", ()),
+    ("errors", "test_resident_errors.py", ()),
+    ("native-counts", "test_resident_native_count.py", ()),
+    ("root-probe", "test_resident_root_probe.py", ()),
+    ("jit-publication", "test_jit_publish.py", ()),
+    ("string-views", "test_string_view.py", ()),
+    ("mapped-accounting", "test_mapped_accounting.py", ()),
+    ("gc-requests", "test_gc_requests.py", ()),
+    ("load-kill", "test_load_kill.py", ()),
+    ("resident-load", "test_resident_load.py", ()),
+    ("resident-tables", "test_resident_tables.py", ()),
+    ("close-backlog", "test_close_backlog.py", ()),
+    ("resident-files", "test_resident_files.py", ()),
+    ("concurrent-guards", "test_concurrent_guards.py", ("--positive-only",)),
+    ("fast-services", "test_fast_services.py", ("--positive-only",)),
+    ("packet-charge", "test_packet_charge.py", ("--positive-only",)),
+    ("duke-queue", "test_duke_queue_progress.py", ("--positive-only",)),
+    ("packet-fairness", "test_concurrent_packet.py", ("--positive-only",)),
+    ("fast-claims", "test_fast_claim_storage.py", ("--positive-only",)),
+    ("module-cycles", "test_module_cycle_retirement.py", ("--positive-only",)),
+    ("exception-retirement", "test_exception_retirement.py", ("--positive-only",)),
+)
+PROFILES = {
+    "core": CORE_CASES,
+    "wide": WIDE_CASES,
+}  # Stable CLI choices; no runtime policy override.

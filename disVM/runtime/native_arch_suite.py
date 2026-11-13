@@ -11,6 +11,7 @@ import struct
 import subprocess
 import sys
 import time
+from native_arch_cases import PROFILES
 
 MACHINES = {  # Accepted native userspace names; no instruction-set substitution.
     "x86_64": "amd64",
@@ -21,19 +22,6 @@ MACHINES = {  # Accepted native userspace names; no instruction-set substitution
     "rv64": "riscv64",
 }
 ELF_MACHINES = {62: "amd64", 183: "arm64", 243: "riscv64"}  # ELF e_machine for Linux64 targets.
-CASES = (  # Real drivers; positive-only excludes deliberately broken collector variants.
-    ("continuation", "test_module_continuation.py", ("--portable-overlap",)),
-    ("process-control", "test_resident_processctl.py", ()),
-    ("receiver-cancel", "test_resident_processctl.py", ("--receiver-cancel",)),
-    ("live-parent-reply", "test_late_reply.py", ()),
-    ("native-cancel", "test_native_cancel.py", ()),
-    ("table-transfer", "test_table_transfer.py", ()),
-    ("managed-retirement", "test_managed_retirement.py", ("--positive-only",)),
-    ("module-retirement", "test_module_retirement.py", ("--positive-only",)),
-    ("cycle-rescue", "test_cycle_owner_rescue.py", ("--positive-only",)),
-    ("duke-pins", "test_duke_pin_retirement.py", ("--positive-only",)),
-    ("packet-cycles", "test_packet_cycle_retirement.py", ("--positive-only",)),
-)
 
 
 # EN: Execute case with borrowed matching build products. Own its subprocess and
@@ -115,9 +103,11 @@ def main():
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=2)
     parser.add_argument("--emulated", action="store_true")
     parser.add_argument("--list", action="store_true")
+    parser.add_argument("--profile", choices=PROFILES, default="core")
     args = parser.parse_args()
+    cases = PROFILES[args.profile]
     if args.list:
-        for name, driver, flags in CASES:
+        for name, driver, flags in cases:
             print(name, driver, *flags)
         return 0
     machine = platform.machine().lower()
@@ -142,14 +132,15 @@ def main():
     configured = re.search(r'set\(CMAKE_SYSTEM_PROCESSOR "([^"]+)"\)', system)
     if not configured or MACHINES.get(configured[1].lower()) != args.expected:
         raise RuntimeError("configured CPU differs from requested ELF target")
-    logs = build / "native-acceptance"
-    logs.mkdir(exist_ok=True)
+    logs = build / "native-acceptance" / args.profile
+    logs.mkdir(parents=True, exist_ok=True)
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
-        rows = list(pool.map(lambda case: execute(case, runtime, compiler, include, logs), CASES))
+        rows = list(pool.map(lambda case: execute(case, runtime, compiler, include, logs), cases))
     report = {
         "backend": args.expected,
         "host_machine": machine,
         "emulated": args.emulated,
+        "profile": args.profile,
         "jit_machine_code_instrumented": False,
         "cases": rows,
     }
