@@ -24,15 +24,23 @@ concurrency:
 
 jobs:
     native:
-        name: Native ${{ matrix.backend }}
+        name: Native ${{ matrix.backend }} (${{ matrix.instrumentation }})
         strategy:
             fail-fast: false
             matrix:
                 include:
                     - backend: amd64
                       runner: ubuntu-24.04
+                      instrumentation: plain
+                      cflags: ''
                     - backend: arm64
                       runner: ubuntu-24.04-arm
+                      instrumentation: plain
+                      cflags: ''
+                    - backend: amd64
+                      runner: ubuntu-24.04
+                      instrumentation: tsan
+                      cflags: '-O1 -g -fsanitize=thread -fno-omit-frame-pointer'
         runs-on: ${{ matrix.runner }}
         timeout-minutes: 35
         steps:
@@ -41,10 +49,14 @@ jobs:
                   persist-credentials: false
             - name: Install build tools
               run: sudo apt-get update && sudo apt-get install -y build-essential cmake python3
+            - name: Reserve a compatible TSan shadow address layout
+              if: matrix.instrumentation == 'tsan'
+              run: sudo sysctl -w vm.mmap_rnd_bits=28
             - name: Build the selected native backend
               run: >-
                   cmake -S disVM/runtime -B build/native -DDVM_RUNTIME_TESTS=ON
-                  -DCMAKE_BUILD_TYPE=RelWithDebInfo && cmake --build build/native --parallel 4
+                  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_FLAGS="${{ matrix.cflags }}"
+                  && cmake --build build/native --parallel 4
             - name: Execute native C and JIT workloads
               run: >-
                   python3 disVM/runtime/native_arch_suite.py build/native
@@ -53,7 +65,7 @@ jobs:
               if: always()
               uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
               with:
-                  name: native-${{ matrix.backend }}-wide
+                  name: native-${{ matrix.backend }}-${{ matrix.instrumentation }}-wide
                   path: build/native/native-acceptance/wide
                   if-no-files-found: ignore
                   retention-days: 14

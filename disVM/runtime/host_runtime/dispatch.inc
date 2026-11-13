@@ -207,10 +207,15 @@ static int runtime_dispatch_turn(void)
         int valid_registers = 0;
         if (native_spawn)
         {
-            fvm_port_sync_lock(channel_queue_mutex);
-            valid_registers = process->state == Pready || hosted_channel_waiter(process) ||
-                              process->state == DVM_CHILD_EXIT_WAIT || process->state == DVM_TABLE_WAIT;
-            fvm_port_sync_unlock(channel_queue_mutex);
+            /* EN: A table peer can publish readiness under the table scheduler
+             * mutex while this owner finishes its parked dispatch. Sample only
+             * the atomic scalar; no channel fields or saved registers are read.
+             * RU: Партнёр таблицы публикует готовность под mutex таблиц, пока
+             * владелец заканчивает припаркованный шаг. Читать атомарный скаляр,
+             * без доступа к полям канала или сохранённым регистрам. */
+            int state = dvm_runqueue_observed_state(process);
+            valid_registers = state == Pready || state == Psend || state == Precv || state == Palt ||
+                              state == DVM_CHILD_EXIT_WAIT || state == DVM_TABLE_WAIT;
         }
         dvm_native_execution()->resident_registers_valid = valid_registers;
         if (!dvm_runqueue_finish(process))

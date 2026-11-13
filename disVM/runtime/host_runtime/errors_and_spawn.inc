@@ -77,29 +77,42 @@ void kwerrstr(char *format, ...)
 }
 
 
-/* Preserve the exclusive VM owner across synchronous host work. */
+/* EN: Compatibility no-op; synchronous host work retains the current owner.
+ * No arguments/result, admission change, blocking or peer exclusion.
+ * RU: Совместимый no-op: синхронная работа сохраняет владельца.
+ * Без аргументов/результата, смены допуска, ожидания и исключения других гостей. */
 void release(void)
 {
 }
 
 
-/* Return from synchronous host work on the same exclusive VM owner. */
+/* EN: Compatibility no-op on return to the same native owner.
+ * No arguments/result, register restore, blocking or peer exclusion.
+ * RU: Совместимый no-op при возврате на того же владельца.
+ * Без аргументов/результата, восстановления регистров, ожидания и эксклюзива. */
 void acquire(void)
 {
 }
 
 
-/* Borrow this bound native owner's typed active Prog, or nil without an owner.
- * No process identity is inferred from the shared runnable head. Heap access
- * still requires the current exclusive turn; native waiters cannot execute. */
+/* EN: Borrow this bound native owner's active Prog, or nil without an owner.
+ * No shared queue lookup, blocking or ownership transfer. A returned Prog does
+ * not grant access to another owner's heap fields; object guards still apply.
+ * RU: Заимствовать Prog текущего владельца либо nil без владельца. Без поиска
+ * в общей очереди, ожидания и передачи владения. Результат не разрешает доступ
+ * к полям чужой кучи; объектные guards по-прежнему обязательны. */
 Prog *currun(void)
 {
     return up ? up->prog : nil;
 }
 
 
-/* Append a non-leased runtime Prog under exclusive heap ownership. process is
- * borrowed; malformed/duplicate admission raises before modifying queue roots. */
+/* EN: Publish borrowed process through the synchronized runqueue API.
+ * Malformed/duplicate admission raises before modifying queue roots. This
+ * publication does not acquire exclusive execution of the managed heap.
+ * RU: Опубликовать заимствованный process через синхронизированную очередь.
+ * Неверный/повторный допуск вызывает ошибку до изменения корней; публикация
+ * не даёт эксклюзивного исполнения управляемой кучи. */
 void addrun(Prog *process)
 {
     if (!dvm_runqueue_append(process))
@@ -327,8 +340,14 @@ static int prepare_spawn_storage(void *argument)
 }
 
 
-/* EN: Prepare native storage outside exclusive admission, then publish the child.
- * RU: Подготовить нативную память вне эксклюзива, затем опубликовать потомка. */
+/* EN: Prepare child storage in the caller's shared native interval, then publish.
+ * parent/module/entry/initial remain borrowed; root module through preparation.
+ * On failure restore admission and release the temporary root before raising.
+ * Other native guests keep executing; no live register image is restored.
+ * RU: Подготовить память потомка в shared-интервале, затем опубликовать.
+ * parent/module/entry/initial заимствованы; module укоренён до конца подготовки.
+ * При ошибке вернуть допуск и снять временный корень до исключения. Другие гости
+ * продолжают исполняться; живые регистры из снимка не восстанавливаются. */
 void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog *initial)
 {
     SpawnPreparation request = {parent, module, entry, initial, NULL};

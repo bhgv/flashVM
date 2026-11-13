@@ -4,10 +4,15 @@
  */
 
 
-/* Execute the complete Dis runtime exclusively on its bound native owner.
- * argument is a borrowed module path valid until join/return. No UI heap access
- * occurs here in threaded mode. Channel movers stay on this mutator; optional
- * native GC obtains exclusive heap access through the world rendezvous. */
+/* EN: Initialize the runtime and drive its controller on the bound native owner.
+ * argument is a borrowed module path valid until join/return. Native guests run
+ * on their permanent threads; their channel operations use the guarded paths.
+ * Native collectors cannot stop the world. Return nonzero on startup/runtime
+ * failure; the outer wrapper joins services before retiring owner TLS.
+ * RU: Инициализировать runtime и вести контроллер на привязанном владельце.
+ * argument — путь модуля до join/возврата. Гости исполняются на постоянных потоках,
+ * каналы используют защищённые операции, native GC не останавливает мир.
+ * При ошибке вернуть ненулевой код; внешняя обёртка делает join до удаления TLS. */
 static int runtime_execute_inner(void *argument)
 {
     DVM_NativeContext *context;

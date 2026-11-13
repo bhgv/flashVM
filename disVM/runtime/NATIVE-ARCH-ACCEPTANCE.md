@@ -57,7 +57,7 @@ x64-specific регистрации CTest. До запуска проверяю�
 Пять графовых наборов прошли 132 положительных TSan-профиля. Результаты ARM64/RV64
 следует фиксировать после настоящего workflow-run, не по наличию YAML.
 
-## Guarded JIT profile on ARM64/RV64
+## Wide workload profile / Расширенный набор
 
 The default `core` profile retains these eleven workloads. `--profile wide`
 selects forty explicit portable drivers, adding table edit/retirement and kill
@@ -75,6 +75,26 @@ positive-only mode runs all four real C/JIT/poll release profiles.
 GC и освобождение исключений. CI запускает wide на трёх целях и сохраняет полные
 журналы/JSON на 14 дней, также при отказе. Локально x64 прошёл 40/40; результаты
 расширенного ARM64/RV64 набора фиксируются только после исполнения.
+
+The first wide local TSan run passed 39/40 and exposed a real table wake race:
+`append_ready` wrote retained `Prog.state` under the table scheduler mutex while
+dispatch classified the same state under the unrelated channel mutex. Dispatch
+now samples one acquire-loaded `observed_state` scalar and classifies all allowed
+ready/wait states from that value. It never reads channel fields or reloads live
+registers. The existing table scheduler and atomic publication remain unchanged;
+no global admission lock is added. The wide native CI matrix now includes an
+AMD64 TSan job, so successful unsanitized architecture runs cannot hide this race.
+The ephemeral TSan runner uses 28 mmap randomization bits for shadow compatibility;
+VM/driver failures and sanitizer diagnostics remain failures, without retries.
+
+Первый расширенный x64 TSan-запуск дал 39/40 и обнаружил гонку пробуждения таблицы:
+запись `Prog.state` под mutex таблиц пересекалась с чтением под mutex каналов.
+Конец dispatch теперь классифицирует один acquire-снимок `observed_state`;
+поля каналов и сохранённые регистры не читаются. Общий эксклюзив не добавляется.
+В CI добавлен отдельный AMD64 TSan job; его ошибки не заменяются повторным
+успешным запуском. Для shadow-памяти временного runner задано mmap_rnd_bits=28.
+
+## Guarded JIT profile on ARM64/RV64
 
 The first native ARM64 CI run built successfully but passed only 1/11 workloads.
 The native JIT startup path skipped guarded-operation defaults on non-x64 CPUs;

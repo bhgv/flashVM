@@ -75,11 +75,13 @@ static int native_try_leave(int shared)
         exit(1);
     }
     if (shared && !dvm_queue_probe_requested && dvm_native_owner_try_share(owner, dvm_gc_runtime.passes))
-    { /* NATIVEWORLD: exclusive -> shared, with guest roots published. */
+    { /* NATIVEWORLD: ACTIVE -> SHARED; roots published, peers remain admitted.
+       * RU: ACTIVE -> SHARED; корни опубликованы, другие гости сохраняют допуск. */
         dvm_native_execution()->world_last_exit = DVM_NW_SITE_SHARED;
         return 1;
     }
-    /* NATIVEWORLD: leave exclusive admission before native work. */
+    /* NATIVEWORLD: leave this owner's ACTIVE interval before native work.
+     * RU: Выйти из ACTIVE-интервала своего владельца перед нативной работой. */
     if (!dvm_native_owner_suspend(owner, dvm_gc_runtime.passes))
     {
         fprintf(stderr, "disvm: native heap release failed\n");
@@ -322,7 +324,8 @@ int dvm_runtime_gc_attach(void)
     {
         return 0;
     }
-    /* NATIVEWORLD: a newly attached executor enters exclusive admission. */
+    /* NATIVEWORLD: attach enters ordinary ACTIVE execution alongside peers.
+     * RU: Новый владелец входит в обычное ACTIVE-исполнение вместе с другими. */
     DVM_NativeExecution *execution = dvm_native_execution();
     execution->world_entry_site = DVM_NW_SITE_ATTACH;
     execution->world_entry_pending = 1;
@@ -360,7 +363,8 @@ int dvm_runtime_gc_detach(void)
         }
         dvm_runtime_exception_reserve_stop();
         if (call.phase == DVM_HEAP_ACTIVE)
-        { /* NATIVEWORLD: final exclusive exit before unregistering the executor. */
+        { /* NATIVEWORLD: final ACTIVE exit before unregistering this owner.
+           * RU: Последний выход из ACTIVE перед удалением своего владельца. */
             if (!dvm_native_owner_leave(owner))
             {
                 return 0;
