@@ -287,6 +287,8 @@ add_executable(disvm
     io_buffer.c
     clock_sys.c
     sys_capture.c
+    remote_managed.c
+    remote_managed_probe.c
     filesystem_sys.c
     srv_adapter.c
     bigtable.c
@@ -401,6 +403,7 @@ add_custom_target(disvm_native_modules ALL DEPENDS ${products} ${syntax_products
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 set(DVM_REMOTE_TESTS ${DVM_RUNTIME_TESTS} CACHE BOOL "Native proxy lifecycle checks" FORCE)
 add_subdirectory("${root}/disVM/remote" remote)
+target_link_libraries(disvm PRIVATE disvm_remote_session)
 
 # EN/RU: Production host targets stay active; historical reference registrations
 # are archived. Native-only acceptance is the sole default test profile.

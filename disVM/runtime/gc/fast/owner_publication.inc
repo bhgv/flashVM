@@ -83,3 +83,38 @@ int dvm_runtime_rc_defer(void *value)
     __atomic_fetch_add(&helper_enqueued, helper != 0, __ATOMIC_RELAXED);
     return 1;
 }
+
+
+/* [GC:] EN: Preserve the already published root as the FIFO root. No duplicate
+ * root allocation, ref decrement, destructor, VM call or global stop. Admission
+ * and source lifetime belong to caller; reservation failure changes no ownership.
+ * RU: Сохранить опубликованный root как FIFO root. Нет выделения нового корня,
+ * decrement ref, destructor, VM call или global stop. Caller обеспечивает admission
+ * и source lifetime; отказ reservation не меняет ownership. */
+int dvm_runtime_rc_transfer_root(void *value)
+{
+    DVM_RetirementReservation token = {0};
+    int ready = 0;
+    if (!admitted(0) || !accepting || value == NULL || value == H)
+    {
+        return 0;
+    }
+    Heap *heap = D2H(value);
+    unsigned long bytes = poolmsize(heapmem, heap);
+    if (!dvm_runtime_root_count(heap) || dvm_retirement_reserve(retirement, bytes, &token) != DVM_RETIRE_OK)
+    {
+        return 0;
+    }
+    if (!dvm_retirement_commit_ready(retirement, &token, value, &ready))
+    {
+        abort();
+    }
+    /* Root and strong owner now belong to Fast; only native counters follow. */
+    __atomic_fetch_add(&enqueued, 1, __ATOMIC_RELAXED);
+    __atomic_fetch_add(&helper_enqueued, dvm_native_context_current() != owner, __ATOMIC_RELAXED);
+    if (ready && notify_ready)
+    {
+        notify_ready();
+    }
+    return 1;
+}

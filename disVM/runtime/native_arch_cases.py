@@ -16,6 +16,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
     ("packet-cycles", "test_packet_cycle_retirement.py", ("--positive-only",)),
 )
 WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
+    ("remote-managed-roots", "test_remote_managed.py", ("--positive-only",)),
     ("default-profile", "test_native_defaults.py", ()),
     ("constructors", "test_native_records.py", ()),
     ("owner-monitors", "test_owner_monitor.py", ("--positive-only",)),

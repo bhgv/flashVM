@@ -45,6 +45,7 @@
 #include "queue_probe.h"
 #include "channel_sync.h"
 #include "managed_owner_probe.h"
+#include "remote_managed.h"
 #include "managed_workers.h"
 #include "host_cancellations.h"
 #include "channel_match.h"

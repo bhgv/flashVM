@@ -34,6 +34,7 @@ import subprocess
 # native_admission_source — частный контроль повторного допуска исполнителя.
 # Optional duke_pass_source replaces only the native Duke dispatcher for queue-routing controls.
 # Matching private headers/flags remain mandatory.
+# remote_managed_source — private export ownership omission controls only.
 # RU: runtime — исходная сборка, work — личные результаты, source — wrapper,
 # variant — define, symbols — перехваты линкера; вернуть личный бинарник.
 # runtime_main_source — необязательная частная композиция host с теми же CMake-флагами.
@@ -86,6 +87,7 @@ def relink(
     concurrent_runtime_source=None,
     retirement_pass_source=None,
     packet_budget_source=None,
+    remote_managed_source=None,
 ):
     target = "disvm-editor" if runtime.name == "disvm-editor" else "disvm"
     metadata = runtime.parent / ("CMakeFiles/" + target + ".dir")
@@ -157,6 +159,7 @@ def relink(
         (concurrent_runtime_source, "gc/common/concurrent_runtime.c"),
         (retirement_pass_source, "gc/fast/retirement_pass.c"),
         (packet_budget_source, "gc/fast/packet_budget.c"),
+        (remote_managed_source, "remote_managed.c"),
     ):
         if candidate is None:
             continue
@@ -202,6 +205,7 @@ def relink(
                 "raw_cons.c",
                 "mapped_cons.c",
                 "mapped_prepare.c",
+                "remote_managed.c",
             )
             else "/native/" + filename + ".o"
         )

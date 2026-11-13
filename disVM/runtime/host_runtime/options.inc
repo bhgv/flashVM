@@ -124,6 +124,10 @@ int main(int argc, char **argv)
         {
             dvm_managed_owner_probe_requested = 1;
         }
+        else if (strcmp(argv[1], "--remote-owner-probe") == 0)
+        {
+            dvm_remote_managed_probe_requested = 1;
+        }
         else if (strcmp(argv[1], "--native-queue-probe") == 0)
         {
             if (!dvm_queue_probe_enable())

@@ -3,7 +3,8 @@
 Copyright (c) 2026 bhgv
 
 Здесь развивается proxy-блок в `master`. Native session/transport foundation уже
-реализован; подключение живых managed variables/functions DisVM ещё впереди.
+реализован; runtime теперь содержит и owner-local adapter настоящих managed roots.
+Доступ к живым variables/functions и их вызовы через гостевой API ещё впереди.
 Основание — ранее выбранная архитектура
 [канальных proxy к владельцу](../../fir/v1/doc/DYNAMIC_VALUES.md),
 [проекции](../../ide/dis/LIVE-PROJECTIONS.md) и
@@ -63,6 +64,12 @@ Retain/Release эффекты используют тот же admission gate; d
 сетевого ожидания или world lock. Успешный publish принимает уже зарегистрированный
 owner root token. Collect возвращает его owner-потоку после последнего peer ref и
 admitted pin. Сам этот код не регистрирует managed roots и не выполняет Dis calls.
+
+Для настоящего Heap поверх него подключён
+[managed root adapter](MANAGED-ROOTS.md). Он отдельно удерживает strong ref и
+registry root, проверяет точного ACTIVE owner и передаёт готовые корни конкурентному
+Fast без промежутка потери корня. Это GC/lifetime часть adapter, не реализация
+гостевого function invocation или сетевого RPC.
 
 Admission одной транзакцией проверяет target, все variable refs и overflow,
 копирует request и удерживает каждое вхождение ref, включая aliases. Отказ не меняет

@@ -57,6 +57,16 @@ int dvm_runtime_rc_transfer_frame(const void *frame, const struct Type *type, vo
 int dvm_runtime_rc_defer(void *value);
 
 
+/* [GC:] EN: Transfer an independently owned value AND one existing ordinary
+ * registry root to mandatory Fast retirement without a root gap. ACTIVE producer
+ * only; exact live service required. Zero preserves both on capacity/refusal.
+ * After success the caller must neither remove the root nor access the value.
+ * RU: Передать владеющую ссылку value И её обычный registry root в обязательную
+ * Fast-очередь без root gap. Только ACTIVE producer живой службы. Ноль сохраняет
+ * оба при отказе. После успеха caller не снимает root и не обращается к value. */
+int dvm_runtime_rc_transfer_root(void *value);
+
+
 /* [GC:] EN: Consume at most budget top-level owners on a stopped collector.
  * Recursive legacy destruction can exceed budget. Return remaining work.
  * RU: Снять до budget верхних владельцев на остановленном сборщике. Рекурсивное

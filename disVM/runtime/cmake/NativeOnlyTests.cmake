@@ -23,7 +23,7 @@ if(DVM_RUNTIME_TESTS)
         include("${CMAKE_CURRENT_BINARY_DIR}/native-only-tests.cmake")
         # EN/RU: Keep intentional broken-code controls native; no reference execution.
         # Намеренные broken-code контроли остаются native, без reference-исполнения.
-        foreach(control retirement_storage cancel_generation killwait_seal owner_monitor)
+        foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed)
             add_test(NAME disvm_control_${control} COMMAND "${PYTHON_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/test_${control}.py" "$<TARGET_FILE:disvm>"
                 "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

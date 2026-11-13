@@ -87,6 +87,10 @@ static int runtime_execute_inner(void *argument)
     {
         error("cannot start native collector");
     }
+    if (dvm_remote_managed_probe_requested)
+    {
+        dvm_remote_managed_probe();
+    }
     if (native_spawn && !dvm_resident_threads_start(show_stats, runtime_dispatch_turn, dvm_runtime_cancel_native_waits))
     {
         error("cannot start resident thread registry");
