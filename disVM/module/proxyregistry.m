@@ -31,8 +31,7 @@ Proxyregistry: module
     {
         sources: array of ref Source; # Snapshot of at most sixteen configured sources.
         views: array of ref View; # At most sixteen simultaneously exported native stubs.
-        actors: array of chan of int; # Bounded issued actors, including retired views.
-        issued: int; # Monotonic count, never reused to hide unjoined actors.
+        actors: array of chan of int; # Bounded outstanding actors; slots reused after completion/retirement fence.
         endpoint: ref Proxyowner->Endpoint; # Original function execution owner.
         timeout: int; # Finite source exchange/idle/cleanup budget.
         closed: int; # Terminal after cleanup begins.

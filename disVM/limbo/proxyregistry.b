@@ -3,6 +3,7 @@
 # RU: Native stub authority разрешается лишь в registered live source actors.
 implement Proxyregistry;
 include "sys.m";
+include "processctl.m";
 include "proxyhost.m";
 include "proxyref.m";
 include "proxyhandler.m";
@@ -11,6 +12,7 @@ include "proxynet.m";
 include "proxyroute.m";
 include "proxyregistry.m";
 sys: Sys; # Immutable monotonic clock.
+control: Processctl; # Reap only this session's completed direct-child actors.
 proxy: Proxyowner; # Original function owner and native stub lifetime.
 route: Proxyroute; # Independent source image actors.
 access: Proxyref; # Variable-only access; no foreign Cell dereference.
@@ -22,11 +24,12 @@ gc: Proxygc; # Exact token activity query before borrowing a registered ref.
 init()
 {
     sys = load Sys Sys->PATH;
+    control = load Processctl Processctl->PATH;
     proxy = load Proxyowner Proxyowner->PATH;
     route = load Proxyroute Proxyroute->PATH;
     access = load Proxyref Proxyref->PATH;
     gc = load Proxygc Proxygc->PATH;
-    if (sys == nil || proxy == nil || route == nil || access == nil || gc == nil) {
+    if (sys == nil || control == nil || proxy == nil || route == nil || access == nil || gc == nil) {
         raise "proxy registry modules unavailable";
     }
     proxy->init();
@@ -49,7 +52,7 @@ create(sources: array of ref Source, endpoint: ref Proxyowner->Endpoint, timeout
         }
         snapshot[index] = ref Source(sources[index].endpoint, sources[index].image);
     }
-    return ref Context(snapshot, array[16] of ref View, array[256] of chan of int, 0, endpoint, timeout, 0);
+    return ref Context(snapshot, array[16] of ref View, array[16] of chan of int, endpoint, timeout, 0);
 }
 
 
@@ -75,7 +78,36 @@ lookup(context: ref Context, owner: Proxyowner->Handle): ref View
 actor(source: ref Source, timeout, deadline: int, ready: chan of (int, ref Proxyref->Ref), done: chan of int)
 {
     route->startuntil(source.endpoint, source.image, timeout, deadline, ready);
-    done <-= 1;
+    done <-= control->pid();
+}
+
+
+# EN: Reap only completed direct children without blocking on live actors. Return
+# one free bounded slot, or -1 while all actors remain outstanding. Fence managed
+# retirement before reuse; the runtime separately reaps/joins native residents.
+# RU: Reap лишь completed direct children без ожидания live actors. Вернуть free
+# bounded slot или -1, пока все actors outstanding. Managed retirement fence
+# предшествует reuse; runtime отдельно reap/join native residents.
+reserveactor(context: ref Context): int
+{
+    empty := -1;
+    for (index := 0; index < len context.actors; index++) {
+        if (context.actors[index] != nil) {
+            pid := 0;
+            alt {
+                pid = <-context.actors[index] => {}
+                * => {}
+            }
+            if (pid > 0) {
+                control->killwait(pid);
+                context.actors[index] = nil;
+            }
+        }
+        if (context.actors[index] == nil && empty < 0) {
+            empty = index;
+        }
+    }
+    return empty;
 }
 
 
@@ -96,13 +128,17 @@ importview(context: ref Context, function: Proxyowner->Handle, slot, deadline: i
             break;
         }
     }
-    if (empty < 0 || context.issued == len context.actors) {
+    if (empty < 0) {
+        return (Proxyhost->Capacity, absent);
+    }
+    available := reserveactor(context);
+    if (available < 0) {
         return (Proxyhost->Capacity, absent);
     }
 
     ready := chan[1] of (int, ref Proxyref->Ref);
     done := chan[1] of int;
-    context.actors[context.issued++] = done;
+    context.actors[available] = done;
     spawn actor(context.sources[slot], context.timeout, deadline, ready, done);
     (status, source) := <-ready;
     if (status != 0) {
@@ -225,7 +261,10 @@ close(context: ref Context)
             view.source = nil;
         }
     }
-    for (index = 0; index < context.issued; index++) {
-        <-context.actors[index];
+    for (index = 0; index < len context.actors; index++) {
+        if (context.actors[index] != nil) {
+            control->killwait(<-context.actors[index]);
+            context.actors[index] = nil;
+        }
     }
 }
