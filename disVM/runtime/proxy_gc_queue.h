@@ -72,6 +72,11 @@ uint64_t dvm_proxy_lease_new(DvmProxyLeaseQueue *queue, DvmRemoteHandle owner, i
 int dvm_proxy_lease_action(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, int action);
 
 
+/* EN/RU: Any-thread exact handle match on a live token, under its queue mutex.
+ * Any-thread exact handle match живого token под mutex его очереди. */
+int dvm_proxy_lease_matches(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, DvmRemoteHandle owner);
+
+
 /* EN/RU: Collector finalizes one token: enqueue active release, otherwise free slot.
  * GC завершает token: active release ставится в очередь, иначе slot освобождается. */
 void dvm_proxy_lease_retire(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial);

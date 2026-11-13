@@ -47,7 +47,7 @@ empty(): Image
 # Проверить current epoch и active logical lease, включая queued Release.
 current(endpoint: ref Endpoint, image: Image): int
 {
-    return image.high == endpoint.high && image.low == endpoint.low && gc->active(image.lease);
+    return image.high == endpoint.high && image.low == endpoint.low && gc->matches(image.lease, image.owner.session, image.owner.slot, image.owner.generation);
 }
 
 

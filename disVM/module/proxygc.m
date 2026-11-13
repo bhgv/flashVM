@@ -39,6 +39,11 @@ Proxygc: module
     active: fn(lease: ref Lease): int;
 
 
+    # EN/RU: Any-thread exact live-token check against immutable owner metadata.
+    # Any-thread проверка live token по immutable owner metadata; zero on mismatch.
+    matches: fn(lease: ref Lease, session: big, slot: int, generation: big): int;
+
+
     # EN/RU: Broker activates one staged lease after successful remote Retain; zero on refusal.
     # Broker активирует staged lease после remote Retain; ноль при отказе.
     activate: fn(lease: ref Lease): int;

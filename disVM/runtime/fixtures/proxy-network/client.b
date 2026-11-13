@@ -87,6 +87,12 @@ init()
     if (status != 0 || value != 42) {
         raise "network ref aliases lost updates";
     }
+    forged := variable;
+    forged.owner = function.owner;
+    (status, value) = net->call(endpoint, Proxyowner->Drop, forged, empty, empty, 0, 0, 10000);
+    if (status != Proxynet->Stale) {
+        raise "network image owner did not match its native lease";
+    }
     (clone_status, retained) := net->clone(endpoint, variable, 10000);
     if (clone_status != 0 || retained.lease == variable.lease) {
         raise "network clone did not create distinct owner";

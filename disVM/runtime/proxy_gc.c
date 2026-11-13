@@ -244,6 +244,23 @@ void Proxygc_active(void *frame)
 }
 
 
+/* EN/RU: Check exact owner scalars against live native token before offer/admission.
+ * Проверить owner scalars по live native token до offer/admission. */
+void Proxygc_matches(void *frame)
+{
+    F_Proxygc_matches call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxygc_matches, ret), sizeof(*call.ret));
+    Lease *value = token(call.lease);
+    WORD result = 0;
+    if (value && call.session > 0 && call.slot >= 0 && call.generation > 0)
+    {
+        DvmRemoteHandle owner = {(uint64_t)call.session, (uint64_t)call.generation, (size_t)call.slot};
+        result = dvm_proxy_lease_matches(value->queue, value->slot, value->serial, owner);
+    }
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
 /* EN/RU: Broker commits staged token after successful remote Retain.
  * Broker фиксирует staged token после успешного remote Retain. */
 void Proxygc_activate(void *frame)
@@ -268,9 +285,9 @@ void Proxygc_next(void *frame)
 
     struct
     {
-        LONG session;
-        WORD slot;
-        LONG generation;
+        LONG session;    /* Scalar owner session, zero if no pending entry. */
+        WORD slot;       /* Scalar slot index, never a managed pointer. */
+        LONG generation; /* Scalar slot incarnation. */
     } result = {0};
 
     DvmRemoteHandle owner;

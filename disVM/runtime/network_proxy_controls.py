@@ -30,11 +30,13 @@ def rejected(operation, marker):
     raise RuntimeError("private network omission escaped: " + marker)
 
 
-# EN: Omitting the client incarnation check lets a stale image write the real
-# remote cell. Join the failed client and server; only that explicit error counts.
-# RU: Пропуск client incarnation check позволяет stale image менять remote cell.
-# Join failed client/server; засчитывать только явную ожидаемую ошибку.
-def stale_image(runtime, work):
+# EN: Run actual client/server with a private image-guard omission. marker names
+# the intended client error, expected proves the server's last scalar value.
+# Join both guests; crashes/timeouts do not count as semantic detection.
+# RU: Запустить client/server с private image-guard omission. marker задаёт
+# ожидаемую ошибку client, expected — последнее scalar value server. Join обоих;
+# crashes/timeouts не считаются semantic detection.
+def stale_image(runtime, work, marker="network stale incarnation admitted", expected="value=999"):
     left, right = connected_tcp()
     guests = []
     try:
@@ -42,8 +44,8 @@ def stale_image(runtime, work):
         guests.append(Guest(runtime, work, "client", "--no-jit", False, right, "bad-epoch-client"))
         left.close()
         right.close()
-        rejected(lambda: guests[1].finish(), "network stale incarnation admitted")
-        guests[0].finish("value=999")
+        rejected(lambda: guests[1].finish(), marker)
+        guests[0].finish(expected)
     finally:
         left.close()
         right.close()
@@ -58,7 +60,12 @@ def stale_image(runtime, work):
 def controls(runtime, root, work, compiler, include):
     path = root.parent / "limbo/proxynet.b"
     source = path.read_text()
-    anchor = "return image.high == endpoint.high && image.low == endpoint.low && gc->active(image.lease);"
+    lease_check = (
+        "gc->matches(image.lease, image.owner.session, image.owner.slot, image.owner.generation)"
+    )
+    anchor = (
+        "return image.high == endpoint.high && image.low == endpoint.low && " + lease_check + ";"
+    )
     if source.count(anchor) != 1:
         raise RuntimeError("client epoch control anchor moved")
     try:
@@ -68,9 +75,21 @@ def controls(runtime, root, work, compiler, include):
             compiler,
             include,
             "proxynet",
-            source.replace(anchor, "return gc->active(image.lease);"),
+            source.replace(anchor, "return " + lease_check + ";"),
         )
         stale_image(runtime, work)
+    finally:
+        compile_one(root, work, compiler, include, path, "proxynet")
+    try:
+        replacement(
+            root,
+            work,
+            compiler,
+            include,
+            "proxynet",
+            source.replace(lease_check, "gc->active(image.lease)"),
+        )
+        stale_image(runtime, work, "network image owner did not match its native lease", "value=42")
     finally:
         compile_one(root, work, compiler, include, path, "proxynet")
     path = root.parent / "limbo/proxyserver.b"
@@ -90,7 +109,7 @@ def controls(runtime, root, work, compiler, include):
         )
     finally:
         compile_one(root, work, compiler, include, path, "proxyserver")
-    print("PASS network omissions: stale image epoch and repeated owner effect rejected")
+    print("PASS network omissions: epoch, exact lease owner and repeated owner effect rejected")
 
     gc_controls(runtime, root, work)
 

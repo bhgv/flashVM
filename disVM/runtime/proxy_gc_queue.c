@@ -147,6 +147,24 @@ int dvm_proxy_lease_action(DvmProxyLeaseQueue *queue, size_t slot, uint64_t seri
 }
 
 
+/* EN/RU: Bind a caller image to immutable token metadata, not mutable Image fields.
+ * Связать caller image с immutable token metadata, не mutable Image fields. */
+int dvm_proxy_lease_matches(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, DvmRemoteHandle owner)
+{
+    int matched = 0;
+    pthread_mutex_lock(&queue->mutex);
+    if (!queue->closed && slot < queue->limit)
+    {
+        DvmProxyLeaseEntry *entry = &queue->entries[slot];
+        matched = entry->serial == serial && entry->state == DVM_PROXY_LEASE_ACTIVE &&
+                  entry->owner.session == owner.session && entry->owner.slot == owner.slot &&
+                  entry->owner.generation == owner.generation;
+    }
+    pthread_mutex_unlock(&queue->mutex);
+    return matched;
+}
+
+
 /* EN/RU: Retire exactly one finalized token; pending slot outlives managed payload.
  * Завершить ровно один token; pending slot переживает managed payload. */
 void dvm_proxy_lease_retire(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial)

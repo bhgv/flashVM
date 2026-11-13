@@ -13,7 +13,7 @@ gc: Proxygc; # Immutable native descriptor interface.
 foreign(connection: ref Proxygc->Connection, lease: ref Proxygc->Lease, done: chan of int)
 {
     (session, unused, generation) := gc->next(connection);
-    if (!gc->active(lease) || gc->consume(lease) || gc->activate(lease) || session != big 0) {
+    if (!gc->matches(lease, big 1, 0, big 1) || !gc->active(lease) || gc->consume(lease) || gc->activate(lease) || session != big 0) {
         raise "foreign native lease mutation admitted";
     }
     done <-= 1;
@@ -34,11 +34,20 @@ init()
         gc->make(connection, big 1, 2, big 1, 1) != nil) {
         raise "native lease quota or staging";
     }
+    if (!gc->matches(first, big 1, 0, big 1) ||
+        gc->matches(first, big 2, 0, big 1) || gc->matches(first, big 1, 1, big 1) ||
+        gc->matches(first, big 1, 0, big 2) || gc->matches(nil, big 1, 0, big 1) ||
+        gc->matches(staged, big 1, 1, big 1)) {
+        raise "native lease exact immutable owner match";
+    }
     done := chan[1] of int;
     spawn foreign(connection, first, done);
     if (<-done != 1 || !gc->activate(staged) || gc->activate(staged) ||
         !gc->consume(staged) || gc->consume(staged)) {
         raise "native lease exact activation/release";
+    }
+    if (gc->matches(staged, big 1, 1, big 1)) {
+        raise "consumed token still matched its old owner";
     }
     first = nil;
     sys->sleep(20);
@@ -64,7 +73,7 @@ init()
         raise "native pending slot quota was not recycled";
     }
     gc->close(connection);
-    if (gc->active(next) || gc->make(connection, big 3, 0, big 1, 1) != nil) {
+    if (gc->active(next) || gc->matches(next, big 2, 0, big 2) || gc->make(connection, big 3, 0, big 1, 1) != nil) {
         raise "closed native queue revived";
     }
     sys->fprint(sys->fildes(2), "PASS native leases: aliases quota staging foreign refusal GC reuse close\n");

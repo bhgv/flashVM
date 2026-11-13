@@ -121,7 +121,9 @@ size/reserved, неверные ID/refs/slot и неполный кадр не �
 повтор точного request ID не увеличивает remote count второй раз.
 
 Explicit Drop однократно потребляет lease до отправки. Все aliases этого lease
-после этого получают Stale, а отдельный clone остаётся действующим. Broker повторно
+после этого получают Stale, а отдельный clone остаётся действующим. Session/slot/
+generation сверяются с immutable native metadata lease: подмена public Image.owner
+не даёт Drop/Invoke чужого export и не потребляет исходный token. Broker повторно
 проверяет lease после извлечения запроса: queued call после Drop не допускается.
 Request удерживает target/ref tokens до completion; активный call не теряет
 владение из-за GC клиентского alias. Возвращаемый clone удерживается и buffered
@@ -168,9 +170,11 @@ Network test обнаружил raw Processctl.pid return store; исправл�
 concurrent GC policy, пустые RC queues, exports=0/active=0 и native staging=0.
 Проверены также native token quota, aliases, staged activation, запрет mutation
 с чужого resident thread, повторное использование slot, сборка self-cycle, GC
-original variable/function при живом clone, GC последнего clone и replay Retain.
+original variable/function при живых отдельных clones, вызов retained function
+после GC original с двумя live ref aliases, отдельный GC function clone без
+отзыва variable ref, GC последнего variable clone и replay Retain.
 Joined `PROXYGC` counters требуют queues/tokens/pending=0 и баланс drained/discarded.
-Private compiled omissions Retain / finalizer Release / epoch guard / duplicate cache
+Private compiled omissions exact owner match / Retain / finalizer Release / epoch guard / duplicate cache
 обязаны дать конкретный
 semantic failure; crash/compile failure/timeout не засчитываются.
 

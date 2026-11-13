@@ -63,6 +63,10 @@ init()
     if (clone_status != 0) {
         raise "GC client Retain";
     }
+    (function_status, retained_function) := net->clone(endpoint, function, 10000);
+    if (function_status != 0) {
+        raise "GC client function Retain";
+    }
     empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     cycle := ref Cycle(nil, variable);
     cycle.next = cycle;
@@ -75,8 +79,19 @@ init()
     if (status != 0 || value != 10) {
         raise "GC of original images revoked distinct retained owner";
     }
-    retained = empty;
+    (status, value) = net->call(endpoint, Proxyowner->Invoke, retained_function,
+        retained, retained, 2, 2, 10000);
+    if (status != 0 || value != 14) {
+        raise "GC of original function revoked retained callable or ref arguments";
+    }
+    retained_function = empty;
     collected(endpoint, 3);
+    (status, value) = net->call(endpoint, Proxyowner->Read, retained, empty, empty, 0, 0, 10000);
+    if (status != 0 || value != 14) {
+        raise "function image collection revoked its borrowed ref argument";
+    }
+    retained = empty;
+    collected(endpoint, 4);
     (status, value) = net->call(endpoint, Proxyowner->Stop, empty, empty, empty, 0, 0, 10000);
     if (status != 0 || <-stopped != 1) {
         raise "GC client terminal cleanup";

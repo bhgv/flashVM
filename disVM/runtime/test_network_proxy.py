@@ -41,9 +41,9 @@ def two_vms(runtime, work, mode, locked, tag, client_name="client"):
             match = re.search(
                 r"PROXYGC queues=0 tokens=0 pending=0 enqueued=(\d+) drained=(\d+)", output
             )
-            if not match or int(match[1]) < 3 or int(match[2]) < 3:
+            if not match or int(match[1]) < 4 or int(match[2]) < 4:
                 raise RuntimeError("actual image finalizers did not reach the broker\n" + output)
-            guests[0].finish("result=0 value=10")
+            guests[0].finish("result=0 value=14")
         else:
             guests[1].finish(
                 "PASS network client: 8 clients actual ref aliases epochs callbacks drop join"
