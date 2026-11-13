@@ -2,6 +2,8 @@
  * EN: Native I/O with rooted arguments and mutex-protected shared accounting.
  * RU: Нативный I/O с укоренёнными аргументами и общим учётом под мьютексом.
  */
+
+
 /* Immutable bounded native output snapshots outside the managed heap interval. */
 #include "lib9.h"
 #include "dat.h"
@@ -15,8 +17,9 @@
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
-extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
-    size_t capacity, size_t *written, int *released);
+extern int dvm_runtime_stdio_duplex(int descriptor);
+extern FVM_Result
+dvm_runtime_write_stdio(int descriptor, const void *bytes, size_t capacity, size_t *written, int *released);
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,9 +28,9 @@ extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
 
 static size_t staged_bytes;      /* Aggregate native snapshots, under the registry mutex. */
 static size_t peak_staged_bytes; /* Maximum direct output storage before return; updates under registry mutex. */
-static unsigned int pinned;     /* External FD/source-array root registrations; updates under registry mutex. */
-static unsigned long fragments; /* Completed native port attempts; updates under registry mutex. */
-static unsigned long copied;    /* Actual bytes acknowledged by the native port; updates under registry mutex. */
+static unsigned int pinned;      /* External FD/source-array root registrations; updates under registry mutex. */
+static unsigned long fragments;  /* Completed native port attempts; updates under registry mutex. */
+static unsigned long copied;     /* Actual bytes acknowledged by the native port; updates under registry mutex. */
 
 
 /* EN: Report native output counters from a locked snapshot (normally after all producers join), for --stats.
@@ -41,8 +44,13 @@ void dvm_runtime_write_statistics(void)
     unsigned long snapshot_fragments = fragments;
     unsigned long snapshot_copied = copied;
     fvm_port_registry_unlock();
-    fprintf(stderr,"NATIVEOUTPUT pins=%u staging=%lu peak=%lu fragments=%lu copied=%lu\n",
-        snapshot_pinned,(unsigned long)snapshot_staged_bytes,(unsigned long)snapshot_peak_staged_bytes,snapshot_fragments,snapshot_copied);
+    fprintf(stderr,
+            "NATIVEOUTPUT pins=%u staging=%lu peak=%lu fragments=%lu copied=%lu\n",
+            snapshot_pinned,
+            (unsigned long)snapshot_staged_bytes,
+            (unsigned long)snapshot_peak_staged_bytes,
+            snapshot_fragments,
+            snapshot_copied);
 }
 
 
@@ -71,13 +79,13 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     {
         return 0;
     }
-    extent = dvm_io_span(fd,bytes,count,&descriptor,&data);
+    extent = dvm_io_span(fd, bytes, count, &descriptor, &data);
     if (extent < 0)
     {
         return extent;
     }
     file = descriptor >= 3 ? dvm_runtime_file(descriptor) : NULL;
-    if (descriptor != 1 && descriptor != 2 && !file)
+    if (descriptor != 1 && descriptor != 2 && !(descriptor == 0 && dvm_runtime_stdio_duplex(0)) && !file)
     {
         return -1;
     }
@@ -86,7 +94,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
      * The legacy file-port zero operation stays on the active owner. */
     if (!extent)
     {
-        if (descriptor == 1 || descriptor == 2)
+        if (descriptor <= 2)
         {
             return 0;
         }
@@ -150,14 +158,14 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     pinned++;
     fvm_port_registry_unlock();
     Setmark(D2H(bytes));
-    memmove(stage,data,capacity);
+    memmove(stage, data, capacity);
     /* [GC:] Reserve under the gate mutex, wait after native release. The
      * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
     if (file)
     {
         dvm_managed_workers_file_call();
     }
-    if (descriptor == 1 || descriptor == 2)
+    if (descriptor <= 2)
     {
         status = dvm_runtime_write_stdio(descriptor, stage, capacity, &written, &released);
     }

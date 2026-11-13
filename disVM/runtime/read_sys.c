@@ -2,6 +2,8 @@
  * EN: Native I/O with rooted arguments and mutex-protected shared accounting.
  * RU: Нативный I/O с укоренёнными аргументами и общим учётом под мьютексом.
  */
+
+
 /* Native input stages outside the managed heap, then copies after reentry. */
 #include "lib9.h"
 #include "dat.h"
@@ -21,16 +23,20 @@
 #include <stdio.h>
 
 extern FVM_Result dvm_runtime_read_stdin(void *bytes, size_t capacity, size_t *received);
+extern FVM_Result dvm_runtime_read_stdio(int descriptor, void *bytes, size_t capacity, size_t *received);
+extern int dvm_runtime_stdio_duplex(int descriptor);
 
 
 #define READ_STAGE_BYTES 65536U /* Maximum native staging allocation per builtin call. */
 
 
-static size_t staged_bytes;       /* Aggregate native staging, under the registry mutex. */
-static size_t peak_staged_bytes;  /* Maximum direct staging bytes, excluding managed roots; updates under registry mutex. */
-static unsigned int pinned;      /* External root registrations owned by read callbacks; updates under registry mutex. */
-static unsigned long fragments;  /* Completed native read attempts, including EOF/errors; updates under registry mutex. */
-static unsigned long copied;     /* Actual bytes committed after managed reentry; updates under registry mutex. */
+static size_t staged_bytes;  /* Aggregate native staging, under the registry mutex. */
+static size_t
+    peak_staged_bytes;       /* Maximum direct staging bytes, excluding managed roots; updates under registry mutex. */
+static unsigned int pinned;  /* External root registrations owned by read callbacks; updates under registry mutex. */
+static unsigned long
+    fragments;               /* Completed native read attempts, including EOF/errors; updates under registry mutex. */
+static unsigned long copied; /* Actual bytes committed after managed reentry; updates under registry mutex. */
 
 
 /* EN: Report counters from a locked snapshot (normally after all producers join). No parameters/result.
@@ -44,8 +50,13 @@ void dvm_runtime_read_statistics(void)
     unsigned long snapshot_fragments = fragments;
     unsigned long snapshot_copied = copied;
     fvm_port_registry_unlock();
-    fprintf(stderr,"NATIVEINPUT pins=%u staging=%lu peak=%lu fragments=%lu copied=%lu\n",
-        snapshot_pinned,(unsigned long)snapshot_staged_bytes,(unsigned long)snapshot_peak_staged_bytes,snapshot_fragments,snapshot_copied);
+    fprintf(stderr,
+            "NATIVEINPUT pins=%u staging=%lu peak=%lu fragments=%lu copied=%lu\n",
+            snapshot_pinned,
+            (unsigned long)snapshot_staged_bytes,
+            (unsigned long)snapshot_peak_staged_bytes,
+            snapshot_fragments,
+            snapshot_copied);
 }
 
 
@@ -68,21 +79,21 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     volatile int buffer_pinned = 0;
     if (buffer == H || requested < 0)
     {
-        memmove(ret,&result,sizeof(result));
+        memmove(ret, &result, sizeof(result));
         return;
     }
-    extent = dvm_io_span(fd,buffer,requested,&descriptor,&data);
+    extent = dvm_io_span(fd, buffer, requested, &descriptor, &data);
     if (extent <= 0)
     {
         result = extent;
-        memmove(ret,&result,sizeof(result));
+        memmove(ret, &result, sizeof(result));
         return;
     }
-    file = descriptor == 0 ? NULL : dvm_runtime_file(descriptor);
-    if (descriptor != 0 && !file)
+    file = descriptor <= 1 ? NULL : dvm_runtime_file(descriptor);
+    if (descriptor != 0 && !(descriptor == 1 && dvm_runtime_stdio_duplex(1)) && !file)
     {
         result = -1;
-        memmove(ret,&result,sizeof(result));
+        memmove(ret, &result, sizeof(result));
         return;
     }
     capacity = (size_t)extent < READ_STAGE_BYTES ? (size_t)extent : READ_STAGE_BYTES;
@@ -135,7 +146,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     while (result < extent)
     {
         size_t received = 0;
-        size_t fragment = (size_t)(extent-result);
+        size_t fragment = (size_t)(extent - result);
         FVM_Result status;
         int released;
         DVM_FileTicket ticket;
@@ -153,6 +164,10 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         if (descriptor == 0)
         {
             status = dvm_runtime_read_stdin(stage, fragment, &received);
+        }
+        else if (descriptor == 1)
+        {
+            status = dvm_runtime_read_stdio(descriptor, stage, fragment, &received);
         }
         else
         {
@@ -199,14 +214,13 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
          * acknowledged fragment commits only after revalidation under the heap. */
         {
             int current_descriptor = -1;
-            int current = dvm_io_span(fd,buffer,requested,&current_descriptor,&data);
-            if (current < result || current_descriptor != descriptor ||
-                received > (size_t)(current-result))
+            int current = dvm_io_span(fd, buffer, requested, &current_descriptor, &data);
+            if (current < result || current_descriptor != descriptor || received > (size_t)(current - result))
             {
                 error("native input destination changed");
             }
         }
-        memmove(data+result,stage,received);
+        memmove(data + result, stage, received);
         result += (WORD)received;
         fvm_port_registry_lock();
         copied += (unsigned long)received;
@@ -230,7 +244,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     staged_bytes -= capacity;
     fvm_port_registry_unlock();
     free(stage);
-    memmove(ret,&result,sizeof(result));
+    memmove(ret, &result, sizeof(result));
 }
 
 
@@ -239,8 +253,8 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
 void Sys_read(void *frame)
 {
     F_Sys_read call;
-    dvm_sys_capture(frame,&call,sizeof(call),offsetof(F_Sys_read,ret),sizeof(*call.ret));
-    read_buffer(call.fd,call.buf,call.n,call.ret,0);
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_read, ret), sizeof(*call.ret));
+    read_buffer(call.fd, call.buf, call.n, call.ret, 0);
 }
 
 
@@ -249,6 +263,6 @@ void Sys_read(void *frame)
 void Sys_readn(void *frame)
 {
     F_Sys_readn call;
-    dvm_sys_capture(frame,&call,sizeof(call),offsetof(F_Sys_readn,ret),sizeof(*call.ret));
-    read_buffer(call.fd,call.buf,call.n,call.ret,1);
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_readn, ret), sizeof(*call.ret));
+    read_buffer(call.fd, call.buf, call.n, call.ret, 1);
 }

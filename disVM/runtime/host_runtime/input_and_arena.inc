@@ -60,7 +60,8 @@ static FVM_Result runtime_stdio_transfer(
         {
             if (S_ISSOCK(metadata.st_mode))
             {
-                status = transfer_stdio_socket(&wait, wake_fd, descriptor, input, output, capacity, transferred, timeout);
+                status =
+                    transfer_stdio_socket(&wait, wake_fd, descriptor, input, output, capacity, transferred, timeout);
             }
             else if (input)
             {
@@ -81,6 +82,31 @@ static FVM_Result runtime_stdio_transfer(
     native_guest_wait_end(&wait, released);
     close(wake_fd);
     return status;
+}
+
+
+/* EN/RU: Reverse standard directions are admitted only for connected stream sockets.
+ * Обратные standard directions допускаются лишь для connected stream sockets.
+ * No flags or descriptor ownership change; the host retains them until VM exit. */
+int dvm_runtime_stdio_duplex(int descriptor)
+{
+    struct stat metadata;
+    struct sockaddr_storage peer;
+    socklen_t peer_bytes = sizeof(peer);
+    int type;
+    socklen_t type_bytes = sizeof(type);
+    return (descriptor == 0 || descriptor == 1) && !fstat(descriptor, &metadata) && S_ISSOCK(metadata.st_mode) &&
+           !getsockopt(descriptor, SOL_SOCKET, SO_TYPE, &type, &type_bytes) && type == SOCK_STREAM &&
+           !getpeername(descriptor, (struct sockaddr *)&peer, &peer_bytes);
+}
+
+
+/* EN/RU: Read native staging from a borrowed standard socket, preserving cancellation.
+ * Читать native staging из borrowed standard socket с сохранением cancellation. */
+FVM_Result dvm_runtime_read_stdio(int descriptor, void *bytes, size_t capacity, size_t *received)
+{
+    int released;
+    return runtime_stdio_transfer(descriptor, bytes, NULL, capacity, received, &released);
 }
 
 
@@ -113,7 +139,6 @@ void dvm_runtime_channel_queue_guard(int (*operation)(void *), void *argument)
         krethrow();
     }
 }
-
 
 extern int dvm_runtime_channel_buffer_busy(Channel *channel);
 
