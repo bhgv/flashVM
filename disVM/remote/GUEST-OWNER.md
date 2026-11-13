@@ -87,8 +87,9 @@ generation freshness test. Wide native manifest включает 49 workloads, �
 
 ## Следующая незакрытая граница
 
-Handle copies не создают автоматические remote Retain: Drop отзывает общий export,
-а не реализует GC каждой proxy-копии. Нет distributed GC, arbitrary closure/value
+В этом локальном typed endpoint Handle copies не создают remote Retain: Drop
+отзывает общий export. Network Image adapter добавляет отдельный managed lease,
+explicit clone/Retain и автоматический GC Release; ordinary copies делят lease. Нет distributed GC, arbitrary closure/value
 types, proxy/function results, String snapshots, cross-owner ref routing, response
 cache/ack или wire authentication. Local request IDs считаются serving loop и
 не являются network replay protocol. Отдельный [network adapter](NETWORK-OWNERS.md)

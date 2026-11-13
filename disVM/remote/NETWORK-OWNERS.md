@@ -89,10 +89,10 @@ ledger. `poll` не держит queue mutex; `recv/send` используют `
 исходный heap owner и отпускают staging/root pins. Статистика native GC и banner
 completion выведены в stderr, чтобы stdout мог нести только application bytes.
 
-## Приватный формат версии 1
+## Приватный формат версии 2
 
 Все числа — явно восемь big-endian bytes; signed scalar — битовый 64-bit pattern.
-Record имеет ровно 152 bytes, magic `DVP1`, version 1. Managed pointers, C padding
+Record имеет ровно 152 bytes, magic `DVP2`, version 2. Managed pointers, C padding
 и bitmap/layout native frame в stream не попадают. Это private hosted NC64
 протокол, **не DIS64 format, public kind/opcode или Word=4/ref=8 ABI**.
 
@@ -102,7 +102,7 @@ Record имеет ровно 152 bytes, magic `DVP1`, version 1. Managed pointer
 | 8 | Exact record size 152 |
 | 16, 24 | Connection epoch high/low |
 | 32 | ID; Hello=0, request/reply positive, максимум signed 63 bits |
-| 40, 48, 56 | Operation (Read=1..Stop=5), ref count 0..2, copied scalar value |
+| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6), ref count 0..2, copied scalar value |
 | 64, 88, 112 | Target/left/right: session, slot, generation по 8 bytes |
 | 136, 144 | Status/result; в request обязаны быть нулевыми |
 
@@ -111,6 +111,44 @@ owner session/generation в первом codec — неотрицательны�
 реальные exports требуют ненулевых identities/generations. Reply должен точно
 совпасть с request до byte 136, кроме type. Неизвестные status, epoch/version,
 size/reserved, неверные ID/refs/slot и неполный кадр не становятся managed call.
+
+## Владение Image и конкурентная сборка мусора
+
+`Image` содержит managed lease token: обычные копии Image и `ref` aliases разделяют
+одного логического владельца. `Proxynet.clone(endpoint, image, timeout)` создаёт
+отдельного владельца через counted remote Retain. Variable и function используют
+одинаковый механизм. Wire Retain проходит тот же bounded replay cache, что и Drop:
+повтор точного request ID не увеличивает remote count второй раз.
+
+Explicit Drop однократно потребляет lease до отправки. Все aliases этого lease
+после этого получают Stale, а отдельный clone остаётся действующим. Broker повторно
+проверяет lease после извлечения запроса: queued call после Drop не допускается.
+Request удерживает target/ref tokens до completion; активный call не теряет
+владение из-за GC клиентского alias. Возвращаемый clone удерживается и buffered
+reply: если caller исчез, недостижимый reply освобождает этот clone через GC.
+
+Последний managed lease finalizes на конкурентном Fast. Недостижимый цикл с
+вложенным Image обнаруживается Cycles и также отдаёт lease. Finalizer записывает
+только scalar handle в bounded native queue под её локальным mutex: без сетевого
+IO, managed allocation, callback и глобальной остановки. Broker между requests
+передаёт Drop, используя следующий ID и обычный конечный wire deadline. Один
+maintenance tick — до 100 ms; GC traffic не продлевает исходный idle deadline.
+`collected(endpoint, timeout)` наблюдает число подтверждённых GC Releases, без
+forced collection. Scheduling/collection не имеют hard real-time гарантии.
+
+Очередь ограничена 256 slots, включая staged/live/pending tokens. Для clone slot
+и managed token резервируются **до** remote Retain; capacity не создаёт удалённый
+эффект. Token активируется только после успешного reply. Native storage удерживают
+connection payload и каждый token независимо. Exact runtime-private descriptors
+не дают обычному Limbo ADT подменить native payload. Публикация нового native
+объекта использует зарегистрированный внешний root и guarded mapped result;
+отказ root/publication сохраняет прежний result и освобождает native owners.
+
+Terminal error/Unknown/Stop/idle закрывает metadata и отзывает все tokens.
+Pending finalizer records удаляются; remote session retirement освобождает exports.
+Неопределённый Drop/Retain не повторяется в новой session. Это per-connection
+counted ownership с локальной RC/cycle collection, а не distributed tracing или
+сборка циклов, проходящих через несколько узлов.
 
 ## Приёмка и оставшаяся работа
 
@@ -128,14 +166,19 @@ Network test обнаружил raw Processctl.pid return store; исправл�
 обязан показать actual race.
 Каждая positive VM проверяет matched native resident joins, отсутствие миграции,
 concurrent GC policy, пустые RC queues, exports=0/active=0 и native staging=0.
-Private compiled omissions epoch guard / duplicate cache обязаны дать конкретный
+Проверены также native token quota, aliases, staged activation, запрет mutation
+с чужого resident thread, повторное использование slot, сборка self-cycle, GC
+original variable/function при живом clone, GC последнего clone и replay Retain.
+Joined `PROXYGC` counters требуют queues/tokens/pending=0 и баланс drained/discarded.
+Private compiled omissions Retain / finalizer Release / epoch guard / duplicate cache
+обязаны дать конкретный
 semantic failure; crash/compile failure/timeout не засчитываются.
 
 Пока доступны int Cell, copied scalar result, один function/capture и максимум
 два same-owner variable refs. Нет arbitrary closure/value types, String snapshots,
-proxy-valued returns, cross-owner ref routing, transparent compiler lowering или
-автоматического Retain/finalizer каждой копии Image. Drop отзывает общий export;
-это ещё не distributed GC. TLS/peer authentication, automatic unique epoch
+proxy-valued returns, cross-owner ref routing и transparent compiler lowering.
+Обычные Image copies разделяют lease; отдельный owner создаёт explicit clone.
+Это ещё не cross-node distributed tracing GC. TLS/peer authentication, automatic unique epoch
 provisioning, owning dial/listen/FD adoption и полноценная cross-node lease/ACK
 политика остаются отдельными границами. ARM64/RV64 выполняют ту же CI-приёмку;
 QEMU не доказывает physical memory ordering или performance.

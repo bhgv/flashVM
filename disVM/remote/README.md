@@ -141,3 +141,11 @@ return-slot ownership и rollback. Это полезные части будущ
 Наш NC64 и новый DIS64 проверяются раздельно; успешные native workloads не
 выдаются за выполнение новой wire ABI или за готовность этого proxy-блока.
 Прочитан и сохранён [ответ Inferno по сетевому tuple/owner boundary](INFERNO-NETWORK.md).
+
+Network Image lifecycle теперь проверяется на двух actual VMs: ordinary aliases
+делят managed lease, explicit clone делает counted Retain, последний managed owner
+(включая Image внутри недостижимого self-cycle) ставит Drop в native metadata queue.
+Broker отправляет его с конечным deadline; finalizer не выполняет IO и не
+останавливает остальные потоки. Проверены ровно один explicit Drop, сохранение
+отдельного clone, replay Retain и root/publication refusal. Это per-connection
+ownership, не cross-node tracing; см. [границы DVP2](NETWORK-OWNERS.md).
