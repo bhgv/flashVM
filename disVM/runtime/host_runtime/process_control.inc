@@ -214,11 +214,15 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
  * retirement notification, not another exit. Registry membership admits the
  * wait; sample the lifetime seal only to avoid an unnecessary exit request.
  * Rechecking a live sample can race sealing and wrongly skip the wait.
+ * Reserve this child's single native reply before parking; allocation failure
+ * leaves caller runnable. A cancelled/rearmed wait can reuse an untransferred reserve.
  * RU: Опубликовать ожидание живого или уже завершающегося ребёнка из реестра.
  * Атомарный lifetime seal предшествует Pexiting. Для sealed нужна только
  * квитанция завершения, а не новый запрос. Наличие в реестре разрешает ожидание;
  * lifetime-снимок лишь исключает лишний запрос выхода. Повторная проверка может
- * пересечь sealing и ошибочно пропустить ожидание. Чужой state не читать. */
+ * пересечь sealing и ошибочно пропустить ожидание. Чужой state не читать.
+ * Резервировать единственный ответ ребёнка до парковки; отказ памяти оставляет
+ * caller runnable. Отозванное/повторное ожидание использует непереданный резерв. */
 static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
@@ -227,6 +231,16 @@ static int prepare_dedicated_child_wait(Prog *caller, int pid)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
+    }
+    DVM_RuntimeProcess *target = (DVM_RuntimeProcess *)child;
+    if (!target->retirement_reply)
+    {
+        target->retirement_reply = calloc(1, sizeof(*target->retirement_reply));
+        if (!target->retirement_reply)
+        {
+            fvm_port_sync_unlock(channel_queue_mutex);
+            error(exNomem);
+        }
     }
     int retiring = dvm_runqueue_hold_count(child) < 0;
     if (!dvm_runqueue_pop_expected(caller, DVM_CHILD_EXIT_WAIT))
@@ -302,29 +316,41 @@ int dvm_runtime_killwait_result(Prog *caller, int pid)
 }
 
 
-/* Publish retirement after stack, module and process storage are released.
- * The numeric parent identity remains valid even if the parent already exited. */
-static void publish_child_exit(int parent_pid, int child_pid)
+/* EN: Consume owned message reserved before killwait parking. Publish only to
+ * the matching parent wait after all child storage is gone; otherwise free it.
+ * Parent lookup and wait metadata use the registry guard, not a world stop.
+ * parent_pid/child_pid are copied identities, message contains no managed roots.
+ * Reference mode supplies NULL and wakes synchronously. No retirement allocation.
+ * RU: Принять message, зарезервированный до парковки killwait. После удаления
+ * ребёнка отправить лишь совпадающему ожиданию родителя, иначе освободить.
+ * Поиск родителя и его wait защищены реестром, без остановки мира.
+ * parent_pid/child_pid — копии ID, message не хранит managed-корней.
+ * Reference-режим передаёт NULL и будит синхронно. При retirement память не выделяется. */
+static void publish_child_exit(int parent_pid, int child_pid, DVM_OwnerMessage *message)
 {
-    Prog *parent;
-
     if (!parent_pid)
     {
+        free(message);
         return;
     }
     if (native_spawn)
     {
         fvm_port_sync_lock(channel_queue_mutex);
     }
+    Prog *parent;
     for (parent = dvm_runtime_process_roots(); parent && parent->pid != parent_pid; parent = parent->next)
     {
     }
-    if (parent && ((DVM_RuntimeProcess *)parent)->exit_wait_pid == child_pid)
+    DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
+    if (process && !process->cancel_waiting && process->exit_wait_pid == child_pid)
     {
-        DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
         if (process->messages)
         {
-            DVM_OwnerMessage *reply = &process->child_retired;
+            if (!message)
+            {
+                abort();
+            }
+            DVM_OwnerMessage *reply = message;
             reply->sender = (uintptr_t)child_pid;
             reply->request = (uint64_t)child_pid;
             reply->kind = DVM_PROG_MESSAGE_CHILD_RETIRED;
@@ -332,6 +358,7 @@ static void publish_child_exit(int parent_pid, int child_pid)
             {
                 abort();
             }
+            message = NULL;
             dvm_managed_workers_wake_guest(parent);
         }
         else
@@ -344,6 +371,7 @@ static void publish_child_exit(int parent_pid, int child_pid)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
     }
+    free(message);
 }
 
 

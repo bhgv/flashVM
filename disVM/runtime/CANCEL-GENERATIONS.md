@@ -21,7 +21,7 @@ One native allocation belongs to each asynchronous cancellation:
 | Completion | Child reuses the same node as the reply; no shared reply slot. |
 | Parent still waiting on that child | Reply is transferred; parent accepts the matching ID or discards a stale ID, then frees it. |
 | Parent absent or no longer interested | Child frees the request. |
-| Endpoint teardown | Both queues drain and free owned cancellation nodes. Embedded channel/retirement nodes are retained. |
+| Endpoint teardown | Both queues drain and free owned cancellation nodes. Embedded channel nodes are retained. Retirement replies now have their own child-scoped reserve; see [RETIREMENT-STORAGE.md](RETIREMENT-STORAGE.md). |
 | Stop after native reply staging | The resident frees its staged cancellation node before releasing its worker slot. |
 
 The registry mutex protects parent lookup and wait metadata. It does not stop
@@ -58,8 +58,8 @@ expected race. The constructor/channel oracle passed under TSan separately.
 
 [Architecture CI](https://github.com/bhgv/flashVM/actions/runs/43371859603)
 has completed native AMD64 and ARM64 with 43/43 each, plus the AMD64 constructor
-oracle. AMD64 TSan and RV64 QEMU are still running at this checkpoint; no result
-is claimed for these unfinished jobs. Full logs and reports are retained by the
+oracle. AMD64 TSan and RV64 QEMU subsequently completed with 43/43 each; all four jobs
+are successful. RV64 remains emulated coverage. Full logs and reports are retained by the
 workflow. The final follow-up changes only comments and documentation, with
 executable C tokens verified equal. Changed handwritten source is at most
 394 lines per file. Upstream snapshots are unchanged.

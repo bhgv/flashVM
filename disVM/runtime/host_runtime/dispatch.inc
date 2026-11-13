@@ -171,6 +171,8 @@ static int runtime_dispatch_turn(void)
             DVM_RuntimeProcess *retired = (DVM_RuntimeProcess *)process;
             int parent_pid = retired->exit_notify_parent ? retired->parent_pid : 0;
             int child_pid = process->pid;
+            DVM_OwnerMessage *reply = retired->retirement_reply;
+            retired->retirement_reply = NULL;
             if (process == initial_guest)
             {
                 initial_guest = NULL;
@@ -182,7 +184,7 @@ static int runtime_dispatch_turn(void)
             drop_guest_messages(process);
             free(process);
             __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
-            publish_child_exit(parent_pid, child_pid);
+            publish_child_exit(parent_pid, child_pid, reply);
             if (native_spawn)
             {
                 __atomic_fetch_sub(&resident_retirements, 1, __ATOMIC_RELEASE);

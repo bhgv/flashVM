@@ -19,6 +19,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     set_tests_properties(disvm_killwait_seal PROPERTIES TIMEOUT 180)
     # EN/RU: Distinguish interrupted operations on the same live child.
     # Различать прерванные операции над одним живым ребёнком.
+    # EN/RU: Distinct retirement nodes while stale replies delay the consumer.
+    # Разные узлы завершения при задержке получателя старыми ответами.
+    add_test(NAME disvm_retirement_storage COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_retirement_storage.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_retirement_storage PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_cancel_generation COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_cancel_generation.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")

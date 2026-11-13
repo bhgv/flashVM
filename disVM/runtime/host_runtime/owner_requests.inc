@@ -85,10 +85,10 @@ static int apply_child_reply(Prog *guest, DVM_RuntimeProcess *process, DVM_Owner
 
 
 /* EN: Owner takes at most one staged/queued reply for borrowed guest. Apply or
- * discard it, freeing owned cancellation storage; retirement nodes stay embedded.
+ * discard it, freeing owned cancellation or retirement storage after consumption.
  * The transit counter covers removal through disposal. Return whether guest woke.
  * RU: Владелец забирает не более одного извлечённого/очередного ответа guest.
- * Применить либо отбросить, освободив память отмены; узлы retirement встроены.
+ * Применить либо отбросить, освободив память отмены или retirement.
  * Счётчик transit покрывает извлечение и удаление. Вернуть признак пробуждения. */
 static int consume_child_reply(Prog *guest)
 {
@@ -106,7 +106,7 @@ static int consume_child_reply(Prog *guest)
     }
     fvm_port_sync_lock(channel_queue_mutex);
     int delivered = apply_child_reply(guest, process, reply);
-    if (reply && reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+    if (reply && (reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT || reply->kind == DVM_PROG_MESSAGE_CHILD_RETIRED))
     {
         free(reply);
     }

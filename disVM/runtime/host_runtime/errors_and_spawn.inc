@@ -161,14 +161,16 @@ void dvm_runtime_publish_dispatch_roots(Prog *process)
 
 
 /* EN: Dispose borrowed guest's endpoint after producers lose registration.
- * Drain owned cancellation nodes in both directions; other nodes are embedded.
+ * Free the untransferred retirement reserve and owned replies/requests; channel nodes are embedded.
  * Caller protects guest lifetime. No remaining queued allocation survives teardown.
  * RU: Удалить endpoint заимствованного guest после ухода отправителей.
- * Освободить владеемые узлы отмены в обеих очередях; иные узлы встроены.
+ * Удалить непереданный резерв retirement и владеемые ответы/запросы; узлы каналов встроены.
  * Caller защищает жизнь guest. Память очередей не переживает удаление endpoint. */
 static void drop_guest_messages(Prog *guest)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
+    free(process->retirement_reply);
+    process->retirement_reply = NULL;
     if (process->messages)
     {
         dvm_messages_stop(process->messages);
@@ -177,7 +179,8 @@ static void drop_guest_messages(Prog *guest)
         {
             while ((message = dvm_messages_take(process->messages, reply, 0)))
             {
-                if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT || message->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+                if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT || message->kind == DVM_PROG_MESSAGE_CANCEL_RESULT ||
+                    message->kind == DVM_PROG_MESSAGE_CHILD_RETIRED)
                 {
                     free(message);
                 }

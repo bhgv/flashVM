@@ -128,7 +128,8 @@ static void execute(void *argument)
          * next dispatch. This owner still owns that node outside the endpoint.
          * RU: Stop может прийти после извлечения ответа до следующего dispatch.
          * Этот владелец ещё хранит узел вне endpoint. */
-        if (worker->staged_reply && worker->staged_reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+        if (worker->staged_reply && (worker->staged_reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT ||
+                                     worker->staged_reply->kind == DVM_PROG_MESSAGE_CHILD_RETIRED))
         {
             free(worker->staged_reply);
         }
