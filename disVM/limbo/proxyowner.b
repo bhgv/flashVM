@@ -5,6 +5,7 @@ implement Proxyowner;
 include "sys.m";
 include "processctl.m";
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 
@@ -44,7 +45,7 @@ alarm(signal, started: chan of int, deadline: int)
 # EN/RU: One absolute alarm spans offer and reply; accepted work is never replayed.
 # Один alarm охватывает offer и reply; принятое work никогда не повторяется.
 offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
-      refs, value, timeout: int): (int, int, Handle)
+      refs, value, timeout, routed: int, first, second: ref Proxyref->Ref): (int, int, Handle)
 {
     absent := Handle(big 0, 0, big 0);
     if (endpoint == nil || timeout < 1 || timeout > 60000) {
@@ -56,8 +57,8 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
     signal := chan[1] of int;
     response := chan[1] of (int, int, Handle);
     started := chan[1] of int;
-    request := ref Request(operation, target, left, right, refs, value, response);
     deadline := sys->millisec() + timeout;
+    request := ref Request(operation, target, left, right, refs, value, routed, first, second, deadline, response);
     spawn alarm(signal, started, deadline);
     timer := <-started;
     delivered := 0;
@@ -86,10 +87,10 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
 call(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
      refs, value, timeout: int): (int, int)
 {
-    if (operation < Read || operation > Retain) {
+    if ((operation < Read || operation > Retain) && operation != Add) {
         return (NotSent, 0);
     }
-    (status, result, unused) := offer(endpoint, operation, target, left, right, refs, value, timeout);
+    (status, result, unused) := offer(endpoint, operation, target, left, right, refs, value, timeout, 0, nil, nil);
     return (status, result);
 }
 
@@ -103,8 +104,23 @@ fetch(endpoint: ref Endpoint, target, left, right: Handle,
         return (NotSent, Handle(big 0, 0, big 0));
     }
     (status, unused, returned) := offer(endpoint, ReturnVariable + kind,
-        target, left, right, refs, value, timeout);
+        target, left, right, refs, value, timeout, 0, nil, nil);
     return (status, returned);
+}
+
+
+# EN/RU: Routed arguments stay managed and pinned by request; native pins capture only.
+# Routed arguments остаются managed и удержаны request; native pins держат capture.
+routed(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,
+       refs, value, timeout: int): (int, int)
+{
+    if (refs < 0 || refs > 2 || (refs > 0 && left == nil) || (refs > 1 && right == nil)) {
+        return (NotSent, 0);
+    }
+    absent := Handle(big 0, 0, big 0);
+    (status, result, unused) := offer(endpoint, Invoke, target, absent, absent,
+        refs, value, timeout, 1, left, right);
+    return (status, result);
 }
 
 
@@ -164,11 +180,18 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
         if (nativeop == ReturnVariable || nativeop == ReturnFunction) {
             nativeop = Invoke;
         }
+        if (nativeop == Add) {
+            nativeop = Proxyhost->Add;
+        }
+        native_refs := request.refs;
+        if (request.routed) {
+            native_refs = 0;
+        }
         returned := absent;
         (admitted, target, left, right) := host->begin(id, nativeop,
             request.target.session, request.target.slot, request.target.generation,
             request.left.session, request.left.slot, request.left.generation,
-            request.right.session, request.right.slot, request.right.generation, request.refs, request.value);
+            request.right.session, request.right.slot, request.right.generation, native_refs, request.value);
         value := 0;
         if (admitted == 0) {
             {
@@ -177,7 +200,16 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
                     Write =>
                         target.value = request.value;
                         value = target.value;
-                    Invoke => value = handler->invoke(target, left, right, request.value);
+                    Add =>
+                        target.value += request.value;
+                        value = target.value;
+                    Invoke =>
+                        if (request.routed) {
+                            value = handler->routed(target, request.first, request.second,
+                                request.refs, request.value, request.deadline);
+                        } else {
+                            value = handler->invoke(target, left, right, request.value);
+                        }
                     ReturnVariable or ReturnFunction =>
                         kind := request.operation - ReturnVariable;
                         result := handler->result(target, left, right, request.value, kind);

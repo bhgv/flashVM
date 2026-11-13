@@ -3,6 +3,7 @@
 # RU: Canonical fixed-size network codec с проверками до доступа к полям.
 implement Proxyframe;
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 include "proxyframe.m";

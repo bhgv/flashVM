@@ -5,6 +5,7 @@ implement Proxyhandler;
 include "sys.m";
 include "processctl.m";
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 
 
@@ -78,4 +79,31 @@ result(capture, left, right: ref Proxyhost->Cell, value, kind: int): ref Proxyho
         return ref Proxyhost->Cell(capture.value);
     }
     return ref Proxyhost->Cell(value);
+}
+
+
+# EN: Execute on original captured owner, accessing actual foreign variables through
+# typed variable-only refs. Each operation uses the original absolute deadline.
+# RU: Исполнить на original captured owner, обращаться к actual foreign variables
+# через typed variable-only refs. Все операции используют original absolute deadline.
+routed(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
+       refs, value, deadline: int): int
+{
+    control := load Processctl Processctl->PATH;
+    access := load Proxyref Proxyref->PATH;
+    sys := load Sys Sys->PATH;
+    access->init();
+    sys->fprint(sys->fildes(2), "ROUTED callback entered owner=%d\n", control->pid());
+    if (capture.value != control->pid() || refs != 2 || left == nil || right == nil) {
+        raise "routed callback lost original capture or typed refs";
+    }
+    (status, unused) := access->call(left, Proxyref->Add, value, deadline);
+    if (status != 0) {
+        raise "first routed variable access failed";
+    }
+    (status, unused) = access->call(right, Proxyref->Add, value, deadline);
+    if (status != 0) {
+        raise "second routed variable access failed";
+    }
+    return unused;
 }

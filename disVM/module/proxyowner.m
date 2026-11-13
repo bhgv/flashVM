@@ -4,7 +4,7 @@
 Proxyowner: module
 {
     PATH: con "proxyowner.dis"; # Bytecode library built by the matching NC64 producer.
-    Read, Write, Invoke, Drop, Stop, Retain, ReturnVariable, ReturnFunction: con iota; # Local channel protocol, not network wire IDs.
+    Read, Write, Invoke, Drop, Stop, Retain, ReturnVariable, ReturnFunction, Add: con iota; # Local channel protocol, not network wire IDs.
     OK: con 0; # Completed effect, or successful explicit lifecycle action.
     OwnerError: con -1; # Callback raised; partial side effects remain possible.
     NotSent: con -2; # Timed out before this channel offer was delivered.
@@ -31,6 +31,10 @@ Proxyowner: module
         right: Handle; # Second live ref argument when refs == 2.
         refs: int; # Number of same-owner ref arguments, zero to two.
         value: int; # Copied scalar input.
+        routed: int; # Explicit proxy-ref callback, never raw foreign Cell arguments.
+        first: ref Proxyref->Ref; # First routed variable owner, if used.
+        second: ref Proxyref->Ref; # Second routed variable owner, if used.
+        deadline: int; # Absolute caller budget for routed accesses.
         reply: chan of (int, int, Handle); # Buffered status/scalar/new export identity.
     };
 
@@ -60,8 +64,8 @@ Proxyowner: module
     # from Unknown after delivery. Refs belong to this endpoint; return copied scalar.
     # RU: Предложить call с общим deadline 1..60000ms без replay. NotSent отличается
     # от Unknown после delivery. Refs принадлежат endpoint; result — scalar copy.
-    # EN/RU: Active owner callbacks cannot block on another proxy call: OwnerError.
-    # Active owner callback не ждёт другой proxy call: возвращает OwnerError.
+    # EN/RU: Direct nested proxy RPC is refused; routed variable access uses Proxyref.
+    # Direct nested proxy RPC запрещён; routed variable access использует Proxyref.
     call: fn(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
              refs, value, timeout: int): (int, int);
 
@@ -72,4 +76,12 @@ Proxyowner: module
     # Variable/Function; вернуть status/handle. Unknown не повторяется.
     fetch: fn(endpoint: ref Endpoint, target, left, right: Handle,
               refs, value, kind, timeout: int): (int, Handle);
+
+
+    # EN: Invoke on original function owner using proxy refs to other owners.
+    # Requests keep refs live; deadline is shared by nested variable-only accesses.
+    # RU: Вызвать original function owner с proxy refs других owners.
+    # Requests удерживают refs; nested variable-only accesses делят deadline.
+    routed: fn(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,
+               refs, value, timeout: int): (int, int);
 };

@@ -5,6 +5,7 @@ implement Proxyserver;
 include "sys.m";
 include "processctl.m";
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 include "proxyframe.m";
@@ -50,7 +51,7 @@ canonical(bytes: array of byte): int
 {
     operation := codec->get(bytes, Proxyframe->Operation);
     refs := codec->get(bytes, Proxyframe->Refs);
-    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 8 &&
+    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 9 &&
         refs >= big 0 && refs <= big 2 && codec->get(bytes, Proxyframe->Status) == big 0 &&
         codec->get(bytes, Proxyframe->Result) == big 0 &&
         codec->get(bytes, Proxyframe->ResultKind) == big 0 &&

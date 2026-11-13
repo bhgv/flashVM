@@ -401,7 +401,7 @@ list(APPEND module_names proxyowner)
 list(APPEND module_sources "${root}/disVM/limbo/proxyowner.b")
 # EN/RU: Ship the matched typed network libraries with the ordinary native build.
 # Поставлять matching typed network libraries в обычной native-сборке.
-foreach(network_module proxyframe proxystream proxynet proxyserver)
+foreach(network_module proxyref proxyframe proxystream proxynet proxyserver proxyroute)
  list(APPEND module_names ${network_module})
  list(APPEND module_sources "${root}/disVM/limbo/${network_module}.b")
 endforeach()

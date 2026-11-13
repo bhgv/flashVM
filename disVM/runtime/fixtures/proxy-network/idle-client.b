@@ -4,6 +4,7 @@
 implement ProxyIdleClient;
 include "sys.m";
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 include "proxynet.m";

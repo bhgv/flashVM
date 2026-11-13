@@ -1,12 +1,11 @@
 # Copyright (c) 2026 bhgv
 # EN: Explicit network proxy images bound to one trusted connected FD incarnation.
 # RU: Явные network proxy images, привязанные к incarnation доверенного connected FD.
-include "proxygc.m";
 Proxynet: module
 {
     PATH: con "proxynet.dis"; # Client broker, one permanent Prog per connection.
     Disconnected: con -4; # Terminal byte/framing failure; sent effects may be unknown.
-    GCProgress: con 8; # Local broker maintenance, never a wire operation.
+    GCProgress: con 9; # Local broker maintenance, never a wire operation.
     Stale: con 5; # Image belongs to another connection incarnation.
 
 
@@ -29,13 +28,13 @@ Proxynet: module
     };
 
 
-    # EN/RU: Local completed outcome; image is nonempty only for an explicit clone.
-    # Local completed outcome; image непуст лишь для explicit clone.
+    # EN/RU: Local completed outcome; image is owned for clone or callback result.
+    # Local completed outcome; image владеющий для clone либо callback result.
     Reply: adt
     {
         status: int; # Scalar operation outcome.
         value: int; # Copied scalar result.
-        image: Image; # Newly retained clone, or empty image.
+        image: Image; # New retained clone/callback result, or empty image.
     };
 
 

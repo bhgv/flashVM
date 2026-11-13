@@ -5,6 +5,7 @@ implement Proxynet;
 include "sys.m";
 include "processctl.m";
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 include "proxyframe.m";
@@ -116,7 +117,7 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Image,
 call(endpoint: ref Endpoint, operation: int, target, left, right: Image,
      refs, value, timeout: int): (int, int)
 {
-    if (operation < Proxyowner->Read || operation > Proxyowner->Stop) {
+    if ((operation < Proxyowner->Read || operation > Proxyowner->Stop) && operation != Proxyowner->Add) {
         return (Disconnected, 0);
     }
     result := offer(endpoint, operation, target, left, right, refs, value, timeout);

@@ -18,4 +18,12 @@ Proxyhandler: module
     # RU: Исполнить на исходном owner; вернуть actual Cell как variable либо
     # function capture. Borrowed arguments pinned до export publication.
     result: fn(capture, left, right: ref Proxyhost->Cell, value, kind: int): ref Proxyhost->Cell;
+
+
+    # EN: Execute with variable-only proxies to other owners. Each access shares
+    # the original absolute deadline; no raw foreign Cell or automatic replay.
+    # RU: Исполнить с variable-only proxies других owners. Все accesses делят
+    # исходный absolute deadline; без raw foreign Cell и automatic replay.
+    routed: fn(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
+               refs, value, deadline: int): int;
 };

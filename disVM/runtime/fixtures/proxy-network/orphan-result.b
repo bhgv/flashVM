@@ -5,6 +5,7 @@ implement ProxyOrphanResult;
 include "sys.m";
 include "processctl.m";
 include "proxyhost.m";
+include "proxyref.m";
 include "proxyhandler.m";
 include "proxyowner.m";
 include "proxynet.m";
