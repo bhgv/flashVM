@@ -9,10 +9,10 @@ Limbo; функция исполняется исходным постоянны
 
 ## Подключение и границы доверия
 
-Порядок declarations: `sys.m`, `proxyhost.m`, `proxyhandler.m`, `proxyowner.m`,
+Порядок declarations: `sys.m`, `proxyhost.m`, `proxyref.m`, `proxyhandler.m`, `proxyowner.m`,
 затем `proxynet.m` для клиента либо `proxyserver.m` для сервера.
 Собрать matching NC64 producer библиотеки `proxyowner`, `proxyframe`,
-`proxystream`, `proxynet`, `proxyserver`: обычная native CMake-сборка уже включает
+`proxyref`, `proxystream`, `proxynet`, `proxyserver`, `proxyroute`: обычная native CMake-сборка уже включает
 эти `.dis` в build. `init()` предшествует sharing/spawn.
 
 `Proxyserver.serve(input, output, high, low, timeout, handler, cell, capture)`
@@ -42,7 +42,9 @@ launcher извне**. Их нельзя переиспользовать при
 Один connection broker последовательно передаёт запросы из bounded mailbox
 capacity 16. Другие Prog и connections исполняются независимо. Исходный owner
 держит actual Cell/capture/module roots; peer получает только handles и скаляры.
-Внутри active callback сохраняется отказ от blocking nested proxy call.
+Direct nested `Proxyowner`/`Proxynet` RPC внутри active callback запрещён.
+Явный routed callback обращается к переменным через `Proxyref`, чей независимый
+actor выполняет только Read/Write/Add/Close с конечным deadline.
 Retirement public caller не означает, что приватные IO/session children уже
 joined: они удерживают FD/roots до своего completion/deadline. Направления нельзя
 передавать новому broker до завершения этой частной session.
@@ -102,7 +104,7 @@ Record имеет ровно 184 bytes, magic `DVP3`, version 3. Managed pointer
 | 8 | Exact record size 184 |
 | 16, 24 | Connection epoch high/low |
 | 32 | ID; Hello=0, request/reply positive, максимум signed 63 bits |
-| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6, ReturnVariable=7, ReturnFunction=8), ref count 0..2, copied scalar value |
+| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6, ReturnVariable=7, ReturnFunction=8, Add=9), ref count 0..2, copied scalar value |
 | 64, 88, 112 | Target/left/right: session, slot, generation по 8 bytes |
 | 136, 144 | Status/copied scalar result; в request нули |
 | 152 | Result kind: 0 absent, 1 variable, 2 function |
@@ -113,6 +115,75 @@ owner session/generation в первом codec — неотрицательны�
 реальные exports требуют ненулевых identities/generations. Reply должен точно
 совпасть с request до byte 136, кроме type. Неизвестные status, epoch/version,
 size/reserved, неверные ID/refs/slot и неполный кадр не становятся managed call.
+
+## Ref переменной другой VM внутри исходного callback
+
+`Proxyroute.start(sourceEndpoint, sourceImage, timeout, ready)` запускается на
+своём permanent Prog. Он делает отдельный remote clone и передаёт `(status,
+ref Proxyref.Ref)` через ready. Создаются bounded mailbox capacity 16 и private
+native queue/token; ordinary Ref aliases разделяют token. Повторный start для
+того же Image получает отдельное remote ownership. `proxyref.m` включает private
+`proxygc.m`; его нужно объявить перед `proxyhandler.m`. Все libraries собираются
+matching producer вместе с актуальными interfaces.
+
+`Proxyowner.routed(functionEndpoint, functionHandle, leftRef, rightRef, refs,
+value, timeout)` передаёт managed Ref arguments исходному function owner внутри
+его VM. `Proxyhandler.routed` получает actual local capture и Proxyref arguments,
+а не копии remote Cell. Native admission pin удерживает function capture; request
+держит Ref tokens, каждый access держит свой source Ref до completion. Foreign
+Cell pointer не пересекает heap/VM. Сам function callback исполняется исходным
+Prog/TLS REG, его стек не переносится в actor либо network broker.
+
+Callback использует `Proxyref.call(ref, operation, value, deadline)` для Read,
+Write, Add либо Close. Это variable-only API; выполнить Invoke через actor нельзя.
+Actor вне active function callback вызывает исходный `Proxynet` endpoint с
+сохранённым private Image. Native connection/token identity проверяется перед
+каждым dispatch, затем active state. Подстановка token другого actor в public Ref
+даёт Stale даже при одинаковом source handle. Изменение полей Ref не меняет
+private source Image actor. Обычные nested function RPC остаются запрещены.
+
+Add (wire operation 9) вычисляет `target.value += input` на исходном variable
+owner, затем возвращает actual value. Это один admitted primitive с обычным exact
+request-ID replay cache. Повтор точного Add возвращает прежний outcome без второго
+прибавления. Цепочка нескольких access, особенно к разным переменным, не становится
+распределённой транзакцией; partial effects допустимы. Record остаётся DVP3/184
+bytes; публичные Dis64 kinds/opcodes/layouts не изменены. Более старый private peer
+может не поддерживать Add; protocol negotiation не заявляется.
+
+Все access делят original absolute monotonic deadline callback. Queueing и
+maintenance не продлевают бюджет; actor ограничивает source offer своим timeout.
+Один access не передан до deadline — NotSent. После offer timeout означает Unknown:
+исходный эффект может завершиться позже. Blind retry отсутствует. При потере source
+связи actor публикует terminal state, отзывает wrapper tokens и завершает своё
+ownership; новые calls получают Disconnected. Уже queued calls могут закончиться
+Unknown по собственному deadline. Независимые owners/VM продолжают работу.
+
+Actor хранит только свой source Image, channel/state и native Connection. После
+ready он снимает local Ref/token copies. Поэтому последний Ref, включая Ref внутри
+недостижимого цикла, может быть собран конкурентным GC, пока actor ждёт mailbox.
+Native finalizer ставит только scalar obligation, actor снимает его и освобождает
+ровно один remote clone. Явный Close делает это один раз и отзывает aliases;
+другой actor того же source и отдельный source witness остаются живыми. Idle expiry
+также освобождает clone. Finalizer не выполняет IO и не останавливает остальные
+потоки. Actor/cleanup могут жить после caller retirement до конечного completion.
+
+Приёмка: две настоящие VM, variable owner в A и два разных function owners в B,
+два Ref actors к одной actual Cell, восемь callers и 32 атомарных прибавления.
+Relay удерживает первый actual Add reply до входа двух разных original function
+Prog в callbacks: правильная сумма при последовательном исполнении не проходит
+такой gate. Capture PID и native lifetime evidence проверяют original owners.
+Отдельный relay теряет ответ **после выполненного Add**: A сохраняет ровно один
+эффект, оба callbacks получают error/Unknown, последующие accesses не replay,
+а unrelated local owner B остаётся рабочим. Все Progs/roots/queues затем joined.
+Private omissions native actor identity и actual GC Release обязаны обнаруживаться
+явным semantic failure; crash/compile failure/timeout не являются доказательством.
+
+Текущий routed entry — local typed channel в function VM. Source variable уже
+может принадлежать другой VM; source channel/Ref не сериализуются. Передача такого
+маршрута от третьего network caller к удалённому function server, регистрация
+route authority и forward/reverse wire protocol остаются отдельной границей.
+Обычные wire ref-поля `Proxynet.call/fetch` по-прежнему требуют same-owner handles
+и не превращают foreign Image в local Cell.
 
 ## Результаты-прокси из callback
 
@@ -234,8 +305,9 @@ private refusal ограничивает только RESERVED allocation и п�
 remote callback effect, сохранение output и чистое завершение session.
 
 Доступны int Cell, copied scalar result, typed variable/function result images
-и максимум два same-owner variable refs. Нет arbitrary closure/value types,
-String snapshots, cross-owner ref routing и transparent compiler lowering.
+и до двух same-owner variable refs в plain wire calls; routed callback принимает
+до двух Proxyref других owners через local typed entry. Нет arbitrary closure/value types,
+String snapshots, third-VM wire ref routing и transparent compiler lowering.
 Обычные Image copies разделяют lease; отдельный owner создаёт explicit clone.
 Это ещё не cross-node distributed tracing GC. TLS/peer authentication, automatic unique epoch
 provisioning, owning dial/listen/FD adoption и полноценная cross-node lease/ACK

@@ -90,7 +90,7 @@ generation freshness test. Wide native manifest включает 49 workloads, �
 В этом локальном typed endpoint Handle copies не создают remote Retain: Drop
 отзывает общий export. Network Image adapter добавляет отдельный managed lease,
 explicit clone/Retain и автоматический GC Release; ordinary copies делят lease. Нет distributed GC, arbitrary closure/value
-types, String snapshots, cross-owner ref routing, response
+types, String snapshots, third-VM wire ref routing, response
 cache/ack или wire authentication. Local request IDs считаются serving loop и
 не являются network replay protocol. Отдельный [network adapter](NETWORK-OWNERS.md)
 связывает typed endpoint с двумя реальными DisVM через trusted preconnected Sys.FD.
@@ -102,3 +102,9 @@ owning transport. Новые shared DIS64 IDs здесь не назначают
 handle; process-local caller явно освобождает его через Drop/Stop. Network Image
 adapter резервирует GC token до callback, проверяет DVP3 result handle и обеспечивает
 automatic Release, включая недостижимый buffered reply исчезнувшего caller.
+
+`Proxyowner.routed` теперь удерживает managed Proxyref arguments, пока original
+function Prog исполняет callback с actual capture. Независимые variable-only
+actors обращаются к live remote storage через Proxynet; native pin не превращает
+foreign ref в local Cell. Два function owners в одной VM проверены параллельно
+на ref другой actual VM. Third-VM wire route forwarding пока не реализован.

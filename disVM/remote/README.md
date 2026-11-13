@@ -157,3 +157,11 @@ concurrent result clients, GC, orphan reply, exact result replay, admitted resul
 disconnect, локальная reservation quota до effect и remote export quota после
 partial effect. Private DVP3 имеет 184 bytes; это не изменение public Dis64 ABI.
 Подробности и ограничения: [результаты-прокси](NETWORK-OWNERS.md#результаты-прокси-из-callback).
+
+Cross-owner callback entry теперь доступен через `Proxyowner.routed` и `Proxyref`:
+function owner остаётся на своём Prog, а Read/Write/Add выполняются у владельца
+переменной в другой VM. Ref actor владеет отдельным remote clone и освобождает
+его при Close/GC/idle/disconnect. Проверены два одновременных function owners,
+восемь callers, original aliases, exact Add replay и потеря ответа после эффекта.
+Сам routed entry пока local typed channel в function VM; third-VM wire forwarding
+маршрутов остаётся работой. [Контракт](NETWORK-OWNERS.md#ref-переменной-другой-vm-внутри-исходного-callback).

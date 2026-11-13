@@ -77,3 +77,9 @@ Returned typed Cell/capture также получает отдельный manag
 exact result handle без allocation. Result replay не создаёт второй root; GC
 abandoned buffered result reply отправляет ровно один Release. Это проверено
 real two-VM результатами и независимым wire peer, включая quota и disconnect.
+
+Cross-owner Proxyref держит managed wrapper token, а независимый actor — private
+source Image/clone. После ready actor не держит token; последний Ref GC может
+поставить scalar Release obligation даже при actor, ожидающем channel. Requests
+удерживают Ref до completion, function native pin удерживает только local capture.
+Exact native queue identity запрещает подстановку token другого actor.
