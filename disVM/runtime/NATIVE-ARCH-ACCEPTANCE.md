@@ -66,7 +66,7 @@ collector requests, service budgets, module cycles and exception retirement.
 Architecture-specific inline-emitter oracles retain their existing CTest gates.
 CI selects `wide` on all three targets and retains full per-driver logs and JSON
 reports as artifacts for fourteen days, including failures. Local AMD64 passed
-40/40; wider ARM64/RV64 acceptance awaits the corresponding workflow result.
+40/40; the verified wider ARM64/RV64 results are recorded below.
 The exception driver keeps its omission controls by default; its explicit
 positive-only mode runs all four real C/JIT/poll release profiles.
 
@@ -239,3 +239,54 @@ RV64-железа или об оптимизированном inline lowering �
 x64 прошёл 80/80 одним запуском; обновлённая x64 TSan-сборка прошла ту же матрицу
 11/11. TSan не инструментирует машинные инструкции, выпущенные JIT. Исходники
 ограничены 409 строками; upstream не изменяется.
+
+
+## Verified wide execution, 2026-11-13 / Расширенная приёмка
+
+[Workflow run 43345063586](https://github.com/bhgv/flashVM/actions/runs/43345063586)
+completed successfully on `3c4fc1ca19f77f475a8ef7ca466d08e3e0000efd`:
+
+| Target/profile | Execution | Whole-VM workloads |
+| --- | --- | --- |
+| AMD64 plain | Native Ubuntu x64 | 40/40 |
+| ARM64 plain | Native Ubuntu ARM64 | 40/40 |
+| AMD64 TSan | Native Ubuntu x64, instrumented C runtime/probes | 40/40 |
+| RV64 | Actual RV64 executables and JIT tails under QEMU/binfmt | 40/40 |
+
+The x64 plain constructor/channel oracle also passed its separate CI gate.
+Full driver logs and JSON reports were uploaded for all four jobs. The first
+wide x64 TSan audit found the real raw-state race (39/40); the corrected strict
+matrix passed 40/40 locally and in CI. The first wide RV64 run exposed the
+preflight observer's lost notification (39/40); the durable-history observer
+passed all forty on RV64, including controlled C/JIT and both polling modes.
+No VM timeout was raised and no failure was accepted as a successful profile.
+
+The local optimized x64 broad gate passed 81/81: eighty registered native-spawn
+suites plus the generation-idempotence gate. The updated preflight observer was
+also checked separately with the final predicate under normal and TSan builds.
+A final test-only guard rejects an absent captured table before comparing the
+park history, preventing NULL/NULL from becoming a witness; that additional
+guard passed the complete local table driver in both builds. It was added after
+the architecture run above. This result/guard commit changes no production code
+and does not rerun the full architecture matrix.
+
+Every changed handwritten source is at most 437 lines. The constructor oracle's
+largest fragment is 344 lines and its coordinator is 96. Vendor snapshots are
+unchanged. TSan does not instrument emitted machine instructions. RV64 QEMU
+success remains functional/ABI evidence, not RV64 hardware ordering/throughput
+certification. The legacy reference oracle's dynamic heapmonitor race described
+above remains open and is not included in the successful strict-native count.
+
+Финальный workflow указанного коммита завершился успешно: native x64 и ARM64,
+x64 TSan и настоящий RV64 userspace/JIT под QEMU — по 40/40. Отдельный x64
+constructor/channel oracle также прошёл CI. Во всех четырёх job сохранены полные
+журналы драйверов и JSON. Исправление настоящей гонки состояния дало TSan
+39/40 -> 40/40; исправление потери раннего события в оснастке дало RV64
+39/40 -> 40/40. Таймауты VM не увеличивались, отказы не считались успехом.
+
+Локальная широкая проверка прошла 81/81: 80 native-spawn наборов и генерация.
+Финальная дополнительная проверка непустой захваченной таблицы проверена после
+CI отдельным полным table-драйвером в обычной и TSan-сборке; production-код
+не меняется. Исходники ограничены 437 строками, upstream не изменён. TSan не
+инструментирует выпущенные JIT-инструкции, QEMU не заменяет RV64-железо.
+Гонка динамического heapmonitor в старом reference-oracle остаётся открытой.

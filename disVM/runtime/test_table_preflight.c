@@ -107,6 +107,7 @@ int __wrap_fvm_table_request(FvmTableOwner *owner, uint64_t token, FvmTableReque
     if (request->operation == FVM_TABLE_SET && process && process->pid > 1 &&
         !__atomic_exchange_n(&selected, 1, __ATOMIC_ACQ_REL))
     {
+        require(current_table && current_table != H, "selected payload has a captured live table");
         pthread_mutex_lock(&sync);
         held_guard = &owner->guard;
         pthread_mutex_unlock(&sync);
