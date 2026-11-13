@@ -46,7 +46,7 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
 /* Requeue an exiting parent without disturbing the child's exit request. */
 static int wake_child_exit_wait(Prog *process)
 {
-    if (process->state != DVM_CHILD_EXIT_WAIT)
+    if (dvm_runqueue_observed_state(process) != DVM_CHILD_EXIT_WAIT)
     {
         return 0;
     }
@@ -62,7 +62,7 @@ static int detach_child_exit_wait(Prog *process)
 {
     Prog *child;
 
-    if (process->state != DVM_CHILD_EXIT_WAIT)
+    if (dvm_runqueue_observed_state(process) != DVM_CHILD_EXIT_WAIT)
     {
         return 0;
     }
@@ -158,13 +158,13 @@ static int request_child_exit(Prog *child)
     {
         return Processctl_Denied;
     }
-    if (child->state == Prelease)
+    if (dvm_runqueue_observed_state(child) == Prelease)
     {
         __atomic_fetch_or(&child->flags, Pkilled, __ATOMIC_RELEASE);
         dvm_runtime_cancel_guest_wait(child->pid);
         return Processctl_Requested;
     }
-    if (child->state == Pready || wake_for_termination(child))
+    if (dvm_runqueue_observed_state(child) == Pready || wake_for_termination(child))
     {
         __atomic_fetch_or(&child->flags, Pkilled, __ATOMIC_RELEASE);
         return Processctl_Requested;

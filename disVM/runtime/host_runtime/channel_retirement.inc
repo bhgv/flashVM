@@ -45,7 +45,7 @@ extern void dvm_runtime_altgone_claimed(Prog *peer);
 static int wake_closed_channel(void *argument)
 {
     Prog *process = argument;
-    switch (process->state)
+    switch (dvm_runqueue_observed_state(process))
     {
     case Psend:
     case Precv:
@@ -68,13 +68,17 @@ static int wake_closed_channel(void *argument)
 extern Progq *dvm_runtime_channel_close_preflight(Progq **queue);
 
 
-/* [GC:] EN: Classify borrowed peer under the queue mutex; queue ownership
- * protects its lifetime. Return whether its state uses hosted completion.
- * RU: Под мьютексом классифицировать peer; очередь защищает его жизнь.
- * Вернуть признак состояния с hosted-завершением. */
+/* [GC:] EN: Classify borrowed peer with lifetime protected by its queue or pin.
+ * Read one published state: duplicate ALT entries may outlive
+ * their first completion while the owner advances to a table wait.
+ * Return whether its state uses hosted completion.
+ * RU: Классифицировать peer, чья жизнь защищена очередью либо pin.
+ * Читать публикацию state: повторные ALT-узлы могут пережить первое завершение
+ * и переход владельца к ожиданию таблицы. Вернуть признак hosted-завершения. */
 static int hosted_channel_waiter(Prog *peer)
 {
-    return peer && (peer->state == Psend || peer->state == Precv || peer->state == Palt);
+    int state = peer ? dvm_runqueue_observed_state(peer) : Pready;
+    return peer && (state == Psend || state == Precv || state == Palt);
 }
 
 
@@ -134,7 +138,7 @@ static void drain_closed_queue(Progq *entry, const void *owner, char *first_erro
         int claimed = hosted_channel_waiter(peer) && process->channel_claimed == owner;
         free(entry);
         entry = next;
-        if (claimed || (peer && peer->state == Prelease))
+        if (claimed || (peer && dvm_runqueue_observed_state(peer) == Prelease))
         {
             int completed = kprotect(wake_closed_channel, peer);
             if (claimed)

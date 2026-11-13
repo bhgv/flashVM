@@ -26,15 +26,16 @@ static int acquire_channel_claim(void *argument)
         return 1;
     }
     DVM_NativeContext *dispatch = dvm_runqueue_dispatch_owner(peer);
+    int state = dvm_runqueue_observed_state(peer);
     /* EN: ALT publishes its wait before its owner finishes saving registers.
      * A foreign matcher must retry until that turn has released the owner.
      * RU: ALT публикует ожидание до завершения сохранения регистров владельцем.
      * Чужой участник повторяет попытку после завершения этого вызова ALT. */
-    if (native_spawn && claim->validate && peer->state == Palt && dispatch && dispatch != dvm_native_context_current())
+    if (native_spawn && claim->validate && state == Palt && dispatch && dispatch != dvm_native_context_current())
     {
         return 1;
     }
-    if (process->channel_claimed || (peer->state != Psend && peer->state != Precv && peer->state != Palt))
+    if (process->channel_claimed || (state != Psend && state != Precv && state != Palt))
     {
         if (native_spawn && claim->validate)
         {
@@ -128,7 +129,8 @@ int dvm_runtime_channel_with_queue_claim(
  * state transition. Refusal leaves wait fields and any pending kill intact. */
 void dvm_runtime_channel_wake(Prog *peer, char *cause)
 {
-    if (peer->state != Psend && peer->state != Precv && peer->state != Palt)
+    int state = dvm_runqueue_observed_state(peer);
+    if (state != Psend && state != Precv && state != Palt)
     {
         error("invalid channel waiter state");
     }
@@ -158,7 +160,7 @@ static int cancel_parked_channel_wait(void *argument)
 {
     Prog *peer = argument;
 
-    if (peer->state == Palt)
+    if (dvm_runqueue_observed_state(peer) == Palt)
     {
         dvm_runtime_alt_preflight(peer->R.s);
         altdone(peer->R.s, peer, nil, -1);
@@ -172,7 +174,7 @@ static int cancel_parked_channel_wait(void *argument)
         {
             error(exHeap);
         }
-        queue = peer->state == Psend ? &channel->send : &channel->recv;
+        queue = dvm_runqueue_observed_state(peer) == Psend ? &channel->send : &channel->recv;
         cqdelp(queue, peer);
     }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)peer;

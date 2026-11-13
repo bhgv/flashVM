@@ -89,6 +89,11 @@ VM/driver failures and sanitizer diagnostics remain failures, without retries.
 The same audit moved generic cancellation classification, owner mailbox request/
 reply admission and shared-dispatch recognition onto the atomic scalar as well:
 the channel mutex alone cannot exclude a table scheduler's readiness write.
+The bounded follow-up audited every remaining host composition state query:
+channel claims, detached/duplicate ALT close entries and child wait/exit checks
+also use the published scalar. `host_runtime` no longer reads raw `Prog.state`.
+Queue or scheduler pins still protect lifetimes; the scalar is not a claim on
+channel fields or a permission to execute a foreign process.
 
 Первый расширенный x64 TSan-запуск дал 39/40 и обнаружил гонку пробуждения таблицы:
 запись `Prog.state` под mutex таблиц пересекалась с чтением под mutex каналов.
@@ -98,6 +103,10 @@ the channel mutex alone cannot exclude a table scheduler's readiness write.
 успешным запуском. Для shadow-памяти временного runner задано mmap_rnd_bits=28.
 Проверки общей отмены, mailbox-запросов/ответов владельца и shared-dispatch также
 читают атомарный скаляр: mutex каналов не исключает запись готовности таблицей.
+Ограниченный повторный проход охватил все оставшиеся state-запросы host-слоя:
+захваты каналов, снятые/повторные ALT-узлы и ожидание/выход детей. В host_runtime
+прямых чтений Prog.state больше нет. Очереди/pin по-прежнему защищают lifetime;
+скаляр не даёт доступа к чужим полям канала или права исполнять чужой процесс.
 
 ## Guarded JIT profile on ARM64/RV64
 
