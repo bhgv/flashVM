@@ -224,6 +224,45 @@ void Proxygc_make(void *frame)
 }
 
 
+/* [GC:] EN/RU: Reserve native quota and a managed result owner before wire effects.
+ * Резервировать native quota и managed result owner до wire effects. */
+void Proxygc_reserve(void *frame)
+{
+    F_Proxygc_reserve call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxygc_reserve, ret), sizeof(*call.ret));
+    DvmProxyLeaseQueue *queue = connection(call.connection);
+    Lease *value = H2D(Lease *, heap(lease_type));
+    memset(value, 0, sizeof(*value));
+    DvmRemoteHandle absent = {0};
+    value->serial = dvm_proxy_lease_new(queue, absent, -1, &value->slot);
+    if (!value->serial)
+    {
+        destroy(value);
+        publish(H, call.ret);
+        return;
+    }
+    value->queue = queue;
+    publish(value, call.ret);
+}
+
+
+/* EN/RU: Bind a reserved token after checked reply; refusal cannot change metadata.
+ * Связать reserved token после checked reply; отказ не меняет metadata. */
+void Proxygc_bind(void *frame)
+{
+    F_Proxygc_bind call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxygc_bind, ret), sizeof(*call.ret));
+    Lease *value = token(call.lease);
+    WORD result = 0;
+    if (value && call.session > 0 && call.slot >= 0 && call.generation > 0)
+    {
+        DvmRemoteHandle owner = {(uint64_t)call.session, (uint64_t)call.generation, (size_t)call.slot};
+        result = dvm_proxy_lease_bind(value->queue, value->slot, value->serial, owner);
+    }
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
 /* EN/RU: Shared implementation of active/activate/consume with captured result guards.
  * Общая реализация active/activate/consume с captured result guards. */
 static void action(void *frame, int operation)

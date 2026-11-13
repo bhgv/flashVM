@@ -101,7 +101,10 @@ uint64_t dvm_proxy_lease_new(DvmProxyLeaseQueue *queue, DvmRemoteHandle owner, i
             {
                 serial = queue->next;
                 queue->next = serial == UINT64_MAX ? 0 : serial + 1;
-                *entry = (DvmProxyLeaseEntry){serial, owner, active ? DVM_PROXY_LEASE_ACTIVE : DVM_PROXY_LEASE_STAGED};
+                *entry = (DvmProxyLeaseEntry){serial,
+                                              owner,
+                                              active < 0 ? DVM_PROXY_LEASE_RESERVED
+                                                         : (active ? DVM_PROXY_LEASE_ACTIVE : DVM_PROXY_LEASE_STAGED)};
                 *slot = index;
                 queue->live++;
                 queue->references++;
@@ -144,6 +147,28 @@ int dvm_proxy_lease_action(DvmProxyLeaseQueue *queue, size_t slot, uint64_t seri
     }
     pthread_mutex_unlock(&queue->mutex);
     return success;
+}
+
+
+/* EN/RU: Commit one reserved result only on its creating broker; no allocation.
+ * Фиксировать reserved result лишь на creating broker, без allocation. */
+int dvm_proxy_lease_bind(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, DvmRemoteHandle owner)
+{
+    int bound = 0;
+    pthread_mutex_lock(&queue->mutex);
+    if (!queue->closed && pthread_equal(queue->thread, pthread_self()) && slot < queue->limit && owner.session &&
+        owner.generation && owner.slot < DVM_PROXY_LEASE_LIMIT)
+    {
+        DvmProxyLeaseEntry *entry = &queue->entries[slot];
+        if (entry->serial == serial && entry->state == DVM_PROXY_LEASE_RESERVED)
+        {
+            entry->owner = owner;
+            entry->state = DVM_PROXY_LEASE_ACTIVE;
+            bound = 1;
+        }
+    }
+    pthread_mutex_unlock(&queue->mutex);
+    return bound;
 }
 
 

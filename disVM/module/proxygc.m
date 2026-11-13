@@ -34,6 +34,16 @@ Proxygc: module
     make: fn(connection: ref Connection, session: big, slot: int, generation: big, active: int): ref Lease;
 
 
+    # EN/RU: Reserve quota before result callback; nil on capacity, no remote effect.
+    # Резервировать quota до result callback; nil при capacity без remote effect.
+    reserve: fn(connection: ref Connection): ref Lease;
+
+
+    # EN/RU: Creating broker binds reserved token once after checked successful reply.
+    # Creating broker связывает reserved token один раз после checked successful reply.
+    bind: fn(lease: ref Lease, session: big, slot: int, generation: big): int;
+
+
     # EN/RU: Any-thread query of exact token; closed/released/nil returns zero.
     # Any-thread запрос точного token; closed/released/nil дают ноль.
     active: fn(lease: ref Lease): int;

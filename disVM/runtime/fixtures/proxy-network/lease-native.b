@@ -20,6 +20,18 @@ foreign(connection: ref Proxygc->Connection, lease: ref Proxygc->Lease, done: ch
 }
 
 
+# EN/RU: Reserved results cannot bind, activate or allocate from a foreign resident.
+# Reserved results нельзя bind/activate/allocate с чужого resident.
+foreign_reserved(connection: ref Proxygc->Connection, lease: ref Proxygc->Lease, done: chan of int)
+{
+    if (gc->bind(lease, big 2, 0, big 2) || gc->activate(lease) ||
+        gc->active(lease) || gc->reserve(connection) != nil) {
+        raise "foreign result reservation mutation";
+    }
+    done <-= 1;
+}
+
+
 # EN/RU: Use real native token types and collector retirement, never a modeled finalizer.
 # Использовать настоящие native token types и collector retirement, не modeled finalizer.
 init()
@@ -76,5 +88,25 @@ init()
     if (gc->active(next) || gc->matches(next, big 2, 0, big 2) || gc->make(connection, big 3, 0, big 1, 1) != nil) {
         raise "closed native queue revived";
     }
+    results := gc->open(1);
+    reserved := gc->reserve(results);
+    if (reserved == nil || gc->active(reserved) || gc->activate(reserved) || gc->reserve(results) != nil) {
+        raise "reserved result quota or premature activation";
+    }
+    spawn foreign_reserved(results, reserved, done);
+    if (<-done != 1) {
+        raise "foreign reserved result did not finish";
+    }
+    reserved = nil;
+    for (attempt = 0; attempt < 1000 && reserved == nil; attempt++) {
+        reserved = gc->reserve(results);
+        sys->sleep(1);
+    }
+    if (reserved == nil || !gc->bind(reserved, big 2, 0, big 2) ||
+        gc->bind(reserved, big 3, 0, big 3) || !gc->matches(reserved, big 2, 0, big 2) ||
+        !gc->consume(reserved) || gc->bind(reserved, big 3, 0, big 3)) {
+        raise "result reservation GC or exact once binding";
+    }
+    gc->close(results);
     sys->fprint(sys->fildes(2), "PASS native leases: aliases quota staging foreign refusal GC reuse close\n");
 }

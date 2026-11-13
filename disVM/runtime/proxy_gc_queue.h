@@ -7,18 +7,19 @@
 #include "../remote/session.h"
 #include <pthread.h>
 
-#define DVM_PROXY_LEASE_LIMIT 256U /* Bound active, staged and pending image slots. */
+#define DVM_PROXY_LEASE_LIMIT 256U /* Bound reserved, active, staged and pending image slots. */
 
 
 /* EN/RU: Private native ownership phases; these are not wire or managed IDs.
  * Приватные native ownership phases; это не wire/managed IDs. */
 typedef enum
 {
-    DVM_PROXY_LEASE_FREE,    /* Slot reusable with a new serial. */
-    DVM_PROXY_LEASE_STAGED,  /* Allocated before remote Retain. */
-    DVM_PROXY_LEASE_ACTIVE,  /* Owns one remote reference. */
-    DVM_PROXY_LEASE_PENDING, /* Finalized token awaits broker Release. */
-    DVM_PROXY_LEASE_RELEASED /* Explicit Release consumed; token still exists. */
+    DVM_PROXY_LEASE_FREE,     /* Slot reusable with a new serial. */
+    DVM_PROXY_LEASE_STAGED,   /* Allocated before remote Retain. */
+    DVM_PROXY_LEASE_ACTIVE,   /* Owns one remote reference. */
+    DVM_PROXY_LEASE_PENDING,  /* Finalized token awaits broker Release. */
+    DVM_PROXY_LEASE_RELEASED, /* Explicit Release consumed; token still exists. */
+    DVM_PROXY_LEASE_RESERVED  /* Quota reserved before an unknown result handle exists. */
 } DvmProxyLeaseState;
 
 
@@ -28,7 +29,7 @@ typedef struct
 {
     uint64_t serial;          /* Never-reused incarnation within this queue. */
     DvmRemoteHandle owner;    /* Scalars only; no managed pointer or root. */
-    DvmProxyLeaseState state; /* FREE/STAGED/ACTIVE/PENDING/RELEASED, private enum. */
+    DvmProxyLeaseState state; /* Private enum, including unbound RESERVED results. */
 } DvmProxyLeaseEntry;
 
 
@@ -62,7 +63,8 @@ void dvm_proxy_lease_queue_close(DvmProxyLeaseQueue *queue);
 void dvm_proxy_lease_queue_drop(DvmProxyLeaseQueue *queue);
 
 
-/* EN/RU: Broker reserves a slot/native owner; zero on quota/closure/exhaustion.
+/* EN/RU: Broker reserves slot/native owner; active=-1 reserves an unbound result.
+ * Zero on quota/closure/exhaustion.
  * Broker резервирует slot/native owner; ноль при quota/closure/exhaustion. */
 uint64_t dvm_proxy_lease_new(DvmProxyLeaseQueue *queue, DvmRemoteHandle owner, int active, size_t *slot);
 
@@ -70,6 +72,11 @@ uint64_t dvm_proxy_lease_new(DvmProxyLeaseQueue *queue, DvmRemoteHandle owner, i
 /* EN/RU: Read active state or broker-activate/consume once; action 0/1/2 respectively.
  * Читать active либо broker-activate/consume один раз; action 0/1/2 соответственно. */
 int dvm_proxy_lease_action(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, int action);
+
+
+/* EN/RU: Broker binds one reserved result token to a returned exact owner once.
+ * Broker связывает reserved result token с returned exact owner один раз. */
+int dvm_proxy_lease_bind(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, DvmRemoteHandle owner);
 
 
 /* EN/RU: Any-thread exact handle match on a live token, under its queue mutex.
