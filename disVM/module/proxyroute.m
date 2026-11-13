@@ -19,4 +19,9 @@ Proxyroute: module
     # failure завершают actor и его independent owner.
     start: fn(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
               ready: chan of (int, ref Proxyref->Ref));
+
+    # EN/RU: Same actor, with an independent absolute startup deadline; idle budget stays timeout.
+    # Тот же actor с отдельным absolute startup deadline; idle budget остаётся timeout.
+    startuntil: fn(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout, deadline: int,
+                   ready: chan of (int, ref Proxyref->Ref));
 };

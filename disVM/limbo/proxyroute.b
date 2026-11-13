@@ -10,6 +10,18 @@ include "proxyhandler.m";
 include "proxyowner.m";
 include "proxynet.m";
 include "proxyroute.m";
+
+
+# EN/RU: Shared setup cell lets wrappers release their original Image before the actor waits.
+# Shared setup cell позволяет wrappers снять original Image до ожидания actor.
+Setup: adt
+{
+    endpoint: ref Proxynet->Endpoint; # Borrowed origin connection.
+    image: Proxynet->Image; # Cleared immediately after clone, including caller wrapper roots.
+    timeout: int; # Actor idle/exchange bound.
+    deadline: int; # Absolute startup offer deadline.
+    ready: chan of (int, ref Proxyref->Ref); # Buffered ownership publication.
+};
 sys: Sys; # Immutable clock interface.
 control: Processctl; # Immutable actor timer lifecycle interface.
 net: Proxynet; # Independent remote requests run outside active function callbacks.
@@ -124,9 +136,11 @@ run(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
 # RU: Создать wrapper queue/token до Retain; убрать local greeting refs до loop.
 # Independent source image живёт до cleanup actor даже после attaching caller либо
 # callback retirement. Native pointer не пересекает VM.
-start(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
-      ready: chan of (int, ref Proxyref->Ref))
+begin(setup: ref Setup)
 {
+    source := setup.endpoint;
+    timeout := setup.timeout;
+    ready := setup.ready;
     if (source == nil || timeout < 1 || timeout > 60000) {
         ready <-= (Proxyref->NotSent, nil);
         return;
@@ -136,15 +150,25 @@ start(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
         ready <-= (Proxyhost->Capacity, nil);
         return;
     }
-    owner := image.owner;
+    owner := setup.image.owner;
     token := gc->make(queue, owner.session, owner.slot, owner.generation, 0);
     if (token == nil) {
         gc->close(queue);
         ready <-= (Proxyhost->Capacity, nil);
         return;
     }
-    (status, copy) := net->clone(source, image, timeout);
-    image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
+    remaining := setup.deadline - sys->millisec();
+    if (remaining <= 0) {
+        gc->close(queue);
+        setup.image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
+        ready <-= (Proxyref->NotSent, nil);
+        return;
+    }
+    if (remaining > timeout) {
+        remaining = timeout;
+    }
+    (status, copy) := net->clone(source, setup.image, remaining);
+    setup.image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     if (status != 0) {
         gc->close(queue);
         ready <-= (status, nil);
@@ -169,9 +193,31 @@ start(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
     gc->close(queue);
     if (!released) {
         {
-            net->call(source, Proxyowner->Drop, copy, image, image, 0, 0, timeout);
+            net->call(source, Proxyowner->Drop, copy, setup.image, setup.image, 0, 0, timeout);
         } exception {
             "*" => {}
         }
     }
+}
+
+
+# EN/RU: Original API retains one startup budget and clears its copied Image before waiting.
+# Original API сохраняет startup budget и снимает copied Image до ожидания.
+start(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
+      ready: chan of (int, ref Proxyref->Ref))
+{
+    setup := ref Setup(source, image, timeout, sys->millisec() + timeout, ready);
+    image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
+    begin(setup);
+}
+
+
+# EN/RU: Caller supplies absolute startup budget; no cloning after known expiry.
+# Caller передаёт absolute startup budget; clone после known expiry не допускается.
+startuntil(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout, deadline: int,
+           ready: chan of (int, ref Proxyref->Ref))
+{
+    setup := ref Setup(source, image, timeout, deadline, ready);
+    image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
+    begin(setup);
 }
