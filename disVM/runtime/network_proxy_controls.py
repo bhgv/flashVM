@@ -7,7 +7,7 @@ from relink_private import relink
 import subprocess
 
 from network_proxy_fixture import Guest, compile_one, connected_tcp
-from network_proxy_faults import replay
+from network_proxy_faults import replay, client_refusal
 
 
 # EN/RU: Compile a private source view into fixture work; production source stays unchanged.
@@ -90,6 +90,32 @@ def controls(runtime, root, work, compiler, include):
             source.replace(lease_check, "gc->active(image.lease)"),
         )
         stale_image(runtime, work, "network image owner did not match its native lease", "value=42")
+    finally:
+        compile_one(root, work, compiler, include, path, "proxynet")
+    anchor = "return (valid, returned);"
+    if source.count(anchor) != 1:
+        raise RuntimeError("result reply validation control anchor moved")
+    try:
+        replacement(
+            root,
+            work,
+            compiler,
+            include,
+            "proxynet",
+            source.replace(anchor, "return (1, returned);"),
+        )
+        rejected(
+            lambda: client_refusal(
+                runtime,
+                work,
+                "--no-jit",
+                False,
+                "result-kind-control",
+                lambda data: data.__setitem__(slice(152, 160), bytes(8)),
+                "result-failure-client",
+            ),
+            "corrupt or missing network reply was trusted",
+        )
     finally:
         compile_one(root, work, compiler, include, path, "proxynet")
     path = root.parent / "limbo/proxyserver.b"

@@ -134,6 +134,19 @@ clone(endpoint: ref Endpoint, source: Image, timeout: int): (int, Image)
 }
 
 
+# EN/RU: Typed callback result owns a new export; ordinary scalar call cannot fetch it.
+# Typed callback result владеет new export; scalar call не принимает его.
+fetch(endpoint: ref Endpoint, target, left, right: Image,
+      refs, value, kind, timeout: int): (int, Image)
+{
+    if (kind != Proxyhost->Variable && kind != Proxyhost->Function) {
+        return (Proxyowner->NotSent, empty());
+    }
+    result := offer(endpoint, Proxyowner->ReturnVariable + kind, target, left, right, refs, value, timeout);
+    return (result.status, result.image);
+}
+
+
 # EN/RU: Read broker's cumulative acknowledged GC Release count; no forced collection.
 # Читать cumulative acknowledged GC Release count broker; без forced collection.
 collected(endpoint: ref Endpoint, timeout: int): (int, int)
@@ -160,9 +173,36 @@ requestbytes(request: ref Request, high, low, id: big): array of byte
 }
 
 
+# EN: Validate reply ownership extension independently of correlation. Malformed
+# or unexpected handles are never adopted; failed/scalar replies require zero tail.
+# RU: Проверить reply ownership extension отдельно от correlation. Malformed либо
+# неожиданные handles не принимаются; failed/scalar replies требуют zero tail.
+outcome(response: array of byte, request: ref Request): (int, Proxyowner->Handle)
+{
+    absent := Proxyowner->Handle(big 0, 0, big 0);
+    kind := codec->get(response, Proxyframe->ResultKind);
+    returned := absent;
+    valid := 0;
+    {
+        returned = codec->handle(response, Proxyframe->Returned);
+        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction;
+        if (resultcall && codec->get(response, Proxyframe->Status) == big 0) {
+            valid = kind == big (request.operation - Proxyowner->ReturnVariable + 1) &&
+                returned.session == request.target.owner.session && returned.session > big 0 &&
+                returned.generation > big 0 && codec->get(response, Proxyframe->Result) == big 0;
+        } else {
+            valid = kind == big 0 && returned.session == big 0 && returned.slot == 0 && returned.generation == big 0;
+        }
+    } exception {
+        "*" => valid = 0;
+    }
+    return (valid, returned);
+}
+
+
 # EN/RU: One absolute wire deadline; any incomplete/corrupt reply is terminal Unknown.
 # Один absolute wire deadline; incomplete/corrupt reply означает terminal Unknown.
-exchange(input, output: ref Sys->FD, request: ref Request, high, low, id: big, timeout: int): (int, int, int)
+exchange(input, output: ref Sys->FD, request: ref Request, high, low, id: big, timeout: int): (int, int, int, Proxyowner->Handle)
 {
     bytes := requestbytes(request, high, low, id);
     deadline := sys->millisec() + timeout;
@@ -173,12 +213,15 @@ exchange(input, output: ref Sys->FD, request: ref Request, high, low, id: big, t
         if (status == Proxystream->OK && codec->valid(response, Proxyframe->Reply, high, low) &&
             codec->same(bytes, response, 1) && codec->get(response, Proxyframe->Status) >= big Proxyowner->Unknown &&
             codec->get(response, Proxyframe->Status) <= big 7) {
-            returned := int codec->get(response, Proxyframe->Status);
-            return (returned, int codec->get(response, Proxyframe->Result),
-                returned == Proxyowner->Unknown || returned == Proxyowner->NotSent);
+            (valid, handle) := outcome(response, request);
+            if (valid) {
+                returned := int codec->get(response, Proxyframe->Status);
+                return (returned, int codec->get(response, Proxyframe->Result),
+                    returned == Proxyowner->Unknown || returned == Proxyowner->NotSent, handle);
+            }
         }
     }
-    return (Proxyowner->Unknown, 0, 1);
+    return (Proxyowner->Unknown, 0, 1, Proxyowner->Handle(big 0, 0, big 0));
 }
 
 
@@ -203,7 +246,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
             target := Image(endpoint.high, endpoint.low, Proxyowner->Handle(session, slot, generation), nil);
             release := ref Request(Proxyowner->Drop, target, absent, absent, 0, 0, nil);
             id++;
-            (status, unused, terminal) := exchange(input, output, release, endpoint.high, endpoint.low, id, remaining);
+            (status, unused, terminal, ignored) := exchange(input, output, release, endpoint.high, endpoint.low, id, remaining);
             release = nil;
             if (terminal || (status != 0 && status != Stale) || id == big 16r7fffffffffffffff) {
                 break;
@@ -241,6 +284,14 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
                 result.status = Proxyhost->Capacity;
             }
         }
+        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction;
+        if (admitted && resultcall) {
+            staged = gc->reserve(connection);
+            if (staged == nil) {
+                admitted = 0;
+                result.status = Proxyhost->Capacity;
+            }
+        }
         if (admitted && request.operation == Proxyowner->Drop) {
             admitted = gc->consume(request.target.lease);
         }
@@ -248,7 +299,8 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
             result = Reply(0, released, absent);
         } else if (admitted) {
             id++;
-            (result.status, result.value, closed) = exchange(input, output, request,
+            returned := Proxyowner->Handle(big 0, 0, big 0);
+            (result.status, result.value, closed, returned) = exchange(input, output, request,
                 endpoint.high, endpoint.low, id, timeout);
             if (!closed && result.status == 0 && request.operation == Proxyowner->Retain) {
                 if (!gc->activate(staged)) {
@@ -256,6 +308,12 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
                 }
                 result.image = request.target;
                 result.image.lease = staged;
+            }
+            if (!closed && result.status == 0 && resultcall) {
+                if (!gc->bind(staged, returned.session, returned.slot, returned.generation)) {
+                    raise "proxy reserved result binding refused";
+                }
+                result.image = Image(endpoint.high, endpoint.low, returned, staged);
             }
         }
         if (closed || request.operation == Proxyowner->Stop) {
@@ -296,7 +354,11 @@ start(input, output: ref Sys->FD, high, low: big, timeout: int,
         if (status == Proxystream->OK && codec->valid(hello, Proxyframe->Hello, high, low) &&
             codec->get(hello, Proxyframe->Id) == big 0 && codec->get(hello, Proxyframe->Operation) == big 0 &&
             codec->get(hello, Proxyframe->Refs) == big 0 && codec->get(hello, Proxyframe->Value) == big 0 &&
-            codec->get(hello, Proxyframe->Status) == big 0 && codec->get(hello, Proxyframe->Result) == big 0) {
+            codec->get(hello, Proxyframe->Status) == big 0 && codec->get(hello, Proxyframe->Result) == big 0 &&
+            codec->get(hello, Proxyframe->ResultKind) == big 0 &&
+            codec->get(hello, Proxyframe->Returned) == big 0 &&
+            codec->get(hello, Proxyframe->Returned + 8) == big 0 &&
+            codec->get(hello, Proxyframe->Returned + 16) == big 0) {
             variable = Image(high, low, codec->handle(hello, Proxyframe->Target), nil);
             function = Image(high, low, codec->handle(hello, Proxyframe->Left), nil);
             valid = variable.owner.session > big 0 && variable.owner.generation > big 0 &&

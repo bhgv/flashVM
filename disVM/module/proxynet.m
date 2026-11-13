@@ -6,7 +6,7 @@ Proxynet: module
 {
     PATH: con "proxynet.dis"; # Client broker, one permanent Prog per connection.
     Disconnected: con -4; # Terminal byte/framing failure; sent effects may be unknown.
-    GCProgress: con 6; # Local broker maintenance, never a wire operation.
+    GCProgress: con 8; # Local broker maintenance, never a wire operation.
     Stale: con 5; # Image belongs to another connection incarnation.
 
 
@@ -100,4 +100,12 @@ Proxynet: module
     # EN/RU: Observe acknowledged automatic GC releases without forcing/stopping the heap.
     # Наблюдать acknowledged automatic GC releases без принудительной остановки heap.
     collected: fn(endpoint: ref Endpoint, timeout: int): (int, int);
+
+
+    # EN: Invoke a function and own its returned variable/function image. Reserve
+    # local capacity before callback; kind is Proxyhost Variable/Function. No replay.
+    # RU: Вызвать function и владеть returned variable/function image. Capacity
+    # резервируется до callback; kind — Proxyhost Variable/Function. Без replay.
+    fetch: fn(endpoint: ref Endpoint, target, left, right: Image,
+              refs, value, kind, timeout: int): (int, Image);
 };

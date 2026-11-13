@@ -9,7 +9,7 @@ from relink_private import relink
 
 # EN/RU: One private runtime mutation; require explicit intended client failure, not a crash.
 # Одна private runtime mutation; требовать intended client failure, не crash.
-def omission(runtime, root, work, variant, symbol, marker):
+def omission(runtime, root, work, variant, symbol, marker, client="gc-client"):
     broken = relink(runtime, work, root / "test_proxy_gc_omissions.c", variant, [symbol])
     left, right = connected_tcp()
     guests = []
@@ -18,9 +18,7 @@ def omission(runtime, root, work, variant, symbol, marker):
             Guest(broken, work, "server", "--no-jit", False, left, f"gc-control-{variant}-server")
         )
         guests.append(
-            Guest(
-                broken, work, "gc-client", "--no-jit", False, right, f"gc-control-{variant}-client"
-            )
+            Guest(broken, work, client, "--no-jit", False, right, f"gc-control-{variant}-client")
         )
         left.close()
         right.close()
@@ -80,3 +78,37 @@ def controls(runtime, root, work):
                 f"native image construction refusal {variant} failed\n" + output[-18000:]
             )
     print("PASS image constructors: root/publication refusal preserves output and native ownership")
+
+    omission(
+        runtime, root, work, 6, "dvm_proxy_lease_bind", "new variable result value", "result-client"
+    )
+    binary = relink(runtime, work, root / "test_proxy_gc_omissions.c", 5, ["dvm_proxy_lease_new"])
+    left, right = connected_tcp()
+    guests = []
+    try:
+        guests.append(
+            Guest(binary, work, "server", "--no-jit", False, left, "result-capacity-server")
+        )
+        guests.append(
+            Guest(
+                binary,
+                work,
+                "result-capacity-client",
+                "--no-jit",
+                False,
+                right,
+                "result-capacity-client",
+            )
+        )
+        left.close()
+        right.close()
+        guests[1].finish("PASS result capacity refused before actual callback effect")
+        guests[0].finish("value=10")
+    finally:
+        left.close()
+        right.close()
+        for guest in guests:
+            guest.abort()
+    print(
+        "PASS result ownership: binding omission detected; capacity refusal precedes actual callback"
+    )

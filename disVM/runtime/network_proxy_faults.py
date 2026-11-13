@@ -10,7 +10,7 @@ import time
 
 from network_proxy_fixture import Guest
 
-SIZE = 152  # Exact private wire bytes; never sizeof a host struct.
+SIZE = 184  # Exact private wire bytes; never sizeof a host struct.
 HIGH, LOW = 12345, 67890  # Test-only externally provisioned connection incarnation.
 
 
@@ -39,8 +39,25 @@ def frame(
     right=(0, 0, 0),
     low=LOW,
 ):
-    values = (SIZE, HIGH, low, identity, operation, refs, value, *target, *left, *right, 0, 0)
-    return struct.pack(">4sBBH18Q", b"DVP2", 2, kind, 0, *(v & ((1 << 64) - 1) for v in values))
+    values = (
+        SIZE,
+        HIGH,
+        low,
+        identity,
+        operation,
+        refs,
+        value,
+        *target,
+        *left,
+        *right,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    )
+    return struct.pack(">4sBBH22Q", b"DVP3", 3, kind, 0, *(v & ((1 << 64) - 1) for v in values))
 
 
 # EN/RU: Decode one signed scalar at an exact canonical byte offset.
@@ -52,7 +69,7 @@ def scalar(data, offset):
 # EN/RU: Borrow greeting's variable/function handle values; no native addresses exist.
 # Заимствовать handle values variable/function из greeting; native addresses отсутствуют.
 def handles(greeting):
-    if greeting[:8] != b"DVP2\2\1\0\0" or scalar(greeting, 8) != SIZE:
+    if greeting[:8] != b"DVP3\3\1\0\0" or scalar(greeting, 8) != SIZE:
         raise RuntimeError("bad real VM greeting")
     return struct.unpack_from(">3Q", greeting, 64), struct.unpack_from(">3Q", greeting, 88)
 
@@ -194,16 +211,18 @@ def trickle(runtime, work, mode, locked, tag):
 
 # EN/RU: Corrupt/lose a real client's reply; terminal connection must not replay.
 # Повредить/потерять reply настоящего клиента; terminal connection не повторяет call.
-def client_refusal(runtime, work, mode, locked, tag, mutation):
+def client_refusal(runtime, work, mode, locked, tag, mutation, name="failure-client"):
     peer, child = socket.socketpair()
     peer.settimeout(15)
-    guest = Guest(runtime, work, "failure-client", mode, locked, child, tag)
+    guest = Guest(runtime, work, name, mode, locked, child, tag)
     child.close()
     try:
         peer.sendall(frame(1, target=(1, 0, 1), left=(1, 1, 1)))
         response = bytearray(receive(peer))
         response[5] = 3
         struct.pack_into(">q", response, 144, 999)
+        if name == "result-failure-client":
+            struct.pack_into(">5Q", response, 144, 0, 1, 1, 2, 1)
         mutation(response)
         if response:
             peer.sendall(response)
@@ -228,7 +247,7 @@ def orphan(runtime, work, mode, locked, tag, name):
         if name == "orphan-server":
             handles(receive(peer))
         output = guest.finish("PASS retired")
-        if not re.search(r"NATIVEINPUT pins=0 staging=0 peak=152 fragments=[1-9]", output):
+        if not re.search(r"NATIVEINPUT pins=0 staging=0 peak=184 fragments=[1-9]", output):
             raise RuntimeError("orphan probe never entered actual native input")
     finally:
         peer.close()

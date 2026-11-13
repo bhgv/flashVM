@@ -50,9 +50,13 @@ canonical(bytes: array of byte): int
 {
     operation := codec->get(bytes, Proxyframe->Operation);
     refs := codec->get(bytes, Proxyframe->Refs);
-    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 6 &&
+    return codec->get(bytes, Proxyframe->Id) > big 0 && operation >= big 1 && operation <= big 8 &&
         refs >= big 0 && refs <= big 2 && codec->get(bytes, Proxyframe->Status) == big 0 &&
-        codec->get(bytes, Proxyframe->Result) == big 0;
+        codec->get(bytes, Proxyframe->Result) == big 0 &&
+        codec->get(bytes, Proxyframe->ResultKind) == big 0 &&
+        codec->get(bytes, Proxyframe->Returned) == big 0 &&
+        codec->get(bytes, Proxyframe->Returned + 8) == big 0 &&
+        codec->get(bytes, Proxyframe->Returned + 16) == big 0;
 }
 
 
@@ -101,11 +105,26 @@ run(input, output: ref Sys->FD, high, low: big, timeout: int,
             if (remaining < 1) {
                 return Proxystream->Timeout;
             }
-            (status, value) = proxy->call(endpoint, operation,
-                codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
-                codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
-                int codec->get(bytes, Proxyframe->Value), remaining);
+            returned := Proxyowner->Handle(big 0, 0, big 0);
+            resultkind := 0;
+            if (operation == Proxyowner->ReturnVariable || operation == Proxyowner->ReturnFunction) {
+                kind := operation - Proxyowner->ReturnVariable;
+                (status, returned) = proxy->fetch(endpoint,
+                    codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
+                    codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
+                    int codec->get(bytes, Proxyframe->Value), kind, remaining);
+                if (status == 0) {
+                    resultkind = kind + 1;
+                }
+            } else {
+                (status, value) = proxy->call(endpoint, operation,
+                    codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
+                    codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
+                    int codec->get(bytes, Proxyframe->Value), remaining);
+            }
             response = codec->answer(bytes, status, value);
+            codec->put(response, Proxyframe->ResultKind, big resultkind);
+            codec->sethandle(response, Proxyframe->Returned, returned);
             previous = bytes;
             cached = response;
             last = id;

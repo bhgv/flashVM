@@ -4,11 +4,13 @@
 Proxyframe: module
 {
     PATH: con "proxyframe.dis"; # Matching producer's bytecode codec.
-    Size: con 152; # Fixed bounded record, including header and result.
+    Size: con 184; # Fixed bounded record, including header and result.
     Hello, Call, Reply: con iota + 1; # Private record tags, independent of DIS64.
     EpochHi, EpochLo, Id, Operation, Refs, Value: con 16 + 8 * iota; # Scalar offsets.
     Target, Left, Right: con 64 + 24 * iota; # Handle offsets.
     Status, Result: con 136 + 8 * iota; # Scalar result offsets.
+    ResultKind: con 152; # Zero absent, 1 variable, 2 function; reply only.
+    Returned: con 160; # Returned handle; request and greeting must be zero.
 
 
     # EN/RU: Allocate one canonical zeroed record with kind and connection epoch.

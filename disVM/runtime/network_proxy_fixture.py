@@ -29,6 +29,11 @@ def compile_fixture(root, work, compiler, include):
             "idle-client",
             "scalar-results",
             "gc-client",
+            "result-client",
+            "result-quota-client",
+            "result-failure-client",
+            "result-capacity-client",
+            "orphan-result",
             "lease-native",
             "lease-refusal",
         )

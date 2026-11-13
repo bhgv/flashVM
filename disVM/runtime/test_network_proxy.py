@@ -7,6 +7,7 @@ import sys
 import re
 import tempfile
 
+from network_proxy_results import result_replay, result_disconnect, orphan_result
 from network_proxy_controls import controls
 from network_proxy_fixture import Guest, compile_fixture, connected_tcp
 from network_proxy_faults import (
@@ -34,7 +35,17 @@ def two_vms(runtime, work, mode, locked, tag, client_name="client"):
         guests.append(Guest(runtime, work, client_name, mode, locked, right, tag + "-client"))
         left.close()
         right.close()
-        if client_name == "gc-client":
+        if client_name == "result-quota-client":
+            guests[1].finish(
+                "PASS remote result quota: completed effect preserved release recovery terminal roots"
+            )
+            guests[0].finish("result=0 value=12")
+        elif client_name == "result-client":
+            guests[1].finish(
+                "PASS callback result images: new variables functions aliases 8 clients errors GC"
+            )
+            guests[0].finish("result=0 value=20")
+        elif client_name == "gc-client":
             output = guests[1].finish(
                 "PASS network image GC: original variable/function and last clone released"
             )
@@ -114,11 +125,18 @@ def main():
                             native.abort()
                     two_vms(runtime, work, mode, locked, tag)
                     two_vms(runtime, work, mode, locked, tag + "-gc", "gc-client")
+                    two_vms(runtime, work, mode, locked, tag + "-result", "result-client")
+                    two_vms(
+                        runtime, work, mode, locked, tag + "-result-quota", "result-quota-client"
+                    )
                     output_disconnect(runtime, work, mode, locked, tag + "-output-loss")
                     idle_client(runtime, work, mode, locked, tag + "-idle-client")
                     replay(runtime, work, mode, locked, tag + "-replay")
                     release_replay(runtime, work, mode, locked, tag + "-release")
                     retain_replay(runtime, work, mode, locked, tag + "-retain-replay")
+                    result_replay(runtime, work, mode, locked, tag + "-result-replay")
+                    result_disconnect(runtime, work, mode, locked, tag + "-result-disconnect")
+                    orphan_result(runtime, work, mode, locked, tag + "-orphan-result")
                     admitted_disconnect(runtime, work, mode, locked, tag + "-admitted")
                     for name in ("orphan-io", "orphan-server"):
                         orphan(runtime, work, mode, locked, tag + name, name)
@@ -130,12 +148,14 @@ def main():
                         )
                     for index, mutation in enumerate(
                         (
-                            field(8, 153),
+                            field(8, 185),
                             field(32, 0),
                             field(48, 3),
                             field(72, 256),
                             field(136, 1),
-                            lambda data: data.__setitem__(4, 1),
+                            field(152, 1),
+                            field(160, 1),
+                            lambda data: data.__setitem__(4, 2),
                             lambda data: data.__setitem__(6, 1),
                             lambda data: data.__delitem__(slice(70, None)),
                         )
@@ -155,11 +175,34 @@ def main():
                             field(32, 99),
                             field(24, 67891),
                             field(136, 999),
+                            field(152, 1),
+                            field(160, 1),
                             lambda data: data.clear(),
                         )
                     ):
                         client_refusal(
                             runtime, work, mode, locked, tag + f"-reply-{index}", mutation
+                        )
+                    for index, mutation in enumerate(
+                        (
+                            field(152, 0),
+                            field(152, 2),
+                            field(160, 0),
+                            field(160, 2),
+                            field(168, 256),
+                            field(176, 0),
+                            field(144, 1),
+                            lambda data: data.__delitem__(slice(170, None)),
+                        )
+                    ):
+                        client_refusal(
+                            runtime,
+                            work,
+                            mode,
+                            locked,
+                            tag + f"-result-reply-{index}",
+                            mutation,
+                            "result-failure-client",
                         )
             trickle(runtime, work, "--no-jit", False, "trickle")
         if not positive:
@@ -167,7 +210,7 @@ def main():
     if not only_controls:
         print(
             "PASS network proxies: two real VMs over TCP; 8 clients, original ref aliases, "
-            "bounded replay/release, stale epochs, framing/reply faults and admitted disconnect; C/JIT both polls"
+            "callback variable/function results, orphan result GC, quota, bounded replay/release, stale epochs, framing/reply faults and admitted disconnect; C/JIT both polls"
         )
 
 

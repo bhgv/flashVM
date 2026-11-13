@@ -16,7 +16,7 @@ reader(input: ref Sys->FD, started: chan of int)
     sys := load Sys Sys->PATH;
     control := load Processctl Processctl->PATH;
     started <-= control->pid();
-    bytes := array[152] of byte;
+    bytes := array[184] of byte;
     stream->transfer(input, bytes, 0, sys->millisec() + 3000);
     raise "public IO caller survived forced retirement";
 }

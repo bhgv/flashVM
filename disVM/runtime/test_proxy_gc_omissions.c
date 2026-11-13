@@ -89,3 +89,30 @@ void __wrap_ptradd(Heap *heap)
     __real_ptradd(heap);
 }
 #endif
+
+#if CONTROL == 5
+uint64_t __real_dvm_proxy_lease_new(DvmProxyLeaseQueue *, DvmRemoteHandle, int, size_t *);
+
+
+/* [GC:] EN/RU: Refuse only unknown-result reservations before remote callback effects.
+ * Отказать лишь unknown-result reservations до remote callback effects. */
+uint64_t __wrap_dvm_proxy_lease_new(DvmProxyLeaseQueue *queue, DvmRemoteHandle owner, int active, size_t *slot)
+{
+    return active < 0 ? 0 : __real_dvm_proxy_lease_new(queue, owner, active, slot);
+}
+#endif
+
+#if CONTROL == 6
+
+
+/* EN/RU: Report false binding success without committing exact returned owner metadata.
+ * Ложно сообщить binding success без фиксации exact returned owner metadata. */
+int __wrap_dvm_proxy_lease_bind(DvmProxyLeaseQueue *queue, size_t slot, uint64_t serial, DvmRemoteHandle owner)
+{
+    USED(queue);
+    USED(slot);
+    USED(serial);
+    (void)owner;
+    return 1;
+}
+#endif
