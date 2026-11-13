@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import platform
+import re
 import struct
 import subprocess
 import sys
@@ -19,6 +20,7 @@ MACHINES = {  # Accepted native userspace names; no instruction-set substitution
     "riscv64": "riscv64",
     "rv64": "riscv64",
 }
+ELF_MACHINES = {62: "amd64", 183: "arm64", 243: "riscv64"}  # ELF e_machine for Linux64 targets.
 CASES = (  # Real drivers; positive-only excludes deliberately broken collector variants.
     ("continuation", "test_module_continuation.py", ("--portable-overlap",)),
     ("process-control", "test_resident_processctl.py", ()),
@@ -80,13 +82,31 @@ def execute(case, runtime, compiler, include, logs):
     return row
 
 
+# EN: Read borrowed executable's ELF64 little-endian header before execution.
+# Return its declared backend; malformed/unknown images fail before guest startup.
+# No program is run and no executable ownership is acquired.
+# RU: Прочитать ELF64 little-endian header заимствованного path до исполнения.
+# Вернуть backend; неверный/неизвестный образ отвергнуть до старта гостей.
+# Программа не запускается, владение executable не передаётся.
+def elf_backend(path):
+    with path.open("rb") as image:
+        header = image.read(64)
+    if len(header) != 64 or header[:6] != b"\x7fELF\x02\x01":
+        raise RuntimeError("expected ELF64 little-endian executable: " + str(path))
+    machine = ELF_MACHINES.get(struct.unpack_from("<H", header, 18)[0])
+    if not machine:
+        raise RuntimeError("unsupported ELF machine: " + str(path))
+    return machine
+
+
 # EN: CLI build selects an already completed console build. Require Linux64,
-# expected userspace and matching CMake backend inputs before executing guests.
+# matching ELF VM/compiler and configured target before executing guests.
 # --emulated labels results honestly; it does not alter tests or enable fallback.
+# It permits a different Python host CPU; binfmt/emulator must execute target ELFs.
 # Own logs/report below build, join every case, return nonzero if any failed.
 # RU: CLI build задаёт готовую console-сборку. До запуска гостей требовать Linux64,
-# ожидаемый userspace и согласованный CMake CPU. --emulated лишь помечает результат,
-# не меняет тесты и не включает fallback. Владеть журналами/отчётом внутри build,
+# ELF VM/компилятора и CMake CPU. --emulated разрешает другой CPU Python-host,
+# но не подменяет целевые ELF и не меняет тесты/политику. Владеть отчётами в build,
 # дождаться всех случаев; любой отказ даёт ненулевой код.
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -104,7 +124,7 @@ def main():
     if (
         platform.system() != "Linux"
         or struct.calcsize("P") != 8
-        or MACHINES.get(machine) != args.expected
+        or (not args.emulated and MACHINES.get(machine) != args.expected)
     ):
         raise RuntimeError(f"wrong execution userspace: {platform.system()}/{machine}")
     build = args.build.resolve()
@@ -112,20 +132,23 @@ def main():
     include = Path(__file__).resolve().parents[1] / "upstream/module"
     if not runtime.is_file() or not compiler.is_file():
         raise RuntimeError("build the console and bootstrap compiler before acceptance")
+    if elf_backend(runtime) != args.expected or elf_backend(compiler) != args.expected:
+        raise RuntimeError("VM/compiler ELF target differs from requested architecture")
     facts = build / "CMakeFiles"
     systems = list(facts.glob("*/CMakeSystem.cmake"))
     if len(systems) != 1:
         raise RuntimeError("missing or ambiguous configured CMake system")
     system = systems[0].read_text()
-    if f'set(CMAKE_SYSTEM_PROCESSOR "{platform.machine()}")' not in system:
-        raise RuntimeError("build CPU differs from executing userspace")
+    configured = re.search(r'set\(CMAKE_SYSTEM_PROCESSOR "([^"]+)"\)', system)
+    if not configured or MACHINES.get(configured[1].lower()) != args.expected:
+        raise RuntimeError("configured CPU differs from requested ELF target")
     logs = build / "native-acceptance"
     logs.mkdir(exist_ok=True)
     with ThreadPoolExecutor(max_workers=args.jobs) as pool:
         rows = list(pool.map(lambda case: execute(case, runtime, compiler, include, logs), CASES))
     report = {
         "backend": args.expected,
-        "machine": machine,
+        "host_machine": machine,
         "emulated": args.emulated,
         "jit_machine_code_instrumented": False,
         "cases": rows,

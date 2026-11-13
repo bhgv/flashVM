@@ -28,8 +28,8 @@ Per-case logs and `report.json` are written under `build/native/native-acceptanc
 Cases run with bounded concurrency and every failed driver makes the suite fail.
 
 The workflow `.github/workflows/native-disvm.yml` builds on native AMD64 and ARM64
-Ubuntu runners. Its separate RV64 job builds and runs in an RV64 Debian userspace
-under QEMU. The emulator job checks code generation/ABI and functional behavior;
+Ubuntu runners. Its separate RV64 job cross-builds with the runner's GNU RV64 toolchain, then
+executes the actual RV64 binaries under QEMU with the matching target sysroot. The emulator job checks code generation/ABI and functional behavior;
 it cannot certify RV64 hardware memory ordering, timing or parallel throughput.
 The workflow has read-only repository permissions, no persisted checkout token,
 pinned action revisions and no deployment. Native module tutorial/compiler/editor
@@ -87,3 +87,20 @@ C-opcode, сохраняя адрес возврата/стек и не пере
 Это не утверждение о новой оптимизированной inline-реализации каждой операции.
 RV64 дополнительно получает существующий протокол публикации JIT-таблицы.
 Обе стадии генерации проверяются на повторяемость; upstream не изменяется.
+
+## Bounded RV64 build cost
+
+The RV64 job uses a native host cross-compiler rather than emulating GCC itself.
+`QEMU_LD_PREFIX` selects the matching `/usr/riscv64-linux-gnu` runtime sysroot;
+registered binfmt executes the RV64 bootstrap compiler, VM and private probes.
+The Python harness can run on the host in explicit emulation mode, but verifies
+ELF64 little-endian `e_machine` for both VM and bootstrap compiler and the CMake
+target before any workload. A host ELF labelled as RV64/ARM64 is rejected.
+Reports distinguish the target backend, Python `host_machine` and emulation.
+No workload or native ownership check is skipped by cross-building.
+
+RV64 собирается host cross-компилятором, а не GCC под эмулятором. QEMU/binfmt
+исполняет настоящие целевые bootstrap/VM/probe бинарники с согласованным sysroot.
+Host Python в явном режиме эмуляции проверяет ELF64/CPU обоих executable и CMake
+до нагрузки. Host-образ с чужой архитектурной меткой отвергается. Пропуска тестов
+или ослабления проверок владения cross-сборка не добавляет.
