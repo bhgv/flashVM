@@ -45,3 +45,21 @@ profile for AMD64, ARM64 and RV64/QEMU.
 ответы mailbox. Общая ячейка родителя заменена резервом конкретного ребёнка;
 выделение происходит до парковки, освобождение — у текущего владельца. Новых
 глобальных блокировок, переноса Prog или восстановления рабочих REG нет.
+
+## Validation checkpoint
+
+Production commit: `74fbab4f2aa066ba850554f9bcb5607d6832c8c0`.
+Local AMD64 completed uninterrupted 44/44 wide workloads in ordinary and fully
+TSan-instrumented builds, plus 100/100 native/boundary CTests. The constructor
+oracle passed separately under TSan. Targeted final checks passed 3/3 after a
+comment-only header clarification; executable header text is unchanged. The final
+post-build TSan subset passed 5/5, including both omission controls.
+The new probe's positive allocation-refusal/retry and shared-slot negative
+control passed under TSan, as did the preceding cancellation/old-reader controls.
+
+[CI for this production change](https://github.com/bhgv/flashVM/actions/runs/43384574676)
+has completed native AMD64 and ARM64 with 44/44 each, plus the AMD64 constructor
+oracle. AMD64 TSan and RV64 QEMU are still running at this checkpoint; no result
+is claimed for those unfinished jobs. RV64 remains emulated functional coverage,
+not certification of hardware memory ordering or throughput. Changed handwritten
+source is at most 397 lines per file; upstream snapshots are unchanged.

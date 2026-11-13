@@ -47,7 +47,7 @@ typedef struct DVM_RuntimeProcess
     int table_cancel_pc;               /* Pending MCALL successor update for the TLS owner. */
     int cancel_delivering;             /* Owner is completing a posted cancellation. */
     DVM_OwnerMessage *retirement_reply; /* Owned reserve for this child's single retirement event. */
-    const void *channel_claimed;       /* Exclusive channel match under NativeWorld. */
+    const void *channel_claimed;       /* Match reservation protected by channel_queue_mutex. */
     unsigned int arithmetic_retries;   /* Consecutive pre-effect retries of the current instruction. */
     struct ManagedWorker *dedicated;   /* Native wake slot, stable until guest retirement. */
     Prog *ready_previous;              /* Borrowed predecessor while ready. */

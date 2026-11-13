@@ -367,3 +367,18 @@ real-owner regression, omission control and exact validation scope.
 Локально пройдены 43/43 обычных и TSan-нагрузок и 99/99 расширенных CTests.
 Это исправление DisVM/Limbo без глобальной остановки; оно не объявляет все пути
 VM или аппаратную многопоточность RV64 полностью проверенными.
+
+## Independent retirement replies
+
+A child now reserves its own retirement reply before `killwait` parks the parent.
+Two retiring children never reuse one parent-embedded queue node. Publication
+transfers only native scalar storage after the child's process has been freed;
+withdrawn interest, consumed/stale replies, queued/staged shutdown replies and
+unused reserves each have an explicit disposal path. No allocation occurs during
+retirement publication. See [RETIREMENT-STORAGE.md](RETIREMENT-STORAGE.md) for the
+original aliasing failure, explicit stale mailbox debt and allocation-refusal retry.
+
+Уведомления завершения разных детей теперь имеют разную память. Регрессия
+проверяет настоящие завершения A/B при явно добавленных старых native-ответах;
+она не выдаёт тестовый долг mailbox за операции Limbo. Ошибка выделения до парковки
+оставляет родителя runnable и допускает успешный повтор без глобальной остановки.
