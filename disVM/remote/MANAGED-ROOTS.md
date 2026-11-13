@@ -63,8 +63,9 @@ Host-unit проверяет 200000 captures с aliases параллельно 2
 ## Оставшаяся граница
 
 Function-kind String в probe проверяет только GC lifetime opaque owner token;
-это не вызов функции или проверка closure captures. Native peers в probe не
-исполняют Dis bytecode. Пока нет guest export API, owner mailbox invocation,
-typed ReadAs/Get/Set, cross-node ref routing, managed result cache/ack, network
-authentication и двух DisVM peers. Эта работа не объявляет distributed GC или
-полный network proxy готовым. Shared DIS64 kinds/opcodes не изменены.
+это не вызов функции или проверка closure captures. Native peers в этом probe не
+исполняют Dis bytecode. Отдельный [guest path](GUEST-OWNER.md) теперь выполняет
+настоящие typed Read/Write/Invoke через owner channel loop. Общий typed ReadAs,
+cross-node ref routing, managed result cache/ack, network authentication и два
+DisVM peers ещё не реализованы. Distributed GC или полный network proxy не
+объявляются готовыми. Shared DIS64 kinds/opcodes не изменены.

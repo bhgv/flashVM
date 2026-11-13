@@ -4,7 +4,8 @@ Copyright (c) 2026 bhgv
 
 Здесь развивается proxy-блок в `master`. Native session/transport foundation уже
 реализован; runtime теперь содержит и owner-local adapter настоящих managed roots.
-Доступ к живым variables/functions и их вызовы через гостевой API ещё впереди.
+Первый [гостевой API](GUEST-OWNER.md) уже выполняет typed variable/function calls
+на постоянном владельце через process-local channels. Две сетевые VM ещё не связаны.
 Основание — ранее выбранная архитектура
 [канальных proxy к владельцу](../../fir/v1/doc/DYNAMIC_VALUES.md),
 [проекции](../../ide/dis/LIVE-PROJECTIONS.md) и
