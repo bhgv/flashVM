@@ -143,7 +143,6 @@ static unsigned int resident_retirements;     /* Dedicated exits still publishin
 static int gc_locked_poll;                    /* Retained mutex polling for reference comparison. */
 static __thread Prog *initial_guest;          /* This thread's controller fallback; peer residents never borrow it. */
 static int native_spawn;                      /* One dedicated OS thread per spawned Prog. */
-static int managed_workers_selected;          /* Reject duplicate executor options. */
 static unsigned long progress_epoch;          /* Shared acknowledged input generation, protected by the heap gate. */
 static int gc_worker;                         /* Collector-worker admission selected at launch. */
 static char *module_directory;               /* Read-only module resource base; ordinary Sys paths retain caller cwd. */

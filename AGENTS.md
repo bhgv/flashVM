@@ -75,3 +75,11 @@ connected bhgv identity when local HTTPS credentials are unavailable.
   C supplies generic drawing, input, ownership and raster primitives; it does not
   become the IDE's theme/layout implementation. Use supported compiler/JIT paths
   and state actual coverage instead of assuming unimplemented language features.
+
+# Active native development (2026-11-13)
+
+The user explicitly moved DisVM/Limbo development to `master`. Publish subsequent
+work there with expected-head and tree checks. Dedicated native OS threads without
+global exclusive/stop are the mandatory default and only supported execution
+profile. Do not use single-threaded/exclusive reference modes in runtime or CI;
+retained historical code is not authorization to reactivate those profiles.

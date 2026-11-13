@@ -1,6 +1,6 @@
 # Copyright (c) 2026 bhgv
-# EN: Repeatable CTest acceptance selection for registered native-spawn drivers.
-# RU: Воспроизводимый выбор приёмочных CTest-драйверов с native-spawn.
+# EN: Repeatable CTest acceptance of explicitly registered native-only drivers.
+# RU: Воспроизводимая приёмка явно зарегистрированных native-only CTest-драйверов.
 import argparse
 import json
 from pathlib import Path
@@ -8,16 +8,12 @@ import re
 import subprocess
 
 
-# EN: Borrow ctest executable and configured build directory. Return registered
-# test names whose Python driver contains --native-spawn. This is a source-based
-# suite selector, not proof that every child uses native mode. Mixed reference
-# profiles and explicit rejection controls are preserved. Missing/invalid CTest
-# metadata or source read failures raise; no runtime or repository file changes.
-# RU: Заимствовать ctest и настроенный build. Вернуть имена тестов, в Python-
-# драйвере которых есть --native-spawn. Это выбор набора по исходникам, а не
-# доказательство native-режима каждого ребёнка. Сохраняются смешанные эталонные
-# профили и проверки явного отказа. Ошибки метаданных/чтения передаются наверх;
-# runtime и файлы репозитория не меняются.
+# EN: Borrow ctest/build; select enabled tests explicitly labelled native.
+# Historical mixed/reference probes are not active acceptance. Return names,
+# raise on invalid metadata; execute no runtime here.
+# RU: Заимствовать ctest/build; выбрать включённые тесты с явной меткой native.
+# Исторические mixed/reference-пробы не входят в приёмку. Вернуть имена,
+# при неверных метаданных вызвать исключение; runtime здесь не запускается.
 def native_tests(ctest, build):
     result = subprocess.run(
         [ctest, "--test-dir", str(build), "--show-only=json-v1"],
@@ -27,8 +23,8 @@ def native_tests(ctest, build):
     )
     selected = []
     for test in json.loads(result.stdout)["tests"]:
-        drivers = [Path(arg) for arg in test.get("command", []) if arg.endswith(".py")]
-        if any(path.is_file() and "--native-spawn" in path.read_text() for path in drivers):
+        properties = {item["name"]: item["value"] for item in test.get("properties", [])}
+        if not properties.get("DISABLED") and "native" in properties.get("LABELS", []):
             selected.append(test["name"])
     return selected
 

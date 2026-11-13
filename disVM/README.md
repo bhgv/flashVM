@@ -1,3 +1,5 @@
+**Master execution policy:** [mandatory native concurrency / обязательная многопоточность](runtime/NATIVE-STATUS.md). Single-threaded/exclusive execution modes are removed; older version notes below are historical.
+
 [Current native concurrency status / Текущий статус многопоточности](runtime/NATIVE-STATUS.md)
 
 [Native64 ownership review gates](NATIVE64-REVIEW.md)

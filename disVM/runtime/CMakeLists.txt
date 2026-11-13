@@ -400,20 +400,9 @@ endforeach()
 add_custom_target(disvm_native_modules ALL DEPENDS ${products} ${syntax_products})
 option(DVM_RUNTIME_TESTS "Run real native Dis IDE service regressions" ON)
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/BootstrapTests.cmake")
-
+# EN/RU: Production host targets stay active; historical reference registrations
+# are archived. Native-only acceptance is the sole default test profile.
+# Host-цели остаются; исторические reference-регистрации больше не подключаются.
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/EditorTargets.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/EditorAndSourceTests.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/LibrariesAndToolsTests.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/DesktopAndVectorTests.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ParallelExecutionTests.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/OwnershipAndValueTests.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ResidentLifecycleTests.cmake")
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ConcurrentGC.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeOnlyTests.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeUnitTests.cmake")

@@ -35,4 +35,9 @@
   do not revive pool/migration scenarios or assert successful execution with
   `--managed-workers N` for N > 1, `auto`, or `--managed-workers-limit`.
   Test those forms only for explicit CLI rejection before VM startup.
-  `--managed-workers 1` is the single-threaded reference, not a worker pool.
+  `--managed-workers` (including 1), `--gc-inline` and `--sequential-ui` are
+  removed execution modes; test them only for rejection before VM startup.
+- Active development and publication use `master`. Native OS threads with no
+  global exclusive/stop are mandatory for all supported hosts and diagnostics.
+  Do not use single-threaded/exclusive reference profiles in new work or CI.
+  Historical source/fixtures do not authorize restoring those execution modes.

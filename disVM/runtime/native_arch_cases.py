@@ -15,7 +15,9 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
     ("duke-pins", "test_duke_pin_retirement.py", ("--positive-only",)),
     ("packet-cycles", "test_packet_cycle_retirement.py", ("--positive-only",)),
 )
-WIDE_CASES = CORE_CASES + (  # Additional whole-VM tests; excludes x64 inline-emitter oracles.
+WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
+    ("default-profile", "test_native_defaults.py", ()),
+    ("constructors", "test_native_records.py", ()),
     ("owner-monitors", "test_owner_monitor.py", ("--positive-only",)),
     ("retirement-storage", "test_retirement_storage.py", ("--positive-only",)),
     ("cancel-generation", "test_cancel_generation.py", ("--positive-only",)),

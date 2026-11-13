@@ -34,15 +34,23 @@ int main(int argc, char **argv)
     cflag = 1;
     while (argc > 1 && argv[1][0] == '-')
     {
+        if (!strcmp(argv[1], "--managed-workers") || !strcmp(argv[1], "--managed-workers-limit") ||
+            !strcmp(argv[1], "--gc-inline") || !strcmp(argv[1], "--sequential-ui"))
+        {
+            fprintf(
+                stderr,
+                "single-threaded and exclusive execution modes have been removed; native concurrency is mandatory\n");
+            return 2;
+        }
 #ifdef DVM_RUNTIME_EDITOR
-        if (!strcmp(argv[1], "--threaded-ui") || !strcmp(argv[1], "--sequential-ui"))
+        if (!strcmp(argv[1], "--threaded-ui"))
         {
             if (threading_selected)
             {
                 fprintf(stderr, "Select UI execution mode only once\n");
                 return 2;
             }
-            threaded = !strcmp(argv[1], "--threaded-ui");
+            threaded = 1;
             threading_selected = 1;
             argv++;
             argc--;
@@ -128,29 +136,6 @@ int main(int argc, char **argv)
         {
             native_spawn = 1;
         }
-        else if (strcmp(argv[1], "--managed-workers") == 0)
-        {
-            size_t count = 0;
-            if (managed_workers_selected || argc < 3 ||
-                (strcmp(argv[2], "auto") && (!runtime_extent(argv[2], &count) || count < 1)))
-            {
-                fprintf(stderr, "--managed-workers requires 1 for the single-worker reference\n");
-                return 2;
-            }
-            if (count != 1)
-            {
-                fprintf(stderr, "shared executor pool has been removed; use --native-spawn\n");
-                return 2;
-            }
-            managed_workers_selected = 1;
-            argv++;
-            argc--;
-        }
-        else if (strcmp(argv[1], "--managed-workers-limit") == 0)
-        {
-            fprintf(stderr, "shared executor pool has been removed; --managed-workers-limit is unavailable\n");
-            return 2;
-        }
         else if (strcmp(argv[1], "--guarded-copies") == 0)
         {
             if (dvm_runtime_guarded_copies)
@@ -214,11 +199,6 @@ int main(int argc, char **argv)
             gc_worker = 1;
             gc_selected = 1;
         }
-        else if (strcmp(argv[1], "--gc-inline") == 0)
-        {
-            gc_worker = 0;
-            gc_selected = 1;
-        }
         else if (strcmp(argv[1], "--no-jit") == 0)
         {
             cflag = 0;
@@ -241,15 +221,14 @@ int main(int argc, char **argv)
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
 #endif
             puts(
-                "GC execution: --gc-worker (native collectors), --gc-inline (single-worker reference), --gc-locked-poll (mutex reference polling)");
+                "GC execution: concurrent native collectors; --gc-worker is accepted explicitly, --gc-locked-poll uses mutex-protected concurrent polling");
 #if !defined(DVM_RUNTIME_EDITOR)
-            puts("Default console profile: one native thread per spawn, with native GC.");
+            puts("Default and only execution profile: one native thread per Prog, with concurrent GC.");
 #endif
-            puts("Explicit GC and guarded/parallel switches select a custom profile.");
+            puts("Diagnostic switches never select single-threaded or exclusive execution.");
             puts(
                 "--native-spawn binds one OS thread per guest and forbids all collector exclusion; unsupported legacy work exits 70.");
-            puts(
-                "--gc-idle-cycles selects idle tracing in the reference; native-spawn always uses concurrent candidate collection.");
+            puts("--gc-idle-cycles selects concurrent candidate collection during idle periods.");
             puts(
                 "--gc-no-cycles keeps Fast GC active and disables cycle collection. Unreachable cycles can accumulate.");
             puts("--gc-event-cycles coalesces cycle scans after managed owner loss.");
@@ -258,10 +237,10 @@ int main(int argc, char **argv)
                 "Diagnostic: --native-queue-probe with --gc-worker checks native wait withdrawal on an extra OS owner");
             puts(
                 "Experimental NC64 cells; legacy .dis modules are rejected. Sys subset; shared operations use object and field synchronization.");
-            puts(
-                "Managed execution: --native-spawn binds one process per OS thread; --managed-workers 1 selects the single-worker reference.");
+            puts("Native concurrency is mandatory; --native-spawn is a compatibility alias.");
 #ifdef DVM_RUNTIME_EDITOR
-            puts("UI execution: --threaded-ui (default: UI main + Dis OS worker), --sequential-ui (reference)");
+            puts(
+                "UI execution: --threaded-ui (UI main and dedicated Dis OS threads); sequential UI execution is removed");
 #endif
             return 0;
         }
@@ -278,27 +257,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
         return 2;
     }
-#if !defined(DVM_RUNTIME_EDITOR)
-    /* The console defaults to dedicated native guests. Explicit diagnostic
-     * profiles still select their own runtime settings. */
-    if (!native_spawn && !gc_selected && !managed_workers_selected && !dvm_runtime_guarded_copies &&
-        !dvm_runtime_parallel_add && !dvm_runtime_parallel_real && !dvm_runtime_parallel_string &&
-        !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp && !dvm_runtime_parallel_slicela &&
-        !dvm_runtime_parallel_channel_buffer && !dvm_runtime_parallel_byte_copies &&
-        !dvm_managed_owner_probe_requested && !dvm_queue_probe_requested)
-    {
-        native_spawn = 1;
-    }
-#else
-    USED(gc_selected);
-#endif
+    /* EN: All hosts and diagnostics use dedicated guests. No option can select
+     * a reference executor or a stopped collector profile.
+     * RU: Все host и диагностика используют закреплённых гостей. Ни один параметр
+     * не выбирает эталонный исполнитель или остановленный collector. */
+    native_spawn = 1;
     if (native_spawn)
     {
-        if (managed_workers_selected || (gc_selected && !gc_worker))
-        {
-            fprintf(stderr, "--native-spawn requires native GC and selects its own executor lifecycle\n");
-            return 2;
-        }
         gc_worker = 1;
         if (!dvm_runtime_guarded_copies && !dvm_runtime_parallel_add && !dvm_runtime_parallel_real &&
             !dvm_runtime_parallel_string && !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp &&
@@ -321,27 +286,25 @@ int main(int argc, char **argv)
     if ((dvm_runtime_parallel_add || dvm_runtime_parallel_real || dvm_runtime_parallel_string) &&
         (!dvm_runtime_guarded_copies || !native_spawn))
     {
-        fprintf(stderr, "parallel scalar modes require --guarded-copies and multiple managed workers\n");
+        fprintf(stderr, "parallel scalar modes require --guarded-copies and native execution\n");
         return 2;
     }
     if (dvm_runtime_parallel_movp && (!dvm_runtime_guarded_copies || !native_spawn))
     {
-        fprintf(stderr, "--parallel-movp requires --guarded-copies and multiple managed workers\n");
+        fprintf(stderr, "--parallel-movp requires --guarded-copies and native execution\n");
         return 2;
     }
     if ((dvm_runtime_parallel_slicela || dvm_runtime_parallel_movmp || dvm_runtime_parallel_channel_buffer ||
          dvm_runtime_parallel_byte_copies) &&
         (!dvm_runtime_guarded_copies || !native_spawn))
     {
-        fprintf(stderr, "parallel mapped copies require --guarded-copies and multiple managed workers\n");
+        fprintf(stderr, "parallel mapped copies require --guarded-copies and native execution\n");
         return 2;
     }
-    /* [GC:] EN: Dedicated guests never accept tracing park requests, including
-     * explicit --gc-worker. Keep the stopped diagnostic path only for the
-     * single-thread reference. Disabled Cycles must not acquire idle policy.
-     * RU: Закреплённые гости не паркуются ради трассировки даже с --gc-worker.
-     * Остановочный диагностический путь остаётся у однопоточного эталона.
-     * Отключённому Cycles не назначать политику idle. */
+    /* [GC:] EN: Dedicated guests never accept tracing park requests. Explicit
+     * cycle policies remain concurrent; disabled Cycles must not acquire idle policy.
+     * RU: Закреплённые гости не принимают остановочные запросы трассировки.
+     * Явные cycle-политики конкурентны; отключённому Cycles не назначать idle. */
     if (gc_worker && !dvm_runtime_disable_cycles)
     {
         if (native_spawn || !gc_selected)

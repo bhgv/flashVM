@@ -1,3 +1,5 @@
+**Master execution policy:** [mandatory native concurrency / обязательная многопоточность](NATIVE-STATUS.md). Single-threaded/exclusive execution modes are removed; older version notes below are historical.
+
 [Native concurrency readiness: broader acceptance and remaining scope](NATIVE-READINESS.md)
 
 [Alias charge sorting: preserve shared retry on native allocation failure](PACKET-CHARGE-RETRY.md)
