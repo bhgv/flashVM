@@ -90,6 +90,9 @@ init()
     }
     results := gc->open(1);
     reserved := gc->reserve(results);
+    if (!gc->belongs(results, reserved) || gc->belongs(connection, reserved) || gc->belongs(results, nil)) {
+        raise "native exact connection token identity";
+    }
     if (reserved == nil || gc->active(reserved) || gc->activate(reserved) || gc->reserve(results) != nil) {
         raise "reserved result quota or premature activation";
     }

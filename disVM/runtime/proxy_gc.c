@@ -283,6 +283,19 @@ void Proxygc_active(void *frame)
 }
 
 
+/* EN/RU: Compare exact native queue identities held by live mapped arguments.
+ * Сравнить exact native queue identities, удержанные live mapped arguments. */
+void Proxygc_belongs(void *frame)
+{
+    F_Proxygc_belongs call;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Proxygc_belongs, ret), sizeof(*call.ret));
+    DvmProxyLeaseQueue *queue = connection(call.connection);
+    Lease *lease = token(call.lease);
+    WORD result = lease && lease->queue == queue;
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
 /* EN/RU: Check exact owner scalars against live native token before offer/admission.
  * Проверить owner scalars по live native token до offer/admission. */
 void Proxygc_matches(void *frame)

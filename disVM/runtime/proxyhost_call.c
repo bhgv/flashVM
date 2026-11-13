@@ -108,7 +108,7 @@ void Proxyhost_begin(void *frame)
     clear_result(call.ret);
     memset(&request, 0, sizeof(request));
     if (!dvm_proxyhost_state.adapter || !dvm_proxyhost_state.identity || dvm_proxyhost_state.active || call.id <= 0 ||
-        call.operation < Proxyhost_Read || call.operation > Proxyhost_Invoke || call.refs < 0 || call.refs > 2 ||
+        call.operation < Proxyhost_Read || call.operation > Proxyhost_Add || call.refs < 0 || call.refs > 2 ||
         !handle(call.session, call.slot, call.generation, &request.target) ||
         (call.refs >= 1 && !handle(call.leftsession, call.left, call.leftgen, &request.refs[0])) ||
         (call.refs == 2 && !handle(call.rightsession, call.right, call.rightgen, &request.refs[1])))

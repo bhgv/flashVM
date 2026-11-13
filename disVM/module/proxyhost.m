@@ -6,7 +6,7 @@ Proxyhost: module
     PATH: con "$Proxyhost"; # Hosted builtin, not a network endpoint.
     Variable: con 0; # Mutable cell owner.
     Function: con 1; # Cell used as a callback's captured context.
-    Read, Write, Invoke: con iota; # Local owner operations, not wire opcodes.
+    Read, Write, Invoke, Add: con iota; # Local owner operations, not wire opcodes.
     OK: con 0; # Operation succeeded.
     Capacity: con 4; # Bounded root/request/retirement pressure.
 

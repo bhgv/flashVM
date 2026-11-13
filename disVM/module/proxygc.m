@@ -49,6 +49,11 @@ Proxygc: module
     active: fn(lease: ref Lease): int;
 
 
+    # EN/RU: Check exact connection/token queue identity without transferring ownership.
+    # Проверить exact connection/token queue identity без передачи ownership.
+    belongs: fn(connection: ref Connection, lease: ref Lease): int;
+
+
     # EN/RU: Any-thread exact live-token check against immutable owner metadata.
     # Any-thread проверка live token по immutable owner metadata; zero on mismatch.
     matches: fn(lease: ref Lease, session: big, slot: int, generation: big): int;
