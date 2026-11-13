@@ -2,6 +2,9 @@
 
 Copyright (c) 2026 bhgv
 
+Actual three-target C/JIT results: [Linux64 architecture acceptance](NATIVE-ARCH-ACCEPTANCE.md).
+Фактические C/JIT-прогоны трёх целей: [архитектурная приёмка](NATIVE-ARCH-ACCEPTANCE.md).
+
 ## What works now
 
 The supported DisVM/Limbo runtime already executes guests concurrently on native
@@ -308,20 +311,21 @@ and production execution code are unchanged by this acceptance-only commit.
   were green; this pass does not certify every remaining reader. Keep the broad
   application gate stable and test actual ownership paths rather than infer
   completeness from a counter or a handler name.
-- ARM64 and RV64 are selected by the 64-bit runtime configuration, but this
-  workspace has no target runner/cross toolchain. Full native C/JIT execution of
-  the acceptance workloads on each architecture remains unverified here. Source
-  selection or compiling isolated leaves is not equivalent to these runs.
+- The common eleven-workload C/JIT suite now passes on native AMD64 and ARM64
+  runners, and on actual RV64 executables under QEMU. This is whole-VM execution,
+  not isolated emission checks. RV64 hardware memory ordering/performance remains
+  unverified, and the broader 80-suite gate has so far run on x64. See the linked
+  architecture report for exact coverage and guarded C-tail JIT limitations.
 - Arbitrary C finalizers do not become thread-safe by declaring the VM complete.
   Unknown callbacks remain explicit unsupported work. Supported runtime-built
   FD/table/key finalizers and normal managed types have dedicated concurrent
   paths; extension callback support needs an explicit ownership/thread contract.
 - FlashVM is a separate later target, as requested; these results are DisVM/Limbo.
 
-На Linux x64 рабочая параллельность уже есть. До заявления обо всей цели нужно
-закрыть приёмку и непроверенные пути для поддержанного набора, затем выполнить
-настоящие C/JIT-прогоны на ARM64 и RV64. Их отсутствие нельзя заменить числом
-зелёных x64-тестов. Точную дату общей готовности эти данные не обосновывают.
+На Linux x64 и ARM64 есть успешные native C/JIT-прогоны общей матрицы; целевой
+RV64-код прошёл её под QEMU. Остаются непроверенные пути поддержанного набора,
+широкая приёмка вне x64 и RV64-железо. Число зелёных тестов не заменяет эту
+проверку; точную дату общей готовности эти данные не обосновывают.
 
 ## Validation of the previous continuation change
 

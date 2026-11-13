@@ -78,7 +78,7 @@ final `prepare_guarded_leaves.py` stage after `prepare.py`; CMake owns both stag
 and generation-idempotence tests verify both, including the RV compiler view.
 Upstream files remain unchanged. Local x64 execution passed 11/11 again, and
 host-side C compilation of both ARM64 and RV64 compiler views passed. Actual
-new ARM64/RV64 execution still requires the corresponding CI run.
+ARM64/RV64 results for the fix are recorded below.
 
 Первый ARM64 CI собрал VM, но прошёл лишь 1/11: native JIT пропускал defaults
 защищённых операций на CPU вне x64. Теперь native-профиль включает guards на
@@ -104,3 +104,37 @@ RV64 собирается host cross-компилятором, а не GCC по�
 Host Python в явном режиме эмуляции проверяет ELF64/CPU обоих executable и CMake
 до нагрузки. Host-образ с чужой архитектурной меткой отвергается. Пропуска тестов
 или ослабления проверок владения cross-сборка не добавляет.
+
+## Verified execution, 2026-11-13 / Проверенное исполнение
+
+The final [workflow run 43336377681](https://github.com/bhgv/flashVM/actions/runs/43336377681)
+tested commit `37474c501299f0a30c53ced0668f2f2d4c0f3a1b` and completed successfully:
+
+| Target | Execution | Whole-VM workloads |
+| --- | --- | --- |
+| AMD64 | Native Ubuntu x64 runner | 11/11 |
+| ARM64 | Native Ubuntu ARM64 runner | 11/11 |
+| RV64 | Cross-built RV64 executables, QEMU/binfmt and target libc | 11/11 |
+
+Both C and JIT modes and atomic/locked polling are exercised inside these drivers.
+The RV64 job executed the target bootstrap compiler, VM, private probes and
+generated RV64 JIT tails. Its success does not establish RV64 hardware ordering
+or throughput. ARM64 went from 1/11 before the guarded-JIT correction to 11/11
+after it. The emitted ARM64/RV64 tails use checked C opcode implementations;
+this does not claim optimized inline lowering for every operation.
+
+The final local x64 broad native-spawn gate passed 80/80 registered suites in
+one uninterrupted run. The same eleven-workload matrix also passed on the
+rebuilt x64 TSan executable after the guarded-JIT correction; generated machine
+instructions themselves remain outside TSan instrumentation. Native-generation
+idempotence passed with both stages. Every changed handwritten source is at most
+409 lines; vendor snapshots are unchanged. This final documentation-only update
+does not alter the tested execution code.
+
+Финальный CI указанного коммита завершился успешно: x64 и ARM64 — настоящие
+нативные runner, по 11/11; RV64 — настоящие целевые executable/JIT под QEMU,
+11/11. ARM64 до исправления guarded-JIT имел 1/11. Это не утверждение о проверке
+RV64-железа или об оптимизированном inline lowering всех opcode. Общий набор
+x64 прошёл 80/80 одним запуском; обновлённая x64 TSan-сборка прошла ту же матрицу
+11/11. TSan не инструментирует машинные инструкции, выпущенные JIT. Исходники
+ограничены 409 строками; upstream не изменяется.
