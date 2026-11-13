@@ -75,7 +75,7 @@ jobs:
     rv64:
         name: RV64 userspace under QEMU
         runs-on: ubuntu-24.04
-        timeout-minutes: 45
+        timeout-minutes: 75
         env:
             QEMU_LD_PREFIX: /usr/riscv64-linux-gnu
         steps:

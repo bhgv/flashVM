@@ -7,7 +7,12 @@ import tempfile
 
 from network_proxy_fixture import Guest, compile_fixture, compile_one, connected_tcp
 from network_proxy_forwarding import forwarded_gc
-from network_proxy_deadlines import controls as deadline_controls, owner_control
+from network_proxy_deadlines import (
+    controls as deadline_controls,
+    owner_control,
+    queued_deadline,
+    owner_deadline,
+)
 
 
 # EN: Own three actual VMs through forty imports on one connection. A changes
@@ -72,7 +77,8 @@ def control(runtime, root, work, compiler, include):
 # Собрать matching production modules; проверить C/JIT/poll и optional private omission.
 def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
-    positive = sys.argv[4:] == ["--positive-only"]
+    deadlines = sys.argv[4:] == ["--deadlines-only"]
+    positive = sys.argv[4:] == ["--positive-only"] or deadlines
     only_controls = sys.argv[4:] == ["--controls-only"]
     if sys.argv[4:] and not positive and not only_controls:
         raise RuntimeError("unsupported churn arguments")
@@ -84,8 +90,13 @@ def main():
             for mode in ("--no-jit", "--jit"):
                 for locked in (False, True):
                     tag = mode[2:] + str(locked)
-                    churn(runtime, work, mode, locked, tag)
-                    print("PASS sustained forwarding " + tag, flush=True)
+                    if deadlines:
+                        queued_deadline(runtime, work, mode, locked, tag + "-broker")
+                        owner_deadline(runtime, work, mode, locked, tag + "-owner")
+                        print("PASS broker and owner deadlines " + tag, flush=True)
+                    else:
+                        churn(runtime, work, mode, locked, tag)
+                        print("PASS sustained forwarding " + tag, flush=True)
         if not positive:
             control(runtime, root, work, compiler, include)
             deadline_controls(runtime, root, work, compiler, include)
