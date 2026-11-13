@@ -46,3 +46,20 @@ RV64 CI remains QEMU functional coverage, not hardware concurrency certification
 The older live-parent stale-reply race probe retains 4096 observations but gives
 each call its own owned message. It no longer invokes a consuming completion
 repeatedly with the same storage. Its TSan old-reader control remains enabled.
+
+## Validation of this change
+
+The production change is commit `d5da7ed153db83fa1c762ff8cf0e526e111f294d`.
+Local AMD64 passed the uninterrupted 43/43 wide profile in both ordinary and
+fully TSan-instrumented builds. The broader native/boundary selection passed
+99/99 CTests. The new generation regression passed with its PID-only omission
+control under TSan; the existing old-state-reader control also detected its
+expected race. The constructor/channel oracle passed under TSan separately.
+
+[Architecture CI](https://github.com/bhgv/flashVM/actions/runs/43371859603)
+has completed native AMD64 and ARM64 with 43/43 each, plus the AMD64 constructor
+oracle. AMD64 TSan and RV64 QEMU are still running at this checkpoint; no result
+is claimed for these unfinished jobs. Full logs and reports are retained by the
+workflow. The final follow-up changes only comments and documentation, with
+executable C tokens verified equal. Changed handwritten source is at most
+394 lines per file. Upstream snapshots are unchanged.

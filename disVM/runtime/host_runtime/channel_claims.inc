@@ -140,6 +140,7 @@ void dvm_runtime_channel_wake(Prog *peer, char *cause)
     }
 }
 
+
 extern void dvm_runtime_alt_preflight(Alt *alt);
 
 
@@ -220,6 +221,7 @@ static int cancel_parked_guest(Prog *peer)
     return dvm_runtime_channel_with_queue_claim(peer, cancellable_channel_wait, cancel_parked_channel_wait, peer, NULL);
 }
 
+
 static int cancel_child_exit_wait(Prog *process);
 
 
@@ -292,8 +294,14 @@ int dvm_runtime_cancel_child_wait(Prog *caller, int pid)
 }
 
 
-/* EN: Post a cancellation for the child's supported wait and park caller.
- * RU: Отправить отмену поддерживаемого ожидания потомка и припарковать caller. */
+/* EN: On caller's permanent owner, post an owned cancellation node to direct
+ * child pid and park caller's prepared frame. Registry mutex protects publication.
+ * Return zero when parked, one for a cached result or synchronous fallback.
+ * Allocation/ID exhaustion fails before parking; posting failure requeues caller.
+ * RU: На постоянном потоке caller отправить владеемый узел прямому ребёнку pid
+ * и припарковать подготовленный кадр. Mutex реестра защищает публикацию.
+ * Ноль означает парковку, единица — готовый результат либо синхронный путь.
+ * Ошибка памяти/исчерпания ID возникает до парковки; отказ отправки возвращает caller. */
 int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)caller;

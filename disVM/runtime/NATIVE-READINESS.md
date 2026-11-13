@@ -351,3 +351,19 @@ handwritten source files are at most 446 lines.
 реальных повторных профилей. Все 79 сценариев имеют успешные результаты с
 этой целевой перепроверкой; это не выдается за один непрерывный финальный
 прогон 79/79. Финальные TSan-проверки продолжений и process-control прошли.
+
+## Repeated cancellation of the same child
+
+An interrupted `cancelwait` can be followed by another attempt on the same live
+child before its old reply arrives. Each attempt now owns a unique operation ID
+and a native message allocation, so an old result cannot complete the new call
+or overwrite another queued reply. Queue teardown and resident stop dispose
+owned nodes, including replies already staged outside admission. See
+[CANCEL-GENERATIONS.md](CANCEL-GENERATIONS.md) for ownership, the deterministic
+real-owner regression, omission control and exact validation scope.
+
+Повторная отмена одного ребёнка теперь различает операции по ID, а не только PID.
+Старый ответ не завершает новое ожидание; его память освобождается владельцем.
+Локально пройдены 43/43 обычных и TSan-нагрузок и 99/99 расширенных CTests.
+Это исправление DisVM/Limbo без глобальной остановки; оно не объявляет все пути
+VM или аппаратную многопоточность RV64 полностью проверенными.

@@ -37,6 +37,7 @@ int __real_dvm_bigtable_cancel_wait(Prog *child);
 int __real_dvm_runtime_prepare_cancelwait(Prog *parent, int pid);
 Channel *__real_dvm_runtime_channel_new(void *, Type *, WORD, void (*)(void), int);
 
+
 /* EN: Fail with borrowed diagnostic on broken test protocol; never returns on error.
  * RU: Завершить тест с заимствованной диагностикой при нарушении протокола. */
 static void require(int condition, const char *message)
@@ -47,6 +48,7 @@ static void require(int condition, const char *message)
         exit(10);
     }
 }
+
 
 /* EN: Wait for predicate outside GC admission. Keep this thread's Prog/REG;
  * restore admission before returning, without managed access during the wait.
@@ -64,6 +66,7 @@ static void wait_for(int *predicate)
     pthread_mutex_unlock(&gate);
     dvm_runtime_gc_native_enter(token);
 }
+
 
 /* EN: Delay only the table-waiting child, before its genuine cancellation.
  * Parent cancellation proceeds on its own owner. No production lock is held.
@@ -86,6 +89,7 @@ int __wrap_dvm_bigtable_cancel_wait(Prog *child)
     }
     return __real_dvm_bigtable_cancel_wait(child);
 }
+
 
 /* EN: Count calls by the middle parent (PID 2); release A only after B was
  * published to the same child. Preserve the real result and ownership.
@@ -113,6 +117,7 @@ int __wrap_dvm_runtime_prepare_cancelwait(Prog *parent, int pid)
     return result;
 }
 
+
 /* EN: Capacity 101 is the grandparent's marker: wait for the delayed A request,
  * then invoke the real constructor with borrowed operands and unchanged result.
  * RU: Capacity 101 — метка деда: дождаться задержки A, затем вызвать настоящий
@@ -126,8 +131,13 @@ Channel *__wrap_dvm_runtime_channel_new(void *destination, Type *type, WORD capa
     return __real_dvm_runtime_channel_new(destination, type, capacity, mover, guarded);
 }
 
-/* EN: Observe a real reply transferred to the middle owner; do not modify it.
- * RU: Наблюдать передачу настоящего ответа среднему владельцу без изменений. */
+
+/* EN: Take the real node from borrowed endpoint/reply FIFO with original wait
+ * policy. Return it unchanged, observing only its exclusively owned native fields.
+ * This also covers staging outside GC admission; the observation is thread-local.
+ * RU: Забрать настоящий узел из endpoint/reply FIFO с исходным режимом wait.
+ * Вернуть без изменений, читая лишь принадлежащие получателю нативные поля.
+ * Это покрывает извлечение вне допуска GC; наблюдение хранится в TLS. */
 DVM_OwnerMessage *__wrap_dvm_messages_take(DVM_MessageEndpoint *endpoint, int replies, int wait)
 {
     DVM_OwnerMessage *reply = __real_dvm_messages_take(endpoint, replies, wait);
@@ -138,9 +148,12 @@ DVM_OwnerMessage *__wrap_dvm_messages_take(DVM_MessageEndpoint *endpoint, int re
     return reply;
 }
 
-/* EN: Release B only after A has been applied or discarded by the real consumer.
+
+/* EN: Borrow parent (possibly NULL for the rootless controller). Release B only
+ * after A has been applied or discarded by the real consumer.
  * The reply itself may already be freed. Arguments stay borrowed.
- * RU: Разрешить B лишь после принятия либо отбрасывания A настоящим получателем.
+ * RU: Заимствовать parent (возможно NULL у controller без гостя). Разрешить B лишь
+ * после принятия либо отбрасывания A настоящим получателем.
  * Сам ответ уже может быть освобождён. Аргументы остаются заимствованными. */
 void __wrap_dvm_managed_workers_finish_reply(Prog *parent)
 {
@@ -154,6 +167,7 @@ void __wrap_dvm_managed_workers_finish_reply(Prog *parent)
     }
 }
 
+
 /* EN: At normal process exit all unique cancellation nodes must be freed.
  * Native threads have joined; fail on missing disposal, without managed access.
  * RU: При выходе все узлы отмены должны быть освобождены. Native-потоки уже
@@ -163,6 +177,7 @@ static void check_storage(void)
     require(allocations == 3 && disposals == allocations, "all three operations disposed exactly once");
     puts("PASS cancellation storage sent=3 freed=3 live=0");
 }
+
 
 /* EN: Track a native cancellation node before ownership transfer. Repeated send
  * of the same node as a reply is not a new allocation. Preserve the real result.
@@ -183,6 +198,7 @@ int __wrap_dvm_messages_send(DVM_MessageRouter *router, uintptr_t destination, i
     }
     return __real_dvm_messages_send(router, destination, reply, node);
 }
+
 
 /* EN: Count disposal of tracked native nodes before forwarding the exact free.
  * A cleared slot cannot match a later free; no allocation contents are inspected.
