@@ -149,3 +149,11 @@ Broker отправляет его с конечным deadline; finalizer не 
 останавливает остальные потоки. Проверены ровно один explicit Drop, сохранение
 отдельного clone, replay Retain и root/publication refusal. Это per-connection
 ownership, не cross-node tracing; см. [границы DVP2](NETWORK-OWNERS.md).
+
+Typed callback results теперь также проходят настоящий двух-VM путь:
+`Proxynet.fetch` возвращает Image новой variable либо function capture. Новый export
+имеет отдельный root; returned alias остаётся живым ref. Проверены original Drop,
+concurrent result clients, GC, orphan reply, exact result replay, admitted result
+disconnect, локальная reservation quota до effect и remote export quota после
+partial effect. Private DVP3 имеет 184 bytes; это не изменение public Dis64 ABI.
+Подробности и ограничения: [результаты-прокси](NETWORK-OWNERS.md#результаты-прокси-из-callback).

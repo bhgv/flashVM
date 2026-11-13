@@ -71,3 +71,9 @@ cross-node ref routing, managed result cache/ack и network authentication ос�
 DisVM peers, refs, terminal owner cleanup и managed image leases: explicit clone,
 GC Release, collection вложенного self-cycle и независимость retained owner. Distributed GC или полный network proxy не
 объявляются готовыми. Shared DIS64 kinds/opcodes не изменены.
+
+Returned typed Cell/capture также получает отдельный managed export root на
+исходном owner. Network client заранее резервирует token, затем binding проверяет
+exact result handle без allocation. Result replay не создаёт второй root; GC
+abandoned buffered result reply отправляет ровно один Release. Это проверено
+real two-VM результатами и независимым wire peer, включая quota и disconnect.

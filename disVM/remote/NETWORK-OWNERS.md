@@ -89,28 +89,76 @@ ledger. `poll` не держит queue mutex; `recv/send` используют `
 исходный heap owner и отпускают staging/root pins. Статистика native GC и banner
 completion выведены в stderr, чтобы stdout мог нести только application bytes.
 
-## Приватный формат версии 2
+## Приватный формат версии 3
 
 Все числа — явно восемь big-endian bytes; signed scalar — битовый 64-bit pattern.
-Record имеет ровно 152 bytes, magic `DVP2`, version 2. Managed pointers, C padding
+Record имеет ровно 184 bytes, magic `DVP3`, version 3. Managed pointers, C padding
 и bitmap/layout native frame в stream не попадают. Это private hosted NC64
 протокол, **не DIS64 format, public kind/opcode или Word=4/ref=8 ABI**.
 
 | Byte offset | Содержание |
 | --- | --- |
 | 0..7 | Magic 4 bytes, version, type (Hello=1/Call=2/Reply=3), reserved zero 2 bytes |
-| 8 | Exact record size 152 |
+| 8 | Exact record size 184 |
 | 16, 24 | Connection epoch high/low |
 | 32 | ID; Hello=0, request/reply positive, максимум signed 63 bits |
-| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6), ref count 0..2, copied scalar value |
+| 40, 48, 56 | Operation (Read=1..Stop=5, Retain=6, ReturnVariable=7, ReturnFunction=8), ref count 0..2, copied scalar value |
 | 64, 88, 112 | Target/left/right: session, slot, generation по 8 bytes |
-| 136, 144 | Status/result; в request обязаны быть нулевыми |
+| 136, 144 | Status/copied scalar result; в request нули |
+| 152 | Result kind: 0 absent, 1 variable, 2 function |
+| 160, 168, 176 | Returned owner: session, slot, generation |
 
 Hello передаёт variable в target и function в left. Slot ограничен 0..255,
 owner session/generation в первом codec — неотрицательные signed 63-bit values;
 реальные exports требуют ненулевых identities/generations. Reply должен точно
 совпасть с request до byte 136, кроме type. Неизвестные status, epoch/version,
 size/reserved, неверные ID/refs/slot и неполный кадр не становятся managed call.
+
+## Результаты-прокси из callback
+
+`Proxynet.fetch(endpoint, function, left, right, refs, value, kind, timeout)`
+вызывает `Proxyhandler.result` на исходном постоянном owner Prog. `kind` —
+`Proxyhost.Variable` либо `Proxyhost.Function`. Callback получает actual capture
+и до двух actual same-owner Cell refs, возвращает actual nonnil Cell. Сервер
+публикует отдельный export root и возвращает handle; native pointer не передаётся.
+Для function это capture того же typed handler module, не arbitrary closure ABI.
+Обычный `invoke` по-прежнему возвращает скаляр.
+
+Возвращённая переменная может быть новой Cell либо существующим ref: новый export
+владеет отдельным root, а изменения alias видны через оба handle. Возвращённая
+функция получает собственный capture root, исполняется тем же owner и остаётся
+рабочей после Drop исходного function image. Прежние exports не заменяются.
+Returned Image поддерживает обычные Read/Write/Invoke, clone, Drop и automatic GC
+Release. Несколько клиентов могут одновременно получать и использовать results.
+
+До wire callback broker резервирует native slot и managed token в состоянии
+RESERVED, ещё без handle. Такой token нельзя activate/match/consume. После
+проверенного успешного reply creating broker однократно привязывает exact handle
+и делает token ACTIVE, без новой allocation. Ошибка, nil result, terminal reply
+или отменённый caller не оставляют ложный active token. Unbound token собирается
+без remote Drop; successful Image в abandoned buffered reply собирается с Drop.
+
+Отказ локальной reservation даёт Capacity **до callback**. Отказ native export
+quota на сервере возможен **после callback**: partial effects остаются видимыми,
+Image не создаётся, Capacity не разрешает автоматический повтор. После explicit
+Drop/collection освобождённого export следующий independent call может пройти.
+`Proxyhandler.result` exception даёт OwnerError и также допускает partial effect;
+nil Cell даёт Invalid. Session Stop/retirement очищает оставшиеся result exports.
+Process-local `Proxyowner.fetch` возвращает scalar handle и требует explicit
+Drop/Stop; автоматическое image ownership обеспечивает network adapter.
+
+Reply cache хранит exact result bytes. Повтор того же ID возвращает **тот же**
+handle, не вызывает callback ещё раз и не создаёт второй export/Retain. После
+продвижения окна старый result request Stale. Disconnect/потеря/порча ответа
+возвращает Unknown и не запускает replay. Remote session cleanup сохраняет roots
+до завершения/retirement callback. Caller timeout не доказывает отмену эффекта.
+
+В Hello и Call весь result extension нулевой. Failed/scalar Reply также обязан
+иметь нулевые kind/handle. Successful result Reply требует kind requested operation,
+нулевой scalar result, positive session/generation и bounded slot. Session должна
+совпасть с invoked function. Malformed/foreign/wrong-kind result становится terminal
+Unknown до adoption. DVP2 не принимается как DVP3; обе стороны собираются matching
+producer с актуальными interfaces. Это private hosted формат, не Dis64 ABI.
 
 ## Владение Image и конкурентная сборка мусора
 
@@ -138,7 +186,7 @@ maintenance tick — до 100 ms; GC traffic не продлевает исхо�
 `collected(endpoint, timeout)` наблюдает число подтверждённых GC Releases, без
 forced collection. Scheduling/collection не имеют hard real-time гарантии.
 
-Очередь ограничена 256 slots, включая staged/live/pending tokens. Для clone slot
+Очередь ограничена 256 slots, включая reserved/staged/live/pending tokens. Для clone slot
 и managed token резервируются **до** remote Retain; capacity не создаёт удалённый
 эффект. Token активируется только после успешного reply. Native storage удерживают
 connection payload и каждый token независимо. Exact runtime-private descriptors
@@ -174,13 +222,20 @@ original variable/function при живых отдельных clones, вызо
 после GC original с двумя live ref aliases, отдельный GC function clone без
 отзыва variable ref, GC последнего variable clone и replay Retain.
 Joined `PROXYGC` counters требуют queues/tokens/pending=0 и баланс drained/discarded.
-Private compiled omissions exact owner match / Retain / finalizer Release / epoch guard / duplicate cache
-обязаны дать конкретный
-semantic failure; crash/compile failure/timeout не засчитываются.
+Дополнительно проверены callback variable/function results, восемь concurrent
+result clients, live returned ref alias, независимые roots после original Drop,
+GC возвращённых images, exact result replay, обрыв после actual result callback
+entry, malformed/foreign/wrong-kind/truncated reply, orphan result reply GC,
+remote quota после partial effect и восстановление после освобождения export.
+Private compiled omissions exact owner match / Retain / finalizer Release / epoch
+/ duplicate cache / result validation / result binding обязаны дать конкретный
+semantic failure; crash/compile failure/timeout не засчитываются. Отдельный
+private refusal ограничивает только RESERVED allocation и подтверждает отсутствие
+remote callback effect, сохранение output и чистое завершение session.
 
-Пока доступны int Cell, copied scalar result, один function/capture и максимум
-два same-owner variable refs. Нет arbitrary closure/value types, String snapshots,
-proxy-valued returns, cross-owner ref routing и transparent compiler lowering.
+Доступны int Cell, copied scalar result, typed variable/function result images
+и максимум два same-owner variable refs. Нет arbitrary closure/value types,
+String snapshots, cross-owner ref routing и transparent compiler lowering.
 Обычные Image copies разделяют lease; отдельный owner создаёт explicit clone.
 Это ещё не cross-node distributed tracing GC. TLS/peer authentication, automatic unique epoch
 provisioning, owning dial/listen/FD adoption и полноценная cross-node lease/ACK
