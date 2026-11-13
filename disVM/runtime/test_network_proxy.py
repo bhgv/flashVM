@@ -8,6 +8,7 @@ import re
 import tempfile
 
 from network_proxy_results import result_replay, result_disconnect, orphan_result
+from network_proxy_routing import routed_pair, add_replay
 from network_proxy_controls import controls
 from network_proxy_fixture import Guest, compile_fixture, connected_tcp
 from network_proxy_faults import (
@@ -35,7 +36,17 @@ def two_vms(runtime, work, mode, locked, tag, client_name="client"):
         guests.append(Guest(runtime, work, client_name, mode, locked, right, tag + "-client"))
         left.close()
         right.close()
-        if client_name == "result-quota-client":
+        if client_name == "routed-client":
+            output = guests[1].finish(
+                "PASS cross-owner proxy refs: original callback 8 clients atomic aliases Drop GC join"
+            )
+            count = re.search(
+                r"PROXYGC queues=0 tokens=0 pending=0 enqueued=(\d+) drained=(\d+)", output
+            )
+            if not count or int(count[1]) < 1 or int(count[2]) < 1:
+                raise RuntimeError("cross-owner ref GC did not reach actor")
+            guests[0].finish("result=0 value=42")
+        elif client_name == "result-quota-client":
             guests[1].finish(
                 "PASS remote result quota: completed effect preserved release recovery terminal roots"
             )
@@ -126,6 +137,9 @@ def main():
                     two_vms(runtime, work, mode, locked, tag)
                     two_vms(runtime, work, mode, locked, tag + "-gc", "gc-client")
                     two_vms(runtime, work, mode, locked, tag + "-result", "result-client")
+                    routed_pair(runtime, work, mode, locked, tag + "-routed")
+                    routed_pair(runtime, work, mode, locked, tag + "-routed-loss", True)
+                    add_replay(runtime, work, mode, locked, tag + "-add-replay")
                     two_vms(
                         runtime, work, mode, locked, tag + "-result-quota", "result-quota-client"
                     )

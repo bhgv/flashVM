@@ -13,7 +13,15 @@ from resident_evidence import evidence
 def compile_fixture(root, work, compiler, include):
     sources = [
         (root.parent / "limbo" / (name + ".b"), name)
-        for name in ("proxyowner", "proxyframe", "proxystream", "proxynet", "proxyserver")
+        for name in (
+            "proxyref",
+            "proxyowner",
+            "proxyframe",
+            "proxystream",
+            "proxynet",
+            "proxyserver",
+            "proxyroute",
+        )
     ]
     sources += [
         (root / "fixtures/proxy-network" / (name + ".b"), name)
@@ -30,6 +38,8 @@ def compile_fixture(root, work, compiler, include):
             "scalar-results",
             "gc-client",
             "result-client",
+            "routed-client",
+            "routed-failure-client",
             "result-quota-client",
             "result-failure-client",
             "result-capacity-client",
@@ -44,6 +54,9 @@ def compile_fixture(root, work, compiler, include):
     alternate = work / "new-incarnation.b"
     alternate.write_text(old.replace("big 67890", "big 67891"))
     compile_one(root, work, compiler, include, alternate, "new-incarnation")
+    routed = work / "routed-server.b"
+    routed.write_text(old.replace(", 5000, handler", ", 15000, handler"))
+    compile_one(root, work, compiler, include, routed, "routed-server")
 
 
 # EN/RU: Compile one source into work; diagnostics are failures, never semantic controls.
@@ -125,7 +138,9 @@ class Guest:
             )
             if not count or int(count[1]) != int(count[2]) + int(count[3]):
                 raise RuntimeError("native image ownership was not drained\n" + output[-12000:])
-        if "PROXYHOST" in output and "PROXYHOST opened=1 closed=1 exports=0 active=0" not in output:
+        if "PROXYHOST" in output and not re.search(
+            r"PROXYHOST opened=([1-9][0-9]*) closed=\1 exports=0 active=0", output
+        ):
             raise RuntimeError("network exports or admitted calls leaked\n" + output[-12000:])
         return output
 

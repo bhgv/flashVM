@@ -3,6 +3,7 @@
 # RU: Приватные compiled omissions обязаны нарушать настоящую network owner semantics.
 
 from network_proxy_gc_controls import controls as gc_controls
+from network_proxy_route_controls import controls as route_controls
 from relink_private import relink
 import subprocess
 
@@ -138,6 +139,7 @@ def controls(runtime, root, work, compiler, include):
     print("PASS network omissions: epoch, exact lease owner and repeated owner effect rejected")
 
     gc_controls(runtime, root, work)
+    route_controls(runtime, root, work, compiler, include)
 
     flags = runtime.parent / "CMakeFiles/disvm.dir/flags.make"
     if "-fsanitize=thread" in flags.read_text():
