@@ -155,7 +155,7 @@ if(DVM_RUNTIME_EDITOR)
   target_compile_definitions(disvm-editor PRIVATE DVM_NATIVE_REGISTERS=1 DVM_RUNTIME_GC_FIELDS=1 DVM_RUNTIME_EDITOR=1 DVM_RUNTIME_VERSION="${PROJECT_VERSION}" DVM_RUNTIME_BACKEND="${runtime_backend}")
   target_compile_options(disvm-editor PRIVATE -fno-strict-aliasing)
   target_link_libraries(disvm-editor PRIVATE fvm_owned_table disvm_flashvm_host limbo_bootstrap_lib9
-    limbo_bootstrap_support limbo_bootstrap_lib9 flashvm m)
+    limbo_bootstrap_support limbo_bootstrap_lib9 disvm_remote_session flashvm m)
   if(DVM_EDITOR_SDL)
     find_package(SDL2 2.0.9 CONFIG REQUIRED)
     target_sources(disvm-editor PRIVATE editor_desktop_input.c editor_motion_batch.c)

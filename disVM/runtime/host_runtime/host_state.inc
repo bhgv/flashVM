@@ -46,6 +46,7 @@
 #include "channel_sync.h"
 #include "managed_owner_probe.h"
 #include "remote_managed.h"
+#include "proxyhost.h"
 #include "managed_workers.h"
 #include "host_cancellations.h"
 #include "channel_match.h"
@@ -183,6 +184,7 @@ static void runtime_statistics(void)
         dvm_close_statistics();
         dvm_runqueue_statistics();
         dvm_queue_probe_statistics();
+        dvm_proxyhost_statistics();
         dvm_bigtable_owners(&tables, &keys);
         fprintf(stderr,
                 "instructions=%lu native=%lu gc_runs=%lu gc_epochs=%lu tables_live=%lu keys_live=%lu\n",

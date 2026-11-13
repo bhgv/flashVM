@@ -92,7 +92,7 @@ set(channel_prepare_inputs
   prepare_channel_constructors.py prepare_channel_matches.py
   prepare_alt_results.py prepare_alt_waits.py prepare_channel_queues.py
   prepare_channel_buffer.py)
-set(host_prepare_products)
+set(host_prepare_products "${view}/proxyhost_decl.h" "${view}/proxyhost_table.h")
 if(DVM_RUNTIME_COMPILER)
   add_subdirectory("${root}/disVM/compiler" compiler)
   list(APPEND host_prepare_args --fircompiler "${root}/disVM/module/fircompiler.m")
@@ -120,8 +120,11 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_owner_monitor.py" --output "${view}"
+ COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_proxyhost.py"
+   --compiler "$<TARGET_FILE:limbo-bootstrap>" --interface "${root}/disVM/module/proxyhost.m" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
-    DEPENDS prepare_owner_monitor.py prepare_guarded_leaves.py ${channel_prepare_inputs} limbo-bootstrap
+    DEPENDS prepare_owner_monitor.py prepare_guarded_leaves.py prepare_proxyhost.py
+    "${root}/disVM/module/proxyhost.m" ${channel_prepare_inputs} limbo-bootstrap
     prepare.py prepare_jit_publication.py jit_publication.h prepare_string_view.py
     string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h
     prepare_mapped_cons.py mapped_cons.h prepare_raw_cons.py raw_cons.h
@@ -288,6 +291,8 @@ add_executable(disvm
     clock_sys.c
     sys_capture.c
     remote_managed.c
+    proxyhost.c
+    proxyhost_call.c
     remote_managed_probe.c
     filesystem_sys.c
     srv_adapter.c
@@ -386,6 +391,8 @@ list(APPEND module_sources
   "${root}/ide/dis/tests/idebulk_test.b"
   "${root}/disVM/limbo/asinctasks.b"
   "${root}/disVM/examples/asinctasks/main.b")
+list(APPEND module_names proxyowner)
+list(APPEND module_sources "${root}/disVM/limbo/proxyowner.b")
 file(GLOB syntax_headers "${root}/ide/syntax/*.m")
 list(APPEND module_headers ${syntax_headers})
 list(LENGTH module_names module_count)

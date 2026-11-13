@@ -115,6 +115,7 @@ static int runtime_dispatch_turn(void)
             up->prog = nil;
             return 1;
         }
+        dvm_proxyhost_retire();
         if (owner_error()[0])
         {
             const char *path;
