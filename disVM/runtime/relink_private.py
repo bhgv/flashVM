@@ -88,6 +88,7 @@ def relink(
     retirement_pass_source=None,
     packet_budget_source=None,
     remote_managed_source=None,
+    proxyhost_call_source=None,
 ):
     target = "disvm-editor" if runtime.name == "disvm-editor" else "disvm"
     metadata = runtime.parent / ("CMakeFiles/" + target + ".dir")
@@ -160,6 +161,7 @@ def relink(
         (retirement_pass_source, "gc/fast/retirement_pass.c"),
         (packet_budget_source, "gc/fast/packet_budget.c"),
         (remote_managed_source, "remote_managed.c"),
+        (proxyhost_call_source, "proxyhost_call.c"),
     ):
         if candidate is None:
             continue
@@ -206,6 +208,7 @@ def relink(
                 "mapped_cons.c",
                 "mapped_prepare.c",
                 "remote_managed.c",
+                "proxyhost_call.c",
             )
             else "/native/" + filename + ".o"
         )
