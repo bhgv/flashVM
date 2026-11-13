@@ -48,6 +48,7 @@ Proxynet: module
         right: Image; # Second ref owner if used.
         refs: int; # Zero to two used refs.
         value: int; # Copied scalar input.
+        deadline: int; # Original caller absolute monotonic deadline, never renewed in queue.
         reply: chan of Reply; # One-slot completion, independent of caller survival.
     };
 
@@ -107,6 +108,7 @@ Proxynet: module
     # резервируется до callback; kind — Proxyhost Variable/Function. Без replay.
     fetch: fn(endpoint: ref Endpoint, target, left, right: Image,
               refs, value, kind, timeout: int): (int, Image);
+
 
     # EN: Import one server-authorized forwarding slot as a GC-owned variable image.
     # Authority remains connection-scoped; arbitrary remote destinations are refused.

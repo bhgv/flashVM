@@ -192,6 +192,10 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
     absent := Handle(big 0, 0, big 0);
     for (;;) {
         request := <-endpoint.requests;
+        if (request.deadline <= sys->millisec()) {
+            request.reply <-= (NotSent, 0, absent);
+            continue;
+        }
         if (request.operation == Stop) {
             status = host->close();
             while (status == Proxyhost->Capacity) {

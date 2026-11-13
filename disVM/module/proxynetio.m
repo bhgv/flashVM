@@ -16,5 +16,5 @@ Proxynetio: module
     # RU: Заимствовать mapped request/FD owners до absolute exchange deadline.
     # Вернуть status/value/terminal/returned handle; без replay native effects.
     exchange: fn(input, output: ref Sys->FD, request: ref Proxynet->Request,
-                 high, low, id: big, timeout: int): (int, int, int, Proxyowner->Handle);
+                 high, low, id: big, deadline: int): (int, int, int, Proxyowner->Handle);
 };

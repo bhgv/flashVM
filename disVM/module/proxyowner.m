@@ -35,7 +35,7 @@ Proxyowner: module
         routed: int; # Explicit proxy-ref callback, never raw foreign Cell arguments.
         first: ref Proxyref->Ref; # First routed variable owner, if used.
         second: ref Proxyref->Ref; # Second routed variable owner, if used.
-        deadline: int; # Absolute caller budget for routed accesses.
+        deadline: int; # Absolute caller budget for queue admission and routed accesses.
         publish: ref Proxyhost->Cell; # Owner-local cell to root for an opaque forwarded view.
         reply: chan of (int, int, Handle); # Buffered status/scalar/new export identity.
     };

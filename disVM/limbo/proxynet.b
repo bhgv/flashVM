@@ -90,11 +90,11 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Image,
         (refs > 0 && !current(endpoint, left)) || (refs > 1 && !current(endpoint, right))) {
         return Reply(Stale, 0, absent);
     }
+    deadline := sys->millisec() + timeout;
     response := chan[1] of Reply;
-    request := ref Request(operation, target, left, right, refs, value, response);
+    request := ref Request(operation, target, left, right, refs, value, deadline, response);
     started := chan[1] of int;
     signal := chan[1] of int;
-    deadline := sys->millisec() + timeout;
     spawn alarm(started, signal, deadline);
     timer := <-started;
     delivered := 0;
@@ -201,9 +201,9 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
         (session, slot, generation) := gc->next(connection);
         if (session != big 0) {
             target := Image(endpoint.high, endpoint.low, Proxyowner->Handle(session, slot, generation), nil);
-            release := ref Request(Proxyowner->Drop, target, absent, absent, 0, 0, nil);
+            release := ref Request(Proxyowner->Drop, target, absent, absent, 0, 0, idle, nil);
             id++;
-            (status, unused, terminal, ignored) := io->exchange(input, output, release, endpoint.high, endpoint.low, id, remaining);
+            (status, unused, terminal, ignored) := io->exchange(input, output, release, endpoint.high, endpoint.low, id, idle);
             release = nil;
             if (terminal || (status != 0 && status != Stale) || id == big 16r7fffffffffffffff) {
                 break;
@@ -233,6 +233,10 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
             current(endpoint, request.target)) &&
             (request.refs < 1 || current(endpoint, request.left)) &&
             (request.refs < 2 || current(endpoint, request.right));
+        if (request.deadline <= sys->millisec()) {
+            admitted = 0;
+            result.status = Proxyowner->NotSent;
+        }
         if (admitted && request.operation == Proxyowner->Retain) {
             owner := request.target.owner;
             staged = gc->make(connection, owner.session, owner.slot, owner.generation, 0);
@@ -257,8 +261,12 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
         } else if (admitted) {
             id++;
             returned := Proxyowner->Handle(big 0, 0, big 0);
+            deadline := sys->millisec() + timeout;
+            if (request.deadline < deadline) {
+                deadline = request.deadline;
+            }
             (result.status, result.value, closed, returned) = io->exchange(input, output, request,
-                endpoint.high, endpoint.low, id, timeout);
+                endpoint.high, endpoint.low, id, deadline);
             if (!closed && result.status == 0 && request.operation == Proxyowner->Retain) {
                 if (!gc->activate(staged)) {
                     raise "proxy staged lease activation refused";
@@ -273,7 +281,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
                 result.image = Image(endpoint.high, endpoint.low, returned, staged);
             }
         }
-        if (closed || request.operation == Proxyowner->Stop) {
+        if (closed || (admitted && request.operation == Proxyowner->Stop)) {
             endpoint.state.closed = 1;
             gc->close(connection);
         }

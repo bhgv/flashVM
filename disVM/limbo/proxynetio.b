@@ -79,10 +79,12 @@ outcome(response: array of byte, request: ref Proxynet->Request): (int, Proxyown
 
 # EN/RU: One absolute wire deadline; any incomplete/corrupt reply is terminal Unknown.
 # Один absolute wire deadline; incomplete/corrupt reply означает terminal Unknown.
-exchange(input, output: ref Sys->FD, request: ref Proxynet->Request, high, low, id: big, timeout: int): (int, int, int, Proxyowner->Handle)
+exchange(input, output: ref Sys->FD, request: ref Proxynet->Request, high, low, id: big, deadline: int): (int, int, int, Proxyowner->Handle)
 {
+    if (deadline <= sys->millisec()) {
+        return (Proxyowner->NotSent, 0, 1, Proxyowner->Handle(big 0, 0, big 0));
+    }
     bytes := requestbytes(request, high, low, id);
-    deadline := sys->millisec() + timeout;
     (status, unused) := stream->transfer(output, bytes, 1, deadline);
     if (status == Proxystream->OK) {
         response := array[Proxyframe->Size] of byte;
