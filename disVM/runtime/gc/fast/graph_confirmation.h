@@ -11,7 +11,7 @@
 
 /* [GC:] EN: Validate caller-owned rooted group under cells in borrowed world.
  * Return ACQUIRED after atomic claim, BUSY for transient guards/native-vector
- * storage pressure, or REFUSED for stale ownership/fields or hard claim failure.
+ * storage/queue pressure, or REFUSED for stale ownership/fields or hard claim failure.
  * final_epoch optionally receives the reader cutoff; native owners require it.
  * reserved reports a successful reserved-field claim. Release all field
  * reservations before return; allocation BUSY preserves every owner/root.

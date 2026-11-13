@@ -19,10 +19,10 @@ start(capture: ref Proxyhost->Cell)
 
 
 # EN: Run on the original owner; mutate actual alias refs, optionally delay/raise.
-# -999 publishes entry then blocks for owner-retirement tests, -2 delays one effect,
+# -999 publishes entry then blocks for retirement; -2 waits for the original-cell gate,
 # -1 raises after a partial effect. All arguments remain borrowed rooted refs.
 # RU: Исполнить на исходном owner; менять actual aliases, при необходимости delay/raise.
-# -999 сообщает entry и блокируется для retirement, -2 задерживает effect,
+# -999 сообщает entry и блокируется для retirement, -2 ждёт gate в исходной cell,
 # -1 бросает исключение после частичного effect. Аргументы — borrowed rooted refs.
 invoke(capture, left, right: ref Proxyhost->Cell, value: int): int
 {
@@ -48,7 +48,14 @@ invoke(capture, left, right: ref Proxyhost->Cell, value: int): int
         raise "killed callback resumed";
     }
     if (value == -2) {
-        sys->sleep(80);
+        saved := left.value;
+        left.value = -2222;
+        while (left.value == -2222) {
+            sys->sleep(1);
+        }
+        if (left.value != saved) {
+            raise "delayed callback gate changed original value";
+        }
         value = 1;
     }
     left.value += value;

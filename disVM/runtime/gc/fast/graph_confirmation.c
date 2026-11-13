@@ -135,11 +135,11 @@ static DVM_CellResult check_reserved_fields(const RecordGroup *group, DVM_CellDo
 
 /* [GC:] EN: Validate retained group fields in cells, then claim in world.
  * final_epoch receives the reader cutoff; reserved reports successful reserved
- * claim. Propagate transient native allocation BUSY separately from stale-field
+ * claim. Propagate transient queue/cell/native allocation BUSY separately from stale-field
  * REFUSED, with all field reservations released before returning.
  * RU: Сверить поля group под cells и захватить группу в world. final_epoch
  * получает cutoff; reserved сообщает об успешном захвате под резервацией.
- * Отличать временный BUSY памяти от REFUSED устаревших полей; до возврата
+ * Отличать временный BUSY очереди/cells/памяти от REFUSED устаревших полей; до возврата
  * освобождать все резервации полей. */
 DVM_CellResult dvm_gc_fast_confirm_graph(
     const RecordGroup *group, DVM_CellDomain *cells, DVM_NativeWorld *world, unsigned long *final_epoch, int *reserved)
@@ -171,10 +171,14 @@ DVM_CellResult dvm_gc_fast_confirm_graph(
     {
         unsigned int index = dead_node_at(group, position);
         Heap *heap = D2H(group->nodes[index]);
-        if (dvm_runtime_root_count(heap) != 1 ||
-            (heap->t == &Tchannel && !dvm_runtime_channel_is_quiet(H2D(Channel *, heap))))
+        if (dvm_runtime_root_count(heap) != 1)
         {
             result = DVM_CELL_REFUSED;
+        }
+        else if (heap->t == &Tchannel)
+        {
+            int quiet = dvm_runtime_channel_is_quiet(H2D(Channel *, heap));
+            result = quiet < 0 ? DVM_CELL_BUSY : (quiet ? DVM_CELL_ACQUIRED : DVM_CELL_REFUSED);
         }
     }
     /* New live-to-dead edges retain before publishing. A successful count

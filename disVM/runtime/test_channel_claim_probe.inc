@@ -131,13 +131,13 @@ static void probe_real_channel_waiter(void)
     while (milliseconds() < deadline)
     {
         quiet = dvm_runtime_channel_is_quiet(channel);
-        if (quiet)
+        if (quiet > 0)
         {
             break;
         }
         fvm_port_thread_sleep_us(1000);
     }
-    require(quiet && !dvm_runtime_channel_post_close(channel), "actual owner removes wait before the later sample");
+    require(quiet > 0 && !dvm_runtime_channel_post_close(channel), "actual owner removes wait before the later sample");
     require(dvm_runtime_rc_defer(channel) && dvm_runtime_root_remove(D2H(channel)),
             "diagnostic waiter reference and root transfer without a gap");
     dvm_runtime_gc_dispatch_finish();

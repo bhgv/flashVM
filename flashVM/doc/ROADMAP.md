@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1696: the portable mutex adapter supports a nonblocking ownership attempt. Dis collector channel observations conservatively retain a channel when the queue is occupied, avoiding cell-to-queue / ALT queue-to-cell deadlock. Forced-contention acceptance includes a blocking negative control. No Flash compatibility stage closes.
+
 Checkpoint v0.1695: a copied AVM1 closure executes on an independent OS worker after sender destruction. [Contract](WORKER_FUNCTION.md). This does not close AS asinc lowering, frame capture synchronization or any compatibility stage.
 
 Checkpoint v0.1694: a separately compiled C namespace example reuses rooted native methods/accessors, exercises actual GC and linked AS/SWF property writes, and documents host-state ownership. [Example](../examples/embedding/native_module/README.md). This is not a dynamic library loader or full AS call-lowering milestone; no compatibility stage closes.

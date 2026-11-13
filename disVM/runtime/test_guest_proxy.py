@@ -49,24 +49,35 @@ def main():
                 raise RuntimeError(
                     "guest proxy compile failed\n" + compiled.stdout + compiled.stderr
                 )
+        guarded = relink(
+            runtime, work, root / "test_channel_gc_lock.c", 0, ["dvm_proxyhost_initialize"]
+        )
         for mode in ("--no-jit", "--jit"):
             for locked in (False, True):
-                result = subprocess.run(
-                    [
-                        str(runtime),
-                        "--stats",
-                        mode,
-                        *(["--gc-locked-poll"] if locked else []),
-                        str(work / "main.dis"),
-                    ],
-                    cwd=work,
-                    capture_output=True,
-                    text=True,
-                    timeout=90,
-                )
+                command = [
+                    str(guarded),
+                    "--stats",
+                    mode,
+                    *(["--gc-locked-poll"] if locked else []),
+                    str(work / "main.dis"),
+                ]
+                try:
+                    result = subprocess.run(
+                        command, cwd=work, capture_output=True, text=True, timeout=90
+                    )
+                except subprocess.TimeoutExpired as error:
+                    output = "".join(
+                        part.decode(errors="replace") if isinstance(part, bytes) else part
+                        for part in (error.stdout, error.stderr)
+                        if part
+                    )
+                    raise RuntimeError(
+                        f"guest proxy timeout {mode} locked={locked}\n{output[-30000:]}"
+                    ) from error
                 output = result.stdout + result.stderr
                 if (
                     result.returncode
+                    or "PASS GC quiet observation refuses occupied queue" not in output
                     or "ThreadSanitizer:" in output
                     or "runtime error:" in output
                     or output.count(
@@ -86,6 +97,31 @@ def main():
                 ):
                     raise RuntimeError("proxy roots or callback return owners leaked\n" + output)
         if not positive:
+            for variant, symbol in (
+                (1, "fvm_port_sync_try_lock"),
+                (2, "dvm_rc_queued_record_group"),
+            ):
+                broken_queue = relink(
+                    runtime,
+                    work,
+                    root / "test_channel_gc_lock.c",
+                    variant,
+                    ["dvm_proxyhost_initialize", symbol],
+                )
+                refused = subprocess.run(
+                    [str(broken_queue), "--no-jit", str(work / "main.dis")],
+                    cwd=work,
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                if (
+                    refused.returncode != 86
+                    or "FAIL GC queue observation blocked or lost retry" not in refused.stderr
+                ):
+                    raise RuntimeError(
+                        f"queue control {variant} escaped\n" + refused.stdout + refused.stderr
+                    )
             source = (root / "proxyhost_call.c").read_text()
             pattern = r"\(uint64_t\)session != dvm_proxyhost_state.identity \|\|\s*"
             mutated, count = re.subn(pattern, "", source)
@@ -114,6 +150,7 @@ def main():
         "deadlines, callback errors, independent owner and killed active callback; C/JIT and both polls"
     )
     if not positive:
+        print("PASS blocking GC queue observation and lost capture retry rejected")
         print("PASS omitted session fence rejected before replacement root use")
 
 

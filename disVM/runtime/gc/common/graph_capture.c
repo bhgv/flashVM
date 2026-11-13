@@ -212,7 +212,13 @@ static int capture_record_source(
     if (heap->t == &Tchannel)
     {
         Channel *channel = record;
-        if (!dvm_runtime_channel_is_quiet(channel))
+        int quiet = dvm_runtime_channel_is_quiet(channel);
+        if (quiet < 0)
+        {
+            group->busy = 1;
+            return 0;
+        }
+        if (!quiet)
         {
             group->live[index] = RECORD_INTRINSIC_LIVE;
             return 1;

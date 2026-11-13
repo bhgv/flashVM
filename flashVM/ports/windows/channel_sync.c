@@ -1,3 +1,9 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Platform mutex/condition ownership and bounded acquisition.
+ * RU: Владение платформенными mutex/condition и ограниченный захват.
+ */
+
+
 /* FlashVM: Portable platform adapter interface or implementation: channel sync.
  * File: ports/windows/channel_sync.c.
  */
@@ -46,6 +52,16 @@ void fvm_port_sync_lock(FVM_PortSync *s)
 }
 
 
+/* EN: Try borrowed sync once. Return one owning its mutex, zero without
+ * ownership on contention or port error; never wait or touch the condition.
+ * RU: Однократно захватить sync. Один означает владение мьютексом, ноль —
+ * конфликт либо ошибку порта; ожидания и обращения к condition нет. */
+int fvm_port_sync_try_lock(FVM_PortSync *s)
+{
+    return TryEnterCriticalSection(&s->mutex) != 0;
+}
+
+
 /* Release port sync. */
 void fvm_port_sync_unlock(FVM_PortSync *s)
 {
@@ -75,6 +91,7 @@ void fvm_port_sync_signal_all(FVM_PortSync *s)
 {
     WakeAllConditionVariable(&s->condition);
 }
+
 
 /* SRW locks, like the existing condition variables, require Windows Vista+. */
 static SRWLOCK registry_mutex = SRWLOCK_INIT;

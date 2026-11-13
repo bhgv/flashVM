@@ -251,13 +251,20 @@ static int channel_quiet(Channel *channel)
 }
 
 
-/* [GC:] EN: Query independently live channel with the queue mutex. Return
- * only an observation, never a reservation, root or last-owner claim.
- * RU: Под мьютексом проверить живой channel. Вернуть лишь наблюдение,
- * не резервацию, корень или захват последнего владельца. */
+/* [GC:] EN: Try a queue-locked snapshot of independently live channel. The
+ * collector may hold cell guards/reservations while ALT holds the queue mutex
+ * and waits for cells: never wait here. Return -1 on contention (retry), zero
+ * for nonquiet, one for quiet; never a root or last-owner claim.
+ * RU: Попробовать снимок живого channel под мьютексом очереди. GC может
+ * держать cell guards/reservations, пока ALT держит очередь и ждёт cells:
+ * здесь нельзя ждать. Вернуть -1 при конфликте (повторить), ноль при активности,
+ * один при покое. Результат не является корнем либо захватом владельца. */
 int dvm_runtime_channel_is_quiet(Channel *channel)
 {
-    fvm_port_sync_lock(channel_queue_mutex);
+    if (!fvm_port_sync_try_lock(channel_queue_mutex))
+    {
+        return -1;
+    }
     int quiet = channel_quiet(channel);
     fvm_port_sync_unlock(channel_queue_mutex);
     return quiet;

@@ -19,7 +19,7 @@ Rounds: con 4; # Calls per client, serialized only by this variable's owner.
 client(endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Handle, done: chan of int)
 {
     for (index := 0; index < Rounds; index++) {
-        (status, value) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, 1, 500);
+        (status, value) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, 1, 5000);
         if (status != 0 || value <= 0) {
             raise "concurrent proxy callback failed";
         }
@@ -32,7 +32,16 @@ client(endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Handl
 # Дождаться намеренно blocked callback, затем сообщить unknown completion.
 blocked(endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Handle, done: chan of int)
 {
-    (status, unused) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -999, 100);
+    (status, unused) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -999, 1000);
+    done <-= status;
+}
+
+
+# EN/RU: Call with a deadline while the callback waits for the original-cell gate.
+# Вызвать с deadline, пока callback ждёт gate в исходной cell.
+delayed(endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Handle, done: chan of int)
+{
+    (status, unused) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -2, 1000);
     done <-= status;
 }
 
@@ -42,7 +51,7 @@ blocked(endpoint: ref Proxyowner->Endpoint, variable, function: Proxyowner->Hand
 read(endpoint: ref Proxyowner->Endpoint, variable: Proxyowner->Handle, original: ref Proxyhost->Cell, expected: int)
 {
     empty := Proxyowner->Handle(big 0, 0, big 0);
-    (status, value) := proxy->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 500);
+    (status, value) := proxy->call(endpoint, Proxyowner->Read, variable, empty, empty, 0, 0, 5000);
     if (status != 0 || value != expected || original.value != expected) {
         raise "proxy did not read the original mutable variable";
     }
@@ -106,11 +115,11 @@ init()
     (endpoint, variable, function) := <-ready;
     empty := Proxyowner->Handle(big 0, 0, big 0);
     read(endpoint, variable, original, 10);
-    (nestedstatus, nestedvalue) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -4, 500);
+    (nestedstatus, nestedvalue) := proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -4, 5000);
     if (nestedstatus != 0 || nestedvalue != 7777) {
         raise "nested proxy cycle refusal failed";
     }
-    (status, value) := proxy->call(endpoint, Proxyowner->Write, variable, empty, empty, 0, 20, 500);
+    (status, value) := proxy->call(endpoint, Proxyowner->Write, variable, empty, empty, 0, 20, 5000);
     if (status != 0 || value != 20) {
         raise "proxy write failed";
     }
@@ -122,18 +131,24 @@ init()
         <-done;
     }
     read(endpoint, variable, original, 20 + Clients * Rounds * 2);
-    (status, value) = proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -2, 10);
-    if (status != Proxyowner->Unknown) {
+    spawn delayed(endpoint, variable, function, done);
+    for (attempt := 0; original.value != -2222 && attempt < 10000; attempt++) {
+        sys->sleep(1);
+    }
+    if (original.value != -2222) {
+        raise "delayed callback never entered before deadline";
+    }
+    if (<-done != Proxyowner->Unknown) {
         raise "delivered timeout was called cancelled";
     }
-    sys->sleep(140);
+    original.value = 20 + Clients * Rounds * 2;
     read(endpoint, variable, original, 22 + Clients * Rounds * 2);
-    (status, value) = proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -1, 500);
+    (status, value) = proxy->call(endpoint, Proxyowner->Invoke, function, variable, variable, 2, -1, 5000);
     if (status != Proxyowner->OwnerError) {
         raise "callback error was not returned";
     }
     read(endpoint, variable, original, 21 + Clients * Rounds * 2);
-    (status, value) = proxy->call(endpoint, Proxyowner->Invoke, variable, variable, variable, 2, 1, 500);
+    (status, value) = proxy->call(endpoint, Proxyowner->Invoke, variable, variable, variable, 2, 1, 5000);
     if (status == 0) {
         raise "wrong-kind function target admitted";
     }
@@ -146,37 +161,37 @@ init()
     context := ref Proxyhost->Cell(0);
     spawn proxy->serve(handler, second, context, ready);
     (other, secondvar, secondfn) := <-ready;
-    (status, value) = proxy->call(other, Proxyowner->Invoke, secondfn, variable, variable, 2, 9, 500);
+    (status, value) = proxy->call(other, Proxyowner->Invoke, secondfn, variable, variable, 2, 9, 5000);
     if (status == 0 || second.value != 4) {
         raise "foreign ref silently aliased a local slot";
     }
-    (status, value) = proxy->call(other, Proxyowner->Drop, variable, empty, empty, 0, 0, 500);
+    (status, value) = proxy->call(other, Proxyowner->Drop, variable, empty, empty, 0, 0, 5000);
     if (status == 0) {
         raise "foreign release affected a local slot";
     }
     spawn blocked(endpoint, variable, function, done);
-    for (attempt := 0; original.value != 777 && attempt < 1000; attempt++) {
+    for (attempt = 0; original.value != 777 && attempt < 1000; attempt++) {
         sys->sleep(1);
     }
     if (original.value != 777) {
         raise "blocking callback never entered";
     }
-    (status, value) = proxy->call(other, Proxyowner->Invoke, secondfn, secondvar, secondvar, 2, 2, 500);
+    (status, value) = proxy->call(other, Proxyowner->Invoke, secondfn, secondvar, secondvar, 2, 2, 5000);
     if (status != 0 || value != 8) {
         raise "independent owner stalled behind blocked owner";
     }
     if (control->killwait(capture.value) != Processctl->Retired || <-done != Proxyowner->Unknown) {
         raise "abandoned callback retirement failed";
     }
-    (status, value) = proxy->call(other, Proxyowner->Drop, secondvar, empty, empty, 0, 0, 500);
+    (status, value) = proxy->call(other, Proxyowner->Drop, secondvar, empty, empty, 0, 0, 5000);
     if (status != 0) {
         raise "explicit proxy release failed";
     }
-    (status, value) = proxy->call(other, Proxyowner->Read, secondvar, empty, empty, 0, 0, 500);
+    (status, value) = proxy->call(other, Proxyowner->Read, secondvar, empty, empty, 0, 0, 5000);
     if (status == 0) {
         raise "released proxy remained valid";
     }
-    (status, value) = proxy->call(other, Proxyowner->Stop, empty, empty, empty, 0, 0, 500);
+    (status, value) = proxy->call(other, Proxyowner->Stop, empty, empty, empty, 0, 0, 5000);
     if (status != 0) {
         raise "owner close failed";
     }

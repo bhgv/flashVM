@@ -63,9 +63,22 @@ Retirement hook работает до снятия Prog root/stack, когда �
 C/JIT, оба poll paths, восемь клиентов, live variable mutations и repeated ref
 aliases, callback owner PID, late effect без replay, handled error, NotSent,
 Unknown, nested-wait refusal, независимый owner и kill активного callback.
+Для Unknown callback публикует вход в исходной Cell и ждёт её gate: эффект
+невозможен до наблюдения таймаута. Срок не подменяет доказательство delivery.
 Отдельно проверены Drop, foreign refs/Drop и reopen с теми же slot/generation.
 Private omission session fence должен завершиться семантическим отказом до
 использования replacement root. Компиляционная ошибка/crash не считается proof.
+
+Принудительный GC/ALT lock-order тест удерживает настоящий queue mutex и
+запускает отдельный native observer. Он обязан вернуть transient -1 вместо quiet
+snapshot; после unlock тот же пустой channel обязан быть quiet. Private control
+возвращает блокирующий захват и обязан завершиться кодом 86 после bounded wait.
+Другой private control удаляет busy после настоящего discovery и также обязан
+быть обнаружен; private synthetic metadata не выдаются за managed-root lifetime test.
+В рабочем GC занятая очередь означает консервативно живой объект: удерживая
+cell guards/reservations, сборщик не ждёт очередь, чей ALT может ждать эти cells.
+Capture сохраняет busy и candidate для повтора, confirmation возвращает BUSY:
+временный конфликт не превращается в постоянную классификацию live и потерю цикла.
 
 `PROXYHOST opened=closed exports=0 active=0`, matched native resident joins и
 полностью опустошённые native RC очереди проверяются после completion. Generated
