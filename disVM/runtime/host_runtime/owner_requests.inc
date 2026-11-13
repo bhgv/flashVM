@@ -56,7 +56,8 @@ static int consume_channel_message(Prog *guest)
  * RU: Принять ответ об отмене или завершении до запуска родителя. */
 static int apply_child_reply(Prog *guest, DVM_RuntimeProcess *process, DVM_OwnerMessage *reply)
 {
-    if (!reply || guest->state != DVM_CHILD_EXIT_WAIT || reply->request != (uint64_t)process->exit_wait_pid)
+    if (!reply || dvm_runqueue_observed_state(guest) != DVM_CHILD_EXIT_WAIT ||
+        reply->request != (uint64_t)process->exit_wait_pid)
     {
         return 0;
     }
@@ -100,12 +101,12 @@ static int consume_child_reply(Prog *guest)
 
 
 /* EN: Consume guest wait requests on its permanent owner. First check the
- * mailbox, then snapshot state under the same mutex as channel publication.
- * Release that mutex before cancellation handlers and reply callbacks run.
+ * mailbox, then acquire the atomic state publication. A table wake uses a
+ * different mutex from channel publication, so the raw state is not safe here.
  * Return whether any request completed; guest remains independently alive.
  * RU: Принять запросы guest на постоянном владельце. После проверки mailbox
- * снять state под мьютексом публикации канала. Отпустить мьютекс до обработчиков
- * отмены и ответов. Вернуть признак завершения; guest удерживается отдельно. */
+ * прочитать атомарную публикацию state: пробуждение таблицы использует другой
+ * mutex. Вернуть признак завершения; guest удерживается отдельно. */
 static int consume_process_wait_requests(Prog *guest)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
@@ -113,9 +114,7 @@ static int consume_process_wait_requests(Prog *guest)
     {
         return 0;
     }
-    fvm_port_sync_lock(channel_queue_mutex);
-    int state = guest->state;
-    fvm_port_sync_unlock(channel_queue_mutex);
+    int state = dvm_runqueue_observed_state(guest);
     if (state != DVM_CHILD_EXIT_WAIT && state != DVM_TABLE_WAIT && state != Pready)
     {
         return 0;

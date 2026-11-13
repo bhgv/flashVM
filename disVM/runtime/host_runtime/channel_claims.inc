@@ -198,7 +198,10 @@ static int cancel_parked_channel_wait(void *argument)
 static int cancellable_channel_wait(void *argument)
 {
     Prog *peer = argument;
-    return peer && (peer->state == Psend || peer->state == Precv || peer->state == Palt) &&
+    /* EN: Generic cancellation may inspect a table waiter during a table wake.
+     * RU: Общая отмена может видеть table-waiter во время пробуждения таблицей. */
+    int state = peer ? dvm_runqueue_observed_state(peer) : Pready;
+    return peer && (state == Psend || state == Precv || state == Palt) &&
            !((DVM_RuntimeProcess *)peer)->channel_claimed && !dvm_runqueue_dispatch_owner(peer);
 }
 

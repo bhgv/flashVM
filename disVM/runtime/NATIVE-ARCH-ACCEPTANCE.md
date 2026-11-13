@@ -86,6 +86,9 @@ no global admission lock is added. The wide native CI matrix now includes an
 AMD64 TSan job, so successful unsanitized architecture runs cannot hide this race.
 The ephemeral TSan runner uses 28 mmap randomization bits for shadow compatibility;
 VM/driver failures and sanitizer diagnostics remain failures, without retries.
+The same audit moved generic cancellation classification, owner mailbox request/
+reply admission and shared-dispatch recognition onto the atomic scalar as well:
+the channel mutex alone cannot exclude a table scheduler's readiness write.
 
 Первый расширенный x64 TSan-запуск дал 39/40 и обнаружил гонку пробуждения таблицы:
 запись `Prog.state` под mutex таблиц пересекалась с чтением под mutex каналов.
@@ -93,6 +96,8 @@ VM/driver failures and sanitizer diagnostics remain failures, without retries.
 поля каналов и сохранённые регистры не читаются. Общий эксклюзив не добавляется.
 В CI добавлен отдельный AMD64 TSan job; его ошибки не заменяются повторным
 успешным запуском. Для shadow-памяти временного runner задано mmap_rnd_bits=28.
+Проверки общей отмены, mailbox-запросов/ответов владельца и shared-dispatch также
+читают атомарный скаляр: mutex каналов не исключает запись готовности таблицей.
 
 ## Guarded JIT profile on ARM64/RV64
 

@@ -261,7 +261,7 @@ int dvm_runtime_gc_dispatch_is_shared(void)
     Prog *resident = dvm_native_context_process(context);
     DVM_HeapOwnerStats state;
     DVM_HeapOwner *owner = dvm_native_owner_current();
-    return resident && resident->state == Pready && up->prog == resident &&
+    return resident && dvm_runqueue_observed_state(resident) == Pready && up->prog == resident &&
            dvm_runqueue_dispatch_owner(resident) == context && dvm_native_owner_world(owner) == dvm_gc_runtime.world &&
            dvm_native_owner_statistics(owner, &state) && state.phase == DVM_HEAP_SHARED && !state.pending_progress;
 }
