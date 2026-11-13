@@ -67,7 +67,16 @@ def execute(case, runtime, compiler, include, logs):
     }
     print(f"{'PASS' if status == 0 else 'FAIL'} {name}: {row['seconds']}s", flush=True)
     if status:
-        print(path.read_text()[-16000:], flush=True)
+        diagnostic = path.read_text()
+        if len(diagnostic) > 22000:
+            print(
+                diagnostic[:6000]
+                + "\n... full output retained in case log ...\n"
+                + diagnostic[-16000:],
+                flush=True,
+            )
+        else:
+            print(diagnostic, flush=True)
     return row
 
 

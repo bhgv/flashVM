@@ -110,10 +110,36 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
  BYPRODUCTS "${view}/exception.c" "${view}/runt.h" "${view}/sysmod.h" "${view}/unsupported.c" "${view}/srv.c" "${view}/srvmod.h" "${view}/loadermod.h" "${view}/mathmod.h" "${view}/bigtablemod.h" "${view}/processctlmod.h" ${host_prepare_products}
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
+ COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
- DEPENDS ${channel_prepare_inputs} limbo-bootstrap prepare.py prepare_jit_publication.py jit_publication.h prepare_string_view.py string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h prepare_mapped_cons.py mapped_cons.h prepare_raw_cons.py raw_cons.h prepare_scalar_cons.py scalar_cons.h "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS} "${root}/disVM/module/bigtable.m" "${root}/disVM/module/processctl.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m" "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py prepare_shared_bytes.py prepare_shared_mapped.py shared_mapped.h prepare_shared_head.py shared_head.h prepare_shared_list_pointer.py shared_list_pointer.h prepare_shared_list_bytes.py shared_list_bytes.h prepare_shared_integer.py shared_integer.h prepare_shared_arithmetic.py shared_arithmetic.h prepare_shared_shift.py shared_shift.h prepare_shared_branch.py shared_branch.h prepare_shared_array_length.py shared_array_length.h prepare_shared_real_conversion.py shared_real_conversion.h prepare_shared_real_arithmetic.py shared_real_arithmetic.h prepare_shared_real_branch.py shared_real_branch.h prepare_shared_string_branch.py shared_string_branch.h prepare_shared_string_length.py shared_string_length.h prepare_shared_list_length.py shared_list_length.h prepare_bytes_tail.py shared_bytes.h bytes_fast.h shared_pointer.h aggregate_fast.h owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h heap_snapshot.h module_counts.h heap_counts.h type_counts.h exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h" "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m" "${u}/emu/port/srv.c" VERBATIM)
+    DEPENDS prepare_guarded_leaves.py ${channel_prepare_inputs} limbo-bootstrap
+    prepare.py prepare_jit_publication.py jit_publication.h prepare_string_view.py
+    string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h
+    prepare_mapped_cons.py mapped_cons.h prepare_raw_cons.py raw_cons.h
+    prepare_scalar_cons.py scalar_cons.h "${root}/disVM/examples/native-module/nativedemo.m" ${DVM_LIMBO_BINDINGS}
+    "${root}/disVM/module/bigtable.m" "${root}/disVM/module/processctl.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m"
+    "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py
+    prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py
+    prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py
+    prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py
+    prepare_shared_bytes.py prepare_shared_mapped.py shared_mapped.h prepare_shared_head.py
+    shared_head.h prepare_shared_list_pointer.py shared_list_pointer.h prepare_shared_list_bytes.py
+    shared_list_bytes.h prepare_shared_integer.py shared_integer.h prepare_shared_arithmetic.py
+    shared_arithmetic.h prepare_shared_shift.py shared_shift.h prepare_shared_branch.py
+    shared_branch.h prepare_shared_array_length.py shared_array_length.h prepare_shared_real_conversion.py
+    shared_real_conversion.h prepare_shared_real_arithmetic.py shared_real_arithmetic.h prepare_shared_real_branch.py
+    shared_real_branch.h prepare_shared_string_branch.py shared_string_branch.h prepare_shared_string_length.py
+    shared_string_length.h prepare_shared_list_length.py shared_list_length.h prepare_bytes_tail.py
+    shared_bytes.h bytes_fast.h shared_pointer.h aggregate_fast.h
+    owner_fast.h prepare_roots.py prepare_boundary_counts.py prepare_stack_check.py
+    prepare_gc_fields.py "${u}/include/interp.h" root_registry.h pointer_builder.h
+    heap_snapshot.h module_counts.h heap_counts.h type_counts.h
+    exception_host.h table_leases.h "${u}/emu/port/exception.c" "${root}/common/table/relative.h"
+    "${u}/module/sys.m" "${u}/module/srv.m" "${u}/module/loader.m" "${u}/module/math.m"
+    "${u}/emu/port/srv.c" VERBATIM)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${runtime_inputs}
-  "${root}/disVM/host/prepare_native_registers.py")
+  "${root}/disVM/host/prepare_native_registers.py"
+  "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py")
 set(core alt conv dec disc exception gc heap link load loader math raise readmod runt stack string validstk xec comp-${runtime_backend})
 set(sources)
 foreach(unit IN LISTS core)

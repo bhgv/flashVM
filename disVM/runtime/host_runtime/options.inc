@@ -242,7 +242,7 @@ int main(int argc, char **argv)
 #endif
             puts(
                 "GC execution: --gc-worker (native collectors), --gc-inline (single-worker reference), --gc-locked-poll (mutex reference polling)");
-#if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
+#if !defined(DVM_RUNTIME_EDITOR)
             puts("Default console profile: one native thread per spawn, with native GC.");
 #endif
             puts("Explicit GC and guarded/parallel switches select a custom profile.");
@@ -278,7 +278,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: disvm [--jit|--no-jit] native-cell.dis\n");
         return 2;
     }
-#if defined(__x86_64__) && !defined(DVM_RUNTIME_EDITOR)
+#if !defined(DVM_RUNTIME_EDITOR)
     /* The console defaults to dedicated native guests. Explicit diagnostic
      * profiles still select their own runtime settings. */
     if (!native_spawn && !gc_selected && !managed_workers_selected && !dvm_runtime_guarded_copies &&
@@ -300,11 +300,7 @@ int main(int argc, char **argv)
             return 2;
         }
         gc_worker = 1;
-        if (
-#if !defined(__x86_64__)
-            !cflag &&
-#endif
-            !dvm_runtime_guarded_copies && !dvm_runtime_parallel_add && !dvm_runtime_parallel_real &&
+        if (!dvm_runtime_guarded_copies && !dvm_runtime_parallel_add && !dvm_runtime_parallel_real &&
             !dvm_runtime_parallel_string && !dvm_runtime_parallel_movp && !dvm_runtime_parallel_movmp &&
             !dvm_runtime_parallel_slicela && !dvm_runtime_parallel_channel_buffer && !dvm_runtime_parallel_byte_copies)
         {
@@ -322,13 +318,6 @@ int main(int argc, char **argv)
         dvm_runtime_guest_unbounded = 1;
         scheduler_quantum = PQUANTA;
     }
-#if !defined(__x86_64__)
-    if (dvm_runtime_guarded_copies && cflag)
-    {
-        fprintf(stderr, "--guarded-copies with --jit requires AMD64; use --no-jit on this target\n");
-        return 2;
-    }
-#endif
     if ((dvm_runtime_parallel_add || dvm_runtime_parallel_real || dvm_runtime_parallel_string) &&
         (!dvm_runtime_guarded_copies || !native_spawn))
     {

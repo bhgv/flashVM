@@ -56,3 +56,34 @@ x64-specific регистрации CTest. До запуска проверяю�
 Локально Linux x64 прошёл 11/11; несовместимый ARM64-запрос был отвергнут.
 Пять графовых наборов прошли 132 положительных TSan-профиля. Результаты ARM64/RV64
 следует фиксировать после настоящего workflow-run, не по наличию YAML.
+
+## Guarded JIT profile on ARM64/RV64
+
+The first native ARM64 CI run built successfully but passed only 1/11 workloads.
+The native JIT startup path skipped guarded-operation defaults on non-x64 CPUs;
+several tests then exposed old inline native handlers bypassing checked ownership
+and channel paths. Explicit guarded JIT had also been rejected on these targets.
+
+Native startup now selects guarded operations on all three targets. Hosted ARM64
+and RV64 compilers emit native tail entries to the existing checked C executor
+when guarded mode is selected. These tails preserve the original return address
+and stack, pass a NULL unchecked callback and use the guarded C opcode handlers.
+This is real emitted native code with C handlers, not a new optimizing inline
+implementation of every opcode. Legacy inline emitters remain reference-only;
+no global mutator exclusion or register reload is introduced.
+
+RV64 compiler reuse/publication additionally uses the builder mutex and acquire/
+release JIT-table protocol already used by AMD64/ARM64. The generated view has a
+final `prepare_guarded_leaves.py` stage after `prepare.py`; CMake owns both stages
+and generation-idempotence tests verify both, including the RV compiler view.
+Upstream files remain unchanged. Local x64 execution passed 11/11 again, and
+host-side C compilation of both ARM64 and RV64 compiler views passed. Actual
+new ARM64/RV64 execution still requires the corresponding CI run.
+
+Первый ARM64 CI собрал VM, но прошёл лишь 1/11: native JIT пропускал defaults
+защищённых операций на CPU вне x64. Теперь native-профиль включает guards на
+всех трёх целях. ARM64/RV64 выдают настоящие машинные tail-входы к проверенным
+C-opcode, сохраняя адрес возврата/стек и не передавая unchecked callback.
+Это не утверждение о новой оптимизированной inline-реализации каждой операции.
+RV64 дополнительно получает существующий протокол публикации JIT-таблицы.
+Обе стадии генерации проверяются на повторяемость; upstream не изменяется.
