@@ -201,20 +201,24 @@ int dvm_runtime_kill_child(Prog *caller, int pid)
 
 /* EN: Publish the parent wait for a live or already retiring registered child.
  * The atomic lifetime seal precedes Pexiting. A sealed child needs only
- * retirement notification, not another exit; never read foreign owner state.
+ * retirement notification, not another exit. Registry membership admits the
+ * wait; sample the lifetime seal only to avoid an unnecessary exit request.
+ * Rechecking a live sample can race sealing and wrongly skip the wait.
  * RU: Опубликовать ожидание живого или уже завершающегося ребёнка из реестра.
  * Атомарный lifetime seal предшествует Pexiting. Для sealed нужна только
- * квитанция завершения, а не новый запрос; чужое состояние владельца не читать. */
+ * квитанция завершения, а не новый запрос. Наличие в реестре разрешает ожидание;
+ * lifetime-снимок лишь исключает лишний запрос выхода. Повторная проверка может
+ * пересечь sealing и ошибочно пропустить ожидание. Чужой state не читать. */
 static int prepare_dedicated_child_wait(Prog *caller, int pid)
 {
     fvm_port_sync_lock(channel_queue_mutex);
     Prog *child = find_child(caller, pid);
-    int retiring = child && dvm_runqueue_hold_count(child) < 0;
-    if (!retiring && !resident_can_exit(child))
+    if (!child)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
         return 0;
     }
+    int retiring = dvm_runqueue_hold_count(child) < 0;
     if (!dvm_runqueue_pop_expected(caller, DVM_CHILD_EXIT_WAIT))
     {
         fvm_port_sync_unlock(channel_queue_mutex);

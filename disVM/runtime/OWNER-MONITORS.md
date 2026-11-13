@@ -42,7 +42,8 @@ both cross-owner accesses; it does not disable the observers.
   with exit 12 and the exact owner diagnostic. Timeout/sanitizer failure cannot
   pass as that control. Positive C/JIT and both polling modes remain mandatory.
 
-The wide architecture profile now has 41 workloads. The x64 constructor oracle
+The monitor extension introduced a 41-workload architecture profile. The subsequent
+registered-child seal regression in KILLWAIT-SEAL.md extends it to 42. The x64 constructor oracle
 also runs in both plain and TSan CI jobs; the former reference-hook race is no
 longer excluded from the sanitizer gate. Architecture results must be recorded
 after the new workflow actually executes.
@@ -66,5 +67,6 @@ TLS-декларация создаётся CMake, matching definition — от�
 локальное отключение/возврат и восемь завершённых физических frees сборщиком при
 установленных hooks. Намеренно общий atomic-selector должен дать ровно код 12 с
 диагностикой чужого callback. Таймаут и sanitizer-ошибка не засчитываются.
-В архитектурном wide-наборе теперь 41 нагрузка; x64 constructor-oracle включён
+Монитор расширил wide до 41 нагрузки; регрессия KILLWAIT-SEAL.md — до 42.
+x64 constructor-oracle включён
 также в TSan CI. Результат новых архитектур фиксируется только после исполнения.

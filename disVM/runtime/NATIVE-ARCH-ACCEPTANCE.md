@@ -60,18 +60,19 @@ x64-specific регистрации CTest. До запуска проверяю�
 ## Wide workload profile / Расширенный набор
 
 The default `core` profile retains these eleven workloads. `--profile wide`
-selects forty-one explicit portable drivers, adding table edit/retirement and kill
+selects forty-two explicit portable drivers, adding table edit/retirement and kill
 paths, native services, shared JIT publication, mapped strings/accounting,
 collector requests, service budgets, module cycles and exception retirement.
 Architecture-specific inline-emitter oracles retain their existing CTest gates.
 CI selects `wide` on all three targets and retains full per-driver logs and JSON
 reports as artifacts for fourteen days, including failures. Local AMD64 passed
 40/40 in the predecessor matrix; those results are recorded below. The owner-local
-observer extension and its 41-workload gate are documented in [OWNER-MONITORS.md](OWNER-MONITORS.md).
+observer extension is documented in [OWNER-MONITORS.md](OWNER-MONITORS.md); the
+forty-second registered-child seal regression is in [KILLWAIT-SEAL.md](KILLWAIT-SEAL.md).
 The exception driver keeps its omission controls by default; its explicit
 positive-only mode runs all four real C/JIT/poll release profiles.
 
-Профиль `core` сохраняет 11 нагрузок; `--profile wide` выбирает 41 переносимый
+Профиль `core` сохраняет 11 нагрузок; `--profile wide` выбирает 42 переносимых
 драйверов, включая общую публикацию JIT, жизненный цикл таблиц, отмену, бюджеты
 GC и освобождение исключений. CI запускает wide на трёх целях и сохраняет полные
 журналы/JSON на 14 дней, также при отказе. Локально x64 прошёл 40/40; результаты
@@ -119,14 +120,15 @@ followed by zeroing to `calloc`. It still requires exactly one allocation/free,
 zero writes to a published cache and eight private cache grows. Both failing
 suites passed targeted reruns on the unchanged optimized runtime.
 
-The legacy constructor fault-injection oracle is an unsanitized x64 check.
+At the forty-workload checkpoint the constructor fault-injection oracle was an
+unsanitized x64 check.
 An additional local TSan experiment on its reference profiles detected its
 dynamic global `heapmonitor` replacement racing a collector's hook-presence
-query. That experiment is not a successful TSan result and is outside the forty
-strict-native acceptance drivers. The production runtime change does not make
-concurrent mutation of that legacy debug hook safe; its lifecycle needs a
-separate fix. The added x64 oracle CI step therefore targets the plain build;
-the independent strict-native TSan matrix remains mandatory.
+query. That experiment was not a successful TSan result and was outside those
+forty strict-native drivers. The scalar-state correction did not fix the hook's
+lifecycle, so the x64 oracle then targeted the plain build. The subsequent
+[owner-local monitor change](OWNER-MONITORS.md) fixes that lifecycle and includes
+the oracle in TSan CI; the independent strict-native matrix remains mandatory.
 
 Оптимизированный GCC 14 выявил два дефекта оснастки: десять искусственных wait
 состояний старого constructor-oracle теперь публикуются штатным setter, а UTF-8
@@ -136,11 +138,12 @@ the independent strict-native TSan matrix remains mandatory.
 координатор с проверкой токенов до изменений публикации. Оба отказа исправлены
 и проверены отдельно на той же оптимизированной VM.
 
-Дополнительный TSan-эксперимент со старым reference/fault-injection oracle
+На checkpoint из 40 нагрузок дополнительный TSan-эксперимент со старым oracle
 обнаружил гонку переключения глобального heapmonitor с запросом сборщика.
-Это не успешный TSan-результат; переключение этого debug-hook требует отдельного
-исправления. Oracle проверяется в plain x64, а обязательная TSan-матрица из 40
-strict-native драйверов остаётся отдельной и не допускает sanitizer-отказов.
+Это не было успешным TSan-результатом; переключение hook тогда требовало
+отдельного исправления. Последующая owner-local адаптация описана в
+OWNER-MONITORS.md и включает oracle в TSan CI. Сам checkpoint из 40 нагрузок
+остаётся историческим результатом и не включает этот эксперимент в число успехов.
 
 The first wide RV64 run passed 39/40. Its controlled table preflight observer
 could lose an earlier park notification: all competing owners could park before

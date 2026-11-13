@@ -11,6 +11,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_owner_monitor.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_owner_local_monitors PROPERTIES TIMEOUT 180)
+    # EN/RU: Force live-sample -> real child seal before wait admission.
+    # Принудительно закрыть lifetime ребёнка после живого снимка до допуска wait.
+    add_test(NAME disvm_killwait_seal COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_killwait_seal.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_killwait_seal PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_live_parent_late_reply COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_late_reply.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
