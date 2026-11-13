@@ -72,5 +72,16 @@ def controls(runtime, root, work, compiler, include):
     broken = relink(
         runtime, work, root / "test_proxy_gc_omissions.c", 2, ["dvm_proxy_lease_retire"]
     )
-    pair(broken, work, "route-gc", True)
+    client = root / "fixtures/proxy-network/routed-client.b"
+    private_client = work / "route-gc-client.b"
+    # EN/RU: The omitted collector must be caught at a finite five-second idle fallback.
+    # Omitted collector обязан выявляться на finite five-second idle fallback.
+    private_client.write_text(
+        client.read_text().replace("image, 30000, ready", "image, 5000, ready")
+    )
+    try:
+        compile_one(root, work, compiler, include, private_client, "routed-client")
+        pair(broken, work, "route-gc", True)
+    finally:
+        compile_one(root, work, compiler, include, client, "routed-client")
     print("PASS routed omissions: exact actor token and actual last-ref GC obligation detected")

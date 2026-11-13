@@ -99,11 +99,11 @@ routed(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
     }
     (status, unused) := access->call(left, Proxyref->Add, value, deadline);
     if (status != 0) {
-        raise "first routed variable access failed";
+        raise sys->sprint("first routed variable access failed: status=%d remaining=%d", status, deadline - sys->millisec());
     }
     (status, unused) = access->call(right, Proxyref->Add, value, deadline);
     if (status != 0) {
-        raise "second routed variable access failed";
+        raise sys->sprint("second routed variable access failed: status=%d remaining=%d", status, deadline - sys->millisec());
     }
     return unused;
 }

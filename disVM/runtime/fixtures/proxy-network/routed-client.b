@@ -31,7 +31,7 @@ access: Proxyref; # Variable-only primitive access, no nested function dispatch.
 connect(input, output: ref Sys->FD, done: chan of int,
         ready: chan of (int, ref Proxynet->Endpoint, Proxynet->Image, Proxynet->Image))
 {
-    net->start(input, output, big 12345, big 67890, 10000, ready);
+    net->start(input, output, big 12345, big 67890, 60000, ready);
     done <-= 1;
 }
 
@@ -53,7 +53,7 @@ own(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell, started, done: ch
 attach(endpoint: ref Proxynet->Endpoint, image: Proxynet->Image, done: chan of int,
        ready: chan of (int, ref Proxyref->Ref))
 {
-    route->start(endpoint, image, 5000, ready);
+    route->start(endpoint, image, 30000, ready);
     done <-= 1;
 }
 
@@ -64,9 +64,10 @@ client(endpoint: ref Proxyowner->Endpoint, function: Proxyowner->Handle,
        left, right: ref Proxyref->Ref, done: chan of int)
 {
     for (round := 0; round < 2; round++) {
-        (status, value) := proxy->routed(endpoint, function, left, right, 2, 1, 20000);
+        (status, value) := proxy->routed(endpoint, function, left, right, 2, 1, 60000);
         if (status != 0 || value < 12) {
-            raise "routed original-owner callback lost live aliases";
+            sys := load Sys Sys->PATH;
+            raise sys->sprint("routed original-owner callback lost live aliases: status=%d value=%d round=%d", status, value, round);
         }
     }
     done <-= 1;

@@ -41,8 +41,11 @@ def compile_fixture(root, work, compiler, include):
             "gc-client",
             "result-client",
             "routed-client",
+            "queued-deadline-client",
+            "owner-deadline-client",
             "relay-server",
             "relay-client",
+            "relay-churn-client",
             "relay-orphan-client",
             "relay-capacity-client",
             "relay-deadline-client",
@@ -63,8 +66,33 @@ def compile_fixture(root, work, compiler, include):
     alternate = work / "new-incarnation.b"
     alternate.write_text(old.replace("big 67890", "big 67891"))
     compile_one(root, work, compiler, include, alternate, "new-incarnation")
+    handler = (root / "fixtures/proxy-network/handler.b").read_text()
+    anchor = "    left.value += value;"
+    if handler.count(anchor) != 1:
+        raise RuntimeError("queued owner handler anchor moved")
+    gate = """    if (value == -777) {
+        entered := sys->create("owner-entered", Sys->OWRITE, 8r666);
+        if (entered == nil) {
+            raise "owner deadline entry publication";
+        }
+        entered = nil;
+        attempts := 0;
+        released := sys->open("owner-release", Sys->OREAD);
+        while (released == nil && attempts++ < 2000) {
+            sys->sleep(5);
+            released = sys->open("owner-release", Sys->OREAD);
+        }
+        if (released == nil) {
+            raise "owner deadline gate timeout";
+        }
+        return left.value;
+    }
+"""
+    queued = work / "queued-handler.b"
+    queued.write_text(handler.replace(anchor, gate + anchor))
+    compile_one(root, work, compiler, include, queued, "queued-handler")
     routed = work / "routed-server.b"
-    routed.write_text(old.replace(", 5000, handler", ", 15000, handler"))
+    routed.write_text(old.replace(", 5000, handler", ", 45000, handler"))
     compile_one(root, work, compiler, include, routed, "routed-server")
 
 

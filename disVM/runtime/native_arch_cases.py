@@ -17,6 +17,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
 )
 WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
     ("network-proxy", "test_network_proxy.py", ("--positive-only",)),
+    ("proxy-churn", "test_proxy_churn.py", ("--positive-only",)),
     ("guest-proxy", "test_guest_proxy.py", ("--positive-only",)),
     ("remote-managed-roots", "test_remote_managed.py", ("--positive-only",)),
     ("default-profile", "test_native_defaults.py", ()),

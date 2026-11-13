@@ -10,6 +10,7 @@ import tempfile
 from network_proxy_results import result_replay, result_disconnect, orphan_result
 from network_proxy_routing import routed_pair, add_replay
 from network_proxy_forwarding import three_vms, forwarding_oracle, forwarding_loss, orphan_import
+from network_proxy_deadlines import queued_deadline, owner_deadline
 from network_proxy_controls import controls
 from network_proxy_fixture import Guest, compile_fixture, connected_tcp
 from network_proxy_faults import (
@@ -135,6 +136,8 @@ def main():
                             )
                         finally:
                             native.abort()
+                    queued_deadline(runtime, work, mode, locked, tag + "-queued-deadline")
+                    owner_deadline(runtime, work, mode, locked, tag + "-owner-deadline")
                     two_vms(runtime, work, mode, locked, tag)
                     two_vms(runtime, work, mode, locked, tag + "-gc", "gc-client")
                     two_vms(runtime, work, mode, locked, tag + "-result", "result-client")

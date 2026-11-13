@@ -98,9 +98,9 @@ def routed_pair(runtime, work, mode, locked, tag, lose_reply=False):
                 else "PASS cross-owner proxy refs: original callback 8 clients atomic aliases Drop GC join"
             )
             output = guests[1].finish(marker)
-        except RuntimeError:
+        except RuntimeError as error:
             if errors:
-                raise RuntimeError(str(errors[0]))
+                raise RuntimeError(str(error) + "\nrelay: " + str(errors[0])) from error
             raise
         thread.join(timeout=5)
         if thread.is_alive() or errors or not overlap:

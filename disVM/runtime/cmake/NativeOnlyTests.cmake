@@ -23,15 +23,21 @@ if(DVM_RUNTIME_TESTS)
         include("${CMAKE_CURRENT_BINARY_DIR}/native-only-tests.cmake")
         # EN/RU: Keep intentional broken-code controls native; no reference execution.
         # Намеренные broken-code контроли остаются native, без reference-исполнения.
-        foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy)
+        foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy proxy_churn)
             set(control_flags)
-            if(control STREQUAL "network_proxy")
+            if(control STREQUAL "network_proxy" OR control STREQUAL "proxy_churn")
                 list(APPEND control_flags --controls-only)
             endif()
             add_test(NAME disvm_control_${control} COMMAND "${PYTHON_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/test_${control}.py" "$<TARGET_FILE:disvm>"
                 "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" ${control_flags})
-            set_tests_properties(disvm_control_${control} PROPERTIES TIMEOUT 180 LABELS "native")
+            # EN/RU: Whole-network controls include many separate bounded real-VM cases under TSan.
+            # Whole-network controls содержат много отдельных bounded real-VM cases под TSan.
+            set(control_budget 180)
+            if(control STREQUAL "network_proxy")
+                set(control_budget 360)
+            endif()
+            set_tests_properties(disvm_control_${control} PROPERTIES TIMEOUT ${control_budget} LABELS "native")
         endforeach()
         if(CMAKE_C_FLAGS MATCHES "-fsanitize=thread")
             add_test(NAME disvm_control_late_reply_race COMMAND "${PYTHON_EXECUTABLE}"
