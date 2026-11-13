@@ -4,8 +4,16 @@
  */
 
 
-/* EN: Publish the outcome after taking the request off the old wait.
- * RU: Опубликовать исход после снятия запроса со старого ожидания. */
+/* EN: Consume an owned cancellation request, reusing its allocation as the reply.
+ * guest is held by the caller. Registration is protected by the queue mutex;
+ * the parent validates the operation ID when consuming. Discarded requests are
+ * freed here; successful send transfers ownership, so never touch them again.
+ * Other message kinds remain borrowed embedded nodes and are unchanged.
+ * RU: Принять владеемый запрос отмены, используя его память для ответа.
+ * Caller удерживает guest. Mutex очереди защищает регистрацию; родитель проверяет
+ * ID операции при чтении. Отброшенные запросы освободить здесь; после отправки
+ * владение передано, узел больше не трогать. Иные виды — заимствованные встроенные
+ * узлы, они остаются без изменений. */
 void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
 {
     if (message->kind != DVM_PROG_MESSAGE_CANCEL_WAIT)
@@ -21,17 +29,18 @@ void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
     if (!parent)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
+        free(message);
         return;
     }
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)parent;
     if (!process->cancel_waiting || process->exit_wait_pid != guest->pid)
     {
         fvm_port_sync_unlock(channel_queue_mutex);
+        free(message);
         return;
     }
-    DVM_OwnerMessage *reply = &process->cancel_result;
+    DVM_OwnerMessage *reply = message;
     reply->sender = (uintptr_t)guest->pid;
-    reply->request = message->request;
     reply->kind = DVM_PROG_MESSAGE_CANCEL_RESULT;
     reply->value = ((DVM_RuntimeProcess *)guest)->cancel_delivering ? Processctl_Cancelled : Processctl_NotWaiting;
     if (!dvm_messages_send(guest_messages, (uintptr_t)parent->pid, 1, reply))
@@ -52,6 +61,7 @@ static int wake_child_exit_wait(Prog *process)
     }
     ((DVM_RuntimeProcess *)process)->exit_wait_pid = 0;
     ((DVM_RuntimeProcess *)process)->cancel_waiting = 0;
+    ((DVM_RuntimeProcess *)process)->cancel_wait_request = 0;
     addrun(process);
     return 1;
 }

@@ -52,21 +52,27 @@ static int consume_channel_message(Prog *guest)
 }
 
 
-/* EN: Consume a cancellation or retirement reply before dispatching the parent.
- * RU: Принять ответ об отмене или завершении до запуска родителя. */
+/* EN: Apply a borrowed reply under channel_queue_mutex only when both child
+ * identity and operation ID match this wait. Return whether the parent woke;
+ * stale replies leave the current continuation untouched. Storage stays with caller.
+ * RU: Применить заимствованный ответ под channel_queue_mutex только при совпадении
+ * ребёнка и ID операции. Вернуть признак пробуждения; старый ответ не меняет текущее
+ * продолжение. Память остаётся у caller. */
 static int apply_child_reply(Prog *guest, DVM_RuntimeProcess *process, DVM_OwnerMessage *reply)
 {
     if (!reply || dvm_runqueue_observed_state(guest) != DVM_CHILD_EXIT_WAIT ||
-        reply->request != (uint64_t)process->exit_wait_pid)
+        reply->sender != (uintptr_t)process->exit_wait_pid)
     {
         return 0;
     }
-    if (process->cancel_waiting && reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+    if (process->cancel_waiting && reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT &&
+        reply->request == process->cancel_wait_request)
     {
-        process->cancel_ready_pid = (int)reply->request;
+        process->cancel_ready_pid = (int)reply->sender;
         process->cancel_ready_result = (int)reply->value;
     }
-    else if (!process->cancel_waiting && reply->kind == DVM_PROG_MESSAGE_CHILD_RETIRED)
+    else if (!process->cancel_waiting && reply->kind == DVM_PROG_MESSAGE_CHILD_RETIRED &&
+             reply->request == (uint64_t)process->exit_wait_pid)
     {
         process->exit_ready_pid = (int)reply->request;
     }
@@ -78,6 +84,12 @@ static int apply_child_reply(Prog *guest, DVM_RuntimeProcess *process, DVM_Owner
 }
 
 
+/* EN: Owner takes at most one staged/queued reply for borrowed guest. Apply or
+ * discard it, freeing owned cancellation storage; retirement nodes stay embedded.
+ * The transit counter covers removal through disposal. Return whether guest woke.
+ * RU: Владелец забирает не более одного извлечённого/очередного ответа guest.
+ * Применить либо отбросить, освободив память отмены; узлы retirement встроены.
+ * Счётчик transit покрывает извлечение и удаление. Вернуть признак пробуждения. */
 static int consume_child_reply(Prog *guest)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
@@ -94,6 +106,10 @@ static int consume_child_reply(Prog *guest)
     }
     fvm_port_sync_lock(channel_queue_mutex);
     int delivered = apply_child_reply(guest, process, reply);
+    if (reply && reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+    {
+        free(reply);
+    }
     fvm_port_sync_unlock(channel_queue_mutex);
     __atomic_fetch_sub(&resident_wait_deliveries, 1, __ATOMIC_RELEASE);
     return delivered;
@@ -140,6 +156,7 @@ static int consume_process_wait_requests(Prog *guest)
     return cancelled;
 }
 
+
 /* EN: Post the cancelled table call's PC adjustment to its TLS owner.
  * RU: Передать поправку PC отменённого вызова владельцу регистров. */
 
@@ -166,12 +183,10 @@ int dvm_runtime_table_retry_begin(Prog *process)
     return !pending;
 }
 
-
 void dvm_runtime_table_retry_pending(Prog *process, int pending)
 {
     __atomic_store_n(&((DVM_RuntimeProcess *)process)->table_retry_pending, pending, __ATOMIC_RELEASE);
 }
-
 
 void dvm_runtime_table_cancel_pc(Prog *process)
 {

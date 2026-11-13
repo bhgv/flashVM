@@ -38,8 +38,8 @@ typedef struct DVM_RuntimeProcess
     DVM_OwnerMessage channel_close;    /* Embedded close request, coalesced until wait completes. */
     DVM_OwnerMessage channel_exit;     /* Embedded exit request, coalesced until wait completes. */
     DVM_OwnerMessage channel_cancel;   /* Embedded host cancellation for the current wait. */
-    DVM_OwnerMessage cancel_wait;      /* One correlated cancellation request from the parent. */
-    DVM_OwnerMessage cancel_result;    /* Reply storage for this guest's parked cancelwait. */
+    uint64_t cancel_sequence;          /* Owner-issued operation ID; never reused during this lifetime. */
+    uint64_t cancel_wait_request;      /* Active cancellation ID, protected by channel_queue_mutex. */
     int cancel_waiting;                /* This guest is parked for a cancellation reply. */
     int cancel_ready_pid;              /* Child matched by the prepared cancelwait retry. */
     int cancel_ready_result;           /* Result delivered to that retry. */
@@ -81,8 +81,10 @@ void dvm_runqueue_set_state(Prog *process, int state);
 int dvm_runqueue_observed_state(Prog *process);
 
 
-/* EN: Resolve a correlated request when its wait is removed.
- * RU: Ответить на запрос отмены при снятии ожидания. */
+/* EN: Consume owned CANCEL_WAIT storage when its wait is removed: free or
+ * transfer the same node as a reply. Other kinds remain borrowed and unchanged.
+ * RU: Принять память CANCEL_WAIT при снятии ожидания: освободить либо передать
+ * тот же узел как ответ. Иные виды остаются заимствованными и неизменными. */
 void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message);
 
 

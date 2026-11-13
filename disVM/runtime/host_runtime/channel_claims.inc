@@ -140,7 +140,6 @@ void dvm_runtime_channel_wake(Prog *peer, char *cause)
     }
 }
 
-
 extern void dvm_runtime_alt_preflight(Alt *alt);
 
 
@@ -220,7 +219,6 @@ static int cancel_parked_guest(Prog *peer)
     }
     return dvm_runtime_channel_with_queue_claim(peer, cancellable_channel_wait, cancel_parked_channel_wait, peer, NULL);
 }
-
 
 static int cancel_child_exit_wait(Prog *process);
 
@@ -318,20 +316,37 @@ int dvm_runtime_prepare_cancelwait(Prog *caller, int pid)
         fvm_port_sync_unlock(channel_queue_mutex);
         return 1;
     }
-    DVM_OwnerMessage *request = &target->cancel_wait;
+    if (process->cancel_sequence == UINT64_MAX)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        error("cancellation operation IDs exhausted");
+    }
+    DVM_OwnerMessage *request = calloc(1, sizeof(*request));
+    if (!request)
+    {
+        fvm_port_sync_unlock(channel_queue_mutex);
+        error(exNomem);
+    }
+    request->sender = (uintptr_t)caller->pid;
+    request->request = ++process->cancel_sequence;
+    request->kind = DVM_PROG_MESSAGE_CANCEL_WAIT;
+    process->cancel_wait_request = request->request;
     process->exit_wait_pid = pid;
     process->cancel_waiting = 1;
     if (!dvm_runqueue_pop_expected(caller, DVM_CHILD_EXIT_WAIT))
     {
         fvm_port_sync_unlock(channel_queue_mutex);
+        free(request);
         error("invalid runnable process removal");
     }
     /* The child may already be polling its mailbox. Publish the caller's
      * reply destination and wait state before making the request visible. */
-    if (!dvm_messages_send_once(guest_messages, (uintptr_t)pid, request))
+    if (!dvm_messages_send(guest_messages, (uintptr_t)pid, 0, request))
     {
         process->exit_wait_pid = 0;
         process->cancel_waiting = 0;
+        process->cancel_wait_request = 0;
+        free(request);
         addrun(caller);
         fvm_port_sync_unlock(channel_queue_mutex);
         error("cannot post wait cancellation");

@@ -124,6 +124,16 @@ static void execute(void *argument)
             fprintf(
                 stderr, "NATIVEGUEST retired pid=%d thread=%lu\n", worker->guest_pid, (unsigned long)pthread_self());
         }
+        /* EN: Stop may arrive after a native reply was staged but before the
+         * next dispatch. This owner still owns that node outside the endpoint.
+         * RU: Stop может прийти после извлечения ответа до следующего dispatch.
+         * Этот владелец ещё хранит узел вне endpoint. */
+        if (worker->staged_reply && worker->staged_reply->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+        {
+            free(worker->staged_reply);
+        }
+        worker->staged_reply = NULL;
+        __atomic_store_n(&worker->reply_in_transit, 0, __ATOMIC_RELEASE);
         current_guest = NULL;
         fvm_port_sync_lock(service.sync);
         worker->identity = 0;

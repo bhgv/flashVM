@@ -90,13 +90,18 @@ void __wrap_dvm_runtime_wait_request_finished(Prog *child, DVM_OwnerMessage *mes
     scanning = 1;
     pthread_cond_broadcast(&changed);
     pthread_mutex_unlock(&gate);
-    /* EN: Amplify observation of the same stale, still-owned request. Its
+    /* EN: Amplify observation of the same stale operation with owned nodes. Its
      * correlation was withdrawn, so every real call must remain a no-op.
-     * RU: Повторить наблюдение того же живого старого запроса. Его ожидание
+     * RU: Повторить старую операцию с отдельным владеемым узлом на вызов. Её ожидание
      * отозвано: каждый настоящий вызов обязан оставить состояние неизменным. */
+    DVM_OwnerMessage saved_request = *message;
     for (unsigned int attempt = 0; attempt < 4096; attempt++)
     {
-        __real_dvm_runtime_wait_request_finished(child, message);
+        DVM_OwnerMessage *request = attempt ? malloc(sizeof(*request)) : message;
+        require(request != NULL, "owned stale request allocation");
+        *request = saved_request;
+        request->next = NULL;
+        __real_dvm_runtime_wait_request_finished(child, request);
         sched_yield();
     }
     pthread_mutex_lock(&gate);

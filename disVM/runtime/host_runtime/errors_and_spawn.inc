@@ -160,19 +160,28 @@ void dvm_runtime_publish_dispatch_roots(Prog *process)
 }
 
 
-/* EN: Dispose guest's endpoint once no producer can borrow the guest.
- * RU: Освободить endpoint гостя после ухода всех отправителей. */
+/* EN: Dispose borrowed guest's endpoint after producers lose registration.
+ * Drain owned cancellation nodes in both directions; other nodes are embedded.
+ * Caller protects guest lifetime. No remaining queued allocation survives teardown.
+ * RU: Удалить endpoint заимствованного guest после ухода отправителей.
+ * Освободить владеемые узлы отмены в обеих очередях; иные узлы встроены.
+ * Caller защищает жизнь guest. Память очередей не переживает удаление endpoint. */
 static void drop_guest_messages(Prog *guest)
 {
     DVM_RuntimeProcess *process = (DVM_RuntimeProcess *)guest;
     if (process->messages)
     {
         dvm_messages_stop(process->messages);
-        while (dvm_messages_take(process->messages, 0, 0))
-        { /* The request nodes are embedded in the guest. */
-        }
-        while (dvm_messages_take(process->messages, 1, 0))
-        { /* Embedded replies are discarded on guest teardown. */
+        DVM_OwnerMessage *message;
+        for (int reply = 0; reply < 2; reply++)
+        {
+            while ((message = dvm_messages_take(process->messages, reply, 0)))
+            {
+                if (message->kind == DVM_PROG_MESSAGE_CANCEL_WAIT || message->kind == DVM_PROG_MESSAGE_CANCEL_RESULT)
+                {
+                    free(message);
+                }
+            }
         }
         if (!dvm_messages_unregister(guest_messages, process->messages))
         {
@@ -220,9 +229,6 @@ int dvm_runtime_prepare_resident(Prog *process)
         resident->channel_close.kind = DVM_PROG_MESSAGE_CHANNEL_CLOSE;
         resident->channel_exit.kind = DVM_PROG_MESSAGE_CHANNEL_EXIT;
         resident->channel_cancel.kind = DVM_PROG_MESSAGE_CHANNEL_CANCEL;
-        resident->cancel_wait.kind = DVM_PROG_MESSAGE_CANCEL_WAIT;
-        resident->cancel_wait.sender = (uintptr_t)resident->parent_pid;
-        resident->cancel_wait.request = (uint64_t)process->pid;
         resident->messages = dvm_messages_register(guest_messages, (uintptr_t)process->pid);
         if (!resident->messages)
         {

@@ -17,6 +17,12 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_killwait_seal.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
     set_tests_properties(disvm_killwait_seal PROPERTIES TIMEOUT 180)
+    # EN/RU: Distinguish interrupted operations on the same live child.
+    # Различать прерванные операции над одним живым ребёнком.
+    add_test(NAME disvm_cancel_generation COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_cancel_generation.py" "$<TARGET_FILE:disvm>"
+        "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
+    set_tests_properties(disvm_cancel_generation PROPERTIES TIMEOUT 180)
     add_test(NAME disvm_live_parent_late_reply COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_late_reply.py" "$<TARGET_FILE:disvm>"
         "$<TARGET_FILE:limbo-bootstrap>" "${u}/module")
