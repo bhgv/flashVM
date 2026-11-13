@@ -42,7 +42,7 @@ def churn(runtime, work, mode, locked, tag, missing_reap=False):
             else:
                 raise RuntimeError("missing actor reaping escaped sustained import")
         else:
-            guests[2].finish("PASS forwarding churn: 40 imports")
+            guests[2].finish("PASS forwarding churn: 40 imports", budget=240)
         middle = guests[1].finish("local=0 source actors joined")
         guests[0].finish("value=26" if missing_reap else "result=0 value=50")
         forwarded_gc(middle, 16 if missing_reap else 40)

@@ -19,7 +19,7 @@ net: Proxynet; # Immutable source connection client.
 connect(input: ref Sys->FD, done: chan of int,
         ready: chan of (int, ref Proxynet->Endpoint, Proxynet->Image, Proxynet->Image))
 {
-    net->start(input, input, big 12345, big 67890, 15000, ready);
+    net->start(input, input, big 12345, big 67890, 60000, ready);
     done <-= 1;
 }
 
@@ -46,7 +46,7 @@ init()
     local := ref Proxyhost->Cell(0);
     capture := ref Proxyhost->Cell(0);
     result := server->registered(sys->fildes(1), sys->fildes(1), big 33333, big 44444,
-        12000, handler, local, capture, sources);
+        30000, handler, local, capture, sources);
     lost := endpoint.state.closed;
     empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     value: int;

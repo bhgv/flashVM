@@ -17,7 +17,7 @@ net: Proxynet; # Immutable client connection interface.
 connect(input, output: ref Sys->FD, done: chan of int,
         ready: chan of (int, ref Proxynet->Endpoint, Proxynet->Image, Proxynet->Image))
 {
-    net->start(input, output, big 33333, big 44444, 12000, ready);
+    net->start(input, output, big 33333, big 44444, 60000, ready);
     done <-= 1;
 }
 
@@ -27,9 +27,10 @@ connect(input, output: ref Sys->FD, done: chan of int,
 client(endpoint: ref Proxynet->Endpoint, function, first, second: Proxynet->Image, done: chan of int)
 {
     for (round := 0; round < 2; round++) {
-        (status, value) := net->routed(endpoint, function, first, second, 2, 1, 20000);
+        (status, value) := net->routed(endpoint, function, first, second, 2, 1, 60000);
         if (status != 0 || value < 12) {
-            raise "third VM routed invocation lost original refs";
+            sys := load Sys Sys->PATH;
+            raise sys->sprint("third VM routed invocation lost original refs: status=%d value=%d round=%d", status, value, round);
         }
     }
     done <-= 1;

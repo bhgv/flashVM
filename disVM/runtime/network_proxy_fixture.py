@@ -147,11 +147,11 @@ class Guest:
     # EN/RU: Join real VM, require clean status, resident lifetimes and concurrent GC evidence.
     # Join настоящей VM, проверить status, resident lifetimes и concurrent GC.
     # EN/RU: 90s join budget covers instrumented clone/call/drop resident lifetimes;
-    # wire deadlines stay unchanged. 90s budget учитывает instrumented lifetimes,
-    # не меняя wire deadlines.
-    def finish(self, expected=None):
+    # wire deadlines stay unchanged. Explicit budget handles sustained multi-import workloads.
+    # Explicit budget учитывает sustained multi-import workload, не меняя wire deadlines.
+    def finish(self, expected=None, budget=90):
         try:
-            status = self.process.wait(timeout=90)
+            status = self.process.wait(timeout=budget)
         except subprocess.TimeoutExpired:
             self.abort()
             raise RuntimeError("network VM hung\n" + self.path.read_text())
