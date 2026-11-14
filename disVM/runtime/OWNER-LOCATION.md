@@ -90,7 +90,8 @@ publication or alter copied path; exact DETECTED diagnostics must follow normal
 completion and full native/GC drain. Crashes/timeouts/sanitizers never count.
 
 The owner-location workload is part of the mandatory architecture list (58
-workloads). Full stack/typed-variable capture, unique module catalog, pause/resume,
+workloads at that stage). [Bounded call-chain capture](OWNER-STACK.md) is now available.
+Typed-variable capture, stack depth beyond that prefix, unique module catalog, pause/resume,
 source symbols and external capabilities remain separate work.
 
 The final affected regression selection passes 10/10 groups in the ordinary build

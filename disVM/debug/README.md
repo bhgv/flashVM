@@ -18,3 +18,6 @@ Module layout: reusable readers live here, interfaces in module/, native capture
 and projections in runtime/diagnostics/, owner publication in resident_threads/,
 and application examples in examples/. Each handwritten source stays below500
 lines and describes ownership/threading in English and Russian.
+
+Residentstack: bounded owner call chains, [EN](../runtime/OWNER-STACK.md) /
+[RU](../runtime/OWNER-STACK.ru.md), with a [runnable example](../examples/resident-stack/README.md).

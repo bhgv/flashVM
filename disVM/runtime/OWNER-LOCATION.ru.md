@@ -86,11 +86,14 @@ native-PC/misalignment refusal и invalid text. Два omission controls уби�
 publication либо меняют copied path: точный DETECTED должен сопровождаться normal
 exit и полным native/GC drain. Crash/timeout/sanitizer не являются успехом.
 
-Workload owner-location включён в обязательный architecture list (58 workloads).
-Полные stack/typed-variable capture, уникальный module catalog, pause/resume,
+Workload owner-location включён в обязательный architecture list (58 workloads на момент его добавления).
+Typed-variable capture, полный stack сверх bounded prefix, уникальный module catalog, pause/resume,
 source symbols и внешние capabilities остаются отдельными задачами.
 
 Итоговая выборка затронутых регрессий: 10/10 групп в обычной сборке и 10/10
 под ThreadSanitizer, включая mailbox/control/registry, отмену, retirement и
 владение таблицами. Это выборочная регрессия, а не утверждение о завершении
 полной новой архитектурной матрицы.
+
+Ограниченная цепочка кадров теперь реализована отдельно: [OWNER-STACK.ru.md](OWNER-STACK.ru.md).
+Полный стек сверх bounded prefix и значения переменных остаются следующими задачами.

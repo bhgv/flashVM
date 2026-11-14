@@ -290,3 +290,6 @@ ticket projections, сохраняется после module return/instance dro
 Module pointers. Полные контракты: [EN](OWNER-LOCATION.md) / [RU](OWNER-LOCATION.ru.md).
 Reusable reader — debug/residentdebug.b; пример с отдельными RU/EN инструкциями —
 examples/resident-debug/. Это не полный stack, unique module catalog либо pause.
+
+Bounded owner-produced stack prefixes and Limbo reader/example now work: [RU](OWNER-STACK.ru.md) / [EN](OWNER-STACK.md).
+Typed variables, pause/resume and external debugger service remain separate work.

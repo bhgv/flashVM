@@ -7,7 +7,8 @@ Copyright (c) 2026 bhgv
 Each resident has an independent native mailbox for read-only probes. Its
 permanent owner services requests. Progress replies remain scalar; location
 captures add bounded copied UTF-8 labels, never managed pointers or retained
-Module references. External transport, stack/typed-variable capture, pause/resume,
+Module references. [Bounded call-chain capture](OWNER-STACK.md) is available.
+External transport, typed-variable capture, pause/resume,
 priority and mutating-control capabilities remain separate work.
 
 ## Guest API and credit lifetime

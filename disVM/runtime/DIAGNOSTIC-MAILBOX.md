@@ -6,7 +6,7 @@ Copyright (c) 2026 bhgv
 
 Read-only probes обслуживает permanent native owner resident. Scalar replies
 сохраняются; location добавляет bounded copied UTF-8 labels без Module pointers. Это
-работающий внутренний механизм своей VM; external transport, source/stack capture,
+работающий внутренний механизм своей VM; external transport, source/typed-variable capture,
 capabilities для управления, pause/resume/step и priority пока не реализованы.
 Controller, collectors и native I/O helpers не входят в этот resident registry.
 
@@ -71,7 +71,8 @@ sample — наблюдение в owner boundary, не atomic snapshot всег
 Во время блокирующего native callback owner может не достигнуть servicing point.
 Тогда reply остаётся Pending; foreign thread не исполняет запрос вместо него.
 Забывание diagnostic query не отменяет native sleep/channel/RPC. Pause для
-исследования stack/variables потребует отдельной safe-boundary/root publication.
+исследования variables потребуется отдельная safe-boundary/root publication;
+bounded owner stack уже описан в OWNER-STACK.ru.md.
 
 ## Lifetime и блокировки
 
@@ -122,3 +123,5 @@ Actual mailbox lifecycle report нормализуется в JSON; три norma
 проходят. Это выбранная локальная приёмка, не полный новый architecture/runtime
 прогон. Предыдущая база90299f44 прошла все шесть CI jobs, включая AMD64/ARM64/RV64;
 новые изменения требуют своего CI.
+
+Ограниченный снимок стека и Limbo reader: [RU](OWNER-STACK.ru.md) / [EN](OWNER-STACK.md).
