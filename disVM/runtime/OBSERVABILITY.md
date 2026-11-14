@@ -100,3 +100,29 @@ Workload `live-registry` включён в architecture matrix; список в�
 observation прошли 5/5 обычно и 5/5 под TSan. После расширения проверок cursor,
 NULL outputs и invalid capacity вновь прошли четыре C/JIT/poll сочетания TSan.
 Это не полный прогон всей runtime suite и не готовый debugger transport.
+
+## Guest/CLI доступ к resident cards
+
+`Processctl.resident(after: big)` возвращает `(status, id, pid, done)` через guarded
+pure-scalar result publication. Status: 1 — карточка, 0 — текущий конец страницы,
+-1 — invalid/unavailable/unrepresentable identity. При end/refusal все поля данных
+нулевые. Cursor неотрицателен; lifetime ID возвращается только в signed-big range.
+IDs — read-only metadata, не authority для kill, debug либо чтения памяти.
+
+Это перечисление resident helpers своей VM. Controller не входит в этот реестр;
+caller PID доступен отдельно через pid(). Collector и native I/O helper registries
+ещё не подключены. Нет attach к другой OS process/VM и нет coherent multi-page
+snapshot. Guest code должен быть скомпилирован с matched Processctl interface.
+
+CLI/module пример: `disVM/examples/runtime-observe/main.b`. Он печатает свой
+NATIVEOBSERVER PID и доступные NATIVERESIDENT cards. При отдельном запуске без
+spawned guests реестр может быть пуст. Для наблюдения приложения этот модуль
+загружается в наблюдаемую VM; внешний диагностический transport — следующий слой.
+Оба record family уже понимает JSON normalizer `disVM/tools/runtime_stats.py`.
+
+Acceptance удерживает восемь реальных гостей до окончания перечисления, сверяет
+точные PID, unique ascending IDs и done=0. Tuple направляется в общую scalar ADT
+с соседними canaries, пока другие гости читают поля. Проверяются zeroed end/refusal,
+полный join и native/GC evidence в C/JIT × fast/locked polling. Связанные пять групп
+прошли 5/5 обычно и 5/5 TSan; расширенный shared-reader сценарий прошёл повторно
+во всех четырёх TSan сочетаниях. Workload остаётся live-registry в общей CI.
