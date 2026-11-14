@@ -126,3 +126,46 @@ Acceptance удерживает восемь реальных гостей до 
 полный join и native/GC evidence в C/JIT × fast/locked polling. Связанные пять групп
 прошли 5/5 обычно и 5/5 TSan; расширенный shared-reader сценарий прошёл повторно
 во всех четырёх TSan сочетаниях. Workload остаётся live-registry в общей CI.
+
+## Owner-published resident phases
+
+`Processctl.residentstate(after)` расширяет результат resident до
+`(status, id, pid, done, phase)`; старый resident сохраняет прежний tuple.
+Cursor/status/zeroed refusal остаются прежними. CLI печатает phase_id и имя.
+
+| Phase | Значение | Интервал владельца |
+| --- | --- | --- |
+| Starting | 0 | Старт native thread и attach до первого dispatch |
+| Dispatch | 1 | Внутри turn callback, включая его native calls |
+| Scheduler | 2 | Между callback: admission, reaping и scheduler work |
+| WaitWork | 3 | Dedicated readiness wait; возможны spurious wakeups |
+| Teardown | 4 | Dispatch окончен; очистка owner/context/TLS |
+| Done | 5 | TLS cleanup завершён; native slot ещё может ожидать join |
+
+Владелец публикует phase relaxed atomic store без allocation, дополнительных
+metadata locks либо callbacks. Registry guard удерживает slot во время atomic
+copy; он не останавливает работу наблюдаемого гостя. Phase не публикует managed
+memory, не даёт lifetime pin или права читать heap. Интервал может измениться
+сразу после чтения; короткие фазы можно пропустить. Done публикуется вместе с
+completion под registry guard. Несколько карточек/страниц не coherent snapshot.
+
+WaitWork означает ожидание готовности resident, а не конкретный channel/I/O
+или OS CPU state. Native call внутри dispatch может сам ждать; поэтому Dispatch
+нельзя трактовать как «сейчас исполняет инструкции». Конкретные wait causes,
+queued requests и source/stack location требуют собственных adapters.
+
+Acceptance удерживает восемь реальных гостей на rendezvous channel, ожидает
+WaitWork у всех и проверяет self-observation Dispatch до/после wake. После wake
+каждый guest остаётся жив до killwait, затем выполняется полный native join.
+Два private controls меняют только copied WaitWork либо Dispatch на Scheduler;
+оба должны дать точный DETECTED diagnostic после чистого завершения всех гостей.
+Compile/crash/timeout/sanitizer failure не принимаются за semantic detection.
+Общий результат с phase пишется также в shared scalar ADT между canaries, пока
+другие гости читают поля. Старый resident сверяется на том же held registry.
+
+Пять затронутых групп process control/cancellation/retirement/observation прошли
+5/5 обычно и 5/5 под TSan. C/JIT × fast/locked polling и два semantic controls
+входят в существующий workload live-registry; workload count остаётся 56.
+CLI module с именами phases компилируется и запускается; его реальный report
+нормализуется в JSON, три unit checks normalizer проходят. Полный новый прогон
+всей runtime suite и вся архитектурная матрица этим не объявляются.
