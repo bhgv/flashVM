@@ -9,6 +9,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
     ("debug-mailbox", "test_debug_mailbox.py", ()),
     ("owner-location", "test_owner_location.py", ()),
     ("owner-stack", "test_owner_stack.py", ()),
+    ("memory-statistics", "test_memory_statistics.py", ()),
     ("receiver-cancel", "test_resident_processctl.py", ("--receiver-cancel",)),
     ("live-parent-reply", "test_late_reply.py", ()),
     ("native-cancel", "test_native_cancel.py", ()),
