@@ -261,6 +261,10 @@ add_executable(disvm
     string_view_sync.c
     jit_publication.c
     jit_quarantine.c
+    jit_fault/context.c
+    jit_fault/handler.c
+    jit_fault/owner.c
+    jit_fault/invoke.c
     heap_commit.c
     heap_hold.c
     list_hold.c

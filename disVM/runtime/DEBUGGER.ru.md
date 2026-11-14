@@ -95,8 +95,10 @@ SIGILL/SIGBUS/SIGSEGV/SIGFPE в `disfault`. Это описание исходн
 а не основание возвращать её однопоточную модель в наш runtime.
 
 [Карантин JIT-функций](JIT-QUARANTINE.ru.md) описан отдельно. Встроенное сохранение
-пока охватывает managed throws и проверенные native waits. Произвольные аварии
-машинного кода ещё не перехватываются. GDB может исследовать их независимо, если
-установлен. Внутренний захват signal context требует отдельной реализации с учётом
-async-signal safety, удержанных guards, GC admission, соответствия регистров
-и уже выполненных записей. Безопасное продолжение повреждённого RX-кода не обещано.
+охватывает managed throws, проверенные native waits и допущенные synchronous
+integer scalar RX faults. [Контракт захвата](JIT-SIGNALS.ru.md) описывает actual-PC
+checks, CPU context и admission/cleanup gates. `native-registers PID` возвращает
+copied именованные integer CPU-регистры; `registers PID` остаётся VM REG.
+Произвольные host/helper faults, повреждённая native memory, SIMD/FP state и
+произвольное native-frame retention не входят в эту гарантию. Явно выбранный
+GDB может исследовать такие аварии независимо.

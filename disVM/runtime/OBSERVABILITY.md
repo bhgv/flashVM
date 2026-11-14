@@ -300,5 +300,6 @@ One O(1) native metadata snapshot; excludes object/type/origin catalog and off-a
 
 Retained source continuation debugging and on-demand GC-root census: [EN](DEBUGGER.md),
 [RU](DEBUGGER.ru.md). Whole-function confirmed-JIT-defect quarantine: [EN](JIT-QUARANTINE.md),
-[RU](JIT-QUARANTINE.ru.md). These contracts distinguish managed exception retention
-from the remaining arbitrary-native-signal capture work; GDB is optional.
+[RU](JIT-QUARANTINE.ru.md). Synchronous admitted integer RX faults now support internal CPU capture:
+[EN](JIT-SIGNALS.md), [RU](JIT-SIGNALS.ru.md). Arbitrary unsafe native faults remain
+outside recovery; GDB is optional.

@@ -198,6 +198,7 @@ static int runtime_dispatch_turn(void)
                 dvm_managed_workers_guest_retired(child_pid);
             }
             drop_guest_messages(process);
+            dvm_jit_signal_thread_stop();
             dvm_debug_retire();
             free(process);
             __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);

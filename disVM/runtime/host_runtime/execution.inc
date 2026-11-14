@@ -224,6 +224,8 @@ static int runtime_execute(void *argument)
     }
     result |= dvm_debug_exit_status();
     dvm_debug_destroy();
+    dvm_jit_signal_thread_stop();
+    dvm_jit_signals_stop();
     runtime_statistics();
     dvm_queue_probe_finish();
     if (!result)

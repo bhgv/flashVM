@@ -116,6 +116,8 @@ void dvm_debug_instruction(const REG *registers, const Inst *instruction, const 
         return;
     }
     fvm_port_sync_lock(current->wake);
+    dvm_jit_fault_clear();
+    memset(&current->native_fault, 0, sizeof(current->native_fault));
     current->registers = *registers;
     current->instruction = *instruction;
     current->location = *location;
@@ -156,6 +158,7 @@ void dvm_debug_fault(const char *message)
     {
         fvm_port_sync_lock(current->wake);
         snprintf(current->error, sizeof(current->error), "%s", message);
+        dvm_jit_fault_copy(&current->native_fault);
         current->fault = 1;
         current->requested = 1;
         current->boundary = 0;

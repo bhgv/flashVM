@@ -10,6 +10,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
     ("owner-location", "test_owner_location.py", ()),
     ("owner-stack", "test_owner_stack.py", ()),
     ("memory-statistics", "test_memory_statistics.py", ()),
+    ("jit-signal", "test_jit_signal.py", ()),
     ("jit-quarantine", "test_jit_quarantine.py", ()),
     ("retained-debug", "test_retained_debug.py", ()),
     ("receiver-cancel", "test_resident_processctl.py", ("--receiver-cancel",)),

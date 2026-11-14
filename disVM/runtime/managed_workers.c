@@ -11,6 +11,7 @@
 #include "managed_workers.h"
 #include "runtime_gc.h"
 #include "debugger/debugger.h"
+#include "jit_fault/signals.h"
 #include "runqueue.h"
 #include "table_leases.h"
 #include <limits.h>

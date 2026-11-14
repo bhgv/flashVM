@@ -35,6 +35,7 @@
 #include "sys_capture.h"
 #include "runtime_gc.h"
 #include "jit_quarantine.h"
+#include "jit_fault/signals.h"
 #include "debugger/debugger.h"
 #include "root_registry.h"
 #include "shared_bytes.h"

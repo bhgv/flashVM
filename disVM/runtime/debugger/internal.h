@@ -7,6 +7,7 @@
 #include "debugger.h"
 #include "channel_sync.h"
 #include "diagnostics/location.h"
+#include "jit_fault/signals.h"
 #include <pthread.h>
 #include <sys/types.h>
 
@@ -41,6 +42,7 @@ typedef struct DebugTarget
     int refused;                     /* Original fault could not be parked safely. */
     int fault;                       /* Original throw still precedes exception handler. */
     Prog *process;                   /* Borrowed only while native_ready and wake held. */
+    DVM_JitFault native_fault;       /* Copied CPU signal context, never used to resume execution. */
     REG registers;                   /* Diagnostic publication, never resume source. */
     Inst instruction;                /* Exact last admitted Dis opcode/operands. */
     DVM_DiagnosticLocation location; /* Copied immutable module display/PC. */

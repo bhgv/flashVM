@@ -45,10 +45,9 @@ correct later results, **no subsequent native entry anywhere in the whole failed
 function interval**, continued genuine native work outside it and both poll
 backends. Injection is confined to a test-linked probe, absent from production.
 
-This is not a complete arbitrary native-crash detector. SIGSEGV/SIGILL/SIGBUS and
-corrupt machine state still need internal async-safe capture, validated code/PC
-classification and safe retention without blocking unrelated GC. Blindly
-longjmping and rerunning an instruction is not an implemented recovery policy.
+Synchronous admitted integer scalar RX faults now feed this same whole-function
+quarantine: see [signal capture](JIT-SIGNALS.md). This remains a bounded recovery
+contract, not an arbitrary native-corruption detector or instruction retry policy.
 External GDB is optional; see [debugger](DEBUGGER.md).
 
 The missing-classification control preserves original caught-error behavior and

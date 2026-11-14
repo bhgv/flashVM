@@ -405,6 +405,11 @@ int main(int argc, char **argv)
         fprintf(stderr, "native-cell compiler/runtime frame contract mismatch\n");
         return 2;
     }
+    if (!dvm_jit_signals_start())
+    {
+        perror("disvm: cannot initialize built-in JIT signal capture");
+        return 1;
+    }
     if (debug_input >= 0)
     {
         if (!dvm_debug_start_fds(debug_input, debug_output))

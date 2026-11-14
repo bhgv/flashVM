@@ -133,6 +133,32 @@ static void status(DebugTarget *target, int registers, char *output, size_t capa
 }
 
 
+/* EN/RU: Format copied CPU context only; raw addresses grant no read capability.
+ * Форматировать только copied CPU context; raw addresses не дают read capability. */
+static void native_registers(const DebugTarget *target, char *output, size_t capacity)
+{
+    const DVM_JitFault *fault = &target->native_fault;
+    size_t used;
+    unsigned int index;
+    if (!fault->signal_number)
+    {
+        snprintf(output, capacity, "{\"ok\":false,\"error\":\"no native fault context\"}\n");
+        return;
+    }
+    used = (size_t)snprintf(output, capacity,
+        "{\"ok\":true,\"signal\":%d,\"code\":%d,\"address\":\"%llx\",\"pc\":\"%llx\",\"sp\":\"%llx\",\"rx_offset\":%llu,\"architecture\":\"%s\",\"registers\":{",
+        fault->signal_number, fault->signal_code, (unsigned long long)fault->address,
+        (unsigned long long)fault->pc, (unsigned long long)fault->sp,
+        (unsigned long long)(fault->pc - fault->rx_base), dvm_jit_fault_architecture());
+    for (index = 0; index < fault->count && index < 32 && used + 32 < capacity; index++)
+    {
+        used += (size_t)snprintf(output + used, capacity - used, "%s\"%s\":\"%llx\"",
+                               index ? "," : "", dvm_jit_fault_register_name(index), (unsigned long long)fault->registers[index]);
+    }
+    snprintf(output + used, capacity - used, "}}\n");
+}
+
+
 /* EN: One local authenticated-by-socket command. Registry pins target, then wake
  * serializes its publication/gate. Socket I/O occurs after all these locks release.
  * RU: Одна local command с socket permissions. Registry удерживает target, wake
@@ -239,6 +265,10 @@ void dvm_debug_command(const char *line, char *output, size_t capacity)
         {
             snprintf(output, capacity, "{\"ok\":false,\"error\":\"step requires instruction-boundary pause\"}\n");
         }
+    }
+    else if (!strcmp(command, "native-registers"))
+    {
+        native_registers(target, output, capacity);
     }
     else if (!strcmp(command, "operation"))
     {

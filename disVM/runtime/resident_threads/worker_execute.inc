@@ -165,6 +165,7 @@ static void execute(void *argument)
     }
     dvm_diagnostic_close(worker->debug);
     publish_resident_phase(worker, DVM_RESIDENT_TEARDOWN);
+    dvm_jit_signal_thread_stop();
     if (!dvm_native_context_unbind(context) || !dvm_native_context_destroy(context))
     {
         fail("executor retirement failed");

@@ -45,11 +45,11 @@ Module/Jit/heap. Перезапуск сбрасывает карантин; с�
 сбойной функции**, продолжение настоящего JIT вне него и оба poll backend.
 Инъекция существует только в test-linked probe, отсутствует в production.
 
-Это ещё не полный детектор произвольных native crashes. SIGSEGV/SIGILL/SIGBUS
-и повреждённое machine state требуют внутреннего async-safe capture, проверки
-code/PC и сохранения без блокировки чужого GC. Слепой longjmp с повтором
-инструкции не реализован как восстановление. Внешний GDB необязателен:
-см. [встроенный отладчик](DEBUGGER.ru.md).
+Допущенные synchronous integer scalar RX faults теперь используют этот же
+карантин всей функции: [контракт захвата](JIT-SIGNALS.ru.md). Это ограниченная
+гарантия восстановления, не детектор произвольного повреждения native memory
+и не повторное исполнение инструкции. GDB необязателен:
+[встроенный отладчик](DEBUGGER.ru.md).
 
 The missing-classification control preserves original caught-error behavior and
 correct results, but requires precise DETECTED for absent quarantine. Eight real

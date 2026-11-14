@@ -102,9 +102,10 @@ This references the pinned source design, not permission to import its original
 single-executor assumptions into the native multi-thread runtime.
 
 See [JIT quarantine](JIT-QUARANTINE.md) for whole-function fallback and logs.
-Current built-in retention covers managed throws and audited native waits.
-It does **not** catch arbitrary OS native faults or promise safe continuation of
-corrupted RX execution. GDB may inspect those faults independently when installed;
-the built-in protocol must not depend on it. Internal signal-context capture and
-classification/parking of such faults remain work, including async-signal safety,
-held guards, owner admission, register mapping and partially completed writes.
+Built-in retention covers managed throws, audited native waits and now admitted
+synchronous integer scalar RX faults. [RX signal contract](JIT-SIGNALS.md) specifies
+actual-PC checks, CPU context, cleanup/admission gates and remaining unsafe-fault
+limits. `native-registers PID` returns the copied named integer CPU context;
+`registers PID` remains VM REG. Arbitrary host/helper faults, corrupt native memory,
+SIMD/FP state and arbitrary native-frame retention remain outside that guarantee.
+GDB can inspect such faults independently when explicitly selected.

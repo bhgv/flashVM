@@ -144,3 +144,11 @@ whole-matrix completion. Previous cf066b75 and47665a architecture CI runs
 43605594611/43605884568 completed successfully. / Обязательный список теперь62;
 новые retained-debug/jit-quarantine требуют своей полной CI-матрицы. Предыдущие
 указанные CI завершились успешно.
+
+
+2026-11-14: list63 adds jit-signal with actual RX traps, retained native CPU
+context and unsafe-path refusals. Prior e123a54d CI43617004556 failed retained-debug
+socket mode:0777 & ~0077 gives0700, not0600. Creation now uses0177 and a host-independent
+mask/restoration probe; full AF_UNIX execution remains a CI check on this socket-denied
+host. / RU: Список63; исправлена маска socket до0600, добавлена проверка umask
+без AF_UNIX. Новую полную архитектурную матрицу нельзя считать пройденной заранее.

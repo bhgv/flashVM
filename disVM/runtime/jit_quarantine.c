@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <string.h>
 #include "raise.h"
+#include "jit_fault/signals.h"
 
 #define QUARANTINE_MAX 128 /* Bounded exceptional metadata, not an execution/object catalog. */
 
@@ -149,6 +150,7 @@ Jit *dvm_jit_select(Module *module, const void *next_pc, const void *frame)
             return NULL;
         }
     }
+    dvm_jit_signal_select(jit->code, (size_t)jit->size, current_opcode);
     return jit;
 }
 
@@ -234,6 +236,7 @@ void dvm_jit_native_end(void)
 int dvm_jit_native_error(const char *message)
 {
     int active = native_active;
+    dvm_jit_signal_disarm();
     native_active = 0;
     if (active && message && !strcmp(message, exCompile))
     {

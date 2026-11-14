@@ -22,7 +22,11 @@ int dvm_runtime_fast(int operation, int (*fast)(REG *), REG *registers)
 #ifdef DVM_RUNTIME_JIT_QUARANTINE
     dvm_jit_native_begin();
 #endif
+#ifdef DVM_RUNTIME_JIT_QUARANTINE
+    accepted = dvm_jit_signal_invoke(fast, registers, operation);
+#else
     accepted = fast(registers);
+#endif
 #ifdef DVM_RUNTIME_JIT_QUARANTINE
     dvm_jit_native_end();
 #endif
