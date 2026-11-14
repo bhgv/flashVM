@@ -2,6 +2,24 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-14: наследуемые native namespace
+
+Добавлены `Sys.pctl(0/FORKNS/NEWNS, nil)`, `chdir`, `bind(MREPL)` и `unmount`.
+`spawn` разделяет группу; FORKNS копирует, NEWNS берёт resolved cwd за новый
+корень. Open/create/stat разрешают группу вызывающего; уже открытые FD стабильны.
+Нет глобальной exclusive-секции. [Точные границы RU](VFS-NAMESPACE.ru.md),
+[EN](VFS-NAMESPACE.md), [пример](../examples/namespace/README.ru.md).
+
+Это host-path routing, ещё не Chan/provider VFS и не sandbox: symlinks,
+rename/unlink identity, module-loader namespace/cache, union/mount providers,
+FD/env/credential groups и dynamic extensions остаются работой следующих блоков.
+Обязательный native-набор теперь65 с `namespace`. Linux x64 проверяется локально;
+ARM64/RV64 требуют новой CI. Исполняемые Windows/macOS/Android adapters этим
+блоком не перенесены; общее ядро namespace использует portable mutex API/libc.
+
+Ниже сохранена история предыдущих checkpoints; старые количества workloads
+и завершённые CI относятся к соответствующим прежним ревизиям.
+
 ## Текущий checkpoint: typed network proxies
 
 [Trusted network owners](../remote/NETWORK-OWNERS.md) соединяют две реальные VM

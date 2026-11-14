@@ -254,7 +254,7 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
                     )
                     native_fault = retained(session, builtin, "faulted")
                     require(
-                        "Sys_chdir" in native_fault["error"] and native_fault["opcode"] == 9,
+                        "Sys_remove" in native_fault["error"] and native_fault["opcode"] == 9,
                         "native builtin fault lost its caller operation",
                     )
                     require(

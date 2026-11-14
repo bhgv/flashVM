@@ -1,4 +1,7 @@
-/* Error bytes belong to Prog; native jump frames still belong to its OS owner. */
+/* Copyright (c) 2026 bhgv
+ * EN: Resident error/FP state and inherited native namespace ownership.
+ * RU: Error/FP-состояние resident и владение наследуемым native namespace.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -12,35 +15,82 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 
-/* Initialize only native storage, not a second heap or full Inferno namespace.
- * Parent buffers belong to the calling executor during the copy. */
-void dvm_process_environment_init(Prog *process, Prog *parent)
+/* EN: Initialize private process before publication; parent is borrowed from
+ * the calling owner. Share namespace reference, copy error bytes and FP state.
+ * Return zero on initial host-cwd/OOM/reference failure, without publication.
+ * RU: Инициализировать приватный process до публикации; parent заимствован
+ * своим owner. Разделить namespace, скопировать error bytes и FP state.
+ * Ноль при ошибке host-cwd/OOM/reference, без публикации. */
+int dvm_process_environment_init(Prog *process, Prog *parent)
 {
+    DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
     Osenv *environment = &((DVM_RuntimeProcess *)process)->environment;
     Osenv *source = parent ? parent->osenv : NULL;
-    memset(environment,0,sizeof(*environment));
+    memset(environment, 0, sizeof(*environment));
     environment->errstr = environment->errbuf1;
     environment->syserrstr = environment->errbuf0;
     if (source && source->errstr)
     {
-        snprintf(environment->errstr,ERRMAX,"%s",source->errstr);
+        snprintf(environment->errstr, ERRMAX, "%s", source->errstr);
     }
     if (source && source->syserrstr)
     {
-        snprintf(environment->syserrstr,ERRMAX,"%s",source->syserrstr);
+        snprintf(environment->syserrstr, ERRMAX, "%s", source->syserrstr);
+    }
+    if (parent)
+    {
+        DVM_Namespace *group = ((DVM_RuntimeProcess *)parent)->namespace_group;
+        if (!group || !dvm_namespace_retain(group))
+        {
+            return 0;
+        }
+        owner->namespace_group = group;
+    }
+    else
+    {
+        char cwd[DVM_NS_PATH_LIMIT];
+        if (!getcwd(cwd, sizeof(cwd)))
+        {
+            return 0;
+        }
+        owner->namespace_group = dvm_namespace_create("/", cwd);
+        if (!owner->namespace_group)
+        {
+            return 0;
+        }
     }
     process->osenv = environment;
     if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment))
     {
         abort();
     }
+    return 1;
 }
 
 
-/* A runtime Prog always points to its own wrapper environment. Copy no native
- * context/jump-frame pointers into it; binding lasts exactly the claimed turn. */
+/* EN: Consume namespace after failed private setup or final owner retirement;
+ * process may be NULL or partly initialized. No managed references or throwing.
+ * RU: Освободить namespace после отказа подготовки либо retirement владельца;
+ * process допустим NULL/частичный. Без managed references и исключений. */
+void dvm_process_environment_destroy(Prog *process)
+{
+    if (process)
+    {
+        DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+        dvm_namespace_release(owner->namespace_group);
+        owner->namespace_group = NULL;
+    }
+}
+
+/* EN: Bind the permanent owner's borrowed process; no context/jump-frame copy.
+ * Return one/zero for valid/invalid metadata; FP runtime failure aborts. No roots
+ * or frames change, and no native ownership transfers to another process.
+ * RU: Привязать process своего постоянного owner без копии context/jump frames.
+ * Один/ноль для valid/invalid metadata; отказ FP runtime завершает host. Корни
+ * и frames не меняются, владение другому process не передаётся. */
 int dvm_process_environment_bind(Prog *process)
 {
     if (!up || !process || process->osenv != &((DVM_RuntimeProcess *)process)->environment)
@@ -56,9 +106,10 @@ int dvm_process_environment_bind(Prog *process)
     return 1;
 }
 
-
-/* The native default remains allocated through TLS teardown, unlike a retiring
- * Prog. Restore it before a destructor can report a new native host error. */
+/* EN: Save borrowed process FP, restore host FP/default error environment before
+ * destructors/native waits. No allocation; an FP runtime failure aborts.
+ * RU: Сохранить FP process, вернуть host FP/default error environment перед
+ * destructors/native waits. Без allocation; отказ FP runtime завершает host. */
 void dvm_process_environment_release(Prog *process)
 {
     if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment) ||
@@ -69,28 +120,31 @@ void dvm_process_environment_release(Prog *process)
     up->env = &up->defenv;
 }
 
-
-/* Store one mapped guest string as this logical Prog's last host error. Capture
+/* EN: Store one mapped guest string as this logical Prog's last host error. Capture
  * the original return span before string conversion can allocate/borrow REG.
  * Frame/source remain rooted by the claimed turn; no native release occurs.
- * Publish the full native WORD zero only after conversion and bounded copy. */
+ * Publish the full native WORD zero only after conversion and bounded copy.
+ * RU: Сохранить mapped guest string как последнюю host error своего Prog.
+ * Захватить return span до conversion; frame/source укоренены ACTIVE, без
+ * native release. Записать WORD zero после bounded copy; conversion может raise. */
 void Sys_werrstr(void *frame)
 {
     F_Sys_werrstr call;
     char *destination;
     char *text;
     WORD result = 0;
-    dvm_sys_capture(frame,&call,sizeof(call),offsetof(F_Sys_werrstr,ret),sizeof(*call.ret));
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_werrstr, ret), sizeof(*call.ret));
     destination = up->env->errstr;
     text = string2c(call.s);
-    snprintf(destination,ERRMAX,"%s",text);
-    memmove(call.ret,&result,sizeof(result));
+    snprintf(destination, ERRMAX, "%s", text);
+    memmove(call.ret, &result, sizeof(result));
 }
 
-
-/* Copy this bound OS owner's current logical error without consuming it. err
+/* EN: Copy this bound OS owner's current logical error without consuming it. err
  * borrows size writable bytes; clamp to ERRMAX and preserve termination. No
- * allocation, managed access or throw; startup cleanup also permits absent up. */
+ * allocation, managed access or throw; startup cleanup also permits absent up.
+ * RU: Скопировать текущую ошибку owner в err вместимостью size, ограничив
+ * ERRMAX и сохранив NUL. Без allocation/managed access/throw; up допустим NULL. */
 void kgerrstr(char *err, uint size)
 {
     const char *source = "<no-up>";

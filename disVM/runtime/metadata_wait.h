@@ -14,6 +14,13 @@
 FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output);
 
 
+/* EN: Query already resolved native path, bypassing namespace lookup. Borrow
+ * ACTIVE path/output; stage native copy before release, return FVM status.
+ * RU: Запросить уже resolved native path без повторного namespace lookup.
+ * ACTIVE path/output заимствованы; копировать до release, вернуть FVM status. */
+FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output);
+
+
 /* Borrow the mapped FD and checked descriptor while ACTIVE, pin FD, reserve its
  * file/directory gate, release heap ownership, query native metadata, finish gate
  * BEFORE reentry and unpin. output changes only on success. Invalid slots return

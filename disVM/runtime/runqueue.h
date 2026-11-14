@@ -8,6 +8,7 @@
 #include <fenv.h>
 #include "owner_messages.h"
 #include "channel_sync.h"
+#include "vfs/namespace.h"
 #ifndef DVM_RUNTIME_PROCESS_MAX
 #define DVM_RUNTIME_PROCESS_MAX 2147483647U /* Native signed process/count representation, not a128-task policy. */
 #endif
@@ -62,8 +63,9 @@ typedef struct DVM_RuntimeProcess
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Atomic identity of the permanent managed turn, including native waits. */
     uintptr last_dispatcher; /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
-    Osenv environment;       /* Native guest error storage follows this logical Prog across owner migration. */
-    fenv_t floating_environment; /* Guest FP environment retained across complete turns and OS owners. */
+    Osenv environment;       /* Native error storage owned by this permanent resident. */
+    fenv_t floating_environment; /* Guest FP environment retained on its permanent OS owner. */
+    DVM_Namespace *namespace_group; /* Owning native reference; shared at spawn, detached by pctl. */
 } DVM_RuntimeProcess;
 
 

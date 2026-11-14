@@ -98,7 +98,7 @@ builtin(ready: chan of int)
     held := array[16] of byte;
     held[0] = byte 201;
     ready <-= ctl->pid();
-    sys->chdir(".");
+    sys->remove("retained-debug-unsupported");
     if (held[0] != byte 201) {
         raise "native caller root changed";
     }

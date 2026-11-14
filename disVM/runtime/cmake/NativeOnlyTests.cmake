@@ -40,6 +40,10 @@ if(DVM_RUNTIME_TESTS)
             set_tests_properties(disvm_control_${control} PROPERTIES TIMEOUT ${control_budget} LABELS "native")
         endforeach()
         if(CMAKE_C_FLAGS MATCHES "-fsanitize=thread")
+            add_test(NAME disvm_control_namespace_scalar COMMAND "${PYTHON_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/test_namespace.py" "$<TARGET_FILE:disvm>"
+                "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --controls-only)
+            set_tests_properties(disvm_control_namespace_scalar PROPERTIES TIMEOUT 120 LABELS "native")
             add_test(NAME disvm_control_late_reply_race COMMAND "${PYTHON_EXECUTABLE}"
                 "${CMAKE_CURRENT_SOURCE_DIR}/test_late_reply.py" "$<TARGET_FILE:disvm>"
                 "$<TARGET_FILE:limbo-bootstrap>" "${u}/module" --race-control)

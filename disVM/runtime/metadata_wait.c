@@ -18,6 +18,7 @@
 #include "runtime_gc.h"
 #include "channel_sync.h"
 #include "managed_workers.h"
+#include "vfs/guest.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,7 +48,7 @@ static FVM_Result admission_failure(int released, const char *operation)
 /* Snapshot path before native release. path/output are borrowed ACTIVE inputs;
  * output is native C storage, never a mapped Dir. Allocation failure performs no
  * native call. All remaining throwing preparation precedes lease publication. */
-FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output)
+FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output)
 {
     FVM_Result status;
     size_t length;
@@ -100,6 +101,21 @@ FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output)
         kwerrstr(status == FVM_UNSUPPORTED ? "unsupported filesystem path or metadata" : "file stat failed");
     }
     return status;
+}
+
+
+/* EN: Resolve current namespace once, then stage the frozen host path. Borrowed
+ * path/output stay ACTIVE until native staging; no group lock across I/O.
+ * RU: Один раз разрешить namespace, затем скопировать host path. path/output
+ * заимствованы ACTIVE до staging; mutex группы не удерживается при I/O. */
+FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output)
+{
+    char native[DVM_NS_PATH_LIMIT];
+    if (!dvm_namespace_host_path(path, native))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    return dvm_metadata_native_path_info(native, output);
 }
 
 

@@ -25,6 +25,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
     ("packet-cycles", "test_packet_cycle_retirement.py", ("--positive-only",)),
 )
 WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
+    ("namespace", "test_namespace.py", ()),
     ("network-proxy", "test_network_proxy.py", ("--base-only",)),
     ("forwarding-proxy", "test_network_proxy.py", ("--forwarding-only",)),
     ("proxy-deadlines", "test_proxy_churn.py", ("--deadlines-only",)),

@@ -195,11 +195,16 @@ static void drop_guest_messages(Prog *guest)
 }
 
 
-/* EN: Initialize private process storage from an owner-local image.
- * RU: Инициализировать приватный Prog из локального образа владельца. */
-static void initialize_process(Prog *process, Prog *parent, Modlink *module, const REG *initial)
+/* EN: Initialize private process from borrowed parent/module/optional initial
+ * image. Return one/zero; namespace failure leaves private storage unpublished.
+ * RU: Инициализировать приватный process с borrowed parent/module/optional
+ * initial image. Один/ноль; отказ namespace не публикует приватную память. */
+static int initialize_process(Prog *process, Prog *parent, Modlink *module, const REG *initial)
 {
-    dvm_process_environment_init(process, parent);
+    if (!dvm_process_environment_init(process, parent))
+    {
+        return 0;
+    }
     ((DVM_RuntimeProcess *)process)->parent_pid = parent ? parent->pid : 0;
     process->quanta = scheduler_quantum;
     process->xec = xec;
@@ -213,6 +218,7 @@ static void initialize_process(Prog *process, Prog *parent, Modlink *module, con
         process->R.M = module;
         process->R.MP = module->MP;
     }
+    return 1;
 }
 
 
@@ -256,10 +262,16 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
         {
             error(exNomem);
         }
-        initialize_process(process, parent, module, initial);
+        if (!initialize_process(process, parent, module, initial))
+        {
+            dvm_process_environment_destroy(process);
+            free(process);
+            error("cannot initialize process namespace");
+        }
     }
     if (dvm_refcount_retain_u(&D2H(module)->ref) != DVM_REFCOUNT_LIVE)
     {
+        dvm_process_environment_destroy(process);
         free(process);
         error(exHeap);
     }
@@ -272,6 +284,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
         Heap *module_root = D2H(module);
         if (!dvm_runtime_root_add(module_root))
         {
+            dvm_process_environment_destroy(process);
             free(process);
             destroy(module);
             error(exHeap);
@@ -289,6 +302,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
                 __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
             }
             drop_guest_messages(process);
+            dvm_process_environment_destroy(process);
             free(process);
             destroy(module);
             error((char *)(failure ? failure : "cannot create native guest thread"));
@@ -299,6 +313,7 @@ static Prog *create_process(Prog *parent, Modlink *module, const REG *initial, P
         if (!dvm_runtime_prepare_resident(process))
         {
             const char *failure = resident->startup_error;
+            dvm_process_environment_destroy(process);
             free(process);
             destroy(module);
             error((char *)failure);
@@ -344,7 +359,10 @@ static int prepare_spawn_storage(void *argument)
     request->initial->R.MP = request->module->MP;
     request->initial->R.PC = request->entry;
     newstack(request->initial);
-    initialize_process(request->storage, request->parent, request->module, &request->initial->R);
+    if (!initialize_process(request->storage, request->parent, request->module, &request->initial->R))
+    {
+        error("cannot initialize process namespace");
+    }
     return 1;
 }
 
@@ -384,12 +402,14 @@ void dvm_runtime_spawn_prepared(Prog *parent, Modlink *module, Inst *entry, Prog
         }
         if (!prepared)
         {
+            dvm_process_environment_destroy(request.storage);
             free(request.storage);
             krethrow();
         }
     }
     else if (!kprotect(prepare_spawn_storage, &request))
     {
+        dvm_process_environment_destroy(request.storage);
         free(request.storage);
         krethrow();
     }

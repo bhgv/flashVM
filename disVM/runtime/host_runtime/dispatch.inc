@@ -200,6 +200,7 @@ static int runtime_dispatch_turn(void)
             drop_guest_messages(process);
             dvm_jit_signal_thread_stop();
             dvm_debug_retire();
+            dvm_process_environment_destroy(process);
             free(process);
             __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
             publish_child_exit(parent_pid, child_pid, reply);

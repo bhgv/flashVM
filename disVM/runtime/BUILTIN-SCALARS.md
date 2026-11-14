@@ -29,6 +29,7 @@ REFUSED/невалидная геометрия бросают до записи
 | Processctl.pid/cancelwait/kill/killwait | Один staged native WORD |
 | Sys.millisec | Staged WORD bit pattern монотонных milliseconds |
 | Sys.sleep | Один staged WORD после native reentry либо отказа |
+| Sys.pctl/chdir/bind/unmount | Один staged WORD после namespace effect; повторяется только publication |
 | Proxyhost.open/canwait/finish/drop/close | Scalar status/permission |
 | Proxyhost.publish | Scalar-only status/session/slot/generation tuple |
 

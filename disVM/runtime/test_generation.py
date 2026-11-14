@@ -46,6 +46,13 @@ def main():
             temporary,
         ]
         subprocess.run(monitor, check=True)
+        namespace = [
+            sys.executable,
+            str(Path(__file__).with_name("prepare_namespace.py")),
+            "--output",
+            temporary,
+        ]
+        subprocess.run(namespace, check=True)
         proxy = [
             sys.executable,
             str(Path(__file__).with_name("prepare_proxyhost.py")),
@@ -67,6 +74,7 @@ def main():
         subprocess.run(command, check=True)
         subprocess.run(guarded, check=True)
         subprocess.run(monitor, check=True)
+        subprocess.run(namespace, check=True)
         subprocess.run(proxy, check=True)
         subprocess.run(proxygc, check=True)
         second = {file.name: file.read_bytes() for file in root.iterdir() if file.is_file()}
@@ -75,6 +83,7 @@ def main():
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
         critical = (
+            "unsupported.c",
             "proxygc_decl.h",
             "proxygc_table.h",
             "proxyhost_decl.h",

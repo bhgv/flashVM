@@ -122,12 +122,13 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --sys "${u}/module/sys.m" ${host_prepare_args} --source "${u}/libinterp" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_guarded_leaves.py" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_owner_monitor.py" --output "${view}"
+ COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_namespace.py" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_proxyhost.py"
    --compiler "$<TARGET_FILE:limbo-bootstrap>" --interface "${root}/disVM/module/proxyhost.m" --output "${view}"
  COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/prepare_proxyhost.py"
    --module Proxygc --compiler "$<TARGET_FILE:limbo-bootstrap>" --interface "${root}/disVM/module/proxygc.m" --output "${view}"
  COMMAND "${CMAKE_COMMAND}" -E touch "${view}/prepare.stamp"
-    DEPENDS prepare_owner_monitor.py prepare_guarded_leaves.py prepare_proxyhost.py
+    DEPENDS prepare_owner_monitor.py prepare_namespace.py prepare_guarded_leaves.py prepare_proxyhost.py
     "${root}/disVM/module/proxyhost.m" "${root}/disVM/module/proxygc.m" ${channel_prepare_inputs} limbo-bootstrap
     prepare.py prepare_jit_publication.py jit_publication.h prepare_string_view.py
     string_view_sync.h prepare_channel_new.py prepare_record_new.py record_new.h
@@ -189,6 +190,10 @@ add_executable(disvm
     queue_probe.c
     managed_workers.c
     process_environment.c
+    vfs/path.c
+    vfs/group.c
+    vfs/mutations.c
+    vfs/sys.c
     file_gate.c
     file_slots.c
     seek_sys.c

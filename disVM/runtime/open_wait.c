@@ -10,6 +10,7 @@
 #include "open_wait.h"
 #include "runtime_gc.h"
 #include "channel_sync.h"
+#include "vfs/guest.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -30,12 +31,21 @@ FVM_Result dvm_open_wait(const char *path, const char *mode, int asynchronous,
     char *snapshot;
     size_t length;
     int released;
+    char native[DVM_NS_PATH_LIMIT];
     if (!path || !mode || !file || !directory)
     {
         return FVM_INVALID_ARGUMENT;
     }
     *file = NULL;
     *directory = NULL;
+    if (asynchronous)
+    {
+        if (!dvm_namespace_host_path(path, native))
+        {
+            return FVM_INVALID_ARGUMENT;
+        }
+        path = native;
+    }
     length = strlen(path);
     if (length == (size_t)-1)
     {
