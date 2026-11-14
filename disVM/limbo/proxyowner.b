@@ -42,6 +42,43 @@ alarm(signal, started: chan of int, deadline: int)
 }
 
 
+# EN: Own request/alarm to completion after public caller retirement. endpoint and
+# request are borrowed immutable inputs; published/completed are buffered outputs.
+# The original deadline and actual owner execution remain unchanged.
+# RU: Владеть request/alarm до completion после retirement public caller. endpoint и
+# request — borrowed immutable inputs, published/completed — buffered outputs.
+# Original deadline и actual owner execution не меняются.
+supervise(endpoint: ref Endpoint, request: ref Request, published: chan of int,
+          completed: chan of (int, int, Handle))
+{
+    published <-= control->pid();
+    absent := Handle(big 0, 0, big 0);
+    deadline := request.deadline;
+    signal := chan[1] of int;
+    started := chan[1] of int;
+    spawn alarm(signal, started, deadline);
+    timer := <-started;
+    delivered := 0;
+    result := (NotSent, 0, absent);
+    if (sys->millisec() < deadline) {
+        alt {
+            endpoint.requests <-= request => delivered = 1;
+            <-signal => {}
+        }
+    }
+    if (delivered) {
+        alt {
+            result = <-request.reply => {}
+            <-signal => result = (Unknown, 0, absent);
+        }
+    }
+    # EN/RU: One owned timer per request; completion never leaves a sleeping child.
+    # Один owned timer на request; completion не оставляет спящего child.
+    control->killwait(timer);
+    completed <-= result;
+}
+
+
 # EN/RU: One absolute alarm spans offer and reply; accepted work is never replayed.
 # Один alarm охватывает offer и reply; принятое work никогда не повторяется.
 offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
@@ -57,29 +94,14 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
     if (deadline == 0) {
         deadline = sys->millisec() + timeout;
     }
-    signal := chan[1] of int;
     response := chan[1] of (int, int, Handle);
-    started := chan[1] of int;
     request := ref Request(operation, target, left, right, refs, value, routed, first, second, deadline, publish, output, response);
-    spawn alarm(signal, started, deadline);
-    timer := <-started;
-    delivered := 0;
-    result := (NotSent, 0, absent);
-    if (sys->millisec() < deadline) {
-        alt {
-            endpoint.requests <-= request => delivered = 1;
-            <-signal => {}
-        }
-    }
-    if (delivered) {
-        alt {
-            result = <-response => {}
-            <-signal => result = (Unknown, 0, absent);
-        }
-    }
-    # EN/RU: One timer per active caller; fast calls never leave sleeping children.
-    # Один timer на active caller; быстрые calls не оставляют спящих детей.
-    control->killwait(timer);
+    published := chan[1] of int;
+    completed := chan[1] of (int, int, Handle);
+    spawn supervise(endpoint, request, published, completed);
+    supervisor := <-published;
+    result := <-completed;
+    control->killwait(supervisor);
     return result;
 }
 

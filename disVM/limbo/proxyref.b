@@ -36,6 +36,38 @@ alarm(started, signal: chan of int, deadline: int)
 }
 
 
+# EN: Keep access/source and its original deadline until reply or timeout, even if
+# the public caller retires. Always retire the owned alarm before buffered completion.
+# RU: Удержать access/source и original deadline до reply либо timeout даже при
+# retirement public caller. Завершить owned alarm до buffered completion.
+supervise(access: ref Access, published: chan of int, completed: chan of (int, int))
+{
+    published <-= control->pid();
+    source := access.source;
+    deadline := access.deadline;
+    started := chan[1] of int;
+    signal := chan[1] of int;
+    spawn alarm(started, signal, deadline);
+    timer := <-started;
+    offered := 0;
+    result := (NotSent, 0);
+    if (sys->millisec() < deadline) {
+        alt {
+            source.requests <-= access => offered = 1;
+            <-signal => {}
+        }
+    }
+    if (offered) {
+        alt {
+            result = <-access.reply => {}
+            <-signal => result = (Unknown, 0);
+        }
+    }
+    control->killwait(timer);
+    completed <-= result;
+}
+
+
 # EN/RU: Keep source rooted in queued Access; never turn an offered Unknown into retry.
 # Удерживать source через queued Access; offered Unknown никогда не становится retry.
 call(source: ref Ref, operation, value, deadline: int): (int, int)
@@ -52,24 +84,11 @@ call(source: ref Ref, operation, value, deadline: int): (int, int)
     }
     reply := chan[1] of (int, int);
     access := ref Access(source, operation, value, deadline, reply);
-    started := chan[1] of int;
-    signal := chan[1] of int;
-    spawn alarm(started, signal, deadline);
-    timer := <-started;
-    offered := 0;
-    result := (NotSent, 0);
-    if (sys->millisec() < deadline) {
-        alt {
-            source.requests <-= access => offered = 1;
-            <-signal => {}
-        }
-    }
-    if (offered) {
-        alt {
-            result = <-reply => {}
-            <-signal => result = (Unknown, 0);
-        }
-    }
-    control->killwait(timer);
+    published := chan[1] of int;
+    completed := chan[1] of (int, int);
+    spawn supervise(access, published, completed);
+    supervisor := <-published;
+    result := <-completed;
+    control->killwait(supervisor);
     return result;
 }
