@@ -5,6 +5,7 @@
 #ifndef DVM_DIAGNOSTIC_MAILBOX_H
 #define DVM_DIAGNOSTIC_MAILBOX_H
 #include <stdint.h>
+#include "location.h"
 
 enum
 {
@@ -26,11 +27,12 @@ typedef struct DVM_DiagnosticMailbox DVM_DiagnosticMailbox;
  * RU: Native copied reply; без pointers, guest callbacks либо managed roots. */
 typedef struct DVM_DiagnosticSample
 {
-    int owner_pid;            /* Permanent owner that serviced this request. */
-    int64_t cookie;           /* Exact requester scalar, copied only on Ready. */
-    unsigned long dispatches; /* Owner-published progress counters. */
-    unsigned long turns;      /* Completed guest turns, sampled before dispatches. */
-    unsigned long waits;      /* Readiness waits, not syscall count or elapsed time. */
+    int owner_pid;                   /* Permanent owner that serviced this request. */
+    int64_t cookie;                  /* Exact requester scalar, copied only on Ready. */
+    unsigned long dispatches;        /* Owner-published progress counters. */
+    unsigned long turns;             /* Completed guest turns, sampled before dispatches. */
+    unsigned long waits;             /* Readiness waits, not syscall count or elapsed time. */
+    DVM_DiagnosticLocation location; /* Last copied owned execution boundary. */
 } DVM_DiagnosticSample;
 
 
@@ -56,6 +58,13 @@ int dvm_diagnostic_request(DVM_DiagnosticMailbox *box, int requester, int64_t co
  * RU: Заимствовать box/output; Pending хранит credit, Ready/Closed поглощают его.
  * Чужой requester запрещён. Любой non-Ready output нулевой. Без target access. */
 int dvm_diagnostic_reply(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM_DiagnosticSample *sample);
+
+
+/* EN: Peek own reply without consuming Pending/Ready/Closed credit. Output is
+ * copied native data; every non-Ready output is zero. No lifetime pin escapes.
+ * RU: Читать свой reply без поглощения Pending/Ready/Closed credit. Output —
+ * native copy; каждый non-Ready output нулевой. Lifetime pin не выходит. */
+int dvm_diagnostic_peek(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM_DiagnosticSample *sample);
 
 
 /* EN/RU: Forget own ticket, releasing its credit; never cancel an ordinary guest operation.

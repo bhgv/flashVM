@@ -14,6 +14,8 @@ typedef struct ManagedWorker
     struct ManagedWorker *wake_next;   /* Registered under service.sync until thread exit. */
     DVM_OwnerMessage *staged_reply;    /* Owner-only reply removed before heap admission. */
     int reply_in_transit;              /* Published to the controller until the owner applies the reply. */
+    DVM_DiagnosticLocation location; /* Owner-only copied last execution boundary. */
+    unsigned long location_sequence; /* Owner-only saturated publication sequence. */
     DVM_DiagnosticMailbox *debug;    /* Independent bounded native query/reply credits. */
     FVM_PortSync *wake;                /* Dedicated readiness condition and generation lock. */
     int startup_committed;             /* Creator has installed the slot, under wake. */

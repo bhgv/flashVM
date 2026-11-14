@@ -179,6 +179,7 @@ add_executable(disvm
     process_lifetime.c
     owner_messages.c
     diagnostics/mailbox.c
+    diagnostics/location.c
     channel_match.c
     host_cancellations.c
     thread_registrar.c

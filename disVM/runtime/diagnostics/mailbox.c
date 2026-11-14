@@ -20,6 +20,16 @@ enum
 };
 
 
+/* EN/RU: Ticket operations keep peek separate from credit consumption.
+ * Ticket operations разделяют peek и освобождение credit. */
+enum TicketOperation
+{
+    TicketConsume, /* Consume Ready/Closed, retain Pending. */
+    TicketForget,  /* Release any caller-owned credit. */
+    TicketPeek     /* Observe without consuming any state. */
+};
+
+
 /* EN/RU: Native slot state is protected by its mailbox mutex.
  * Native slot state защищён mailbox mutex. */
 typedef struct DiagnosticSlot
@@ -152,8 +162,11 @@ int dvm_diagnostic_request(DVM_DiagnosticMailbox *box, int requester, int64_t co
 
 /* EN/RU: With live box pinned, read or forget own ticket under its mutex.
  * При pinned live box прочитать либо забыть свой ticket под mutex. */
-static int
-take_ticket(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM_DiagnosticSample *sample, int forget)
+static int take_ticket(DVM_DiagnosticMailbox *box,
+                       int requester,
+                       unsigned long ticket,
+                       DVM_DiagnosticSample *sample,
+                       enum TicketOperation operation)
 {
     unsigned int index;
     int result = DVM_DIAG_MISSING;
@@ -172,14 +185,17 @@ take_ticket(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM
             if (slot->requester == requester)
             {
                 result = DVM_DIAG_PENDING;
-                if (forget || slot->state != SlotPending)
+                if (operation == TicketForget || slot->state != SlotPending)
                 {
-                    result = slot->state == SlotClosed && !forget ? DVM_DIAG_CLOSED : DVM_DIAG_READY;
-                    if (!forget && result == DVM_DIAG_READY)
+                    result = slot->state == SlotClosed && operation != TicketForget ? DVM_DIAG_CLOSED : DVM_DIAG_READY;
+                    if (operation != TicketForget && result == DVM_DIAG_READY)
                     {
                         *sample = slot->sample;
                     }
-                    release_slot(box, slot);
+                    if (operation != TicketPeek)
+                    {
+                        release_slot(box, slot);
+                    }
                 }
             }
             break;
@@ -194,7 +210,15 @@ take_ticket(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM
  * Поглотить только complete replies; проверить caller-owned native output. */
 int dvm_diagnostic_reply(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM_DiagnosticSample *sample)
 {
-    return sample ? take_ticket(box, requester, ticket, sample, 0) : DVM_DIAG_INVALID;
+    return sample ? take_ticket(box, requester, ticket, sample, TicketConsume) : DVM_DIAG_INVALID;
+}
+
+
+/* EN/RU: Copy own reply without releasing its bounded native credit.
+ * Копировать свой reply без освобождения bounded native credit. */
+int dvm_diagnostic_peek(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket, DVM_DiagnosticSample *sample)
+{
+    return sample ? take_ticket(box, requester, ticket, sample, TicketPeek) : DVM_DIAG_INVALID;
 }
 
 
@@ -203,7 +227,7 @@ int dvm_diagnostic_reply(DVM_DiagnosticMailbox *box, int requester, unsigned lon
 int dvm_diagnostic_forget(DVM_DiagnosticMailbox *box, int requester, unsigned long ticket)
 {
     DVM_DiagnosticSample ignored;
-    return take_ticket(box, requester, ticket, &ignored, 1);
+    return take_ticket(box, requester, ticket, &ignored, TicketForget);
 }
 
 

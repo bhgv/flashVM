@@ -15,6 +15,7 @@
 #include "host_runtime/channel_retirement.inc"
 #include "host_runtime/modules_and_boot.inc"
 #include "host_runtime/owner_requests.inc"
+#include "host_runtime/debug_location.inc"
 #include "host_runtime/dispatch.inc"
 #include "host_runtime/execution.inc"
 #include "host_runtime/options.inc"

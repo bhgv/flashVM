@@ -82,14 +82,27 @@ typedef struct DVM_ResidentSummary
  * service до возврата без concurrent stop completion. NULL/unavailable — без изменений. */
 int dvm_resident_summary(DVM_ResidentSummary *summary);
 
+
 /* EN: Caller owns original requester PID; exact ID is observational, not control
  * authority. Service/slot lifetime is held only through synchronous native copy.
  * RU: Caller владеет original requester PID; exact ID не control authority.
  * Service/slot lifetime удерживается только до возврата synchronous native copy. */
 int dvm_resident_debug_request(unsigned long id, int requester, int64_t cookie, unsigned long *ticket);
 int dvm_resident_debug_reply(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample);
-int dvm_resident_debug_forget(unsigned long id, int requester, unsigned long ticket);
+/* EN/RU: Nonconsuming native peek obeys the same requester/lifetime contract.
+ * Native peek без consume соблюдает тот же requester/lifetime contract. */
+int dvm_resident_debug_peek(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample);
 
+
+/* EN/RU: Only the active permanent owner clears/publishes its copied boundary.
+ * Только active permanent owner очищает/публикует свою copied boundary. */
+void dvm_resident_location_clear(void);
+void dvm_resident_location_publish(const DVM_DiagnosticLocation *location);
+
+
+/* EN/RU: Forget own ticket using the original requester identity.
+ * Забыть свой ticket с original requester identity. */
+int dvm_resident_debug_forget(unsigned long id, int requester, unsigned long ticket);
 
 enum
 {

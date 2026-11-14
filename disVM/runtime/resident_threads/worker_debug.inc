@@ -20,6 +20,7 @@ static void service_debug_mailbox(ManagedWorker *worker)
         fail("diagnostic mailbox serviced by foreign owner");
         return;
     }
+    sample.location = worker->location;
     sample.owner_pid = worker->guest_pid;
     sample.turns = __atomic_load_n(&worker->observed_turns, __ATOMIC_ACQUIRE);
     sample.dispatches = __atomic_load_n(&worker->observed_dispatches, __ATOMIC_ACQUIRE);
@@ -82,11 +83,12 @@ int dvm_resident_debug_request(unsigned long id, int requester, int64_t cookie, 
 }
 
 
-/* EN: Consume only caller-owned completed reply from exact native registry slot.
- * Pending/failure output is zero; no target lifetime survives this copy.
- * RU: Принять только complete reply своего caller из exact registry slot.
- * Pending/failure output нулевой; target lifetime после copy не продлевается. */
-int dvm_resident_debug_reply(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample)
+/* EN: Read original requester reply under exact registry pin; peek selects
+ * nonconsuming copy. Pending/failure output is zero; no target pin escapes.
+ * RU: Читать reply original requester под exact registry pin; peek выбирает
+ * копию без consume. Pending/failure output нулевой; target pin не выходит. */
+static int
+read_debug_reply(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample, int peek)
 {
     ManagedWorker *worker;
     int result = DVM_DIAG_MISSING;
@@ -107,10 +109,27 @@ int dvm_resident_debug_reply(unsigned long id, int requester, unsigned long tick
     worker = find_debug_worker(id);
     if (worker)
     {
-        result = dvm_diagnostic_reply(worker->debug, requester, ticket, sample);
+        result = peek ? dvm_diagnostic_peek(worker->debug, requester, ticket, sample)
+                      : dvm_diagnostic_reply(worker->debug, requester, ticket, sample);
     }
     fvm_port_sync_unlock(service.sync);
     return result;
+}
+
+
+/* EN/RU: Consume this original requester's completed reply from an exact resident.
+ * Поглотить complete reply original requester из exact resident. */
+int dvm_resident_debug_reply(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample)
+{
+    return read_debug_reply(id, requester, ticket, sample, 0);
+}
+
+
+/* EN/RU: Copy this original requester's reply while retaining its bounded credit.
+ * Копировать reply original requester, сохранив bounded credit. */
+int dvm_resident_debug_peek(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample)
+{
+    return read_debug_reply(id, requester, ticket, sample, 1);
 }
 
 

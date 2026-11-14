@@ -74,6 +74,7 @@ static int runtime_dispatch_turn(void)
     {
         error("invalid managed process environment");
     }
+    dvm_resident_location_clear();
     dvm_native_execution()->instruction_boundary_error = 0;
     if (waserror())
     {
@@ -107,6 +108,7 @@ static int runtime_dispatch_turn(void)
             dvm_native_execution()->resident_registers_valid =
                 native_spawn && process == (resident ? resident : initial_guest);
             owner_error()[0] = 0;
+            runtime_capture_debug_location();
             if (!dvm_runqueue_finish(process))
             {
                 error("cannot finish handled dispatch");
@@ -204,6 +206,7 @@ static int runtime_dispatch_turn(void)
             dvm_runtime_termination_checkpoint(process);
         }
         xec(process);
+        runtime_capture_debug_location();
         dvm_runtime_termination_checkpoint(process);
         /* The controller's initial Prog is also bound to its thread.
          * Channel and child-wait completions keep the live TLS registers. */

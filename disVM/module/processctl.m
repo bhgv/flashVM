@@ -98,4 +98,16 @@ Processctl: module
     # RU: Забыть только свой query; обычные guest operations независимы.
     residentforget: fn(id: big, ticket: big): int;
 
+    LocationValid: con 1; # Original Dis next-PC and copied labels are available.
+    LocationNameTruncated: con 2; # Name is a complete UTF-8 prefix.
+    LocationPathTruncated: con 4; # Path is a complete UTF-8 prefix.
+
+    # EN: Peek own ticket: status, boundary sequence, next PC, nprog, name/path lengths, flags.
+    # RU: Читать свой ticket: status, boundary sequence, next PC, nprog, длины name/path, flags.
+    residentlocation: fn(id: big, ticket: big): (int, big, big, int, int, int, int);
+
+    # EN: Peek one copied UTF-8 byte; part 0=name, 1=path. Never consume credit.
+    # RU: Читать copied UTF-8 byte; part 0=name, 1=path. Не поглощать credit.
+    residentlocationbyte: fn(id: big, ticket: big, part: int, index: int): (int, int);
+
 };

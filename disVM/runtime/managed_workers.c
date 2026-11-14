@@ -26,6 +26,7 @@
 #include "resident_threads/worker_state.inc"
 #include "resident_threads/worker_wait.inc"
 #include "resident_threads/worker_debug.inc"
+#include "resident_threads/worker_location.inc"
 #include "resident_threads/worker_execute.inc"
 #include "resident_threads/worker_start.inc"
 #include "resident_threads/worker_observe.inc"
