@@ -14,6 +14,11 @@ managed pointers/refcounts, SIMD guest operations и unsafe C/helpers не вх�
 допущенное подмножество. Их обычное native/interpreted исполнение сохраняется,
 но handler не объявляет для них безопасный landing.
 
+Здесь перечислены допущенные guest opcodes; это не доказательство inline
+машинной арифметики. Обязательный hosted guarded backend выпускает переходы
+к проверенным C-обработчикам. RX-подмены проверяют границу восстановления
+отдельно от production emission: см. [границы диагностики](JIT-FP.ru.md).
+
 До вызова проверяются исходный opcode, адрес callback внутри immutable RX extent,
 ACTIVE managed admission, отсутствие object guards и native cleanup checkpoint
 своего owner. Чужой callback или другой opcode не может заимствовать landing.

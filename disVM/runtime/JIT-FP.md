@@ -5,6 +5,33 @@ MULF, DIVF and NEGF, alongside the existing integer subset. Root/control identit
 ACTIVE admission, no-object-guard and native-cleanup checks remain mandatory.
 There is no global stop, exclusive profile or external debugger dependency.
 
+## Scope follows the active backend
+
+Diagnostics cover mechanisms used by the supported hosted JIT. New CPU state,
+decoders, commands and recovery paths are added only when an actual backend
+change needs them. Supporting every available CPU extension is not a prerequisite
+for completing this debugger stage. Existing tested base snapshots remain useful;
+their presence does not require adding instructions to the JIT.
+
+The final generated backend matters. `prepare_guarded_leaves.py` replaces
+`leafemit` for x64/ARM64 and `rvemit` for RV64 with bridges to checked `cjitexec`
+when the mandatory guarded profile is active. Retained upstream inline emitters
+are not evidence that this profile emits their arithmetic instructions. The
+REAL opcode describes guest semantics, not a guarantee of inline hardware FP.
+
+The RX injection tests below validate the actual signal boundary, copied context,
+FP policy restoration and function quarantine. Their test-only FP instructions
+do **not** demonstrate production inline FP arithmetic on any target. Ordinary
+REAL result checks establish application semantics separately. A fault inside a
+C helper still lies outside the RX-only recovery boundary, even when that helper
+was reached through a JIT bridge. No new helper recovery is implied here.
+
+The finite boundary is the admitted opcode list in `jit_fault/invoke.c`, the
+active generated bridges, native integer/base FP context and the existing
+function-quarantine report. Unused AVX/AVX-512, SVE/SME, RVV and Q-extension
+diagnostics are not pending work for this stage. Future backend changes must
+review their actual state needs and recovery safety together.
+
 Before an admitted invocation, the source saves its native floating environment.
 If saving fails, native execution declines before effects. After a synchronous RX
 fault and successful safety checks, the source restores that pre-invocation

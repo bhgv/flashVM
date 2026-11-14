@@ -41,3 +41,19 @@
   global exclusive/stop are mandatory for all supported hosts and diagnostics.
   Do not use single-threaded/exclusive reference profiles in new work or CI.
   Historical source/fixtures do not authorize restoring those execution modes.
+
+## JIT diagnostic scope / Границы диагностики JIT
+
+- Cover instructions and mechanisms actually used by the supported hosted JIT.
+  Inspect the final generated backend and its mandatory guarded dispatch, not
+  only retained upstream emitters or the guest opcode name. A native bridge to
+  C does not prove inline machine arithmetic. Test-injected RX code demonstrates
+  fault handling, not production emission of those instructions.
+- Do not add CPU extension state, decoders, debugger commands or recovery paths
+  for mechanisms the JIT does not use. Extend diagnostics alongside an actual
+  backend change that needs them. Preserve existing tested snapshots; their
+  availability does not require expanding the supported instruction set.
+- Диагностика покрывает фактически используемый код hosted JIT. Проверять итог
+  генерации и обязательный guarded dispatch. Переход в C и тестовая RX-подмена
+  не доказывают inline-арифметику. Не добавлять неиспользуемые механизмы CPU,
+  команды отладчика и пути восстановления ради возможной будущей поддержки.

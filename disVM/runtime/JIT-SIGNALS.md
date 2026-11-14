@@ -15,6 +15,11 @@ pointer/refcount operations, SIMD guest operations and unsafe C/helper execution
 are outside this admitted subset. Other operations retain their existing native
 or interpreted execution; the handler never pretends they have a safe landing.
 
+This names admitted guest opcodes, not proof of inline machine arithmetic.
+The mandatory hosted guarded backend emits checked C bridges. Test-injected RX
+instructions exercise the recovery boundary independently of production emission;
+see [active backend and diagnostic scope](JIT-FP.md#scope-follows-the-active-backend).
+
 Before invocation the runtime checks original opcode, callback address inside
 its admitted immutable RX extent, ACTIVE managed admission, zero object guards
 and a valid owner-local native cleanup checkpoint. A different opcode or foreign
