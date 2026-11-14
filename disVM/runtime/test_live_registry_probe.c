@@ -3,6 +3,7 @@
  * RU: Читать actual resident metadata из concurrent real Sys callers.
  */
 #include "managed_workers.h"
+#include "resident_threads/observation_counter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -16,6 +17,14 @@ extern void __real_Sys_werrstr(void *frame); /* Matched production builtin. */
 void __wrap_Sys_werrstr(void *frame)
 {
     DVM_ResidentCard cards[2];
+    unsigned long boundary = (unsigned long)LLONG_MAX - 1; /* Private owner counter. */
+    increment_resident_counter(&boundary);
+    increment_resident_counter(&boundary);
+    if (boundary != (unsigned long)LLONG_MAX)
+    {
+        fprintf(stderr, "FAIL resident counter saturation\n");
+        exit(14);
+    }
     unsigned int count = 99;
     unsigned int index;
     unsigned long cursor = 0; /* Copied ID only, never a resident pointer. */
@@ -31,7 +40,8 @@ void __wrap_Sys_werrstr(void *frame)
             cards[index].phase < DVM_RESIDENT_STARTING || cards[index].phase > DVM_RESIDENT_DONE ||
             (cards[index].done != (cards[index].phase == DVM_RESIDENT_DONE)) ||
             cards[index].activity < DVM_ACTIVITY_UNKNOWN || cards[index].activity > DVM_ACTIVITY_BROKEN ||
-            (index && cards[index - 1].id >= cards[index].id))
+            cards[index].turns > cards[index].dispatches || cards[index].dispatches > (unsigned long)LLONG_MAX ||
+            cards[index].waits > (unsigned long)LLONG_MAX || (index && cards[index - 1].id >= cards[index].id))
         {
             fprintf(stderr, "FAIL live registry identity\n");
             exit(14);

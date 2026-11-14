@@ -77,6 +77,28 @@ def main():
             check=True,
             capture_output=True,
         )
+        progress_image = work / "progress.dis"
+        subprocess.run(
+            [
+                str(compiler),
+                "-I",
+                str(include),
+                "-I",
+                str(root.parent / "module"),
+                "-o",
+                str(progress_image),
+                str(root / "fixtures/resident-progress/main.b"),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        join_binary = relink(
+            runtime,
+            work,
+            root / "test_resident_summary_join.c",
+            10,
+            ["dvm_thread_registrar_join", "dvm_resident_summary"],
+        )
         binary = relink(runtime, work, root / "test_live_registry_probe.c", 0, ["Sys_werrstr"])
         for mode in ("--no-jit", "--jit"):
             for locked in (False, True):
@@ -146,7 +168,7 @@ def main():
                 evidence(phase_output, children=8)
                 activity_result = subprocess.run(
                     [
-                        str(runtime),
+                        str(join_binary),
                         "--stats",
                         mode,
                         *(["--gc-locked-poll"] if locked else []),
@@ -161,11 +183,35 @@ def main():
                     activity_result.returncode
                     or "ThreadSanitizer:" in activity_output
                     or "runtime error:" in activity_output
+                    or "DETECTED resident summary" in activity_output
+                    or "NATIVERESIDENT_JOIN observed=1 partition=1" not in activity_output
                     or "PASS resident activity: send receive alt table native ready wake exact IDs reaped joined"
                     not in activity_output
                 ):
                     raise RuntimeError("resident activity API failed\n" + activity_output[-10000:])
                 evidence(activity_output, children=5)
+                progress_result = subprocess.run(
+                    [
+                        str(runtime),
+                        "--stats",
+                        mode,
+                        *(["--gc-locked-poll"] if locked else []),
+                        str(progress_image),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+                progress_output = progress_result.stdout + progress_result.stderr
+                if (
+                    progress_result.returncode
+                    or "ThreadSanitizer:" in progress_output
+                    or "runtime error:" in progress_output
+                    or "PASS resident progress: eight owners four wakes monotonic counters shared canaries summary joined"
+                    not in progress_output
+                ):
+                    raise RuntimeError("resident progress API failed\n" + progress_output[-10000:])
+                evidence(progress_output, children=9)
                 print("PASS live registry " + mode + " locked=" + str(locked), flush=True)
         for variant, target_image, children, diagnostic in (
             (1, phase_image, 8, "resident phases never published eight readiness waits"),
@@ -176,6 +222,7 @@ def main():
                 5,
                 "resident activity missing send receive alt table native publication",
             ),
+            (4, progress_image, 9, "resident progress stopped publishing completed turns"),
         ):
             omitted = relink(
                 runtime,
@@ -195,6 +242,7 @@ def main():
                 "DETECTED " + diagnostic not in output
                 or "PASS resident phases:" in output
                 or "PASS resident activity:" in output
+                or "PASS resident progress:" in output
                 or "ThreadSanitizer:" in output
                 or "runtime error:" in output
                 or result.returncode != 0
@@ -202,6 +250,30 @@ def main():
                 raise RuntimeError("phase omission not detected semantically\n" + output[-10000:])
             evidence(output, children=children)
             print("PASS resident observation omission " + str(variant), flush=True)
+        broken_join = relink(
+            runtime,
+            work,
+            root / "test_resident_summary_join.c",
+            1,
+            ["dvm_thread_registrar_join", "dvm_resident_summary"],
+        )
+        result = subprocess.run(
+            [str(broken_join), "--stats", "--no-jit", str(activity_image)],
+            capture_output=True,
+            text=True,
+            timeout=90,
+        )
+        output = result.stdout + result.stderr
+        if (
+            result.returncode
+            or "ThreadSanitizer:" in output
+            or "runtime error:" in output
+            or "DETECTED resident summary lost in-flight partition" not in output
+            or "PASS resident activity:" not in output
+        ):
+            raise RuntimeError("resident summary omission not detected cleanly\n" + output[-10000:])
+        evidence(output, children=5)
+        print("PASS resident summary in-flight omission", flush=True)
 
 
 if __name__ == "__main__":

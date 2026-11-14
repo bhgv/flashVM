@@ -14,6 +14,9 @@ init()
     sys := load Sys Sys->PATH;
     control := load Processctl Processctl->PATH;
     sys->print("NATIVEOBSERVER pid=%d scope=residents\n", control->pid());
+    (summary, created, registered, reaping, reaped, finished) := control->residentsummary();
+    sys->print("NATIVERESIDENT_SUMMARY status=%d created=%bd registered=%bd reaping=%bd reaped=%bd done=%bd\n",
+               summary, created, registered, reaping, reaped, finished);
     names := array[] of {"starting", "dispatch", "scheduler", "wait-work", "teardown", "done"};
     activities := array[] of {"unknown", "ready", "send", "receive", "alt", "native",
                               "table", "child", "debug", "exiting", "broken"};
@@ -36,6 +39,9 @@ init()
         }
         sys->print("NATIVERESIDENT id=%bd pid=%d done=%d phase_id=%d phase=%s activity_status=%d activity_id=%d activity=%s\n",
                    id, pid, done, phase, names[phase], activitystatus, activity, label);
+        (progress, dispatches, turns, waits) := control->residentprogress(id);
+        sys->print("NATIVERESIDENT_PROGRESS id=%bd status=%d dispatches=%bd turns=%bd waits=%bd\n",
+                   id, progress, dispatches, turns, waits);
         cursor = id;
     }
 }
