@@ -169,3 +169,58 @@ Compile/crash/timeout/sanitizer failure не принимаются за semanti
 CLI module с именами phases компилируется и запускается; его реальный report
 нормализуется в JSON, три unit checks normalizer проходят. Полный новый прогон
 всей runtime suite и вся архитектурная матрица этим не объявляются.
+
+## Copied resident activity / Причина ожидания
+
+`Processctl.residentactivity(id: big)` читает exact положительный lifetime ID:
+`(status, activity)`. Status 1 — карточка найдена, 0 — отсутствует в registry,
+-1 — invalid/unavailable. Без найденной карточки activity=0. Это не cursor API:
+если ID исчез, следующая сортированная карточка не подменяет запрошенную.
+Старые resident/residentstate tuples сохраняются; CLI показывает activity отдельно.
+
+| Activity | Code | Последнее опубликованное состояние |
+| --- | --- | --- |
+| Unknown | 0 | Неизвестное значение |
+| Ready | 1 | Prog ready; не означает выполнение на CPU |
+| Send / Receive / Alt | 2 / 3 / 4 | Регистрация ожидания канала |
+| Native | 5 | Native continuation отпустил admission |
+| Table | 6 | Кооперативное ожидание table admission |
+| Child | 7 | Ответ на ожидание retirement/cancellation ребёнка |
+| Debug / Exiting / Broken | 8 / 9 / 10 | Соответствующее retained Prog state |
+
+До startup registrar привязывает к Prog native scalar cell в его resident slot.
+Разрешённые переходы dvm_runqueue_set_state зеркалируют туда только scalar через
+relaxed atomic store. Slot живёт до native join и дольше Prog; pointer на cell
+не GC root и не передаётся наблюдателю. Inspector копирует native cell под guard
+реестра, не читая Prog. Отсутствующая cell сохраняет прежний путь публикации.
+Код child-wait теперь объявлен в общем runqueue header без изменения значения.
+
+Phase и activity читаются независимо и не образуют общей atomic транзакции.
+Они могут меняться сразу после копирования; Done-карточка хранит последнее activity,
+а не обещание живого ожидания. Missing означает отсутствие карточки, не доказательство
+завершённого OS join. Sleep/RPC/I/O, конкретный channel/table, target PID, duration,
+source location и stack этим API не раскрываются. Debug code не добавляет pause.
+
+Actual acceptance удерживает send/receive/alt/table waiters и native sleeper,
+проверяет точные activity и Ready после реального завершения операций. Payloads
+17/42/73 и table write99 должны сохраниться. Native sleeper создаётся первым,
+убирается при оставшихся поздних IDs; explicit peer dispatch даёт rootless reaping
+progress, затем exact-ID query обязан вернуть missing/zero. Сам observer не
+запускает target code и не форсирует reaping. Все пять native slots затем joined.
+
+Проверяются invalid IDs, uint63 max absent ID, общие activity result fields с
+canaries и параллельными readers. Scalar arrays в fixtures инициализируются явно:
+allocation без initializer не обещает нулевые scalar bytes. Private ALT activity
+substitution обязан дать точный DETECTED diagnostic после полного retirement.
+Отдельный native queue unit удаляет реальный mirror store и требует точную ошибку;
+все двенадцать ownership/observation controls проходят. Новая real-VM матрица
+проверяет шесть activity (Ready и пять waits); Child/Debug/Exiting/Broken не получают
+здесь отдельного нового live acceptance, только явную классификацию публикаций.
+
+Финальные семь затронутых групп проходят 7/7 обычно и 7/7 под TSan: process control,
+receiver/native cancellation, live registry, retirement storage, table transfer
+и table retirement. Live registry включает C/JIT × fast/locked polling, shared
+activity outputs, exact-ID gap и все три copied-data omission controls. Native
+queue unit с двенадцатью controls проходит отдельно; CLI report нормализуется,
+три unit checks JSON normalizer проходят. Workload count остаётся 56. Полная новая
+runtime/architecture suite и live-проверка всех одиннадцати activity не заявляются.
