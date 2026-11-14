@@ -4,6 +4,7 @@
 from pathlib import Path
 import sys
 import tempfile
+import subprocess
 
 from network_proxy_fixture import compile_fixture
 from proxy_retirement_cases import prepare, local, remote, control
@@ -31,6 +32,16 @@ def main():
         cleanup.prepare(root, work, compiler, include)
         ref_publication.prepare(root, work, compiler, include)
         if not only_controls:
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(root / "test_registry_actor_failure.py"),
+                    str(runtime),
+                    str(compiler),
+                    str(include),
+                ],
+                check=True,
+            )
             publication.check(runtime, root, work, compiler, include)
             ref_publication.check(runtime, root, work, compiler, include)
             for mode in ("--no-jit", "--jit"):

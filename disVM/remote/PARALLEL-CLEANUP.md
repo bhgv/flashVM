@@ -73,3 +73,23 @@ source-loss and existing orphan cases, plus every selected semantic omission.
 Затронутые TSan группы: 11/11. Новый полный 91-test TSan результат не заявлен.
 Architecture workload count остаётся 54; private retirement driver расширен.
 Новая GitHub CI относится к новому опубликованному tree и проверяется отдельно.
+
+## Known retired source at import / Завершившийся source при import
+
+Registry import now checks the received Ref for nil, terminal state and native
+lease activity before asking the original function owner to expose a new stub.
+A source already known to have retired returns Unknown with an absent handle.
+Retirement after this check remains an ordinary asynchronous revocation; the
+check is not a lifetime pin or a guarantee that the remote source cannot fail.
+
+The registry actor-failure test covers exceptions before Ready and inside the
+post-Ready run loop, in C/JIT with both GC polling paths. A private observation
+gate lets the post-Ready source settle before import continues. Both imports
+must return Unknown without views; original source values remain 10, local value
+42, actor slots and native/root ownership drain. This test now runs inside the
+native retirement architecture workload, including CI, rather than only manually.
+
+Import отказывает source, retirement которого уже известен: nil, terminal state
+либо inactive lease проверяются до expose. Более поздний отказ source обрабатывается
+обычным отзывом; новый guard не объявляется lifetime pin. Проверка early/post-Ready
+exceptions включена в native retirement workload с actual тремя VM и clean joins.

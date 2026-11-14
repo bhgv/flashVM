@@ -154,6 +154,12 @@ importview(context: ref Context, function: Proxyowner->Handle, slot, deadline: i
     if (status != 0) {
         return (status, absent);
     }
+    # EN/RU: Do not publish a stub for a source already known to have retired.
+    # Не публиковать stub для source, retirement которого уже известен.
+    if (source == nil || source.state.closed || !gc->active(source.lease)) {
+        source = nil;
+        return (Proxyowner->Unknown, absent);
+    }
     remaining := deadline - sys->millisec();
     if (remaining <= 0) {
         source = nil;
