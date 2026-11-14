@@ -14,7 +14,7 @@ Network orphan-server acceptance обнаружила настоящую TSan ra
 
 `sys_scalar_result.c` реализует `dvm_sys_scalar_result(snapshot, destination, size)`:
 private snapshot содержит только scalar bytes; caller уже захватил валидный result
-и сохраняет frame/managed owners rooted. Span ограничен 64 bytes. Общий range
+и сохраняет frame/managed owners rooted. Span ограничен 96 bytes, включая coherent memorysnapshot. Общий range
 cell domain защищает **весь** destination, включая unaligned/multiple-cell span.
 Копирование не вызывает allocation, VM callback или error под guards.
 
@@ -43,3 +43,7 @@ shared fields с четырёх постоянных writers при одновр
 control helper заменяется raw memmove, и принимается только actual data race с
 `__wrap_dvm_sys_scalar_result` в stack, не crash или compiler failure. Обычная
 сборка и TSan используют те же production helpers и native-only GC policy.
+
+Processctl.memorysnapshot публикует один согласованный 96-byte native accounting
+record через тот же range domain; повторная publication не перечитывает counters.
+Описание pool gauges и их ограничений: [RU](MEMORY-STATISTICS.ru.md) / [EN](MEMORY-STATISTICS.md).

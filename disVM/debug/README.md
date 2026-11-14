@@ -21,3 +21,6 @@ lines and describes ownership/threading in English and Russian.
 
 Residentstack: bounded owner call chains, [EN](../runtime/OWNER-STACK.md) /
 [RU](../runtime/OWNER-STACK.ru.md), with a [runnable example](../examples/resident-stack/README.md).
+
+Memoryview: coherent native arena statistics, [contract](../runtime/MEMORY-STATISTICS.md),
+[example](../examples/memory-statistics/README.md).

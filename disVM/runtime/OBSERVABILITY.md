@@ -293,3 +293,6 @@ examples/resident-debug/. Это не полный stack, unique module catalog 
 
 Bounded owner-produced stack prefixes and Limbo reader/example now work: [RU](OWNER-STACK.ru.md) / [EN](OWNER-STACK.md).
 Typed variables, pause/resume and external debugger service remain separate work.
+
+Live arena accounting API and Limbo view/example: [EN](MEMORY-STATISTICS.md) / [RU](MEMORY-STATISTICS.ru.md).
+One O(1) native metadata snapshot; excludes object/type/origin catalog and off-arena/RSS accounting.

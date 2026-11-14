@@ -12,7 +12,7 @@ OS threads без global stop/exclusive остаются обязательны�
 | --- | --- | --- |
 | Гостевые потоки | Limbo spawn, permanent Prog/native owner; Processctl pid, kill/killwait/cancelwait для direct child | Supervisor capability для других гостей, pause/resume/step, приоритет |
 | Наблюдение | Resident ID/PID, phase/activity, progress/summary, отдельные mailbox и copied owner location/stack prefix | Typed-variable capture, полный stack сверх bounded prefix, module catalog, external transport и управляющие capabilities |
-| Память | Native allocator/RC/GC механизмы и private heap/type/module probes | Live allocator statistics и каталог объектов с owner/type attribution |
+| Память | Native allocator/RC/GC, coherent live arena statistics и private heap/type/module probes | Каталог объектов, подробный GC state, owner/type attribution и внеаренная native memory |
 | Окружение | Guest-local native error storage и FP state | Copy/share policy namespace, FD groups, env и credentials |
 | Файлы | Нативный файловый порт, open/create/read/write/seek/stat/fstat/dirread | Inferno namespace, bind/mount/unmount, работающий Styx serving и VFS providers |
 | Модули | Limbo modules, typed C builtins по matched .m/NC64 | Общий .so/DLL loader, регистрация виртуальных FS/device providers |
@@ -131,3 +131,6 @@ Owner-bound location и reader/example уже реализованы: [RU](OWNER
 
 Ограниченные снимки стека от владельца и Limbo reader/example реализованы: [RU](OWNER-STACK.ru.md) / [EN](OWNER-STACK.md).
 Typed variables, pause/resume и внешний debugger service остаются отдельными задачами.
+
+Согласованная статистика арены и Memoryview теперь реализованы: [RU](MEMORY-STATISTICS.ru.md) / [EN](MEMORY-STATISTICS.md).
+Snapshot не обходит objects; per-thread/per-type/origin и полный учёт native памяти — следующие задачи.

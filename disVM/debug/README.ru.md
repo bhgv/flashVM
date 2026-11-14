@@ -20,3 +20,6 @@ threading на английском и русском.
 
 Residentstack: ограниченные цепочки вызовов своего owner, [RU](../runtime/OWNER-STACK.ru.md) /
 [EN](../runtime/OWNER-STACK.md), с [рабочим примером](../examples/resident-stack/README.ru.md).
+
+Memoryview: согласованная статистика native арены, [контракт](../runtime/MEMORY-STATISTICS.ru.md),
+[пример](../examples/memory-statistics/README.ru.md).
