@@ -58,7 +58,7 @@ outcome(response: array of byte, request: ref Proxynet->Request): (int, Proxyown
     valid := 0;
     {
         returned = codec->handle(response, Proxyframe->Returned);
-        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction || request.operation == Proxyowner->ImportRoute;
+        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction || request.operation == Proxyowner->ImportRoute || request.operation == Proxyowner->RoutedReturnVariable;
         if (resultcall && codec->get(response, Proxyframe->Status) == big 0) {
             expected := 1;
             if (request.operation == Proxyowner->ReturnFunction) {

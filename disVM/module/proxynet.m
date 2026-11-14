@@ -5,7 +5,7 @@ Proxynet: module
 {
     PATH: con "proxynet.dis"; # Client broker, one permanent Prog per connection.
     Disconnected: con -4; # Terminal byte/framing failure; sent effects may be unknown.
-    GCProgress: con 12; # Local broker maintenance, never a wire operation.
+    GCProgress: con 13; # Local broker maintenance, never a wire operation.
     Stale: con 5; # Image belongs to another connection incarnation.
 
 
@@ -123,4 +123,12 @@ Proxynet: module
     # live owner-backed refs; foreign cells не копируются.
     routed: fn(endpoint: ref Endpoint, function, left, right: Image,
                refs, value, timeout: int): (int, int);
+
+
+    # EN: Invoke original remote callback with forwarded refs and own its returned live alias.
+    # Reserve before wire; registry validates and Retains the result. Unknown is never replayed.
+    # RU: Вызвать original remote callback с forwarded refs; владеть returned live alias.
+    # Reservation до wire; registry проверяет и Retain result. Unknown не повторяется.
+    routedfetch: fn(endpoint: ref Endpoint, function, left, right: Image,
+                    refs, value, timeout: int): (int, Image);
 };

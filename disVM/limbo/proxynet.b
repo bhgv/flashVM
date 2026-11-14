@@ -172,6 +172,16 @@ routed(endpoint: ref Endpoint, function, left, right: Image,
 }
 
 
+# EN/RU: A routed variable result gets an independent reserved/bound image token.
+# Routed variable result получает independent reserved/bound image token.
+routedfetch(endpoint: ref Endpoint, function, left, right: Image,
+            refs, value, timeout: int): (int, Image)
+{
+    result := offer(endpoint, Proxyowner->RoutedReturnVariable, function, left, right, refs, value, timeout);
+    return (result.status, result.image);
+}
+
+
 # EN/RU: Read broker's cumulative acknowledged GC Release count; no forced collection.
 # Читать cumulative acknowledged GC Release count broker; без forced collection.
 collected(endpoint: ref Endpoint, timeout: int): (int, int)
@@ -245,7 +255,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
                 result.status = Proxyhost->Capacity;
             }
         }
-        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction || request.operation == Proxyowner->ImportRoute;
+        resultcall := request.operation == Proxyowner->ReturnVariable || request.operation == Proxyowner->ReturnFunction || request.operation == Proxyowner->ImportRoute || request.operation == Proxyowner->RoutedReturnVariable;
         if (admitted && resultcall) {
             staged = gc->reserve(connection);
             if (staged == nil) {

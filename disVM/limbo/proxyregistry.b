@@ -159,6 +159,34 @@ importview(context: ref Context, function: Proxyowner->Handle, slot, deadline: i
 }
 
 
+# EN: Borrow result Ref through exact wrapper lookup; only an active registered
+# view can acquire an additional native B peer owner. No new source actor/copy.
+# RU: Borrow result Ref через exact wrapper lookup; лишь active registered view
+# получает additional native B peer owner. Без нового source actor/copy.
+resultview(context: ref Context, source: ref Proxyref->Ref, deadline: int): (int, Proxyowner->Handle)
+{
+    absent := Proxyowner->Handle(big 0, 0, big 0);
+    if (source == nil || source.state.closed || !gc->active(source.lease)) {
+        return (3, absent);
+    }
+    for (index := 0; index < len context.views; index++) {
+        view := context.views[index];
+        if (view != nil && view.owners > 0 && view.source == source) {
+            if (view.owners >= 256) {
+                return (Proxyhost->Capacity, absent);
+            }
+            status := proxy->retainuntil(context.endpoint, view.owner, deadline);
+            if (status == 0) {
+                view.owners++;
+                return (0, view.owner);
+            }
+            return (status, absent);
+        }
+    }
+    return (3, absent);
+}
+
+
 # EN: Forward only registered views; ordinary Invoke/fetch must never receive a
 # native stub as a copied local Cell. Count native Retain/Drop only after success.
 # RU: Forward лишь registered views; ordinary Invoke/fetch не получает native stub
@@ -183,7 +211,7 @@ dispatch(context: ref Context, operation: int, target, left, right: Proxyowner->
     }
     first := lookup(context, left);
     second := lookup(context, right);
-    if (operation == Proxyowner->RoutedInvoke) {
+    if (operation == Proxyowner->RoutedInvoke || operation == Proxyowner->RoutedReturnVariable) {
         if (context == nil || context.closed ||
             (refs > 0 && (first == nil || first.source == nil || !gc->active(first.source.lease))) ||
             (refs > 1 && (second == nil || second.source == nil || !gc->active(second.source.lease)))) {
@@ -195,6 +223,18 @@ dispatch(context: ref Context, operation: int, target, left, right: Proxyowner->
         }
         if (refs > 1) {
             rref = second.source;
+        }
+        if (operation == Proxyowner->RoutedReturnVariable) {
+            (status, source) := proxy->routedfetchuntil(context.endpoint, target, lref, rref, refs, value, deadline);
+            returned := absent;
+            kind := 0;
+            if (status == 0) {
+                (status, returned) = resultview(context, source, deadline);
+                if (status == 0) {
+                    kind = 1;
+                }
+            }
+            return (1, status, 0, returned, kind);
         }
         (status, result) := proxy->routeduntil(context.endpoint, target, lref, rref, refs, value, deadline);
         return (1, status, result, absent, 0);
