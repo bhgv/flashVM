@@ -284,22 +284,47 @@ dispatch(context: ref Context, operation: int, target, left, right: Proxyowner->
 }
 
 
-# EN: Kill/join the function owner first, then revoke all refs and join independent
-# actors. Completion channels never contain a Ref, so they do not prevent its GC.
-# RU: Сначала kill/join function owner, затем отозвать refs и join independent
-# actors. Completion channels не содержат Ref и не мешают GC.
+# EN: Own one source Ref until Close completes under the shared cleanup deadline.
+# Borrow completed; publish only PID after dropping Ref roots, including exceptions.
+# RU: Владеть одним source Ref до Close под shared cleanup deadline.
+# Borrow completed; передать лишь PID после снятия Ref roots, включая exceptions.
+closeref(source: ref Proxyref->Ref, deadline: int, completed: chan of int)
+{
+    {
+        access->call(source, Proxyref->Close, 0, deadline);
+    } exception {
+        "*" => {}
+    }
+    source = nil;
+    completed <-= control->pid();
+}
+
+
+# EN: After the function owner joins, revoke all views and close independent refs
+# concurrently under one absolute cleanup budget. Join cleanup children and source
+# actors. Completion channels contain only PIDs, never Ref roots.
+# RU: После join function owner отозвать все views и закрыть independent refs
+# одновременно под одним absolute cleanup budget. Join cleanup children и source
+# actors. Completion channels содержат лишь PIDs, не Ref roots.
 close(context: ref Context)
 {
     if (context == nil || context.closed) {
         return;
     }
     context.closed = 1;
+    deadline := sys->millisec() + context.timeout;
+    completed := chan[16] of int;
+    pending := 0;
     for (index := 0; index < len context.views; index++) {
         view := context.views[index];
         if (view != nil && view.source != nil) {
-            access->call(view.source, Proxyref->Close, 0, sys->millisec() + context.timeout);
+            spawn closeref(view.source, deadline, completed);
+            pending++;
             view.source = nil;
         }
+    }
+    for (index = 0; index < pending; index++) {
+        control->killwait(<-completed);
     }
     for (index = 0; index < len context.actors; index++) {
         if (context.actors[index] != nil) {

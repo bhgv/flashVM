@@ -33,7 +33,7 @@ Proxyregistry: module
         views: array of ref View; # At most sixteen simultaneously exported native stubs.
         actors: array of chan of int; # Bounded outstanding actors; slots reused after completion/retirement fence.
         endpoint: ref Proxyowner->Endpoint; # Original function execution owner.
-        timeout: int; # Finite source exchange/idle/cleanup budget.
+        timeout: int; # Source exchange/idle limit and one shared cleanup budget.
         closed: int; # Terminal after cleanup begins.
     };
 
@@ -56,7 +56,7 @@ Proxyregistry: module
                  refs, value, deadline: int): (int, int, int, Proxyowner->Handle, int);
 
 
-    # EN/RU: Revoke views after original callback owner joins, then join every source actor.
-    # Отозвать views после join original callback owner, затем join всех source actors.
+    # EN/RU: After callback owner joins, close refs concurrently under one budget and join actors.
+    # После join callback owner закрыть refs одновременно под одним budget и join actors.
     close: fn(context: ref Context);
 };
