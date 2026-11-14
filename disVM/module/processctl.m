@@ -30,4 +30,17 @@ Processctl: module
     # Pages observational; IDs не дают kill/debug/memory authority.
     resident: fn(after: big): (int, big, int, int);
 
+    Starting: con 0;
+    Dispatch: con 1;
+    Scheduler: con 2;
+    WaitWork: con 3;
+    Teardown: con 4;
+    Done: con 5;
+
+    # EN: Same cursor/status/zeroed refusal as resident; append owner phase.
+    # Phase is an interval, not an OS state, wait cause or heap access permission.
+    # RU: Те же cursor/status/нулевой отказ, что resident; добавить owner phase.
+    # Phase — интервал, не OS state, причина ожидания либо heap permission.
+    residentstate: fn(after: big): (int, big, int, int, int);
+
 };

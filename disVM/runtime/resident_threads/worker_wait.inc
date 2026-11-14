@@ -119,9 +119,11 @@ static void wait_dedicated_work(ManagedWorker *worker)
     fvm_port_sync_lock(worker->wake);
     while (!worker->wake_stopped && !dedicated_work_pending(worker))
     {
+        publish_resident_phase(worker, DVM_RESIDENT_WAIT_WORK);
         fvm_port_sync_wait(worker->wake);
     }
     fvm_port_sync_unlock(worker->wake);
+    publish_resident_phase(worker, DVM_RESIDENT_SCHEDULER);
 }
 
 

@@ -22,6 +22,7 @@ typedef struct ManagedWorker
     Prog *guest;                     /* Borrowed until retirement on its own thread. */
     int guest_pid;                   /* Permanent resident PID; initialized before execution. */
     int guest_retired;               /* Set by this guest thread after managed retirement. */
+    int observation_phase;           /* Atomic owner-published interval; no managed data ordering. */
     int done;                        /* Published under service.sync after TLS destruction. */
     DVM_ThreadSlot *thread;          /* Registrar handle, joined before this slot is reset. */
     uintptr identity;                /* Context identity under service.sync; zero before context destruction. */
@@ -64,3 +65,13 @@ typedef struct ManagedWorkers
 
 static __thread ManagedWorker *current_guest; /* Dedicated slot bound through native TLS teardown. */
 static ManagedWorkers service;                /* One process-wide runtime; lifetime ends after join. */
+
+
+/* EN: Publish phase for this owner's borrowed live slot; no allocation, lock or
+ * managed access. Observers gain no heap ordering/authority. No result or failure.
+ * RU: Опубликовать phase своего живого слота worker; без allocation, lock либо
+ * managed access. Observer не получает heap ordering/authority. Нет результата. */
+static void publish_resident_phase(ManagedWorker *worker, int phase)
+{
+    __atomic_store_n(&worker->observation_phase, phase, __ATOMIC_RELAXED);
+}

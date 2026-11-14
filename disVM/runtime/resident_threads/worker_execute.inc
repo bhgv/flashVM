@@ -37,6 +37,7 @@ static void execute(void *argument)
         }
         fvm_port_sync_lock(service.sync);
         unregister_dedicated_wait(worker);
+        publish_resident_phase(worker, DVM_RESIDENT_DONE);
         worker->done = 1;
         service.generation++;
         fvm_port_sync_signal_all(service.sync);
@@ -91,7 +92,9 @@ static void execute(void *argument)
         {
             while (!stopping() && !worker->guest_retired)
             {
+                publish_resident_phase(worker, DVM_RESIDENT_DISPATCH);
                 int progress = service.turn();
+                publish_resident_phase(worker, DVM_RESIDENT_SCHEDULER);
                 if (progress < 0)
                 {
                     fail("managed turn failed");
@@ -119,6 +122,7 @@ static void execute(void *argument)
             }
             poperror();
         }
+        publish_resident_phase(worker, DVM_RESIDENT_TEARDOWN);
         if (worker->guest_retired && service.diagnostics)
         {
             fprintf(
@@ -155,12 +159,14 @@ static void execute(void *argument)
             fvm_port_thread_sleep_us(50);
         }
     }
+    publish_resident_phase(worker, DVM_RESIDENT_TEARDOWN);
     if (!dvm_native_context_unbind(context) || !dvm_native_context_destroy(context))
     {
         fail("executor retirement failed");
     }
     fvm_port_sync_lock(service.sync);
     unregister_dedicated_wait(worker);
+    publish_resident_phase(worker, DVM_RESIDENT_DONE);
     worker->done = 1;
     service.generation++;
     fvm_port_sync_signal_all(service.sync);

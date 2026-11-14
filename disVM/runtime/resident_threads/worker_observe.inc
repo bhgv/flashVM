@@ -12,8 +12,8 @@
  * stable lifetime IDs; capacity 1..256. Caller удерживает service и disjoint native
  * output storage до return. Ноль без изменений при invalid/unavailable. Не читать
  * Prog, REG либо owner counters. */
-int dvm_resident_observe(unsigned long after, DVM_ResidentCard *cards,
-    unsigned int capacity, unsigned int *count, int *more)
+int dvm_resident_observe(
+    unsigned long after, DVM_ResidentCard *cards, unsigned int capacity, unsigned int *count, int *more)
 {
     ManagedWorker *worker;
     unsigned int used = 0;
@@ -55,6 +55,7 @@ int dvm_resident_observe(unsigned long after, DVM_ResidentCard *cards,
         cards[index].id = worker->id;
         cards[index].pid = worker->guest_pid;
         cards[index].done = worker->done;
+        cards[index].phase = __atomic_load_n(&worker->observation_phase, __ATOMIC_RELAXED);
     }
     fvm_port_sync_unlock(service.sync);
     *count = used;

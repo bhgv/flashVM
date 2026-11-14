@@ -50,12 +50,15 @@ void Processctl_pid(void *frame)
 void Processctl_resident(void *frame)
 {
     F_Processctl_resident call;
-    struct {
-        WORD status;
-        LONG id;
-        WORD pid;
-        WORD done;
+
+    struct
+    {
+        WORD status; /* Card, end or refusal; independent from payload. */
+        LONG id;     /* Copied service-lifetime ID in signed-big range. */
+        WORD pid;    /* Permanent guest PID, not a pointer. */
+        WORD done;   /* Published completion after TLS teardown. */
     } result = {-1, 0, 0, 0};
+
     DVM_ResidentCard card;
     unsigned int count;
     int more;
@@ -73,6 +76,53 @@ void Processctl_resident(void *frame)
             result.id = (LONG)card.id;
             result.pid = card.pid;
             result.done = card.done;
+        }
+        else if (count)
+        {
+            result.status = -1;
+        }
+    }
+    dvm_sys_scalar_result(&result, call.ret, sizeof(result));
+}
+
+
+/* EN: Borrow the rooted generated frame; stage one native metadata/phase card before
+ * guarded scalar publication. No guest pointer, register or heap graph is read.
+ * Failed/empty reads return zero fields. The builtin's resident keeps service alive.
+ * RU: Borrow rooted generated frame; сохранить native metadata card до guarded
+ * scalar publication. Guest pointer, register и heap graph не читаются. Failed/empty
+ * read возвращает zero fields. Вызывающий resident удерживает service lifetime. */
+void Processctl_residentstate(void *frame)
+{
+    F_Processctl_residentstate call;
+
+    struct
+    {
+        WORD status; /* Card, end or refusal; independent from payload. */
+        LONG id;     /* Copied service-lifetime ID in signed-big range. */
+        WORD pid;    /* Permanent guest PID, not a pointer. */
+        WORD done;   /* Published completion after TLS teardown. */
+        WORD phase;  /* Owner interval; no heap ordering or authority. */
+    } result = {-1, 0, 0, 0, 0};
+
+    DVM_ResidentCard card;
+    unsigned int count;
+    int more;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_residentstate, ret), sizeof(*call.ret));
+    if (sizeof(result) != sizeof(*call.ret))
+    {
+        error(exBounds);
+    }
+    if (call.after >= 0 && dvm_resident_observe((unsigned long)call.after, &card, 1, &count, &more))
+    {
+        result.status = 0;
+        if (count && card.id <= (unsigned long)LLONG_MAX)
+        {
+            result.status = 1;
+            result.id = (LONG)card.id;
+            result.pid = card.pid;
+            result.done = card.done;
+            result.phase = card.phase;
         }
         else if (count)
         {

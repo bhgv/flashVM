@@ -6,14 +6,27 @@
 #define DVM_MANAGED_WORKERS_H
 
 
+/* EN: Owner-published lifecycle intervals, not OS CPU states or heap permissions.
+ * RU: Опубликованные владельцем интервалы жизни, не CPU states либо heap permissions. */
+enum
+{
+    DVM_RESIDENT_STARTING,  /* Native startup/attach has not entered dispatch. */
+    DVM_RESIDENT_DISPATCH,  /* Inside turn callback, including its native calls. */
+    DVM_RESIDENT_SCHEDULER, /* Between turns, including admission/reaping. */
+    DVM_RESIDENT_WAIT_WORK, /* Dedicated readiness wait, possibly spuriously awake. */
+    DVM_RESIDENT_TEARDOWN,  /* Dispatch ended; owner/TLS cleanup in progress. */
+    DVM_RESIDENT_DONE       /* TLS cleanup finished; registry slot may await join. */
+};
+
 
 /* EN/RU: Copied native metadata; lifetime ID is not a pointer or managed authority.
  * Копия native metadata; lifetime ID не pointer и не managed authority. */
 typedef struct DVM_ResidentCard
 {
     unsigned long id; /* Stable lifetime identity within this service. */
-    int pid; /* Permanent PID copied before resident execution. */
-    int done; /* TLS destruction completed, published under metadata mutex. */
+    int pid;          /* Permanent PID copied before resident execution. */
+    int done;         /* TLS destruction completed, published under metadata mutex. */
+    int phase;        /* Atomic owner publication; no ordering of managed data is implied. */
 } DVM_ResidentCard;
 
 
@@ -24,9 +37,8 @@ typedef struct DVM_ResidentCard
  * Копировать ascending IDs после cursor в 1..256 disjoint native cards.
  * Caller удерживает service до return без concurrent service stop. count/more —
  * copied outputs; отказ не меняет output. Pages не образуют общий atomic snapshot. */
-int dvm_resident_observe(unsigned long after, DVM_ResidentCard *cards,
-    unsigned int capacity, unsigned int *count, int *more);
-
+int dvm_resident_observe(
+    unsigned long after, DVM_ResidentCard *cards, unsigned int capacity, unsigned int *count, int *more);
 
 enum
 {
@@ -41,8 +53,7 @@ enum
  * lifecycle output. Return zero on invalid state or native allocation failure.
  * RU: Запустить реестр закреплённых потоков на активном контроллере.
  * Обратные вызовы заимствованы до stop. При ошибке вернуть ноль. */
-int dvm_resident_threads_start(int diagnostics,
-    int (*turn)(void), void (*cancel_waits)(void));
+int dvm_resident_threads_start(int diagnostics, int (*turn)(void), void (*cancel_waits)(void));
 
 
 /* EN: Start and retire one resident on its permanently assigned thread.
@@ -53,9 +64,11 @@ int dvm_runtime_prepare_resident(struct Prog *guest);
 struct Prog *dvm_managed_workers_guest(void);
 void dvm_managed_workers_guest_retired(int pid);
 
+
 /* EN: Query a staged native reply after inspecting the resident's FIFO.
  * RU: Проверить извлечённый ответ после проверки FIFO процесса. */
 int dvm_managed_workers_reply_in_transit(struct Prog *guest);
+
 
 /* EN: Take the current owner's staged reply, if any.
  * RU: Забрать извлечённый ответ текущего владельца, если он есть. */
