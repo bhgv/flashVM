@@ -11,7 +11,7 @@ OS threads без global stop/exclusive остаются обязательны�
 | Область | Реализовано | Остаётся реализовать |
 | --- | --- | --- |
 | Гостевые потоки | Limbo spawn, permanent Prog/native owner; Processctl pid, kill/killwait/cancelwait для direct child | Supervisor capability для других гостей, pause/resume/step, приоритет |
-| Наблюдение | Resident ID/PID, phase/activity, progress/summary и отдельные read-only scalar mailbox | Location/stack, объекты ожиданий, external transport и управляющие capabilities |
+| Наблюдение | Resident ID/PID, phase/activity, progress/summary, отдельные mailbox и copied owner location | Полные stack/typed-variable capture, module catalog, external transport и управляющие capabilities |
 | Память | Native allocator/RC/GC механизмы и private heap/type/module probes | Live allocator statistics и каталог объектов с owner/type attribution |
 | Окружение | Guest-local native error storage и FP state | Copy/share policy namespace, FD groups, env и credentials |
 | Файлы | Нативный файловый порт, open/create/read/write/seek/stat/fstat/dirread | Inferno namespace, bind/mount/unmount, работающий Styx serving и VFS providers |
@@ -125,3 +125,6 @@ provider не держит global lock и не останавливает дру
 Каждый этап принимается в native concurrent C/JIT runtime с GC, завершением Prog,
 backpressure и semantic omission controls. Текущая приёмка предыдущего этапа не
 служит доказательством готовности следующего.
+
+Owner-bound location и reader/example уже реализованы: [RU](OWNER-LOCATION.ru.md) / [EN](OWNER-LOCATION.md).
+Это copied boundary с display labels, не глобальный Module handle или stack/pause API.

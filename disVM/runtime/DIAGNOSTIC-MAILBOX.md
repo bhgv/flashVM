@@ -2,7 +2,10 @@
 
 Copyright (c) 2026 bhgv
 
-Read-only scalar probes обслуживает permanent native owner resident. Это
+[English](DIAGNOSTIC-MAILBOX.en.md) · [Owner locations](OWNER-LOCATION.ru.md)
+
+Read-only probes обслуживает permanent native owner resident. Scalar replies
+сохраняются; location добавляет bounded copied UTF-8 labels без Module pointers. Это
 работающий внутренний механизм своей VM; external transport, source/stack capture,
 capabilities для управления, pause/resume/step и priority пока не реализованы.
 Controller, collectors и native I/O helpers не входят в этот resident registry.
@@ -58,8 +61,9 @@ private readiness condition адресата. Owner просыпается да�
 получает возможность продолжиться. Pending queries обслуживаются перед turn и
 после native readiness wake. Бюджет не означает hard realtime latency guarantee.
 
-Owner sampler проверяет permanent TLS/context identity и копирует только native
-PID/progress. Он не читает чужой Prog/REG, не вызывает getter, remote RPC либо guest
+Owner sampler проверяет permanent TLS/context identity и копирует native
+PID/progress и опубликованную location. Её отдельный producer читает только свой
+rooted module/live PC в ACTIVE; idle sampler работает с native copy. Он не читает чужой Prog/REG, не вызывает getter, remote RPC либо guest
 code и не обходит heap. Counter meanings остаются прежними: callbacks/completed
 turns/readiness waits, не инструкции, syscalls либо CPU time. Captured native
 sample — наблюдение в owner boundary, не atomic snapshot всего процесса.

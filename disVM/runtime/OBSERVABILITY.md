@@ -280,3 +280,13 @@ matrix этим не заявляется.
 не ordinary message FIFO. Pending wake и requester-retirement omissions проходят
 семантическую приёмку с полным native/GC drain. Read-only scalar sample не объявляет
 готовыми stack/typed-variable capture, внешний debugger либо pause/resume.
+
+
+## Owner-bound location и Limbo reader
+
+Реализована копия module name/path и next original Dis PC из live TLS своего
+owner в ACTIVE, до освобождения claim. Snapshot доступен через nonconsuming
+ticket projections, сохраняется после module return/instance drop и не удерживает
+Module pointers. Полные контракты: [EN](OWNER-LOCATION.md) / [RU](OWNER-LOCATION.ru.md).
+Reusable reader — debug/residentdebug.b; пример с отдельными RU/EN инструкциями —
+examples/resident-debug/. Это не полный stack, unique module catalog либо pause.
