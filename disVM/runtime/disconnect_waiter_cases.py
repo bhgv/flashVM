@@ -167,8 +167,8 @@ def negative(output):
 # требовать explicit missing-completion failure, всегда восстановить matched library.
 def control(runtime, root, work, compiler, include):
     for kind, name, anchor in (
-        ("net", "proxynet", "while (!endpoint.state.closed) {"),
-        ("ref", "proxyref", "while (!state.closed) {"),
+        ("net", "proxynet", "while (endpoint.state.closed != Closed) {"),
+        ("ref", "proxyref", "while (state.closed != Closed) {"),
     ):
         path = root.parent / "limbo" / (name + ".b")
         source = path.read_text()
