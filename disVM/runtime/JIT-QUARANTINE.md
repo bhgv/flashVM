@@ -45,7 +45,7 @@ correct later results, **no subsequent native entry anywhere in the whole failed
 function interval**, continued genuine native work outside it and both poll
 backends. Injection is confined to a test-linked probe, absent from production.
 
-Synchronous admitted integer scalar RX faults now feed this same whole-function
+Synchronous admitted integer/basic REAL scalar RX faults now feed this same whole-function
 quarantine: see [signal capture](JIT-SIGNALS.md). This remains a bounded recovery
 contract, not an arbitrary native-corruption detector or instruction retry policy.
 External GDB is optional; see [debugger](DEBUGGER.md).
@@ -55,3 +55,5 @@ correct results, but requires precise DETECTED for absent quarantine. Eight real
 native owners exercise the shared fallback after publication. / Контроль пропуска
 классификации сохраняет пойманную ошибку и верные результаты, но требует точного
 DETECTED при отсутствии карантина. Общий fallback проверяют восемь native owners.
+
+Base FP/SIMD snapshots and REAL fault policy: [EN](JIT-FP.md), [RU](JIT-FP.ru.md).

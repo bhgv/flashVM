@@ -152,3 +152,9 @@ socket mode:0777 & ~0077 gives0700, not0600. Creation now uses0177 and a host-in
 mask/restoration probe; full AF_UNIX execution remains a CI check on this socket-denied
 host. / RU: Список63; исправлена маска socket до0600, добавлена проверка umask
 без AF_UNIX. Новую полную архитектурную матрицу нельзя считать пройденной заранее.
+
+
+2026-11-14: prior CI43622919835 passed all six jobs including native ARM64 and RV64
+QEMU. New list64 adds jit-fp (base FP/SIMD kernel copies, REAL RX faults and fenv
+restoration); new matrix completion remains a separate observation. / Предыдущая
+матрица прошла; новый FP-блок требует собственной архитектурной проверки.

@@ -7,6 +7,7 @@
 #include "fns.h"
 #include "interp.h"
 #include "internal.h"
+#include "jit_fault/fp_view.h"
 #include "managed_workers.h"
 #include <stdio.h>
 #include <string.h>
@@ -265,6 +266,10 @@ void dvm_debug_command(const char *line, char *output, size_t capacity)
         {
             snprintf(output, capacity, "{\"ok\":false,\"error\":\"step requires instruction-boundary pause\"}\n");
         }
+    }
+    else if (!strcmp(command, "native-fp"))
+    {
+        dvm_jit_fault_fp_json(&target->native_fault, output, capacity);
     }
     else if (!strcmp(command, "native-registers"))
     {

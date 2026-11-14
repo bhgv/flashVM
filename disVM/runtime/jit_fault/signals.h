@@ -13,15 +13,25 @@ struct REG;
  * Копия native CPU context; числовые значения не разрешают чтение памяти. */
 typedef struct DVM_JitFault
 {
-    int signal_number;      /* Actual synchronous OS signal, zero when absent. */
-    int signal_code;        /* Kernel si_code, never inferred from a managed exception. */
-    uintptr_t address;      /* Kernel fault address. */
-    uintptr_t pc;           /* Actual native instruction address. */
-    uintptr_t sp;           /* Actual native stack pointer. */
-    uintptr_t rx_base;      /* Admitted immutable JIT mapping base. */
-    size_t rx_size;         /* Admitted mapping extent. */
-    unsigned int count;     /* Architecture register count, bounded by32. */
-    uint64_t registers[32]; /* x64 gregset, ARM64 x0..x30/pstate, RV64 gregset. */
+    int signal_number;            /* Actual synchronous OS signal, zero when absent. */
+    int signal_code;              /* Kernel si_code, never inferred from a managed exception. */
+    uintptr_t address;            /* Kernel fault address. */
+    uintptr_t pc;                 /* Actual native instruction address. */
+    uintptr_t sp;                 /* Actual native stack pointer. */
+    uintptr_t rx_base;            /* Admitted immutable JIT mapping base. */
+    size_t rx_size;               /* Admitted mapping extent. */
+    unsigned int count;           /* Architecture register count, bounded by32. */
+    unsigned int fp_format;       /* 0 absent,1 x64 FXSAVE,2 ARM64 FPSIMD,3 RV64 D. */
+    unsigned int fp_count;        /* Captured base FP/vector register count, at most32. */
+    unsigned int fp_bits;         /* Significant width per base FP/vector register:64 or128. */
+    unsigned int x87_count;       /* x64 x87 logical register count, otherwise0. */
+    uint32_t fp_control;          /* x87 control, ARM64 FPCR or RV64 FCSR. */
+    uint32_t fp_status;           /* x87 status, ARM64 FPSR or RV64 FCSR. */
+    uint32_t fp_tag;              /* x64 compressed x87 tag bits; zero on other architectures. */
+    uint32_t fp_extra;            /* x64 MXCSR; zero on other architectures. */
+    uint64_t fp_registers[32][2]; /* Low/high64 bits, independent of host float formatting. */
+    uint64_t x87_registers[8][2]; /* Low64 and high16 significant bits, without kernel padding. */
+    uint64_t registers[32];       /* x64 gregset, ARM64 x0..x30/pstate, RV64 gregset. */
 } DVM_JitFault;
 
 
@@ -54,6 +64,11 @@ int dvm_jit_fault_copy(DVM_JitFault *output);
  * Вернуть immutable build-architecture/CPU register labels для copied context. */
 const char *dvm_jit_fault_architecture(void);
 const char *dvm_jit_fault_register_name(unsigned int index);
+
+
+/* EN/RU: Return the immutable base FP register prefix for a copied format, or unavailable.
+ * Вернуть immutable prefix base FP register для copied format либо unavailable. */
+const char *dvm_jit_fault_fp_prefix(unsigned int format);
 
 
 /* EN/RU: Clear previous diagnostic at the next instruction boundary, not on fault release.

@@ -7,10 +7,10 @@ Runtime сам устанавливает Linux64 handlers для SIGILL/SIGSEGV
 
 ## Граница допуска
 
-Сейчас захват/восстановление охватывают выбранные **integer scalar RX fast leaves**,
+Сейчас захват/восстановление охватывают выбранные **integer и basic REAL scalar RX fast leaves**,
 перечисленные в `jit_fault/invoke.c`. Это не общее восстановление произвольно
 повреждённой native memory. Вызовы функций, переходы stack/module, allocation,
-managed pointers/refcounts, floating-point/SIMD и unsafe C/helpers не входят в
+managed pointers/refcounts, SIMD guest operations и unsafe C/helpers не входят в
 допущенное подмножество. Их обычное native/interpreted исполнение сохраняется,
 но handler не объявляет для них безопасный landing.
 
@@ -63,9 +63,10 @@ Continue доставляет исходный error handler; step не повт
 Nonlocal VM error path снимает устаревший RX landing до следующей операции.
 
 Проекция CPU: x64 Linux gregset (23 поля), ARM64 x0..x30 и pstate, RV64 Linux
-gregset (32 поля с PC). PC/SP выделены отдельно. Floating-point/vector registers
-и произвольный native backtrace/frame retention этой проекцией не реализуются.
-Dis backtrace удерживается и проверяется.
+gregset (32 поля с PC). PC/SP выделены отдельно. Copied base FP/vector registers доступны через `native-fp PID`; при admitted
+fault исходное FP-окружение возвращается до error delivery. См. [FP-контракт](JIT-FP.ru.md).
+Более широкие vector extensions и произвольный native backtrace/frame retention
+этой проекцией не реализуются. Dis backtrace удерживается и проверяется.
 
 ## Проверки и пределы
 

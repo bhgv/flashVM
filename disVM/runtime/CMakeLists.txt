@@ -262,6 +262,9 @@ add_executable(disvm
     jit_publication.c
     jit_quarantine.c
     jit_fault/context.c
+    jit_fault/fp_context.c
+    jit_fault/fp_view.c
+    jit_fault/fpsimd_records.c
     jit_fault/handler.c
     jit_fault/owner.c
     jit_fault/invoke.c

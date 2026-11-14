@@ -30,6 +30,7 @@ void dvm_jit_signal_context(void *context, DVM_JitFault *output)
 {
     ucontext_t *native = context;
     unsigned int i;
+    dvm_jit_signal_fp_context(context, output);
     __atomic_store_n(&output->pc, dvm_jit_signal_pc(context), __ATOMIC_RELAXED);
 #if defined(__x86_64__)
     __atomic_store_n(&output->sp, (uintptr_t)native->uc_mcontext.gregs[REG_RSP], __ATOMIC_RELAXED);

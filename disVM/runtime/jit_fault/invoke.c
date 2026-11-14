@@ -9,6 +9,7 @@
 #include "interp.h"
 #include "isa.h"
 #include "internal.h"
+#include "fp_view.h"
 #include "jit_quarantine.h"
 #include "disvm/native_context.h"
 #include "disvm/native_cleanup.h"
@@ -16,6 +17,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <fenv.h>
 
 
 /* EN/RU: Publish immutable RX extent/opcode while the rooted JIT is borrowed.
@@ -28,16 +30,22 @@ void dvm_jit_signal_select(const void *base, size_t size, int opcode)
 }
 
 
-/* [GC:] EN: Admit integer scalar leaves only. No allocation, managed pointer/PC
+/* [GC:] EN: Admit integer and basic REAL scalar leaves only. No allocation, managed pointer/PC
  * publication, channel/module/stack transition or refcount operation is allowed.
  * C helpers outside RX remain outside this synchronous-signal landing contract.
- * RU: Допустить только integer scalar leaves. Нет allocation, публикации managed
+ * RU: Допустить integer и basic REAL scalar leaves. Нет allocation, публикации managed
  * pointer/PC, channel/module/stack переходов либо refcount operations.
  * C helpers вне RX не входят в контракт synchronous-signal landing. */
 static int scalar(int opcode)
 {
     switch (opcode)
     {
+    case IMOVF:
+    case IADDF:
+    case ISUBF:
+    case IMULF:
+    case IDIVF:
+    case INEGF:
     case IMOVW:
     case IMOVB:
     case IMOVL:
@@ -105,12 +113,17 @@ int dvm_jit_signal_invoke(int (*fast)(REG *), REG *registers, int opcode)
     size_t size = __atomic_load_n(&state->size, __ATOMIC_RELAXED);
     int result;
     DVM_NativeCleanupMark mark;
-    REG before; /* Comparison only; never a register-restore or resume source. */
+    fenv_t environment; /* Pre-invocation FP policy; restored only after admitted fault. */
+    REG before;         /* Comparison only; never a register-restore or resume source. */
     if (!dvm_jit_signals_enabled || !scalar(opcode) || opcode != state->opcode || !base || size > UINTPTR_MAX - base ||
         address < base || address - base >= size || dvm_runtime_shared_mode() != 2 ||
         dvm_native_context_object_count(dvm_native_context_current()) || !dvm_native_cleanup_mark(&mark))
     {
         return fast(registers);
+    }
+    if (fegetenv(&environment))
+    {
+        return 0; /* No effects: preserve interpreter policy if FP state is unavailable. */
     }
     before = *registers;
     if (!dvm_jit_signal_thread_start())
@@ -130,6 +143,11 @@ int dvm_jit_signal_invoke(int (*fast)(REG *), REG *registers, int opcode)
             fputs("disvm: native RX fault changed admission/cleanup/control; unsafe recovery refused\n", stderr);
             abort();
         }
+        if (fesetenv(&environment))
+        {
+            fputs("disvm: cannot restore pre-fault FP environment; unsafe recovery refused\n", stderr);
+            abort();
+        }
         fprintf(
             stderr,
             "JITSIGNAL signal=%d code=%d address=%llx native_pc=%llx native_sp=%llx rx_offset=%llu registers=%u replay=0\n",
@@ -141,6 +159,7 @@ int dvm_jit_signal_invoke(int (*fast)(REG *), REG *registers, int opcode)
             (unsigned long long)(fault->pc - fault->rx_base),
             fault->count);
         report_registers(fault, currun()->pid);
+        dvm_jit_fault_fp_report(fault, currun()->pid);
         dvm_jit_report_failure(opcode, "synchronous RX scalar leaf signal");
         error("sys: JIT native signal");
         return 0;

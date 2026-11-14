@@ -28,13 +28,14 @@ def require(condition, message):
 # RU: Выполнить guest. Debug проверяет original roots/CPU context до release source;
 # default mode работает без installed tool. CONTROL=1 убирает только CPU copy,
 # CONTROL=2 использует настоящий RX null-read SIGSEGV.
-def execute(binary, image, work, variant, debug, locked):
+def execute(binary, image, work, variant, debug, locked, inspect_native=None, signal_type=None):
     log = work / f"signal-{variant}-{debug}-{locked}.log"
     arguments = ["--jit", "--stats", "--test-control", "--max-instructions", "1000000000"]
     if locked:
         arguments.append("--gc-locked-poll")
     arguments.append(str(image))
     omitted = False
+    diagnostic_label = None
     with log.open("w") as error:
         if not debug:
             result = subprocess.run(
@@ -80,9 +81,13 @@ def execute(binary, image, work, variant, debug, locked):
                             cpu.get("ok")
                             and cpu["signal"]
                             == (
-                                signal.SIGSEGV
-                                if variant == 2 or ordinal == 1
-                                else signal.SIGBUS if variant == 4 else signal.SIGILL
+                                signal_type
+                                if signal_type is not None
+                                else (
+                                    signal.SIGSEGV
+                                    if variant == 2 or ordinal == 1
+                                    else signal.SIGBUS if variant == 4 else signal.SIGILL
+                                )
                             ),
                             str(cpu),
                         )
@@ -116,6 +121,8 @@ def execute(binary, image, work, variant, debug, locked):
                                 and cpu["registers"][sp_name] == cpu["sp"],
                                 str(cpu),
                             )
+                    if inspect_native is not None:
+                        diagnostic_label = inspect_native(session, pid, cpu)
                     vm = session.command(f"registers {pid}")
                     require(vm.get("retained") and int(vm["FP"], 16), str(vm))
                     require(
@@ -184,8 +191,12 @@ def execute(binary, image, work, variant, debug, locked):
             "DETECTED missing native CPU fault publication with normal application retirement",
             flush=True,
         )
+    elif diagnostic_label:
+        print(diagnostic_label, flush=True)
     else:
         print(f"PASS RX signal variant={variant} debug={debug} locked={locked}", flush=True)
+
+    return output
 
 
 # EN/RU: Compile public guest and immutable trap probes against the exact runtime objects.

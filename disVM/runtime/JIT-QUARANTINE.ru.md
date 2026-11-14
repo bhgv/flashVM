@@ -45,7 +45,7 @@ Module/Jit/heap. Перезапуск сбрасывает карантин; с�
 сбойной функции**, продолжение настоящего JIT вне него и оба poll backend.
 Инъекция существует только в test-linked probe, отсутствует в production.
 
-Допущенные synchronous integer scalar RX faults теперь используют этот же
+Допущенные synchronous integer/basic REAL scalar RX faults теперь используют этот же
 карантин всей функции: [контракт захвата](JIT-SIGNALS.ru.md). Это ограниченная
 гарантия восстановления, не детектор произвольного повреждения native memory
 и не повторное исполнение инструкции. GDB необязателен:
@@ -56,3 +56,5 @@ correct results, but requires precise DETECTED for absent quarantine. Eight real
 native owners exercise the shared fallback after publication. / Контроль пропуска
 классификации сохраняет пойманную ошибку и верные результаты, но требует точного
 DETECTED при отсутствии карантина. Общий fallback проверяют восемь native owners.
+
+Базовые FP/SIMD-снимки и REAL fault policy: [контракт](JIT-FP.ru.md).

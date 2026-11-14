@@ -23,6 +23,11 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${CMAKE_CURRENT_SOURCE_DIR}/test_platform.py" "${CMAKE_COMMAND}"
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
     set_tests_properties(disvm_runtime_platform_selection PROPERTIES TIMEOUT 30 LABELS "host-unit")
+    add_executable(disvm_fp_records_test test_jit_fp_records.c jit_fault/fpsimd_records.c
+        jit_fault/fp_view.c jit_fault/fp_context.c jit_fault/context.c)
+    target_include_directories(disvm_fp_records_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+    add_test(NAME disvm_native_fp_records COMMAND disvm_fp_records_test)
+    set_tests_properties(disvm_native_fp_records PROPERTIES TIMEOUT 10 LABELS "host-unit")
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
     add_test(NAME disvm_native_generation_idempotent COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_generation.py" "$<TARGET_FILE:limbo-bootstrap>"

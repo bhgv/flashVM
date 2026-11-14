@@ -96,9 +96,11 @@ SIGILL/SIGBUS/SIGSEGV/SIGFPE в `disfault`. Это описание исходн
 
 [Карантин JIT-функций](JIT-QUARANTINE.ru.md) описан отдельно. Встроенное сохранение
 охватывает managed throws, проверенные native waits и допущенные synchronous
-integer scalar RX faults. [Контракт захвата](JIT-SIGNALS.ru.md) описывает actual-PC
+integer/basic REAL scalar RX faults. [Контракт захвата](JIT-SIGNALS.ru.md) описывает actual-PC
 checks, CPU context и admission/cleanup gates. `native-registers PID` возвращает
 copied именованные integer CPU-регистры; `registers PID` остаётся VM REG.
-Произвольные host/helper faults, повреждённая native memory, SIMD/FP state и
+Произвольные host/helper faults, повреждённая native memory, extended vector state и
 произвольное native-frame retention не входят в эту гарантию. Явно выбранный
 GDB может исследовать такие аварии независимо.
+
+Базовые FP/SIMD-снимки и REAL fault policy: [контракт](JIT-FP.ru.md).

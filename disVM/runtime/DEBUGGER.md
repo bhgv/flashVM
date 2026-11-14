@@ -103,9 +103,11 @@ single-executor assumptions into the native multi-thread runtime.
 
 See [JIT quarantine](JIT-QUARANTINE.md) for whole-function fallback and logs.
 Built-in retention covers managed throws, audited native waits and now admitted
-synchronous integer scalar RX faults. [RX signal contract](JIT-SIGNALS.md) specifies
+synchronous integer/basic REAL scalar RX faults. [RX signal contract](JIT-SIGNALS.md) specifies
 actual-PC checks, CPU context, cleanup/admission gates and remaining unsafe-fault
 limits. `native-registers PID` returns the copied named integer CPU context;
 `registers PID` remains VM REG. Arbitrary host/helper faults, corrupt native memory,
-SIMD/FP state and arbitrary native-frame retention remain outside that guarantee.
+extended vector state and arbitrary native-frame retention remain outside that guarantee.
 GDB can inspect such faults independently when explicitly selected.
+
+Base FP/SIMD snapshots and REAL fault policy: [EN](JIT-FP.md), [RU](JIT-FP.ru.md).

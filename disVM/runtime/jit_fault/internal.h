@@ -42,6 +42,16 @@ void dvm_jit_signal_context(void *context, DVM_JitFault *output);
 uintptr_t dvm_jit_signal_pc(void *context);
 
 
+/* EN/RU: Copy base FP/SIMD state from kernel context using only integer operations.
+ * Копировать base FP/SIMD state из kernel context только integer operations. */
+void dvm_jit_signal_fp_context(void *context, DVM_JitFault *output);
+
+
+/* EN/RU: Decode bounded little-endian ARM64 reserved records without following extra pointers.
+ * Декодировать bounded little-endian ARM64 reserved records без extra pointers. */
+int dvm_jit_signal_fpsimd(const unsigned char *bytes, size_t size, DVM_JitFault *output);
+
+
 /* EN/RU: Prepare alternate stack outside signal handler; return0 on native failure.
  * Подготовить alternate stack вне signal handler; вернуть0 при native failure. */
 int dvm_jit_signal_thread_start(void);

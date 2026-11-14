@@ -8,10 +8,10 @@ exclusive=0, with no global mutator stop.
 
 ## Admission and state
 
-Capture/recovery currently covers the selected **integer scalar RX fast leaves**
+Capture/recovery currently covers the selected **integer and basic REAL scalar RX fast leaves**
 listed in `jit_fault/invoke.c`. It is not general recovery from arbitrary native
 memory corruption. Function calls, stack/module transitions, allocation, managed
-pointer/refcount operations, floating-point/SIMD and unsafe C/helper execution
+pointer/refcount operations, SIMD guest operations and unsafe C/helper execution
 are outside this admitted subset. Other operations retain their existing native
 or interpreted execution; the handler never pretends they have a safe landing.
 
@@ -67,8 +67,11 @@ RX landing frames before a later operation can use them.
 
 CPU projection currently includes x64 Linux gregset (23 entries), ARM64 x0..x30
 and pstate, or RV64 Linux gregset (32 entries including PC). SP/PC are explicit.
-Floating-point/vector register state and arbitrary native backtrace/frame retention
-are not implemented by this projection. Dis backtrace is retained and tested.
+Copied base FP/vector state is now available through `native-fp PID`; admitted
+faults restore the pre-invocation FP environment before error delivery. See
+[FP contract](JIT-FP.md) for exact fields, coverage and limits. Wider vector
+extensions and arbitrary native frame retention remain outside this projection.
+Dis backtrace is retained and tested.
 
 ## Validation and limits
 
