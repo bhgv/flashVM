@@ -69,6 +69,40 @@ alarm(started, signal: chan of int, deadline: int)
 }
 
 
+# EN: Own alarm/completion until the original request finishes, even when its
+# public caller retires. endpoint/request/deadline are immutable borrowed inputs;
+# published/completed are buffered outputs. Never renew or replay offered work.
+# RU: Владеть alarm/completion до завершения original request даже при retirement
+# public caller. endpoint/request/deadline — immutable borrowed inputs;
+# published/completed — buffered outputs. Не обновлять deadline и не повторять work.
+supervise(endpoint: ref Endpoint, request: ref Request, deadline: int,
+          published: chan of int, completed: chan of Reply)
+{
+    published <-= control->pid();
+    absent := empty();
+    started := chan[1] of int;
+    signal := chan[1] of int;
+    spawn alarm(started, signal, deadline);
+    timer := <-started;
+    delivered := 0;
+    result := Reply(Proxyowner->NotSent, 0, absent);
+    if (sys->millisec() < deadline) {
+        alt {
+            endpoint.requests <-= request => delivered = 1;
+            <-signal => {}
+        }
+    }
+    if (delivered) {
+        alt {
+            result = <-request.reply => {}
+            <-signal => result = Reply(Proxyowner->Unknown, 0, absent);
+        }
+    }
+    control->killwait(timer);
+    completed <-= result;
+}
+
+
 # EN: Offer immutable request with one overall deadline. Request/reply keep every
 # lease rooted; an abandoned successful clone is finalized from its orphan reply.
 # RU: Предложить immutable request с общим deadline. Request/reply держат leases;
@@ -93,25 +127,12 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Image,
     deadline := sys->millisec() + timeout;
     response := chan[1] of Reply;
     request := ref Request(operation, target, left, right, refs, value, deadline, response);
-    started := chan[1] of int;
-    signal := chan[1] of int;
-    spawn alarm(started, signal, deadline);
-    timer := <-started;
-    delivered := 0;
-    result := Reply(Proxyowner->NotSent, 0, absent);
-    if (sys->millisec() < deadline) {
-        alt {
-            endpoint.requests <-= request => delivered = 1;
-            <-signal => {}
-        }
-    }
-    if (delivered) {
-        alt {
-            result = <-response => {}
-            <-signal => result = Reply(Proxyowner->Unknown, 0, absent);
-        }
-    }
-    control->killwait(timer);
+    published := chan[1] of int;
+    completed := chan[1] of Reply;
+    spawn supervise(endpoint, request, deadline, published, completed);
+    supervisor := <-published;
+    result := <-completed;
+    control->killwait(supervisor);
     return result;
 }
 

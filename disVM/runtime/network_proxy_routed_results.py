@@ -163,7 +163,7 @@ def orphan(runtime, work, mode, locked, tag, lost=False):
         )
         thread.start()
         output = guests[2].finish(
-            "PASS lost routed result:" if lost else "PASS orphan routed result:"
+            "PASS lost routed result:" if lost else "PASS orphan routed result:", budget=40
         )
         middle = guests[1].finish("local=0 source actors joined")
         guests[0].finish("result=0 value=12")
