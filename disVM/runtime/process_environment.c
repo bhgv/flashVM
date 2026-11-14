@@ -11,19 +11,20 @@
 #include "runqueue.h"
 #include "process_environment.h"
 #include "sys_capture.h"
+#include "vfs/boot.h"
 #include "disvm/native_process.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 
 /* EN: Initialize private process before publication; parent is borrowed from
  * the calling owner. Share namespace reference, copy error bytes and FP state.
- * Return zero on initial host-cwd/OOM/reference failure, without publication.
+ * Initial resident retains startup group; zero on missing/overflowed reference.
  * RU: Инициализировать приватный process до публикации; parent заимствован
  * своим owner. Разделить namespace, скопировать error bytes и FP state.
- * Ноль при ошибке host-cwd/OOM/reference, без публикации. */
+ * Начальный resident удерживает startup group; ноль при missing/overflowed
+ * reference, без публикации. */
 int dvm_process_environment_init(Prog *process, Prog *parent)
 {
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
@@ -40,28 +41,12 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     {
         snprintf(environment->syserrstr, ERRMAX, "%s", source->syserrstr);
     }
-    if (parent)
+    DVM_Namespace *group = parent ? ((DVM_RuntimeProcess *)parent)->namespace_group : dvm_namespace_boot_group();
+    if (!group || !dvm_namespace_retain(group))
     {
-        DVM_Namespace *group = ((DVM_RuntimeProcess *)parent)->namespace_group;
-        if (!group || !dvm_namespace_retain(group))
-        {
-            return 0;
-        }
-        owner->namespace_group = group;
+        return 0;
     }
-    else
-    {
-        char cwd[DVM_NS_PATH_LIMIT];
-        if (!getcwd(cwd, sizeof(cwd)))
-        {
-            return 0;
-        }
-        owner->namespace_group = dvm_namespace_create("/", cwd);
-        if (!owner->namespace_group)
-        {
-            return 0;
-        }
-    }
+    owner->namespace_group = group;
     process->osenv = environment;
     if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment))
     {
@@ -85,6 +70,7 @@ void dvm_process_environment_destroy(Prog *process)
     }
 }
 
+
 /* EN: Bind the permanent owner's borrowed process; no context/jump-frame copy.
  * Return one/zero for valid/invalid metadata; FP runtime failure aborts. No roots
  * or frames change, and no native ownership transfers to another process.
@@ -106,6 +92,7 @@ int dvm_process_environment_bind(Prog *process)
     return 1;
 }
 
+
 /* EN: Save borrowed process FP, restore host FP/default error environment before
  * destructors/native waits. No allocation; an FP runtime failure aborts.
  * RU: Сохранить FP process, вернуть host FP/default error environment перед
@@ -119,6 +106,7 @@ void dvm_process_environment_release(Prog *process)
     }
     up->env = &up->defenv;
 }
+
 
 /* EN: Store one mapped guest string as this logical Prog's last host error. Capture
  * the original return span before string conversion can allocate/borrow REG.
@@ -139,6 +127,7 @@ void Sys_werrstr(void *frame)
     snprintf(destination, ERRMAX, "%s", text);
     memmove(call.ret, &result, sizeof(result));
 }
+
 
 /* EN: Copy this bound OS owner's current logical error without consuming it. err
  * borrows size writable bytes; clamp to ERRMAX and preserve termination. No

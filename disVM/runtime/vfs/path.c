@@ -92,15 +92,17 @@ static int join_native(const char *prefix, const char *suffix, char *output)
 }
 
 
-/* EN/RU: See namespace.h. Resolve once while holding only the group's mutex.
- * См. namespace.h. Разрешить один раз, удерживая только mutex группы. */
-int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
+/* EN: Resolve borrowed path/plan under group lock; module selects import base
+ * rather than cwd. Return one/zero; no I/O, managed access or pointer escape.
+ * RU: Разрешить path/plan под mutex; module выбирает import base вместо cwd.
+ * Один/ноль; без I/O, managed access и передачи указателей наружу. */
+static int plan_path(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan, int module)
 {
     DVM_NamespaceBinding *binding, *best = NULL;
     size_t longest = 0;
     int result = 0;
     fvm_port_sync_lock(group->lock);
-    if (dvm_namespace_normalize(group->cwd, path, plan->path))
+    if (dvm_namespace_normalize(module ? group->load_directory : group->cwd, path, plan->path))
     {
         for (binding = group->bindings; binding; binding = binding->next)
         {
@@ -118,4 +120,20 @@ int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan
     }
     fvm_port_sync_unlock(group->lock);
     return result;
+}
+
+
+/* EN/RU: See namespace.h; ordinary paths follow the group cwd.
+ * См. namespace.h; обычные пути следуют cwd группы. */
+int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
+{
+    return plan_path(group, path, plan, 0);
+}
+
+
+/* EN/RU: See namespace.h; imports use the same frozen binding selection.
+ * См. namespace.h; imports используют тот же frozen binding selection. */
+int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
+{
+    return plan_path(group, path, plan, 1);
 }

@@ -61,8 +61,9 @@ rename/unlink. Host продолжает следовать symlinks. Virtual `.
 влияет на последующий relative lookup. Стабильная identity каталога при
 rebind/rename требует следующего слоя provider handles.
 
-Module loader сохраняет прежний native resource lookup/cache вне namespace;
-для включения namespace в загрузку нужна provider identity в cache keys.
+Module loader теперь использует frozen namespace plans для cache/open/parse:
+см. [module namespace и cache provenance](MODULE-NAMESPACE.ru.md). Начальные
+relative imports идут от entry package; chdir обновляет это состояние группы.
 Стандартные FD и явно включённый test-control node также сохраняют прежние
 маршруты. FORKNS/NEWNS не изолируют FD groups, environment variables либо
 credentials. Существующий FD может вести за пределы нового root.

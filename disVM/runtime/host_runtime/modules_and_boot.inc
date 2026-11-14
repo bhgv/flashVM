@@ -105,64 +105,18 @@ static int open_file(const char *path, const char *mode)
 }
 
 
-/* Map only the bundled library names from Inferno resource paths to package siblings.
- * path is borrowed. Returns the relative library name or the unchanged native path;
- * ordinary Sys file paths never pass through this module-resource mapping. */
-static const char *bundled_module_path(const char *path)
-{
-    static const char *names[] = {"bufio.dis",
-                                  "string.dis",
-                                  "arg.dis",
-                                  "readdir.dis",
-                                  "debug.dis",
-                                  "dis.dis",
-                                  "styx.dis",
-                                  "styxservers.dis",
-                                  "regex.dis"}; /* Bundled module allowlist. */
-    size_t index;
-    if (strncmp(path, "/dis/lib/", 9) != 0)
-    {
-        return path;
-    }
-    for (index = 0; index < sizeof(names) / sizeof(names[0]); index++)
-    {
-        if (strcmp(path + 9, names[index]) == 0)
-        {
-            return path + 9;
-        }
-    }
-    return path;
-}
-
-
-/* Open read-only module input; the full VM word is checked before this native call. */
+/* EN: Open an already frozen absolute native module path. Namespace lookup and
+ * cache selection happened together before native release; never resolve twice.
+ * RU: Открыть frozen absolute native module path. Namespace/cache выбраны вместе
+ * до native release; повторного разрешения пути нет. Return FD or -1 / FD либо -1. */
 int kopen(char *path, int mode)
 {
-    const char *resource = bundled_module_path(path);
-    if (mode != OREAD)
+    if (!path || path[0] != '/' || mode != OREAD)
     {
-        kwerrstr("unsupported file open mode");
+        kwerrstr("module reader requires a frozen absolute input path");
         return -1;
     }
-    {
-        char resolved[4096];
-        size_t base;
-        size_t length = strlen(resource);
-        if (resource[0] == '/')
-        {
-            return open_file(resource, "r");
-        }
-        base = strlen(module_directory);
-        if (base + length + 2 > sizeof(resolved))
-        {
-            kwerrstr("module resource path is too long");
-            return -1;
-        }
-        memcpy(resolved, module_directory, base);
-        resolved[base] = '/';
-        memcpy(resolved + base + 1, resource, length + 1);
-        return open_file(resolved, "r");
-    }
+    return open_file(path, "r");
 }
 
 
@@ -235,43 +189,6 @@ int kclose(int fd)
     }
     dvm_close_submit(slot.job, slot.file, slot.directory);
     return 0;
-}
-
-
-/* Determine module extent without reading beyond its framed contents. */
-Dir *kdirfstat(int fd)
-{
-    Dir *metadata;
-    size_t available;
-    DVM_FileTicket ticket;
-    FVM_Result status;
-    FVM_PortFile *file = dvm_runtime_file(fd);
-    DVM_FileGate *gate = dvm_runtime_file_gate(fd);
-    if (!file)
-    {
-        return nil;
-    }
-    dvm_file_gate_reserve(gate, &ticket);
-    if (!dvm_file_gate_enter_now(gate, &ticket))
-    {
-        return nil;
-    }
-    status = fvm_port_file_size(file, &available);
-    if (!dvm_file_gate_leave(gate, &ticket))
-    {
-        fprintf(stderr, "disvm: loader metadata admission lost\n");
-        exit(1);
-    }
-    if (status != FVM_OK || available >= 8UL * 1024UL * 1024UL)
-    {
-        return nil;
-    }
-    metadata = calloc(1, sizeof(Dir));
-    if (metadata)
-    {
-        metadata->length = available;
-    }
-    return metadata;
 }
 
 

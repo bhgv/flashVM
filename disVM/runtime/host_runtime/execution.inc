@@ -58,6 +58,10 @@ static int runtime_execute_inner(void *argument)
     dvm_srv_initialize();
     srvmodinit();
     entry = entry_resource((char *)argument);
+    if (!dvm_namespace_boot_initialize(module_directory))
+    {
+        error("cannot initialize startup namespace");
+    }
 #ifdef DVM_RUNTIME_EDITOR
     if (!dvm_editor_start(module_directory))
     {
@@ -213,6 +217,7 @@ static int runtime_execute(void *argument)
         result = 1;
     }
     dvm_close_worker_stop();
+    dvm_namespace_boot_shutdown();
     if (guest_messages)
     {
         for (Prog *guest = dvm_runtime_process_roots(); guest; guest = guest->next)

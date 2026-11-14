@@ -9,7 +9,7 @@
 
 /* EN/RU: See namespace.h. Input roots are absolute host paths, not capabilities.
  * См. namespace.h. Root — абсолютный host path, не capability. */
-DVM_Namespace *dvm_namespace_create(const char *root, const char *cwd)
+DVM_Namespace *dvm_namespace_create(const char *root, const char *cwd, const char *load_directory)
 {
     DVM_Namespace *group = calloc(1, sizeof(*group));
     if (!group)
@@ -17,7 +17,8 @@ DVM_Namespace *dvm_namespace_create(const char *root, const char *cwd)
         return NULL;
     }
     if (!root || *root != '/' || !cwd || *cwd != '/' || !dvm_namespace_normalize("/", root, group->root) ||
-        !dvm_namespace_normalize("/", cwd, group->cwd))
+        !dvm_namespace_normalize("/", cwd, group->cwd) ||
+        !dvm_namespace_normalize(group->cwd, load_directory ? load_directory : group->cwd, group->load_directory))
     {
         free(group);
         return NULL;
@@ -83,7 +84,7 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     DVM_Namespace *copy;
     DVM_NamespaceBinding *binding;
     fvm_port_sync_lock(group->lock);
-    copy = dvm_namespace_create(group->root, group->cwd);
+    copy = dvm_namespace_create(group->root, group->cwd, group->load_directory);
     if (copy)
     {
         for (binding = group->bindings; binding; binding = binding->next)

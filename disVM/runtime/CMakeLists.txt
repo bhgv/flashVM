@@ -194,6 +194,9 @@ add_executable(disvm
     vfs/group.c
     vfs/mutations.c
     vfs/sys.c
+    vfs/boot.c
+    vfs/loader.c
+    vfs/module_file.c
     file_gate.c
     file_slots.c
     seek_sys.c

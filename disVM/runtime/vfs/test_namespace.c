@@ -50,7 +50,7 @@ static void expect_path(DVM_Namespace *group, const char *path, const char *expe
  * stale commits, filtered unmount и исчерпание версий. */
 static void geometry(void)
 {
-    DVM_Namespace *group = dvm_namespace_create("/native", "/cwd");
+    DVM_Namespace *group = dvm_namespace_create("/native", "/cwd", NULL);
     DVM_NamespacePlan old, from, target;
     char oversized[DVM_NS_PATH_LIMIT + 1];
     require(group != NULL, "create");
@@ -162,6 +162,35 @@ static void *copier(void *argument)
 }
 
 
+/* EN: Check distinct initial import base, coherent copies, chdir alignment and
+ * root clamping. Only caller owns these groups, no filesystem access.
+ * RU: Проверить отдельный import base, согласованные копии, chdir alignment
+ * и root clamping. Группами владеет только caller, без доступа к ФС. */
+static void import_directory(void)
+{
+    DVM_Namespace *group = dvm_namespace_create("/native", "/cwd", "../package");
+    DVM_NamespacePlan plan;
+    require(group != NULL, "import group");
+    expect_path(group, "provider.dis", "/native/cwd/provider.dis");
+    require(dvm_namespace_module_plan(group, "provider.dis", &plan), "initial import plan");
+    require(!strcmp(plan.native, "/native/package/provider.dis"), "initial import base changed");
+    DVM_Namespace *copy = dvm_namespace_copy(group);
+    require(copy != NULL, "import group copy");
+    require(dvm_namespace_plan(group, "/second", &plan), "import chdir plan");
+    require(dvm_namespace_chdir(group, &plan) == 1, "import chdir commit");
+    require(dvm_namespace_module_plan(group, "provider.dis", &plan), "changed import plan");
+    require(!strcmp(plan.native, "/native/second/provider.dis"), "chdir left old import directory");
+    require(dvm_namespace_module_plan(copy, "provider.dis", &plan), "copied import plan");
+    require(!strcmp(plan.native, "/native/package/provider.dis"), "import copy followed source change");
+    dvm_namespace_release(copy);
+    dvm_namespace_release(group);
+    group = dvm_namespace_create("/native/package", "/", NULL);
+    require(group && dvm_namespace_module_plan(group, "../../provider.dis", &plan), "rooted import plan");
+    require(!strcmp(plan.native, "/native/package/provider.dis"), "import escaped lexical root");
+    dvm_namespace_release(group);
+}
+
+
 /* EN/RU: Run geometry then six simultaneous OS owners, join and release group.
  * Проверить geometry и шесть одновременных OS owners, join и освободить группу. */
 int main(void)
@@ -170,7 +199,8 @@ int main(void)
     DVM_Namespace *group;
     int index;
     geometry();
-    group = dvm_namespace_create("/native", "/");
+    import_directory();
+    group = dvm_namespace_create("/native", "/", NULL);
     require(group != NULL, "stress create");
     bind_path(group, "/a", "/view");
     for (index = 0; index < 6; index++)

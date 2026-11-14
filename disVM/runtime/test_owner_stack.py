@@ -2,6 +2,7 @@
 # EN: Native owner call-chain capture, imported recursion, cleanup and public example.
 # RU: Native owner call-chain capture, imported recursion, cleanup и public example.
 from pathlib import Path
+import json
 import sys
 import tempfile
 
@@ -28,7 +29,21 @@ def main():
             compiler, include, root, fixture / "provider.b", work / "stack-λ.dis", [fixture]
         )
         image = work / "main.dis"
-        compile_image(compiler, include, root, fixture / "main.b", image, [fixture])
+        # EN/RU: Require exact frozen native labels, never basename-only matching.
+        # Требовать точные frozen native labels, не только basename.
+        located = work / "located.b"
+        source = (fixture / "main.b").read_text()
+        for label, path in (
+            ("StackProvider:stack-λ.dis", work / "stack-λ.dis"),
+            ("OwnerStack:main.dis", image),
+        ):
+            before = json.dumps(label, ensure_ascii=False)
+            after = json.dumps(label.split(":")[0] + ":" + str(path), ensure_ascii=False)
+            if source.count(before) != 1:
+                raise RuntimeError("stack fixture path boundary changed")
+            source = source.replace(before, after, 1)
+        located.write_text(source)
+        compile_image(compiler, include, root, located, image, [fixture])
         example = work / "example.dis"
         compile_image(
             compiler, include, root, root.parent / "examples/resident-stack/main.b", example

@@ -56,6 +56,7 @@
 #include "host_cancellations.h"
 #include "channel_match.h"
 #include "process_environment.h"
+#include "vfs/boot.h"
 #include "io_buffer.h"
 #include "formatted_sys.h"
 #include <stdio.h>

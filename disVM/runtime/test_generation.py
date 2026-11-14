@@ -83,6 +83,7 @@ def main():
         # Inspect actual build inputs, not only two equally fresh throwaway generations.
         actual = Path(compiled_view)
         critical = (
+            "readmod.c",
             "unsupported.c",
             "proxygc_decl.h",
             "proxygc_table.h",

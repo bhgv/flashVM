@@ -2,6 +2,7 @@
 # EN: Owner location geometry, imported-module lifetime and public example acceptance.
 # RU: Owner location geometry, lifetime imported module и приёмка пользовательского примера.
 from pathlib import Path
+import json
 import subprocess
 import sys
 import tempfile
@@ -73,7 +74,23 @@ def main():
         )
         image = work / "main.dis"
         example = work / "example.dis"
-        compile_image(compiler, include, root, fixture / "main.b", image, [fixture])
+        # EN/RU: Keep exact native provenance checks, including first-byte omission.
+        # Сохранить точную проверку native provenance, включая first-byte omission.
+        located = work / "located.b"
+        source = (fixture / "main.b").read_text()
+        before = 'ProviderPath: con "provider-λ.dis";'
+        if source.count(before) != 1:
+            raise RuntimeError("location fixture path boundary changed")
+        located.write_text(
+            source.replace(
+                before,
+                "ProviderPath: con "
+                + json.dumps(str(work / "provider-λ.dis"), ensure_ascii=False)
+                + ";",
+                1,
+            )
+        )
+        compile_image(compiler, include, root, located, image, [fixture])
         compile_image(
             compiler, include, root, root.parent / "examples/resident-debug/main.b", example
         )

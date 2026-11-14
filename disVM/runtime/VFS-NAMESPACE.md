@@ -61,8 +61,9 @@ The cwd is a virtual spelling rather than an open Chan: replacing a prefix
 covering cwd changes subsequent relative lookup. Stable directory identity
 through rebind/rename requires the later provider-handle layer.
 
-The module loader still uses its existing native resource lookup/cache, outside
-this namespace; namespace-aware loading needs provider identity in cache keys.
+The module loader now uses the same frozen namespace plans for cache/open/parse;
+see [module namespace and cache provenance](MODULE-NAMESPACE.md). Initially,
+relative imports use the entry package directory; chdir updates that group state.
 Standard descriptors and the explicitly enabled test-control node also retain
 their existing routes. No FD-group, environment-variable or credential isolation
 is provided by FORKNS/NEWNS. Existing descriptors may reach outside a new root.

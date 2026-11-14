@@ -19,6 +19,7 @@ int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
         if (group->version != UINT64_MAX)
         {
             memcpy(group->cwd, plan->path, strlen(plan->path) + 1);
+            memcpy(group->load_directory, plan->path, strlen(plan->path) + 1);
             group->version++;
             result = 1;
         }

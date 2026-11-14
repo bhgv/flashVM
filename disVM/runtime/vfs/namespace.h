@@ -22,9 +22,11 @@ typedef struct DVM_NamespacePlan
 
 /* EN: Create a group rooted at absolute native root with virtual cwd; return
  * owned reference or NULL on invalid paths/OOM. No host filesystem access.
+ * load_directory is a virtual path relative to cwd (NULL uses cwd).
  * RU: Создать группу с абсолютным native root и virtual cwd; вернуть ссылку
- * либо NULL при неверных путях/OOM. Без доступа к host ФС. */
-DVM_Namespace *dvm_namespace_create(const char *root, const char *cwd);
+ * либо NULL при неверных путях/OOM. load_directory — virtual path от cwd,
+ * NULL означает cwd. Без доступа к host ФС. */
+DVM_Namespace *dvm_namespace_create(const char *root, const char *cwd, const char *load_directory);
 
 
 /* EN/RU: Retain borrowed live group; one on success, zero on count overflow.
@@ -47,6 +49,13 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group);
  * RU: Разрешить path в план caller под mutex группы. Один либо ноль для
  * пустого/слишком длинного пути. Без I/O; caller удерживает группу. */
 int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan);
+
+
+/* EN: Resolve path from the group's import directory into a frozen plan.
+ * Ownership/errors match ordinary plan; absolute paths use the same bindings.
+ * RU: Разрешить path от import directory группы в frozen plan. Владение/ошибки
+ * как у обычного plan; absolute paths используют те же bindings. */
+int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan);
 
 
 /* EN: Commit validated directory plan as cwd. Return one on success, zero on

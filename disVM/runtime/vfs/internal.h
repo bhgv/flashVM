@@ -23,12 +23,13 @@ typedef struct DVM_NamespaceBinding
  * Все изменяемые поля защищены lock; managed pointers/GC roots отсутствуют. */
 struct DVM_Namespace
 {
-    FVM_PortSync *lock;             /* Group-local mutex; never held across host I/O. */
-    size_t references;              /* Owning native references, including each resident. */
-    uint64_t version;               /* Monotonic mutation revision; never wraps. */
-    char root[DVM_NS_PATH_LIMIT];   /* Host path corresponding to virtual root. */
-    char cwd[DVM_NS_PATH_LIMIT];    /* Current virtual directory shared by this group. */
-    DVM_NamespaceBinding *bindings; /* Owned list; longest matching component prefix wins. */
+    FVM_PortSync *lock;                     /* Group-local mutex; never held across host I/O. */
+    size_t references;                      /* Owning native references, including each resident. */
+    uint64_t version;                       /* Monotonic mutation revision; never wraps. */
+    char root[DVM_NS_PATH_LIMIT];           /* Host path corresponding to virtual root. */
+    char cwd[DVM_NS_PATH_LIMIT];            /* Current virtual directory shared by this group. */
+    char load_directory[DVM_NS_PATH_LIMIT]; /* Initial package directory, follows cwd after chdir. */
+    DVM_NamespaceBinding *bindings;         /* Owned list; longest matching component prefix wins. */
 };
 
 

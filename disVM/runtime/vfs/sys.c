@@ -13,18 +13,19 @@
 #include "sys_capture.h"
 #include "metadata_wait.h"
 #include "guest.h"
+#include "boot.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
 extern char *dvm_runtime_file_path(String *); /* Borrowed validated guest UTF-8 path. */
 
 
-/* EN/RU: Borrow current permanent owner's group; call only while ACTIVE.
- * Заимствовать группу текущего постоянного owner; вызывать только ACTIVE. */
-static DVM_Namespace *current_group(void)
+/* EN/RU: See guest.h; ACTIVE guest or startup controller only.
+ * См. guest.h; только ACTIVE guest либо startup controller. */
+DVM_Namespace *dvm_namespace_current_group(void)
 {
     Prog *process = currun();
-    return process ? ((DVM_RuntimeProcess *)process)->namespace_group : NULL;
+    return process ? ((DVM_RuntimeProcess *)process)->namespace_group : dvm_namespace_boot_group();
 }
 
 
@@ -32,7 +33,7 @@ static DVM_Namespace *current_group(void)
  * См. guest.h; указатель namespace не передаётся в native I/O. */
 int dvm_namespace_host_path(const char *path, char *output)
 {
-    DVM_Namespace *group = current_group();
+    DVM_Namespace *group = dvm_namespace_current_group();
     DVM_NamespacePlan plan;
     if (!group)
     {
@@ -115,7 +116,7 @@ void Sys_pctl(void *frame)
     }
     else if (dvm_namespace_plan(owner->namespace_group, ".", &cwd))
     {
-        replacement = dvm_namespace_create(cwd.native, "/");
+        replacement = dvm_namespace_create(cwd.native, "/", NULL);
     }
     if (!replacement)
     {
@@ -146,7 +147,7 @@ void Sys_chdir(void *frame)
     {
         for (attempt = 0; attempt < DVM_NS_RETRIES; attempt++)
         {
-            if (!dvm_namespace_plan(current_group(), path, &plan))
+            if (!dvm_namespace_plan(dvm_namespace_current_group(), path, &plan))
             {
                 kwerrstr("invalid namespace directory path");
                 break;
@@ -160,7 +161,7 @@ void Sys_chdir(void *frame)
                 kwerrstr("chdir requires a directory");
                 break;
             }
-            int committed = dvm_namespace_chdir(current_group(), &plan);
+            int committed = dvm_namespace_chdir(dvm_namespace_current_group(), &plan);
             if (committed)
             {
                 result = committed == 1 ? 0 : -1;
@@ -200,7 +201,7 @@ void Sys_bind(void *frame)
     {
         for (attempt = 0; attempt < DVM_NS_RETRIES; attempt++)
         {
-            DVM_Namespace *group = current_group();
+            DVM_Namespace *group = dvm_namespace_current_group();
             if (!dvm_namespace_plan(group, from, &source) || !dvm_namespace_plan(group, on, &target))
             {
                 kwerrstr("invalid namespace bind path");
@@ -262,7 +263,7 @@ void Sys_unmount(void *frame)
     {
         for (attempt = 0; attempt < DVM_NS_RETRIES; attempt++)
         {
-            DVM_Namespace *group = current_group();
+            DVM_Namespace *group = dvm_namespace_current_group();
             if (!dvm_namespace_plan(group, on, &target) || (filtered && !dvm_namespace_plan(group, from, &source)))
             {
                 kwerrstr("invalid namespace unmount path");

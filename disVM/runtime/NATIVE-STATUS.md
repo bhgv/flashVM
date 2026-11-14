@@ -2,6 +2,27 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: namespace загрузчика и identity открытого образа
+
+Файловый `load` разрешает namespace один раз до cache и native release.
+Cache/open/parser получают frozen absolute host path; debug labels показывают
+точный source. `chdir` обновляет import directory группы; FORKNS копирует его,
+NEWNS сбрасывает в `/`. Bundled names теперь обычные file bindings, без
+специального обхода namespace в `kopen`.
+
+Исправлен hosted `kdirfstat`, прежде возвращавший нулевые identity/time.
+Теперь metadata берётся с открытого файла. Проверены реальные cold/warm opens,
+peer rebind/load во время native ожидания, atomic replacement с одинаковыми
+length/time, старый живой Module и отказ cache при слишком широкой identity.
+Omission zero metadata воспроизводит конкретный stale code со штатным retirement.
+Обязательный native-набор теперь66. [RU](MODULE-NAMESPACE.ru.md),
+[EN](MODULE-NAMESPACE.md), [пример](../examples/namespace-load/README.ru.md).
+
+Публикация images — immutable files с atomic replacement; in-place edit при
+неизменных секундных metadata не гарантирует обновления cache. Chan/provider
+handles, полная revision/content identity, union/mount и остальные группы
+окружения остаются следующими блоками. Исполняемые не-Linux adapters не заявлены.
+
 ## 2026-11-14: наследуемые native namespace
 
 Добавлены `Sys.pctl(0/FORKNS/NEWNS, nil)`, `chdir`, `bind(MREPL)` и `unmount`.
