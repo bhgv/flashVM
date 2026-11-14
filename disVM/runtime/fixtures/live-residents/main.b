@@ -17,6 +17,7 @@ Result: adt
     id: big; # Copied lifetime cursor.
     pid: int; # Copied permanent guest PID.
     done: int; # Copied native completion flag.
+    phase: int; # Copied owner-published lifecycle interval.
     after: int; # Untouched trailing canary.
 };
 
@@ -36,7 +37,7 @@ worker(result: ref Result, ready, release, done: chan of int)
             <-release => waiting = 0;
             * => sys->sleep(0);
         }
-        if (result.status < -1 || result.status > 1 || result.done < 0 || result.done > 1) {
+        if (result.status < -1 || result.status > 1 || result.done < 0 || result.done > 1 || result.phase < control->Starting || result.phase > control->Done) {
             raise "live resident shared scalar publication";
         }
     }
@@ -56,7 +57,7 @@ init()
     ready := chan[8] of int;
     release := chan of int;
     done := chan[8] of int;
-    result := ref Result(12345, 0, big 0, 0, 0, 54321);
+    result := ref Result(12345, 0, big 0, 0, 0, 0, 54321);
     for (index := 0; index < 8; index++) {
         spawn worker(result, ready, release, done);
     }
@@ -68,12 +69,16 @@ init()
     cursor := big 0;
     count := 0;
     for (;;) {
-        (result.status, result.id, result.pid, result.done) = control->resident(cursor);
+        (result.status, result.id, result.pid, result.done, result.phase) = control->residentstate(cursor);
+        (oldstatus, oldid, oldpid, olddone) := control->resident(cursor);
+        if (oldstatus != result.status || oldid != result.id || oldpid != result.pid || olddone != result.done) {
+            raise "live resident legacy card differs for held registry";
+        }
         if (result.before != 12345 || result.after != 54321) {
             raise "live resident result overwrote neighboring fields";
         }
         if (result.status == 0) {
-            if (result.id != big 0 || result.pid != 0 || result.done != 0) {
+            if (result.id != big 0 || result.pid != 0 || result.done != 0 || result.phase != 0) {
                 raise "live resident end leaked stale fields";
             }
             break;

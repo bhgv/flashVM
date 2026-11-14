@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-static int observed; /* Atomic once-only diagnostic publication. */
+static int observed;                         /* Atomic once-only diagnostic publication. */
 extern void __real_Sys_werrstr(void *frame); /* Matched production builtin. */
 
 
@@ -27,8 +27,9 @@ void __wrap_Sys_werrstr(void *frame)
     }
     for (index = 0; index < count; index++)
     {
-        if (!cards[index].id || cards[index].pid <= 0 ||
-            (cards[index].done != 0 && cards[index].done != 1) ||
+        if (!cards[index].id || cards[index].pid <= 0 || (cards[index].done != 0 && cards[index].done != 1) ||
+            cards[index].phase < DVM_RESIDENT_STARTING || cards[index].phase > DVM_RESIDENT_DONE ||
+            (cards[index].done != (cards[index].phase == DVM_RESIDENT_DONE)) ||
             (index && cards[index - 1].id >= cards[index].id))
         {
             fprintf(stderr, "FAIL live registry identity\n");
@@ -63,12 +64,9 @@ void __wrap_Sys_werrstr(void *frame)
     count = 99;
     more = 99;
     cards[0].id = 1234;
-    if (dvm_resident_observe(0, cards, 0, &count, &more) ||
-        dvm_resident_observe(0, cards, 257, &count, &more) ||
-        dvm_resident_observe(0, NULL, 2, &count, &more) ||
-        dvm_resident_observe(0, cards, 2, NULL, &more) ||
-        dvm_resident_observe(0, cards, 2, &count, NULL) ||
-        count != 99 || more != 99 || cards[0].id != 1234)
+    if (dvm_resident_observe(0, cards, 0, &count, &more) || dvm_resident_observe(0, cards, 257, &count, &more) ||
+        dvm_resident_observe(0, NULL, 2, &count, &more) || dvm_resident_observe(0, cards, 2, NULL, &more) ||
+        dvm_resident_observe(0, cards, 2, &count, NULL) || count != 99 || more != 99 || cards[0].id != 1234)
     {
         fprintf(stderr, "FAIL live registry refusal publication\n");
         exit(14);

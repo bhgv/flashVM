@@ -47,6 +47,21 @@ def main():
             check=True,
             capture_output=True,
         )
+        phase_image = work / "phases.dis"
+        subprocess.run(
+            [
+                str(compiler),
+                "-I",
+                str(include),
+                "-I",
+                str(root.parent / "module"),
+                "-o",
+                str(phase_image),
+                str(root / "fixtures/resident-phases/main.b"),
+            ],
+            check=True,
+            capture_output=True,
+        )
         binary = relink(runtime, work, root / "test_live_registry_probe.c", 0, ["Sys_werrstr"])
         for mode in ("--no-jit", "--jit"):
             for locked in (False, True):
@@ -92,7 +107,57 @@ def main():
                 ):
                     raise RuntimeError("guest live resident API failed\n" + guest_output[-10000:])
                 evidence(guest_output, children=8)
+                phase_result = subprocess.run(
+                    [
+                        str(runtime),
+                        "--stats",
+                        mode,
+                        *(["--gc-locked-poll"] if locked else []),
+                        str(phase_image),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+                phase_output = phase_result.stdout + phase_result.stderr
+                if (
+                    phase_result.returncode
+                    or "ThreadSanitizer:" in phase_output
+                    or "runtime error:" in phase_output
+                    or "PASS resident phases: eight waits dispatch before after wake joined"
+                    not in phase_output
+                ):
+                    raise RuntimeError("resident phase API failed\n" + phase_output[-10000:])
+                evidence(phase_output, children=8)
                 print("PASS live registry " + mode + " locked=" + str(locked), flush=True)
+        for variant, diagnostic in (
+            (1, "resident phases never published eight readiness waits"),
+            (2, "resident phases never published owner dispatch"),
+        ):
+            omitted = relink(
+                runtime,
+                work,
+                root / "test_resident_phase_omission.c",
+                variant,
+                ["dvm_resident_observe"],
+            )
+            result = subprocess.run(
+                [str(omitted), "--stats", "--no-jit", str(phase_image)],
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
+            output = result.stdout + result.stderr
+            if (
+                "DETECTED " + diagnostic not in output
+                or "PASS resident phases:" in output
+                or "ThreadSanitizer:" in output
+                or "runtime error:" in output
+                or result.returncode != 0
+            ):
+                raise RuntimeError("phase omission not detected semantically\n" + output[-10000:])
+            evidence(output, children=8)
+            print("PASS resident phase omission " + str(variant), flush=True)
 
 
 if __name__ == "__main__":

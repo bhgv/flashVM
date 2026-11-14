@@ -14,16 +14,17 @@ init()
     sys := load Sys Sys->PATH;
     control := load Processctl Processctl->PATH;
     sys->print("NATIVEOBSERVER pid=%d scope=residents\n", control->pid());
+    names := array[] of {"starting", "dispatch", "scheduler", "wait-work", "teardown", "done"};
     cursor := big 0;
     for (;;) {
-        (status, id, pid, done) := control->resident(cursor);
+        (status, id, pid, done, phase) := control->residentstate(cursor);
         if (status == 0) {
             break;
         }
-        if (status != 1 || id <= cursor || pid <= 0) {
+        if (status != 1 || id <= cursor || pid <= 0 || phase < 0 || phase >= len names) {
             raise "live resident observation unavailable";
         }
-        sys->print("NATIVERESIDENT id=%bd pid=%d done=%d\n", id, pid, done);
+        sys->print("NATIVERESIDENT id=%bd pid=%d done=%d phase_id=%d phase=%s\n", id, pid, done, phase, names[phase]);
         cursor = id;
     }
 }
