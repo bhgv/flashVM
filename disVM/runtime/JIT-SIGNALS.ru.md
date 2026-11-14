@@ -95,3 +95,9 @@ Core dumps запрещаются только для test driver и его до
 и [signal-safety](https://man7.org/linux/man-pages/man7/signal-safety.7.html).
 Проверка synchronous admitted RX PC нужна, чтобы не восстанавливать исполнение
 после прерывания unsafe libc/helper call как после безопасного leaf.
+
+Post-landing checks also compare original VM control/root/operand addresses.
+A native test that corrupts REG.M before trapping must abort before managed
+publication/handler; no saved REG is restored. / После landing сравниваются
+исходные VM control/root/operand addresses. Реальная порча REG.M перед trap
+должна дать abort до managed publication/handler; REG из снимка не восстанавливается.

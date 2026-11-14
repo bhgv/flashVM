@@ -207,9 +207,9 @@ def main():
             "dvm_close_worker_stop",
             "dvm_debug_native_gate",
         ]
-        for variant in (0, 2, 4, 5, 7, 1, 3, 6, 8):
+        for variant in (0, 2, 4, 5, 7, 1, 3, 6, 8, 9):
             binary = relink(runtime, work, root / "test_jit_signal_probe.c", variant, symbols)
-            if variant == 8:
+            if variant in (8, 9):
                 result = subprocess.run(
                     [
                         str(binary),
@@ -226,12 +226,21 @@ def main():
                 output = result.stdout + result.stderr
                 require(
                     result.returncode == -signal.SIGABRT
-                    and "JITSIGNAL_DIRTY cleanup_linked=1" in output
+                    and (
+                        "JITSIGNAL_ROOTS mutation_armed=1"
+                        if variant == 9
+                        else "JITSIGNAL_DIRTY cleanup_linked=1"
+                    )
+                    in output
                     and "unsafe recovery refused" in output
                     and "JITFAULT " not in output,
                     "dirty native cleanup was incorrectly recovered: " + output,
                 )
-                print("PASS changed native cleanup refuses unsafe RX recovery", flush=True)
+                print(
+                    "PASS changed native cleanup/control refuses unsafe RX recovery variant="
+                    + str(variant),
+                    flush=True,
+                )
                 continue
             if variant in (3, 6):
                 result = subprocess.run(

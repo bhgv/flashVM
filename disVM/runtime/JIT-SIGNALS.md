@@ -99,3 +99,9 @@ POSIX constraints informing the boundary: Linux man-pages [sigsetjmp](https://ma
 and [signal-safety](https://man7.org/linux/man-pages/man7/signal-safety.7.html).
 The restriction to a synchronous admitted RX PC avoids treating an interrupted
 unsafe libc/helper call as a recoverable leaf.
+
+Post-landing checks also compare original VM control/root/operand addresses.
+A native test that corrupts REG.M before trapping must abort before managed
+publication/handler; no saved REG is restored. / После landing сравниваются
+исходные VM control/root/operand addresses. Реальная порча REG.M перед trap
+должна дать abort до managed publication/handler; REG из снимка не восстанавливается.

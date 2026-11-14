@@ -16,6 +16,7 @@
 #include <sys/mman.h>
 #include <signal.h>
 #include <unistd.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -161,6 +162,22 @@ static int (*trap_page(void))(REG *)
         memcpy(partial + 16, &helper, 8);
 #endif
     }
+    if (CONTROL == 9)
+    {
+        unsigned int offset = (unsigned int)offsetof(REG, M);
+#if defined(__x86_64__)
+        const unsigned char corrupt[] = {0x48, 0xc7, 0x87, 0, 0, 0, 0, 0, 0, 0, 0, 0x0f, 0x0b};
+        memcpy(partial, corrupt, sizeof(corrupt));
+        memcpy(partial + 3, &offset, 4);
+#elif defined(__aarch64__)
+        unsigned int corrupt[] = {0xf900001fU | ((offset / 8) << 10), 0};
+        memcpy(partial, corrupt, sizeof(corrupt));
+#else
+        unsigned int corrupt[] = {0x00053023U | ((offset & 31) << 7) | ((offset >> 5) << 25), 0};
+        memcpy(partial, corrupt, sizeof(corrupt));
+#endif
+        fprintf(stderr, "JITSIGNAL_ROOTS mutation_armed=1\n");
+    }
     mapping = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mapping == MAP_FAILED)
     {
@@ -171,7 +188,7 @@ static int (*trap_page(void))(REG *)
     {
         memcpy(mapping, readcode, sizeof(readcode));
     }
-    else if (CONTROL == 5 || CONTROL == 8)
+    else if (CONTROL == 5 || CONTROL == 8 || CONTROL == 9)
     {
         memcpy(mapping, partial, sizeof(partial));
     }
@@ -195,7 +212,13 @@ static int foreign_fault(REG *registers)
 {
     (void)registers;
     fprintf(stderr, "JITSIGNAL_FOREIGN_C entering=1\n");
-    __builtin_trap();
+#if defined(__x86_64__)
+    __asm__ volatile("ud2");
+#elif defined(__aarch64__)
+    __asm__ volatile(".inst 0");
+#else
+    __asm__ volatile(".word 0");
+#endif
     return 0;
 }
 

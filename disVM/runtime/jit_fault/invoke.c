@@ -105,12 +105,14 @@ int dvm_jit_signal_invoke(int (*fast)(REG *), REG *registers, int opcode)
     size_t size = __atomic_load_n(&state->size, __ATOMIC_RELAXED);
     int result;
     DVM_NativeCleanupMark mark;
+    REG before; /* Comparison only; never a register-restore or resume source. */
     if (!dvm_jit_signals_enabled || !scalar(opcode) || opcode != state->opcode || !base || size > UINTPTR_MAX - base ||
         address < base || address - base >= size || dvm_runtime_shared_mode() != 2 ||
         dvm_native_context_object_count(dvm_native_context_current()) || !dvm_native_cleanup_mark(&mark))
     {
         return fast(registers);
     }
+    before = *registers;
     if (!dvm_jit_signal_thread_start())
     {
         return 0; /* No partial invocation; ordinary interpreter handles the instruction. */
@@ -120,9 +122,12 @@ int dvm_jit_signal_invoke(int (*fast)(REG *), REG *registers, int opcode)
         DVM_JitFault *fault = &state->fault;
         __atomic_store_n(&state->armed, 0, __ATOMIC_RELEASE);
         if (dvm_runtime_shared_mode() != 2 || dvm_native_context_object_count(dvm_native_context_current()) ||
-            !dvm_native_cleanup_clean(&mark))
+            !dvm_native_cleanup_clean(&mark) || registers->M != before.M || registers->MP != before.MP ||
+            registers->FP != before.FP || registers->SP != before.SP || registers->TS != before.TS ||
+            registers->EX != before.EX || registers->PC != before.PC || registers->s != before.s ||
+            registers->d != before.d || registers->m != before.m)
         {
-            fputs("disvm: native RX fault changed admission/cleanup; unsafe recovery refused\n", stderr);
+            fputs("disvm: native RX fault changed admission/cleanup/control; unsafe recovery refused\n", stderr);
             abort();
         }
         fprintf(
