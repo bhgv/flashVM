@@ -21,6 +21,7 @@
 
 #include "diagnostics/processctl_calls.inc"
 #include "diagnostics/location_calls.inc"
+#include "diagnostics/stack_calls.inc"
 
 
 extern int dvm_runtime_prepare_cancelwait(Prog *caller, int pid);

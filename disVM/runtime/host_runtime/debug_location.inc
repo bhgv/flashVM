@@ -11,6 +11,9 @@
 static void runtime_capture_debug_location(void)
 {
     DVM_DiagnosticLocation location;
+    DVM_DiagnosticStack stack;
     dvm_diagnostic_location_capture(&location, DVM_R.M, DVM_R.PC);
+    dvm_diagnostic_stack_capture(&stack, &location, DVM_R.M, DVM_R.FP);
     dvm_resident_location_publish(&location);
+    dvm_resident_stack_publish(&stack);
 }

@@ -78,7 +78,7 @@ static int copy_label(char *output, unsigned int capacity, const char *source, i
  * RU: Заимствовать только rooted Modlink/Module своего owner и next-PC value.
  * Integer spans отказывают посторонним/native PC до вычитания. Подписи копируются
  * и не удерживают Module. output — native память caller. */
-void dvm_diagnostic_location_capture(DVM_DiagnosticLocation *output, Modlink *link, const void *next_pc)
+void dvm_diagnostic_location_copy(DVM_DiagnosticLocation *output, Modlink *link, const void *next_pc)
 {
     Module *module;
     uintptr base;
@@ -112,4 +112,14 @@ void dvm_diagnostic_location_capture(DVM_DiagnosticLocation *output, Modlink *li
     output->nprog = module->nprog;
     output->flags = DVM_LOCATION_VALID | (name_truncated ? DVM_LOCATION_NAME_TRUNCATED : 0) |
                     (path_truncated ? DVM_LOCATION_PATH_TRUNCATED : 0);
+}
+
+
+/* [GC:] EN: Capture the active owner's current rooted module/next PC into private
+ * output. Same validation as copied caller positions; no retained references.
+ * RU: Снять текущие rooted module/next PC active owner в private output.
+ * Проверки как у caller positions; без удерживаемых references. */
+void dvm_diagnostic_location_capture(DVM_DiagnosticLocation *output, Modlink *link, const void *next_pc)
+{
+    dvm_diagnostic_location_copy(output, link, next_pc);
 }

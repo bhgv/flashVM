@@ -180,6 +180,7 @@ add_executable(disvm
     owner_messages.c
     diagnostics/mailbox.c
     diagnostics/location.c
+    diagnostics/stack.c
     channel_match.c
     host_cancellations.c
     thread_registrar.c

@@ -110,4 +110,24 @@ Processctl: module
     # RU: Читать copied UTF-8 byte; part 0=name, 1=path. Не поглощать credit.
     residentlocationbyte: fn(id: big, ticket: big, part: int, index: int): (int, int);
 
+    StackComplete: con 1; # Reached the owner frame root.
+    StackTruncated: con 2; # More than eight frames; valid bounded prefix.
+    StackUnavailable: con 4; # Missing position or invalid/repeated trusted frame link.
+
+    # EN: Peek status, same boundary sequence, valid prefix count (0..8), stack flags.
+    # Zero flags/sequence means no boundary captured yet; no credit consumption.
+    # RU: Читать status, ту же boundary sequence, valid prefix count (0..8), stack flags.
+    # Нулевые flags/sequence означают отсутствие boundary; credit не поглощается.
+    residentstack: fn(id: big, ticket: big): (int, big, int, int);
+
+    # EN: Peek one stack frame with the same tuple as residentlocation; index 0 is top.
+    # Caller positions are saved next/return PCs. No frame addresses are exposed.
+    # RU: Читать frame в формате residentlocation; index 0 — top.
+    # Caller positions — saved next/return PCs. Адреса frames не выдаются.
+    residentframe: fn(id: big, ticket: big, frame: int): (int, big, big, int, int, int, int);
+
+    # EN/RU: Peek one copied frame label byte; part 0=name, 1=path; keep credit.
+    # Читать один byte подписи frame; part 0=name, 1=path; сохранить credit.
+    residentframebyte: fn(id: big, ticket: big, frame, part, index: int): (int, int);
+
 };

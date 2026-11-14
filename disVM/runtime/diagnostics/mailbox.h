@@ -5,7 +5,7 @@
 #ifndef DVM_DIAGNOSTIC_MAILBOX_H
 #define DVM_DIAGNOSTIC_MAILBOX_H
 #include <stdint.h>
-#include "location.h"
+#include "stack.h"
 
 enum
 {
@@ -33,6 +33,7 @@ typedef struct DVM_DiagnosticSample
     unsigned long turns;             /* Completed guest turns, sampled before dispatches. */
     unsigned long waits;             /* Readiness waits, not syscall count or elapsed time. */
     DVM_DiagnosticLocation location; /* Last copied owned execution boundary. */
+    DVM_DiagnosticStack stack;       /* Bounded call-chain copies from that same boundary. */
 } DVM_DiagnosticSample;
 
 

@@ -41,4 +41,11 @@ struct Modlink;
  * отдельная native память. Неверная/native-PC geometry либо UTF-8 дают нулевой
  * unavailable output. Без allocation, callbacks, retention либо поиска target. */
 void dvm_diagnostic_location_capture(DVM_DiagnosticLocation *output, struct Modlink *module, const void *next_pc);
+
+
+/* [GC:] EN: Copy a live rooted caller module/return PC under its active owner.
+ * Same output/validation/lifetime contract as capture; not restricted to top REG.
+ * RU: Копировать живые rooted caller module/return PC под active owner.
+ * Контракт output/validation/lifetime как capture; не только top REG. */
+void dvm_diagnostic_location_copy(DVM_DiagnosticLocation *output, struct Modlink *module, const void *next_pc);
 #endif

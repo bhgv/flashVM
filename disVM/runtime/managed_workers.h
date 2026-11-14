@@ -100,6 +100,11 @@ void dvm_resident_location_clear(void);
 void dvm_resident_location_publish(const DVM_DiagnosticLocation *location);
 
 
+/* EN/RU: Permanent owner copies bounded native stack from this same boundary.
+ * Permanent owner копирует bounded native stack той же boundary. */
+void dvm_resident_stack_publish(const DVM_DiagnosticStack *stack);
+
+
 /* EN/RU: Forget own ticket using the original requester identity.
  * Забыть свой ticket с original requester identity. */
 int dvm_resident_debug_forget(unsigned long id, int requester, unsigned long ticket);

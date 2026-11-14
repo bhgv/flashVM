@@ -21,6 +21,7 @@ static void service_debug_mailbox(ManagedWorker *worker)
         return;
     }
     sample.location = worker->location;
+    sample.stack = worker->stack;
     sample.owner_pid = worker->guest_pid;
     sample.turns = __atomic_load_n(&worker->observed_turns, __ATOMIC_ACQUIRE);
     sample.dispatches = __atomic_load_n(&worker->observed_dispatches, __ATOMIC_ACQUIRE);
