@@ -2,6 +2,18 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: namespace в debugger по запросу
+
+Команды namespace/namespace-read показывают root/cwd/import и все bindings
+удержанного guest. Полные UTF-8 paths читаются bounded hex pages с mutation
+revision; shared peer rebind делает старые pages недействительными. Нет новых
+постоянных таблиц статистики, allocation/I/O/GC traversal; читается существующее
+native state под mutex. Frozen source продолжает владеть своей группой.
+68 mandatory workloads включают namespace-debug. Полные Chan/provider graphs,
+FD/env/credentials и non-Linux adapters остаются работой.
+[RU](NAMESPACE-DEBUG.ru.md), [EN](NAMESPACE-DEBUG.md),
+[пример](../examples/namespace-debug/README.ru.md).
+
 ## 2026-11-15: удержание directory resources при rename/rebind
 
 Root/cwd/import/directory bindings удерживают native handles; in-flight plans

@@ -29,7 +29,7 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     add_test(NAME disvm_native_fp_records COMMAND disvm_fp_records_test)
     set_tests_properties(disvm_native_fp_records PROPERTIES TIMEOUT 10 LABELS "host-unit")
     add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/resolution.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
+        vfs/observation.c vfs/resolution.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_namespace_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host Threads::Threads)
     add_test(NAME disvm_namespace_concurrent COMMAND disvm_namespace_test)

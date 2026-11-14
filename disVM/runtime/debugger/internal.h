@@ -100,6 +100,12 @@ void dvm_debug_inspector_stop(void);
 void dvm_debug_inspect(DebugTarget *target, const char *command, char *output, size_t capacity);
 
 
+/* EN/RU: Observe native namespace of retained target under caller-held wake gate.
+ * Читать native namespace retained target под wake gate caller; bounded JSON.
+ * No GC admission or host I/O / Без GC admission и host I/O. */
+void dvm_debug_namespace(DebugTarget *target, const char *line, char *output, size_t capacity);
+
+
 /* EN/RU: Run local transport; never execute a Prog or become its register owner.
  * Обслуживать local transport; не исполнять Prog и не становиться owner его REG. */
 void *dvm_debug_transport(void *argument);

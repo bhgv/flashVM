@@ -1,5 +1,9 @@
 # Retained continuation debugger
 
+Native namespace summary and revision-checked text pages are now available for
+retained guests: [contract and fields](NAMESPACE-DEBUG.md). No heap inspection
+or global stop is needed; shared peers continue changing their own group.
+
 DisVM contains its own native supervisor and bounded command protocol. Running
 and inspecting it requires no installed GDB, Python interpreter, debugger library
 or external service. Python programs in `tools/` and the examples are optional

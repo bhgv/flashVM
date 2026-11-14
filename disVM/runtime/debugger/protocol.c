@@ -146,15 +146,25 @@ static void native_registers(const DebugTarget *target, char *output, size_t cap
         snprintf(output, capacity, "{\"ok\":false,\"error\":\"no native fault context\"}\n");
         return;
     }
-    used = (size_t)snprintf(output, capacity,
+    used = (size_t)snprintf(
+        output,
+        capacity,
         "{\"ok\":true,\"signal\":%d,\"code\":%d,\"address\":\"%llx\",\"pc\":\"%llx\",\"sp\":\"%llx\",\"rx_offset\":%llu,\"architecture\":\"%s\",\"registers\":{",
-        fault->signal_number, fault->signal_code, (unsigned long long)fault->address,
-        (unsigned long long)fault->pc, (unsigned long long)fault->sp,
-        (unsigned long long)(fault->pc - fault->rx_base), dvm_jit_fault_architecture());
+        fault->signal_number,
+        fault->signal_code,
+        (unsigned long long)fault->address,
+        (unsigned long long)fault->pc,
+        (unsigned long long)fault->sp,
+        (unsigned long long)(fault->pc - fault->rx_base),
+        dvm_jit_fault_architecture());
     for (index = 0; index < fault->count && index < 32 && used + 32 < capacity; index++)
     {
-        used += (size_t)snprintf(output + used, capacity - used, "%s\"%s\":\"%llx\"",
-                               index ? "," : "", dvm_jit_fault_register_name(index), (unsigned long long)fault->registers[index]);
+        used += (size_t)snprintf(output + used,
+                                 capacity - used,
+                                 "%s\"%s\":\"%llx\"",
+                                 index ? "," : "",
+                                 dvm_jit_fault_register_name(index),
+                                 (unsigned long long)fault->registers[index]);
     }
     snprintf(output + used, capacity - used, "}}\n");
 }
@@ -266,6 +276,10 @@ void dvm_debug_command(const char *line, char *output, size_t capacity)
         {
             snprintf(output, capacity, "{\"ok\":false,\"error\":\"step requires instruction-boundary pause\"}\n");
         }
+    }
+    else if (!strcmp(command, "namespace") || !strcmp(command, "namespace-read"))
+    {
+        dvm_debug_namespace(target, line, output, capacity);
     }
     else if (!strcmp(command, "native-fp"))
     {

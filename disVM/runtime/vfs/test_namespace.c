@@ -3,6 +3,7 @@
  * RU: Параллельные resolve/copy/rebind и отказ stale-планам без VM state.
  */
 #include "internal.h"
+#include "observation.h"
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,6 +131,17 @@ static void *reader(void *argument)
     int index;
     for (index = 0; index < DVM_NS_TEST_ROUNDS; index++)
     {
+        DVM_NamespaceObservation state;
+        unsigned char bytes[DVM_NS_OBSERVE_BYTES];
+        uint64_t revision;
+        int result;
+        require(dvm_namespace_observe(group, NULL, 0, 0, 0, NULL, 0, &state) == DVM_NS_OBSERVED, "concurrent summary");
+        revision = state.version;
+        memset(bytes, 0, sizeof(bytes));
+        result = dvm_namespace_observe(group, &revision, 0, DVM_NS_FIELD_SOURCE, 0, bytes, sizeof(bytes), &state);
+        require(result == DVM_NS_OBSERVE_STALE || (result == DVM_NS_OBSERVED && (!strcmp((char *)bytes, "/native/a") ||
+                                                                                 !strcmp((char *)bytes, "/native/b"))),
+                "torn namespace observation");
         require(dvm_namespace_plan(group, "/view/token", &plan), "concurrent plan");
         require(!strcmp(plan.native, "/native/a/token") || !strcmp(plan.native, "/native/b/token"),
                 "torn binding snapshot");
@@ -191,6 +203,50 @@ static void import_directory(void)
 }
 
 
+/* EN: Check summary, exact slices, stale/invalid refusals and output bounds.
+ * RU: Проверить summary, exact slices, stale/invalid refusal и output bounds.
+ * Private native group only; no filesystem/managed state or implicit assertions. */
+static void observations(void)
+{
+    DVM_Namespace *group = dvm_namespace_create("/native", "/cwd", "/package");
+    DVM_NamespaceObservation state;
+    unsigned char bytes[DVM_NS_OBSERVE_BYTES + 1];
+    uint64_t revision;
+    require(group != NULL, "observation create");
+    bind_path(group, "/a", "/view");
+    require(dvm_namespace_observe(group, NULL, 0, 0, 0, NULL, 0, &state) == DVM_NS_OBSERVED, "summary observation");
+    require(state.bindings == 1 && state.references == 1 && !state.root_held, "summary values");
+    revision = state.version;
+    memset(bytes, 0xa5, sizeof(bytes));
+    require(dvm_namespace_observe(group, &revision, 0, DVM_NS_FIELD_SOURCE, 2, bytes, 3, &state) == DVM_NS_OBSERVED,
+            "source slice");
+    require(state.length == strlen("/native/a") && state.copied == 3 && !memcmp(bytes, "ati", 3) && bytes[3] == 0xa5,
+            "slice contents/bounds");
+    require(dvm_namespace_observe(group, &revision, 0, DVM_NS_FIELD_ROOT, strlen("/native"), bytes, 1, &state) ==
+                    DVM_NS_OBSERVED &&
+                !state.copied,
+            "end offset");
+    require(dvm_namespace_observe(group, &revision, 0, DVM_NS_FIELD_ROOT, SIZE_MAX, bytes, 1, &state) ==
+                DVM_NS_OBSERVE_INVALID,
+            "offset overflow accepted");
+    require(dvm_namespace_observe(group, &revision, SIZE_MAX, DVM_NS_FIELD_TARGET, 0, bytes, 1, &state) ==
+                DVM_NS_OBSERVE_INVALID,
+            "index overflow accepted");
+    require(dvm_namespace_observe(group, &revision, 0, -1, 0, bytes, 1, &state) == DVM_NS_OBSERVE_INVALID,
+            "negative field accepted");
+    require(dvm_namespace_observe(group, &revision, 0, DVM_NS_FIELD_ROOT, 0, bytes, sizeof(bytes), &state) ==
+                DVM_NS_OBSERVE_INVALID,
+            "oversized chunk accepted");
+    bind_path(group, "/b", "/view");
+    memset(bytes, 0xa5, sizeof(bytes));
+    require(dvm_namespace_observe(group, &revision, 0, DVM_NS_FIELD_SOURCE, 0, bytes, 3, &state) ==
+                    DVM_NS_OBSERVE_STALE &&
+                bytes[0] == 0xa5 && state.version > revision && !state.copied,
+            "stale text leaked");
+    dvm_namespace_release(group);
+}
+
+
 /* EN/RU: Run geometry then six simultaneous OS owners, join and release group.
  * Проверить geometry и шесть одновременных OS owners, join и освободить группу. */
 int main(void)
@@ -198,6 +254,7 @@ int main(void)
     pthread_t owners[6];
     DVM_Namespace *group;
     int index;
+    observations();
     geometry();
     import_directory();
     group = dvm_namespace_create("/native", "/", NULL);

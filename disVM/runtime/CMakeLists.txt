@@ -197,6 +197,7 @@ add_executable(disvm
     vfs/boot.c
     vfs/loader.c
     vfs/module_file.c
+    vfs/observation.c
     vfs/anchor.c
     vfs/resource.c
     vfs/resolution.c
@@ -243,6 +244,7 @@ add_executable(disvm
     debugger/service.c
     debugger/transport.c
     debugger/pipe_transport.c
+    debugger/namespace.c
     debugger/protocol.c
     debugger/inspector_owner.c
     debugger/frames.c
