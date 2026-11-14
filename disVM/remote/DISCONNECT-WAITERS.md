@@ -19,24 +19,31 @@ is available. It must not wait another sixty seconds after known closure. A call
 that has not offered work can return `Disconnected`. Neither case authorizes an
 automatic retry, rollback or replacement connection with old images.
 
-Already completed replies take priority when the watchdog wakes. Broker/actor
-publishes the active request's buffered reply **before** its closed flag. This
-preserves successful Stop/Close results while releasing the other queued callers.
-The supervisor checks the reply again when its watchdog wins the outer alt.
-Exceptional termination can publish closure without a reply; that remains Unknown.
-Caller-side canwait, owner-bound execution, native TLS REG and permanent Prog
-thread identity are unchanged. No global stop/exclusive profile is used.
+Terminal publication has two nonzero phases. `Completing` rejects new calls
+before native lease revocation and before active reply publication. After that
+buffered reply is published, `Closed` wakes the other queued supervisors. Their
+watchdogs wait through Completing and still prefer an available actual reply.
+Exceptional/idle termination without an active reply can go directly to Closed.
+The original absolute deadline remains a separate bound in both phases.
 
-Если offered request не получил reply, а broker/actor уже завершён, caller
-получает `Unknown`, не ждёт оставшиеся шестьдесят секунд. До offer допустим
-`Disconnected`. Автоматический retry, rollback или перенос старых images на
-другое соединение не разрешены.
+| State | New calls | Queued watchdogs |
+| --- | --- | --- |
+| Open = 0 | Validate and offer | Wait for reply, closure or deadline |
+| Completing = 2 | Disconnected | Wait for active completion or original deadline |
+| Closed = 1 | Disconnected | Prefer reply, otherwise Unknown for offered work |
 
-Готовый reply имеет приоритет при пробуждении watchdog. Broker/actor сначала
-публикует buffered reply активного запроса и лишь затем closed flag. Поэтому
-успешные Stop/Close сохраняют свой результат, а остальные queued callers
-освобождаются. Если watchdog выиграл внешний alt, supervisor ещё раз проверяет
-reply. При exception закрытие может не иметь reply: результат остаётся Unknown.
+CI on AMD64 exposed why both phases matter: publishing reply before any refusal
+flag allowed immediate reentry to see an apparently open broker with revoked
+leases. Conversely, publishing final closure before reply could hide successful
+Close/Stop behind Unknown. The two phases preserve both boundaries without a
+global lock/stop or moving the original function/variable execution owner.
+
+Две ненулевые фазы решают обе гонки. Completing сначала запрещает новые calls,
+затем actor отзывает leases и публикует buffered reply. Closed публикуется после
+reply и освобождает остальные queued supervisors. Watchdog ждёт через Completing,
+сохраняя original absolute deadline и приоритет готового reply. Idle/exception
+без активного reply могут сразу перейти в Closed. При успешном Close/Stop
+результат сохраняется, а immediate reentry уже получает Disconnected.
 
 This does not add transaction cancellation or change raw Owner Handle ownership.
 A closed endpoint may still be held by application code; its buffered requests
@@ -98,3 +105,23 @@ Final affected TSan: 8/8, включая forwarding/routed results и обе н�
 omissions. Это проверка перечисленных групп, не утверждение нового полного
 91-test TSan результата. Architecture workload list остаётся 54: новая проверка
 расширяет existing retirement driver. Новая CI отслеживается отдельно.
+
+
+## Forced interleaving / Принудительная проверка публикации
+
+`terminal_publication_cases.py` widens the reply-to-Closed gap by 500 ms only in
+private matched bytecode. Scalar and result calls receive a corrupted peer reply;
+both must return Unknown and immediately refuse the next call as Disconnected,
+with no additional wire bytes. `ref_terminal_cases.py` exercises actual two-VM
+Close followed by immediate Read across the same widened actor gap: Close succeeds,
+Read is Disconnected, source owners drain and A remains 10.
+
+Independent omissions remove only early Completing publication, retaining the
+widened gap. Both scalar/result and actual Ref cases must fail with their exact
+reentry diagnostic after exercise roots and source actors have retired. No timeout,
+crash or sanitizer report is accepted. All C/JIT/fast/locked combinations are used.
+
+В private bytecode расширяется лишь gap между active reply и Closed; это не
+production задержка. Отдельные omissions удаляют только Completing. Проверяются
+scalar/result reply corruption и actual Ref Close/Read, немедленный отказ,
+отсутствие нового wire effect и завершение всех original source owners.

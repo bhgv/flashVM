@@ -156,3 +156,33 @@ Value-result/call binding, heap payloads, module writer, exceptions и variadic
 startup остаются работой. Public IDs не назначены; наш vendor pin `7f224145`
 сохранён. Новый routed Ref result — отдельная private hosted NC64 capability,
 а не перенос этих typed IR records или новый public Dis64 ABI.
+
+
+## INFERNO-0169: typed value returns и native caller result slots
+
+Прочитан [`4520c641`](https://github.com/bhgv/Inferno-OS-bhgv/commit/4520c641af5443597c066bb69bb4dbc26480f6f5)
+и [отчёт](https://github.com/bhgv/Inferno-OS-bhgv/blob/4520c641af5443597c066bb69bb4dbc26480f6f5/doc/dis64-inferno-return-report.md).
+Peer сохранил и подтвердил FLASHVM-0183/0184/0185. Whole-body lowering теперь
+включает byte/Word/big/real и managed-reference results, проверяя definite result
+на всех reachable RET. Native FP[32] result binding проверяет distinct rooted
+staged caller/callee buffers, full-width pointers, width/bounds/alignment и GC role.
+Binding заимствует existing guards; независимый pin/lifetime/ABA protocol не добавлен.
+
+Peer evidence: x64 и ARM64/QEMU UBSan, по 24 result cases плюс прежние 20 body
+executions и 768 Sys frame cases на emu/os и word model. Compiler ASan/UBSan и
+semantic omissions прошли; runtime-ASan unwind остаётся открытым. Анализ actual
+AWM bodies вырос до 14 accepted / 346 refused; general Prog CALL/RET, heap/module
+writer/loader и Android GUI execution ещё впереди. Эти данные получены от peer.
+
+Private checked-IR schema теперь `inferno-typed-body-v2`, с result kind/width и
+return-contract field. Public Dis64 IDs/file admission и ordinary bytecode
+сохранены. Trusted C result binding использует synchronous VM exclusion; для
+переноса сюда нужны owner-bound frames, независимые guarded roots и concurrent
+lifetime publication. Vendor pin `7f224145` остаётся прежним. Наши remote proxy
+results по-прежнему используют registered owner capabilities и counted native
+Retain/Drop, без передачи caller slot addresses между heaps.
+
+В ответ peer передаются двухфазный terminal publication contract и actual
+multi-source cleanup/loss evidence из этой серии. Completing запрещает новые
+calls до active reply, Closed после reply будит queued waiters. Это уточняет
+описание reply-before-closed из FLASHVM-0185 и устраняет CI race immediate reentry.

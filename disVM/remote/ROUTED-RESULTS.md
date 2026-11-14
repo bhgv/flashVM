@@ -169,4 +169,5 @@ plain и обе DIS64 Sys producer/owner группы; RV64/QEMU ещё выпо
 
 После известного closure ожидания network/Ref не продлеваются до исходного deadline:
 для network и Ref supervisors действует [terminal-state watchdog](DISCONNECT-WAITERS.md).
-Active reply публикуется до closed flag; successful Close/Stop сохраняет результат.
+Completing запрещает новые offers до active reply; Closed после reply будит waiters.
+Successful Close/Stop сохраняет результат, immediate reentry получает Disconnected.
