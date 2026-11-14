@@ -32,6 +32,21 @@ def main():
             check=True,
             capture_output=True,
         )
+        guest_image = work / "guest.dis"
+        subprocess.run(
+            [
+                str(compiler),
+                "-I",
+                str(include),
+                "-I",
+                str(root.parent / "module"),
+                "-o",
+                str(guest_image),
+                str(root / "fixtures/live-residents/main.b"),
+            ],
+            check=True,
+            capture_output=True,
+        )
         binary = relink(runtime, work, root / "test_live_registry_probe.c", 0, ["Sys_werrstr"])
         for mode in ("--no-jit", "--jit"):
             for locked in (False, True):
@@ -56,6 +71,27 @@ def main():
                 ):
                     raise RuntimeError("live registry failed\n" + output[-10000:])
                 evidence(output, children=8)
+                guest_result = subprocess.run(
+                    [
+                        str(runtime),
+                        "--stats",
+                        mode,
+                        *(["--gc-locked-poll"] if locked else []),
+                        str(guest_image),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+                guest_output = guest_result.stdout + guest_result.stderr
+                if (
+                    guest_result.returncode
+                    or "ThreadSanitizer:" in guest_output
+                    or "runtime error:" in guest_output
+                    or "PASS guest live residents:" not in guest_output
+                ):
+                    raise RuntimeError("guest live resident API failed\n" + guest_output[-10000:])
+                evidence(guest_output, children=8)
                 print("PASS live registry " + mode + " locked=" + str(locked), flush=True)
 
 
