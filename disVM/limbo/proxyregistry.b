@@ -77,7 +77,17 @@ lookup(context: ref Context, owner: Proxyowner->Handle): ref View
 # Buffered completion spawned actor переживает retirement import caller.
 actor(source: ref Source, timeout, deadline: int, ready: chan of (int, ref Proxyref->Ref), done: chan of int)
 {
-    route->startuntil(source.endpoint, source.image, timeout, deadline, ready);
+    {
+        route->startuntil(source.endpoint, source.image, timeout, deadline, ready);
+    } exception {
+        "*" =>
+            # EN/RU: Never block behind an already published startup result.
+            # Не блокироваться за уже опубликованным startup result.
+            alt {
+                ready <-= (Proxyowner->Unknown, nil) => {}
+                * => {}
+            }
+    }
     done <-= control->pid();
 }
 
