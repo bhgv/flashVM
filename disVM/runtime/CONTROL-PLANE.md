@@ -11,7 +11,7 @@ OS threads без global stop/exclusive остаются обязательны�
 | Область | Реализовано | Остаётся реализовать |
 | --- | --- | --- |
 | Гостевые потоки | Limbo spawn, permanent Prog/native owner; Processctl pid, kill/killwait/cancelwait для direct child | Supervisor capability для других гостей, pause/resume/step, приоритет |
-| Наблюдение | Resident ID/PID, phase/activity, exact-ID progress, coherent registry summary | Location/stack, объекты ожиданий, external transport, диагностические mailbox |
+| Наблюдение | Resident ID/PID, phase/activity, progress/summary и отдельные read-only scalar mailbox | Location/stack, объекты ожиданий, external transport и управляющие capabilities |
 | Память | Native allocator/RC/GC механизмы и private heap/type/module probes | Live allocator statistics и каталог объектов с owner/type attribution |
 | Окружение | Guest-local native error storage и FP state | Copy/share policy namespace, FD groups, env и credentials |
 | Файлы | Нативный файловый порт, open/create/read/write/seek/stat/fstat/dirread | Inferno namespace, bind/mount/unmount, работающий Styx serving и VFS providers |
@@ -24,6 +24,10 @@ OS threads без global stop/exclusive остаются обязательны�
 гостям VM; это не готовый внешний debugger/control endpoint.
 
 ## Отдельные диагностические mailbox
+
+Первый read-only scalar слой реализован: [DIAGNOSTIC-MAILBOX.md](DIAGNOSTIC-MAILBOX.md).
+Описанные ниже external service/capabilities, owner-bound typed capture и pause
+остаются следующими слоями; mailbox сам по себе их не реализует.
 
 Согласовано с пользователем: запросы debug/stat идут отдельно от обычных channel,
 RPC и completion messages. На каждого resident нужны собственная очередь запросов,
@@ -113,7 +117,7 @@ provider не держит global lock и не останавливает дру
 ## Последовательность
 
 1. Завершить copied progress/registry statistics и их lifecycle acceptance.
-2. Diagnostic mailboxes, owner-bound module/location/stack capture и capabilities.
+2. Read-only diagnostic mailbox принят; далее owner-bound module/location/stack capture, external service и capabilities.
 3. Cooperative pause/resume/step и portable priority с отдельной приёмкой.
 4. Allocator metadata/statistics и bounded object/type/origin catalog.
 5. Environment groups и composable VFS, затем C/Limbo providers и Styx integration.

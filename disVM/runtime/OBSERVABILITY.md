@@ -271,3 +271,12 @@ Live registry покрывает C/JIT × fast/locked polling, четыре copi
 helper registry нормализуется в JSON с точной summary; три normalizer units
 проходят. Architecture workload count остаётся 56; полный новый runtime/host
 matrix этим не заявляется.
+
+
+## Отдельные diagnostic mailbox
+
+Первый работающий request/reply/forget путь: [DIAGNOSTIC-MAILBOX.md](DIAGNOSTIC-MAILBOX.md).
+Он использует собственные fixed native credits, requester identity и owner servicing,
+не ordinary message FIFO. Pending wake и requester-retirement omissions проходят
+семантическую приёмку с полным native/GC drain. Read-only scalar sample не объявляет
+готовыми stack/typed-variable capture, внешний debugger либо pause/resume.
