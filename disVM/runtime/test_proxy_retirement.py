@@ -7,6 +7,7 @@ import tempfile
 
 from network_proxy_fixture import compile_fixture
 from proxy_retirement_cases import prepare, local, remote, control
+import disconnect_waiter_cases as disconnect
 
 
 # EN/RU: Borrow matched runtime/compiler/include; own fixtures through C/JIT/poll and omission.
@@ -22,6 +23,7 @@ def main():
         work = Path(temporary)
         compile_fixture(root, work, compiler, include)
         prepare(root, work, compiler, include)
+        disconnect.prepare(root, work, compiler, include)
         if not only_controls:
             for mode in ("--no-jit", "--jit"):
                 for locked in (False, True):
@@ -29,9 +31,23 @@ def main():
                     local(runtime, work, mode, locked, tag + "-owner", "owner-orphan-client")
                     local(runtime, work, mode, locked, tag + "-policy", "owner-policy-client")
                     remote(runtime, work, mode, locked, tag + "-ref")
-                    print("PASS owner/ref caller retirement " + tag, flush=True)
+                    for kind in ("net", "ref"):
+                        disconnect.run(
+                            runtime, work, mode, locked, tag + "-disconnect-" + kind, kind
+                        )
+                        disconnect.run(
+                            runtime,
+                            work,
+                            mode,
+                            locked,
+                            tag + "-disconnect-orphan-" + kind,
+                            kind,
+                            orphan=True,
+                        )
+                    print("PASS owner/ref caller retirement and disconnect " + tag, flush=True)
         if not positive:
             control(runtime, root, work, compiler, include)
+            disconnect.control(runtime, root, work, compiler, include)
 
 
 if __name__ == "__main__":
