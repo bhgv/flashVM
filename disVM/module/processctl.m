@@ -1,4 +1,6 @@
-# Hosted NC64 guest process control.
+# Copyright (c) 2026 bhgv
+# EN: Hosted NC64 process control and read-only live resident metadata.
+# RU: Hosted NC64 process control и read-only live resident metadata.
 Processctl: module
 {
     PATH: con "$Processctl";
@@ -19,4 +21,13 @@ Processctl: module
 
     # Request termination and wait for that child's managed resources to retire.
     killwait: fn(pid: int): int;
+
+    # EN: Read one copied resident after a nonnegative lifetime cursor in this VM.
+    # Return status (1 card, 0 end, -1 unavailable/invalid), id, PID, done.
+    # Pages are observational; IDs grant no kill/debug/memory authority.
+    # RU: Читать copied resident после nonnegative lifetime cursor в этой VM.
+    # Вернуть status (1 card, 0 end, -1 unavailable/invalid), id, PID, done.
+    # Pages observational; IDs не дают kill/debug/memory authority.
+    resident: fn(after: big): (int, big, int, int);
+
 };
