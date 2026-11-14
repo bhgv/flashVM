@@ -82,7 +82,7 @@ init()
     for (index := 0; index < len operations; index++) {
         reply := chan[1] of (int, int, Proxyowner->Handle);
         endpoint.requests <-= ref Proxyowner->Request(operations[index], function, variable, variable,
-            2, 999, 0, nil, nil, sys->millisec() - 1, cell, reply);
+            2, 999, 0, nil, nil, sys->millisec() - 1, cell, nil, reply);
         (expired, unused, returned) := <-reply;
         if (expired != Proxyowner->NotSent || returned.session != big 0) {
             raise "expired original-owner lifecycle or export admitted";

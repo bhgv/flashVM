@@ -45,7 +45,7 @@ alarm(signal, started: chan of int, deadline: int)
 # EN/RU: One absolute alarm spans offer and reply; accepted work is never replayed.
 # Один alarm охватывает offer и reply; принятое work никогда не повторяется.
 offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
-      refs, value, timeout, routed: int, first, second: ref Proxyref->Ref, publish: ref Proxyhost->Cell, deadline: int): (int, int, Handle)
+      refs, value, timeout, routed: int, first, second: ref Proxyref->Ref, publish: ref Proxyhost->Cell, deadline: int, output: ref RoutedResult): (int, int, Handle)
 {
     absent := Handle(big 0, 0, big 0);
     if (endpoint == nil || timeout < 1 || timeout > 60000) {
@@ -60,7 +60,7 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
     signal := chan[1] of int;
     response := chan[1] of (int, int, Handle);
     started := chan[1] of int;
-    request := ref Request(operation, target, left, right, refs, value, routed, first, second, deadline, publish, response);
+    request := ref Request(operation, target, left, right, refs, value, routed, first, second, deadline, publish, output, response);
     spawn alarm(signal, started, deadline);
     timer := <-started;
     delivered := 0;
@@ -92,7 +92,7 @@ call(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
     if ((operation < Read || operation > Retain) && operation != Add) {
         return (NotSent, 0);
     }
-    (status, result, unused) := offer(endpoint, operation, target, left, right, refs, value, timeout, 0, nil, nil, nil, 0);
+    (status, result, unused) := offer(endpoint, operation, target, left, right, refs, value, timeout, 0, nil, nil, nil, 0, nil);
     return (status, result);
 }
 
@@ -106,7 +106,7 @@ fetch(endpoint: ref Endpoint, target, left, right: Handle,
         return (NotSent, Handle(big 0, 0, big 0));
     }
     (status, unused, returned) := offer(endpoint, ReturnVariable + kind,
-        target, left, right, refs, value, timeout, 0, nil, nil, nil, 0);
+        target, left, right, refs, value, timeout, 0, nil, nil, nil, 0, nil);
     return (status, returned);
 }
 
@@ -121,7 +121,7 @@ routed(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,
     }
     absent := Handle(big 0, 0, big 0);
     (status, result, unused) := offer(endpoint, Invoke, target, absent, absent,
-        refs, value, timeout, 1, left, right, nil, 0);
+        refs, value, timeout, 1, left, right, nil, 0, nil);
     return (status, result);
 }
 
@@ -132,7 +132,7 @@ expose(endpoint: ref Endpoint, function: Handle, cell: ref Proxyhost->Cell, time
 {
     absent := Handle(big 0, 0, big 0);
     (status, unused, returned) := offer(endpoint, Expose, function, absent, absent,
-        0, 0, timeout, 0, nil, nil, cell, 0);
+        0, 0, timeout, 0, nil, nil, cell, 0, nil);
     return (status, returned);
 }
 
@@ -147,7 +147,7 @@ routeduntil(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->R
     }
     absent := Handle(big 0, 0, big 0);
     (status, result, unused) := offer(endpoint, Invoke, target, absent, absent,
-        refs, value, deadline - sys->millisec(), 1, left, right, nil, deadline);
+        refs, value, deadline - sys->millisec(), 1, left, right, nil, deadline, nil);
     return (status, result);
 }
 
@@ -158,8 +158,44 @@ exposeuntil(endpoint: ref Endpoint, function: Handle, cell: ref Proxyhost->Cell,
 {
     absent := Handle(big 0, 0, big 0);
     (status, unused, returned) := offer(endpoint, Expose, function, absent, absent,
-        0, 0, deadline - sys->millisec(), 0, nil, nil, cell, deadline);
+        0, 0, deadline - sys->millisec(), 0, nil, nil, cell, deadline, nil);
     return (status, returned);
+}
+
+
+# EN: Execute result callback on original target owner with request-rooted refs.
+# endpoint/target identify that owner; left/right and refs/value are borrowed inputs.
+# Failure returns nil; successful nil callback values still require registry admission.
+# The caller deadline covers allocation, queueing and completion.
+# RU: Исполнить result callback на original target owner с request-rooted refs.
+# endpoint/target задают owner; left/right и refs/value — borrowed inputs.
+# При failure вернуть nil; successful nil callback values ещё проверяет registry.
+# Caller deadline охватывает allocation, queueing и completion.
+routedfetchuntil(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,
+                 refs, value, deadline: int): (int, ref Proxyref->Ref)
+{
+    if (refs < 0 || refs > 2 || (refs > 0 && left == nil) || (refs > 1 && right == nil)) {
+        return (NotSent, nil);
+    }
+    output := ref RoutedResult(nil);
+    absent := Handle(big 0, 0, big 0);
+    (status, unused, ignored) := offer(endpoint, RoutedReturnVariable, target, absent, absent,
+        refs, value, deadline - sys->millisec(), 1, left, right, nil, deadline, output);
+    if (status != 0) {
+        return (status, nil);
+    }
+    return (0, output.source);
+}
+
+
+# EN/RU: Registry retains an exact native result handle under its original deadline.
+# Registry удерживает exact native result handle до original deadline.
+retainuntil(endpoint: ref Endpoint, target: Handle, deadline: int): int
+{
+    absent := Handle(big 0, 0, big 0);
+    (status, unused, ignored) := offer(endpoint, Retain, target, absent, absent,
+        0, 0, deadline - sys->millisec(), 0, nil, nil, nil, deadline, nil);
+    return status;
 }
 
 
@@ -220,7 +256,7 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
         }
         id++;
         nativeop := request.operation;
-        if (nativeop == ReturnVariable || nativeop == ReturnFunction || nativeop == Expose) {
+        if (nativeop == ReturnVariable || nativeop == ReturnFunction || nativeop == RoutedReturnVariable || nativeop == Expose) {
             nativeop = Invoke;
         }
         if (nativeop == Add) {
@@ -253,6 +289,9 @@ serve(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell,
                         } else {
                             value = handler->invoke(target, left, right, request.value);
                         }
+                    RoutedReturnVariable =>
+                        request.result.source = handler->routedresult(target, request.first, request.second,
+                            request.refs, request.value, request.deadline);
                     Expose =>
                         (published, session, slot, generation) := host->publish(request.publish, Proxyhost->Variable);
                         admitted = published;

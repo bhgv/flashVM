@@ -26,4 +26,12 @@ Proxyhandler: module
     # исходный absolute deadline; без raw foreign Cell и automatic replay.
     routed: fn(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
                refs, value, deadline: int): int;
+
+
+    # EN: Execute on original capture owner and return a borrowed live variable Ref.
+    # Inputs/deadline match routed; registry separately admits a counted result image.
+    # RU: Исполнить на original capture owner; вернуть borrowed live variable Ref.
+    # Inputs/deadline как у routed; registry отдельно принимает counted result image.
+    routedresult: fn(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
+                     refs, value, deadline: int): ref Proxyref->Ref;
 };

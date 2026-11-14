@@ -5,7 +5,7 @@ Proxyowner: module
 {
     PATH: con "proxyowner.dis"; # Bytecode library built by the matching NC64 producer.
     Read, Write, Invoke, Drop, Stop, Retain, ReturnVariable, ReturnFunction, Add: con iota; # Local channel protocol, not network wire IDs.
-    RoutedInvoke, ImportRoute, Expose: con 9 + iota; # Wire routed/import operations; Expose is owner-local only.
+    RoutedInvoke, ImportRoute, RoutedReturnVariable, Expose: con 9 + iota; # Routed/import wire operations; Expose remains owner-local.
     OK: con 0; # Completed effect, or successful explicit lifecycle action.
     OwnerError: con -1; # Callback raised; partial side effects remain possible.
     NotSent: con -2; # Timed out before this channel offer was delivered.
@@ -19,6 +19,14 @@ Proxyowner: module
         session: big; # Fences foreign endpoints and reopened sessions.
         slot: int; # Bounded native object slot.
         generation: big; # Never-reused slot incarnation.
+    };
+
+
+    # EN: Managed callback result stays rooted through completion, including caller retirement.
+    # RU: Managed callback result остаётся rooted до completion, включая retirement caller.
+    RoutedResult: adt
+    {
+        source: ref Proxyref->Ref; # Exact live registered wrapper; never serialized directly.
     };
 
 
@@ -37,6 +45,7 @@ Proxyowner: module
         second: ref Proxyref->Ref; # Second routed variable owner, if used.
         deadline: int; # Absolute caller budget for queue admission and routed accesses.
         publish: ref Proxyhost->Cell; # Owner-local cell to root for an opaque forwarded view.
+        result: ref RoutedResult; # Optional callback output, owned through the request/reply wait.
         reply: chan of (int, int, Handle); # Buffered status/scalar/new export identity.
     };
 
@@ -87,12 +96,14 @@ Proxyowner: module
     routed: fn(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,
                refs, value, timeout: int): (int, int);
 
+
     # EN: Authorize function and root an owner-local Cell without invoking user code.
     # Return a new variable handle; only trusted local coordinators supply the Cell.
     # RU: Авторизовать function и укоренить owner-local Cell без user callback.
     # Вернуть new variable handle; Cell передают лишь trusted local coordinators.
     expose: fn(endpoint: ref Endpoint, function: Handle, cell: ref Proxyhost->Cell,
                timeout: int): (int, Handle);
+
 
     # EN/RU: Registry variants preserve an already established absolute local deadline.
     # Registry variants сохраняют уже установленный absolute local deadline.
@@ -104,4 +115,17 @@ Proxyowner: module
     # Публиковать stub под original absolute local deadline.
     exposeuntil: fn(endpoint: ref Endpoint, function: Handle, cell: ref Proxyhost->Cell,
                     deadline: int): (int, Handle);
+
+
+    # EN: Run original callback with live refs and return status/Ref under existing deadline.
+    # The registry must validate the returned wrapper and acquire peer ownership separately.
+    # RU: Исполнить original callback с live refs; вернуть status/Ref до existing deadline.
+    # Registry отдельно проверяет returned wrapper и приобретает peer ownership.
+    routedfetchuntil: fn(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,
+                         refs, value, deadline: int): (int, ref Proxyref->Ref);
+
+
+    # EN/RU: Retain a result capability with no renewal of the original callback deadline.
+    # Retain result capability без обновления original callback deadline.
+    retainuntil: fn(endpoint: ref Endpoint, target: Handle, deadline: int): int;
 };

@@ -131,3 +131,36 @@ routed(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
     }
     return unused;
 }
+
+
+# EN: Return a live argument after original-owner effects. Sentinels exercise nil,
+# an unregistered wrapper, and exception after one actual foreign Add.
+# RU: Вернуть live argument после original-owner effects. Sentinels проверяют nil,
+# unregistered wrapper и exception после одного actual foreign Add.
+routedresult(capture: ref Proxyhost->Cell, left, right: ref Proxyref->Ref,
+             refs, value, deadline: int): ref Proxyref->Ref
+{
+    control := load Processctl Processctl->PATH;
+    if (capture.value != control->pid() || refs != 2 || left == nil || right == nil) {
+        raise "routed result lost original owner or live arguments";
+    }
+    if (value == -2) {
+        return nil;
+    }
+    if (value == -3) {
+        return ref Proxyref->Ref(left.requests, left.state, left.lease);
+    }
+    if (value == -1) {
+        access := load Proxyref Proxyref->PATH;
+        access->init();
+        access->call(left, Proxyref->Add, 1, deadline);
+        raise "routed result partial effect";
+    }
+    if (value != -888 && value != -889) {
+        routed(capture, left, right, refs, value, deadline);
+    }
+    if (value == -889 || value == 1) {
+        return right;
+    }
+    return left;
+}
