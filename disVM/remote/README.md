@@ -189,3 +189,7 @@ single effect и 60-second request / 40-second whole-VM completion описан�
 refs одновременно под одним cleanup deadline и join всех original actors.
 [Двухфазное закрытие](DISCONNECT-WAITERS.md#forced-interleaving--принудительная-проверка-публикации)
 сохраняет reply и запрещает immediate reentry ещё до отзыва leases.
+
+[Absolute deadlines на локальных передачах](HANDOFF-DEADLINES.md): Ref forwarding,
+startup clone и server-to-owner scalar/result calls сохраняют исходный deadline.
+Новые private gap/omission проверки смотрят actual effects и wire Retain.

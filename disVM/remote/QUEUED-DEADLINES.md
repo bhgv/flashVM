@@ -138,3 +138,9 @@ Drop сохраняется. Это границы нагрузки, а не п�
 Отдельные queue/owner probes также прошли все четыре C/JIT/poll combinations
 обычной и TSan сборок. Новая GitHub publication запускает собственную architecture
 matrix; pending CI не является подтверждением ARM64/RV64 этой ревизии.
+
+
+Проверки queued expiry дополнены [handoff deadlines](HANDOFF-DEADLINES.md):
+исходный absolute deadline теперь передаётся через source actor, broker и actual
+owner, включая startup Retain и typed result callbacks. Преобразование уже
+заданного deadline в новый relative timeout на этих переходах устранено.

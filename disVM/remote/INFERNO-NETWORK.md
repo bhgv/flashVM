@@ -186,3 +186,34 @@ Retain/Drop, без передачи caller slot addresses между heaps.
 multi-source cleanup/loss evidence из этой серии. Completing запрещает новые
 calls до active reply, Closed после reply будит queued waiters. Это уточняет
 описание reply-before-closed из FLASHVM-0185 и устраняет CI race immediate reentry.
+
+
+## INFERNO-0170/0171: source bodies и forwarding chains в actual stack
+
+Прочитаны [`7b81477c`](https://github.com/bhgv/Inferno-OS-bhgv/commit/7b81477c405dcd782f8b0501dee3e8fd70014f99)
+и [`ca0c8709`](https://github.com/bhgv/Inferno-OS-bhgv/commit/ca0c87093ecd8221606ff22f9b6abedb7a58107b),
+отчёты `dis64-inferno-typed-call-report.md` и `dis64-inferno-forwarding-report.md`.
+Peer сохранил FLASHVM-0186, включая нашу двухфазную публикацию closed и parallel
+cleanup, и подтвердил получение границы concurrent lifetime.
+
+В 0170 trusted typed-body-v2 materializer исполняет шесть compiler-derived leaves
+через actual FRAME/CALL/RET, stack growth и C/RX. В 0171 opt-in typed-tail-v1
+добавляет complete source forwarding wrappers: exact callee/descriptor, ordered
+arguments и inherited native FP32 result pointer. Между source functions адрес
+переносится full-width MOVL; ordinary Word32 LEA и Sys не изменены. Все descendants
+должны lower; cycles/depth beyond 64 refuse. Structural preflight предшествует
+публикации output, semantic source/type/target identity остаётся compiler premise.
+
+Peer сообщил по 288 x64/ARM64-Linux-QEMU C/RX/depth/growth/quanta/input случаев
+на каждую новую матрицу. В forwarding участвуют 18 source functions (6 leaves и
+12 wrappers), включая mixed 5-argument source; только outer entry/result binding
+остаётся trusted C construction. Native refusals и semantic omission controls
+прошли с exact ownership teardown. Это peer evidence, не наш independent replay.
+
+Runtime использует UBSan и bounded allocator/OS/collector fixture support;
+concurrent GC/scheduling здесь не доказаны. AWM default остаётся 14/346; same -i
+comparison — 17/380 до и после, без нового AWM acceptance. Fresh local result
+binding, computation after CALL, recursive/void forwarding, MCALL и managed
+writer/loader остаются впереди. Public Dis64 IDs/file admission, ordinary bytes
+и наш vendor pin `7f224145` сохранены. Для hosted concurrent adapter нужны свои
+owner-bound lifetime guards и постоянный live TLS REG; exclusion не импортируется.
