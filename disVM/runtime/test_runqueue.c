@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 /* The standalone fixture has no Processctl callers or pending replies. */
 void dvm_runtime_wait_request_finished(Prog *guest, DVM_OwnerMessage *message)
 {
@@ -64,6 +63,27 @@ static void check(int valid, const char *message)
 }
 
 
+/* EN: Exercise the real scalar mirror on unpublished native storage, including
+ * unknown states. Detach only after this private process's last transition.
+ * RU: Проверить actual scalar mirror на unpublished native storage, включая
+ * unknown states. Отсоединить после последнего перехода private process. */
+static void check_observation_mirror(void)
+{
+    DVM_RuntimeProcess process;
+    int cell = -99; /* Native cell owned through all fixture transitions. */
+    int state;
+    memset(&process, 0, sizeof(process));
+    process.resident_observation = &cell;
+    for (state = -1; state <= DVM_CHILD_EXIT_WAIT + 1; state++)
+    {
+        dvm_runqueue_set_state(&process.process, state);
+        check(__atomic_load_n(&cell, __ATOMIC_RELAXED) == state &&
+                  dvm_runqueue_observed_state(&process.process) == state,
+              "native observation mirror diverged");
+    }
+}
+
+
 /* Deliberately claim the same current Prog from another native context, then
  * require the continuation lease to reject it. argument borrows a rooted live
  * runtime allocation until join. Caller does not touch the FIFO concurrently. */
@@ -90,7 +110,6 @@ static void foreign_restore(void *argument)
     check(dvm_native_context_destroy(context), "foreign context destroy");
 }
 
-
 /* Inspect a claimed runnable head on a second real OS thread. The original
  * thread only joins while this function touches the FIFO, so no unsynchronized
  * heap access is implied. Even forged current-process identity grants no claim. */
@@ -107,7 +126,6 @@ static void foreign_dispatch(void *argument)
     check(dvm_native_context_destroy(context), "dispatch challenger destroy");
 }
 
-
 /* After a complete blocked turn and wake, claim that same live Prog on another
  * OS owner, block it again and finish. Native continuation affinity must not be
  * confused with permanent affinity of ordinary managed scheduler turns. */
@@ -121,7 +139,6 @@ static void reassigned_dispatch(void *argument)
     check(dvm_native_context_unbind(context), "reassigned context unbind");
     check(dvm_native_context_destroy(context), "reassigned context destroy");
 }
-
 
 /* The releasing thread publishes readiness while the parked owner still
  * holds its turn. The owner joins this thread before finishing that turn. */
@@ -138,13 +155,13 @@ static void early_table_wake(void *argument)
     check(dvm_native_context_destroy(context), "table releaser destroy");
 }
 
-
 /* Test the actual C scheduler FIFO, not a second queue implementation. No args;
  * array order/membership is an independent oracle over 20000 operations. Shared
  * fake Progs use the real retained layout and a separate root-list link chain;
  * this focused fixture does not execute managed bytecode or a collector. */
 int main(void)
 {
+    check_observation_mirror();
     publication_sync = fvm_port_sync_create();
     check(publication_sync != NULL, "create readiness publication mutex");
     dvm_runqueue_ready_sync(publication_sync);

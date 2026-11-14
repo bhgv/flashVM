@@ -30,6 +30,7 @@ void __wrap_Sys_werrstr(void *frame)
         if (!cards[index].id || cards[index].pid <= 0 || (cards[index].done != 0 && cards[index].done != 1) ||
             cards[index].phase < DVM_RESIDENT_STARTING || cards[index].phase > DVM_RESIDENT_DONE ||
             (cards[index].done != (cards[index].phase == DVM_RESIDENT_DONE)) ||
+            cards[index].activity < DVM_ACTIVITY_UNKNOWN || cards[index].activity > DVM_ACTIVITY_BROKEN ||
             (index && cards[index - 1].id >= cards[index].id))
         {
             fprintf(stderr, "FAIL live registry identity\n");

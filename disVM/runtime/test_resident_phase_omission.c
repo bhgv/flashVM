@@ -5,16 +5,16 @@
 #include "managed_workers.h"
 
 extern int __real_dvm_resident_observe(unsigned long after,
-                                      DVM_ResidentCard *cards,
-                                      unsigned int capacity,
-                                      unsigned int *count,
-                                      int *more); /* Matched production reader. */
+                                       DVM_ResidentCard *cards,
+                                       unsigned int capacity,
+                                       unsigned int *count,
+                                       int *more); /* Matched production reader. */
 
 
 /* EN: Delegate original bounded copy for borrowed native outputs, then omit only
- * WAIT_WORK (CONTROL=1) or DISPATCH (2). Lifetime/refusal behavior is unchanged.
+ * WAIT_WORK (CONTROL=1), DISPATCH (2) or channel ALT activity (3). No lifetime change.
  * RU: Делегировать bounded copy для borrowed native outputs, затем убрать только
- * WAIT_WORK (CONTROL=1) либо DISPATCH (2). Lifetime/refusal behavior не меняется. */
+ * WAIT_WORK (CONTROL=1), DISPATCH (2) либо ALT activity (3). Lifetime не меняется. */
 int __wrap_dvm_resident_observe(
     unsigned long after, DVM_ResidentCard *cards, unsigned int capacity, unsigned int *count, int *more)
 {
@@ -28,6 +28,10 @@ int __wrap_dvm_resident_observe(
                 (CONTROL == 2 && cards[index].phase == DVM_RESIDENT_DISPATCH))
             {
                 cards[index].phase = DVM_RESIDENT_SCHEDULER;
+            }
+            if (CONTROL == 3 && cards[index].activity == DVM_ACTIVITY_ALT)
+            {
+                cards[index].activity = DVM_ACTIVITY_READY;
             }
         }
     }

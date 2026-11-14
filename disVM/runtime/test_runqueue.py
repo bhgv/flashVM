@@ -2,6 +2,7 @@
 # EN: Actual runqueue owner/lease controls across split native modules.
 # RU: Проверки владельцев и native-ожиданий на настоящих модулях очереди.
 """Compile the real production queue and exercise semantic ownership controls."""
+
 from pathlib import Path
 import os
 import re
@@ -56,6 +57,11 @@ def main():
             return
         source = (runtime / "runqueue.c").read_text()
         controls = [
+            (
+                "__atomic_store_n(observer, state, __ATOMIC_RELAXED);",
+                "/* private control: omit diagnostic mirror */",
+                "native observation mirror diverged",
+            ),
             (
                 "!table_wake && runtime_process(process)->dispatch_owner &&",
                 "runtime_process(process)->dispatch_owner &&",
@@ -175,7 +181,7 @@ def main():
                     "inactive ownership control: " + marker + "\n" + result.stdout + result.stderr
                 )
     print(
-        "PASS eleven active ownership controls: early table wake, return accounting, synchronous hold, foreign restore/claim/finish, "
+        "PASS twelve active ownership/observation controls: native mirror, early table wake, return accounting, synchronous hold, foreign restore/claim/finish, "
         "duplicate admission, reserved return slot, missing withdrawal, nested cleared-root turn, early unbind"
     )
 

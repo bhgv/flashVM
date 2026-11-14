@@ -18,6 +18,8 @@ Result: adt
     pid: int; # Copied permanent guest PID.
     done: int; # Copied native completion flag.
     phase: int; # Copied owner-published lifecycle interval.
+    activity_status: int; # Exact-ID activity query status.
+    activity: int; # Copied scalar activity, independent from phase.
     after: int; # Untouched trailing canary.
 };
 
@@ -37,12 +39,17 @@ worker(result: ref Result, ready, release, done: chan of int)
             <-release => waiting = 0;
             * => sys->sleep(0);
         }
-        if (result.status < -1 || result.status > 1 || result.done < 0 || result.done > 1 || result.phase < control->Starting || result.phase > control->Done) {
+        if (result.status < -1 || result.status > 1 || result.done < 0 || result.done > 1 ||
+            result.phase < control->Starting || result.phase > control->Done ||
+            result.activity_status < -1 || result.activity_status > 1 ||
+            result.activity < control->UnknownActivity || result.activity > control->BrokenActivity) {
             raise "live resident shared scalar publication";
         }
     }
-    if (result.before != 12345 || result.after != 54321) {
-        raise "live resident shared trailing canaries";
+    if (result.before != 12345 || result.after != 54321 ||
+        result.activity_status < -1 || result.activity_status > 1 ||
+        result.activity < control->UnknownActivity || result.activity > control->BrokenActivity) {
+        raise "live resident shared trailing canaries or activity";
     }
     done <-= control->pid();
 }
@@ -57,12 +64,12 @@ init()
     ready := chan[8] of int;
     release := chan of int;
     done := chan[8] of int;
-    result := ref Result(12345, 0, big 0, 0, 0, 0, 54321);
+    result := ref Result(12345, 0, big 0, 0, 0, 0, 0, 0, 54321);
     for (index := 0; index < 8; index++) {
         spawn worker(result, ready, release, done);
     }
     pids := array[8] of int;
-    seen := array[8] of int;
+    seen := array[8] of {* => 0};
     for (index = 0; index < 8; index++) {
         pids[index] = <-ready;
     }
@@ -73,6 +80,12 @@ init()
         (oldstatus, oldid, oldpid, olddone) := control->resident(cursor);
         if (oldstatus != result.status || oldid != result.id || oldpid != result.pid || olddone != result.done) {
             raise "live resident legacy card differs for held registry";
+        }
+        if (result.status == 1) {
+            (result.activity_status, result.activity) = control->residentactivity(result.id);
+            if (result.activity_status != 1 || result.activity < control->UnknownActivity || result.activity > control->BrokenActivity) {
+                raise "live resident shared activity query failed";
+            }
         }
         if (result.before != 12345 || result.after != 54321) {
             raise "live resident result overwrote neighboring fields";

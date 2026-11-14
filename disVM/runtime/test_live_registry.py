@@ -62,6 +62,21 @@ def main():
             check=True,
             capture_output=True,
         )
+        activity_image = work / "activity.dis"
+        subprocess.run(
+            [
+                str(compiler),
+                "-I",
+                str(include),
+                "-I",
+                str(root.parent / "module"),
+                "-o",
+                str(activity_image),
+                str(root / "fixtures/resident-activity/main.b"),
+            ],
+            check=True,
+            capture_output=True,
+        )
         binary = relink(runtime, work, root / "test_live_registry_probe.c", 0, ["Sys_werrstr"])
         for mode in ("--no-jit", "--jit"):
             for locked in (False, True):
@@ -129,10 +144,38 @@ def main():
                 ):
                     raise RuntimeError("resident phase API failed\n" + phase_output[-10000:])
                 evidence(phase_output, children=8)
+                activity_result = subprocess.run(
+                    [
+                        str(runtime),
+                        "--stats",
+                        mode,
+                        *(["--gc-locked-poll"] if locked else []),
+                        str(activity_image),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=90,
+                )
+                activity_output = activity_result.stdout + activity_result.stderr
+                if (
+                    activity_result.returncode
+                    or "ThreadSanitizer:" in activity_output
+                    or "runtime error:" in activity_output
+                    or "PASS resident activity: send receive alt table native ready wake exact IDs reaped joined"
+                    not in activity_output
+                ):
+                    raise RuntimeError("resident activity API failed\n" + activity_output[-10000:])
+                evidence(activity_output, children=5)
                 print("PASS live registry " + mode + " locked=" + str(locked), flush=True)
-        for variant, diagnostic in (
-            (1, "resident phases never published eight readiness waits"),
-            (2, "resident phases never published owner dispatch"),
+        for variant, target_image, children, diagnostic in (
+            (1, phase_image, 8, "resident phases never published eight readiness waits"),
+            (2, phase_image, 8, "resident phases never published owner dispatch"),
+            (
+                3,
+                activity_image,
+                5,
+                "resident activity missing send receive alt table native publication",
+            ),
         ):
             omitted = relink(
                 runtime,
@@ -142,7 +185,7 @@ def main():
                 ["dvm_resident_observe"],
             )
             result = subprocess.run(
-                [str(omitted), "--stats", "--no-jit", str(phase_image)],
+                [str(omitted), "--stats", "--no-jit", str(target_image)],
                 capture_output=True,
                 text=True,
                 timeout=90,
@@ -151,13 +194,14 @@ def main():
             if (
                 "DETECTED " + diagnostic not in output
                 or "PASS resident phases:" in output
+                or "PASS resident activity:" in output
                 or "ThreadSanitizer:" in output
                 or "runtime error:" in output
                 or result.returncode != 0
             ):
                 raise RuntimeError("phase omission not detected semantically\n" + output[-10000:])
-            evidence(output, children=8)
-            print("PASS resident phase omission " + str(variant), flush=True)
+            evidence(output, children=children)
+            print("PASS resident observation omission " + str(variant), flush=True)
 
 
 if __name__ == "__main__":
