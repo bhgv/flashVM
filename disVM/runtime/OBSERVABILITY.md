@@ -73,3 +73,30 @@ queues; automatic instrumentation всех VM channels там пока отсу�
 Каждый adapter принимается на реальном работающем объекте и при его разрушении,
 а не только на synthetic counters. Ошибки наблюдателя не должны менять результат
 программы; race/GC/retirement omissions обязаны обнаруживаться семантически.
+
+## Live resident registry: первый native adapter
+
+`dvm_resident_observe` в `managed_workers.h` копирует metadata работающего native
+resident registry. В странице 1..256 карточек: stable lifetime ID сервиса, permanent
+Prog PID и опубликованный признак done после TLS destruction. IDs отсортированы;
+`after` задаёт cursor, `more` сообщает усечение. Reaped записи могут исчезать между
+страницами; несколько страниц не объявляются единым atomic snapshot.
+
+Сервис удерживается вызывающим до возврата; concurrent service stop запрещён
+контрактом lifetime. Выход — disjoint caller-owned native storage. Invalid arguments
+либо unavailable service дают отказ без изменения outputs. Короткий service.sync
+защищает только копирование metadata; Prog/REG, owner-only counters и managed heap
+не читаются, target code не исполняется и heap admission не запрашивается.
+Это C API адаптера; guest/IDE transport, wait reasons и stack views ещё впереди.
+Collector/file-helper threads требуют собственных registry adapters.
+
+`test_live_registry.py` перехватывает только private Sys callback и читает реальные
+карточки при создании/завершении восьми guest threads. Проверяются ascending IDs,
+PID, bounded page, end cursor, refusal without output mutation и strict native/GC
+retirement evidence. C/JIT × fast/locked polling проходят обычно и под TSan.
+Workload `live-registry` включён в architecture matrix; список вырос до 56.
+
+Приёмка live adapter: пять затронутых групп process control/cancellation/retirement/
+observation прошли 5/5 обычно и 5/5 под TSan. После расширения проверок cursor,
+NULL outputs и invalid capacity вновь прошли четыре C/JIT/poll сочетания TSan.
+Это не полный прогон всей runtime suite и не готовый debugger transport.
