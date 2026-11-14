@@ -25,6 +25,7 @@
 #include "resident_threads/worker_wait.inc"
 #include "resident_threads/worker_execute.inc"
 #include "resident_threads/worker_start.inc"
+#include "resident_threads/worker_observe.inc"
 
 
 /* EN: Start the resident registry on the bound active controller.

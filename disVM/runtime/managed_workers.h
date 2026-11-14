@@ -7,6 +7,27 @@
 
 
 
+/* EN/RU: Copied native metadata; lifetime ID is not a pointer or managed authority.
+ * Копия native metadata; lifetime ID не pointer и не managed authority. */
+typedef struct DVM_ResidentCard
+{
+    unsigned long id; /* Stable lifetime identity within this service. */
+    int pid; /* Permanent PID copied before resident execution. */
+    int done; /* TLS destruction completed, published under metadata mutex. */
+} DVM_ResidentCard;
+
+
+/* EN/RU: Copy ascending IDs after cursor into 1..256 disjoint native cards.
+ * Caller guarantees live service through return; no concurrent service stop.
+ * count/more are copied outputs; refusal leaves outputs unchanged. This is one
+ * page, not a coherent multi-page snapshot; retired/reaped IDs may disappear.
+ * Копировать ascending IDs после cursor в 1..256 disjoint native cards.
+ * Caller удерживает service до return без concurrent service stop. count/more —
+ * copied outputs; отказ не меняет output. Pages не образуют общий atomic snapshot. */
+int dvm_resident_observe(unsigned long after, DVM_ResidentCard *cards,
+    unsigned int capacity, unsigned int *count, int *more);
+
+
 enum
 {
     DVM_MANAGED_TURN_IDLE,
