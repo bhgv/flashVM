@@ -20,7 +20,9 @@ permissions:
 
 concurrency:
     group: native-disvm-${{ github.ref }}
-    cancel-in-progress: true
+    # EN: Let master finish long RV64/QEMU gates; newer master work waits.
+    # RU: Дать master завершить долгие RV64/QEMU gates; новые изменения ждут.
+    cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
     native:
