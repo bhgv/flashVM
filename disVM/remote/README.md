@@ -180,3 +180,7 @@ Local Owner/Ref request supervisors также завершают alarm посл
 original deadlines и caller-side nested RPC policy сохраняются. Проверки actual
 single effect и 60-second request / 40-second whole-VM completion описаны в
 [контракте lifetime](ROUTED-RESULTS.md#локальные-ownerref-после-retirement-caller).
+
+[Ожидания после обрыва](DISCONNECT-WAITERS.md): offered network/Ref callers
+наблюдают terminal state; готовый reply имеет приоритет над closure. Проверяются
+восемь одновременных запросов и уничтожение queued caller до disconnect.

@@ -166,3 +166,7 @@ orphan операции во всех четырёх C/JIT/poll сочетани
 отдельно; pending execution не считается подтверждённым результатом.
 Baseline `677b8069`: в run 43567770403 уже successful AMD64 plain/TSan, ARM64
 plain и обе DIS64 Sys producer/owner группы; RV64/QEMU ещё выполняется.
+
+После известного closure ожидания network/Ref не продлеваются до исходного deadline:
+для network и Ref supervisors действует [terminal-state watchdog](DISCONNECT-WAITERS.md).
+Active reply публикуется до closed flag; successful Close/Stop сохраняет результат.
