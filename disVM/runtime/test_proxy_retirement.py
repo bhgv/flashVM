@@ -37,6 +37,9 @@ def main():
                 for locked in (False, True):
                     tag = mode[2:] + str(locked)
                     cleanup.run(runtime, work, mode, locked, tag + "-parallel-cleanup")
+                    cleanup.run(
+                        runtime, work, mode, locked, tag + "-cleanup-source-loss", loss=True
+                    )
                     local(runtime, work, mode, locked, tag + "-owner", "owner-orphan-client")
                     local(runtime, work, mode, locked, tag + "-policy", "owner-policy-client")
                     remote(runtime, work, mode, locked, tag + "-ref")

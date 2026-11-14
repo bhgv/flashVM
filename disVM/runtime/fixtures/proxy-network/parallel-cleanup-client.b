@@ -39,11 +39,16 @@ own(handler: Proxyhandler, cell, capture: ref Proxyhost->Cell, started: chan of 
 # Освободить original greeting owners лишь после retirement independent clones.
 finish(endpoint: ref Proxynet->Endpoint, variable, function: Proxynet->Image, done: chan of int)
 {
+    lost := endpoint.state.closed;
     empty := Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     (first, unused) := net->call(endpoint, Proxyowner->Drop, variable, empty, empty, 0, 0, 10000);
     (second, unused2) := net->call(endpoint, Proxyowner->Drop, function, empty, empty, 0, 0, 10000);
     (stopped, unused3) := net->call(endpoint, Proxyowner->Stop, empty, empty, empty, 0, 0, 10000);
-    if (first != 0 || second != 0 || stopped != 0 || <-done != 1) {
+    valid := first == 0 && second == 0 && stopped == 0;
+    if (lost) {
+        valid = first == Proxynet->Disconnected && second == Proxynet->Disconnected && stopped == Proxynet->Disconnected;
+    }
+    if (!valid || <-done != 1) {
         raise "parallel cleanup original source ownership";
     }
 }

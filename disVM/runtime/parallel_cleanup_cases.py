@@ -18,8 +18,8 @@ def prepare(root, work, compiler, include):
 # EN: Forward one source, hold its first completed Drop until the other independent
 # Drop arrives. Record the ordering before bounded fallback releases broken cleanup.
 # RU: Передавать один source, удержать first completed Drop до другого independent
-# Drop. Записать ordering до bounded fallback, освобождающего broken cleanup.
-def relay(server, client, index, lock, seen, released, ordered, errors):
+# Drop. Записать ordering до bounded fallback; loss теряет один completed reply.
+def relay(server, client, index, lock, seen, released, ordered, errors, loss):
     try:
         client.sendall(receive(server))
         held = False
@@ -39,6 +39,8 @@ def relay(server, client, index, lock, seen, released, ordered, errors):
                 with lock:
                     ordered.append(len(seen) == 2)
                 held = True
+                if loss and index == 0:
+                    return
             client.sendall(response)
             if operation == 5:
                 return
@@ -54,10 +56,12 @@ def relay(server, client, index, lock, seen, released, ordered, errors):
 
 
 # EN: Own two real source VMs, one coordinator and both relays until all roots join.
-# serialized requires the exact missing parallel-offer ordering with otherwise clean VMs.
+# serialized requires missing parallel-offer ordering; loss disconnects source zero
+# after its completed clone Drop while source one continues to normal Stop.
 # RU: Владеть двумя actual source VMs, coordinator и relays до join всех roots.
-# serialized требует exact missing parallel-offer ordering при clean VMs.
-def run(runtime, work, mode, locked, tag, serialized=False):
+# serialized требует missing parallel-offer ordering; loss отключает source zero
+# после completed clone Drop, пока source one доходит до normal Stop.
+def run(runtime, work, mode, locked, tag, serialized=False, loss=False):
     sockets, guests, threads, errors = [], [], [], []
     lock, seen, released, ordered = threading.Lock(), set(), threading.Event(), []
     endpoints = []
@@ -76,7 +80,7 @@ def run(runtime, work, mode, locked, tag, serialized=False):
             threads.append(
                 threading.Thread(
                     target=relay,
-                    args=(server, client, index, lock, seen, released, ordered, errors),
+                    args=(server, client, index, lock, seen, released, ordered, errors, loss),
                 )
             )
         guests.append(
