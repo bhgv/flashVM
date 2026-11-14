@@ -59,7 +59,7 @@ int dvm_debug_start(const char *path)
     address.sun_family = AF_UNIX;
     snprintf(address.sun_path, sizeof(address.sun_path), "%s", path);
     dvm_debug_service.listener = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK, 0);
-    previous = umask(077);
+    previous = umask(0177);
     bound = dvm_debug_service.listener >= 0 &&
             !bind(dvm_debug_service.listener, (struct sockaddr *)&address, sizeof(address));
     umask(previous);

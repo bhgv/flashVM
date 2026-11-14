@@ -52,8 +52,14 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
                 stderr=error,
                 text=True,
             )
-            session = SocketDebugger(path, process)
-            require((path.stat().st_mode & 0o777) == 0o600, "debug socket was not private")
+            try:
+                session = SocketDebugger(path, process)
+                require((path.stat().st_mode & 0o777) == 0o600, "debug socket was not private")
+            except BaseException:
+                if process.poll() is None:
+                    process.kill()
+                process.wait()
+                raise
         else:
             session = PipeDebugger(
                 binary, arguments, stdout=subprocess.PIPE, stderr=error, text=True
@@ -82,6 +88,11 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
             session.session = original_session
             state = session.command("status " + str(fault))
             if control == 1:
+                deadline = time.monotonic() + 5
+                while state.get("ok") and state.get("state") == "running":
+                    require(time.monotonic() < deadline, "omitted fault stop source did not retire")
+                    time.sleep(0.001)
+                    state = session.command("status " + str(fault))
                 require(
                     not state.get("ok") and state.get("error") == "gone",
                     "fault-stop omission did not retire source normally",
@@ -329,6 +340,23 @@ def main():
         compile_image(
             compiler, include, root, root.parent / "examples/retained-debug/main.b", image
         )
+        socket_probe = relink(
+            runtime, work, root / "test_debug_socket_probe.c", 0, ["socket", "bind", "close"]
+        )
+        refused = subprocess.run(
+            [str(socket_probe), "--debug", str(work / "mode-probe"), str(image)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        socket_output = refused.stdout + refused.stderr
+        require(
+            refused.returncode == 2
+            and "DEBUGSOCKETMASK mask=0177 mode=0600" in socket_output
+            and "DEBUGSOCKETRESTORE matched=1" in socket_output,
+            "socket creation/restoration failed: " + socket_output,
+        )
+        print("PASS debugger socket mode0600 and restored umask before refused startup", flush=True)
         symbols = [
             "dvm_debug_fault",
             "dvm_debug_instruction",
