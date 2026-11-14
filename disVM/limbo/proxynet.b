@@ -90,12 +90,12 @@ watch(endpoint: ref Endpoint, started, signal: chan of int, deadline: int)
 }
 
 
-# EN: Own alarm/completion until the original request finishes, even when its
-# public caller retires. endpoint/request/deadline are immutable borrowed inputs;
-# published/completed are buffered outputs. Never renew or replay offered work.
-# RU: Владеть alarm/completion до завершения original request даже при retirement
-# public caller. endpoint/request/deadline — immutable borrowed inputs;
-# published/completed — buffered outputs. Не обновлять deadline и не повторять work.
+# EN: Own watchdog/completion through request completion or observed closure even
+# after caller retirement. Borrow endpoint/request/deadline; the broker owns mutable
+# terminal state. published/completed are buffered outputs. Never renew/replay work.
+# RU: Владеть watchdog/completion до request completion либо observed closure даже
+# после retirement caller. Borrow endpoint/request/deadline; broker владеет mutable
+# terminal state. published/completed — buffered outputs. Не обновлять/повторять work.
 supervise(endpoint: ref Endpoint, request: ref Request, deadline: int,
           published: chan of int, completed: chan of Reply)
 {
@@ -104,7 +104,7 @@ supervise(endpoint: ref Endpoint, request: ref Request, deadline: int,
     started := chan[1] of int;
     signal := chan[1] of int;
     spawn watch(endpoint, started, signal, deadline);
-    timer := <-started;
+    watchdog := <-started;
     delivered := 0;
     result := Reply(Proxyowner->NotSent, 0, absent);
     if (!endpoint.state.closed && sys->millisec() < deadline) {
@@ -126,7 +126,7 @@ supervise(endpoint: ref Endpoint, request: ref Request, deadline: int,
                 }
         }
     }
-    control->killwait(timer);
+    control->killwait(watchdog);
     completed <-= result;
 }
 

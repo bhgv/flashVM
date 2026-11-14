@@ -44,10 +44,12 @@ watch(state: ref State, started, signal: chan of int, deadline: int)
 }
 
 
-# EN: Keep access/source and its original deadline until reply or timeout, even if
-# the public caller retires. Always retire the owned alarm before buffered completion.
-# RU: Удержать access/source и original deadline до reply либо timeout даже при
-# retirement public caller. Завершить owned alarm до buffered completion.
+# EN: Keep access/source and original deadline until reply, closure or timeout even
+# after caller retirement. Borrow access, publish PID/result to buffered outputs;
+# always join the owned watchdog before completion, preferring an available reply.
+# RU: Удержать access/source и original deadline до reply, closure либо timeout даже
+# после retirement caller. Borrow access, передать PID/result в buffered outputs;
+# всегда join owned watchdog до completion, с приоритетом доступного reply.
 supervise(access: ref Access, published: chan of int, completed: chan of (int, int))
 {
     published <-= control->pid();
@@ -56,7 +58,7 @@ supervise(access: ref Access, published: chan of int, completed: chan of (int, i
     started := chan[1] of int;
     signal := chan[1] of int;
     spawn watch(source.state, started, signal, deadline);
-    timer := <-started;
+    watchdog := <-started;
     offered := 0;
     result := (NotSent, 0);
     if (!source.state.closed && sys->millisec() < deadline) {
@@ -78,7 +80,7 @@ supervise(access: ref Access, published: chan of int, completed: chan of (int, i
                 }
         }
     }
-    control->killwait(timer);
+    control->killwait(watchdog);
     completed <-= result;
 }
 
