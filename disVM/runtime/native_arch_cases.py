@@ -19,6 +19,7 @@ WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference 
     ("network-proxy", "test_network_proxy.py", ("--base-only",)),
     ("forwarding-proxy", "test_network_proxy.py", ("--forwarding-only",)),
     ("proxy-deadlines", "test_proxy_churn.py", ("--deadlines-only",)),
+    ("proxy-handoffs", "test_proxy_handoffs.py", ("--positive-only",)),
     ("proxy-churn", "test_proxy_churn.py", ("--positive-only",)),
     ("routed-results", "test_routed_results.py", ("--positive-only",)),
     ("proxy-retirement", "test_proxy_retirement.py", ("--positive-only",)),

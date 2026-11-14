@@ -23,9 +23,9 @@ if(DVM_RUNTIME_TESTS)
         include("${CMAKE_CURRENT_BINARY_DIR}/native-only-tests.cmake")
         # EN/RU: Keep intentional broken-code controls native; no reference execution.
         # Намеренные broken-code контроли остаются native, без reference-исполнения.
-        foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy proxy_churn routed_results proxy_retirement)
+        foreach(control retirement_storage cancel_generation killwait_seal owner_monitor remote_managed guest_proxy network_proxy proxy_churn routed_results proxy_retirement proxy_handoffs)
             set(control_flags)
-            if(control STREQUAL "network_proxy" OR control STREQUAL "proxy_churn" OR control STREQUAL "routed_results" OR control STREQUAL "proxy_retirement")
+            if(control STREQUAL "network_proxy" OR control STREQUAL "proxy_churn" OR control STREQUAL "routed_results" OR control STREQUAL "proxy_retirement" OR control STREQUAL "proxy_handoffs")
                 list(APPEND control_flags --controls-only)
             endif()
             add_test(NAME disvm_control_${control} COMMAND "${PYTHON_EXECUTABLE}"
