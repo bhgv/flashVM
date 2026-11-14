@@ -155,7 +155,10 @@ No successful empty Sys service, external emu, Inferno Draw or full
 Inferno filesystem is substituted. Create/write supports actual files with OWRITE/0666 plus standard output/error.
 Standard descriptors 0/1/2 are borrowed through FlashVM's common standard-stream
 port. Other open/create flags and permissions are rejected. Network namespaces, Styx,
-process control and Dis exception-handler propagation remain to be connected.
+full environment/namespace control remain to be connected. Hosted Processctl supplies
+child termination/wait cancellation and live resident metadata; supervisor pause,
+priority and external debugger control are pending. See [current API readiness and
+next control-plane contracts](CONTROL-PLANE.md).
 
 The standalone executable owns one bounded 64 MiB arena. Stable block headers
 allow the retained Inferno RC and cycle collector to traverse it; first-fit

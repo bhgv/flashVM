@@ -224,3 +224,50 @@ activity outputs, exact-ID gap и все три copied-data omission controls. N
 queue unit с двенадцатью controls проходит отдельно; CLI report нормализуется,
 три unit checks JSON normalizer проходят. Workload count остаётся 56. Полная новая
 runtime/architecture suite и live-проверка всех одиннадцати activity не заявляются.
+
+## Progress и сводка resident registry
+
+`residentprogress(exact id)` возвращает `(status, dispatches, turns, waits)`.
+Статусы и нулевые missing/refusal outputs совпадают с residentactivity. Dispatches —
+входы в resident callback (включая idle/maintenance), turns — завершённые guest
+callbacks, waits — входы в dedicated readiness condition wait, включая spurious
+wakeups. Это не число инструкций, syscall count, wall/CPU time либо wait duration.
+
+Каждый counter имеет одного writer и насыщается на signed-big max; повторный
+increment на максимуме не делает значение отрицательным. Inspector читает только
+новые native atomic publications, а не owner-only turns/owner statistics. Completed
+turns читаются acquire перед dispatches: release completed publication следует
+после соответствующего dispatch, поэтому copied turns <= dispatches. Вся тройка
+не является atomic snapshot; фазы/activity и другие запросы независимы.
+
+`residentsummary()` возвращает status и coherent created/registered/reaping/reaped/
+registered-done под metadata guard. Выполняется created = registered + reaping +
+reaped, done <= registered. Registered включает завершённые слоты; reaping — слоты,
+снятые с linked registry, но ещё принадлежащие reaper через join и отложенный учёт.
+Reaped — учтённые rootless joins. При refused rootless leave слоты и reaping count
+возвращаются вместе. Shutdown joins могут оставаться registered до удаления сервиса;
+это сводка registry slots, не универсальный live OS thread count.
+
+Private join interception читает actual summary между unlink и registrar join;
+скрытие copied reaping count обязано нарушить partition, затем штатно завершить
+все native/GC owners. Новый guest test проводит восемь владельцев через четыре
+pulse/ack цикла и пять возрастающих progress readings. Девятый native guest
+непрерывно читает общие progress/summary ADTs во время guarded публикаций; canaries
+и отдельные scalar values сохраняются. Он не сравнивает сумму независимых reads.
+32-byte progress и 48-byte summary results проверяются в shared storage. Invalid/
+missing IDs обнуляют payload. Suppressed completed-turn publication даёт точный
+DETECTED diagnostic после полного join девяти гостей. Boundary probe проверяет
+насыщение counter на LLONG_MAX. Всё остаётся в workload live-registry.
+
+Согласованный следующий control plane и текущая матрица готовности thread/memory/
+environment/VFS/C/Limbo APIs: [CONTROL-PLANE.md](CONTROL-PLANE.md). Отдельные debug
+mailbox, cooperative pause и source/stack capture пока являются следующим этапом.
+
+Финальные семь групп проходят 7/7 обычно и 7/7 TSan: process control, live registry,
+receiver/native cancellation, retirement storage, table transfer/retirement.
+Live registry покрывает C/JIT × fast/locked polling, четыре copied-card omissions
+и отдельное скрытие in-flight summary. Все negative cases требуют normal exit,
+точный diagnostic и полный native/GC retirement. CLI actual report с нулевым
+helper registry нормализуется в JSON с точной summary; три normalizer units
+проходят. Architecture workload count остаётся 56; полный новый runtime/host
+matrix этим не заявляется.
