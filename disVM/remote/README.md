@@ -169,3 +169,9 @@ connection-scoped registry; wire содержит только native handles op
 [Три настоящие VM и forwarding images](FORWARDED-REFS.md): C владеет image,
 B исполняет original callback, A хранит actual variable. Проверены оба обрыва
 после эффекта, exact replay, transitive GC и late import reply после caller retirement.
+
+
+[Routed live results](ROUTED-RESULTS.md): `Proxynet.routedfetch` получает независимый
+counted Image живой registered variable A из callback исходного function owner B.
+Возврат typed Ref не создаёт snapshot; native Retain B предшествует publication C.
+Проверяются caller retirement, completed-reply loss, function Drop и transitive GC.

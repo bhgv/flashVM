@@ -320,3 +320,10 @@ Client broker теперь сохраняет original absolute deadline в loca
 включая время ожидания в mailbox. Просроченные queued operations отказывают до
 lease consumption/result reservation/wire ID. Подробности, реальные late-effect
 контроли и повторное использование forwarding actors: [QUEUED-DEADLINES.md](QUEUED-DEADLINES.md).
+
+
+Routed callbacks теперь возвращают и live variable aliases: wire operation 12
+(RoutedReturnVariable), прежний result kind=1 и 184-byte frame. Функция возвращает
+borrowed registered Proxyref, registry приобретает native peer owner B до reply,
+а C связывает reserved result token. [Контракт и реальные проверки](ROUTED-RESULTS.md).
+Owner-local Expose теперь enum=12, client-local GCProgress=13; это не wire methods.

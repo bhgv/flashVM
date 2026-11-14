@@ -89,3 +89,10 @@ Forwarding image в C удерживает native variable stub B; registry B у
 после последнего owner registry снимает Ref, его finalizer будит actor, который
 снимает ровно один source clone A. Import reply переживает caller retirement как
 buffered managed Image, а затем участвует в том же transitive release.
+
+
+Routed result Request дополнительно держит managed `RoutedResult.source` до
+completion. Callback возвращает borrowed Ref, затем registry проверяет exact live
+wrapper и делает native Retain уже существующего B view handle. Managed root
+защищает временный Ref; только Retain создаёт независимое remote peer ownership.
+C result reservation/bind и GC остаются прежними: [ROUTED-RESULTS.md](ROUTED-RESULTS.md).

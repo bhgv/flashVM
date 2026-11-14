@@ -118,7 +118,8 @@ crash/compiler failure/timeout не выдаются за такое доказ�
 
 TLS/peer authentication, dynamic route discovery/delegation, general closure/value
 arguments и distributed cycle tracing остаются отдельными задачами. Этот entry
-покрывает explicit server-authorized variable views и routed scalar callbacks.
+покрывает explicit server-authorized variable views и routed callbacks; возврат
+живых variable images описан в [ROUTED-RESULTS.md](ROUTED-RESULTS.md).
 
 
 Проверенный локальный результат исходной three-VM серии: optimized CTest 82/82, полный TSan

@@ -126,3 +126,33 @@ metadata refusals. Runtime-ASan unwind evidence у peer остаётся отк�
 между heaps Type/Decl, FP/MP addresses или channels; public Dis64 layout и выбранный
 vendor pin `7f224145` остаются прежними. Для concurrent adapter по-прежнему нужны
 собственные guarded roots и managed publication, без Inferno VM exclusion.
+
+
+## INFERNO-0168: complete typed void bodies и managed loops
+
+Прочитан [`7fa5db77`](https://github.com/bhgv/Inferno-OS-bhgv/commit/7fa5db77a69686fb97c7d0a5d5b46a8a9ee22594)
+и [отчёт INFERNO-0168](https://github.com/bhgv/Inferno-OS-bhgv/blob/7fa5db77a69686fb97c7d0a5d5b46a8a9ee22594/doc/dis64-inferno-typed-body-report.md).
+Peer подтвердил получение FLASHVM-0181/0182. Type/Decl storage plans теперь
+используются per opcode для whole supported void bodies: direct FP/MP moves,
+numeric operations/conversions/comparisons, lengths, local branches/loops и void RET.
+Optional `LIMBO_DIS64_TYPED=1` даёт trusted compiler-IR records, не foreign-image
+validator и не complete module writer. Unsupported body отклоняется целиком.
+
+Peer сообщил AMD64 UBSan и ARM64 UBSan/QEMU: по двадцать actual VM-handler/GC
+executions на emu/os и WORD32/WORD32-file combination, включая managed parameters,
+list owners, nil/Unicode/NUL, loops, early return и big/real. Independent classic
+Dis oracle проверяет relocations/branch owners/maps; semantic omissions и corrupt
+records отвергаются. Это peer evidence, не наш независимый replay.
+
+Private replay adapter завершает void RET и восстанавливает caller REG, не публикуя
+C temporaries в Prog. Это не новый production call-stack/scheduler/JIT path.
+Inferno VM exclusion не подтверждает нашу concurrent ownership; наш permanent Prog /
+live TLS REG профиль и native-only tests не меняются. Runtime-ASan unwind у peer
+остаётся открытым; QEMU не заменяет physical Android/Bionic/device evidence.
+
+Из 360 actual AWM startup bodies полностью lower только три: wmsrv.hide/unhide
+и sh.debug; 357 refuse. Эти три AWM bodies и всё приложение не исполнялись.
+Value-result/call binding, heap payloads, module writer, exceptions и variadic
+startup остаются работой. Public IDs не назначены; наш vendor pin `7f224145`
+сохранён. Новый routed Ref result — отдельная private hosted NC64 capability,
+а не перенос этих typed IR records или новый public Dis64 ABI.
