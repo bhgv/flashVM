@@ -23,6 +23,7 @@ static int runtime_dispatch_turn(void)
     {
         Prog *guest = dvm_managed_workers_guest();
         guest = guest ? guest : initial_guest;
+        runtime_debug_idle(guest);
         cancelled |= consume_channel_message(guest);
         cancelled |= consume_child_reply(guest);
         dvm_managed_workers_finish_reply(guest);
@@ -78,6 +79,7 @@ static int runtime_dispatch_turn(void)
     dvm_native_execution()->instruction_boundary_error = 0;
     if (waserror())
     {
+        dvm_jit_native_error(owner_error());
         dvm_native_execution()->resident_registers_valid = 0;
         dvm_native_execution()->arithmetic_retry_opcode = 0;
         ((DVM_RuntimeProcess *)process)->arithmetic_retries = 0;
@@ -89,6 +91,7 @@ static int runtime_dispatch_turn(void)
         {
             owner_error()[0] = 0;
         }
+        int debug_retained = runtime_debug_fault(process);
         int handled = 0;
         if (owner_error()[0] && !dvm_native_execution()->instruction_boundary_error)
         {
@@ -116,6 +119,16 @@ static int runtime_dispatch_turn(void)
             dvm_process_environment_release(process);
             up->prog = nil;
             return 1;
+        }
+        if (debug_retained)
+        {
+            if (owner_error()[0])
+            {
+                dvm_debug_unhandled();
+            }
+            /* Continue propagates a caught throw; an unhandled throw retires only
+             * this source after debugger release, instead of failing all workers. */
+            owner_error()[0] = 0;
         }
         dvm_proxyhost_retire();
         if (owner_error()[0])
@@ -185,6 +198,7 @@ static int runtime_dispatch_turn(void)
                 dvm_managed_workers_guest_retired(child_pid);
             }
             drop_guest_messages(process);
+            dvm_debug_retire();
             free(process);
             __atomic_fetch_sub(&live, 1, __ATOMIC_RELAXED);
             publish_child_exit(parent_pid, child_pid, reply);

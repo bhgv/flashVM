@@ -81,6 +81,7 @@ endif()
 string(REPLACE "${monitor_declaration}" "extern __thread void (*heapmonitor)(int, void *, ulong);" native_interp "${native_interp}")
 string(REPLACE "\tint\tnsend;" "\tWORD\tnsend;" native_interp "${native_interp}")
 string(REPLACE "\tint\tnrecv;" "\tWORD\tnrecv;" native_interp "${native_interp}")
+string(REPLACE "\tuchar *code; // Generated instructions" "\tunsigned long generation; /* Host loaded-code identity, never reused. */\n\tuchar *code; // Generated instructions" native_interp "${native_interp}")
 # Route hosted C write barriers through the same scalar fields as the collector.
 string(APPEND native_interp "\n#ifdef DVM_RUNTIME_GC_FIELDS\n#include \"gc_fields.h\"\n#undef Setmark\n#define Setmark(h) dvm_runtime_gc_mark(&(h)->color, &mutator, &nprop)\n#endif\n")
 file(WRITE "${view}/interp.h" "${native_interp}\n#include \"disvm/native_context.h\"\nextern REG *dvm_native_registers(void);\n#define DVM_R (*dvm_native_registers())\nextern int dvm_runtime_leaf(Jit *, int, REG *);\nextern int dvm_runtime_fast(int, int (*)(REG *), REG *);\nextern unsigned long dvm_runtime_instructions;\nextern unsigned long dvm_runtime_instruction_limit;\nextern void dvm_runtime_step(void);\n")
@@ -135,6 +136,7 @@ add_custom_command(OUTPUT "${view}/prepare.stamp"
     "${root}/disVM/module/bigtable.m" "${root}/disVM/module/processctl.m" ${runtime_inputs} "${root}/ide/dis/bridge/idehost.m"
     "${root}/disVM/module/fircompiler.m" native_tables.c relative_sequence.c prepare_exception.py
     prepare_type_counts.py prepare_heap_counts.py prepare_opcode_counts.py prepare_module_counts.py
+    prepare_debug_dispatch.py
     prepare_snapshots.py prepare_observations.py prepare_jit_counts.py prepare_pointer_builder.py
     prepare_pointer_tail.py prepare_owner_tail.py prepare_aggregate_tail.py prepare_shared_pointer.py
     prepare_shared_bytes.py prepare_shared_mapped.py shared_mapped.h prepare_shared_head.py
@@ -225,6 +227,15 @@ add_executable(disvm
     module_registry.c
     module_counts_probe.c
     heap_snapshot.c
+    debugger/service.c
+    debugger/transport.c
+    debugger/pipe_transport.c
+    debugger/protocol.c
+    debugger/inspector_owner.c
+    debugger/frames.c
+    debugger/inspection.c
+    debugger/census_graph.c
+    debugger/census_roots.c
     heap_pool.c
     root_registry.c
     root_batch.c
@@ -249,6 +260,7 @@ add_executable(disvm
     shared_mapped.c
     string_view_sync.c
     jit_publication.c
+    jit_quarantine.c
     heap_commit.c
     heap_hold.c
     list_hold.c

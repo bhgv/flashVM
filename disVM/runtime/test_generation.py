@@ -138,11 +138,11 @@ def main():
                 b"__atomic_fetch_add(&dvm_runtime_instructions, 1, __ATOMIC_RELAXED);"
             )
             != 1
-            or dispatch.count(b"if(dvm_runtime_instruction_limit)") != 1
+            or dispatch.count(b"if(dvm_debug_enabled || dvm_runtime_instruction_limit)") != 1
         ):
             raise RuntimeError("instruction quota/counter must share one dispatch boundary")
         poll = dispatch.index(b"if(!dvm_native_context_poll()) abort();")
-        guard = dispatch.index(b"if(dvm_runtime_instruction_limit)")
+        guard = dispatch.index(b"if(dvm_debug_enabled || dvm_runtime_instruction_limit)")
         step = dispatch.index(b"dvm_runtime_step();")
         inline = dispatch.index(
             b"__atomic_fetch_add(&dvm_runtime_instructions, 1, __ATOMIC_RELAXED);"

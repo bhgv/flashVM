@@ -183,4 +183,11 @@ int dvm_managed_workers_current(void);
  * RU: Остановить и присоединить исполнителей, оставив контроллер в IDLE.
  * diagnostics reports joined counters. No-op if the service was never started. */
 int dvm_managed_workers_stop(int diagnostics);
+
+
+/* EN/RU: Native debugger wake and rootless debug admission helpers; no migration.
+ * Native debugger wake и rootless debug admission helpers; без migration. */
+void dvm_managed_workers_debug_wake(int pid);
+int dvm_managed_workers_debug_leave(void);
+void dvm_managed_workers_debug_enter(void);
 #endif

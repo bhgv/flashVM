@@ -136,3 +136,11 @@ implementation/acceptance work for that profile and permits application work.
 It is not blanket certification of arbitrary extensions, GUI hosts, every VM
 path, RV64 hardware ordering, JIT instruction instrumentation or speedup.
 The remaining work above has separate, concrete acceptance targets.
+
+
+2026-11-14: mandatory workload list now62 includes retained-debug and
+jit-quarantine. Selected local ordinary/TSan regressions do not establish new
+whole-matrix completion. Previous cf066b75 and47665a architecture CI runs
+43605594611/43605884568 completed successfully. / Обязательный список теперь62;
+новые retained-debug/jit-quarantine требуют своей полной CI-матрицы. Предыдущие
+указанные CI завершились успешно.

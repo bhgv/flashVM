@@ -321,3 +321,11 @@ claimed by these results.
 бывший отказ constructor-oracle закрыт и проверяется TSan CI. Полные данные и
 контроли указаны в двух документах выше. Исходники ограничены 437 строками,
 upstream не изменяется; QEMU не является проверкой настоящего RV64-железа.
+
+
+2026-11-14: mandatory workload list now62 includes retained-debug and
+jit-quarantine. Selected local ordinary/TSan regressions do not establish new
+whole-matrix completion. Previous cf066b75 and47665a architecture CI runs
+43605594611/43605884568 completed successfully. / Обязательный список теперь62;
+новые retained-debug/jit-quarantine требуют своей полной CI-матрицы. Предыдущие
+указанные CI завершились успешно.

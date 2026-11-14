@@ -19,7 +19,13 @@ int dvm_runtime_fast(int operation, int (*fast)(REG *), REG *registers)
     {
         return 0;
     }
+#ifdef DVM_RUNTIME_JIT_QUARANTINE
+    dvm_jit_native_begin();
+#endif
     accepted = fast(registers);
+#ifdef DVM_RUNTIME_JIT_QUARANTINE
+    dvm_jit_native_end();
+#endif
     if (accepted)
     {
         __atomic_fetch_add(&native_instructions, 1, __ATOMIC_RELAXED);

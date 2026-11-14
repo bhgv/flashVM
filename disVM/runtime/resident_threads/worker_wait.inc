@@ -104,7 +104,7 @@ static int leave_empty(DVM_NativeWorldSite site)
 static int dedicated_work_pending(ManagedWorker *worker)
 {
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
-    return dvm_diagnostic_pending(worker->debug) || __atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) ||
+    return (dvm_debug_enabled && dvm_debug_requested()) || dvm_diagnostic_pending(worker->debug) || __atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) ||
            dvm_messages_pending(resident->messages, 0, 0) || dvm_messages_pending(resident->messages, 1, 0);
 }
 

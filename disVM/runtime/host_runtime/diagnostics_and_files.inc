@@ -262,12 +262,16 @@ static int guest_cancel_pending(void)
  * may have completed a channel wait before that generation was sampled. */
 static int dedicated_controller_pending(void)
 {
+    if (dvm_debug_enabled && dvm_debug_requested())
+    {
+        return 1;
+    }
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)initial_guest;
     return (resident &&
             (__atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) || dvm_messages_pending(resident->messages, 0, 0) ||
              dvm_messages_pending(resident->messages, 1, 0))) ||
            guest_cancel_pending() ||
-           (!dvm_runqueue_ready() && !dvm_runqueue_inflight() && !dvm_runqueue_dispatch_pending());
+           (!dvm_debug_enabled && !dvm_runqueue_ready() && !dvm_runqueue_inflight() && !dvm_runqueue_dispatch_pending());
 }
 
 

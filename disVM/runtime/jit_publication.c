@@ -5,6 +5,7 @@
 #include "lib9.h"
 #include "interp.h"
 #include "jit_publication.h"
+#include "jit_quarantine.h"
 #include <pthread.h>
 
 static pthread_mutex_t builder_mutex = PTHREAD_MUTEX_INITIALIZER; /* Compilation metadata/code only, never execution. */
@@ -40,5 +41,6 @@ Jit *dvm_jit_load(Module *module)
  * держит mutex строителя и уже подготовил права исполняемой памяти. */
 void dvm_jit_publish(Module *module, Jit *code)
 {
+    code->generation = dvm_jit_new_generation();
     __atomic_store_n(&module->jit, code, __ATOMIC_RELEASE);
 }

@@ -14,10 +14,17 @@ int main(int argc, char **argv)
 {
     struct sigaction pipe_action = {0};
     int gc_selected = 0;
+    int debug_input = -1; /* Explicit debugger pipe read end. */
+    int debug_output = -1; /* Explicit debugger pipe write end. */
+    const char *debug_path = NULL; /* Explicit local debugger endpoint, immutable during execution. */
 #ifdef DVM_RUNTIME_EDITOR
     int threaded = 1;
     int threading_selected = 0;
 #endif
+    if (argc > 1 && !strcmp(argv[1], "--gdb"))
+    {
+        return runtime_launch_gdb(argc, argv);
+    }
     /* This executable handles broken pipes as I/O errors on every worker,
      * including a reader disappearing between POLLOUT and splice. */
     pipe_action.sa_handler = SIG_IGN;
@@ -66,6 +73,34 @@ int main(int argc, char **argv)
         if (strcmp(argv[1], "--stats") == 0)
         {
             show_stats = 1;
+        }
+        else if (strcmp(argv[1], "--debug-fds") == 0)
+        {
+            size_t input;
+            size_t output;
+            if (debug_path || debug_input >= 0 || argc < 4 || !runtime_extent(argv[2], &input) ||
+                !runtime_extent(argv[3], &output) || input < 3 || output < 3 || input == output)
+            {
+                fprintf(stderr, "--debug-fds requires separate private input/output FDs >=3\n");
+                return 2;
+            }
+            debug_input = (int)input;
+            debug_output = (int)output;
+            argv += 3;
+            argc -= 3;
+            continue;
+        }
+        else if (strcmp(argv[1], "--debug") == 0)
+        {
+            if (debug_path || debug_input >= 0 || argc < 3)
+            {
+                fprintf(stderr, "--debug requires one new local socket pathname\n");
+                return 2;
+            }
+            debug_path = argv[2];
+            argv += 2;
+            argc -= 2;
+            continue;
         }
         else if (strcmp(argv[1], "--max-instructions") == 0)
         {
@@ -219,7 +254,7 @@ int main(int argc, char **argv)
         else if (strcmp(argv[1], "--help") == 0)
         {
             puts(
-                "usage: disvm [--jit|--no-jit] [--stats] [--quantum COUNT] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT | --inspect-reals OFFSET COUNT] native-cell.dis");
+                "usage: disvm [--gdb (first)] [--debug PATH|--debug-fds IN OUT] [--jit|--no-jit] [--stats] [--quantum COUNT] [--max-instructions COUNT] [--test-control] [--inspect-words OFFSET COUNT | --inspect-reals OFFSET COUNT] native-cell.dis");
 #ifdef DVM_RUNTIME_EDITOR
             puts(
                 "editor options: [--font TTF] [--line-numbers 0|1] (bundled Noto Sans Mono, default 11) [--document UTF8 | --new PATH] [--events FRAMES | --window-events FRAMES | --clipboard-events FRAMES] [--capture PPM]");
@@ -230,6 +265,7 @@ int main(int argc, char **argv)
             puts("Default and only execution profile: one native thread per Prog, with concurrent GC.");
 #endif
             puts("Diagnostic switches never select single-threaded or exclusive execution.");
+            puts("--debug PATH starts a private local debugger socket; --debug-fds INPUT OUTPUT uses separate inherited pipes.");
             puts(
                 "--native-spawn binds one OS thread per guest and forbids all collector exclusion; unsupported legacy work exits 70.");
             puts("--gc-idle-cycles selects concurrent candidate collection during idle periods.");
@@ -367,6 +403,21 @@ int main(int argc, char **argv)
         offsetof(F_Sys_print, s) != 64)
     {
         fprintf(stderr, "native-cell compiler/runtime frame contract mismatch\n");
+        return 2;
+    }
+    if (debug_input >= 0)
+    {
+        if (!dvm_debug_start_fds(debug_input, debug_output))
+        {
+            fprintf(stderr, "cannot start private debugger pipes\n");
+            return 2;
+        }
+        close(debug_input);
+        close(debug_output);
+    }
+    if (debug_path && !dvm_debug_start(debug_path))
+    {
+        fprintf(stderr, "cannot start private debugger socket: %s\n", debug_path);
         return 2;
     }
 #ifdef DVM_RUNTIME_EDITOR

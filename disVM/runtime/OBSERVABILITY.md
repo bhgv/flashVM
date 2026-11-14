@@ -296,3 +296,9 @@ Typed variables, pause/resume and external debugger service remain separate work
 
 Live arena accounting API and Limbo view/example: [EN](MEMORY-STATISTICS.md) / [RU](MEMORY-STATISTICS.ru.md).
 One O(1) native metadata snapshot; excludes object/type/origin catalog and off-arena/RSS accounting.
+
+
+Retained source continuation debugging and on-demand GC-root census: [EN](DEBUGGER.md),
+[RU](DEBUGGER.ru.md). Whole-function confirmed-JIT-defect quarantine: [EN](JIT-QUARANTINE.md),
+[RU](JIT-QUARANTINE.ru.md). These contracts distinguish managed exception retention
+from the remaining arbitrary-native-signal capture work; GDB is optional.

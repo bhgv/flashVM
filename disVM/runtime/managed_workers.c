@@ -10,6 +10,7 @@
 #include "disvm/native_owner.h"
 #include "managed_workers.h"
 #include "runtime_gc.h"
+#include "debugger/debugger.h"
 #include "runqueue.h"
 #include "table_leases.h"
 #include <limits.h>
@@ -369,4 +370,52 @@ int dvm_managed_workers_stop(int diagnostics)
     fvm_port_sync_destroy(service.sync);
     memset(&service, 0, sizeof(service));
     return ok;
+}
+
+
+/* EN/RU: Wake exact native PID readiness and controller metadata, without Prog access.
+ * Разбудить exact native PID readiness и controller metadata, без Prog access. */
+void dvm_managed_workers_debug_wake(int pid)
+{
+    ManagedWorker *worker;
+    if (!service.sync)
+    {
+        return;
+    }
+    fvm_port_sync_lock(service.sync);
+    for (worker = service.wake_slots; worker; worker = worker->wake_next)
+    {
+        if (worker->guest_pid == pid)
+        {
+            fvm_port_sync_lock(worker->wake);
+            fvm_port_sync_signal_all(worker->wake);
+            fvm_port_sync_unlock(worker->wake);
+        }
+    }
+    service.generation++;
+    fvm_port_sync_signal_all(service.sync);
+    fvm_port_sync_unlock(service.sync);
+}
+
+
+/* [GC:] EN/RU: Release rootless source admission for idle debug gate.
+ * Освободить rootless source admission для idle debug gate. */
+int dvm_managed_workers_debug_leave(void)
+{
+    return leave_empty(DVM_NW_SITE_IDLE);
+}
+
+
+/* [GC:] EN/RU: Reenter the same idle source owner; never restore from Prog.R.
+ * Вернуться на тот же idle source owner; не восстанавливать REG из Prog.R. */
+void dvm_managed_workers_debug_enter(void)
+{
+    DVM_NativeExecution *execution = dvm_native_execution();
+    execution->world_entry_site = DVM_NW_SITE_IDLE;
+    execution->world_entry_pending = 1;
+    if (!dvm_native_owner_enter(dvm_native_owner_current()))
+    {
+        abort();
+    }
+    execution->world_entry_pending = 0;
 }

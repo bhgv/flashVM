@@ -134,3 +134,9 @@ Typed variables, pause/resume и внешний debugger service остаютс�
 
 Согласованная статистика арены и Memoryview теперь реализованы: [RU](MEMORY-STATISTICS.ru.md) / [EN](MEMORY-STATISTICS.md).
 Snapshot не обходит objects; per-thread/per-type/origin и полный учёт native памяти — следующие задачи.
+
+
+Retained source continuation debugging and on-demand GC-root census: [EN](DEBUGGER.md),
+[RU](DEBUGGER.ru.md). Whole-function confirmed-JIT-defect quarantine: [EN](JIT-QUARANTINE.md),
+[RU](JIT-QUARANTINE.ru.md). These contracts distinguish managed exception retention
+from the remaining arbitrary-native-signal capture work; GDB is optional.

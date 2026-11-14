@@ -104,7 +104,7 @@ static int runtime_execute_inner(void *argument)
     fvm_port_sync_lock(channel_queue_mutex);
     cancel_requests_open = gc_worker && !native_waits_stopping;
     fvm_port_sync_unlock(channel_queue_mutex);
-    while (dvm_runqueue_ready() || (native_spawn && dvm_runqueue_dispatch_pending()) ||
+    while ((dvm_debug_enabled && __atomic_load_n(&live, __ATOMIC_RELAXED)) || dvm_runqueue_ready() || (native_spawn && dvm_runqueue_dispatch_pending()) ||
            (native_spawn && dvm_runqueue_inflight())
 #ifdef DVM_RUNTIME_EDITOR
            || (__atomic_load_n(&live, __ATOMIC_RELAXED) && dvm_editor_attached())
@@ -148,7 +148,8 @@ static int runtime_execute_inner(void *argument)
             }
 #ifndef DVM_RUNTIME_EDITOR
             if (native_spawn && progress == DVM_MANAGED_TURN_IDLE &&
-                (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending()))
+                (dvm_runqueue_ready() || dvm_runqueue_inflight() || dvm_runqueue_dispatch_pending() ||
+                 (dvm_debug_enabled && __atomic_load_n(&live, __ATOMIC_RELAXED))))
             {
                 if (!dvm_managed_workers_park(dedicated_controller_pending))
                 {
@@ -185,6 +186,7 @@ static int runtime_execute_inner(void *argument)
 static int runtime_execute(void *argument)
 {
     int result = runtime_execute_inner(argument);
+    dvm_debug_quiesce();
     dvm_runtime_cancel_native_waits();
     if (!dvm_managed_workers_stop(show_stats))
     {
@@ -220,6 +222,8 @@ static int runtime_execute(void *argument)
         dvm_messages_destroy(guest_messages);
         guest_messages = NULL;
     }
+    result |= dvm_debug_exit_status();
+    dvm_debug_destroy();
     runtime_statistics();
     dvm_queue_probe_finish();
     if (!result)

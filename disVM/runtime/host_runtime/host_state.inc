@@ -34,6 +34,8 @@
 #include "close_worker.h"
 #include "sys_capture.h"
 #include "runtime_gc.h"
+#include "jit_quarantine.h"
+#include "debugger/debugger.h"
 #include "root_registry.h"
 #include "shared_bytes.h"
 #include "shared_arithmetic.h"
@@ -237,11 +239,20 @@ static void runtime_error_location(const char **path, long *pc)
 }
 
 
+static void runtime_debug_instruction(void); /* Owner-only hook defined by debug_execution.inc. */
+
+
 /* Admit one complete instruction boundary on this native owner, before decode or C/native execution.
  * The optional total limit includes guarded fallbacks once and is never reset by UI/stdin progress.
- * A rejection leaves the current PC and registers unmodified and raises through the process guard. */
+ * A rejection leaves the current PC and registers unmodified and raises through the process guard.
+ * RU: Допустить полную instruction boundary своего owner; debug hook предшествует
+ * исполнению. Отказ quota оставляет PC/REG и бросает через process guard. */
 void dvm_runtime_step(void)
 {
+    if (dvm_debug_enabled)
+    {
+        runtime_debug_instruction();
+    }
     unsigned long count = __atomic_load_n(&dvm_runtime_instructions, __ATOMIC_RELAXED);
     do
     {

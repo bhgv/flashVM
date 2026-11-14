@@ -15,6 +15,7 @@
 #include "runtime_state.h"
 #include "exception_host.h"
 #include "runqueue.h"
+#include "debugger/debugger.h"
 #include "queue_probe.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,6 +88,10 @@ static int native_try_leave(int shared)
         fprintf(stderr, "disvm: native heap release failed\n");
         exit(1);
     }
+    if (!shared && dvm_debug_enabled)
+    {
+        dvm_debug_native_publish(process, &DVM_R);
+    }
     dvm_native_execution()->world_last_exit = shared ? DVM_NW_SITE_SHARED : DVM_NW_SITE_NATIVE_CALL;
     if (process && dvm_queue_probe_requested)
     {
@@ -139,6 +144,10 @@ static void native_enter(int released, int shared)
     {
         fprintf(stderr, "disvm: invalid native heap reentry phase\n");
         exit(1);
+    }
+    if (!shared && dvm_debug_enabled)
+    {
+        dvm_debug_native_gate(dvm_native_context_process(dvm_native_context_current()));
     }
     /* NATIVEWORLD: restore GC participation on the same native continuation. */
     DVM_NativeExecution *execution = dvm_native_execution();

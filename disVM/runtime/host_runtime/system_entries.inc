@@ -174,6 +174,7 @@ void Sys_write(void *frame)
 }
 
 /* Share the NC64 leaf policy with complete JIT tails and its standalone check. */
+#define DVM_RUNTIME_JIT_QUARANTINE 1
 #include "native_leaf.c"
 
 

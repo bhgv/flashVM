@@ -1,6 +1,7 @@
 # Copyright (c) 2026 bhgv
 # EN: Adapt native leaf code publication and remove obsolete Loader relocation writes.
 # RU: Адаптировать публикацию native leaf-кода и убрать старые relocation-записи Loader.
+from prepare_debug_dispatch import adapt as adapt_debug_dispatch
 
 
 # EN: Replace reviewed borrowed code boundaries using checked replacement callback.
@@ -24,8 +25,8 @@ def compiler(code, replace):
 # replace отвергает дрейф границ; вернуть текст без изменения файлов.
 def dispatch(code, replace):
     code = replace(code, '\t\tmemmove(&j, (uchar*)fetched.module+O(Module, jit), sizeof(j));',
-                   '\t\tj = dvm_jit_load(fetched.module);', 1)
-    return '#include "jit_publication.h"\n' + code
+                   '\t\tj = dvm_jit_select(fetched.module, DVM_R.PC, DVM_R.FP);', 1)
+    return '#include "jit_publication.h"\n#include "jit_quarantine.h"\n' + adapt_debug_dispatch(code, replace)
 
 
 # EN: Remove old relocated-PC backend mutations from borrowed hosted Loader code.
