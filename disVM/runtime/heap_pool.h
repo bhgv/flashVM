@@ -5,6 +5,7 @@
 #ifndef DVM_HEAP_POOL_H
 #define DVM_HEAP_POOL_H
 #include "channel_sync.h"
+#include "memory/pool_statistics.h"
 #include "disvm/heap_settings.h"
 
 
@@ -18,6 +19,7 @@ struct Pool
     ulong bytes;        /* Native checked extent, not a serialized VM field. */
     Bhdr *cursor;       /* Next-fit search boundary, under sync; block addresses never move. */
     FVM_PortSync *sync; /* Protects allocation headers, not managed payload. */
+    DVM_HeapPoolStats statistics; /* Exact gauges and saturating history, under sync. */
 };
 
 

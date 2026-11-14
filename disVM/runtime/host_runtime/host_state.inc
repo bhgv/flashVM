@@ -137,7 +137,7 @@ extern void dvm_bigtable_owners(unsigned long *, unsigned long *);
 extern ulong gcnruns;                     /* Collector scheduler passes maintained by the owning Dis core. */
 extern ulong gcepochs;                    /* Completed collector epochs; distinct from interpreter/native dispatch. */
 
-static Pool memory;                       /* Pool mutated by Dis or its stopped-world collector. */
+static Pool memory;                       /* Private managed arena; block metadata uses its pool mutex. */
 Pool *heapmem = &memory;                  /* Pool consumed by the production RC/cycle collector. */
 static DVM_MessageRouter *guest_messages; /* Dedicated guest endpoints, keyed by immutable PID. */
 static int nextpid;                       /* Monotonic process identity. */

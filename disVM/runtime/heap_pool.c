@@ -54,6 +54,9 @@ static ulong overhead(void)
 }
 
 
+#include "memory/pool_statistics.inc"
+
+
 /* [GC:] EN: Validate block geometry/magic within borrowed [block,end) under
  * pool exclusion. Both pointers lie in owned arena; return validity, no callbacks.
  * RU: Проверить размер/magic block внутри [block,end) под pool-замком. Адреса
@@ -120,6 +123,12 @@ int dvm_heap_pool_init(Pool *pool, ulong bytes)
     pool->bytes = bytes;
     pool->sync = sync;
     pool->cursor = block;
+    memset(&pool->statistics, 0, sizeof(pool->statistics));
+    pool->statistics.arena_bytes = bytes;
+    pool->statistics.header_bytes = header;
+    pool->statistics.free_span = bytes - header;
+    pool->statistics.free_blocks = 1;
+    pool->statistics.block_overhead = overhead();
     return 1;
 }
 
@@ -165,6 +174,7 @@ static void *allocate(Pool *pool, ulong size, int report_fault)
     ulong need;
     void *result = nil;
     int corrupt = 0;
+    int split = 0;
     if (!pool || !pool->sync || size > pool->bytes - overhead() - 16UL)
     {
         return nil;
@@ -191,9 +201,11 @@ static void *allocate(Pool *pool, ulong size, int report_fault)
             remainder->magic = MAGIC_F;
             remainder->size = block->size - need;
             block->size = need;
+            split = 1;
         }
         memcpy(generation_slot(block), &generation, sizeof(generation));
         block->magic = MAGIC_A;
+        record_pool_allocation(pool, block->size, split);
         result = B2D(block);
         pool->cursor = B2NB(block);
         if ((uchar *)pool->cursor == end)
@@ -277,6 +289,7 @@ void poolfree(Pool *pool, void *value)
         DVM_HeapGeneration invalid = 0;
         memcpy(generation_slot(block), &invalid, sizeof(invalid));
         block->magic = MAGIC_F;
+        record_pool_release(pool, block->size);
         pool->cursor = block;
     }
     fvm_port_sync_unlock(pool->sync);
@@ -405,6 +418,7 @@ int dvm_heap_pool_destroy(Pool *pool)
     pool->sync = nil;
     pool->bytes = 0;
     pool->cursor = nil;
+    memset(&pool->statistics, 0, sizeof(pool->statistics));
     fvm_port_sync_unlock(sync);
     fvm_port_sync_destroy(sync);
     free(arena);

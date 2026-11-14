@@ -130,4 +130,15 @@ Processctl: module
     # Читать один byte подписи frame; part 0=name, 1=path; сохранить credit.
     residentframebyte: fn(id: big, ticket: big, frame, part, index: int): (int, int);
 
+    MemoryAllocationsSaturated: con 1; # Allocation history exceeded signed-big max.
+    MemoryReleasesSaturated: con 2; # Release history exceeded signed-big max.
+
+    # EN: One O(1) native arena snapshot: status, arena/header/live/free spans,
+    # live/free blocks, block overhead, successful allocations/releases, peak live span, flags.
+    # Not process RSS, requested payload, per-type/origin accounting or object access.
+    # RU: Один O(1) native arena snapshot: status, arena/header/live/free spans,
+    # live/free blocks, block overhead, successful allocations/releases, peak live span, flags.
+    # Не process RSS, requested payload, per-type/origin accounting либо object access.
+    memorysnapshot: fn(): (int, big, big, big, big, big, big, big, big, big, big, int);
+
 };

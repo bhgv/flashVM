@@ -9,7 +9,7 @@
 #define DVM_SYS_CAPTURE_H
 #include <stddef.h>
 
-#define DVM_SYS_SCALAR_LIMIT 64U /* Bound pure-scalar result snapshots; no pointer ownership. */
+#define DVM_SYS_SCALAR_LIMIT 96U /* Bounded coherent scalar counter reply; existing range guards, no pointers. */
 #define DVM_SYS_MAX_OWNERS 4U    /* Maximum jointly validated owners in current Sys results. */
 
 
