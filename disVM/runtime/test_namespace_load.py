@@ -164,7 +164,7 @@ def main():
                 work,
                 root / "vfs/test_module_load.c",
                 control,
-                ["fvm_port_file_open", "fvm_port_file_info", "dvm_module_registry_lookup"],
+                ["dvm_namespace_module_open", "fvm_port_file_info", "dvm_module_registry_lookup"],
             )
             for mode in ("--no-jit", "--jit"):
                 for locked in ((False, True) if not control else (False,)):

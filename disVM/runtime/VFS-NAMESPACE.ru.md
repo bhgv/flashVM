@@ -1,5 +1,10 @@
 # Native-группы namespace: первый блок VFS
 
+Текущий контракт directory identity: [удерживаемые каталоги](DIRECTORY-ANCHORS.ru.md).
+Cwd/import и directory bindings теперь удерживают реальные native handles;
+open/stat/load используют retained selection. Source-filter unmount сравнивает
+полные device/inode. Полный Chan/provider walk по-прежнему не реализован.
+
 Каждый resident владеет native-ссылкой на группу namespace. `spawn` разделяет
 группу родителя. В ней хранятся virtual cwd, native root и заменяющие привязки.
 Группа имеет собственный переносимый mutex; глобальная exclusive-секция либо
@@ -17,7 +22,7 @@
 | `pctl(NEWNS, nil)` | Отделить пустой namespace с root в разрешённом текущем каталоге; virtual cwd становится `/` |
 | `chdir(path)` | Проверить каталог и изменить cwd группы; host process cwd не меняется |
 | `bind(source, on, MREPL)` | Заменить существующий однотипный ресурс в точном virtual target |
-| `unmount(source, on)` | Удалить замену только при совпадении сохранённого native source |
+| `unmount(source, on)` | Удалить замену только при совпадении полных device/inode |
 | `unmount(nil, on)` / пустой source | Удалить точную замену без фильтра source |
 
 Другие `pctl` flags, сочетания flags, non-nil `movefd`, union/create/cache flags
@@ -34,10 +39,10 @@ write, seek, fstat и dirread работают через существующи
 
 ## Конкурентность и владение
 
-План пути копирует virtual/native names и версию группы под её mutex. Host I/O
-использует только native-копию после unlock и выхода из managed admission через
-имеющийся native I/O adapter. Конкурентное изменение namespace не перенаправляет
-уже начатый open/stat. Вне managed admission указатель группы не используется.
+Resource plan под mutex копирует names/revision и удерживает directory handle.
+Host I/O использует этот handle и relative child path после unlock и выхода
+из managed admission. Rebind/unmount не закрывают in-flight selection.
+Вне managed admission указатель группы не используется.
 
 Для chdir/bind проверочный I/O выполняется вне mutex. Commit допустим только
 при совпадении наблюдавшейся версии. Конфликт повторяется до восьми раз, затем
@@ -51,15 +56,12 @@ Scalar return публикуется через существующие shared-
 
 ## Точная граница этого блока
 
-Это **маршрутизация host-путей**, ещё не полная Inferno Chan/provider VFS и не
-security sandbox. Native path strings не сохраняют identity ресурса при host
-rename/unlink. Host продолжает следовать symlinks. Virtual `.`/`..` нормализуются
-лексически до поиска bind; это не обход host symlinks. Максимум —4096 UTF-8 bytes
-с NUL. Пустые/слишком длинные пути отклоняются. Host ФС может измениться между
-проверкой и дальнейшим доступом.
-Здесь cwd — virtual path, а не открытый Chan: замена охватывающего cwd prefix
-влияет на последующий relative lookup. Стабильная identity каталога при
-rebind/rename требует следующего слоя provider handles.
+Directory resources сохраняют identity при host rename и covering rebind;
+см. [удерживаемые каталоги](DIRECTORY-ANCHORS.ru.md). Это подмножество Inferno VFS,
+не полная Chan/provider реализация и не sandbox. File binding держит parent
+каталога и basename, а не сам файл. Host следует symlinks. Virtual dot/dot-dot
+остаётся lexical: выход за subtree cwd идёт через virtual root lookup.
+Лимит4096 bytes с NUL; children могут меняться между проверкой и доступом.
 
 Module loader теперь использует frozen namespace plans для cache/open/parse:
 см. [module namespace и cache provenance](MODULE-NAMESPACE.ru.md). Начальные
@@ -68,7 +70,7 @@ relative imports идут от entry package; chdir обновляет это с
 маршруты. FORKNS/NEWNS не изолируют FD groups, environment variables либо
 credentials. Существующий FD может вести за пределы нового root.
 
-Union mounts, mount transport, device/socket/channel providers, provider handles,
+Union mounts, mount transport, device/socket/channel providers, full Chan handles,
 API исследования namespace, FD/env/credential groups и dynamic C/Limbo provider
 loading остаются отдельной работой. Семантика shared-cwd/FORKNS и NEWNS-rebase
 сверена с `emu/port/inferno.c` ветки Inferno experiment. Vendor source не менялся,

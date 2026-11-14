@@ -6,13 +6,15 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Development version: **0.1696** (see [VERSION.txt](VERSION.txt)). New commit subjects
+Development version: **0.1697** (see [VERSION.txt](VERSION.txt)). New commit subjects
 start with `v<version> ` and an English description. Increase the subversion before each
 commit and append `-v<version>` before `.zip` in delivered source/Git archive names.
 This version identifies a development
 snapshot; complete SWF 8 compatibility is still pending. CMake reads the same version.
 Optional `--jit-emulator` platform validation records fresh Unicorn instruction/ABI evidence;
 see [validation gates](doc/PLATFORM_VALIDATION.md).
+
+Portable directory resources now retain POSIX directory identity through rename and expose independent relative file/cursor operations. [Contract](doc/DIRECTORY_ANCHORS.md). Windows anchor operations remain unsupported; no Flash compatibility stage closes.
 
 
 v0.1524: [Tiny public round-stroke validation checkpoint](doc/PUBLIC_ROUND_SCALE.md).

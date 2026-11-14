@@ -75,7 +75,7 @@ def main():
         for index in range(32):
             (work / f'slow-{index}.dis').write_bytes((work / 'fast-provider.dis').read_bytes())
         binary = relink(runtime, work, Path(__file__).with_suffix('.c'), 0,
-                        ['fvm_port_file_open', 'fvm_port_file_close',
+                        ['dvm_namespace_module_open', 'fvm_port_file_close',
                          'dvm_runtime_prepare_killwait', 'dvm_close_worker_stop', 'dvm_module_registry_lookup'])
         source = fixture / 'kill-load.b'
         for warm in (False, True):

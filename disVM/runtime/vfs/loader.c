@@ -10,6 +10,7 @@
 #include "module_registry.h"
 #include "guest.h"
 #include "loader.h"
+#include "resource.h"
 
 extern char *dvm_runtime_file_path(String *); /* Existing rooted guest path validation. */
 
@@ -38,24 +39,26 @@ char *dvm_namespace_load_name(String *name)
  * владеющий Module/NULL, сохранив обычные reader errors. */
 Module *readmod(char *path, Module *cached, int sync)
 {
-    DVM_NamespacePlan plan;
+    DVM_ResourcePlan plan;
     DVM_Namespace *group;
     if (path && path[0] == '$')
     {
-        return dvm_namespace_native_readmod(path, cached, sync);
+        return dvm_namespace_native_readmod(path, cached, sync, NULL);
     }
     if (cached)
     {
         unload(cached);
     }
     group = dvm_namespace_current_group();
-    if (!group || !dvm_namespace_module_plan(group, path, &plan))
+    if (!group || !dvm_resource_plan(group, path, 1, &plan))
     {
         kwerrstr("invalid or oversized namespace module path");
         return NULL;
     }
-    cached = dvm_module_registry_lookup(plan.native);
-    return dvm_namespace_native_readmod(plan.native, cached, sync);
+    cached = dvm_module_registry_lookup(plan.names.native);
+    Module *answer = dvm_namespace_native_readmod(plan.names.native, cached, sync, &plan);
+    dvm_resource_close(&plan);
+    return answer;
 }
 
 

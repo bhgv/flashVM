@@ -1,3 +1,7 @@
+/* Copyright (c) 2026 bhgv
+ * EN: Independent file cursors, including opens relative to owned directory anchors.
+ * RU: Независимые file cursors, включая open от directory anchors.
+ */
 /* FlashVM: Portable platform adapter interface or implementation: file port.
  * File: ports/file_port.c.
  */
@@ -41,7 +45,7 @@ struct FVM_PortFile
  * Validate path/mode and allocate state before destructive creation.
  * Native I/O blocks; invalid/unsupported paths, allocation and OS failures
  * return explicit status. External synchronization is required. */
-FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile **out)
+static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char *mode, FVM_PortFile **out)
 {
 
     /* Initialization / Инициализация локального состояния. */
@@ -54,7 +58,7 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
         return FVM_INVALID_ARGUMENT;
     }
     *out = 0;
-    if (!path || !*path)
+    if (!path || !*path || (anchor && *path == '/'))
     {
         return FVM_INVALID_ARGUMENT;
     }
@@ -89,10 +93,13 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
         return FVM_OUT_OF_MEMORY;
     }
     strcpy(file->path, path);
-    stream = (FILE *)fvm_fs_native_open(path, !strcmp(mode, "wx") ? "wbx" : (read ? (write ? "r+b" : "rb") : "wb"));
+    {
+        const char *binary = !strcmp(mode, "wx") ? "wbx" : (read ? (write ? "r+b" : "rb") : "wb");
+        stream = (FILE *)(anchor ? fvm_fs_native_open_at(anchor, path, binary) : fvm_fs_native_open(path, binary));
+    }
     if (!stream && read && write && errno == ENOENT)
     {
-        stream = (FILE *)fvm_fs_native_open(path, "w+b");
+        stream = (FILE *)(anchor ? fvm_fs_native_open_at(anchor, path, "w+b") : fvm_fs_native_open(path, "w+b"));
     }
     if (!stream)
     {
@@ -115,6 +122,30 @@ FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile *
     }
     *out = file;
     return FVM_OK;
+}
+
+
+/* EN/RU: Open borrowed native path; see file_port.h for ownership and errors.
+ * Открыть borrowed native path; владение/ошибки описаны в file_port.h. */
+FVM_Result fvm_port_file_open(const char *path, const char *mode, FVM_PortFile **out)
+{
+    return file_open(NULL, path, mode, out);
+}
+
+
+/* EN/RU: See anchor_port.h. Parent stays owned through this blocking operation.
+ * См. anchor_port.h. Parent удерживается до завершения blocking operation. */
+FVM_Result fvm_port_file_open_at(FVM_PortAnchor *parent, const char *relative, const char *mode, FVM_PortFile **out)
+{
+    if (!parent)
+    {
+        if (out)
+        {
+            *out = NULL;
+        }
+        return FVM_INVALID_ARGUMENT;
+    }
+    return file_open(parent, relative, mode, out);
 }
 
 

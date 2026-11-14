@@ -6,6 +6,7 @@
 #ifndef DVM_METADATA_WAIT_H
 #define DVM_METADATA_WAIT_H
 #include "filesystem_port.h"
+#include "vfs/resource.h"
 
 
 /* Copy borrowed validated UTF-8 path into native storage before releasing the
@@ -19,6 +20,11 @@ FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output);
  * RU: Запросить уже resolved native path без повторного namespace lookup.
  * ACTIVE path/output заимствованы; копировать до release, вернуть FVM status. */
 FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output);
+
+
+/* EN/RU: Query retained selection with the same native staging/admission counters.
+ * Запросить удержанный selection с теми же native staging/admission counters. */
+FVM_Result dvm_metadata_selected(DVM_ResourcePlan *plan, FVM_FileInfo *output);
 
 
 /* Borrow the mapped FD and checked descriptor while ACTIVE, pin FD, reserve its
@@ -39,8 +45,8 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
  * sets the TLS reason and never calls publish. Preserve that diagnostic.
  * RU: Отмена до допуска возвращает FVM_ERROR, сохраняет entries/count,
  * записывает причину в TLS и не вызывает publish. Не затирать эту диагностику. */
-FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo **entries,
-    size_t *count, int (*publish)(void *), void *argument);
+FVM_Result dvm_metadata_directory_read(
+    Sys_FD *fd, int descriptor, FVM_FileInfo **entries, size_t *count, int (*publish)(void *), void *argument);
 
 
 /* EN: Print a mutex-protected native counter snapshot, normally after join.

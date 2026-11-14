@@ -68,10 +68,14 @@ void dvm_namespace_release(DVM_Namespace *group)
         while (binding)
         {
             DVM_NamespaceBinding *next = binding->next;
+            dvm_anchor_release(binding->anchor);
             free(binding);
             binding = next;
         }
         fvm_port_sync_destroy(group->lock);
+        dvm_anchor_release(group->root_anchor);
+        dvm_anchor_release(group->cwd_anchor);
+        dvm_anchor_release(group->load_anchor);
         free(group);
     }
 }
@@ -87,6 +91,24 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     copy = dvm_namespace_create(group->root, group->cwd, group->load_directory);
     if (copy)
     {
+        memcpy(copy->cwd_source, group->cwd_source, sizeof(copy->cwd_source));
+        memcpy(copy->load_source, group->load_source, sizeof(copy->load_source));
+        DVM_Anchor *anchors[] = {group->root_anchor, group->cwd_anchor, group->load_anchor};
+        DVM_Anchor **destinations[] = {&copy->root_anchor, &copy->cwd_anchor, &copy->load_anchor};
+        size_t index;
+        for (index = 0; index < 3; index++)
+        {
+            if (!dvm_anchor_retain(anchors[index]))
+            {
+                dvm_namespace_release(copy);
+                copy = NULL;
+                break;
+            }
+            *destinations[index] = anchors[index];
+        }
+    }
+    if (copy)
+    {
         for (binding = group->bindings; binding; binding = binding->next)
         {
             DVM_NamespaceBinding *entry = malloc(sizeof(*entry));
@@ -97,6 +119,13 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
                 break;
             }
             memcpy(entry, binding, sizeof(*entry));
+            if (!dvm_anchor_retain(binding->anchor))
+            {
+                free(entry);
+                dvm_namespace_release(copy);
+                copy = NULL;
+                break;
+            }
             entry->next = copy->bindings;
             copy->bindings = entry;
         }

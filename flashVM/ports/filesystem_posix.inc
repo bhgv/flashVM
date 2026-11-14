@@ -1,4 +1,7 @@
-/* Shared POSIX mechanics selected by Linux/macOS/Android port translation units. */
+/* Copyright (c) 2026 bhgv
+ * EN: Shared native metadata/cursors for Linux/macOS/Android.
+ * RU: Общие native metadata/cursors для Linux/macOS/Android.
+ */
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #endif
@@ -277,3 +280,5 @@ void fvm_port_directory_close(FVM_PortDirectory *directory)
         free(directory);
     }
 }
+
+#include "filesystem_anchor_posix.inc"

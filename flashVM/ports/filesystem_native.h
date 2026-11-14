@@ -2,6 +2,7 @@
 #ifndef FVM_FILESYSTEM_NATIVE_H
 #define FVM_FILESYSTEM_NATIVE_H
 #include "filesystem_port.h"
+#include "anchor_port.h"
 
 
 /* Borrow an OS descriptor inside ports only. Name is a captured display basename;
@@ -22,4 +23,10 @@ FVM_Result fvm_fs_native_path(const char *path);
 /* Open a validated path in the borrowed binary stdio mode. Returns an owned
  * opaque FILE stream or NULL with native errno; caller closes the stream. */
 void *fvm_fs_native_open(const char *path, const char *mode);
+
+
+/* EN/RU: Open validated relative binary stream against live anchor; owned FILE
+ * or NULL/errno, no parent pathname lookup. Открыть relative binary stream от
+ * anchor; свой FILE либо NULL/errno, без поиска parent по имени. */
+void *fvm_fs_native_open_at(FVM_PortAnchor *parent, const char *relative, const char *mode);
 #endif

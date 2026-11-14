@@ -27,6 +27,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
 WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
     ("namespace", "test_namespace.py", ()),
     ("namespace-load", "test_namespace_load.py", ()),
+    ("directory-anchors", "test_directory_anchors.py", ()),
     ("network-proxy", "test_network_proxy.py", ("--base-only",)),
     ("forwarding-proxy", "test_network_proxy.py", ("--forwarding-only",)),
     ("proxy-deadlines", "test_proxy_churn.py", ("--deadlines-only",)),

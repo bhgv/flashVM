@@ -14,6 +14,7 @@
 #include "metadata_wait.h"
 #include "guest.h"
 #include "boot.h"
+#include "resource_wait.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -26,32 +27,6 @@ DVM_Namespace *dvm_namespace_current_group(void)
 {
     Prog *process = currun();
     return process ? ((DVM_RuntimeProcess *)process)->namespace_group : dvm_namespace_boot_group();
-}
-
-
-/* EN/RU: See guest.h; no namespace pointer escapes or survives native I/O.
- * См. guest.h; указатель namespace не передаётся в native I/O. */
-int dvm_namespace_host_path(const char *path, char *output)
-{
-    DVM_Namespace *group = dvm_namespace_current_group();
-    DVM_NamespacePlan plan;
-    if (!group)
-    {
-        if (!path || strlen(path) >= DVM_NS_PATH_LIMIT)
-        {
-            kwerrstr("invalid or oversized host path");
-            return 0;
-        }
-        memcpy(output, path, strlen(path) + 1);
-        return 1;
-    }
-    if (!dvm_namespace_plan(group, path, &plan))
-    {
-        kwerrstr("invalid or oversized namespace path");
-        return 0;
-    }
-    memcpy(output, plan.native, strlen(plan.native) + 1);
-    return 1;
 }
 
 
@@ -87,17 +62,16 @@ static void publish(WORD *destination, int result)
 }
 
 
-/* EN: Detach namespace only: FORKNS copies, NEWNS roots at the resolved cwd.
- * Other flags/movefd return -1 without changes. Capture frame before allocation.
- * RU: Отделить namespace: FORKNS копирует, NEWNS берёт resolved cwd как root.
- * Другие flags/movefd возвращают -1 без изменений. Захватить frame до allocation. */
+/* EN: Detach namespace with coherent retained directory identities. Unsupported
+ * flags/movefd leave the group unchanged; frame is captured before allocation.
+ * RU: Отделить namespace с retained identities. Неподдержанные flags/movefd
+ * не меняют группу; frame захватывается до allocation. */
 void Sys_pctl(void *frame)
 {
     F_Sys_pctl call;
     Prog *process = currun();
     DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
     DVM_Namespace *replacement = NULL;
-    DVM_NamespacePlan cwd;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_pctl, ret), sizeof(*call.ret));
     if ((call.flags != 0 && call.flags != Sys_FORKNS && call.flags != Sys_NEWNS) || call.movefd != H)
     {
@@ -114,13 +88,22 @@ void Sys_pctl(void *frame)
     {
         replacement = dvm_namespace_copy(owner->namespace_group);
     }
-    else if (dvm_namespace_plan(owner->namespace_group, ".", &cwd))
+    else
     {
-        replacement = dvm_namespace_create(cwd.native, "/", NULL);
+        DVM_ResourcePlan cwd;
+        char component[DVM_NS_PATH_LIMIT];
+        if (dvm_resource_plan(owner->namespace_group, ".", 0, &cwd))
+        {
+            if (dvm_resource_anchor_wait(&cwd, 1, component))
+            {
+                replacement = dvm_namespace_rebase(&cwd);
+            }
+            dvm_resource_close(&cwd);
+        }
     }
     if (!replacement)
     {
-        kwerrstr("cannot allocate namespace group");
+        kwerrstr("cannot allocate or acquire namespace group");
         publish(call.ret, -1);
         return;
     }
@@ -131,44 +114,31 @@ void Sys_pctl(void *frame)
 }
 
 
-/* EN: Validate directory outside namespace lock; commit only its observed
- * revision. Concurrent changes retry at most eight times; host cwd never changes.
- * RU: Проверить каталог вне namespace mutex; применить только наблюдавшуюся
- * версию. До восьми повторов при изменениях; host cwd не меняется. */
+/* EN: Open cwd resource outside namespace mutex; commit only matching revision.
+ * RU: Открыть cwd resource вне namespace mutex; применить только совпавшую версию.
+ * Captured frame/path remain rooted / Захваченные frame/path укоренены. */
 void Sys_chdir(void *frame)
 {
     F_Sys_chdir call;
-    DVM_NamespacePlan plan;
-    FVM_FileInfo info;
-    char path[DVM_NS_PATH_LIMIT];
+    char path[DVM_NS_PATH_LIMIT], component[DVM_NS_PATH_LIMIT];
     int result = -1, attempt;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_chdir, ret), sizeof(*call.ret));
     if (copy_path(call.path, path))
     {
         for (attempt = 0; attempt < DVM_NS_RETRIES; attempt++)
         {
-            if (!dvm_namespace_plan(dvm_namespace_current_group(), path, &plan))
+            DVM_ResourcePlan plan;
+            if (!dvm_resource_plan(dvm_namespace_current_group(), path, 0, &plan))
             {
                 kwerrstr("invalid namespace directory path");
                 break;
             }
-            if (dvm_metadata_native_path_info(plan.native, &info) != FVM_OK)
-            {
-                break;
-            }
-            if (!info.directory)
-            {
-                kwerrstr("chdir requires a directory");
-                break;
-            }
-            int committed = dvm_namespace_chdir(dvm_namespace_current_group(), &plan);
+            int acquired = dvm_resource_anchor_wait(&plan, 1, component);
+            int committed = acquired ? dvm_namespace_chdir_resource(dvm_namespace_current_group(), &plan) : -1;
+            dvm_resource_close(&plan);
             if (committed)
             {
                 result = committed == 1 ? 0 : -1;
-                if (committed < 0)
-                {
-                    kwerrstr("namespace revision exhausted");
-                }
                 break;
             }
         }
@@ -181,16 +151,14 @@ void Sys_chdir(void *frame)
 }
 
 
-/* EN: MREPL binds existing like-kind host resources; frozen source plans avoid
- * alias recursion. Unsupported union/create/cache flags return -1 atomically.
- * RU: MREPL связывает существующие однотипные host-ресурсы; frozen source
- * исключает alias-рекурсию. Union/create/cache flags дают -1 без изменений. */
+/* EN: Bind directory identity or a held file-parent/basename at exact target.
+ * Native validation/acquisition runs unlocked; stale revisions retry boundedly.
+ * RU: Связать identity каталога либо held parent/basename файла с target.
+ * Native validation/acquisition вне mutex; stale versions повторяются ограниченно. */
 void Sys_bind(void *frame)
 {
     F_Sys_bind call;
-    DVM_NamespacePlan source, target;
-    FVM_FileInfo source_info, target_info;
-    char from[DVM_NS_PATH_LIMIT], on[DVM_NS_PATH_LIMIT];
+    char from[DVM_NS_PATH_LIMIT], on[DVM_NS_PATH_LIMIT], component[DVM_NS_PATH_LIMIT];
     int result = -1, attempt;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_bind, ret), sizeof(*call.ret));
     if (call.flags != Sys_MREPL)
@@ -202,33 +170,41 @@ void Sys_bind(void *frame)
         for (attempt = 0; attempt < DVM_NS_RETRIES; attempt++)
         {
             DVM_Namespace *group = dvm_namespace_current_group();
-            if (!dvm_namespace_plan(group, from, &source) || !dvm_namespace_plan(group, on, &target))
+            DVM_ResourcePlan source, target;
+            FVM_FileInfo a, b;
+            if (!dvm_resource_plan(group, from, 0, &source))
             {
-                kwerrstr("invalid namespace bind path");
+                kwerrstr("invalid namespace bind source");
                 break;
             }
-            if (source.version != target.version)
+            if (!dvm_resource_plan(group, on, 0, &target))
             {
-                continue;
-            }
-            if (dvm_metadata_native_path_info(source.native, &source_info) != FVM_OK ||
-                dvm_metadata_native_path_info(target.native, &target_info) != FVM_OK)
-            {
+                dvm_resource_close(&source);
+                kwerrstr("invalid namespace bind target");
                 break;
             }
-            if (source_info.directory != target_info.directory)
+            int committed = 0;
+            if (source.names.version == target.names.version)
             {
-                kwerrstr("bind source and target kinds differ");
-                break;
+                committed = -1;
+                if (dvm_metadata_selected(&source, &a) == FVM_OK && dvm_metadata_selected(&target, &b) == FVM_OK)
+                {
+                    if (a.directory != b.directory)
+                    {
+                        kwerrstr("bind source and target kinds differ");
+                    }
+                    else if (dvm_resource_anchor_wait(&source, a.directory, component))
+                    {
+                        committed =
+                            dvm_namespace_bind_resource(group, &source.names, &target.names, source.created, component);
+                    }
+                }
             }
-            int committed = dvm_namespace_bind(group, &source, &target);
+            dvm_resource_close(&target);
+            dvm_resource_close(&source);
             if (committed)
             {
                 result = committed == 1 ? 0 : -1;
-                if (committed < 0)
-                {
-                    kwerrstr("cannot allocate namespace binding");
-                }
                 break;
             }
         }
@@ -241,14 +217,22 @@ void Sys_bind(void *frame)
 }
 
 
-/* EN: Remove one MREPL binding; nil/empty source removes the exact target.
- * No host I/O or descriptor invalidation. Version conflicts retry boundedly.
- * RU: Удалить MREPL-привязку; nil/empty source удаляет точный target. Без
- * host I/O/инвалидации FD. Конфликты версий повторяются ограниченно. */
+/* EN/RU: Compare complete host identity, not a stale display spelling.
+ * Сравнить полную host identity, не устаревший display path. Pure native values. */
+static int same_resource(const FVM_FileInfo *a, const FVM_FileInfo *b)
+{
+    return a->identity.high == b->identity.high && a->identity.low == b->identity.low &&
+           a->device.high == b->device.high && a->device.low == b->device.low && a->directory == b->directory;
+}
+
+
+/* EN: Unmount exact target; optional source filtering compares opened identities.
+ * Namespace changes retry, existing plans/FDs retain their owned resources.
+ * RU: Удалить точный target; source filter сравнивает opened identities.
+ * Изменения namespace повторяются, живые plans/FDs держат свои resources. */
 void Sys_unmount(void *frame)
 {
     F_Sys_unmount call;
-    DVM_NamespacePlan source, target;
     char from[DVM_NS_PATH_LIMIT], on[DVM_NS_PATH_LIMIT];
     int result = -1, attempt, filtered;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_unmount, ret), sizeof(*call.ret));
@@ -264,16 +248,43 @@ void Sys_unmount(void *frame)
         for (attempt = 0; attempt < DVM_NS_RETRIES; attempt++)
         {
             DVM_Namespace *group = dvm_namespace_current_group();
-            if (!dvm_namespace_plan(group, on, &target) || (filtered && !dvm_namespace_plan(group, from, &source)))
+            DVM_ResourcePlan target, source;
+            FVM_FileInfo a, b;
+            if (!dvm_resource_plan(group, on, 0, &target))
             {
-                kwerrstr("invalid namespace unmount path");
+                kwerrstr("invalid namespace unmount target");
                 break;
             }
-            int committed = dvm_namespace_unmount(group, &target, filtered ? &source : NULL);
+            int source_live = filtered && dvm_resource_plan(group, from, 0, &source);
+            int committed = 0;
+            if (filtered && !source_live)
+            {
+                dvm_resource_close(&target);
+                kwerrstr("invalid namespace unmount source");
+                break;
+            }
+            if (!filtered || (source_live && source.names.version == target.names.version))
+            {
+                committed = -1;
+                if (!filtered || (dvm_metadata_selected(&source, &a) == FVM_OK &&
+                                  dvm_metadata_selected(&target, &b) == FVM_OK && same_resource(&a, &b)))
+                {
+                    committed = dvm_namespace_unmount(group, &target.names, NULL);
+                }
+                else
+                {
+                    kwerrstr("unmount source identity mismatch");
+                }
+            }
+            if (source_live)
+            {
+                dvm_resource_close(&source);
+            }
+            dvm_resource_close(&target);
             if (committed)
             {
                 result = committed == 1 ? 0 : -1;
-                if (committed < 0)
+                if (committed < 0 && !filtered)
                 {
                     kwerrstr("namespace binding not found");
                 }

@@ -1,8 +1,12 @@
 # Module loading uses the guest namespace
 
+Directory resources are now retained through lookup/open/parse. The absolute
+name below is display provenance and may become stale after rename; it is never
+reopened for anchored I/O. See [current directory contract](DIRECTORY-ANCHORS.md).
+
 File imports now resolve the current group's namespace **once**, before cache
 lookup and native release. The cache key, open and parser receive the same copied
-absolute host spelling. A concurrent bind cannot redirect an in-flight read.
+absolute display spelling and held resource. A concurrent bind cannot redirect an in-flight read.
 The loader owns its opened descriptor through metadata/read/close; metadata comes
 from that object, even after its pathname has been replaced. There is no global
 execution exclusion, thread migration, saved-REG restore or external service.
@@ -51,8 +55,8 @@ Publish compiled images as immutable files with atomic replacement. The existing
 port timestamps have second precision; in-place edits preserving identity,
 length and modification seconds are not a cache-coherence guarantee. Concurrent
 in-place writes are not a whole-image transaction. Full provider revision/content
-identity remains separate work, together with Chan/directory handles. Host
-symlinks and lexical cwd still have the [path-routing boundary](VFS-NAMESPACE.md).
+identity remains separate work, together with full Chan/provider handles. Host
+symlinks and lexical dot-dot retain the [namespace boundary](VFS-NAMESPACE.md).
 
 ## Evidence and limits
 

@@ -3,6 +3,7 @@
  * RU: Host startup adapter создаёт обычные namespace bindings для bundled files.
  */
 #include "boot.h"
+#include "internal.h"
 #include <stdio.h>
 #include <unistd.h>
 
@@ -35,11 +36,16 @@ int dvm_namespace_boot_initialize(const char *package_directory)
     {
         return 0;
     }
+    if (!dvm_namespace_pin(group))
+    {
+        dvm_namespace_release(group);
+        return 0;
+    }
     for (index = 0; index < sizeof(names) / sizeof(names[0]); index++)
     {
         snprintf(target, sizeof(target), "/dis/lib/%s", names[index]);
         if (!dvm_namespace_module_plan(group, names[index], &source) || !dvm_namespace_plan(group, target, &on) ||
-            dvm_namespace_bind(group, &source, &on) != 1)
+            dvm_namespace_bind_resource(group, &source, &on, group->load_anchor, names[index]) != 1)
         {
             dvm_namespace_release(group);
             return 0;

@@ -9,9 +9,19 @@
 
 /* EN/RU: See namespace.h. Revisions never wrap, so stale plans cannot reappear.
  * См. namespace.h. Версии не переполняются; устаревшие планы не оживают. */
-int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
+static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan, DVM_Anchor *anchor)
 {
     int result = 0;
+    DVM_Anchor *old_cwd = NULL, *old_load = NULL;
+    if (!dvm_anchor_retain(anchor))
+    {
+        return -1;
+    }
+    if (!dvm_anchor_retain(anchor))
+    {
+        dvm_anchor_release(anchor);
+        return -1;
+    }
     fvm_port_sync_lock(group->lock);
     if (group->version == plan->version)
     {
@@ -20,25 +30,68 @@ int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
         {
             memcpy(group->cwd, plan->path, strlen(plan->path) + 1);
             memcpy(group->load_directory, plan->path, strlen(plan->path) + 1);
+            memcpy(group->cwd_source, plan->native, strlen(plan->native) + 1);
+            memcpy(group->load_source, plan->native, strlen(plan->native) + 1);
+            old_cwd = group->cwd_anchor;
+            old_load = group->load_anchor;
+            group->cwd_anchor = anchor;
+            group->load_anchor = anchor;
             group->version++;
             result = 1;
         }
     }
     fvm_port_sync_unlock(group->lock);
+    if (result == 1)
+    {
+        dvm_anchor_release(old_cwd);
+        dvm_anchor_release(old_load);
+    }
+    else
+    {
+        dvm_anchor_release(anchor);
+        dvm_anchor_release(anchor);
+    }
     return result;
+}
+
+
+/* EN/RU: Pure path commit for native unit clients; see namespace.h.
+ * Чистый path commit для native unit clients; см. namespace.h. */
+int dvm_namespace_chdir(DVM_Namespace *group, const DVM_NamespacePlan *plan)
+{
+    return change_directory(group, plan, NULL);
+}
+
+
+/* EN/RU: Commit validated directory identity; see resource.h.
+ * Применить проверенную identity каталога; см. resource.h. */
+int dvm_namespace_chdir_resource(DVM_Namespace *group, DVM_ResourcePlan *plan)
+{
+    return plan->created ? change_directory(group, &plan->names, plan->created) : -1;
 }
 
 
 /* EN/RU: See namespace.h; allocate before locking and free displaced record after.
  * См. namespace.h; выделить до mutex, освободить заменённую запись после mutex. */
-int dvm_namespace_bind(DVM_Namespace *group, const DVM_NamespacePlan *source, const DVM_NamespacePlan *target)
+int dvm_namespace_bind_resource(DVM_Namespace *group,
+                                const DVM_NamespacePlan *source,
+                                const DVM_NamespacePlan *target,
+                                DVM_Anchor *anchor,
+                                const char *component)
 {
-    DVM_NamespaceBinding *entry = malloc(sizeof(*entry)), *old = NULL, **link;
+    DVM_NamespaceBinding *entry = calloc(1, sizeof(*entry)), *old = NULL, **link;
     int result = 0;
     if (!entry)
     {
         return -1;
     }
+    if (!component || strlen(component) >= sizeof(entry->component) || !dvm_anchor_retain(anchor))
+    {
+        free(entry);
+        return -1;
+    }
+    entry->anchor = anchor;
+    memcpy(entry->component, component, strlen(component) + 1);
     memcpy(entry->on, target->path, strlen(target->path) + 1);
     memcpy(entry->source, source->native, strlen(source->native) + 1);
     fvm_port_sync_lock(group->lock);
@@ -64,9 +117,25 @@ int dvm_namespace_bind(DVM_Namespace *group, const DVM_NamespacePlan *source, co
         }
     }
     fvm_port_sync_unlock(group->lock);
-    free(entry);
-    free(old);
+    if (entry)
+    {
+        dvm_anchor_release(entry->anchor);
+        free(entry);
+    }
+    if (old)
+    {
+        dvm_anchor_release(old->anchor);
+        free(old);
+    }
     return result;
+}
+
+
+/* EN/RU: Pure path binding; see namespace.h. No native anchor is fabricated.
+ * Чистая path binding; см. namespace.h. Native anchor не имитируется. */
+int dvm_namespace_bind(DVM_Namespace *group, const DVM_NamespacePlan *source, const DVM_NamespacePlan *target)
+{
+    return dvm_namespace_bind_resource(group, source, target, NULL, "");
 }
 
 
@@ -96,6 +165,10 @@ int dvm_namespace_unmount(DVM_Namespace *group, const DVM_NamespacePlan *target,
         }
     }
     fvm_port_sync_unlock(group->lock);
-    free(old);
+    if (old)
+    {
+        dvm_anchor_release(old->anchor);
+        free(old);
+    }
     return result;
 }

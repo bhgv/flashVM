@@ -46,12 +46,13 @@ def adapt_loader(source, unit):
         changes = (
             (
                 "readmod(char *path, Module *m, int sync)",
-                "dvm_namespace_native_readmod(char *path, Module *m, int sync)",
+                "dvm_namespace_native_readmod(char *path, Module *m, int sync, struct DVM_ResourcePlan *input)",
             ),
             (
                 "\tif(m != nil) {\n\t\tif(d->dev",
                 "\tif(m != nil && dvm_namespace_module_cacheable(d)) {\n\t\tif(d->dev",
             ),
+            ("\tfd = kopen(path, OREAD);", "\tfd = dvm_namespace_module_open(input);"),
         )
     elif unit == "xec.c":
         changes = (

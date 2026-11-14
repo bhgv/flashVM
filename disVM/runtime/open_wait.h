@@ -1,6 +1,7 @@
 /* Private unpublished native handle construction; no managed values cross it. */
 #ifndef DVM_OPEN_WAIT_H
 #define DVM_OPEN_WAIT_H
+#include "vfs/resource.h"
 #include "file_port.h"
 #include "filesystem_port.h"
 
@@ -10,8 +11,19 @@
  * cells receiving one owned handle or NULL. No descriptor-table access occurs
  * outside the heap. Return a port status; caller publishes or closes the handle.
  * Allocation failure performs no filesystem operation. No managed allocation. */
-FVM_Result dvm_open_wait(const char *path, const char *mode, int asynchronous,
-    FVM_PortFile **file, FVM_PortDirectory **directory);
+FVM_Result
+dvm_open_wait(const char *path, const char *mode, int asynchronous, FVM_PortFile **file, FVM_PortDirectory **directory);
+
+
+/* EN/RU: Use borrowed already retained selection without re-resolving namespace.
+ * Использовать уже удержанный selection без повторного namespace lookup.
+ * Other arguments/ownership follow dvm_open_wait / Остальные аргументы как выше. */
+FVM_Result dvm_open_wait_selected(const char *path,
+                                  const char *mode,
+                                  int asynchronous,
+                                  DVM_ResourcePlan *selected,
+                                  FVM_PortFile **file,
+                                  FVM_PortDirectory **directory);
 
 
 /* Emit aggregate open attempts/releases and staging after all owners join.

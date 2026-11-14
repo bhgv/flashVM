@@ -17,7 +17,7 @@ per-object statistics catalog.
 | `pctl(NEWNS, nil)` | Detach an empty namespace rooted at the resolved current directory; virtual cwd becomes `/` |
 | `chdir(path)` | Validate a directory and change group cwd; host process cwd never changes |
 | `bind(source, on, MREPL)` | Replace an existing like-kind resource at the exact virtual target |
-| `unmount(source, on)` | Remove a replacement only if its frozen native source matches |
+| `unmount(source, on)` | Remove a replacement only if its full device/inode identity matches |
 | `unmount(nil, on)` / empty source | Remove the exact replacement without a source filter |
 
 Other `pctl` flags, combined flags, non-nil `movefd`, union/create/cache bind flags
@@ -34,10 +34,10 @@ bindings remain after replacing/removing a parent prefix.
 
 ## Concurrency and ownership
 
-A path plan copies virtual and native names plus group revision under its mutex.
-Host I/O uses only the native copy, after unlocking and leaving managed admission
-through the existing native I/O adapter. Concurrent mutations cannot alter an
-in-flight open/stat path. No group pointer is used while outside managed admission.
+A resource plan copies names/revision and retains a directory handle under its
+mutex. Host I/O uses that handle and its relative child path after unlocking and
+leaving managed admission. Rebind/unmount cannot close an in-flight selection.
+No group pointer is used while outside managed admission.
 
 For chdir/bind, validation I/O runs outside the group lock. Commit succeeds only
 if the observed revision still matches. Conflicts retry at most eight times, then
@@ -51,15 +51,13 @@ publication retries; an already committed namespace change is never repeated.
 
 ## Exact boundary of this milestone
 
-This is **host-path routing**, not the complete Inferno Chan/provider VFS or a
-security sandbox. Native path strings do not preserve resource identity through
-host rename/unlink. The host still follows symlinks. Virtual `.`/`..` normalization
-is lexical, including before bind lookup; it is not host symlink traversal.
-Paths are limited to4096 UTF-8 bytes including NUL. Empty and oversized paths fail.
-Host filesystem changes between validation and later access remain possible.
-The cwd is a virtual spelling rather than an open Chan: replacing a prefix
-covering cwd changes subsequent relative lookup. Stable directory identity
-through rebind/rename requires the later provider-handle layer.
+Directory resources now preserve identity through host rename and covering
+rebind; see [retained directory contract](DIRECTORY-ANCHORS.md). This remains
+a subset of Inferno VFS, not a complete Chan/provider implementation or sandbox.
+Regular-file bindings retain parent-directory plus basename, not the file itself.
+The host follows symlinks. Virtual dot/dot-dot is lexical; leaving cwd's subtree
+returns to virtual-root lookup. Paths remain limited to4096 bytes including NUL.
+Children can change between validation and access.
 
 The module loader now uses the same frozen namespace plans for cache/open/parse;
 see [module namespace and cache provenance](MODULE-NAMESPACE.md). Initially,
@@ -68,7 +66,7 @@ Standard descriptors and the explicitly enabled test-control node also retain
 their existing routes. No FD-group, environment-variable or credential isolation
 is provided by FORKNS/NEWNS. Existing descriptors may reach outside a new root.
 
-Union mounts, mount transport, device/socket/channel providers, provider handles,
+Union mounts, mount transport, device/socket/channel providers, full Chan handles,
 namespace inspection API, FD/env/credential groups and dynamic C/Limbo provider
 loading remain separate work. The implementation follows the FORKNS/shared-cwd
 and NEWNS-rebase semantics inspected in Inferno experiment's

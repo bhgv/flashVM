@@ -1,4 +1,7 @@
-/* Windows filesystem port: UTF-16 paths, stable file handles and FindFirst/Next. */
+/* Copyright (c) 2026 bhgv
+ * EN: Windows metadata/cursors; relative anchor capability remains explicit.
+ * RU: Windows metadata/cursors; relative anchor capability отмечена явно.
+ */
 #include "../filesystem_common.h"
 #include <windows.h>
 #include <stdio.h>
@@ -425,3 +428,5 @@ void fvm_port_directory_close(FVM_PortDirectory *directory)
         free(directory);
     }
 }
+
+#include "../filesystem_anchor_windows.inc"

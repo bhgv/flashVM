@@ -8,6 +8,8 @@
 #include "disvm/native_context.h"
 #include "filesystem_port.h"
 #include "module_registry.h"
+#include "resource.h"
+#include "loader.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +18,7 @@
 static int held_once;                      /* Atomic one-shot native fixture admission; no managed state. */
 static FVM_FileNumber64 original_identity; /* First provider identity, seeded before victim spawn. */
 static int identity_seeded;                /* Written before pthread publication; later reads are immutable. */
-FVM_Result __real_fvm_port_file_open(const char *, const char *, FVM_PortFile **);
+int __real_dvm_namespace_module_open(DVM_ResourcePlan *);
 FVM_Result __real_fvm_port_file_info(FVM_PortFile *, FVM_FileInfo *);
 Module *__real_dvm_module_registry_lookup(const char *);
 
@@ -57,12 +59,13 @@ Module *__wrap_dvm_module_registry_lookup(const char *path)
  * RU: Сохранить настоящий successful open до задержки source на inherited pipe.
  * path/mode/output принадлежат production; сосед обязан rebind/load и сообщить
  * progress до освобождения controller этого native owner. */
-FVM_Result __wrap_fvm_port_file_open(const char *path, const char *mode, FVM_PortFile **output)
+int __wrap_dvm_namespace_module_open(DVM_ResourcePlan *input)
 {
-    FVM_Result result = __real_fvm_port_file_open(path, mode, output);
+    int result = __real_dvm_namespace_module_open(input);
+    const char *path = input->names.native;
     Prog *process = dvm_native_context_process(dvm_native_context_current());
     int expected = 0;
-    if (result == FVM_OK && process && process->pid > 1 && selected(path) &&
+    if (result >= 0 && process && process->pid > 1 && selected(path) &&
         __atomic_compare_exchange_n(&held_once, &expected, 1, 0, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
     {
         const char *descriptor = getenv("DVM_NAMESPACE_GATE");

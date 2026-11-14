@@ -197,6 +197,11 @@ add_executable(disvm
     vfs/boot.c
     vfs/loader.c
     vfs/module_file.c
+    vfs/anchor.c
+    vfs/resource.c
+    vfs/resolution.c
+    vfs/resource_groups.c
+    vfs/resource_wait.c
     file_gate.c
     file_slots.c
     seek_sys.c

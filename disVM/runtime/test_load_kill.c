@@ -8,6 +8,9 @@
 #include "disvm/native_context.h"
 #include "file_port.h"
 #include "module_registry.h"
+#include "vfs/resource.h"
+#include "vfs/loader.h"
+#include "file_slots.h"
 #include <errno.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -16,16 +19,16 @@
 #include <unistd.h>
 
 static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER; /* Native fixture observations only. */
-static FVM_PortFile *handles[32]; /* Genuine victim handles, retained by their real owners. */
-static int closing[32]; /* Each observed handle can close only after its open returns. */
-static unsigned phases; /* Numbered real open boundaries. */
-static unsigned closed; /* Returned real closes of victim handles. */
-static int held_pid; /* Copied resident identity for accepted killwait observation. */
-static int held; /* One real open remains blocked on the inherited release pipe. */
-static _Thread_local int lookup_seen; /* This resident completed the real slow-image lookup. */
+static FVM_PortFile *handles[32];                        /* Genuine victim handles, retained by their real owners. */
+static int closing[32];                 /* Each observed handle can close only after its open returns. */
+static unsigned phases;                 /* Numbered real open boundaries. */
+static unsigned closed;                 /* Returned real closes of victim handles. */
+static int held_pid;                    /* Copied resident identity for accepted killwait observation. */
+static int held;                        /* One real open remains blocked on the inherited release pipe. */
+static _Thread_local int lookup_seen;   /* This resident completed the real slow-image lookup. */
 static _Thread_local int lookup_cached; /* Lookup returned its production-owned Module reference. */
 
-FVM_Result __real_fvm_port_file_open(const char *, const char *, FVM_PortFile **);
+int __real_dvm_namespace_module_open(DVM_ResourcePlan *);
 void __real_fvm_port_file_close(FVM_PortFile *);
 int __real_dvm_runtime_prepare_killwait(Prog *, int);
 void __real_dvm_close_worker_stop(void);
@@ -71,9 +74,11 @@ Module *__wrap_dvm_module_registry_lookup(const char *path)
  * RU: Задержать успешное открытие slow-образа только у созданного потока.
  * path/mode/output заимствованы; результат/handle не меняются. Здесь не меняются
  * допуск GC, живые регистры или управляемые указатели. */
-FVM_Result __wrap_fvm_port_file_open(const char *path, const char *mode, FVM_PortFile **output)
+int __wrap_dvm_namespace_module_open(DVM_ResourcePlan *input)
 {
-    FVM_Result result = __real_fvm_port_file_open(path, mode, output);
+    int result = __real_dvm_namespace_module_open(input);
+    const char *path = input->names.native;
+    FVM_PortFile *file = result >= 0 ? dvm_runtime_file(result) : NULL;
     Prog *process = dvm_native_context_process(dvm_native_context_current());
     if (!path)
     {
@@ -81,17 +86,17 @@ FVM_Result __wrap_fvm_port_file_open(const char *path, const char *mode, FVM_Por
     }
     const char *name = strrchr(path, '/');
     name = name ? name + 1 : path;
-    if (result != FVM_OK || !process || process->pid <= 1 || strncmp(name, "slow-", 5))
+    if (result < 0 || !process || process->pid <= 1 || strncmp(name, "slow-", 5))
     {
         return result;
     }
     const char *warm = getenv("DVM_LOADER_WARM");
     require(warm && lookup_seen && lookup_cached == atoi(warm),
-        "real lookup confirms the requested cold or cached Module ownership");
+            "real lookup confirms the requested cold or cached Module ownership");
     lookup_seen = 0;
     pthread_mutex_lock(&sync);
-    require(!held && phases < 32 && *output, "one genuine victim open per phase");
-    handles[phases++] = *output;
+    require(!held && phases < 32 && file, "one genuine victim open per phase");
+    handles[phases++] = file;
     held_pid = process->pid;
     held = 1;
     fprintf(stderr, "LOADER_OPEN_HELD %u\n", phases);

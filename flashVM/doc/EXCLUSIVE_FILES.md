@@ -41,5 +41,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_port_file_open` | function | [ports/file_port.c:44](../ports/file_port.c#L44) |
+| `fvm_port_file_open` | function | [ports/file_port.c:130](../ports/file_port.c#L130) |
 <!-- source-links:end -->

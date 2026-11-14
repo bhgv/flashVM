@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1697: portable directory anchors retain POSIX directory identity through rename and support independent relative file/directory operations. DisVM namespace groups and in-flight imports retain these handles without global execution exclusion. Windows returns UNSUPPORTED; physical non-Linux acceptance, full Chan/provider VFS and all Flash compatibility stages remain open. [EN](DIRECTORY_ANCHORS.md) / [RU](DIRECTORY_ANCHORS.ru.md).
+
 Checkpoint v0.1696: the portable mutex adapter supports a nonblocking ownership attempt. Dis collector channel observations conservatively retain a channel when the queue is occupied, avoiding cell-to-queue / ALT queue-to-cell deadlock. Forced-contention acceptance includes a blocking negative control. No Flash compatibility stage closes.
 
 Checkpoint v0.1695: a copied AVM1 closure executes on an independent OS worker after sender destruction. [Contract](WORKER_FUNCTION.md). This does not close AS asinc lowering, frame capture synchronization or any compatibility stage.

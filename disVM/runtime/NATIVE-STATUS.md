@@ -2,6 +2,23 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: удержание directory resources при rename/rebind
+
+Root/cwd/import/directory bindings удерживают native handles; in-flight plans
+сохраняют их до окончания I/O и освобождают при native unwind. FORKNS копирует
+refs; NEWNS удерживает cwd как root. Четыре native owners проверены с настоящим
+rename и подменой старого имени, чтением/create/import, независимыми cursors,
+covering rebind и identity-filter unmount. Контроль реально читает подмену;
+shutdown требует zero live anchors. Отдельно восемь OS owners проверяют relative
+open, exclusive create и закрытие FD при позднем отказе fdopen без truncate.
+Обязательный native-набор теперь67.
+[RU](DIRECTORY-ANCHORS.ru.md), [EN](DIRECTORY-ANCHORS.md),
+[пример](../examples/directory-anchors/README.ru.md).
+
+File binding держит parent+basename; полный Chan/mount-parent walk, providers,
+FD/env/credentials и non-Linux adapters остаются работой. Windows anchor backend
+явно UNSUPPORTED; macOS/Android POSIX ещё требуют физической приёмки.
+
 ## 2026-11-15: namespace загрузчика и identity открытого образа
 
 Файловый `load` разрешает namespace один раз до cache и native release.

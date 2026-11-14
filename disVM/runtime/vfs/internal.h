@@ -6,6 +6,7 @@
 #define DVM_VFS_INTERNAL_H
 #include "namespace.h"
 #include "channel_sync.h"
+#include "resource.h"
 #include <stddef.h>
 
 
@@ -15,6 +16,8 @@ typedef struct DVM_NamespaceBinding
 {
     char on[DVM_NS_PATH_LIMIT];        /* Virtual target; component boundaries matter. */
     char source[DVM_NS_PATH_LIMIT];    /* Native source captured when binding. */
+    DVM_Anchor *anchor;                /* Owned parent/directory capability, NULL only in pure path tests. */
+    char component[DVM_NS_PATH_LIMIT]; /* Empty for a bound directory, basename for a file. */
     struct DVM_NamespaceBinding *next; /* Next group-owned binding. */
 } DVM_NamespaceBinding;
 
@@ -30,6 +33,11 @@ struct DVM_Namespace
     char cwd[DVM_NS_PATH_LIMIT];            /* Current virtual directory shared by this group. */
     char load_directory[DVM_NS_PATH_LIMIT]; /* Initial package directory, follows cwd after chdir. */
     DVM_NamespaceBinding *bindings;         /* Owned list; longest matching component prefix wins. */
+    DVM_Anchor *root_anchor;                /* Owned root directory identity. */
+    DVM_Anchor *cwd_anchor;                 /* Owned current directory, independent of covering rebinds. */
+    DVM_Anchor *load_anchor;                /* Owned import directory, initially entry package. */
+    char cwd_source[DVM_NS_PATH_LIMIT];     /* Captured display spelling for cwd. */
+    char load_source[DVM_NS_PATH_LIMIT];    /* Captured display spelling for import directory. */
 };
 
 
@@ -38,4 +46,9 @@ struct DVM_Namespace
  * RU: Нормализовать path относительно absolute cwd в отдельный output.
  * Один/ноль; '..' ограничен корнем. Пустые/длинные пути отклоняются, без allocation. */
 int dvm_namespace_normalize(const char *cwd, const char *path, char *output);
+
+
+/* EN/RU: Link source-local cleanup after retained resolution; one/zero.
+ * Подключить source-local cleanup после retained resolution; один/ноль. */
+int dvm_resource_register(DVM_ResourcePlan *plan);
 #endif

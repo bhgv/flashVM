@@ -23,37 +23,55 @@ static size_t peak;            /* Peak snapshot bytes, including NUL terminators
 
 /* See open_wait.h for ownership and threading. Native locals receive the new
  * handle; the caller's table remains untouched until native heap reentry. */
-FVM_Result dvm_open_wait(const char *path, const char *mode, int asynchronous,
-    FVM_PortFile **file, FVM_PortDirectory **directory)
+FVM_Result dvm_open_wait_selected(const char *path,
+                                  const char *mode,
+                                  int asynchronous,
+                                  DVM_ResourcePlan *selected,
+                                  FVM_PortFile **file,
+                                  FVM_PortDirectory **directory)
 {
     FVM_FileInfo metadata;
     FVM_Result status;
     char *snapshot;
     size_t length;
     int released;
-    char native[DVM_NS_PATH_LIMIT];
+    DVM_ResourcePlan local;
+    int owns = 0;
     if (!path || !mode || !file || !directory)
     {
         return FVM_INVALID_ARGUMENT;
     }
     *file = NULL;
     *directory = NULL;
-    if (asynchronous)
+    if (asynchronous && !selected)
     {
-        if (!dvm_namespace_host_path(path, native))
+        if (!dvm_resource_plan(dvm_namespace_current_group(), path, 0, &local))
         {
             return FVM_INVALID_ARGUMENT;
         }
-        path = native;
+        selected = &local;
+        owns = 1;
+    }
+    if (selected)
+    {
+        path = selected->names.native;
     }
     length = strlen(path);
     if (length == (size_t)-1)
     {
+        if (owns)
+        {
+            dvm_resource_close(&local);
+        }
         return FVM_INVALID_ARGUMENT;
     }
     snapshot = malloc(length + 1);
     if (!snapshot)
     {
+        if (owns)
+        {
+            dvm_resource_close(&local);
+        }
         return FVM_OUT_OF_MEMORY;
     }
     memcpy(snapshot, path, length + 1);
@@ -71,9 +89,17 @@ FVM_Result dvm_open_wait(const char *path, const char *mode, int asynchronous,
         staging -= length + 1;
         fvm_port_registry_unlock();
         free(snapshot);
+        if (owns)
+        {
+            dvm_resource_close(&local);
+        }
         return FVM_OUT_OF_MEMORY;
     }
-    if (!strcmp(mode, "r") && fvm_port_path_info(snapshot, &metadata) == FVM_OK && metadata.directory)
+    if (selected)
+    {
+        status = dvm_resource_open(selected, mode, file, directory);
+    }
+    else if (!strcmp(mode, "r") && fvm_port_path_info(snapshot, &metadata) == FVM_OK && metadata.directory)
     {
         status = fvm_port_directory_open(snapshot, directory);
     }
@@ -91,7 +117,20 @@ FVM_Result dvm_open_wait(const char *path, const char *mode, int asynchronous,
     staging -= length + 1;
     fvm_port_registry_unlock();
     free(snapshot);
+    if (owns)
+    {
+        dvm_resource_close(&local);
+    }
     return status;
+}
+
+
+/* EN/RU: See open_wait.h; capture current namespace for asynchronous Sys callers.
+ * См. open_wait.h; захватить namespace для asynchronous Sys callers. */
+FVM_Result
+dvm_open_wait(const char *path, const char *mode, int asynchronous, FVM_PortFile **file, FVM_PortDirectory **directory)
+{
+    return dvm_open_wait_selected(path, mode, asynchronous, NULL, file, directory);
 }
 
 
@@ -105,6 +144,10 @@ void dvm_open_statistics(void)
     size_t snapshot_staging = staging;
     size_t snapshot_peak = peak;
     fvm_port_registry_unlock();
-    fprintf(stderr, "NATIVEOPEN attempts=%lu releases=%lu staging=%lu peak=%lu\n",
-        snapshot_attempts, snapshot_releases, (unsigned long)snapshot_staging, (unsigned long)snapshot_peak);
+    fprintf(stderr,
+            "NATIVEOPEN attempts=%lu releases=%lu staging=%lu peak=%lu\n",
+            snapshot_attempts,
+            snapshot_releases,
+            (unsigned long)snapshot_staging,
+            (unsigned long)snapshot_peak);
 }

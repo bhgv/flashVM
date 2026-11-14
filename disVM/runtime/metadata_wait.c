@@ -25,11 +25,11 @@
 
 static unsigned long paths;       /* Completed native path queries, under the registry mutex. */
 static unsigned long descriptors; /* Completed native file/directory queries; updates under registry mutex. */
-static unsigned long batches;     /* Native directory read attempts, including EOF/errors; updates under registry mutex. */
-static unsigned long releases;    /* Queries that released the native heap lease; updates under registry mutex. */
-static unsigned int pins;         /* Explicit FD roots retained by this adapter; updates under registry mutex. */
-static size_t staging;            /* Current native path bytes, including terminators; updates under registry mutex. */
-static size_t peak_staging;       /* Largest simultaneous native path staging; updates under registry mutex. */
+static unsigned long batches;  /* Native directory read attempts, including EOF/errors; updates under registry mutex. */
+static unsigned long releases; /* Queries that released the native heap lease; updates under registry mutex. */
+static unsigned int pins;      /* Explicit FD roots retained by this adapter; updates under registry mutex. */
+static size_t staging;         /* Current native path bytes, including terminators; updates under registry mutex. */
+static size_t peak_staging;    /* Largest simultaneous native path staging; updates under registry mutex. */
 
 
 /* EN: Preserve native admission refusal/cancellation as an ordinary I/O failure.
@@ -48,7 +48,7 @@ static FVM_Result admission_failure(int released, const char *operation)
 /* Snapshot path before native release. path/output are borrowed ACTIVE inputs;
  * output is native C storage, never a mapped Dir. Allocation failure performs no
  * native call. All remaining throwing preparation precedes lease publication. */
-FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output)
+static FVM_Result selected_info(const char *path, DVM_ResourcePlan *plan, FVM_FileInfo *output)
 {
     FVM_Result status;
     size_t length;
@@ -88,7 +88,7 @@ FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output)
         free(snapshot);
         return admission_failure(released, "native path metadata");
     }
-    status = fvm_port_path_info(snapshot, output);
+    status = plan ? dvm_resource_info(plan, output) : fvm_port_path_info(snapshot, output);
     dvm_runtime_gc_native_enter(released);
     fvm_port_registry_lock();
     paths++;
@@ -110,12 +110,30 @@ FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output)
  * заимствованы ACTIVE до staging; mutex группы не удерживается при I/O. */
 FVM_Result dvm_metadata_path_info(const char *path, FVM_FileInfo *output)
 {
-    char native[DVM_NS_PATH_LIMIT];
-    if (!dvm_namespace_host_path(path, native))
+    DVM_ResourcePlan plan;
+    if (!dvm_resource_plan(dvm_namespace_current_group(), path, 0, &plan))
     {
         return FVM_INVALID_ARGUMENT;
     }
-    return dvm_metadata_native_path_info(native, output);
+    FVM_Result status = dvm_metadata_selected(&plan, output);
+    dvm_resource_close(&plan);
+    return status;
+}
+
+
+/* EN/RU: See metadata_wait.h; input is an already resolved host path.
+ * См. metadata_wait.h; input уже resolved host path. */
+FVM_Result dvm_metadata_native_path_info(const char *path, FVM_FileInfo *output)
+{
+    return selected_info(path, NULL, output);
+}
+
+
+/* EN/RU: See metadata_wait.h; no second namespace lookup after native release.
+ * См. metadata_wait.h; без второго namespace lookup после native release. */
+FVM_Result dvm_metadata_selected(DVM_ResourcePlan *plan, FVM_FileInfo *output)
+{
+    return selected_info(plan->names.native, plan, output);
 }
 
 
@@ -177,8 +195,8 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
  * Peer residents may queue; cancellation before admission publishes no batch.
  * RU: Держать курсор до защищённой публикации результата без его мьютекса.
  * Соседи могут ждать; отмена до допуска не публикует batch. */
-FVM_Result dvm_metadata_directory_read(Sys_FD *fd, int descriptor, FVM_FileInfo **entries,
-    size_t *count, int (*publish)(void *), void *argument)
+FVM_Result dvm_metadata_directory_read(
+    Sys_FD *fd, int descriptor, FVM_FileInfo **entries, size_t *count, int (*publish)(void *), void *argument)
 {
     FVM_PortDirectory *directory = dvm_runtime_directory(descriptor);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
@@ -256,6 +274,13 @@ void dvm_metadata_statistics(void)
     size_t snapshot_peak_staging = peak_staging;
     unsigned long snapshot_batches = batches;
     fvm_port_registry_unlock();
-    fprintf(stderr, "NATIVEMETADATA paths=%lu descriptors=%lu releases=%lu pins=%u staging=%lu peak=%lu batches=%lu\n",
-        snapshot_paths, snapshot_descriptors, snapshot_releases, snapshot_pins, (unsigned long)snapshot_staging, (unsigned long)snapshot_peak_staging, snapshot_batches);
+    fprintf(stderr,
+            "NATIVEMETADATA paths=%lu descriptors=%lu releases=%lu pins=%u staging=%lu peak=%lu batches=%lu\n",
+            snapshot_paths,
+            snapshot_descriptors,
+            snapshot_releases,
+            snapshot_pins,
+            (unsigned long)snapshot_staging,
+            (unsigned long)snapshot_peak_staging,
+            snapshot_batches);
 }

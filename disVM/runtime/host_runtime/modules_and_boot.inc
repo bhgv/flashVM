@@ -55,7 +55,7 @@ int verifysigner(uchar *signature, int size, uchar *bytes, ulong length)
  * RU: Занять слот под мьютексом реестра, затем открыть вне мьютекса.
  * path/mode заимствованы; asynchronous выбирает Sys. Вернуть дескриптор либо -1.
  * До публикации и при откате слот остаётся занят своим шлюзом. */
-static int open_file_mode(const char *path, const char *mode, int asynchronous)
+static int open_selected(const char *path, const char *mode, int asynchronous, DVM_ResourcePlan *selected)
 {
     int index;
     DVM_FileGate *gate = dvm_file_gate_create();
@@ -78,7 +78,7 @@ static int open_file_mode(const char *path, const char *mode, int asynchronous)
         kwerrstr("file handle quota exceeded");
         return -1;
     }
-    status = dvm_open_wait(path, mode, asynchronous, &file, &directory);
+    status = dvm_open_wait_selected(path, mode, asynchronous, selected, &file, &directory);
     if (status == FVM_OK)
     {
         dvm_file_slots_publish(index, file, directory);
@@ -94,6 +94,22 @@ static int open_file_mode(const char *path, const char *mode, int asynchronous)
     dvm_close_discard(abandoned.job);
     kwerrstr("cannot open native file or directory (status %d)", status);
     return -1;
+}
+
+
+/* EN/RU: Ordinary Sys opens capture their own selection; path/mode are borrowed.
+ * Обычный Sys open захватывает свой selection; path/mode заимствованы. FD/-1. */
+static int open_file_mode(const char *path, const char *mode, int asynchronous)
+{
+    return open_selected(path, mode, asynchronous, NULL);
+}
+
+
+/* EN/RU: Preserve selected directory identity through module I/O; return FD/-1.
+ * Сохранить выбранную identity каталога при module I/O; вернуть FD/-1. */
+int dvm_namespace_module_open(DVM_ResourcePlan *input)
+{
+    return input ? open_selected(input->names.native, "r", 0, input) : -1;
 }
 
 

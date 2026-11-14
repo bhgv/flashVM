@@ -1,5 +1,9 @@
 # Загрузка модулей через namespace гостя
 
+Теперь lookup/open/parse удерживает directory resource. Absolute имя ниже —
+display provenance; после rename оно может устареть и не переоткрывается для I/O.
+[Текущий контракт каталогов](DIRECTORY-ANCHORS.ru.md).
+
 Файловый import теперь разрешает namespace группы **один раз**, до поиска cache
 и native release. Cache key, open и parser получают одну копию absolute host path.
 Конкурентный bind не перенаправляет начатое чтение. Loader держит открытый FD до

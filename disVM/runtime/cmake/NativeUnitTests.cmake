@@ -28,10 +28,18 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     target_include_directories(disvm_fp_records_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
     add_test(NAME disvm_native_fp_records COMMAND disvm_fp_records_test)
     set_tests_properties(disvm_native_fp_records PROPERTIES TIMEOUT 10 LABELS "host-unit")
-    add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c)
+    add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c
+        vfs/resolution.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_namespace_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host Threads::Threads)
     add_test(NAME disvm_namespace_concurrent COMMAND disvm_namespace_test)
+    add_executable(disvm_anchor_port_test vfs/test_anchor_port.c)
+    target_include_directories(disvm_anchor_port_test PRIVATE ${native_unit_includes})
+    target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_options(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
+    add_test(NAME disvm_anchor_port COMMAND "${PYTHON_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/test_anchor_port.py" "$<TARGET_FILE:disvm_anchor_port_test>")
+    set_tests_properties(disvm_anchor_port PROPERTIES TIMEOUT 50 LABELS "host-unit")
     set_tests_properties(disvm_namespace_concurrent PROPERTIES TIMEOUT 30 LABELS "host-unit")
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
     add_test(NAME disvm_native_generation_idempotent COMMAND "${PYTHON_EXECUTABLE}"

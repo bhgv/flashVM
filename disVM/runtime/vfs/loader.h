@@ -7,6 +7,7 @@
 struct Module;
 struct String;
 struct Dir;
+struct DVM_ResourcePlan;
 
 #define DVM_MODULE_IMAGE_LIMIT (8UL * 1024UL * 1024UL) /* Existing reader's exclusive image byte bound. */
 
@@ -18,7 +19,13 @@ struct Dir;
  * reference; sync retains its existing source-local native release contract.
  * RU: Исходный reader на frozen native path. Поглощает cached module reference;
  * sync сохраняет существующий source-local native release контракт. */
-struct Module *dvm_namespace_native_readmod(char *path, struct Module *cached, int sync);
+struct Module *
+dvm_namespace_native_readmod(char *path, struct Module *cached, int sync, struct DVM_ResourcePlan *input);
+
+
+/* EN/RU: Open retained module selection on its current source; return owned FD/-1.
+ * Открыть удержанный module selection своим source; вернуть свой FD/-1. */
+int dvm_namespace_module_open(struct DVM_ResourcePlan *input);
 
 
 /* EN: Validate borrowed rooted guest name before conversion. Empty/nil-H gives
