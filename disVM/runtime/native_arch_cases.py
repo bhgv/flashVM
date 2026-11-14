@@ -5,6 +5,7 @@
 CORE_CASES = (  # Previously verified baseline; names are unique log/report identities.
     ("continuation", "test_module_continuation.py", ("--portable-overlap",)),
     ("process-control", "test_resident_processctl.py", ()),
+    ("live-registry", "test_live_registry.py", ()),
     ("receiver-cancel", "test_resident_processctl.py", ("--receiver-cancel",)),
     ("live-parent-reply", "test_late_reply.py", ()),
     ("native-cancel", "test_native_cancel.py", ()),
