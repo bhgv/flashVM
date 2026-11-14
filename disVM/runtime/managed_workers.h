@@ -19,6 +19,24 @@ enum
 };
 
 
+/* EN: Diagnostic activity codes, independent from retained ProgState numbering.
+ * RU: Диагностические activity codes, независимые от нумерации ProgState. */
+enum
+{
+    DVM_ACTIVITY_UNKNOWN, /* No recognized publication. */
+    DVM_ACTIVITY_READY,   /* Ready state; not a guarantee of CPU execution. */
+    DVM_ACTIVITY_SEND,    /* Channel send registration. */
+    DVM_ACTIVITY_RECEIVE, /* Channel receive registration. */
+    DVM_ACTIVITY_ALT,     /* Channel alternative registration. */
+    DVM_ACTIVITY_NATIVE,  /* Native continuation released admission. */
+    DVM_ACTIVITY_TABLE,   /* Cooperative table admission wait. */
+    DVM_ACTIVITY_CHILD,   /* Child retirement/cancellation reply wait. */
+    DVM_ACTIVITY_DEBUG,   /* Retained debug state, no new pause feature. */
+    DVM_ACTIVITY_EXITING, /* Published process exit. */
+    DVM_ACTIVITY_BROKEN   /* Published process failure. */
+};
+
+
 /* EN/RU: Copied native metadata; lifetime ID is not a pointer or managed authority.
  * Копия native metadata; lifetime ID не pointer и не managed authority. */
 typedef struct DVM_ResidentCard
@@ -27,6 +45,7 @@ typedef struct DVM_ResidentCard
     int pid;          /* Permanent PID copied before resident execution. */
     int done;         /* TLS destruction completed, published under metadata mutex. */
     int phase;        /* Atomic owner publication; no ordering of managed data is implied. */
+    int activity;     /* Last published execution state; independent from phase. */
 } DVM_ResidentCard;
 
 

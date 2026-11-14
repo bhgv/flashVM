@@ -464,12 +464,19 @@ void dvm_runqueue_ready_sync(FVM_PortSync *sync)
 
 
 /* EN: Publish only the scalar state after the authorized execution transition.
- * process is live and borrowed, state is its new value; no locks or errors.
+ * process is live and borrowed, state is its new value. An optional prebound native
+ * cell outlives Prog; mirror only the scalar there, without locks or heap access.
  * RU: Опубликовать скаляр после разрешённого перехода исполнения. process живой
- * и заимствован, state — новое значение; без блокировок и ошибок. */
+ * и заимствован, state — новое значение. Optional prebound native cell живёт дольше
+ * Prog; копировать туда только scalar, без блокировок и heap access. */
 void dvm_runqueue_set_state(Prog *process, int state)
 {
+    int *observer = runtime_process(process)->resident_observation;
     process->state = state;
+    if (observer)
+    {
+        __atomic_store_n(observer, state, __ATOMIC_RELAXED);
+    }
     __atomic_store_n(&runtime_process(process)->observed_state, state, __ATOMIC_RELEASE);
 }
 

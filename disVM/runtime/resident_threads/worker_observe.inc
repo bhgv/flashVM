@@ -4,6 +4,40 @@
  */
 
 
+/* EN: Translate a copied scalar state into stable diagnostic activity. No target
+ * access, allocation or authority; unknown values remain explicitly Unknown.
+ * RU: Перевести copied scalar state в diagnostic activity. Без target access,
+ * allocation либо authority; неизвестные значения остаются явно Unknown. */
+static int resident_activity(int state)
+{
+    switch (state)
+    {
+    case Pready:
+        return DVM_ACTIVITY_READY;
+    case Psend:
+        return DVM_ACTIVITY_SEND;
+    case Precv:
+        return DVM_ACTIVITY_RECEIVE;
+    case Palt:
+        return DVM_ACTIVITY_ALT;
+    case Prelease:
+        return DVM_ACTIVITY_NATIVE;
+    case DVM_TABLE_WAIT:
+        return DVM_ACTIVITY_TABLE;
+    case DVM_CHILD_EXIT_WAIT:
+        return DVM_ACTIVITY_CHILD;
+    case Pdebug:
+        return DVM_ACTIVITY_DEBUG;
+    case Pexiting:
+        return DVM_ACTIVITY_EXITING;
+    case Pbroken:
+        return DVM_ACTIVITY_BROKEN;
+    default:
+        return DVM_ACTIVITY_UNKNOWN;
+    }
+}
+
+
 /* EN: Borrow output page/count/more during a synchronous metadata copy. after
  * selects stable lifetime IDs; capacity is 1..256. Caller keeps the service and
  * disjoint native output storage alive through return. Return zero unchanged on
@@ -56,6 +90,7 @@ int dvm_resident_observe(
         cards[index].pid = worker->guest_pid;
         cards[index].done = worker->done;
         cards[index].phase = __atomic_load_n(&worker->observation_phase, __ATOMIC_RELAXED);
+        cards[index].activity = resident_activity(__atomic_load_n(&worker->observation_state, __ATOMIC_RELAXED));
     }
     fvm_port_sync_unlock(service.sync);
     *count = used;

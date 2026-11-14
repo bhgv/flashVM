@@ -11,6 +11,7 @@
 #include "managed_workers.h"
 #include "runtime_gc.h"
 #include "runqueue.h"
+#include "table_leases.h"
 #include <limits.h>
 #include <pthread.h>
 #include "channel_sync.h"

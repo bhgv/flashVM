@@ -43,4 +43,24 @@ Processctl: module
     # Phase — интервал, не OS state, причина ожидания либо heap permission.
     residentstate: fn(after: big): (int, big, int, int, int);
 
+    UnknownActivity: con 0; # Unrecognized publication.
+    ReadyActivity: con 1; # Ready hint, not OS CPU state.
+    SendActivity: con 2; # Channel send registration.
+    ReceiveActivity: con 3; # Channel receive registration.
+    AltActivity: con 4; # Channel alt registration.
+    NativeActivity: con 5; # Released native continuation.
+    TableActivity: con 6; # Cooperative table admission.
+    ChildActivity: con 7; # Child retirement/cancellation reply.
+    DebugActivity: con 8; # Retained debug state only.
+    ExitingActivity: con 9; # Published exit.
+    BrokenActivity: con 10; # Published failure.
+
+    # EN: Query a positive exact lifetime ID; return status (1 found, 0 gone,
+    # -1 invalid/unavailable) and copied activity (zero unless found).
+    # Independent from phase; not a channel identity, pin or OS CPU state.
+    # RU: Запросить positive exact lifetime ID; вернуть status (1 найден, 0 исчез,
+    # -1 invalid/unavailable) и copied activity (ноль кроме found).
+    # Независимо от phase; не channel identity, pin либо OS CPU state.
+    residentactivity: fn(id: big): (int, int);
+
 };

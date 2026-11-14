@@ -24,6 +24,9 @@ enum
 };
 
 
+#define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Child retirement/cancellation reply state. */
+
+
 /* Native allocation preserves the complete retained Prog prefix. Every Prog
  * passed to this module must come from this wrapper; free its prefix normally. */
 typedef struct DVM_RuntimeProcess
@@ -54,6 +57,7 @@ typedef struct DVM_RuntimeProcess
     const char *startup_error;         /* Stable registrar failure, read after its reply. */
     int startup_pending;               /* Atomic startup handshake; creator keeps the GC root live. */
     int queued;                        /* Queue membership; published atomically for the dedicated idle loop. */
+    int *resident_observation;         /* Optional native scalar cell; bound before startup, outlives Prog. */
     int observed_state;                /* Atomic state value for foreign request admission, never a resume image. */
     DVM_NativeContext *native_owner;   /* Borrowed continuation owner while off the runnable FIFO. */
     DVM_NativeContext *dispatch_owner; /* Atomic identity of the permanent managed turn, including native waits. */

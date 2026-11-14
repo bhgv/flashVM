@@ -50,7 +50,10 @@ static void publish_resident_slot(void *argument, DVM_ThreadSlot *thread)
 {
     ManagedWorker *worker = argument;
     worker->thread = thread;
-    ((DVM_RuntimeProcess *)worker->guest)->dedicated = worker;
+    DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
+    __atomic_store_n(&worker->observation_state, dvm_runqueue_observed_state(worker->guest), __ATOMIC_RELAXED);
+    resident->resident_observation = &worker->observation_state;
+    resident->dedicated = worker;
     install_worker(worker);
     dvm_runtime_process_root_add(worker->guest);
 }

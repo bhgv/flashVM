@@ -316,9 +316,6 @@ static int guest_cancel_pending_or_close(void)
     return pending;
 }
 
-#define DVM_CHILD_EXIT_WAIT (Pbroken + 2) /* Hosted scheduler state distinct from Bigtable waits. */
-
-
 /* EN: Classify a live borrowed resident for a mailbox request. Caller protects
  * registration under channel_queue_mutex. Read only atomic state/retry values;
  * a later wait change is resolved by the owner, not by this admission hint.

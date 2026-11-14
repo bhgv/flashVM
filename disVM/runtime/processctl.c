@@ -133,6 +133,37 @@ void Processctl_residentstate(void *frame)
 }
 
 
+/* EN: Borrow rooted frame and stage one exact-ID copied activity. A reaped ID
+ * returns zero/gone; invalid/unavailable returns -1/zero. Guard only scalar result
+ * publication; never inspect Prog or extend target lifetime after the copy.
+ * RU: Заимствовать rooted frame и сохранить copied activity по exact ID. Reaped ID
+ * даёт zero/gone; invalid/unavailable даёт -1/zero. Guard только scalar publication;
+ * не читать Prog и не продлевать target lifetime после копирования. */
+void Processctl_residentactivity(void *frame)
+{
+    F_Processctl_residentactivity call;
+    WORD result[2] = {-1, 0}; /* Staged status and copied activity; no managed references. */
+    DVM_ResidentCard card;
+    unsigned int count;
+    int more;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_residentactivity, ret), sizeof(*call.ret));
+    if (sizeof(result) != sizeof(*call.ret))
+    {
+        error(exBounds);
+    }
+    if (call.id > 0 && dvm_resident_observe((unsigned long)(call.id - 1), &card, 1, &count, &more))
+    {
+        result[0] = 0;
+        if (count && card.id == (unsigned long)call.id)
+        {
+            result[0] = 1;
+            result[1] = card.activity;
+        }
+    }
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
 /* EN: Cancel a direct child's wait once; frame/result remain rooted while
  * publishing the staged outcome under cell guards. Invalid PID yields Denied.
  * RU: Один раз отменить ожидание прямого child; frame/result rooted во время

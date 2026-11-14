@@ -22,6 +22,7 @@ typedef struct ManagedWorker
     Prog *guest;                     /* Borrowed until retirement on its own thread. */
     int guest_pid;                   /* Permanent resident PID; initialized before execution. */
     int guest_retired;               /* Set by this guest thread after managed retirement. */
+    int observation_state;           /* Native atomic copy; remains readable after Prog destruction. */
     int observation_phase;           /* Atomic owner-published interval; no managed data ordering. */
     int done;                        /* Published under service.sync after TLS destruction. */
     DVM_ThreadSlot *thread;          /* Registrar handle, joined before this slot is reset. */
