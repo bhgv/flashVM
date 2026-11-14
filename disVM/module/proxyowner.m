@@ -128,4 +128,16 @@ Proxyowner: module
     # EN/RU: Retain a result capability with no renewal of the original callback deadline.
     # Retain result capability без обновления original callback deadline.
     retainuntil: fn(endpoint: ref Endpoint, target: Handle, deadline: int): int;
+
+    # EN/RU: Scalar/lifecycle admission preserves an existing absolute local deadline.
+    # Scalar/lifecycle admission сохраняет existing absolute local deadline.
+    calluntil: fn(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
+                  refs, value, deadline: int): (int, int);
+
+
+    # EN/RU: Typed result admission preserves an existing absolute local deadline.
+    # Typed result admission сохраняет existing absolute local deadline.
+    fetchuntil: fn(endpoint: ref Endpoint, target, left, right: Handle,
+                   refs, value, kind, deadline: int): (int, Handle);
+
 };

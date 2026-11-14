@@ -131,12 +131,16 @@ supervise(endpoint: ref Endpoint, request: ref Request, deadline: int,
 }
 
 
-# EN: Offer immutable request with one overall deadline. Request/reply keep every
-# lease rooted; an abandoned successful clone is finalized from its orphan reply.
-# RU: Предложить immutable request с общим deadline. Request/reply держат leases;
-# abandoned successful clone финализируется из orphan reply.
+# EN: Borrow endpoint/target/left/right and refs/value through immutable request
+# completion. timeout validates a finite budget; deadline zero establishes it once,
+# otherwise preserve the original local deadline. Request/reply root every lease;
+# an abandoned successful clone is finalized from its orphan reply.
+# RU: Borrow endpoint/target/left/right и refs/value до immutable request completion.
+# timeout проверяет finite budget; deadline zero задаёт его один раз, иначе сохраняет
+# original local deadline. Request/reply удерживают leases; abandoned successful
+# clone финализируется из orphan reply.
 offer(endpoint: ref Endpoint, operation: int, target, left, right: Image,
-      refs, value, timeout: int): Reply
+      refs, value, timeout, deadline: int): Reply
 {
     absent := empty();
     if (endpoint == nil || timeout < 1 || timeout > 60000 || refs < 0 || refs > 2) {
@@ -152,7 +156,12 @@ offer(endpoint: ref Endpoint, operation: int, target, left, right: Image,
         (refs > 0 && !current(endpoint, left)) || (refs > 1 && !current(endpoint, right))) {
         return Reply(Stale, 0, absent);
     }
-    deadline := sys->millisec() + timeout;
+    if (deadline == 0) {
+        deadline = sys->millisec() + timeout;
+    }
+    if (deadline <= sys->millisec()) {
+        return Reply(Proxyowner->NotSent, 0, absent);
+    }
     response := chan[1] of Reply;
     request := ref Request(operation, target, left, right, refs, value, deadline, response);
     published := chan[1] of int;
@@ -173,7 +182,7 @@ call(endpoint: ref Endpoint, operation: int, target, left, right: Image,
     if ((operation < Proxyowner->Read || operation > Proxyowner->Stop) && operation != Proxyowner->Add) {
         return (Disconnected, 0);
     }
-    result := offer(endpoint, operation, target, left, right, refs, value, timeout);
+    result := offer(endpoint, operation, target, left, right, refs, value, timeout, 0);
     return (result.status, result.value);
 }
 
@@ -183,7 +192,40 @@ call(endpoint: ref Endpoint, operation: int, target, left, right: Image,
 clone(endpoint: ref Endpoint, source: Image, timeout: int): (int, Image)
 {
     absent := empty();
-    result := offer(endpoint, Proxyowner->Retain, source, absent, absent, 0, 0, timeout);
+    result := offer(endpoint, Proxyowner->Retain, source, absent, absent, 0, 0, timeout, 0);
+    return (result.status, result.image);
+}
+
+
+# EN: Borrow endpoint/target/left/right and refs/value through scalar completion.
+# deadline is absolute local time; return status/value without renewing or replaying
+# offered work. Original caller wait policy still precedes all spawns.
+# RU: Borrow endpoint/target/left/right и refs/value до scalar completion. deadline —
+# absolute local time; вернуть status/value без renewal/replay offered work.
+# Original caller wait policy по-прежнему проверяется до всех spawns.
+calluntil(endpoint: ref Endpoint, operation: int, target, left, right: Image,
+          refs, value, deadline: int): (int, int)
+{
+    if ((operation < Proxyowner->Read || operation > Proxyowner->Stop) && operation != Proxyowner->Add) {
+        return (Disconnected, 0);
+    }
+    result := offer(endpoint, operation, target, left, right, refs, value,
+        deadline - sys->millisec(), deadline);
+    return (result.status, result.value);
+}
+
+
+# EN: Borrow endpoint/source under absolute local deadline. Return status and an
+# independent counted Image on success; failure leaves source ownership unchanged.
+# Known expiry offers no Retain; Unknown never authorizes a retry.
+# RU: Borrow endpoint/source под absolute local deadline. Вернуть status и independent
+# counted Image при success; failure сохраняет source ownership. Known expiry не
+# предлагает Retain; Unknown не разрешает retry.
+cloneuntil(endpoint: ref Endpoint, source: Image, deadline: int): (int, Image)
+{
+    absent := empty();
+    result := offer(endpoint, Proxyowner->Retain, source, absent, absent, 0, 0,
+        deadline - sys->millisec(), deadline);
     return (result.status, result.image);
 }
 
@@ -196,7 +238,7 @@ fetch(endpoint: ref Endpoint, target, left, right: Image,
     if (kind != Proxyhost->Variable && kind != Proxyhost->Function) {
         return (Proxyowner->NotSent, empty());
     }
-    result := offer(endpoint, Proxyowner->ReturnVariable + kind, target, left, right, refs, value, timeout);
+    result := offer(endpoint, Proxyowner->ReturnVariable + kind, target, left, right, refs, value, timeout, 0);
     return (result.status, result.image);
 }
 
@@ -206,7 +248,7 @@ fetch(endpoint: ref Endpoint, target, left, right: Image,
 importref(endpoint: ref Endpoint, function: Image, slot, timeout: int): (int, Image)
 {
     absent := empty();
-    result := offer(endpoint, Proxyowner->ImportRoute, function, absent, absent, 0, slot, timeout);
+    result := offer(endpoint, Proxyowner->ImportRoute, function, absent, absent, 0, slot, timeout, 0);
     return (result.status, result.image);
 }
 
@@ -216,7 +258,7 @@ importref(endpoint: ref Endpoint, function: Image, slot, timeout: int): (int, Im
 routed(endpoint: ref Endpoint, function, left, right: Image,
        refs, value, timeout: int): (int, int)
 {
-    result := offer(endpoint, Proxyowner->RoutedInvoke, function, left, right, refs, value, timeout);
+    result := offer(endpoint, Proxyowner->RoutedInvoke, function, left, right, refs, value, timeout, 0);
     return (result.status, result.value);
 }
 
@@ -226,7 +268,7 @@ routed(endpoint: ref Endpoint, function, left, right: Image,
 routedfetch(endpoint: ref Endpoint, function, left, right: Image,
             refs, value, timeout: int): (int, Image)
 {
-    result := offer(endpoint, Proxyowner->RoutedReturnVariable, function, left, right, refs, value, timeout);
+    result := offer(endpoint, Proxyowner->RoutedReturnVariable, function, left, right, refs, value, timeout, 0);
     return (result.status, result.image);
 }
 
@@ -236,7 +278,7 @@ routedfetch(endpoint: ref Endpoint, function, left, right: Image,
 collected(endpoint: ref Endpoint, timeout: int): (int, int)
 {
     absent := empty();
-    result := offer(endpoint, GCProgress, absent, absent, absent, 0, 0, timeout);
+    result := offer(endpoint, GCProgress, absent, absent, absent, 0, 0, timeout, 0);
     return (result.status, result.value);
 }
 

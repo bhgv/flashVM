@@ -92,6 +92,17 @@ Proxynet: module
              refs, value, timeout: int): (int, int);
 
 
+    # EN/RU: Borrow the existing local absolute deadline; reject known expiry before effects.
+    # Borrow existing local absolute deadline; отказать known expiry до effects.
+    calluntil: fn(endpoint: ref Endpoint, operation: int, target, left, right: Image,
+                  refs, value, deadline: int): (int, int);
+
+
+    # EN/RU: Clone under an existing local absolute deadline, with unchanged source ownership.
+    # Clone под existing local absolute deadline, сохранив source ownership.
+    cloneuntil: fn(endpoint: ref Endpoint, source: Image, deadline: int): (int, Image);
+
+
     # EN: Retain a distinct remote owner; ordinary Image/ref copies share one lease.
     # Allocation/quota refusal occurs before Retain. Unknown is never replayed.
     # RU: Удержать отдельный remote owner; обычные Image/ref copies делят lease.

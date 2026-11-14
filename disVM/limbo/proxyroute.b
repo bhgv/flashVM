@@ -93,10 +93,12 @@ run(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
         value := 0;
         terminal := 0;
         closed := 0;
-        remaining = access.deadline - sys->millisec();
-        if (remaining > timeout) {
-            remaining = timeout;
+        deadline := access.deadline;
+        limit := sys->millisec() + timeout;
+        if (limit < deadline) {
+            deadline = limit;
         }
+        remaining = deadline - sys->millisec();
         if (access.source != nil && gc->belongs(queue, access.source.lease) && gc->active(access.source.lease)) {
             if (remaining <= 0 || access.operation < Proxyref->Read || access.operation > Proxyref->Close) {
                 status = Proxyref->NotSent;
@@ -111,7 +113,7 @@ run(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
                     closed = gc->consume(access.source.lease);
                 }
                 if (access.operation != Proxyref->Close || closed) {
-                    (status, value) = net->call(source, operation, image, empty, empty, 0, access.value, remaining);
+                    (status, value) = net->calluntil(source, operation, image, empty, empty, 0, access.value, deadline);
                     terminal = closed || status == Proxyref->Unknown || status == Proxyref->Disconnected;
                 }
             }
@@ -160,17 +162,19 @@ begin(setup: ref Setup)
         ready <-= (Proxyhost->Capacity, nil);
         return;
     }
-    remaining := setup.deadline - sys->millisec();
+    deadline := setup.deadline;
+    limit := sys->millisec() + timeout;
+    if (limit < deadline) {
+        deadline = limit;
+    }
+    remaining := deadline - sys->millisec();
     if (remaining <= 0) {
         gc->close(queue);
         setup.image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
         ready <-= (Proxyref->NotSent, nil);
         return;
     }
-    if (remaining > timeout) {
-        remaining = timeout;
-    }
-    (status, copy) := net->clone(source, setup.image, remaining);
+    (status, copy) := net->cloneuntil(source, setup.image, deadline);
     setup.image = Proxynet->Image(big 0, big 0, Proxyowner->Handle(big 0, 0, big 0), nil);
     if (status != 0) {
         gc->close(queue);

@@ -133,6 +133,42 @@ fetch(endpoint: ref Endpoint, target, left, right: Handle,
 }
 
 
+# EN: Borrow endpoint and target/left/right handles plus refs/value until scalar
+# completion. Preserve the absolute local deadline through request allocation;
+# return status/value, refusing invalid/expired admission without native effects.
+# RU: Borrow endpoint и target/left/right handles с refs/value до scalar completion.
+# Сохранить absolute local deadline при request allocation; вернуть status/value,
+# отказать invalid/expired admission без native effects.
+calluntil(endpoint: ref Endpoint, operation: int, target, left, right: Handle,
+          refs, value, deadline: int): (int, int)
+{
+    if ((operation < Read || operation > Retain) && operation != Add) {
+        return (NotSent, 0);
+    }
+    (status, result, unused) := offer(endpoint, operation, target, left, right,
+        refs, value, deadline - sys->millisec(), 0, nil, nil, nil, deadline, nil);
+    return (status, result);
+}
+
+
+# EN: Borrow endpoint/target/left/right and refs/value under local absolute deadline.
+# kind selects Variable/Function; success returns a new raw session-owned handle
+# requiring explicit Drop, failure returns absent. Never renew callback admission.
+# RU: Borrow endpoint/target/left/right и refs/value под local absolute deadline. kind
+# выбирает Variable/Function; success возвращает new raw session-owned handle с
+# explicit Drop, failure — absent. Не обновлять callback admission deadline.
+fetchuntil(endpoint: ref Endpoint, target, left, right: Handle,
+           refs, value, kind, deadline: int): (int, Handle)
+{
+    if (kind != Proxyhost->Variable && kind != Proxyhost->Function) {
+        return (NotSent, Handle(big 0, 0, big 0));
+    }
+    (status, unused, returned) := offer(endpoint, ReturnVariable + kind,
+        target, left, right, refs, value, deadline - sys->millisec(), 0, nil, nil, nil, deadline, nil);
+    return (status, returned);
+}
+
+
 # EN/RU: Routed arguments stay managed and pinned by request; native pins capture only.
 # Routed arguments остаются managed и удержаны request; native pins держат capture.
 routed(endpoint: ref Endpoint, target: Handle, left, right: ref Proxyref->Ref,

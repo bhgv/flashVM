@@ -260,7 +260,7 @@ dispatch(context: ref Context, operation: int, target, left, right: Proxyowner->
         if (operation == Proxyowner->Retain && view.owners >= 256) {
             return (1, Proxyhost->Capacity, 0, absent, 0);
         }
-        (status, result) = proxy->call(context.endpoint, operation, target, absent, absent, 0, 0, timeout);
+        (status, result) = proxy->calluntil(context.endpoint, operation, target, absent, absent, 0, 0, deadline);
         if (status == 0) {
             if (operation == Proxyowner->Retain) {
                 view.owners++;

@@ -124,18 +124,18 @@ run(input, output: ref Sys->FD, high, low: big, timeout: int,
             }
             if (!handled && (operation == Proxyowner->ReturnVariable || operation == Proxyowner->ReturnFunction)) {
                 kind := operation - Proxyowner->ReturnVariable;
-                (status, returned) = proxy->fetch(endpoint,
+                (status, returned) = proxy->fetchuntil(endpoint,
                     codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
                     codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
-                    int codec->get(bytes, Proxyframe->Value), kind, remaining);
+                    int codec->get(bytes, Proxyframe->Value), kind, deadline);
                 if (status == 0) {
                     resultkind = kind + 1;
                 }
             } else if (!handled) {
-                (status, value) = proxy->call(endpoint, operation,
+                (status, value) = proxy->calluntil(endpoint, operation,
                     codec->handle(bytes, Proxyframe->Target), codec->handle(bytes, Proxyframe->Left),
                     codec->handle(bytes, Proxyframe->Right), int codec->get(bytes, Proxyframe->Refs),
-                    int codec->get(bytes, Proxyframe->Value), remaining);
+                    int codec->get(bytes, Proxyframe->Value), deadline);
             }
             response = codec->answer(bytes, status, value);
             codec->put(response, Proxyframe->ResultKind, big resultkind);
