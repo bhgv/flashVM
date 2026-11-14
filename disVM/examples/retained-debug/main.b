@@ -98,7 +98,7 @@ builtin(ready: chan of int)
     held := array[16] of byte;
     held[0] = byte 201;
     ready <-= ctl->pid();
-    sys->remove("retained-debug-unsupported");
+    sys->remove(nil); # Real native builtin rejects nil before filesystem effects.
     if (held[0] != byte 201) {
         raise "native caller root changed";
     }

@@ -1,5 +1,8 @@
 # Native namespace groups: first VFS integration
 
+`Sys.remove` now uses one retained namespace selection for file/symlink or empty
+directory removal: [behavior and limits](NAMESPACE-REMOVE.md).
+
 Each resident owns a native reference to a namespace group. `spawn` shares the
 parent's group. The group contains its virtual current directory, native root
 and replacement bindings. It has its own portable mutex; no global VM exclusion

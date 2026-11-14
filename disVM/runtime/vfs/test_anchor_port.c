@@ -2,6 +2,9 @@
  * EN: Real anchor rename, independent cursors, concurrent opens and late stdio failure.
  * RU: Настоящий rename anchor, независимые cursors, concurrent opens и late stdio failure.
  */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L /* POSIX symlink fixture declarations in strict C99 builds. */
+#endif
 #include "anchor_port.h"
 #include <pthread.h>
 #include <stdio.h>
@@ -10,12 +13,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #define ANCHOR_TEST_PATH 4096                             /* Native fixture path capacity including terminator. */
 #define ANCHOR_TEST_OWNERS 8                              /* Concurrent independently positioned file clients. */
 #define ANCHOR_TEST_ROUNDS 128                            /* Successful child opens per OS owner. */
 static int fail_stdio;                                    /* Main-thread-only injection, before test owners start. */
 static int failed_descriptor = -1;                        /* Actual FD passed to the omitted fdopen. */
+static unsigned removers;                                 /* Successful unlink owners, protected by test mutex. */
 static unsigned winners;                                  /* Successful O_EXCL owners, under mutex. */
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; /* Test result only. */
 FILE *__real_fdopen(int, const char *);
@@ -114,6 +119,12 @@ static void *owner(void *argument)
     {
         require(!file, "failed exclusive open published a handle");
     }
+    if (fvm_port_anchor_remove_at(anchor, "one-remove") == FVM_OK)
+    {
+        pthread_mutex_lock(&mutex);
+        removers++;
+        pthread_mutex_unlock(&mutex);
+    }
     for (index = 0; index < ANCHOR_TEST_ROUNDS; index++)
     {
         read_token(anchor);
@@ -153,6 +164,31 @@ int main(void)
     require(fvm_port_anchor_open_at(anchor, ".", &child) == FVM_OK, "child anchor");
     require(fvm_port_file_open_at(child, "/token", "r", &file) == FVM_INVALID_ARGUMENT && !file,
             "absolute child accepted");
+    write_path("moved/remove", "ABC");
+    write_path("original/remove", "ZZZ");
+    require(fvm_port_anchor_remove_at(child, "remove") == FVM_OK, "anchored remove");
+    require(fvm_port_path_info("original/remove", &after) == FVM_OK &&
+                fvm_port_path_info("moved/remove", &after) != FVM_OK,
+            "remove redirected to decoy");
+    write_path("outside", "ABC");
+    require(!mkdir("outside-dir", 0700) && !symlink("../outside", "moved/link") &&
+                !symlink("../outside-dir", "moved/dir-link") && !symlink("../absent", "moved/dangling"),
+            "symlink fixture");
+    require(fvm_port_anchor_remove_at(child, "link") == FVM_OK &&
+                fvm_port_anchor_remove_at(child, "dir-link") == FVM_OK &&
+                fvm_port_anchor_remove_at(child, "dangling") == FVM_OK &&
+                fvm_port_path_info("outside", &after) == FVM_OK && fvm_port_path_info("outside-dir", &after) == FVM_OK,
+            "remove followed final symlink");
+    require(!mkdir("moved/empty", 0700) && !mkdir("moved/full", 0700), "directory remove fixtures");
+    write_path("moved/full/keep", "ABC");
+    require(fvm_port_anchor_remove_at(child, "empty") == FVM_OK && fvm_port_anchor_remove_at(child, "full") != FVM_OK &&
+                fvm_port_path_info("moved/full/keep", &after) == FVM_OK,
+            "recursive removal occurred");
+    require(fvm_port_anchor_remove_at(child, ".") == FVM_INVALID_ARGUMENT &&
+                fvm_port_anchor_remove_at(child, "..") == FVM_INVALID_ARGUMENT &&
+                fvm_port_anchor_remove_at(child, "/outside") == FVM_INVALID_ARGUMENT,
+            "invalid removal accepted");
+    write_path("moved/one-remove", "ABC");
     fail_stdio = 1;
     require(fvm_port_file_open_at(child, "token", "w", &file) != FVM_OK && !file, "stdio failure not injected");
     require(failed_descriptor >= 0 && fcntl(failed_descriptor, F_GETFD) < 0 && errno == EBADF,
@@ -166,9 +202,21 @@ int main(void)
     {
         require(!pthread_join(owners[index], NULL), "join native owner");
     }
+    require(removers == 1, "concurrent unlink did not have one winner");
     require(winners == 1, "exclusive creation did not have one owner");
+    require(fvm_port_file_open_at(child, "token", "r", &file) == FVM_OK, "retained removal FD");
+    require(fvm_port_anchor_remove_at(child, "token") == FVM_OK, "remove opened file");
+    {
+        char payload[3];
+        size_t count;
+        require(fvm_port_file_read(file, payload, sizeof(payload), &count) == FVM_OK && count == sizeof(payload) &&
+                    !memcmp(payload, "ABC", sizeof(payload)),
+                "unlink invalidated open descriptor");
+    }
+    fvm_port_file_close(file);
     fvm_port_anchor_close(child);
     fvm_port_anchor_close(anchor);
-    puts("PASS anchor rename, independent cursors, eight owners, exclusive create and late stdio failure");
+    puts(
+        "PASS anchor rename, cursors, eight owners, create/remove races, symlinks, open-FD unlink and late stdio failure");
     return 0;
 }

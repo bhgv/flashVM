@@ -52,6 +52,17 @@ FVM_Result fvm_port_file_open_at(FVM_PortAnchor *parent, const char *relative, c
  * RU: Открыть независимый directory cursor от parent. Inputs заимствованы,
  * успех передаёт *out; rename не перенаправляет enumeration/metadata. */
 FVM_Result fvm_port_directory_open_at(FVM_PortAnchor *parent, const char *relative, FVM_PortDirectory **out);
+/* EN: Remove relative file/symlink or empty directory against live parent.
+ * Follow no final symlink when selecting unlink/rmdir; never recursively remove.
+ * Refuse absolute/empty paths and final dot/dot-dot. Return port status; no
+ * rollback/retry after success. Parent borrowed through blocking native I/O.
+ * RU: Удалить relative file/symlink либо пустой каталог от живого parent.
+ * Final symlink не разыменовывается; recursive remove нет. Absolute/empty и
+ * final dot/dot-dot отвергаются. Port status; после успеха нет rollback/retry.
+ * Parent заимствован до конца blocking native I/O. */
+FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relative);
+
+
 #ifdef __cplusplus
 }
 #endif

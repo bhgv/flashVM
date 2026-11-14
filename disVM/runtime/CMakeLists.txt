@@ -197,6 +197,7 @@ add_executable(disvm
     vfs/boot.c
     vfs/loader.c
     vfs/module_file.c
+    vfs/remove.c
     vfs/observation.c
     vfs/anchor.c
     vfs/resource.c

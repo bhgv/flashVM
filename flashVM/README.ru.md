@@ -6,7 +6,7 @@
 
 [Exclusive binary file creation / Эксклюзивное создание](doc/EXCLUSIVE_FILES.md)
 
-Версия разработки: **0.1697** ([VERSION.txt](VERSION.txt)). Все стадии
+Версия разработки: **0.1698** ([VERSION.txt](VERSION.txt)). Все стадии
 [роудмапа](doc/ROADMAP.md) остаются открытыми; текущие доказательства и
 ограничения описаны в [приёмке](doc/RELEASE_ACCEPTANCE.md).
 По действующему поручению основным временно является [GitHub](https://github.com/bhgv/flashVM):
@@ -17,6 +17,8 @@
 Author и committer: `bhgv <bhgv@bhgv.bhgv>`.
 Флаг `--jit-emulator` записывает новые проверки инструкций/ABI в Unicorn;
 [условия проверки](doc/PLATFORM_VALIDATION.ru.md).
+
+Удаление через held directory снимает final symlinks и удаляет только пустые каталоги. [Контракт](doc/DIRECTORY_REMOVE.ru.md). Windows relative backend и полная provider VFS остаются работой.
 
 Portable directory resources удерживают POSIX identity каталога при rename и дают независимые relative file/cursor операции. [Контракт](doc/DIRECTORY_ANCHORS.ru.md). Windows anchor backend пока не реализован; стадии Flash не закрываются.
 

@@ -1,5 +1,7 @@
 # FlashVM stage status / Состояние стадий — v0.1421
 
+Checkpoint v0.1698: directory-relative removal unlinks final symlinks and removes only empty directories. DisVM Sys.remove retains namespace selection through native I/O; opened files/modules survive unlink. Windows backend remains UNSUPPORTED, complete VFS/union and all Flash compatibility stages stay open. [EN](DIRECTORY_REMOVE.md) / [RU](DIRECTORY_REMOVE.ru.md).
+
 Checkpoint v0.1697: portable directory anchors retain POSIX directory identity through rename and support independent relative file/directory operations. DisVM namespace groups and in-flight imports retain these handles without global execution exclusion. Windows returns UNSUPPORTED; physical non-Linux acceptance, full Chan/provider VFS and all Flash compatibility stages remain open. [EN](DIRECTORY_ANCHORS.md) / [RU](DIRECTORY_ANCHORS.ru.md).
 
 Checkpoint v0.1657: our Coco/R interface library resolves outer aliases through lexical scopes; the native C backend emits canonical primitive ABI metadata. [EN](../../compiler/limbo/frontend/ALIASES.md) / [RU](../../compiler/limbo/frontend/ALIASES.ru.md). Inferno dial/file2chan updates and our published exact-control-write correction pin the core at 0ac9d293. Full body typing/FIR lowering, composite ABI and physical platform milestones remain open.

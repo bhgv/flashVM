@@ -1,5 +1,8 @@
 # Native-группы namespace: первый блок VFS
 
+`Sys.remove` теперь использует один retained namespace selection для удаления
+file/symlink либо пустого каталога: [поведение и границы](NAMESPACE-REMOVE.ru.md).
+
 Текущий контракт directory identity: [удерживаемые каталоги](DIRECTORY-ANCHORS.ru.md).
 Cwd/import и directory bindings теперь удерживают реальные native handles;
 open/stat/load используют retained selection. Source-filter unmount сравнивает

@@ -1,5 +1,8 @@
 # Native files and directories — v0.1650
 
+`Sys.remove` now uses one retained namespace selection for file/symlink or empty
+directory removal: [behavior and limits](NAMESPACE-REMOVE.md).
+
 [Captured frames, packed tuples and old-owner validation](SYS_CAPTURE.md) now apply
 to the native metadata adapters; OS filesystem behavior stays in ports.
 

@@ -9,6 +9,7 @@ ENTRIES = (
     "Sys_chdir",
     "Sys_bind",
     "Sys_unmount",
+    "Sys_remove",
 )  # Native Sys entries implemented together.
 
 

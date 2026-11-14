@@ -68,6 +68,13 @@ FVM_Result
 dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file, FVM_PortDirectory **directory);
 
 
+/* EN/RU: Remove selected native entry; plan/anchor borrowed through native I/O.
+ * No fallback reopening stale display path; no recursive directory deletion.
+ * Удалить selected native entry; plan/anchor заимствованы до конца I/O.
+ * Без fallback через stale display path и recursive удаления. Return port status. */
+FVM_Result dvm_resource_remove(DVM_ResourcePlan *plan);
+
+
 /* EN/RU: Pin startup root/cwd/import resources before group publication; one/zero.
  * Закрепить startup root/cwd/import до публикации группы; один/ноль. */
 int dvm_namespace_pin(DVM_Namespace *group);

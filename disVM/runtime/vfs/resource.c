@@ -74,3 +74,11 @@ dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file,
     return plan->anchor ? fvm_port_file_open_at(dvm_anchor_port(plan->anchor), plan->relative, mode, file)
                         : fvm_port_file_open(plan->names.native, mode, file);
 }
+
+
+/* EN/RU: See resource.h; production groups always have retained anchors.
+ * См. resource.h; production groups всегда имеют retained anchors. */
+FVM_Result dvm_resource_remove(DVM_ResourcePlan *plan)
+{
+    return plan->anchor ? fvm_port_anchor_remove_at(dvm_anchor_port(plan->anchor), plan->relative) : FVM_UNSUPPORTED;
+}

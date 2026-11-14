@@ -204,3 +204,29 @@ FVM_Result fvm_port_directory_open_at(FVM_PortAnchor *parent, const char *relati
     *out = directory;
     return FVM_OK;
 }
+
+
+/* EN/RU: See anchor_port.h. Classify final entry without following symlinks;
+ * native unlinkat refuses nonempty directories and closes no borrowed handle.
+ * См. anchor_port.h. Final entry классифицируется без follow symlinks;
+ * unlinkat отклоняет непустой каталог и не закрывает borrowed handle. */
+FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relative)
+{
+    struct stat native;
+    const char *leaf;
+    if (!parent || !fs_relative(relative))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    leaf = strrchr(relative, '/');
+    leaf = leaf ? leaf + 1 : relative;
+    if (!*leaf || !strcmp(leaf, ".") || !strcmp(leaf, ".."))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (fstatat(parent->descriptor, relative, &native, AT_SYMLINK_NOFOLLOW))
+    {
+        return FVM_ERROR;
+    }
+    return unlinkat(parent->descriptor, relative, S_ISDIR(native.st_mode) ? AT_REMOVEDIR : 0) ? FVM_ERROR : FVM_OK;
+}

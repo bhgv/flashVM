@@ -71,3 +71,13 @@ FVM_Result fvm_port_directory_open_at(FVM_PortAnchor *parent, const char *relati
     *out = NULL;
     return FVM_UNSUPPORTED;
 }
+
+
+/* EN/RU: No native relative HANDLE removal backend; do not reopen display path.
+ * Нет native relative HANDLE removal backend; не переоткрывать display path. */
+FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relative)
+{
+    (void)parent;
+    (void)relative;
+    return FVM_UNSUPPORTED;
+}

@@ -2,6 +2,18 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: удаление файлов через native namespace
+
+Sys.remove выполняет один retained parent/name unlink либо empty-directory removal
+вне namespace mutex и managed admission. Result publication guarded; эффект не
+повторяется. Открытые FD/Module code живы после unlink; новый load image fails.
+Четыре owners проверяют real rename/decoys, file bindings, shared result cell,
+одного winner и zero live anchors. Port тестирует final/dangling symlinks,
+empty/full dirs и восемь OS owners.69 mandatory workloads включают namespace-remove.
+[RU](NAMESPACE-REMOVE.ru.md), [EN](NAMESPACE-REMOVE.md),
+[пример](../examples/namespace-remove/README.ru.md).
+Windows relative backend, full Chan/providers и union по-прежнему не заявляются.
+
 ## 2026-11-15: namespace в debugger по запросу
 
 Команды namespace/namespace-read показывают root/cwd/import и все bindings
