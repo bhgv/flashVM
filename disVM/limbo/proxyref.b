@@ -23,13 +23,21 @@ init()
 }
 
 
-# EN/RU: One finite alarm, publishing its PID and buffered timeout without waiting for receiver.
-# Конечный alarm передаёт PID и buffered timeout без ожидания receiver.
-alarm(started, signal: chan of int, deadline: int)
+# EN: One watchdog borrows state/deadline; observe closure within one polling slice
+# without renewing the original deadline. Publish PID and buffered wakeup.
+# RU: Один watchdog заимствует state/deadline; увидеть closure за один polling slice
+# без обновления original deadline. Передать PID и buffered wakeup.
+watch(state: ref State, started, signal: chan of int, deadline: int)
 {
     started <-= control->pid();
-    remaining := deadline - sys->millisec();
-    if (remaining > 0) {
+    while (!state.closed) {
+        remaining := deadline - sys->millisec();
+        if (remaining <= 0) {
+            break;
+        }
+        if (remaining > 100) {
+            remaining = 100;
+        }
         sys->sleep(remaining);
     }
     signal <-= 1;
@@ -47,20 +55,27 @@ supervise(access: ref Access, published: chan of int, completed: chan of (int, i
     deadline := access.deadline;
     started := chan[1] of int;
     signal := chan[1] of int;
-    spawn alarm(started, signal, deadline);
+    spawn watch(source.state, started, signal, deadline);
     timer := <-started;
     offered := 0;
     result := (NotSent, 0);
-    if (sys->millisec() < deadline) {
+    if (!source.state.closed && sys->millisec() < deadline) {
         alt {
             source.requests <-= access => offered = 1;
             <-signal => {}
         }
     }
+    if (!offered && source.state.closed) {
+        result = (Disconnected, 0);
+    }
     if (offered) {
         alt {
             result = <-access.reply => {}
-            <-signal => result = (Unknown, 0);
+            <-signal =>
+                alt {
+                    result = <-access.reply => {}
+                    * => result = (Unknown, 0);
+                }
         }
     }
     control->killwait(timer);

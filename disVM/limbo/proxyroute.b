@@ -117,12 +117,14 @@ run(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
             }
         }
         if (terminal) {
-            state.closed = 1;
             gc->close(queue);
         }
+        # EN/RU: Publish the active result before closure wakes queued access waiters.
+        # Опубликовать active result до closure, пробуждающего queued access waiters.
         access.reply <-= (status, value);
         access = nil;
         if (terminal) {
+            state.closed = 1;
             return closed;
         }
         idle = sys->millisec() + timeout;

@@ -69,6 +69,27 @@ alarm(started, signal: chan of int, deadline: int)
 }
 
 
+# EN: One watchdog borrows endpoint/deadline and signals at terminal state or the
+# original deadline. Polling never renews the budget and never closes/replays IO.
+# RU: Один watchdog заимствует endpoint/deadline и сообщает terminal state либо
+# original deadline. Polling не обновляет budget и не закрывает/повторяет IO.
+watch(endpoint: ref Endpoint, started, signal: chan of int, deadline: int)
+{
+    started <-= control->pid();
+    while (!endpoint.state.closed) {
+        remaining := deadline - sys->millisec();
+        if (remaining <= 0) {
+            break;
+        }
+        if (remaining > 100) {
+            remaining = 100;
+        }
+        sys->sleep(remaining);
+    }
+    signal <-= 1;
+}
+
+
 # EN: Own alarm/completion until the original request finishes, even when its
 # public caller retires. endpoint/request/deadline are immutable borrowed inputs;
 # published/completed are buffered outputs. Never renew or replay offered work.
@@ -82,20 +103,27 @@ supervise(endpoint: ref Endpoint, request: ref Request, deadline: int,
     absent := empty();
     started := chan[1] of int;
     signal := chan[1] of int;
-    spawn alarm(started, signal, deadline);
+    spawn watch(endpoint, started, signal, deadline);
     timer := <-started;
     delivered := 0;
     result := Reply(Proxyowner->NotSent, 0, absent);
-    if (sys->millisec() < deadline) {
+    if (!endpoint.state.closed && sys->millisec() < deadline) {
         alt {
             endpoint.requests <-= request => delivered = 1;
             <-signal => {}
         }
     }
+    if (!delivered && endpoint.state.closed) {
+        result.status = Disconnected;
+    }
     if (delivered) {
         alt {
             result = <-request.reply => {}
-            <-signal => result = Reply(Proxyowner->Unknown, 0, absent);
+            <-signal =>
+                alt {
+                    result = <-request.reply => {}
+                    * => result = Reply(Proxyowner->Unknown, 0, absent);
+                }
         }
     }
     control->killwait(timer);
@@ -312,11 +340,16 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
                 result.image = Image(endpoint.high, endpoint.low, returned, staged);
             }
         }
-        if (closed || (admitted && request.operation == Proxyowner->Stop)) {
-            endpoint.state.closed = 1;
+        terminal := closed || (admitted && request.operation == Proxyowner->Stop);
+        if (terminal) {
             gc->close(connection);
         }
+        # EN/RU: Publish the active reply before closure wakes other queued callers.
+        # Опубликовать active reply до closure, пробуждающего queued callers.
         request.reply <-= result;
+        if (terminal) {
+            endpoint.state.closed = 1;
+        }
         request = nil;
         staged = nil;
         result = Reply(0, 0, absent);
