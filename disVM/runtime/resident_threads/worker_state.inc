@@ -14,6 +14,7 @@ typedef struct ManagedWorker
     struct ManagedWorker *wake_next;   /* Registered under service.sync until thread exit. */
     DVM_OwnerMessage *staged_reply;    /* Owner-only reply removed before heap admission. */
     int reply_in_transit;              /* Published to the controller until the owner applies the reply. */
+    DVM_DiagnosticMailbox *debug;    /* Independent bounded native query/reply credits. */
     FVM_PortSync *wake;                /* Dedicated readiness condition and generation lock. */
     int startup_committed;             /* Creator has installed the slot, under wake. */
     int wake_stopped;                  /* Stop/failure latch under wake. */
@@ -80,3 +81,8 @@ static void publish_resident_phase(ManagedWorker *worker, int phase)
 {
     __atomic_store_n(&worker->observation_phase, phase, __ATOMIC_RELAXED);
 }
+
+
+/* EN/RU: Service only this permanent owner's bounded diagnostic mailbox.
+ * Обслужить только bounded diagnostic mailbox своего permanent owner. */
+static void service_debug_mailbox(ManagedWorker *worker);

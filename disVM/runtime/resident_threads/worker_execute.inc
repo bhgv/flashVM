@@ -35,6 +35,7 @@ static void execute(void *argument)
         {
             dvm_native_context_destroy(context);
         }
+        dvm_diagnostic_close(worker->debug);
         fvm_port_sync_lock(service.sync);
         unregister_dedicated_wait(worker);
         publish_resident_phase(worker, DVM_RESIDENT_DONE);
@@ -92,6 +93,7 @@ static void execute(void *argument)
         {
             while (!stopping() && !worker->guest_retired)
             {
+                service_debug_mailbox(worker);
                 publish_resident_phase(worker, DVM_RESIDENT_DISPATCH);
                 increment_resident_counter(&worker->observed_dispatches);
                 int progress = service.turn();
@@ -161,6 +163,7 @@ static void execute(void *argument)
             fvm_port_thread_sleep_us(50);
         }
     }
+    dvm_diagnostic_close(worker->debug);
     publish_resident_phase(worker, DVM_RESIDENT_TEARDOWN);
     if (!dvm_native_context_unbind(context) || !dvm_native_context_destroy(context))
     {

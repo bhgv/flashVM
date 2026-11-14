@@ -75,4 +75,27 @@ Processctl: module
     # Одно согласованное разделение registry, без controller/collector/I/O helpers.
     residentsummary: fn(): (int, big, big, big, big, big);
 
+    DiagReady: con 1; # Accepted request or consumed complete reply.
+    DiagPending: con 0; # Permanent owner has not answered.
+    DiagInvalid: con -1; # Invalid scalar argument.
+    DiagFull: con -2; # Eight pending/ready reply credits occupied.
+    DiagClosed: con -3; # Owner retired; pending reply closed.
+    DiagMissing: con -4; # Registry target/ticket no longer exists.
+    DiagDenied: con -5; # Ticket belongs to another requester.
+    DiagExhausted: con -6; # Lifetime ticket counter exhausted.
+
+    # EN: Submit copied scalar probe to exact resident; return status/ticket.
+    # RU: Отправить copied scalar probe в exact resident; вернуть status/ticket.
+    residentrequest: fn(id: big, cookie: big): (int, big);
+
+    # EN: Poll own ticket: status, owner PID, cookie, dispatches, turns, waits.
+    # Ready/Closed consume credit; Pending/terminal errors have zero payload.
+    # RU: Poll своего ticket: status, owner PID, cookie, dispatches, turns, waits.
+    # Ready/Closed поглощают credit; Pending/errors дают zero payload.
+    residentreply: fn(id: big, ticket: big): (int, int, big, big, big, big);
+
+    # EN: Forget only own query; ordinary guest operations remain independent.
+    # RU: Забыть только свой query; обычные guest operations независимы.
+    residentforget: fn(id: big, ticket: big): int;
+
 };

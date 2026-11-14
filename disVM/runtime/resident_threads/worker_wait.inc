@@ -104,8 +104,8 @@ static int leave_empty(DVM_NativeWorldSite site)
 static int dedicated_work_pending(ManagedWorker *worker)
 {
     DVM_RuntimeProcess *resident = (DVM_RuntimeProcess *)worker->guest;
-    return __atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) || dvm_messages_pending(resident->messages, 0, 0) ||
-           dvm_messages_pending(resident->messages, 1, 0);
+    return dvm_diagnostic_pending(worker->debug) || __atomic_load_n(&resident->queued, __ATOMIC_ACQUIRE) ||
+           dvm_messages_pending(resident->messages, 0, 0) || dvm_messages_pending(resident->messages, 1, 0);
 }
 
 
@@ -124,6 +124,7 @@ static void wait_dedicated_work(ManagedWorker *worker)
         fvm_port_sync_wait(worker->wake);
     }
     fvm_port_sync_unlock(worker->wake);
+    service_debug_mailbox(worker);
     publish_resident_phase(worker, DVM_RESIDENT_SCHEDULER);
 }
 
@@ -271,6 +272,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
         {
             fvm_port_sync_destroy(worker->wake);
         }
+        dvm_diagnostic_destroy(worker->debug);
         free(worker);
     }
     return !stopping();

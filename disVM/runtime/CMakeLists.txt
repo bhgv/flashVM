@@ -178,6 +178,7 @@ add_executable(disvm
     runqueue_native.c
     process_lifetime.c
     owner_messages.c
+    diagnostics/mailbox.c
     channel_match.c
     host_cancellations.c
     thread_registrar.c

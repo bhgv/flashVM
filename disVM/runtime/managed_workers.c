@@ -25,6 +25,7 @@
 #include "resident_threads/observation_counter.h"
 #include "resident_threads/worker_state.inc"
 #include "resident_threads/worker_wait.inc"
+#include "resident_threads/worker_debug.inc"
 #include "resident_threads/worker_execute.inc"
 #include "resident_threads/worker_start.inc"
 #include "resident_threads/worker_observe.inc"
@@ -137,18 +138,20 @@ void dvm_managed_workers_finish_reply(Prog *guest)
 
 
 /* EN: Owner thread clears its guest pointer after Prog destruction and records retirement. pid
- * must equal the permanent ID or abort; controller has no slot and does nothing.
+ * must equal the permanent ID or abort; every retiring PID releases debug credits.
  * RU: Поток владельца снимает guest после удаления Prog и отмечает завершение. pid обязан
- * совпадать с постоянным ID, иначе abort; контроллер без слота ничего не делает.
+ * совпадать с постоянным ID, иначе abort; каждый retiring PID освобождает debug credits.
  */
 void dvm_managed_workers_guest_retired(int pid)
 {
+    if (current_guest && current_guest->guest_pid != pid)
+    {
+        abort();
+    }
+    retire_debug_requester(pid);
     if (current_guest)
     {
-        if (current_guest->guest_pid != pid)
-        {
-            abort();
-        }
+        dvm_diagnostic_close(current_guest->debug);
         current_guest->guest = NULL;
         current_guest->guest_retired = 1;
     }
@@ -354,7 +357,12 @@ int dvm_managed_workers_stop(int diagnostics)
         {
             fvm_port_sync_destroy(worker->wake);
         }
+        dvm_diagnostic_destroy(worker->debug);
         free(worker);
+    }
+    if (diagnostics)
+    {
+        dvm_diagnostic_report();
     }
     dvm_thread_registrar_destroy(service.registrar);
     fvm_port_sync_destroy(service.sync);

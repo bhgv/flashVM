@@ -19,6 +19,9 @@
 #include <stddef.h>
 
 
+#include "diagnostics/processctl_calls.inc"
+
+
 extern int dvm_runtime_prepare_cancelwait(Prog *caller, int pid);
 extern int dvm_runtime_cancel_child_wait(Prog *caller, int pid);
 extern int dvm_runtime_kill_child(Prog *caller, int pid);

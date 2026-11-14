@@ -4,6 +4,7 @@
  */
 #ifndef DVM_MANAGED_WORKERS_H
 #define DVM_MANAGED_WORKERS_H
+#include "diagnostics/mailbox.h"
 
 
 /* EN: Owner-published lifecycle intervals, not OS CPU states or heap permissions.
@@ -80,6 +81,15 @@ typedef struct DVM_ResidentSummary
  * RU: Копировать согласованную summary в disjoint native output. Caller удерживает
  * service до возврата без concurrent stop completion. NULL/unavailable — без изменений. */
 int dvm_resident_summary(DVM_ResidentSummary *summary);
+
+/* EN: Caller owns original requester PID; exact ID is observational, not control
+ * authority. Service/slot lifetime is held only through synchronous native copy.
+ * RU: Caller владеет original requester PID; exact ID не control authority.
+ * Service/slot lifetime удерживается только до возврата synchronous native copy. */
+int dvm_resident_debug_request(unsigned long id, int requester, int64_t cookie, unsigned long *ticket);
+int dvm_resident_debug_reply(unsigned long id, int requester, unsigned long ticket, DVM_DiagnosticSample *sample);
+int dvm_resident_debug_forget(unsigned long id, int requester, unsigned long ticket);
+
 
 enum
 {

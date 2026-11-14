@@ -80,8 +80,14 @@ static int start_helper(Prog *guest)
     }
     worker->guest = guest;
     worker->wake = fvm_port_sync_create();
-    if (!worker->wake)
+    worker->debug = dvm_diagnostic_create();
+    if (!worker->wake || !worker->debug)
     {
+        if (worker->wake)
+        {
+            fvm_port_sync_destroy(worker->wake);
+        }
+        dvm_diagnostic_destroy(worker->debug);
         free(worker);
         return 0;
     }
@@ -110,6 +116,7 @@ static int start_helper(Prog *guest)
         unregister_dedicated_wait(worker);
         fvm_port_sync_unlock(service.sync);
         fvm_port_sync_destroy(worker->wake);
+        dvm_diagnostic_destroy(worker->debug);
         free(worker);
         return 0;
     }
