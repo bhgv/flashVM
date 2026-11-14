@@ -281,3 +281,7 @@ they are not yet automatic managed process cleanup or compiler escape analysis.
 [the real-heap example](examples/managed-owner/README.md) connect explicit native
 owners to external roots and stopped-world Fast retirement. Shared managed heap
 admission remains exclusive; this is not whole-process ownership conversion.
+
+[Runtime observability / Статистика и отладка всей VM](runtime/OBSERVABILITY.md)
+описывает общий контракт live-наблюдения, существующие возможности и этапы
+расширения. Первый JSON normalizer reports: `tools/runtime_stats.py`.
