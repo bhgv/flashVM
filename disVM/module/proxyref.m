@@ -11,12 +11,14 @@ Proxyref: module
     Disconnected: con -4; # Actor retired or lease revoked.
     Stale: con 5; # Token belongs to another actor or is no longer active.
 
+    Open, Closed, Completing: con iota; # Private state phases: reject offers before active reply settles.
+
 
     # EN/RU: Shared terminal state, published by this ref's original access actor.
     # Общий terminal state, публикуемый original access actor этого ref.
     State: adt
     {
-        closed: int; # Terminal once set; never reset for replacement refs.
+        closed: int; # Open accepts access; Completing rejects it; Closed also releases waiters.
     };
 
 

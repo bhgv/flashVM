@@ -8,6 +8,8 @@ Proxynet: module
     GCProgress: con 13; # Local broker maintenance, never a wire operation.
     Stale: con 5; # Image belongs to another connection incarnation.
 
+    Open, Closed, Completing: con iota; # Private state phases: reject offers before active reply settles.
+
 
     # EN/RU: An image fences original owner identity with externally unique connection epoch.
     # Image дополняет identity исходного owner уникальным извне connection epoch.
@@ -24,7 +26,7 @@ Proxynet: module
     # Общий terminal flag; broker публикует до retirement исходного thread.
     State: adt
     {
-        closed: int; # Zero while usable, one permanently after terminal outcome/idle lease.
+        closed: int; # Open accepts offers; Completing rejects them; Closed also releases waiters.
     };
 
 

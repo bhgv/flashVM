@@ -117,14 +117,15 @@ run(source: ref Proxynet->Endpoint, image: Proxynet->Image, timeout: int,
             }
         }
         if (terminal) {
+            state.closed = Proxyref->Completing;
             gc->close(queue);
         }
-        # EN/RU: Publish the active result before closure wakes queued access waiters.
-        # Опубликовать active result до closure, пробуждающего queued access waiters.
+        # EN/RU: Reject new access first; release waiters only after the active result.
+        # Сначала запретить access; освободить waiters лишь после active result.
         access.reply <-= (status, value);
         access = nil;
         if (terminal) {
-            state.closed = 1;
+            state.closed = Proxyref->Closed;
             return closed;
         }
         idle = sys->millisec() + timeout;
@@ -191,7 +192,7 @@ begin(setup: ref Setup)
     } exception {
         "*" => released = 0;
     }
-    state.closed = 1;
+    state.closed = Proxyref->Closed;
     gc->close(queue);
     if (!released) {
         {

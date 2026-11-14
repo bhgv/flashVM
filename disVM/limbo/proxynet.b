@@ -76,7 +76,7 @@ alarm(started, signal: chan of int, deadline: int)
 watch(endpoint: ref Endpoint, started, signal: chan of int, deadline: int)
 {
     started <-= control->pid();
-    while (!endpoint.state.closed) {
+    while (endpoint.state.closed != Closed) {
         remaining := deadline - sys->millisec();
         if (remaining <= 0) {
             break;
@@ -342,13 +342,14 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
         }
         terminal := closed || (admitted && request.operation == Proxyowner->Stop);
         if (terminal) {
+            endpoint.state.closed = Completing;
             gc->close(connection);
         }
-        # EN/RU: Publish the active reply before closure wakes other queued callers.
-        # Опубликовать active reply до closure, пробуждающего queued callers.
+        # EN/RU: Reject new offers first; release waiters only after the active reply.
+        # Сначала запретить offers; освободить waiters лишь после active reply.
         request.reply <-= result;
         if (terminal) {
-            endpoint.state.closed = 1;
+            endpoint.state.closed = Closed;
         }
         request = nil;
         staged = nil;
@@ -358,7 +359,7 @@ run(input, output: ref Sys->FD, endpoint: ref Endpoint, connection: ref Proxygc-
         }
         idle = sys->millisec() + timeout;
     }
-    endpoint.state.closed = 1;
+    endpoint.state.closed = Closed;
     gc->close(connection);
 }
 
@@ -420,7 +421,7 @@ start(input, output: ref Sys->FD, high, low: big, timeout: int,
         run(input, output, endpoint, connection, timeout);
     } exception {
         "*" =>
-            endpoint.state.closed = 1;
+            endpoint.state.closed = Closed;
             gc->close(connection);
             raise;
     }

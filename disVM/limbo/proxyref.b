@@ -30,7 +30,7 @@ init()
 watch(state: ref State, started, signal: chan of int, deadline: int)
 {
     started <-= control->pid();
-    while (!state.closed) {
+    while (state.closed != Closed) {
         remaining := deadline - sys->millisec();
         if (remaining <= 0) {
             break;
