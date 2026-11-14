@@ -91,9 +91,45 @@ int dvm_resident_observe(
         cards[index].done = worker->done;
         cards[index].phase = __atomic_load_n(&worker->observation_phase, __ATOMIC_RELAXED);
         cards[index].activity = resident_activity(__atomic_load_n(&worker->observation_state, __ATOMIC_RELAXED));
+        /* Acquire completed first: its release follows the matching dispatch. */
+        cards[index].turns = __atomic_load_n(&worker->observed_turns, __ATOMIC_ACQUIRE);
+        cards[index].dispatches = __atomic_load_n(&worker->observed_dispatches, __ATOMIC_ACQUIRE);
+        cards[index].waits = __atomic_load_n(&worker->observed_waits, __ATOMIC_ACQUIRE);
     }
     fvm_port_sync_unlock(service.sync);
     *count = used;
     *more = truncated;
+    return 1;
+}
+
+
+/* EN: Borrow native summary storage through synchronous metadata copy. Caller
+ * keeps service alive; count only native links and guarded lifecycle counters.
+ * Return zero unchanged on NULL/unavailable; no Prog/REG or managed access.
+ * RU: Заимствовать native summary storage до возврата metadata copy. Caller
+ * удерживает service; читать только native links и guarded lifecycle counters.
+ * Ноль без изменений при NULL/unavailable; без Prog/REG либо managed access. */
+int dvm_resident_summary(DVM_ResidentSummary *summary)
+{
+    DVM_ResidentSummary copied = {0, 0, 0, 0, 0};
+    ManagedWorker *worker;
+    if (!summary || !service.sync)
+    {
+        return 0;
+    }
+    fvm_port_sync_lock(service.sync);
+    copied.created = service.created;
+    copied.reaping = service.reaping;
+    copied.reaped = service.reaped;
+    for (worker = service.helpers; worker; worker = worker->next)
+    {
+        copied.registered++;
+        if (worker->done)
+        {
+            copied.done++;
+        }
+    }
+    fvm_port_sync_unlock(service.sync);
+    *summary = copied;
     return 1;
 }

@@ -120,6 +120,7 @@ static void wait_dedicated_work(ManagedWorker *worker)
     while (!worker->wake_stopped && !dedicated_work_pending(worker))
     {
         publish_resident_phase(worker, DVM_RESIDENT_WAIT_WORK);
+        increment_resident_counter(&worker->observed_waits);
         fvm_port_sync_wait(worker->wake);
     }
     fvm_port_sync_unlock(worker->wake);
@@ -177,6 +178,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
             *slot = worker->next;
             worker->next = finished;
             finished = worker;
+            service.reaping++;
         }
         else
         {
@@ -195,6 +197,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
             finished = worker->next;
             worker->next = service.helpers;
             service.helpers = worker;
+            service.reaping--;
         }
         fvm_port_sync_unlock(service.sync);
         return 0;
@@ -250,6 +253,7 @@ static int yield_empty(int idle, int rendezvous, int (*pending)(void))
  */
         fvm_port_sync_lock(service.sync);
         service.reaped++;
+        service.reaping--;
         service.retired_turns += worker->turns;
         service.retired_releases += worker->owner.releases;
         service.retired_reentries += worker->owner.reentries;

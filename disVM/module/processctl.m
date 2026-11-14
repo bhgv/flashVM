@@ -63,4 +63,16 @@ Processctl: module
     # Независимо от phase; не channel identity, pin либо OS CPU state.
     residentactivity: fn(id: big): (int, int);
 
+    # EN: Exact positive ID -> status, saturating dispatches/completed turns/waits.
+    # Missing/refusal zeros counters; counters are not instruction/CPU time counts.
+    # RU: Exact positive ID -> status, saturating dispatches/completed turns/waits.
+    # Missing/refusal обнуляет counters; это не instruction count либо CPU time.
+    residentprogress: fn(id: big): (int, big, big, big);
+
+    # EN: status, created, registered, reaping, reaped, registered done.
+    # One coherent registry partition, excluding controller/collector/I/O helpers.
+    # RU: status, created, registered, reaping, reaped, registered done.
+    # Одно согласованное разделение registry, без controller/collector/I/O helpers.
+    residentsummary: fn(): (int, big, big, big, big, big);
+
 };

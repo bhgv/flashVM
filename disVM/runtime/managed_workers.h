@@ -41,11 +41,14 @@ enum
  * Копия native metadata; lifetime ID не pointer и не managed authority. */
 typedef struct DVM_ResidentCard
 {
-    unsigned long id; /* Stable lifetime identity within this service. */
-    int pid;          /* Permanent PID copied before resident execution. */
-    int done;         /* TLS destruction completed, published under metadata mutex. */
-    int phase;        /* Atomic owner publication; no ordering of managed data is implied. */
-    int activity;     /* Last published execution state; independent from phase. */
+    unsigned long id;         /* Stable lifetime identity within this service. */
+    int pid;                  /* Permanent PID copied before resident execution. */
+    int done;                 /* TLS destruction completed, published under metadata mutex. */
+    int phase;                /* Atomic owner publication; no ordering of managed data is implied. */
+    int activity;             /* Last published execution state; independent from phase. */
+    unsigned long dispatches; /* Saturating callback entries, not instruction count. */
+    unsigned long turns;      /* Saturating completed guest callbacks; read before dispatches. */
+    unsigned long waits;      /* Saturating readiness condition-wait entries, including spurious wakes. */
 } DVM_ResidentCard;
 
 
@@ -58,6 +61,25 @@ typedef struct DVM_ResidentCard
  * copied outputs; отказ не меняет output. Pages не образуют общий atomic snapshot. */
 int dvm_resident_observe(
     unsigned long after, DVM_ResidentCard *cards, unsigned int capacity, unsigned int *count, int *more);
+
+
+/* EN: One coherent registry partition under its metadata guard; no heap data.
+ * RU: Согласованное разделение registry под metadata guard; без heap data. */
+typedef struct DVM_ResidentSummary
+{
+    unsigned long created;    /* Installed native slots since service start. */
+    unsigned long registered; /* Slots still linked, including completed ones. */
+    unsigned long reaping;    /* Detached slots through join and deferred accounting. */
+    unsigned long reaped;     /* Joined slots accounted by rootless reapers. */
+    unsigned long done;       /* Completed slots within registered, not an additional partition. */
+} DVM_ResidentSummary;
+
+
+/* EN: Copy a coherent summary to disjoint native output. Caller keeps service
+ * alive with no concurrent stop completion. NULL/unavailable refuses unchanged.
+ * RU: Копировать согласованную summary в disjoint native output. Caller удерживает
+ * service до возврата без concurrent stop completion. NULL/unavailable — без изменений. */
+int dvm_resident_summary(DVM_ResidentSummary *summary);
 
 enum
 {

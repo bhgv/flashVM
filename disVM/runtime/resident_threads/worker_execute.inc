@@ -93,6 +93,7 @@ static void execute(void *argument)
             while (!stopping() && !worker->guest_retired)
             {
                 publish_resident_phase(worker, DVM_RESIDENT_DISPATCH);
+                increment_resident_counter(&worker->observed_dispatches);
                 int progress = service.turn();
                 publish_resident_phase(worker, DVM_RESIDENT_SCHEDULER);
                 if (progress < 0)
@@ -103,6 +104,7 @@ static void execute(void *argument)
                 if (progress == DVM_MANAGED_TURN_GUEST)
                 {
                     worker->turns++;
+                    increment_resident_counter(&worker->observed_turns);
                 }
                 /* Stop owns the registry through join. A resumed native call
                  * may finish its current turn, but must not reap/mutate links. */

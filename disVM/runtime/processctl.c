@@ -164,6 +164,71 @@ void Processctl_residentactivity(void *frame)
 }
 
 
+/* EN: Borrow rooted call; stage exact-ID progress and publish scalar fields.
+ * Missing/refusal/unrepresentable counters yield zero payload, never target access.
+ * RU: Заимствовать rooted call; сохранить exact-ID progress и опубликовать scalars.
+ * Missing/refusal/unrepresentable counters дают zero payload, без target access. */
+void Processctl_residentprogress(void *frame)
+{
+    F_Processctl_residentprogress call;
+    LONG result[4] = {-1, 0, 0, 0}; /* Staged status and three signed-big counters. */
+    DVM_ResidentCard card;
+    unsigned int count;
+    int more;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_residentprogress, ret), sizeof(*call.ret));
+    if (sizeof(result) != sizeof(*call.ret))
+    {
+        error(exBounds);
+    }
+    if (call.id > 0 && dvm_resident_observe((unsigned long)(call.id - 1), &card, 1, &count, &more))
+    {
+        result[0] = 0;
+        if (count && card.id == (unsigned long)call.id)
+        {
+            result[0] = -1;
+            if (card.dispatches <= (unsigned long)LLONG_MAX && card.turns <= card.dispatches &&
+                card.waits <= (unsigned long)LLONG_MAX)
+            {
+                result[0] = 1;
+                result[1] = (LONG)card.dispatches;
+                result[2] = (LONG)card.turns;
+                result[3] = (LONG)card.waits;
+            }
+        }
+    }
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
+/* EN: Stage one coherent native registry summary, then publish guarded scalars.
+ * Borrow rooted frame; unavailable/unrepresentable output is -1 plus zeros.
+ * RU: Сохранить coherent native registry summary, затем опубликовать guarded scalars.
+ * Заимствовать rooted frame; unavailable/unrepresentable даёт -1 и нули. */
+void Processctl_residentsummary(void *frame)
+{
+    F_Processctl_residentsummary call;
+    LONG result[6] = {-1, 0, 0, 0, 0, 0}; /* Status and guarded registry counters. */
+    DVM_ResidentSummary summary;
+    dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Processctl_residentsummary, ret), sizeof(*call.ret));
+    if (sizeof(result) != sizeof(*call.ret))
+    {
+        error(exBounds);
+    }
+    if (dvm_resident_summary(&summary) && summary.created <= (unsigned long)LLONG_MAX &&
+        summary.registered <= (unsigned long)LLONG_MAX && summary.reaping <= (unsigned long)LLONG_MAX &&
+        summary.reaped <= (unsigned long)LLONG_MAX && summary.done <= (unsigned long)LLONG_MAX)
+    {
+        result[0] = 1;
+        result[1] = (LONG)summary.created;
+        result[2] = (LONG)summary.registered;
+        result[3] = (LONG)summary.reaping;
+        result[4] = (LONG)summary.reaped;
+        result[5] = (LONG)summary.done;
+    }
+    dvm_sys_scalar_result(result, call.ret, sizeof(result));
+}
+
+
 /* EN: Cancel a direct child's wait once; frame/result remain rooted while
  * publishing the staged outcome under cell guards. Invalid PID yields Denied.
  * RU: Один раз отменить ожидание прямого child; frame/result rooted во время

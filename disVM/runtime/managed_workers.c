@@ -22,6 +22,7 @@
 #include <string.h>
 
 
+#include "resident_threads/observation_counter.h"
 #include "resident_threads/worker_state.inc"
 #include "resident_threads/worker_wait.inc"
 #include "resident_threads/worker_execute.inc"

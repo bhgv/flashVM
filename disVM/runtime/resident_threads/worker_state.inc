@@ -11,25 +11,28 @@
  */
 typedef struct ManagedWorker
 {
-    struct ManagedWorker *wake_next; /* Registered under service.sync until thread exit. */
-    DVM_OwnerMessage *staged_reply;  /* Owner-only reply removed before heap admission. */
-    int reply_in_transit;            /* Published to the controller until the owner applies the reply. */
-    FVM_PortSync *wake;              /* Dedicated readiness condition and generation lock. */
-    int startup_committed;           /* Creator has installed the slot, under wake. */
-    int wake_stopped;                /* Stop/failure latch under wake. */
-    struct ManagedWorker *next;      /* Native registry link protected by service.sync. */
-    unsigned long id;                /* Stable lifetime ID; never reused while the service exists. */
-    Prog *guest;                     /* Borrowed until retirement on its own thread. */
-    int guest_pid;                   /* Permanent resident PID; initialized before execution. */
-    int guest_retired;               /* Set by this guest thread after managed retirement. */
-    int observation_state;           /* Native atomic copy; remains readable after Prog destruction. */
-    int observation_phase;           /* Atomic owner-published interval; no managed data ordering. */
-    int done;                        /* Published under service.sync after TLS destruction. */
-    DVM_ThreadSlot *thread;          /* Registrar handle, joined before this slot is reset. */
-    uintptr identity;                /* Context identity under service.sync; zero before context destruction. */
-    unsigned long turns;             /* Successful bytecode turns executed by this helper. */
-    unsigned long handoffs;          /* Completed rootless scheduler releases, distinct from native I/O. */
-    DVM_HeapOwnerStats owner;        /* Copied counters before the helper detaches. */
+    struct ManagedWorker *wake_next;   /* Registered under service.sync until thread exit. */
+    DVM_OwnerMessage *staged_reply;    /* Owner-only reply removed before heap admission. */
+    int reply_in_transit;              /* Published to the controller until the owner applies the reply. */
+    FVM_PortSync *wake;                /* Dedicated readiness condition and generation lock. */
+    int startup_committed;             /* Creator has installed the slot, under wake. */
+    int wake_stopped;                  /* Stop/failure latch under wake. */
+    struct ManagedWorker *next;        /* Native registry link protected by service.sync. */
+    unsigned long id;                  /* Stable lifetime ID; never reused while the service exists. */
+    Prog *guest;                       /* Borrowed until retirement on its own thread. */
+    int guest_pid;                     /* Permanent resident PID; initialized before execution. */
+    int guest_retired;                 /* Set by this guest thread after managed retirement. */
+    unsigned long observed_dispatches; /* Atomic saturated callback entries; single owner writer. */
+    unsigned long observed_turns;      /* Atomic saturated completed guest turns; owner writer. */
+    unsigned long observed_waits;      /* Atomic saturated readiness waits; owner writer. */
+    int observation_state;             /* Native atomic copy; remains readable after Prog destruction. */
+    int observation_phase;             /* Atomic owner-published interval; no managed data ordering. */
+    int done;                          /* Published under service.sync after TLS destruction. */
+    DVM_ThreadSlot *thread;            /* Registrar handle, joined before this slot is reset. */
+    uintptr identity;                  /* Context identity under service.sync; zero before context destruction. */
+    unsigned long turns;               /* Successful bytecode turns executed by this helper. */
+    unsigned long handoffs;            /* Completed rootless scheduler releases, distinct from native I/O. */
+    DVM_HeapOwnerStats owner;          /* Copied counters before the helper detaches. */
 } ManagedWorker;
 
 
@@ -52,6 +55,7 @@ typedef struct ManagedWorkers
     unsigned long created;           /* Successfully created helpers, under service.sync. */
     unsigned long next_id;           /* Lifetime IDs allocated by the startup owner. */
     unsigned long generation;        /* Runnable-work publication under sync; prevents lost wakeups. */
+    unsigned long reaping;           /* Detached reaper-owned slots, under service.sync. */
     unsigned long reaped;            /* Joined helpers, under service.sync. */
     unsigned long retired_turns;     /* Joined turns, under service.sync. */
     unsigned long retired_releases;  /* Joined releases, under service.sync. */
