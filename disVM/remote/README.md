@@ -175,3 +175,8 @@ B исполняет original callback, A хранит actual variable. Пров
 counted Image живой registered variable A из callback исходного function owner B.
 Возврат typed Ref не создаёт snapshot; native Retain B предшествует publication C.
 Проверяются caller retirement, completed-reply loss, function Drop и transitive GC.
+
+Local Owner/Ref request supervisors также завершают alarm после retirement caller;
+original deadlines и caller-side nested RPC policy сохраняются. Проверки actual
+single effect и 60-second request / 40-second whole-VM completion описаны в
+[контракте lifetime](ROUTED-RESULTS.md#локальные-ownerref-после-retirement-caller).

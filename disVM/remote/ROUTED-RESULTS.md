@@ -116,6 +116,38 @@ VM за 40 seconds, включая все native Progs. Раньше orphan alar
 даже после успешного logical cleanup; новый supervisor устраняет это ожидание.
 
 
+## Локальные Owner/Ref после retirement caller
+
+Та же схема применяется к `Proxyowner.offer` и `Proxyref.call`: private supervisor
+удерживает request/access, исходный source и alarm до reply либо original deadline.
+Buffered completion не требует живого public caller. Supervisor завершает alarm
+до публикации результата; обычный caller также join своего supervisor.
+
+Owner проверяет `host.canwait` на исходном caller до spawn. Ref проверяет operation,
+absolute deadline, closed state и active lease до spawn; отдельная source actor
+по-прежнему выполняет доступ у настоящего владельца. Callback может использовать
+разрешённый Ref access, но не получает право произвольного nested Owner RPC.
+При отказе до offer эффект не происходит; retirement после offer не означает
+отмену, откат или разрешение повторить запрос. Raw Owner handles сохраняют явное
+session/Drop ownership: это исправление lifetime запросов, не новая GC-модель handles.
+
+`test_proxy_retirement.py` проверяет C/JIT × fast/locked GC polling:
+
+- Local function callback блокируется после фактического входа. Caller уничтожается,
+  callback освобождается и меняет original Cell ровно с 10 на 11; Read/Stop и все
+  native Progs должны завершиться за 40 seconds при 60-second request deadline.
+- Две настоящие VM выполняют Ref Add. Relay видит успешный A=11, удерживает reply
+  до уничтожения access caller, затем разрешает Read/Close/Drop/Stop. Проверяются
+  independent clone ownership, rooted source и полное завершение VM за 40 seconds.
+- Callback пытается вызвать Owner RPC. Production возвращает OwnerError на исходном
+  callback. Private omission только pre-spawn canwait обязана вызвать конкретную
+  semantic failure с clean owner roots; crash/timeout не считаются acceptance.
+
+Все эти проверки используют обязательный native dedicated-thread режим без
+exclusive/stop. Locked GC polling здесь означает проверку доступа к GC metadata,
+а не глобальную остановку или альтернативный однопоточный executor.
+
+
 ## Проверенная серия
 
 2026-11-14: полный обычный CTest прошёл 88/88, полный TSan CTest — 89/89.
@@ -125,3 +157,12 @@ VM за 40 seconds, включая все native Progs. Раньше orphan alar
 40-second whole-VM bound. Новая architecture matrix содержит 53 native workloads;
 результаты новой GitHub CI отслеживаются отдельно от локальных и предыдущей серии.
 Предыдущая `cacb7976` имеет все шесть successful jobs в run 43513106849.
+
+
+2026-11-14, Owner/Ref retirement: полный обычный CTest прошёл 90/90.
+Новые positive и policy-omission группы TSan прошли 2/2, включая обе actual
+orphan операции во всех четырёх C/JIT/poll сочетаниях. Architecture matrix
+расширена до 54 native workloads. Полный TSan rerun и новая CI проверяются
+отдельно; pending execution не считается подтверждённым результатом.
+Baseline `677b8069`: в run 43567770403 уже successful AMD64 plain/TSan, ARM64
+plain и обе DIS64 Sys producer/owner группы; RV64/QEMU ещё выполняется.
