@@ -71,9 +71,8 @@ VFS listener or `Sys.mount` client. The kernel-bound client in `emu/port/devmnt.
 needs a separate Chan/Mnt/RPC host adapter. Do not link the new lib9 alongside the
 bootstrap's other lib9 archive in one executable: unify those dependencies first.
 
-Полная проверка C-сервера ещё не завершена. Следующий этап должен проверить и
-исправить TCP-фрагментацию/частичную отправку, согласование msize и сброс сессии,
-Tauth/attach и откат отказанного attach, границы stat/wstat, выдачу целых записей
+Полная проверка C-сервера ещё не завершена. Следующий этап должен проверить реальный socket transport, согласование msize и сброс сессии,
+Tauth/attach и откат отказанного attach, строгую проверку stat/wstat и выдачу целых записей
 каталога, живой каталог через callbacks и освобождение ресурсов при закрытии.
 Текущие тесты не подтверждают готовность этих частей. Подготовленный корень
 соединения должен оставаться живым обычным каталогом с независимыми правами;
@@ -99,3 +98,18 @@ DisVM application adapters issue rendering requests through FlashVM APIs.
 графические библиотеки и их заголовки. Полные исходники lib9/libstyx сохранены;
 сопутствующие заголовки выбираются явно. Числовое форматирование не относится
 к графике. Прикладные адаптеры DisVM обращаются к API рендеринга FlashVM.
+
+## Stream/stat acceptance / Проверки потока и stat (runtime0.138)
+
+The original C server retains incomplete frames, separates coalesced requests,
+refuses impossible frame lengths and completes short transport writes, retrying
+EINTR. Tests exercise every split in a real encoded Tread and queued frames using
+a deterministic transport boundary; this is not a real TCP listener test.
+Stat uses the bounded reply capacity rather than a 512-byte limit. Wstat has
+message-bounded string storage and checks decode failure before invoking callbacks.
+A 1200-byte name passes both stat and wstat through the original dispatcher.
+
+Исходный C-сервер сохраняет неполные кадры, разбирает склеенные запросы и досылает
+короткие ответы с обработкой EINTR. Проверены все разрезы запроса, очередь кадров,
+неверный размер кадра и stat/wstat с именем длиной 1200 байт. Проверки проходят
+под ASan/UBSan; это не заменяет испытание настоящего TCP-соединения.

@@ -668,3 +668,5 @@ Runtime0.137 imports [complete native Inferno lib9/libstyx](../native/README.md)
 from current experiment with upstream native64 server fixes. Separate Linux64
 archives and original dispatcher/codec/thread-isolation acceptance are available;
 production VFS transport and kernel-client adaptation remain in progress.
+
+Runtime0.138 refreshes original libstyx stream/stat handling: fragmented/coalesced frames, short writes/EINTR, bounded long stat/wstat records and native sanitizer acceptance. See [native library checks](../native/README.md).
