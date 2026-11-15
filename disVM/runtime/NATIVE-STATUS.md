@@ -2,6 +2,33 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: Vfsctl effective stacks, signed MINS and per-file edits
+
+Runtime0.133 вводит pure Limbo Vfsctl над scalar $Vfsnative: layers/layer/bind/move.
+Просмотр показывает всех effective candidates файла/папки, включая inherited слои,
+их позиции, flags, mode/type, metadata/access status, virtual mount/relative name,
+provider session/generation и stable-bind promise. Нет native pointers, абсолютных
+host source paths, global registry или foreign namespace/PID параметра.
+
+MINS16 получает отдельный signed index в Vfsctl.bind: zero top, positive сверху,
+negative снизу; insertion -1 append, move -1 bottom. Standard Sys.bind остаётся
+трёхаргументным и не принимает MINS. File unions — отдельное explicit расширение.
+Перестановка inherited файла создаёт child-local stack, не меняя папку и siblings;
+unmount снимает override. Exact moves сохраняют IDs, mutations проверяют revision.
+Allocation/stale failure не публикует partial edits. Native directory roots закреплены
+по identity; old file FD не меняет resource. File unions теперь не ошибочно открываются
+как union directories; MAUTORWX остаётся отдельной access-based policy.
+[Контракт/API/пример](VFS-LAYERS.md).
+
+AMD64 wide78/78, dynamic/static host-unit38/38; новый real guest C/JIT × оба GC
+observation settings прошёл в обеих сборках. Native test: middle/signed positions,
+INT64_MIN, stale/invalid IDs/index, allocation rollback, per-file/sibling isolation,
+FORKNS и unmount inheritance. Guest: все copied properties, mixed native/C-provider
+file stack, source session/rights, upper readonly read/lower writable write,
+сохранение открытого FD и final factory cleanup; host независимо проверяет bytes.
+Upstream snapshot, Sys.m ABI и Dis ISA неизменны. Publication/remote transport —
+отдельный следующий слой, не реализованный этим checkpoint.
+
 ## 2026-11-15: retained subscriptions, partial-failure isolation and exhausted scopes
 
 Runtime0.132 согласует native watches с текущими bindings вместо полного пересоздания.

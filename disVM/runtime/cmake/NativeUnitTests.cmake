@@ -43,6 +43,14 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     set_property(TARGET disvm_sysevents_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc")
     add_test(NAME disvm_sysevents COMMAND disvm_sysevents_test)
     set_tests_properties(disvm_sysevents PROPERTIES TIMEOUT 20 LABELS "host-unit")
+    add_executable(disvm_stack_test vfs/test_stack.c vfs/stack.c vfs/path.c vfs/group.c vfs/mutations.c
+        vfs/layer_bind.c vfs/union_io.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c
+        vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
+    target_include_directories(disvm_stack_test PRIVATE ${native_unit_includes})
+    target_link_libraries(disvm_stack_test PRIVATE disvm_flashvm_host Threads::Threads)
+    set_property(TARGET disvm_stack_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc")
+    add_test(NAME disvm_stack COMMAND disvm_stack_test)
+    set_tests_properties(disvm_stack PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_eventfs_test vfs/test_eventfs.c vfs/eventfs.c vfs/eventfile.c
         vfs/handle.c vfs/io_result.c vfs/provider.c vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c)
     target_include_directories(disvm_eventfs_test PRIVATE ${native_unit_includes})

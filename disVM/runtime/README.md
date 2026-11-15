@@ -631,3 +631,8 @@ unchanged taps retain their sessions/watermarks, allocation failure of a new wat
 does not drop valid peers, and removed bindings detach even during partial failure.
 Cwd changes stop repeating provider initialization. Exhausted scope counters detach
 old sources and signal resync without wrapping or falsely retiring the receiver.
+
+Runtime 0.133 adds [Vfsctl effective-layer inspection and indexed edits](VFS-LAYERS.md):
+all candidates/properties, signed MINS slots and revision-guarded moves. Moving a
+file inherited from a directory creates an exact-file override without changing
+the folder or siblings; unmount restores inheritance. Standard Sys.bind stays unchanged.

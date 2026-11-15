@@ -20,6 +20,7 @@ format/ISA и границы проверки. Новое поведение н�
 | Stable-bind factory capability | Implemented internal extension DVM_PROVIDER_STABLE_BIND: fixed relative-name/node identity promise; absent flag refuses provider bind / Внутренняя capability, без неё bind отказывает |
 | [Host provider installation](PROVIDER-NAMESPACE.md) | Internal namespace extension with references and revision checks; not public Sys.mount / Внутреннее расширение, не public Sys.mount |
 | Provider-source Sys.bind(MREPL), directory MBEFORE/MAFTER/MCREATE | Ordinary matched Sys interface, provider-relative aliases with documented mutable-node identity limits; no new flags/opcodes / Обычный Sys, aliases provider-relative, без новых flags/opcodes |
+| [Vfsctl indexed layer control](VFS-LAYERS.md) | Implemented typed inspection/move/MINS and per-file override; separate from standard Sys.bind / Typed API своего namespace, standard Sys ABI не изменён |
 | [MAUTORWX union policy](AUTO-UNION.md) | Implemented explicit bit8 via Vfsflags; effective R/W/X selection, parent w+x creation / Явное расширение выбора по правам, не Inferno flag |
 | [Precise native chunk results](CHUNK-IO.md) | Implemented internal count/cause/certainty and failure-only info; heartbeat/Styx transport remains pending / Native API реализован, wire ещё нет |
 | [Automatic per-thread system inbox](SYSTEM-EVENTS.md) | Native push and ordinary readonly /dev/sysevents, one record per read/readn; external format experimental / Native push без owner polling и pauses, формат предварительный |

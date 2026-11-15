@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--compiler", required=True)
     parser.add_argument("--interface", required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--module", default="Proxyhost", choices=("Proxyhost", "Proxygc"))
+    parser.add_argument("--module", default="Proxyhost", choices=("Proxyhost", "Proxygc", "Vfsnative"))
     args = parser.parse_args()
     text = subprocess.check_output(
         [args.compiler, "-a", "-t", args.module, args.interface], text=True

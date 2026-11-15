@@ -2,7 +2,7 @@
 # EN: Native Dis configuration; compose ordered build and test modules.
 # RU: Конфигурация нативного Dis; последовательное подключение сборки и тестов.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.132.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.133.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -463,6 +463,7 @@ foreach(network_module proxyref proxyframe proxystream proxynetio proxynet proxy
 endforeach()
 file(GLOB syntax_headers "${root}/ide/syntax/*.m")
 list(APPEND module_headers ${syntax_headers})
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/Vfsctl.cmake")
 list(LENGTH module_names module_count)
 math(EXPR module_last "${module_count}-1")
 set(products)
