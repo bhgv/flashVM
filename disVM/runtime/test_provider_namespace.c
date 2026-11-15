@@ -3,7 +3,7 @@
  * RU: Монтировать retained namespace provider при startup; без per-FD подмены.
  */
 #define DVM_PROVIDER_NAMESPACE 1 /* Omit the older per-FD injection boundary. */
-#define DVM_PROVIDER_EXPECTED 25 /* Eight read/write/list sets plus retained parent FD. */
+#define DVM_PROVIDER_EXPECTED 30 /* Eight read/write/list sets plus retained and alias FDs. */
 #define __wrap_dvm_close_worker_stop provider_base_stop
 #include "test_provider_fd.c"
 #undef __wrap_dvm_close_worker_stop
@@ -93,7 +93,7 @@ static void factory_destroy(void *state)
     free(state);
     destroyed++;
 }
-static const DVM_ProviderOps factory_ops = {factory_info, factory_open, factory_destroy}; /* Immutable trusted host factory. */
+static const DVM_ProviderOps factory_ops = {factory_info, factory_open, factory_destroy, DVM_PROVIDER_STABLE_BIND}; /* Immutable trusted host factory. */
 
 
 /* EN/RU: Initialize real startup group, then mount one provider at virtual view.

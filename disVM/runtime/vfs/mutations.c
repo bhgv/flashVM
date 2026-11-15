@@ -208,3 +208,17 @@ int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *
     memcpy(source.native, label, strlen(label) + 1);
     return bind_selection(group, &source, target, provider, NULL, "");
 }
+
+
+/* EN/RU: See resource.h; freeze provider/relative source instead of its alias name.
+ * См. resource.h; сохранить relative identity source вместо имени alias. */
+int dvm_namespace_bind_provider(DVM_Namespace *group, const DVM_ResourcePlan *source,
+                                const DVM_NamespacePlan *target)
+{
+    if (!group || !source || !target || !dvm_provider_bindable(source->provider))
+    {
+        return -1;
+    }
+    return bind_selection(group, &source->names, target, source->provider, NULL,
+                          !strcmp(source->relative, ".") ? "" : source->relative);
+}

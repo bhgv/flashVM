@@ -109,4 +109,12 @@ DVM_Namespace *dvm_namespace_rebase(DVM_ResourcePlan *cwd);
  * label — absolute diagnostic name, не host lookup. 1/0/-1: успех/stale/ошибка. */
 int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *target,
                                  DVM_Provider *provider, const char *label);
+
+/* EN/RU: Bind retained provider-relative source at validated target/revision.
+ * Caller checked resource kinds; source/target must share one group revision.
+ * Retain factory on success; 1/0/-1 success/stale/invalid or OOM. No I/O.
+ * Связать retained provider-relative source с проверенным target/revision.
+ * Caller проверил kinds; одна revision. Удержать factory при успехе; 1/0/-1. */
+int dvm_namespace_bind_provider(DVM_Namespace *group, const DVM_ResourcePlan *source,
+                                const DVM_NamespacePlan *target);
 #endif

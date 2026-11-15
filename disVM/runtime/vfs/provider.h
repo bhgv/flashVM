@@ -5,6 +5,7 @@
 #ifndef DVM_VFS_PROVIDER_H
 #define DVM_VFS_PROVIDER_H
 #include "handle.h"
+#define DVM_PROVIDER_STABLE_BIND 1UL /* Factory promises immutable relative-name/node identity for bind aliases. */
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */
 
 
@@ -19,6 +20,7 @@ typedef struct DVM_ProviderOps
     FVM_Result (*info)(void *state, const char *relative, FVM_FileInfo *output); /* Borrow paths/output; blocking native metadata. */
     FVM_Result (*open)(void *state, const char *relative, const char *mode, DVM_VfsHandle *output); /* Native factory; empty output, no VM pointers. */
     void (*destroy)(void *state); /* Last factory/handle reference consumes state outside locks. */
+    unsigned long flags; /* Declared native capabilities; unknown bits refuse creation. */
 } DVM_ProviderOps;
 
 
@@ -48,4 +50,8 @@ FVM_Result dvm_provider_info(DVM_Provider *provider, const char *relative, FVM_F
  * Открыть relative path/mode в пустой output; wrapper/ref до callback. Успех
  * удерживает factory до close handle. No managed access; return port status. */
 FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const char *mode, DVM_VfsHandle *output);
+
+/* EN/RU: Query immutable stable-bind promise on a retained provider; no callback.
+ * Проверить immutable stable-bind promise удержанного provider; без callback. */
+int dvm_provider_bindable(DVM_Provider *provider);
 #endif

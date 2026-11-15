@@ -33,7 +33,7 @@ typedef struct ProviderHandle
 DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state)
 {
     DVM_Provider *provider;
-    if (!ops || !ops->info || !ops->open || !ops->destroy)
+    if (!ops || !ops->info || !ops->open || !ops->destroy || (ops->flags & ~DVM_PROVIDER_STABLE_BIND))
     {
         return NULL;
     }
@@ -215,4 +215,12 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
     output->ops = &handle->ops;
     output->state = handle;
     return FVM_OK;
+}
+
+
+/* EN/RU: See provider.h; factory contract is immutable through retained lifetime.
+ * См. provider.h; factory contract immutable до окончания retained lifetime. */
+int dvm_provider_bindable(DVM_Provider *provider)
+{
+    return provider && (provider->ops->flags & DVM_PROVIDER_STABLE_BIND) != 0;
 }

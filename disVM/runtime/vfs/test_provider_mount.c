@@ -99,12 +99,14 @@ static void provider_destroy(void *state)
     (*factory->destroyed)++;
     free(factory);
 }
-static const DVM_ProviderOps factory_ops = {provider_info, provider_open, provider_destroy}; /* Immutable trusted factory callbacks. */
+static const DVM_ProviderOps factory_ops = {provider_info, provider_open, provider_destroy, DVM_PROVIDER_STABLE_BIND}; /* Immutable trusted factory callbacks. */
 
 
-/* EN/RU: Create an owned factory, transferring newly allocated state on success.
- * Создать owning factory, передать новое state при успехе. */
-static DVM_Provider *create(unsigned marker, unsigned *destroyed)
+/* EN: Create owned factory with immutable marker, borrowed destroyed counter and
+ * immutable ops; transfer allocated state on success, fail test on refusal.
+ * RU: Создать factory с marker, borrowed counter destroyed и immutable ops;
+ * передать новое state при успехе, при отказе завершить тест. */
+static DVM_Provider *create(unsigned marker, unsigned *destroyed, const DVM_ProviderOps *ops)
 {
     Factory *state = calloc(1, sizeof(*state));
     DVM_Provider *provider;
@@ -112,7 +114,7 @@ static DVM_Provider *create(unsigned marker, unsigned *destroyed)
     state->marker = marker;
     state->alive = 1;
     state->destroyed = destroyed;
-    provider = dvm_provider_create(&factory_ops, state);
+    provider = dvm_provider_create(ops, state);
     require(provider != NULL, "provider allocation");
     return provider;
 }
@@ -124,8 +126,9 @@ static DVM_Provider *create(unsigned marker, unsigned *destroyed)
  * identity; последний FD удерживает factory после удаления всех namespaces. */
 int main(void)
 {
-    unsigned destroyed_a = 0, destroyed_b = 0;
-    DVM_Provider *a = create(11, &destroyed_a), *b = create(22, &destroyed_b);
+    unsigned destroyed_a = 0, destroyed_b = 0, destroyed_c = 0;
+    const DVM_ProviderOps unstable_ops = {provider_info, provider_open, provider_destroy, 0};
+    DVM_Provider *a = create(11, &destroyed_a, &factory_ops), *b = create(22, &destroyed_b, &factory_ops);
     DVM_Namespace *group = dvm_namespace_create("/", "/work", NULL), *copy;
     DVM_NamespacePlan target;
     DVM_ResourcePlan old, fresh;
@@ -133,17 +136,38 @@ int main(void)
     FVM_FileInfo metadata;
     unsigned char byte = 0;
     size_t count = 0;
+    DVM_ProviderOps unknown_ops = factory_ops;
+    Factory unowned = {&destroyed_c, 44, 1};
+    DVM_Provider *c;
+    unknown_ops.flags = DVM_PROVIDER_STABLE_BIND << 1;
+    require(!dvm_provider_create(&unknown_ops, &unowned) && destroyed_c == 0,
+            "unknown provider flags accepted or consumed caller state");
+    c = create(33, &destroyed_c, &unstable_ops);
+    require(group && dvm_namespace_plan(group, "/unstable", &target), "unstable target");
+    require(dvm_namespace_mount_provider(group, &target, c, "/unstable") == 1, "unstable mount");
+    require(dvm_resource_plan(group, "/unstable/item", 0, &fresh) &&
+            dvm_namespace_plan(group, "/unstable-alias", &target), "unstable bind plans");
+    require(dvm_namespace_bind_provider(group, &fresh, &target) == -1, "undeclared stable bind accepted");
+    dvm_resource_close(&fresh);
+    dvm_provider_release(c);
     require(group && dvm_namespace_plan(group, "/mounted", &target), "target plan");
     require(dvm_namespace_mount_provider(group, &target, a, "/same-label") == 1, "initial mount");
     require(dvm_namespace_mount_provider(group, &target, b, "/same-label") == 0, "stale mount accepted");
     require(dvm_resource_plan(group, "/mounted/item", 0, &old), "old plan");
     require(dvm_provider_open(old.provider, old.relative, "r", &opened) == FVM_OK, "old open");
+    require(dvm_namespace_plan(group, "/alias", &target), "alias target");
+    require(dvm_namespace_bind_provider(group, &old, &target) == 1, "provider alias bind");
+    require(dvm_namespace_bind_provider(group, &old, &target) == 0, "stale alias bind accepted");
     copy = dvm_namespace_copy(group);
     require(copy != NULL && dvm_namespace_plan(group, "/mounted", &target), "namespace copy");
     require(dvm_namespace_mount_provider(group, &target, b, "/same-label") == 1, "rebind");
     require(dvm_resource_plan(group, "/mounted/item", 0, &fresh), "fresh plan");
     require(dvm_resource_info(&old, &metadata) == FVM_OK && metadata.identity.low == 11, "old selection redirected");
     require(dvm_resource_info(&fresh, &metadata) == FVM_OK && metadata.identity.low == 22, "new selection stale");
+    dvm_resource_close(&fresh);
+    require(dvm_resource_plan(group, "/alias/item", 0, &fresh), "alias plan");
+    require(dvm_resource_info(&fresh, &metadata) == FVM_OK && metadata.identity.low == 11,
+            "rebind redirected frozen provider alias");
     dvm_resource_close(&fresh);
     require(dvm_resource_plan(copy, "/mounted/item", 0, &fresh), "copy plan");
     require(dvm_resource_info(&fresh, &metadata) == FVM_OK && metadata.identity.low == 11, "copy namespace changed");
@@ -155,7 +179,7 @@ int main(void)
     dvm_provider_release(a);
     dvm_provider_release(b);
     dvm_resource_close(&old);
-    require(destroyed_a == 0 && destroyed_b == 1, "factory reference imbalance");
+    require(destroyed_a == 0 && destroyed_b == 1 && destroyed_c == 1, "factory reference imbalance");
     require(dvm_vfs_read(&opened, &byte, 1, &count) == FVM_OK && byte == 11 && count == 1, "retained opened provider");
     dvm_vfs_close(&opened);
     require(destroyed_a == 1 && destroyed_b == 1, "last opened handle did not destroy factory");

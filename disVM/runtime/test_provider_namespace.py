@@ -24,13 +24,33 @@ def main():
         source = source.replace('    sys->print("PASS provider FD', r'''    retained := sys->open("view/provider-read", Sys->OREAD);
     check(retained != nil, "retained provider open");
     check(sys->chdir("view") == -1, "unsupported provider chdir");
-    check(sys->bind("view/provider-read", "host-target", Sys->MREPL) == -1, "unsupported provider bind");
+    check(sys->bind("view/provider-read", "host-target", Sys->MREPL) == 0, "provider file bind");
+    alias := sys->open("host-target", Sys->OREAD);
+    data := array[5] of byte;
+    check(alias != nil && sys->readn(alias, data, 5) == 5 && string data == "ABCDE", "provider file alias");
+    check(sys->bind("view", "mirror", Sys->MREPL) == 0, "provider directory bind");
+    mirrored := sys->open("mirror/provider-read", Sys->OREAD);
+    check(mirrored != nil && sys->readn(mirrored, data, 5) == 5 && string data == "ABCDE", "provider directory suffix");
+    check(sys->bind("view/provider-list", "nested-target", Sys->MREPL) == 0, "provider subtree bind");
+    listed := sys->open("nested-target", Sys->OREAD);
+    (listedcount, listedentries) := sys->dirread(listed);
+    check(listed != nil && listedcount == 1 && listedentries[0].name == "entry", "provider subtree identity");
+    check(sys->bind("host-target", "second-target", Sys->MREPL) == 0, "provider alias-to-alias bind");
+    second := sys->open("second-target", Sys->OREAD);
+    check(second != nil && sys->readn(second, data, 5) == 5 && string data == "ABCDE", "provider alias-to-alias lookup");
+    check(sys->bind("view/provider-read", "mirror", Sys->MREPL) == -1, "provider kind mismatch accepted");
     check(sys->remove("view/provider-read") == -1, "unsupported provider remove");
     check(sys->create("view/provider-read", Sys->OWRITE, 8r666) == nil, "unsupported provider create");
     blocked := load ProviderFD "view/provider-read";
     check(blocked == nil, "unsupported provider load");
     check(sys->unmount("host-target", "view") == -1, "foreign unmount source accepted");
     check(sys->unmount("view", "view") == 0, "filtered unmount provider");
+    survivor := sys->open("mirror/provider-read", Sys->OREAD);
+    check(survivor != nil && sys->readn(survivor, data, 5) == 5 && string data == "ABCDE", "source unmount redirected alias");
+    check(sys->unmount("second-target", "host-target") == 0, "filtered provider alias unmount");
+    check(sys->unmount(nil, "second-target") == 0, "second alias unmount");
+    check(sys->unmount(nil, "mirror") == 0, "mirror unmount");
+    check(sys->unmount(nil, "nested-target") == 0, "subtree unmount");
     bytes := array[5] of byte;
     check(sys->readn(retained, bytes, 5) == 5 && string bytes == "ABCDE", "unmount invalidated retained FD");
     native := sys->open("view/provider-read", Sys->OREAD);
@@ -45,6 +65,9 @@ def main():
                         ["dvm_namespace_boot_initialize", "dvm_close_worker_stop"])
         (work / "view").mkdir()
         (work / "host-target").write_bytes(b"HOST!")
+        (work / "second-target").write_bytes(b"HOST!")
+        (work / "mirror").mkdir()
+        (work / "nested-target").mkdir()
         for name in ("provider-read", "provider-write", "provider-list"):
             (work / "view" / name).write_bytes(b"HOST!")
         for mode in ("--no-jit", "--jit"):
@@ -60,6 +83,8 @@ def main():
                 if any((work / "view" / name).read_bytes() != b"HOST!"
                        for name in ("provider-read", "provider-write", "provider-list")):
                     raise RuntimeError("mounted provider modified host decoys")
+                if any((work / name).read_bytes() != b"HOST!" for name in ("host-target", "second-target")):
+                    raise RuntimeError("provider bind modified host targets")
                 print(f"PASS mounted provider {mode} locked={locked}")
 
 

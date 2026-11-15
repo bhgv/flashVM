@@ -180,14 +180,16 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
                     )
                     root_slot = None
                     payload = None
+                    root_observations = []
                     for slot in range(32, frame["bytes"], 8):
                         row = inspect_reply(session, f"object {fault} stack 0 {slot} 0 64")
+                        root_observations.append((slot, row.get("ok"), row.get("error"), row.get("kind"), row.get("extent")))
                         if row.get("ok") and row.get("kind") == 1:
                             data = bytes.fromhex(row["hex"])
                             if data[32] == 91 and data[63] == 173:
                                 root_slot, payload = slot, data
                                 break
-                    require(root_slot is not None, "fault array root/payload lost")
+                    require(root_slot is not None, "fault array root/payload lost; observations=" + repr(root_observations))
                     deadline = time.monotonic() + 5
                     while True:
                         census = session.command("census " + str(fault))

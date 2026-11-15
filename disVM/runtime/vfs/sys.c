@@ -193,6 +193,17 @@ void Sys_bind(void *frame)
                     {
                         kwerrstr("bind source and target kinds differ");
                     }
+                    else if (source.provider)
+                    {
+                        if (dvm_provider_bindable(source.provider))
+                        {
+                            committed = dvm_namespace_bind_provider(group, &source, &target.names);
+                        }
+                        else
+                        {
+                            kwerrstr("provider lacks stable bind identity");
+                        }
+                    }
                     else if (dvm_resource_anchor_wait(&source, a.directory, component))
                     {
                         committed =

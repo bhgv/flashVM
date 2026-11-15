@@ -589,3 +589,7 @@ Runtime 0.124 adds [retained namespace providers](PROVIDER-NAMESPACE.md) for
 trusted host installation, with copied namespace references and opened handles
 surviving unmount. Public Inferno mount/walk compatibility remains incomplete;
 unsupported provider operations refuse without falling back to native paths.
+
+Runtime0.125 supports provider-source Sys.bind(MREPL), including frozen directory,
+subtree and file aliases. [Environment extensions](ENVIRONMENT-EXTENSIONS.md)
+distinguish implemented host APIs from the proposed, unimplemented Vfsctl module.

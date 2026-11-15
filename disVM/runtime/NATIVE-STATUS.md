@@ -2,6 +2,29 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: provider bind и явные расширения среды
+
+Runtime0.125 подключает provider-source Sys.bind(MREPL) к обычной namespace
+publication: сохраняется factory и resolved relative prefix, не рекурсивное имя
+source alias. Проверяются kinds и совместная revision. File/directory/subtree
+и alias-to-alias bindings сохраняются после unmount source; filtered unmount
+сверяет factory/relative selection. Никаких новых Sys flags, Dis IDs или opcode.
+
+Новое внутреннее native расширение DVM_PROVIDER_STABLE_BIND разрешает bind только
+factory, гарантирующей стабильную relative-name/resource identity. Без promise
+bind явно unsupported до полноценного retained node/walk API. Unknown factory
+flags отвергаются без поглощения state. Это не stable DLL ABI и не guest право
+регистрации native callbacks. [Реализованные расширения и предложение E1](ENVIRONMENT-EXTENSIONS.md)
+отделяют текущий host API от пока не реализованного Vfsctl.
+
+Полный финальный AMD64 wide 72/72. Dynamic/static host-unit 31/31;
+extended provider-namespace C/JIT × оба poll в обеих сборках проверяет 30 opened states, kind mismatch, file/root/subtree aliases и filtered
+alias unmount. Unit отдельно проверяет stale alias, отказ bind без capability,
+unknown flags, copy/rebind и final reference cleanup. Provider сохраняет C89
+compatibility. Debugger root-scan failure теперь выводит slot/error/kind/extent,
+чтобы последующий CI отказ не оставался без диагностики; исходный TSan failure
+по-прежнему не объявляется закрытым без нового завершённого CI.
+
 ## 2026-11-15: retained-debug busy и предшествующая CI
 
 CI f932e54 завершилась: пять jobs успешны, включая RV64/QEMU; TSan wide 69/70.

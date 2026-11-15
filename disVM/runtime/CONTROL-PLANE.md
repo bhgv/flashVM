@@ -179,3 +179,8 @@ read/write/list capabilities через Sys. Это не guest mount/registratio
 сопоставляет сохранённые Sys interfaces, lifetime/FORKNS/unmount semantics и
 отсутствующие Chan walk/mount/credential groups. Новый host-only mount не
 объявляется совместимым public Sys.mount API.
+
+Расширения Dis/среды допустимы, но должны быть явно описаны.
+[Реестр и предложение E1](ENVIRONMENT-EXTENSIONS.md) отделяют реализованное от
+предлагаемого. Provider bind использует существующий Sys.MREPL; Vfsctl пока только
+предложен, без новых public signatures/IDs.
