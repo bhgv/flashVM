@@ -57,3 +57,14 @@
   генерации и обязательный guarded dispatch. Переход в C и тестовая RX-подмена
   не доказывают inline-арифметику. Не добавлять неиспользуемые механизмы CPU,
   команды отладчика и пути восстановления ради возможной будущей поддержки.
+
+## Graphics ownership / Принадлежность графики
+
+- All graphics, including FreeType, is supplied by FlashVM. Do not import or
+  implement graphical primitives, rasterizers, font engines or graphics libraries
+  in DisVM/Inferno core libraries (including lib9/libstyx). Keep only the explicit
+  non-graphical headers needed by the native library build. Application adapters
+  send rendering requests through FlashVM APIs.
+- Вся графика, включая FreeType, принадлежит FlashVM. В библиотеки ядра DisVM и
+  импортируемые библиотеки Inferno не добавлять графические примитивы, растеризаторы
+  и шрифтовые движки. Прикладные адаптеры обращаются к графическому API FlashVM.

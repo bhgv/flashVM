@@ -58,3 +58,18 @@ name, uid/gid/muid and refusal of a partial record. Native dynamic/static tests
 complement the [existing Limbo server-handler checks](STYX-SERVING.md).
 No C-server listener, native mount client or complete wire/authentication service
 is claimed by these codec and handler tests.
+
+## Complete native library import / Полный импорт библиотек (runtime0.137)
+
+The subsequent [native package](../native/README.md) contains all of lib9 and
+libstyx, selects the original POSIX source list and builds independent Linux64
+archives using experiment's native PC/FP support. Its manifest pins the refreshed
+upstream commit; the earlier links above describe the runtime0.136 checkpoint.
+The confirmed fid/Qid/count and same-fid walk defects described above are fixed
+in owning upstream and covered by the original C dispatcher regression test.
+The production transport/VFS/client boundary remains unfinished; see the package's
+explicit remaining-integration list before treating this as a deployable service.
+
+Полные библиотеки теперь собираются и используются проверками исходного C-кода.
+Проверка dispatcher не заменяет проверку TCP, авторизации и жизненного цикла;
+эти границы перечислены в документации пакета. Фиксация дерева не вводится.

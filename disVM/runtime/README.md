@@ -663,3 +663,8 @@ is claimed by this acceptance checkpoint.
 The [native C reuse assessment](STYX-NATIVE.md) identifies Inferno libstyx/devmnt
 and links the original already-vendored lib9 C codecs in a dedicated wire-vector
 check. C server/client VFS/transport adapters remain pending.
+
+Runtime0.137 imports [complete native Inferno lib9/libstyx](../native/README.md)
+from current experiment with upstream native64 server fixes. Separate Linux64
+archives and original dispatcher/codec/thread-isolation acceptance are available;
+production VFS transport and kernel-client adaptation remain in progress.
