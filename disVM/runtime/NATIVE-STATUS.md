@@ -2,6 +2,40 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: provider changes и independent refresh cursors
+
+Runtime0.129 добавляет retained factory-owned native journal с шестью classes:
+RIGHTS, NAMESPACE, CONTENT, CONNECTION, LOAD, NETWORK. Уведомление содержит local
+session, source report generation, mask и optional opaque resource ID. Каждый
+observer владеет cursor; refresh одного не очищает чужое состояние. Explicit
+chunk hints проходят через opened provider wrapper без изменения I/O result и
+без diagnostic stat на success. Legacy hints без session остаются diagnostics.
+[Контракт и текущие границы](PROVIDER-EVENTS.md).
+
+Selective refresh захватывает точные class versions, вызывает supplied native
+reread callback вне journal mutex и подтверждает только ticket. Новое событие
+во время query остаётся dirty; failed query cursor не меняет. Epoch replacement
+во время query возвращает NOT_FOUND без ack. Journal хранит32 reports плюс class
+watermarks; mixed resources, gaps и потеря нужной history расширяют scope до
+provider-wide. Duplicate/stale reports и старые epochs не подменяют новое state.
+Reconnect API меняет только bookkeeping epoch по expected-session check, не socket
+и не opened fid. Generations/sessions не оборачиваются. Native cursor не atomic
+shared cache; query staging/version guarantees описаны отдельно.
+
+LOAD/NETWORK пока invalidation classes, не metrics/sampler/балансировка. Сетевой
+heartbeat/Styx receiver, background refresh worker, новый guest control module
+и переключение открытого file-stack не реализованы. Старые stable-bind identity,
+MAUTORWX и module cache правила сохранены; upstream snapshot и Sys ABI неизменны.
+
+Финальный AMD64 wide 76/76; dynamic/static host-unit 35/35. Native unit проверяет
+selective/failed queries, copied cursors, callbacks races, generation gaps,
+resource zero/mixed scope, overflow, reconnect и4999 reports из отдельного OS
+thread параллельно refresh. Новый provider-events guest прошёл C/JIT × оба poll
+в dynamic/static: ABC bytes, typed hints, реальные factory rereads, пять refresh
+callbacks/шесть state queries, ноль success stat, failed offline query, epoch recovery
+и final factory cleanup. Offline/recovery — native simulation, не сетевой acceptance.
+C89 syntax check provider/result/change headers пройден; CI новой ревизии отдельно.
+
 ## 2026-11-15: precise chunk results и metadata после отказа
 
 Runtime0.128 добавляет optional native read_chunk/write_chunk callbacks и scalar

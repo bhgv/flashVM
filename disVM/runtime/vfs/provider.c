@@ -15,6 +15,7 @@ struct DVM_Provider
     size_t references; /* Group/plan/open-handle owners, protected by lock. */
     const DVM_ProviderOps *ops; /* Immutable callbacks, valid through destroy. */
     void *state; /* Exclusively owned native factory state. */
+    DVM_Changes *changes; /* Owned event journal, borrowed only through retained factory refs. */
 };
 
 
@@ -45,6 +46,13 @@ DVM_Provider *dvm_provider_create(const DVM_ProviderOps *ops, void *state)
     provider->lock = fvm_port_sync_create();
     if (!provider->lock)
     {
+        free(provider);
+        return NULL;
+    }
+    provider->changes = dvm_changes_create();
+    if (!provider->changes)
+    {
+        fvm_port_sync_destroy(provider->lock);
         free(provider);
         return NULL;
     }
@@ -89,6 +97,7 @@ void dvm_provider_release(DVM_Provider *provider)
     if (last)
     {
         provider->ops->destroy(provider->state);
+        dvm_changes_destroy(provider->changes);
         fvm_port_sync_destroy(provider->lock);
         free(provider);
     }
@@ -130,12 +139,33 @@ static FVM_Result wrapped_write(void *state, const void *bytes, size_t size)
 }
 
 
+/* EN/RU: Relay typed hints only with an explicit session; old unscoped hints
+ * remain diagnostics. Notification validity never changes acknowledged I/O.
+ * Передать typed hint только с session; старые unscoped hints — diagnostics.
+ * Validity уведомления не меняет подтверждённый I/O. No callback or metadata query. */
+static void changed(ProviderHandle *handle, const DVM_IoResult *result)
+{
+    DVM_ChangeEvent event;
+    if (!(result->flags & DVM_IO_CHANGED) || !result->session || !result->generation)
+    {
+        return;
+    }
+    event.session = result->session;
+    event.generation = result->generation;
+    event.kinds = result->change_kinds;
+    event.flags = result->change_flags;
+    event.resource = result->resource;
+    dvm_changes_notify(handle->provider->changes, &event);
+}
+
+
 /* EN/RU: Preserve precise inner acknowledgement and its single failure probe.
  * Сохранить inner acknowledgement и его единственный failure probe. Native-only. */
 static void wrapped_read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *result)
 {
     ProviderHandle *handle = state;
     *result = dvm_vfs_read_chunk(&handle->inner, bytes, size);
+    changed(handle, result);
 }
 
 
@@ -145,6 +175,7 @@ static void wrapped_write_chunk(void *state, const void *bytes, size_t size, DVM
 {
     ProviderHandle *handle = state;
     *result = dvm_vfs_write_chunk(&handle->inner, bytes, size);
+    changed(handle, result);
 }
 
 
@@ -255,4 +286,12 @@ FVM_Result dvm_provider_access(DVM_Provider *provider, const char *relative, uns
         return FVM_INVALID_ARGUMENT;
     }
     return provider->ops->access ? provider->ops->access(provider->state, relative, access) : FVM_UNSUPPORTED;
+}
+
+
+/* EN/RU: See provider.h; retained owner pins the journal and its mutex lifetime.
+ * См. provider.h; retained owner удерживает journal и lifetime его mutex. */
+DVM_Changes *dvm_provider_changes(DVM_Provider *provider)
+{
+    return provider ? provider->changes : NULL;
 }

@@ -2,6 +2,11 @@
 
 Copyright (c) 2026 bhgv
 
+Runtime 0.129 adds [native provider change journals and refresh cursors](PROVIDER-EVENTS.md).
+The sections below describe the 0.128 chunk interface; the linked contract extends
+its hints with explicit session/classes/resource, without adding a Styx transport.
+Runtime 0.129 расширяет hints native journal, без Styx transport.
+
 Runtime 0.128 implements native precise I/O outcomes and the accepted rule:
 **perform the operation first; query metadata only after failure**. This is an
 internal provider/runtime interface. No new Styx messages, ping/pong transport,

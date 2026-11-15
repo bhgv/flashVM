@@ -41,6 +41,10 @@ typedef struct DVM_IoResult
     unsigned flags; /* Prefix certainty, uncertain tail, metadata and change hints. */
     FVM_Result probe_status; /* Diagnostic post-failure info result; UNSUPPORTED before probe. */
     unsigned long observed_mode; /* Low mode bits when MODE is set; not an access decision. */
+    uint64_t session; /* Explicit connection epoch for routing a provider change hint. */
+    unsigned change_kinds; /* Provider change class mask; zero is unspecified/all. */
+    unsigned change_flags; /* Optional provider resource scope, independent from I/O flags. */
+    uint64_t resource; /* Optional provider-local resource identity, never authority. */
     uint64_t generation; /* Optional backend change generation within its session. */
 } DVM_IoResult;
 #endif

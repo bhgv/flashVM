@@ -159,3 +159,7 @@ Runtime 0.126 объединяет provider/native ветви; текущие г
 Runtime 0.127 adds optional effective-access callbacks for [MAUTORWX](AUTO-UNION.md).
 Absent callbacks never infer permissions from provider mode bits.
 Runtime 0.127: optional access callback; без него mode bits не дают MAUTORWX прав.
+
+Runtime 0.129 attaches a [native change journal](PROVIDER-EVENTS.md) to each factory.
+Aliases/copies share the source journal; each observer owns its refresh cursor.
+Runtime 0.129: journal принадлежит factory, observers не очищают чужие cursor.

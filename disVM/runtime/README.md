@@ -609,3 +609,8 @@ Runtime 0.128 adds [precise chunk results and failure-only metadata](CHUNK-IO.md
 confirmed bytes survive read/write refusal, short writes reach Sys/fprint, and
 success/EOF performs no diagnostic stat. Heartbeat change hints and Styx wire
 integration are specified separately from the implemented native foundation.
+
+Runtime 0.129 adds [typed provider notifications and selective refresh](PROVIDER-EVENTS.md):
+independent consumer cursors, session/generation checks, conservative coalescing,
+and a chunk-hint bridge. Provider reread acknowledges only captured versions;
+new events stay pending. Network heartbeat and load-based routing remain future work.

@@ -6,6 +6,7 @@
 #define DVM_VFS_PROVIDER_H
 #include "handle.h"
 #include "anchor_port.h"
+#include "changes.h"
 #define DVM_PROVIDER_STABLE_BIND 1UL /* Factory promises immutable relative-name/node identity for bind aliases. */
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */
 
@@ -63,4 +64,9 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
 /* EN/RU: Query immutable stable-bind promise on a retained provider; no callback.
  * Проверить immutable stable-bind promise удержанного provider; без callback. */
 int dvm_provider_bindable(DVM_Provider *provider);
+
+/* EN/RU: Borrow provider-scoped native event journal while holding a provider ref.
+ * No authority or ownership transfer; journal survives all retained open handles.
+ * Заимствовать event journal при удержанном provider ref; без передачи владения. */
+DVM_Changes *dvm_provider_changes(DVM_Provider *provider);
 #endif
