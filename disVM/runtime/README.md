@@ -1,3 +1,5 @@
+[Local Limbo publication capabilities — runtime0.135](VFS-PUBLICATION.md)
+
 [Prepared trees and publication requests — runtime0.134](VFS-EXPORT.md)
 
 **Master execution policy:** [mandatory native concurrency / обязательная многопоточность](NATIVE-STATUS.md). Single-threaded/exclusive execution modes are removed; older version notes below are historical.
@@ -644,3 +646,9 @@ request/owner-selected ordinary tree/grant, explicit PREPARE and direct modes,
 deferred one-request review, current per-peer rights and automatic source notices.
 It includes confined native root exports and combined provider mount/bind.
 The guest publication adapter and Styx transport remain pending.
+
+Runtime 0.135 adds [local Limbo publication capabilities](VFS-PUBLICATION.md):
+opaque Root/Owner/Endpoint/Ticket/Request types, immutable tree overlays, one-request
+owner review, actual native caller PID, explicit direct/prepared modes and ordinary
+VFS notification sources. GC finalizers enqueue native cleanup without global stops.
+The Styx/network adapter and recursive namespace snapshot capture remain pending.

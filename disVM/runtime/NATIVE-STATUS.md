@@ -2,6 +2,45 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: local Limbo publication capabilities
+
+Runtime0.135 exposes the native SDK through Vfsexport and pure Limbo Vfspublish.
+Exact native Root/Owner/Endpoint/Ticket/Request types separate provider, administrative,
+submission, requester and review authority. Guest-created lookalike ADTs are refused;
+reserved prefixes, copied fields and integer IDs grant nothing. Request PID is captured
+from the actual permanent caller, not accepted as a Limbo string/flag. No wire endpoint.
+[Complete API, example, lifecycle and limits](VFS-PUBLICATION.md).
+
+Capture selects one explicit signed layer in the current namespace; overlays compose
+hidden/substituted/added nodes without mutating input trees. Root info reports actual
+node kind/mode before mount; combined mount/bind uses existing indexed stacks.
+Recursive capture of nested bind topology is still pending. The owner reads one
+immutable native request and selects any ordinary tree. Prepare queues for review;
+direct mode explicitly delegates the prechosen root through the shared Endpoint.
+Status does not consume cached grants; take transfers once across concurrent aliases.
+Cancel releases outstanding ticket quota; accepted trees survive publisher close.
+
+Readonly events(owner) provides an ordinary source journal. Binding it attaches
+existing automatic per-thread namespace watchers. Request submission natively pushes
+Content invalidation into /dev/sysevents before any next/status call; no Limbo polling,
+foreign managed callback or forced guest pause. Event format remains provisional.
+Native service operations serialize close/reply/request, while refcounts use a separate
+short lifetime lock. Finalizers enqueue preallocated close jobs without native I/O
+under GC admission; actual provider/publication cleanup runs on the native closer.
+
+AMD64 wide79/79; dynamic/static host-unit39/39. New real guest interpreter/JIT × both
+GC observation settings passed in both builds, also with private root-registration
+and guarded-result failures. Tests cover actual requester PID/Unicode logical names,
+no-poll notification, all five forged records, wrong publisher, queue limit, direct
+and prepared file/directory grants, one-use/repeated status, cancellation, close,
+concurrent alias take, sender retirement, readonly ceilings and child namespace mount
+isolation. Independent host checks preserve original/private bytes. After closer join
+all constructed native capability states are confirmed retired. Targeted ASan/UBSan
+passed four guest modes with16 capability/VFS sources instrumented; remaining VM/port
+objects are uninstrumented, LSan disabled under ptrace. Sys.m, upstream and ISA stay
+unchanged. Styx transport/authentication, recursive namespace snapshots, heartbeat,
+balancing and running-code migration remain future work.
+
 ## 2026-11-15: prepared publication trees and native request interception
 
 Runtime0.134 adds the native C export SDK: explicit request/owner selection/grant,

@@ -128,6 +128,7 @@ extern void dvm_bigtable_initialize(void);
 
 
 extern void dvm_processctl_initialize(void);
+extern void dvm_cap_initialize(void); /* Opaque publication capabilities. */
 extern void dvm_vfsnative_initialize(void); /* Caller-namespace layer control builtin. */
 #ifdef DVM_RUNTIME_NATIVE_DEMO
 

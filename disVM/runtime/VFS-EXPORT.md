@@ -130,8 +130,10 @@ transport after identity verification**, never copied from client flags/peer tex
 The peer string alone grants no authority. Policy decides what that peer receives.
 Local peer labels also require a trusted caller boundary. This SDK accepts such
 adapter requests, but does not itself implement authentication or a Styx listener.
-A Limbo publication adapter must queue owner work; it must never execute managed
-callbacks on an arbitrary submitting native thread. That adapter is still pending.
+The local Limbo adapter added in runtime0.135 uses opaque owner/endpoint/ticket
+capabilities and deferred review; see [guest API](VFS-PUBLICATION.md). It never
+executes managed callbacks on an arbitrary submitting native thread. A remote
+Styx adapter remains pending.
 
 ## Native roots and combined mount/bind / Native roots и mount+bind
 
@@ -164,5 +166,5 @@ provenance rejection, rights ceilings, one-use grants, queue bounds, FIFO, close
 late replies and100 real reply/cancel races. Another native worker emits500 source
 notices while100 projected views subscribe and retire. Targeted ASan/UBSan runs
 instrument SDK/VFS sources; the shared port archive is uninstrumented and LSan is
-disabled in this ptrace environment. Full Styx transport, guest publication API,
-heartbeat, remote execution/migration and balancing remain future work.
+disabled in this ptrace environment. Runtime0.135 adds the [local guest publication API](VFS-PUBLICATION.md). Full Styx
+transport, heartbeat, remote execution/migration and balancing remain future work.

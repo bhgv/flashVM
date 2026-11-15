@@ -110,3 +110,19 @@ the single-worker reference; strict RC rejects their work with explicit diagnost
 [Concurrent large graphs](../../CONCURRENT-LARGE-GRAPHS.md) replaces the Duke policy
 byte ceiling with checked native storage/index bounds and validates field extents
 before subtraction or addition. Strict collector exclusion remains forbidden.
+
+## Runtime0.135 native VFS capability shells
+
+[Exact Root/Owner/Endpoint/Ticket/Request types](../../vfs/cap_gc.c) carry only an
+inert guest prefix and private native ownership. Their pointer-free descriptors are
+explicitly admitted by Fast; this does not admit arbitrary custom finalizers.
+After zero-count reader grace the finalizer only moves a preallocated native handle
+into the close worker. Provider destruction, pending-request denial, cancellation
+and service teardown happen there, outside collector admission. Guest call results
+use rooted staging and guarded pointer publication; actual native effects are never
+replayed after a managed result failure. The public prefix and copied request IDs
+confer no authority. See [contracts and acceptance](../../VFS-PUBLICATION.md).
+
+Exact VFS shells не содержат managed children. Без global stop/pause; native cleanup
+отделён от collector callback. Refusal tests проверяют root registration и guarded
+result publication, а финальный native snapshot — completed state retirement.

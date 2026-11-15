@@ -119,3 +119,10 @@ source bytes are checked independently from guest assertions.
 No Sys.m, Dis ISA or upstream snapshot changes. This is the hosted NC64 extension,
 not a claim that Inferno has indexed MINS or file unions. Standard Styx mount
 transport and publication authorization remain separate APIs/work.
+
+## Prepared publication / Подготовленная публикация
+
+[Vfsexport/Vfspublish](VFS-PUBLICATION.md) add local typed capabilities for explicit
+single-layer capture, immutable file/directory composition and combined mount/bind.
+They use the same MINS/signed-position rules; Vfsctl continues to inspect and reorder
+the installed providers. Capturing all nested binds is a separate future operation.
