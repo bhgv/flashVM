@@ -40,6 +40,11 @@ typedef struct DVM_ResourcePlan
 DVM_Anchor *dvm_anchor_open(DVM_Anchor *parent, const char *path);
 
 
+/* EN/RU: Clone an owned confined capability from retained directory; owned/NULL.
+ * Клонировать confined capability из retained directory; owned/NULL, native only. */
+DVM_Anchor *dvm_anchor_confine(DVM_Anchor *parent);
+
+
 /* EN/RU: Retain live anchor; one/zero for success/overflow. No I/O.
  * Удержать anchor; один/ноль для успеха/overflow. Без I/O. */
 int dvm_anchor_retain(DVM_Anchor *anchor);

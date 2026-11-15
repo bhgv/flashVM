@@ -92,3 +92,16 @@ FVM_Result fvm_port_anchor_access_at(FVM_PortAnchor *parent, const char *relativ
     (void)access;
     return FVM_UNSUPPORTED;
 }
+
+
+/* EN/RU: Confined directory anchors are not available in this backend.
+ * Confined directory anchors пока недоступны; output cleared on refusal. */
+FVM_Result fvm_port_anchor_confine(FVM_PortAnchor *parent, FVM_PortAnchor **out)
+{
+    (void)parent;
+    if (out)
+    {
+        *out = NULL;
+    }
+    return FVM_UNSUPPORTED;
+}

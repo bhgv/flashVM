@@ -2,7 +2,7 @@
 # EN: Native Dis configuration; compose ordered build and test modules.
 # RU: Конфигурация нативного Dis; последовательное подключение сборки и тестов.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.133.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.134.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -487,3 +487,5 @@ target_link_libraries(disvm PRIVATE disvm_remote_session)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/EditorTargets.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeOnlyTests.cmake")
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/NativeUnitTests.cmake")
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ExportTests.cmake")

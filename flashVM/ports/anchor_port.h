@@ -4,6 +4,7 @@
  */
 #ifndef FVM_ANCHOR_PORT_H
 #define FVM_ANCHOR_PORT_H
+#define FVM_ANCHOR_PATH_BYTES 4096U /* Maximum confined relative path bytes including NUL. */
 #include "filesystem_port.h"
 #ifdef __cplusplus
 extern "C"
@@ -77,6 +78,13 @@ FVM_Result fvm_port_directory_open_at(FVM_PortAnchor *parent, const char *relati
  * Parent заимствован до конца blocking native I/O. */
 FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relative);
 
+
+/* EN/RU: Clone a held directory into a no-symlink/no-dot-dot capability. All child
+ * opens/metadata/access/removal use component-wise nofollow resolution; original
+ * remains unchanged. Owned *out or NULL/error; Windows currently UNSUPPORTED.
+ * Клонировать directory capability без symlink/..; original не меняется.
+ * Child operations идут через nofollow traversal; owned *out либо NULL/error. */
+FVM_Result fvm_port_anchor_confine(FVM_PortAnchor *parent, FVM_PortAnchor **out);
 
 #ifdef __cplusplus
 }

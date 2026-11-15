@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1702: opt-in confined directory anchors reject dot-dot and component/final symlink traversal for exported native resources. Ordinary anchors keep native semantics; Windows returns UNSUPPORTED. [Export SDK and boundaries](../../disVM/runtime/VFS-EXPORT.md). No full filesystem sandbox/Flash compatibility stage closes.
+
 Checkpoint v0.1701: existing read/write opens use an explicit noncreating, nontruncating rwo mode with one shared cursor, supporting DisVM Sys.open(ORDWR). Legacy rw append-channel semantics remain separate. [EN/RU contract](../../disVM/runtime/PROVIDER-EVENT-FILES.md). No full VFS or Flash compatibility stage closes.
 
 Checkpoint v0.1700: held POSIX directory anchors expose effective-ID access checks, including native groups/ACLs, without opening/truncating files. DisVM's explicit MAUTORWX union extension uses these checks before ordinary I/O. Windows relative access remains UNSUPPORTED. No Flash compatibility or complete VFS/security stage closes. [EN/RU contract](../../disVM/runtime/AUTO-UNION.md).

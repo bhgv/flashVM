@@ -2,6 +2,38 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: prepared publication trees and native request interception
+
+Runtime0.134 adds the native C export SDK: explicit request/owner selection/grant,
+PREPARE/direct/deferred paths, opaque requester tickets and bounded owner review.
+The callback can select a completely different provider tree. Views compose hidden,
+added and replaced file/directory endpoints, enforce current per-peer policy on
+open and every I/O, preserve partial results and forward source changes natively.
+The resulting tree is an ordinary provider; combined mount/bind uses the same
+revision-checked indexed stack. No guest pause/cooperative receiver service.
+[API, ownership, example and boundaries](VFS-EXPORT.md).
+
+Подготовка отделена от выдачи; requested name не становится host path. Remote
+request требует подтверждённую identity от доверенного адаптера, не wire bit.
+Direct тоже требует authorize. PREPARE — явное расширение publication settings,
+не стандартный Inferno flag. Guest publication adapter, authentication transport
+и Styx server пока не реализованы; Sys.m/upstream/ISA неизменны.
+
+FlashVM0.1702 adds opt-in confined POSIX anchor copies for native exports, rejecting
+symlink/dot-dot traversal while ordinary anchors retain existing semantics. Windows
+refuses confinement. Linux AMD64 acceptance does not certify other platforms,
+full process sandboxing, hard-link isolation or complete Inferno Chan identity.
+
+AMD64 wide78/78; dynamic/static host-unit39/39 and Vfsctl guest C/JIT × both GC
+observation settings in both builds. The new native SDK test covers real native
+roots, independent host-byte checks, filtering endpoint, directory projection,
+live ACL/old FD, journal forwarding, mount/MINS, direct/prepared/deferred grants,
+rights/provenance, queue bounds/FIFO, close/cancel/late reply,100 competing owner
+reply/cancel pairs and500 source invalidations beside100 view retirements.
+Targeted ASan/UBSan passed with SDK/VFS sources instrumented, shared port archive
+uninstrumented and LSan disabled under ptrace. No full wire/guest publication,
+heartbeat, migration or load-balancing completion is claimed.
+
 ## 2026-11-15: Vfsctl effective stacks, signed MINS and per-file edits
 
 Runtime0.133 вводит pure Limbo Vfsctl над scalar $Vfsnative: layers/layer/bind/move.

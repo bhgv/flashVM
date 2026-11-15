@@ -12,3 +12,7 @@ add_dependencies(disvm disvm_vfsnative_sources)
 target_sources(disvm PRIVATE vfs/vfsnative.c vfs/stack.c)
 list(APPEND module_names vfsctl)
 list(APPEND module_sources "${root}/disVM/limbo/vfsctl.b")
+
+# EN/RU: Native embedding SDK; separate from standard Styx/Sys interfaces.
+# Native embedding SDK, отдельно от standard Styx/Sys interfaces.
+target_sources(disvm PRIVATE vfs/view.c vfs/view_io.c vfs/view_list.c vfs/export_native.c vfs/publication.c)

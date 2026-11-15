@@ -46,6 +46,31 @@ DVM_Anchor *dvm_anchor_open(DVM_Anchor *parent, const char *path)
 }
 
 
+/* EN/RU: See resource.h; all wrapper allocation precedes capability publication.
+ * См. resource.h; allocation wrapper до capability publication. */
+DVM_Anchor *dvm_anchor_confine(DVM_Anchor *parent)
+{
+    DVM_Anchor *anchor = calloc(1, sizeof(*anchor));
+    if (!parent || !anchor)
+    {
+        free(anchor);
+        return NULL;
+    }
+    anchor->lock = fvm_port_sync_create();
+    if (!anchor->lock || fvm_port_anchor_confine(parent->port, &anchor->port) != FVM_OK)
+    {
+        if (anchor->lock)
+        {
+            fvm_port_sync_destroy(anchor->lock);
+        }
+        free(anchor);
+        return NULL;
+    }
+    anchor->references = 1;
+    return anchor;
+}
+
+
 /* EN/RU: See resource.h; caller already protects anchor lifetime.
  * См. resource.h; caller уже защищает lifetime anchor. */
 int dvm_anchor_retain(DVM_Anchor *anchor)

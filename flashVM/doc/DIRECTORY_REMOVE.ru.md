@@ -50,6 +50,6 @@ Source line links describe the current checkout, including in historical notes.
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_port_anchor_remove_at` | function | [ports/anchor_port.h:78](../ports/anchor_port.h#L78) |
+| `fvm_port_anchor_remove_at` | function | [ports/anchor_port.h:79](../ports/anchor_port.h#L79) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

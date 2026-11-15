@@ -20,6 +20,7 @@ format/ISA и границы проверки. Новое поведение н�
 | Stable-bind factory capability | Implemented internal extension DVM_PROVIDER_STABLE_BIND: fixed relative-name/node identity promise; absent flag refuses provider bind / Внутренняя capability, без неё bind отказывает |
 | [Host provider installation](PROVIDER-NAMESPACE.md) | Internal namespace extension with references and revision checks; not public Sys.mount / Внутреннее расширение, не public Sys.mount |
 | Provider-source Sys.bind(MREPL), directory MBEFORE/MAFTER/MCREATE | Ordinary matched Sys interface, provider-relative aliases with documented mutable-node identity limits; no new flags/opcodes / Обычный Sys, aliases provider-relative, без новых flags/opcodes |
+| [Prepared tree publication](VFS-EXPORT.md) | Native C SDK: request/owner selection/grant, PREPARE/direct/deferred modes and provider views; guest adapter and Styx listener pending / Native SDK реализован, wire/guest adapter ещё нет |
 | [Vfsctl indexed layer control](VFS-LAYERS.md) | Implemented typed inspection/move/MINS and per-file override; separate from standard Sys.bind / Typed API своего namespace, standard Sys ABI не изменён |
 | [MAUTORWX union policy](AUTO-UNION.md) | Implemented explicit bit8 via Vfsflags; effective R/W/X selection, parent w+x creation / Явное расширение выбора по правам, не Inferno flag |
 | [Precise native chunk results](CHUNK-IO.md) | Implemented internal count/cause/certainty and failure-only info; heartbeat/Styx transport remains pending / Native API реализован, wire ещё нет |
@@ -38,19 +39,17 @@ experimental Dis64 claims must not be merged into blanket binary compatibility.
 signature. NC64/experimental Dis64 остаются отдельными явно описанными профилями.
 Расширенная среда не означает автоматическую binary совместимость всех профилей.
 
-## Proposal E1 — typed local provider control / Предложение E1
+## E1 — typed provider control / Типизированное управление
 
-**Proposed only; not implemented or accepted as a public interface.** A separate
-module tentatively named Vfsctl could expose local native provider installation
-through delegated capabilities. It would complement standard Inferno Sys.mount
-for Styx/9P; it must not reinterpret Sys.mount frames or consume reserved flags.
-No module ID, opcode, wire layout or final method signature is assigned here.
+Runtime0.133 implements the local Vfsctl layers/layer/bind/move subset, including
+signed MINS and per-file overrides. Runtime0.134 adds a native C publication/tree
+composition SDK with capability-based grants. See [layers](VFS-LAYERS.md) and
+[publication](VFS-EXPORT.md) for actual signatures, ownership and acceptance.
+The guest-facing publication/capability adapter and standard Sys.mount over Styx
+remain proposals. No new Dis opcode, Sys.m frame or wire layout is assigned.
 
-**Только предложение; public interface ещё не реализован и не принят.** Отдельный
-модуль с рабочим именем Vfsctl мог бы управлять локальными native providers через
-delegated capabilities. Он дополняет стандартный Inferno Sys.mount для Styx/9P,
-не меняет его frames и не занимает reserved flags. IDs, opcodes, wire layout и
-окончательные signatures пока не назначаются.
+Runtime0.133 реализует local Vfsctl,0.134 — native C publication SDK. Public Limbo
+публикация и Sys.mount/Styx остаются будущей работой; их успех не имитируется.
 
 Proposed requirements / Предлагаемые требования:
 

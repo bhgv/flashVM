@@ -23,6 +23,7 @@ struct FVM_PortDirectory
 {
     DIR *stream;                /* Owned native cursor, closed exactly once. */
     char name[FVM_FS_NAME_MAX]; /* Captured display name, not used for fstat. */
+    int confined;               /* Confined enumeration never follows or emits symlink entries. */
     int failed;                 /* Sticky native/caller publication failure. */
 };
 
@@ -226,10 +227,14 @@ FVM_Result fvm_port_directory_read(FVM_PortDirectory *directory, FVM_FileInfo **
         {
             continue;
         }
-        if (fstatat(dirfd(directory->stream), entry->d_name, &native, 0))
+        if (fstatat(dirfd(directory->stream), entry->d_name, &native, directory->confined ? AT_SYMLINK_NOFOLLOW : 0))
         {
             status = FVM_ERROR;
             break;
+        }
+        if (directory->confined && S_ISLNK(native.st_mode))
+        {
+            continue;
         }
         status = fs_stat_info(&native, entry->d_name, &result[used]);
         if (status != FVM_OK)

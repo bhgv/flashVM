@@ -1,3 +1,5 @@
+[Prepared trees and publication requests — runtime0.134](VFS-EXPORT.md)
+
 **Master execution policy:** [mandatory native concurrency / обязательная многопоточность](NATIVE-STATUS.md). Single-threaded/exclusive execution modes are removed; older version notes below are historical.
 
 [Native concurrency readiness: broader acceptance and remaining scope](NATIVE-READINESS.md)
@@ -636,3 +638,9 @@ Runtime 0.133 adds [Vfsctl effective-layer inspection and indexed edits](VFS-LAY
 all candidates/properties, signed MINS slots and revision-guarded moves. Moving a
 file inherited from a directory creates an exact-file override without changing
 the folder or siblings; unmount restores inheritance. Standard Sys.bind stays unchanged.
+
+Runtime 0.134 adds the [native prepared-publication SDK](VFS-EXPORT.md):
+request/owner-selected ordinary tree/grant, explicit PREPARE and direct modes,
+deferred one-request review, current per-peer rights and automatic source notices.
+It includes confined native root exports and combined provider mount/bind.
+The guest publication adapter and Styx transport remain pending.
