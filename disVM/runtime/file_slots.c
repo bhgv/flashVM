@@ -50,16 +50,25 @@ int dvm_file_slots_reserve(DVM_FileGate *gate, DVM_CloseJob *job)
  * descriptor принадлежит вызывающему; владение file/directory передаётся. */
 void dvm_file_slots_publish(int descriptor, FVM_PortFile *file, FVM_PortDirectory *directory)
 {
-    fvm_port_registry_lock();
-    if (!valid(descriptor) || !slots[descriptor].gate || slots[descriptor].resource.ops ||
-        (file && directory) || (!file && !directory))
+    DVM_VfsHandle resource = {0};
+    if ((!file && !directory) || !dvm_vfs_adopt(&resource, file, directory))
     {
-        fvm_port_registry_unlock();
-        fprintf(stderr, "disvm: invalid native slot publication\n");
         abort();
     }
-    if (!dvm_vfs_adopt(&slots[descriptor].resource, file, directory))
+    dvm_file_slots_publish_resource(descriptor, &resource);
+}
+
+
+/* EN/RU: See file_slots.h; source is exclusively owned before slot publication.
+ * См. file_slots.h; source эксклюзивно принадлежит caller до публикации. */
+void dvm_file_slots_publish_resource(int descriptor, DVM_VfsHandle *resource)
+{
+    fvm_port_registry_lock();
+    if (!valid(descriptor) || !slots[descriptor].gate || slots[descriptor].resource.ops ||
+        !resource || !resource->ops || !dvm_vfs_move(&slots[descriptor].resource, resource))
     {
+        fvm_port_registry_unlock();
+        fprintf(stderr, "disvm: invalid provider slot publication\n");
         abort();
     }
     fvm_port_registry_unlock();

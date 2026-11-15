@@ -73,7 +73,6 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     int extent;
     uchar *data;
     unsigned char *stage;
-    FVM_PortFile *file;
     DVM_VfsHandle *resource; /* Borrowed through the same rooted FD as file/gate. */
     WORD result = 0;
     size_t capacity;
@@ -92,8 +91,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         return;
     }
     resource = dvm_runtime_resource(descriptor);
-    file = dvm_vfs_file(resource);
-    if (descriptor != 0 && !(descriptor == 1 && dvm_runtime_stdio_duplex(1)) && !file)
+    if (descriptor != 0 && !(descriptor == 1 && dvm_runtime_stdio_duplex(1)) && !resource)
     {
         result = -1;
         memmove(ret, &result, sizeof(result));
@@ -160,7 +158,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         }
         /* [GC:] Reserve under the gate mutex, wait after native release. The
          * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
-        if (file)
+        if (resource)
         {
             dvm_managed_workers_file_call();
         }

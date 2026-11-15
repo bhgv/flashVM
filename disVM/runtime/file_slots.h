@@ -67,4 +67,10 @@ FVM_PortDirectory *dvm_runtime_directory(int descriptor);
  * Заимствовать provider handle с rooted FD/loader lifetime; NULL для резерва
  * или invalid slot. Владение и operation admission не предоставляются. */
 DVM_VfsHandle *dvm_runtime_resource(int descriptor);
+
+/* EN/RU: Move trusted native provider into caller's reserved slot, clearing source.
+ * Allocation/validation precede publication; invalid ownership is fatal.
+ * No callback runs under registry lock. Перенести provider в свой reserved slot,
+ * очистить source; invalid ownership fatal. Без callback под registry lock. */
+void dvm_file_slots_publish_resource(int descriptor, DVM_VfsHandle *resource);
 #endif

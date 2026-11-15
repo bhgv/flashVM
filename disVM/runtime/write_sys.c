@@ -65,7 +65,6 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     int descriptor;
     int extent;
     uchar *data;
-    FVM_PortFile *file;
     DVM_VfsHandle *resource; /* Borrowed through the same rooted FD as file/gate. */
     unsigned char *stage;
     size_t capacity;
@@ -87,23 +86,27 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         return extent;
     }
     resource = dvm_runtime_resource(descriptor);
-    file = dvm_vfs_file(resource);
-    if (descriptor != 1 && descriptor != 2 && !(descriptor == 0 && dvm_runtime_stdio_duplex(0)) && !file)
+    if (descriptor != 1 && descriptor != 2 && !(descriptor == 0 && dvm_runtime_stdio_duplex(0)) && !resource)
     {
         return -1;
     }
     gate = dvm_runtime_file_gate(descriptor);
-    /* Preserve zero-write descriptor/access checks without staging any bytes.
-     * The legacy file-port zero operation stays on the active owner. */
+    /* [GC:] Even zero-byte provider writes may block. Pin the captured FD and
+     * use native admission without allocating a staging buffer.
+     * Даже zero-byte provider write может блокировать: удержать FD и выйти
+     * в native admission без staging allocation. */
     if (!extent)
     {
         if (descriptor <= 2)
         {
             return 0;
         }
-        dvm_file_gate_reserve(gate, &ticket);
-        if (!dvm_file_gate_enter_now(gate, &ticket))
+        ptradd(D2H(fd));
+        Setmark(D2H(fd));
+        released = dvm_file_gate_try_release(gate, &ticket);
+        if (released < 0)
         {
+            ptrdel(D2H(fd));
             return -1;
         }
         status = dvm_vfs_write(resource, NULL, 0);
@@ -112,6 +115,8 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
             fprintf(stderr, "disvm: zero-write file admission lost\n");
             exit(1);
         }
+        dvm_runtime_gc_native_enter(released);
+        ptrdel(D2H(fd));
         return status == FVM_OK ? 0 : -1;
     }
     capacity = (size_t)extent < WRITE_STAGE_BYTES ? (size_t)extent : WRITE_STAGE_BYTES;
@@ -164,7 +169,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     memmove(stage, data, capacity);
     /* [GC:] Reserve under the gate mutex, wait after native release. The
      * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
-    if (file)
+    if (resource)
     {
         dvm_managed_workers_file_call();
     }

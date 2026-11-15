@@ -20,6 +20,7 @@ typedef struct DVM_VfsOps
     FVM_Result (*seek)(void *state, long offset, int origin, long *position); /* Optional seek; NULL returns UNSUPPORTED. */
     FVM_Result (*list)(void *state, FVM_FileInfo **entries, size_t *count); /* Optional list; NULL returns UNSUPPORTED. */
     void (*close)(void *state); /* Mandatory consuming native close, possibly blocking. */
+    void (*abort_list)(void *state); /* Required with list: invalidate cursor after publication failure. */
 } DVM_VfsOps;
 
 
@@ -105,4 +106,10 @@ FVM_PortFile *dvm_vfs_file(DVM_VfsHandle *handle);
 /* EN/RU: Borrow matching native directory or return NULL; no ownership transfer.
  * Заимствовать native directory либо NULL; без передачи владения. */
 FVM_PortDirectory *dvm_vfs_directory(DVM_VfsHandle *handle);
+
+/* EN/RU: Invalidate list cursor after failed managed publication under the same
+ * FD pin/FIFO. Native metadata only; no allocation, blocking or guest callbacks.
+ * Пометить list cursor failed после ошибки managed publication с тем же FD
+ * pin/FIFO; только native metadata, без allocation/blocking/guest callbacks. */
+FVM_Result dvm_vfs_abort_list(DVM_VfsHandle *handle);
 #endif

@@ -1,4 +1,7 @@
-/* Sys metadata conversion and VM root publication; all OS I/O lives in ports. */
+/* Copyright (c) 2026 bhgv
+ * EN: Provider metadata conversion and guarded Sys directory publication.
+ * RU: Provider metadata conversion и защищённая Sys directory publication.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -9,6 +12,7 @@
 #include "raise.h"
 #include "filesystem_sys.h"
 #include "metadata_wait.h"
+#include "file_slots.h"
 #include "sys_capture.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -254,7 +258,7 @@ void Sys_dirread(void *frame)
 {
     F_Sys_dirread local;
     F_Sys_dirread *call = &local;
-    FVM_PortDirectory *directory;
+    DVM_VfsHandle *resource; /* Rooted FD pins provider through directory publication. */
     DvmDirectoryBuild build;
     FVM_Result native_status;
     WORD status = 0;
@@ -262,8 +266,8 @@ void Sys_dirread(void *frame)
     dvm_sys_capture(frame, call, sizeof(*call), offsetof(F_Sys_dirread, ret), sizeof(DvmDirectoryResult));
     descriptor = filesystem_descriptor(call->fd);
     clear_directory_array(call->ret);
-    directory = dvm_runtime_directory(descriptor);
-    if (!directory)
+    resource = dvm_runtime_resource(descriptor);
+    if (!resource || !resource->ops->list)
     {
         kwerrstr("dirread requires a live directory");
         return;

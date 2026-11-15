@@ -579,3 +579,8 @@ across errors. Selected C/x64 now use it; NativeWorld remains mandatory.
 Runtime 0.122 routes ordinary descriptor I/O and retirement through internal
 [native provider handles](PROVIDER-HANDLES.md); guest provider registration,
 credentials and complete VFS remain pending.
+
+Runtime 0.123 admits trusted native provider handles to reserved FD slots and
+removes native file/directory kind checks from ordinary Sys I/O. The provider-fd
+workload exercises memory-backed read/write/list through real guests; no guest
+mount/registration or credentials interface is enabled.

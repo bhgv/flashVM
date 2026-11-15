@@ -169,3 +169,8 @@ NEWNS не объявляется security sandbox. Следующий implement
 Первый [native provider-handle слой](PROVIDER-HANDLES.md) подключён к
 ordinary descriptor I/O и close. Full walk/mount и guest credentials ещё не
 реализованы; прежние host permissions и namespace limits сохраняются.
+
+Runtime0.123 убирает native type checks из ordinary FD operations и допускает
+trusted host provider publication; mandatory provider-fd проверяет реальные
+read/write/list capabilities через Sys. Это не guest mount/registration и не
+новая credential policy: host permissions и namespace limits сохраняются.

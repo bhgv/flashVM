@@ -13,6 +13,7 @@
 typedef struct Probe
 {
     unsigned reads; /* Successful provider calls, distinct from rejected dispatch. */
+    unsigned aborts; /* Cursor invalidations through the common provider operation. */
     unsigned closes; /* Consuming calls; must equal one after move/repeated close. */
 } Probe;
 
@@ -53,7 +54,26 @@ static void close_probe(void *state)
     probe->closes++;
 }
 
-static const DVM_VfsOps probe_ops = {NULL, read_probe, NULL, NULL, NULL, close_probe}; /* Trusted private test provider. */
+/* EN/RU: Borrow output slots and return unsupported without changing them.
+ * Заимствовать output slots; вернуть unsupported без изменения. */
+static FVM_Result list_probe(void *state, FVM_FileInfo **entries, size_t *count)
+{
+    (void)state;
+    (void)entries;
+    (void)count;
+    return FVM_UNSUPPORTED;
+}
+
+
+/* EN/RU: Invalidate native cursor metadata without allocation or VM access.
+ * Пометить cursor invalid без allocation или VM access. */
+static void abort_probe(void *state)
+{
+    Probe *probe = state;
+    probe->aborts++;
+}
+
+static const DVM_VfsOps probe_ops = {NULL, read_probe, NULL, NULL, NULL, close_probe, NULL}; /* Trusted private test provider. */
 
 
 /* EN/RU: Require real callback dispatch without any file/directory type knowledge.
@@ -62,9 +82,14 @@ static const DVM_VfsOps probe_ops = {NULL, read_probe, NULL, NULL, NULL, close_p
  * владения при отказах. Ноль при успехе; внешних ресурсов нет. */
 int main(void)
 {
-    Probe probe = {0, 0};
+    Probe probe = {0, 0, 0};
+    Probe cursor_probe = {0, 0, 0};
     DVM_VfsHandle source = {&probe_ops, &probe};
     DVM_VfsHandle target = {0};
+    const DVM_VfsOps list_ops = {NULL, NULL, NULL, NULL, list_probe, close_probe, abort_probe};
+    const DVM_VfsOps missing_abort_ops = {NULL, NULL, NULL, NULL, list_probe, close_probe, NULL};
+    DVM_VfsHandle cursor = {&list_ops, &cursor_probe};
+    DVM_VfsHandle missing_abort = {&missing_abort_ops, &probe};
     DVM_VfsHandle invalid = {&probe_ops, NULL};
     FVM_FileInfo info;
     FVM_FileInfo before;
@@ -83,10 +108,16 @@ int main(void)
             "occupied destination accepted");
     require(!dvm_vfs_move(&target, &invalid) && !target.state && invalid.ops == &probe_ops,
             "invalid source moved");
+    require(!dvm_vfs_move(&target, &missing_abort) && !target.ops && missing_abort.state == &probe,
+            "list provider without abort admitted");
+    require(dvm_vfs_abort_list(&source) == FVM_UNSUPPORTED, "absent abort changed behavior");
+    require(dvm_vfs_abort_list(&cursor) == FVM_OK && cursor_probe.aborts == 1, "cursor abort dispatch");
     require(dvm_vfs_move(&target, &source) && !source.ops && !source.state, "source not cleared");
     require(dvm_vfs_read(&target, &byte, 1, &received) == FVM_OK && byte == 'P' && received == 1 && probe.reads == 1,
             "provider read dispatch");
     require(!dvm_vfs_file(&target) && !dvm_vfs_directory(&target), "custom state exposed as native handle");
+    dvm_vfs_close(&cursor);
+    require(cursor_probe.closes == 1, "cursor consuming close");
     dvm_vfs_close(&source);
     dvm_vfs_close(&target);
     dvm_vfs_close(&target);

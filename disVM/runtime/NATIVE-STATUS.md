@@ -2,6 +2,28 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: provider admission без native type discrimination
+
+Runtime0.123 допускает trusted native handle в зарезервированный descriptor
+через consuming publication. Обычные read/write/seek/fstat/fprint/dirread больше
+не требуют native file/directory state. List provider обязан иметь abort_list:
+ошибка managed publication инвалидирует cursor через native metadata callback.
+Invalid table не передаёт владение. Даже zero-byte write теперь удерживает FD
+и использует native admission: provider callback может блокировать.
+
+Новый mandatory provider-fd запускает восемь реальных guests на private relink:
+24 memory read/write/list states, read/write capability refusals, seek, fstat,
+formatted output, zero-write, directory batch/EOF и consuming close. Native
+fixtures остаются HOST!, provider bytes независимо дают ABCDE → XBCZ!. Нет
+нового runtime CLI bypass: production по-прежнему монтирует только прежние
+native resources; guest mount/registration, credentials и полный VFS walk
+остаются следующими этапами. [Контракт RU/EN](PROVIDER-HANDLES.md).
+
+Dynamic/static host-unit прошли 30/30; provider-fd прошёл C/JIT × оба poll в
+обеих сборках (8 runs). Полный финальный AMD64 wide прошёл 71/71.
+Handle implementation сохраняет C89 compatibility.
+Архитектурная CI и TSan для этой ревизии подтверждаются отдельно после окончания.
+
 ## 2026-11-15: внутренние native provider handles
 
 Runtime0.122 хранит общий owning handle в ordinary descriptor slots. File и

@@ -54,13 +54,12 @@ void dvm_formatted_statistics(void)
 static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_t count)
 {
     DVM_VfsHandle *resource = dvm_runtime_resource(descriptor); /* FD pins slot through native wait. */
-    FVM_PortFile *file = dvm_vfs_file(resource);
     FVM_Result status;
     size_t written = 0;
     int released;
     DVM_FileTicket ticket;
     DVM_FileGate *gate;
-    if (descriptor != 1 && descriptor != 2 && !file)
+    if (descriptor != 1 && descriptor != 2 && !resource)
     {
         kwerrstr("formatted descriptor write failed");
         return -1;
@@ -76,7 +75,7 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     }
     /* [GC:] Reserve under the gate mutex, wait after native release. The
      * rooted FD pins the file/gate; finish BEFORE reentry prevents lock inversion. */
-    if (file)
+    if (resource)
     {
         dvm_managed_workers_file_call();
     }

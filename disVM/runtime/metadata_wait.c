@@ -144,13 +144,11 @@ FVM_Result dvm_metadata_selected(DVM_ResourcePlan *plan, FVM_FileInfo *output)
 FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output)
 {
     DVM_VfsHandle *resource = dvm_runtime_resource(descriptor); /* Same rooted FD/FIFO lifetime. */
-    FVM_PortFile *file = dvm_vfs_file(resource);
-    FVM_PortDirectory *directory = dvm_vfs_directory(resource);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
     FVM_Result status;
     DVM_FileTicket ticket;
     int released;
-    if ((!file && !directory) || !gate || !output)
+    if (!resource || !gate || !output)
     {
         kwerrstr("fstat requires a live ordinary file or directory");
         return FVM_INVALID_ARGUMENT;
@@ -201,13 +199,12 @@ FVM_Result dvm_metadata_directory_read(
     Sys_FD *fd, int descriptor, FVM_FileInfo **entries, size_t *count, int (*publish)(void *), void *argument)
 {
     DVM_VfsHandle *resource = dvm_runtime_resource(descriptor); /* Same rooted FD/FIFO lifetime. */
-    FVM_PortDirectory *directory = dvm_vfs_directory(resource);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
     FVM_Result status;
     DVM_FileTicket ticket;
     int released, published = 1;
 
-    if (!directory || !gate || !entries || !count || !publish)
+    if (!resource || !resource->ops->list || !gate || !entries || !count || !publish)
     {
         kwerrstr("dirread requires a live directory and result");
         return FVM_INVALID_ARGUMENT;
@@ -238,7 +235,7 @@ FVM_Result dvm_metadata_directory_read(
         published = kprotect(publish, argument);
         if (!published)
         {
-            fvm_port_directory_abort(directory);
+            dvm_vfs_abort_list(resource);
         }
     }
     if (!dvm_file_gate_leave(gate, &ticket))

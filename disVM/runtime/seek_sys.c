@@ -31,7 +31,6 @@ extern Type *TFD; /* Generated typed FD identity, inspected only on ACTIVE heap 
 void Sys_seek(void *frame)
 {
     F_Sys_seek call;
-    FVM_PortFile *file;
     DVM_VfsHandle *resource; /* Borrowed through rooted call.fd and its FIFO. */
     DVM_FileGate *gate;
     FVM_Result status;
@@ -58,9 +57,8 @@ void Sys_seek(void *frame)
     {
         descriptor = (int)call.fd->fd;
         resource = dvm_runtime_resource(descriptor);
-        file = dvm_vfs_file(resource);
         gate = dvm_runtime_file_gate(descriptor);
-        if (!file || !gate)
+        if (!resource || !gate)
         {
             kwerrstr("seek requires an ordinary live file");
         }

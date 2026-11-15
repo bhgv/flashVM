@@ -45,7 +45,7 @@ static void file_close(void *state)
     fvm_port_file_close((FVM_PortFile *)state);
 }
 
-static const DVM_VfsOps file_ops = {file_info, file_read, file_write, file_seek, NULL, file_close}; /* Immutable native file provider. */
+static const DVM_VfsOps file_ops = {file_info, file_read, file_write, file_seek, NULL, file_close, NULL}; /* Immutable native file provider. */
 
 
 /* EN/RU: Borrow serialized directory state/arguments; return native info status.
@@ -71,7 +71,14 @@ static void directory_close(void *state)
     fvm_port_directory_close((FVM_PortDirectory *)state);
 }
 
-static const DVM_VfsOps directory_ops = {directory_info, NULL, NULL, NULL, directory_list, directory_close}; /* Immutable native directory provider. */
+/* EN/RU: Borrow serialized cursor and mark failed after result publication error.
+ * Заимствовать serialized cursor, пометить failed после ошибки публикации. */
+static void directory_abort(void *state)
+{
+    fvm_port_directory_abort((FVM_PortDirectory *)state);
+}
+
+static const DVM_VfsOps directory_ops = {directory_info, NULL, NULL, NULL, directory_list, directory_close, directory_abort}; /* Immutable native directory provider. */
 
 
 /* EN/RU: See handle.h; no callback or allocation during adoption.
@@ -93,7 +100,9 @@ int dvm_vfs_adopt(DVM_VfsHandle *out, FVM_PortFile *file, FVM_PortDirectory *dir
 int dvm_vfs_move(DVM_VfsHandle *out, DVM_VfsHandle *source)
 {
     if (!out || !source || out == source || out->ops || out->state ||
-        (source->ops && (!source->state || !source->ops->close)) || (!source->ops && source->state))
+        (source->ops && (!source->state || !source->ops->close ||
+                         (source->ops->list && !source->ops->abort_list))) ||
+        (!source->ops && source->state))
     {
         return 0;
     }
@@ -194,4 +203,21 @@ FVM_PortFile *dvm_vfs_file(DVM_VfsHandle *handle)
 FVM_PortDirectory *dvm_vfs_directory(DVM_VfsHandle *handle)
 {
     return handle && handle->ops == &directory_ops ? (FVM_PortDirectory *)handle->state : NULL;
+}
+
+
+/* EN/RU: See handle.h; absent callback leaves state unchanged.
+ * См. handle.h; отсутствующий callback не меняет state. */
+FVM_Result dvm_vfs_abort_list(DVM_VfsHandle *handle)
+{
+    if (!handle || !handle->ops || !handle->state)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    if (!handle->ops->abort_list)
+    {
+        return FVM_UNSUPPORTED;
+    }
+    handle->ops->abort_list(handle->state);
+    return FVM_OK;
 }
