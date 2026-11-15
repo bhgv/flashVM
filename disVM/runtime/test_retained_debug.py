@@ -24,6 +24,50 @@ def require(condition, message):
         raise RuntimeError(message)
 
 
+# EN/RU: Retry only the inspector's explicit transient busy result. A retained
+# target does not freeze collector guards. Invalid reads remain real failures.
+# Повторять только явный transient busy; retained target не замораживает GC
+# guards. Invalid reads не скрываются. timeout bounds this one command.
+def inspect_reply(session, command, timeout=5):
+    deadline = time.monotonic() + timeout
+    while True:
+        row = session.command(command)
+        if row.get("error") != "busy":
+            return row
+        require(time.monotonic() < deadline, "inspection stayed busy: " + command + " " + repr(row))
+
+
+# EN/RU: Exercise busy-then-valid, invalid-without-retry and bounded busy refusal.
+# Проверить busy-then-valid, invalid без retry и bounded busy refusal.
+def inspect_reply_contract():
+    class Replies:
+        # EN/RU: Own deterministic protocol replies, with last row repeated.
+        # Владеть deterministic replies; последняя строка повторяется.
+        def __init__(self, rows):
+            self.rows = rows
+            self.calls = 0
+
+        # EN/RU: Return one protocol row without inventing successful payloads.
+        # Вернуть одну protocol row; successful payload не выдумывается.
+        def command(self, command):
+            row = self.rows[min(self.calls, len(self.rows) - 1)]
+            self.calls += 1
+            return row
+
+    ready = Replies([{"error": "busy"}, {"error": "busy"}, {"ok": True, "hex": "5b"}])
+    require(inspect_reply(ready, "object") == {"ok": True, "hex": "5b"} and ready.calls == 3,
+            "explicit busy response contract")
+    invalid = Replies([{"ok": False, "error": "invalid"}, {"ok": True}])
+    require(inspect_reply(invalid, "object").get("error") == "invalid" and invalid.calls == 1,
+            "invalid inspection was retried")
+    try:
+        inspect_reply(Replies([{"error": "busy"}]), "object", timeout=0)
+    except RuntimeError as error:
+        require("inspection stayed busy" in str(error), "unexpected busy refusal")
+    else:
+        raise RuntimeError("permanent busy was accepted")
+
+
 # EN/RU: Poll native state with a bounded deadline; owner/native callbacks remain independent.
 # Читать native state до bounded deadline; owner/native callbacks остаются независимы.
 def retained(session, pid, state="paused"):
@@ -126,7 +170,7 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
                     )
                     raw = b""
                     for offset in range(0, frame["bytes"], 64):
-                        row = session.command(
+                        row = inspect_reply(session,
                             f"read {fault} stack 0 {offset} {min(64, frame['bytes']-offset)}"
                         )
                         require(row.get("ok"), "retained frame bytes unavailable")
@@ -137,7 +181,7 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
                     root_slot = None
                     payload = None
                     for slot in range(32, frame["bytes"], 8):
-                        row = session.command(f"object {fault} stack 0 {slot} 0 64")
+                        row = inspect_reply(session, f"object {fault} stack 0 {slot} 0 64")
                         if row.get("ok") and row.get("kind") == 1:
                             data = bytes.fromhex(row["hex"])
                             if data[32] == 91 and data[63] == 173:
@@ -189,7 +233,7 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
                         )
                         session.command("status " + str(loop))
                     require(
-                        session.command(f"object {fault} stack 0 {root_slot} 0 64")["hex"]
+                        inspect_reply(session, f"object {fault} stack 0 {root_slot} 0 64")["hex"]
                         == payload.hex(),
                         "GC/peer progress changed retained fault payload",
                     )
@@ -333,6 +377,7 @@ def execute(binary, image, mode, locked, work, control=0, socket_transport=False
 # Собрать actual guest и два safe source-level projection/stop omissions.
 def main():
     runtime, compiler, include = (Path(value).resolve() for value in sys.argv[1:4])
+    inspect_reply_contract()
     root = Path(__file__).resolve().parent
     with tempfile.TemporaryDirectory(prefix="retained debug ") as temporary:
         work = Path(temporary)
