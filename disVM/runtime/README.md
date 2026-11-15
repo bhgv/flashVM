@@ -584,3 +584,8 @@ Runtime 0.123 admits trusted native provider handles to reserved FD slots and
 removes native file/directory kind checks from ordinary Sys I/O. The provider-fd
 workload exercises memory-backed read/write/list through real guests; no guest
 mount/registration or credentials interface is enabled.
+
+Runtime 0.124 adds [retained namespace providers](PROVIDER-NAMESPACE.md) for
+trusted host installation, with copied namespace references and opened handles
+surviving unmount. Public Inferno mount/walk compatibility remains incomplete;
+unsupported provider operations refuse without falling back to native paths.

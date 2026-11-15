@@ -20,10 +20,15 @@ typedef struct Memory
     int writable; /* Factory-selected rights; no dynamic rights escalation. */
 } Memory;
 static pthread_mutex_t sync = PTHREAD_MUTEX_INITIALIZER; /* Test counters only. */
+#ifndef DVM_PROVIDER_EXPECTED
+#define DVM_PROVIDER_EXPECTED 24 /* Default private FD fixture ownership count. */
+#endif
 static unsigned created; /* Provider ownership transfers, protected by sync. */
 static unsigned closed; /* Genuine consuming close count, protected by sync. */
 static unsigned incorrect; /* Payload mismatches on close, protected by sync. */
+#ifndef DVM_PROVIDER_NAMESPACE
 void __real_dvm_file_slots_publish(int, FVM_PortFile *, FVM_PortDirectory *);
+#endif
 void __real_dvm_close_worker_stop(void);
 
 
@@ -158,6 +163,7 @@ static const DVM_VfsOps list_ops = {info, NULL, NULL, NULL, list_entries, close_
  * loader/native publications retain the real implementation. No guest pointers.
  * Подменить только named fixture files своими memory providers; обычный loader
  * использует настоящую publication. Guest pointers не используются. */
+#ifndef DVM_PROVIDER_NAMESPACE
 void __wrap_dvm_file_slots_publish(int descriptor, FVM_PortFile *file, FVM_PortDirectory *directory)
 {
     FVM_FileInfo metadata;
@@ -189,6 +195,7 @@ void __wrap_dvm_file_slots_publish(int descriptor, FVM_PortFile *file, FVM_PortD
         abort();
     }
 }
+#endif
 
 
 /* EN/RU: Join actual native closes, then require 24 exact consuming callbacks.
@@ -196,10 +203,10 @@ void __wrap_dvm_file_slots_publish(int descriptor, FVM_PortFile *file, FVM_PortD
 void __wrap_dvm_close_worker_stop(void)
 {
     __real_dvm_close_worker_stop();
-    if (created != 24 || closed != created || incorrect)
+    if (created != DVM_PROVIDER_EXPECTED || closed != created || incorrect)
     {
         fprintf(stderr, "FAIL provider lifecycle created=%u closed=%u incorrect=%u\n", created, closed, incorrect);
         exit(8);
     }
-    puts("PASS provider lifecycle created=24 closed=24 payloads=24");
+    printf("PASS provider lifecycle created=%u closed=%u payloads=%u\n", created, closed, closed);
 }

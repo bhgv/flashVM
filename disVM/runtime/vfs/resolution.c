@@ -71,7 +71,7 @@ static int relative_join(const char *prefix, const char *suffix, char *output)
  * принадлежат caller, group удерживается. Без I/O. Covering rebind не меняет cwd;
  * descendant bindings идут по virtual components. '..' вне cwd — virtual root lookup. */
 static int resolve(
-    DVM_Namespace *group, const char *path, int module, DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative)
+    DVM_Namespace *group, const char *path, int module, DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative, DVM_Provider **provider)
 {
     DVM_NamespaceBinding *binding, *best = NULL;
     DVM_Anchor *anchor;
@@ -119,7 +119,19 @@ static int resolve(
         names->version = group->version;
         if (result && retained)
         {
-            result = relative_join(component, suffix, relative) && dvm_anchor_retain(anchor);
+            result = relative_join(component, suffix, relative);
+            if (result && best && best->provider)
+            {
+                result = provider && dvm_provider_retain(best->provider);
+                if (result)
+                {
+                    *provider = best->provider;
+                }
+            }
+            else if (result)
+            {
+                result = dvm_anchor_retain(anchor);
+            }
             if (result)
             {
                 *retained = anchor;
@@ -135,7 +147,7 @@ static int resolve(
  * См. namespace.h; names-only plan не передаёт resource reference. */
 int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
 {
-    return resolve(group, path, 0, plan, NULL, NULL);
+    return resolve(group, path, 0, plan, NULL, NULL, NULL);
 }
 
 
@@ -143,7 +155,7 @@ int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan
  * См. namespace.h; согласованный выбор import directory. */
 int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
 {
-    return resolve(group, path, 1, plan, NULL, NULL);
+    return resolve(group, path, 1, plan, NULL, NULL, NULL);
 }
 
 
@@ -152,5 +164,5 @@ int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_Namesp
 int dvm_resource_plan(DVM_Namespace *group, const char *path, int module, DVM_ResourcePlan *plan)
 {
     memset(plan, 0, sizeof(*plan));
-    return resolve(group, path, module, &plan->names, &plan->anchor, plan->relative) && dvm_resource_register(plan);
+    return resolve(group, path, module, &plan->names, &plan->anchor, plan->relative, &plan->provider) && dvm_resource_register(plan);
 }

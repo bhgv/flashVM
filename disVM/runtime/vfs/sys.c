@@ -266,7 +266,10 @@ void Sys_unmount(void *frame)
             if (!filtered || (source_live && source.names.version == target.names.version))
             {
                 committed = -1;
-                if (!filtered || (dvm_metadata_selected(&source, &a) == FVM_OK &&
+                int provider_match = filtered && (source.provider || target.provider) &&
+                    source.provider == target.provider && !strcmp(source.relative, target.relative);
+                if (!filtered || provider_match || (!source.provider && !target.provider &&
+                                 dvm_metadata_selected(&source, &a) == FVM_OK &&
                                   dvm_metadata_selected(&target, &b) == FVM_OK && same_resource(&a, &b)))
                 {
                     committed = dvm_namespace_unmount(group, &target.names, NULL);

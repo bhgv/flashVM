@@ -73,9 +73,10 @@ int dvm_namespace_chdir_resource(DVM_Namespace *group, DVM_ResourcePlan *plan)
 
 /* EN/RU: See namespace.h; allocate before locking and free displaced record after.
  * См. namespace.h; выделить до mutex, освободить заменённую запись после mutex. */
-int dvm_namespace_bind_resource(DVM_Namespace *group,
+static int bind_selection(DVM_Namespace *group,
                                 const DVM_NamespacePlan *source,
                                 const DVM_NamespacePlan *target,
+                                DVM_Provider *provider,
                                 DVM_Anchor *anchor,
                                 const char *component)
 {
@@ -90,6 +91,13 @@ int dvm_namespace_bind_resource(DVM_Namespace *group,
         free(entry);
         return -1;
     }
+    if (!dvm_provider_retain(provider))
+    {
+        dvm_anchor_release(anchor);
+        free(entry);
+        return -1;
+    }
+    entry->provider = provider;
     entry->anchor = anchor;
     memcpy(entry->component, component, strlen(component) + 1);
     memcpy(entry->on, target->path, strlen(target->path) + 1);
@@ -119,11 +127,13 @@ int dvm_namespace_bind_resource(DVM_Namespace *group,
     fvm_port_sync_unlock(group->lock);
     if (entry)
     {
+        dvm_provider_release(entry->provider);
         dvm_anchor_release(entry->anchor);
         free(entry);
     }
     if (old)
     {
+        dvm_provider_release(old->provider);
         dvm_anchor_release(old->anchor);
         free(old);
     }
@@ -167,8 +177,34 @@ int dvm_namespace_unmount(DVM_Namespace *group, const DVM_NamespacePlan *target,
     fvm_port_sync_unlock(group->lock);
     if (old)
     {
+        dvm_provider_release(old->provider);
         dvm_anchor_release(old->anchor);
         free(old);
     }
     return result;
+}
+
+
+/* EN/RU: See resource.h; native bindings keep their existing anchor semantics.
+ * См. resource.h; native bindings сохраняют прежнюю семантику anchors. */
+int dvm_namespace_bind_resource(DVM_Namespace *group, const DVM_NamespacePlan *source,
+                                const DVM_NamespacePlan *target, DVM_Anchor *anchor, const char *component)
+{
+    return bind_selection(group, source, target, NULL, anchor, component);
+}
+
+
+/* EN/RU: See resource.h; validate label before allocating or acquiring references.
+ * См. resource.h; проверить label до allocation или захвата references. */
+int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *target,
+                                 DVM_Provider *provider, const char *label)
+{
+    DVM_NamespacePlan source;
+    if (!group || !target || !provider || !label || *label != '/' || strlen(label) >= sizeof(source.native))
+    {
+        return -1;
+    }
+    source = *target;
+    memcpy(source.native, label, strlen(label) + 1);
+    return bind_selection(group, &source, target, provider, NULL, "");
 }

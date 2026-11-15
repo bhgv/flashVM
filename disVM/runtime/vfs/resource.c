@@ -22,6 +22,8 @@ int dvm_resource_register(DVM_ResourcePlan *plan)
 {
     if (dvm_native_context_current() && !dvm_native_cleanup_link(&plan->cleanup, unwind, plan))
     {
+        dvm_provider_release(plan->provider);
+        plan->provider = NULL;
         dvm_anchor_release(plan->anchor);
         plan->anchor = NULL;
         return 0;
@@ -42,6 +44,8 @@ void dvm_resource_close(DVM_ResourcePlan *plan)
     {
         abort();
     }
+    dvm_provider_release(plan->provider);
+    plan->provider = NULL;
     dvm_anchor_release(plan->anchor);
     dvm_anchor_release(plan->created);
     plan->anchor = NULL;
@@ -53,6 +57,10 @@ void dvm_resource_close(DVM_ResourcePlan *plan)
  * См. resource.h. Identity каталога удержана; изменения children — native. */
 FVM_Result dvm_resource_info(DVM_ResourcePlan *plan, FVM_FileInfo *output)
 {
+    if (plan->provider)
+    {
+        return dvm_provider_info(plan->provider, plan->relative, output);
+    }
     return plan->anchor ? fvm_port_anchor_info_at(dvm_anchor_port(plan->anchor), plan->relative, output)
                         : fvm_port_path_info(plan->names.native, output);
 }
@@ -64,6 +72,12 @@ FVM_Result
 dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file, FVM_PortDirectory **directory)
 {
     FVM_FileInfo metadata;
+    if (plan->provider)
+    {
+        *file = NULL;
+        *directory = NULL;
+        return FVM_UNSUPPORTED;
+    }
     *file = NULL;
     *directory = NULL;
     if (!strcmp(mode, "r") && dvm_resource_info(plan, &metadata) == FVM_OK && metadata.directory)
@@ -80,5 +94,5 @@ dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file,
  * См. resource.h; production groups всегда имеют retained anchors. */
 FVM_Result dvm_resource_remove(DVM_ResourcePlan *plan)
 {
-    return plan->anchor ? fvm_port_anchor_remove_at(dvm_anchor_port(plan->anchor), plan->relative) : FVM_UNSUPPORTED;
+    return !plan->provider && plan->anchor ? fvm_port_anchor_remove_at(dvm_anchor_port(plan->anchor), plan->relative) : FVM_UNSUPPORTED;
 }

@@ -2,6 +2,42 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: retained-debug busy и предшествующая CI
+
+CI f932e54 завершилась: пять jobs успешны, включая RV64/QEMU; TSan wide 69/70.
+Единственный отказ retained-debug сообщил fault array root/payload lost, без
+TSan data-race report. Исходный log не сохранял object replies, поэтому причина
+самого отказа не объявляется доказанной. Найден дефект oracle: explicit inspector
+busy пропускался при root scan. Теперь повторяется только error=busy до bounded
+deadline; invalid reads и реальное отсутствие roots не скрываются. Проверены
+busy→valid, invalid без retry и permanent busy refusal. Полный retained-debug
+со своими omission controls повторно прошёл dynamic/static. Новая TSan CI должна
+подтвердить исходный failure mode; до её результата debug gate не объявляется
+полностью закрытым.
+
+## 2026-11-15: retained provider mounts и Inferno compatibility boundary
+
+Runtime0.124 подключает trusted host-only provider installation к namespace
+resolution, metadata и ordinary open. Namespace/copy/in-flight plan/open handle
+удерживают отдельные factory references. Rebind/unmount меняют новые lookups;
+старые plans/FD удерживают прежнюю factory до close. Filtered unmount сравнивает
+provider identity/relative path, не diagnostic label либо чужой host inode.
+Provider chdir/source-bind/remove/load явно unsupported без host fallback;
+loader отказывает до native cache lookup. Public Sys.m/guest ABI не изменён.
+
+Совместимость с Inferno обязательна: semantics сопоставлены с pinned
+7f2241455734e1142a3254fad9d1ec4f94032ac7 cclose/cmount/cunmount, upstream snapshot
+не менялся. Это не полная Chan walk/union/Styx mount или credential policy.
+[Таблица совместимости, происхождение и контракт RU/EN](PROVIDER-NAMESPACE.md).
+
+Локально AMD64 wide 72/72; dynamic/static host-unit 31/31. Новый provider-namespace
+проверяет восемь guests с FORKNS, 25 opened states, filtered unmount, retained FD,
+возврат HOST! decoy и exactly-once factory destroy. Расширенный сценарий прошёл
+C/JIT × оба poll в обеих сборках. Native unit отдельно проверяет stale mount,
+copy/rebind с одинаковыми labels и last-open lifetime после удаления всех групп.
+Provider implementation дополнительно компилируется как C89. Архитектурная CI и
+TSan для новой ревизии учитываются только после завершения соответствующих jobs.
+
 ## 2026-11-15: provider admission без native type discrimination
 
 Runtime0.123 допускает trusted native handle в зарезервированный descriptor

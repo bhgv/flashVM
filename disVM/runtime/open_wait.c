@@ -23,12 +23,13 @@ static size_t peak;            /* Peak snapshot bytes, including NUL terminators
 
 /* See open_wait.h for ownership and threading. Native locals receive the new
  * handle; the caller's table remains untouched until native heap reentry. */
-FVM_Result dvm_open_wait_selected(const char *path,
+static FVM_Result open_result(const char *path,
                                   const char *mode,
                                   int asynchronous,
                                   DVM_ResourcePlan *selected,
                                   FVM_PortFile **file,
-                                  FVM_PortDirectory **directory)
+                                  FVM_PortDirectory **directory,
+                                  DVM_VfsHandle *provider_output)
 {
     FVM_FileInfo metadata;
     FVM_Result status;
@@ -95,7 +96,12 @@ FVM_Result dvm_open_wait_selected(const char *path,
         }
         return FVM_OUT_OF_MEMORY;
     }
-    if (selected)
+    if (selected && selected->provider)
+    {
+        status = provider_output && asynchronous ?
+            dvm_provider_open(selected->provider, selected->relative, mode, provider_output) : FVM_UNSUPPORTED;
+    }
+    else if (selected)
     {
         status = dvm_resource_open(selected, mode, file, directory);
     }
@@ -122,6 +128,30 @@ FVM_Result dvm_open_wait_selected(const char *path,
         dvm_resource_close(&local);
     }
     return status;
+}
+
+
+/* EN/RU: Preserve the native-only legacy adapter; provider selections explicitly
+ * refuse rather than reopening a diagnostic host spelling.
+ * Сохранить native-only adapter; provider selection явно отказывает без host fallback. */
+FVM_Result dvm_open_wait_selected(const char *path, const char *mode, int asynchronous,
+                                  DVM_ResourcePlan *selected, FVM_PortFile **file, FVM_PortDirectory **directory)
+{
+    return open_result(path, mode, asynchronous, selected, file, directory, NULL);
+}
+
+
+/* EN/RU: See open_wait.h; provider output is empty caller-owned storage.
+ * См. open_wait.h; provider output — пустая caller-owned storage. */
+FVM_Result dvm_open_wait_resource(const char *path, const char *mode, int asynchronous,
+                                  DVM_ResourcePlan *selected, FVM_PortFile **file,
+                                  FVM_PortDirectory **directory, DVM_VfsHandle *provider_output)
+{
+    if (!provider_output || provider_output->ops || provider_output->state)
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    return open_result(path, mode, asynchronous, selected, file, directory, provider_output);
 }
 
 

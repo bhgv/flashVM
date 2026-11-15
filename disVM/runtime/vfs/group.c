@@ -68,6 +68,7 @@ void dvm_namespace_release(DVM_Namespace *group)
         while (binding)
         {
             DVM_NamespaceBinding *next = binding->next;
+            dvm_provider_release(binding->provider);
             dvm_anchor_release(binding->anchor);
             free(binding);
             binding = next;
@@ -121,6 +122,14 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
             memcpy(entry, binding, sizeof(*entry));
             if (!dvm_anchor_retain(binding->anchor))
             {
+                free(entry);
+                dvm_namespace_release(copy);
+                copy = NULL;
+                break;
+            }
+            if (!dvm_provider_retain(binding->provider))
+            {
+                dvm_anchor_release(entry->anchor);
                 free(entry);
                 dvm_namespace_release(copy);
                 copy = NULL;

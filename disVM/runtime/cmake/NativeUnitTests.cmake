@@ -33,8 +33,14 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     target_link_libraries(disvm_vfs_handle_test PRIVATE disvm_flashvm_host)
     add_test(NAME disvm_vfs_handle COMMAND disvm_vfs_handle_test)
     set_tests_properties(disvm_vfs_handle PROPERTIES TIMEOUT 10 LABELS "host-unit")
+    add_executable(disvm_provider_mount_test vfs/test_provider_mount.c vfs/path.c vfs/group.c vfs/mutations.c
+        vfs/resolution.c vfs/resource.c vfs/provider.c vfs/handle.c vfs/anchor.c vfs/resource_groups.c)
+    target_include_directories(disvm_provider_mount_test PRIVATE ${native_unit_includes})
+    target_link_libraries(disvm_provider_mount_test PRIVATE disvm_flashvm_host Threads::Threads)
+    add_test(NAME disvm_provider_mount COMMAND disvm_provider_mount_test)
+    set_tests_properties(disvm_provider_mount PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/observation.c vfs/resolution.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
+        vfs/observation.c vfs/resolution.c vfs/provider.c vfs/handle.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_namespace_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host Threads::Threads)
     add_test(NAME disvm_namespace_concurrent COMMAND disvm_namespace_test)

@@ -29,4 +29,12 @@ FVM_Result dvm_open_wait_selected(const char *path,
 /* Emit aggregate open attempts/releases and staging after all owners join.
  * No parameters/return, allocation or managed access; requires heap exclusion. */
 void dvm_open_statistics(void);
+
+/* EN/RU: Capture native/provider selection once; return native handles or one
+ * provider_output (initially empty). Provider opens use native admission only.
+ * Захватить selection один раз; вернуть native handles либо provider_output
+ * (изначально пустой). Provider open выполняется только в native admission. */
+FVM_Result dvm_open_wait_resource(const char *path, const char *mode, int asynchronous,
+                                  DVM_ResourcePlan *selected, FVM_PortFile **file,
+                                  FVM_PortDirectory **directory, DVM_VfsHandle *provider_output);
 #endif

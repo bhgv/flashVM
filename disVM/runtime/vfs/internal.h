@@ -16,6 +16,7 @@ typedef struct DVM_NamespaceBinding
 {
     char on[DVM_NS_PATH_LIMIT];        /* Virtual target; component boundaries matter. */
     char source[DVM_NS_PATH_LIMIT];    /* Native source captured when binding. */
+    DVM_Provider *provider; /* Retained factory for a provider mount, otherwise NULL. */
     DVM_Anchor *anchor;                /* Owned parent/directory capability, NULL only in pure path tests. */
     char component[DVM_NS_PATH_LIMIT]; /* Empty for a bound directory, basename for a file. */
     struct DVM_NamespaceBinding *next; /* Next group-owned binding. */

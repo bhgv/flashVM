@@ -62,6 +62,7 @@ static int open_selected(const char *path, const char *mode, int asynchronous, D
     DVM_CloseJob *job = gate ? dvm_close_prepare() : NULL;
     FVM_PortFile *file = NULL;
     FVM_PortDirectory *directory = NULL;
+    DVM_VfsHandle provider_output = {0}; /* Owned until slot publication; factory pins code/state. */
     FVM_Result status;
     if (!gate || !job)
     {
@@ -78,10 +79,17 @@ static int open_selected(const char *path, const char *mode, int asynchronous, D
         kwerrstr("file handle quota exceeded");
         return -1;
     }
-    status = dvm_open_wait_selected(path, mode, asynchronous, selected, &file, &directory);
+    status = dvm_open_wait_resource(path, mode, asynchronous, selected, &file, &directory, &provider_output);
     if (status == FVM_OK)
     {
-        dvm_file_slots_publish(index, file, directory);
+        if (provider_output.ops)
+        {
+            dvm_file_slots_publish_resource(index, &provider_output);
+        }
+        else
+        {
+            dvm_file_slots_publish(index, file, directory);
+        }
         return index;
     }
     DVM_FileSlot abandoned;

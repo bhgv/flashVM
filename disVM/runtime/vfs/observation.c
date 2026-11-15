@@ -42,7 +42,7 @@ static const char *text(DVM_Namespace *group, size_t index, int field, int *held
     {
         return NULL;
     }
-    *held = binding->anchor != NULL;
+    *held = binding->anchor != NULL || binding->provider != NULL;
     switch (field)
     {
     case DVM_NS_FIELD_TARGET:

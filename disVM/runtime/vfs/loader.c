@@ -55,6 +55,12 @@ Module *readmod(char *path, Module *cached, int sync)
         kwerrstr("invalid or oversized namespace module path");
         return NULL;
     }
+    if (plan.provider)
+    {
+        dvm_resource_close(&plan);
+        kwerrstr("module load from provider is unsupported");
+        return NULL;
+    }
     cached = dvm_module_registry_lookup(plan.names.native);
     Module *answer = dvm_namespace_native_readmod(plan.names.native, cached, sync, &plan);
     dvm_resource_close(&plan);

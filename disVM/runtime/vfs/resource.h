@@ -5,6 +5,7 @@
 #ifndef DVM_VFS_RESOURCE_H
 #define DVM_VFS_RESOURCE_H
 #include "namespace.h"
+#include "provider.h"
 #include "anchor_port.h"
 #include "disvm/native_cleanup.h"
 typedef struct DVM_Anchor DVM_Anchor; /* Native capability with independently retained users. */
@@ -16,6 +17,7 @@ typedef struct DVM_ResourcePlan
 {
     DVM_NamespacePlan names;          /* Frozen virtual/display names and group revision. */
     char relative[DVM_NS_PATH_LIMIT]; /* Selected path relative to anchor, or empty for native fallback. */
+    DVM_Provider *provider; /* Owned provider selection, alternative to native anchor. */
     DVM_Anchor *anchor;               /* Owned selection retained under the group lock. */
     DVM_Anchor *created;              /* Owned new directory until commit retains it. */
     DVM_NativeCleanup cleanup;        /* Current native owner's unwind registration. */
@@ -99,4 +101,12 @@ int dvm_namespace_bind_resource(DVM_Namespace *group,
 /* EN/RU: Make a fresh group rooted at selected directory; owned result or NULL.
  * Создать группу с root в выбранном каталоге; своя ссылка либо NULL. */
 DVM_Namespace *dvm_namespace_rebase(DVM_ResourcePlan *cwd);
+
+/* EN/RU: Trusted host mount at an exact virtual target/revision; retain provider
+ * on success. label is an absolute diagnostic source name, never a host lookup.
+ * 1 success, 0 stale, -1 invalid/OOM. No callbacks or I/O under namespace mutex.
+ * Host mount в exact virtual target/revision; при успехе удержать provider.
+ * label — absolute diagnostic name, не host lookup. 1/0/-1: успех/stale/ошибка. */
+int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *target,
+                                 DVM_Provider *provider, const char *label);
 #endif
