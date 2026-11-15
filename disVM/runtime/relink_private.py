@@ -218,7 +218,13 @@ def relink(
         link[targets[0]] = str(replacement)
     binary = work / ("runtime-" + str(variant))
     link[link.index("-o") + 1] = str(binary)
-    link += [str(obj), *["-Wl,--wrap=" + symbol for symbol in symbols]]
+    # EN: Introduce probe references before static archives are scanned. Appending
+    # after libm loses probe-only fenv symbols in static acceptance builds.
+    # RU: Ввести probe references до прохода static archives; после libm
+    # probe-only fenv symbols теряются в статической приёмочной сборке.
+    first_object = next(index for index, value in enumerate(link) if value.endswith(".o"))
+    link.insert(first_object, str(obj))
+    link += ["-Wl,--wrap=" + symbol for symbol in symbols]
     built = subprocess.run(link, cwd=runtime.parent, capture_output=True, text=True)
     if built.returncode:
         raise RuntimeError("private runtime relink failed: " + built.stdout + built.stderr)

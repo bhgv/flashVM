@@ -2,6 +2,25 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: RV64/QEMU и единый корень directory anchors
+
+CI на `5e573d2` завершил пять jobs успешно, но RV64 отказал 69/69 workload
+до guest startup: `cannot initialize startup namespace`. RV64 job теперь линкует
+статические ELF и не задаёт QEMU_LD_PREFIX: sysroot redirection абсолютного `/`
+несовместим с последующим host-relative openat от этого directory descriptor.
+Отдельный anchor-port gate перед workloads проверяет root-to-cwd lookup,
+rename, concurrent opens/removes и cleanup. Runtime lookup не обходит anchors.
+
+Локальный AMD64 static build: 29/29 host-unit; wide 68/69 до исправления
+порядка private probe link. Единственный отказ был undefined fesetenv в jit-fp:
+probe object стоял после libm. Теперь object идёт перед archives; весь jit-fp
+с actual RX faults и omission controls повторён успешно в static и dynamic builds.
+Остальные 68 workloads
+прошли, включая namespace/remove/load/debug, directory anchors и network proxy.
+Это локальная проверка static configuration, не завершённая RV64 приёмка.
+Новая архитектурная CI должна подтвердить target execution; до её завершения
+исходный RV64 blocker не считается закрытым.
+
 ## 2026-11-15: удаление файлов через native namespace
 
 Sys.remove выполняет один retained parent/name unlink либо empty-directory removal

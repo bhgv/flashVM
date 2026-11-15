@@ -146,6 +146,15 @@ int main(void)
     FVM_FileInfo before, after;
     pthread_t owners[ANCHOR_TEST_OWNERS];
     unsigned index;
+    char cwd[ANCHOR_TEST_PATH];
+    require(getcwd(cwd, sizeof(cwd)) != NULL && cwd[0] == '/', "absolute cwd");
+    require(fvm_port_anchor_open("/", &anchor) == FVM_OK, "startup root anchor");
+    require(fvm_port_anchor_open_at(anchor, cwd[1] ? cwd + 1 : ".", &child) == FVM_OK,
+            "startup cwd relative to root");
+    fvm_port_anchor_close(child);
+    fvm_port_anchor_close(anchor);
+    child = NULL;
+    anchor = NULL;
     require(!mkdir("original", 0700), "make original");
     write_path("original/token", "ABC");
     require(fvm_port_anchor_open("original", &anchor) == FVM_OK, "anchor open");

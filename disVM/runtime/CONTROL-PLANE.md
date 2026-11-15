@@ -2,7 +2,7 @@
 
 Copyright (c) 2026 bhgv
 
-Текущее состояние и контракт следующего этапа hosted DisVM, 2026-11-14.
+Текущее состояние и контракт следующего этапа hosted DisVM, 2026-11-15.
 Этот документ не объявляет перечисленные будущие API реализованными. Native
 OS threads без global stop/exclusive остаются обязательным режимом.
 
@@ -10,24 +10,28 @@ OS threads без global stop/exclusive остаются обязательны�
 
 | Область | Реализовано | Остаётся реализовать |
 | --- | --- | --- |
-| Гостевые потоки | Limbo spawn, permanent Prog/native owner; Processctl pid, kill/killwait/cancelwait для direct child | Supervisor capability для других гостей, pause/resume/step, приоритет |
-| Наблюдение | Resident ID/PID, phase/activity, progress/summary, отдельные mailbox и copied owner location/stack prefix | Typed-variable capture, полный stack сверх bounded prefix, module catalog, external transport и управляющие capabilities |
+| Гостевые потоки | Limbo spawn, permanent Prog/native owner; Processctl pid, kill/killwait/cancelwait для direct child; внешний debugger list/status/pause/continue/step/terminate | Гостевой supervisor capability и portable priority API; внешний debugger уже управляет выбранным PID |
+| Наблюдение | Resident ID/PID, phase/activity, progress/summary, отдельные mailbox и copied owner location/stack prefix | Typed-variable capture, полный stack сверх bounded prefix, module catalog и гостевые управляющие capabilities; внешний transport и retained capture см. DEBUGGER.ru.md |
 | Память | Native allocator/RC/GC, coherent live arena statistics и private heap/type/module probes | Каталог объектов, подробный GC state, owner/type attribution и внеаренная native memory |
-| Окружение | Guest-local native error storage и FP state | Copy/share policy namespace, FD groups, env и credentials |
-| Файлы | Нативный файловый порт, open/create/read/write/seek/stat/fstat/dirread | Inferno namespace, bind/mount/unmount, работающий Styx serving и VFS providers |
+| Окружение | Guest-local native error storage и FP state; namespace share/FORKNS/NEWNS | FD groups, env и credentials |
+| Файлы | Нативный файловый порт, open/create/read/write/seek/stat/fstat/dirread; chdir/bind(MREPL)/unmount/remove/load через namespace | Полные Chan/provider VFS, union/mount transport и Styx serving |
 | Модули | Limbo modules, typed C builtins по matched .m/NC64 | Общий .so/DLL loader, регистрация виртуальных FS/device providers |
 
 Исходники контрактов: `module/processctl.m`, `runtime/process_environment.h`,
 `runtime/prepare.py` (implemented Sys set), `runtime/NATIVE_MODULES.ru.md`.
 Наличие декларации Sys/Debug/Styx либо upstream source не означает подключённый
-сервис: неподдержанный Sys callback выдаёт явную ошибку. Текущие API служат
-гостям VM; это не готовый внешний debugger/control endpoint.
+сервис: неподдержанный Sys callback выдаёт явную ошибку. Гостевые Processctl API и внешний debugger имеют разные права.
+[Встроенный debugger](DEBUGGER.ru.md) предоставляет session-bound endpoint с
+list/status/pause/continue/step/terminate, retained stack/object reads и census.
+[Namespace](VFS-NAMESPACE.ru.md) уже наследуется и допускает copy/rebase;
+[память](MEMORY-STATISTICS.ru.md) имеет coherent arena counters, без origin attribution.
 
 ## Отдельные диагностические mailbox
 
 Первый read-only scalar слой реализован: [DIAGNOSTIC-MAILBOX.md](DIAGNOSTIC-MAILBOX.md).
-Описанные ниже external service/capabilities, owner-bound typed capture и pause
-остаются следующими слоями; mailbox сам по себе их не реализует.
+Сам mailbox не предоставляет права управления. Внешний service, pause и retained
+чтение уже реализованы отдельным [debugger](DEBUGGER.ru.md). Требования ниже
+сохраняются для будущего гостевого capability API и расширения capture.
 
 Согласовано с пользователем: запросы debug/stat идут отдельно от обычных channel,
 RPC и completion messages. На каждого resident нужны собственная очередь запросов,

@@ -78,8 +78,6 @@ jobs:
         name: RV64 userspace under QEMU
         runs-on: ubuntu-24.04
         timeout-minutes: 75
-        env:
-            QEMU_LD_PREFIX: /usr/riscv64-linux-gnu
         steps:
             - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
               with:
@@ -96,10 +94,19 @@ jobs:
                   cmake -S disVM/runtime -B build/native-rv64 -DDVM_RUNTIME_TESTS=ON
                   -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=riscv64
                   -DCMAKE_C_COMPILER=riscv64-linux-gnu-gcc -DCMAKE_BUILD_TYPE=RelWithDebInfo
+                  -DCMAKE_EXE_LINKER_FLAGS=-static
                   && cmake --build build/native-rv64 --parallel 4
+            # EN: QEMU -L redirects absolute / to its sysroot, but openat uses the
+            # held directory. Static ELFs need no prefix and preserve one root.
+            # RU: QEMU -L подменяет absolute /; openat использует held directory.
+            # Static ELF не требует prefix и сохраняет единый корень.
+            - name: Verify RV64 directory anchors before guest workloads
+              run: >-
+                  env -u QEMU_LD_PREFIX python3 disVM/runtime/test_anchor_port.py
+                  build/native-rv64/disvm_anchor_port_test
             - name: Execute RV64 C and JIT workloads under QEMU
               run: >-
-                  python3 disVM/runtime/native_arch_suite.py build/native-rv64
+                  env -u QEMU_LD_PREFIX python3 disVM/runtime/native_arch_suite.py build/native-rv64
                   --expected riscv64 --emulated --jobs 1 --profile wide
             - name: Preserve complete RV64 workload logs and report
               if: always()

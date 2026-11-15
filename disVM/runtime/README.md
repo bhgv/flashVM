@@ -143,7 +143,8 @@ SDK and IDE packages keep their classic format unchanged.
 
 The project's own Coco/R-to-FIR compiler remains the intended compiler path.
 This selected upstream bootstrap enables runnable integration now. Debug symbols
-are shipped beside native modules; a runtime debugger connection is still pending.
+are shipped beside native modules; the [built-in debugger](DEBUGGER.md) provides
+session-bound run control and retained stack/object inspection.
 
 ## Host boundary
 
@@ -156,8 +157,11 @@ Inferno filesystem is substituted. Create/write supports actual files with OWRIT
 Standard descriptors 0/1/2 are borrowed through FlashVM's common standard-stream
 port. Other open/create flags and permissions are rejected. Network namespaces, Styx,
 full environment/namespace control remain to be connected. Hosted Processctl supplies
-child termination/wait cancellation and live resident metadata; supervisor pause,
-priority and external debugger control are pending. See [current API readiness and
+child termination/wait cancellation, live resident metadata and coherent arena counters.
+The built-in supervisor supports pause/continue/step/terminate through a separate
+endpoint. Guest supervisor capabilities and portable priority control remain pending.
+[Inherited namespaces](VFS-NAMESPACE.md) support FORKNS/NEWNS, chdir, bind(MREPL),
+unmount and retained file/module operations; full provider VFS remains pending. See [current API readiness and
 next control-plane contracts](CONTROL-PLANE.md).
 
 The standalone executable owns one bounded 64 MiB arena. Stable block headers
