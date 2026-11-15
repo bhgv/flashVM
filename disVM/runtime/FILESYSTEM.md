@@ -1,5 +1,7 @@
 # Native files and directories — v0.1650
 
+`Sys.open(ORDWR)` now opens existing read/write files with a shared offset, without create/truncate/append: [contract](PROVIDER-EVENT-FILES.md).
+
 `Sys.remove` now uses one retained namespace selection for file/symlink or empty
 directory removal: [behavior and limits](NAMESPACE-REMOVE.md).
 

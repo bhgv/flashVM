@@ -15,6 +15,7 @@
 #include "guest.h"
 #include "boot.h"
 #include "resource_wait.h"
+#include "sysevents.h"
 #include <string.h>
 
 #define DVM_NS_RETRIES 8                      /* Bounded retries when another owner changes the shared namespace. */
@@ -104,6 +105,13 @@ void Sys_pctl(void *frame)
     if (!replacement)
     {
         kwerrstr("cannot allocate or acquire namespace group");
+        publish(call.ret, -1);
+        return;
+    }
+    if (!dvm_sysevents_group(owner->system_events, replacement))
+    {
+        dvm_namespace_release(replacement);
+        kwerrstr("cannot replace system-event namespace scope");
         publish(call.ret, -1);
         return;
     }

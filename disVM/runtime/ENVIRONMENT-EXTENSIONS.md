@@ -22,6 +22,8 @@ format/ISA и границы проверки. Новое поведение н�
 | Provider-source Sys.bind(MREPL), directory MBEFORE/MAFTER/MCREATE | Ordinary matched Sys interface, provider-relative aliases with documented mutable-node identity limits; no new flags/opcodes / Обычный Sys, aliases provider-relative, без новых flags/opcodes |
 | [MAUTORWX union policy](AUTO-UNION.md) | Implemented explicit bit8 via Vfsflags; effective R/W/X selection, parent w+x creation / Явное расширение выбора по правам, не Inferno flag |
 | [Precise native chunk results](CHUNK-IO.md) | Implemented internal count/cause/certainty and failure-only info; heartbeat/Styx transport remains pending / Native API реализован, wire ещё нет |
+| [Automatic per-thread system inbox](SYSTEM-EVENTS.md) | Native push and ordinary readonly /dev/sysevents, one record per read/readn; external format experimental / Native push без owner polling и pauses, формат предварительный |
+| [Optional provider journal view](PROVIDER-EVENT-FILES.md) | Trusted host installation, independent diagnostic refresh/ack FDs; not required for automatic subscriptions / Optional view, не условие автоматической доставки |
 | [Provider change journals](PROVIDER-EVENTS.md) | Implemented internal session/classes/resource hints and independent refresh cursors; no wire heartbeat or balancing / Native events реализованы, wire/balancing пока нет |
 | [Native debugger endpoint](DEBUGGER.md) | Separate session-bound supervisor protocol; no guest address authority / Отдельный session-bound протокол, без полномочий по guest адресу |
 

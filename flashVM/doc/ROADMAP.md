@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1701: existing read/write opens use an explicit noncreating, nontruncating rwo mode with one shared cursor, supporting DisVM Sys.open(ORDWR). Legacy rw append-channel semantics remain separate. [EN/RU contract](../../disVM/runtime/PROVIDER-EVENT-FILES.md). No full VFS or Flash compatibility stage closes.
+
 Checkpoint v0.1700: held POSIX directory anchors expose effective-ID access checks, including native groups/ACLs, without opening/truncating files. DisVM's explicit MAUTORWX union extension uses these checks before ordinary I/O. Windows relative access remains UNSUPPORTED. No Flash compatibility or complete VFS/security stage closes. [EN/RU contract](../../disVM/runtime/AUTO-UNION.md).
 
 Checkpoint v0.1699: existing write-only opens use native O_WRONLY without create/truncate or read access, starting at offset zero. DisVM Sys.open(OWRITE) uses the same namespace selection and retirement as read-only opens. [EN/RU contract](../../disVM/runtime/WRITE-OPEN.md). Windows native-path adapter is implemented but untested; directory anchors remain unsupported there. No full VFS or Flash compatibility stage closes.

@@ -29,6 +29,13 @@ DVM_Namespace *dvm_namespace_create(const char *root, const char *cwd, const cha
         free(group);
         return NULL;
     }
+    group->notices = dvm_notice_create();
+    if (!group->notices)
+    {
+        fvm_port_sync_destroy(group->lock);
+        free(group);
+        return NULL;
+    }
     group->references = 1;
     return group;
 }
@@ -72,6 +79,10 @@ void dvm_namespace_release(DVM_Namespace *group)
             dvm_anchor_release(binding->anchor);
             free(binding);
             binding = next;
+        }
+        if (!dvm_notice_destroy(group->notices))
+        {
+            abort();
         }
         fvm_port_sync_destroy(group->lock);
         dvm_anchor_release(group->root_anchor);
@@ -144,4 +155,17 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     }
     fvm_port_sync_unlock(group->lock);
     return copy;
+}
+
+
+/* EN/RU: See internal.h; mutation publisher retains group through synchronous push.
+ * См. internal.h; publisher удерживает group до завершения native push. */
+void dvm_namespace_changed(DVM_Namespace *group)
+{
+    DVM_ChangeEvent event = {0};
+    fvm_port_sync_lock(group->lock);
+    event.generation = group->version;
+    event.kinds = DVM_CHANGE_NAMESPACE;
+    fvm_port_sync_unlock(group->lock);
+    dvm_notice_publish(group->notices, &event);
 }

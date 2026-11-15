@@ -155,6 +155,10 @@ int dvm_namespace_bind_layers(DVM_Namespace *group, DVM_ResourcePlan *source,
     release(head);
     release(baseline);
     release(old);
+    if (result == 1)
+    {
+        dvm_namespace_changed(group);
+    }
     return result;
 }
 
@@ -200,6 +204,10 @@ int dvm_namespace_unmount_exact(DVM_Namespace *group, const DVM_NamespacePlan *t
     }
     fvm_port_sync_unlock(group->lock);
     release(old);
+    if (result == 1)
+    {
+        dvm_namespace_changed(group);
+    }
     return result;
 }
 

@@ -30,6 +30,7 @@ typedef struct DVM_NamespaceBinding
  * Все изменяемые поля защищены lock; managed pointers/GC roots отсутствуют. */
 struct DVM_Namespace
 {
+    DVM_NoticeHub *notices; /* Native namespace mutation push, never called under group lock. */
     FVM_PortSync *lock;                     /* Group-local mutex; never held across host I/O. */
     size_t references;                      /* Owning native references, including each resident. */
     uint64_t next_binding; /* Last assigned layer identity, protected by lock. */
@@ -71,4 +72,8 @@ int dvm_namespace_layer_at(DVM_Namespace *group, const char *on, uint64_t head, 
 /* EN/RU: Read finite current head length for one unionread call; no callbacks/I/O.
  * Получить finite current head length для одного unionread; без callbacks/I/O. */
 size_t dvm_namespace_layer_count(DVM_Namespace *group, const char *on, uint64_t head);
+
+/* EN/RU: Push committed namespace revision outside group lock; no target execution.
+ * Передать committed revision вне group lock; без исполнения target. */
+void dvm_namespace_changed(DVM_Namespace *group);
 #endif

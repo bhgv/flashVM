@@ -51,6 +51,10 @@ static int change_directory(DVM_Namespace *group, const DVM_NamespacePlan *plan,
         dvm_anchor_release(anchor);
         dvm_anchor_release(anchor);
     }
+    if (result == 1)
+    {
+        dvm_namespace_changed(group);
+    }
     return result;
 }
 
@@ -148,6 +152,10 @@ static int bind_selection(DVM_Namespace *group,
         dvm_anchor_release(old->anchor);
         free(old);
         old = next;
+    }
+    if (result == 1)
+    {
+        dvm_namespace_changed(group);
     }
     return result;
 }

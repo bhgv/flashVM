@@ -4,6 +4,7 @@
  */
 #include "boot.h"
 #include "internal.h"
+#include "sysevents.h"
 #include <stdio.h>
 #include <unistd.h>
 
@@ -51,6 +52,15 @@ int dvm_namespace_boot_initialize(const char *package_directory)
             return 0;
         }
     }
+    DVM_Provider *events = dvm_sysevents_device();
+    if (!events || !dvm_namespace_plan(group, "/dev/sysevents", &on) ||
+        dvm_namespace_mount_provider(group, &on, events, "/system-events") != 1)
+    {
+        dvm_provider_release(events);
+        dvm_namespace_release(group);
+        return 0;
+    }
+    dvm_provider_release(events);
     startup_group = group;
     return 1;
 }

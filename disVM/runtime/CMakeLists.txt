@@ -2,7 +2,7 @@
 # EN: Native Dis configuration; compose ordered build and test modules.
 # RU: Конфигурация нативного Dis; последовательное подключение сборки и тестов.
 cmake_minimum_required(VERSION 3.10)
-project(disvm_runtime VERSION 0.129.0 LANGUAGES C)
+project(disvm_runtime VERSION 0.130.0 LANGUAGES C)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/RuntimePlatform.cmake")
 dvm_runtime_select_backend("${CMAKE_SYSTEM_NAME}" "${CMAKE_SYSTEM_PROCESSOR}"
   "${CMAKE_SIZEOF_VOID_P}" runtime_backend)
@@ -205,6 +205,14 @@ add_executable(disvm
     vfs/resource_groups.c
     vfs/resource_wait.c
     file_gate.c
+    vfs/changes_ack.c
+    vfs/sysevents.c
+    vfs/sysevents_watch.c
+    vfs/sysevents_stream.c
+    vfs/sysevents_device.c
+    vfs/eventfs.c
+    vfs/eventfile.c
+    vfs/notice.c
     vfs/changes.c
     vfs/changes_refresh.c
     vfs/provider.c
@@ -443,6 +451,8 @@ list(APPEND module_sources
   "${root}/ide/dis/tests/idebulk_test.b"
   "${root}/disVM/limbo/asinctasks.b"
   "${root}/disVM/examples/asinctasks/main.b")
+list(APPEND module_names providerwatch)
+list(APPEND module_sources "${root}/disVM/limbo/providerwatch.b")
 list(APPEND module_names proxyowner)
 list(APPEND module_sources "${root}/disVM/limbo/proxyowner.b")
 # EN/RU: Ship the matched typed network libraries with the ordinary native build.

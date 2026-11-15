@@ -5,6 +5,7 @@
 #ifndef DVM_VFS_CHANGES_H
 #define DVM_VFS_CHANGES_H
 #include "file_port.h"
+#include "notice.h"
 #include <stdint.h>
 #define DVM_CHANGE_RIGHTS 1U /* Effective access policy may have changed. */
 #define DVM_CHANGE_NAMESPACE 2U /* Directory/resource membership may have changed. */
@@ -93,6 +94,14 @@ int dvm_changes_pending(DVM_Changes *changes, const DVM_ChangeCursor *cursor,
 typedef FVM_Result (*DVM_ChangeRefresh)(const DVM_ChangeBatch *ticket, void *argument);
 
 
+/* EN/RU: Acknowledge an exact ticket captured from this same journal, after the
+ * caller successfully refreshed state. No I/O. Stale session returns NOT_FOUND;
+ * invalid/future versions return INVALID_ARGUMENT without changing cursor.
+ * Подтвердить exact ticket этого journal после successful refresh. Без I/O;
+ * stale session — NOT_FOUND, invalid versions — INVALID_ARGUMENT, без ack. */
+FVM_Result dvm_changes_ack(DVM_Changes *changes, DVM_ChangeCursor *cursor, const DVM_ChangeBatch *ticket);
+
+
 /* EN/RU: Query once only when dirty, then acknowledge captured versions on success.
  * New changes remain pending; epoch replacement returns NOT_FOUND without ack.
  * Failed callback leaves cursor unchanged. No retry or permission grant.
@@ -100,4 +109,8 @@ typedef FVM_Result (*DVM_ChangeRefresh)(const DVM_ChangeBatch *ticket, void *arg
  * новая epoch — NOT_FOUND без ack. Callback failure не меняет cursor. */
 FVM_Result dvm_changes_refresh(DVM_Changes *changes, DVM_ChangeCursor *cursor,
                                unsigned kinds, DVM_ChangeRefresh refresh, void *argument);
+
+/* EN/RU: Borrow push hub while retaining the journal's source owner.
+ * Заимствовать push hub при удержанном source owner. No guest authority. */
+DVM_NoticeHub *dvm_changes_notices(DVM_Changes *changes);
 #endif

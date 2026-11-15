@@ -42,6 +42,13 @@ DVM_Changes *dvm_changes_create(void)
         free(changes);
         return NULL;
     }
+    changes->notices = dvm_notice_create();
+    if (!changes->notices)
+    {
+        fvm_port_sync_destroy(changes->lock);
+        free(changes);
+        return NULL;
+    }
     changes->session = 1;
     reset(changes);
     return changes;
@@ -54,6 +61,10 @@ void dvm_changes_destroy(DVM_Changes *changes)
 {
     if (changes)
     {
+        if (!dvm_notice_destroy(changes->notices))
+        {
+            abort();
+        }
         fvm_port_sync_destroy(changes->lock);
         free(changes);
     }
@@ -92,6 +103,11 @@ uint64_t dvm_changes_reconnect(DVM_Changes *changes, uint64_t expected)
         reset(changes);
     }
     fvm_port_sync_unlock(changes->lock);
+    if (session)
+    {
+        DVM_ChangeEvent event = {session, 1, DVM_CHANGE_ALL, 0, 0};
+        dvm_notice_publish(changes->notices, &event);
+    }
     return session;
 }
 
@@ -144,5 +160,17 @@ int dvm_changes_notify(DVM_Changes *changes, const DVM_ChangeEvent *event)
         result = 1;
     }
     fvm_port_sync_unlock(changes->lock);
+    if (result == 1)
+    {
+        dvm_notice_publish(changes->notices, &accepted);
+    }
     return result;
+}
+
+
+/* EN/RU: See changes.h; source lifetime pins hub, not a guest PID lookup.
+ * См. changes.h; source lifetime удерживает hub, без PID lookup. */
+DVM_NoticeHub *dvm_changes_notices(DVM_Changes *changes)
+{
+    return changes ? changes->notices : NULL;
 }

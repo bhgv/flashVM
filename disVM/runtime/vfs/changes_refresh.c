@@ -103,7 +103,6 @@ FVM_Result dvm_changes_refresh(DVM_Changes *changes, DVM_ChangeCursor *cursor,
 {
     DVM_ChangeBatch ticket;
     FVM_Result status;
-    size_t index;
     int pending = dvm_changes_pending(changes, cursor, kinds, &ticket);
     if (pending < 0 || !refresh)
     {
@@ -118,26 +117,5 @@ FVM_Result dvm_changes_refresh(DVM_Changes *changes, DVM_ChangeCursor *cursor,
     {
         return status;
     }
-    fvm_port_sync_lock(changes->lock);
-    if (changes->session != ticket.event.session)
-    {
-        status = FVM_NOT_FOUND;
-    }
-    else
-    {
-        if (cursor->session != ticket.event.session)
-        {
-            memset(cursor, 0, sizeof(*cursor));
-            cursor->session = ticket.event.session;
-        }
-        for (index = 0; index < DVM_CHANGE_KINDS; index++)
-        {
-            if ((ticket.event.kinds & (1U << index)) && cursor->seen[index] < ticket.versions[index])
-            {
-                cursor->seen[index] = ticket.versions[index];
-            }
-        }
-    }
-    fvm_port_sync_unlock(changes->lock);
-    return status;
+    return dvm_changes_ack(changes, cursor, &ticket);
 }

@@ -130,11 +130,11 @@ void Sys_open(void *frame)
     else
     {
         descriptor = -1;
-        if (call->mode == OREAD || call->mode == Sys_OWRITE)
+        if (call->mode == OREAD || call->mode == Sys_OWRITE || call->mode == Sys_ORDWR)
         { /* [GC:] The unpublished FD is a C-held root across native waiting. */
             ptradd(D2H(result));
             Setmark(D2H(result));
-            descriptor = open_file_mode(path, call->mode == OREAD ? "r" : "wo", 1);
+            descriptor = open_file_mode(path, call->mode == OREAD ? "r" : call->mode == Sys_ORDWR ? "rwo" : "wo", 1);
             ptrdel(D2H(result));
         }
         else

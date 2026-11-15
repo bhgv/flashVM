@@ -65,6 +65,7 @@ typedef struct DVM_RuntimeProcess
     uintptr last_dispatcher; /* Numeric identity only, never dereferenced; live pool owners have distinct addresses. */
     Osenv environment;       /* Native error storage owned by this permanent resident. */
     fenv_t floating_environment; /* Guest FP environment retained on its permanent OS owner. */
+    struct DVM_SysEvents *system_events; /* Owning native per-thread invalidation inbox. */
     DVM_Namespace *namespace_group; /* Owning native reference; shared at spawn, detached by pctl. */
 } DVM_RuntimeProcess;
 

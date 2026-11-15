@@ -72,8 +72,13 @@ def run(runtime, image, work, mode, locked, control=False):
             a = session.command(f"namespace {shared}")
             b = session.command(f"namespace {copied}")
             require(
-                a.get("ok") and b.get("ok") and a["bindings"] == 10 and b["bindings"] == 10,
+                a.get("ok") and b.get("ok") and a["bindings"] == 11 and b["bindings"] == 11,
                 "namespace summary lost initial bindings",
+            )
+            require(
+                any(text(session, shared, a["revision"], 5, index)[0] == "/dev/sysevents"
+                    for index in range(a["bindings"])),
+                "ordinary boot system device absent from observed namespace",
             )
             require(
                 all(a[name] and b[name] for name in ("root_held", "cwd_held", "import_held")),
@@ -115,7 +120,7 @@ def run(runtime, image, work, mode, locked, control=False):
                 f"namespace-read {shared} 18446744073709551616 0 0 0",
                 f"namespace-read {shared} -1 0 0 0",
                 f"namespace-read {shared} {a['revision']} 0 8 0",
-                f"namespace-read {shared} {a['revision']} 10 5 0",
+                f"namespace-read {shared} {a['revision']} {a['bindings']} 5 0",
                 f"namespace-read {shared} {a['revision']} 0 1 999999",
                 f"namespace-read {shared} {a['revision']} 0 1 0 trailing",
             ):

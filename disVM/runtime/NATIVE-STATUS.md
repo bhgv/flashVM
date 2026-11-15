@@ -2,6 +2,46 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: source-driven system inboxes, one event per read
+
+Runtime0.130 создаёт независимую native очередь каждого resident. Source journal
+непосредственно публикует native сообщения подписанным получателям; изменения
+namespace автоматически перестраивают подписки вне mutation lock. Нет опроса на
+границах исполнения, cooperative handlers, sleep helpers или пауз получателя.
+Чтение только извлекает уже доставленное сообщение. [Контракт](SYSTEM-EVENTS.md).
+
+Production boot монтирует обычный contextual readonly `/dev/sysevents` через VFS.
+Bind/hide/unmount/NEWNS работают без literal-path bypass. В очереди нет Prog/heap
+указателей; inherited FD сохраняет исходную capability. Epoch отсекает старый scope,
+overflow/OOM сигнализирует resync. Отдельный native kind domain не смешивается с
+process-control request/reply. Retirement отсоединяет taps без ожидания получателя;
+in-flight callbacks удерживают state до завершения и очищаются вне hub mutex.
+
+`Sys.read` и `readn` возвращают ровно одну целую запись. Native DVM_IO_RECORD
+останавливает readn без фиктивного EOF. Маленький буфер не выдаёт часть записи;
+пустой live inbox возвращает временную недоступность, не idle-message и не EOF.
+Внешний формат остаётся экспериментальным, подлежит отдельному согласованию.
+
+Добавлены ordinary ORDWR с shared cursor без create/truncate/append и optional
+host-installed diagnostic journal view с независимыми tickets/ack. Pure Limbo
+Providerwatch не нужен автоматической доставке и не содержит wait/sleep helper.
+[Поведение и границы](PROVIDER-EVENT-FILES.md). FlashVM port version0.1701.
+
+Dynamic/static host-unit37/37. Native test доказывает push до bind owner TLS и до
+open device, без source stat/open; проверяет per-thread очереди, scope, overflow,
+unmount и retained FD. Два native senders публикуют20000 reports параллельно2000
+attach/detach; дополнительно проверен self-unsubscribe и cleanup всех contexts.
+Guest проходит C/JIT × оба GC observation settings в dynamic/static: production
+device, несколько queued events через readn по одному, NEWNS hiding, ORDWR bytes,
+optional ack/race/mask/revocation/reconnect и source lifetime. C89 public headers
+и source-link check пройдены. Финальный AMD64 wide77/77.
+
+Автоматическая подписка относится к native providers с journal reports. Styx
+receiver/heartbeat, external host-filesystem watcher, balancing и перенос между
+открытыми union layers ещё не реализованы. Обычный host bind сам не начинает
+генерировать OS filesystem notifications. Upstream snapshot, Dis ISA и Sys.m ABI
+не изменены; полного VFS/security/platform acceptance этот шаг не объявляет.
+
 ## 2026-11-15: provider changes и independent refresh cursors
 
 Runtime0.129 добавляет retained factory-owned native journal с шестью classes:

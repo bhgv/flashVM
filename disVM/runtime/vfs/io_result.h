@@ -11,7 +11,8 @@
 #define DVM_IO_PROBED 4U /* A post-failure metadata query was attempted, possibly unsupported. */
 #define DVM_IO_MODE 8U /* Observed mode is valid metadata, not effective-access authority. */
 #define DVM_IO_CHANGED 16U /* Backend reports a change generation; no permission grant or EOF. */
-#define DVM_IO_FLAGS 31U /* All currently defined native result flags. */
+#define DVM_IO_RECORD 32U /* One complete record; readn returns before consuming another. */
+#define DVM_IO_FLAGS 63U /* All currently defined native result flags. */
 
 
 /* EN/RU: Distinct stop causes; no failed-stack condition is silently EOF.

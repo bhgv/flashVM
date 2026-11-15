@@ -2,6 +2,9 @@
 
 Copyright (c) 2026 bhgv
 
+Runtime 0.130 adds native DVM_IO_RECORD for complete-record sources: readn stops
+after one record without EOF. [System inbox behavior](SYSTEM-EVENTS.md).
+
 Runtime 0.129 adds [native provider change journals and refresh cursors](PROVIDER-EVENTS.md).
 The sections below describe the 0.128 chunk interface; the linked contract extends
 its hints with explicit session/classes/resource, without adding a Styx transport.

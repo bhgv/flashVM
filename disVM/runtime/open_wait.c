@@ -99,7 +99,7 @@ static FVM_Result open_result(const char *path,
     if (selected)
     {
         selected->requested_access = !strcmp(mode, "r") ? FVM_ACCESS_READ :
-            !strcmp(mode, "rw") ? FVM_ACCESS_READ | FVM_ACCESS_WRITE : FVM_ACCESS_WRITE;
+            (!strcmp(mode, "rw") || !strcmp(mode, "rwo")) ? FVM_ACCESS_READ | FVM_ACCESS_WRITE : FVM_ACCESS_WRITE;
     }
     if (selected && dvm_union_select(selected, !strcmp(mode, "w") || !strcmp(mode, "wx")) != FVM_OK)
     {
@@ -112,7 +112,7 @@ static FVM_Result open_result(const char *path,
     else if (selected && selected->provider)
     {
         status = provider_output && asynchronous ?
-            dvm_provider_open(selected->provider, selected->relative, mode, provider_output) : FVM_UNSUPPORTED;
+            dvm_provider_open(selected->provider, selected->relative, !strcmp(mode, "rwo") ? "rw" : mode, provider_output) : FVM_UNSUPPORTED;
     }
     else if (selected)
     {

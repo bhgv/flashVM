@@ -6,21 +6,22 @@
 [Native regression](../../disVM/runtime/test_file_seek.c)
 
 `fvm_port_file_seek(file, offset, origin, position)` moves the active cursor of
-an existing read-only or write-only [`FVM_PortFile`](../ports/file_port.c#L30). The caller borrows the handle,
+an existing read-only, write-only or shared-cursor `rwo` [`FVM_PortFile`](../ports/file_port.c#L30). The caller borrows the handle,
 provides writable `long` result storage, and serializes calls with reads/writes
 and close. This call may block on native stdio operations; it is not an async
 channel request. It allocates no handle and never closes the borrowed file.
 
 | Parameter | Contract |
 | --- | --- |
-| `file` | Live borrowed file from [`fvm_port_file_open`](../ports/file_port.c#L133); nil is invalid. |
+| `file` | Live borrowed file from [`fvm_port_file_open`](../ports/file_port.c#L135); nil is invalid. |
 | `offset` | Signed native `long` byte displacement; the resulting position must be nonnegative and representable. |
-| `origin` | [`FVM_FILE_SEEK_START`](../ports/file_port.h#L57) (zero), [`FVM_FILE_SEEK_CURRENT`](../ports/file_port.h#L58) (active logical cursor), or [`FVM_FILE_SEEK_END`](../ports/file_port.h#L59) (measured extent). |
+| `origin` | [`FVM_FILE_SEEK_START`](../ports/file_port.h#L62) (zero), [`FVM_FILE_SEEK_CURRENT`](../ports/file_port.h#L63) (active logical cursor), or [`FVM_FILE_SEEK_END`](../ports/file_port.h#L64) (measured extent). |
 | `position` | Required output pointer; receives the selected byte position only on success. |
 
 [`FVM_OK`](../include/flashvm/flashvm.h#L44) means the native seek succeeded and the active logical cursor moved.
 A read-only handle updates its read cursor; a write-only handle updates its write
-cursor. Reading beyond EOF returns zero through the normal read API. A later
+cursor. An existing read/write `rwo` handle moves both together;
+[ORDWR contract](../../disVM/runtime/PROVIDER-EVENT-FILES.md). Reading beyond EOF returns zero through the normal read API. A later
 positioned write beyond EOF can extend the file with a native sparse/zero gap.
 No transactional write, disk quota or durability guarantee is introduced.
 
@@ -37,7 +38,8 @@ accept such positions. Dis checks `big` offset range before narrowing. This
 series executes Linux AMD64 tests; declarations are C89-compatible, but other
 platforms do not gain runtime acceptance from a successful source build alone.
 
-Функция перемещает активную позицию открытого файла `r` либо `w`. Владение
+Функция перемещает активную позицию открытого файла `r`, `w`, `wo` либо `rwo`.
+В `rwo` read/write используют одну общую позицию, в отличие от append-channel `rw`. Владение
 дескриптором остаётся у вызывающего кода; синхронизация с чтением, записью и
 закрытием — его обязанность. Параметры: файл, знаковое смещение в байтах,
 начало отсчёта и обязательный указатель результата. Успех возвращает [`FVM_OK`](../include/flashvm/flashvm.h#L44)
@@ -60,13 +62,13 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_FILE_SEEK_CURRENT` | macro / define | [ports/file_port.h:58](../ports/file_port.h#L58) |
-| `FVM_FILE_SEEK_END` | macro / define | [ports/file_port.h:59](../ports/file_port.h#L59) |
-| `FVM_FILE_SEEK_START` | macro / define | [ports/file_port.h:57](../ports/file_port.h#L57) |
+| `FVM_FILE_SEEK_CURRENT` | macro / define | [ports/file_port.h:63](../ports/file_port.h#L63) |
+| `FVM_FILE_SEEK_END` | macro / define | [ports/file_port.h:64](../ports/file_port.h#L64) |
+| `FVM_FILE_SEEK_START` | macro / define | [ports/file_port.h:62](../ports/file_port.h#L62) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_port_file_open` | function | [ports/file_port.c:133](../ports/file_port.c#L133) |
-| `fvm_port_file_seek` | function | [ports/file_port.c:295](../ports/file_port.c#L295) |
+| `fvm_port_file_open` | function | [ports/file_port.c:135](../ports/file_port.c#L135) |
+| `fvm_port_file_seek` | function | [ports/file_port.c:313](../ports/file_port.c#L313) |
 | `FVM_PortFile` | struct | [ports/file_port.c:30](../ports/file_port.c#L30) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

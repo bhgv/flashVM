@@ -614,3 +614,9 @@ Runtime 0.129 adds [typed provider notifications and selective refresh](PROVIDER
 independent consumer cursors, session/generation checks, conservative coalescing,
 and a chunk-hint bridge. Provider reread acknowledges only captured versions;
 new events stay pending. Network heartbeat and load-based routing remain future work.
+
+Runtime 0.130 adds [automatic source-driven per-thread system inboxes](SYSTEM-EVENTS.md):
+native push subscriptions track provider bindings without owner polling or pauses.
+The ordinary `/dev/sysevents` device returns exactly one queued record per read,
+including readn. The external format remains experimental. [ORDWR and optional
+provider journal views](PROVIDER-EVENT-FILES.md) are separate from automatic delivery.

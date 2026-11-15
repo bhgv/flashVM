@@ -1,5 +1,7 @@
 # Файлы и каталоги по платформам — v0.1650
 
+`Sys.open(ORDWR)` открывает existing read/write file с единым cursor, без create/truncate/append: [контракт](PROVIDER-EVENT-FILES.md).
+
 `Sys.remove` теперь использует один retained namespace selection для удаления
 file/symlink либо пустого каталога: [поведение и границы](NAMESPACE-REMOVE.ru.md).
 

@@ -1,4 +1,7 @@
-/* FlashVM: Portable platform adapter interface or implementation: file port.
+/* Copyright (c) 2026 bhgv
+ * EN: Portable file/stdio ownership, explicit open modes and logical cursors.
+ * RU: Portable file/stdio ownership, explicit open modes и logical cursors.
+ * FlashVM: Portable platform adapter interface or implementation: file port.
  * File: ports/file_port.h.
  */
 
@@ -16,10 +19,12 @@ extern "C"
 typedef struct FVM_PortFile FVM_PortFile;
 
 
-/* Open borrowed UTF-8 path in r, w, wx, wo or rw mode; NULL selects rw. wx creates
+/* Open borrowed UTF-8 path in r, w, wx, wo, rwo or rw mode; NULL selects rw. wx creates
  * exclusively, rejecting every existing path (including symlinks) without
  * truncation. wo opens an existing write-only file at offset zero, without
- * creation, truncation, append or requiring read permission.
+ * creation, truncation, append or requiring read permission. rwo opens existing
+ * read/write at offset zero, shares one cursor, never creates/truncates/appends.
+ * RU: rwo открывает existing read/write с общим cursor с нуля, без create/truncate.
  * out receives an owned handle or NULL; close on the same serialized
  * owner. Allocation precedes creation; a later I/O failure may leave a new empty
  * file. Native filesystem operations block; no durability/atomic-write guarantee. */

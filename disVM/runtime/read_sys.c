@@ -151,6 +151,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         FVM_Result status;
         int released;
         int terminal = 0;
+        int temporary = 0;
         DVM_FileTicket ticket;
         DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
         if (fragment > capacity)
@@ -185,7 +186,8 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
             }
             DVM_IoResult outcome = dvm_vfs_read_chunk(resource, stage, fragment);
             status = outcome.status;
-            terminal = outcome.stop == DVM_IO_EOF;
+            terminal = outcome.stop == DVM_IO_EOF || (outcome.flags & DVM_IO_RECORD);
+            temporary = outcome.stop == DVM_IO_AGAIN;
             received = outcome.flags & DVM_IO_PREFIX ? outcome.count : 0;
             if (!dvm_file_gate_leave(gate, &ticket))
             {
@@ -199,7 +201,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         fvm_port_registry_unlock();
         if (status != FVM_OK && !received)
         {
-            kwerrstr("native input failed");
+            kwerrstr(temporary ? "native input temporarily unavailable" : "native input failed");
             if (!result)
             {
                 result = -1;

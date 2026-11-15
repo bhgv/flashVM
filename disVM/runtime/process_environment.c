@@ -12,6 +12,7 @@
 #include "process_environment.h"
 #include "sys_capture.h"
 #include "vfs/boot.h"
+#include "vfs/sysevents.h"
 #include "disvm/native_process.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,6 +47,12 @@ int dvm_process_environment_init(Prog *process, Prog *parent)
     {
         return 0;
     }
+    owner->system_events = dvm_sysevents_create(group);
+    if (!owner->system_events)
+    {
+        dvm_namespace_release(group);
+        return 0;
+    }
     owner->namespace_group = group;
     process->osenv = environment;
     if (fegetenv(&((DVM_RuntimeProcess *)process)->floating_environment))
@@ -65,6 +72,9 @@ void dvm_process_environment_destroy(Prog *process)
     if (process)
     {
         DVM_RuntimeProcess *owner = (DVM_RuntimeProcess *)process;
+        dvm_sysevents_retire(owner->system_events);
+        dvm_sysevents_release(owner->system_events);
+        owner->system_events = NULL;
         dvm_namespace_release(owner->namespace_group);
         owner->namespace_group = NULL;
     }
@@ -89,6 +99,7 @@ int dvm_process_environment_bind(Prog *process)
         abort();
     }
     up->env = process->osenv;
+    dvm_sysevents_bind(((DVM_RuntimeProcess *)process)->system_events);
     return 1;
 }
 
@@ -104,6 +115,7 @@ void dvm_process_environment_release(Prog *process)
     {
         abort();
     }
+    dvm_sysevents_bind(NULL);
     up->env = &up->defenv;
 }
 

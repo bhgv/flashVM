@@ -209,6 +209,28 @@ int main(void)
                 fvm_port_anchor_remove_at(child, "..") == FVM_INVALID_ARGUMENT &&
                 fvm_port_anchor_remove_at(child, "/outside") == FVM_INVALID_ARGUMENT,
             "invalid removal accepted");
+    write_path("moved/duplex", "ABCDE");
+    require(fvm_port_file_open_at(child, "duplex", "rwo", &file) == FVM_OK, "existing duplex open");
+    {
+        char bytes[5];
+        size_t count;
+        int available;
+        long position;
+        require(fvm_port_file_read(file, bytes, 2, &count) == FVM_OK && count == 2 && !memcmp(bytes, "AB", 2),
+                "duplex initial shared position");
+        require(fvm_port_file_write(file, "X", 1) == FVM_OK &&
+                fvm_port_file_read(file, bytes, 1, &count) == FVM_OK && count == 1 && bytes[0] == 'D',
+                "duplex overwrite or read cursor");
+        require(fvm_port_file_available(file, &available) == FVM_OK && available &&
+                fvm_port_file_write(file, "Y", 1) == FVM_OK, "duplex peek changed write cursor");
+        require(fvm_port_file_seek(file, 0, FVM_FILE_SEEK_START, &position) == FVM_OK &&
+                fvm_port_file_read(file, bytes, sizeof(bytes), &count) == FVM_OK && count == sizeof(bytes) &&
+                !memcmp(bytes, "ABXDY", sizeof(bytes)), "duplex truncated/appended or seek diverged");
+    }
+    fvm_port_file_close(file);
+    file = NULL;
+    require(fvm_port_file_open_at(child, "missing-rwo", "rwo", &file) != FVM_OK && !file &&
+            fvm_port_path_info("moved/missing-rwo", &after) != FVM_OK, "duplex created missing file");
     write_path("moved/one-remove", "ABC");
     fail_stdio = 1;
     require(fvm_port_file_open_at(child, "token", "w", &file) != FVM_OK && !file, "stdio failure not injected");

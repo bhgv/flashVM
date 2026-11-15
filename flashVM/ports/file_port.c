@@ -35,12 +35,13 @@ struct FVM_PortFile
     long write_position; /* Logical next write offset checked against native long capacity. */
     int readable;        /* Whether this handle admits ordinary file reads. */
     int writable;        /* Whether this handle admits ordinary file writes. */
+    int shared;          /* rwo uses one logical offset for both reading and writing. */
     int append;          /* Whether each write is positioned at the current file end. */
     int failed;          /* A partial/failed record prevents unsafe write retries. */
 };
 
 
-/* Open borrowed UTF-8 path in r, w, wx, wo or rw mode (NULL means rw).
+/* Open borrowed UTF-8 path in r, w, wx, wo, rwo or rw mode (NULL means rw).
  * out receives an owned file or NULL; close it with fvm_port_file_close.
  * Validate path/mode and allocate state before destructive creation.
  * Native I/O blocks; invalid/unsupported paths, allocation and OS failures
@@ -76,8 +77,8 @@ static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char
     }
 
     /* Computation / Вычисление и обновление состояния. */
-    read = !strcmp(mode, "r") || !strcmp(mode, "rw");
-    write = !strcmp(mode, "w") || !strcmp(mode, "wx") || !strcmp(mode, "wo") || !strcmp(mode, "rw");
+    read = !strcmp(mode, "r") || !strcmp(mode, "rw") || !strcmp(mode, "rwo");
+    write = !strcmp(mode, "w") || !strcmp(mode, "wx") || !strcmp(mode, "wo") || !strcmp(mode, "rw") || !strcmp(mode, "rwo");
     if (!read && !write)
     {
         return FVM_INVALID_ARGUMENT;
@@ -100,7 +101,7 @@ static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char
         const char *binary = !strcmp(mode, "wo") ? "wb-" : !strcmp(mode, "wx") ? "wbx" : (read ? (write ? "r+b" : "rb") : "wb");
         stream = (FILE *)(anchor ? fvm_fs_native_open_at(anchor, path, binary) : fvm_fs_native_open(path, binary));
     }
-    if (!stream && read && write && errno == ENOENT)
+    if (!stream && !strcmp(mode, "rw") && errno == ENOENT)
     {
         stream = (FILE *)(anchor ? fvm_fs_native_open_at(anchor, path, "w+b") : fvm_fs_native_open(path, "w+b"));
     }
@@ -115,8 +116,9 @@ static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char
     file->stream = stream;
     file->readable = read;
     file->writable = write;
-    file->append = read && write;
-    if (write && strcmp(mode, "wo") && (fseek(stream, 0, SEEK_END) || (file->write_position = ftell(stream)) < 0))
+    file->shared = !strcmp(mode, "rwo");
+    file->append = read && write && !file->shared;
+    if (write && strcmp(mode, "wo") && !file->shared && (fseek(stream, 0, SEEK_END) || (file->write_position = ftell(stream)) < 0))
     {
         fclose(stream);
         free(file->path);
@@ -176,10 +178,16 @@ long fvm_port_file_position(FVM_PortFile *file)
 void fvm_port_file_restore(FVM_PortFile *file, long position)
 {
     file->read_position = position;
+    if (file->shared)
+    {
+        file->write_position = position;
+    }
 }
 
 
-/* Read port file. */
+/* EN/RU: Read at most size bytes; rwo advances one shared logical cursor.
+ * Прочитать до size bytes; rwo продвигает общий logical cursor. Borrow inputs;
+ * read reports confirmed bytes on success, no ownership transfer. */
 FVM_Result fvm_port_file_read(FVM_PortFile *file, void *data, size_t size, size_t *read)
 {
     size_t count;
@@ -209,12 +217,18 @@ FVM_Result fvm_port_file_read(FVM_PortFile *file, void *data, size_t size, size_
 
     /* Computation / Вычисление и обновление состояния. */
     file->read_position += (long)count;
+    if (file->shared)
+    {
+        file->write_position = file->read_position;
+    }
     *read = count;
     return FVM_OK;
 }
 
 
-/* Write port file. */
+/* EN/RU: Write serialized bytes; rwo overwrites at the shared cursor.
+ * Записать serialized bytes; rwo пишет у общего cursor. No create/append in rwo;
+ * failed legacy writes keep their existing uncertain-effect failure contract. */
 FVM_Result fvm_port_file_write(FVM_PortFile *file, const void *data, size_t size)
 {
     if (!file || (!data && size))
@@ -241,6 +255,10 @@ FVM_Result fvm_port_file_write(FVM_PortFile *file, const void *data, size_t size
         return FVM_ERROR;
     }
     file->write_position += (long)size;
+    if (file->shared)
+    {
+        file->read_position = file->write_position;
+    }
     return FVM_OK;
 }
 
@@ -258,7 +276,7 @@ FVM_Result fvm_port_file_available(FVM_PortFile *file, int *available)
     /* Computation / Вычисление и обновление состояния. */
     position = file->read_position;
     result = fvm_port_file_read(file, &byte, 1, &count);
-    file->read_position = position;
+    fvm_port_file_restore(file, position);
     *available = result == FVM_OK && count != 0;
     return result;
 }
@@ -339,7 +357,7 @@ FVM_Result fvm_port_file_seek(FVM_PortFile *file, long offset, int origin, long 
     {
         file->read_position = target;
     }
-    else
+    if (!file->readable || file->shared)
     {
         file->write_position = target;
     }
