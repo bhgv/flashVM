@@ -2,6 +2,10 @@
 # EN: Keep pure ABI/guard/generator checks without starting a reference VM.
 # RU: Сохранить проверки ABI/guards/генератора без запуска reference VM.
 if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    add_executable(disvm_styx_codec_test styx/test_codec.c)
+    target_link_libraries(disvm_styx_codec_test PRIVATE limbo_bootstrap_lib9)
+    add_test(NAME disvm_styx_c_codec COMMAND disvm_styx_codec_test)
+    set_tests_properties(disvm_styx_c_codec PROPERTIES TIMEOUT 10 LABELS "host-unit")
     get_target_property(native_unit_includes disvm INCLUDE_DIRECTORIES)
     list(APPEND native_unit_includes "${DVM_FLASHVM_SOURCE_ROOT}/ports" "${DVM_FLASHVM_SOURCE_ROOT}/include")
     add_executable(disvm_sys_capture_test test_sys_capture.c sys_capture.c "${root}/disVM/host/refcount.c")

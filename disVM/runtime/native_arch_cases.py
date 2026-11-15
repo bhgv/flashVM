@@ -26,6 +26,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
 )
 WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
     ("vfsctl", "test_vfsctl.py", ()),
+    ("styx-live", "test_styx_live.py", ()),
     ("vfs-publication", "test_vfs_publication.py", ()),
     ("provider-watch", "test_provider_watch.py", ()),
     ("provider-events", "test_provider_events.py", ()),

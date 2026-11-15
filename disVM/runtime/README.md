@@ -651,4 +651,15 @@ Runtime 0.135 adds [local Limbo publication capabilities](VFS-PUBLICATION.md):
 opaque Root/Owner/Endpoint/Ticket/Request types, immutable tree overlays, one-request
 owner review, actual native caller PID, explicit direct/prepared modes and ordinary
 VFS notification sources. GC finalizers enqueue native cleanup without global stops.
-The Styx/network adapter and recursive namespace snapshot capture remain pending.
+The [live per-connection Styx/network adapter](STYX-SERVING.md) remains pending;
+recursive snapshot transfer is not its serving model.
+
+Runtime0.136 validates the [live per-connection Styx serving contract](STYX-SERVING.md)
+against actual existing Inferno handlers and codec: separate roots/fids, live
+one-directory reads with stat attributes, fresh walks after membership changes,
+permissions, and no implicit per-chunk Twalk. No snapshot API or network service
+is claimed by this acceptance checkpoint.
+
+The [native C reuse assessment](STYX-NATIVE.md) identifies Inferno libstyx/devmnt
+and links the original already-vendored lib9 C codecs in a dedicated wire-vector
+check. C server/client VFS/transport adapters remain pending.

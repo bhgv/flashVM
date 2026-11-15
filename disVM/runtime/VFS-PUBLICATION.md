@@ -180,6 +180,12 @@ Targeted ASan/UBSan instrument the capability/view/publication/provider journals
 the remaining VM/port objects are uninstrumented and LSan is disabled under ptrace.
 
 Wire Styx/9P, network authentication, remote capability encoding, heartbeat,
-load-balancing, recursive namespace snapshot capture and running-code migration
+load-balancing and running-code migration
 are still future work. Existing native SDK remote-adapter entry points remain
 available without pretending this local Limbo endpoint is a network service.
+
+
+The planned Styx export is a [live per-connection root](STYX-SERVING.md), not recursive
+namespace snapshot transfer. Preparation assigns an ordinary authorized directory;
+walk/read operate on its changing contents. Immutable local overlay descriptors
+remain a separate existing capability operation, not the Styx serving model.

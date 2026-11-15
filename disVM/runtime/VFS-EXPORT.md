@@ -168,3 +168,9 @@ notices while100 projected views subscribe and retire. Targeted ASan/UBSan runs
 instrument SDK/VFS sources; the shared port archive is uninstrumented and LSan is
 disabled in this ptrace environment. Runtime0.135 adds the [local guest publication API](VFS-PUBLICATION.md). Full Styx
 transport, heartbeat, remote execution/migration and balancing remain future work.
+
+
+For the future wire adapter, preparation chooses a [live per-connection directory](STYX-SERVING.md).
+It must not be implemented as recursive tree serialization or namespace freezing.
+Tattach assigns the selected root; Twalk resolves names and Tread lists one directory.
+The existing native view/opaque capability API is not itself the complete Styx adapter.

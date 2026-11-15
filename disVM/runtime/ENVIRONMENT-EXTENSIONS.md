@@ -40,6 +40,13 @@ experimental Dis64 claims must not be merged into blanket binary compatibility.
 signature. NC64/experimental Dis64 остаются отдельными явно описанными профилями.
 Расширенная среда не означает автоматическую binary совместимость всех профилей.
 
+## Styx integration contract
+
+[Live per-connection serving](STYX-SERVING.md) prepares/selects an ordinary authorized
+root, then uses standard attach/walk/open/read semantics. It does not freeze or
+serialize a subtree. Runtime0.136 tests actual matched handlers/codec; transport,
+authentication and native Sys.mount integration remain pending.
+
 ## E1 — typed provider control / Типизированное управление
 
 Runtime0.133 implements the local Vfsctl layers/layer/bind/move subset, including

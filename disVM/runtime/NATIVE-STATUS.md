@@ -2,6 +2,36 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-16: live connection roots and original Styx handler acceptance
+
+Runtime0.136 codifies the [live per-connection Styx serving contract](STYX-SERVING.md).
+Preparation selects an ordinary authorized root for the connection/attachment;
+it does not freeze or serialize a subtree. Directory membership/data stay live.
+Twalk resolves names, Tread lists one directory with stat records, and open-fid
+I/O does not require another implicit Twalk. No snapshot API or namespace freezing is part of
+this serving contract.
+
+A real native guest exercises the existing matched Inferno Styxservers handlers
+and Styx codec with two independent connection instances and navigator workers.
+Tests cover separate roots/fid spaces, readonly/writable permissions, no readdir
+on attach/walk, live directory addition visible on the same open directory fid,
+fresh walk without reattach, root dot-dot confinement, complete stat attributes,
+Unicode names/qid identity and opened-fid walk refusal. Rread is actually packed
+and unpacked with the existing codec; no copied protocol implementation is tested.
+
+AMD64 wide80/80; dynamic/static host-unit40/40; new C/JIT × both GC observation
+settings passed in both builds. Upstream source and production serving primitives
+are unchanged. This is handler/codec acceptance, not a network listener, verified
+remote authentication or completed native Sys.mount adapter. The existing local
+Vfsexport overlay/capture capability API remains separately documented; its static
+mapping descriptors are not the live namespace-to-Styx adapter.
+
+Original Inferno C lib9 codecs are now directly exercised by a native target with
+independent full-width fid,64-bit offset/qid, UTF-8 and stat-record wire vectors.
+[Read C server/client paths and adaptation findings](STYX-NATIVE.md). The C server
+and mount client are not yet imported/integrated; this checkpoint reuses the
+already-vendored codec library and records the actual native integration base.
+
 ## 2026-11-15: local Limbo publication capabilities
 
 Runtime0.135 exposes the native SDK through Vfsexport and pure Limbo Vfspublish.
