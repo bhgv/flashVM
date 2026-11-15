@@ -156,7 +156,8 @@ Bind не повышает полномочия. Открытые handles име
 удаление пути или unmount сами по себе их не отзывают.
 
 Текущий POSIX provider применяет credentials всего host process через kernel
-open/openat, а не разные identities гостевых Prog. Sys.stat уже переносит mode,
+open/openat, а не разные identities гостевых Prog. [Sys.open OWRITE](WRITE-OPEN.md) теперь открывает existing write-only без
+create/truncate и без read permission. Sys.stat уже переносит mode,
 uid и gid. Workload namespace-permissions проверяет actual read/create
 и directory-search refusal через bind, metadata и unmount. Он требует non-root
 host user, поскольку root bypass не подтверждает проверку guest credentials.

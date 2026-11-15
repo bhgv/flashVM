@@ -1,5 +1,7 @@
 # План завершения FlashVM / FlashVM completion roadmap
 
+Checkpoint v0.1699: existing write-only opens use native O_WRONLY without create/truncate or read access, starting at offset zero. DisVM Sys.open(OWRITE) uses the same namespace selection and retirement as read-only opens. [EN/RU contract](../../disVM/runtime/WRITE-OPEN.md). Windows native-path adapter is implemented but untested; directory anchors remain unsupported there. No full VFS or Flash compatibility stage closes.
+
 Checkpoint v0.1698: directory-relative removal unlinks final symlinks and removes only empty directories. DisVM Sys.remove retains namespace selection through native I/O; opened files/modules survive unlink. Windows backend remains UNSUPPORTED, complete VFS/union and all Flash compatibility stages stay open. [EN](DIRECTORY_REMOVE.md) / [RU](DIRECTORY_REMOVE.ru.md).
 
 Checkpoint v0.1697: portable directory anchors retain POSIX directory identity through rename and support independent relative file/directory operations. DisVM namespace groups and in-flight imports retain these handles without global execution exclusion. Windows returns UNSUPPORTED; physical non-Linux acceptance, full Chan/provider VFS and all Flash compatibility stages remain open. [EN](DIRECTORY_ANCHORS.md) / [RU](DIRECTORY_ANCHORS.ru.md).

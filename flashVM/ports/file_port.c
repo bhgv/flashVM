@@ -40,11 +40,14 @@ struct FVM_PortFile
 };
 
 
-/* Open borrowed UTF-8 path in r, w, wx or rw mode (NULL means rw).
+/* Open borrowed UTF-8 path in r, w, wx, wo or rw mode (NULL means rw).
  * out receives an owned file or NULL; close it with fvm_port_file_close.
  * Validate path/mode and allocate state before destructive creation.
  * Native I/O blocks; invalid/unsupported paths, allocation and OS failures
- * return explicit status. External synchronization is required. */
+ * return explicit status. External synchronization is required.
+ * RU: Открыть path относительно anchor либо native path; передать свой file
+ * в out или вернуть ошибку с NULL. wo не создаёт и не усекает файл, позиция ноль.
+ * До destructive effects выделить state; блокирует, требует внешней синхронизации. */
 static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char *mode, FVM_PortFile **out)
 {
 
@@ -74,7 +77,7 @@ static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char
 
     /* Computation / Вычисление и обновление состояния. */
     read = !strcmp(mode, "r") || !strcmp(mode, "rw");
-    write = !strcmp(mode, "w") || !strcmp(mode, "wx") || !strcmp(mode, "rw");
+    write = !strcmp(mode, "w") || !strcmp(mode, "wx") || !strcmp(mode, "wo") || !strcmp(mode, "rw");
     if (!read && !write)
     {
         return FVM_INVALID_ARGUMENT;
@@ -94,7 +97,7 @@ static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char
     }
     strcpy(file->path, path);
     {
-        const char *binary = !strcmp(mode, "wx") ? "wbx" : (read ? (write ? "r+b" : "rb") : "wb");
+        const char *binary = !strcmp(mode, "wo") ? "wb-" : !strcmp(mode, "wx") ? "wbx" : (read ? (write ? "r+b" : "rb") : "wb");
         stream = (FILE *)(anchor ? fvm_fs_native_open_at(anchor, path, binary) : fvm_fs_native_open(path, binary));
     }
     if (!stream && read && write && errno == ENOENT)
@@ -113,7 +116,7 @@ static FVM_Result file_open(FVM_PortAnchor *anchor, const char *path, const char
     file->readable = read;
     file->writable = write;
     file->append = read && write;
-    if (write && (fseek(stream, 0, SEEK_END) || (file->write_position = ftell(stream)) < 0))
+    if (write && strcmp(mode, "wo") && (fseek(stream, 0, SEEK_END) || (file->write_position = ftell(stream)) < 0))
     {
         fclose(stream);
         free(file->path);

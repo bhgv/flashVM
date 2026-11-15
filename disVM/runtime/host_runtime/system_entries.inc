@@ -95,7 +95,10 @@ char *dvm_runtime_file_path(String *name)
 }
 
 
-/* Open ordinary read-only input, or the explicitly enabled isolated-test control node. */
+/* EN: Open existing input or nontruncating write-only output; retain FD across
+ * native wait. Unsupported flags refuse without effects.
+ * RU: Открыть input либо existing write-only output без truncate; удержать FD
+ * на native wait. Неподдержанные flags отвергаются без эффектов. */
 void Sys_open(void *frame)
 {
     F_Sys_open local;
@@ -127,11 +130,11 @@ void Sys_open(void *frame)
     else
     {
         descriptor = -1;
-        if (call->mode == OREAD)
+        if (call->mode == OREAD || call->mode == Sys_OWRITE)
         { /* [GC:] The unpublished FD is a C-held root across native waiting. */
             ptradd(D2H(result));
             Setmark(D2H(result));
-            descriptor = open_file_mode(path, "r", 1);
+            descriptor = open_file_mode(path, call->mode == OREAD ? "r" : "wo", 1);
             ptrdel(D2H(result));
         }
         else

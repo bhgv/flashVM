@@ -157,6 +157,10 @@ int main(void)
     anchor = NULL;
     require(!mkdir("original", 0700), "make original");
     write_path("original/token", "ABC");
+    require(fvm_port_file_open("original/token", "wo", &file) == FVM_OK, "existing write-only path");
+    require(fvm_port_file_write(file, "A", 1) == FVM_OK, "nonappend direct write");
+    fvm_port_file_close(file);
+    file = NULL;
     require(fvm_port_anchor_open("original", &anchor) == FVM_OK, "anchor open");
     require(fvm_port_anchor_info_at(anchor, ".", &before) == FVM_OK, "original identity");
     require(fvm_port_directory_open_at(anchor, ".", &first) == FVM_OK &&
@@ -202,6 +206,13 @@ int main(void)
     require(fvm_port_file_open_at(child, "token", "w", &file) != FVM_OK && !file, "stdio failure not injected");
     require(failed_descriptor >= 0 && fcntl(failed_descriptor, F_GETFD) < 0 && errno == EBADF,
             "late failure leaked real descriptor");
+    require(fvm_port_file_open_at(child, "absent", "wo", &file) != FVM_OK && !file,
+            "write-only created missing entry");
+    fail_stdio = 1;
+    require(fvm_port_file_open_at(child, "token", "wo", &file) != FVM_OK && !file,
+            "write-only stdio failure not injected");
+    require(failed_descriptor >= 0 && fcntl(failed_descriptor, F_GETFD) < 0 && errno == EBADF,
+            "write-only late failure leaked descriptor");
     read_token(child);
     for (index = 0; index < ANCHOR_TEST_OWNERS; index++)
     {

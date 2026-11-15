@@ -2,6 +2,26 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: existing write-only open и закрытая прежняя RV64 приёмка
+
+[CI 9d9b0d6](https://github.com/bhgv/flashVM/actions/runs/43668162604)
+завершился успешно во всех шести jobs: AMD64 plain/TSan, ARM64, RV64/QEMU,
+DIS64 Sys AMD64/ARM64. Это закрывает прежний startup namespace blocker;
+physical RV64 hardware acceptance по-прежнему не заявляется.
+
+Sys.open(OWRITE) теперь открывает existing file без создания/усечения и без read
+permission, с позиции ноль. Новый port mode wo использует native O_WRONLY;
+прежние w/wx/rw не меняют семантику. [Контракт RU/EN](WRITE-OPEN.md).
+Guest fixture проверяет actual 0222 opens/read refusal, запись ABCDE → XBCZE,
+seek, missing/directory/OTRUNC refusal, bound 0444 refusal и zero live file owners.
+Native anchor fixture проверяет direct/relative opens и fdopen failure cleanup.
+Локально: полный AMD64 dynamic wide 70/70, static host-unit 29/29;
+расширенный guest fixture прошёл static/dynamic × C/JIT × оба poll (8 runs).
+Изменённые POSIX порты дополнительно компилируются как C89. Новая
+архитектурная CI относятся к этой ревизии отдельно от указанного прежнего CI.
+Windows native-path implementation не проверена; Windows anchors unsupported.
+Guest credentials, полная provider VFS и sandbox остаются следующими этапами.
+
 ## 2026-11-15: проверка host rwx и cross-build anchor gate
 
 Добавлен mandatory workload namespace-permissions: реальные chmod fixtures,

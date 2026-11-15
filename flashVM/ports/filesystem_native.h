@@ -20,7 +20,8 @@ FVM_Result fvm_fs_native_stream(void *stream, const char *name, FVM_FileInfo *ou
 FVM_Result fvm_fs_native_path(const char *path);
 
 
-/* Open a validated path in the borrowed binary stdio mode. Returns an owned
+/* Open a validated path in the borrowed binary stdio mode; private wb- means
+ * existing write-only without create/truncate, wrapped in a wb stream. Returns an owned
  * opaque FILE stream or NULL with native errno; caller closes the stream. */
 void *fvm_fs_native_open(const char *path, const char *mode);
 

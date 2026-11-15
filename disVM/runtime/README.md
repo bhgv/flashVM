@@ -150,7 +150,8 @@ session-bound run control and retained stack/object inspection.
 
 The native Linux build selects AMD64, ARM64 or RV64 from the actual CPU and checks the C compiler target. See [platforms and verification](PLATFORMS.md). Normal Sys support includes production string
 formatting/tokenization/UTF helpers, stdout printing and read-only module/file
-opening plus read/readn through FlashVM's file port. Unavailable Sys calls report
+opening plus read/readn through FlashVM's file port.
+[Existing write-only opens](WRITE-OPEN.md) support OWRITE without create/truncate. Unavailable Sys calls report
 explicit failures. One stdout message is bounded to a 4096-byte formatting buffer.
 No successful empty Sys service, external emu, Inferno Draw or full
 Inferno filesystem is substituted. Create/write supports actual files with OWRITE/0666 plus standard output/error.

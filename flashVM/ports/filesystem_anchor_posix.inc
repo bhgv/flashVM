@@ -110,6 +110,8 @@ FVM_Result fvm_port_anchor_info_at(FVM_PortAnchor *parent, const char *relative,
 
 
 /* EN/RU: See filesystem_native.h. Caller preallocates file/path before effects.
+ * Private wb- requests only O_WRONLY; fdopen never truncates/reopens.
+ * Private wb- задаёт только O_WRONLY; fdopen не усекает и не переоткрывает.
  * См. filesystem_native.h. Caller выделяет file/path до destructive effects. */
 void *fvm_fs_native_open_at(FVM_PortAnchor *parent, const char *relative, const char *mode)
 {
@@ -124,6 +126,10 @@ void *fvm_fs_native_open_at(FVM_PortAnchor *parent, const char *relative, const 
     if (!strcmp(mode, "rb"))
     {
         flags = O_RDONLY;
+    }
+    else if (!strcmp(mode, "wb-"))
+    {
+        flags = O_WRONLY;
     }
     else if (!strcmp(mode, "r+b"))
     {
@@ -145,7 +151,7 @@ void *fvm_fs_native_open_at(FVM_PortAnchor *parent, const char *relative, const 
     {
         return NULL;
     }
-    stream = fdopen(descriptor, !strcmp(mode, "wbx") ? "wb" : mode);
+    stream = fdopen(descriptor, (!strcmp(mode, "wbx") || !strcmp(mode, "wb-")) ? "wb" : mode);
     if (stream && truncate && (fstat(descriptor, &native) || (S_ISREG(native.st_mode) && ftruncate(descriptor, 0))))
     {
         saved = errno;

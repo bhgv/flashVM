@@ -45,7 +45,8 @@ FVM_Result fvm_fs_native_path(const char *path)
 }
 
 
-/* Open borrowed path/mode in POSIX; wbx uses O_EXCL, never a stat/open race.
+/* EN: Open borrowed path/mode in POSIX; wbx uses O_EXCL, wb- only O_WRONLY.
+ * RU: Открыть borrowed path/mode; wbx использует O_EXCL, wb- только O_WRONLY.
  * Return owned FILE or NULL/errno. fdopen failure closes the private descriptor
  * but may leave the newly created empty path; existing objects are untouched. */
 void *fvm_fs_native_open(const char *path, const char *mode)
@@ -53,11 +54,11 @@ void *fvm_fs_native_open(const char *path, const char *mode)
     int descriptor;
     int saved;
     FILE *stream;
-    if (strcmp(mode, "wbx"))
+    if (strcmp(mode, "wbx") && strcmp(mode, "wb-"))
     {
         return fopen(path, mode);
     }
-    descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    descriptor = open(path, O_WRONLY | O_CLOEXEC | (!strcmp(mode, "wbx") ? O_CREAT | O_EXCL : 0), 0666);
     if (descriptor < 0)
     {
         return NULL;

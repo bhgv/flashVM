@@ -65,7 +65,10 @@ FVM_Result fvm_fs_native_path(const char *path)
 }
 
 
-/* Convert path and mode in the Windows port, returning an owned CRT stream. */
+/* EN: Convert borrowed path/mode; return owned CRT stream or NULL/errno.
+ * wb- requests existing write-only, without create/truncate/read rights.
+ * RU: Преобразовать path/mode; вернуть свой CRT stream либо NULL/errno.
+ * wb- открывает существующий write-only без create/truncate/read прав. */
 void *fvm_fs_native_open(const char *path, const char *mode)
 {
     wchar_t *wide;
@@ -80,9 +83,9 @@ void *fvm_fs_native_open(const char *path, const char *mode)
         errno = EINVAL;
         return NULL;
     }
-    if (!strcmp(mode, "wbx"))
+    if (!strcmp(mode, "wbx") || !strcmp(mode, "wb-"))
     {
-        descriptor = _wopen(wide, _O_WRONLY | _O_CREAT | _O_EXCL | _O_BINARY, _S_IREAD | _S_IWRITE);
+        descriptor = _wopen(wide, _O_WRONLY | _O_BINARY | (!strcmp(mode, "wbx") ? _O_CREAT | _O_EXCL : 0), _S_IREAD | _S_IWRITE);
         free(wide);
         if (descriptor < 0)
         {

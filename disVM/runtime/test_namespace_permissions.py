@@ -3,6 +3,7 @@
 # RU: Независимые chmod fixtures проверяют host rwx через реальные guest namespace I/O.
 from pathlib import Path
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,11 @@ def main():
         try:
             for mode in ("--no-jit", "--jit"):
                 for locked in (False, True):
+                    writable = work / "writeonly"
+                    if writable.exists():
+                        writable.chmod(0o600)
+                    writable.write_text("ABCDE")
+                    writable.chmod(0o222)
                     result = subprocess.run(
                         [str(runtime), mode, "--stats", *(["--gc-locked-poll"] if locked else []), str(image)],
                         cwd=work, capture_output=True, text=True, timeout=45,
@@ -37,6 +43,12 @@ def main():
                     output = result.stdout + result.stderr
                     if result.returncode or "PASS namespace host rwx:" not in output or "ThreadSanitizer:" in output:
                         raise RuntimeError(output[-12000:])
+                    files = re.search(r"NATIVEFILES created=(\d+) closed=(\d+) live=(\d+)", output)
+                    if not files or files[1] != files[2] or files[3] != "0":
+                        raise RuntimeError("native file owners did not drain\n" + output[-12000:])
+                    writable.chmod(0o600)
+                    if writable.read_text() != "XBCZE" or (work / "missing").exists():
+                        raise RuntimeError("write-only open truncated, appended, required reads or created a file")
                     if (work / "readonly/token").read_text() != "R":
                         raise RuntimeError("denied create modified readonly contents")
                     print(f"PASS namespace host rwx {mode} locked={locked}")
