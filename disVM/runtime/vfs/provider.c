@@ -224,3 +224,15 @@ int dvm_provider_bindable(DVM_Provider *provider)
 {
     return provider && (provider->ops->flags & DVM_PROVIDER_STABLE_BIND) != 0;
 }
+
+
+/* EN/RU: See provider.h; unsupported callback does not fabricate access rights.
+ * См. provider.h; отсутствующий callback не выдумывает права. */
+FVM_Result dvm_provider_access(DVM_Provider *provider, const char *relative, unsigned access)
+{
+    if (!provider || !relative || !access || (access & ~FVM_ACCESS_MASK))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+    return provider->ops->access ? provider->ops->access(provider->state, relative, access) : FVM_UNSUPPORTED;
+}

@@ -10,7 +10,7 @@
 
 /* EN/RU: Exchange one selected resource with root, keeping cleanup/list ownership.
  * Обменять selected resource с root, сохранив cleanup/list ownership. */
-static void choose(DVM_ResourcePlan *root, DVM_ResourcePlan *choice)
+void dvm_union_choose(DVM_ResourcePlan *root, DVM_ResourcePlan *choice)
 {
     if (root != choice)
     {
@@ -42,6 +42,10 @@ FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
     {
         return FVM_OK;
     }
+    if ((plan->policy & DVM_NS_AUTORWX) && plan->requested_access)
+    {
+        return dvm_union_auto_select(plan, creating);
+    }
     for (choice = plan; choice; choice = choice->layers)
     {
         if (!create && (!choice->layer_id || (choice->mount_flags & DVM_NS_CREATE)))
@@ -50,13 +54,13 @@ FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating)
         }
         if (dvm_resource_raw_info(choice, &info) == FVM_OK)
         {
-            choose(plan, choice);
+            dvm_union_choose(plan, choice);
             return FVM_OK;
         }
     }
     if (creating && create)
     {
-        choose(plan, create);
+        dvm_union_choose(plan, create);
         return FVM_OK;
     }
     return FVM_ERROR;

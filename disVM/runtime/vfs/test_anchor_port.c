@@ -171,6 +171,14 @@ int main(void)
     require(fvm_port_anchor_info_at(anchor, ".", &after) == FVM_OK && before.identity.high == after.identity.high &&
                 before.identity.low == after.identity.low,
             "directory identity changed");
+    require(fvm_port_anchor_access_at(anchor, ".", FVM_ACCESS_WRITE | FVM_ACCESS_EXEC) == FVM_OK,
+            "effective directory write/search");
+    require(fvm_port_anchor_access_at(anchor, "token", FVM_ACCESS_READ) == FVM_OK &&
+                fvm_port_anchor_access_at(anchor, "token", FVM_ACCESS_EXEC) != FVM_OK,
+            "effective file read/execute");
+    require(fvm_port_anchor_access_at(anchor, "/token", FVM_ACCESS_READ) == FVM_INVALID_ARGUMENT &&
+                fvm_port_anchor_access_at(anchor, "token", FVM_ACCESS_MASK << 1) == FVM_INVALID_ARGUMENT,
+            "invalid effective access request accepted");
     read_token(anchor);
     directory_token(first);
     directory_token(second);

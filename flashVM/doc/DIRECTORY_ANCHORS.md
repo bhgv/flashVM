@@ -7,12 +7,12 @@ portable boundary, not a filesystem sandbox or a complete VFS provider ABI.
 
 | Function | Arguments, result and ownership |
 | --- | --- |
-| [`fvm_port_anchor_open`](../ports/anchor_port.h#L19) | Borrow nonempty native path and output address. Open a readable directory; success transfers owned anchor, failure clears output. |
-| [`fvm_port_anchor_open_at`](../ports/anchor_port.h#L26) | Borrow live parent and nonempty relative directory path. Return independently owned anchor. Absolute child paths are invalid. |
-| [`fvm_port_anchor_close`](../ports/anchor_port.h#L31) | Consume anchor after every concurrent borrower finishes. NULL is harmless. |
-| [`fvm_port_anchor_info_at`](../ports/anchor_port.h#L38) | Borrow parent/path/output. Copy metadata on success; no directory cursor changes. |
-| [`fvm_port_file_open_at`](../ports/anchor_port.h#L47) | Borrow parent/path/mode/output. Modes r/w/wx/rw follow ordinary file-port rules; success transfers an independently positioned file. Close through ordinary file API. |
-| [`fvm_port_directory_open_at`](../ports/anchor_port.h#L54) | Borrow parent/path/output. Transfer fresh bounded directory cursor, closed through ordinary directory API. Two cursors do not share a native offset. |
+| [`fvm_port_anchor_open`](../ports/anchor_port.h#L24) | Borrow nonempty native path and output address. Open a readable directory; success transfers owned anchor, failure clears output. |
+| [`fvm_port_anchor_open_at`](../ports/anchor_port.h#L31) | Borrow live parent and nonempty relative directory path. Return independently owned anchor. Absolute child paths are invalid. |
+| [`fvm_port_anchor_close`](../ports/anchor_port.h#L36) | Consume anchor after every concurrent borrower finishes. NULL is harmless. |
+| [`fvm_port_anchor_info_at`](../ports/anchor_port.h#L43) | Borrow parent/path/output. Copy metadata on success; no directory cursor changes. |
+| [`fvm_port_file_open_at`](../ports/anchor_port.h#L62) | Borrow parent/path/mode/output. Modes r/w/wx/rw follow ordinary file-port rules; success transfers an independently positioned file. Close through ordinary file API. |
+| [`fvm_port_directory_open_at`](../ports/anchor_port.h#L69) | Borrow parent/path/output. Transfer fresh bounded directory cursor, closed through ordinary directory API. Two cursors do not share a native offset. |
 
 All operations can block and are native-only: no VM/GC callbacks. Caller keeps
 parent alive through the complete call; close is not concurrent cancellation.
@@ -57,10 +57,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_port_anchor_close` | function | [ports/anchor_port.h:31](../ports/anchor_port.h#L31) |
-| `fvm_port_anchor_info_at` | function | [ports/anchor_port.h:38](../ports/anchor_port.h#L38) |
-| `fvm_port_anchor_open` | function | [ports/anchor_port.h:19](../ports/anchor_port.h#L19) |
-| `fvm_port_anchor_open_at` | function | [ports/anchor_port.h:26](../ports/anchor_port.h#L26) |
-| `fvm_port_directory_open_at` | function | [ports/anchor_port.h:54](../ports/anchor_port.h#L54) |
-| `fvm_port_file_open_at` | function | [ports/anchor_port.h:47](../ports/anchor_port.h#L47) |
+| `fvm_port_anchor_close` | function | [ports/anchor_port.h:36](../ports/anchor_port.h#L36) |
+| `fvm_port_anchor_info_at` | function | [ports/anchor_port.h:43](../ports/anchor_port.h#L43) |
+| `fvm_port_anchor_open` | function | [ports/anchor_port.h:24](../ports/anchor_port.h#L24) |
+| `fvm_port_anchor_open_at` | function | [ports/anchor_port.h:31](../ports/anchor_port.h#L31) |
+| `fvm_port_directory_open_at` | function | [ports/anchor_port.h:69](../ports/anchor_port.h#L69) |
+| `fvm_port_file_open_at` | function | [ports/anchor_port.h:62](../ports/anchor_port.h#L62) |
 <!-- source-links:end -->

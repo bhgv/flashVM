@@ -167,7 +167,7 @@ void Sys_bind(void *frame)
     char from[DVM_NS_PATH_LIMIT], on[DVM_NS_PATH_LIMIT], component[DVM_NS_PATH_LIMIT], target_component[DVM_NS_PATH_LIMIT];
     int result = -1, attempt;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_bind, ret), sizeof(*call.ret));
-    if ((call.flags & ~(Sys_MBEFORE | Sys_MAFTER | Sys_MCREATE)) ||
+    if ((call.flags & ~(Sys_MBEFORE | Sys_MAFTER | Sys_MCREATE | DVM_NS_AUTORWX)) ||
         (call.flags & (Sys_MBEFORE | Sys_MAFTER)) == (Sys_MBEFORE | Sys_MAFTER))
     {
         kwerrstr("invalid bind order/create flags");

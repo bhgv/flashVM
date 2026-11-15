@@ -68,7 +68,7 @@ int dvm_namespace_bind_layers(DVM_Namespace *group, DVM_ResourcePlan *source,
     unsigned order = flags & DVM_NS_ORDER;
     int result = 0;
     if (!group || !source || !target || !component ||
-        (flags & ~(DVM_NS_ORDER | DVM_NS_CREATE)) || order == DVM_NS_ORDER ||
+        (flags & ~(DVM_NS_ORDER | DVM_NS_CREATE | DVM_NS_AUTORWX)) || order == DVM_NS_ORDER ||
         (order && !directory) || ((flags & DVM_NS_CREATE) && source->mount_root &&
          (source->layers || !(source->mount_flags & DVM_NS_CREATE))))
     {

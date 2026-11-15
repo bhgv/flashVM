@@ -6,12 +6,12 @@ POSIX держит directory descriptor: relative операции не меня
 
 | Функция | Аргументы, результат, владение |
 | --- | --- |
-| [`fvm_port_anchor_open`](../ports/anchor_port.h#L19) | Заимствует непустой native path и адрес output. Открывает читаемый каталог; успех передаёт anchor, отказ очищает output. |
-| [`fvm_port_anchor_open_at`](../ports/anchor_port.h#L26) | Заимствует живой parent и непустой relative path каталога; передаёт независимый anchor. Absolute child запрещён. |
-| [`fvm_port_anchor_close`](../ports/anchor_port.h#L31) | Поглощает anchor после завершения всех borrowers; NULL допустим. |
-| [`fvm_port_anchor_info_at`](../ports/anchor_port.h#L38) | Заимствует parent/path/output; копирует metadata при успехе, не меняет cursor. |
-| [`fvm_port_file_open_at`](../ports/anchor_port.h#L47) | Заимствует parent/path/mode/output. Обычные r/w/wx/rw; передаёт независимый file, закрываемый обычным file API. |
-| [`fvm_port_directory_open_at`](../ports/anchor_port.h#L54) | Заимствует parent/path/output; передаёт свежий bounded cursor, закрываемый обычным directory API. Два cursors не разделяют offset. |
+| [`fvm_port_anchor_open`](../ports/anchor_port.h#L24) | Заимствует непустой native path и адрес output. Открывает читаемый каталог; успех передаёт anchor, отказ очищает output. |
+| [`fvm_port_anchor_open_at`](../ports/anchor_port.h#L31) | Заимствует живой parent и непустой relative path каталога; передаёт независимый anchor. Absolute child запрещён. |
+| [`fvm_port_anchor_close`](../ports/anchor_port.h#L36) | Поглощает anchor после завершения всех borrowers; NULL допустим. |
+| [`fvm_port_anchor_info_at`](../ports/anchor_port.h#L43) | Заимствует parent/path/output; копирует metadata при успехе, не меняет cursor. |
+| [`fvm_port_file_open_at`](../ports/anchor_port.h#L62) | Заимствует parent/path/mode/output. Обычные r/w/wx/rw; передаёт независимый file, закрываемый обычным file API. |
+| [`fvm_port_directory_open_at`](../ports/anchor_port.h#L69) | Заимствует parent/path/output; передаёт свежий bounded cursor, закрываемый обычным directory API. Два cursors не разделяют offset. |
 
 Все вызовы могут блокировать, не вызывают VM/GC. Parent удерживается caller до
 конца операции; close не является concurrent cancel. Независимые результаты
@@ -54,10 +54,10 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_port_anchor_close` | function | [ports/anchor_port.h:31](../ports/anchor_port.h#L31) |
-| `fvm_port_anchor_info_at` | function | [ports/anchor_port.h:38](../ports/anchor_port.h#L38) |
-| `fvm_port_anchor_open` | function | [ports/anchor_port.h:19](../ports/anchor_port.h#L19) |
-| `fvm_port_anchor_open_at` | function | [ports/anchor_port.h:26](../ports/anchor_port.h#L26) |
-| `fvm_port_directory_open_at` | function | [ports/anchor_port.h:54](../ports/anchor_port.h#L54) |
-| `fvm_port_file_open_at` | function | [ports/anchor_port.h:47](../ports/anchor_port.h#L47) |
+| `fvm_port_anchor_close` | function | [ports/anchor_port.h:36](../ports/anchor_port.h#L36) |
+| `fvm_port_anchor_info_at` | function | [ports/anchor_port.h:43](../ports/anchor_port.h#L43) |
+| `fvm_port_anchor_open` | function | [ports/anchor_port.h:24](../ports/anchor_port.h#L24) |
+| `fvm_port_anchor_open_at` | function | [ports/anchor_port.h:31](../ports/anchor_port.h#L31) |
+| `fvm_port_directory_open_at` | function | [ports/anchor_port.h:69](../ports/anchor_port.h#L69) |
+| `fvm_port_file_open_at` | function | [ports/anchor_port.h:62](../ports/anchor_port.h#L62) |
 <!-- source-links:end -->

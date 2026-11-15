@@ -9,6 +9,11 @@
 extern "C"
 {
 #endif
+#define FVM_ACCESS_EXEC 1U /* Execute/search permission for the effective host identity. */
+#define FVM_ACCESS_WRITE 2U /* Write permission for the effective host identity. */
+#define FVM_ACCESS_READ 4U /* Read permission for the effective host identity. */
+#define FVM_ACCESS_MASK 7U /* Only these access bits are accepted. */
+
 typedef struct FVM_PortAnchor FVM_PortAnchor; /* Immutable OS directory handle, externally retained. */
 
 
@@ -36,6 +41,16 @@ void fvm_port_anchor_close(FVM_PortAnchor *anchor);
  * RU: Stat relative path от удерживаемого объекта, без изменения cursor.
  * parent/relative/output заимствованы; port status, output меняется при успехе. */
 FVM_Result fvm_port_anchor_info_at(FVM_PortAnchor *parent, const char *relative, FVM_FileInfo *output);
+
+
+/* EN: Check requested access bits at relative against held parent using effective
+ * host credentials, including supplementary groups/ACLs. Borrow arguments; return
+ * FVM_OK only when all bits are allowed, ERROR on denial, UNSUPPORTED without a
+ * native check. Blocking, no cursor/effects; access can change before actual I/O.
+ * RU: Проверить access от held parent для effective host credentials, включая
+ * supplementary groups/ACL. Заимствованные inputs; OK при всех правах, ERROR при
+ * отказе, UNSUPPORTED без native check. Без эффектов; права могут измениться до I/O. */
+FVM_Result fvm_port_anchor_access_at(FVM_PortAnchor *parent, const char *relative, unsigned access);
 
 
 /* EN: Open file relative to live parent with ordinary r/w/wx/rw semantics.

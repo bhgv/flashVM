@@ -5,6 +5,7 @@
 #ifndef DVM_VFS_PROVIDER_H
 #define DVM_VFS_PROVIDER_H
 #include "handle.h"
+#include "anchor_port.h"
 #define DVM_PROVIDER_STABLE_BIND 1UL /* Factory promises immutable relative-name/node identity for bind aliases. */
 typedef struct DVM_Provider DVM_Provider; /* Native refcounted factory; references pin code/state lifetime. */
 
@@ -21,6 +22,7 @@ typedef struct DVM_ProviderOps
     FVM_Result (*open)(void *state, const char *relative, const char *mode, DVM_VfsHandle *output); /* Native factory; empty output, no VM pointers. */
     void (*destroy)(void *state); /* Last factory/handle reference consumes state outside locks. */
     unsigned long flags; /* Declared native capabilities; unknown bits refuse creation. */
+    FVM_Result (*access)(void *state, const char *relative, unsigned access); /* Optional effective rights check; no effects/VM access. */
 } DVM_ProviderOps;
 
 
@@ -43,6 +45,13 @@ void dvm_provider_release(DVM_Provider *provider);
 /* EN/RU: Borrow retained provider/path/output through blocking native metadata.
  * Заимствовать удержанный provider/path/output на время blocking native metadata. */
 FVM_Result dvm_provider_info(DVM_Provider *provider, const char *relative, FVM_FileInfo *output);
+
+
+/* EN/RU: Check effective caller access on retained provider/path; optional callback.
+ * Missing callback returns UNSUPPORTED; never infer rights from metadata mode.
+ * Проверить effective access удержанного provider/path; без callback — UNSUPPORTED.
+ * Native-only blocking, no namespace locks; callback must have no side effects. */
+FVM_Result dvm_provider_access(DVM_Provider *provider, const char *relative, unsigned access);
 
 
 /* EN/RU: Open relative path/mode into empty output. Preallocate a lifetime wrapper

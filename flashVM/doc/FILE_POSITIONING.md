@@ -13,9 +13,9 @@ channel request. It allocates no handle and never closes the borrowed file.
 
 | Parameter | Contract |
 | --- | --- |
-| `file` | Live borrowed file from [`fvm_port_file_open`](../ports/file_port.c#L130); nil is invalid. |
+| `file` | Live borrowed file from [`fvm_port_file_open`](../ports/file_port.c#L133); nil is invalid. |
 | `offset` | Signed native `long` byte displacement; the resulting position must be nonnegative and representable. |
-| `origin` | [`FVM_FILE_SEEK_START`](../ports/file_port.h#L55) (zero), [`FVM_FILE_SEEK_CURRENT`](../ports/file_port.h#L56) (active logical cursor), or [`FVM_FILE_SEEK_END`](../ports/file_port.h#L57) (measured extent). |
+| `origin` | [`FVM_FILE_SEEK_START`](../ports/file_port.h#L57) (zero), [`FVM_FILE_SEEK_CURRENT`](../ports/file_port.h#L58) (active logical cursor), or [`FVM_FILE_SEEK_END`](../ports/file_port.h#L59) (measured extent). |
 | `position` | Required output pointer; receives the selected byte position only on success. |
 
 [`FVM_OK`](../include/flashvm/flashvm.h#L44) means the native seek succeeded and the active logical cursor moved.
@@ -60,13 +60,13 @@ Source line links describe the current checkout, including in historical notes.
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
 | `FVM_ERROR` | enum constant | [include/flashvm/flashvm.h:45](../include/flashvm/flashvm.h#L45) |
-| `FVM_FILE_SEEK_CURRENT` | macro / define | [ports/file_port.h:56](../ports/file_port.h#L56) |
-| `FVM_FILE_SEEK_END` | macro / define | [ports/file_port.h:57](../ports/file_port.h#L57) |
-| `FVM_FILE_SEEK_START` | macro / define | [ports/file_port.h:55](../ports/file_port.h#L55) |
+| `FVM_FILE_SEEK_CURRENT` | macro / define | [ports/file_port.h:58](../ports/file_port.h#L58) |
+| `FVM_FILE_SEEK_END` | macro / define | [ports/file_port.h:59](../ports/file_port.h#L59) |
+| `FVM_FILE_SEEK_START` | macro / define | [ports/file_port.h:57](../ports/file_port.h#L57) |
 | `FVM_INVALID_ARGUMENT` | enum constant | [include/flashvm/flashvm.h:47](../include/flashvm/flashvm.h#L47) |
 | `FVM_OK` | enum constant | [include/flashvm/flashvm.h:44](../include/flashvm/flashvm.h#L44) |
-| `fvm_port_file_open` | function | [ports/file_port.c:130](../ports/file_port.c#L130) |
-| `fvm_port_file_seek` | function | [ports/file_port.c:292](../ports/file_port.c#L292) |
+| `fvm_port_file_open` | function | [ports/file_port.c:133](../ports/file_port.c#L133) |
+| `fvm_port_file_seek` | function | [ports/file_port.c:295](../ports/file_port.c#L295) |
 | `FVM_PortFile` | struct | [ports/file_port.c:30](../ports/file_port.c#L30) |
 | `FVM_UNSUPPORTED` | enum constant | [include/flashvm/flashvm.h:48](../include/flashvm/flashvm.h#L48) |
 <!-- source-links:end -->

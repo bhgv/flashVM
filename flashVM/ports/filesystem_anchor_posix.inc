@@ -236,3 +236,33 @@ FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relativ
     }
     return unlinkat(parent->descriptor, relative, S_ISDIR(native.st_mode) ? AT_REMOVEDIR : 0) ? FVM_ERROR : FVM_OK;
 }
+
+
+/* EN/RU: See anchor_port.h; native effective-ID check, not guessed mode bits.
+ * См. anchor_port.h; native effective-ID check, не догадка по mode bits. */
+FVM_Result fvm_port_anchor_access_at(FVM_PortAnchor *parent, const char *relative, unsigned access)
+{
+    int mode = 0;
+    if (!parent || !fs_relative(relative) || !access || (access & ~FVM_ACCESS_MASK))
+    {
+        return FVM_INVALID_ARGUMENT;
+    }
+#ifdef AT_EACCESS
+    if (access & FVM_ACCESS_READ)
+    {
+        mode |= R_OK;
+    }
+    if (access & FVM_ACCESS_WRITE)
+    {
+        mode |= W_OK;
+    }
+    if (access & FVM_ACCESS_EXEC)
+    {
+        mode |= X_OK;
+    }
+    return faccessat(parent->descriptor, relative, mode, AT_EACCESS) ? FVM_ERROR : FVM_OK;
+#else
+    (void)mode;
+    return FVM_UNSUPPORTED;
+#endif
+}

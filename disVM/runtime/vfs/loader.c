@@ -59,7 +59,8 @@ Module *readmod(char *path, Module *cached, int sync)
         return NULL;
     }
     FVM_FileInfo info;
-    if (plan.layers && dvm_metadata_selected(&plan, &info) != FVM_OK)
+    plan.requested_access = FVM_ACCESS_READ | FVM_ACCESS_EXEC;
+    if ((plan.layers || (plan.policy & DVM_NS_AUTORWX)) && dvm_metadata_selected(&plan, &info) != FVM_OK)
     {
         dvm_resource_close(&plan);
         return NULL;

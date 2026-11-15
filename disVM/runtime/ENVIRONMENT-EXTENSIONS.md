@@ -20,8 +20,10 @@ format/ISA и границы проверки. Новое поведение н�
 | Stable-bind factory capability | Implemented internal extension DVM_PROVIDER_STABLE_BIND: fixed relative-name/node identity promise; absent flag refuses provider bind / Внутренняя capability, без неё bind отказывает |
 | [Host provider installation](PROVIDER-NAMESPACE.md) | Internal namespace extension with references and revision checks; not public Sys.mount / Внутреннее расширение, не public Sys.mount |
 | Provider-source Sys.bind(MREPL), directory MBEFORE/MAFTER/MCREATE | Ordinary matched Sys interface, provider-relative aliases with documented mutable-node identity limits; no new flags/opcodes / Обычный Sys, aliases provider-relative, без новых flags/opcodes |
+| [MAUTORWX union policy](AUTO-UNION.md) | Implemented explicit bit8 via Vfsflags; effective R/W/X selection, parent w+x creation / Явное расширение выбора по правам, не Inferno flag |
 | [Native debugger endpoint](DEBUGGER.md) | Separate session-bound supervisor protocol; no guest address authority / Отдельный session-bound протокол, без полномочий по guest адресу |
 
+Runtime0.127 additionally implements the explicit MAUTORWX extension.
 Runtime0.126 adds ordered directory unions (see [contract](UNION-NAMESPACE.md)) and provider bind semantics, not a new Dis file format,
 ISA operation or Sys.m signature. Compiler/runtime profiles remain explicitly
 separate; see [DisVM architecture and profile status](../README.md). NC64 and

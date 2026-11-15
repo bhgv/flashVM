@@ -2,6 +2,10 @@
 
 Copyright (c) 2026 bhgv
 
+[MAUTORWX](AUTO-UNION.md) is an explicit access-based extension in runtime 0.127;
+the classic semantics below remain the default. Это opt-in расширение; далее —
+совместимый с Inferno режим по умолчанию.
+
 Runtime 0.126 implements ordered directory layers through ordinary `Sys.bind`.
 It adds no guest module, opcode or flag. `Vfsctl` remains an unimplemented proposal;
 this work does not introduce an `nsadmin` authority or bypass filesystem rights.
@@ -94,10 +98,11 @@ Native host credentials/rwx and trusted provider policy still govern access.
 guest credentials и confinement требуют следующей работы. Действуют host rwx и
 policy trusted provider, не независимая guest-модель безопасности.
 
-The proposed read-top/write-lower routing, dynamic read-only retry and concatenated
-files would be extensions. They are deliberately not part of these bind semantics.
-Предложенные read-top/write-lower, retry после read-only и склейка файлов — будущие
-расширения; они не включены в эти bind semantics.
+Access-based selection is available explicitly through MAUTORWX; it does not
+change these classic bind semantics. Retrying actual I/O errors and concatenating
+files remain possible future extensions.
+MAUTORWX явно включает выбор по access; classic semantics не меняются. Retry после
+ошибки I/O и склейка файлов остаются отдельными возможными расширениями.
 
 The [guest fixture](fixtures/namespace-union/main.b) and host driver check real
 bytes, chmod handshakes, readonly refusal, creation targets, copied/shared groups,

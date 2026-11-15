@@ -16,6 +16,8 @@ typedef struct DVM_Anchor DVM_Anchor; /* Native capability with independently re
 typedef struct DVM_ResourcePlan
 {
     struct DVM_ResourcePlan *layers; /* Owned lower choices captured at the same revision. */
+    unsigned policy; /* Captured union-wide OR of explicit extension flags. */
+    unsigned requested_access; /* Operation intent; zero for ordinary metadata lookup. */
     unsigned mount_flags; /* Create permission for this selected mount branch. */
     DVM_Namespace *group; /* Borrowed while plan lives; cursor retains independently. */
     uint64_t head_id; /* Retained mount-head identity for directory union enumeration. */
@@ -147,6 +149,17 @@ FVM_Result dvm_union_info(DVM_ResourcePlan *plan, FVM_FileInfo *output);
 /* EN/RU: Select existing entry, or first MCREATE branch for a missing create.
  * Выбрать existing entry либо первую MCREATE ветвь для missing create. */
 FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating);
+
+
+/* EN/RU: Select first effectively permitted branch; create checks parent w+x.
+ * Выбрать первую разрешённую ветвь; create проверяет parent w+x. Native-only;
+ * borrowed plan, access intent from plan.requested_access; no effects/retry. */
+FVM_Result dvm_union_auto_select(DVM_ResourcePlan *plan, int creating);
+
+
+/* EN/RU: Swap selected resource into root without moving cleanup/list ownership.
+ * Перенести selected resource в root без переноса cleanup/list ownership. */
+void dvm_union_choose(DVM_ResourcePlan *root, DVM_ResourcePlan *choice);
 
 
 /* EN/RU: Open merged directory into empty owned handle; input plans stay borrowed.

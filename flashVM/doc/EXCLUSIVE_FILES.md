@@ -1,7 +1,7 @@
 # Exclusive new-file output — v0.1672
 
 The private shared file port accepts `wx` in addition to `r`, `w` and `rw`.
-[fvm_port_file_open](../ports/file_port.h#L24) allocates its handle/path before opening
+[fvm_port_file_open](../ports/file_port.h#L26) allocates its handle/path before opening
 and returns an owned write-only binary stream or NULL/error. The selected native
 adapter uses POSIX O_CREAT|O_EXCL or Windows _O_CREAT|_O_EXCL, without a stat/open
 race. Existing regular files, directories, hardlink names and symlinks (including
@@ -41,5 +41,5 @@ Source line links describe the current checkout, including in historical notes.
 
 | Символ / Symbol | Вид / Kind | Исходник / Source |
 | --- | --- | --- |
-| `fvm_port_file_open` | function | [ports/file_port.c:130](../ports/file_port.c#L130) |
+| `fvm_port_file_open` | function | [ports/file_port.c:133](../ports/file_port.c#L133) |
 <!-- source-links:end -->

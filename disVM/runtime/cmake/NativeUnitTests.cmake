@@ -33,20 +33,27 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     target_link_libraries(disvm_vfs_handle_test PRIVATE disvm_flashvm_host)
     add_test(NAME disvm_vfs_handle COMMAND disvm_vfs_handle_test)
     set_tests_properties(disvm_vfs_handle PROPERTIES TIMEOUT 10 LABELS "host-unit")
-    add_executable(disvm_provider_mount_test vfs/test_provider_mount.c vfs/path.c vfs/group.c vfs/mutations.c vfs/layer_bind.c vfs/union_io.c
+    add_executable(disvm_provider_mount_test vfs/test_provider_mount.c vfs/path.c vfs/group.c vfs/mutations.c vfs/layer_bind.c vfs/union_io.c vfs/auto_access.c
         vfs/resolution.c vfs/resource.c vfs/provider.c vfs/handle.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_provider_mount_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_provider_mount_test PRIVATE disvm_flashvm_host Threads::Threads)
     add_test(NAME disvm_provider_mount COMMAND disvm_provider_mount_test)
     set_tests_properties(disvm_provider_mount PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_layer_order_test vfs/test_layer_order.c vfs/path.c vfs/group.c vfs/mutations.c
-        vfs/layer_bind.c vfs/union_io.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/handle.c
+        vfs/layer_bind.c vfs/union_io.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c vfs/handle.c
         vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_layer_order_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_layer_order_test PRIVATE disvm_flashvm_host Threads::Threads)
     add_test(NAME disvm_layer_order COMMAND disvm_layer_order_test)
     set_tests_properties(disvm_layer_order PROPERTIES TIMEOUT 20 LABELS "host-unit")
-    add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c vfs/layer_bind.c vfs/union_io.c
+    add_executable(disvm_auto_access_test vfs/test_auto_access.c vfs/path.c vfs/group.c vfs/mutations.c
+        vfs/layer_bind.c vfs/union_io.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c
+        vfs/handle.c vfs/anchor.c vfs/resource_groups.c)
+    target_include_directories(disvm_auto_access_test PRIVATE ${native_unit_includes})
+    target_link_libraries(disvm_auto_access_test PRIVATE disvm_flashvm_host Threads::Threads)
+    add_test(NAME disvm_auto_access COMMAND disvm_auto_access_test)
+    set_tests_properties(disvm_auto_access PROPERTIES TIMEOUT 20 LABELS "host-unit")
+    add_executable(disvm_namespace_test vfs/test_namespace.c vfs/path.c vfs/group.c vfs/mutations.c vfs/layer_bind.c vfs/union_io.c vfs/auto_access.c
         vfs/observation.c vfs/resolution.c vfs/provider.c vfs/handle.c vfs/resource.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_namespace_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host Threads::Threads)

@@ -81,3 +81,14 @@ FVM_Result fvm_port_anchor_remove_at(FVM_PortAnchor *parent, const char *relativ
     (void)relative;
     return FVM_UNSUPPORTED;
 }
+
+
+/* EN/RU: No effective relative HANDLE access backend; never guess ACL rights.
+ * Нет effective relative HANDLE access backend; не угадывать ACL rights. */
+FVM_Result fvm_port_anchor_access_at(FVM_PortAnchor *parent, const char *relative, unsigned access)
+{
+    (void)parent;
+    (void)relative;
+    (void)access;
+    return FVM_UNSUPPORTED;
+}

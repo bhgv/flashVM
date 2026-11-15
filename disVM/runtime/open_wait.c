@@ -96,6 +96,11 @@ static FVM_Result open_result(const char *path,
         }
         return FVM_OUT_OF_MEMORY;
     }
+    if (selected)
+    {
+        selected->requested_access = !strcmp(mode, "r") ? FVM_ACCESS_READ :
+            !strcmp(mode, "rw") ? FVM_ACCESS_READ | FVM_ACCESS_WRITE : FVM_ACCESS_WRITE;
+    }
     if (selected && dvm_union_select(selected, !strcmp(mode, "w") || !strcmp(mode, "wx")) != FVM_OK)
     {
         status = FVM_ERROR;

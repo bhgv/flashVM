@@ -598,3 +598,9 @@ Runtime 0.126 adds ordered directory bind layers, MCREATE selection, exact-layer
 unmount and merged dirread for native/provider branches. Lookup does not retry
 writes in lower layers. [Compatibility limits and example](UNION-NAMESPACE.md)
 cover the remaining Chan.walk, union cwd and guest-security work.
+
+Runtime 0.127 adds the explicit [MAUTORWX union extension](AUTO-UNION.md):
+new open/create/load operations select the top branch permitted for their access.
+Create checks parent write/search; native checks use effective host credentials,
+providers can supply an optional access callback. Classic Inferno bind remains
+the default, and live FD operations do not switch resources.

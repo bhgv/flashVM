@@ -9,6 +9,7 @@
 #define DVM_NS_BEFORE 1U /* Matched Sys.MBEFORE: insert before existing branches. */
 #define DVM_NS_AFTER 2U /* Matched Sys.MAFTER: append after existing branches. */
 #define DVM_NS_CREATE 4U /* Matched Sys.MCREATE: branch may create missing entries. */
+#define DVM_NS_AUTORWX 8U /* Explicit hosted extension: access-based union selection. */
 #define DVM_NS_ORDER 3U /* Ordering bits; combined BEFORE|AFTER is invalid. */
 #define DVM_NS_PATH_LIMIT 4096 /* UTF-8 bytes including NUL; matches host metadata capacity. */
 typedef struct DVM_Namespace DVM_Namespace;

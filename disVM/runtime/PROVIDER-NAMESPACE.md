@@ -155,3 +155,7 @@ Runtime 0.126 combines bindable provider directories with native branches using
 [ordered union bindings](UNION-NAMESPACE.md). Earlier milestone limitations above
 remain historical; the linked contract defines current union behavior.
 Runtime 0.126 объединяет provider/native ветви; текущие границы union — по ссылке.
+
+Runtime 0.127 adds optional effective-access callbacks for [MAUTORWX](AUTO-UNION.md).
+Absent callbacks never infer permissions from provider mode bits.
+Runtime 0.127: optional access callback; без него mode bits не дают MAUTORWX прав.

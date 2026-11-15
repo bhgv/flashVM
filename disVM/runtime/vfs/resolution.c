@@ -144,6 +144,7 @@ static int resolve(
         DVM_ResourcePlan **tail = &whole->layers;
         whole->head_id = best->head_identity;
         whole->mount_flags = best->flags;
+        whole->policy = best->flags & DVM_NS_AUTORWX;
         whole->layer_id = best->identity;
         for (binding = best->next; binding; binding = binding->next)
         {
@@ -160,6 +161,7 @@ static int resolve(
             }
             choice->names = *names;
             choice->mount_flags = binding->flags;
+            whole->policy |= binding->flags & DVM_NS_AUTORWX;
             choice->layer_id = binding->identity;
             if (!display_join(binding->source, suffix, choice->names.native) ||
                 !relative_join(binding->component, suffix, choice->relative) ||

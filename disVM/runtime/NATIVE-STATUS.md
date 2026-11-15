@@ -2,6 +2,32 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: MAUTORWX — явное расширение выбора по access
+
+Runtime0.127 реализует MAUTORWX=8 через constants-only Vfsflags.m. Обычный
+Sys.bind сохраняет Inferno flags по умолчанию; при явном MAUTORWX любая помеченная
+ветвь включает access-based policy для стопки. Open выбирает первый разрешённый
+R/W entry, file module load — R+X до cache, create — первый parent с W+X, без
+дополнительного MCREATE. Existing create entry также проверяется на W. Create
+может создать верхнюю копию имени, уже существующего ниже; OEXCL collision в
+выбранной ветви не вызывает retry. [Контракт, пример и ограничения](AUTO-UNION.md).
+
+FlashVM0.1700 добавляет relative effective access через faccessat/AT_EACCESS от
+held anchor, не OR по mode bits разных классов. Optional provider access callback
+сообщает актуальные effective rights; без callback права не выдумываются. Новый
+open/create/load заново выбирает слой после chmod; живой FD/module остаётся прежним.
+I/O выполняется один раз после selection, без retry ошибок/квот/invalid module.
+Dynamic mode API, concatenation, guest credentials, полный Chan.walk и Windows
+relative permission backend этим шагом не реализуются. Upstream snapshot неизменён.
+
+AMD64 wide 74/74; dynamic/static host-unit 33/33. Native MAUTORWX, classic union
+и provider namespace проходят C/JIT × оба poll в обеих сборках. Host chmod/bytes
+проверяют owner-vs-other rights, directory write без search, создание верхней
+копии, exclusive collisions, cache/execute re-selection и lifetime открытых nodes.
+Provider unit проверяет misleading mode=0777, missing callback, live policy,
+namespace copy и отсутствие open/эффектов во время selection. Public access/provider
+headers проходят C89 syntax check; остальные физические OS не заявляются проверенными.
+
 ## 2026-11-15: directory union bind
 
 Runtime0.126 добавляет обычные Sys.bind MREPL/MBEFORE/MAFTER и MCREATE:
