@@ -129,8 +129,14 @@ init()
     secondevent := event(second);
     check(secondevent.kinds == Providerwatch->All && value() == int 'A' &&
         watcher->ack(second, secondevent) == 0, "independent observer globally cleared");
+    sysevents(system);
+    small := sys->open("/dev/sysevents", Sys->OREAD);
+    check(small != nil, "second owner inbox FD");
     command(ctl, "change\n");
-    check((sysevents(system) & 5) == 5, "VFS change was not automatically delivered to owner mailbox");
+    shortbytes := array[5] of byte;
+    check(sys->read(small, shortbytes, len shortbytes) == -1, "short system event was split");
+    small = nil;
+    check(sysevents(system) == 5, "VFS change was not automatically delivered to owner mailbox");
     firstevent = event(first);
     check(firstevent.kinds == (Providerwatch->Rights|Providerwatch->Content) && value() == int 'B', "changed state reread");
     command(ctl, "race\n");

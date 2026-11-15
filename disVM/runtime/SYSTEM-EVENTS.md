@@ -1,4 +1,4 @@
-# Automatic native system inboxes — runtime 0.130
+# Automatic native system inboxes — runtime 0.131
 
 Copyright (c) 2026 bhgv
 
@@ -44,7 +44,7 @@ FD retains its original inbox capability, as an ordinary open descriptor does.
 | --- | --- |
 | `Sys.read` | Exactly one whole queued record / Ровно одна целая запись |
 | `Sys.readn` | Stops after that record through native DVM_IO_RECORD / Останавливается после одной записи |
-| Short buffer / Маленький буфер | Error, record retained on this FD; no partial delivery / Ошибка, запись сохранена в FD |
+| Short buffer / Маленький буфер | Error, shared inbox head preserved across FD close/reopen / Ошибка, запись остаётся в общей очереди |
 | Empty live inbox / Пустая живая очередь | Temporary-unavailability error, not EOF or a fake event / Временная недоступность, не EOF и не фиктивное событие |
 | Write / Запись | Refused; no guest registration/ack protocol / Отказ, регистрация и ack не нужны |
 | Owner exit / Завершение owner | Queued records and exit notification remain drainable, then EOF / Остаток и exit доступны, затем EOF |
@@ -64,18 +64,52 @@ The native inbox distinguishes provider change, namespace revision, resync and
 owner exit. Provider classes remain RIGHTS/NAMESPACE/CONTENT/CONNECTION/LOAD/NETWORK.
 Source session/generation fences reject obsolete reports. Reordered deliveries
 with a generation gap broaden the invalidation to all classes, preserving safety.
-Changing scope purges old queued messages and invalidates staged old-scope records.
+Changing scope purges old queued messages, including the inbox-owned head.
 
 Очередь ограничена32 сообщениями. Overflow или allocation failure дают явный
 resync вместо неограниченного роста или ложного EOF. При resync следует перечитать
 текущий scope; доставка каждого промежуточного изменения не гарантируется.
-При смене namespace старые сообщения удаляются, staged записи защищены epoch.
+При смене namespace старые сообщения и общий head удаляются под inbox mutex.
 
 [Inbox lifecycle](vfs/sysevents.h) retains native namespace/provider state, never
 Prog or managed pointers. Owner retirement detaches source and namespace taps;
 retained FDs can outlive the owner. In-flight callbacks retain their own context,
 so detach neither waits for nor stops a recipient. Source callbacks run outside
 journal/hub mutexes; final destructors also run outside those mutexes.
+
+## Atomic consumption and final notices / Atomic consumption и final notices
+
+Runtime0.131 keeps the next unread node in the inbox, not inside an opened FD.
+An undersized read copies no bytes and consumes no notification. Closing that FD
+cannot discard the head or let another reader overtake it. A later sufficiently
+large read through any FD for the same inbox receives the whole head. Zero-byte
+reads leave it untouched. Independent FDs compete for one FIFO; separate residents
+still have independent inboxes. Native copy and consumption share one inbox mutex.
+
+Маленький буфер не переносит запись в FD: она остаётся общей для очереди. Close,
+reopen и другой reader не теряют и не переставляют её. После успешного копирования
+всех bytes запись удаляется ровно один раз. Один FD по-прежнему сериализуется
+обычным file gate; два разных FD могут читать одну очередь конкурентно.
+
+Overflow purges stale detail and sets one scalar resync flag, retaining the report
+that triggered overflow when its allocation succeeds. Repeated loss before resync
+consumption coalesces to that flag. There is no additional queued duplicate resync.
+An allocation refusal also sets this flag, so delivery of the loss notice itself
+needs no allocation. An undersized read cannot clear the flag.
+
+Overflow и OOM дают один allocation-free resync. Сам report, вызвавший overflow,
+сохраняется при успешной allocation. Повторные потери до чтения не размножают resync.
+Обычных message nodes максимум32, плюс два scalar flags: resync и final exit.
+Held inbox head входит в эти32, а не образует дополнительную очередь на каждый FD.
+
+Retirement sets an allocation-free final-exit flag exactly once and detaches native
+subscriptions. Remaining resync and FIFO records are read one at a time; exit comes
+last, then EOF through every retained FD. Full queues, allocator failure, repeated
+retirement and short exit reads cannot erase or duplicate the final notification.
+
+Retirement не выделяет память для exit и не вытесняет обычные записи ради него.
+Даже при заполненной очереди и отказе allocator сначала выдаются resync/остаток,
+потом один exit и затем EOF. Повторный retire не добавляет ещё один exit.
 
 ## Experimental format and limits / Экспериментальный формат и границы
 
@@ -110,3 +144,11 @@ native publishers while foreign subscriptions are repeatedly attached/detached.
 hiding and readn boundaries with multiple events, using the production boot device.
 The [private host source](test_provider_watch.c) supplies native reports; it does
 not inject a replacement system device or scheduler polling hook.
+
+[Atomic queue tests](vfs/test_sysevents_queue.c) inject real calloc failures and
+verify cross-FD head retention, untouched short/zero-read destinations, one resync,
+full-queue retirement without allocation, exactly one exit and two competing native
+readers consuming every sequence once. [Source/namespace race](vfs/test_sysevents_race.c)
+publishes2000 real journal reports while rebinding the source200 times and switching
+another inbox between visible/hidden namespaces. No guest executes to service those
+subscriptions; source stat/open callbacks are forbidden and final cleanup is checked.

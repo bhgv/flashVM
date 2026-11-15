@@ -16,6 +16,8 @@ void dvm_sysevents_purge(DVM_SysEvents *events)
     {
         free(message);
     }
+    free(events->head);
+    events->head = NULL;
     events->pending = 0;
     events->resync = 0;
 }
@@ -31,10 +33,6 @@ int dvm_sysevents_post(DVM_SysEvents *events, unsigned kind, uint64_t source,
     {
         dvm_sysevents_purge(events);
         events->resync = 1;
-        kind = DVM_SYSEVENT_RESYNC;
-        source = session = generation = 0;
-        classes = DVM_CHANGE_ALL;
-        on = "/";
     }
     message = calloc(1, sizeof(*message) + strlen(on));
     if (!message)
@@ -172,7 +170,7 @@ void dvm_sysevents_retire(DVM_SysEvents *events)
     fvm_port_sync_lock(events->lock);
     if (!events->retired)
     {
-        dvm_sysevents_post(events, DVM_SYSEVENT_EXIT, 0, 0, 0, 0, "/");
+        events->exit_pending = 1;
         events->retired = 1;
     }
     tap = events->namespace_tap;

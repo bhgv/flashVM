@@ -33,12 +33,14 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     target_link_libraries(disvm_vfs_handle_test PRIVATE disvm_flashvm_host)
     add_test(NAME disvm_vfs_handle COMMAND disvm_vfs_handle_test)
     set_tests_properties(disvm_vfs_handle PROPERTIES TIMEOUT 10 LABELS "host-unit")
-    add_executable(disvm_sysevents_test vfs/test_sysevents.c vfs/test_notice.c vfs/sysevents.c vfs/sysevents_watch.c
+    add_executable(disvm_sysevents_test vfs/test_sysevents.c vfs/test_notice.c vfs/test_sysevents_queue.c
+        vfs/test_sysevents_race.c vfs/sysevents.c vfs/sysevents_watch.c
         vfs/sysevents_stream.c vfs/sysevents_device.c owner_messages.c vfs/path.c vfs/group.c vfs/mutations.c
         vfs/layer_bind.c vfs/union_io.c vfs/auto_access.c vfs/resolution.c vfs/resource.c vfs/provider.c
         vfs/changes.c vfs/notice.c vfs/changes_refresh.c vfs/changes_ack.c vfs/handle.c vfs/io_result.c vfs/anchor.c vfs/resource_groups.c)
     target_include_directories(disvm_sysevents_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_sysevents_test PRIVATE disvm_flashvm_host Threads::Threads)
+    set_property(TARGET disvm_sysevents_test APPEND_STRING PROPERTY LINK_FLAGS " -Wl,--wrap=calloc")
     add_test(NAME disvm_sysevents COMMAND disvm_sysevents_test)
     set_tests_properties(disvm_sysevents PROPERTIES TIMEOUT 20 LABELS "host-unit")
     add_executable(disvm_eventfs_test vfs/test_eventfs.c vfs/eventfs.c vfs/eventfile.c

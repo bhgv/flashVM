@@ -9,15 +9,11 @@
 #include <string.h>
 
 
-/* EN/RU: FD gate owns staged-record position; inbox lock owns the queue and epoch.
- * FD gate владеет staged-record position; inbox lock — queue и epoch. */
+/* EN/RU: An open FD retains its inbox only; queued records never belong to the FD.
+ * Открытый FD удерживает только inbox; queued records никогда не принадлежат FD. */
 typedef struct SysStream
 {
     DVM_SysEvents *events; /* Retained inbox, independent from owning Prog retirement. */
-    uint64_t epoch; /* Epoch associated with the copied complete record. */
-    size_t position; /* Next byte in frame, never a provider resource offset. */
-    size_t length; /* Current complete frame length. */
-    char frame[DVM_SYSEVENT_FRAME_BYTES]; /* Bounded native staging, no managed pointers. */
 } SysStream;
 
 
@@ -33,61 +29,87 @@ static FVM_Result info(void *state, FVM_FileInfo *output)
 }
 
 
-/* EN/RU: Under inbox lock, copy one queued message and hex-encode its virtual
- * path, avoiding control characters/host source spellings. No I/O or allocation.
- * Под inbox lock скопировать message и hex virtual path; без I/O/allocation. */
-static void frame(SysStream *stream)
+/* EN/RU: Format one inbox-owned record into borrowed bounded native storage.
+ * Caller holds inbox lock. Returns length; no consumption, provider I/O or allocation.
+ * Под inbox lock форматировать одну запись; вернуть length без consumption/I/O/allocation.
+ * Resync/exit use scalar flags, remaining deliverable even after allocation failure. */
+static size_t frame(DVM_SysEvents *events, char *text, size_t size)
 {
-    static const char digits[] = "0123456789abcdef"; /* Path byte encoding, not a pointer representation. */
-    DVM_SysEvents *events = stream->events;
+    static const char digits[] = "0123456789abcdef"; /* Escaped virtual path bytes. */
     DVM_SysMessage *message;
+    unsigned kind;
     int length;
     size_t index, position;
-    if (events->resync)
+    if (events->resync || (!events->pending && events->exit_pending))
     {
-        length = snprintf(stream->frame, sizeof(stream->frame), "system %u 63 0000000000000000 0000000000000000 0000000000000000 %016" PRIx64 " 2f\n",
-                          DVM_SYSEVENT_RESYNC, events->epoch);
-        stream->length = length > 0 ? (size_t)length : 0;
-        events->resync = 0;
-        return;
+        kind = events->resync ? DVM_SYSEVENT_RESYNC : DVM_SYSEVENT_EXIT;
+        length = snprintf(text, size, "system %u %u 0000000000000000 0000000000000000 0000000000000000 %016" PRIx64 " 2f\n",
+                          kind, events->resync ? DVM_CHANGE_ALL : 0, events->epoch);
+        return length > 0 && (size_t)length < size ? (size_t)length : 0;
     }
-    message = (DVM_SysMessage *)dvm_messages_take(events->endpoint, 0, 0);
+    if (!events->head)
+    {
+        events->head = (DVM_SysMessage *)dvm_messages_take(events->endpoint, 0, 0);
+    }
+    message = events->head;
     if (!message)
     {
-        return;
+        return 0;
     }
-    events->pending--;
-    length = snprintf(stream->frame, sizeof(stream->frame), "system %u %u %016" PRIxPTR " %016" PRIx64
+    length = snprintf(text, size, "system %u %u %016" PRIxPTR " %016" PRIx64
         " %016" PRIx64 " %016" PRIx64 " ", message->message.kind - DVM_SYSEVENT_MESSAGE_BASE,
         (unsigned)message->message.value, message->message.sender, message->session,
         message->message.request, message->epoch);
-    if (length < 0 || (size_t)length >= sizeof(stream->frame))
+    if (length < 0 || (size_t)length >= size)
     {
-        events->resync = 1;
-        free(message);
-        return;
+        return 0;
     }
     position = (size_t)length;
     for (index = 0; message->on[index]; index++)
     {
         unsigned char byte = (unsigned char)message->on[index];
-        stream->frame[position++] = digits[byte >> 4];
-        stream->frame[position++] = digits[byte & 15];
+        if (size - position <= 2)
+        {
+            return 0;
+        }
+        text[position++] = digits[byte >> 4];
+        text[position++] = digits[byte & 15];
     }
-    stream->frame[position++] = '\n';
-    stream->length = position;
-    free(message);
+    text[position++] = '\n';
+    return position;
+}
+
+
+/* EN/RU: Commit one complete record under inbox lock after copying all its bytes.
+ * Под inbox lock подтвердить consumption после копирования всех bytes одной записи. */
+static void consume(DVM_SysEvents *events)
+{
+    if (events->resync)
+    {
+        events->resync = 0;
+    }
+    else if (events->head)
+    {
+        free(events->head);
+        events->head = NULL;
+        events->pending--;
+    }
+    else
+    {
+        events->exit_pending = 0;
+    }
 }
 
 
 /* EN/RU: Consume exactly one already queued record, without source/target polling.
- * A short buffer preserves the record; empty live inbox returns AGAIN, never EOF.
- * Прочитать ровно один queued record без polling; short buffer сохраняет record,
- * пустой live inbox возвращает AGAIN. Epoch fence drops records from old scopes. */
+ * Short buffers preserve the shared inbox head across close/reopen/other readers.
+ * Прочитать ровно одну queued запись; short buffer сохраняет shared head даже
+ * при close/reopen/другом reader. Empty live inbox returns AGAIN, retired EOF. */
 static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *result)
 {
     SysStream *stream = state;
     DVM_SysEvents *events = stream->events;
+    char text[DVM_SYSEVENT_FRAME_BYTES];
     size_t count;
     memset(result, 0, sizeof(*result));
     result->status = FVM_OK;
@@ -97,39 +119,35 @@ static void read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *resu
         return;
     }
     fvm_port_sync_lock(events->lock);
-    if (stream->epoch != events->epoch)
+    count = frame(events, text, sizeof(text));
+    if (!count)
     {
-        stream->length = stream->position = 0;
-        stream->epoch = events->epoch;
+        if (events->pending || events->resync || events->exit_pending)
+        {
+            result->status = FVM_ERROR;
+            result->stop = DVM_IO_FAILURE;
+        }
+        else if (events->retired)
+        {
+            result->stop = DVM_IO_EOF;
+        }
+        else
+        {
+            result->status = FVM_ERROR;
+            result->stop = DVM_IO_AGAIN;
+        }
     }
-    if (stream->position == stream->length)
-    {
-        stream->length = stream->position = 0;
-        frame(stream);
-    }
-    count = stream->length - stream->position;
-    if (count > size)
+    else if (count > size)
     {
         result->status = FVM_INVALID_ARGUMENT;
         result->stop = DVM_IO_FAILURE;
-        fvm_port_sync_unlock(events->lock);
-        return;
     }
-    memcpy(bytes, stream->frame + stream->position, count);
-    stream->position += count;
-    result->count = count;
-    if (count)
+    else
     {
+        memcpy(bytes, text, count);
+        consume(events);
+        result->count = count;
         result->flags |= DVM_IO_RECORD;
-    }
-    if (!count && events->retired)
-    {
-        result->stop = DVM_IO_EOF;
-    }
-    else if (!count)
-    {
-        result->status = FVM_ERROR;
-        result->stop = DVM_IO_AGAIN;
     }
     fvm_port_sync_unlock(events->lock);
 }

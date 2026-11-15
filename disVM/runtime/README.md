@@ -620,3 +620,8 @@ native push subscriptions track provider bindings without owner polling or pause
 The ordinary `/dev/sysevents` device returns exactly one queued record per read,
 including readn. The external format remains experimental. [ORDWR and optional
 provider journal views](PROVIDER-EVENT-FILES.md) are separate from automatic delivery.
+
+Runtime 0.131 makes [system-event consumption inbox-wide and atomic](SYSTEM-EVENTS.md):
+short reads and FD close/reopen preserve the FIFO head; concurrent readers consume
+it once. Resync and final exit use allocation-free flags. A full queue or allocator
+failure cannot suppress exit; one read still returns one whole event.

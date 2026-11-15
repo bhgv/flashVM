@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 void test_native_notices(void); /* Native sender/callback lifetime acceptance, no VM required. */
+void test_sysevents_queue(void); /* Atomic shared inbox, failure and concurrent-reader acceptance. */
+void test_sysevents_race(void); /* Source publication versus native namespace churn. */
 static unsigned destroyed; /* Final source release count after bindings/engine watches retire. */
 
 
@@ -122,6 +124,8 @@ int main(void)
     char prefix[5], record[DVM_SYSEVENT_FRAME_BYTES];
     unsigned generation;
     test_native_notices();
+    test_sysevents_queue();
+    test_sysevents_race();
     require(group && hidden && source && device, "construction");
     mount(group, source, "/visible");
     mount(group, device, "/dev/sysevents");
@@ -154,7 +158,7 @@ int main(void)
         change(source, generation, DVM_CHANGE_CONTENT);
     }
     require(second->pending <= DVM_SYSEVENT_LIMIT && second->resync, "unbounded/silent mailbox overflow");
-    require(drain(&b, DVM_SYSEVENT_RESYNC, DVM_CHANGE_ALL) >= 1, "overflow lost resync signal");
+    require(drain(&b, DVM_SYSEVENT_RESYNC, DVM_CHANGE_ALL) == 1, "overflow duplicated/lost resync signal");
     require(dvm_namespace_plan(group, "/visible", &target) && dvm_namespace_unmount(group, &target, NULL) == 1,
             "source unmount");
     dvm_sysevents_bind(second);

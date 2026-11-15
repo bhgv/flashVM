@@ -2,6 +2,40 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: atomic inbox head, allocation-free resync/exit
+
+Runtime0.131 сохраняет непрочитанный head внутри native inbox, а не отдельного FD.
+Короткое чтение и close/reopen не теряют и не переставляют событие. Два разных FD
+конкурентно читают одну FIFO: успешное копирование и consumption атомарны под inbox
+mutex; одна запись возвращается ровно одному reader. Отдельные residents имеют
+отдельные очереди. Zero-size read не потребляет событие и не означает EOF.
+
+Overflow теперь даёт один scalar resync без queued duplicate и сохраняет triggering
+report при успешной allocation. Repeated loss до чтения coalesces в тот же flag.
+Exit также allocation-free: full queue, OOM, repeated retire и короткий буфер не
+теряют и не дублируют final notice. Порядок: resync, оставшиеся FIFO records, exit,
+затем EOF. Head входит в общий лимит32 nodes; FD больше не содержит staging8KiB.
+[Текущий контракт](SYSTEM-EVENTS.md).
+
+Новые native проверки используют настоящий calloc failure injection, close/reopen,
+zero/short buffer sentinels, два concurrent reader и full-queue retirement при
+отказе allocator. Отдельный native race публикует2000 source reports параллельно200
+rebinds и сменам namespace второго inbox. Проверяются final report, hidden scope,
+bounded queue, отсутствие source stat/open и final factory cleanup. Реальный guest
+делает короткое Sys.read через второй FD и затем читает то же событие через первый.
+
+Dynamic/static host-unit37/37 и guest C/JIT × оба GC observation settings прошли.
+Targeted ASan/UBSan native test sources прошли с прежним shared port archive;
+leak scan отключён: LSan не работает под ptrace этого окружения. Native lifetime
+проверяется также явными final-destruction counters. Private regression control
+с published0.130 stream body воспроизводит отказ нового short-read/head теста.
+Source-link check:0 stale files. Финальный AMD64 wide77/77.
+
+Способ доставки не меняется: source-driven push, без cooperative handlers, owner
+polling, sleep helpers или приостановки получателя. Формат всё ещё experimental;
+upstream snapshot, Dis ISA и Sys.m ABI не изменены. Внешний host-filesystem watcher,
+Styx receiver/heartbeat и балансировка остаются будущей работой.
+
 ## 2026-11-15: source-driven system inboxes, one event per read
 
 Runtime0.130 создаёт независимую native очередь каждого resident. Source journal

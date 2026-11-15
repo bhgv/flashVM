@@ -52,6 +52,8 @@ struct DVM_SysEvents
     DVM_SysWatch *watches; /* Cached automatic subscriptions for this group revision. */
     DVM_MessageRouter *router; /* Existing generic native mailbox implementation. */
     DVM_MessageEndpoint *endpoint; /* Private local ID1; not accessible by guest IDs. */
+    DVM_SysMessage *head; /* Inbox-owned next record; short reads never transfer ownership to an FD. */
+    int exit_pending; /* Allocation-free final notification, delivered after queued changes. */
     size_t pending; /* Bounded queue length, maintained under lock. */
     int retired; /* No further source subscriptions/publication; FD can drain before EOF. */
 };
