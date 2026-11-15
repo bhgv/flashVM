@@ -575,3 +575,7 @@ drains it despite managed cleanup errors. CONSMP/NativeWorld removal remain open
 Runtime0.118: [typed CONSMP integration](MAPPED-CONS.md) captures a rooted traced
 head, builds/commits candidates from immutable references and drains five leases
 across errors. Selected C/x64 now use it; NativeWorld remains mandatory.
+
+Runtime 0.122 routes ordinary descriptor I/O and retirement through internal
+[native provider handles](PROVIDER-HANDLES.md); guest provider registration,
+credentials and complete VFS remain pending.

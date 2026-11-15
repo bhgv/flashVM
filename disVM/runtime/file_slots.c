@@ -51,15 +51,17 @@ int dvm_file_slots_reserve(DVM_FileGate *gate, DVM_CloseJob *job)
 void dvm_file_slots_publish(int descriptor, FVM_PortFile *file, FVM_PortDirectory *directory)
 {
     fvm_port_registry_lock();
-    if (!valid(descriptor) || !slots[descriptor].gate || slots[descriptor].file ||
-        slots[descriptor].directory || (file && directory) || (!file && !directory))
+    if (!valid(descriptor) || !slots[descriptor].gate || slots[descriptor].resource.ops ||
+        (file && directory) || (!file && !directory))
     {
         fvm_port_registry_unlock();
         fprintf(stderr, "disvm: invalid native slot publication\n");
         abort();
     }
-    slots[descriptor].file = file;
-    slots[descriptor].directory = directory;
+    if (!dvm_vfs_adopt(&slots[descriptor].resource, file, directory))
+    {
+        abort();
+    }
     fvm_port_registry_unlock();
 }
 
@@ -72,7 +74,7 @@ int dvm_file_slots_take(int descriptor, int published, DVM_FileSlot *output)
 {
     fvm_port_registry_lock();
     if (!valid(descriptor) || !slots[descriptor].gate ||
-        (published && !slots[descriptor].file && !slots[descriptor].directory))
+        (published && !slots[descriptor].resource.ops))
     {
         fvm_port_registry_unlock();
         return 0;
@@ -91,7 +93,7 @@ int dvm_file_slots_take(int descriptor, int published, DVM_FileSlot *output)
 FVM_PortFile *dvm_runtime_file(int descriptor)
 {
     fvm_port_registry_lock();
-    FVM_PortFile *file = valid(descriptor) ? slots[descriptor].file : NULL;
+    FVM_PortFile *file = valid(descriptor) ? dvm_vfs_file(&slots[descriptor].resource) : NULL;
     fvm_port_registry_unlock();
     return file;
 }
@@ -117,7 +119,19 @@ DVM_FileGate *dvm_runtime_file_gate(int descriptor)
 FVM_PortDirectory *dvm_runtime_directory(int descriptor)
 {
     fvm_port_registry_lock();
-    FVM_PortDirectory *directory = valid(descriptor) ? slots[descriptor].directory : NULL;
+    FVM_PortDirectory *directory = valid(descriptor) ? dvm_vfs_directory(&slots[descriptor].resource) : NULL;
     fvm_port_registry_unlock();
     return directory;
+}
+
+
+/* EN/RU: See file_slots.h; rooted caller excludes detachment/reuse until return.
+ * См. file_slots.h; rooted caller исключает detachment/reuse до возврата. */
+DVM_VfsHandle *dvm_runtime_resource(int descriptor)
+{
+    DVM_VfsHandle *handle;
+    fvm_port_registry_lock();
+    handle = valid(descriptor) && slots[descriptor].resource.ops ? &slots[descriptor].resource : NULL;
+    fvm_port_registry_unlock();
+    return handle;
 }

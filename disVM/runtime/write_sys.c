@@ -17,6 +17,7 @@
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
+#include "file_slots.h"
 extern int dvm_runtime_stdio_duplex(int descriptor);
 extern FVM_Result
 dvm_runtime_write_stdio(int descriptor, const void *bytes, size_t capacity, size_t *written, int *released);
@@ -65,6 +66,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     int extent;
     uchar *data;
     FVM_PortFile *file;
+    DVM_VfsHandle *resource; /* Borrowed through the same rooted FD as file/gate. */
     unsigned char *stage;
     size_t capacity;
     size_t written = 0;
@@ -84,7 +86,8 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     {
         return extent;
     }
-    file = descriptor >= 3 ? dvm_runtime_file(descriptor) : NULL;
+    resource = dvm_runtime_resource(descriptor);
+    file = dvm_vfs_file(resource);
     if (descriptor != 1 && descriptor != 2 && !(descriptor == 0 && dvm_runtime_stdio_duplex(0)) && !file)
     {
         return -1;
@@ -103,7 +106,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
         {
             return -1;
         }
-        status = fvm_port_file_write(file, NULL, 0);
+        status = dvm_vfs_write(resource, NULL, 0);
         if (!dvm_file_gate_leave(gate, &ticket))
         {
             fprintf(stderr, "disvm: zero-write file admission lost\n");
@@ -178,7 +181,7 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
             result = -1;
             goto finish;
         }
-        status = fvm_port_file_write(file, stage, capacity);
+        status = dvm_vfs_write(resource, stage, capacity);
         if (status == FVM_OK)
         {
             written = capacity;

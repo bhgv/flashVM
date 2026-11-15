@@ -165,3 +165,7 @@ host user, поскольку root bypass не подтверждает пров
 NEWNS не объявляется security sandbox. Следующий implementation block должен
 ввести единый provider handle и его проверяемый permission/credential contract;
 простая предварительная stat-проверка не заменяет atomic provider admission.
+
+Первый [native provider-handle слой](PROVIDER-HANDLES.md) подключён к
+ordinary descriptor I/O и close. Full walk/mount и guest credentials ещё не
+реализованы; прежние host permissions и namespace limits сохраняются.

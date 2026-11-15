@@ -1,4 +1,7 @@
-/* Seek follows the same rooted native-wait and per-handle FIFO as read/write. */
+/* Copyright (c) 2026 bhgv
+ * EN: Rooted native seek through provider dispatch and the existing per-FD FIFO.
+ * RU: Rooted native seek через provider dispatch и существующую per-FD FIFO.
+ */
 #include "lib9.h"
 #include "dat.h"
 #include "fns.h"
@@ -11,6 +14,7 @@
 #include "file_gate.h"
 #include "file_port.h"
 #include "io_buffer.h"
+#include "file_slots.h"
 #include "managed_workers.h"
 #include <limits.h>
 #include <stdio.h>
@@ -28,6 +32,7 @@ void Sys_seek(void *frame)
 {
     F_Sys_seek call;
     FVM_PortFile *file;
+    DVM_VfsHandle *resource; /* Borrowed through rooted call.fd and its FIFO. */
     DVM_FileGate *gate;
     FVM_Result status;
     LONG result = -1;
@@ -52,7 +57,8 @@ void Sys_seek(void *frame)
     else
     {
         descriptor = (int)call.fd->fd;
-        file = dvm_runtime_file(descriptor);
+        resource = dvm_runtime_resource(descriptor);
+        file = dvm_vfs_file(resource);
         gate = dvm_runtime_file_gate(descriptor);
         if (!file || !gate)
         {
@@ -71,7 +77,7 @@ void Sys_seek(void *frame)
                 memmove(call.ret, &result, sizeof(result));
                 return;
             }
-            status = fvm_port_file_seek(file, (long)call.off, (int)call.start, &position);
+            status = dvm_vfs_seek(resource, (long)call.off, (int)call.start, &position);
             if (!dvm_file_gate_leave(gate, &ticket))
             {
                 fprintf(stderr, "disvm: native seek admission lost\n");

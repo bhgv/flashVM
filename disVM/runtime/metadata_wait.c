@@ -14,6 +14,7 @@
 #include "metadata_wait.h"
 #include "filesystem_sys.h"
 #include "io_buffer.h"
+#include "file_slots.h"
 #include "file_gate.h"
 #include "runtime_gc.h"
 #include "channel_sync.h"
@@ -142,8 +143,9 @@ FVM_Result dvm_metadata_selected(DVM_ResourcePlan *plan, FVM_FileInfo *output)
  * and gate across another actor's reference changes or GC while waiting. */
 FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output)
 {
-    FVM_PortFile *file = dvm_runtime_file(descriptor);
-    FVM_PortDirectory *directory = dvm_runtime_directory(descriptor);
+    DVM_VfsHandle *resource = dvm_runtime_resource(descriptor); /* Same rooted FD/FIFO lifetime. */
+    FVM_PortFile *file = dvm_vfs_file(resource);
+    FVM_PortDirectory *directory = dvm_vfs_directory(resource);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
     FVM_Result status;
     DVM_FileTicket ticket;
@@ -168,7 +170,7 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
         fvm_port_registry_unlock();
         return admission_failure(released, "native metadata");
     }
-    status = file ? fvm_port_file_info(file, output) : fvm_port_directory_info(directory, output);
+    status = dvm_vfs_info(resource, output);
     if (!dvm_file_gate_leave(gate, &ticket))
     {
         fprintf(stderr, "disvm: native metadata admission lost\n");
@@ -198,7 +200,8 @@ FVM_Result dvm_metadata_fd_info(Sys_FD *fd, int descriptor, FVM_FileInfo *output
 FVM_Result dvm_metadata_directory_read(
     Sys_FD *fd, int descriptor, FVM_FileInfo **entries, size_t *count, int (*publish)(void *), void *argument)
 {
-    FVM_PortDirectory *directory = dvm_runtime_directory(descriptor);
+    DVM_VfsHandle *resource = dvm_runtime_resource(descriptor); /* Same rooted FD/FIFO lifetime. */
+    FVM_PortDirectory *directory = dvm_vfs_directory(resource);
     DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
     FVM_Result status;
     DVM_FileTicket ticket;
@@ -224,7 +227,7 @@ FVM_Result dvm_metadata_directory_read(
         fvm_port_registry_unlock();
         return admission_failure(released, "native directory read");
     }
-    status = fvm_port_directory_read(directory, entries, count);
+    status = dvm_vfs_list(resource, entries, count);
     dvm_runtime_gc_native_enter(released);
     fvm_port_registry_lock();
     batches++;

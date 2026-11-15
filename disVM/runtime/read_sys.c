@@ -18,6 +18,7 @@
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
+#include "file_slots.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -73,6 +74,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
     uchar *data;
     unsigned char *stage;
     FVM_PortFile *file;
+    DVM_VfsHandle *resource; /* Borrowed through the same rooted FD as file/gate. */
     WORD result = 0;
     size_t capacity;
     volatile int fd_pinned = 0;
@@ -89,7 +91,8 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         memmove(ret, &result, sizeof(result));
         return;
     }
-    file = descriptor <= 1 ? NULL : dvm_runtime_file(descriptor);
+    resource = dvm_runtime_resource(descriptor);
+    file = dvm_vfs_file(resource);
     if (descriptor != 0 && !(descriptor == 1 && dvm_runtime_stdio_duplex(1)) && !file)
     {
         result = -1;
@@ -181,7 +184,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
                 }
                 break;
             }
-            status = fvm_port_file_read(file, stage, fragment, &received);
+            status = dvm_vfs_read(resource, stage, fragment, &received);
             if (!dvm_file_gate_leave(gate, &ticket))
             {
                 fprintf(stderr, "disvm: native file admission lost\n");

@@ -6,6 +6,7 @@
 #define DVM_FILE_SLOTS_H
 #include "file_gate.h"
 #include "close_worker.h"
+#include "vfs/handle.h"
 
 
 /* EN: One reserved/open descriptor's detached native ownership, without VM roots.
@@ -14,8 +15,7 @@ typedef struct DVM_FileSlot
 {
     DVM_FileGate *gate; /* Reservation identity, non-NULL until detachment. */
     DVM_CloseJob *job; /* Preallocated retirement node, owned with the gate. */
-    FVM_PortFile *file; /* Published native file, or NULL. */
-    FVM_PortDirectory *directory; /* Published native directory, or NULL. */
+    DVM_VfsHandle resource; /* Published native ownership, empty until open succeeds. */
 } DVM_FileSlot;
 
 
@@ -60,4 +60,11 @@ FVM_PortFile *dvm_runtime_file(int descriptor);
  * RU: Заимствовать каталог descriptor с тем же удержанием корнем/загрузчиком.
  * Для неверного/не-каталожного слота вернуть NULL; поиск под мьютексом реестра. */
 FVM_PortDirectory *dvm_runtime_directory(int descriptor);
+
+
+/* EN/RU: Borrow a live provider handle under rooted FD/loader lifetime; NULL for
+ * invalid/reserved slots. No new ownership or operation admission is granted.
+ * Заимствовать provider handle с rooted FD/loader lifetime; NULL для резерва
+ * или invalid slot. Владение и operation admission не предоставляются. */
+DVM_VfsHandle *dvm_runtime_resource(int descriptor);
 #endif

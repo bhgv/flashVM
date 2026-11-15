@@ -15,8 +15,7 @@
 struct DVM_CloseJob
 {
     DVM_CloseJob *next;          /* Native queue link, protected by service.sync. */
-    FVM_PortFile *file;          /* Exclusive native handle; no managed owner survives. */
-    FVM_PortDirectory *directory; /* Exclusive native cursor, or NULL. */
+    DVM_VfsHandle resource; /* Exclusive provider handle; no managed owner survives. */
 };
 
 
@@ -42,8 +41,7 @@ static CloseService service; /* One runtime lifetime; cleared only at explicit s
  * Port close can block but cannot access managed memory or execute VM callbacks. */
 static void dispose(DVM_CloseJob *job)
 {
-    fvm_port_file_close(job->file);
-    fvm_port_directory_close(job->directory);
+    dvm_vfs_close(&job->resource);
     free(job);
 }
 
@@ -123,13 +121,28 @@ void dvm_close_discard(DVM_CloseJob *job)
  * publication never waits for an in-progress close or reenters managed execution. */
 void dvm_close_submit(DVM_CloseJob *job, FVM_PortFile *file, FVM_PortDirectory *directory)
 {
+    DVM_VfsHandle resource = {0};
+    if (!dvm_vfs_adopt(&resource, file, directory))
+    {
+        abort();
+    }
+    dvm_close_submit_resource(job, &resource);
+}
+
+
+/* EN/RU: See close_worker.h; move before queue publication, never under I/O lock.
+ * См. close_worker.h; перенос до публикации в очередь, без I/O под lock. */
+void dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource)
+{
     if (!job)
     {
         fprintf(stderr, "disvm: missing native close reservation\n");
         exit(1);
     }
-    job->file = file;
-    job->directory = directory;
+    if (!dvm_vfs_move(&job->resource, resource))
+    {
+        abort();
+    }
     job->next = NULL;
     if (!service.sync)
     {

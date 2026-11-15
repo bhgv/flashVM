@@ -16,6 +16,7 @@
 #include "managed_workers.h"
 #include "file_gate.h"
 #include "io_buffer.h"
+#include "file_slots.h"
 #include "formatted_sys.h"
 extern FVM_Result dvm_runtime_write_stdio(int descriptor, const void *bytes,
     size_t capacity, size_t *written, int *released);
@@ -52,7 +53,8 @@ void dvm_formatted_statistics(void)
  * owner; while released, only native handles and immutable bytes reach OS I/O. */
 static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_t count)
 {
-    FVM_PortFile *file = descriptor >= 3 ? dvm_runtime_file(descriptor) : NULL;
+    DVM_VfsHandle *resource = dvm_runtime_resource(descriptor); /* FD pins slot through native wait. */
+    FVM_PortFile *file = dvm_vfs_file(resource);
     FVM_Result status;
     size_t written = 0;
     int released;
@@ -97,7 +99,7 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
             kwerrstr(released == -2 ? "native formatted output cancelled" : "native formatted output needs an executor");
             return -1;
         }
-        status = fvm_port_file_write(file, bytes, count);
+        status = dvm_vfs_write(resource, bytes, count);
         if (status == FVM_OK)
         {
             written = count;

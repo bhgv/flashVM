@@ -3,6 +3,7 @@
 #define DVM_CLOSE_WORKER_H
 #include "file_port.h"
 #include "filesystem_port.h"
+#include "vfs/handle.h"
 
 typedef struct DVM_CloseJob DVM_CloseJob; /* Owned native reservation prepared before open. */
 
@@ -27,6 +28,13 @@ void dvm_close_discard(DVM_CloseJob *job);
  * Worker mode queues without waiting for filesystem I/O; inactive/reference mode
  * closes inline. NULL handles are allowed. job must be an unused reservation. */
 void dvm_close_submit(DVM_CloseJob *job, FVM_PortFile *file, FVM_PortDirectory *directory);
+
+
+/* EN/RU: Move exclusive resource into preallocated job after all FD borrowers
+ * retire. Clears source; no allocation or managed callback. Worker closes it.
+ * Перенести resource в job после ухода FD borrowers. Очистить source; без
+ * allocation/managed callback. Worker закрывает handle. Invalid ownership is fatal. */
+void dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource);
 
 
 /* After all producers/collectors stop, drain native jobs and join. No heap access

@@ -203,7 +203,7 @@ int kclose(int fd)
         fprintf(stderr, "disvm: closing a file with pending native operations\n");
         exit(1);
     }
-    dvm_close_submit(slot.job, slot.file, slot.directory);
+    dvm_close_submit_resource(slot.job, &slot.resource);
     return 0;
 }
 

@@ -2,6 +2,30 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: внутренние native provider handles
+
+Runtime0.122 хранит общий owning handle в ordinary descriptor slots. File и
+Directory adapters реализуют immutable native operation tables. Read/write,
+formatted output, seek, fstat и dirread вызывают provider dispatch; close-worker
+получает owning handle через move и закрывает ровно один раз. Поиск handle идёт
+до native wait, через прежние rooted FD/FIFO и GC admission. Нового global stop,
+managed provider callback, allocation при передаче владения либо guest ABI нет.
+
+[Контракт RU/EN](PROVIDER-HANDLES.md) явно оставляет specialized loader/stdio,
+directory-abort recovery и kind admission в прежних adapters. Guest registration,
+mount/walk, socket/channel/device providers и credentials ещё не подключены.
+Native host rwx и прежние namespace/security limits сохраняются.
+
+Provider unit проверяет независимый callback, unsupported outputs, refused moves,
+очистку source и exactly-once close. Host-unit прошёл 30/30 в dynamic и static;
+расширенный guest rwx прошёл оба execution/poll static paths. Close-backlog probe
+перенесён со старого submit на новую consuming resource boundary: все 1536 guests,
+64 pending jobs, files/directories FIFO, три GC profiles и полный drain прошли
+в dynamic/static. Первый wide дал 69/70 из-за старой границы probe; финальный
+wide после исправления прошёл 70/70. Handle dispatch также компилируется как
+C89. Новая архитектурная CI учитывается отдельно. Предыдущая CI v0.1699
+ещё выполнялась при начале этого этапа и не подтверждает новый provider layer.
+
 ## 2026-11-15: existing write-only open и закрытая прежняя RV64 приёмка
 
 [CI 9d9b0d6](https://github.com/bhgv/flashVM/actions/runs/43668162604)

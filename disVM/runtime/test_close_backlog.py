@@ -66,7 +66,7 @@ def main():
         work = Path(temporary)
         image = work / 'backlog.dis'
         binary = relink(runtime, work, Path(__file__).with_suffix('.c'), 0,
-                        ['dvm_close_submit', 'fvm_port_file_close', 'fvm_port_directory_close', 'Sys_werrstr', 'dvm_close_worker_stop',
+                        ['dvm_close_submit_resource', 'fvm_port_file_close', 'fvm_port_directory_close', 'Sys_werrstr', 'dvm_close_worker_stop',
                          'dvm_runtime_channel_new'])
         source = root / 'fixtures/resident-close-backlog/main.b'
         for id in range(1, 64, 2):

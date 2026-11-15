@@ -26,7 +26,7 @@ static unsigned checkpoints; /* Parent's observed producer retirement boundaries
 static int armed; /* Enabled only by the managed fixture after loader cleanup. */
 static int held; /* First close reached the inherited release pipe. */
 
-void __real_dvm_close_submit(DVM_CloseJob *, FVM_PortFile *, FVM_PortDirectory *);
+void __real_dvm_close_submit_resource(DVM_CloseJob *, DVM_VfsHandle *);
 void __real_fvm_port_file_close(FVM_PortFile *);
 void __real_fvm_port_directory_close(FVM_PortDirectory *);
 void __real_Sys_werrstr(void *);
@@ -50,13 +50,15 @@ static void require(int condition, const char *message)
  * inputs. Never retain the queue mutex or any VM lock across the real publication.
  * RU: Наблюдать настоящую передачу job/file/directory без изменения аргументов.
  * Не удерживать mutex очереди или VM при настоящей публикации. */
-void __wrap_dvm_close_submit(DVM_CloseJob *job, FVM_PortFile *file, FVM_PortDirectory *directory)
+void __wrap_dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource)
 {
+    FVM_PortFile *file = dvm_vfs_file(resource);
+    FVM_PortDirectory *directory = dvm_vfs_directory(resource);
     pthread_mutex_lock(&sync);
     if (!armed)
     {
         pthread_mutex_unlock(&sync);
-        __real_dvm_close_submit(job, file, directory);
+        __real_dvm_close_submit_resource(job, resource);
         return;
     }
     require((file != NULL) != (directory != NULL), "each fixture job owns one real handle");
@@ -68,7 +70,7 @@ void __wrap_dvm_close_submit(DVM_CloseJob *job, FVM_PortFile *file, FVM_PortDire
         first = file;
     }
     pthread_mutex_unlock(&sync);
-    __real_dvm_close_submit(job, file, directory);
+    __real_dvm_close_submit_resource(job, resource);
     pthread_mutex_lock(&sync);
     submitted++;
     require(submitted <= 64, "exactly 64 managed native close jobs");
