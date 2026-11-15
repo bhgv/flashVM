@@ -26,6 +26,7 @@ CORE_CASES = (  # Previously verified baseline; names are unique log/report iden
 )
 WIDE_CASES = CORE_CASES + (  # Native-only whole-VM tests; historical reference oracles stay archived.
     ("namespace", "test_namespace.py", ()),
+    ("namespace-permissions", "test_namespace_permissions.py", ()),
     ("namespace-load", "test_namespace_load.py", ()),
     ("namespace-remove", "test_namespace_remove.py", ()),
     ("namespace-debug", "test_namespace_debug.py", ()),

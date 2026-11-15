@@ -147,3 +147,20 @@ Retained source continuation debugging and on-demand GC-root census: [EN](DEBUGG
 outside recovery; GDB is optional.
 
 Base FP/SIMD snapshots and REAL fault policy: [EN](JIT-FP.md), [RU](JIT-FP.ru.md).
+
+## Целевая модель доступа (2026-11-15)
+
+Пользователь задаёт модель Inferno: видимость через динамический namespace и
+права owner/group/rwx; общий handle скрывает реализацию file/device/socket/channel.
+Bind не повышает полномочия. Открытые handles имеют собственный lifetime;
+удаление пути или unmount сами по себе их не отзывают.
+
+Текущий POSIX provider применяет credentials всего host process через kernel
+open/openat, а не разные identities гостевых Prog. Sys.stat уже переносит mode,
+uid и gid. Workload namespace-permissions проверяет actual read/create
+и directory-search refusal через bind, metadata и unmount. Он требует non-root
+host user, поскольку root bypass не подтверждает проверку guest credentials.
+Полный provider walk, guest credentials и symlink confinement ещё отсутствуют:
+NEWNS не объявляется security sandbox. Следующий implementation block должен
+ввести единый provider handle и его проверяемый permission/credential contract;
+простая предварительная stat-проверка не заменяет atomic provider admission.

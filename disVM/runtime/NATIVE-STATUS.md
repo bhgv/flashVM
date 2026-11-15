@@ -2,6 +2,22 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: проверка host rwx и cross-build anchor gate
+
+Добавлен mandatory workload namespace-permissions: реальные chmod fixtures,
+успешные read/create, отказ create поверх readonly файла без изменения bytes,
+проверка mode 0444, отказ open/stat без directory x через bind, затем unmount.
+Static/dynamic AMD64 проверены в interpreter/JIT × fast/locked poll (8 runs).
+Это проверка kernel permissions host user; guest credentials и sandbox не заявлены.
+Sys.open OWRITE пока неподдержан и не используется как доказательство permission
+refusal. Root host user явно отвергается тестом, а не выдаётся за успешную проверку.
+
+Anchor-test target теперь создаётся и при CMAKE_CROSSCOMPILING. Его наличие
+и выполнение проверены cross-конфигурацией AMD64; это проверка CMake gate,
+не RV64 execution. Список native wide содержит 70 workloads. Полная новая
+архитектурная матрица ещё не выполнена; публикация локальных изменений
+заблокирована automatic review до явного разрешения push в master.
+
 ## 2026-11-15: RV64/QEMU и единый корень directory anchors
 
 CI на `5e573d2` завершил пять jobs успешно, но RV64 отказал 69/69 workload

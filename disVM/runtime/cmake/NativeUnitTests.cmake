@@ -33,10 +33,6 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
     target_include_directories(disvm_namespace_test PRIVATE ${native_unit_includes})
     target_link_libraries(disvm_namespace_test PRIVATE disvm_flashvm_host Threads::Threads)
     add_test(NAME disvm_namespace_concurrent COMMAND disvm_namespace_test)
-    add_executable(disvm_anchor_port_test vfs/test_anchor_port.c)
-    target_include_directories(disvm_anchor_port_test PRIVATE ${native_unit_includes})
-    target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host Threads::Threads)
-    target_link_options(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
     add_test(NAME disvm_anchor_port COMMAND "${PYTHON_EXECUTABLE}"
         "${CMAKE_CURRENT_SOURCE_DIR}/test_anchor_port.py" "$<TARGET_FILE:disvm_anchor_port_test>")
     set_tests_properties(disvm_anchor_port PROPERTIES TIMEOUT 50 LABELS "host-unit")
@@ -47,4 +43,15 @@ if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSC
         "${u}/libinterp" "${view}")
     set_tests_properties(disvm_native_generation_idempotent PROPERTIES TIMEOUT 30 LABELS "host-unit"
         ENVIRONMENT "TMPDIR=${CMAKE_CURRENT_BINARY_DIR}/test-tmp")
+endif()
+
+# EN/RU: Build the actual target ELF for explicit QEMU acceptance too.
+# Собирать настоящий target ELF также для явной QEMU-приёмки.
+if(DVM_RUNTIME_TESTS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    get_target_property(anchor_includes disvm INCLUDE_DIRECTORIES)
+    list(APPEND anchor_includes "${DVM_FLASHVM_SOURCE_ROOT}/ports" "${DVM_FLASHVM_SOURCE_ROOT}/include")
+    add_executable(disvm_anchor_port_test vfs/test_anchor_port.c)
+    target_include_directories(disvm_anchor_port_test PRIVATE ${anchor_includes})
+    target_link_libraries(disvm_anchor_port_test PRIVATE disvm_flashvm_host Threads::Threads)
+    target_link_options(disvm_anchor_port_test PRIVATE "-Wl,--wrap=fdopen")
 endif()
