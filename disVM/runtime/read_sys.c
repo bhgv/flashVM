@@ -150,6 +150,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         size_t fragment = (size_t)(extent - result);
         FVM_Result status;
         int released;
+        int terminal = 0;
         DVM_FileTicket ticket;
         DVM_FileGate *gate = dvm_runtime_file_gate(descriptor);
         if (fragment > capacity)
@@ -182,7 +183,10 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
                 }
                 break;
             }
-            status = dvm_vfs_read(resource, stage, fragment, &received);
+            DVM_IoResult outcome = dvm_vfs_read_chunk(resource, stage, fragment);
+            status = outcome.status;
+            terminal = outcome.stop == DVM_IO_EOF;
+            received = outcome.flags & DVM_IO_PREFIX ? outcome.count : 0;
             if (!dvm_file_gate_leave(gate, &ticket))
             {
                 fprintf(stderr, "disvm: native file admission lost\n");
@@ -193,7 +197,7 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         fvm_port_registry_lock();
         fragments++;
         fvm_port_registry_unlock();
-        if (status != FVM_OK)
+        if (status != FVM_OK && !received)
         {
             kwerrstr("native input failed");
             if (!result)
@@ -230,7 +234,12 @@ static void read_buffer(Sys_FD *fd, Array *buffer, WORD requested, WORD *ret, in
         {
             dvm_runtime_input_progress();
         }
-        if (!complete)
+        if (status != FVM_OK)
+        {
+            kwerrstr("native input stopped after partial progress");
+            break;
+        }
+        if (!complete || terminal)
         {
             break;
         }

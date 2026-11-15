@@ -6,6 +6,7 @@
 #define DVM_VFS_HANDLE_H
 #include "file_port.h"
 #include "filesystem_port.h"
+#include "io_result.h"
 
 
 /* EN/RU: Trusted immutable native callbacks. State is borrowed for each serialized
@@ -21,6 +22,8 @@ typedef struct DVM_VfsOps
     FVM_Result (*list)(void *state, FVM_FileInfo **entries, size_t *count); /* Optional list; NULL returns UNSUPPORTED. */
     void (*close)(void *state); /* Mandatory consuming native close, possibly blocking. */
     void (*abort_list)(void *state); /* Required with list: invalidate cursor after publication failure. */
+    void (*read_chunk)(void *state, void *bytes, size_t size, DVM_IoResult *result); /* Optional precise read acknowledgement. */
+    void (*write_chunk)(void *state, const void *bytes, size_t size, DVM_IoResult *result); /* Optional precise write acknowledgement. */
 } DVM_VfsOps;
 
 
@@ -32,6 +35,8 @@ typedef struct DVM_VfsHandle
 {
     const DVM_VfsOps *ops; /* Immutable provider contract, NULL for empty handle. */
     void *state; /* Exclusive native ownership, provider-defined; never a VM pointer. */
+    DVM_IoResult last_io; /* Last synchronous chunk outcome under the existing caller FIFO. */
+    int io_valid; /* Last outcome exists; clear with handle retirement/move source. */
 } DVM_VfsHandle;
 
 
@@ -96,6 +101,29 @@ FVM_Result dvm_vfs_seek(DVM_VfsHandle *handle, long offset, int origin, long *po
  * Заимствовать handle/arguments с lifetime pin/FIFO; dispatch list. Отсутствующая
  * операция возвращает UNSUPPORTED без изменения outputs. Native-only blocking. */
 FVM_Result dvm_vfs_list(DVM_VfsHandle *handle, FVM_FileInfo **entries, size_t *count);
+
+
+/* EN/RU: Execute one chunk with precise callback or conservative legacy adapter.
+ * Borrow handle/buffer under FD pin/FIFO, native-only blocking. Return confirmed
+ * prefix plus cause; only actual failure triggers at most one info callback.
+ * Выполнить один chunk с точным callback либо conservative legacy adapter.
+ * Handle/buffer заимствованы под FD pin/FIFO. При отказе — не более одного info.
+ * Success/short success/EOF never query metadata. No retry or layer switching. */
+DVM_IoResult dvm_vfs_read_chunk(DVM_VfsHandle *handle, void *bytes, size_t size);
+
+
+/* EN/RU: Same contract for immutable write bytes. Legacy failed writes have
+ * unknown effects, never fabricated count=0 certainty. A positive request with
+ * zero acknowledged bytes is NO_PROGRESS, not EOF. Zero-size success stays valid.
+ * Тот же контракт для immutable write bytes. Legacy failure имеет unknown effects;
+ * ноль при положительном request — NO_PROGRESS, не EOF. Zero-size success допустим. */
+DVM_IoResult dvm_vfs_write_chunk(DVM_VfsHandle *handle, const void *bytes, size_t size);
+
+
+/* EN/RU: Copy last chunk diagnostics while borrowing the same FD pin/FIFO.
+ * One/zero for available/missing; no I/O and no metadata refresh.
+ * Скопировать last diagnostics под тем же FD pin/FIFO; один/ноль, без I/O. */
+int dvm_vfs_last_io(DVM_VfsHandle *handle, DVM_IoResult *output);
 
 
 /* EN/RU: Legacy native adapters only; borrow matching state or return NULL.

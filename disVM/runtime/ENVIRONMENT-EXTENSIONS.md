@@ -21,6 +21,7 @@ format/ISA и границы проверки. Новое поведение н�
 | [Host provider installation](PROVIDER-NAMESPACE.md) | Internal namespace extension with references and revision checks; not public Sys.mount / Внутреннее расширение, не public Sys.mount |
 | Provider-source Sys.bind(MREPL), directory MBEFORE/MAFTER/MCREATE | Ordinary matched Sys interface, provider-relative aliases with documented mutable-node identity limits; no new flags/opcodes / Обычный Sys, aliases provider-relative, без новых flags/opcodes |
 | [MAUTORWX union policy](AUTO-UNION.md) | Implemented explicit bit8 via Vfsflags; effective R/W/X selection, parent w+x creation / Явное расширение выбора по правам, не Inferno flag |
+| [Precise native chunk results](CHUNK-IO.md) | Implemented internal count/cause/certainty and failure-only info; heartbeat/Styx transport remains pending / Native API реализован, wire ещё нет |
 | [Native debugger endpoint](DEBUGGER.md) | Separate session-bound supervisor protocol; no guest address authority / Отдельный session-bound протокол, без полномочий по guest адресу |
 
 Runtime0.127 additionally implements the explicit MAUTORWX extension.

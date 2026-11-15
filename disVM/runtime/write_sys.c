@@ -109,7 +109,8 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
             ptrdel(D2H(fd));
             return -1;
         }
-        status = dvm_vfs_write(resource, NULL, 0);
+        DVM_IoResult outcome = dvm_vfs_write_chunk(resource, NULL, 0);
+        status = outcome.status;
         if (!dvm_file_gate_leave(gate, &ticket))
         {
             fprintf(stderr, "disvm: zero-write file admission lost\n");
@@ -186,11 +187,9 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
             result = -1;
             goto finish;
         }
-        status = dvm_vfs_write(resource, stage, capacity);
-        if (status == FVM_OK)
-        {
-            written = capacity;
-        }
+        DVM_IoResult outcome = dvm_vfs_write_chunk(resource, stage, capacity);
+        status = outcome.status;
+        written = outcome.flags & DVM_IO_PREFIX ? outcome.count : 0;
         if (!dvm_file_gate_leave(gate, &ticket))
         {
             fprintf(stderr, "disvm: native file admission lost\n");
@@ -203,7 +202,10 @@ WORD dvm_runtime_write(Sys_FD *fd, Array *bytes, WORD count)
     fvm_port_registry_unlock();
     if (status != FVM_OK)
     {
-        kwerrstr("native output failed");
+        kwerrstr("native output failed%s", written ? " after partial progress" : "");
+    }
+    if (status != FVM_OK && !written)
+    {
         result = -1;
     }
     else

@@ -105,3 +105,7 @@ exclusive collisions, module-cache re-selection and retained FD/module behavior.
 absent callbacks, changing rights, copied namespaces and a no-open guard.
 Fixture проверяет реальную маршрутизацию bytes и модулей; provider unit отдельно
 проверяет authority callback, отсутствие эффектов и lifetime.
+
+For confirmed partial I/O and failure-only diagnostics after opening, see
+[chunk results](CHUNK-IO.md). This does not change MAUTORWX layer-selection rules.
+Для partial I/O после open см. контракт chunk results; выбор MAUTORWX не меняется.

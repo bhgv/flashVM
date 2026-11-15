@@ -98,11 +98,9 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
             kwerrstr(released == -2 ? "native formatted output cancelled" : "native formatted output needs an executor");
             return -1;
         }
-        status = dvm_vfs_write(resource, bytes, count);
-        if (status == FVM_OK)
-        {
-            written = count;
-        }
+        DVM_IoResult outcome = dvm_vfs_write_chunk(resource, bytes, count);
+        status = outcome.status;
+        written = outcome.flags & DVM_IO_PREFIX ? outcome.count : 0;
         if (!dvm_file_gate_leave(gate, &ticket))
         {
             fprintf(stderr, "disvm: native file admission lost\n");
@@ -124,7 +122,10 @@ static WORD formatted_write(Sys_FD *fd, int descriptor, const char *bytes, size_
     if (status != FVM_OK)
     {
         kwerrstr("formatted descriptor write failed");
-        return -1;
+        if (!written)
+        {
+            return -1;
+        }
     }
     if (written > count)
     {

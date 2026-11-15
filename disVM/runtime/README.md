@@ -604,3 +604,8 @@ new open/create/load operations select the top branch permitted for their access
 Create checks parent write/search; native checks use effective host credentials,
 providers can supply an optional access callback. Classic Inferno bind remains
 the default, and live FD operations do not switch resources.
+
+Runtime 0.128 adds [precise chunk results and failure-only metadata](CHUNK-IO.md):
+confirmed bytes survive read/write refusal, short writes reach Sys/fprint, and
+success/EOF performs no diagnostic stat. Heartbeat change hints and Styx wire
+integration are specified separately from the implemented native foundation.

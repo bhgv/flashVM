@@ -2,6 +2,37 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: precise chunk results и metadata после отказа
+
+Runtime0.128 добавляет optional native read_chunk/write_chunk callbacks и scalar
+DVM_IoResult: confirmed prefix count, original status, stop cause, uncertain tail,
+независимые diagnostic metadata и change generation hint. Ordinary Sys.read/readn,
+write/fprint сохраняют confirmed partial progress при отказе. Readn останавливается
+на partial refusal либо explicit final EOF; input tail не меняется. Positive write
+с нулевым count — NO_PROGRESS, не EOF. Last outcome доступен пока только native API
+под прежним FD pin/FIFO. Никакого автоматического replay или смены открытого layer.
+
+Принятое правило: операция решает доступ, diagnostic info запрашивается только
+после refusal/no-progress. Success, short success и EOF не вызывают stat. Wrapper
+сохраняет inner probe, исключая двойной запрос. Failed info не затирает I/O count,
+status и причину; mode bits не выдаются за effective-access authority. Legacy
+failure не сообщает actual count: effects помечаются uncertain, не выдумываются.
+[Реализованный контракт и принятый будущий wire contract](CHUNK-IO.md).
+
+Для будущего Styx provider info соответствует Tstat того же fid после отказа,
+с deadline/cancellation/connection bounds. Heartbeat changed+generation, session
+reset и invalidation оговорены как будущий transport contract. Native result уже
+может переносить hint; Styx client/heartbeat receiver, union file cursor/offset modes
+и network replay protection здесь не реализованы. Стандартные Styx frames и
+upstream snapshot не меняются; MAUTORWX selection при open/create/load сохранён.
+
+Финальный AMD64 wide 75/75; dynamic/static host-unit 34/34. Новый provider-chunk
+прошёл C/JIT × оба poll в dynamic/static: actual readn/read/write/fprint counts,
+untouched input tails, пять failure probes, ноль success/EOF probes, exact effects
+и consuming lifetime. Unit проверяет independent probe failure, malformed count,
+legacy uncertainty и один probe через retained wrapper. Public handle/result headers
+проходят C89 syntax check. Архитектурная CI этой ревизии учитывается после публикации.
+
 ## 2026-11-15: MAUTORWX — явное расширение выбора по access
 
 Runtime0.127 реализует MAUTORWX=8 через constants-only Vfsflags.m. Обычный

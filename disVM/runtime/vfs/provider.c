@@ -130,6 +130,24 @@ static FVM_Result wrapped_write(void *state, const void *bytes, size_t size)
 }
 
 
+/* EN/RU: Preserve precise inner acknowledgement and its single failure probe.
+ * Сохранить inner acknowledgement и его единственный failure probe. Native-only. */
+static void wrapped_read_chunk(void *state, void *bytes, size_t size, DVM_IoResult *result)
+{
+    ProviderHandle *handle = state;
+    *result = dvm_vfs_read_chunk(&handle->inner, bytes, size);
+}
+
+
+/* EN/RU: Preserve precise inner write count; do not replay confirmed bytes.
+ * Сохранить точный inner write count; не повторять confirmed bytes. */
+static void wrapped_write_chunk(void *state, const void *bytes, size_t size, DVM_IoResult *result)
+{
+    ProviderHandle *handle = state;
+    *result = dvm_vfs_write_chunk(&handle->inner, bytes, size);
+}
+
+
 /* EN/RU: Forward borrowed serialized wrapper/arguments to the owned inner handle.
  * Передать borrowed serialized wrapper/arguments во внутренний handle. */
 static FVM_Result wrapped_seek(void *state, long offset, int origin, long *position)
@@ -208,6 +226,8 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
     handle->ops.info = handle->inner.ops->info ? wrapped_info : NULL;
     handle->ops.read = handle->inner.ops->read ? wrapped_read : NULL;
     handle->ops.write = handle->inner.ops->write ? wrapped_write : NULL;
+    handle->ops.read_chunk = handle->inner.ops->read || handle->inner.ops->read_chunk ? wrapped_read_chunk : NULL;
+    handle->ops.write_chunk = handle->inner.ops->write || handle->inner.ops->write_chunk ? wrapped_write_chunk : NULL;
     handle->ops.seek = handle->inner.ops->seek ? wrapped_seek : NULL;
     handle->ops.list = handle->inner.ops->list ? wrapped_list : NULL;
     handle->ops.close = wrapped_close;

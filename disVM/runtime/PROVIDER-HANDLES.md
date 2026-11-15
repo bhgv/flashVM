@@ -98,3 +98,9 @@ an executable provider integration test, not a user-visible mount service.
 Проверяются zero-byte dispatch, metadata, directory EOF и полный close drain.
 Подмена включается исключительно private relink теста, без нового CLI bypass,
 скрытого /dev lookup либо guest-доступа к native callbacks.
+
+Runtime 0.128 appends optional precise read_chunk/write_chunk callbacks and
+[chunk result diagnostics](CHUNK-IO.md). Ordinary Sys uses this path; legacy
+callbacks remain supported, with unknown partial counts on legacy failure.
+Runtime 0.128: optional precise callbacks, failure-only info и last native outcome;
+legacy failure не выдумывает подтверждённый count. Это не stable DLL ABI.
