@@ -10,6 +10,8 @@ from test_owner_location import compile_image
 
 
 # EN/RU: Own host decoys, real guest images and private lifecycle observers to exit.
+# Four workers plus retained aliases fit the fixed 29 ordinary slots before retirement.
+# Четыре worker и aliases помещаются в 29 slots даже до завершения retirement.
 # Require ordinary opens use namespace provider, then unmount exposes original host.
 # Владеть decoys/images/observers до exit; проверить provider lookup и host после unmount.
 def main():
@@ -18,6 +20,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="provider namespace ") as temporary:
         work = Path(temporary)
         source = (root / "fixtures/provider-fd/main.b").read_text()
+        source = source.replace("i < 8", "i < 4")
         for name in ("provider-read", "provider-write", "provider-list"):
             source = source.replace('"' + name + '"', '"view/' + name + '"')
         source = source.replace('    input :=', '    check(sys->pctl(Sys->FORKNS, nil) > 0, "copy provider namespace");\n    input :=', 1)
@@ -28,7 +31,13 @@ def main():
     alias := sys->open("host-target", Sys->OREAD);
     data := array[5] of byte;
     check(alias != nil && sys->readn(alias, data, 5) == 5 && string data == "ABCDE", "provider file alias");
-    check(sys->bind("view", "mirror", Sys->MREPL) == 0, "provider directory bind");
+    check(sys->bind("view", "mirror", Sys->MBEFORE) == 0, "provider directory bind");
+    uniondir := sys->open("mirror", Sys->OREAD);
+    check(uniondir != nil, "provider union directory open");
+    (unioncount, unionentries) := sys->dirread(uniondir);
+    check(unioncount == 1 && unionentries[0].name == "entry", "provider union directory batch");
+    (unioncount, unionentries) = sys->dirread(uniondir);
+    check(unioncount == 0 && unionentries == nil, "provider union directory EOF");
     mirrored := sys->open("mirror/provider-read", Sys->OREAD);
     check(mirrored != nil && sys->readn(mirrored, data, 5) == 5 && string data == "ABCDE", "provider directory suffix");
     check(sys->bind("view/provider-list", "nested-target", Sys->MREPL) == 0, "provider subtree bind");
@@ -37,7 +46,9 @@ def main():
     check(listed != nil && listedcount == 1 && listedentries[0].name == "entry", "provider subtree identity");
     check(sys->bind("host-target", "second-target", Sys->MREPL) == 0, "provider alias-to-alias bind");
     second := sys->open("second-target", Sys->OREAD);
-    check(second != nil && sys->readn(second, data, 5) == 5 && string data == "ABCDE", "provider alias-to-alias lookup");
+    check(second != nil, "provider alias-to-alias open");
+    check(sys->readn(second, data, 5) == 5, "provider alias-to-alias read count");
+    check(string data == "ABCDE", "provider alias-to-alias bytes");
     check(sys->bind("view/provider-read", "mirror", Sys->MREPL) == -1, "provider kind mismatch accepted");
     check(sys->remove("view/provider-read") == -1, "unsupported provider remove");
     check(sys->create("view/provider-read", Sys->OWRITE, 8r666) == nil, "unsupported provider create");

@@ -3,7 +3,7 @@
  * RU: Монтировать retained namespace provider при startup; без per-FD подмены.
  */
 #define DVM_PROVIDER_NAMESPACE 1 /* Omit the older per-FD injection boundary. */
-#define DVM_PROVIDER_EXPECTED 30 /* Eight read/write/list sets plus retained and alias FDs. */
+#define DVM_PROVIDER_EXPECTED 20 /* Guest capabilities, aliases and union directory header/current handles. */
 #define __wrap_dvm_close_worker_stop provider_base_stop
 #include "test_provider_fd.c"
 #undef __wrap_dvm_close_worker_stop
@@ -54,7 +54,7 @@ static FVM_Result factory_open(void *state, const char *relative, const char *mo
 {
     Memory *memory;
     int writable = !strcmp(relative, "provider-write");
-    int directory = !strcmp(relative, "provider-list");
+    int directory = !strcmp(relative, "provider-list") || !strcmp(relative, ".");
     if (*(int *)state != 1)
     {
         abort();

@@ -106,16 +106,26 @@ static int bind_selection(DVM_Namespace *group,
     if (group->version == target->version && group->version == source->version)
     {
         result = -1;
-        if (group->version != UINT64_MAX)
+        if (group->version != UINT64_MAX && group->next_binding != UINT64_MAX)
         {
-            for (link = &group->bindings; *link; link = &(*link)->next)
+            entry->identity = ++group->next_binding;
+            entry->head_identity = entry->identity;
+            for (link = &group->bindings; *link;)
             {
                 if (!strcmp((*link)->on, target->path))
                 {
-                    old = *link;
-                    *link = old->next;
-                    break;
+                    DVM_NamespaceBinding *removed = *link;
+                    *link = removed->next;
+                    entry->head_identity = removed->head_identity;
+                    removed->next = old;
+                    old = removed;
+                    if (!*link)
+                    {
+                        break;
+                    }
+                    continue;
                 }
+                link = &(*link)->next;
             }
             entry->next = group->bindings;
             group->bindings = entry;
@@ -131,11 +141,13 @@ static int bind_selection(DVM_Namespace *group,
         dvm_anchor_release(entry->anchor);
         free(entry);
     }
-    if (old)
+    while (old)
     {
+        DVM_NamespaceBinding *next = old->next;
         dvm_provider_release(old->provider);
         dvm_anchor_release(old->anchor);
         free(old);
+        old = next;
     }
     return result;
 }
@@ -153,35 +165,7 @@ int dvm_namespace_bind(DVM_Namespace *group, const DVM_NamespacePlan *source, co
  * См. namespace.h; source сравнивается как сохранённый host path. */
 int dvm_namespace_unmount(DVM_Namespace *group, const DVM_NamespacePlan *target, const DVM_NamespacePlan *source)
 {
-    DVM_NamespaceBinding **link, *old = NULL;
-    int result = 0;
-    fvm_port_sync_lock(group->lock);
-    if (group->version == target->version && (!source || source->version == group->version))
-    {
-        result = -1;
-        if (group->version != UINT64_MAX)
-        {
-            for (link = &group->bindings; *link; link = &(*link)->next)
-            {
-                if (!strcmp((*link)->on, target->path) && (!source || !strcmp((*link)->source, source->native)))
-                {
-                    old = *link;
-                    *link = old->next;
-                    group->version++;
-                    result = 1;
-                    break;
-                }
-            }
-        }
-    }
-    fvm_port_sync_unlock(group->lock);
-    if (old)
-    {
-        dvm_provider_release(old->provider);
-        dvm_anchor_release(old->anchor);
-        free(old);
-    }
-    return result;
+    return dvm_namespace_unmount_exact(group, target, 0, source);
 }
 
 

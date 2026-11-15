@@ -14,6 +14,9 @@
  * Один точный virtual prefix и сохранённый host source; владелец — группа. */
 typedef struct DVM_NamespaceBinding
 {
+    uint64_t head_identity; /* Stable mount-head identity across stack changes/replacement. */
+    uint64_t identity; /* Group-local layer identity; never reused. */
+    unsigned flags; /* Inferno mount ordering/create flags. */
     char on[DVM_NS_PATH_LIMIT];        /* Virtual target; component boundaries matter. */
     char source[DVM_NS_PATH_LIMIT];    /* Native source captured when binding. */
     DVM_Provider *provider; /* Retained factory for a provider mount, otherwise NULL. */
@@ -29,6 +32,7 @@ struct DVM_Namespace
 {
     FVM_PortSync *lock;                     /* Group-local mutex; never held across host I/O. */
     size_t references;                      /* Owning native references, including each resident. */
+    uint64_t next_binding; /* Last assigned layer identity, protected by lock. */
     uint64_t version;                       /* Monotonic mutation revision; never wraps. */
     char root[DVM_NS_PATH_LIMIT];           /* Host path corresponding to virtual root. */
     char cwd[DVM_NS_PATH_LIMIT];            /* Current virtual directory shared by this group. */
@@ -52,4 +56,19 @@ int dvm_namespace_normalize(const char *cwd, const char *path, char *output);
 /* EN/RU: Link source-local cleanup after retained resolution; one/zero.
  * Подключить source-local cleanup после retained resolution; один/ноль. */
 int dvm_resource_register(DVM_ResourcePlan *plan);
+
+/* EN/RU: Remove exact revision/id/source or all target layers; no I/O under lock.
+ * Удалить revision/id/source либо все target layers; без I/O под lock. */
+int dvm_namespace_unmount_exact(DVM_Namespace *group, const DVM_NamespacePlan *target,
+                                uint64_t id, const DVM_NamespacePlan *source);
+
+/* EN/RU: Capture one current mount-head branch by index, retaining resource.
+ * Return one/zero; output initially empty. No callbacks or host I/O under lock.
+ * Захватить current ветвь mount-head по index; удержать resource. Один/ноль. */
+int dvm_namespace_layer_at(DVM_Namespace *group, const char *on, uint64_t head, size_t index,
+                            DVM_ResourcePlan *output);
+
+/* EN/RU: Read finite current head length for one unionread call; no callbacks/I/O.
+ * Получить finite current head length для одного unionread; без callbacks/I/O. */
+size_t dvm_namespace_layer_count(DVM_Namespace *group, const char *on, uint64_t head);
 #endif

@@ -77,7 +77,7 @@ init()
 {
     sys = load Sys Sys->PATH;
     ctl = load Processctl Processctl->PATH;
-    require(sys->bind("source-a", "visible", Sys->MREPL) == 0, "initial remove bind failed");
+    require(sys->bind("source-a", "visible", Sys->MREPL|Sys->MCREATE) == 0, "initial remove bind failed");
     ready := chan of int;
     start := chan of int;
     done := chan of int;

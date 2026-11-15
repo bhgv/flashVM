@@ -92,6 +92,7 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     copy = dvm_namespace_create(group->root, group->cwd, group->load_directory);
     if (copy)
     {
+        copy->next_binding = group->next_binding;
         memcpy(copy->cwd_source, group->cwd_source, sizeof(copy->cwd_source));
         memcpy(copy->load_source, group->load_source, sizeof(copy->load_source));
         DVM_Anchor *anchors[] = {group->root_anchor, group->cwd_anchor, group->load_anchor};
@@ -110,6 +111,7 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
     }
     if (copy)
     {
+        DVM_NamespaceBinding **tail = &copy->bindings;
         for (binding = group->bindings; binding; binding = binding->next)
         {
             DVM_NamespaceBinding *entry = malloc(sizeof(*entry));
@@ -135,8 +137,9 @@ DVM_Namespace *dvm_namespace_copy(DVM_Namespace *group)
                 copy = NULL;
                 break;
             }
-            entry->next = copy->bindings;
-            copy->bindings = entry;
+            entry->next = NULL;
+            *tail = entry;
+            tail = &entry->next;
         }
     }
     fvm_port_sync_unlock(group->lock);

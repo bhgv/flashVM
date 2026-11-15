@@ -5,7 +5,7 @@ directory removal: [behavior and limits](NAMESPACE-REMOVE.md).
 
 Each resident owns a native reference to a namespace group. `spawn` shares the
 parent's group. The group contains its virtual current directory, native root
-and replacement bindings. It has its own portable mutex; no global VM exclusion
+and ordered bindings. See [directory union semantics](UNION-NAMESPACE.md). It has its own portable mutex; no global VM exclusion
 or stop is introduced. Native group storage contains no managed pointers/GC roots.
 Every failed process setup and final retirement releases its reference; children
 can outlive their parent. This is functional namespace state, not a permanent
@@ -18,12 +18,13 @@ per-object statistics catalog.
 | `pctl(0, nil)` | Return current PID |
 | `pctl(FORKNS, nil)` | Detach a coherent copy of root, cwd and bindings |
 | `pctl(NEWNS, nil)` | Detach an empty namespace rooted at the resolved current directory; virtual cwd becomes `/` |
-| `chdir(path)` | Validate a directory and change group cwd; host process cwd never changes |
-| `bind(source, on, MREPL)` | Replace an existing like-kind resource at the exact virtual target |
+| `chdir(path)` | Change group cwd; exact multi-layer union roots explicitly refuse |
+| `bind(source, on, MREPL)` | Replace all layers at an existing like-kind target |
+| `bind(source, on, MBEFORE/MAFTER)` | Prepend/append directories; optional MCREATE enables missing-file creation |
 | `unmount(source, on)` | Remove a replacement only if its full device/inode identity matches |
 | `unmount(nil, on)` / empty source | Remove the exact replacement without a source filter |
 
-Other `pctl` flags, combined flags, non-nil `movefd`, union/create/cache bind flags
+Other `pctl` flags, combined flags, non-nil `movefd`, cache bind flags
 and absent bindings return `-1` with a guest error. They never pretend success or
 partly change the namespace. Existing create restrictions remain: `OWRITE`, optional
 `OEXCL`, permission `0666` subject to host umask.
@@ -40,7 +41,8 @@ bindings remain after replacing/removing a parent prefix.
 A resource plan copies names/revision and retains a directory handle under its
 mutex. Host I/O uses that handle and its relative child path after unlocking and
 leaving managed admission. Rebind/unmount cannot close an in-flight selection.
-No group pointer is used while outside managed admission.
+Union directory cursors retain their group and consult its native topology outside
+managed admission, without callbacks under the group lock.
 
 For chdir/bind, validation I/O runs outside the group lock. Commit succeeds only
 if the observed revision still matches. Conflicts retry at most eight times, then

@@ -96,7 +96,15 @@ static FVM_Result open_result(const char *path,
         }
         return FVM_OUT_OF_MEMORY;
     }
-    if (selected && selected->provider)
+    if (selected && dvm_union_select(selected, !strcmp(mode, "w") || !strcmp(mode, "wx")) != FVM_OK)
+    {
+        status = FVM_ERROR;
+    }
+    else if (selected && selected->union_root && !strcmp(mode, "r"))
+    {
+        status = provider_output && asynchronous ? dvm_union_directory(selected, provider_output) : FVM_UNSUPPORTED;
+    }
+    else if (selected && selected->provider)
     {
         status = provider_output && asynchronous ?
             dvm_provider_open(selected->provider, selected->relative, mode, provider_output) : FVM_UNSUPPORTED;

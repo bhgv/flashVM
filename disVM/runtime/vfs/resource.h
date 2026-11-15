@@ -15,6 +15,14 @@ typedef struct DVM_Anchor DVM_Anchor; /* Native capability with independently re
  * RU: Стабильная caller storage до close; не копировать живой cleanup record. */
 typedef struct DVM_ResourcePlan
 {
+    struct DVM_ResourcePlan *layers; /* Owned lower choices captured at the same revision. */
+    unsigned mount_flags; /* Create permission for this selected mount branch. */
+    DVM_Namespace *group; /* Borrowed while plan lives; cursor retains independently. */
+    uint64_t head_id; /* Retained mount-head identity for directory union enumeration. */
+    uint64_t layer_id; /* Exact selected binding identity; zero for unmounted path. */
+    int selected; /* Once selected, open must not fall through on permission errors. */
+    int mount_root; /* Exact mounted root, including a single branch. */
+    int union_root; /* Exact multi-layer directory root; enables merged enumeration. */
     DVM_NamespacePlan names;          /* Frozen virtual/display names and group revision. */
     char relative[DVM_NS_PATH_LIMIT]; /* Selected path relative to anchor, or empty for native fallback. */
     DVM_Provider *provider; /* Owned provider selection, alternative to native anchor. */
@@ -117,4 +125,35 @@ int dvm_namespace_mount_provider(DVM_Namespace *group, const DVM_NamespacePlan *
  * Caller проверил kinds; одна revision. Удержать factory при успехе; 1/0/-1. */
 int dvm_namespace_bind_provider(DVM_Namespace *group, const DVM_ResourcePlan *source,
                                 const DVM_NamespacePlan *target);
+
+/* EN/RU: Commit validated source/target layers with Inferno order/create flags.
+ * Native source/target directories have acquired created anchors. No I/O.
+ * Применить проверенные source/target со flags; native directory anchors уже
+ * получены. 1/0/-1 success/stale/error; provider identity contract applies. */
+int dvm_namespace_bind_layers(DVM_Namespace *group, DVM_ResourcePlan *source,
+                              DVM_ResourcePlan *target, unsigned flags, int directory, const char *component);
+
+
+/* EN/RU: Remove exact captured layer, or all layers for id=0; revision guarded.
+ * Удалить captured layer либо все при id=0; проверять revision. 1/0/-1. */
+int dvm_namespace_unmount_layer(DVM_Namespace *group, const DVM_NamespacePlan *target, uint64_t id);
+
+
+/* EN/RU: Native-only selection/open helpers; no managed callbacks or namespace locks.
+ * Native-only selection/open; без managed callbacks и namespace locks. */
+FVM_Result dvm_union_info(DVM_ResourcePlan *plan, FVM_FileInfo *output);
+
+
+/* EN/RU: Select existing entry, or first MCREATE branch for a missing create.
+ * Выбрать existing entry либо первую MCREATE ветвь для missing create. */
+FVM_Result dvm_union_select(DVM_ResourcePlan *plan, int creating);
+
+
+/* EN/RU: Open merged directory into empty owned handle; input plans stay borrowed.
+ * Открыть merged directory в пустой handle; input plans заимствованы. */
+FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output);
+
+/* EN/RU: Query one branch only, without selecting lower layers; native-only.
+ * Проверить одну ветвь без выбора нижних слоёв; native-only. */
+FVM_Result dvm_resource_raw_info(DVM_ResourcePlan *plan, FVM_FileInfo *output);
 #endif

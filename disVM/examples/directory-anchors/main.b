@@ -98,8 +98,8 @@ init()
 {
     sys = load Sys Sys->PATH;
     control = load Processctl Processctl->PATH;
-    require(sys->bind("source-a", "visible", Sys->MREPL) == 0, "initial A bind failed");
-    require(sys->bind("source-b", "other", Sys->MREPL) == 0, "initial B bind failed");
+    require(sys->bind("source-a", "visible", Sys->MREPL|Sys->MCREATE) == 0, "initial A bind failed");
+    require(sys->bind("source-b", "other", Sys->MREPL|Sys->MCREATE) == 0, "initial B bind failed");
     ready := chan of int;
     start := chan of int;
     done := chan of int;

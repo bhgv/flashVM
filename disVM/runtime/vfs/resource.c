@@ -22,10 +22,7 @@ int dvm_resource_register(DVM_ResourcePlan *plan)
 {
     if (dvm_native_context_current() && !dvm_native_cleanup_link(&plan->cleanup, unwind, plan))
     {
-        dvm_provider_release(plan->provider);
-        plan->provider = NULL;
-        dvm_anchor_release(plan->anchor);
-        plan->anchor = NULL;
+        dvm_resource_close(plan);
         return 0;
     }
     return 1;
@@ -44,6 +41,14 @@ void dvm_resource_close(DVM_ResourcePlan *plan)
     {
         abort();
     }
+    while (plan->layers)
+    {
+        DVM_ResourcePlan *choice = plan->layers;
+        plan->layers = choice->layers;
+        choice->layers = NULL;
+        dvm_resource_close(choice);
+        free(choice);
+    }
     dvm_provider_release(plan->provider);
     plan->provider = NULL;
     dvm_anchor_release(plan->anchor);
@@ -55,7 +60,7 @@ void dvm_resource_close(DVM_ResourcePlan *plan)
 
 /* EN/RU: See resource.h. Directory identity is held; child changes remain native.
  * См. resource.h. Identity каталога удержана; изменения children — native. */
-FVM_Result dvm_resource_info(DVM_ResourcePlan *plan, FVM_FileInfo *output)
+FVM_Result dvm_resource_raw_info(DVM_ResourcePlan *plan, FVM_FileInfo *output)
 {
     if (plan->provider)
     {
@@ -95,4 +100,12 @@ dvm_resource_open(DVM_ResourcePlan *plan, const char *mode, FVM_PortFile **file,
 FVM_Result dvm_resource_remove(DVM_ResourcePlan *plan)
 {
     return !plan->provider && plan->anchor ? fvm_port_anchor_remove_at(dvm_anchor_port(plan->anchor), plan->relative) : FVM_UNSUPPORTED;
+}
+
+
+/* EN/RU: Select the first existing union entry, then preserve that selection.
+ * Выбрать первый existing union entry и сохранить selection. */
+FVM_Result dvm_resource_info(DVM_ResourcePlan *plan, FVM_FileInfo *output)
+{
+    return dvm_union_info(plan, output);
 }

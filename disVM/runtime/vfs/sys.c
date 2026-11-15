@@ -133,7 +133,13 @@ void Sys_chdir(void *frame)
                 kwerrstr("invalid namespace directory path");
                 break;
             }
-            int acquired = dvm_resource_anchor_wait(&plan, 1, component);
+            FVM_FileInfo metadata;
+            int acquired = !plan.union_root && dvm_metadata_selected(&plan, &metadata) == FVM_OK && metadata.directory &&
+                dvm_resource_anchor_wait(&plan, 1, component);
+            if (plan.union_root)
+            {
+                kwerrstr("chdir into union root needs retained Chan cwd");
+            }
             int committed = acquired ? dvm_namespace_chdir_resource(dvm_namespace_current_group(), &plan) : -1;
             dvm_resource_close(&plan);
             if (committed)
@@ -158,12 +164,13 @@ void Sys_chdir(void *frame)
 void Sys_bind(void *frame)
 {
     F_Sys_bind call;
-    char from[DVM_NS_PATH_LIMIT], on[DVM_NS_PATH_LIMIT], component[DVM_NS_PATH_LIMIT];
+    char from[DVM_NS_PATH_LIMIT], on[DVM_NS_PATH_LIMIT], component[DVM_NS_PATH_LIMIT], target_component[DVM_NS_PATH_LIMIT];
     int result = -1, attempt;
     dvm_sys_capture(frame, &call, sizeof(call), offsetof(F_Sys_bind, ret), sizeof(*call.ret));
-    if (call.flags != Sys_MREPL)
+    if ((call.flags & ~(Sys_MBEFORE | Sys_MAFTER | Sys_MCREATE)) ||
+        (call.flags & (Sys_MBEFORE | Sys_MAFTER)) == (Sys_MBEFORE | Sys_MAFTER))
     {
-        kwerrstr("bind supports MREPL only");
+        kwerrstr("invalid bind order/create flags");
     }
     else if (copy_path(call.s, from) && copy_path(call.on, on))
     {
@@ -193,21 +200,24 @@ void Sys_bind(void *frame)
                     {
                         kwerrstr("bind source and target kinds differ");
                     }
-                    else if (source.provider)
+                    else if ((call.flags & (Sys_MBEFORE | Sys_MAFTER)) && !a.directory)
                     {
-                        if (dvm_provider_bindable(source.provider))
+                        kwerrstr("union bind requires directories");
+                    }
+                    else if ((!source.provider || dvm_provider_bindable(source.provider)) &&
+                             (source.provider || dvm_resource_anchor_wait(&source, a.directory, component)) &&
+                             (!(call.flags & (Sys_MBEFORE | Sys_MAFTER)) || target.provider ||
+                              dvm_resource_anchor_wait(&target, 1, target_component)))
+                    {
+                        committed = dvm_namespace_bind_layers(group, &source, &target, call.flags, a.directory, component);
+                        if (committed < 0)
                         {
-                            committed = dvm_namespace_bind_provider(group, &source, &target.names);
-                        }
-                        else
-                        {
-                            kwerrstr("provider lacks stable bind identity");
+                            kwerrstr("bind union/identity contract refused");
                         }
                     }
-                    else if (dvm_resource_anchor_wait(&source, a.directory, component))
+                    else
                     {
-                        committed =
-                            dvm_namespace_bind_resource(group, &source.names, &target.names, source.created, component);
+                        kwerrstr("provider lacks stable bind identity or directory acquisition failed");
                     }
                 }
             }
@@ -277,17 +287,32 @@ void Sys_unmount(void *frame)
             if (!filtered || (source_live && source.names.version == target.names.version))
             {
                 committed = -1;
-                int provider_match = filtered && (source.provider || target.provider) &&
-                    source.provider == target.provider && !strcmp(source.relative, target.relative);
-                if (!filtered || provider_match || (!source.provider && !target.provider &&
-                                 dvm_metadata_selected(&source, &a) == FVM_OK &&
-                                  dvm_metadata_selected(&target, &b) == FVM_OK && same_resource(&a, &b)))
+                if (!filtered)
                 {
-                    committed = dvm_namespace_unmount(group, &target.names, NULL);
+                    committed = dvm_namespace_unmount_layer(group, &target.names, 0);
                 }
                 else
                 {
-                    kwerrstr("unmount source identity mismatch");
+                    DVM_ResourcePlan *choice;
+                    int source_ok = source.provider || dvm_metadata_selected(&source, &a) == FVM_OK;
+                    for (choice = &target; source_ok && choice; choice = choice->layers)
+                    {
+                        /* Each filter comparison belongs to this branch, never a lower fallback. */
+                        /* Каждое filter-сравнение относится к этой ветви, без lower fallback. */
+                        choice->selected = 1;
+                        int match = source.provider || choice->provider ?
+                            source.provider == choice->provider && !strcmp(source.relative, choice->relative) :
+                            dvm_metadata_selected(choice, &b) == FVM_OK && same_resource(&a, &b);
+                        if (match)
+                        {
+                            committed = dvm_namespace_unmount_layer(group, &target.names, choice->layer_id);
+                            break;
+                        }
+                    }
+                    if (committed < 0)
+                    {
+                        kwerrstr("unmount source identity mismatch");
+                    }
                 }
             }
             if (source_live)

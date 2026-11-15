@@ -124,7 +124,7 @@ init()
     require(sys->pctl(Sys->NEWFD, nil) == -1, "unsupported pctl accepted");
     held := sys->open("visible/token", Sys->OREAD);
     require(held != nil, "initial descriptor missing");
-    require(sys->bind("source-a", "visible", Sys->MREPL) == 0, "initial bind failed");
+    require(sys->bind("source-a", "visible", Sys->MREPL|Sys->MCREATE) == 0, "initial bind failed");
     require(read("visible/token") == int 'A', "bind not routed");
     (status, info) := sys->stat("visible/token");
     require(status == 0 && info.length == big 1, "bound stat failed");
@@ -136,7 +136,7 @@ init()
     require(output != nil && sys->write(output, bytes, 1) == 1, "bound create failed");
     output = nil;
     require(read("source-a/created") == int 'C', "create did not reach source");
-    require(sys->bind("source-b", "visible", Sys->MBEFORE) == -1, "union flag accepted");
+    require(sys->bind("source-b", "visible", Sys->MBEFORE|Sys->MAFTER) == -1, "invalid union order accepted");
     require(sys->bind("source-a/token", "visible", Sys->MREPL) == -1, "mixed kind accepted");
     require(sys->chdir("source-a/token") == -1, "file accepted as cwd");
     require(read("visible/token") == int 'A', "failure changed namespace");
@@ -147,14 +147,14 @@ init()
     spawn reader(0, shared, shared_reply);
     spawn reader(1, copied, copied_reply);
     require(<-shared_reply == 1 && <-copied_reply == 1, "reader setup failed");
-    require(sys->bind("source-b", "visible", Sys->MREPL) == 0, "rebind failed");
+    require(sys->bind("source-b", "visible", Sys->MREPL|Sys->MCREATE) == 0, "rebind failed");
     shared <-= 1;
     copied <-= 1;
     require(<-shared_reply == int 'B' && <-copied_reply == int 'A', "namespace inheritance mismatch");
     require(sys->unmount("source-a", "visible") == -1, "wrong source unmounted");
     require(sys->unmount("source-b", "visible") == 0, "filtered unmount failed");
     require(read("visible/token") == int 'V', "unmount did not restore target");
-    require(sys->bind("source-a", "visible", Sys->MREPL) == 0, "second bind failed");
+    require(sys->bind("source-a", "visible", Sys->MREPL|Sys->MCREATE) == 0, "second bind failed");
     require(sys->unmount(nil, "visible") == 0, "unfiltered unmount failed");
     require(sys->unmount(nil, "visible") == -1, "absent unmount accepted");
     shared <-= 2;

@@ -4,6 +4,7 @@
  */
 #include "internal.h"
 #include <string.h>
+#include <stdlib.h>
 
 
 /* EN/RU: Match a complete component prefix; root covers all absolute paths.
@@ -71,7 +72,7 @@ static int relative_join(const char *prefix, const char *suffix, char *output)
  * принадлежат caller, group удерживается. Без I/O. Covering rebind не меняет cwd;
  * descendant bindings идут по virtual components. '..' вне cwd — virtual root lookup. */
 static int resolve(
-    DVM_Namespace *group, const char *path, int module, DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative, DVM_Provider **provider)
+    DVM_Namespace *group, const char *path, int module, DVM_NamespacePlan *names, DVM_Anchor **retained, char *relative, DVM_Provider **provider, DVM_ResourcePlan *whole)
 {
     DVM_NamespaceBinding *binding, *best = NULL;
     DVM_Anchor *anchor;
@@ -138,6 +139,51 @@ static int resolve(
             }
         }
     }
+    if (result && whole && best)
+    {
+        DVM_ResourcePlan **tail = &whole->layers;
+        whole->head_id = best->head_identity;
+        whole->mount_flags = best->flags;
+        whole->layer_id = best->identity;
+        for (binding = best->next; binding; binding = binding->next)
+        {
+            DVM_ResourcePlan *choice;
+            if (strcmp(binding->on, best->on))
+            {
+                continue;
+            }
+            choice = calloc(1, sizeof(*choice));
+            if (!choice)
+            {
+                result = 0;
+                break;
+            }
+            choice->names = *names;
+            choice->mount_flags = binding->flags;
+            choice->layer_id = binding->identity;
+            if (!display_join(binding->source, suffix, choice->names.native) ||
+                !relative_join(binding->component, suffix, choice->relative) ||
+                !dvm_anchor_retain(binding->anchor))
+            {
+                free(choice);
+                result = 0;
+                break;
+            }
+            choice->anchor = binding->anchor;
+            if (!dvm_provider_retain(binding->provider))
+            {
+                dvm_anchor_release(choice->anchor);
+                free(choice);
+                result = 0;
+                break;
+            }
+            choice->provider = binding->provider;
+            *tail = choice;
+            tail = &choice->layers;
+        }
+        whole->mount_root = !strcmp(names->path, best->on);
+        whole->union_root = whole->layers && whole->mount_root;
+    }
     fvm_port_sync_unlock(group->lock);
     return result;
 }
@@ -147,7 +193,7 @@ static int resolve(
  * См. namespace.h; names-only plan не передаёт resource reference. */
 int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
 {
-    return resolve(group, path, 0, plan, NULL, NULL, NULL);
+    return resolve(group, path, 0, plan, NULL, NULL, NULL, NULL);
 }
 
 
@@ -155,7 +201,7 @@ int dvm_namespace_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan
  * См. namespace.h; согласованный выбор import directory. */
 int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_NamespacePlan *plan)
 {
-    return resolve(group, path, 1, plan, NULL, NULL, NULL);
+    return resolve(group, path, 1, plan, NULL, NULL, NULL, NULL);
 }
 
 
@@ -164,5 +210,11 @@ int dvm_namespace_module_plan(DVM_Namespace *group, const char *path, DVM_Namesp
 int dvm_resource_plan(DVM_Namespace *group, const char *path, int module, DVM_ResourcePlan *plan)
 {
     memset(plan, 0, sizeof(*plan));
-    return resolve(group, path, module, &plan->names, &plan->anchor, plan->relative, &plan->provider) && dvm_resource_register(plan);
+    plan->group = group;
+    if (!resolve(group, path, module, &plan->names, &plan->anchor, plan->relative, &plan->provider, plan))
+    {
+        dvm_resource_close(plan);
+        return 0;
+    }
+    return dvm_resource_register(plan);
 }

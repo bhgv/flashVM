@@ -7,10 +7,13 @@
 #include "fns.h"
 #include "interp.h"
 #include "kernel.h"
+#include "isa.h"
+#include "runt.h"
 #include "module_registry.h"
 #include "guest.h"
 #include "loader.h"
 #include "resource.h"
+#include "metadata_wait.h"
 
 extern char *dvm_runtime_file_path(String *); /* Existing rooted guest path validation. */
 
@@ -53,6 +56,12 @@ Module *readmod(char *path, Module *cached, int sync)
     if (!group || !dvm_resource_plan(group, path, 1, &plan))
     {
         kwerrstr("invalid or oversized namespace module path");
+        return NULL;
+    }
+    FVM_FileInfo info;
+    if (plan.layers && dvm_metadata_selected(&plan, &info) != FVM_OK)
+    {
+        dvm_resource_close(&plan);
         return NULL;
     }
     if (plan.provider)

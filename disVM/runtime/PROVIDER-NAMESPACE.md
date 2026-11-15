@@ -71,7 +71,8 @@ this host adapter does not import whole-OS scheduling or stopped-world sections.
 | Shared namespace; FORKNS detaches copy / Shared namespace и отдельная копия | Provider references inherit/copy with the group / References наследуются и копируются |
 | MREPL native bind / Native bind MREPL | Existing supported subset retained / Прежнее подмножество сохранено |
 | Provider chdir, NEWNS inside provider / Provider directory operations | Explicitly unsupported; no host fallback / Явный отказ без fallback |
-| Sys.mount, unions, Chan walk, Styx serving | Not implemented by this host API / Не реализованы этим host API |
+| Directory unions / Union каталогов | [Runtime 0.126 supported subset](UNION-NAMESPACE.md) / Подмножество с явными границами |
+| Sys.mount, Chan walk, Styx serving | Not implemented by this host API / Не реализованы этим host API |
 | User/group/rwx / Права пользователя | Native host credentials and provider factory policy; no guest credential groups / Host credentials и factory policy; guest groups отсутствуют |
 
 These tests run the hosted VM, not two complete Inferno runtimes. Source-reviewed
@@ -149,3 +150,8 @@ trusted factory гарантирует неизменную relative-name/resour
 lifetime. Без promise bind отказывает; open/stat и host installation остаются
 доступны. Unknown flags отвергают создание без поглощения caller state. Это
 расширение native factory contract, не Sys flags, Dis opcodes или stable DLL ABI.
+
+Runtime 0.126 combines bindable provider directories with native branches using
+[ordered union bindings](UNION-NAMESPACE.md). Earlier milestone limitations above
+remain historical; the linked contract defines current union behavior.
+Runtime 0.126 объединяет provider/native ветви; текущие границы union — по ссылке.

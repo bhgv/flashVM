@@ -2,6 +2,33 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: directory union bind
+
+Runtime0.126 добавляет обычные Sys.bind MREPL/MBEFORE/MAFTER и MCREATE:
+ordered native/provider directory layers, retained original-target baseline,
+first-existing lookup, создание отсутствующего entry в первой creatable ветви,
+копирование union и exact-layer/all unmount. Readonly write не переходит в нижний
+слой. Dirread сохраняет duplicate names; lazy cursors следуют живому mount head,
+rewind начинает enumeration заново. Новый mount head не подменяет старый FD.
+FORKNS сохраняет порядок; opened files и providers переживают unmount.
+[Пример и точные границы совместимости RU/EN](UNION-NAMESPACE.md).
+
+Это ещё hosted complete-suffix lookup, не полный retained Chan.walk. Exact union
+root chdir явно unsupported; provider chdir/remove/load, guest credentials/rwx
+isolation и Sys.mount/Styx остаются отдельными задачами. Vfsctl и nsadmin не
+добавлены; write-lower/concatenation не выданы за Inferno semantics. Сверены pinned
+cmount/cunmount/createdir и unionread; upstream snapshot остаётся неизменным.
+
+AMD64 wide 73/73; dynamic/static host-unit 32/32. Native/provider union scenarios
+прошли C/JIT × оба poll в обеих сборках: chmod handshake, реальные host bytes,
+MCREATE targets, readonly отказ, copy/share, replace/remove, duplicate listings,
+rewind и retained FD. Provider fixture теперь имеет четыре concurrent worker:
+восемь worker плюс новые retained aliases могли превысить 29 ordinary FD до
+асинхронного retirement; это исправление oracle, не увеличение runtime лимита.
+Signal-debug oracle использует уже проверенный bounded busy retry helper.
+CI предшествующей 0.125 завершилась: все шесть jobs успешны, включая TSan и RV64;
+проверки новой ревизии учитываются отдельно после публикации.
+
 ## 2026-11-15: provider bind и явные расширения среды
 
 Runtime0.125 подключает provider-source Sys.bind(MREPL) к обычной namespace

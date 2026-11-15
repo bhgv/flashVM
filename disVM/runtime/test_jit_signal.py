@@ -10,6 +10,7 @@ import sys
 import tempfile
 import time
 from debugger.client import PipeDebugger
+from test_retained_debug import inspect_reply
 from test_owner_location import compile_image
 from relink_private import relink
 from resident_evidence import evidence
@@ -133,7 +134,7 @@ def execute(binary, image, work, variant, debug, locked, inspect_native=None, si
                     require(frame.get("ok"), "original caller stack lost: " + str(frame))
                     found = False
                     for slot in range(32, frame["bytes"], 8):
-                        row = session.command(f"object {pid} stack 1 {slot} 0 64")
+                        row = inspect_reply(session, f"object {pid} stack 1 {slot} 0 64")
                         if row.get("ok") and row.get("kind") == 1:
                             raw = bytes.fromhex(row["hex"])
                             found |= raw[32] == 91 and raw[63] == 173

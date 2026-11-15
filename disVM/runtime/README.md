@@ -161,7 +161,7 @@ full environment/namespace control remain to be connected. Hosted Processctl sup
 child termination/wait cancellation, live resident metadata and coherent arena counters.
 The built-in supervisor supports pause/continue/step/terminate through a separate
 endpoint. Guest supervisor capabilities and portable priority control remain pending.
-[Inherited namespaces](VFS-NAMESPACE.md) support FORKNS/NEWNS, chdir, bind(MREPL),
+[Inherited namespaces](VFS-NAMESPACE.md) support FORKNS/NEWNS, chdir, [directory union bind](UNION-NAMESPACE.md),
 unmount and retained file/module operations; full provider VFS remains pending. See [current API readiness and
 next control-plane contracts](CONTROL-PLANE.md).
 
@@ -593,3 +593,8 @@ unsupported provider operations refuse without falling back to native paths.
 Runtime0.125 supports provider-source Sys.bind(MREPL), including frozen directory,
 subtree and file aliases. [Environment extensions](ENVIRONMENT-EXTENSIONS.md)
 distinguish implemented host APIs from the proposed, unimplemented Vfsctl module.
+
+Runtime 0.126 adds ordered directory bind layers, MCREATE selection, exact-layer
+unmount and merged dirread for native/provider branches. Lookup does not retry
+writes in lower layers. [Compatibility limits and example](UNION-NAMESPACE.md)
+cover the remaining Chan.walk, union cwd and guest-security work.
