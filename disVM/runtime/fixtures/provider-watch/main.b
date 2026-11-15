@@ -101,6 +101,8 @@ init()
     system := sys->open("/dev/sysevents", Sys->OREAD);
     check(system != nil && sysevents(system) != 0, "automatic system events required Limbo registration");
     check(sys->write(system, array of byte "ack\n", 4) == -1, "system events accepted guest acknowledgement");
+    check(sys->chdir(".") == 0, "unchanged source cwd mutation");
+    check(sysevents(system) == 0, "cwd recreated unchanged source subscriptions");
     watcher = load Providerwatch Providerwatch->PATH;
     check(watcher != nil, "load Providerwatch");
     watcher->init();

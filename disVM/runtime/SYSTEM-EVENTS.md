@@ -1,4 +1,4 @@
-# Automatic native system inboxes — runtime 0.131
+# Automatic native system inboxes — runtime 0.132
 
 Copyright (c) 2026 bhgv
 
@@ -111,6 +111,50 @@ Retirement не выделяет память для exit и не вытесня
 Даже при заполненной очереди и отказе allocator сначала выдаются resync/остаток,
 потом один exit и затем EOF. Повторный retire не добавляет ещё один exit.
 
+## Binding reconciliation / Согласование подписок с namespace
+
+Runtime0.132 retains the exact native watch and notice tap for an unchanged binding
+within the same namespace group. Matching requires layer identity, provider factory
+and virtual mount point; a replacement at the same path has a new binding identity
+and receives a fresh subscription. Removing a binding detaches only that watch.
+Cwd/import-directory changes and unrelated bindings do not reset source epochs or
+watermarks, allocate replacement watches or repeat initial provider snapshots.
+
+Неизменившиеся привязки сохраняют native context/tap и source session/generation.
+Изменение namespace всё равно выдаёт отдельное namespace notification и очищает
+сообщения прошлого scope. Это уведомление означает пересмотр assumptions текущего
+namespace; оно не изображается как повторный initial event каждого провайдера.
+Для реально новой binding по-прежнему выполняется initial journal snapshot.
+
+Reconciliation continues after failure to allocate a new watch or tap. Existing
+valid subscriptions remain live, removed bindings are detached, and explicit resync
+marks the incomplete set. A later native namespace mutation retries missing watches;
+reading the event device neither registers nor repairs subscriptions. There is no
+background allocation-retry worker in this checkpoint, so an idle incomplete set
+waits for that later native mutation. No guest polling/registration is required.
+
+Отказ новой watch/tap не отключает остальные источники. Partial native contexts
+освобождаются после выхода из inbox/group locks; последующее native изменение
+namespace повторяет создание отсутствующих подписок. Пока такого изменения нет,
+неполнота явно отмечена resync, а работающие подписки продолжают push. Чтение из
+Limbo не является точкой ремонта или cooperative обработчиком.
+
+Namespace replacement through pctl deliberately discards the previous group's
+watch set; group-local identities are never reused across unrelated groups.
+A source reconnect remains a new source session even on a reused watch. Stale
+reports from the old session cannot replace current state.
+
+When the scope counter is exhausted, the callback detaches every old source watch,
+rejects already admitted old callbacks and sets resync. It never wraps the epoch,
+keeps a stale binding visible, pauses a receiver, or invents owner exit/EOF. The
+owner remains live; further pctl replacement is refused by the existing epoch check.
+Actual retirement still supplies the ordinary final exit notification.
+
+При исчерпании scope counter все source taps отключаются и выдаётся resync.
+Старые callbacks не получают права публиковать сообщения предыдущего scope.
+Это отказ наблюдения, не завершение owner; после resync живая очередь возвращает
+временную недоступность. Реальный exit появляется только при retirement.
+
 ## Experimental format and limits / Экспериментальный формат и границы
 
 **The external message format is not agreed or frozen.** The current textual FD
@@ -152,3 +196,11 @@ readers consuming every sequence once. [Source/namespace race](vfs/test_sysevent
 publishes2000 real journal reports while rebinding the source200 times and switching
 another inbox between visible/hidden namespaces. No guest executes to service those
 subscriptions; source stat/open callbacks are forbidden and final cleanup is checked.
+
+[Subscription fault tests](vfs/test_sysevents_subscriptions.c) exercise unchanged
+contexts/taps/watermarks, source/tap calloc refusal, unaffected-source push, later
+native repair, removal and same-path replacement, reconnect/stale sessions,
+forced epoch exhaustion and final native lifetimes. Source info/open callbacks
+are forbidden. The guest fixture also checks that real Sys.chdir does not produce
+fake provider changes. The concurrent source/namespace test now alternates100
+rebinds with100 cwd mutations while another inbox changes groups200 times.

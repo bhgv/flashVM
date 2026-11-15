@@ -1,6 +1,6 @@
 /* Copyright (c) 2026 bhgv
- * EN: Real source push races namespace replacement and subscription retirement.
- * RU: Реальный source push параллельно namespace replacement и subscription retirement.
+ * EN: Real source push races binding replacement/reuse and subscription retirement.
+ * RU: Реальный source push параллельно binding replacement/reuse и subscription retirement.
  */
 #include "sysevents_internal.h"
 #include <inttypes.h>
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define RACE_REPORTS 2000U /* Accepted contiguous reports from a dedicated native source. */
-#define RACE_REBINDS 200U /* Namespace replacements while the source owns its native execution thread. */
+#define RACE_MUTATIONS 200U /* Alternate provider replacement/cwd changes while native source publishes. */
 
 
 /* EN/RU: Stack-owned race inputs live until both native producers are joined.
@@ -104,14 +104,23 @@ static void *sender(void *state)
 }
 
 
-/* EN/RU: Rebind while a second inbox alternates namespace groups, ending hidden.
- * Rebind параллельно смене scope второго inbox; final scope — hidden. Return NULL. */
+/* EN/RU: Alternate rebind/cwd while another inbox changes groups, ending hidden.
+ * Чередовать rebind/cwd при смене scope второго inbox; final scope hidden. Return NULL. */
 static void *mutator(void *state)
 {
     Race *race = state;
-    for (unsigned index = 0; index < RACE_REBINDS; index++)
+    for (unsigned index = 0; index < RACE_MUTATIONS; index++)
     {
-        mount(race);
+        if (index % 2)
+        {
+            mount(race);
+        }
+        else
+        {
+            DVM_NamespacePlan plan;
+            require(dvm_namespace_plan(race->visible, "/", &plan) &&
+                    dvm_namespace_chdir(race->visible, &plan) == 1, "concurrent cwd mutation");
+        }
         require(dvm_sysevents_group(race->moving, index % 2 ? race->hidden : race->visible),
                 "moving inbox namespace switch");
     }
@@ -186,5 +195,5 @@ void test_sysevents_race(void)
     dvm_namespace_release(race.hidden);
     dvm_provider_release(race.source);
     require(race.destroyed == 1, "in-flight source subscription lifetime leak");
-    puts("PASS source push concurrent with provider rebind and per-inbox namespace replacement, hidden scope and final cleanup");
+    puts("PASS source push concurrent with provider rebind/cwd reuse and per-inbox namespace replacement, hidden scope and final cleanup");
 }

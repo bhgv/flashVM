@@ -45,6 +45,7 @@ struct DVM_SysEvents
     size_t references; /* Owner, source taps and opened system-event descriptors. */
     DVM_Namespace *group; /* Retained current namespace, independent of Prog lifetime. */
     uint64_t version; /* Last observed group revision; UINT64_MAX forces first capture. */
+    int scope_closed; /* Epoch exhausted: old source callbacks are denied, live inbox remains readable. */
     int captured; /* Initial snapshot exists even when revision is UINT64_MAX. */
     int resync; /* Allocation/overflow lost detail; next read must request full refresh. */
     uint64_t epoch; /* Monotonic inbox scope, invalidates staged records. */

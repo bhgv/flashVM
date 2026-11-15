@@ -625,3 +625,9 @@ Runtime 0.131 makes [system-event consumption inbox-wide and atomic](SYSTEM-EVEN
 short reads and FD close/reopen preserve the FIFO head; concurrent readers consume
 it once. Resync and final exit use allocation-free flags. A full queue or allocator
 failure cannot suppress exit; one read still returns one whole event.
+
+Runtime 0.132 [reconciles source subscriptions by exact binding identity](SYSTEM-EVENTS.md):
+unchanged taps retain their sessions/watermarks, allocation failure of a new watch
+does not drop valid peers, and removed bindings detach even during partial failure.
+Cwd changes stop repeating provider initialization. Exhausted scope counters detach
+old sources and signal resync without wrapping or falsely retiring the receiver.

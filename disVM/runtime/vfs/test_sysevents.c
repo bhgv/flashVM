@@ -9,6 +9,7 @@
 void test_native_notices(void); /* Native sender/callback lifetime acceptance, no VM required. */
 void test_sysevents_queue(void); /* Atomic shared inbox, failure and concurrent-reader acceptance. */
 void test_sysevents_race(void); /* Source publication versus native namespace churn. */
+void test_sysevents_subscriptions(void); /* Stable reuse, native allocation faults and scope exhaustion. */
 static unsigned destroyed; /* Final source release count after bindings/engine watches retire. */
 
 
@@ -125,6 +126,7 @@ int main(void)
     unsigned generation;
     test_native_notices();
     test_sysevents_queue();
+    test_sysevents_subscriptions();
     test_sysevents_race();
     require(group && hidden && source && device, "construction");
     mount(group, source, "/visible");

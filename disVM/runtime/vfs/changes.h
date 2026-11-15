@@ -17,7 +17,7 @@
 #define DVM_CHANGE_KINDS 6U /* Number of independent class watermarks. */
 #define DVM_CHANGE_RESOURCE 1U /* Resource ID is meaningful, including ID zero. */
 #define DVM_CHANGE_HISTORY 32U /* Bounded journal; overflow conservatively broadens scope. */
-typedef struct DVM_Changes DVM_Changes; /* Owned native journal, no managed pointers or callbacks. */
+typedef struct DVM_Changes DVM_Changes; /* Owned native journal; native push callbacks, no managed pointers. */
 
 
 /* EN/RU: One session-local immutable event; source owns the provider routing.
@@ -72,7 +72,8 @@ uint64_t dvm_changes_reconnect(DVM_Changes *changes, uint64_t expected);
 
 
 /* EN/RU: Publish borrowed event; 1 accepted, 0 old/duplicate, -1 invalid/future epoch.
- * Gaps broaden to provider-wide ALL. No callbacks, allocations or I/O.
+ * Gaps broaden to provider-wide ALL. Native push callbacks run after journal unlock;
+ * recipients may allocate inbox messages. No managed callbacks or provider I/O.
  * Публиковать event; 1 accepted, 0 old/duplicate, -1 invalid. Gap расширяет до ALL. */
 int dvm_changes_notify(DVM_Changes *changes, const DVM_ChangeEvent *event);
 

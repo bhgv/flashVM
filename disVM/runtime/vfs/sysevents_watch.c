@@ -48,7 +48,7 @@ static void changed(void *state, const DVM_ChangeEvent *event)
     DVM_SysWatch *watch = state;
     DVM_SysEvents *events = watch->events;
     fvm_port_sync_lock(events->lock);
-    if (!events->retired && events->epoch == watch->epoch &&
+    if (!events->retired && !events->scope_closed && events->epoch == watch->epoch &&
         (event->session > watch->last_session || (event->session == watch->last_session &&
          event->generation > watch->last_generation)))
     {
@@ -66,14 +66,83 @@ static void changed(void *state, const DVM_ChangeEvent *event)
 }
 
 
-/* EN/RU: Native namespace mutation installs current source subscriptions before
- * returning. Existing recipients need no instruction boundary or read operation.
- * Native mutation устанавливает subscriptions до return; без target cooperation.
- * No source I/O; failed allocation marks explicit loss/resync rather than EOF. */
+/* EN/RU: Detach an exact unchanged binding from the old owned list, under inbox lock.
+ * Group-local identities are compared only within the same retained namespace.
+ * Под inbox lock извлечь неизменившуюся binding из old list; IDs сравниваются
+ * только внутри того же namespace. Return owned watch or NULL, no allocation. */
+static DVM_SysWatch *reuse(DVM_SysWatch **old, const DVM_NamespaceBinding *binding)
+{
+    DVM_SysWatch **link;
+    for (link = old; *link; link = &(*link)->next)
+    {
+        DVM_SysWatch *watch = *link;
+        if (watch->tap && watch->identity == binding->identity && watch->provider == binding->provider &&
+            !strcmp(watch->on, binding->on))
+        {
+            *link = watch->next;
+            watch->next = NULL;
+            return watch;
+        }
+    }
+    return NULL;
+}
+
+
+/* EN/RU: Allocate one new binding subscription under inbox/group locks. No source I/O.
+ * Failed partially owned contexts go to discard for cleanup after unlocking.
+ * Создать новую subscription; partial contexts передать discard для cleanup вне
+ * locks. Return owned watch/NULL; retain provider and inbox only on live context. */
+static DVM_SysWatch *create(DVM_SysEvents *events, const DVM_NamespaceBinding *binding,
+                             DVM_SysWatch **discard)
+{
+    DVM_SysWatch *watch;
+    DVM_Changes *changes;
+    DVM_ChangeBatch initial;
+    DVM_ChangeCursor empty = {0};
+    if (events->references == (size_t)-1)
+    {
+        return NULL;
+    }
+    watch = calloc(1, sizeof(*watch));
+    if (!watch || !dvm_provider_retain(binding->provider))
+    {
+        free(watch);
+        return NULL;
+    }
+    watch->provider = binding->provider;
+    watch->events = events;
+    events->references++;
+    watch->identity = binding->identity;
+    watch->epoch = events->epoch;
+    strcpy(watch->on, binding->on);
+    changes = dvm_provider_changes(watch->provider);
+    watch->tap = dvm_notice_subscribe(dvm_changes_notices(changes), changed, watch, watch_destroy);
+    if (!watch->tap)
+    {
+        watch->next = *discard;
+        *discard = watch;
+        return NULL;
+    }
+    if (dvm_changes_pending(changes, &empty, DVM_CHANGE_ALL, &initial) == 1)
+    {
+        watch->last_session = initial.event.session;
+        watch->last_generation = initial.event.generation;
+        dvm_sysevents_post(events, DVM_SYSEVENT_VFS, watch->identity, DVM_CHANGE_ALL,
+            initial.event.session, initial.event.generation, watch->on);
+    }
+    return watch;
+}
+
+
+/* EN/RU: Native mutation reconciles exact bindings, keeping unchanged taps and
+ * generation watermarks without allocation or source queries. Missing new bindings
+ * mark resync; failure never drops other valid subscriptions. No target execution.
+ * Native mutation сохраняет unchanged taps/watermarks; failure новой subscription
+ * даёт resync, не отключая остальные. Removed taps очищаются вне locks. */
 void dvm_sysevents_namespace(void *state, const DVM_ChangeEvent *event)
 {
     DVM_SysEvents *events = state;
-    DVM_SysWatch *head = NULL, **tail = &head, *old = NULL;
+    DVM_SysWatch *head = NULL, **tail = &head, *old;
     DVM_NamespaceBinding *binding;
     uint64_t version;
     int complete = 1;
@@ -93,11 +162,16 @@ void dvm_sysevents_namespace(void *state, const DVM_ChangeEvent *event)
         return;
     }
     dvm_sysevents_purge(events);
+    old = events->watches;
     if (events->epoch == UINT64_MAX)
     {
+        events->scope_closed = 1;
+        events->watches = NULL;
+        events->captured = 0;
         events->resync = 1;
         fvm_port_sync_unlock(events->group->lock);
         fvm_port_sync_unlock(events->lock);
+        dvm_sysevents_watches_free(old);
         return;
     }
     events->epoch++;
@@ -105,50 +179,25 @@ void dvm_sysevents_namespace(void *state, const DVM_ChangeEvent *event)
     for (binding = events->group->bindings; binding; binding = binding->next)
     {
         DVM_SysWatch *watch;
-        DVM_ChangeBatch initial;
-        DVM_ChangeCursor empty = {0};
-        DVM_Changes *changes;
         if (!binding->provider || dvm_sysevents_is_device(binding->provider))
         {
             continue;
         }
-        if (events->references == (size_t)-1)
+        watch = reuse(&old, binding);
+        if (!watch)
+        {
+            watch = create(events, binding, &old);
+        }
+        if (!watch)
         {
             complete = 0;
-            break;
+            continue;
         }
-        watch = calloc(1, sizeof(*watch));
-        if (!watch || !dvm_provider_retain(binding->provider))
-        {
-            free(watch);
-            complete = 0;
-            break;
-        }
-        watch->provider = binding->provider;
-        watch->events = events;
-        events->references++;
-        watch->identity = binding->identity;
         watch->epoch = events->epoch;
-        strcpy(watch->on, binding->on);
         *tail = watch;
         tail = &watch->next;
-        changes = dvm_provider_changes(watch->provider);
-        watch->tap = dvm_notice_subscribe(dvm_changes_notices(changes), changed, watch, watch_destroy);
-        if (!watch->tap)
-        {
-            complete = 0;
-            break;
-        }
-        if (dvm_changes_pending(changes, &empty, DVM_CHANGE_ALL, &initial) == 1)
-        {
-            watch->last_session = initial.event.session;
-            watch->last_generation = initial.event.generation;
-            dvm_sysevents_post(events, DVM_SYSEVENT_VFS, watch->identity, DVM_CHANGE_ALL,
-                initial.event.session, initial.event.generation, watch->on);
-        }
     }
     fvm_port_sync_unlock(events->group->lock);
-    old = events->watches;
     events->watches = head;
     events->captured = complete;
     events->version = version;

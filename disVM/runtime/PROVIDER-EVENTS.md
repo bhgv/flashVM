@@ -2,6 +2,12 @@
 
 Copyright (c) 2026 bhgv
 
+Runtime0.130+ also [pushes accepted reports into per-resident system inboxes](SYSTEM-EVENTS.md).
+Native callbacks run after journal unlock and may allocate native inbox messages;
+publication is not async-signal-safe. No managed callback or provider reread occurs.
+С runtime0.130+ report также доставляется native push; callbacks вне journal mutex,
+с возможным выделением native messages. Это не async-signal-safe API и не guest callback.
+
 Runtime 0.129 connects a bounded native change journal to each retained provider.
 It implements notification reception from native adapters, independent observers,
 selective reread and safe acknowledgement across concurrent changes/reconnection.

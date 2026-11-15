@@ -12,6 +12,9 @@
 #define QUEUE_REPORTS 24U /* Fits without loss, so every report must arrive exactly once. */
 static int fail_allocations; /* Test-main-only injection; zero during concurrent readers. */
 static unsigned refused_allocations; /* Number of actual calloc attempts rejected by injection. */
+static size_t injected_size; /* Zero matches any allocation; changed only without native senders. */
+static unsigned injected_match; /* Reject the Nth matching allocation, then disable automatically. */
+static unsigned injected_count; /* Actual one-shot fault count for subscription tests. */
 void *__real_calloc(size_t count, size_t size); /* Production allocator, unchanged outside injection. */
 
 
@@ -24,7 +27,29 @@ void *__wrap_calloc(size_t count, size_t size)
         refused_allocations++;
         return NULL;
     }
+    if (injected_match && (!injected_size || (count == 1 && size == injected_size)) && !--injected_match)
+    {
+        injected_count++;
+        return NULL;
+    }
     return __real_calloc(count, size);
+}
+
+
+/* EN/RU: Configure one-shot native test fault; size0 matches all, match0 disables.
+ * Настроить one-shot fault: size0 — любой размер, match0 — отключить. No live senders. */
+void test_sysevents_calloc_failure(size_t size, unsigned match)
+{
+    injected_size = size;
+    injected_match = match;
+}
+
+
+/* EN/RU: Return actual one-shot rejection count after synchronous native calls.
+ * Вернуть число фактических one-shot отказов после synchronous native calls. */
+unsigned test_sysevents_calloc_failures(void)
+{
+    return injected_count;
 }
 
 

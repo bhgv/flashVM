@@ -2,6 +2,44 @@
 
 Copyright (c) 2026 bhgv
 
+## 2026-11-15: retained subscriptions, partial-failure isolation and exhausted scopes
+
+Runtime0.132 согласует native watches с текущими bindings вместо полного пересоздания.
+Внутри того же namespace совпадают layer ID, provider factory и virtual mount point:
+неизменившаяся watch сохраняет tap и session/generation. Cwd/import changes и новые
+соседние bindings не порождают повторные initial reports всех старых провайдеров.
+Новая identity даже на прежнем пути получает новую watch; unmount отсоединяет свою.
+Pctl group replacement по-прежнему сбрасывает весь old-group set, без cross-group ID
+reuse. [Текущий контракт](SYSTEM-EVENTS.md).
+
+Отказ calloc новой watch/tap не обрывает reconciliation остальных bindings.
+Работающие peers продолжают source-driven push, удалённые отключаются; resync
+отмечает incomplete set. Partial contexts очищаются вне inbox/group locks.
+Следующее native изменение namespace повторяет отсутствующие подписки. Пока его
+нет, idle incomplete set не ремонтируется фоновым worker; чтение не регистрирует
+watch и не запускает repair. Receiver execution или guest registration не нужны.
+
+Исчерпание scope epoch теперь отключает старые source taps и закрывает публикацию
+старых callbacks, не оборачивает counter и не изображает exit/EOF живого потока.
+Actual retirement остаётся отдельной операцией с allocation-free final notice.
+Public journal comments уточняют, что notify вызывает native push после unlock и
+recipient может выделять native messages; managed callbacks/source I/O запрещены.
+
+Финальный AMD64 wide77/77; dynamic/static host-unit37/37. Guest C/JIT × оба GC
+observation settings прошёл в обеих сборках. Targeted ASan/UBSan native sources
+прошли с прежним uninstrumented shared port archive; LSan отключён из-за ptrace
+окружения. Private control с published0.131 watch body воспроизводит потерю
+стабильной подписки при calloc refusal. Source-link check:0 stale Markdown files.
+
+Новый native test проверяет exact watch/tap reuse, watermarks, отсутствие initial
+provider noise, реальные calloc failures watch/tap, действующие peers, native retry,
+unmount, same-path new identity, reconnect/stale session, forced epoch exhaustion
+и final factory cleanup. Источник запрещает info/open, ловя скрытые запросы.
+Concurrent source/namespace test чередует100 rebinds и100 cwd mutations при200
+сменах scope второго inbox, параллельно2000 source reports. Guest C/JIT проверяет
+real Sys.chdir и отсутствие fake provider events. Формат остаётся experimental,
+Dis ISA, Sys.m и upstream snapshot не изменены; новые wire messages не назначены.
+
 ## 2026-11-15: atomic inbox head, allocation-free resync/exit
 
 Runtime0.131 сохраняет непрочитанный head внутри native inbox, а не отдельного FD.
