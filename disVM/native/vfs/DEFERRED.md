@@ -76,8 +76,8 @@ cleanup. Reusing an outstanding tag on another ordinary request violates the
 protocol and closes that stream; the server cannot emit two ambiguous replies.
 The pending fid is reserved against Twalk allocation, with a defensive fid check
 again at successful completion. Legacy synchronous attach callbacks retain their
-behavior. This change does not add async read/write/flush handling for other
-future asynchronous operation types.
+behavior. Runtime0.149 separately adds [deferred byte reads](READ.md); deferred writes
+and other asynchronous operation types remain separate.
 
 Native admission state and wire cancellation are separate. Cancelling a request
 does not undo an already completed transaction or implicitly revoke earlier

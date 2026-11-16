@@ -92,3 +92,13 @@ send stalls, missed replies, recovery and terminal policy timeout. Each mounted
 provider observes transitions automatically through its existing journal, without
 guest execution or wire-format extensions. An admitted probe retains its tags and
 captured deadlines through disable/reconfiguration. Pending reads remain independent.
+
+
+## Deferred byte reads / Отложенные byte reads (runtime0.149)
+
+[Original C libstyx deferred read API](../vfs/READ.md) retains ordinary Tread until a
+native producer wakes its socket owner. Other clients and heartbeat requests
+continue; flush/reset/disconnect/end safely retire pending requests. One-record
+TCP fixtures preserve queued data on short buffers. Actual native client tests
+combine pending reads, automatic heartbeat and explicit cancellation. Wire Styx
+is unchanged; the public provider event format remains undecided.

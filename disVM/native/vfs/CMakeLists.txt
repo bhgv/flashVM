@@ -108,3 +108,13 @@ foreach(scenario healthy pending recover traffic timeout disable reconfigure bad
         "$<TARGET_FILE:vfs-heartbeat-test>" "$<TARGET_FILE:server-loopback-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
     set_tests_properties(vfs-heartbeat-${scenario} PROPERTIES TIMEOUT 25)
 endforeach()
+
+if(TARGET server-deferred-read-tcp)
+    add_executable(vfs-deferred-read-client ../tests/events/deferred.c)
+    target_link_libraries(vfs-deferred-read-client PRIVATE styx_vfs)
+    foreach(scenario deliver cancel)
+        add_test(NAME vfs-deferred-read-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/events/deferred.py"
+            "$<TARGET_FILE:vfs-deferred-read-client>" "$<TARGET_FILE:server-deferred-read-tcp>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+        set_tests_properties(vfs-deferred-read-${scenario} PROPERTIES TIMEOUT 25)
+    endforeach()
+endif()

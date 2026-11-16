@@ -55,14 +55,17 @@ def relay(listener, port, control, mode, probed, healthy, requests, errors):
                             if key.fileobj is peer:
                                 requests.append((kind, tag, packet))
                                 if kind == 108:
-                                    if tag != 17 or struct.unpack_from('<H', packet, 7)[0] != 18:
-                                        raise RuntimeError('probe collided with ordinary/flush tag leases')
-                                    probed.set()
-                            elif kind == 109:
+                                    if tag == 17:
+                                        if struct.unpack_from('<H', packet, 7)[0] != 18:
+                                            raise RuntimeError('probe collided with ordinary/flush tag leases')
+                                        probed.set()
+                                    elif mode != 'deferred':
+                                        raise RuntimeError('unexpected cancellation flush')
+                            elif kind == 109 and tag == 17:
                                 probes += 1
                                 if probes >= 2 and (mode != 'pending' or read_pending):
                                     healthy.set()
-                                if mode not in ('healthy', 'pending') and probes == 1:
+                                if mode not in ('healthy', 'pending', 'deferred') and probes == 1:
                                     if mode == 'badreply':
                                         message = b'bad flush'
                                         peer.sendall(struct.pack('<IBHH', 9+len(message), 107, tag, len(message))+message)
