@@ -362,3 +362,12 @@ fid for Sys.bind, Vfsctl and Vfsexport.capture. Original-path replacement does
 not redirect the bound root; directory membership, policy and rights stay live.
 Captured origins retain source feeds and forward invalidations automatically.
 Native cleanup never waits on the guest thread. No Styx wire extension is added.
+
+
+## Native control cancellation / Отмена служебных RPC (runtime0.156)
+
+[Native walk/open/stat cancellation](client/CONTROL-CANCEL.md) adds explicit cancel tokens
+with original-reply/Tflush fences. A long walk uses one logical token across
+fragments; abandoned fid cleanup never delays its cancelled caller. Unknown
+sent Topen state forbids open/data replay on that fid. Tstat output remains
+untouched on failure. This is native client API integration, not guest kill wiring.

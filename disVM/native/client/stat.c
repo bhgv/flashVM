@@ -49,8 +49,9 @@ int styxclientrecord(const void *bytes, size_t size, StyxMeta *output, size_t *c
 
 /* EN/RU: See client.h; Tstat addresses the held remote fid, not a reopened path.
  * См. client.h; Tstat обращается к удержанному remote fid, не переоткрывает путь. */
-int styxclientstat(StyxFid *fid, StyxMeta *output)
+static int statfid(StyxFid *fid, StyxMeta *output, StyxCancel *cancel, StyxTransfer *result)
 {
+    styxopclear(result);
     if (!fid || !output)
     {
         return 0;
@@ -63,12 +64,36 @@ int styxclientstat(StyxFid *fid, StyxMeta *output)
     request.fid = fid->number;
     pthread_mutex_lock(&client->lock);
     StyxMeta current;
-    int success = styxrpc(client, &request, &reply) == 1 &&
-        styxclientrecord(reply.stat, reply.nstat, &current, &consumed) && consumed == reply.nstat;
+    int status = styxrpccancel(client, &request, &reply, cancel);
+    styxopresult(client, status, result);
+    int success = status == 1 && styxclientrecord(reply.stat, reply.nstat, &current, &consumed) && consumed == reply.nstat;
+    result->success = success;
     if (success)
     {
         *output = current;
     }
     pthread_mutex_unlock(&client->lock);
     return success;
+}
+
+
+/* EN/RU: See client.h; ordinary metadata keeps its existing signature and output contract.
+ * См. client.h; ordinary metadata сохраняет прежнюю signature/output contract. */
+int styxclientstat(StyxFid *fid, StyxMeta *output)
+{
+    StyxTransfer result;
+    return statfid(fid, output, NULL, &result);
+}
+
+
+/* EN/RU: See client.h; native cancellation never publishes partial or unacknowledged metadata.
+ * См. client.h; native cancellation не публикует partial/unacknowledged metadata. */
+int styxclientstatcancel(StyxFid *fid, StyxMeta *output, StyxCancel *cancel, StyxTransfer *result)
+{
+    if (!result)
+    {
+        return 0;
+    }
+    styxopclear(result);
+    return fid && fid->client->mux ? statfid(fid, output, cancel, result) : 0;
 }

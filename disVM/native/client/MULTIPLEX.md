@@ -153,3 +153,9 @@ Native fd-owner обрабатывает несколько RPC, маршрут�
 явный native shutdown может дождаться завершения owner. Авторизация транспорта,
 heartbeat, guest-брокер отмен и восстановление remote fid остаются отдельными
 расширениями; wire-протокол не менялся.
+
+
+Runtime0.156 adds [cancellable walk/open/stat](CONTROL-CANCEL.md), including one
+logical cancellation scope across fragmented Twalk and detached abandoned-fid
+cleanup. It preserves the tag/Tflush rules above and the existing one-use public
+token contract. An unacknowledged sent Topen cannot be replayed on the same fid.

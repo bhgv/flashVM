@@ -54,6 +54,24 @@ int styxcancelled(StyxCancel *);
 void styxcancelunbind(StyxCancel *);
 
 
+/* EN/RU: Reserve an unused borrowed outer token for one logical fragmented walk.
+ * Own a scope pin on success1;0 rejects reuse/overflow, NULL succeeds without pin.
+ * Зарезервировать unused outer token на fragmented walk;1 и scope pin/0 отказ. */
+int styxcancelbegin(StyxCancel *cancel);
+
+
+/* EN/RU: Borrow reserved outer scope, replace completed fragment with fresh child/NULL.
+ * Child is scope-owned until next step/end; sticky request forwards atomically.
+ * NULL is OOM, not permission to issue an uncancellable RPC. No guest state.
+ * Заменить завершённый fragment на fresh child/NULL; child принадлежит scope. */
+StyxCancel *styxcancelstep(StyxCancel *cancel);
+
+
+/* EN/RU: Consume successful scope pin after all fragment RPCs retired; NULL harmless.
+ * Поглотить scope pin после retirement всех fragment RPC; NULL допустим. */
+void styxcancelend(StyxCancel *cancel);
+
+
 /* EN/RU: Configure borrowed live engine heartbeat without waiting;1/0.
  * Настроить heartbeat удержанного engine без ожидания;1/0. */
 int styxmuxkeepalive(StyxMux *, unsigned, unsigned, unsigned);

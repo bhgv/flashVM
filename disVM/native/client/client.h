@@ -163,15 +163,40 @@ StyxFid *styxclientwalk(StyxClient *client, const char *relative);
 StyxFid *styxclientwalkfrom(StyxFid *base, const char *relative);
 
 
+/* EN/RU: Cancellable logical walk for mountfd clients; owned fid/NULL, required result.
+ * One outer token covers all MAXWELEM fragments and cannot be reused. Result uses
+ * StyxTransfer with count0; success means the complete walk was acknowledged.
+ * Failure cleanup is native detached best-effort clunk, never a caller RPC wait.
+ * Base overload borrows a pinned unopened fid; same confinement as walkfrom.
+ * Отменяемый logical walk; свой fid/NULL, required result, count0; token один на все
+ * fragments. Cleanup без RPC wait caller; base удержан и unopened на время вызова. */
+StyxFid *styxclientwalkcancel(StyxClient *client, const char *relative, StyxCancel *cancel, StyxTransfer *result);
+StyxFid *styxclientwalkfromcancel(StyxFid *base, const char *relative, StyxCancel *cancel, StyxTransfer *result);
+
+
 /* EN/RU: Open unopened fid in mode0/1/2 without create/truncate;1/0.
- * Caller serializes a fid's data calls. Ropen iounit limits every later chunk.
- * Открыть fid без create/truncate;1/0, iounit ограничивает chunk. */
+ * Caller serializes a fid's calls. Ropen iounit limits every later chunk.
+ * An unacknowledged sent open fences later open/data calls; stat/clunk remain allowed.
+ * Открыть fid без create/truncate;1/0, iounit ограничивает chunk. Sent open без
+ * acknowledgement запрещает повторный open/data; stat/clunk остаются доступны. */
 int styxclientopen(StyxFid *fid, int mode);
 
 
 /* EN/RU: Query current remote fid metadata;1/0, output changes only on success.
  * Tstat не открывает путь заново;1/0, output только при успехе. */
 int styxclientstat(StyxFid *fid, StyxMeta *output);
+
+
+/* EN/RU: Cancellable Topen/Tstat require mountfd and result; return1/0, count0.
+ * Original replies win over cancellation. Sent unacknowledged Topen poisons the fid:
+ * no later open/data replay; caller still owns it and may stat/clunk. Tstat leaves
+ * output untouched on every failure and does not poison the fid. Serialize/pin fid.
+ * NULL cancel keeps the normal deadline; non-NULL tokens remain single-use.
+ * Отменяемые Topen/Tstat:1/0, count0, result обязателен; original reply приоритетен.
+ * Topen без acknowledgement блокирует повторный open/data; Tstat не меняет output
+ * при отказе и не poison fid. Caller удерживает/сериализует fid; token single-use. */
+int styxclientopencancel(StyxFid *fid, int mode, StyxCancel *cancel, StyxTransfer *result);
+int styxclientstatcancel(StyxFid *fid, StyxMeta *output, StyxCancel *cancel, StyxTransfer *result);
 
 
 /* EN/RU: One actual Tread/Twrite chunk, signed64 offset range; exact confirmed

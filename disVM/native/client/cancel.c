@@ -12,9 +12,10 @@
 struct StyxCancel
 {
     pthread_mutex_t lock; /* Serialize request/bind/lifetime. */
-    size_t references; /* Owner plus optional bound flight. */
+    size_t references; /* Owner plus optional flight or logical-operation scope. */
     StyxMux *mux; /* Borrowed until unbind, which precedes engine retirement. */
     int requested; /* Sticky cancellation request. */
+    StyxCancel *child; /* Owned current fragment token for one logical walk scope. */
     int used; /* One admitted operation only; late control cannot target a later operation. */
 };
 
@@ -45,6 +46,10 @@ void styxcancelrequest(StyxCancel *cancel)
     {
         pthread_mutex_lock(&cancel->lock);
         cancel->requested = 1;
+        if (cancel->child)
+        {
+            styxcancelrequest(cancel->child);
+        }
         if (cancel->mux)
         {
             styxmuxwake(cancel->mux);
@@ -120,4 +125,63 @@ void styxcancelunbind(StyxCancel *cancel)
         pthread_mutex_unlock(&cancel->lock);
         styxcancelfree(cancel);
     }
+}
+
+
+/* EN/RU: See mux.h; reserve the outer token once for a whole logical operation.
+ * См. mux.h; зарезервировать outer token один раз на всю logical operation. */
+int styxcancelbegin(StyxCancel *cancel)
+{
+    if (!cancel)
+    {
+        return 1;
+    }
+    pthread_mutex_lock(&cancel->lock);
+    int valid = !cancel->used && cancel->references != (size_t)-1;
+    if (valid)
+    {
+        cancel->used = 1;
+        cancel->references++;
+    }
+    pthread_mutex_unlock(&cancel->lock);
+    return valid;
+}
+
+
+/* EN/RU: See mux.h; caller completed the previous flight before replacing its token.
+ * См. mux.h; caller завершил previous flight до замены его token. */
+StyxCancel *styxcancelstep(StyxCancel *cancel)
+{
+    StyxCancel *child = styxcancelcreate();
+    if (!child)
+    {
+        return NULL;
+    }
+    pthread_mutex_lock(&cancel->lock);
+    StyxCancel *previous = cancel->child;
+    cancel->child = child;
+    if (cancel->requested)
+    {
+        styxcancelrequest(child);
+    }
+    pthread_mutex_unlock(&cancel->lock);
+    styxcancelfree(previous);
+    return child;
+}
+
+
+/* EN/RU: See mux.h; detach the final native fragment before consuming the scope pin.
+ * См. mux.h; отсоединить final native fragment до поглощения scope pin. */
+void styxcancelend(StyxCancel *cancel)
+{
+    if (!cancel)
+    {
+        return;
+    }
+    pthread_mutex_lock(&cancel->lock);
+    StyxCancel *child = cancel->child;
+    cancel->child = NULL;
+    pthread_mutex_unlock(&cancel->lock);
+    styxcancelfree(child);
+    styxcancelfree(cancel);
 }

@@ -234,3 +234,5 @@ add_executable(vfs-subroot-retire ../tests/subroot/retire.c mount_root.c)
 target_link_libraries(vfs-subroot-retire PRIVATE styx_vfs)
 add_test(NAME vfs-subroot-retire COMMAND vfs-subroot-retire)
 set_tests_properties(vfs-subroot-retire PROPERTIES TIMEOUT 10)
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/cases.cmake")

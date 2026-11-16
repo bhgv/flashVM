@@ -123,3 +123,12 @@ publishes into the mount journal without guest progress. Health and remote sourc
 generations are independently rebased with atomic local append. Watch admission
 keeps ordinary RPC capacity; provider destruction stops without waiting for Rflush
 or decoder return. Discovery and a standard record codec remain separate work.
+
+
+## Cancellable metadata and walks / Отменяемые metadata и walk (runtime0.156)
+
+[Control cancellation API and example](CONTROL-CANCEL.md) covers native
+walk/walkfrom/open/stat with explicit single-use tokens. Long walks retain one
+logical token across MAXWELEM fragments; failed walk fids retire independently.
+Unacknowledged sent Topen poisons later open/data use, while failed Tstat leaves
+its output and fid intact. Original codecs and wire messages are unchanged.

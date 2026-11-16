@@ -43,7 +43,7 @@ struct StyxFid
     unsigned unit; /* Maximum read/write payload, negotiated and Ropen-limited. */
     int opened; /* Topen succeeded. */
     int mode; /* Fixed read/write ceiling0/1/2. */
-    int poisoned; /* Unknown data effects forbid further data calls. */
+    int poisoned; /* Unknown open/data effects forbid later open/data calls. */
 };
 
 
@@ -68,4 +68,22 @@ void styxclientemit(StyxClient *client, int reason);
 /* EN/RU: Under client lock, consume remote fid when the stream remains usable.
  * Под lock поглотить remote fid, если stream ещё пригоден. */
 void styxclunknumber(StyxClient *client, u32int number);
+
+
+/* EN/RU: Clear borrowed outcome before validation; count remains zero for control RPCs.
+ * Очистить borrowed outcome до validation; count ноль для control RPC. */
+void styxopclear(StyxTransfer *result);
+
+
+/* EN/RU: Copy latest RPC outcome while client lock is held; status1/0/-1.
+ * Unacknowledged sent requests are uncertain, never inferred successful or replayed.
+ * Копировать latest outcome под client lock; sent без acknowledgement — uncertain. */
+void styxopresult(StyxClient *client, int status, StyxTransfer *result);
+
+
+/* EN/RU: Schedule best-effort clunk of an abandoned number; client lock held.
+ * Worker owns only client/number. Setup failure fails the connection without RPC wait.
+ * Отложить best-effort clunk abandoned number; setup failure завершает connection. */
+void styxforgetlocked(StyxClient *client, u32int number);
+
 #endif
