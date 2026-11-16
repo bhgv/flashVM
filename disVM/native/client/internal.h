@@ -8,13 +8,17 @@
 #include <styx.h>
 #include <pthread.h>
 #include "client.h"
+#include "mux.h"
 
 /* EN/RU: One connection owns codecs/buffers and serializes bounded native RPCs.
  * Одно соединение владеет buffers и сериализует bounded native RPCs. */
 struct StyxClient
 {
-    pthread_mutex_t lock; /* Serializes one RPC and reference/fid allocation. */
-    StyxTransport transport; /* Adopted native stream. */
+    StyxMux *mux; /* Optional independent native owner; no Client pointers retained by it. */
+    int transportclosed; /* Legacy transport close already consumed by explicit shutdown. */
+    int cancelled; /* Current returned RPC cancelled, under client lock. */
+    pthread_mutex_t lock; /* Protects refs/fids/reply copying; legacy RPC stays serialized. */
+    StyxTransport transport; /* Legacy adopted stream; unused with native fd owner. */
     uchar *send; /* Owned bounded outgoing frame. */
     uchar *receive; /* Owned bounded incoming frame, decoded pointers borrow it. */
     unsigned msize; /* Negotiated complete-message bound. */
@@ -44,6 +48,9 @@ struct StyxFid
  * Returned pointers borrow receive until the next RPC. No retry of failed effects.
  * Под lock обменять frame;1 reply,0 Rerror,-1 fatal; pointers заимствованы. */
 int styxrpc(StyxClient *client, Fcall *request, Fcall *reply);
+int styxrpccancel(StyxClient *, Fcall *, Fcall *, StyxCancel *);
+void styxrpcbad(StyxClient *); /* Client lock held; terminal failure wakes all multiplexed work. */
+StyxClient *styxclientstart(const StyxTransport *, StyxMux *, unsigned, const char *, const char *);
 
 
 /* EN/RU: Under client lock, consume remote fid when the stream remains usable.

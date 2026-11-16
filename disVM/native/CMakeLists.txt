@@ -86,3 +86,8 @@ set(INFERNO_VFS_SUPPORT "" CACHE PATH "Explicit flashVM repository root for nati
 if(INFERNO_VFS_SUPPORT)
     add_subdirectory(vfs)
 endif()
+
+add_executable(client-mux-frames-test tests/mux/frames.c)
+target_link_libraries(client-mux-frames-test PRIVATE styx_client)
+add_test(NAME native-client-mux-frames COMMAND client-mux-frames-test)
+set_tests_properties(native-client-mux-frames PROPERTIES TIMEOUT 10)

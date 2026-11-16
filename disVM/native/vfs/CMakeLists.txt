@@ -68,3 +68,27 @@ endforeach()
 add_test(NAME vfs-mount-prepared COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/mount/prepared.py"
     "$<TARGET_FILE:vfs-mount-test>" "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
 set_tests_properties(vfs-mount-prepared PROPERTIES TIMEOUT 25)
+
+foreach(scenario basic partial loss badtag badcount msize iounit dirbad readonly deep slow badwalk)
+    if(scenario STREQUAL "partial")
+        set(mux_server "$<TARGET_FILE:vfs-file-wire-test>")
+    elseif(scenario STREQUAL "deep")
+        set(mux_server "$<TARGET_FILE:vfs-mount-deep-server>")
+    else()
+        set(mux_server "$<TARGET_FILE:server-loopback-test>")
+    endif()
+    add_test(NAME vfs-mux-provider-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/mount/wire.py"
+        "$<TARGET_FILE:vfs-mount-test>" "${mux_server}" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-mux-provider-${scenario} PROPERTIES TIMEOUT 25 ENVIRONMENT "STYX_NATIVE_MUX=1")
+endforeach()
+
+add_executable(vfs-mux-test ../tests/mux/client.c)
+target_link_libraries(vfs-mux-test PRIVATE styx_vfs)
+foreach(scenario reorder quota cancel race timeout noack failall precancel writecancel writerace detach shutdown late badflush racefail finaldrop)
+    add_test(NAME vfs-mux-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/mux/wire.py"
+        "$<TARGET_FILE:vfs-mux-test>" "$<TARGET_FILE:server-loopback-test>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-mux-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()
+add_test(NAME vfs-mux-provider-prepared COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/mount/prepared.py"
+    "$<TARGET_FILE:vfs-mount-test>" "$<TARGET_FILE:vfs-peer-wire-test>" "${INFERNO_SOURCE}/tools/libstyx/tests")
+set_tests_properties(vfs-mux-provider-prepared PROPERTIES TIMEOUT 25 ENVIRONMENT "STYX_NATIVE_MUX=1")

@@ -49,7 +49,7 @@ static void transfer(void *state, void *bytes, size_t size, int writing, DVM_IoR
     out->count = result.count;
     out->flags = (result.confirmed ? DVM_IO_PREFIX : 0) | (result.uncertain ? DVM_IO_UNCERTAIN : 0);
     out->status = result.success ? FVM_OK : FVM_ERROR;
-    out->stop = result.success ? DVM_IO_NONE : DVM_IO_FAILURE;
+    out->stop = result.success ? DVM_IO_NONE : result.cancelled ? DVM_IO_CANCELLED : DVM_IO_FAILURE;
     if (result.count <= (unsigned long long)LONG_MAX-opened->position)
     {
         opened->position += result.count;

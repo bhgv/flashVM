@@ -26,8 +26,8 @@ The connection mutex serializes one complete RPC. Tags are NOTAG for version
 and1 for ordinary single-flight RPCs, reused only after their response. No VM,
 namespace or global exclusive lock is involved. Two independent native threads
 can use different fids; one fid's caller serializes its operations and retirement.
-This is not yet an asynchronous multiplexer. In-flight Tflush cancellation and
-multiple outstanding tags are follow-up work; failure/timeout after a frame starts
+This callback-transport profile stays single-flight. Runtime0.146 provides
+multiple tags and Tflush through the explicit fd-owner constructor below; failure/timeout after a frame starts
 marks the session terminal instead of allowing an old response to match a new RPC.
 
 Walk validates a canonical relative path before effects; dot clones the root,
@@ -62,5 +62,13 @@ protocol waits, guest calls or linger that violates this cleanup contract.
 Native-клиент использует исходные кодеки Inferno и отдельные remote fid. На одном
 соединении пока один RPC одновременно; native I/O worker может ждать bounded I/O,
 но API не запускает и не приостанавливает guest-поток. Timeout/потеря ответа не
-вызывают reconnect или повтор effects. Мультиплексирование/Tflush, Tauth, typed
+вызывают reconnect или повтор effects. Мультиплексирование/Tflush добавлены в runtime0.146 ниже; Tauth, typed
 remote errors и heartbeat остаются открытыми расширениями.
+
+## Native fd owner (runtime0.146) / Native fd-owner
+
+[MULTIPLEX.md](MULTIPLEX.md) adds an explicit connected-fd constructor with
+independent native ownership, concurrent tag-routed RPCs, bounded admission,
+cancellation/Tflush and autonomous nonwaiting final retirement. The original
+callback transport above keeps its serialized policy. Rebuild native consumers
+for the new `StyxTransfer.cancelled` field; wire9P is unchanged.

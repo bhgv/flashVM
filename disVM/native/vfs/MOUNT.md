@@ -120,3 +120,12 @@ stable subroot binds, richer metadata and guest builtin wiring remain follow-up 
 сохраняются, неизвестные effects не повторяются. Обнаруженный разрыв автоматически
 даёт native-событие, но мониторинга простоя/heartbeat здесь пока нет. Подготовленное
 дерево остаётся живым; дальнейшие режимы union/balancing и migration не ограничены.
+
+## Concurrent fd-owner client / Concurrent fd-owner (runtime0.146)
+
+[Native multiplexer API](../client/MULTIPLEX.md) can supply the owned client to
+this same provider. Independent fids then issue simultaneous RPCs; timeout uses
+Tflush, and cancelled outcomes map to the ordinary SDK CANCELLED cause. Final
+provider destruction signals native owner retirement without joining it.
+Explicit per-operation cancel tokens are available in the native client API;
+binding them to guest FD/broker requests is a separate integration step.

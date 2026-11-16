@@ -7,6 +7,7 @@
 #include "file.h"
 
 typedef struct StyxClient StyxClient; /* Owned connection reference. */
+typedef struct StyxCancel StyxCancel; /* Owned sticky native cancellation capability. */
 typedef struct StyxFid StyxFid; /* Owned independent remote fid and connection pin. */
 
 
@@ -29,6 +30,41 @@ typedef struct StyxTransport
  * is not adopted. Caller serializes creation; returned connection is owned/NULL.
  * Принять valid transport всегда; negotiate+attach, свой client/NULL. */
 StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, const char *user, const char *name);
+
+
+/* EN/RU: Consume connected POSIX stream fd always; independent native owner supports
+ * up to limit1..128 outstanding RPCs. timeout1..120000ms per request, then at most
+ * one extra timeout interval for flush. No transport authentication is implied.
+ * Принять connected POSIX fd; отдельный native owner, bounded RPC/flush. */
+StyxClient *styxclientmountfd(int fd, unsigned msize, const char *user, const char *name, unsigned timeout, unsigned limit);
+
+
+/* EN/RU: Retain borrowed live client;1/0 overflow. Drop with clientfree.
+ * Удержать borrowed live client;1/0 overflow, release через clientfree. */
+int styxclientretain(StyxClient *client);
+
+
+/* EN/RU: Explicit shutdown on native I/O worker, may wait for native owner retirement.
+ * No guest execution/pause; final clientfree itself remains nonwaiting.
+ * Явный native shutdown может ждать owner retirement; clientfree не ждёт. */
+void styxclientshutdown(StyxClient *client);
+
+
+/* EN/RU: Owned sticky cancellation token/NULL; request is nonwaiting and thread-safe.
+ * One admitted operation per token; admitted operation retains it independently.
+ * Caller can free after admission; freeing alone does not request cancellation.
+ * Свой sticky token/NULL; request thread-safe и без ожидания, один operation/token. */
+StyxCancel *styxcancelcreate(void);
+
+
+/* EN/RU: Request sticky cancellation from a retained native capability; no protocol wait.
+ * Запросить sticky cancellation с retained capability; без protocol wait. */
+void styxcancelrequest(StyxCancel *cancel);
+
+
+/* EN/RU: Consume caller token ref; admitted work retains its own ref, no implicit cancel.
+ * Поглотить caller token ref; admitted work имеет свою ref, без implicit cancel. */
+void styxcancelfree(StyxCancel *cancel);
 
 
 /* EN/RU: Snapshot terminal transport/framing state under connection lock;1/0.
@@ -65,6 +101,14 @@ int styxclientstat(StyxFid *fid, StyxMeta *output);
  * Один Tread/Twrite chunk; точный prefix, без retry; uncertain effects запрещают I/O. */
 void styxclientread(StyxFid *fid, unsigned long long offset, void *bytes, size_t size, StyxTransfer *result);
 void styxclientwrite(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxTransfer *result);
+
+
+/* EN/RU: Cancellable chunk requires mountfd client; same precise-prefix contract.
+ * Original acknowledgement before Rflush wins; otherwise cancelled is set, with
+ * uncertain effects if original bytes were sent. Caller serializes the fid.
+ * Cancellable chunk требует mountfd; original acknowledgement не теряется. */
+void styxclientreadcancel(StyxFid *fid, unsigned long long offset, void *bytes, size_t size, StyxCancel *cancel, StyxTransfer *result);
+void styxclientwritecancel(StyxFid *fid, unsigned long long offset, const void *bytes, size_t size, StyxCancel *cancel, StyxTransfer *result);
 
 
 /* EN/RU: Decode one complete original stat record; bytes borrowed,1/0 and consumed.

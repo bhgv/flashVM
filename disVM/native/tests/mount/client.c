@@ -17,6 +17,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <fcntl.h>
 
 typedef struct Stream
 {
@@ -362,7 +363,19 @@ int main(int argc, char **argv)
     check(!connect(stream.fd, (struct sockaddr *)&address, sizeof(address)), "connect");
     stream.budget = !strcmp(argv[2], "slow") ? 120 : 5000;
     StyxTransport transport = {&stream, receive, sendbytes, closestream, begin};
-    StyxClient *client = styxclientmount(&transport, 1024, "alice", !strcmp(argv[2], "prepared") ? "service" : "");
+    int multiplex = getenv("STYX_NATIVE_MUX") != NULL;
+    StyxClient *client = multiplex ? styxclientmountfd(stream.fd, 1024, "alice",
+        !strcmp(argv[2], "prepared") ? "service" : "", stream.budget, 8) :
+        styxclientmount(&transport, 1024, "alice", !strcmp(argv[2], "prepared") ? "service" : "");
+    if (multiplex && client)
+    {
+        check(styxclientretain(client), "native monitor pin");
+    }
+    if (multiplex && !client)
+    {
+        check(fcntl(stream.fd, F_GETFD) < 0 && errno == EBADF, "rejected fd not closed");
+        stream.closed = 1;
+    }
     if (!strcmp(argv[2], "msize"))
     {
         check(!client && stream.closed == 1, "oversized negotiated msize accepted/leaked");
@@ -405,6 +418,13 @@ int main(int argc, char **argv)
         else
         {
             exceptional(provider, argv[2]);
+        }
+        if (multiplex)
+        {
+            styxclientshutdown(client);
+            check(fcntl(stream.fd, F_GETFD) < 0 && errno == EBADF, "fd owner not retired");
+            styxclientfree(client);
+            stream.closed = 1;
         }
         check(stream.closed == 1, "transport not consumed exactly once");
     }

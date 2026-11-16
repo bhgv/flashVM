@@ -265,3 +265,11 @@ tests cover prepared publication, partial writes, lost acknowledgements, bounded
 framing/deadlines, directory records and native loss notifications. The first
 client serializes one RPC per connection; multiplexer/Tflush, authenticated
 transport, stable subroot bind and guest Sys builtin wiring are separate work.
+
+## Native multiplex/flush / Native multiplex/flush (runtime0.146)
+
+[Connected-fd client API](client/MULTIPLEX.md) adds a dedicated native stream owner, bounded
+outstanding RPCs, unique/paired flush tags and cancellation/deadline fences.
+Original acknowledgements survive cancellation races and flush failure. Final
+owner drop does not join; explicit native shutdown can await fd retirement.
+The same VFS provider works with this client; no guest execution/pause is used.

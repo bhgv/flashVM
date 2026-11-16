@@ -34,7 +34,7 @@ static int transfer(StyxClient *client, void *bytes, size_t n, int writing)
 
 /* EN/RU: See internal.h; validate negotiated bounds, exact kind/tag before publish.
  * См. internal.h; проверить bounds, точные kind/tag до публикации. */
-int styxrpc(StyxClient *client, Fcall *request, Fcall *reply)
+static int serialrpc(StyxClient *client, Fcall *request, Fcall *reply)
 {
     unsigned length;
     client->attempted = 0;
@@ -68,6 +68,79 @@ failed:
 }
 
 
+/* EN/RU: See internal.h; release caller serialization only while independent native work waits.
+ * См. internal.h; снять caller serialization только на время independent native wait. */
+int styxrpccancel(StyxClient *client, Fcall *request, Fcall *reply, StyxCancel *cancel)
+{
+    client->attempted = 0;
+    client->cancelled = 0;
+    if (client->failed)
+    {
+        return -1;
+    }
+    if (!client->mux)
+    {
+        return cancel ? -1 : serialrpc(client, request, reply);
+    }
+    if (styxcancelled(cancel))
+    {
+        client->cancelled = 1;
+        return -1;
+    }
+    unsigned length = convS2M(request, client->send, client->msize);
+    StyxFlight *flight = length ? styxmuxsubmit(client->mux, client->send, length, client->msize, cancel) : NULL;
+    if (!flight)
+    {
+        if (!styxmuxalive(client->mux))
+        {
+            client->failed = 1;
+        }
+        return -1;
+    }
+    pthread_mutex_unlock(&client->lock);
+    StyxAnswer answer = styxmuxcollect(flight);
+    pthread_mutex_lock(&client->lock);
+    client->attempted = answer.attempted;
+    client->cancelled = answer.cancelled;
+    int status = answer.status;
+    if (answer.length)
+    {
+        memcpy(client->receive, answer.bytes, answer.length);
+        if (convM2S(client->receive, answer.length, reply) != answer.length)
+        {
+            styxrpcbad(client);
+            status = -1;
+        }
+    }
+    free(answer.bytes);
+    if (!styxmuxalive(client->mux))
+    {
+        client->failed = 1;
+    }
+    return status;
+}
+
+
+/* EN/RU: See internal.h; ordinary RPC uses native multiplexer when explicitly configured.
+ * См. internal.h; обычный RPC использует явно настроенный native multiplexer. */
+int styxrpc(StyxClient *client, Fcall *request, Fcall *reply)
+{
+    return styxrpccancel(client, request, reply, NULL);
+}
+
+
+/* EN/RU: See internal.h; a semantic protocol failure also retires other admitted work.
+ * См. internal.h; semantic protocol failure завершает другие admitted work. */
+void styxrpcbad(StyxClient *client)
+{
+    client->failed = 1;
+    if (client->mux)
+    {
+        styxmuxfail(client->mux);
+    }
+}
+
+
 /* EN/RU: See internal.h; errors cannot cause a second clunk or data replay.
  * См. internal.h; ошибка не вызывает повторный clunk/data replay. */
 void styxclunknumber(StyxClient *client, u32int number)
@@ -89,7 +162,7 @@ int styxclientalive(StyxClient *client)
         return 0;
     }
     pthread_mutex_lock(&client->lock);
-    int alive = !client->failed;
+    int alive = !client->failed && (!client->mux || styxmuxalive(client->mux));
     pthread_mutex_unlock(&client->lock);
     return alive;
 }
@@ -108,7 +181,14 @@ void styxclientfree(StyxClient *client)
     pthread_mutex_unlock(&client->lock);
     if (last)
     {
-        client->transport.close(client->transport.state);
+        if (client->mux)
+        {
+            styxmuxfree(client->mux);
+        }
+        else if (!client->transportclosed)
+        {
+            client->transport.close(client->transport.state);
+        }
         pthread_mutex_destroy(&client->lock);
         free(client->send);
         free(client->receive);
@@ -117,23 +197,39 @@ void styxclientfree(StyxClient *client)
 }
 
 
+/* EN/RU: Constructor failures consume native inputs, joining only in this explicit I/O path.
+ * Constructor failure поглощает native inputs; join только в explicit I/O path. */
+static void startfailed(const StyxTransport *transport, StyxMux *mux)
+{
+    if (mux)
+    {
+        styxmuxshutdown(mux);
+        styxmuxfree(mux);
+    }
+    else
+    {
+        transport->close(transport->state);
+    }
+}
+
+
 /* EN/RU: See client.h; copy protocol output before the next frame replaces it.
  * См. client.h; скопировать protocol output до следующего frame. */
-StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, const char *user, const char *name)
+StyxClient *styxclientstart(const StyxTransport *transport, StyxMux *mux, unsigned msize, const char *user, const char *name)
 {
-    if (!transport || !transport->read || !transport->write || !transport->close || !transport->begin)
+    if (!mux && (!transport || !transport->read || !transport->write || !transport->close || !transport->begin))
     {
         return NULL;
     }
     if (msize < 256 || msize > 65536 || !user || !name || strlen(user) > 4095 || strlen(name) > 4095)
     {
-        transport->close(transport->state);
+        startfailed(transport, mux);
         return NULL;
     }
     StyxClient *client = calloc(1, sizeof(*client));
     if (!client)
     {
-        transport->close(transport->state);
+        startfailed(transport, mux);
         return NULL;
     }
     client->send = malloc(msize);
@@ -143,14 +239,19 @@ StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, cons
         free(client->send);
         free(client->receive);
         free(client);
-        transport->close(transport->state);
+        startfailed(transport, mux);
         return NULL;
     }
-    client->transport = *transport;
+    client->mux = mux;
+    if (transport)
+    {
+        client->transport = *transport;
+    }
     client->msize = msize;
     client->references = 1;
     client->lastfid = 1;
     Fcall request, reply;
+    pthread_mutex_lock(&client->lock);
     memset(&request, 0, sizeof(request));
     request.type = Tversion;
     request.version = VERSION9P;
@@ -158,6 +259,8 @@ StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, cons
     if (styxrpc(client, &request, &reply) != 1 || reply.msize < 256 || reply.msize > msize ||
         GBIT32(client->receive) != 7+BIT32SZ+BIT16SZ+6 || strcmp(reply.version, VERSION9P))
     {
+        pthread_mutex_unlock(&client->lock);
+        styxclientshutdown(client);
         styxclientfree(client);
         return NULL;
     }
@@ -169,9 +272,20 @@ StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, cons
     request.aname = (char *)name;
     if (styxrpc(client, &request, &reply) != 1)
     {
+        pthread_mutex_unlock(&client->lock);
+        styxclientshutdown(client);
         styxclientfree(client);
         return NULL;
     }
     client->root = reply.qid;
+    pthread_mutex_unlock(&client->lock);
     return client;
+}
+
+
+/* EN/RU: See client.h; legacy transport keeps its existing serialized exchange policy.
+ * См. client.h; legacy transport сохраняет serialized exchange policy. */
+StyxClient *styxclientmount(const StyxTransport *transport, unsigned msize, const char *user, const char *name)
+{
+    return styxclientstart(transport, NULL, msize, user, name);
 }

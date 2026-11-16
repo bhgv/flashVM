@@ -79,7 +79,7 @@ StyxFid *styxclientwalk(StyxClient *client, const char *relative)
         int status = styxrpc(client, &request, &reply);
         if (status == 1 && reply.nwqid > request.nwname)
         {
-            client->failed = 1;
+            styxrpcbad(client);
             status = -1;
         }
         if (status != 1 || reply.nwqid != request.nwname)
