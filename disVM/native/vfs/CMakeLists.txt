@@ -7,6 +7,7 @@ if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
 add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_io.c
+    events/source.c events/read.c events/provider.c
     "${vfs}/provider.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
     "${vfs}/publication.c" "${vfs}/view.c" "${vfs}/view_io.c" "${vfs}/view_list.c" "${vfs}/path.c"
@@ -118,3 +119,31 @@ if(TARGET server-deferred-read-tcp)
         set_tests_properties(vfs-deferred-read-${scenario} PROPERTIES TIMEOUT 25)
     endforeach()
 endif()
+
+add_executable(vfs-event-resource-queue ../tests/event-resource/queue.c)
+target_link_libraries(vfs-event-resource-queue PRIVATE styx_vfs)
+add_test(NAME vfs-event-resource-queue COMMAND vfs-event-resource-queue)
+set_tests_properties(vfs-event-resource-queue PROPERTIES TIMEOUT 10)
+
+add_executable(vfs-event-resource-race ../tests/event-resource/race.c)
+target_link_libraries(vfs-event-resource-race PRIVATE styx_vfs)
+add_test(NAME vfs-event-resource-race COMMAND vfs-event-resource-race)
+set_tests_properties(vfs-event-resource-race PROPERTIES TIMEOUT 10)
+
+add_executable(vfs-event-resource-server ../tests/event-resource/backend.c ../tests/event-resource/wire.c)
+set_source_files_properties(../tests/event-resource/wire.c PROPERTIES INCLUDE_DIRECTORIES "${inferno_headers}")
+target_link_libraries(vfs-event-resource-server PRIVATE styx_vfs infernostyx)
+
+foreach(scenario normal flush reopen finish end)
+    add_test(NAME vfs-event-resource-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/event-resource/wire.py"
+        "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-event-resource-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()
+
+add_executable(vfs-event-resource-client ../tests/event-resource/client.c)
+target_link_libraries(vfs-event-resource-client PRIVATE styx_vfs)
+foreach(scenario deliver cancel)
+    add_test(NAME vfs-event-resource-client-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/event-resource/client.py"
+        "$<TARGET_FILE:vfs-event-resource-client>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-event-resource-client-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()

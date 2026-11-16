@@ -174,6 +174,7 @@ static void outcome(StyxOpen *opened, DVM_IoResult result, StyxTransfer *output)
 	output->success = result.status == FVM_OK;
 	output->stop = result.stop;
 	output->cancelled = result.stop == DVM_IO_CANCELLED;
+	output->again = result.stop == DVM_IO_AGAIN;
 	if(output->uncertain || output->count > (unsigned long long)LONG_MAX-opened->position)
 		opened->poisoned = 1;
 	else

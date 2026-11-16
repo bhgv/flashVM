@@ -11,9 +11,10 @@ typedef struct DVM_NoticeTap DVM_NoticeTap; /* Caller-owned subscription handle.
 struct DVM_ChangeEvent;
 
 
-/* EN/RU: Copy one source event into native recipient state; no VM, I/O, waits or
- * target-thread execution. Called outside hub/journal/namespace locks.
- * Скопировать event в native recipient state; без VM/I/O/waits/участия target. */
+/* EN/RU: Copy one source event into native recipient state; no VM, provider/transport
+ * I/O, waits or target-thread execution. Nonblocking native readiness is allowed.
+ * Called outside hub/journal/namespace locks. Скопировать event без VM/provider/
+ * transport I/O/waits/участия target; native readiness signal разрешён вне locks. */
 typedef void (*DVM_NoticeReceive)(void *state, const struct DVM_ChangeEvent *event);
 
 

@@ -16,6 +16,7 @@ typedef struct StyxMeta {
 } StyxMeta;
 typedef struct StyxTransfer {
 	size_t count; /* Confirmed prefix only. */
+	int again; /* Live source temporarily empty; native server may defer, never EOF. */
 	int cancelled; /* Native cancellation/timeout without original acknowledgement. */
 	int success, confirmed, uncertain, stop; /* Original native outcome, no automatic retry. */
 } StyxTransfer;

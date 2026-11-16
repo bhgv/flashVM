@@ -87,8 +87,8 @@ and a fresh read receiving the still-unconsumed record. These are actual server
 requests, not delayed replies simulated by a proxy. The proxy forwards unchanged
 frames and records tags. ASan/UBSan use `detect_leaks=0` on this host.
 
-This step provides deferred transport and examples, not the final provider event
-resource or its public format. Remote subscription/discovery, filtered per-client
+Runtime0.149 provides deferred transport and examples; runtime0.150 adds a
+[configurable native event resource](EVENTS.md) without fixing its public format. Remote subscription/discovery, filtered per-client
 change/load records and their access/publication policy remain separate work.
 The selected Inferno snapshot also includes the current upstream loopback fixture's
 synthetic create/remove support; no graphical implementation is imported.

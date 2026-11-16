@@ -20,8 +20,9 @@ watcher nodes, including detached nodes whose caller handle is still retained.
 callback may finish afterward. Its state remains owned until `release(state)`
 runs once after both unsubscribe and callback retirement. NULL is accepted.
 Callbacks and state release run outside client, engine and source locks. They
-may copy native messages and unsubscribe; they must not perform I/O, wait for a
-recipient, execute guest code or retain cross-heap pointers. Registration replay
+may copy native messages and unsubscribe; they must not perform provider/transport I/O, wait for a recipient, execute guest
+code or retain cross-heap pointers. Bounded nonblocking native readiness signaling
+is allowed. Registration replay
 runs on its caller; fd-owner terminal delivery runs on the native socket owner.
 Legacy callback transports publish on the native caller observing the failure.
 

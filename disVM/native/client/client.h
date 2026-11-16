@@ -98,8 +98,10 @@ typedef struct StyxLinkEvent
 } StyxLinkEvent;
 
 
-/* EN/RU: Native nonwaiting observation outside all source/client/engine locks.
- * Native observation без ожидания, вне source/client/engine locks. */
+/* EN/RU: Native nonwaiting observation outside source/client/engine locks; no guest,
+ * provider/transport I/O or target wait. Nonblocking native readiness is allowed.
+ * Native observation вне locks; без guest/provider/transport I/O/target wait;
+ * nonblocking native readiness разрешён. */
 typedef void (*StyxLinkReceive)(void *state, const StyxLinkEvent *event);
 
 
@@ -116,8 +118,10 @@ int styxclientlink(StyxClient *client, StyxLinkEvent *output);
 
 
 /* EN/RU: Nonwaiting native terminal delivery outside source/client/engine locks.
- * May copy an event/unsubscribe, never perform I/O, guest calls or wait for a target.
- * Native terminal callback вне locks; без I/O/guest calls/target wait. */
+ * May copy an event/unsubscribe, never perform provider/transport I/O, guest calls or wait for a target.
+ * Nonblocking native readiness notification is allowed.
+ * Native terminal callback вне locks; без provider/transport I/O/guest calls/target wait;
+ * native readiness signal разрешён. */
 typedef void (*StyxTerminal)(void *state, int reason);
 
 

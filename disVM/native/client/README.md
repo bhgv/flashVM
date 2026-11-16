@@ -102,3 +102,14 @@ continue; flush/reset/disconnect/end safely retire pending requests. One-record
 TCP fixtures preserve queued data on short buffers. Actual native client tests
 combine pending reads, automatic heartbeat and explicit cancellation. Wire Styx
 is unchanged; the public provider event format remains undecided.
+
+
+## Provider event resource / Ресурс событий провайдера (runtime0.150)
+
+[Native event-resource API and examples](../vfs/EVENTS.md) expose a journal as an ordinary
+readonly VFS file with explicit native access filtering and host-selected encoding.
+One read returns one record; readiness integrates with deferred Styx reads without
+guest execution. Cached heads survive short buffers and recheck access at delivery.
+Queues are bounded, overflow broadens invalidation, and finish drains before EOF.
+No default public wire format/global path is installed; remote client decoding
+and subscription discovery remain separate integration work.
