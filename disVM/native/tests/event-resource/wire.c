@@ -67,6 +67,10 @@ static char *walk(Qid *qid, char *name)
     {
         *qid = styxqid(1, 0);
     }
+    else if (!strcmp(name, "data"))
+    {
+        *qid = styxqid(3, 0);
+    }
     else if (!strcmp(name, "ctl"))
     {
         *qid = styxqid(2, 0);
@@ -97,7 +101,7 @@ static char *openfile(Qid *qid, int mode)
         }
         return nil;
     }
-    return (qid->path == Qroot && mode == OREAD) || (qid->path == 2 && mode == OWRITE) ? nil : Eperm;
+    return ((qid->path == Qroot || qid->path == 3) && mode == OREAD) || (qid->path == 2 && mode == OWRITE) ? nil : Eperm;
 }
 
 
@@ -105,6 +109,11 @@ static char *openfile(Qid *qid, int mode)
  * Использовать SDK outcome; только AGAIN откладывается, successful zero read — EOF. */
 static char *readfile(Qid qid, char *bytes, ulong *count, vlong offset)
 {
+    if (qid.path == 3)
+    {
+        *count = styxreadstr(offset, bytes, *count, "ordinary");
+        return nil;
+    }
     if (qid.path != 1)
     {
         return Eperm;
@@ -168,7 +177,7 @@ static char *statfile(Qid qid, Dir *out)
     memset(out, 0, sizeof(*out));
     out->qid = qid;
     out->mode = qid.path == Qroot ? DMDIR|0555 : qid.path == 2 ? 0222 : 0444;
-    out->name = qid.path == Qroot ? "/" : qid.path == 2 ? "ctl" : "events";
+    out->name = qid.path == Qroot ? "/" : qid.path == 2 ? "ctl" : qid.path == 3 ? "data" : "events";
     out->uid = out->gid = out->muid = "fixture";
     return nil;
 }

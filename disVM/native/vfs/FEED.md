@@ -7,6 +7,9 @@ Existing namespace observers route that journal into per-thread native inboxes.
 No Limbo loop, guest execution, guest pause, scheduler poll or provider/guest
 pointer in the worker is required. Original Styx messages/codecs are unchanged.
 
+Since runtime0.152, [live mount control](CONTROL.md) also supports versioned native
+replacement/detach of this subscription while keeping ordinary open fids.
+
 ## Explicit native configuration / Явная native-конфигурация
 
 `styxmountproviderfeed(client, access, &config, &control)` is a native I/O constructor.

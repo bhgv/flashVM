@@ -87,9 +87,10 @@ def main():
                                     raise RuntimeError('remote source event was not published automatically')
                                 if mode != 'shutdown':
                                     emit(server, 'f')
-                output, failure = client.communicate(timeout=8)
                 marker = 'PASS native remote feed rejected setup' if mode in ('badpath', 'noslots', 'writeonly') else f'PASS native remote feed: {mode}'
-                if client.returncode or marker not in output:
+                final = line(client.stdout)
+                output, failure = client.communicate(timeout=8)
+                if client.returncode or final != marker:
                     raise RuntimeError(f'client {client.returncode}: {output} {failure}')
                 worker.join(5)
                 if worker.is_alive() or errors:

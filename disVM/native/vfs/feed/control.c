@@ -15,14 +15,16 @@ void styxfeeddrop(StyxFeed *feed)
     pthread_mutex_unlock(&feed->lock);
     if (last)
     {
+        styxfeedfree(feed->previous);
         styxclientclunk(feed->fid);
         styxclientfree(feed->client);
         dvm_changes_destroy(feed->target);
-        if (feed->config.release)
+        if (feed->adopted && feed->config.release)
         {
             feed->config.release(feed->config.state);
         }
         free(feed->bytes);
+        pthread_cond_destroy(&feed->gate);
         pthread_mutex_destroy(&feed->lock);
         free(feed);
     }
@@ -60,6 +62,13 @@ void styxfeedstop(StyxFeed *feed)
         {
             feed->stopping = 1;
             styxcancelrequest(feed->cancel);
+            pthread_cond_broadcast(&feed->gate);
+            if (feed->previous)
+            {
+                pthread_mutex_lock(&feed->previous->lock);
+                pthread_cond_broadcast(&feed->previous->gate);
+                pthread_mutex_unlock(&feed->previous->lock);
+            }
         }
         pthread_mutex_unlock(&feed->lock);
     }
@@ -101,7 +110,7 @@ int styxfeedinfo(StyxFeed *feed, StyxFeedInfo *output)
 
 /* EN/RU: See internal.h; setup is native I/O, all fallible setup precedes worker publication.
  * См. internal.h; setup — native I/O, все fallible шаги до worker publication. */
-StyxFeed *styxfeedcreate(StyxClient *client, DVM_Changes *journal, const StyxFeedConfig *config)
+StyxFeed *styxfeedprepare(StyxClient *client, DVM_Changes *journal, const StyxFeedConfig *config)
 {
     if (!config || !config->path || !config->decode || !config->capacity || config->capacity > 65536 ||
         !config->kinds || (config->kinds & ~STYX_EVENT_ALL) || (config->resources != 0 && config->resources != 1) ||
@@ -116,6 +125,12 @@ StyxFeed *styxfeedcreate(StyxClient *client, DVM_Changes *journal, const StyxFee
     }
     if (pthread_mutex_init(&feed->lock, NULL))
     {
+        free(feed);
+        return NULL;
+    }
+    if (pthread_cond_init(&feed->gate, NULL))
+    {
+        pthread_mutex_destroy(&feed->lock);
         free(feed);
         return NULL;
     }
@@ -161,5 +176,18 @@ StyxFeed *styxfeedcreate(StyxClient *client, DVM_Changes *journal, const StyxFee
         return NULL;
     }
     pthread_attr_destroy(&attr);
+    return feed;
+}
+
+
+/* EN/RU: See internal.h; ordinary constructor immediately commits its private preparation.
+ * См. internal.h; обычный constructor немедленно commits private preparation. */
+StyxFeed *styxfeedcreate(StyxClient *client, DVM_Changes *journal, const StyxFeedConfig *config)
+{
+    StyxFeed *feed = styxfeedprepare(client, journal, config);
+    if (feed)
+    {
+        styxfeedactivate(feed);
+    }
     return feed;
 }

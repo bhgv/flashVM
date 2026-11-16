@@ -12,7 +12,7 @@
 struct Mount
 {
     StyxClient *client; /* Owned connection; provider wrappers pin this factory. */
-    StyxFeed *feed; /* Owned optional remote event worker/control, stopped on factory retirement. */
+    StyxMountCtl *control; /* Owned subscription authority, permanently closed on factory retirement. */
     StyxWatch *watch; /* Owned native terminal watch; its context pins only the journal. */
     unsigned access; /* Fixed native host ceiling. */
 };

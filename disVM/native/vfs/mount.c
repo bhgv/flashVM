@@ -3,7 +3,7 @@
  * RU: Обычная VFS mount factory над удержанными native client capabilities.
  */
 #include "mount_internal.h"
-#include "feed/internal.h"
+#include "control/internal.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -112,8 +112,8 @@ failed:
 static void destroy(void *state)
 {
     struct Mount *mount = state;
-    styxfeedstop(mount->feed);
-    styxfeedfree(mount->feed);
+    styxmountctlclose(mount->control);
+    styxmountctlfree(mount->control);
     styxclientunwatch(mount->watch);
     styxclientfree(mount->client);
     free(mount);
@@ -125,8 +125,12 @@ static const DVM_ProviderOps operations = {info, openfile, destroy, 0, NULL};
  * Clear optional control before fallible setup; event policy adopts state only on success.
  * Принять client; создать factory/health и optional feed; control очистить до setup.
  * Transport authority выбрана native host; config.state принимается только при успехе. */
-static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control)
+static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control, StyxMountCtl **authority)
 {
+    if (authority)
+    {
+        *authority = NULL;
+    }
     if (control)
     {
         *control = NULL;
@@ -157,19 +161,31 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
         dvm_provider_release(provider);
         return NULL;
     }
+    mount->control = styxmountctlcreate(client, changes, access);
+    if (!mount->control)
+    {
+        dvm_provider_release(provider);
+        return NULL;
+    }
     if (config)
     {
-        mount->feed = styxfeedcreate(client, changes, config);
-        if (!mount->feed)
+        mount->control->feed = styxfeedcreate(client, changes, config);
+        if (!mount->control->feed)
         {
             dvm_provider_release(provider);
             return NULL;
         }
+        mount->control->info.configured = 1;
         if (control)
         {
-            styxfeedretain(mount->feed);
-            *control = mount->feed;
+            styxfeedretain(mount->control->feed);
+            *control = mount->control->feed;
         }
+    }
+    if (authority)
+    {
+        styxmountctlretain(mount->control);
+        *authority = mount->control;
     }
     return provider;
 }
@@ -179,7 +195,7 @@ static DVM_Provider *create(StyxClient *client, unsigned access, const StyxFeedC
  * См. mount.h; ordinary mount сохраняет автоматическое connection-health observation. */
 DVM_Provider *styxmountprovider(StyxClient *client, unsigned access)
 {
-    return create(client, access, NULL, NULL);
+    return create(client, access, NULL, NULL, NULL);
 }
 
 
@@ -196,5 +212,19 @@ DVM_Provider *styxmountproviderfeed(StyxClient *client, unsigned access, const S
         styxclientfree(client);
         return NULL;
     }
-    return create(client, access, config, control);
+    return create(client, access, config, control, NULL);
+}
+
+
+/* EN/RU: See mount.h; explicit authority is separate from ordinary guest provider access.
+ * См. mount.h; explicit authority отделена от ordinary guest provider access. */
+DVM_Provider *styxmountprovidercontrol(StyxClient *client, unsigned access,
+                                      const StyxFeedConfig *initial, StyxMountCtl **output)
+{
+    if (!output)
+    {
+        styxclientfree(client);
+        return NULL;
+    }
+    return create(client, access, initial, NULL, output);
 }

@@ -12,6 +12,10 @@
  * Worker владеет protocol resources; public control не удерживает provider/guest. */
 struct StyxFeed
 {
+    pthread_cond_t gate; /* Prepared worker activation and native retirement notification. */
+    int ready; /* Worker may begin reading only after committed activation. */
+    int adopted; /* Decoder context transfers only at activation. */
+    StyxFeed *previous; /* Owned dependency until earlier watch retires; no provider pointer. */
     pthread_mutex_t lock; /* Protect owner refs, cancellation handoff and copied status. */
     size_t references; /* Owners plus detached worker. */
     size_t owners; /* Mount/control capabilities. */
@@ -30,6 +34,31 @@ struct StyxFeed
 /* EN/RU: Create owned feed while borrowing client/journal; adopt policy only on success.
  * Создать свой feed при borrowed client/journal; policy принять только при успехе. */
 StyxFeed *styxfeedcreate(StyxClient *, DVM_Changes *, const StyxFeedConfig *);
+
+
+/* EN/RU: Prepare fid/parked native worker without adopting decoder state; abort with stop/free.
+ * Подготовить fid/parked worker без принятия decoder state; abort через stop/free. */
+StyxFeed *styxfeedprepare(StyxClient *, DVM_Changes *, const StyxFeedConfig *);
+
+
+/* EN/RU: Activate a prepared worker and adopt context, once; caller owns exclusive preparation.
+ * Активировать prepared worker и принять context один раз; caller владеет preparation. */
+void styxfeedactivate(StyxFeed *feed);
+
+
+/* EN/RU: Pin old feed's effective dependency and request stop atomically;1/0, no change on failure.
+ * Удержать effective dependency и запросить stop атомарно;1/0, failure без изменений. */
+int styxfeedfollow(StyxFeed *feed, StyxFeed *previous);
+
+
+/* EN/RU: Native worker waits for activation/previous retirement or its own stop, no guest involved.
+ * Native worker ждёт activation/previous retirement либо stop, без участия guest. */
+int styxfeedbegin(StyxFeed *feed);
+
+
+/* EN/RU: Drop the previous dependency after wait/stop; no read or join, may release native context.
+ * Поглотить previous dependency после wait/stop; без read/join, native cleanup допустим. */
+void styxfeedpreviousfree(StyxFeed *feed);
 
 
 /* EN/RU: Consume one private ref after caller/worker retirement; cleanup outside lock.

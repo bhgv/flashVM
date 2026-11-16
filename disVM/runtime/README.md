@@ -759,3 +759,13 @@ publishes into the mount journal without guest progress. Health and remote sourc
 generations are independently rebased with atomic local append. Watch admission
 keeps ordinary RPC capacity; provider destruction stops without waiting for Rflush
 or decoder return. Discovery and a standard record codec remain separate work.
+
+
+## Live mount event control / Управление подпиской mount (runtime0.152)
+
+[Versioned native mount controls](../native/vfs/CONTROL.md) replace/detach a live mount event feed
+without changing ordinary fids. Preparation precedes CAS commit and adopts decoder
+state only on success. Clear/retirement can invalidate an admitted preparation.
+Native predecessor fences preserve two-slot watch capacity through delayed Rflush
+and rapid replacements. Cutover posts conservative invalidation; no guest progress,
+pause, transport reconnect or event-codec discovery is required.

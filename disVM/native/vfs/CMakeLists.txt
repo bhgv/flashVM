@@ -7,7 +7,7 @@ if(NOT EXISTS "${vfs}/provider.c" OR NOT EXISTS "${ports}/linux/filesystem.c")
     message(FATAL_ERROR "INFERNO_VFS_SUPPORT must name the flashVM repository root")
 endif()
 add_library(styx_vfs STATIC file.c tree.c peer.c mount.c mount_io.c mount_notice.c
-    feed/control.c feed/worker.c
+    feed/control.c feed/worker.c feed/handoff.c control/lifetime.c control/change.c
     events/source.c events/read.c events/provider.c
     "${vfs}/provider.c" "${vfs}/handle.c" "${vfs}/io_result.c"
     "${vfs}/changes.c" "${vfs}/changes_refresh.c" "${vfs}/changes_ack.c" "${vfs}/notice.c"
@@ -165,4 +165,12 @@ foreach(scenario normal stop inflight shutdown bad progress partial badpath nosl
     add_test(NAME vfs-feed-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/feed/wire.py"
         "$<TARGET_FILE:vfs-feed-client>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
     set_tests_properties(vfs-feed-${scenario} PROPERTIES TIMEOUT 25)
+endforeach()
+
+add_executable(vfs-mount-control ../tests/control/client.c)
+target_link_libraries(vfs-mount-control PRIVATE styx_vfs)
+foreach(scenario replace chain clear setrace closerace inflight empty ceiling)
+    add_test(NAME vfs-mount-control-${scenario} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control/wire.py"
+        "$<TARGET_FILE:vfs-mount-control>" "$<TARGET_FILE:vfs-event-resource-server>" "${INFERNO_SOURCE}/tools/libstyx/tests" "${scenario}")
+    set_tests_properties(vfs-mount-control-${scenario} PROPERTIES TIMEOUT 25)
 endforeach()

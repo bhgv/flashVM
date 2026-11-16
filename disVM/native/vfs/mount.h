@@ -6,7 +6,7 @@
 #define STYX_MOUNT_H
 #include "client.h"
 #include "provider.h"
-#include "feed.h"
+#include "control.h"
 
 
 /* EN/RU: Consume owned client on every outcome; owned ordinary provider/NULL.
@@ -23,4 +23,11 @@ DVM_Provider *styxmountprovider(StyxClient *client, unsigned access);
  * No path probing, guest loop or wire-format default. Failure clears control.
  * Native I/O constructor: client принять всегда, config.state только при успехе; control свой ref. */
 DVM_Provider *styxmountproviderfeed(StyxClient *client, unsigned access, const StyxFeedConfig *config, StyxFeed **control);
+
+
+/* EN/RU: Consume client always; owned provider/NULL, required output receives native mount authority.
+ * Optional initial policy adopts state only on success. Ordinary fids survive later feed changes.
+ * Принять client всегда; свой provider/NULL и обязательный native control; initial policy optional. */
+DVM_Provider *styxmountprovidercontrol(StyxClient *client, unsigned access,
+                                      const StyxFeedConfig *initial, StyxMountCtl **output);
 #endif

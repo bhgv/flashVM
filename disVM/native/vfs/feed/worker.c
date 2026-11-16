@@ -92,7 +92,12 @@ void *styxfeedrun(void *state)
     StyxFeed *feed = state;
     unsigned long long offset = 0;
     int final = STYX_FEED_FAILED;
-    for (;;)
+    int started = styxfeedbegin(feed);
+    if (started)
+    {
+        styxfeedpreviousfree(feed);
+    }
+    for (; started;)
     {
         StyxCancel *cancel = styxcancelcreate();
         if (!cancel)
@@ -153,6 +158,7 @@ void *styxfeedrun(void *state)
     feed->bytes = NULL;
     pthread_mutex_lock(&feed->lock);
     feed->info.finished = 1;
+    pthread_cond_broadcast(&feed->gate);
     pthread_mutex_unlock(&feed->lock);
     styxfeeddrop(feed);
     return NULL;
