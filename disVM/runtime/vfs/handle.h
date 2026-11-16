@@ -11,7 +11,8 @@
 #define DVM_VFS_CANCEL_INFO 2U /* Held-fid metadata consumes current cancellation scope. */
 #define DVM_VFS_CANCEL_SEEK 4U /* Seek, including metadata query, consumes current cancellation scope. */
 #define DVM_VFS_CANCEL_LIST 8U /* Directory enumeration consumes current cancellation scope. */
-#define DVM_VFS_CANCEL_MASK 15U /* Known immutable handle cancellation capabilities. */
+#define DVM_VFS_CANCEL_CLOSE 16U /* Consuming native close honours the current cancellation source, including pre-cancel. */
+#define DVM_VFS_CANCEL_MASK 31U /* Known immutable handle cancellation capabilities. */
 #define DVM_VFS_CANCEL_DATA 1U /* Native read/write consumes current cancel scope; not directory/control I/O. */
 
 
@@ -44,6 +45,7 @@ typedef struct DVM_VfsHandle
     DVM_IoResult last_io; /* Last synchronous chunk outcome under the existing caller FIFO. */
     int io_valid; /* Last outcome exists; clear with handle retirement/move source. */
     unsigned native_flags; /* Immutable owned-handle capabilities; known mask DVM_VFS_CANCEL_MASK. */
+    int (*close_ready)(void *state); /* Optional1/0 close capability query under exclusive ownership; no allocation/I/O/VM access. */
 } DVM_VfsHandle;
 
 
@@ -63,6 +65,14 @@ int dvm_vfs_move(DVM_VfsHandle *out, DVM_VfsHandle *source);
  * All borrowers must have retired. Очистить handle до consuming close;
  * empty/NULL безопасны; заёмщики уже ушли. No managed callbacks. */
 void dvm_vfs_close(DVM_VfsHandle *handle);
+
+
+/* EN/RU: Check exclusively owned close capability without I/O or managed access.
+ * Empty handles succeed; static CLOSE wins, otherwise query close_ready or return0.
+ * Borrow handle/state through the query; no allocation, callback retention or ownership transfer.
+ * Проверить exclusive close capability без I/O/VM; empty даёт1, иначе CLOSE либо
+ * close_ready/0. Handle/state borrowed, без allocation/retention/передачи ownership. */
+int dvm_vfs_close_cancellable(const DVM_VfsHandle *handle);
 
 
 /* EN/RU: Borrow handle/arguments under caller's lifetime pin and operation FIFO.

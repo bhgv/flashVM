@@ -410,3 +410,11 @@ Preparation stops before further callbacks, staged roots retire, and commit
 checks cancellation under the namespace mutex. Successful committed results
 survive late cancellation. The native suite has261 cases plus actual
 interpreter/JIT guest acquisition and commit-race coverage.
+
+[Detached close cancellation](vfs/CLOSE-CANCEL.md), runtime0.162, adds native CLOSE
+and an exclusive nonblocking close_ready query, propagated through wrappers.
+Service shutdown cancels eligible native waits before FIFO drain; legacy close
+stays unchanged. Inferno FD reference release remains asynchronous, with no new
+Sys.close. The native suite has267 cases, including actual Tclunk/Tflush through
+the runtime close FIFO, and dedicated guest tests prove64 file/directory jobs
+drain once while descriptor slots are reused before backend completion.

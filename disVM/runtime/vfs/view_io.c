@@ -211,6 +211,14 @@ static void close_stream(void *state)
     dvm_vfs_close(&stream->inner);
     free(stream);
 }
+
+
+/* EN/RU: Query owned substreams only after every borrower retires; never inspect live routes or do I/O.
+ * Проверить owned substreams после ухода borrowers; без live route lookup и I/O. */
+static int close_ready(void *state)
+{
+    return dvm_vfs_close_cancellable(&((ViewStream *)state)->inner);
+}
 static const DVM_VfsOps ops = {info, NULL, NULL, seek, list, close_stream, abort_list, read_chunk, write_chunk}; /* Policy-enforced ordinary I/O. */
 
 
@@ -273,6 +281,7 @@ FVM_Result dvm_view_open(DVM_View *view, const char *path, const char *mode, DVM
     {
         output->native_flags |= DVM_VFS_CANCEL_LIST;
     }
+    output->close_ready = close_ready;
     output->ops = &ops;
     output->state = stream;
     return FVM_OK;

@@ -115,5 +115,6 @@ The complete native suite has261 tests and runs normally and under ASan/UBSan
 (`detect_leaks=0`). Linux amd64 acceptance also includes host-unit and guest VFS,
 namespace, thread and close-backlog regressions in dynamic/static runtime builds.
 This is embedding-provider integration, not a new Sys.mount transport builtin or
-a network authentication implementation. Cancellation of guest close itself and
-other unregistered VFS mutation entry points remains separate work.
+a network authentication implementation. [Detached close shutdown](CLOSE-CANCEL.md) now supports eligible native callbacks
+in runtime0.162. Sys FD reference release remains asynchronous; no guest close syscall
+is introduced. Other unregistered VFS mutation entry points remain separate work.

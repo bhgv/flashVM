@@ -34,7 +34,7 @@ def line(stream):
 # Сохранить original codecs/server; удерживать выбранные replies, не придумывать success.
 def relay(listener, port, operation, mode, armed, seen, clunk, release, requests, errors):
     immediate = mode in ('success', 'from-success', 'precancel', 'partial', 'error', 'stepfail', 'between', 'truncated')
-    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120, 'capturewalk': 110, 'capturestat': 124}[operation]
+    kind = {'walk': 110, 'open': 112, 'stat': 124, 'read': 116, 'write': 118, 'pathstat': 124, 'pathopen': 112, 'fdstat': 124, 'seek': 124, 'cleanup': 120, 'list': 116, 'liststat': 124, 'listprefix': 124, 'dirclose': 120, 'capturewalk': 110, 'capturestat': 124, 'queueclose': 120}[operation]
     required = 2 if (operation == 'walk' and mode != 'first') or operation == 'listprefix' else 1
     shared = {}
     lock = threading.Lock()
@@ -144,7 +144,8 @@ def main():
                 client.stdin.write('cancel\n')
                 client.stdin.flush()
             if line(client.stdout) != 'returned' or line(client.stdout) != 'progress':
-                raise RuntimeError('cancelled operation/progress checkpoint missing')
+                details = client.stderr.read() if client.poll() is not None else 'client is still active'
+                raise RuntimeError('cancelled operation/progress checkpoint missing: '+details)
             if operation == 'walk' and mode not in ('success', 'from-success', 'precancel', 'race', 'racefail'):
                 if not clunk.wait(6):
                     raise RuntimeError('abandoned remote fid was not retired')

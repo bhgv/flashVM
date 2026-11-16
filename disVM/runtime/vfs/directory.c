@@ -210,6 +210,14 @@ static void close_directory(void *state)
     free(cursor->names);
     free(cursor);
 }
+
+
+/* EN/RU: Query owned substreams only after every borrower retires; never inspect live routes or do I/O.
+ * Проверить owned substreams после ухода borrowers; без live route lookup и I/O. */
+static int close_ready(void *state)
+{
+    return dvm_vfs_close_cancellable(&((Directory *)state)->inner);
+}
 static const DVM_VfsOps operations = {info, NULL, NULL, seek, list, close_directory, abort_list}; /* Ordinary directory projection preserves supported base rewind. */
 
 
@@ -267,6 +275,7 @@ FVM_Result dvm_namespace_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *out)
     {
         out->native_flags |= DVM_VFS_CANCEL_LIST;
     }
+    out->close_ready = close_ready;
     out->ops = &operations;
     out->state = cursor;
     return FVM_OK;

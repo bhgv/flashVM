@@ -115,6 +115,22 @@ int dvm_vfs_move(DVM_VfsHandle *out, DVM_VfsHandle *source)
 }
 
 
+/* EN/RU: See handle.h; dynamic probes inspect only currently owned substreams.
+ * См. handle.h; dynamic probe смотрит только на удерживаемые substreams. */
+int dvm_vfs_close_cancellable(const DVM_VfsHandle *handle)
+{
+    if (!handle || !handle->ops || !handle->state)
+    {
+        return 1;
+    }
+    if (handle->native_flags & DVM_VFS_CANCEL_CLOSE)
+    {
+        return 1;
+    }
+    return handle->close_ready ? handle->close_ready(handle->state) != 0 : 0;
+}
+
+
 /* EN/RU: See handle.h; clear before callback prevents repeated consuming close.
  * См. handle.h; очистить до callback для защиты от повторного close. */
 void dvm_vfs_close(DVM_VfsHandle *handle)

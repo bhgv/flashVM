@@ -6,12 +6,14 @@
 #include "close_worker.h"
 #include "channel_sync.h"
 #include "thread_port.h"
+#include "vfs/cancel.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-/* Prepared before file creation, transferred exactly once after gate retirement. */
+/* EN/RU: Preallocated before open; exclusively transferred once after gate retirement.
+ * Выделен до open; эксклюзивно передаётся один раз после gate retirement. */
 struct DVM_CloseJob
 {
     DVM_CloseJob *next;          /* Native queue link, protected by service.sync. */
@@ -19,10 +21,12 @@ struct DVM_CloseJob
 };
 
 
-/* The worker owns only detached handles. No TLS/GC/REG or managed callbacks. */
+/* EN/RU: Service owns detached native handles and cancellation TLS, never guest TLS/GC/REG.
+ * Служба владеет detached native handles/cancellation TLS, но не guest TLS/GC/REG. */
 typedef struct CloseService
 {
     FVM_PortSync *sync;          /* Protect queue/counters/stop, never held through close. */
+    DVM_Cancel *cancel; /* Owned shutdown source; native close scopes hold independent pins. */
     FVM_PortThread *thread;      /* Joined after producers stop, before sync destruction. */
     DVM_CloseJob *head;          /* Pending FIFO; native allocations prepared before open. */
     DVM_CloseJob *tail;          /* Last queued job, NULL exactly when head is NULL. */
@@ -37,17 +41,34 @@ typedef struct CloseService
 static CloseService service; /* One runtime lifetime; cleared only at explicit start. */
 
 
-/* Consume detached native ownership. job is exclusive; handles may be NULL.
- * Port close can block but cannot access managed memory or execute VM callbacks. */
+/* EN/RU: Consume exclusive job/resource and free its reservation, outside the queue mutex.
+ * Query current native close capability; enter/leave only a native source scope when eligible.
+ * No managed access or guest callbacks; legacy close may block. No result.
+ * Поглотить exclusive job/resource и reservation вне queue mutex; capability query
+ * выбирает native source scope. Без VM/guest callbacks; legacy close может ждать. */
 static void dispose(DVM_CloseJob *job)
 {
+    DVM_CancelScope scope = {0};
+    int scoped = service.cancel && dvm_vfs_close_cancellable(&job->resource);
+    if (scoped && !dvm_cancel_enter(&scope, service.cancel))
+    {
+        fprintf(stderr, "disvm: native close cancellation scope refused\n");
+        abort();
+    }
     dvm_vfs_close(&job->resource);
+    if (scoped && !dvm_cancel_leave(&scope))
+    {
+        fprintf(stderr, "disvm: native close cancellation scope ownership lost\n");
+        abort();
+    }
     free(job);
 }
 
 
-/* Native thread callback; unused must be NULL. FIFO publication uses the same
- * mutex as the predicate wait, preventing lost wakeups. No heap/TLS admission. */
+/* EN/RU: Native thread callback; unused is NULL. FIFO and wake predicate share a mutex.
+ * Only native cancellation TLS is used; no managed heap/REG admission.
+ * Native thread callback; unused NULL; FIFO/wake predicate под одним mutex,
+ * только native cancellation TLS, без managed heap/REG admission. */
 static void execute(void *unused)
 {
     (void)unused;
@@ -79,7 +100,8 @@ static void execute(void *unused)
 }
 
 
-/* See header: failure starts no producer-visible service and leaks no sync. */
+/* EN/RU: See header; source/thread setup failure releases all partial state before producers start.
+ * См. header; source/thread setup failure освобождает partial state до producers. */
 int dvm_close_worker_start(void)
 {
     if (service.sync)
@@ -92,9 +114,18 @@ int dvm_close_worker_start(void)
     {
         return 0;
     }
+    service.cancel = dvm_cancel_create();
+    if (!service.cancel)
+    {
+        fvm_port_sync_destroy(service.sync);
+        service.sync = NULL;
+        return 0;
+    }
     service.thread = fvm_port_thread_start(execute, NULL);
     if (!service.thread)
     {
+        dvm_cancel_release(service.cancel);
+        service.cancel = NULL;
         fvm_port_sync_destroy(service.sync);
         service.sync = NULL;
         return 0;
@@ -103,22 +134,26 @@ int dvm_close_worker_start(void)
 }
 
 
-/* The preallocated job prevents allocation failure in a GC finalizer. */
+/* EN/RU: See header; allocate a zeroed exclusive retirement job before resource creation.
+ * См. header; выделить zeroed exclusive retirement job до создания resource. */
 DVM_CloseJob *dvm_close_prepare(void)
 {
     return calloc(1, sizeof(DVM_CloseJob));
 }
 
 
-/* Only unused native reservations are discarded, never a queued node. */
+/* EN/RU: See header; consume only unused reservations, never queued ownership.
+ * См. header; поглотить только unused reservations, не queued ownership. */
 void dvm_close_discard(DVM_CloseJob *job)
 {
     free(job);
 }
 
 
-/* Producers own table/GC exclusion, while native queue state uses sync. Finalizer
- * publication never waits for an in-progress close or reenters managed execution. */
+/* EN/RU: See header; adapt exclusive file/directory before transferring a preallocated job.
+ * Caller owns table/GC exclusion; publication performs no I/O or managed reentry.
+ * См. header; адаптировать exclusive file/directory до передачи job; caller владеет
+ * table/GC exclusion, publication без I/O и managed reentry. */
 void dvm_close_submit(DVM_CloseJob *job, FVM_PortFile *file, FVM_PortDirectory *directory)
 {
     DVM_VfsHandle resource = {0};
@@ -176,8 +211,10 @@ void dvm_close_submit_resource(DVM_CloseJob *job, DVM_VfsHandle *resource)
 }
 
 
-/* GC and mutator producers must already be joined. The closer never needs heap
- * admission to finish, so this final join cannot form a heap/close lock cycle. */
+/* EN/RU: See header; all producers must be joined. Signal outside the queue mutex,
+ * join without heap admission, then release the service source and sync. Idempotent.
+ * См. header; producers уже joined. Signal вне mutex, join без heap admission,
+ * затем освободить source/sync. Повторный вызов безопасен. */
 void dvm_close_worker_stop(void)
 {
     if (!service.sync)
@@ -188,8 +225,11 @@ void dvm_close_worker_stop(void)
     service.stopping = 1;
     fvm_port_sync_signal_all(service.sync);
     fvm_port_sync_unlock(service.sync);
+    dvm_cancel_request(service.cancel);
     fvm_port_thread_join(service.thread);
     service.thread = NULL;
+    dvm_cancel_release(service.cancel);
+    service.cancel = NULL;
     service.joined = 1;
     fvm_port_sync_destroy(service.sync);
     service.sync = NULL;

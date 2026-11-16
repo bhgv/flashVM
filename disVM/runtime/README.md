@@ -851,3 +851,12 @@ requires PATH; stable aliases can avoid fresh callbacks. Cancelled preparation
 releases staged roots and preserves the prior target/revision. The final check
 is under the namespace mutex; successful commits and acknowledged metadata win
 later cancellation. Mixed/native-host routes keep their legacy admission boundary.
+
+## Detached close shutdown / Завершение native close (runtime0.162)
+
+[Close cancellation and ownership](../native/vfs/CLOSE-CANCEL.md) preserve Inferno
+FD reference-release semantics. The descriptor/gate retires before backend I/O;
+there is no new guest close syscall. Eligible detached callbacks receive a native
+service source, requested outside the queue mutex before shutdown join. Dynamic
+close queries inspect actual owned streams; legacy callbacks keep their previous
+boundary. The native handle layout grows, so SDK consumers must rebuild.

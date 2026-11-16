@@ -304,3 +304,24 @@ add_executable(vfs-cancel-bind ../tests/cancel/bind.c ../tests/file-root/context
 target_link_libraries(vfs-cancel-bind PRIVATE styx_namespace_fixture)
 add_test(NAME vfs-bind-cancel-transaction COMMAND vfs-cancel-bind)
 set_tests_properties(vfs-bind-cancel-transaction PROPERTIES TIMEOUT 10)
+
+add_executable(vfs-cancel-close ../tests/cancel/close.c
+    "${INFERNO_VFS_SUPPORT}/disVM/runtime/close_worker.c" "${ports}/linux/thread.c")
+target_include_directories(vfs-cancel-close PRIVATE "${INFERNO_VFS_SUPPORT}/disVM/runtime")
+target_link_libraries(vfs-cancel-close PRIVATE styx_vfs)
+target_link_options(vfs-cancel-close PRIVATE "-Wl,--wrap=dvm_cancel_create" "-Wl,--wrap=dvm_cancel_request" "-Wl,--wrap=fvm_port_thread_start")
+foreach(mode active replay)
+    add_test(NAME vfs-close-cancel-${mode} COMMAND vfs-cancel-close "${mode}")
+    set_tests_properties(vfs-close-cancel-${mode} PROPERTIES TIMEOUT 10)
+endforeach()
+
+add_executable(vfs-cancel-close-queue ../tests/cancel/close_queue.c
+    "${INFERNO_VFS_SUPPORT}/disVM/runtime/close_worker.c" "${ports}/linux/thread.c")
+target_include_directories(vfs-cancel-close-queue PRIVATE "${INFERNO_VFS_SUPPORT}/disVM/runtime")
+target_link_libraries(vfs-cancel-close-queue PRIVATE styx_vfs)
+target_link_options(vfs-cancel-close-queue PRIVATE "-Wl,--wrap=dvm_vfs_close")
+foreach(mode success cancel race racefail)
+    add_test(NAME vfs-close-queue-${mode} COMMAND "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/../tests/control-cancel/wire.py"
+        "$<TARGET_FILE:vfs-cancel-close-queue>" "$<TARGET_FILE:control-cancel-server>" queueclose "${mode}")
+    set_tests_properties(vfs-close-queue-${mode} PROPERTIES TIMEOUT 30)
+endforeach()

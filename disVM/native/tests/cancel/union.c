@@ -18,6 +18,8 @@ typedef struct Source
     unsigned opens; /* Actual branch open callbacks. */
     unsigned reads; /* Actual enumeration callbacks. */
     unsigned stats; /* Actual source metadata callbacks, including forbidden legacy probes. */
+    int legacy_close; /* Dynamic close query refuses for the retained legacy branch. */
+    int emit; /* Positive batch leaves this branch open for close-capability inspection. */
     int eof; /* Return apparent EOF after requesting cancellation. */
 } Source;
 
@@ -56,6 +58,15 @@ static FVM_Result list(void *state, FVM_FileInfo **entries, size_t *count)
     *entries = NULL;
     *count = 0;
     dvm_cancel_request(source->cancel);
+    if (source->emit)
+    {
+        source->emit = 0;
+        *entries = calloc(1, sizeof(**entries));
+        check(*entries != NULL, "live branch entry allocation");
+        strcpy((*entries)->name, "item");
+        *count = 1;
+        return FVM_OK;
+    }
     return source->eof ? FVM_OK : FVM_ERROR;
 }
 
@@ -69,6 +80,14 @@ static void closefile(void *state)
 static const DVM_VfsOps stream_ops = {NULL, NULL, NULL, NULL, list, closefile, closefile}; /* Native directory fixture. */
 
 
+/* EN/RU: Query exclusively held native state; no route lookup or I/O.
+ * Проверить exclusively held native state, без route lookup/I/O. */
+static int close_ready(void *state)
+{
+    return !((Source *)state)->legacy_close;
+}
+
+
 /* EN/RU: Open a borrowed fixture directory; outer provider wrapper pins the factory.
  * Открыть borrowed directory; outer wrapper удерживает factory, no blocking. */
 static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_VfsHandle *out)
@@ -79,6 +98,7 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
     source->opens++;
     out->ops = &stream_ops;
     out->state = source;
+    out->close_ready = close_ready;
     out->native_flags = DVM_VFS_CANCEL_LIST;
     return FVM_OK;
 }
@@ -92,7 +112,7 @@ static const DVM_ProviderOps factory_ops = {info, openfile, closefile, DVM_PROVI
 static void dynamic(int child, int capable)
 {
     DVM_Cancel *cancel = dvm_cancel_create();
-    Source base = {NULL, 0, 0, 0, 1}, added = {NULL, 0, 0, 0, 1};
+    Source base = {.eof = 1}, added = {.eof = 1};
     unsigned flags = DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST;
     DVM_Provider *a = dvm_provider_create_native(&factory_ops, &base, NULL, 0, flags);
     DVM_Provider *b = dvm_provider_create_native(&factory_ops, &added, NULL, 0, capable ? flags : 0);
@@ -147,6 +167,36 @@ static void dynamic(int child, int capable)
 }
 
 
+/* EN/RU: An unscoped enumeration can retain a legacy branch; close query must inspect it now.
+ * Unscoped enumeration может удержать legacy branch; close query проверяет actual cursor. */
+static void close_routes(void)
+{
+    Source base = {.eof = 1}, legacy = {.legacy_close = 1, .emit = 1, .eof = 1};
+    DVM_Provider *a = dvm_provider_create(&factory_ops, &base);
+    DVM_Provider *b = dvm_provider_create(&factory_ops, &legacy);
+    DVM_Namespace *group = dvm_namespace_create("/", "/", NULL);
+    check(a && b && group && dvm_namespace_pin(group), "close query owners");
+    check(dvm_stack_mount(group, a, "/", 0, 0) == 1 &&
+          dvm_stack_mount(group, b, "/", DVM_NS_AFTER, 0) == 1, "mixed close routes");
+    DVM_ResourcePlan plan;
+    DVM_VfsHandle cursor = {0};
+    check(dvm_resource_plan(group, "/", 0, &plan) &&
+          dvm_namespace_directory(&plan, &cursor) == FVM_OK, "mixed close cursor");
+    dvm_resource_close(&plan);
+    check(dvm_vfs_close_cancellable(&cursor), "unopened branch falsely controls close");
+    FVM_FileInfo *entries = NULL;
+    size_t count = 0;
+    check(dvm_vfs_list(&cursor, &entries, &count) == FVM_OK && count == 1,
+          "retain opened legacy branch");
+    check(!dvm_vfs_close_cancellable(&cursor), "live legacy cursor falsely promises cancellable close");
+    fvm_port_directory_entries_free(entries);
+    dvm_vfs_close(&cursor);
+    dvm_namespace_release(group);
+    dvm_provider_release(a);
+    dvm_provider_release(b);
+}
+
+
 /* EN/RU: Exercise real namespace/union/projection dispatch under a native scope.
  * Проверить настоящий namespace/union/projection dispatch под native scope. */
 int main(void)
@@ -154,7 +204,7 @@ int main(void)
     for (int eof = 0; eof <= 1; eof++)
     {
         DVM_Cancel *cancel = dvm_cancel_create();
-        Source upper = {cancel, 0, 0, 0, eof}, lower = {NULL, 0, 0, 0, 1};
+        Source upper = {.cancel = cancel, .eof = eof}, lower = {.eof = 1};
         DVM_Provider *a = dvm_provider_create_native(&factory_ops, &upper, NULL, 0, DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST);
         DVM_Provider *b = dvm_provider_create_native(&factory_ops, &lower, NULL, 0, DVM_PROVIDER_CANCEL_PATH | DVM_PROVIDER_CANCEL_LIST);
         DVM_Namespace *group = dvm_namespace_create("/", "/", NULL);
@@ -189,6 +239,7 @@ int main(void)
             dynamic(child, capable);
         }
     }
+    close_routes();
     puts("PASS union directory cancellation boundaries and live binds");
     return 0;
 }

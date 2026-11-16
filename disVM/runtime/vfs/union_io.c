@@ -262,6 +262,15 @@ static void union_close(void *state)
     dvm_namespace_release(cursor->group);
     free(cursor);
 }
+
+
+/* EN/RU: Query owned substreams only after every borrower retires; never inspect live routes or do I/O.
+ * Проверить owned substreams после ухода borrowers; без live route lookup и I/O. */
+static int close_ready(void *state)
+{
+    return dvm_vfs_close_cancellable(&((UnionCursor *)state)->current) &&
+        dvm_vfs_close_cancellable(&((UnionCursor *)state)->header);
+}
 static const DVM_VfsOps union_ops = {union_info, NULL, NULL, union_seek, union_list, union_close, union_abort}; /* Native union directory adapter. */
 
 
@@ -299,6 +308,7 @@ FVM_Result dvm_union_directory(DVM_ResourcePlan *plan, DVM_VfsHandle *output)
     {
         output->native_flags |= DVM_VFS_CANCEL_LIST;
     }
+    output->close_ready = close_ready;
     output->ops = &union_ops;
     output->state = cursor;
     return FVM_OK;

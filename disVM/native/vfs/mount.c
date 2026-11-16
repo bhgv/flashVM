@@ -106,7 +106,7 @@ static FVM_Result openfile(void *state, const char *path, const char *mode, DVM_
         goto failed;
     }
     out->native_flags = styxclientcancellable(mount->client) ?
-        DVM_VFS_CANCEL_INFO | (meta.directory ? DVM_VFS_CANCEL_LIST : DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK) : 0;
+        DVM_VFS_CANCEL_CLOSE | DVM_VFS_CANCEL_INFO | (meta.directory ? DVM_VFS_CANCEL_LIST : DVM_VFS_CANCEL_DATA | DVM_VFS_CANCEL_SEEK) : 0;
     out->ops = &styxmountedops;
     out->state = opened;
     return FVM_OK;

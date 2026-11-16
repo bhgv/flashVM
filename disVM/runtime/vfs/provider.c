@@ -235,6 +235,14 @@ static void wrapped_close(void *state)
 }
 
 
+/* EN/RU: Borrow the exclusively owned wrapper; query actual inner close capability, no I/O.
+ * Заимствовать exclusive wrapper; проверить actual inner close capability без I/O. */
+static int wrapped_close_ready(void *state)
+{
+    return dvm_vfs_close_cancellable(&((ProviderHandle *)state)->inner);
+}
+
+
 /* EN/RU: See provider.h; callbacks must honor the valid-handle/empty-failure contract.
  * См. provider.h; callbacks соблюдают valid-handle/empty-failure contract. */
 FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const char *mode, DVM_VfsHandle *output)
@@ -281,6 +289,7 @@ FVM_Result dvm_provider_open(DVM_Provider *provider, const char *relative, const
     handle->ops.list = handle->inner.ops->list ? wrapped_list : NULL;
     handle->ops.close = wrapped_close;
     handle->ops.abort_list = handle->inner.ops->abort_list ? wrapped_abort : NULL;
+    output->close_ready = wrapped_close_ready;
     output->native_flags = handle->inner.native_flags & DVM_VFS_CANCEL_MASK;
     output->ops = &handle->ops;
     output->state = handle;
